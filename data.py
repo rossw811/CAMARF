@@ -71,6 +71,7 @@ class QualityReport:
     roll_dates: List[str]
     passed: bool
     fail_reason: str = ""
+    source: str = "ibkr"
 
 
 @dataclass
@@ -171,12 +172,25 @@ class ProgressLogger:
     @staticmethod
     def load() -> dict:
         Config.ensure_dirs()
-        if not os.path.exists(ProgressLogger.PROGRESS_FILE):
-            return {
-                "config_hash": ProgressLogger.compute_config_hash(),
-                "started_at": datetime.now().isoformat(),
-                "completed": {},
-            }
+        import tempfile
+
+        fallback = os.path.join(tempfile.gettempdir(), "camarf_progress_fallback.json")
+        # Try main file, then TEMP fallback (written when OneDrive locked the main file)
+        for path in [ProgressLogger.PROGRESS_FILE, fallback]:
+            if os.path.exists(path):
+                try:
+                    with open(path, "r", encoding="utf-8") as f:
+                        data = json.load(f)
+                    if path == fallback:
+                        log.info(f"Loaded progress from TEMP fallback: {path}")
+                    return data
+                except Exception:
+                    continue
+        return {
+            "config_hash": ProgressLogger.compute_config_hash(),
+            "started_at": datetime.now().isoformat(),
+            "completed": {},
+        }
         try:
             with open(ProgressLogger.PROGRESS_FILE, "r", encoding="utf-8") as f:
                 return json.load(f)
@@ -194,7 +208,38 @@ class ProgressLogger:
         tmp = ProgressLogger.PROGRESS_FILE + ".tmp"
         with open(tmp, "w", encoding="utf-8") as f:
             json.dump(progress, f, indent=2)
-        os.replace(tmp, ProgressLogger.PROGRESS_FILE)
+        saved = False
+        for _i in range(5):
+            try:
+                os.replace(tmp, ProgressLogger.PROGRESS_FILE)
+                saved = True
+                break
+            except OSError:
+                time.sleep(0.5 * (_i + 1))
+        if not saved:
+            try:
+                with open(ProgressLogger.PROGRESS_FILE, "w", encoding="utf-8") as f:
+                    json.dump(progress, f, indent=2)
+                saved = True
+            except OSError:
+                pass
+        if not saved:
+            import tempfile
+
+            fallback = os.path.join(
+                tempfile.gettempdir(), "camarf_progress_fallback.json"
+            )
+            try:
+                with open(fallback, "w", encoding="utf-8") as f:
+                    json.dump(progress, f, indent=2)
+                log.warning(f"Progress saved to TEMP fallback: {fallback}")
+            except Exception as e:
+                log.error(f"Progress save completely failed: {e}")
+        try:
+            if os.path.exists(tmp):
+                os.remove(tmp)
+        except OSError:
+            pass
 
     @staticmethod
     def mark_complete(
@@ -235,6 +280,235 @@ class ProgressLogger:
 
 
 # =============================================================================
+# CLASS 1c — DataAligner
+# Aligns all assets to a common NYSE calendar timeline with gap flagging.
+# =============================================================================
+
+
+class DataAligner:
+    """
+    Aligns OHLCV DataFrames across all assets to a common timeline.
+
+    Strategy:
+      - Master calendar: NYSE trading sessions (Option A)
+        All asset classes — equities, forex, crypto, futures, commodities —
+        are aligned to the NYSE daily calendar. Non-equity assets that trade
+        on NYSE holidays are forward-filled to that date. This ensures every
+        asset has an identical DatetimeIndex, which is required for pairwise
+        cointegration and spread calculations in analysis.py.
+
+      - Gap handling: forward-fill + flag
+        Missing bars (asset not traded, data unavailable) are forward-filled
+        using the last known price. A boolean `is_gap` column is added to mark
+        filled bars so the analysis layer can condition on data quality.
+        Volume is set to 0 for filled bars.
+
+      - Intraday alignment:
+        For sub-daily timeframes, alignment is to the asset's own trading
+        session calendar rather than NYSE — overnight gaps and weekends are
+        already excluded by DataCleaner._fill_gaps(). The `is_gap` flag
+        marks within-session gaps (e.g. thinly-traded stocks with no prints
+        for 15 minutes).
+
+    The aligned data is cached to DataStore with a "_aligned" suffix so
+    downstream modules always consume the aligned version.
+    """
+
+    _NYSE = None
+
+    @staticmethod
+    def _get_nyse_calendar(start: str, end: str) -> pd.DatetimeIndex:
+        """Return NYSE trading session dates between start and end."""
+        if DataAligner._NYSE is None:
+            DataAligner._NYSE = mcal.get_calendar("NYSE")
+        schedule = DataAligner._NYSE.schedule(start_date=start, end_date=end)
+        return mcal.date_range(schedule, frequency="1D").normalize().tz_localize(None)
+
+    @staticmethod
+    def align_daily(
+        data: Dict[str, pd.DataFrame],
+        start_date: str = None,
+        end_date: str = None,
+    ) -> Dict[str, pd.DataFrame]:
+        """
+        Align all daily DataFrames to the NYSE master calendar.
+
+        Parameters
+        ----------
+        data       : dict of {symbol: DataFrame} with DatetimeIndex
+        start_date : earliest date to include (None = min across all assets)
+        end_date   : latest date to include (None = max across all assets)
+
+        Returns
+        -------
+        Dict of aligned DataFrames, each with an added boolean `is_gap` column.
+        Assets missing more than 50% of the master calendar are excluded
+        and logged as data-quality failures.
+        """
+        if not data:
+            return {}
+
+        # Determine common date range
+        all_starts = [
+            df.index.min() for df in data.values() if df is not None and not df.empty
+        ]
+        all_ends = [
+            df.index.max() for df in data.values() if df is not None and not df.empty
+        ]
+        if not all_starts:
+            return {}
+
+        start = start_date or str(min(all_starts).date())
+        end = end_date or str(max(all_ends).date())
+
+        master_idx = DataAligner._get_nyse_calendar(start, end)
+        log.info(
+            f"DataAligner: aligning {len(data)} assets to NYSE calendar "
+            f"({start} → {end}, {len(master_idx)} sessions)"
+        )
+
+        aligned: Dict[str, pd.DataFrame] = {}
+        for symbol, df in data.items():
+            if df is None or df.empty:
+                continue
+
+            # Normalize index to date-only (strip intraday time component)
+            df = df.copy()
+            df.index = df.index.normalize()
+
+            # Reindex to master calendar
+            df_aligned = df.reindex(master_idx)
+
+            # Flag gaps before filling
+            df_aligned["is_gap"] = df_aligned["close"].isna()
+
+            # Forward-fill price columns
+            for col in ["open", "high", "low", "close"]:
+                if col in df_aligned.columns:
+                    df_aligned[col] = df_aligned[col].ffill()
+
+            # Zero-fill volume for gap bars (no trades occurred)
+            if "volume" in df_aligned.columns:
+                df_aligned["volume"] = df_aligned["volume"].fillna(0)
+
+            # Drop leading NaN rows (asset didn't exist yet at master start)
+            first_valid = df_aligned["close"].first_valid_index()
+            if first_valid is not None:
+                df_aligned = df_aligned.loc[first_valid:]
+
+            # Quality check: exclude assets with >50% gaps
+            gap_pct = df_aligned["is_gap"].mean()
+            if gap_pct > 0.50:
+                log.warning(
+                    f"DataAligner: {symbol} has {gap_pct:.1%} gap rate "
+                    f"on master calendar — excluded from aligned dataset"
+                )
+                continue
+
+            aligned[symbol] = df_aligned
+            if gap_pct > 0.05:
+                log.debug(
+                    f"DataAligner: {symbol} gap rate {gap_pct:.1%} (flagged, kept)"
+                )
+
+        log.info(
+            f"DataAligner: {len(aligned)}/{len(data)} assets aligned "
+            f"({len(data)-len(aligned)} excluded for excessive gaps)"
+        )
+        return aligned
+
+    @staticmethod
+    def align_intraday(
+        data: Dict[str, pd.DataFrame],
+        tf_label: str,
+    ) -> Dict[str, pd.DataFrame]:
+        """
+        Align intraday DataFrames within each asset's own trading session.
+
+        For intraday, we don't impose a cross-asset master calendar since
+        assets have different trading hours. Instead we:
+          1. Forward-fill within-session gaps (missing bars due to no trades)
+          2. Add is_gap flag
+          3. Ensure all assets share the same frequency (no irregular spacing)
+
+        Returns aligned DataFrames with is_gap column added.
+        """
+        freq_map = {
+            "4h": "4h",
+            "8h": "8h",
+            "1h": "1h",
+            "30m": "30min",
+            "15m": "15min",
+            "5m": "5min",
+            "3m": "3min",
+            "2m": "2min",
+            "1m": "1min",
+        }
+        freq = freq_map.get(tf_label)
+
+        aligned: Dict[str, pd.DataFrame] = {}
+        for symbol, df in data.items():
+            if df is None or df.empty:
+                continue
+
+            df = df.copy()
+
+            if freq and len(df) > 10:
+                # Reindex to regular frequency within the existing range
+                full_idx = pd.date_range(df.index.min(), df.index.max(), freq=freq)
+                df_aligned = df.reindex(full_idx)
+
+                # Flag gaps
+                df_aligned["is_gap"] = df_aligned["close"].isna()
+
+                # Forward-fill price within session
+                for col in ["open", "high", "low", "close"]:
+                    if col in df_aligned.columns:
+                        df_aligned[col] = df_aligned[col].ffill()
+
+                if "volume" in df_aligned.columns:
+                    df_aligned["volume"] = df_aligned["volume"].fillna(0)
+
+                # Drop overnight and weekend gaps (large time jumps > 12h are natural breaks)
+                time_diffs = df_aligned.index.to_series().diff()
+                natural_break = time_diffs > pd.Timedelta("12h")
+                df_aligned = df_aligned[
+                    ~natural_break | df_aligned["is_gap"].shift(-1).fillna(False)
+                ]
+
+                aligned[symbol] = df_aligned.dropna(subset=["close"])
+            else:
+                df["is_gap"] = False
+                aligned[symbol] = df
+
+        return aligned
+
+    @staticmethod
+    def align_universe(
+        universe_data: Dict[str, pd.DataFrame],
+        tf_label: str = "1D",
+    ) -> Dict[str, pd.DataFrame]:
+        """
+        Top-level alignment method. Routes to daily or intraday aligner
+        based on tf_label. Returns aligned dict ready for analysis.py.
+
+        Keys in universe_data are "SYMBOL_TFLABEL" format.
+        Returns same format with is_gap column added to each DataFrame.
+        """
+        # Extract only the requested timeframe
+        tf_data = {
+            k.replace(f"_{tf_label}", ""): v
+            for k, v in universe_data.items()
+            if k.endswith(f"_{tf_label}") and v is not None
+        }
+
+        if tf_label == "1D":
+            return DataAligner.align_daily(tf_data)
+        else:
+            return DataAligner.align_intraday(tf_data, tf_label)
+
+
+# =============================================================================
 # CLASS 2 — DataCleaner
 # =============================================================================
 
@@ -253,7 +527,7 @@ class DataCleaner:
         6. Minimum bar count validation (per-timeframe threshold)
     """
 
-    _REQUIRED_COLS = {"open", "high", "low", "close", "volume"}
+    _REQUIRED_COLS = {"open", "high", "low", "close", "volume", "average"}
     _NYSE_CALENDAR = None
 
     @staticmethod
@@ -263,6 +537,7 @@ class DataCleaner:
         asset_class: str,
         tf_label: str,
         tf_ibkr: str,
+        source: str = "ibkr",
     ) -> Tuple[Optional[pd.DataFrame], QualityReport]:
 
         original_bars = len(df)
@@ -282,6 +557,7 @@ class DataCleaner:
                 [],
                 passed=False,
                 fail_reason="empty_after_standardize",
+                source=source,
             )
 
         df = df[~df.index.duplicated(keep="last")]
@@ -300,6 +576,7 @@ class DataCleaner:
                 [],
                 passed=False,
                 fail_reason=f"missing_pct_{missing_pct:.3f}_exceeds_threshold",
+                source=source,
             )
 
         if asset_class in ("futures", "commodity"):
@@ -322,6 +599,7 @@ class DataCleaner:
                 roll_dates,
                 passed=False,
                 fail_reason=f"insufficient_bars_{len(df)}_min_{min_bars}",
+                source=source,
             )
 
         bars_dropped = original_bars - len(df)
@@ -336,6 +614,7 @@ class DataCleaner:
             missing_pct,
             roll_dates,
             passed=True,
+            source=source,
         )
 
     @staticmethod
@@ -365,6 +644,8 @@ class DataCleaner:
         if df.index.tz is not None:
             df.index = df.index.tz_localize(None)
 
+        if "average" in df.columns:
+            df = df.rename(columns={"average": "vwap"})
         df = df.sort_index()
         df = df.dropna(subset=["open", "high", "low", "close"])
         return df
@@ -547,6 +828,48 @@ class YFinanceFeed:
                         results[symbol] = {}
                     results[symbol][tf_label] = df
 
+            # Retry any tickers that failed (got None for daily) individually
+            failed = [
+                (ibkr, yf_t)
+                for ibkr, yf_t in zip(chunk_ibkr, chunk_yf)
+                if results.get(ibkr, {}).get("1D") is None
+            ]
+            if failed:
+                log.info(f"  Retrying {len(failed)} failed tickers individually")
+                for ibkr_sym, yf_sym in failed:
+                    for yf_interval, tf_label, max_period in YFinanceFeed._YF_INTERVALS:
+                        try:
+                            import contextlib, io
+
+                            with contextlib.redirect_stderr(io.StringIO()):
+                                raw = yf.download(
+                                    yf_sym,
+                                    period=max_period,
+                                    interval=yf_interval,
+                                    auto_adjust=True,
+                                    progress=False,
+                                    threads=False,
+                                )
+                            if raw is not None and not raw.empty:
+                                if isinstance(raw.columns, pd.MultiIndex):
+                                    try:
+                                        raw = raw.xs(yf_sym, axis=1, level=1)
+                                    except Exception:
+                                        raw = raw.xs(yf_sym, axis=1, level=0)
+                                cleaned, _ = DataCleaner.clean(
+                                    raw,
+                                    ibkr_sym,
+                                    "equity",
+                                    tf_label,
+                                    tf_label,
+                                    source="yfinance",
+                                )
+                                if ibkr_sym not in results:
+                                    results[ibkr_sym] = {}
+                                results[ibkr_sym][tf_label] = cleaned
+                        except Exception:
+                            pass
+
             # Cache daily/weekly/monthly — intraday handled separately by IBKR
             for ibkr_sym in chunk_ibkr:
                 sym_data = results.get(ibkr_sym, {})
@@ -603,7 +926,9 @@ class YFinanceFeed:
                     auto_adjust=True,
                     progress=False,
                     threads=True,
-                    group_by="ticker",
+                    # No group_by — default MultiIndex is (Price, Ticker)
+                    # with tickers at level=1, matching our extraction code.
+                    # group_by="ticker" puts tickers at level=0 which breaks extraction.
                 )
         except Exception as e:
             log.warning(f"    yfinance download failed {tf_label}: {e}")
@@ -615,18 +940,22 @@ class YFinanceFeed:
 
         result = {}
 
-        # yfinance MultiIndex: columns are (Price, YFTicker) — map back to IBKR format
+        # yfinance MultiIndex extraction — robust to both column orientations:
+        # Standard (no group_by): (Price, Ticker) → tickers at level=1
+        # group_by="ticker":      (Ticker, Price) → tickers at level=0
         for yf_ticker, ibkr_ticker in ticker_map.items():
             try:
                 if isinstance(raw.columns, pd.MultiIndex):
-                    level_vals = raw.columns.get_level_values(1)
-                    if yf_ticker in level_vals:
-                        df_raw = raw.xs(yf_ticker, axis=1, level=1)
+                    # Try level=1 first (standard), then level=0 (group_by format)
+                    for lvl in (1, 0):
+                        if yf_ticker in raw.columns.get_level_values(lvl):
+                            df_raw = raw.xs(yf_ticker, axis=1, level=lvl)
+                            break
                     else:
                         result[ibkr_ticker] = None
                         continue
                 else:
-                    # Single ticker — raw is already flat
+                    # Single ticker download — raw is already flat
                     df_raw = raw.copy()
 
                 cleaned, report = DataCleaner.clean(
@@ -659,6 +988,134 @@ class YFinanceFeed:
         except Exception as e:
             log.debug(f"Resample failed ({rule}): {e}")
             return None
+
+    # yfinance intraday interval mapping: tf_label → (yf_interval, max_period)
+    _YF_INTRADAY_MAP: Dict[str, Tuple[str, str]] = {
+        "4h": ("1h", "730d"),  # resample from 1h
+        "8h": ("1h", "730d"),  # resample from 1h
+        "1h": ("1h", "730d"),
+        "30m": ("30m", "60d"),
+        "15m": ("15m", "60d"),
+        "5m": ("5m", "60d"),
+        "3m": ("1m", "5d"),  # resample from 1m; Yahoo 1m limit = 8 days
+        "2m": ("2m", "60d"),
+        "1m": ("1m", "5d"),  # Yahoo 1m hard limit = 8 days; 5d is safe
+    }
+
+    # TFs that require resampling from their yfinance source interval
+    _YF_RESAMPLE_RULES: Dict[str, str] = {
+        "4h": "4h",
+        "8h": "8h",
+        "3m": "3min",
+    }
+
+    @staticmethod
+    def get_intraday_fallback(
+        symbol: str,
+        asset_class: str,
+        tf_label: str,
+    ) -> Optional[pd.DataFrame]:
+        """
+        yfinance fallback for intraday bars when IBKR fails or returns no data.
+
+        Attempts to download the closest available yfinance interval,
+        resampling to the target TF where necessary (4h/8h from 1h, 3m from 1m).
+        Tags the returned data with source="yfinance" or "yfinance_resampled"
+        via DataCleaner so the QualityReport records the data provenance.
+
+        Returns cleaned DataFrame or None if unavailable.
+        """
+        if tf_label not in YFinanceFeed._YF_INTRADAY_MAP:
+            return None
+
+        yf_interval, period = YFinanceFeed._YF_INTRADAY_MAP[tf_label]
+        needs_resample = tf_label in YFinanceFeed._YF_RESAMPLE_RULES
+        source_tag = "yfinance_resampled" if needs_resample else "yfinance"
+
+        # Build yfinance ticker format
+        if asset_class == "crypto":
+            yf_sym = f"{symbol}-USD"
+        elif asset_class == "forex":
+            yf_sym = symbol.replace(".", "") + "=X"
+        elif asset_class in ("futures", "commodity"):
+            yf_sym = f"{symbol}=F"  # GC → GC=F, NQ → NQ=F, ZN → ZN=F
+        else:
+            yf_sym = symbol.replace(" ", "-")
+
+        # Load cached working period for this ticker/interval
+        _pkey = f"yf_period_{symbol.replace(' ','_')}_{yf_interval}"
+        try:
+            _pmeta = DataStore.load(_pkey, "meta")
+            if _pmeta is not None and not _pmeta.empty:
+                period = str(_pmeta.iloc[0]["period"])
+        except Exception:
+            pass
+
+        periods_to_try = [period, "60d"] if period != "60d" else ["60d"]
+        raw = None
+        worked_period = None
+        for try_period in periods_to_try:
+            try:
+                import contextlib, io
+
+                with contextlib.redirect_stderr(io.StringIO()):
+                    r = yf.download(
+                        yf_sym,
+                        period=try_period,
+                        interval=yf_interval,
+                        auto_adjust=True,
+                        progress=False,
+                        threads=False,
+                    )
+                if r is not None and not r.empty:
+                    raw = r
+                    worked_period = try_period
+                    break
+            except Exception as e:
+                log.debug(
+                    f"yfinance {symbol} {tf_label} period={try_period} {type(e).__name__}: {e}"
+                )
+
+        if raw is None or raw.empty:
+            return None
+
+        # Cache the period that worked if different from default
+        if worked_period and periods_to_try and worked_period != periods_to_try[0]:
+            try:
+                DataStore.save(_pkey, "meta", pd.DataFrame([{"period": worked_period}]))
+            except Exception:
+                pass
+
+        # Flatten MultiIndex if present (single ticker returns MultiIndex)
+        if isinstance(raw.columns, pd.MultiIndex):
+            try:
+                raw = raw.xs(yf_sym, axis=1, level=1)
+            except Exception:
+                raw.columns = [
+                    c[0].lower() if isinstance(c, tuple) else c.lower()
+                    for c in raw.columns
+                ]
+
+        # Clean with source tag — tf_ibkr passed as tf_label since yfinance
+        # doesn't use IBKR bar size strings; DataCleaner handles both formats
+        cleaned, report = DataCleaner.clean(
+            raw,
+            symbol,
+            asset_class,
+            tf_label,
+            tf_label,
+            source=source_tag,
+        )
+        if cleaned is None:
+            return None
+
+        # Resample to target TF if needed
+        if needs_resample:
+            rule = YFinanceFeed._YF_RESAMPLE_RULES[tf_label]
+            resampled = YFinanceFeed._resample(cleaned, rule)
+            return resampled
+
+        return cleaned
 
 
 # =============================================================================
@@ -720,7 +1177,16 @@ class IBKRFeed:
         self._req_delay = 5.0
         self._intraday_delay = 12.0
         self._intraday_count = 0
+        self._total_req_count = 0
         self._last_req = 0.0
+        self._consecutive_fails = 0
+        self._circuit_open = False
+        self._circuit_open_at = 0.0
+        self._circuit_open_count = 0
+        self._tf_ibkr_disabled: set = set()
+        self._tf_ibkr_attempts = 0
+        self._tf_ibkr_successes = 0
+        self._upstream_broken = False  # set True on Warning 2110 — reconnect futile
 
     # ------------------------------------------------------------------
     # Connection management with auto-reconnect
@@ -737,6 +1203,7 @@ class IBKRFeed:
                 timeout=Config.IBKR.TIMEOUT,
             )
             self._connected = True
+            self._ib.errorEvent += self._on_ibkr_error
             log.info(f"IBKR connected  →  {Config.IBKR.HOST}:{Config.IBKR.PORT}")
             return True
         except Exception as e:
@@ -752,10 +1219,8 @@ class IBKRFeed:
         """
         Attempt to reconnect to IBKR Gateway after a disconnection.
 
-        Retries every 60 seconds for up to max_wait_minutes.
-        Skips attempts during IBKR maintenance window (11pm-1am ET).
-        On Error 1100 (IBKR server connectivity lost), waits 5 minutes
-        before first attempt to allow IBKR's systems to stabilize.
+        Retries every 90 seconds for up to max_wait_minutes (default 30 min).
+        If reconnect times out, returns False and caller falls back to yfinance.
 
         Returns True if reconnected, False if timed out.
         """
@@ -763,11 +1228,12 @@ class IBKRFeed:
         attempt = 0
 
         log.warning(
-            f"IBKR disconnected — attempting reconnect for up to {max_wait_minutes} minutes"
+            f"IBKR disconnected — retrying every 90s for up to "
+            f"{max_wait_minutes} minutes then falling back to yfinance"
         )
 
-        # Initial wait for Error 1100 (server-side issue needs time to resolve)
-        time.sleep(300)
+        # Brief initial wait for transient disconnects to self-resolve
+        time.sleep(10)
 
         while time.time() < deadline:
             # Skip during maintenance window
@@ -782,6 +1248,10 @@ class IBKRFeed:
                 )
                 time.sleep(300)
                 continue
+
+            if self._upstream_broken:
+                log.warning("  Warning 2110: TWS upstream dead — exiting reconnect")
+                return False
 
             attempt += 1
             log.info(f"  Reconnect attempt {attempt} ...")
@@ -800,15 +1270,31 @@ class IBKRFeed:
                 )
                 self._connected = True
                 log.info(f"  Reconnected on attempt {attempt}")
+                self._upstream_broken = False
                 return True
             except Exception as e:
                 log.warning(f"  Attempt {attempt} failed: {e}")
-                time.sleep(60)
+                time.sleep(90)
 
-        log.error(
-            f"Could not reconnect after {max_wait_minutes} minutes — saving progress and exiting"
+        log.warning(
+            f"Could not reconnect after {max_wait_minutes} minutes — "
+            f"falling back to yfinance for remaining assets"
         )
         return False
+
+    def _on_ibkr_error(self, reqId, errorCode, errorString, contract) -> None:
+        """Handle IBKR 1100/1102 events for circuit breaker."""
+        if errorCode == 1100:
+            log.warning("Error 1100: IBKR lost — circuit opening")
+            self._circuit_open = True
+            self._circuit_open_at = time.time()
+            self._connected = False
+        elif errorCode == 1102:
+            log.info("Error 1102: IBKR restored — circuit resets in 30s")
+            self._circuit_open_at = time.time() - 270
+        elif errorCode == 2110:
+            log.warning("Warning 2110: TWS upstream broken — reconnect futile")
+            self._upstream_broken = True
 
     def disconnect(self) -> None:
         if self._connected:
@@ -838,17 +1324,48 @@ class IBKRFeed:
                 return ibi.Forex(pair)
             elif asset_class in ("futures", "commodity"):
                 exch = self._FUTURES_EXCHANGE.get(symbol, "CME")
+                cached_con = IBKRFeed._load_contract_cache(symbol)
+                if cached_con is not None:
+                    return cached_con
                 contract = ibi.Future(symbol, exchange=exch, currency="USD")
                 try:
-                    qualified = self._ib.qualifyContracts(contract)
-                    if qualified:
-                        return qualified[0]
-                    log.warning(
-                        f"Could not qualify futures contract {symbol} on {exch}"
+                    # Use reqContractDetails — unlike qualifyContracts it does NOT
+                    # raise an exception when multiple expiry months are found.
+                    # Returns a list of ContractDetails objects; extract .contract.
+                    details = self._ib.reqContractDetails(contract)
+                    if not details:
+                        log.warning(f"No contract details for {symbol} on {exch}")
+                        return None
+
+                    contracts = [d.contract for d in details]
+                    if len(contracts) == 1:
+                        return contracts[0]
+
+                    # Select front month: nearest expiry that has not yet passed
+                    today = datetime.now().strftime("%Y%m%d")
+                    candidates = [
+                        c
+                        for c in contracts
+                        if str(getattr(c, "lastTradeDateOrContractMonth", "0"))[:8]
+                        >= today
+                    ]
+                    pool = candidates if candidates else contracts
+                    pool.sort(
+                        key=lambda c: str(
+                            getattr(c, "lastTradeDateOrContractMonth", "0")
+                        )
                     )
-                    return None
+                    front = pool[0]
+                    log.info(
+                        f"{symbol}: front month "
+                        f"{getattr(front, 'lastTradeDateOrContractMonth', '')} "
+                        f"({getattr(front, 'localSymbol', '')})"
+                    )
+                    IBKRFeed._save_contract_cache(symbol, front)
+                    return front
+
                 except Exception as qe:
-                    log.warning(f"Futures qualification error {symbol}: {qe}")
+                    log.warning(f"Futures contract details error {symbol}: {qe}")
                     return None
             else:
                 return None
@@ -890,6 +1407,10 @@ class IBKRFeed:
             self._intraday_count = 0
             delay = self._req_delay
 
+        # Session-level cooldown every 5 requests
+        self._total_req_count += 1
+        if self._total_req_count % 5 == 0:
+            delay = max(delay, 15)
         elapsed = time.time() - self._last_req
         if elapsed < delay:
             time.sleep(delay - elapsed)
@@ -898,6 +1419,55 @@ class IBKRFeed:
     # ------------------------------------------------------------------
     # Core data fetch
     # ------------------------------------------------------------------
+
+    _CONTRACT_CACHE_DIR = os.path.join(
+        os.path.dirname(__file__), "output", "cache", "contracts"
+    )
+
+    @staticmethod
+    def _load_contract_cache(symbol: str):
+        try:
+            path = os.path.join(IBKRFeed._CONTRACT_CACHE_DIR, f"{symbol}.json")
+            if not os.path.exists(path):
+                return None
+            if (time.time() - os.path.getmtime(path)) / 86400 > 30:
+                return None
+            with open(path) as f:
+                d = json.load(f)
+            c = ibi.Contract()
+            c.conId = d["conId"]
+            c.symbol = d["symbol"]
+            c.secType = "FUT"
+            c.exchange = d["exchange"]
+            c.currency = d.get("currency", "USD")
+            c.localSymbol = d.get("localSymbol", "")
+            c.lastTradeDateOrContractMonth = d.get("expiry", "")
+            log.debug(f"Contract cache: {symbol} → {d.get('localSymbol','')}")
+            return c
+        except Exception:
+            return None
+
+    @staticmethod
+    def _save_contract_cache(symbol: str, contract) -> None:
+        try:
+            os.makedirs(IBKRFeed._CONTRACT_CACHE_DIR, exist_ok=True)
+            with open(
+                os.path.join(IBKRFeed._CONTRACT_CACHE_DIR, f"{symbol}.json"), "w"
+            ) as f:
+                json.dump(
+                    {
+                        "symbol": symbol,
+                        "conId": getattr(contract, "conId", 0),
+                        "exchange": getattr(contract, "exchange", ""),
+                        "currency": getattr(contract, "currency", "USD"),
+                        "localSymbol": getattr(contract, "localSymbol", ""),
+                        "expiry": getattr(contract, "lastTradeDateOrContractMonth", ""),
+                        "cached_at": datetime.now().isoformat(),
+                    },
+                    f,
+                )
+        except Exception as e:
+            log.debug(f"Contract cache save {symbol}: {e}")
 
     @staticmethod
     def _what_to_show(asset_class: str, tf_ibkr: str) -> str:
@@ -938,8 +1508,26 @@ class IBKRFeed:
             if cached is not None:
                 return cached
 
+        # TF permanently disabled for this session
+        if tf_ibkr in self._tf_ibkr_disabled:
+            return None  # yfinance fallback will handle it
+
+        if self._circuit_open:
+            elapsed = time.time() - self._circuit_open_at
+            if elapsed < 300:
+                log.debug(f"  Circuit open — skipping IBKR {symbol} {tf_label}")
+                return None
+            else:
+                log.info("  Circuit reset")
+                self._circuit_open = False
+                self._consecutive_fails = 0
+                self._circuit_open_count = 0
+
         if not self.ensure_connected():
             return None
+
+        # Track IBKR attempt for TF-level success rate
+        self._tf_ibkr_attempts += 1
 
         max_dur = self._MAX_DURATION.get(tf_ibkr, duration)
         effective = self._shorter_duration(duration, max_dur)
@@ -969,7 +1557,19 @@ class IBKRFeed:
         for attempt in range(4):
             try:
                 self._wait_rate_limit(tf_ibkr)
-                self._ib.RequestTimeout = 60
+                # 15s for intraday (fail fast → yfinance), 30s for daily
+                INTRADAY_SET = {
+                    "1 min",
+                    "2 mins",
+                    "3 mins",
+                    "5 mins",
+                    "15 mins",
+                    "30 mins",
+                    "1 hour",
+                    "4 hours",
+                    "8 hours",
+                }
+                self._ib.RequestTimeout = 15 if tf_ibkr in INTRADAY_SET else 30
                 bars = self._ib.reqHistoricalData(
                     contract,
                     endDateTime=end_dt,
@@ -1017,7 +1617,22 @@ class IBKRFeed:
             )
             try:
                 self._wait_rate_limit(tf_ibkr)
-                self._ib.RequestTimeout = 60
+                self._ib.RequestTimeout = (
+                    15
+                    if tf_ibkr
+                    in {
+                        "1 min",
+                        "2 mins",
+                        "3 mins",
+                        "5 mins",
+                        "15 mins",
+                        "30 mins",
+                        "1 hour",
+                        "4 hours",
+                        "8 hours",
+                    }
+                    else 30
+                )
                 bars_retry = self._ib.reqHistoricalData(
                     contract,
                     endDateTime="",
@@ -1034,30 +1649,88 @@ class IBKRFeed:
                 pass
 
         if raw_bars is None or raw_bars.empty:
-            log.warning(f"No data returned  {symbol} {tf_label} — skipping TF")
+            self._consecutive_fails += 1
+            # 3-strikes: if 3+ IBKR attempts in this TF with 0 successes, disable immediately
+            if (
+                self._tf_ibkr_attempts >= 3
+                and self._tf_ibkr_successes == 0
+                and tf_ibkr not in self._tf_ibkr_disabled
+            ):
+                self._tf_ibkr_disabled.add(tf_ibkr)
+                log.warning(
+                    f"3-strikes: IBKR disabled for {tf_ibkr} this session "
+                    f"({self._tf_ibkr_attempts} attempts, 0 successes) — routing to yfinance"
+                )
+            if self._consecutive_fails >= 10 and not self._circuit_open:
+                self._circuit_open = True
+                self._circuit_open_at = time.time()
+                self._circuit_open_count += 1
+                log.warning(
+                    f"Circuit OPEN (#{self._circuit_open_count}) after {self._consecutive_fails} failures"
+                )
+                if (
+                    self._circuit_open_count >= 2
+                    and tf_ibkr not in self._tf_ibkr_disabled
+                ):
+                    self._tf_ibkr_disabled.add(tf_ibkr)
+                    log.warning(
+                        f"IBKR disabled for {tf_ibkr} this session — routing to yfinance"
+                    )
+            if tf_label in YFinanceFeed._YF_INTRADAY_MAP:
+                log.info(f"  {symbol} {tf_label}: IBKR failed → trying yfinance")
+                yf_df = YFinanceFeed.get_intraday_fallback(
+                    symbol, asset_class, tf_label
+                )
+                if yf_df is not None:
+                    DataStore.save(symbol, tf_label, yf_df)
+                    log.info(f"  ✓ yfinance {symbol} {tf_label} → {len(yf_df)} bars")
+                    # Don't reset consecutive_fails — IBKR is still failing
+                    # Only actual IBKR success (below) resets the circuit counter
+                    return yf_df
+                else:
+                    log.warning(
+                        f"  yfinance also returned None for {symbol} {tf_label}"
+                    )
+            log.warning(f"No data  {symbol} {tf_label} — both IBKR and yfinance failed")
             return None
 
         if len(raw_bars) == 1:
             what = IBKRFeed._what_to_show(asset_class, tf_ibkr)
             log.warning(
                 f"Only 1 bar returned for {symbol} {tf_label} "
-                f"(whatToShow={what}) — possible subscription or contract issue"
+                f"(whatToShow={what}) — trying yfinance fallback"
             )
+            if tf_label in YFinanceFeed._YF_INTRADAY_MAP:
+                yf_df = YFinanceFeed.get_intraday_fallback(
+                    symbol, asset_class, tf_label
+                )
+                if yf_df is not None:
+                    DataStore.save(symbol, tf_label, yf_df)
+                    log.info(
+                        f"  ✓ yfinance (1-bar fallback) {symbol} {tf_label} → {len(yf_df)} bars"
+                    )
+                    return yf_df
 
         cleaned, report = DataCleaner.clean(
-            raw_bars, symbol, asset_class, tf_label, tf_ibkr
+            raw_bars, symbol, asset_class, tf_label, tf_ibkr, source="ibkr"
         )
         if cleaned is not None:
             DataStore.save(symbol, tf_label, cleaned)
             log.info(
                 f"Fetched  {symbol} {tf_label}  →  {len(cleaned)} bars  (dropped {report.bars_dropped})"
             )
+            self._consecutive_fails = 0
+            self._tf_ibkr_successes += 1
         else:
             log.warning(f"Dropped  {symbol} {tf_label}  →  {report.fail_reason}")
 
         return cleaned
 
     # Intraday timeframes fetched from IBKR for all asset classes
+    # Fetched natively from IBKR — each has unique depth that cannot be
+    # recovered by resampling from a finer timeframe:
+    #   4h/8h = 10Y,  1h = 5Y,  30m = 2Y,  15m = 1Y,  5m = 6M,  1m = 42D
+    # 2m and 3m are derived by resampling from 1m (same 42D depth, no loss).
     INTRADAY_TFS = [
         ("4 hours", "4h", "10 Y"),
         ("8 hours", "8h", "10 Y"),
@@ -1065,9 +1738,13 @@ class IBKRFeed:
         ("30 mins", "30m", "2 Y"),
         ("15 mins", "15m", "1 Y"),
         ("5 mins", "5m", "6 M"),
-        ("3 mins", "3m", "42 D"),
-        ("2 mins", "2m", "42 D"),
         ("1 min", "1m", "42 D"),
+    ]
+
+    # Derived from 1m by resampling — same 42D depth, no information lost
+    RESAMPLED_FROM_1M = [
+        ("2m", "2min"),
+        ("3m", "3min"),
     ]
 
     def get_intraday(
@@ -1315,13 +1992,22 @@ class UniverseBuilder:
         def to_yf_ticker(symbol: str, asset_class: str) -> str:
             if asset_class == "crypto":
                 return f"{symbol}-USD"
+            elif asset_class == "forex":
+                # yfinance uses EURUSD=X format
+                # Our config stores "EUR.USD" — remove dot, add =X
+                return symbol.replace(".", "") + "=X"
             return symbol.replace(" ", "-")  # BRK B → BRK-B
 
-        yf_assets = [(s, cls) for s, cls in raw_assets if cls in ("equity", "crypto")]
+        # yfinance handles: equities, crypto (BTC-USD), forex (EURUSD=X)
+        # IBKR handles: commodities, futures, and all intraday
+        yf_assets = [
+            (s, cls) for s, cls in raw_assets if cls in ("equity", "crypto", "forex")
+        ]
         log.info(
             f"Phase 1 (yfinance daily): "
             f"{sum(1 for _,c in yf_assets if c=='equity')} equities + "
-            f"{sum(1 for _,c in yf_assets if c=='crypto')} crypto"
+            f"{sum(1 for _,c in yf_assets if c=='crypto')} crypto + "
+            f"{sum(1 for _,c in yf_assets if c=='forex')} forex"
         )
 
         yf_daily_done = set()  # track which symbols have daily data confirmed
@@ -1363,17 +2049,50 @@ class UniverseBuilder:
         # Runs after Phase 1 completes (IBKR rate limits prevent full concurrency)
         # Equities with confirmed daily get intraday from IBKR
         # ---------------------------------------------------------------
+        # IBKR Phase 2: commodities and futures only for full history
+        # Forex daily comes from yfinance; forex intraday still from IBKR
         non_equity = [
-            (s, cls) for s, cls in raw_assets if cls not in ("equity", "crypto")
+            (s, cls) for s, cls in raw_assets if cls in ("commodity", "futures")
         ]
+
+        # All equities with confirmed daily data need IBKR intraday.
+        # This includes equities cached in previous sessions (not just this run).
+        # Skip only if all intraday TFs are already fully cached.
+        def _intraday_complete(symbol: str) -> bool:
+            """True only if every intraday TF (native + derived) is cached."""
+            native_complete = all(
+                DataStore.is_fresh(symbol, tf_label)
+                for _, tf_label, _ in IBKRFeed.INTRADAY_TFS
+            )
+            derived_complete = all(
+                DataStore.is_fresh(symbol, tf_label)
+                for tf_label, _ in IBKRFeed.RESAMPLED_FROM_1M
+            )
+            return native_complete and derived_complete
+
         equity_needing_intraday = [
             (s, "equity")
-            for s, cls in yf_assets
+            for s, cls in raw_assets
             if cls == "equity"
-            and s in yf_daily_done
-            and not DataStore.is_fresh(s, "1h")  # skip if intraday already cached
+            and DataStore.is_fresh(s, "1D")
+            and not _intraday_complete(s)
         ]
-        ibkr_work = equity_needing_intraday + non_equity
+
+        # Forex intraday also from IBKR (yfinance forex intraday is too shallow)
+        forex_needing_intraday = [
+            (s, "forex")
+            for s, cls in raw_assets
+            if cls == "forex"
+            and DataStore.is_fresh(s, "1D")
+            and not _intraday_complete(s)
+        ]
+
+        log.info(
+            f"  {len(equity_needing_intraday)} equities + "
+            f"{len(forex_needing_intraday)} forex need IBKR intraday"
+        )
+
+        ibkr_work = equity_needing_intraday + forex_needing_intraday + non_equity
         if ibkr_work:
             if connect:
                 success = self._ibkr.connect()
@@ -1392,78 +2111,167 @@ class UniverseBuilder:
                         f"{n_non_eq} non-equity assets"
                     )
 
-                    for i, (symbol, asset_class) in enumerate(ibkr_work):
-                        is_equity = asset_class == "equity"
-
-                        # For equities: only fetch intraday (daily already from yfinance)
-                        # For non-equities: fetch full history
-                        if is_equity:
-                            if DataStore.is_fresh(symbol, "1h"):
-                                log.info(
-                                    f"[{i+1}/{len(ibkr_work)}]  Cached    {symbol} intraday"
-                                )
-                                for _, tf_label, _ in IBKRFeed.INTRADAY_TFS:
-                                    cached = DataStore.load(symbol, tf_label)
-                                    if cached is not None:
-                                        all_data[f"{symbol}_{tf_label}"] = cached
-                                if symbol not in [s for s, _ in passed]:
-                                    passed.append((symbol, asset_class))
-                                continue
-
-                            log.info(f"[{i+1}/{len(ibkr_work)}]  Intraday  {symbol}")
-                            tf_data = self._ibkr.get_intraday(symbol, asset_class)
-                            for tf, df in tf_data.items():
-                                if df is not None:
-                                    all_data[f"{symbol}_{tf}"] = df
-                            if symbol not in [s for s, _ in passed]:
-                                passed.append((symbol, asset_class))
-
-                            # Mark complete with all TFs (daily from yfinance + intraday from IBKR)
-                            all_tfs = [
-                                tf
-                                for tf in ["1D", "7D", "1M"]
-                                + [t for _, t, _ in IBKRFeed.INTRADAY_TFS]
-                                if DataStore.is_fresh(symbol, tf)
-                            ]
-                            ProgressLogger.mark_complete(
-                                progress, symbol, asset_class, all_tfs
+                    # -------------------------------------------------------
+                    # Non-equity assets: fetch daily first (validates contract)
+                    # then intraday interleaved with equity intraday below
+                    # -------------------------------------------------------
+                    non_eq_assets = [
+                        (s, cls) for s, cls in ibkr_work if cls != "equity"
+                    ]
+                    for symbol, asset_class in non_eq_assets:
+                        if ProgressLogger.is_complete(progress, symbol):
+                            tfs_done = progress["completed"][symbol].get(
+                                "timeframes_fetched", []
                             )
+                            for tf in tfs_done:
+                                cached = DataStore.load(symbol, tf)
+                                if cached is not None:
+                                    all_data[f"{symbol}_{tf}"] = cached
+                            passed.append((symbol, asset_class))
+                            log.info(f"  Resumed   {symbol} ({asset_class})")
+                            continue
 
+                        log.info(f"  Daily     {symbol} ({asset_class})")
+                        time.sleep(
+                            2
+                        )  # avoid rapid-fire contract lookups during farm reconnect
+                        base_dur = Config.DATA.HISTORY_DEPTH.get(asset_class, "10 Y")
+                        daily_dur = self._ibkr._shorter_duration(
+                            base_dur, self._ibkr._MAX_DURATION["1 day"]
+                        )
+                        df_1d = self._ibkr.get_bars(
+                            symbol, asset_class, "1 day", "1D", daily_dur
+                        )
+                        if df_1d is None:
+                            excluded.append((symbol, asset_class, "no_daily_data"))
+                            continue
+                        all_data[f"{symbol}_1D"] = df_1d
+                        df_7d = IBKRFeed._resample(df_1d, "W-FRI")
+                        df_1m_res = IBKRFeed._resample(df_1d, "1ME")
+                        if df_7d is not None:
+                            all_data[f"{symbol}_7D"] = df_7d
+                        if df_1m_res is not None:
+                            all_data[f"{symbol}_1M"] = df_1m_res
+
+                    # -------------------------------------------------------
+                    # INTERLEAVED intraday: iterate timeframes as outer loop,
+                    # assets as inner loop. This prevents same-contract pacing.
+                    # IBKR sees: ABT-4h, ACN-4h, ... then ABT-1h, ACN-1h, ...
+                    # By the time we return to the same asset for the next TF,
+                    # the same-contract pacing window has cleared.
+                    # -------------------------------------------------------
+                    all_intraday_assets = []
+                    for symbol, asset_class in ibkr_work:
+                        if asset_class == "equity":
+                            # Include if any intraday TF is still missing
+                            if not _intraday_complete(symbol):
+                                all_intraday_assets.append((symbol, asset_class))
+                            else:
+                                # Fully cached — load into all_data
+                                for _, tf_lbl, _ in IBKRFeed.INTRADAY_TFS:
+                                    cached = DataStore.load(symbol, tf_lbl)
+                                    if cached is not None:
+                                        all_data[f"{symbol}_{tf_lbl}"] = cached
                         else:
-                            # Non-equity: full history from IBKR
-                            if ProgressLogger.is_complete(progress, symbol):
-                                tfs_done = progress["completed"][symbol].get(
-                                    "timeframes_fetched", []
-                                )
-                                for tf in tfs_done:
-                                    cached = DataStore.load(symbol, tf)
-                                    if cached is not None:
-                                        all_data[f"{symbol}_{tf}"] = cached
-                                passed.append((symbol, asset_class))
-                                log.info(
-                                    f"[{i+1}/{len(ibkr_work)}]  Resumed   {symbol}"
-                                )
+                            if not ProgressLogger.is_complete(progress, symbol):
+                                all_intraday_assets.append((symbol, asset_class))
+
+                    if all_intraday_assets:
+                        log.info(
+                            f"  Interleaved intraday: {len(IBKRFeed.INTRADAY_TFS)} TFs "
+                            f"× {len(all_intraday_assets)} assets"
+                        )
+
+                    # Wait for HMDS to be fully active before starting
+                    # HMDS often connects 30-60s after Gateway link establishes.
+                    # Firing intraday requests into an inactive HMDS causes
+                    # the first N assets to fail before the farm catches up.
+                    # Pause to let IBKR pacing window clear after non-equity daily fetches
+                    # 24 rapid daily requests can trigger throttling on subsequent intraday
+                    log.info(
+                        "  Pausing 30s before intraday sweep (pacing clearance)..."
+                    )
+                    time.sleep(30)
+                    log.info("  Starting interleaved intraday sweep")
+
+                    _bn = 0
+                    for tf_ibkr, tf_label, max_dur in IBKRFeed.INTRADAY_TFS:
+                        log.info(
+                            f"  TF: {tf_label} — {len(all_intraday_assets)} assets"
+                        )
+                        # Reset circuit consecutive counter at start of each TF
+                        # A bad TF (e.g. 4h failing) shouldn't poison 1h sweep
+                        self._ibkr._consecutive_fails = 0
+                        self._ibkr._circuit_open = False
+                        self._ibkr._circuit_open_count = 0
+                        self._ibkr._tf_ibkr_attempts = 0
+                        self._ibkr._tf_ibkr_successes = 0
+                        # _tf_ibkr_disabled persists across TF sweeps intentionally
+                        for symbol, asset_class in all_intraday_assets:
+                            _bn += 1
+                            if _bn % 50 == 0:
+                                log.info(f"  Batch rest #{_bn} — 60s cooldown")
+                                time.sleep(60)
+                            if DataStore.is_fresh(symbol, tf_label):
+                                cached = DataStore.load(symbol, tf_label)
+                                if cached is not None:
+                                    all_data[f"{symbol}_{tf_label}"] = cached
                                 continue
 
-                            log.info(
-                                f"[{i+1}/{len(ibkr_work)}]  Fetching  {symbol}  ({asset_class})"
+                            base_dur = Config.DATA.HISTORY_DEPTH.get(
+                                asset_class, "10 Y"
                             )
-                            tf_data = self._ibkr.get_full_history(symbol, asset_class)
-
-                            daily_df = tf_data.get("1D")
-                            if daily_df is None:
-                                excluded.append((symbol, asset_class, "no_daily_data"))
-                                continue
-
-                            timeframes_done = []
-                            for tf, df in tf_data.items():
+                            effective = self._ibkr._shorter_duration(base_dur, max_dur)
+                            df = self._ibkr.get_bars(
+                                symbol, asset_class, tf_ibkr, tf_label, effective
+                            )
+                            if df is None and tf_label in YFinanceFeed._YF_INTRADAY_MAP:
+                                # IBKR failed — try yfinance fallback immediately
+                                df = YFinanceFeed.get_intraday_fallback(
+                                    symbol, asset_class, tf_label
+                                )
                                 if df is not None:
-                                    all_data[f"{symbol}_{tf}"] = df
-                                    timeframes_done.append(tf)
+                                    DataStore.save(symbol, tf_label, df)
+                                    log.debug(
+                                        f"  yf fallback {symbol} {tf_label}: {len(df)} bars"
+                                    )
+                            if df is not None:
+                                all_data[f"{symbol}_{tf_label}"] = df
 
+                    # Derive 2m and 3m from 1m for all assets that have 1m data
+                    log.info("  Deriving 2m and 3m from 1m bars...")
+                    for symbol, asset_class in all_intraday_assets:
+                        df_1m = DataStore.load(symbol, "1m")
+                        if df_1m is not None:
+                            for tf_label, rule in IBKRFeed.RESAMPLED_FROM_1M:
+                                if not DataStore.is_fresh(symbol, tf_label):
+                                    resampled = IBKRFeed._resample(df_1m, rule)
+                                    if resampled is not None:
+                                        DataStore.save(symbol, tf_label, resampled)
+                                        all_data[f"{symbol}_{tf_label}"] = resampled
+                                        log.debug(
+                                            f"  Resampled {symbol} {tf_label} from 1m"
+                                        )
+
+                    # Mark all assets complete and add to passed
+                    all_derived = [tf for tf, _ in IBKRFeed.RESAMPLED_FROM_1M]
+                    passed_set = {s for s, _ in passed}
+                    for symbol, asset_class in ibkr_work:
+                        if symbol in passed_set:
+                            continue
+                        tfs_done = [
+                            tf
+                            for tf in (
+                                ["1D", "7D", "1M"]
+                                + [t for _, t, _ in IBKRFeed.INTRADAY_TFS]
+                                + all_derived
+                            )
+                            if DataStore.is_fresh(symbol, tf)
+                        ]
+                        if tfs_done:
                             passed.append((symbol, asset_class))
                             ProgressLogger.mark_complete(
-                                progress, symbol, asset_class, timeframes_done
+                                progress, symbol, asset_class, tfs_done
                             )
 
                     self._ibkr.disconnect()
@@ -1474,9 +2282,28 @@ class UniverseBuilder:
             if symbol in yf_daily_done and symbol not in passed_symbols:
                 passed.append((symbol, asset_class))
 
+        # Backfill all_data from DataStore cache.
+        # The resume logic skips complete assets during the session loop, so their
+        # cached data is never added to all_data. We load everything from disk now
+        # so analysis.py receives the full universe — not just this session's fetches.
+        all_tf_labels = Config.DATA.TIMEFRAME_LABELS  # ["1m","2m",...,"1D","7D","1M"]
+        backfill_count = 0
+        for symbol, asset_class in passed:
+            for tf_label in all_tf_labels:
+                key = f"{symbol}_{tf_label}"
+                if key not in all_data:
+                    cached = DataStore.load(symbol, tf_label)
+                    if cached is not None:
+                        all_data[key] = cached
+                        backfill_count += 1
+
         log.info(
             f"Universe complete: {len(passed)} assets passed, "
             f"{len(excluded)} excluded"
+        )
+        log.info(
+            f"Data keys: {len(all_data)} symbol-timeframe combinations "
+            f"({backfill_count} loaded from cache)"
         )
 
         return UniverseResult(
@@ -1509,8 +2336,36 @@ class UniverseBuilder:
 
         return raw
 
+    _SP500_CACHE = os.path.join(
+        os.path.dirname(__file__), "output", "cache", "sp500_tickers.json"
+    )
+
+    @staticmethod
+    def _save_sp500_cache(tickers):
+        try:
+            Config.ensure_dirs()
+            with open(UniverseBuilder._SP500_CACHE, "w") as f:
+                json.dump(tickers, f)
+        except Exception:
+            pass
+
     @staticmethod
     def _fetch_sp500_tickers() -> List[str]:
+        Config.ensure_dirs()
+        cache = UniverseBuilder._SP500_CACHE
+        if os.path.exists(cache):
+            age_h = (time.time() - os.path.getmtime(cache)) / 3600
+            if age_h < 24:
+                try:
+                    with open(cache) as f:
+                        tickers = json.load(f)
+                    if len(tickers) > 400:
+                        log.info(
+                            f"S&P 500: {len(tickers)} tickers from cache ({age_h:.1f}h old)"
+                        )
+                        return tickers
+                except Exception:
+                    pass
         try:
             headers = {
                 "User-Agent": (
@@ -1526,6 +2381,7 @@ class UniverseBuilder:
             tickers = tables[0]["Symbol"].tolist()
             tickers = [str(t).replace(".", " ") for t in tickers]
             log.info(f"S&P 500: {len(tickers)} tickers from Wikipedia")
+            UniverseBuilder._save_sp500_cache(tickers)
             return tickers
         except Exception as e:
             log.warning(f"Wikipedia S&P 500 failed: {e}")
@@ -1544,6 +2400,7 @@ class UniverseBuilder:
             ]
             if len(tickers) > 400:
                 log.info(f"S&P 500: {len(tickers)} tickers from iShares IVV")
+                UniverseBuilder._save_sp500_cache(tickers)
                 return tickers
         except Exception as e:
             log.warning(f"iShares IVV fetch failed: {e}")

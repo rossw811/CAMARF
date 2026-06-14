@@ -86,9 +86,10 @@ class DataConfig:
     CBOE_BASE_URL = "https://cdn.cboe.com/api/global/delayed_quotes/options/"
 
     # Data quality filters
-    # Minimum bar count per timeframe — a single global threshold is wrong
-    # because monthly bars can never reach 500 (that would require 41 years).
-    # These are set to roughly 2 years of data per timeframe as the floor.
+    # Minimum bar count per timeframe.
+    # Equities: set to ~2 years of expected data depth per TF.
+    # Futures/commodities: lower floor because front-month contracts
+    # naturally have 300-400 bars of history — that is valid data.
     MIN_BARS_REQUIRED: Dict[str, int] = {
         "1m": 5000,  # ~35 days * 390 bars/day
         "2m": 5000,  # ~35 days * 195 bars/day
@@ -99,8 +100,8 @@ class DataConfig:
         "1h": 500,  # ~1 year of hourly bars
         "4h": 200,  # ~2 years of 4h bars
         "8h": 100,  # ~2 years of 8h bars
-        "1D": 500,  # ~2 years of daily bars
-        "7D": 100,  # ~2 years of weekly bars
+        "1D": 100,  # lowered from 500 — futures front-month ~300 bars is valid
+        "7D": 50,  # ~1 year of weekly bars
         "1M": 24,  # ~2 years of monthly bars
     }
     MAX_MISSING_PCT = 0.10  # drop asset if >10% bars are missing
@@ -154,10 +155,9 @@ class UniverseConfig:
         "NQ",  # Nasdaq 100
         "RTY",  # Russell 2000
         "YM",  # Dow Jones
-        "GC",  # Gold (also commodity — deduped at runtime)
-        "CL",  # Crude Oil
         "ZN",  # 10-Year T-Note
         "ZB",  # 30-Year T-Bond
+        # GC and CL excluded here — already in COMMODITIES list
     ]
 
     # Pre-filter thresholds (applied before any cointegration test)
