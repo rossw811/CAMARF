@@ -161,7 +161,9 @@ class UniverseConfig:
     ]
 
     # Pre-filter thresholds (applied before any cointegration test)
-    MIN_PEARSON_CORR = 0.60  # minimum absolute correlation to proceed
+    MIN_PEARSON_CORR = 0.40  # minimum absolute correlation to proceed
+    # 0.40 surfaces equity pairs (0.60 was too
+    # restrictive — filtered all equities at daily)
     MIN_ADF_PVALUE = 0.10  # spread must show ADF p < 0.10 to proceed
     MAX_HALF_LIFE_DAYS = 90  # OU half-life ceiling — beyond this, not tradeable
     MIN_HALF_LIFE_DAYS = 1  # OU half-life floor — below this, too noisy

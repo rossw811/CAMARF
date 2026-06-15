@@ -1,0 +1,71 @@
+{
+  "pearson": {
+    "0.45": {
+      "n_candidates": 9197,
+      "n_sampled": 2000,
+      "n_eg_confirmed": 2,
+      "confirmation_rate": 0.001
+    },
+    "0.5": {
+      "n_candidates": 4330,
+      "n_sampled": 2000,
+      "n_eg_confirmed": 5,
+      "confirmation_rate": 0.0025
+    },
+    "0.55": {
+      "n_candidates": 2028,
+      "n_sampled": 2000,
+      "n_eg_confirmed": 6,
+      "confirmation_rate": 0.003
+    },
+    "0.6": {
+      "n_candidates": 996,
+      "n_sampled": 996,
+      "n_eg_confirmed": 5,
+      "confirmation_rate": 0.0050200803212851405
+    },
+    "0.65": {
+      "n_candidates": 536,
+      "n_sampled": 536,
+      "n_eg_confirmed": 2,
+      "confirmation_rate": 0.0037313432835820895
+    },
+    "0.7": {
+      "n_candidates": 245,
+      "n_sampled": 245,
+      "n_eg_confirmed": 1,
+      "confirmation_rate": 0.004081632653061225
+    },
+    "0.75": {
+      "n_candidates": 85,
+      "n_sampled": 85,
+      "n_eg_confirmed": 1,
+      "confirmation_rate": 0.011764705882352941
+    }
+  },
+  "johansen": {
+    "0.01": 1,
+    "0.05": 1,
+    "0.1": 1
+  },
+  "parameter_sensitivity": {
+    "fdr_alpha": [
+      {
+        "value": 0.01,
+        "pair_count": 3
+      },
+      {
+        "value": 0.05,
+        "pair_count": 3
+      },
+      {
+        "value": 0.1,
+        "pair_count": 3
+      },
+      {
+        "value": 0.15,
+        "pair_count": 3
+      }
+    ]
+  }
+}

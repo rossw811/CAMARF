@@ -29,7 +29,7 @@ import yfinance as yf
 import pandas_market_calendars as mcal
 from datetime import datetime, timedelta, timezone
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Set, Tuple
 
 import nest_asyncio
 
@@ -76,10 +76,21 @@ class QualityReport:
 
 @dataclass
 class UniverseResult:
+    """
+    Output of UniverseBuilder.build(). Carries the full universe plus the
+    exclusion set so downstream consumers (analysis.py) can independently
+    verify that excluded symbols don't enter results.
+    """
+
     assets: List[Tuple[str, str]]
     excluded: List[Tuple[str, str, str]]
     data: Dict[str, pd.DataFrame]
     quality_reports: List[QualityReport]
+    exclusion_set: Optional[Set[str]] = None  # symbols explicitly excluded
+
+    def __post_init__(self) -> None:
+        if self.exclusion_set is None:
+            self.exclusion_set = set()
 
 
 # =============================================================================
@@ -110,6 +121,67 @@ class DataStore:
         if not os.path.exists(path):
             return None
         return pd.read_parquet(path)
+
+    @staticmethod
+    def needs_refresh(symbol: str, tf_label: str) -> bool:
+        """
+        True if the cache is stale and should be updated with new bars.
+
+        Daily TFs (1D, 7D, 1M): stale if the last bar is more than 1 trading
+        day behind today. We define "stale" as: last_bar < today - 2 calendar
+        days (to account for weekends and holidays).
+
+        Intraday TFs: always considered fresh (we re-fetch intraday at each
+        run because the history window is short and yfinance/IBKR don't
+        support appending — they always return a fixed lookback window).
+        """
+        _INCREMENTAL_TFS = {"1D", "7D", "1M"}
+        if tf_label not in _INCREMENTAL_TFS:
+            return False  # intraday always re-fetched from scratch
+        cached = DataStore.load(symbol, tf_label)
+        if cached is None or cached.empty:
+            return True
+        last_bar = cached.index[-1]
+        # Convert to date for comparison
+        if hasattr(last_bar, "date"):
+            last_date = last_bar.date()
+        else:
+            last_date = pd.Timestamp(last_bar).date()
+        today = datetime.now().date()
+        delta = (today - last_date).days
+        # More than 2 calendar days behind → needs refresh
+        return delta > 2
+
+    @staticmethod
+    def append(
+        symbol: str,
+        tf_label: str,
+        new_df: pd.DataFrame,
+    ) -> Optional[pd.DataFrame]:
+        """
+        Append new bars to an existing cache file, dedup on index, sort.
+
+        Used for incremental daily refresh: instead of re-fetching 20 years
+        of history, we fetch only the last N days and append them.
+
+        Returns the combined DataFrame (also overwrites the cache file).
+        """
+        if new_df is None or new_df.empty:
+            return DataStore.load(symbol, tf_label)
+        existing = DataStore.load(symbol, tf_label)
+        if existing is None or existing.empty:
+            DataStore.save(symbol, tf_label, new_df)
+            return new_df
+        # Concatenate, drop exact index duplicates, sort chronologically
+        combined = pd.concat([existing, new_df])
+        combined = combined[~combined.index.duplicated(keep="last")]
+        combined = combined.sort_index()
+        DataStore.save(symbol, tf_label, combined)
+        log.debug(
+            f"Appended {symbol} {tf_label}: {len(existing)} → {len(combined)} bars "
+            f"(+{len(combined)-len(existing)} new)"
+        )
+        return combined
 
     @staticmethod
     def is_fresh(symbol: str, tf_label: str, max_age_hours: float = None) -> bool:
@@ -455,6 +527,33 @@ class DataAligner:
 
             if freq and len(df) > 10:
                 # Reindex to regular frequency within the existing range
+                # Safety guard: estimate expected reindex size from the
+                # timedelta BEFORE allocating the date_range. If the 1m cache
+                # file has daily-bar timestamps (1962-2026), computing
+                # pd.date_range at 1m frequency would itself OOM.
+                _MAX_REINDEX = 500_000  # ~5 months of 1m, ~350 days of 5m
+                _freq_minutes = {
+                    "1min": 1,
+                    "2min": 2,
+                    "3min": 3,
+                    "5min": 5,
+                    "15min": 15,
+                    "30min": 30,
+                    "1h": 60,
+                    "4h": 240,
+                    "8h": 480,
+                }
+                _fmin = _freq_minutes.get(freq, 1)
+                _span_min = (df.index.max() - df.index.min()).total_seconds() / 60
+                _expected_rows = int(_span_min / _fmin) + 1
+                if _expected_rows > _MAX_REINDEX:
+                    log.debug(
+                        f"  align_intraday: {symbol} expected {_expected_rows} rows "
+                        f"at freq={freq} — using raw data to avoid OOM"
+                    )
+                    df["is_gap"] = False
+                    aligned[symbol] = df.dropna(subset=["close"])
+                    continue
                 full_idx = pd.date_range(df.index.min(), df.index.max(), freq=freq)
                 df_aligned = df.reindex(full_idx)
 
@@ -768,16 +867,74 @@ class YFinanceFeed:
     #   yfinance 1h → 730D,  yfinance 5m → 60D,  yfinance 1m → 7D
     _YF_INTERVALS: List[Tuple[str, str, str]] = [
         # (yf_interval, tf_label, max_period)
+        # 7D and 1M are NOT fetched directly from yfinance.
+        # They are derived from 1D by resampling in _resample_from_daily().
+        # This ensures consistent trading-week and calendar-month alignment
+        # across equities, crypto, forex, commodities, and futures.
         ("1d", "1D", "max"),
-        ("1wk", "7D", "max"),
-        ("1mo", "1M", "max"),
     ]
+
+    @staticmethod
+    def _resample_from_daily(df_1d: pd.DataFrame) -> Dict[str, Optional[pd.DataFrame]]:
+        """
+        Derive 7D (weekly) and 1M (monthly) bars from a 1D DataFrame.
+
+        Week anchor: W-FRI (Friday) — standard US trading week convention.
+        Each weekly bar runs Mon open → Fri close, stamped at Friday.
+        This is consistent across equities, crypto, and commodities because
+        all use the same 1D source data with market-appropriate trading calendars.
+
+        Month anchor: MS (month start) with label="left" — bar stamped at
+        the first trading day of the month.
+
+        OHLCV aggregation:
+          open   = first bar of period
+          high   = max of period
+          low    = min of period
+          close  = last bar of period
+          volume = sum of period
+          vwap   = volume-weighted mean close (proxy — true VWAP unavailable)
+
+        Returns {tf_label: resampled_df} for "7D" and "1M".
+        """
+        out: Dict[str, Optional[pd.DataFrame]] = {}
+        if df_1d is None or df_1d.empty or "close" not in df_1d.columns:
+            out["7D"] = None
+            out["1M"] = None
+            return out
+
+        agg = {
+            "open": "first",
+            "high": "max",
+            "low": "min",
+            "close": "last",
+            "volume": "sum",
+        }
+        # Only aggregate columns that exist
+        agg = {k: v for k, v in agg.items() if k in df_1d.columns}
+
+        for tf_label, rule, lbl, cls_ in [
+            ("7D", "W-FRI", "right", "right"),  # stamp = Friday (week close)
+            ("1M", "MS", "left", "left"),  # stamp = first trading day of month
+        ]:
+            try:
+                resampled = df_1d.resample(rule, label=lbl, closed=cls_).agg(agg)
+                # Drop empty periods (weeks/months with no trading days)
+                resampled = resampled.dropna(subset=["close"])
+                resampled = resampled[resampled["close"] > 0]
+                resampled["is_gap"] = False
+                out[tf_label] = resampled
+            except Exception as e:
+                log.debug(f"Resample {tf_label} failed: {e}")
+                out[tf_label] = None
+        return out
 
     @staticmethod
     def get_equity_history(
         tickers: List[str],
         chunk_size: int = 50,
         yf_tickers: List[str] = None,
+        period: str = None,  # override max_period (e.g. "1mo" for incremental)
     ) -> Dict[str, Dict[str, Optional[pd.DataFrame]]]:
         """
         Download full history for a list of tickers using yfinance.
@@ -816,17 +973,23 @@ class YFinanceFeed:
             )
 
             for yf_interval, tf_label, max_period in YFinanceFeed._YF_INTERVALS:
+                _period = period if period is not None else max_period
                 chunk_data = YFinanceFeed._download_chunk(
                     chunk_ibkr,
                     yf_interval,
                     tf_label,
-                    max_period,
+                    _period,
                     yf_tickers=chunk_yf,
                 )
                 for symbol, df in chunk_data.items():
                     if symbol not in results:
                         results[symbol] = {}
                     results[symbol][tf_label] = df
+                    # Derive 7D and 1M from 1D by resampling
+                    if tf_label == "1D" and df is not None:
+                        derived = YFinanceFeed._resample_from_daily(df)
+                        for derived_tf, derived_df in derived.items():
+                            results[symbol][derived_tf] = derived_df
 
             # Retry any tickers that failed (got None for daily) individually
             failed = [
@@ -839,12 +1002,13 @@ class YFinanceFeed:
                 for ibkr_sym, yf_sym in failed:
                     for yf_interval, tf_label, max_period in YFinanceFeed._YF_INTERVALS:
                         try:
+                            _period = period if period is not None else max_period
                             import contextlib, io
 
                             with contextlib.redirect_stderr(io.StringIO()):
                                 raw = yf.download(
                                     yf_sym,
-                                    period=max_period,
+                                    period=_period,  # use overridden period
                                     interval=yf_interval,
                                     auto_adjust=True,
                                     progress=False,
@@ -867,6 +1031,11 @@ class YFinanceFeed:
                                 if ibkr_sym not in results:
                                     results[ibkr_sym] = {}
                                 results[ibkr_sym][tf_label] = cleaned
+                                # Derive 7D and 1M from 1D in retry path too
+                                if tf_label == "1D" and cleaned is not None:
+                                    derived = YFinanceFeed._resample_from_daily(cleaned)
+                                    for derived_tf, derived_df in derived.items():
+                                        results[ibkr_sym][derived_tf] = derived_df
                         except Exception:
                             pass
 
@@ -1949,6 +2118,57 @@ class UniverseBuilder:
     def __init__(self):
         self._ibkr = IBKRFeed()
 
+    # Pre-seeded known-unavailable tickers (confirmed across multiple runs)
+    _KNOWN_UNAVAILABLE: set = {
+        "VLTO",  # Veralto — spun off Sep 2023, no intraday data from any source
+        "BNY",  # BNY Mellon ticker variant — use "BK" instead
+        "FDXF",  # No daily data from yfinance
+    }
+    _EXCLUSION_CACHE: str = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)),
+        "output",
+        "cache",
+        "excluded_assets.json",
+    )
+
+    @staticmethod
+    def load_exclusions() -> set:
+        """Load persistent exclusion list from disk, merged with hardcoded."""
+        excluded = set(UniverseBuilder._KNOWN_UNAVAILABLE)
+        try:
+            if os.path.exists(UniverseBuilder._EXCLUSION_CACHE):
+                with open(UniverseBuilder._EXCLUSION_CACHE) as f:
+                    data = json.load(f)
+                # File format: {symbol: {reason, added}} or [symbol, ...]
+                if isinstance(data, dict):
+                    excluded |= set(data.keys())
+                elif isinstance(data, list):
+                    excluded |= set(data)
+        except Exception:
+            pass
+        return excluded
+
+    @staticmethod
+    def add_exclusion(symbol: str, reason: str = "") -> None:
+        """Persist a symbol to the exclusion list so future runs skip it."""
+        try:
+            Config.ensure_dirs()
+            existing = {}
+            if os.path.exists(UniverseBuilder._EXCLUSION_CACHE):
+                with open(UniverseBuilder._EXCLUSION_CACHE) as f:
+                    existing = json.load(f)
+            if not isinstance(existing, dict):
+                existing = {s: {"reason": "legacy"} for s in existing}
+            existing[symbol] = {
+                "reason": reason or "persistent failure — both IBKR and yfinance",
+                "added_at": datetime.now().isoformat(timespec="seconds"),
+            }
+            with open(UniverseBuilder._EXCLUSION_CACHE, "w") as f:
+                json.dump(existing, f, indent=2)
+            log.info(f"Exclusion list: added {symbol} ({reason})")
+        except Exception as e:
+            log.debug(f"Exclusion persist failed for {symbol}: {e}")
+
     def build(
         self,
         connect: bool = True,
@@ -1976,7 +2196,13 @@ class UniverseBuilder:
             )
 
         log.info("Building asset universe...")
-        raw_assets = self._build_raw_list()
+        raw_assets_all = self._build_raw_list()
+        exclusions = UniverseBuilder.load_exclusions()
+        raw_assets = [(s, c) for s, c in raw_assets_all if s not in exclusions]
+        n_skipped = len(raw_assets_all) - len(raw_assets)
+        if n_skipped:
+            skipped_names = sorted(exclusions & {s for s, _ in raw_assets_all})
+            log.info(f"Exclusion list: skipping {n_skipped} assets {skipped_names}")
         log.info(f"Universe candidates: {len(raw_assets)} assets")
 
         all_data: Dict[str, pd.DataFrame] = {}
@@ -2012,29 +2238,73 @@ class UniverseBuilder:
 
         yf_daily_done = set()  # track which symbols have daily data confirmed
 
+        # Separate into: completely missing vs. stale (has cache but needs update)
         uncached_yf = [
             (s, cls) for s, cls in yf_assets if not DataStore.is_fresh(s, "1D")
         ]
+        stale_yf = [
+            (s, cls)
+            for s, cls in yf_assets
+            if DataStore.is_fresh(s, "1D") and DataStore.needs_refresh(s, "1D")
+        ]
 
-        if uncached_yf:
-            ibkr_list = [s for s, cls in uncached_yf]
-            yf_list = [to_yf_ticker(s, cls) for s, cls in uncached_yf]
-            yf_results = YFinanceFeed.get_equity_history(
-                ibkr_list,
-                chunk_size=Config.DATA.YF_CHUNK_SIZE,
-                yf_tickers=yf_list,
-            )
-            for symbol, asset_class in uncached_yf:
-                sym_data = yf_results.get(symbol, {})
-                if sym_data.get("1D") is not None:
-                    yf_daily_done.add(symbol)
-                    for tf, df in sym_data.items():
-                        if df is not None:
-                            all_data[f"{symbol}_{tf}"] = df
-                else:
-                    excluded.append((symbol, asset_class, "no_daily_data_yfinance"))
+        if uncached_yf or stale_yf:
+            # Full fetch for uncached; incremental (last 30 days) for stale
+            if uncached_yf:
+                log.info(
+                    f"  Fetching fresh daily data for {len(uncached_yf)} assets..."
+                )
+                ibkr_list = [s for s, cls in uncached_yf]
+                yf_list = [to_yf_ticker(s, cls) for s, cls in uncached_yf]
+                yf_results = YFinanceFeed.get_equity_history(
+                    ibkr_list,
+                    chunk_size=Config.DATA.YF_CHUNK_SIZE,
+                    yf_tickers=yf_list,
+                )
+                for symbol, asset_class in uncached_yf:
+                    sym_data = yf_results.get(symbol, {})
+                    if sym_data.get("1D") is not None:
+                        yf_daily_done.add(symbol)
+                        for tf, df in sym_data.items():
+                            if df is not None:
+                                all_data[f"{symbol}_{tf}"] = df
+                    else:
+                        excluded.append((symbol, asset_class, "no_daily_data_yfinance"))
+
+            if stale_yf:
+                log.info(
+                    f"  Incremental refresh for {len(stale_yf)} stale daily assets..."
+                )
+                ibkr_list = [s for s, cls in stale_yf]
+                yf_list = [to_yf_ticker(s, cls) for s, cls in stale_yf]
+                # Fetch last 30 days only — enough to catch any missed sessions
+                fresh_results = YFinanceFeed.get_equity_history(
+                    ibkr_list,
+                    chunk_size=Config.DATA.YF_CHUNK_SIZE,
+                    yf_tickers=yf_list,
+                    period="1mo",  # last 30 calendar days
+                )
+                n_refreshed = 0
+                for symbol, asset_class in stale_yf:
+                    sym_data = fresh_results.get(symbol, {})
+                    new_df = sym_data.get("1D") if sym_data else None
+                    if new_df is not None and not new_df.empty:
+                        combined = DataStore.append(symbol, "1D", new_df)
+                        if combined is not None:
+                            all_data[f"{symbol}_1D"] = combined
+                            yf_daily_done.add(symbol)
+                            n_refreshed += 1
+                    else:
+                        # Fall back to existing cache
+                        cached = DataStore.load(symbol, "1D")
+                        if cached is not None:
+                            all_data[f"{symbol}_1D"] = cached
+                            yf_daily_done.add(symbol)
+                log.info(
+                    f"  Incremental refresh: {n_refreshed}/{len(stale_yf)} updated"
+                )
         else:
-            log.info("  All daily data cached — skipping yfinance download")
+            log.info("  All daily data cached and current — skipping yfinance download")
 
         # Mark all yf_assets with confirmed daily as having daily complete
         for symbol, asset_class in yf_assets:
@@ -2282,13 +2552,61 @@ class UniverseBuilder:
             if symbol in yf_daily_done and symbol not in passed_symbols:
                 passed.append((symbol, asset_class))
 
+        # ---------------------------------------------------------------
+        # Post-build incremental refresh for COMPLETED assets
+        # The progress-based resume skips completed assets entirely —
+        # freshness is never checked for them. Run a post-pass to append
+        # new daily bars for yf assets whose cache is stale (> 2 days old).
+        # This ensures every run has the latest available daily data,
+        # even if the asset was "completed" weeks or months ago.
+        # ---------------------------------------------------------------
+        stale_completed = [
+            (s, cls)
+            for s, cls in yf_assets
+            if s in {sym for sym, _ in passed}  # successfully built
+            and s not in yf_daily_done  # wasn't freshly fetched this session
+            and DataStore.needs_refresh(s, "1D")  # daily cache is stale
+            and s not in exclusions  # not in exclusion list
+        ]
+        if stale_completed:
+            log.info(
+                f"Post-build incremental refresh: {len(stale_completed)} completed "
+                f"assets have stale daily data — fetching last 30 days..."
+            )
+            _ibkr_stale = [s for s, _ in stale_completed]
+            _yf_stale = [to_yf_ticker(s, cls) for s, cls in stale_completed]
+            _fresh = YFinanceFeed.get_equity_history(
+                _ibkr_stale,
+                chunk_size=Config.DATA.YF_CHUNK_SIZE,
+                yf_tickers=_yf_stale,
+                period="1mo",
+            )
+            n_appended = 0
+            for symbol, asset_class in stale_completed:
+                sym_data = _fresh.get(symbol, {})
+                new_df = sym_data.get("1D") if sym_data else None
+                if new_df is not None and not new_df.empty:
+                    combined = DataStore.append(symbol, "1D", new_df)
+                    if combined is not None:
+                        all_data[f"{symbol}_1D"] = combined
+                        n_appended += 1
+                else:
+                    # Refresh failed — load existing cache as-is
+                    cached = DataStore.load(symbol, "1D")
+                    if cached is not None:
+                        all_data[f"{symbol}_1D"] = cached
+            log.info(
+                f"  Post-build refresh: {n_appended}/{len(stale_completed)} updated"
+            )
+
         # Backfill all_data from DataStore cache.
-        # The resume logic skips complete assets during the session loop, so their
-        # cached data is never added to all_data. We load everything from disk now
-        # so analysis.py receives the full universe — not just this session's fetches.
-        all_tf_labels = Config.DATA.TIMEFRAME_LABELS  # ["1m","2m",...,"1D","7D","1M"]
+        # Excluded symbols are explicitly skipped — they must not enter the universe
+        # even if cached parquet files exist from before they were excluded.
+        all_tf_labels = Config.DATA.TIMEFRAME_LABELS
         backfill_count = 0
         for symbol, asset_class in passed:
+            if symbol in exclusions:  # belt-and-suspenders exclusion guard
+                continue
             for tf_label in all_tf_labels:
                 key = f"{symbol}_{tf_label}"
                 if key not in all_data:
@@ -2311,6 +2629,7 @@ class UniverseBuilder:
             excluded=excluded,
             data=all_data,
             quality_reports=all_reports,
+            exclusion_set=exclusions,
         )
 
     def _build_raw_list(self) -> List[Tuple[str, str]]:

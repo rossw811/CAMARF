@@ -23,7 +23,7 @@
     },
     "AOS": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T21:55:51.168190",
+      "completed_at": "2026-06-14T14:37:39.683465",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -39,7 +39,7 @@
     },
     "ABT": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T21:55:51.184915",
+      "completed_at": "2026-06-14T14:37:39.707872",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -55,7 +55,7 @@
     },
     "ABBV": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T21:55:51.206501",
+      "completed_at": "2026-06-14T14:37:39.724114",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -71,7 +71,7 @@
     },
     "ACN": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T21:55:51.223121",
+      "completed_at": "2026-06-14T14:37:39.739719",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -87,7 +87,7 @@
     },
     "ADBE": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T21:55:51.243986",
+      "completed_at": "2026-06-14T14:37:39.760516",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -103,7 +103,7 @@
     },
     "AMD": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T21:55:51.260107",
+      "completed_at": "2026-06-14T14:37:39.780748",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -119,7 +119,7 @@
     },
     "AES": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T21:55:51.276895",
+      "completed_at": "2026-06-14T14:37:39.813603",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -135,7 +135,7 @@
     },
     "AFL": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T21:55:51.291728",
+      "completed_at": "2026-06-14T14:37:40.478382",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -151,31 +151,39 @@
     },
     "A": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T21:55:51.306912",
+      "completed_at": "2026-06-14T20:17:22.162838",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
+        "7D",
+        "1M",
         "4h",
         "8h",
         "1h",
         "30m",
         "15m",
         "5m",
+        "1m",
+        "2m",
         "3m"
       ]
     },
     "APD": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T21:55:51.321870",
+      "completed_at": "2026-06-14T20:17:22.195561",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
+        "7D",
+        "1M",
         "4h",
         "8h",
         "1h",
         "30m",
         "15m",
         "5m",
+        "1m",
+        "2m",
         "3m"
       ]
     },
@@ -1264,7 +1272,7 @@
     },
     "BNY": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T21:55:51.336819",
+      "completed_at": "2026-06-14T12:28:49.715008",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -7264,7 +7272,7 @@
     },
     "Q": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T21:55:51.352271",
+      "completed_at": "2026-06-14T20:58:02.229672",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -7620,7 +7628,7 @@
     },
     "SNDK": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T21:55:51.365271",
+      "completed_at": "2026-06-14T20:58:02.253638",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -8811,7 +8819,7 @@
     },
     "VLTO": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T21:55:51.380413",
+      "completed_at": "2026-06-14T12:28:49.762922",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
