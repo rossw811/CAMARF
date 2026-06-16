@@ -16,7 +16,8 @@ import os
 class IBKRConfig:
     HOST = "127.0.0.1"
     PORT = 4001  # Gateway port (7497 for TWS paper)
-    CLIENT_ID = 1
+    CLIENT_ID = 1  # data.py uses this
+    CLIENT_ID_ANALYSIS = 2  # analysis.py uses this (avoids clash when both run)
     TIMEOUT = 30  # seconds
     READONLY = True  # data-only mode for research runs
 
@@ -66,6 +67,8 @@ class DataConfig:
         "1D",
         "7D",
         "1M",
+        "3M",
+        "6M",
     ]
 
     # Historical depth per asset class — calibrated to actual IBKR account limits
@@ -159,6 +162,39 @@ class UniverseConfig:
         "ZB",  # 30-Year T-Bond
         # GC and CL excluded here — already in COMMODITIES list
     ]
+
+    # ETFs: included as individual assets for cross-instrument cointegration.
+    # These provide exposure to index-level dynamics that equity pairs may not
+    # capture individually. QQQ adds Nasdaq-100 exposure distinct from ES/NQ
+    # futures; IWM (Russell 2000 ETF) adds small-cap factor exposure; SPY
+    # tracks S&P 500 alongside ES futures — the SPY↔ES relationship is itself
+    # a cointegration finding (futures basis/roll dynamics).
+    # Note: BRK.B is already in S&P 500 constituent list (no need to add).
+    # VOO = S&P 500 ETF — its holdings are identical to SP500_TICKERS, but
+    # VOO as an INSTRUMENT may trade at a premium/discount to NAV.
+    ETFS: List[str] = [
+        "QQQ",  # Invesco QQQ — Nasdaq-100 ETF
+        "IWM",  # iShares Russell 2000 ETF
+        "SPY",  # SPDR S&P 500 ETF
+        "VOO",  # Vanguard S&P 500 ETF
+        "GLD",  # SPDR Gold Shares (ETF proxy for GC futures)
+        "SLV",  # iShares Silver Trust (ETF proxy for SI futures)
+        "USO",  # United States Oil Fund (ETF proxy for CL futures)
+    ]
+
+    # -----------------------------------------------------------------------
+    # S&P Composite 1500 = S&P 500 + MidCap 400 + SmallCap 600
+    # All quality-screened; ~1536 total with non-equities.
+    # Overnight compute: 12-18 hours at 12 workers.
+    # -----------------------------------------------------------------------
+    INCLUDE_MIDCAP400: bool = True
+    INCLUDE_SMALLCAP600: bool = True
+    # Nasdaq-100 extras: ~10-15 stocks in QQQ but not any S&P index
+    INCLUDE_QQQ_EXTRAS: bool = True
+    # Berkshire Hathaway 13F holdings (mostly already in S&P 500)
+    INCLUDE_BRK_HOLDINGS: bool = True
+    # Russell 2000: disabled by default (add later if compute allows)
+    RUSSELL_TOP_N: int = 0  # 0=disabled, -1=all, N=top-N
 
     # Pre-filter thresholds (applied before any cointegration test)
     MIN_PEARSON_CORR = 0.40  # minimum absolute correlation to proceed

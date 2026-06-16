@@ -829,3 +829,569 @@ IBKR: TWS or Gateway at 127.0.0.1:4001 (live) or 4002 (paper). Client ID 1.
 | Planning, debugging | claude-sonnet-4-6 | Fast, sufficient |
 | Writing large files | claude-opus-4-7 | Better sustained output |
 | Hard statistical reasoning | claude-opus-4-8 | Best mathematical correctness |
+
+---
+
+## Session 3 Additions — Extended Concepts and Decisions
+
+### Timeframe Coverage — Full Audit
+
+**yfinance available intervals:**
+1m (7d max), 2m/5m/15m/30m/60m/90m/1h (60d max), 1h (730d max), 1d/5d/1wk/1mo/3mo (full history)
+
+**IBKR barSizeSetting (exact strings required):**
+Seconds: "1 secs", "5 secs", "10 secs", "15 secs", "30 secs"
+Minutes: "1 min", "2 mins", "3 mins", "5 mins", "10 mins", "15 mins", "20 mins", "30 mins"
+Hours: "1 hour", "2 hours", "3 hours", "4 hours", "8 hours"
+Daily+: "1 day", "1 week", "1 month", "1 year"
+useRTH=1 restricts to regular trading hours; useRTH=0 includes pre/post-market.
+
+**Current gaps worth considering:**
+- 90m (yfinance): sits between 1h and 4h; could fill the gap in intraday coverage
+- 10m, 20m (IBKR): more granular intraday; 10m in particular has ~4× the bars of 30m
+- 3h, 2h (IBKR): between 1h and 4h with more bars per session
+- 3mo (yfinance): quarterly — useful for very long-horizon studies
+
+**Decision on additional TFs:** defer to later session. Current 12 TFs cover the essential spectrum. Additional TFs would increase runtime significantly and need a separate diagnostic run.
+
+**IBKR 1m for equities — root cause of failures:**
+IBKR paper accounts have stricter pacing for equity 1m data than live accounts. The current pipeline routes equities through yfinance for 1m (IBKR is used for non-equity assets). Q and SNDK fail at 1m from yfinance likely because: Q = Qualcomm (may have ticker conflict with historical Qwest), SNDK = SanDisk (acquired by WDC 2016 — ticker defunct). These are expected failures for retired/ambiguous tickers.
+
+**IBKR durationStr guardrail:**
+For very fine bar sizes, IBKR rejects requests for excessive history. Max lookback by bar size:
+- 1 min: max 1 month (we use 1D duration → 1 day of 1m data per request)
+- 5 min: max 6 months
+- 1 hour: max 1 year
+Our current pipeline respects these by limiting intraday requests to appropriate durations.
+
+### Dollar Bars (Lopez de Prado)
+
+Traditional time bars have non-constant variance — a 15-minute period at market open (high activity) and a 15-minute period at mid-day (low activity) contain very different amounts of information. This violates the IID assumption that many statistical tests require.
+
+**Dollar bars:** sample one bar for every $X of notional traded. Each bar represents equal economic activity regardless of calendar time. Properties:
+- More statistically homogeneous variance across bars
+- Better IID properties for ML features
+- Natural handling of volatility clustering (volatile periods → more bars; quiet periods → fewer bars)
+- Addresses autocorrelation in variance that GARCH tries to model
+
+**Volume bars:** same idea, sampled every N shares/contracts traded.
+**Tick bars:** sampled every N transactions.
+**Range bars:** sampled when price moves ±X from bar open.
+
+**Applicability to CAMARF:** requires tick or transaction-level data, which we don't currently collect. Our 1m OHLCV is the finest granularity available from IBKR/yfinance. Dollar bar construction from 1m bars is possible (approximate) by distributing volume proportionally. This is noted as a significant future extension for CAMARF v2 — it would meaningfully improve the statistical properties of intraday features.
+
+**Research reference:** Lopez de Prado (2018), "Advances in Financial Machine Learning", Chapter 2.
+
+### Sharpe Ratio as Function of Independent Bets (Grinold & Kahn)
+
+This is one of the most important concepts for reporting strategy performance honestly.
+
+**Fundamental Law of Active Management (Grinold & Kahn 1992):**
+IR = IC × √BR
+
+Where:
+- IR = Information Ratio (risk-adjusted alpha)
+- IC = Information Coefficient (correlation between forecasts and outcomes)
+- BR = Breadth (number of INDEPENDENT bets per year)
+
+**The Sharpe ratio is NOT a fixed number for a strategy.** It depends on:
+1. **Observation frequency:** Sharpe scales as √T for uncorrelated returns, where T = number of periods. Annualizing: SR_annual = SR_per-period × √(periods/year). A strategy with daily Sharpe 0.05 has annual Sharpe ≈ 0.05 × √252 ≈ 0.79.
+2. **Effective BR vs gross trade count:** If 10 trades are all in the same sector during the same event, they have effective BR ≈ 1, not 10. The Sharpe from correlated bets does NOT scale as √10 — it barely moves.
+3. **Autocorrelation in returns:** If returns are positively autocorrelated (momentum), the Sharpe formula must use the autocorrelation-adjusted standard deviation: SR_adj = mean_ret / std_ret × √((1+ρ)/(1-ρ)) for lag-1 autocorrelation ρ.
+
+**For CAMARF specifically:**
+- Count independent bets as the number of DISTINCT confirmed pair entries that share no common leg and occur during different market regimes
+- Three bank pairs (FITB↔TFC, KEY↔TFC, KEY↔PNC) entered simultaneously = effective BR ≈ 1 (highly correlated), not 3
+- ES↔utility pair and NTRS↔STT entered simultaneously = effective BR ≈ 2 (different sectors, different dynamics)
+- The True BR feeds directly into the Kelly fraction: Kelly = SR / var_of_bets × BR_effective
+
+**Implementation:** report two Sharpe figures in backtest.py:
+1. Naive Sharpe: total P&L / total std, annualized by √T
+2. BR-adjusted Sharpe: accounts for correlation between pair trades, gives more honest assessment of strategy diversification
+
+### Crypto Missing Bars — Correct Treatment
+
+Crypto trades 24/7; traditional markets have session gaps. Treating them identically is wrong.
+
+**Rule:**
+- 1-bar gap (1 missing bar): flag as `no_activity` — genuine absence of trades. Price unchanged, volume = 0. Use forward fill for price but flag with `is_no_activity=True`. Does NOT affect correlation (zero return for that period in both assets is a real observation: nothing happened).
+- Multi-bar gaps in crypto: flag as `is_gap=True` with a subtype. For gaps of 2-4 bars: likely data issue. For gaps of 5+ bars: potentially exchange downtime or delisting.
+- Equity-vs-crypto alignment on intraday: equity overnight = expected session gap (8h+ of no trading). Crypto during equity overnight = active trading period. When computing cross-asset correlations, only the equity session hours (9:30–4:00 ET) should be used, since equity prices don't move during those crypto-active overnight periods. The cross-asset correlation at 15m uses only bars where BOTH assets have active data.
+
+**Implementation in DataAligner:** add `is_no_activity` flag for single-bar crypto gaps (volume = 0 and price unchanged from previous bar). Exclude `is_no_activity` bars from correlation computation without forward-filling, since a 0-volume bar contributes artificially to mean calculations.
+
+### Volatility Adjustment for VolumeStructure Features
+
+ALL 12 VolumeStructure features must be dimensionless and volatility-standardized before entering the ML model. Current status and required adjustments:
+
+| Feature | Current | Required adjustment |
+|---------|---------|---------------------|
+| relative_volume | vol/rolling_avg | ✅ Already normalized |
+| dollar_volume | raw dollars | ÷ rolling_std(dollar_volume, 252) |
+| vwap_deviation | (close-vwap)/vwap | → should be (close-vwap)/σ_close to be in σ units |
+| amihud_illiquidity | return/volume ratio | ÷ rolling_std(amihud, 252) to make cross-asset comparable |
+| cvd_proxy | signed volume | ÷ rolling_std(volume, 20) |
+| large_move_low_vol | binary flag | ✅ Already binary |
+| high_vol_small_move | binary flag | ✅ Already binary |
+| volume_divergence | difference | ÷ rolling_std(volume_divergence, 252) |
+| squeeze_indicator | BB/KC ratio | ✅ Already a ratio, bounded approximately |
+| rsi_14 | [0, 100] bounded | (RSI - 50) / 25 to center on zero and scale to ±2 σ-like range |
+| relative_vol_ratio | ratio | ✅ Already normalized (current vol / long-run vol) |
+| cross_leg_rsi_divergence | RSI_A - RSI_B | ÷ 50 to normalize to [-2, 2] range |
+
+**Implement in VolumeStructure.compute_features() before next run.** The ML model should never see raw dollar amounts or raw volumes — only their relative, volatility-normalized versions. This is the same principle as using returns instead of prices.
+
+### Research Context Framing
+
+**Updated framing:** CAMARF is an independent quantitative research project in statistical arbitrage and cross-asset co-movement. It is being developed to contribute original empirical findings to the academic and practitioner literature. The research also serves as a primary portfolio piece during a planned academic transition into quantitative finance graduate programs (MFE/FE).
+
+The paper should stand on its own methodological merits. The committee audience context is noted in DEVELOPMENT.md for awareness but should NOT appear in the paper itself — the paper is pure research, written at the standard of a peer-reviewed finance journal.
+
+### Reference Authors — Concepts and Applicability
+
+**Marcos Lopez de Prado ("Advances in Financial Machine Learning", 2018; "Machine Learning for Asset Managers", 2020)**
+
+Most directly applicable book for this project. Key concepts:
+
+- *Dollar/Volume/Tick bars*: statistically superior to time bars; planned for CAMARF v2
+- *Triple-barrier method*: labeling scheme for ML classification — define profit target, stop loss, and time limit; the first barrier hit determines the label. More principled than our current fixed-horizon labeling. Should evaluate as alternative label construction.
+- *Purged k-fold cross-validation*: removes training samples that are within an embargo period of each test fold, preventing leakage from overlapping labels. Replaces standard k-fold which is invalid for time-series.
+- *Combinatorial purged cross-validation (CPCV)*: generates many train/test path combinations for a distribution of Sharpe ratios rather than a single estimate. The variance of the Sharpe distribution is itself a measure of model robustness. IMPLEMENT in backtest.py.
+- *Meta-labeling*: a two-stage classifier where Stage 1 produces a signal (our cointegration z-score) and Stage 2 (meta-labeler) predicts whether Stage 1 is correct. The meta-labeler learns when the primary signal is reliable. This is EXACTLY what our ML layer is doing — CAMARF's ML is a meta-labeler on the cointegration signal.
+- *Feature importance via MDI/MDA/SFI*: Mean Decrease Impurity, Mean Decrease Accuracy, Single Feature Importance. More robust than vanilla SHAP for financial data. Report all three in the paper.
+- *PBO (Probability of Backtest Overfitting)*: derived from CPCV; essential for the overfitting validation chapter.
+- *HHI (Herfindahl-Hirschman Index) for concentration*: measure concentration of bets across pairs, sectors, time. A portfolio of bank pairs has high HHI = low diversification.
+- *Bet sizing via Kelly*: the connection between IC, IR, and optimal bet sizing is formalized here.
+
+**Antti Ilmanen ("Expected Returns", 2011)**
+
+Essential for understanding economic mechanisms behind factor premia. Key concepts:
+
+- *Risk premia framework*: returns come from bearing risk, not from information. Understanding which risks we're bearing in CAMARF pairs (liquidity risk? earnings event risk? macro sensitivity?) is essential for the paper's economic interpretation section.
+- *Carry, momentum, value as pervasive factors*: cross-asset, cross-timeframe. The ES↔utility pair may be a carry relationship (utilities are bond proxies; ES captures risk appetite). Document the economic mechanism.
+- *Trend-following vs mean-reversion*: Ilmanen shows mean reversion is strongest at short horizons (minutes to days) and long horizons (years); momentum dominates at medium horizons (1-12 months). Our finding that mean reversion is strongest at 1h and 1D is consistent with this.
+- *Diversification*: the only free lunch; quantified by correlation decay. Pairs in different sectors provide genuine diversification; same-sector pairs (bank cluster) do not.
+
+**Grinold & Kahn ("Active Portfolio Management", 2000)**
+
+The mathematical foundation of systematic portfolio management.
+
+- *Fundamental Law of Active Management*: IR = IC × √BR (see above — critical for honest Sharpe reporting)
+- *The transfer coefficient*: fraction of IR actually captured after portfolio constraints (long-only constraint, position limits, transaction costs). For pairs trading, the transfer coefficient is high because we have fewer constraints.
+- *Alpha model vs risk model*: the alpha model generates forecasts (our cointegration z-score + ML signal); the risk model measures covariance between bets (DCC-GARCH). Optimal portfolio combines both.
+- *Backtesting framework*: alpha decay (IC decreasing as we look further ahead), which we measure via the Hurst half-life trend.
+
+**Chincarini & Kim ("Quantitative Equity Portfolio Management", 2006)**
+
+Factor models and statistical arbitrage.
+
+- *Factor model decomposition*: R = Bλ + ε where B is factor loadings, λ is factor returns, ε is idiosyncratic. Cointegration on the ε component (idiosyncratic returns after factor removal) is the CORRECT approach — this is eigenportfolio decomposition using Marchenko-Pastur.
+- *Cointegration in multi-factor models*: pairs that are cointegrated in raw returns may be spuriously so due to shared factor exposure. Removing systematic factors first (eigenportfolio) finds genuine idiosyncratic relationships.
+- *Risk decomposition*: total risk = systematic risk + idiosyncratic risk. Pairs trading profits from idiosyncratic risk; systematic risk should be hedged away.
+
+**Shreve ("Stochastic Calculus for Finance I & II", 2004)**
+
+The mathematical backbone for options.py and understanding measure theory.
+
+- *Ito's lemma*: the chain rule for stochastic calculus; essential for deriving the BS and Heston PDEs
+- *Girsanov's theorem*: the practical implementation of Radon-Nikodym for Brownian motion; changes the drift of a Brownian motion by changing measure. This is how we go from P-measure (real world) to Q-measure (risk-neutral) in options pricing.
+- *Feynman-Kac theorem*: the connection between PDEs and expectations under Q; converts the options pricing PDE to an expectation problem that Monte Carlo can solve.
+- *Martingale representation theorem*: any martingale under Q can be written as a stochastic integral — the theoretical foundation for delta hedging.
+
+Learning priority: Chapters 1-4 of Volume I are accessible and sufficient for understanding the measure-theoretic foundations underlying options.py.
+
+**Hull ("Options, Futures, and Other Derivatives", 2022, 11th edition)**
+
+The standard industry reference. Less mathematically demanding than Shreve.
+
+- *Greeks derivations*: exact formulas for Δ, Γ, ν, θ, ρ in Black-Scholes context; also for futures
+- *Black-Scholes assumptions and violations*: constant vol (violated), log-normal distribution (violated in tails), continuous hedging (violated in practice). Knowing what's violated tells you when Heston is needed.
+- *Futures and forward pricing*: cost-of-carry model; essential for understanding ES futures pricing relative to the cash SPX index
+- *Interest rate derivatives*: relevant for ZN/ZB pairs in our universe
+- Chapters 17-20 on exotic options are directly applicable to options.py
+
+**McDonnell ("Algorithmic Trading and DMA", 2010)**
+
+Execution-focused. Key concepts for implementation:
+
+- *Market microstructure*: how orders move through the book; why the true slippage depends on order size relative to market depth
+- *VWAP/TWAP execution algorithms*: standard benchmarks for institutional execution; relevant for understanding what "slippage" means in our backtest
+- *DMA (Direct Market Access)*: the mechanics of how algorithmic orders reach the exchange; relevant for understanding IBKR's paper trading environment
+- *Transaction costs modeling*: the square-root market impact model (cost ∝ √(size/ADV)); more realistic than fixed-bps assumption for larger positions
+
+### Portfolio Theory — Markowitz and Efficient Frontier
+
+**Mean-Variance Optimization (Markowitz 1952)**
+
+Given N assets with expected returns μ (N×1) and covariance matrix Σ (N×N):
+
+Minimize:  w'Σw  (portfolio variance)
+Subject to: w'μ = target_return, Σw_i = 1, (optionally) w_i ≥ 0
+
+The solution traces out the efficient frontier — the set of portfolios with maximum expected return for each level of variance (or equivalently, minimum variance for each level of expected return).
+
+**For CAMARF pairs portfolio:**
+- N = number of confirmed pairs (6-29 across timeframes)
+- μ = expected P&L per pair (estimated from IS data — lookahead-biased; use OOS rolling estimate)
+- Σ = covariance matrix of pair P&L streams (estimated from DCC-GARCH)
+- The Σ matrix has high off-diagonal elements for same-sector pairs (bank cluster, etc.)
+- Optimal weights concentrate in low-correlation pairs (the cross-asset 15m pairs may dominate the optimal portfolio despite lower individual Sharpe)
+
+**Practical limitations of MV optimization:**
+1. Σ estimation error causes instability — small estimation errors in Σ flip optimal weights dramatically (Michaud, 1989: "optimization maximizes estimation error")
+2. Ill-conditioned Σ when N > T (more pairs than observations) — use shrinkage (Ledoit-Wolf) or factor-based Σ
+3. Concentrated solutions — optimal weights often put everything in 1-2 pairs; constrain with w_max ≤ 0.30
+
+**Alternatives implemented in backtest.py:**
+1. Maximum Sharpe portfolio: maximize w'μ / √(w'Σw) — finds the portfolio on the efficient frontier with best risk-return tradeoff
+2. Minimum variance: minimize w'Σw regardless of expected return — most robust to μ estimation error
+3. Maximum diversification: maximize w'σ / √(w'Σw) where σ is vector of individual pair vols
+4. Risk parity variants (see earlier section)
+5. Equal weight (baseline)
+
+**The efficient frontier as a research exhibit:** plot the frontier of pair portfolios in (volatility, expected return) space. Mark where equal-weight, risk parity, and max-Sharpe portfolios sit on the frontier. Show how far from the frontier equal-weight is — this quantifies the "cost of not optimizing."
+
+**Black-Litterman model (extension):** combines investor views with market equilibrium returns via Bayes theorem. Our ML signal provides the "views" (P(strong_converge) > 0.70 → bullish view on spread convergence). The posterior expected returns blend the ML signal with a prior. Worth exploring as an advanced portfolio construction layer in a future session.
+
+### Additional Strategy Concepts to Implement
+
+**Straddles and Strangles as spread expression (confirmed as strategy variant):**
+When the ML model has high entropy (uncertain between converge and diverge), a volatility trade (straddle/strangle) rather than a directional trade may be appropriate. The implied volatility of the options embeds a view on future spread volatility. If our OU model predicts lower spread vol than the IV implies, we can sell volatility (sell straddle). If higher, buy volatility (buy straddle). This connects options.py directly to the spread model's vol estimates.
+
+**Regime-dependent risk sizing:**
+In a mean-reverting regime (HMM state 1): full position size per Kelly
+In a trending regime (HMM state 2): reduce to 25-50% of Kelly (mean-reversion strategy in wrong regime)
+In a high-vol regime (HMM state 3): reduce to 10-25% of Kelly or skip entirely
+The regime probabilities (soft labels from HMM) can scale position size continuously rather than discretely.
+
+**Black swan events / tail risk management:**
+EVT shape parameter ξ per pair determines the tail regime. Additional rule: if realized spread return exceeds 4σ in any single session, mandatory position review. If the 3-day spread return exceeds 6σ, exit at market open regardless of ML signal — this is the "black swan exit" that overrides all other logic. Size positions such that the worst historical 5-day drawdown per pair (from EVT simulation) is bounded at 3% of portfolio.
+
+**Backtesting with cross-validation (combinatorial purged CV per Lopez de Prado):**
+Rather than a single train/test split, CPCV generates C(T, k) combinations of k non-overlapping test periods from T total periods, with embargo periods between training and testing samples. This produces a DISTRIBUTION of Sharpe ratios across test paths, not a single point estimate. Report: median CPCV Sharpe, 5th percentile, and PBO score. A strategy with median Sharpe 1.4 and 5th percentile Sharpe 0.3 is far less reliable than one with median 1.0 and 5th percentile 0.8.
+
+**WFO emulation test (walk-forward optimization treating bars as if newly received):**
+Simulate real-time signal generation by processing bars one at a time in chronological order, maintaining only the feature state that would have been available at each bar timestamp. This is different from standard WFO (which refits the model on expanding windows) — the emulation test uses the SAME model fitted on IS data but applies it bar-by-bar in OOS, checking that no bar timestamp lookahead occurs. This is the gold standard for verifying that the backtest matches what would have happened in live trading.
+
+### BUG-D15: Cache Deletion via rename on Windows/OneDrive
+
+**Root cause:** `shutil.rmtree()` fails with WinError 5 (access denied) when OneDrive is actively syncing parquet files. The file handles are held by the OneDrive sync process.
+
+**Fix:** Replace delete with atomic rename. `os.rename()` succeeds even when OneDrive holds file handles because it moves the directory entry at the filesystem level without touching individual file handles. Old result directories are renamed to `{tf_label}_stale_{timestamp}`. A cleanup pass removes old stale directories after the new run writes fresh results. If rename also fails (rare: network drive permission boundaries), the pipeline writes fresh files in-place — parquet files are overwritten by name, so stale data is naturally replaced.
+
+### BUG-A07: Hurst Estimator Wrong Domain
+
+**Root cause:** Both R/S and DFA were applied to spread LEVELS. For a stationary AR(1) spread with phi=0.90, the levels have strong POSITIVE autocorrelation (ρ_levels = phi = 0.90), so R/S on levels gives H > 0.9. For DFA on the cumsum of levels (double integration of a near-random-walk), the scaling exponent saturates at 1.0. Neither result is diagnostic for mean reversion.
+
+**Fix:** 
+- R/S applied to INCREMENTS (np.diff(spread)). Increments of OU have NEGATIVE lag-1 autocorrelation = (phi-1)/(2-phi) < 0 for all phi < 1, giving H < 0.5.
+- DFA applied to the profile Y = cumsum(diff(spread) - mean(diff(spread))). For negatively autocorrelated increments, Y is anti-persistent → H_dfa < 0.5.
+
+**Verified on 1000-bar simulations:**
+- OU phi=0.70: H_rs=0.31, H_dfa=0.15 (strongly mean-reverting) ✓
+- OU phi=0.90: H_rs=0.44, H_dfa=0.29 (mean-reverting) ✓
+- OU phi=0.95: H_rs=0.53, H_dfa=0.42 (near random walk — reasonable for mild MR) ✓
+- Random walk: H_rs=0.59, H_dfa=0.53 (above 0.5, correct) ✓
+- Trending: H_rs=0.58, H_dfa=0.49 (above 0.5 for R/S, correct) ✓
+
+**ML gate:** H_rs < 0.50. Pairs with near-random-walk spreads (phi≥0.95) correctly excluded from primary ML pipeline.
+
+
+---
+
+## Session 4 — Full Concept Compendium
+
+### Research Philosophy
+
+CAMARF is simultaneously a research project and a learning vehicle. Every methodological decision is evaluated against two standards: (1) is it academically defensible to a quantitative finance committee, and (2) does it deepen understanding of the underlying financial mechanisms? These two standards are usually aligned but where they diverge, academic rigor takes precedence.
+
+The research operates under a bias-first design philosophy: every data choice, model selection, and statistical test is evaluated for the bias it introduces BEFORE implementation. No methodological "improvement" is shipped without documenting its bias footprint in the BiasAuditLog. An improvement that increases Sharpe but introduces unquantified lookahead is not an improvement.
+
+### Asset Universe Selection Rationale (for paper)
+
+**Positive framing for academic paper:**
+
+The equity universe is restricted to S&P Composite 1500 constituents (S&P 500 + MidCap 400 + SmallCap 600). This selection is deliberate and methodologically motivated:
+
+1. **Quality screening:** S&P index inclusion requires minimum market capitalization, demonstrated operational profitability, adequate public float (≥50% of outstanding shares publicly traded), and minimum liquidity thresholds. This eliminates speculative, distressed, and illiquid stocks where apparent cointegration would be data artifacts rather than genuine economic relationships.
+
+2. **Economic significance:** S&P 1500 components represent the most economically meaningful publicly-traded businesses in the U.S. economy. Cointegration found within this universe reflects real business relationships — shared supply chains, common customer pools, correlated regulatory environments, competing for the same capital.
+
+3. **Arbitrage rationale:** The strategy capitalizes on temporary divergences from equilibrium relationships between assets that share genuine economic cointegration. When economically related assets deviate from their historical co-movement — due to transient information asymmetry, order flow imbalance, or short-term sector rotation — the strategy provides liquidity by taking the convergence trade. The quality of the underlying businesses makes this convergence economically reliable rather than purely statistical.
+
+4. **Data availability:** S&P 1500 components have complete, reliable price histories from multiple independent data sources (IBKR, yfinance, Bloomberg). Cross-validation between sources is possible; data errors are detectable.
+
+**Framing to avoid:** "stocks likely to go up" — use "economically significant businesses with demonstrated operational viability" instead.
+
+### Data Pipeline Philosophy
+
+**Golden rule: never lose good data.** The pipeline uses three-tier data integrity checks:
+
+1. **Freshness check** (`DataStore.is_fresh()`): is the cache file recent enough? Prevents unnecessary re-fetches.
+2. **Frequency validation** (`DataStore.validate_frequency()`): does the cached data have the right bar spacing for its labeled TF? Catches the 1m/1M Windows collision bug.
+3. **Sufficiency check** (`DataStore.is_data_sufficient()`): does the cached data have enough bars for the expected lookback? Catches truncated yfinance fallback data (1458 bars at 8h when IBKR provides 5861).
+
+Only data that FAILS at least one of these checks gets re-fetched. Good data is never overwritten with equal or worse data. When IBKR provides deeper history than yfinance, the upgrade queue re-tries IBKR after the main sweep (when API congestion typically clears) to extend history.
+
+**IBKR vs yfinance hierarchy:**
+- Equities daily: yfinance (reliable, fast, full history)
+- Equities intraday: IBKR first (deeper history), yfinance fallback (reliable, less history)
+- ETFs: same as equities
+- Crypto: yfinance (24/7, reliable)
+- Forex: IBKR (primary), yfinance EURUSD=X format (fallback)
+- Commodities: IBKR only (yfinance has no reliable commodity intraday)
+- Futures: IBKR only
+
+**IBKR failure root cause:** pacing limits. With 1000+ assets swept in sequence, IBKR's API rate limiter fills during burst windows. Assets that happen to request during a congested window fail (4 retries, 75s wasted) while nearby assets succeed. The fix is a rolling failure rate detector: when 70%+ of the last 10 attempts fail, switch to batch yfinance for all remaining assets in that TF (saves hours of retry waste). After the main sweep, IBKR upgrade pass retries for deeper history when congestion clears.
+
+### Timeframe Expansion Rationale
+
+**Current 14 TFs:** 1m, 2m, 3m, 5m, 15m, 30m, 1h, 4h, 8h, 1D, 7D, 1M, 3M, 6M
+
+**New additions:**
+- **3M (quarterly):** Natural business cycle frequency. yfinance `QS` resample from 1D. ~80 bars for 20-year history — adequate for EG. Captures multi-quarter cointegration driven by earnings cycles, capital allocation cycles, and seasonal business patterns. Expected to show fewer but more persistent confirmed pairs than monthly.
+- **6M (semi-annual):** 2QS resample from 1D. ~40 bars for 20 years — borderline for EG reliability. Include with explicit caveat in paper: "semi-annual pairs reported as exploratory given limited sample size (N≈40)."
+
+**Why not 1Y:** ~20 annual bars. EG requires minimum ~30 observations for meaningful inference. Not included.
+
+**8h TF recharacterization:** As documented, NYSE trading session is 6.5 hours. IBKR's "8h" bar gives one bar per session (same as daily but labeled differently). In analysis, 8h results are expected to be nearly identical to 1D. This is noted in the paper as a methodology limitation.
+
+### Stress Testing Framework (Planned — stats.py / backtest.py)
+
+Stress testing answers: does the strategy survive realistic worst-case scenarios, or does it only work in calm markets?
+
+**Category 1 — Historical stress events:**
+Replay strategy through identified crisis periods with actual market data:
+- 2008 GFC (Sep 2008 – Mar 2009): extreme correlation convergence, liquidity drought, leverage unwind
+- 2020 COVID crash (Feb 19 – Mar 23, 2020): fastest -34% decline in S&P history, VIX>80
+- 2022 rate hike shock (Jan – Oct 2022): simultaneous equity/bond selloff, TINA reversal
+- Regional bank stress (Mar 2023): SVB collapse — directly relevant to FITB↔TFC, KEY↔TFC pairs
+
+For each event: report maximum drawdown, drawdown duration, number of pairs that "broke" (cointegration fraction dropped below 0.50), and strategy P&L through the event.
+
+**Category 2 — Synthetic stress scenarios:**
+Monte Carlo paths conditioned on crisis distributions (EVT/GPD tail fitting):
+- Correlation convergence stress: boost all pairwise correlations by +0.3 simultaneously (crisis contagion)
+- Volatility spike: multiply spread volatility by 3× for 20 days (simulates VIX spike)
+- Liquidity stress: widen bid-ask spreads 5× during stress period (execution cost shock)
+- Regime shift: force all pairs into "trending" regime simultaneously (worst case for mean-reversion strategy)
+- Leverage stress: test at 1×, 2×, 3× leverage; find the Kelly fraction that survives each scenario
+
+**Category 3 — Strategy-specific stress:**
+- Half-life decay stress: what if all confirmed pairs' half-lives doubled overnight? (structural change)
+- Factor neutrality stress: correlation between pairs spikes to 0.95 (correlated bank pairs now perfectly correlated)
+- Signal degradation: IC drops from actual level to 0.02 — where does the strategy break even?
+
+**Key output:** strategy "stress map" — a matrix of (crisis scenario × severity level × Sharpe outcome). Pairs that survive all scenarios are the highest-conviction positions. Pairs that fail under mild stress are Silver tier regardless of raw Sharpe.
+
+**Why stress testing matters for the paper:** any reviewer at a CFA/CAIA level will ask "what happens in 2008?" Having the answer explicitly — with numbers, not just "diversification helps" — is what separates academic research from naive backtesting. Lopez de Prado makes this point strongly: a strategy that hasn't been stress-tested hasn't been tested.
+
+### Cross-Validation Methodology (Combinatorial Purged CV)
+
+Standard k-fold cross-validation is invalid for time series — training samples adjacent to test samples leak information. Lopez de Prado's CPCV addresses this.
+
+**The problem in detail:** if NTRS↔STT converges over days 100-120 and the label for day 100 looks 26 days ahead to day 126, then any training sample from days 115-140 "knows" about the convergence that the model is trying to predict. This inflates in-sample performance metrics and causes overfitting.
+
+**Purged k-fold:** for each train/test fold split, remove all training samples within [t - embargo, t + label_horizon] of any test sample. The embargo period = max(label_horizon, half_life) bars.
+
+**CPCV:** extend purged k-fold to enumerate C(T, k) combinations of k test periods from T total periods. Each combination gives an OOS Sharpe estimate. The distribution of these estimates characterizes the model's true OOS performance. Key outputs:
+- Median CPCV Sharpe (central estimate)
+- 5th percentile Sharpe (downside estimate — what if we got unlucky?)
+- PBO score (fraction of permuted test paths that beat the real path — should be < 0.50)
+
+**Implementation:** CPCV for a 5-year daily dataset with 21-day label horizon and 10 test periods: C(10, 2) = 45 combinations → 45 OOS Sharpe estimates → robust distribution characterization. This is the primary validation framework in backtest.py.
+
+### Markowitz / Efficient Frontier Theory (Full Reference)
+
+**Setup:** N pair strategies with return vector μ (expected P&L, N×1) and covariance matrix Σ (pair P&L covariances, N×N). Portfolio weights w (N×1) summing to 1.
+
+Portfolio expected return: E[Rₚ] = w'μ  
+Portfolio variance: Var(Rₚ) = w'Σw
+
+**Efficient frontier:** for each target return, minimize w'Σw. The (σₚ, μₚ) locus traces the frontier. Points below the frontier are dominated — you can get more return for the same risk.
+
+**Maximum Sharpe portfolio (tangency):** maximize (w'μ - Rf) / √(w'Σw). This is the optimal risky portfolio; all investors should hold this combined with the risk-free asset in their preferred ratio.
+
+**For CAMARF:** run MV optimization on pair P&L streams with Ledoit-Wolf shrinkage on Σ. Report: where does the equal-weight portfolio sit relative to the frontier? Where does risk parity sit? The gap between equal-weight and the frontier IS the opportunity cost of not optimizing — quantified, not assumed.
+
+**Black-Litterman for ML signal integration:** the ML model's predicted convergence probabilities become "views" in the B-L framework:
+- Prior: equilibrium returns implied by equal-weight portfolio (CAPM-style)
+- Views: pairs with P(strong_converge) > 0.70 have expected return = prior + view_strength
+- Posterior: weighted blend of prior and views → optimal portfolio
+- This converts the ML probability output directly into portfolio weights
+
+**Estimation error problem:** sample Σ from historical P&L is noisy. Michaud (1989) showed MV optimization "maximizes estimation error." Mitigations: Ledoit-Wolf shrinkage, Black-Litterman, robust optimization over uncertainty set.
+
+### Grinold & Kahn — Full Framework
+
+**Fundamental Law of Active Management:**
+IR = IC × √BR_effective
+
+Where:
+- IR = Information Ratio (risk-adjusted alpha)
+- IC = correlation between forecasts and outcomes (the edge per bet)
+- BR = number of INDEPENDENT bets per year
+
+**Autocorrelation-adjusted Sharpe (primary metric in backtest.py):**
+
+Standard Sharpe: SR = μ / σ  
+Adjusted Sharpe: SR_adj = SR × √((1 - ρ₁) / (1 + ρ₁))
+
+where ρ₁ is lag-1 autocorrelation of strategy returns.
+
+For mean-reverting pairs strategies: ρ₁ < 0 (returns alternate sign — win then flat, win then flat). This makes SR_adj > SR_naive. Reporting this is honest: the strategy is BETTER than naive Sharpe suggests, and the mechanism is the mean-reverting structure.
+
+**Alpha decay:** IC is not constant over holding time. At entry (t=0), IC = IC_max. At t = half_life, IC ≈ 0. Measure alpha decay directly from backtest: compute IC at t=1, 2, 5, 10, half_life bars. The optimal hold period is where IC crosses zero — holding longer actively destroys value. This is a paper exhibit showing the theoretical optimum vs actual mean hold.
+
+**Effective breadth calculation for CAMARF:**
+- 6 confirmed 1h pairs: 3 bank pairs (correlated) + 3 other pairs
+- Bank cluster effective BR ≈ 1.2 (not 3)
+- Other pairs effective BR ≈ 3 (assumed uncorrelated)
+- Total effective BR for 1h ≈ 4.2 per TF period
+- Annualized at 252 daily TF periods with average 5 entries/period: BR ≈ 21
+
+This gives: if IR = 0.8 (good strategy), IC = 0.8/√21 ≈ 0.17. A per-trade IC of 0.17 is achievable and meaningful.
+
+### Lopez de Prado — Complete Framework
+
+**Meta-labeling (our ML architecture):**
+Stage 1 — primary model: cointegration z-score threshold (e.g., |z| > 2.0). Binary signal.
+Stage 2 — meta-labeler: ML classifier predicts P(Stage 1 is correct given current features).
+Entry only when meta-label probability > threshold AND primary signal triggered.
+Position size ∝ meta-label probability.
+
+This is the CAMARF ML architecture exactly. Frame it this way in the paper.
+
+**Triple barrier labeling vs. fixed horizon:**
+- Triple barrier: profit target (upper), stop loss (lower), time limit (vertical). Label = first barrier hit.
+- Fixed horizon: label = outcome at N bars regardless of path.
+- Triple barrier is superior: captures that a trade hitting a stop loss at bar 8 then recovering at bar 26 is a FAILED trade, not a "strong_converge" trade.
+- Both tested in ml.py for comparison (confirmed implementation decision).
+
+**Feature importance hierarchy:**
+1. MDI (Mean Decrease Impurity): tree-based, fast, slight bias toward high-cardinality features
+2. MDA (Mean Decrease Accuracy): permutation-based, model-agnostic, slower but unbiased
+3. SFI (Single Feature Importance): train on one feature at a time, most conservative
+Report all three. Convergence across methods signals robust importance.
+
+**HHI concentration index:**
+HHI = Σ wᵢ² over bets. 
+HHI=1 = one bet does everything (fragile).
+HHI=1/N = equal contribution (diversified).
+Report HHI for pair concentration (do 2 pairs generate 90% of P&L?), for time concentration (does 80% of P&L come from 10% of periods?), and for sector concentration (bank pairs driving results?).
+
+### Chincarini & Kim — Full Framework
+
+**Factor model decomposition:**
+R = α + BF + ε
+Where B = factor loadings, F = common factors (market, sector, style), ε = idiosyncratic.
+
+Eigenportfolio decomposition projects out BF. EG on ε residuals tests genuine idiosyncratic cointegration. This is implemented in analysis.py as EigenportfolioDecomposer.
+
+**Marchenko-Pastur details:**
+For normalized returns matrix (N×T), the bulk of eigenvalues under H₀ (IID normal) lies in [λ₋, λ₊] where:
+λ± = (1 ± √(N/T))²
+
+For N=1536, T=16220 daily bars: λ+ = (1 + √(0.0947))² ≈ 1.61
+Eigenvalues above 1.61 = genuine systematic factors (K ≈ 15-30 for S&P 1500).
+
+**Gold vs Silver tier:**
+- Gold: EG confirmed on RAW prices AND on eigenportfolio residuals → genuinely idiosyncratic
+- Silver: EG confirmed on raw prices only → may be factor-driven
+
+Silver tier pairs are still reported (they may be tradeable) but with the caveat that their cointegration may reflect shared sector exposure rather than specific business relationships.
+
+### Ilmanen — Economic Mechanisms
+
+**Why cross-asset cointegration persists:**
+Risk premia exist because investors demand compensation for bearing specific risks. The ES↔utility cointegration at 15m exists because:
+1. ES reprices macro risk at millisecond speed (most liquid instrument globally)
+2. Utility stocks reprice at minute/hour speed (less liquid, indirect mechanism chain)
+3. The lag = the repricing speed differential = tradeable edge
+This is not statistical — it's structural. It will persist as long as liquidity differentials persist.
+
+**Term structure of mean reversion (Ilmanen + empirical support from our results):**
+- Sub-daily to weekly (minutes to days): MEAN REVERSION dominates (our 15m and 1h findings)
+- Monthly (1-12 months): MOMENTUM dominates (why our 1M results are sparse)
+- Multi-year: MEAN REVERSION returns (value effects)
+
+Our finding that confirmed pairs concentrate at 15m and 1h is consistent with the academic literature on momentum/mean reversion term structure.
+
+**Carry, value, momentum as pervasive factors:**
+Every confirmed pair can be characterized by which factor drives its expected convergence:
+- Value pair (JNJ↔PG): long-term earnings yield equalization
+- Carry pair (ES↔utilities): yield differential and risk premium
+- Momentum pair (bank cluster during stress): sector flow reversal
+Understanding which factor drives each pair's expected convergence sharpens the ML feature design.
+
+### Shreve and Hull — Mathematical Foundations
+
+**ItÃ´'s Lemma:** for f(t, X) where X is Itô process:
+df = (∂f/∂t + μ∂f/∂X + ½σ²∂²f/∂X²)dt + σ(∂f/∂X)dW
+
+The ½σ²∂²f/∂X² term (Itô correction) appears in every options pricing formula and explains why log-normal returns have a drift adjustment of -σ²/2.
+
+**Girsanov for options.py:** changing from P-measure (physical) to Q-measure (risk-neutral) changes Brownian drift from μ to r (risk-free rate). The market price of risk λ = (μ-r)/σ is embedded in the Radon-Nikodym derivative dQ/dP = exp(-λW_T - λ²T/2). This is how Heston model parameters under Q differ from their P-measure counterparts.
+
+**Black-Scholes Greeks for strategy Greeks:**
+- Δ = ∂V/∂S: hedge ratio — maintain by delta-hedging the spread position
+- Γ = ∂²V/∂S²: convexity — measure of how fast hedge needs rebalancing
+- ν (vega) = ∂V/∂σ: spread vol sensitivity
+- θ (theta) = -∂V/∂t: daily P&L decay from time passing without convergence
+
+### Synthetic Bars (Planned — v2)
+
+Dollar bars (Lopez de Prado) sample when $X of notional trades, not at fixed time intervals. This produces bars with approximately constant variance regardless of trading intensity — far better statistical properties than time bars. For CAMARF, this requires 1m OHLCV as the base (approximate dollar bar reconstruction) or actual tick data. The key improvement: ML features computed on dollar bars have near-IID variance, eliminating the need for heteroscedasticity corrections and making standard statistical tests valid. Noted as a significant future extension.
+
+### Session Log Update
+
+### Session 3 (2026-06-15, morning)
+- Cache migration v2 applied (renamed 5230 files, deleted 529 corrupted 1m/1M files)
+- IBKR clientId conflict fixed (analysis.py uses clientId=2)
+- ValueError f-string fixed (was killing all pair modeling at 1h/4h/1D/7D)
+- _regime_worker moved to module level (was nested function, not picklable for ProcessPoolExecutor)
+- Parallel regime fitting implemented (ProcessPoolExecutor, 12 workers)
+- Per-TF hash checkpoint implemented (crash recovery preserves completed TFs)
+- S&P 1500 universe expansion (SP400 + SP600 Wikipedia scrapers, same format as SP500)
+- ETF asset class added to yfinance routing filter
+- EigenportfolioDecomposer class added to analysis.py (Marchenko-Pastur K selection, factor residual computation, Gold/Silver tier assignment)
+- UniverseFilter.run() updated to return matrices for EigenportfolioDecomposer reuse
+
+### Session 4 (2026-06-15, afternoon/evening)
+- IBKR degraded-mode batch yfinance fallback: rolling failure rate tracker (10-request window, 70% threshold), 90s pause then batch yfinance for all remaining assets in TF
+- Intraday retry waits reduced from (5,10,20,40s) to (3,5,10s) for faster failure detection
+- IBKR upgrade queue: assets where yfinance gave truncated history flagged for IBKR re-try after main sweep
+- DataStore.is_data_sufficient(): bar count quality gate (e.g. 8h minimum 4000 bars — catches yfinance 1458 < IBKR 5861)
+- Data integrity principle: never overwrite good data with equal or worse data; only repave if missing, wrong frequency, or insufficient bar count
+- 3M (quarterly) and 6M (semi-annual) TFs added via resample from 1D
+- DataStore._TF_SAFE updated for 3M→"3mo" and 6M→"6mo"
+- Cache migration v3: also deletes corrupted 2m/3m derived files
+- Comprehensive DEVELOPMENT.md update with all concepts, authors, frameworks
+
+### Next Session
+- Verify overnight run results: check pairs.parquet for all TFs
+- Check eigenportfolio Gold/Silver tier distribution
+- Check Hurst values for confirmed pairs (should be < 0.50 for OU processes)
+- Check SP400/SP600 scraper success (look for "S&P MidCap 400: N tickers" in log)
+- Implement Granger causality (stats.py) for all confirmed pairs
+- Begin ml.py architecture design with triple-barrier labeling
+
+---
+
+## Bug Registry Addendum
+
+**BUG-D16: ETF class not in yfinance routing filter**
+Root cause: `yf_assets` filter included `("equity","crypto","forex")` but not `"etf"`. ETFs added to `_build_raw_list` were silently dropped from Phase 1 yfinance fetch.
+Fix: add `"etf"` to filter. QQQ, IWM, SPY, VOO, GLD, SLV, USO now correctly fetch.
+
+**BUG-A08 (updated name): Nested _fit_one_regime**
+Root cause: regime worker function defined inside `_run_one_tf` as local function. ProcessPoolExecutor requires picklable functions; local/closure functions are not. Would have raised `AttributeError: Can't pickle local object` on first parallel regime fitting call.
+Fix: `_regime_worker()` moved to module level in analysis.py.
+
+**BUG-D17: 2m/3m derived from corrupted 1m data**
+Root cause: the 1m/1M Windows filename collision caused monthly data to overwrite 1m cache. The `Deriving 2m and 3m from 1m bars` step then resampled monthly data to "2m" and "3m", producing cache files with 31-day gaps labeled as 2-minute bars.
+Fix: cache migration v3 also deletes `*_2min.parquet` and `*_3min.parquet` so they get re-derived from clean 1m data after re-fetch.
+
+**BUG-A09: INCLUDE_QQQ_EXTRAS, RUSSELL_TOP_N, INCLUDE_BRK_HOLDINGS missing from Config**
+Root cause: referenced in code but never declared in `UniverseConfig` dataclass. Would raise `AttributeError` on first build attempt.
+Fix: all three added to config.py with appropriate defaults.

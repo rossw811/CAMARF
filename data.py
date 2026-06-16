@@ -101,11 +101,113 @@ class UniverseResult:
 class DataStore:
     """Parquet cache. All classes read/write through here."""
 
+    # Filesystem-safe TF label names.
+    # CRITICAL: on Windows, filenames are case-insensitive.
+    # "SYMBOL_1m.parquet" and "SYMBOL_1M.parquet" are the SAME file.
+    # When _resample_from_daily saves 1M (monthly) data it overwrites the
+    # 1m (1-minute) cache — causing the frequency mismatch warnings.
+    # Fix: map all TF labels to unambiguous lowercase strings.
+    _TF_SAFE: Dict[str, str] = {
+        "1m": "1min",  # ← was "1m"; would collide with "1M" on Windows
+        "2m": "2min",
+        "3m": "3min",
+        "5m": "5min",
+        "15m": "15min",
+        "30m": "30min",
+        "1h": "1hr",
+        "4h": "4hr",
+        "8h": "8hr",
+        "1D": "1day",
+        "7D": "7day",
+        "1M": "1mo",  # ← was "1M"; would collide with "1m" on Windows
+        "3M": "3mo",  # quarterly (derived from 1D via QS resample)
+        "6M": "6mo",  # semi-annual (derived from 1D via 2QS resample)
+    }
+
     @staticmethod
     def _path(symbol: str, tf_label: str) -> str:
         Config.ensure_dirs()
-        fname = f"{symbol}_{tf_label}.parquet".replace("/", "-").replace(" ", "_")
+        safe = DataStore._TF_SAFE.get(tf_label, tf_label.lower())
+        fname = f"{symbol}_{safe}.parquet".replace("/", "-").replace(" ", "_")
         return os.path.join(Config.DATA.CACHE_DIR, fname)
+
+    @staticmethod
+    def migrate_cache() -> None:
+        """
+        One-time migration: rename old TF-labeled cache files to the new
+        safe names. Handles the case where "1M" and "1m" were the same file
+        on Windows — those files contain corrupted data (1M overwrote 1m).
+
+        After migration: re-run data.py to re-fetch genuine 1m data.
+        The old (corrupted) files are deleted; new safe-named files will be
+        written by the next data.py run.
+        """
+        import glob
+
+        cache_dir = Config.DATA.CACHE_DIR
+        if not os.path.exists(cache_dir):
+            return
+
+        # Old suffix → new suffix mapping
+        old_to_new = {
+            "_1m.parquet": "_1min.parquet",
+            "_2m.parquet": "_2min.parquet",
+            "_3m.parquet": "_3min.parquet",
+            "_5m.parquet": "_5min.parquet",
+            "_15m.parquet": "_15min.parquet",
+            "_30m.parquet": "_30min.parquet",
+            "_1h.parquet": "_1hr.parquet",
+            "_4h.parquet": "_4hr.parquet",
+            "_8h.parquet": "_8hr.parquet",
+            "_1D.parquet": "_1day.parquet",
+            "_7D.parquet": "_7day.parquet",
+        }
+        # On Windows "1M" == "1m" — both point to the same physical file.
+        # These files contain monthly data (1M overwrote 1m).
+        # Delete them; data.py will re-fetch and save as _1min.parquet
+        # (1m data) and _1mo.parquet (1M data) with safe names.
+        corrupt_patterns = ["*_1m.parquet", "*_1M.parquet"]
+
+        n_migrated = 0
+        n_deleted = 0
+
+        for old_suffix, new_suffix in old_to_new.items():
+            if old_suffix in ("_1m.parquet",):
+                continue  # handled separately below (corrupted on Windows)
+            for old_path in glob.glob(os.path.join(cache_dir, f"*{old_suffix}")):
+                new_path = old_path.replace(old_suffix, new_suffix)
+                if not os.path.exists(new_path):
+                    try:
+                        os.rename(old_path, new_path)
+                        n_migrated += 1
+                    except OSError:
+                        pass
+
+        # Delete corrupted 1m/1M files — they contain monthly data on Windows
+        # Case-insensitive glob on Windows will find both "1m" and "1M" files
+        for pat in corrupt_patterns:
+            for path in glob.glob(os.path.join(cache_dir, pat)):
+                try:
+                    os.remove(path)
+                    n_deleted += 1
+                except OSError:
+                    pass
+
+        # Also delete 2min/3min derived files — they were derived from the
+        # corrupted 1m cache (monthly data), so they also have monthly frequency.
+        for pat in ["*_2min.parquet", "*_3min.parquet", "*_2m.parquet", "*_3m.parquet"]:
+            for stale_path in glob.glob(os.path.join(cache_dir, pat)):
+                try:
+                    os.remove(stale_path)
+                    n_deleted += 1
+                except OSError:
+                    pass
+
+        log.info(
+            f"Cache migration: {n_migrated} renamed, {n_deleted} corrupted files deleted "
+            f"(1m/1M collision and derived 2m/3m)"
+        )
+        log.info("Rerun data.py to re-fetch 1m data; 2m/3m re-derived from clean 1m.")
 
     @staticmethod
     def save(symbol: str, tf_label: str, df: pd.DataFrame) -> None:
@@ -151,6 +253,117 @@ class DataStore:
         delta = (today - last_date).days
         # More than 2 calendar days behind → needs refresh
         return delta > 2
+
+    # Expected median gap in seconds for each TF label
+    _EXPECTED_GAP_SECONDS: Dict[str, float] = {
+        "1m": 60,
+        "2m": 120,
+        "3m": 180,
+        "5m": 300,
+        "15m": 900,
+        "30m": 1800,
+        "1h": 3600,
+        "4h": 14400,
+        "8h": 28800,
+        "1D": 86400,
+        "7D": 604800,
+        "1M": 2592000,
+    }
+    _FREQ_TOLERANCE = 5.0  # actual gap must be < expected × tolerance to be valid
+
+    # Expected minimum bar counts per TF for a 10-year lookback.
+    # Assets with fewer bars in cache are considered insufficiently fetched
+    # (e.g. yfinance fallback gave 1458 bars where IBKR would give 5861).
+    # Used to trigger upgrade re-fetch from a deeper source.
+    _MIN_BARS: Dict[str, int] = {
+        "1m": 5_000,  # yfinance max 7 days; IBKR goes further
+        "2m": 5_000,
+        "3m": 5_000,
+        "5m": 2_500,  # yfinance max 60 days
+        "15m": 2_000,
+        "30m": 1_500,
+        "1h": 1_200,  # yfinance max 730 days; IBKR goes further
+        "4h": 2_500,
+        "8h": 4_000,  # yfinance ~1458, IBKR ~5861 — prefer IBKR
+        "1D": 2_000,  # ~8 years daily
+        "7D": 400,  # ~8 years weekly
+        "1M": 80,  # ~7 years monthly
+        "3M": 20,  # ~5 years quarterly
+        "6M": 10,  # ~5 years semi-annual
+    }
+
+    @staticmethod
+    def is_data_sufficient(symbol: str, tf_label: str) -> bool:
+        """
+        Returns True if the cached data meets the minimum bar count
+        for this TF. Returns True (don't re-fetch) if no minimum is defined
+        or if the file doesn't exist (caller handles missing separately).
+
+        Primary use: flag assets where yfinance fallback gave truncated
+        history (e.g. 1458 bars at 8h) so IBKR can be retried for the
+        deeper history (5861 bars) in a later upgrade pass.
+        """
+        min_bars = DataStore._MIN_BARS.get(tf_label)
+        if min_bars is None:
+            return True  # no threshold defined — assume sufficient
+        df = DataStore.load(symbol, tf_label)
+        if df is None:
+            return False  # missing entirely
+        return len(df) >= min_bars
+
+    @staticmethod
+    def validate_frequency(
+        symbol: str,
+        tf_label: str,
+        df: pd.DataFrame,
+    ) -> bool:
+        """
+        Check that the DataFrame's actual bar frequency matches tf_label.
+
+        Computes the median time gap between consecutive index timestamps
+        and compares it to the expected gap for the TF. Returns False if
+        the actual gap is > expected × tolerance, meaning the data is at
+        the wrong frequency (e.g. daily data stored in a 1m cache slot).
+
+        This catches the NTRS/STT 1m = 1M identical results bug: daily bars
+        stored in the 1m cache produce cointegration results indistinguishable
+        from the daily analysis — silent contamination of the intraday pipeline.
+        """
+        expected = DataStore._EXPECTED_GAP_SECONDS.get(tf_label)
+        if expected is None or df is None or len(df) < 3:
+            return True  # can't validate, assume OK
+        if not hasattr(df.index, "to_series"):
+            return True
+
+        diffs = df.index.to_series().diff().dropna()
+        if diffs.empty:
+            return True
+        median_gap = diffs.median().total_seconds()
+
+        # Valid: median gap within [expected/tolerance, expected*tolerance]
+        ok = (
+            (expected / DataStore._FREQ_TOLERANCE)
+            <= median_gap
+            <= (expected * DataStore._FREQ_TOLERANCE)
+        )
+        if not ok:
+            log.warning(
+                f"  Frequency mismatch: {symbol} {tf_label} — "
+                f"expected gap ~{expected:.0f}s, got median {median_gap:.0f}s. "
+                f"Cache likely contains {DataStore._infer_tf(median_gap)} data. "
+                f"Rerun data.py to refresh this asset's {tf_label} cache."
+            )
+        return ok
+
+    @staticmethod
+    def _infer_tf(median_gap_seconds: float) -> str:
+        """Guess the actual TF from the median gap, for the warning message."""
+        for label, expected in sorted(
+            DataStore._EXPECTED_GAP_SECONDS.items(), key=lambda x: x[1]
+        ):
+            if abs(median_gap_seconds - expected) / expected < 2.0:
+                return label
+        return f"unknown (~{median_gap_seconds:.0f}s)"
 
     @staticmethod
     def append(
@@ -916,6 +1129,8 @@ class YFinanceFeed:
         for tf_label, rule, lbl, cls_ in [
             ("7D", "W-FRI", "right", "right"),  # stamp = Friday (week close)
             ("1M", "MS", "left", "left"),  # stamp = first trading day of month
+            ("3M", "QS", "left", "left"),  # stamp = first trading day of quarter
+            ("6M", "2QS", "left", "left"),  # stamp = first day of each half-year
         ]:
             try:
                 resampled = df_1d.resample(rule, label=lbl, closed=cls_).agg(agg)
@@ -1768,7 +1983,24 @@ class IBKRFeed:
                     if not self.reconnect():
                         return None
                     continue
-                wait = 2**attempt * 5
+                # Shorter waits for intraday — fast failure detection
+                # feeds the rolling degraded-mode check in the sweep loop.
+                # Intraday: (3, 5, 10s); daily: (5, 10, 20, 40s)
+                INTRADAY_TFS = {
+                    "1 min",
+                    "2 mins",
+                    "3 mins",
+                    "5 mins",
+                    "15 mins",
+                    "30 mins",
+                    "1 hour",
+                    "4 hours",
+                    "8 hours",
+                }
+                if tf_ibkr in INTRADAY_TFS:
+                    wait = [3, 5, 10][min(attempt, 2)]
+                else:
+                    wait = 2**attempt * 5
                 log.warning(
                     f"IBKR request failed {symbol} {tf_label} "
                     f"attempt {attempt+1}: {e}. Retrying in {wait}s"
@@ -2132,6 +2364,27 @@ class UniverseBuilder:
     )
 
     @staticmethod
+    def _run_cache_migration() -> None:
+        """
+        One-time migration from old TF filenames (e.g. SYMBOL_1m.parquet)
+        to safe names (SYMBOL_1min.parquet). On Windows, "1m" and "1M" are
+        case-insensitively the same file — causing monthly data to overwrite
+        1-minute data. After migration a flag file is written; the migration
+        does not run again on subsequent builds.
+        """
+        cache_dir = Config.DATA.CACHE_DIR
+        # v3 flag: also deletes corrupted 2m/3m files derived from bad 1m cache
+        flag = os.path.join(cache_dir, ".cache_v3_migrated")
+        if not os.path.exists(cache_dir) or os.path.exists(flag):
+            return
+        log.info("One-time cache migration v3: safe filenames + 2m/3m cleanup...")
+        DataStore.migrate_cache()
+        try:
+            open(flag, "w").close()
+        except OSError:
+            pass
+
+    @staticmethod
     def load_exclusions() -> set:
         """Load persistent exclusion list from disk, merged with hardcoded."""
         excluded = set(UniverseBuilder._KNOWN_UNAVAILABLE)
@@ -2179,6 +2432,7 @@ class UniverseBuilder:
         Crash-safe via ProgressLogger. Config-hash-aware cache invalidation.
         """
         Config.ensure_dirs()
+        UniverseBuilder._run_cache_migration()  # one-time safe filename migration
 
         if reset_progress:
             ProgressLogger.reset()
@@ -2227,13 +2481,16 @@ class UniverseBuilder:
         # yfinance handles: equities, crypto (BTC-USD), forex (EURUSD=X)
         # IBKR handles: commodities, futures, and all intraday
         yf_assets = [
-            (s, cls) for s, cls in raw_assets if cls in ("equity", "crypto", "forex")
+            (s, cls)
+            for s, cls in raw_assets
+            if cls in ("equity", "crypto", "forex", "etf")
         ]
         log.info(
             f"Phase 1 (yfinance daily): "
             f"{sum(1 for _,c in yf_assets if c=='equity')} equities + "
             f"{sum(1 for _,c in yf_assets if c=='crypto')} crypto + "
-            f"{sum(1 for _,c in yf_assets if c=='forex')} forex"
+            f"{sum(1 for _,c in yf_assets if c=='forex')} forex + "
+            f"{sum(1 for _,c in yf_assets if c=='etf')} ETFs"
         )
 
         yf_daily_done = set()  # track which symbols have daily data confirmed
@@ -2469,14 +2726,20 @@ class UniverseBuilder:
                         log.info(
                             f"  TF: {tf_label} — {len(all_intraday_assets)} assets"
                         )
-                        # Reset circuit consecutive counter at start of each TF
-                        # A bad TF (e.g. 4h failing) shouldn't poison 1h sweep
+                        # Reset per-TF counters and rolling failure window
                         self._ibkr._consecutive_fails = 0
                         self._ibkr._circuit_open = False
                         self._ibkr._circuit_open_count = 0
                         self._ibkr._tf_ibkr_attempts = 0
                         self._ibkr._tf_ibkr_successes = 0
-                        # _tf_ibkr_disabled persists across TF sweeps intentionally
+                        from collections import deque
+
+                        _rolling = deque(
+                            maxlen=10
+                        )  # track last 10 IBKR outcomes per TF
+                        _ibkr_degraded = False  # True = IBKR too flaky, use batch yf
+                        _pending_yf: List[Tuple[str, str]] = []  # queued for batch yf
+
                         for symbol, asset_class in all_intraday_assets:
                             _bn += 1
                             if _bn % 50 == 0:
@@ -2486,6 +2749,27 @@ class UniverseBuilder:
                                 cached = DataStore.load(symbol, tf_label)
                                 if cached is not None:
                                     all_data[f"{symbol}_{tf_label}"] = cached
+                                    # Data exists but may be truncated (yf fallback).
+                                    # Track for IBKR upgrade pass after main sweep.
+                                    if not DataStore.is_data_sufficient(
+                                        symbol, tf_label
+                                    ):
+                                        _upgrade_queue = getattr(
+                                            self, "_ibkr_upgrade_queue", {}
+                                        )
+                                        _upgrade_queue.setdefault(tf_label, []).append(
+                                            (symbol, asset_class)
+                                        )
+                                        self._ibkr_upgrade_queue = _upgrade_queue
+                                continue
+
+                            # When IBKR is degraded, queue for batch yfinance
+                            if _ibkr_degraded and asset_class in (
+                                "equity",
+                                "etf",
+                                "crypto",
+                            ):
+                                _pending_yf.append((symbol, asset_class))
                                 continue
 
                             base_dur = Config.DATA.HISTORY_DEPTH.get(
@@ -2495,18 +2779,116 @@ class UniverseBuilder:
                             df = self._ibkr.get_bars(
                                 symbol, asset_class, tf_ibkr, tf_label, effective
                             )
-                            if df is None and tf_label in YFinanceFeed._YF_INTRADAY_MAP:
-                                # IBKR failed — try yfinance fallback immediately
-                                df = YFinanceFeed.get_intraday_fallback(
-                                    symbol, asset_class, tf_label
-                                )
-                                if df is not None:
-                                    DataStore.save(symbol, tf_label, df)
-                                    log.debug(
-                                        f"  yf fallback {symbol} {tf_label}: {len(df)} bars"
+
+                            if df is None:
+                                _rolling.append(False)
+                                # Check rolling failure rate — trigger degraded mode
+                                if (
+                                    not _ibkr_degraded
+                                    and len(_rolling) >= 5
+                                    and _rolling.count(False) / len(_rolling) >= 0.70
+                                ):
+                                    _ibkr_degraded = True
+                                    log.warning(
+                                        f"  [{tf_label}] IBKR failure rate "
+                                        f"{_rolling.count(False)/len(_rolling):.0%} over last "
+                                        f"{len(_rolling)} assets — switching to batch yfinance. "
+                                        f"Pausing 90s for IBKR to recover..."
                                     )
+                                    time.sleep(90)
+                                    # Queue this asset too (already failed)
+                                    if asset_class in ("equity", "etf", "crypto"):
+                                        _pending_yf.append((symbol, asset_class))
+                                    continue
+                                # Individual yfinance fallback (not yet degraded)
+                                if tf_label in YFinanceFeed._YF_INTRADAY_MAP:
+                                    df = YFinanceFeed.get_intraday_fallback(
+                                        symbol, asset_class, tf_label
+                                    )
+                            else:
+                                _rolling.append(True)
+
                             if df is not None:
+                                DataStore.save(symbol, tf_label, df)
                                 all_data[f"{symbol}_{tf_label}"] = df
+
+                        # Batch yfinance download for assets queued during degraded mode
+                        if _pending_yf:
+                            _yf_syms = [s for s, _ in _pending_yf]
+                            _yf_ticks = [to_yf_ticker(s, cls) for s, cls in _pending_yf]
+                            _yf_period = YFinanceFeed._YF_INTRADAY_MAP.get(tf_label)
+                            log.info(
+                                f"  [{tf_label}] Batch yfinance fallback: "
+                                f"{len(_yf_syms)} assets (IBKR was degraded)..."
+                            )
+                            if _yf_period:
+                                _batch = YFinanceFeed.get_equity_history(
+                                    _yf_syms,
+                                    chunk_size=Config.DATA.YF_CHUNK_SIZE,
+                                    yf_tickers=_yf_ticks,
+                                    period=_yf_period,
+                                )
+                                n_saved = 0
+                                for sym, sym_data in _batch.items():
+                                    df = sym_data.get(tf_label) if sym_data else None
+                                    if df is not None and not df.empty:
+                                        DataStore.save(sym, tf_label, df)
+                                        all_data[f"{sym}_{tf_label}"] = df
+                                        n_saved += 1
+                                log.info(
+                                    f"  [{tf_label}] Batch yf: {n_saved}/{len(_yf_syms)} saved"
+                                )
+
+                    # IBKR upgrade pass: re-try assets where yfinance gave
+                    # truncated history. IBKR congestion typically clears after
+                    # a full TF sweep; wait 60s then retry for deeper history.
+                    upgrade_queue = getattr(self, "_ibkr_upgrade_queue", {})
+                    if upgrade_queue:
+                        log.info(
+                            f"  IBKR upgrade pass: {sum(len(v) for v in upgrade_queue.values())} "
+                            f"assets have insufficient bar counts — retrying after 60s cooldown..."
+                        )
+                        time.sleep(60)
+                        for up_tf, up_assets in upgrade_queue.items():
+                            up_tf_ibkr = next(
+                                (
+                                    ib
+                                    for ib, lbl, _ in IBKRFeed.INTRADAY_TFS
+                                    if lbl == up_tf
+                                ),
+                                None,
+                            )
+                            if up_tf_ibkr is None:
+                                continue
+                            up_max_dur = next(
+                                (
+                                    d
+                                    for _, lbl, d in IBKRFeed.INTRADAY_TFS
+                                    if lbl == up_tf
+                                ),
+                                "1 Y",
+                            )
+                            n_upgraded = 0
+                            for sym, cls in up_assets:
+                                base_dur = Config.DATA.HISTORY_DEPTH.get(cls, "10 Y")
+                                eff_dur = self._ibkr._shorter_duration(
+                                    base_dur, up_max_dur
+                                )
+                                df_new = self._ibkr.get_bars(
+                                    sym, cls, up_tf_ibkr, up_tf, eff_dur
+                                )
+                                if df_new is not None and not df_new.empty:
+                                    existing = DataStore.load(sym, up_tf)
+                                    if existing is None or len(df_new) > len(existing):
+                                        DataStore.save(sym, up_tf, df_new)
+                                        all_data[f"{sym}_{up_tf}"] = df_new
+                                        n_upgraded += 1
+                            if n_upgraded:
+                                log.info(
+                                    f"  Upgraded {n_upgraded}/{len(up_assets)} assets "
+                                    f"at {up_tf} with deeper IBKR history"
+                                )
+                        self._ibkr_upgrade_queue = {}
 
                     # Derive 2m and 3m from 1m for all assets that have 1m data
                     log.info("  Deriving 2m and 3m from 1m bars...")
@@ -2652,12 +3034,292 @@ class UniverseBuilder:
             add(sym, "commodity")
         for sym in Config.UNIVERSE.FUTURES:
             add(sym, "futures")
+        # ETFs: QQQ, IWM, SPY, VOO, GLD, SLV, USO
+        for sym in Config.UNIVERSE.ETFS:
+            add(sym, "etf")
+        # -----------------------------------------------------------------------
+        # S&P Composite 1500 expansion
+        # S&P 500 (large-cap) + MidCap 400 + SmallCap 600 = 1500 equities.
+        # All quality-screened (profitability, float, liquidity thresholds).
+        # Overlap is handled by the seen set — no asset added twice.
+        # Together with crypto/forex/commodities/futures/ETFs: ~1531 total.
+        # Estimated overnight compute: 12-18 hours at 12 workers.
+        # -----------------------------------------------------------------------
+
+        # S&P MidCap 400
+        if getattr(Config.UNIVERSE, "INCLUDE_MIDCAP400", True):
+            midcap = self._fetch_constituents_cached("sp400", self._fetch_sp400_tickers)
+            for ticker in midcap:
+                add(ticker, "equity")
+            n_added = sum(1 for s, _ in raw) - 500  # approximate
+            log.info(
+                f"  S&P MidCap 400: fetched {len(midcap)} tickers "
+                f"(net new after S&P 500 overlap removed by dedup)"
+            )
+
+        # S&P SmallCap 600
+        if getattr(Config.UNIVERSE, "INCLUDE_SMALLCAP600", True):
+            smallcap = self._fetch_constituents_cached(
+                "sp600", self._fetch_sp600_tickers
+            )
+            for ticker in smallcap:
+                add(ticker, "equity")
+            log.info(
+                f"  S&P SmallCap 600: fetched {len(smallcap)} tickers "
+                f"(net new after dedup)"
+            )
+
+        log.info(
+            f"  S&P 1500 total equities in universe: "
+            f"{sum(1 for _, cls in raw if cls == 'equity')}"
+        )
 
         return raw
+
+    # -----------------------------------------------------------------------
+    # Constituent fetchers — same approach as _fetch_sp500_tickers()
+    # -----------------------------------------------------------------------
+
+    _CONSTITUENT_CACHE_DIR = os.path.join(os.path.dirname(__file__), "output", "cache")
+
+    @staticmethod
+    def _fetch_constituents_cached(
+        cache_name: str,
+        fetch_fn,
+        max_age_hours: float = 24,
+    ) -> List[str]:
+        """Generic cached constituent fetcher with 24-hour staleness check."""
+        Config.ensure_dirs()
+        cache_path = os.path.join(
+            UniverseBuilder._CONSTITUENT_CACHE_DIR, f"{cache_name}.json"
+        )
+        if os.path.exists(cache_path):
+            age_h = (time.time() - os.path.getmtime(cache_path)) / 3600
+            if age_h < max_age_hours:
+                try:
+                    with open(cache_path) as f:
+                        tickers = json.load(f)
+                    if tickers:
+                        log.info(
+                            f"  {cache_name}: {len(tickers)} tickers from cache "
+                            f"({age_h:.1f}h old)"
+                        )
+                        return tickers
+                except Exception:
+                    pass
+        tickers = fetch_fn()
+        try:
+            with open(cache_path, "w") as f:
+                json.dump(tickers, f)
+        except Exception:
+            pass
+        return tickers
+
+    @staticmethod
+    def _fetch_nasdaq100_tickers() -> List[str]:
+        """Fetch Nasdaq-100 components from Wikipedia."""
+        try:
+            import requests
+
+            url = "https://en.wikipedia.org/wiki/Nasdaq-100"
+            resp = requests.get(url, headers={"User-Agent": "CAMARF/1.0"}, timeout=15)
+            tables = pd.read_html(resp.text)
+            for t in tables:
+                for col in t.columns:
+                    if "ticker" in str(col).lower() or "symbol" in str(col).lower():
+                        tickers = [
+                            str(x).strip().upper()
+                            for x in t[col]
+                            if str(x).strip()
+                            and len(str(x).strip()) <= 6
+                            and str(x).strip()[0].isalpha()
+                        ]
+                        if len(tickers) > 50:
+                            log.info(
+                                f"  Nasdaq-100: {len(tickers)} tickers from Wikipedia"
+                            )
+                            return tickers
+        except Exception as e:
+            log.warning(f"Nasdaq-100 fetch failed: {e}")
+        return []
+
+    @staticmethod
+    def _fetch_russell2000_tickers() -> List[str]:
+        """
+        Fetch Russell 2000 components from iShares IWM holdings CSV.
+        The iShares CSV is publicly available and contains all ~2000 components.
+        Falls back to a Wikipedia scrape if the CSV is unavailable.
+        """
+        try:
+            import requests, io
+
+            # iShares publicly accessible holdings CSV for IWM
+            url = (
+                "https://www.ishares.com/us/products/239710/ishares-russell-2000-etf/"
+                "1521561966099.ajax?fileType=csv&fileName=IWM_holdings&dataType=fund"
+            )
+            resp = requests.get(
+                url,
+                headers={"User-Agent": "Mozilla/5.0 CAMARF/1.0"},
+                timeout=30,
+            )
+            if resp.status_code == 200:
+                # iShares CSV has a 2-row header before the actual data
+                text = resp.text
+                # Find the header row containing "Ticker"
+                lines = text.splitlines()
+                header_idx = next(
+                    (i for i, l in enumerate(lines) if "Ticker" in l or "CUSIP" in l),
+                    None,
+                )
+                if header_idx is not None:
+                    csv_text = "\n".join(lines[header_idx:])
+                    df_iw = pd.read_csv(io.StringIO(csv_text))
+                    # Find ticker column
+                    for col in df_iw.columns:
+                        if "ticker" in str(col).lower():
+                            tickers = [
+                                str(x).strip().upper()
+                                for x in df_iw[col]
+                                if str(x).strip()
+                                and len(str(x).strip()) <= 6
+                                and str(x).strip()[0].isalpha()
+                                and str(x).strip() not in ("-", "NaN", "")
+                            ]
+                            tickers = [t for t in tickers if t]
+                            log.info(
+                                f"  Russell 2000: {len(tickers)} tickers from iShares CSV"
+                            )
+                            return tickers
+        except Exception as e:
+            log.warning(f"Russell 2000 iShares fetch failed: {e} — trying fallback")
+
+        # Fallback: Wikipedia list of Russell 2000 (partial, top components)
+        try:
+            import requests
+
+            # Wikipedia doesn't have the full 2000 but has notable components
+            url = "https://en.wikipedia.org/wiki/Russell_2000_Index"
+            resp = requests.get(url, headers={"User-Agent": "CAMARF/1.0"}, timeout=15)
+            tables = pd.read_html(resp.text)
+            for t in tables:
+                for col in t.columns:
+                    if "ticker" in str(col).lower() or "symbol" in str(col).lower():
+                        tickers = [
+                            str(x).strip().upper()
+                            for x in t[col]
+                            if str(x).strip()
+                            and len(str(x).strip()) <= 6
+                            and str(x).strip()[0].isalpha()
+                        ]
+                        if tickers:
+                            log.info(f"  Russell 2000 fallback: {len(tickers)} tickers")
+                            return tickers
+        except Exception as e:
+            log.warning(f"Russell 2000 fallback also failed: {e}")
+
+        return []
+
+    @staticmethod
+    def _fetch_brk_holdings() -> List[str]:
+        """
+        Fetch Berkshire Hathaway's publicly disclosed equity holdings from Wikipedia.
+        These are the portfolio stocks disclosed in 13F filings (~40-50 names).
+        Most are already in S&P 500; deduplication removes overlap.
+        """
+        try:
+            import requests
+
+            url = "https://en.wikipedia.org/wiki/Berkshire_Hathaway"
+            resp = requests.get(url, headers={"User-Agent": "CAMARF/1.0"}, timeout=15)
+            tables = pd.read_html(resp.text)
+            for t in tables:
+                for col in t.columns:
+                    if "ticker" in str(col).lower() or "symbol" in str(col).lower():
+                        tickers = [
+                            str(x).strip().upper()
+                            for x in t[col]
+                            if str(x).strip()
+                            and len(str(x).strip()) <= 6
+                            and str(x).strip()[0].isalpha()
+                        ]
+                        if len(tickers) > 5:
+                            log.info(
+                                f"  BRK holdings: {len(tickers)} tickers from Wikipedia"
+                            )
+                            return tickers
+        except Exception as e:
+            log.warning(f"BRK holdings fetch failed: {e}")
+        return []
+
+    @staticmethod
+    def _fetch_qqq_extras(sp500_tickers: List[str]) -> List[str]:
+        """Return Nasdaq-100 tickers not already in S&P 500."""
+        qqq_tickers = UniverseBuilder._fetch_constituents_cached(
+            "nasdaq100", UniverseBuilder._fetch_nasdaq100_tickers
+        )
+        sp500_set = set(sp500_tickers)
+        extras = [t for t in qqq_tickers if t not in sp500_set]
+        log.info(f"  QQQ extras: {len(extras)} Nasdaq-100 names not in S&P 500")
+        return extras
 
     _SP500_CACHE = os.path.join(
         os.path.dirname(__file__), "output", "cache", "sp500_tickers.json"
     )
+
+    @staticmethod
+    def _fetch_sp_index_wikipedia(
+        url: str,
+        cache_name: str,
+        expected_min: int = 50,
+    ) -> List[str]:
+        """
+        Generic Wikipedia scraper for S&P index constituent tables.
+        All three S&P indices (500, 400, 600) share the same Wikipedia
+        table format with a Symbol/Ticker column.
+        """
+        import requests
+
+        try:
+            resp = requests.get(url, headers={"User-Agent": "CAMARF/1.0"}, timeout=15)
+            tables = pd.read_html(resp.text)
+            for t in tables:
+                for col in t.columns:
+                    col_s = str(col).lower()
+                    if "symbol" in col_s or "ticker" in col_s:
+                        tickers = [
+                            str(x).strip().upper().replace(".", "-")
+                            for x in t[col]
+                            if str(x).strip()
+                            and len(str(x).strip()) <= 6
+                            and str(x).strip()[0].isalpha()
+                        ]
+                        if len(tickers) >= expected_min:
+                            log.info(
+                                f"  {cache_name}: {len(tickers)} tickers from Wikipedia"
+                            )
+                            return tickers
+        except Exception as e:
+            log.warning(f"Wikipedia fetch failed for {cache_name}: {e}")
+        return []
+
+    @staticmethod
+    def _fetch_sp400_tickers() -> List[str]:
+        """Fetch S&P MidCap 400 constituents from Wikipedia."""
+        return UniverseBuilder._fetch_sp_index_wikipedia(
+            "https://en.wikipedia.org/wiki/List_of_S%26P_400_companies",
+            "S&P MidCap 400",
+            expected_min=350,
+        )
+
+    @staticmethod
+    def _fetch_sp600_tickers() -> List[str]:
+        """Fetch S&P SmallCap 600 constituents from Wikipedia."""
+        return UniverseBuilder._fetch_sp_index_wikipedia(
+            "https://en.wikipedia.org/wiki/List_of_S%26P_600_companies",
+            "S&P SmallCap 600",
+            expected_min=500,
+        )
 
     @staticmethod
     def _save_sp500_cache(tickers):

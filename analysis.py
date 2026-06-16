@@ -156,6 +156,24 @@ class PairResult:
     zivot_andrews_break: Optional[str]  # date of structural break or None
     cusum_first_excursion: Optional[str]  # date CUSUM exits bounds or None
 
+    # Hurst exponent (spread mean-reversion quality)
+    # hurst_rs < 0.48 required to enter ML pipeline as primary gate
+    hurst_rs: Optional[float]  # R/S estimate (primary)
+    hurst_dfa: Optional[float]  # DFA estimate (comparison, robust)
+    hurst_divergence: Optional[float]  # |rs - dfa|; >0.10 = uncertain
+    passes_ml_gate: bool  # True if hurst_rs < 0.48
+    hurst_interpretation: str  # "strongly_mean_reverting" / "mean_reverting" / etc.
+
+    # Eigenportfolio decomposition validation
+    # After projecting out Marchenko-Pastur-justified systematic factors,
+    # does the idiosyncratic spread still show cointegration?
+    # Gold tier: passes both raw EG and eigenportfolio residual EG.
+    # Silver tier: passes raw EG only (may be factor-driven).
+    eigenport_pvalue: Optional[float]  # EG p-value on residual spread
+    passes_eigenportfolio: Optional[bool]  # True if residual EG p < 0.05
+    n_factors_removed: Optional[int]  # K factors projected out
+    confidence_tier: str  # "gold" / "silver" / "bronze"
+
     # Sample sizes
     n_bars: int
     n_overlap: int
@@ -412,27 +430,56 @@ def clear_stale_results(force: bool = False) -> bool:
     )
     log.info(f"Clearing stale results: {reason}")
 
-    n_deleted = 0
+    n_renamed = 0
+    n_failed = 0
+    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+
     for entry in os.scandir(results_dir):
-        # Clear TF subdirectories and any top-level result files
-        # PRESERVE: analysis_hash.json itself (we'll overwrite it)
         if entry.name == "analysis_hash.json":
             continue
+        # Rename strategy: move old results to {name}_stale_{ts}
+        # Rename works on Windows even when OneDrive has files open,
+        # because it moves the directory handle without touching file handles.
+        # The pipeline writes fresh files into new directories this run.
+        # Stale directories are cleaned up lazily by _cleanup_stale().
+        stale_path = os.path.join(results_dir, f"{entry.name}_stale_{ts}")
         try:
-            if entry.is_dir():
-                import shutil
+            os.rename(entry.path, stale_path)
+            n_renamed += 1
+        except OSError:
+            # Rename also failed (network drive, permission boundary, etc.)
+            # Fall back: just let the pipeline overwrite existing files.
+            # Old results will be overwritten by new writes — no action needed.
+            n_failed += 1
 
-                shutil.rmtree(entry.path)
-                n_deleted += 1
-            elif entry.is_file():
-                os.remove(entry.path)
-                n_deleted += 1
-        except Exception as e:
-            log.warning(f"  Could not delete {entry.path}: {e}")
+    if n_failed:
+        log.info(
+            f"  Stale results: renamed {n_renamed} dirs; "
+            f"{n_failed} could not be renamed (pipeline will overwrite in place)"
+        )
+    else:
+        log.info(f"  Stale results: renamed {n_renamed} old result directories")
 
-    log.info(f"  Cleared {n_deleted} result directories/files")
     _save_current_hash(current_hash)
+    _cleanup_stale(results_dir)  # remove any stale dirs from previous runs
     return True
+
+
+def _cleanup_stale(results_dir: str) -> None:
+    """
+    Remove stale result directories left by previous clear_stale_results() calls.
+    These have the pattern {tf_label}_stale_{timestamp}.
+    Called after renaming so the cleanup doesn't interfere with the current run.
+    """
+    import shutil, re
+
+    pattern = re.compile(r".+_stale_\d{8}_\d{6}$")
+    for entry in os.scandir(results_dir):
+        if pattern.match(entry.name) and entry.is_dir():
+            try:
+                shutil.rmtree(entry.path, ignore_errors=True)
+            except Exception:
+                pass  # Best-effort; stale dirs don't affect correctness
 
 
 def _benjamini_hochberg(
@@ -867,10 +914,14 @@ class UniverseFilter:
         asset_class_map: Dict[str, str],
         threshold: float,
         tf_label: str,
-        run_dcor: bool = False,  # dCor is expensive; off by default for intraday
-    ) -> Tuple[List[Dict[str, Any]], List[str]]:
+        run_dcor: bool = False,
+        return_matrices: bool = False,  # if True, returns (pairs, syms, returns, corr, sym_order)
+    ) -> Tuple:
         """
-        Top-level entry. Returns (candidate_pairs, retained_symbols).
+        Top-level entry. Returns (candidate_pairs, retained_symbols) by default.
+        With return_matrices=True: (candidate_pairs, symbols, returns, pearson_corr, symbol_order).
+        The matrices are needed by EigenportfolioDecomposer — passing them avoids
+        recomputing the expensive N×N correlation matrix.
 
         Computes Pearson (primary), Spearman (robustness), and rolling-avg
         (decay-aware) correlation matrices. dCor is optional (expensive).
@@ -939,7 +990,9 @@ class UniverseFilter:
             f"threshold |ρ| ≥ {threshold:.2f}  "
             f"[gold={n_gold} silver={n_sil} bronze={len(pairs)-n_gold-n_sil}]"
         )
-        return pairs, symbols
+        if return_matrices:
+            return pairs, symbols, returns, pearson, symbols
+        return pairs, symbols, None, None, symbols
 
 
 # =============================================================================
@@ -1292,6 +1345,299 @@ class CointScanner:
 # =============================================================================
 # CLASS 3 — HedgeRatioEstimator
 # =============================================================================
+
+
+# =============================================================================
+# CLASS: EigenportfolioDecomposer
+# =============================================================================
+
+
+class EigenportfolioDecomposer:
+    """
+    Projects out systematic common factors from asset returns using
+    eigenportfolio decomposition, then re-tests cointegration on the
+    idiosyncratic residuals.
+
+    WHY THIS MATTERS:
+    If FITB and TFC are cointegrated, it could be because:
+    (a) They share genuine business-level cointegration (same loan books,
+        same deposit markets, same regulatory environment), OR
+    (b) They both respond strongly to the "bank sector factor" and the
+        "market factor" — any two bank stocks would look cointegrated.
+
+    EG on raw prices cannot distinguish (a) from (b). Running EG on the
+    residuals after projecting out the top-K systematic factors can:
+    - If residual EG confirms cointegration → genuinely idiosyncratic,
+      not just shared factor exposure. This is Gold tier.
+    - If residual EG fails → the pair's cointegration was factor-driven.
+      Still reportable (Silver tier) but weaker evidence.
+
+    MARCHENKO-PASTUR THRESHOLD:
+    For a random N×T matrix of IID Gaussian entries, the eigenvalues of
+    the sample correlation matrix follow the MP distribution with bulk
+    supported between λ± = (1 ± √(N/T))². Eigenvalues ABOVE λ+ represent
+    genuine signal (common factors). For N=1536, T=16220:
+      λ+ = (1 + √(1536/16220))² ≈ 1.61
+    K = number of eigenvalues above λ+ gives the number of genuine factors.
+
+    PROCEDURE:
+    1. Compute N×N correlation matrix of asset returns (already computed
+       by UniverseFilter — reuse it).
+    2. Eigendecompose: C = V Λ V^T
+    3. Find K = count of eigenvalues above λ+
+    4. Factor returns: F (K×T) = V_K^T × R_demeaned (K top eigenvectors × returns)
+    5. For each asset i: loadings b_i = F @ r_i / (F @ F^T) (OLS projection)
+    6. Residual returns: r_i_resid = r_i - b_i^T @ F
+    7. For each confirmed pair (A, B): run EG on the cumulative residual
+       return (idiosyncratic spread) and store p-value.
+
+    CONFIDENCE TIER ASSIGNMENT:
+    - Gold:   passes raw EG+FDR AND residual EG (p < 0.05)
+    - Silver: passes raw EG+FDR only (residual EG fails or uncertain)
+    - Bronze: passes Pearson threshold only (not used by default)
+    """
+
+    @staticmethod
+    def marchenko_pastur_threshold(
+        n_assets: int, n_periods: int, sigma2: float = 1.0
+    ) -> Tuple[float, int]:
+        """
+        Compute the Marchenko-Pastur upper edge λ+ and estimate K.
+
+        Returns (lambda_plus, K) where K is the number of eigenvalues
+        above λ+ in a unit-variance normalized correlation matrix.
+
+        For a properly normalized correlation matrix (diagonal = 1.0),
+        σ² = 1.0 is the correct default.
+        """
+        c = n_assets / n_periods  # ratio
+        lambda_plus = sigma2 * (1 + np.sqrt(c)) ** 2
+        return float(lambda_plus), None  # K determined from actual eigenvalues
+
+    @staticmethod
+    def compute_factor_residuals(
+        returns: np.ndarray,  # (N, T) — pairwise-complete, NaN for missing
+        corr: np.ndarray,  # (N, N) — already computed Pearson matrix
+        n_periods: int,  # T (for MP threshold)
+    ) -> Tuple[np.ndarray, int]:
+        """
+        Project out systematic factors and return residual returns.
+
+        Returns:
+            residuals: (N, T) array of idiosyncratic returns
+            K:         number of factors removed
+        """
+        n = returns.shape[0]
+        lambda_plus, _ = EigenportfolioDecomposer.marchenko_pastur_threshold(
+            n, n_periods
+        )
+
+        # Eigendecompose the correlation matrix
+        # Use only the finite rows/cols for numerical stability
+        with np.errstate(invalid="ignore"):
+            eigenvalues, eigenvectors = np.linalg.eigh(corr)  # ascending order
+
+        # Flip to descending order
+        eigenvalues = eigenvalues[::-1]
+        eigenvectors = eigenvectors[:, ::-1]
+
+        # Find K = number of genuine factors above MP threshold
+        K = int(np.sum(eigenvalues > lambda_plus))
+        if K == 0:
+            # No factors above noise floor — returns are independent
+            # Return raw returns unchanged with K=0
+            return returns.copy(), 0
+
+        log.debug(
+            f"  Eigenportfolio: K={K} factors above λ+={lambda_plus:.3f} "
+            f"(top eigenvalue={eigenvalues[0]:.2f})"
+        )
+
+        # Top-K eigenvectors (N, K)
+        V_K = eigenvectors[:, :K]
+
+        # Factor returns: F (K, T)
+        # For each time step t, project all asset returns onto the K eigenvectors
+        # Handle NaN by using valid observations per time step
+        T = returns.shape[1]
+        F = np.full((K, T), np.nan)
+        for t in range(T):
+            r_t = returns[:, t]
+            mask = np.isfinite(r_t)
+            if np.sum(mask) < K + 1:
+                continue
+            # F[:,t] = V_K[mask]^T @ r_t[mask]
+            F[:, t] = V_K[mask].T @ r_t[mask]
+
+        # OLS projection: for each asset, regress returns on factor returns
+        residuals = returns.copy()
+        for i in range(n):
+            r_i = returns[i]
+            valid = np.isfinite(r_i)
+            # Find time steps where both r_i and ALL K factors are valid
+            f_valid = np.all(np.isfinite(F), axis=0)
+            both = valid & f_valid
+            if np.sum(both) < K + 5:
+                continue  # insufficient overlap — leave residual as raw returns
+            f_sub = F[:, both]  # (K, T_valid)
+            r_sub = r_i[both]  # (T_valid,)
+            # OLS: b = (F F^T)^{-1} F r
+            try:
+                FtF = f_sub @ f_sub.T  # (K, K)
+                Ftr = f_sub @ r_sub  # (K,)
+                b = np.linalg.solve(FtF + 1e-8 * np.eye(K), Ftr)
+                # Residual only at valid time steps
+                residuals[i, both] = r_sub - b @ f_sub
+            except np.linalg.LinAlgError:
+                pass  # singular — leave as raw
+
+        return residuals, K
+
+    @staticmethod
+    def validate_pair(
+        sym_a: str,
+        sym_b: str,
+        idx_a: int,  # row index in returns/residuals matrix
+        idx_b: int,
+        residuals: np.ndarray,  # (N, T) residual returns
+        K: int,
+        tf_label: str,
+        alpha: float = 0.05,
+    ) -> Dict[str, Any]:
+        """
+        Run EG cointegration on the idiosyncratic residual log-price series.
+
+        Reconstructs residual log-prices by cumulative sum of residual returns,
+        then runs the same EG test as CointScanner on raw prices.
+        """
+        r_a = residuals[idx_a]
+        r_b = residuals[idx_b]
+        mask = np.isfinite(r_a) & np.isfinite(r_b)
+        n = int(np.sum(mask))
+
+        if n < 60:
+            return {
+                "eigenport_pvalue": None,
+                "passes_eigenportfolio": None,
+                "n_factors_removed": K,
+                "confidence_tier": "silver",
+                "note": "insufficient_overlap_for_residual_EG",
+            }
+
+        # Reconstruct cumulative residual log-prices
+        cum_a = np.cumsum(r_a[mask])
+        cum_b = np.cumsum(r_b[mask])
+
+        try:
+            from statsmodels.tsa.stattools import coint as eg_coint
+
+            pval = float(eg_coint(cum_a, cum_b, maxlag=Config.ANALYSIS.EG_MAX_LAG)[1])
+            passes = bool(pval < alpha)
+            tier = "gold" if passes else "silver"
+        except Exception:
+            pval = None
+            passes = None
+            tier = "silver"
+
+        return {
+            "eigenport_pvalue": pval,
+            "passes_eigenportfolio": passes,
+            "n_factors_removed": K,
+            "confidence_tier": tier,
+        }
+
+    @staticmethod
+    def run_for_tf(
+        confirmed_pairs: List[PairResult],
+        returns: np.ndarray,  # full (N, T) returns matrix from UniverseFilter
+        symbols: List[str],  # symbol order matching rows of returns
+        corr: np.ndarray,  # (N, N) Pearson correlation matrix
+        n_periods: int,  # T for MP threshold
+        tf_label: str,
+        alpha: float = 0.05,
+    ) -> List[PairResult]:
+        """
+        Run eigenportfolio validation for all confirmed pairs at this TF.
+
+        Returns updated PairResult list with eigenport_pvalue,
+        passes_eigenportfolio, n_factors_removed, and confidence_tier filled in.
+        """
+        if not confirmed_pairs or returns.size == 0:
+            return confirmed_pairs
+
+        BiasAuditLog.record(
+            bias_type="factor_contamination",
+            classification="statistical",
+            mechanism="Raw EG cointegration may detect shared factor exposure "
+            "(market, sector, style) rather than genuine idiosyncratic "
+            "co-movement. Factor-contaminated pairs produce false signals.",
+            remedy="Eigenportfolio decomposition projects out Marchenko-Pastur "
+            f"justified systematic factors (K determined by λ+ threshold). "
+            f"EG re-run on residuals. Gold tier = confirmed by both.",
+            scope=f"tf={tf_label}",
+            residual_risk="OLS projection itself may have finite-sample bias; "
+            "small K mis-estimates the factor space",
+        )
+
+        log.info(
+            f"  [{tf_label}] Eigenportfolio validation on "
+            f"{len(confirmed_pairs)} pairs..."
+        )
+        t0 = time.time()
+
+        # Compute factor residuals once for this TF
+        residuals, K = EigenportfolioDecomposer.compute_factor_residuals(
+            returns, corr, n_periods
+        )
+        log.info(
+            f"  [{tf_label}]   K={K} systematic factors removed "
+            f"(MP λ+={EigenportfolioDecomposer.marchenko_pastur_threshold(returns.shape[0], n_periods)[0]:.3f})"
+        )
+
+        # Build symbol → index map
+        sym_to_idx = {s: i for i, s in enumerate(symbols)}
+
+        updated = []
+        n_gold = 0
+        for pr in confirmed_pairs:
+            idx_a = sym_to_idx.get(pr.symbol_a)
+            idx_b = sym_to_idx.get(pr.symbol_b)
+            if idx_a is None or idx_b is None:
+                # Symbol not in returns matrix — mark as silver (can't validate)
+                import dataclasses
+
+                pr = dataclasses.replace(
+                    pr,
+                    eigenport_pvalue=None,
+                    passes_eigenportfolio=None,
+                    n_factors_removed=K,
+                    confidence_tier="silver",
+                )
+            else:
+                result = EigenportfolioDecomposer.validate_pair(
+                    pr.symbol_a,
+                    pr.symbol_b,
+                    idx_a,
+                    idx_b,
+                    residuals,
+                    K,
+                    tf_label,
+                    alpha,
+                )
+                import dataclasses
+
+                pr = dataclasses.replace(pr, **result)
+                if result.get("passes_eigenportfolio"):
+                    n_gold += 1
+
+            updated.append(pr)
+
+        log.info(
+            f"  [{tf_label}]   Eigenportfolio: {n_gold}/{len(updated)} Gold tier "
+            f"(idiosyncratic) | {len(updated)-n_gold} Silver tier (factor-driven) "
+            f"in {time.time()-t0:.1f}s"
+        )
+        return updated
 
 
 class HedgeRatioEstimator:
@@ -1706,6 +2052,175 @@ class SpreadModel:
 # =============================================================================
 # CLASS 5 — VolumeStructure
 # =============================================================================
+
+
+# =============================================================================
+# CLASS: HurstEstimator
+# =============================================================================
+
+
+class HurstEstimator:
+    """
+    Estimates the Hurst exponent of a spread series using two methods.
+
+    WHY HURST FOR SPREADS:
+    EG cointegration is a binary pass/fail. Hurst provides a continuous
+    quality score: H measures whether the spread is genuinely anti-persistent
+    (mean-reverting) beyond just being stationary. Pairs with H further below
+    0.5 revert faster and more reliably — directly predicting strategy quality.
+
+    CRITICAL IMPLEMENTATION NOTE — operate on INCREMENTS for R/S:
+    For an OU/AR(1) spread s[t] with AR coefficient φ:
+      - Levels: ρ_levels(lag-1) = φ > 0 → R/S on levels gives H > 0.5 even
+        for strongly mean-reverting spreads. NOT diagnostic.
+      - Increments Δs[t] = s[t]-s[t-1]: ρ_1(Δs) = (φ-1)/(2-φ) < 0 for φ<1.
+        R/S on increments gives H < 0.5 for OU → correct for mean-reversion.
+
+    1. R/S (Rescaled Range) — Hurst 1951, applied to spread INCREMENTS.
+       Fast O(N log N). Slight finite-sample upward bias; use 20+ scales.
+
+    2. DFA (Detrended Fluctuation Analysis) — Peng et al. 1994, applied to
+       spread LEVELS via integration profile. More robust to non-stationarity.
+       Slower O(N × n_scales). Comparison/robustness check against R/S.
+
+    Interpretation:
+       H < 0.45 — strongly mean-reverting
+       H < 0.50 — mean-reverting (passes ML gate)
+       H ≈ 0.50 — near random walk (borderline)
+       H > 0.50 — persistent/trending (fails ML gate)
+
+    ML gate: hurst_rs < 0.50 required. Where |H_rs - H_dfa| > 0.10,
+    estimation is flagged as uncertain (structural breaks likely).
+    """
+
+    MIN_BARS = 100
+    ML_GATE = 0.50
+
+    @staticmethod
+    def _ols_slope(x: np.ndarray, y: np.ndarray) -> float:
+        if len(x) < 3:
+            return np.nan
+        x_c = x - x.mean()
+        denom = np.dot(x_c, x_c)
+        return float(np.dot(x_c, y - y.mean()) / denom) if denom > 1e-12 else np.nan
+
+    @staticmethod
+    def _log_scales(
+        n_obs: int, min_win: int = 8, max_ratio: float = 0.25, n_pts: int = 20
+    ) -> np.ndarray:
+        max_win = max(min_win + 1, int(n_obs * max_ratio))
+        return np.unique(
+            np.round(np.logspace(np.log10(min_win), np.log10(max_win), n_pts)).astype(
+                int
+            )
+        )
+
+    @staticmethod
+    def hurst_rs(spread: np.ndarray) -> float:
+        """
+        R/S Hurst on spread INCREMENTS.
+
+        Increments of an OU process have negative lag-1 autocorrelation
+        (phi-1)/(2-phi) < 0, yielding H < 0.5. Operating on levels would
+        give H > 0.5 for high-phi OU due to positive level autocorrelation.
+        """
+        s = spread[np.isfinite(spread)]
+        inc = np.diff(s)  # <- INCREMENTS, not levels
+        n = inc.size
+        if n < HurstEstimator.MIN_BARS:
+            return np.nan
+        scales = HurstEstimator._log_scales(n)
+        log_n, log_rs = [], []
+        for win in scales:
+            n_win = n // win
+            if n_win < 2:
+                continue
+            rs_vals = []
+            for i in range(n_win):
+                w = inc[i * win : (i + 1) * win]
+                mu = w.mean()
+                cd = np.cumsum(w - mu)
+                R = cd.max() - cd.min()
+                S = w.std(ddof=1)
+                if S > 1e-12 and R > 0:
+                    rs_vals.append(R / S)
+            if len(rs_vals) >= 2:
+                log_n.append(np.log(float(win)))
+                log_rs.append(np.log(float(np.mean(rs_vals))))
+        H = HurstEstimator._ols_slope(np.array(log_n), np.array(log_rs))
+        return float(np.clip(H, 0.0, 1.0)) if np.isfinite(H) else np.nan
+
+    @staticmethod
+    def hurst_dfa(spread: np.ndarray) -> float:
+        """
+        DFA Hurst on spread INCREMENTS via integration profile.
+
+        Like R/S, DFA is applied to the increments of the spread (first
+        differences). The DFA profile Y(k) = cumsum(Δs - mean(Δs)).
+        For iid increments (random walk spread): Y is Brownian → H_dfa ≈ 0.5.
+        For negatively autocorrelated increments (OU spread): Y is anti-persistent
+        → H_dfa < 0.5.
+
+        DFA is more robust than R/S when increments have non-stationarity or
+        slow structural shifts — detrending within each window absorbs these.
+        """
+        s = spread[np.isfinite(spread)]
+        inc = np.diff(s)  # operate on INCREMENTS (same as R/S)
+        n = inc.size
+        if n < HurstEstimator.MIN_BARS:
+            return np.nan
+        Y = np.cumsum(inc - inc.mean())  # DFA integration profile of increments
+        scales = HurstEstimator._log_scales(n)
+        log_n, log_fn = [], []
+        for win in scales:
+            n_win = n // win
+            if n_win < 2:
+                continue
+            t = np.arange(float(win))
+            t_c = t - t.mean()
+            tv = np.dot(t_c, t_c)
+            if tv < 1e-12:
+                continue
+            fn_sq = []
+            for i in range(n_win):
+                seg = Y[i * win : (i + 1) * win]
+                slope = np.dot(t_c, seg - seg.mean()) / tv
+                resid = seg - (seg.mean() + slope * t_c)
+                fn_sq.append(float(np.mean(resid**2)))
+            if fn_sq:
+                F = np.sqrt(np.mean(fn_sq))
+                if F > 1e-12:
+                    log_n.append(np.log(float(win)))
+                    log_fn.append(np.log(F))
+        H = HurstEstimator._ols_slope(np.array(log_n), np.array(log_fn))
+        return float(np.clip(H, 0.0, 1.0)) if np.isfinite(H) else np.nan
+
+    @staticmethod
+    def estimate(spread: np.ndarray) -> Dict[str, Any]:
+        """Compute both H estimates and return full diagnostic dict."""
+        h_rs = HurstEstimator.hurst_rs(spread)
+        h_dfa = HurstEstimator.hurst_dfa(spread)
+        div = (
+            abs(h_rs - h_dfa) if (np.isfinite(h_rs) and np.isfinite(h_dfa)) else np.nan
+        )
+        if np.isfinite(h_rs):
+            if h_rs < 0.40:
+                interp = "strongly_mean_reverting"
+            elif h_rs < 0.50:
+                interp = "mean_reverting"
+            elif h_rs < 0.55:
+                interp = "near_random_walk"
+            else:
+                interp = "trending"
+        else:
+            interp = "insufficient_data"
+        return {
+            "hurst_rs": float(h_rs) if np.isfinite(h_rs) else None,
+            "hurst_dfa": float(h_dfa) if np.isfinite(h_dfa) else None,
+            "hurst_divergence": float(div) if np.isfinite(div) else None,
+            "passes_ml_gate": bool(np.isfinite(h_rs) and h_rs < HurstEstimator.ML_GATE),
+            "interpretation": interp,
+        }
 
 
 class VolumeStructure:
@@ -2167,8 +2682,6 @@ class RegimeClassifier:
         n, d = X.shape
         for k in range(k_min, k_max + 1):
             try:
-                import warnings
-
                 hmm = GaussianHMM(
                     n_components=k,
                     covariance_type="full",
@@ -3182,6 +3695,35 @@ class ThresholdCalibrator:
 
 
 # =============================================================================
+# MODULE-LEVEL WORKER — must be at module level for ProcessPoolExecutor pickling
+# =============================================================================
+
+
+def _regime_worker(args) -> Optional["RegimeResult"]:
+    """
+    Top-level (not nested) function for ProcessPoolExecutor.
+
+    Nested/local functions are not picklable and cannot be sent to worker
+    processes. This must live at module scope.
+
+    Receives serialized DataFrame bytes to avoid shared-memory issues;
+    deserializes, fits all regime models (K-means, GMM, HMM), returns result.
+    """
+    sym, df_bytes, tf_label = args
+    try:
+        import pickle
+
+        df = pickle.loads(df_bytes)
+        df.index.name = sym
+        rr = RegimeClassifier.fit_asset(df, tf_label)
+        if rr is not None:
+            rr.symbol = sym
+        return rr
+    except Exception:
+        return None
+
+
+# =============================================================================
 # CLASS 11 — AnalysisPipeline (orchestrator)
 # =============================================================================
 
@@ -3372,17 +3914,30 @@ class AnalysisPipeline:
         _SHALLOW_CAP = {"1m": 5_000, "2m": 5_000, "3m": 5_000}
         _exclusions = getattr(universe, "exclusion_set", set()) or set()
         tf_data_raw = {}
+        _freq_mismatches = []
         for sym, _cls in universe.assets:
             if sym in _exclusions:
-                continue  # explicitly excluded — never enters pipeline
+                continue
             key = f"{sym}_{tf_label}"
             if key not in universe.data or universe.data[key] is None:
                 continue
             df = universe.data[key]
+            # Validate that the cache data is actually at the expected frequency.
+            # Catches cases like NTRS_1m.parquet containing daily bars — which
+            # would produce 1m cointegration results identical to 1D analysis.
+            if not DataStore.validate_frequency(sym, tf_label, df):
+                _freq_mismatches.append(sym)
+                continue  # skip this asset for this TF; urge data.py rerun
             cap = _SHALLOW_CAP.get(tf_label)
             if cap and len(df) > cap:
                 df = df.iloc[-cap:]
             tf_data_raw[sym] = df
+        if _freq_mismatches:
+            log.warning(
+                f"  [{tf_label}] {len(_freq_mismatches)} assets skipped (frequency mismatch "
+                f"in cache): {_freq_mismatches[:10]}{'...' if len(_freq_mismatches)>10 else ''}. "
+                f"Rerun data.py to refresh these cache files."
+            )
         log.info(f"  [{tf_label}] {len(tf_data_raw)} assets have data for this TF")
         if len(tf_data_raw) < 10:
             log.warning(f"  [{tf_label}] insufficient assets — skipping TF")
@@ -3409,11 +3964,17 @@ class AnalysisPipeline:
         )
 
         # Step 3: Pearson filter
-        candidates, retained_symbols = UniverseFilter.run(
-            aligned,
-            asset_class_map,
-            threshold=Config.UNIVERSE.MIN_PEARSON_CORR,
-            tf_label=tf_label,
+        # Returns the returns matrix and Pearson correlation matrix alongside
+        # candidates so EigenportfolioDecomposer can reuse them without
+        # recomputing the (expensive) N×N matrix from scratch.
+        candidates, retained_symbols, _returns_mat, _corr_mat, _sym_order = (
+            UniverseFilter.run(
+                aligned,
+                asset_class_map,
+                threshold=Config.UNIVERSE.MIN_PEARSON_CORR,
+                tf_label=tf_label,
+                return_matrices=True,
+            )
         )
         if not candidates:
             log.info(f"  [{tf_label}] no candidate pairs above threshold")
@@ -3449,8 +4010,9 @@ class AnalysisPipeline:
                 if pr is not None:
                     pair_results.append(pr)
             except Exception as e:
-                log.debug(
-                    f"    pair {pd_meta.get('symbol_a')}-{pd_meta.get('symbol_b')} failed: {e}"
+                log.warning(
+                    f"    pair {pd_meta.get('symbol_a')}-{pd_meta.get('symbol_b')} "
+                    f"failed in _build_pair_result: {type(e).__name__}: {e}"
                 )
             if (i + 1) % 500 == 0:
                 log.info(f"    progress: {i+1}/{len(confirmed_dicts)} pairs modeled")
@@ -3458,6 +4020,34 @@ class AnalysisPipeline:
             f"  [{tf_label}] Per-pair modeling done in {time.time()-t0:.1f}s — "
             f"{len(pair_results)} PairResult objects built"
         )
+
+        # Step 6b: Eigenportfolio validation — project out systematic factors
+        # and re-test cointegration on idiosyncratic residuals.
+        # Gold tier = confirmed by raw EG AND residual EG (genuinely idiosyncratic).
+        # Silver tier = raw EG only (may be factor-driven correlation).
+        if pair_results and _returns_mat is not None and _returns_mat.size > 0:
+            pair_results = EigenportfolioDecomposer.run_for_tf(
+                confirmed_pairs=pair_results,
+                returns=_returns_mat,
+                symbols=_sym_order,
+                corr=_corr_mat,
+                n_periods=_returns_mat.shape[1],
+                tf_label=tf_label,
+            )
+        else:
+            # No returns matrix available — set default Silver tier for all
+            import dataclasses as _dc
+
+            pair_results = [
+                _dc.replace(
+                    p,
+                    eigenport_pvalue=None,
+                    passes_eigenportfolio=None,
+                    n_factors_removed=None,
+                    confidence_tier="silver",
+                )
+                for p in pair_results
+            ]
 
         BiasAuditLog.record(
             bias_type="lookahead",
@@ -3499,24 +4089,34 @@ class AnalysisPipeline:
             f"in {time.time()-t0:.1f}s"
         )
 
-        # Step 8: RegimeClassifier on retained assets (best-effort, skip on failure)
-        log.info(f"  [{tf_label}] Regime classification...")
+        # Step 8: RegimeClassifier on retained assets — parallelized
+        # Sequential fitting at ~187s/asset becomes prohibitive at scale.
+        # ProcessPoolExecutor distributes across n_workers.
+        log.info(
+            f"  [{tf_label}] Regime classification ({len(retained_for_features)} assets)..."
+        )
         regime_results: List[RegimeResult] = []
         t0 = time.time()
+
+        # Build task list — serialize DataFrames for inter-process transfer
+        import pickle as _pickle
+
+        regime_tasks = []
         for sym in retained_for_features:
             df = aligned.get(sym)
             if df is None or df.empty:
                 continue
             try:
-                # Set the index name so RegimeResult captures it
-                df = df.copy()
-                df.index.name = sym
-                rr = RegimeClassifier.fit_asset(df, tf_label)
-                if rr is not None:
-                    rr.symbol = sym
-                    regime_results.append(rr)
-            except Exception as e:
-                log.debug(f"    regime {sym} failed: {e}")
+                regime_tasks.append((sym, _pickle.dumps(df), tf_label))
+            except Exception:
+                pass
+
+        if regime_tasks:
+            with ProcessPoolExecutor(max_workers=n_workers) as pool:
+                for rr in pool.map(_regime_worker, regime_tasks, chunksize=1):
+                    if rr is not None:
+                        regime_results.append(rr)
+
         log.info(
             f"  [{tf_label}] Regimes fitted: {len(regime_results)} assets "
             f"in {time.time()-t0:.1f}s"
@@ -3575,7 +4175,9 @@ class AnalysisPipeline:
                 ThresholdCalibrator.parameter_sensitivity_summary(confirmed_dicts)
             )
 
-        # Step 12: save all results to disk
+        # Step 12: save all results to disk, then checkpoint the hash.
+        # If the 8-hour run crashes mid-pipeline, completed TFs are preserved.
+        # The script hash checkpoint ensures the next run doesn't clear them.
         AnalysisPipeline._save_tf_results(
             tf_label,
             pair_results,
@@ -3584,6 +4186,10 @@ class AnalysisPipeline:
             cross_pairs,
             calib_dict,
         )
+        # Checkpoint: mark this TF as complete in the hash store.
+        # The full hash is only confirmed at pipeline end, but partial
+        # progress is preserved so crashes don't waste completed TF work.
+        _save_current_hash(_compute_script_hash())
 
         return pair_results, trio_results, regime_results, cross_pairs, calib_dict
 
@@ -3631,6 +4237,27 @@ class AnalysisPipeline:
         # Decay tests
         decay = StrategyDecayDetector.analyze_pair(sm["spread"], df_a.index)
 
+        # Hurst exponent on spread series (both R/S and DFA)
+        hurst_result = HurstEstimator.estimate(sm["spread"])
+
+        # Log non-ML-gate pairs for diagnostic awareness
+        if not hurst_result["passes_ml_gate"]:
+            _dfa_str = (
+                f"{hurst_result['hurst_dfa']:.3f}"
+                if hurst_result["hurst_dfa"] is not None
+                else "n/a"
+            )
+            _rs_str = (
+                f"{hurst_result['hurst_rs']:.3f}"
+                if hurst_result["hurst_rs"] is not None
+                else "n/a"
+            )
+            log.debug(
+                f"    {sym_a}↔{sym_b} [{tf_label}]: "
+                f"H_rs={_rs_str} H_dfa={_dfa_str} "
+                f"— {hurst_result['interpretation']} (will not enter ML pipeline)"
+            )
+
         # Asset sources from QualityReport (best-effort)
         src_a = "unknown"
         src_b = "unknown"
@@ -3666,6 +4293,17 @@ class AnalysisPipeline:
             ),
             zivot_andrews_break=decay["zivot_andrews_break"],
             cusum_first_excursion=decay["cusum_first_excursion"],
+            hurst_rs=hurst_result["hurst_rs"],
+            hurst_dfa=hurst_result["hurst_dfa"],
+            hurst_divergence=hurst_result["hurst_divergence"],
+            passes_ml_gate=hurst_result["passes_ml_gate"],
+            hurst_interpretation=hurst_result["interpretation"],
+            # Eigenportfolio fields initialized as None here;
+            # filled in by EigenportfolioDecomposer.run_for_tf() after this loop.
+            eigenport_pvalue=None,
+            passes_eigenportfolio=None,
+            n_factors_removed=None,
+            confidence_tier="silver",  # default; upgraded to gold if residual EG passes
             n_bars=int(n_bars),
             n_overlap=int(n_overlap),
             source_a=src_a,
@@ -3746,6 +4384,8 @@ def main(
 ) -> AnalysisResults:
     """
     Entry point — build universe, then run analysis pipeline.
+    Uses CLIENT_ID_ANALYSIS (2) instead of CLIENT_ID (1) to avoid
+    conflicts when data.py is still running or hasn't released the connection.
 
     Args:
         timeframes:      Subset of Config.DATA.TIMEFRAME_LABELS to process,
@@ -3758,8 +4398,13 @@ def main(
     log.info("=" * 70)
 
     # Step 1: build / load universe via data.py
+    # Temporarily override clientId so analysis.py uses id=2, avoiding
+    # "clientId 1 already in use" errors when data.py is still running.
+    _orig_client_id = Config.IBKR.CLIENT_ID
+    Config.IBKR.CLIENT_ID = Config.IBKR.CLIENT_ID_ANALYSIS
     builder = UniverseBuilder()
     universe = builder.build()
+    Config.IBKR.CLIENT_ID = _orig_client_id  # restore
     log.info(
         f"Universe loaded: {len(universe.assets)} assets, "
         f"{len(universe.data)} symbol-TF combinations"
