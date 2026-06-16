@@ -569,34 +569,112 @@ class ProgressLogger:
 # Aligns all assets to a common NYSE calendar timeline with gap flagging.
 # =============================================================================
 
+# =============================================================================
+# GAP FLAG SYSTEM
+# =============================================================================
+
+
+class GapFlag:
+    """
+    Integer codes for bar-level gap classification.
+
+    Each bar in aligned data carries a `gap_flag` integer column so that
+    downstream consumers (correlation, EG, ML features, backtest) can each
+    decide how to handle the bar based on why it was flagged.
+
+    Design: integer codes (not enum) for parquet serialization compatibility.
+
+    Usage in analysis pipeline:
+        NONE         → include in all calculations
+        FILL         → include in EG/corr; exclude from ML volume features
+        NO_ACTIVITY  → include in corr (real zero-return); mark volume=0
+        HALT         → include price in EG/corr; exclude from volume features
+        DATA_GAP     → if ≤5 bars: FILL treatment; if >5 bars: exclude from EG
+        SPARSE       → include in EG/corr; lower weight in rolling corr
+        STRUCTURAL   → never appears as row (weekends/holidays excluded entirely)
+    """
+
+    NONE = 0  # Clean bar — include in everything
+    FILL = 1  # Forward-filled (≤5 bar gap, liquid asset)
+    NO_ACTIVITY = 2  # Genuine zero-trade bar (crypto 24/7, thin markets)
+    HALT = 3  # Trading halt — price valid, volume meaningless
+    DATA_GAP = 4  # Provider gap > 5 bars — exclude from EG window
+    SPARSE = 5  # Thin history (new listing, low liquidity period)
+    STRUCTURAL = 6  # Weekend/holiday — these rows don't exist in the data
+
+
+# Maximum consecutive gap bars before DATA_GAP instead of FILL
+_MAX_FILL_BARS = 5
+
+# Crypto tickers: these trade 24/7 so single missing bars are NO_ACTIVITY not FILL
+_CRYPTO_SUFFIXES = {"-USD", "-USDT", "-BTC"}
+
+
+def _is_crypto(symbol: str) -> bool:
+    return any(symbol.upper().endswith(s) for s in _CRYPTO_SUFFIXES)
+
+
+def _gap_aware_returns(
+    df: "pd.DataFrame",
+    exclude_flags: tuple = (GapFlag.DATA_GAP,),
+) -> "np.ndarray":
+    """
+    Compute log returns masking bars with bad gap flags.
+    DATA_GAP bars (>5 consecutive missing) produce spuriously large
+    returns from accumulated price movement and are excluded.
+    FILL bars (≤5 missing) are kept — forward-fill is acceptable.
+    NO_ACTIVITY (crypto zero-trade) are kept as genuine zero returns.
+    """
+    import numpy as np
+
+    if "close" not in df.columns:
+        return np.full(len(df), np.nan)
+    log_prices = np.log(df["close"].values.astype(float))
+    returns = np.diff(log_prices, prepend=np.nan)
+    if "gap_flag" in df.columns:
+        flags = df["gap_flag"].values.astype(int)
+        for code in exclude_flags:
+            bad = flags == code
+            bad_return = bad | np.roll(bad, 1)
+            bad_return[0] = False
+            returns[bad_return] = np.nan
+    return returns
+
+
+def _clean_close(
+    df: "pd.DataFrame",
+    exclude_flags: tuple = (GapFlag.DATA_GAP,),
+) -> "np.ndarray":
+    """Return close prices with DATA_GAP bars masked to NaN for EG tests."""
+    import numpy as np
+
+    prices = df["close"].values.astype(float).copy()
+    if "gap_flag" in df.columns:
+        flags = df["gap_flag"].values.astype(int)
+        for code in exclude_flags:
+            prices[flags == code] = np.nan
+    return prices
+
 
 class DataAligner:
     """
-    Aligns OHLCV DataFrames across all assets to a common timeline.
+    Aligns OHLCV DataFrames across all assets to a common timeline,
+    classifying every bar with a GapFlag code.
 
-    Strategy:
-      - Master calendar: NYSE trading sessions (Option A)
-        All asset classes — equities, forex, crypto, futures, commodities —
-        are aligned to the NYSE daily calendar. Non-equity assets that trade
-        on NYSE holidays are forward-filled to that date. This ensures every
-        asset has an identical DatetimeIndex, which is required for pairwise
-        cointegration and spread calculations in analysis.py.
+    Gap treatment hierarchy:
+      NONE         → clean bar, include in all downstream calculations
+      FILL (≤5)    → forward-fill price, zero volume; include in EG/corr,
+                     exclude from ML volume features
+      NO_ACTIVITY  → crypto genuine zero-trade bar; include as-is
+      HALT         → trading halt; forward-fill price, mark volume invalid
+      DATA_GAP(>5) → long provider gap; do NOT fill; exclude from EG window
+      SPARSE       → pre-liquidity period (new listing); include with caveat
 
-      - Gap handling: forward-fill + flag
-        Missing bars (asset not traded, data unavailable) are forward-filled
-        using the last known price. A boolean `is_gap` column is added to mark
-        filled bars so the analysis layer can condition on data quality.
-        Volume is set to 0 for filled bars.
-
-      - Intraday alignment:
-        For sub-daily timeframes, alignment is to the asset's own trading
-        session calendar rather than NYSE — overnight gaps and weekends are
-        already excluded by DataCleaner._fill_gaps(). The `is_gap` flag
-        marks within-session gaps (e.g. thinly-traded stocks with no prints
-        for 15 minutes).
-
-    The aligned data is cached to DataStore with a "_aligned" suffix so
-    downstream modules always consume the aligned version.
+    Cross-asset alignment note:
+      When correlating equity intraday with futures (ES↔utilities at 15m),
+      restrict to equity session hours (9:30 AM – 4:00 PM ET) only.
+      Using ES overnight bars against a zero-return equity bar inflates
+      cross-asset correlation — the equity price is stale, not correlated.
     """
 
     _NYSE = None
@@ -612,28 +690,25 @@ class DataAligner:
     @staticmethod
     def align_daily(
         data: Dict[str, pd.DataFrame],
+        asset_classes: Dict[str, str] = None,  # {symbol: class} for per-type treatment
         start_date: str = None,
         end_date: str = None,
     ) -> Dict[str, pd.DataFrame]:
         """
         Align all daily DataFrames to the NYSE master calendar.
+        Each bar is classified with a GapFlag code (stored in `gap_flag` int column).
+        The legacy `is_gap` boolean column is also preserved for backward compatibility.
 
-        Parameters
-        ----------
-        data       : dict of {symbol: DataFrame} with DatetimeIndex
-        start_date : earliest date to include (None = min across all assets)
-        end_date   : latest date to include (None = max across all assets)
-
-        Returns
-        -------
-        Dict of aligned DataFrames, each with an added boolean `is_gap` column.
-        Assets missing more than 50% of the master calendar are excluded
-        and logged as data-quality failures.
+        Gap classification logic (daily):
+          - Bar present, clean:              GapFlag.NONE
+          - 1-5 consecutive missing bars:    GapFlag.FILL (forward-fill price, zero vol)
+          - >5 consecutive missing bars:     GapFlag.DATA_GAP (fill price, flag for exclusion)
+          - Asset age gap (pre-IPO period):  GapFlag.SPARSE (leading NaN = new listing)
+          - Crypto missing single bar:       GapFlag.NO_ACTIVITY (24/7, genuine zero-trade)
         """
         if not data:
             return {}
 
-        # Determine common date range
         all_starts = [
             df.index.min() for df in data.values() if df is not None and not df.empty
         ]
@@ -645,8 +720,9 @@ class DataAligner:
 
         start = start_date or str(min(all_starts).date())
         end = end_date or str(max(all_ends).date())
-
         master_idx = DataAligner._get_nyse_calendar(start, end)
+        asset_classes = asset_classes or {}
+
         log.info(
             f"DataAligner: aligning {len(data)} assets to NYSE calendar "
             f"({start} → {end}, {len(master_idx)} sessions)"
@@ -657,44 +733,78 @@ class DataAligner:
             if df is None or df.empty:
                 continue
 
-            # Normalize index to date-only (strip intraday time component)
+            is_crypto_asset = (
+                _is_crypto(symbol) or asset_classes.get(symbol, "") == "crypto"
+            )
+
             df = df.copy()
             df.index = df.index.normalize()
-
-            # Reindex to master calendar
             df_aligned = df.reindex(master_idx)
 
-            # Flag gaps before filling
-            df_aligned["is_gap"] = df_aligned["close"].isna()
+            # ---- Gap classification ----
+            missing = df_aligned["close"].isna()
+            missing_bool = missing.values  # numpy bool array — no pandas overhead
+            gap_flag = np.zeros(len(missing_bool), dtype=np.int8)
 
-            # Forward-fill price columns
+            # Walk runs of consecutive missing bars using numpy for speed
+            run_len = 0
+            run_start = 0
+            for i in range(len(missing_bool)):
+                if missing_bool[i]:
+                    if run_len == 0:
+                        run_start = i
+                    run_len += 1
+                else:
+                    if run_len > 0:
+                        code = (
+                            GapFlag.NO_ACTIVITY
+                            if (is_crypto_asset and run_len == 1)
+                            else (
+                                GapFlag.FILL
+                                if run_len <= _MAX_FILL_BARS
+                                else GapFlag.DATA_GAP
+                            )
+                        )
+                        gap_flag[run_start : run_start + run_len] = code
+                        run_len = 0
+            if run_len > 0:  # trailing gap at end of series
+                code = GapFlag.DATA_GAP if run_len > _MAX_FILL_BARS else GapFlag.FILL
+                gap_flag[run_start : run_start + run_len] = code
+
+            df_aligned["gap_flag"] = gap_flag
+            df_aligned["is_gap"] = missing_bool  # backward compat
+
+            # ---- Fill prices (all gap types — downstream filters on flag) ----
             for col in ["open", "high", "low", "close"]:
                 if col in df_aligned.columns:
                     df_aligned[col] = df_aligned[col].ffill()
 
-            # Zero-fill volume for gap bars (no trades occurred)
+            # Zero volume for any filled bar
             if "volume" in df_aligned.columns:
-                df_aligned["volume"] = df_aligned["volume"].fillna(0)
+                df_aligned["volume"] = df_aligned["volume"].where(~missing, 0)
 
-            # Drop leading NaN rows (asset didn't exist yet at master start)
+            # ---- Drop pre-IPO leading rows & mark as SPARSE ----
             first_valid = df_aligned["close"].first_valid_index()
-            if first_valid is not None:
-                df_aligned = df_aligned.loc[first_valid:]
+            if first_valid is None:
+                continue
+            df_aligned = df_aligned.loc[first_valid:]
 
-            # Quality check: exclude assets with >50% gaps
-            gap_pct = df_aligned["is_gap"].mean()
+            # Any remaining NaN close (shouldn't happen after ffill but guard)
+            still_nan = df_aligned["close"].isna()
+            df_aligned.loc[still_nan, "gap_flag"] = GapFlag.SPARSE
+
+            # ---- Quality gate: exclude >50% gap rate ----
+            gap_pct = float(missing.mean())
             if gap_pct > 0.50:
-                log.warning(
-                    f"DataAligner: {symbol} has {gap_pct:.1%} gap rate "
-                    f"on master calendar — excluded from aligned dataset"
-                )
+                log.warning(f"DataAligner: {symbol} {gap_pct:.1%} gap rate — excluded")
                 continue
 
-            aligned[symbol] = df_aligned
             if gap_pct > 0.05:
                 log.debug(
-                    f"DataAligner: {symbol} gap rate {gap_pct:.1%} (flagged, kept)"
+                    f"DataAligner: {symbol} gap rate {gap_pct:.1%} (kept, flagged)"
                 )
+
+            aligned[symbol] = df_aligned
 
         log.info(
             f"DataAligner: {len(aligned)}/{len(data)} assets aligned "
@@ -731,65 +841,98 @@ class DataAligner:
         }
         freq = freq_map.get(tf_label)
 
+        _freq_minutes = {
+            "1min": 1,
+            "2min": 2,
+            "3min": 3,
+            "5min": 5,
+            "15min": 15,
+            "30min": 30,
+            "1h": 60,
+            "4h": 240,
+            "8h": 480,
+        }
+        _MAX_REINDEX = 500_000
+
         aligned: Dict[str, pd.DataFrame] = {}
         for symbol, df in data.items():
             if df is None or df.empty:
                 continue
 
+            is_crypto_asset = _is_crypto(symbol)
             df = df.copy()
 
             if freq and len(df) > 10:
-                # Reindex to regular frequency within the existing range
-                # Safety guard: estimate expected reindex size from the
-                # timedelta BEFORE allocating the date_range. If the 1m cache
-                # file has daily-bar timestamps (1962-2026), computing
-                # pd.date_range at 1m frequency would itself OOM.
-                _MAX_REINDEX = 500_000  # ~5 months of 1m, ~350 days of 5m
-                _freq_minutes = {
-                    "1min": 1,
-                    "2min": 2,
-                    "3min": 3,
-                    "5min": 5,
-                    "15min": 15,
-                    "30min": 30,
-                    "1h": 60,
-                    "4h": 240,
-                    "8h": 480,
-                }
                 _fmin = _freq_minutes.get(freq, 1)
                 _span_min = (df.index.max() - df.index.min()).total_seconds() / 60
                 _expected_rows = int(_span_min / _fmin) + 1
+
                 if _expected_rows > _MAX_REINDEX:
                     log.debug(
                         f"  align_intraday: {symbol} expected {_expected_rows} rows "
-                        f"at freq={freq} — using raw data to avoid OOM"
+                        f"at freq={freq} — OOM guard, using raw"
                     )
+                    df["gap_flag"] = np.zeros(len(df), dtype=np.int8)
                     df["is_gap"] = False
                     aligned[symbol] = df.dropna(subset=["close"])
                     continue
+
                 full_idx = pd.date_range(df.index.min(), df.index.max(), freq=freq)
                 df_aligned = df.reindex(full_idx)
+                missing = df_aligned["close"].isna()
 
-                # Flag gaps
-                df_aligned["is_gap"] = df_aligned["close"].isna()
+                # ---- Gap classification (same run-length logic as daily) ----
+                missing_bool = missing.values
+                gap_flag = np.zeros(len(missing_bool), dtype=np.int8)
+                run_len = 0
+                run_start = 0
+                for i in range(len(missing_bool)):
+                    if missing_bool[i]:
+                        if run_len == 0:
+                            run_start = i
+                        run_len += 1
+                    else:
+                        if run_len > 0:
+                            code = (
+                                GapFlag.NO_ACTIVITY
+                                if (is_crypto_asset and run_len == 1)
+                                else (
+                                    GapFlag.FILL
+                                    if run_len <= _MAX_FILL_BARS
+                                    else GapFlag.DATA_GAP
+                                )
+                            )
+                            gap_flag[run_start : run_start + run_len] = code
+                            run_len = 0
+                if run_len > 0:
+                    gap_flag[run_start : run_start + run_len] = (
+                        GapFlag.DATA_GAP if run_len > _MAX_FILL_BARS else GapFlag.FILL
+                    )
 
-                # Forward-fill price within session
+                df_aligned["gap_flag"] = gap_flag
+                df_aligned["is_gap"] = missing_bool
+
+                # ---- Fill prices ----
                 for col in ["open", "high", "low", "close"]:
                     if col in df_aligned.columns:
                         df_aligned[col] = df_aligned[col].ffill()
-
                 if "volume" in df_aligned.columns:
-                    df_aligned["volume"] = df_aligned["volume"].fillna(0)
+                    df_aligned["volume"] = df_aligned["volume"].where(~missing, 0)
 
-                # Drop overnight and weekend gaps (large time jumps > 12h are natural breaks)
+                # ---- Drop overnight/weekend gaps (> 12h natural break) ----
+                # These are structural — don't forward-fill across sessions.
+                # For equity intraday: 4:00 PM → 9:30 AM next day = 17.5h gap
+                # For crypto: no overnight gaps (24/7) — all gaps are fills or data issues
                 time_diffs = df_aligned.index.to_series().diff()
                 natural_break = time_diffs > pd.Timedelta("12h")
-                df_aligned = df_aligned[
-                    ~natural_break | df_aligned["is_gap"].shift(-1).fillna(False)
-                ]
+                if not is_crypto_asset:
+                    # Drop the bar after each overnight break (it's a gap-fill
+                    # across sessions, not a within-session fill)
+                    df_aligned = df_aligned[~natural_break]
 
                 aligned[symbol] = df_aligned.dropna(subset=["close"])
             else:
+                df["gap_flag"] = np.zeros(len(df), dtype=np.int8)
                 df["is_gap"] = False
                 aligned[symbol] = df
 

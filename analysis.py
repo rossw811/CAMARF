@@ -1136,16 +1136,20 @@ class CointScanner:
         aligned_data: Dict[str, pd.DataFrame],
         symbols: List[str],
     ) -> Dict[str, np.ndarray]:
-        """Build {symbol: log_close_array} once, reused for all pair tests."""
+        """
+        Build {symbol: log_close_array} once, reused for all pair EG tests.
+        DATA_GAP bars are masked to NaN: a 6-day data void produces a large
+        spurious return at the resumption bar that would artificially widen
+        the ADF test statistic toward false rejection of unit root.
+        """
         out = {}
         for sym in symbols:
             df = aligned_data.get(sym)
             if df is None or "close" not in df.columns:
                 continue
-            close = df["close"].values
+            close = _clean_close(df, exclude_flags=(GapFlag.DATA_GAP,))
             with np.errstate(invalid="ignore", divide="ignore"):
-                lp = np.log(close)
-            lp[~np.isfinite(lp)] = np.nan
+                lp = np.where(close > 0, np.log(close), np.nan)
             out[sym] = lp
         return out
 
