@@ -1,46 +1,46 @@
 {
   "pearson": {
     "0.45": {
-      "n_candidates": 9197,
+      "n_candidates": 8766,
       "n_sampled": 2000,
-      "n_eg_confirmed": 2,
-      "confirmation_rate": 0.001
+      "n_eg_confirmed": 3,
+      "confirmation_rate": 0.0015
     },
     "0.5": {
-      "n_candidates": 4330,
-      "n_sampled": 2000,
-      "n_eg_confirmed": 5,
-      "confirmation_rate": 0.0025
-    },
-    "0.55": {
-      "n_candidates": 2028,
+      "n_candidates": 3987,
       "n_sampled": 2000,
       "n_eg_confirmed": 6,
       "confirmation_rate": 0.003
     },
+    "0.55": {
+      "n_candidates": 1781,
+      "n_sampled": 1781,
+      "n_eg_confirmed": 8,
+      "confirmation_rate": 0.004491858506457047
+    },
     "0.6": {
-      "n_candidates": 996,
-      "n_sampled": 996,
+      "n_candidates": 841,
+      "n_sampled": 841,
       "n_eg_confirmed": 5,
-      "confirmation_rate": 0.0050200803212851405
+      "confirmation_rate": 0.005945303210463734
     },
     "0.65": {
-      "n_candidates": 536,
-      "n_sampled": 536,
+      "n_candidates": 447,
+      "n_sampled": 447,
       "n_eg_confirmed": 2,
-      "confirmation_rate": 0.0037313432835820895
+      "confirmation_rate": 0.0044742729306487695
     },
     "0.7": {
-      "n_candidates": 245,
-      "n_sampled": 245,
+      "n_candidates": 197,
+      "n_sampled": 197,
       "n_eg_confirmed": 1,
-      "confirmation_rate": 0.004081632653061225
+      "confirmation_rate": 0.005076142131979695
     },
     "0.75": {
-      "n_candidates": 85,
-      "n_sampled": 85,
+      "n_candidates": 73,
+      "n_sampled": 73,
       "n_eg_confirmed": 1,
-      "confirmation_rate": 0.011764705882352941
+      "confirmation_rate": 0.0136986301369863
     }
   },
   "johansen": {

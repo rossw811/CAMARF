@@ -4,7 +4,7 @@
   "completed": {
     "MMM": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:37.146471",
+      "completed_at": "2026-06-15T11:38:36.210550",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -16,17 +16,18 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "AOS": {
       "asset_class": "equity",
-      "completed_at": "2026-06-14T14:37:39.683465",
+      "completed_at": "2026-06-15T11:38:36.243140",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
+        "7D",
+        "1M",
         "4h",
         "8h",
         "1h",
@@ -39,10 +40,12 @@
     },
     "ABT": {
       "asset_class": "equity",
-      "completed_at": "2026-06-14T14:37:39.707872",
+      "completed_at": "2026-06-15T11:38:36.271655",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
+        "7D",
+        "1M",
         "4h",
         "8h",
         "1h",
@@ -55,10 +58,12 @@
     },
     "ABBV": {
       "asset_class": "equity",
-      "completed_at": "2026-06-14T14:37:39.724114",
+      "completed_at": "2026-06-15T11:38:36.298130",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
+        "7D",
+        "1M",
         "4h",
         "8h",
         "1h",
@@ -71,10 +76,12 @@
     },
     "ACN": {
       "asset_class": "equity",
-      "completed_at": "2026-06-14T14:37:39.739719",
+      "completed_at": "2026-06-15T11:38:36.328028",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
+        "7D",
+        "1M",
         "4h",
         "8h",
         "1h",
@@ -87,10 +94,12 @@
     },
     "ADBE": {
       "asset_class": "equity",
-      "completed_at": "2026-06-14T14:37:39.760516",
+      "completed_at": "2026-06-15T11:38:36.357147",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
+        "7D",
+        "1M",
         "4h",
         "8h",
         "1h",
@@ -103,10 +112,12 @@
     },
     "AMD": {
       "asset_class": "equity",
-      "completed_at": "2026-06-14T14:37:39.780748",
+      "completed_at": "2026-06-15T11:38:36.383508",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
+        "7D",
+        "1M",
         "4h",
         "8h",
         "1h",
@@ -119,10 +130,12 @@
     },
     "AES": {
       "asset_class": "equity",
-      "completed_at": "2026-06-14T14:37:39.813603",
+      "completed_at": "2026-06-15T11:38:36.411825",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
+        "7D",
+        "1M",
         "4h",
         "8h",
         "1h",
@@ -135,10 +148,12 @@
     },
     "AFL": {
       "asset_class": "equity",
-      "completed_at": "2026-06-14T14:37:40.478382",
+      "completed_at": "2026-06-15T11:38:36.443386",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
+        "7D",
+        "1M",
         "4h",
         "8h",
         "1h",
@@ -151,7 +166,7 @@
     },
     "A": {
       "asset_class": "equity",
-      "completed_at": "2026-06-14T20:17:22.162838",
+      "completed_at": "2026-06-15T11:38:36.477198",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -163,14 +178,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "APD": {
       "asset_class": "equity",
-      "completed_at": "2026-06-14T20:17:22.195561",
+      "completed_at": "2026-06-15T11:38:36.508235",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -182,14 +196,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "ABNB": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:37.230557",
+      "completed_at": "2026-06-15T11:38:36.535274",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -201,14 +214,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "AKAM": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:37.237840",
+      "completed_at": "2026-06-15T11:38:36.563811",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -220,14 +232,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "ALB": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:37.247144",
+      "completed_at": "2026-06-15T11:38:36.592039",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -239,14 +250,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "ARE": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:37.254455",
+      "completed_at": "2026-06-15T11:38:36.629717",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -258,14 +268,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "ALGN": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:37.260652",
+      "completed_at": "2026-06-15T11:38:36.653972",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -277,14 +286,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "ALLE": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:37.269269",
+      "completed_at": "2026-06-15T11:38:36.678932",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -296,14 +304,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "LNT": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:37.275909",
+      "completed_at": "2026-06-15T11:38:36.710493",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -315,14 +322,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "ALL": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:37.282391",
+      "completed_at": "2026-06-15T11:38:36.740491",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -334,14 +340,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "GOOGL": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:37.290186",
+      "completed_at": "2026-06-15T11:38:36.770230",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -353,14 +358,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "GOOG": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:37.298551",
+      "completed_at": "2026-06-15T11:38:36.799722",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -372,14 +376,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "MO": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:37.306632",
+      "completed_at": "2026-06-15T11:38:36.827521",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -391,14 +394,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "AMZN": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:37.314113",
+      "completed_at": "2026-06-15T11:38:36.855707",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -410,14 +412,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "AMCR": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:37.322491",
+      "completed_at": "2026-06-15T11:38:36.884372",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -429,14 +430,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "AEE": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:37.332018",
+      "completed_at": "2026-06-15T11:38:36.911847",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -448,14 +448,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "AEP": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:37.342037",
+      "completed_at": "2026-06-15T11:38:36.954637",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -467,14 +466,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "AXP": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:37.349612",
+      "completed_at": "2026-06-15T11:38:37.018293",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -486,14 +484,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "AIG": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:37.358758",
+      "completed_at": "2026-06-15T11:38:37.047925",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -505,14 +502,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "AMT": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:37.366743",
+      "completed_at": "2026-06-15T11:38:37.076488",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -524,14 +520,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "AWK": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:37.377425",
+      "completed_at": "2026-06-15T11:38:37.103984",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -543,14 +538,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "AMP": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:37.386896",
+      "completed_at": "2026-06-15T11:38:37.133040",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -562,14 +556,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "AME": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:37.396253",
+      "completed_at": "2026-06-15T11:38:37.162037",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -581,14 +574,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "AMGN": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:37.405773",
+      "completed_at": "2026-06-15T11:38:37.191104",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -600,14 +592,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "APH": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:37.414809",
+      "completed_at": "2026-06-15T11:38:37.219642",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -619,14 +610,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "ADI": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:37.423534",
+      "completed_at": "2026-06-15T11:38:37.248639",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -638,14 +628,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "AON": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:37.432703",
+      "completed_at": "2026-06-15T11:38:37.277601",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -657,14 +646,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "APA": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:37.442788",
+      "completed_at": "2026-06-15T11:38:37.304622",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -676,14 +664,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "APO": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:37.449105",
+      "completed_at": "2026-06-15T11:38:37.334136",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -695,14 +682,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "AAPL": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:37.458506",
+      "completed_at": "2026-06-15T11:38:37.363135",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -714,14 +700,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "AMAT": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:37.466914",
+      "completed_at": "2026-06-15T11:38:37.393173",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -733,14 +718,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "APP": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:37.476410",
+      "completed_at": "2026-06-15T11:38:37.431544",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -752,14 +736,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "APTV": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:37.483185",
+      "completed_at": "2026-06-15T11:38:37.461256",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -771,14 +754,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "ACGL": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:37.491990",
+      "completed_at": "2026-06-15T11:38:37.486979",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -790,14 +772,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "ADM": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:37.500377",
+      "completed_at": "2026-06-15T11:38:37.515483",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -809,14 +790,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "ARES": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:37.510608",
+      "completed_at": "2026-06-15T11:38:37.544564",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -828,14 +808,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "ANET": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:37.518622",
+      "completed_at": "2026-06-15T11:38:37.572968",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -847,14 +826,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "AJG": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:37.526918",
+      "completed_at": "2026-06-15T11:38:37.591270",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -866,14 +844,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "AIZ": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:37.535248",
+      "completed_at": "2026-06-15T11:38:37.619527",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -885,14 +862,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "T": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:37.542020",
+      "completed_at": "2026-06-15T11:38:37.650557",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -904,14 +880,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "ATO": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:37.549826",
+      "completed_at": "2026-06-15T11:38:37.680895",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -923,14 +898,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "ADSK": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:37.558163",
+      "completed_at": "2026-06-15T11:38:37.713023",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -942,14 +916,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "ADP": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:37.567475",
+      "completed_at": "2026-06-15T11:38:37.746150",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -961,14 +934,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "AZO": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:37.575411",
+      "completed_at": "2026-06-15T11:38:37.782173",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -980,14 +952,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "AVB": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:37.583420",
+      "completed_at": "2026-06-15T11:38:37.810046",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -999,14 +970,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "AVY": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:37.592896",
+      "completed_at": "2026-06-15T11:38:37.839089",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -1018,14 +988,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "AXON": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:37.602367",
+      "completed_at": "2026-06-15T11:38:37.870089",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -1037,14 +1006,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "BKR": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:37.612820",
+      "completed_at": "2026-06-15T11:38:37.901672",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -1056,14 +1024,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "BALL": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:37.622570",
+      "completed_at": "2026-06-15T11:38:37.930668",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -1075,14 +1042,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "BAC": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:37.631338",
+      "completed_at": "2026-06-15T11:38:37.958666",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -1094,14 +1060,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "BAX": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:37.639819",
+      "completed_at": "2026-06-15T11:38:37.987714",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -1113,14 +1078,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "BDX": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:37.647386",
+      "completed_at": "2026-06-15T11:38:38.015292",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -1132,14 +1096,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "BRK B": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:37.656626",
+      "completed_at": "2026-06-15T11:38:38.042764",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -1151,14 +1114,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "BBY": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:37.664320",
+      "completed_at": "2026-06-15T11:38:38.069816",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -1170,14 +1132,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "TECH": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:37.673407",
+      "completed_at": "2026-06-15T11:38:38.098433",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -1189,14 +1150,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "BIIB": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:37.682994",
+      "completed_at": "2026-06-15T11:38:38.129430",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -1208,14 +1168,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "BLK": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:37.691039",
+      "completed_at": "2026-06-15T11:38:38.158597",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -1227,14 +1186,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "BX": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:37.700506",
+      "completed_at": "2026-06-15T11:38:38.193152",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -1246,14 +1204,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "XYZ": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:37.713333",
+      "completed_at": "2026-06-15T11:38:38.222731",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -1265,7 +1222,6 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
@@ -1288,7 +1244,7 @@
     },
     "BA": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:37.731292",
+      "completed_at": "2026-06-15T11:38:38.251728",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -1300,14 +1256,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "BKNG": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:37.740148",
+      "completed_at": "2026-06-15T11:38:38.285779",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -1319,14 +1274,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "BSX": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:37.748131",
+      "completed_at": "2026-06-15T11:38:38.314289",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -1338,14 +1292,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "BMY": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:37.758610",
+      "completed_at": "2026-06-15T11:38:38.342285",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -1357,14 +1310,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "AVGO": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:37.766337",
+      "completed_at": "2026-06-15T11:38:38.371548",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -1376,14 +1328,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "BR": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:37.775083",
+      "completed_at": "2026-06-15T11:38:38.400241",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -1395,14 +1346,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "BRO": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:37.785021",
+      "completed_at": "2026-06-15T11:38:38.427231",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -1414,14 +1364,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "BF B": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:37.793800",
+      "completed_at": "2026-06-15T11:38:38.456771",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -1433,14 +1382,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "BLDR": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:37.800716",
+      "completed_at": "2026-06-15T11:38:38.485808",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -1452,14 +1400,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "BG": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:37.810633",
+      "completed_at": "2026-06-15T11:38:38.515351",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -1471,14 +1418,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "BXP": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:37.820370",
+      "completed_at": "2026-06-15T11:38:38.543342",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -1490,14 +1436,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "CHRW": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:37.829748",
+      "completed_at": "2026-06-15T11:38:38.572300",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -1509,14 +1454,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "CDNS": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:37.839406",
+      "completed_at": "2026-06-15T11:38:38.599741",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -1528,14 +1472,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "CPT": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:37.849425",
+      "completed_at": "2026-06-15T11:38:38.627777",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -1547,14 +1490,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "CPB": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:37.857608",
+      "completed_at": "2026-06-15T11:38:38.656695",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -1566,14 +1508,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "COF": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:37.868715",
+      "completed_at": "2026-06-15T11:38:38.684738",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -1585,14 +1526,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "CAH": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:37.877830",
+      "completed_at": "2026-06-15T11:38:38.718292",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -1604,14 +1544,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "CCL": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:37.885345",
+      "completed_at": "2026-06-15T11:38:38.746291",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -1623,14 +1562,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "CARR": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:37.894495",
+      "completed_at": "2026-06-15T11:38:38.780629",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -1642,14 +1580,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "CVNA": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:37.902854",
+      "completed_at": "2026-06-15T11:38:38.815106",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -1661,14 +1598,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "CASY": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:37.914009",
+      "completed_at": "2026-06-15T11:38:38.845789",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -1680,14 +1616,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "CAT": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:37.922942",
+      "completed_at": "2026-06-15T11:38:38.873314",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -1699,14 +1634,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "CBOE": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:37.931955",
+      "completed_at": "2026-06-15T11:38:38.903935",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -1718,14 +1652,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "CBRE": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:37.940347",
+      "completed_at": "2026-06-15T11:38:38.930806",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -1737,14 +1670,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "CDW": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:37.948909",
+      "completed_at": "2026-06-15T11:38:38.959781",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -1756,14 +1688,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "COR": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:37.958657",
+      "completed_at": "2026-06-15T11:38:38.988362",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -1775,14 +1706,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "CNC": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:37.968054",
+      "completed_at": "2026-06-15T11:38:39.015938",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -1794,14 +1724,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "CNP": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:37.978070",
+      "completed_at": "2026-06-15T11:38:39.044936",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -1813,14 +1742,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "CF": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:37.985749",
+      "completed_at": "2026-06-15T11:38:39.072926",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -1832,14 +1760,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "CRL": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:37.995364",
+      "completed_at": "2026-06-15T11:38:39.100790",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -1851,14 +1778,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "SCHW": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:38.004175",
+      "completed_at": "2026-06-15T11:38:39.128420",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -1870,14 +1796,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "CHTR": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:38.012169",
+      "completed_at": "2026-06-15T11:38:39.157228",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -1889,14 +1814,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "CVX": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:38.023188",
+      "completed_at": "2026-06-15T11:38:39.185229",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -1908,14 +1832,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "CMG": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:38.030756",
+      "completed_at": "2026-06-15T11:38:39.214107",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -1927,14 +1850,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "CB": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:38.040281",
+      "completed_at": "2026-06-15T11:38:39.242373",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -1946,14 +1868,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "CHD": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:38.048870",
+      "completed_at": "2026-06-15T11:38:39.271747",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -1965,14 +1886,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "CIEN": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:38.057405",
+      "completed_at": "2026-06-15T11:38:39.300460",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -1984,14 +1904,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "CI": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:38.066674",
+      "completed_at": "2026-06-15T11:38:39.327457",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -2003,14 +1922,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "CINF": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:38.075586",
+      "completed_at": "2026-06-15T11:38:39.355417",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -2022,14 +1940,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "CTAS": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:38.089504",
+      "completed_at": "2026-06-15T11:38:39.382813",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -2041,14 +1958,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "CSCO": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:38.097863",
+      "completed_at": "2026-06-15T11:38:39.412460",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -2060,14 +1976,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "C": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:38.108706",
+      "completed_at": "2026-06-15T11:38:39.440278",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -2079,14 +1994,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "CFG": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:38.118455",
+      "completed_at": "2026-06-15T11:38:39.469329",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -2098,14 +2012,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "CLX": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:38.127657",
+      "completed_at": "2026-06-15T11:38:39.498271",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -2117,14 +2030,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "CME": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:38.138086",
+      "completed_at": "2026-06-15T11:38:39.526333",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -2136,14 +2048,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "CMS": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:38.148754",
+      "completed_at": "2026-06-15T11:38:39.555350",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -2155,14 +2066,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "KO": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:38.157586",
+      "completed_at": "2026-06-15T11:38:39.583736",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -2174,14 +2084,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "CTSH": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:38.166281",
+      "completed_at": "2026-06-15T11:38:39.612553",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -2193,14 +2102,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "COHR": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:38.177098",
+      "completed_at": "2026-06-15T11:38:39.639775",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -2212,14 +2120,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "COIN": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:38.186120",
+      "completed_at": "2026-06-15T11:38:39.668774",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -2231,7 +2138,6 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
@@ -2257,7 +2163,7 @@
     },
     "CMCSA": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:38.205439",
+      "completed_at": "2026-06-15T11:38:39.697340",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -2269,14 +2175,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "FIX": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:38.214951",
+      "completed_at": "2026-06-15T11:38:39.725765",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -2288,14 +2193,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "CAG": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:38.222483",
+      "completed_at": "2026-06-15T11:38:39.754670",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -2307,14 +2211,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "COP": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:38.232755",
+      "completed_at": "2026-06-15T11:38:39.774848",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -2326,14 +2229,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "ED": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:38.243592",
+      "completed_at": "2026-06-15T11:38:39.793840",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -2345,14 +2247,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "STZ": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:38.251100",
+      "completed_at": "2026-06-15T11:38:39.821721",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -2364,14 +2265,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "CEG": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:38.261189",
+      "completed_at": "2026-06-15T11:38:39.848920",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -2383,14 +2283,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "COO": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:38.271740",
+      "completed_at": "2026-06-15T11:38:39.874291",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -2402,14 +2301,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "CPRT": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:38.285043",
+      "completed_at": "2026-06-15T11:38:39.897850",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -2421,14 +2319,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "GLW": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:38.295454",
+      "completed_at": "2026-06-15T11:38:39.923978",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -2440,14 +2337,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "CPAY": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:38.303743",
+      "completed_at": "2026-06-15T11:38:39.951790",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -2459,14 +2355,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "CTVA": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:38.313382",
+      "completed_at": "2026-06-15T11:38:39.980255",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -2478,14 +2373,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "CSGP": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:38.321458",
+      "completed_at": "2026-06-15T11:38:40.008942",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -2497,14 +2391,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "COST": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:38.332502",
+      "completed_at": "2026-06-15T11:38:40.040780",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -2516,14 +2409,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "CRH": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:38.344121",
+      "completed_at": "2026-06-15T11:38:40.073813",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -2535,14 +2427,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "CRWD": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:38.355335",
+      "completed_at": "2026-06-15T11:38:40.102494",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -2554,14 +2445,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "CCI": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:38.363951",
+      "completed_at": "2026-06-15T11:38:40.128576",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -2573,14 +2463,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "CSX": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:38.373522",
+      "completed_at": "2026-06-15T11:38:40.156799",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -2592,14 +2481,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "CMI": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:38.385187",
+      "completed_at": "2026-06-15T11:38:40.185192",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -2611,14 +2499,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "CVS": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:38.394025",
+      "completed_at": "2026-06-15T11:38:40.213246",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -2630,14 +2517,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "DHR": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:38.403669",
+      "completed_at": "2026-06-15T11:38:40.241712",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -2649,14 +2535,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "DRI": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:38.415175",
+      "completed_at": "2026-06-15T11:38:40.271134",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -2668,14 +2553,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "DDOG": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:38.425784",
+      "completed_at": "2026-06-15T11:38:40.299774",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -2687,14 +2571,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "DVA": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:38.435041",
+      "completed_at": "2026-06-15T11:38:40.328277",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -2706,14 +2589,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "DECK": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:38.447387",
+      "completed_at": "2026-06-15T11:38:40.356946",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -2725,14 +2607,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "DE": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:38.455215",
+      "completed_at": "2026-06-15T11:38:40.385906",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -2744,14 +2625,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "DELL": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:38.466135",
+      "completed_at": "2026-06-15T11:38:40.413063",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -2763,14 +2643,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "DAL": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:38.474857",
+      "completed_at": "2026-06-15T11:38:40.441450",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -2782,14 +2661,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "DVN": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:38.486655",
+      "completed_at": "2026-06-15T11:38:40.469778",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -2801,14 +2679,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "DXCM": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:38.496433",
+      "completed_at": "2026-06-15T11:38:40.498066",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -2820,14 +2697,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "FANG": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:38.506587",
+      "completed_at": "2026-06-15T11:38:40.526989",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -2839,14 +2715,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "DLR": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:38.516598",
+      "completed_at": "2026-06-15T11:38:40.554868",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -2858,14 +2733,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "DG": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:38.526662",
+      "completed_at": "2026-06-15T11:38:40.583214",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -2877,14 +2751,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "DLTR": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:38.536581",
+      "completed_at": "2026-06-15T11:38:40.612116",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -2896,14 +2769,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "D": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:38.548132",
+      "completed_at": "2026-06-15T11:38:40.640360",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -2915,14 +2787,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "DPZ": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:38.558442",
+      "completed_at": "2026-06-15T11:38:40.668827",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -2934,14 +2805,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "DASH": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:38.567616",
+      "completed_at": "2026-06-15T11:38:40.695001",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -2953,14 +2823,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "DOV": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:38.577113",
+      "completed_at": "2026-06-15T11:38:40.720101",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -2972,14 +2841,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "DOW": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:38.587606",
+      "completed_at": "2026-06-15T11:38:40.746980",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -2991,14 +2859,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "DHI": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:38.599124",
+      "completed_at": "2026-06-15T11:38:40.774260",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -3010,14 +2877,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "DTE": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:38.608904",
+      "completed_at": "2026-06-15T11:38:40.802769",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -3029,14 +2895,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "DUK": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:38.619215",
+      "completed_at": "2026-06-15T11:38:40.833059",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -3048,14 +2913,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "DD": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:38.630003",
+      "completed_at": "2026-06-15T11:38:40.867477",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -3067,14 +2931,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "ETN": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:38.639015",
+      "completed_at": "2026-06-15T11:38:40.908563",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -3086,14 +2949,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "EBAY": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:38.650117",
+      "completed_at": "2026-06-15T11:38:40.936043",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -3105,14 +2967,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "SATS": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:38.660580",
+      "completed_at": "2026-06-15T11:38:40.958522",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -3124,14 +2985,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "ECL": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:38.670403",
+      "completed_at": "2026-06-15T11:38:40.983589",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -3143,14 +3003,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "EIX": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:38.682008",
+      "completed_at": "2026-06-15T11:38:41.008306",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -3162,14 +3021,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "EW": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:38.690097",
+      "completed_at": "2026-06-15T11:38:41.031971",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -3181,14 +3039,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "EA": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:38.699849",
+      "completed_at": "2026-06-15T11:38:41.056054",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -3200,14 +3057,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "ELV": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:38.711953",
+      "completed_at": "2026-06-15T11:38:41.093324",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -3219,14 +3075,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "EME": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:38.721842",
+      "completed_at": "2026-06-15T11:38:41.129087",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -3238,14 +3093,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "EMR": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:38.729593",
+      "completed_at": "2026-06-15T11:38:41.164302",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -3257,14 +3111,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "ETR": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:38.741355",
+      "completed_at": "2026-06-15T11:38:41.708928",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -3276,14 +3129,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "EOG": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:38.752146",
+      "completed_at": "2026-06-15T11:38:41.746433",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -3295,14 +3147,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "EQT": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:38.763161",
+      "completed_at": "2026-06-15T11:38:41.778813",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -3314,14 +3165,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "EFX": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:38.773387",
+      "completed_at": "2026-06-15T11:38:41.807536",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -3333,14 +3183,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "EQIX": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:38.782095",
+      "completed_at": "2026-06-15T11:38:41.842055",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -3352,14 +3201,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "EQR": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:38.791070",
+      "completed_at": "2026-06-15T11:38:41.872710",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -3371,14 +3219,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "ERIE": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:38.802286",
+      "completed_at": "2026-06-15T11:38:41.899813",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -3390,14 +3237,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "ESS": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:38.814557",
+      "completed_at": "2026-06-15T11:38:41.932678",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -3409,14 +3255,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "EL": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:38.826801",
+      "completed_at": "2026-06-15T11:38:41.955921",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -3428,14 +3273,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "EG": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:38.836977",
+      "completed_at": "2026-06-15T11:38:41.979022",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -3447,14 +3291,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "EVRG": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:38.849330",
+      "completed_at": "2026-06-15T11:38:42.009134",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -3466,7 +3309,6 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
@@ -3492,7 +3334,7 @@
     },
     "EXC": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:38.870020",
+      "completed_at": "2026-06-15T11:38:42.036625",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -3504,14 +3346,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "EXE": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:38.881728",
+      "completed_at": "2026-06-15T11:38:42.064587",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -3523,14 +3364,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "EXPE": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:38.893387",
+      "completed_at": "2026-06-15T11:38:42.091390",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -3542,14 +3382,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "EXPD": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:38.904523",
+      "completed_at": "2026-06-15T11:38:42.117061",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -3561,14 +3400,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "EXR": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:38.919779",
+      "completed_at": "2026-06-15T11:38:42.136751",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -3580,14 +3418,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "XOM": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:38.928602",
+      "completed_at": "2026-06-15T11:38:42.164542",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -3599,14 +3436,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "FFIV": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:38.940951",
+      "completed_at": "2026-06-15T11:38:42.191034",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -3618,14 +3454,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "FDS": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:38.951525",
+      "completed_at": "2026-06-15T11:38:42.215722",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -3637,14 +3472,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "FICO": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:38.962340",
+      "completed_at": "2026-06-15T11:38:42.245124",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -3656,14 +3490,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "FAST": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:38.973218",
+      "completed_at": "2026-06-15T11:38:42.273215",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -3675,14 +3508,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "FRT": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:38.984792",
+      "completed_at": "2026-06-15T11:38:42.300745",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -3694,14 +3526,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "FDX": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:38.994666",
+      "completed_at": "2026-06-15T11:38:42.328755",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -3713,14 +3544,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "FIS": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:39.006468",
+      "completed_at": "2026-06-15T11:38:42.360334",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -3732,14 +3562,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "FITB": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:39.016618",
+      "completed_at": "2026-06-15T11:38:42.391100",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -3751,14 +3580,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "FSLR": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:39.028373",
+      "completed_at": "2026-06-15T11:38:42.419732",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -3770,14 +3598,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "FE": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:39.038629",
+      "completed_at": "2026-06-15T11:38:42.448287",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -3789,14 +3616,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "FISV": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:39.048831",
+      "completed_at": "2026-06-15T11:38:42.477260",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -3808,14 +3634,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "F": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:39.059509",
+      "completed_at": "2026-06-15T11:38:42.504202",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -3827,14 +3652,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "FTNT": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:39.069569",
+      "completed_at": "2026-06-15T11:38:42.531704",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -3846,14 +3670,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "FTV": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:39.086325",
+      "completed_at": "2026-06-15T11:38:42.559963",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -3865,14 +3688,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "FOXA": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:39.096078",
+      "completed_at": "2026-06-15T11:38:42.599464",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -3884,14 +3706,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "FOX": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:39.104587",
+      "completed_at": "2026-06-15T11:38:42.642082",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -3903,14 +3724,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "BEN": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:39.116402",
+      "completed_at": "2026-06-15T11:38:42.681793",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -3922,14 +3742,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "FCX": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:39.129137",
+      "completed_at": "2026-06-15T11:38:42.734889",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -3941,14 +3760,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "GRMN": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:39.140639",
+      "completed_at": "2026-06-15T11:38:42.769139",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -3960,14 +3778,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "IT": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:39.151610",
+      "completed_at": "2026-06-15T11:38:42.797623",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -3979,14 +3796,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "GE": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:39.161425",
+      "completed_at": "2026-06-15T11:38:42.828095",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -3998,14 +3814,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "GEHC": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:39.172731",
+      "completed_at": "2026-06-15T11:38:42.864338",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -4017,14 +3832,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "GEV": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:39.184175",
+      "completed_at": "2026-06-15T11:38:42.896808",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -4032,17 +3846,17 @@
         "1M",
         "4h",
         "8h",
+        "1h",
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "GEN": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:39.194255",
+      "completed_at": "2026-06-15T11:38:42.924803",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -4054,14 +3868,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "GNRC": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:39.207016",
+      "completed_at": "2026-06-15T11:38:42.952752",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -4073,14 +3886,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "GD": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:39.219166",
+      "completed_at": "2026-06-15T11:38:42.982446",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -4092,14 +3904,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "GIS": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:39.230968",
+      "completed_at": "2026-06-15T11:38:43.010696",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -4111,14 +3922,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "GM": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:39.241358",
+      "completed_at": "2026-06-15T11:38:43.038067",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -4130,14 +3940,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "GPC": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:39.251957",
+      "completed_at": "2026-06-15T11:38:43.065211",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -4149,14 +3958,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "GILD": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:39.263972",
+      "completed_at": "2026-06-15T11:38:43.093939",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -4168,14 +3976,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "GPN": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:39.276353",
+      "completed_at": "2026-06-15T11:38:43.120287",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -4187,14 +3994,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "GL": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:39.288113",
+      "completed_at": "2026-06-15T11:38:43.151179",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -4206,14 +4012,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "GDDY": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:39.297278",
+      "completed_at": "2026-06-15T11:38:43.178416",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -4225,14 +4030,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "GS": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:39.309532",
+      "completed_at": "2026-06-15T11:38:43.206164",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -4244,14 +4048,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "HAL": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:39.320602",
+      "completed_at": "2026-06-15T11:38:43.234729",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -4263,14 +4066,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "HIG": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:39.334046",
+      "completed_at": "2026-06-15T11:38:43.262244",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -4282,14 +4084,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "HAS": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:39.344397",
+      "completed_at": "2026-06-15T11:38:43.290400",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -4301,14 +4102,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "HCA": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:39.354766",
+      "completed_at": "2026-06-15T11:38:43.318264",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -4320,14 +4120,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "DOC": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:39.367848",
+      "completed_at": "2026-06-15T11:38:43.348213",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -4339,14 +4138,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "HSIC": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:39.380819",
+      "completed_at": "2026-06-15T11:38:43.377571",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -4358,14 +4156,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "HSY": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:39.391565",
+      "completed_at": "2026-06-15T11:38:43.406592",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -4377,14 +4174,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "HPE": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:39.404560",
+      "completed_at": "2026-06-15T11:38:43.434461",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -4396,14 +4192,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "HLT": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:39.414554",
+      "completed_at": "2026-06-15T11:38:43.469683",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -4415,14 +4210,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "HD": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:39.426736",
+      "completed_at": "2026-06-15T11:38:43.505923",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -4434,14 +4228,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "HON": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:39.438390",
+      "completed_at": "2026-06-15T11:38:43.535311",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -4453,14 +4246,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "HRL": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:39.450469",
+      "completed_at": "2026-06-15T11:38:43.561848",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -4472,14 +4264,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "HST": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:39.461144",
+      "completed_at": "2026-06-15T11:38:43.589032",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -4491,14 +4282,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "HWM": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:39.472059",
+      "completed_at": "2026-06-15T11:38:43.617487",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -4510,14 +4300,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "HPQ": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:39.485716",
+      "completed_at": "2026-06-15T11:38:43.644613",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -4529,14 +4318,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "HUBB": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:39.496836",
+      "completed_at": "2026-06-15T11:38:43.672909",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -4548,14 +4336,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "HUM": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:39.507098",
+      "completed_at": "2026-06-15T11:38:43.700924",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -4567,14 +4354,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "HBAN": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:39.519138",
+      "completed_at": "2026-06-15T11:38:43.730215",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -4586,14 +4372,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "HII": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:39.532242",
+      "completed_at": "2026-06-15T11:38:43.758684",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -4605,14 +4390,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "IBM": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:39.543177",
+      "completed_at": "2026-06-15T11:38:43.786388",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -4624,14 +4408,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "IEX": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:39.555485",
+      "completed_at": "2026-06-15T11:38:43.814633",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -4643,14 +4426,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "IDXX": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:39.567884",
+      "completed_at": "2026-06-15T11:38:43.843523",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -4662,14 +4444,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "ITW": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:39.579590",
+      "completed_at": "2026-06-15T11:38:43.878029",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -4681,14 +4462,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "INCY": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:39.590534",
+      "completed_at": "2026-06-15T11:38:43.908584",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -4700,14 +4480,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "IR": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:39.601481",
+      "completed_at": "2026-06-15T11:38:43.938251",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -4719,14 +4498,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "PODD": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:39.614094",
+      "completed_at": "2026-06-15T11:38:43.967664",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -4738,14 +4516,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "INTC": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:39.624609",
+      "completed_at": "2026-06-15T11:38:43.995969",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -4757,14 +4534,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "IBKR": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:39.637887",
+      "completed_at": "2026-06-15T11:38:44.024417",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -4776,14 +4552,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "ICE": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:39.649858",
+      "completed_at": "2026-06-15T11:38:44.055833",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -4795,14 +4570,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "IFF": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:39.661783",
+      "completed_at": "2026-06-15T11:38:44.085086",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -4814,14 +4588,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "IP": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:39.675109",
+      "completed_at": "2026-06-15T11:38:44.112818",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -4833,14 +4606,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "INTU": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:39.686265",
+      "completed_at": "2026-06-15T11:38:44.141146",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -4852,14 +4624,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "ISRG": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:39.698660",
+      "completed_at": "2026-06-15T11:38:44.160244",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -4871,14 +4642,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "IVZ": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:39.710143",
+      "completed_at": "2026-06-15T11:38:44.181459",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -4890,14 +4660,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "INVH": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:39.721339",
+      "completed_at": "2026-06-15T11:38:44.210956",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -4909,14 +4678,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "IQV": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:39.733872",
+      "completed_at": "2026-06-15T11:38:44.241174",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -4928,14 +4696,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "IRM": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:39.743382",
+      "completed_at": "2026-06-15T11:38:44.269783",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -4947,14 +4714,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "JBHT": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:39.756853",
+      "completed_at": "2026-06-15T11:38:44.299157",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -4966,14 +4732,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "JBL": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:39.769341",
+      "completed_at": "2026-06-15T11:38:44.326613",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -4985,14 +4750,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "JKHY": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:39.781177",
+      "completed_at": "2026-06-15T11:38:44.354685",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -5004,14 +4768,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "J": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:39.794325",
+      "completed_at": "2026-06-15T11:38:44.382882",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -5023,14 +4786,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "JNJ": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:39.805344",
+      "completed_at": "2026-06-15T11:38:44.410705",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -5042,14 +4804,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "JCI": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:39.816355",
+      "completed_at": "2026-06-15T11:38:44.440010",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -5061,14 +4822,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "JPM": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:39.830025",
+      "completed_at": "2026-06-15T11:38:44.469016",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -5080,14 +4840,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "KVUE": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:39.842550",
+      "completed_at": "2026-06-15T11:38:44.503327",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -5099,14 +4858,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "KDP": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:39.856063",
+      "completed_at": "2026-06-15T11:38:44.531800",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -5118,14 +4876,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "KEY": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:39.867773",
+      "completed_at": "2026-06-15T11:38:44.559751",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -5137,14 +4894,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "KEYS": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:39.877716",
+      "completed_at": "2026-06-15T11:38:44.587156",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -5156,14 +4912,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "KMB": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:39.889736",
+      "completed_at": "2026-06-15T11:38:44.614442",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -5175,14 +4930,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "KIM": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:39.900858",
+      "completed_at": "2026-06-15T11:38:44.643409",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -5194,14 +4948,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "KMI": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:39.912879",
+      "completed_at": "2026-06-15T11:38:44.670484",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -5213,14 +4966,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "KKR": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:39.926617",
+      "completed_at": "2026-06-15T11:38:44.698911",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -5232,14 +4984,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "KLAC": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:39.940521",
+      "completed_at": "2026-06-15T11:38:44.727524",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -5251,14 +5002,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "KHC": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:39.953033",
+      "completed_at": "2026-06-15T11:38:44.760393",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -5270,14 +5020,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "KR": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:39.966573",
+      "completed_at": "2026-06-15T11:38:44.785818",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -5289,14 +5038,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "LHX": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:39.978795",
+      "completed_at": "2026-06-15T11:38:44.803801",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -5308,14 +5056,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "LH": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:39.990576",
+      "completed_at": "2026-06-15T11:38:44.826675",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -5327,14 +5074,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "LRCX": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:40.002102",
+      "completed_at": "2026-06-15T11:38:44.845951",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -5346,14 +5092,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "LVS": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:40.014395",
+      "completed_at": "2026-06-15T11:38:44.867056",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -5365,14 +5110,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "LDOS": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:40.027114",
+      "completed_at": "2026-06-15T11:38:44.884705",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -5384,14 +5128,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "LEN": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:40.039819",
+      "completed_at": "2026-06-15T11:38:44.908653",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -5403,14 +5146,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "LII": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:40.053884",
+      "completed_at": "2026-06-15T11:38:44.938046",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -5422,14 +5164,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "LLY": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:40.066258",
+      "completed_at": "2026-06-15T11:38:44.964639",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -5441,14 +5182,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "LIN": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:40.077789",
+      "completed_at": "2026-06-15T11:38:44.988867",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -5460,14 +5200,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "LYV": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:40.090810",
+      "completed_at": "2026-06-15T11:38:45.016731",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -5479,14 +5218,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "LMT": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:40.103788",
+      "completed_at": "2026-06-15T11:38:45.044243",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -5498,14 +5236,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "L": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:40.115867",
+      "completed_at": "2026-06-15T11:38:45.072529",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -5517,14 +5254,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "LOW": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:40.127543",
+      "completed_at": "2026-06-15T11:38:45.102642",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -5536,14 +5272,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "LULU": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:40.140514",
+      "completed_at": "2026-06-15T11:38:45.129734",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -5555,14 +5290,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "LITE": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:40.153406",
+      "completed_at": "2026-06-15T11:38:45.161198",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -5574,14 +5308,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "LYB": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:40.166995",
+      "completed_at": "2026-06-15T11:38:45.191303",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -5593,14 +5326,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "MTB": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:40.178586",
+      "completed_at": "2026-06-15T11:38:45.220304",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -5612,14 +5344,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "MPC": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:40.193425",
+      "completed_at": "2026-06-15T11:38:45.249185",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -5631,14 +5362,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "MAR": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:40.205933",
+      "completed_at": "2026-06-15T11:38:45.278111",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -5650,14 +5380,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "MRSH": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:40.218493",
+      "completed_at": "2026-06-15T11:38:45.307629",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -5669,14 +5398,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "MLM": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:40.231864",
+      "completed_at": "2026-06-15T11:38:45.335827",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -5688,14 +5416,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "MAS": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:40.242884",
+      "completed_at": "2026-06-15T11:38:45.364269",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -5707,14 +5434,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "MA": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:40.256523",
+      "completed_at": "2026-06-15T11:38:45.392586",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -5726,14 +5452,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "MKC": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:40.268211",
+      "completed_at": "2026-06-15T11:38:45.420299",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -5745,14 +5470,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "MCD": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:40.282228",
+      "completed_at": "2026-06-15T11:38:45.449295",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -5764,14 +5488,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "MCK": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:40.290743",
+      "completed_at": "2026-06-15T11:38:45.478340",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -5783,14 +5506,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "MDT": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:40.303744",
+      "completed_at": "2026-06-15T11:38:45.507826",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -5802,14 +5524,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "MRK": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:40.319538",
+      "completed_at": "2026-06-15T11:38:45.538337",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -5821,14 +5542,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "META": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:40.330339",
+      "completed_at": "2026-06-15T11:38:45.567397",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -5840,14 +5560,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "MET": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:40.346617",
+      "completed_at": "2026-06-15T11:38:45.606673",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -5859,14 +5578,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "MTD": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:40.356326",
+      "completed_at": "2026-06-15T11:38:45.635491",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -5878,14 +5596,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "MGM": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:40.372374",
+      "completed_at": "2026-06-15T11:38:45.662610",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -5897,14 +5614,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "MCHP": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:40.384645",
+      "completed_at": "2026-06-15T11:38:45.690609",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -5916,14 +5632,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "MU": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:40.397554",
+      "completed_at": "2026-06-15T11:38:45.720519",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -5935,14 +5650,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "MSFT": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:40.412057",
+      "completed_at": "2026-06-15T11:38:45.748603",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -5954,14 +5668,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "MAA": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:40.422446",
+      "completed_at": "2026-06-15T11:38:45.777031",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -5973,14 +5686,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "MRNA": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:40.436363",
+      "completed_at": "2026-06-15T11:38:45.806495",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -5992,14 +5704,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "TAP": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:40.457525",
+      "completed_at": "2026-06-15T11:38:45.839621",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -6011,14 +5722,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "MDLZ": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:40.468302",
+      "completed_at": "2026-06-15T11:38:45.868167",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -6030,14 +5740,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "MPWR": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:40.482735",
+      "completed_at": "2026-06-15T11:38:45.897830",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -6049,14 +5758,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "MNST": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:40.493005",
+      "completed_at": "2026-06-15T11:38:45.926939",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -6068,14 +5776,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "MCO": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:40.507943",
+      "completed_at": "2026-06-15T11:38:45.956531",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -6087,14 +5794,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "MS": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:40.519688",
+      "completed_at": "2026-06-15T11:38:45.985183",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -6106,14 +5812,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "MOS": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:40.533742",
+      "completed_at": "2026-06-15T11:38:46.014069",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -6125,14 +5830,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "MSI": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:40.548323",
+      "completed_at": "2026-06-15T11:38:46.043299",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -6144,14 +5848,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "MSCI": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:40.560336",
+      "completed_at": "2026-06-15T11:38:46.072373",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -6163,14 +5866,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "NDAQ": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:40.575019",
+      "completed_at": "2026-06-15T11:38:46.099984",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -6182,14 +5884,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "NTAP": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:40.589925",
+      "completed_at": "2026-06-15T11:38:46.130863",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -6201,14 +5902,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "NFLX": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:40.602837",
+      "completed_at": "2026-06-15T11:38:46.161321",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -6220,14 +5920,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "NEM": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:40.610519",
+      "completed_at": "2026-06-15T11:38:46.188385",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -6239,14 +5938,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "NWSA": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:40.629256",
+      "completed_at": "2026-06-15T11:38:46.216937",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -6258,14 +5956,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "NWS": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:40.638675",
+      "completed_at": "2026-06-15T11:38:46.245996",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -6277,14 +5974,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "NEE": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:40.652239",
+      "completed_at": "2026-06-15T11:38:46.274652",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -6296,14 +5992,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "NKE": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:40.668300",
+      "completed_at": "2026-06-15T11:38:46.303389",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -6315,14 +6010,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "NI": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:40.684551",
+      "completed_at": "2026-06-15T11:38:46.335329",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -6334,14 +6028,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "NDSN": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:40.697804",
+      "completed_at": "2026-06-15T11:38:46.354934",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -6353,14 +6046,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "NSC": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:40.708715",
+      "completed_at": "2026-06-15T11:38:46.377644",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -6372,14 +6064,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "NTRS": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:40.724386",
+      "completed_at": "2026-06-15T11:38:46.405587",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -6391,14 +6082,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "NOC": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:40.740068",
+      "completed_at": "2026-06-15T11:38:46.433276",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -6410,14 +6100,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "NCLH": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:40.748654",
+      "completed_at": "2026-06-15T11:38:46.460898",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -6429,14 +6118,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "NRG": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:40.761432",
+      "completed_at": "2026-06-15T11:38:46.485197",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -6448,14 +6136,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "NUE": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:40.782022",
+      "completed_at": "2026-06-15T11:38:46.513119",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -6467,14 +6154,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "NVDA": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:40.794264",
+      "completed_at": "2026-06-15T11:38:46.540211",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -6486,14 +6172,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "NVR": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:40.808825",
+      "completed_at": "2026-06-15T11:38:46.566630",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -6505,14 +6190,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "NXPI": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:40.818696",
+      "completed_at": "2026-06-15T11:38:46.595715",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -6524,14 +6208,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "ORLY": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:40.832192",
+      "completed_at": "2026-06-15T11:38:46.623337",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -6543,14 +6226,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "OXY": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:40.850180",
+      "completed_at": "2026-06-15T11:38:46.651957",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -6562,14 +6244,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "ODFL": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:40.860824",
+      "completed_at": "2026-06-15T11:38:46.679676",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -6581,14 +6262,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "OMC": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:40.874217",
+      "completed_at": "2026-06-15T11:38:46.707577",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -6600,14 +6280,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "ON": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:40.888048",
+      "completed_at": "2026-06-15T11:38:46.735856",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -6619,14 +6298,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "OKE": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:40.905878",
+      "completed_at": "2026-06-15T11:38:46.765112",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -6638,14 +6316,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "ORCL": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:40.919714",
+      "completed_at": "2026-06-15T11:38:46.794167",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -6657,14 +6334,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "OTIS": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:40.928084",
+      "completed_at": "2026-06-15T11:38:46.821462",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -6676,14 +6352,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "PCAR": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:40.945711",
+      "completed_at": "2026-06-15T11:38:46.853780",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -6695,14 +6370,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "PKG": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:40.958191",
+      "completed_at": "2026-06-15T11:38:46.882628",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -6714,14 +6388,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "PLTR": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:40.973952",
+      "completed_at": "2026-06-15T11:38:46.911039",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -6733,14 +6406,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "PANW": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:40.985670",
+      "completed_at": "2026-06-15T11:38:46.940894",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -6752,14 +6424,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "PSKY": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:40.999949",
+      "completed_at": "2026-06-15T11:38:46.972555",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -6771,14 +6442,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "PH": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:41.014200",
+      "completed_at": "2026-06-15T11:38:46.999928",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -6790,14 +6460,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "PAYX": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:41.024732",
+      "completed_at": "2026-06-15T11:38:47.029107",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -6809,14 +6478,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "PYPL": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:41.040658",
+      "completed_at": "2026-06-15T11:38:47.061993",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -6828,14 +6496,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "PNR": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:41.055974",
+      "completed_at": "2026-06-15T11:38:47.096223",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -6847,14 +6514,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "PEP": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:41.070996",
+      "completed_at": "2026-06-15T11:38:47.139767",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -6866,14 +6532,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "PFE": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:41.090433",
+      "completed_at": "2026-06-15T11:38:47.179820",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -6885,14 +6550,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "PCG": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:41.105934",
+      "completed_at": "2026-06-15T11:38:47.209726",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -6904,14 +6568,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "PM": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:41.121307",
+      "completed_at": "2026-06-15T11:38:47.242319",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -6923,14 +6586,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "PSX": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:41.135817",
+      "completed_at": "2026-06-15T11:38:47.271234",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -6942,14 +6604,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "PNW": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:41.151329",
+      "completed_at": "2026-06-15T11:38:47.300881",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -6961,14 +6622,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "PNC": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:41.167461",
+      "completed_at": "2026-06-15T11:38:47.331180",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -6980,14 +6640,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "POOL": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:41.177795",
+      "completed_at": "2026-06-15T11:38:47.359656",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -6999,14 +6658,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "PPG": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T20:30:41.236968",
+      "completed_at": "2026-06-15T11:38:47.387393",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -7018,14 +6676,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "PPL": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T20:30:41.265280",
+      "completed_at": "2026-06-15T11:38:47.416385",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -7037,14 +6694,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "PFG": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T20:30:41.305898",
+      "completed_at": "2026-06-15T11:38:47.444951",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -7056,14 +6712,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "PG": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:41.241724",
+      "completed_at": "2026-06-15T11:38:47.470806",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -7075,14 +6730,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "PGR": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:41.257597",
+      "completed_at": "2026-06-15T11:38:47.499742",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -7094,14 +6748,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "PLD": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:41.264684",
+      "completed_at": "2026-06-15T11:38:47.526687",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -7113,14 +6766,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "PRU": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:41.281407",
+      "completed_at": "2026-06-15T11:38:47.557042",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -7132,14 +6784,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "PEG": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:41.294036",
+      "completed_at": "2026-06-15T11:38:47.583645",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -7151,14 +6802,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "PTC": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:41.315527",
+      "completed_at": "2026-06-15T11:38:47.612612",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -7170,14 +6820,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "PSA": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:41.325907",
+      "completed_at": "2026-06-15T11:38:47.642965",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -7189,14 +6838,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "PHM": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:41.343128",
+      "completed_at": "2026-06-15T11:38:47.671639",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -7208,14 +6856,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "PWR": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:41.360633",
+      "completed_at": "2026-06-15T11:38:47.701483",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -7227,14 +6874,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "QCOM": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:41.374568",
+      "completed_at": "2026-06-15T11:38:47.728641",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -7246,14 +6892,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "DGX": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:41.389124",
+      "completed_at": "2026-06-15T11:38:47.757559",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -7265,28 +6910,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "Q": {
       "asset_class": "equity",
-      "completed_at": "2026-06-14T20:58:02.229672",
-      "config_hash": "86d186dc5e8a4ebd",
-      "timeframes_fetched": [
-        "1D",
-        "4h",
-        "8h",
-        "1h",
-        "30m",
-        "15m",
-        "5m"
-      ]
-    },
-    "RL": {
-      "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:41.408380",
+      "completed_at": "2026-06-15T11:38:47.786159",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -7298,14 +6928,31 @@
         "30m",
         "15m",
         "5m",
-        "1m",
+        "2m",
+        "3m"
+      ]
+    },
+    "RL": {
+      "asset_class": "equity",
+      "completed_at": "2026-06-15T11:38:47.815787",
+      "config_hash": "86d186dc5e8a4ebd",
+      "timeframes_fetched": [
+        "1D",
+        "7D",
+        "1M",
+        "4h",
+        "8h",
+        "1h",
+        "30m",
+        "15m",
+        "5m",
         "2m",
         "3m"
       ]
     },
     "RJF": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:41.426923",
+      "completed_at": "2026-06-15T11:38:47.844220",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -7317,14 +6964,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "RTX": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T20:30:41.375477",
+      "completed_at": "2026-06-15T11:38:47.873497",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -7336,14 +6982,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "O": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:41.459840",
+      "completed_at": "2026-06-15T11:38:47.902642",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -7355,14 +7000,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "REG": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:41.476334",
+      "completed_at": "2026-06-15T11:38:47.931025",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -7374,14 +7018,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "REGN": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:41.493087",
+      "completed_at": "2026-06-15T11:38:47.961803",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -7393,14 +7036,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "RF": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:41.508337",
+      "completed_at": "2026-06-15T11:38:47.989952",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -7412,14 +7054,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "RSG": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:41.517243",
+      "completed_at": "2026-06-15T11:38:48.019171",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -7431,14 +7072,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "RMD": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:41.526877",
+      "completed_at": "2026-06-15T11:38:48.047346",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -7450,14 +7090,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "RVTY": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:41.550657",
+      "completed_at": "2026-06-15T11:38:48.076273",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -7469,14 +7108,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "HOOD": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:41.562045",
+      "completed_at": "2026-06-15T11:38:48.105702",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -7488,14 +7126,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "ROK": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:41.579376",
+      "completed_at": "2026-06-15T11:38:48.134161",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -7507,14 +7144,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "ROL": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:41.595497",
+      "completed_at": "2026-06-15T11:38:48.163707",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -7526,14 +7162,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "ROP": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:41.610190",
+      "completed_at": "2026-06-15T11:38:48.192053",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -7545,14 +7180,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "ROST": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:41.625001",
+      "completed_at": "2026-06-15T11:38:48.221776",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -7564,14 +7198,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "RCL": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:41.634291",
+      "completed_at": "2026-06-15T11:38:48.250550",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -7583,14 +7216,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "SPGI": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T20:30:41.415062",
+      "completed_at": "2026-06-15T11:38:48.279509",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -7602,14 +7234,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "CRM": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T20:30:41.456734",
+      "completed_at": "2026-06-15T11:38:48.316285",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -7621,29 +7252,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "SNDK": {
       "asset_class": "equity",
-      "completed_at": "2026-06-14T20:58:02.253638",
-      "config_hash": "86d186dc5e8a4ebd",
-      "timeframes_fetched": [
-        "1D",
-        "7D",
-        "4h",
-        "8h",
-        "1h",
-        "30m",
-        "15m",
-        "5m"
-      ]
-    },
-    "SBAC": {
-      "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:41.693626",
+      "completed_at": "2026-06-15T11:38:48.347887",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -7655,14 +7270,31 @@
         "30m",
         "15m",
         "5m",
-        "1m",
+        "2m",
+        "3m"
+      ]
+    },
+    "SBAC": {
+      "asset_class": "equity",
+      "completed_at": "2026-06-15T11:38:48.378101",
+      "config_hash": "86d186dc5e8a4ebd",
+      "timeframes_fetched": [
+        "1D",
+        "7D",
+        "1M",
+        "4h",
+        "8h",
+        "1h",
+        "30m",
+        "15m",
+        "5m",
         "2m",
         "3m"
       ]
     },
     "SLB": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:41.708403",
+      "completed_at": "2026-06-15T11:38:48.407214",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -7674,14 +7306,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "STX": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:41.718683",
+      "completed_at": "2026-06-15T11:38:48.436568",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -7693,14 +7324,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "SRE": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:41.737834",
+      "completed_at": "2026-06-15T11:38:48.471962",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -7712,14 +7342,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "NOW": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:41.753562",
+      "completed_at": "2026-06-15T11:38:48.500811",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -7731,14 +7360,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "SHW": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:41.764475",
+      "completed_at": "2026-06-15T11:38:48.529090",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -7750,14 +7378,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "SPG": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:41.781208",
+      "completed_at": "2026-06-15T11:38:48.548424",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -7769,14 +7396,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "SWKS": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:41.793468",
+      "completed_at": "2026-06-15T11:38:48.575764",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -7788,14 +7414,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "SJM": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:41.818341",
+      "completed_at": "2026-06-15T11:38:48.605784",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -7807,14 +7432,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "SW": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:41.873036",
+      "completed_at": "2026-06-15T11:38:48.632704",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -7825,14 +7449,14 @@
         "1h",
         "30m",
         "15m",
-        "1m",
+        "5m",
         "2m",
         "3m"
       ]
     },
     "SNA": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:41.885173",
+      "completed_at": "2026-06-15T11:38:48.660098",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -7844,14 +7468,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "SOLV": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:41.904813",
+      "completed_at": "2026-06-15T11:38:48.686122",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -7859,17 +7482,17 @@
         "1M",
         "4h",
         "8h",
+        "1h",
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "SO": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:41.923191",
+      "completed_at": "2026-06-15T11:38:48.715278",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -7881,14 +7504,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "LUV": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:41.934587",
+      "completed_at": "2026-06-15T11:38:48.743169",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -7900,14 +7522,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "SWK": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:41.954865",
+      "completed_at": "2026-06-15T11:38:48.764234",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -7919,14 +7540,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "SBUX": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:41.978551",
+      "completed_at": "2026-06-15T11:38:48.792370",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -7938,14 +7558,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "STT": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:41.993278",
+      "completed_at": "2026-06-15T11:38:48.820314",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -7957,14 +7576,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "STLD": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:42.008430",
+      "completed_at": "2026-06-15T11:38:48.848744",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -7976,14 +7594,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "STE": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:42.017919",
+      "completed_at": "2026-06-15T11:38:48.885679",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -7995,14 +7612,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "SYK": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:42.033059",
+      "completed_at": "2026-06-15T11:38:48.914670",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -8014,14 +7630,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "SMCI": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:42.052074",
+      "completed_at": "2026-06-15T11:38:48.943446",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -8033,14 +7648,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "SYF": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:42.067750",
+      "completed_at": "2026-06-15T11:38:48.974959",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -8052,14 +7666,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "SNPS": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:42.082242",
+      "completed_at": "2026-06-15T11:38:49.003005",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -8071,14 +7684,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "SYY": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:42.094242",
+      "completed_at": "2026-06-15T11:38:49.031502",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -8090,14 +7702,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "TMUS": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:42.106721",
+      "completed_at": "2026-06-15T11:38:49.059499",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -8109,14 +7720,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "TROW": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:42.124042",
+      "completed_at": "2026-06-15T11:38:49.087570",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -8128,14 +7738,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "TTWO": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:42.140627",
+      "completed_at": "2026-06-15T11:38:49.115979",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -8147,14 +7756,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "TPR": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:42.155517",
+      "completed_at": "2026-06-15T11:38:49.144485",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -8166,14 +7774,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "TRGP": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:42.168658",
+      "completed_at": "2026-06-15T11:38:49.177437",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -8185,14 +7792,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "TGT": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:42.186353",
+      "completed_at": "2026-06-15T11:38:49.205704",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -8204,14 +7810,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "TEL": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:42.198387",
+      "completed_at": "2026-06-15T11:38:49.233359",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -8223,14 +7828,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "TDY": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:42.216380",
+      "completed_at": "2026-06-15T11:38:49.262370",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -8242,14 +7846,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "TER": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:42.230720",
+      "completed_at": "2026-06-15T11:38:49.290279",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -8261,14 +7864,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "TSLA": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:42.245389",
+      "completed_at": "2026-06-15T11:38:49.319350",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -8280,14 +7882,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "TXN": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:42.260904",
+      "completed_at": "2026-06-15T11:38:49.351232",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -8299,14 +7900,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "TPL": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:42.276671",
+      "completed_at": "2026-06-15T11:38:49.396718",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -8318,14 +7918,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "TXT": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:42.292411",
+      "completed_at": "2026-06-15T11:38:49.425955",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -8337,14 +7936,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "TMO": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:42.308361",
+      "completed_at": "2026-06-15T11:38:49.454078",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -8356,14 +7954,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "TJX": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:42.322533",
+      "completed_at": "2026-06-15T11:38:49.483873",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -8375,14 +7972,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "TKO": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:42.341723",
+      "completed_at": "2026-06-15T11:38:49.514574",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -8394,14 +7990,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "TTD": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:42.356501",
+      "completed_at": "2026-06-15T11:38:49.542060",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -8413,14 +8008,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "TSCO": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:42.372655",
+      "completed_at": "2026-06-15T11:38:49.569594",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -8432,14 +8026,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "TT": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:42.388354",
+      "completed_at": "2026-06-15T11:38:49.598988",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -8451,14 +8044,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "TDG": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:42.404841",
+      "completed_at": "2026-06-15T11:38:49.626745",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -8470,14 +8062,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "TRV": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:42.419395",
+      "completed_at": "2026-06-15T11:38:49.655172",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -8489,14 +8080,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "TRMB": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:42.437395",
+      "completed_at": "2026-06-15T11:38:49.686731",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -8508,14 +8098,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "TFC": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:42.453811",
+      "completed_at": "2026-06-15T11:38:49.715568",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -8527,14 +8116,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "TYL": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:42.470460",
+      "completed_at": "2026-06-15T11:38:49.745791",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -8546,14 +8134,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "TSN": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:42.487814",
+      "completed_at": "2026-06-15T11:38:49.780133",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -8565,14 +8152,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "USB": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:42.504806",
+      "completed_at": "2026-06-15T11:38:49.809474",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -8584,14 +8170,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "UBER": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:42.519958",
+      "completed_at": "2026-06-15T11:38:49.837801",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -8603,14 +8188,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "UDR": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:42.538780",
+      "completed_at": "2026-06-15T11:38:49.866357",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -8622,14 +8206,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "ULTA": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:42.555125",
+      "completed_at": "2026-06-15T11:38:49.894873",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -8641,14 +8224,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "UNP": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:42.568669",
+      "completed_at": "2026-06-15T11:38:49.922824",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -8660,14 +8242,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "UAL": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:42.586408",
+      "completed_at": "2026-06-15T11:38:49.950349",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -8679,14 +8260,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "UPS": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:42.602040",
+      "completed_at": "2026-06-15T11:38:49.979631",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -8698,14 +8278,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "URI": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:42.619914",
+      "completed_at": "2026-06-15T11:38:50.007546",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -8717,14 +8296,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "UNH": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:42.639131",
+      "completed_at": "2026-06-15T11:38:50.036314",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -8736,14 +8314,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "UHS": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:42.655942",
+      "completed_at": "2026-06-15T11:38:50.063483",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -8755,14 +8332,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "VLO": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:42.668833",
+      "completed_at": "2026-06-15T11:38:50.091443",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -8774,14 +8350,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "VEEV": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:42.686239",
+      "completed_at": "2026-06-15T11:38:50.118716",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -8793,14 +8368,13 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
     },
     "VTR": {
       "asset_class": "equity",
-      "completed_at": "2026-06-13T19:23:42.703964",
+      "completed_at": "2026-06-15T11:38:50.148429",
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
@@ -8812,7 +8386,6 @@
         "30m",
         "15m",
         "5m",
-        "1m",
         "2m",
         "3m"
       ]
@@ -9067,6 +8640,788 @@
       "config_hash": "86d186dc5e8a4ebd",
       "timeframes_fetched": [
         "1D",
+        "1M",
+        "4h",
+        "8h",
+        "1h",
+        "30m",
+        "15m",
+        "5m",
+        "1m",
+        "2m",
+        "3m"
+      ]
+    },
+    "VRSN": {
+      "asset_class": "equity",
+      "completed_at": "2026-06-15T11:38:50.175086",
+      "config_hash": "86d186dc5e8a4ebd",
+      "timeframes_fetched": [
+        "1D",
+        "7D",
+        "1M",
+        "4h",
+        "8h",
+        "1h",
+        "30m",
+        "15m",
+        "5m",
+        "2m",
+        "3m"
+      ]
+    },
+    "VRSK": {
+      "asset_class": "equity",
+      "completed_at": "2026-06-15T11:38:50.203641",
+      "config_hash": "86d186dc5e8a4ebd",
+      "timeframes_fetched": [
+        "1D",
+        "7D",
+        "1M",
+        "4h",
+        "8h",
+        "1h",
+        "30m",
+        "15m",
+        "5m",
+        "2m",
+        "3m"
+      ]
+    },
+    "VZ": {
+      "asset_class": "equity",
+      "completed_at": "2026-06-15T11:38:50.233139",
+      "config_hash": "86d186dc5e8a4ebd",
+      "timeframes_fetched": [
+        "1D",
+        "7D",
+        "1M",
+        "4h",
+        "8h",
+        "1h",
+        "30m",
+        "15m",
+        "5m",
+        "2m",
+        "3m"
+      ]
+    },
+    "VRTX": {
+      "asset_class": "equity",
+      "completed_at": "2026-06-15T11:38:50.262569",
+      "config_hash": "86d186dc5e8a4ebd",
+      "timeframes_fetched": [
+        "1D",
+        "7D",
+        "1M",
+        "4h",
+        "8h",
+        "1h",
+        "30m",
+        "15m",
+        "5m",
+        "2m",
+        "3m"
+      ]
+    },
+    "VRT": {
+      "asset_class": "equity",
+      "completed_at": "2026-06-15T11:38:50.290761",
+      "config_hash": "86d186dc5e8a4ebd",
+      "timeframes_fetched": [
+        "1D",
+        "7D",
+        "1M",
+        "4h",
+        "8h",
+        "1h",
+        "30m",
+        "15m",
+        "5m",
+        "2m",
+        "3m"
+      ]
+    },
+    "VTRS": {
+      "asset_class": "equity",
+      "completed_at": "2026-06-15T11:38:50.318887",
+      "config_hash": "86d186dc5e8a4ebd",
+      "timeframes_fetched": [
+        "1D",
+        "7D",
+        "1M",
+        "4h",
+        "8h",
+        "1h",
+        "30m",
+        "15m",
+        "5m",
+        "2m",
+        "3m"
+      ]
+    },
+    "VICI": {
+      "asset_class": "equity",
+      "completed_at": "2026-06-15T11:38:50.345142",
+      "config_hash": "86d186dc5e8a4ebd",
+      "timeframes_fetched": [
+        "1D",
+        "7D",
+        "1M",
+        "4h",
+        "8h",
+        "1h",
+        "30m",
+        "15m",
+        "5m",
+        "2m",
+        "3m"
+      ]
+    },
+    "V": {
+      "asset_class": "equity",
+      "completed_at": "2026-06-15T11:38:50.374147",
+      "config_hash": "86d186dc5e8a4ebd",
+      "timeframes_fetched": [
+        "1D",
+        "7D",
+        "1M",
+        "4h",
+        "8h",
+        "1h",
+        "30m",
+        "15m",
+        "5m",
+        "2m",
+        "3m"
+      ]
+    },
+    "VST": {
+      "asset_class": "equity",
+      "completed_at": "2026-06-15T11:38:50.402997",
+      "config_hash": "86d186dc5e8a4ebd",
+      "timeframes_fetched": [
+        "1D",
+        "7D",
+        "1M",
+        "4h",
+        "8h",
+        "1h",
+        "30m",
+        "15m",
+        "5m",
+        "2m",
+        "3m"
+      ]
+    },
+    "VMC": {
+      "asset_class": "equity",
+      "completed_at": "2026-06-15T11:38:50.432196",
+      "config_hash": "86d186dc5e8a4ebd",
+      "timeframes_fetched": [
+        "1D",
+        "7D",
+        "1M",
+        "4h",
+        "8h",
+        "1h",
+        "30m",
+        "15m",
+        "5m",
+        "2m",
+        "3m"
+      ]
+    },
+    "WRB": {
+      "asset_class": "equity",
+      "completed_at": "2026-06-15T11:38:50.462654",
+      "config_hash": "86d186dc5e8a4ebd",
+      "timeframes_fetched": [
+        "1D",
+        "7D",
+        "1M",
+        "4h",
+        "8h",
+        "1h",
+        "30m",
+        "15m",
+        "5m",
+        "2m",
+        "3m"
+      ]
+    },
+    "GWW": {
+      "asset_class": "equity",
+      "completed_at": "2026-06-15T11:38:50.505415",
+      "config_hash": "86d186dc5e8a4ebd",
+      "timeframes_fetched": [
+        "1D",
+        "7D",
+        "1M",
+        "4h",
+        "8h",
+        "1h",
+        "30m",
+        "15m",
+        "5m",
+        "2m",
+        "3m"
+      ]
+    },
+    "WAB": {
+      "asset_class": "equity",
+      "completed_at": "2026-06-15T11:38:50.537223",
+      "config_hash": "86d186dc5e8a4ebd",
+      "timeframes_fetched": [
+        "1D",
+        "7D",
+        "1M",
+        "4h",
+        "8h",
+        "1h",
+        "30m",
+        "15m",
+        "5m",
+        "2m",
+        "3m"
+      ]
+    },
+    "WMT": {
+      "asset_class": "equity",
+      "completed_at": "2026-06-15T11:38:50.566396",
+      "config_hash": "86d186dc5e8a4ebd",
+      "timeframes_fetched": [
+        "1D",
+        "7D",
+        "1M",
+        "4h",
+        "8h",
+        "1h",
+        "30m",
+        "15m",
+        "5m",
+        "2m",
+        "3m"
+      ]
+    },
+    "DIS": {
+      "asset_class": "equity",
+      "completed_at": "2026-06-15T11:38:50.593911",
+      "config_hash": "86d186dc5e8a4ebd",
+      "timeframes_fetched": [
+        "1D",
+        "7D",
+        "1M",
+        "4h",
+        "8h",
+        "1h",
+        "30m",
+        "15m",
+        "5m",
+        "2m",
+        "3m"
+      ]
+    },
+    "WBD": {
+      "asset_class": "equity",
+      "completed_at": "2026-06-15T11:38:50.622721",
+      "config_hash": "86d186dc5e8a4ebd",
+      "timeframes_fetched": [
+        "1D",
+        "7D",
+        "1M",
+        "4h",
+        "8h",
+        "1h",
+        "30m",
+        "15m",
+        "5m",
+        "2m",
+        "3m"
+      ]
+    },
+    "WM": {
+      "asset_class": "equity",
+      "completed_at": "2026-06-15T11:38:50.652616",
+      "config_hash": "86d186dc5e8a4ebd",
+      "timeframes_fetched": [
+        "1D",
+        "7D",
+        "1M",
+        "4h",
+        "8h",
+        "1h",
+        "30m",
+        "15m",
+        "5m",
+        "2m",
+        "3m"
+      ]
+    },
+    "WAT": {
+      "asset_class": "equity",
+      "completed_at": "2026-06-15T11:38:50.681613",
+      "config_hash": "86d186dc5e8a4ebd",
+      "timeframes_fetched": [
+        "1D",
+        "7D",
+        "1M",
+        "4h",
+        "8h",
+        "1h",
+        "30m",
+        "15m",
+        "5m",
+        "2m",
+        "3m"
+      ]
+    },
+    "WEC": {
+      "asset_class": "equity",
+      "completed_at": "2026-06-15T11:38:50.709001",
+      "config_hash": "86d186dc5e8a4ebd",
+      "timeframes_fetched": [
+        "1D",
+        "7D",
+        "1M",
+        "4h",
+        "8h",
+        "1h",
+        "30m",
+        "15m",
+        "5m",
+        "2m",
+        "3m"
+      ]
+    },
+    "WFC": {
+      "asset_class": "equity",
+      "completed_at": "2026-06-15T11:38:50.726537",
+      "config_hash": "86d186dc5e8a4ebd",
+      "timeframes_fetched": [
+        "1D",
+        "7D",
+        "1M",
+        "4h",
+        "8h",
+        "1h",
+        "30m",
+        "15m",
+        "5m",
+        "2m",
+        "3m"
+      ]
+    },
+    "WELL": {
+      "asset_class": "equity",
+      "completed_at": "2026-06-15T11:38:50.754031",
+      "config_hash": "86d186dc5e8a4ebd",
+      "timeframes_fetched": [
+        "1D",
+        "7D",
+        "1M",
+        "4h",
+        "8h",
+        "1h",
+        "30m",
+        "15m",
+        "5m",
+        "2m",
+        "3m"
+      ]
+    },
+    "WST": {
+      "asset_class": "equity",
+      "completed_at": "2026-06-15T11:38:50.785932",
+      "config_hash": "86d186dc5e8a4ebd",
+      "timeframes_fetched": [
+        "1D",
+        "7D",
+        "1M",
+        "4h",
+        "8h",
+        "1h",
+        "30m",
+        "15m",
+        "5m",
+        "2m",
+        "3m"
+      ]
+    },
+    "WDC": {
+      "asset_class": "equity",
+      "completed_at": "2026-06-15T11:38:50.821726",
+      "config_hash": "86d186dc5e8a4ebd",
+      "timeframes_fetched": [
+        "1D",
+        "7D",
+        "1M",
+        "4h",
+        "8h",
+        "1h",
+        "30m",
+        "15m",
+        "5m",
+        "2m",
+        "3m"
+      ]
+    },
+    "WY": {
+      "asset_class": "equity",
+      "completed_at": "2026-06-15T11:38:50.850056",
+      "config_hash": "86d186dc5e8a4ebd",
+      "timeframes_fetched": [
+        "1D",
+        "7D",
+        "1M",
+        "4h",
+        "8h",
+        "1h",
+        "30m",
+        "15m",
+        "5m",
+        "2m",
+        "3m"
+      ]
+    },
+    "WSM": {
+      "asset_class": "equity",
+      "completed_at": "2026-06-15T11:38:50.879173",
+      "config_hash": "86d186dc5e8a4ebd",
+      "timeframes_fetched": [
+        "1D",
+        "7D",
+        "1M",
+        "4h",
+        "8h",
+        "1h",
+        "30m",
+        "15m",
+        "5m",
+        "2m",
+        "3m"
+      ]
+    },
+    "WMB": {
+      "asset_class": "equity",
+      "completed_at": "2026-06-15T11:38:50.908272",
+      "config_hash": "86d186dc5e8a4ebd",
+      "timeframes_fetched": [
+        "1D",
+        "7D",
+        "1M",
+        "4h",
+        "8h",
+        "1h",
+        "30m",
+        "15m",
+        "5m",
+        "2m",
+        "3m"
+      ]
+    },
+    "WTW": {
+      "asset_class": "equity",
+      "completed_at": "2026-06-15T11:38:50.938757",
+      "config_hash": "86d186dc5e8a4ebd",
+      "timeframes_fetched": [
+        "1D",
+        "7D",
+        "1M",
+        "4h",
+        "8h",
+        "1h",
+        "30m",
+        "15m",
+        "5m",
+        "2m",
+        "3m"
+      ]
+    },
+    "WDAY": {
+      "asset_class": "equity",
+      "completed_at": "2026-06-15T11:38:50.968411",
+      "config_hash": "86d186dc5e8a4ebd",
+      "timeframes_fetched": [
+        "1D",
+        "7D",
+        "1M",
+        "4h",
+        "8h",
+        "1h",
+        "30m",
+        "15m",
+        "5m",
+        "2m",
+        "3m"
+      ]
+    },
+    "WYNN": {
+      "asset_class": "equity",
+      "completed_at": "2026-06-15T11:38:51.000146",
+      "config_hash": "86d186dc5e8a4ebd",
+      "timeframes_fetched": [
+        "1D",
+        "7D",
+        "1M",
+        "4h",
+        "8h",
+        "1h",
+        "30m",
+        "15m",
+        "5m",
+        "2m",
+        "3m"
+      ]
+    },
+    "XEL": {
+      "asset_class": "equity",
+      "completed_at": "2026-06-15T11:38:51.029701",
+      "config_hash": "86d186dc5e8a4ebd",
+      "timeframes_fetched": [
+        "1D",
+        "7D",
+        "1M",
+        "4h",
+        "8h",
+        "1h",
+        "30m",
+        "15m",
+        "5m",
+        "2m",
+        "3m"
+      ]
+    },
+    "XYL": {
+      "asset_class": "equity",
+      "completed_at": "2026-06-15T11:38:51.061895",
+      "config_hash": "86d186dc5e8a4ebd",
+      "timeframes_fetched": [
+        "1D",
+        "7D",
+        "1M",
+        "4h",
+        "8h",
+        "1h",
+        "30m",
+        "15m",
+        "5m",
+        "2m",
+        "3m"
+      ]
+    },
+    "YUM": {
+      "asset_class": "equity",
+      "completed_at": "2026-06-15T11:38:51.092278",
+      "config_hash": "86d186dc5e8a4ebd",
+      "timeframes_fetched": [
+        "1D",
+        "7D",
+        "1M",
+        "4h",
+        "8h",
+        "1h",
+        "30m",
+        "15m",
+        "5m",
+        "2m",
+        "3m"
+      ]
+    },
+    "ZBRA": {
+      "asset_class": "equity",
+      "completed_at": "2026-06-15T11:38:51.120870",
+      "config_hash": "86d186dc5e8a4ebd",
+      "timeframes_fetched": [
+        "1D",
+        "7D",
+        "1M",
+        "4h",
+        "8h",
+        "1h",
+        "30m",
+        "15m",
+        "5m",
+        "2m",
+        "3m"
+      ]
+    },
+    "ZBH": {
+      "asset_class": "equity",
+      "completed_at": "2026-06-15T11:38:51.150613",
+      "config_hash": "86d186dc5e8a4ebd",
+      "timeframes_fetched": [
+        "1D",
+        "7D",
+        "1M",
+        "4h",
+        "8h",
+        "1h",
+        "30m",
+        "15m",
+        "5m",
+        "2m",
+        "3m"
+      ]
+    },
+    "ZTS": {
+      "asset_class": "equity",
+      "completed_at": "2026-06-15T11:38:51.176859",
+      "config_hash": "86d186dc5e8a4ebd",
+      "timeframes_fetched": [
+        "1D",
+        "7D",
+        "1M",
+        "4h",
+        "8h",
+        "1h",
+        "30m",
+        "15m",
+        "5m",
+        "2m",
+        "3m"
+      ]
+    },
+    "EUR.USD": {
+      "asset_class": "forex",
+      "completed_at": "2026-06-15T11:38:51.205301",
+      "config_hash": "86d186dc5e8a4ebd",
+      "timeframes_fetched": [
+        "1D",
+        "7D",
+        "1M",
+        "4h",
+        "8h",
+        "1h",
+        "30m",
+        "15m",
+        "5m",
+        "1m",
+        "2m",
+        "3m"
+      ]
+    },
+    "GBP.USD": {
+      "asset_class": "forex",
+      "completed_at": "2026-06-15T11:38:51.236150",
+      "config_hash": "86d186dc5e8a4ebd",
+      "timeframes_fetched": [
+        "1D",
+        "7D",
+        "1M",
+        "4h",
+        "8h",
+        "1h",
+        "30m",
+        "15m",
+        "5m",
+        "1m",
+        "2m",
+        "3m"
+      ]
+    },
+    "USD.JPY": {
+      "asset_class": "forex",
+      "completed_at": "2026-06-15T11:38:51.271936",
+      "config_hash": "86d186dc5e8a4ebd",
+      "timeframes_fetched": [
+        "1D",
+        "7D",
+        "1M",
+        "4h",
+        "8h",
+        "1h",
+        "30m",
+        "15m",
+        "5m",
+        "1m",
+        "2m",
+        "3m"
+      ]
+    },
+    "USD.CHF": {
+      "asset_class": "forex",
+      "completed_at": "2026-06-15T11:38:51.301905",
+      "config_hash": "86d186dc5e8a4ebd",
+      "timeframes_fetched": [
+        "1D",
+        "7D",
+        "1M",
+        "4h",
+        "8h",
+        "1h",
+        "30m",
+        "15m",
+        "5m",
+        "1m",
+        "2m",
+        "3m"
+      ]
+    },
+    "USD.CAD": {
+      "asset_class": "forex",
+      "completed_at": "2026-06-15T11:38:51.337531",
+      "config_hash": "86d186dc5e8a4ebd",
+      "timeframes_fetched": [
+        "1D",
+        "7D",
+        "1M",
+        "4h",
+        "8h",
+        "1h",
+        "30m",
+        "15m",
+        "5m",
+        "1m",
+        "2m",
+        "3m"
+      ]
+    },
+    "EUR.GBP": {
+      "asset_class": "forex",
+      "completed_at": "2026-06-15T11:38:51.367978",
+      "config_hash": "86d186dc5e8a4ebd",
+      "timeframes_fetched": [
+        "1D",
+        "7D",
+        "1M",
+        "4h",
+        "8h",
+        "1h",
+        "30m",
+        "15m",
+        "5m",
+        "1m",
+        "2m",
+        "3m"
+      ]
+    },
+    "EUR.JPY": {
+      "asset_class": "forex",
+      "completed_at": "2026-06-15T11:38:51.397949",
+      "config_hash": "86d186dc5e8a4ebd",
+      "timeframes_fetched": [
+        "1D",
+        "7D",
+        "1M",
+        "4h",
+        "8h",
+        "1h",
+        "30m",
+        "15m",
+        "5m",
+        "1m",
+        "2m",
+        "3m"
+      ]
+    },
+    "GBP.JPY": {
+      "asset_class": "forex",
+      "completed_at": "2026-06-15T11:38:51.427506",
+      "config_hash": "86d186dc5e8a4ebd",
+      "timeframes_fetched": [
+        "1D",
+        "7D",
         "1M",
         "4h",
         "8h",
