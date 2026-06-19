@@ -1,0 +1,86 @@
+{
+  "FITB": {
+    "tfs": [
+      "15m"
+    ],
+    "added": "15m"
+  },
+  "FULT": {
+    "tfs": [
+      "15m"
+    ],
+    "added": "15m"
+  },
+  "PNC": {
+    "tfs": [
+      "15m"
+    ],
+    "added": "15m"
+  },
+  "ASB": {
+    "tfs": [
+      "15m"
+    ],
+    "added": "15m"
+  },
+  "ABCB": {
+    "tfs": [
+      "15m"
+    ],
+    "added": "15m"
+  },
+  "COLB": {
+    "tfs": [
+      "15m"
+    ],
+    "added": "15m"
+  },
+  "EWBC": {
+    "tfs": [
+      "15m"
+    ],
+    "added": "15m"
+  },
+  "FBP": {
+    "tfs": [
+      "15m"
+    ],
+    "added": "15m"
+  },
+  "ONB": {
+    "tfs": [
+      "15m"
+    ],
+    "added": "15m"
+  },
+  "UBSI": {
+    "tfs": [
+      "15m"
+    ],
+    "added": "15m"
+  },
+  "AUB": {
+    "tfs": [
+      "15m"
+    ],
+    "added": "15m"
+  },
+  "CVBF": {
+    "tfs": [
+      "15m"
+    ],
+    "added": "15m"
+  },
+  "SPY": {
+    "tfs": [
+      "30m"
+    ],
+    "added": "30m"
+  },
+  "VOO": {
+    "tfs": [
+      "30m"
+    ],
+    "added": "30m"
+  }
+}

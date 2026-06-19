@@ -1395,3 +1395,857 @@ Fix: cache migration v3 also deletes `*_2min.parquet` and `*_3min.parquet` so th
 **BUG-A09: INCLUDE_QQQ_EXTRAS, RUSSELL_TOP_N, INCLUDE_BRK_HOLDINGS missing from Config**
 Root cause: referenced in code but never declared in `UniverseConfig` dataclass. Would raise `AttributeError` on first build attempt.
 Fix: all three added to config.py with appropriate defaults.
+
+---
+
+## Handoff Protocol
+
+This document serves as the complete handoff for CAMARF. A new session can reconstruct the full project context from this file alone. The key sections are:
+
+1. **Research thesis** — what we're testing and why (see top of document)
+2. **Architecture principles** — the non-negotiable design rules
+3. **Bug registry** — every bug found, root cause, and fix (prevents re-introducing)
+4. **Methodological decisions** — every design choice with justification
+5. **Session log** — chronological record of what changed each session
+6. **Planned implementations** — full outlines for ml.py, backtest.py, stats.py, options.py, report.py
+7. **Next session** — specific first tasks at bottom of each session entry
+
+**Current state before starting a new session:** read the most recent Session Log entry and "Next Session" items. The current file state is always the latest output from the previous session.
+
+**Run diagnostics (added Session 5, refined Session 7):** `data.py` writes
+`latest_run_data.log` and `analysis.py` writes `latest_run_analysis.log` to the
+project root after every run — compact, structured, LLM-readable summaries
+(universe counts, per-TF fetch/save diagnostics, confirmed pairs, errors). Upload
+these directly at the start of a new session instead of pasting raw console output;
+they're designed to be self-sufficient for diagnosis without needing a separate
+summarization pass. When something breaks mid-run, the relevant console excerpt
+(the actual error/traceback) is still useful alongside the summary log, since the
+summary only reflects a run that reached completion.
+
+---
+
+## Session 5 — Data Pipeline Stabilization and Alignment System
+
+### Session 5 Bug Registry
+
+**BUG-D18: Batch yfinance saves 0/N bars**
+Root cause: batch fallback called `YFinanceFeed.get_equity_history()` which only returns `"1D"` data keys (we removed `"1wk"` and `"1mo"` from `_YF_INTERVALS`). Then looked up `sym_data.get("8h")` — a key that never exists in the returned dict. `n_saved` always stayed 0 across all 5 intraday TFs.
+Fix: batch fallback replaced with `get_intraday_fallback(sym, cls, tf_label)` which reads from `_YF_INTRADAY_MAP` and downloads the correct yfinance interval per TF.
+
+**BUG-D19: IBKR session-dead reconnection infinite loop**
+Root cause: `reconnect()` returned False and set `_session_dead = True`, but a second disconnect (or any subsequent asset failure) called `reconnect()` again — starting another 30-minute retry cycle. With 5-7 intraday TFs remaining, this burned 2.5-3.5 hours of pure waiting.
+Fix: `reconnect()` checks `if self._session_dead: return False` immediately at entry. Mid-TF per-asset check also reads `_session_dead` before calling `get_bars()`.
+
+**BUG-D20: Config hash forces full re-fetch on every config change**
+Root cause: `ProgressLogger.is_complete()` compared the stored config hash to the current hash. Any config change (adding new parameters, new TF labels, etc.) marked ALL 1,500 assets as stale, causing a 2+ hour full re-fetch even when cached data was perfectly valid.
+Fix: when hash differs, `is_complete()` now checks `DataStore.is_fresh(sym, "1D")` and `DataStore.is_data_sufficient(sym, "1D")`. If daily data is fresh and sufficient, silently update the stored hash and return True. Only re-fetch if data is genuinely missing or outdated.
+
+**BUG-D21: analysis.py running full IBKR fetch (incorrect architecture)**
+Root cause: `analysis.py` called `builder.build()` with `connect=True` (default), triggering a full Phase 2 IBKR intraday sweep identical to `data.py`. This re-did all IBKR work with the old broken batch code, adding hours of wasted time.
+Fix: `analysis.py` now calls `builder.build(connect=False)`. analysis.py is a consumer of cached data only. data.py fetches; analysis.py analyzes. These responsibilities must never overlap.
+
+**BUG-A10: NameError `_canonical_cutoff` not defined**
+Root cause: `_canonical_cutoff = compute_canonical_cutoff(tf_label)` was placed AFTER the session-dead `continue` statement in the per-TF loop. The session-dead path calls `continue` before the assignment, so `_canonical_cutoff` was never set for subsequent code in the loop. Also, the upgrade queue section runs after the TF loop closes — any reference there would always be out of scope.
+Fix: `_canonical_cutoff` computation hoisted to the very first line of each TF iteration, before ANY conditional code. Upgrade queue save no longer references `_canonical_cutoff`.
+
+**BUG-A11: _fit_one_regime nested function not picklable**
+Root cause: `_fit_one_regime` was defined as a local function inside `_run_one_tf`. ProcessPoolExecutor requires module-level picklable functions — local/closure functions always fail with `AttributeError: Can't pickle local object`.
+Fix: renamed to `_regime_worker` and moved to module level in analysis.py.
+
+### Data Pipeline Architecture (Finalized)
+
+**data.py responsibilities (ONLY):**
+- Fetch and cache all OHLCV data for all assets across all TFs
+- Apply DataCleaner (standardize, gap-fill, roll-adjust)
+- Apply GapFlag classification (NONE/FILL/NO_ACTIVITY/HALT/DATA_GAP/SPARSE)
+- Apply timestamp snapping (open-of-bar convention, Eastern time, tz-naive)
+- Apply canonical cutoff truncation (all assets aligned to same last complete bar)
+- Write to DataStore cache (parquet files with safe TF names)
+- Run IBKR upgrade queue after main sweep
+- Never run analysis
+
+**analysis.py responsibilities (ONLY):**
+- Load universe from DataStore cache via `builder.build(connect=False)`
+- Run all analysis pipeline stages
+- Never fetch new data from IBKR or yfinance
+- Never write to DataStore cache
+
+### IBKR Historical Data Pacing — Ground Truth
+
+IBKR enforces hard limits on `reqHistoricalData()`:
+- Max 50 simultaneous requests
+- Max 60 requests per 10-minute window per identifier type
+- Pacing violations cause connection drops and Warning 2110
+
+With 1,500 assets × 7 intraday TFs = 10,500 requests, pacing violations are inevitable. The correct architecture accepts this:
+1. Fetch as much as IBKR allows before the 70% failure rate threshold
+2. When degraded (>70% failure over last 10 requests), switch immediately to batch yfinance
+3. If TWS crashes (TimeoutError on reconnect), set `_session_dead = True` and route all remaining TFs to yfinance immediately
+4. IBKR upgrade queue retries after the main sweep when congestion clears (for deeper history)
+
+**conId caching (planned improvement):** caching the IBKR contract ID (conId) for each symbol eliminates the internal string→contract resolution step on every request. Saves ~0.5-1s per request → ~750-1500s total for 1,500 assets. Implement as a JSON file populated the first time each symbol is successfully fetched.
+
+### Data Alignment System (New — Session 5)
+
+**Problem:** A 2-hour intraday sweep means assets fetched first and last have different trailing bars. Additionally, IBKR stamps intraday bars at bar open while yfinance sometimes uses bar close — creating an off-by-one-bar lag in cross-source correlations that directly contaminates cross-asset pair findings (ES↔utility 15m).
+
+**Three-function solution:**
+
+`compute_canonical_cutoff(tf_label)` — called once per TF at sweep start. Floors current time to last complete bar boundary:
+- During session at 11:47 AM on 1h TF: cutoff = 10:30 AM (last closed bar)
+- Pre-market: previous session's last bar
+- Post-market: today's last bar
+
+`snap_timestamps(df, tf_label, source)` — normalizes all bar timestamps to open-of-bar convention, Eastern time, timezone-naive:
+- 1h bar at 10:30 (yfinance close-stamp) → snapped to 09:30 (open-stamp, matching IBKR)
+- Bars outside session window are dropped
+- Deduplicates after snapping (keep last)
+
+`truncate_to_cutoff(df, cutoff)` — drops bars after the canonical cutoff. Ensures first and last assets in sweep share identical last bars.
+
+**Applied at:** every save point in the intraday sweep (IBKR fetch, per-asset yfinance fallback, batch yfinance fallback, dead-session yfinance batch). NOT applied in upgrade queue (runs after loop, different scope).
+
+### GapFlag System (New — Session 5)
+
+Every aligned bar carries a `gap_flag` integer column:
+- `0` NONE — clean bar
+- `1` FILL — ≤5 bar gap, forward-filled. Include in EG/corr; exclude from ML volume features
+- `2` NO_ACTIVITY — crypto genuine zero-trade. Include price and volume=0 as-is
+- `3` HALT — trading halt. Price forward-filled; volume invalid
+- `4` DATA_GAP — >5 bar gap. Price forward-filled for continuity; MASKED to NaN in EG and correlation. The large return spanning a long gap would inflate ADF statistics toward false unit-root rejection
+- `5` SPARSE — thin liquidity / pre-IPO period. Include with lower weight
+
+`_gap_aware_returns(df)` — masks DATA_GAP bars to NaN before computing log returns (used in `build_returns_matrix`)
+`_clean_close(df)` — masks DATA_GAP close prices to NaN (used in `_build_log_price_map` for EG)
+
+### Gemini's IB Gateway Advice — Assessment
+
+Gemini correctly said: stay with IB Gateway (not Web API). The Web API has worse pacing limits and requires session keep-alive daemons.
+
+Gemini's other advice (`reqPositions()`, `reqMktData()`) is for reading live account positions and streaming real-time quotes — not relevant to CAMARF which uses `reqHistoricalData()` exclusively.
+
+The `conId` caching advice IS applicable and worth implementing: it eliminates the internal symbol→contract resolution per request.
+
+The fundamental bottleneck (pacing limits on 10,500 historical data requests) cannot be solved architecturally. The batch yfinance fallback is the correct solution.
+
+### Session 5 Log
+
+2026-06-16:
+- Fixed BUG-D18: batch yfinance saves 0 bars (get_equity_history → get_intraday_fallback)
+- Fixed BUG-D19: IBKR infinite reconnection loop (session_dead early-exit in reconnect())
+- Fixed BUG-D20: config hash forces full re-fetch (DataStore.is_fresh check in is_complete())
+- Fixed BUG-D21: analysis.py doing IBKR fetch (build(connect=False))
+- Fixed BUG-A10: NameError _canonical_cutoff (hoisted to top of TF iteration)
+- Fixed BUG-A11: _fit_one_regime not picklable (moved to module level as _regime_worker)
+- Added GapFlag system: 6-code gap classification, gap-aware returns, clean close
+- Added data alignment system: canonical cutoff, timestamp snapping, truncation
+- Added DataStore.is_data_sufficient() bar count quality gate
+- Added IBKR upgrade queue for assets with insufficient cached history
+- Added 3M and 6M TFs (quarterly/semi-annual from 1D resample)
+- S&P 1500 universe: 1506 equities + 33 non-equities ≈ 1539 candidates
+- ETF asset class routing fix (ETFs were silently dropped from yfinance fetch)
+- EigenportfolioDecomposer added to analysis.py (Marchenko-Pastur, Gold/Silver tiers)
+- Parallel regime fitting via ProcessPoolExecutor (_regime_worker at module level)
+- Per-TF hash checkpoint for crash recovery
+
+### Next Session (after data.py run completes cleanly)
+
+1. Read pairs.parquet for all TFs — verify BUG-A09 f-string fix produced PairResult objects
+2. Check eigenportfolio Gold/Silver tier distribution
+3. Check Hurst values for confirmed pairs (H_rs < 0.50 for OU processes)
+4. Check SP400/SP600 Wikipedia scraper counts in log
+5. Begin Granger causality implementation in stats.py (all confirmed pairs, bidirectional)
+6. Design ml.py labeling: triple-barrier (primary) vs fixed-horizon (comparison)
+7. VolumeStructure feature volatility standardization audit (12 features, all must be dimensionless)
+
+---
+
+## Planned Module: analyzer.py — Pair Characteristics Analyzer
+
+### Concept
+
+For each confirmed pair, identify which specific observable conditions at entry predict the best outcomes for *that pair specifically*. Not a global "what makes pairs work" analysis — a per-pair conditional attribution system.
+
+The key insight: the same pair behaves differently under different conditions. NTRS↔STT in a high-vol banking stress environment may mean-revert in 8 bars. The same pair during a low-vol trending market may have near-zero spread (nothing to trade) or a trending spread (fundamental repricing, not noise). The analyzer finds the specific combination of conditions that characterize each pair's "best self."
+
+This is genuinely novel in the statistical arbitrage literature. Most pairs trading papers report global backtest statistics. Reporting pair-level conditional characteristics is a meaningful methodological contribution to the paper.
+
+---
+
+### Architecture
+
+**Two phases — pre-backtest (analysis.py data) and post-backtest (trade log):**
+
+Phase 1 (pre-backtest, available now from analysis.py):
+- Spread quality across regimes: does Hurst improve in specific regimes for this pair?
+- Half-life stability: does half-life vary by regime or volatility environment?
+- Cointegration fraction rolling: is the relationship stable or episodic?
+- Spread volatility profile: when is the spread wide enough to trade but not breaking down?
+- Eigenportfolio tier interaction: do Gold-tier pairs show better regime consistency?
+
+Phase 2 (post-backtest, requires backtest.py trade log):
+- Conditional P&L by regime at entry
+- Conditional P&L by Hurst quintile at entry
+- Conditional P&L by time-of-day at entry
+- Conditional P&L by spread z-score magnitude at entry
+- Conditional P&L by both legs' individual trend direction
+- Conditional P&L by sector ETF context (XLF for banks, XLU for utilities, etc.)
+- Conditional P&L by market breadth (SPY vs 20-day MA)
+- Failure mode characterization: which conditions produce long holds, high MAE, stop-outs
+
+---
+
+### Core Analysis: Decision Tree Over Entry Conditions
+
+Use a decision tree (depth 3-4 max) fitted on entry features → binary outcome (win/loss or Sharpe contribution). The tree auto-discovers which combinations of conditions matter most for this specific pair.
+
+**Why tree-based (not regression):**
+- Captures non-linear interactions (high_vol AND H < 0.40 is much better than either alone)
+- Interpretable: produces explicit if-then rules ("if regime=high_vol and H<0.42: win rate 89%")
+- Naturally handles categorical features (regime labels) and continuous features (Hurst, z-score)
+- Low depth (3-4) forces parsimonious rules, limits overfitting
+
+**Overfitting / Bias Controls (critical):**
+- Minimum N per leaf: 10 trades (never report a characteristic based on fewer than 10 observations)
+- Permutation test: shuffle trade outcomes, refit tree 1000 times, report only characteristics that exceed the 95th percentile of the null distribution
+- Hold-out validation: split the trade log chronologically (first 60% for tree fitting, last 40% for validation). A characteristic is "confirmed" only if the win rate in the hold-out period is within 15pp of the in-sample rate
+- Report N for every cell — a condition with N=8 is noise, N=40 is signal
+- Flag pairs where the optimal condition N < 10 as "insufficient data for characteristics analysis"
+- Cross-pair consistency check: a characteristic that appears for 10+ pairs is more credible than one appearing for 1 pair
+
+**What to report PER PAIR:**
+1. Single-feature breakdowns (regime, Hurst quintile, time of day, z-score magnitude)
+2. Top-3 two-feature combinations (regime × Hurst, regime × time, etc.)
+3. The optimal condition combination (best Sharpe leaf of the decision tree)
+4. The failure mode conditions (worst Sharpe leaf — when NOT to trade)
+5. Regime sensitivity score: (best_regime_Sharpe - worst_regime_Sharpe) / mean_Sharpe
+   A score near 0 = regime-robust pair. Score > 2 = regime-sensitive pair.
+
+---
+
+### Primary Visualization: 2D Heatmap per Pair
+
+X-axis: Hurst quintile at entry (Q1=most mean-reverting to Q5=least)
+Y-axis: Regime at entry (high_vol, mean_reverting, trending, low_vol)
+Cell color: Sharpe ratio
+Cell annotation: N trades, Win %
+
+```
+NTRS↔STT — Entry Condition Heatmap
+              Q1 (H<0.35) | Q2 | Q3 | Q4 | Q5 (H>0.47)
+high_vol      [  2.6  ]   [2.1][1.4][0.8][  0.2  ]
+mean_reverting[  2.1  ]   [1.7][1.1][0.5][ -0.3  ]
+trending      [  0.9  ]   [0.4][0.1][-0.4][ -1.1  ]
+low_vol       [  0.5  ]   [0.2][-0.1][-0.5][ -1.3  ]
+```
+
+Secondary heatmaps (if N sufficient):
+- Regime × time-of-day
+- Z-score magnitude × Hurst
+- Sector ETF trend × regime
+
+---
+
+### Cross-Pair Comparison Output
+
+After running the analyzer across all confirmed pairs:
+
+1. **Regime-robust pairs**: pairs where Sharpe > 1.0 in ALL regimes
+   → Highest quality; use in all market conditions
+
+2. **Regime-sensitive pairs**: pairs where Sharpe > 1.5 in best regime, < 0.5 in worst
+   → Require ML meta-labeler to gate entries on regime
+
+3. **Characteristic universality**: if a condition (e.g., "H < 0.40 at entry improves results") appears for >60% of confirmed pairs, it's a universal signal quality indicator, not pair-specific noise
+   → This becomes a global filtering rule in the ML layer
+
+4. **Cross-pair characteristic correlation**: do pairs that share a sector (e.g., all bank pairs) share the same optimal conditions?
+   → Evidence of structural vs idiosyncratic co-movement
+
+---
+
+### Failure Mode Analysis
+
+Equally important: characterize when the pair BREAKS DOWN.
+
+For each confirmed pair, identify:
+- Which conditions produce the longest hold times (spread takes too long to converge)
+- Which conditions produce the highest MAE (spread widens dramatically before reverting)
+- Which conditions produce actual stop-outs (spread never converges)
+
+The failure leaf of the decision tree is the "do not trade" signal. In the ML meta-labeler, this becomes a negative class label:
+- "NTRS↔STT in trending regime with H > 0.45: stop-out rate 34%, mean MAE -2.8%"
+- "FITB↔KEY during earnings season: convergence failure rate 61%"
+
+**Bias awareness:**
+- The failure mode analysis uses the same data as the success analysis → double-dipping on the same sample
+- Mitigation: use chronological hold-out for validation of both success AND failure conditions
+- The permutation test for failure modes uses the same null distribution as for success
+- Never report a failure condition as confirmed if N < 10 in the validation period
+
+---
+
+### Integration with Paper
+
+In the research paper, this becomes the "Strategy Characteristics" section:
+- Reports confirmed pair-level conditional Sharpe matrices
+- Shows regime sensitivity distribution across the pair universe
+- Demonstrates that H_rs at entry is predictive of convergence quality (or not — either result is meaningful)
+- Provides evidence that the ML meta-labeler has learnable signal structure
+
+The negative results (pairs that don't show identifiable characteristics) are also interesting for the paper — they suggest those pairs' cointegration is genuinely robust and not condition-dependent.
+
+---
+
+### Implementation Notes (when building)
+
+- `analyzer.py` imports from `analysis.py` (pair metadata, spread series, regimes) and `backtest.py` (trade log)
+- Decision tree: `sklearn.tree.DecisionTreeClassifier(max_depth=4, min_samples_leaf=10)`
+- Heatmap: matplotlib with `seaborn.heatmap` or `plt.imshow` + custom annotations for N and Win%
+- Feature engineering happens in the analyzer, not in backtest.py — backtest.py only logs raw entries/exits
+- The analyzer should be runnable incrementally: as more pairs accumulate in the backtest, characteristics sharpen
+- Output: one PDF per confirmed pair (the "characteristics card") + one cross-pair summary PDF
+
+---
+
+### Prerequisites Before Building
+
+1. data.py and analysis.py running cleanly with confirmed pairs
+2. backtest.py implemented with per-trade logging (entry conditions captured at entry time)
+3. At least 20 confirmed pairs with 30+ trades each (minimum statistical power for tree fitting)
+4. Chronological split validation requires sufficient trade history (at least 2 years of backtest data preferred)
+
+
+---
+
+## Session 6 — Analysis Pipeline Stabilization and Methodological Extensions
+
+### Session 6 Bug Registry
+
+**BUG-A12: `_clean_close` NameError kills all EG testing**
+Root cause: `_clean_close` and `GapFlag` were defined in `data.py` but never imported into `analysis.py`. Every TF's EG test crashed with `NameError: name '_clean_close' is not defined` in `CointScanner._build_log_price_map`. This produced zero pairs/trios/regimes for all TFs in both analysis.py runs.
+Fix: added `GapFlag`, `_gap_aware_returns`, `_clean_close` to the `from data import (...)` block in analysis.py.
+
+**BUG-D22: 8h batch yfinance saves 0/N (persistent)**
+Root cause: `snap_timestamps(df, "8h")` with `bar_mins=390` maps ALL intraday bars to 9:30 AM (the only valid 8h boundary in a 6.5h session), creating hundreds of duplicates per day. After dedup, ~1 bar/day. This was not causing 0 saves by itself, but 8h is analytically equivalent to 1D and carries no independent value. The TF was also causing frequency validator confusion and wasted IBKR pacing budget.
+Fix: 8h removed entirely from all TF constants, maps, IBKR sweep, and resample functions. 13 TFs remain: 1m, 2m, 3m, 5m, 15m, 30m, 1h, 4h, 1D, 7D, 1M, 3M, 6M.
+
+**BUG-D23: 1h cache contaminated with 8h-frequency data (961 assets)**
+Root cause: previous batch yfinance fallback bug wrote 8h-frequency data (one bar per day, ~82800s median gap) to 1h cache files for ~961 assets. DataStore.validate_frequency() correctly detected and skipped these but the data was still on disk.
+Fix: `DataStore.clear_tf_cache("1h")` added as a utility method. Run once before next data.py execution to purge the contaminated files. The fresh 1h fetch will use the corrected batch fallback.
+
+**Note:** User deleted the entire cache on 2026-06-17. Next data.py run starts completely fresh — no contamination issue, no migration needed.
+
+### Data Pipeline Changes (Session 6)
+
+**8h removed from all constants and code:**
+- `DataStore._TF_SAFE`: removed `"8h": "8hr"`
+- `DataStore._EXPECTED_GAP_SECONDS`: removed `"8h": 28800`
+- `DataStore._MIN_BARS`: removed `"8h": 4000`
+- `DataAligner.align_intraday.freq_map`: removed `"8h"`
+- `_TF_MINUTES` (canonical cutoff): removed `"8h": 390`
+- `YFinanceFeed._YF_INTRADAY_MAP`: removed `"8h"` entry
+- `IBKRFeed.INTRADAY_TFS`: removed `("8 hours", "8h", "10 Y")`
+- `YFinanceFeed._resample_from_daily`: removed 8h resample block
+- Active TF count: 13 (was 14)
+
+**Dual-failure retry system:**
+When both IBKR and yfinance fail for an asset-TF combination during the sweep, the asset-TF is queued in `_dual_fail_queue`. After all TFs complete and before the upgrade queue runs, one retry pass attempts yfinance again for all dual-failed assets. IBKR will have recovered from pacing congestion; yfinance from transient rate limiting.
+
+Persistent failure tracking in `output/cache/persistent_failures.json`. Format: `{"SYMBOL:tf": N}` where N = number of consecutive full-run failures. When a symbol's total failure count across all TFs reaches `UniverseBuilder._PERSISTENT_FAIL_THRESHOLD = 3`, it is auto-added to the exclusion list with reason "Auto-excluded: N total TF failures."
+
+**Exclusion list reset (2026-06-17):**
+Cleared dynamic exclusions accumulated during unstable IBKR sessions. Retained hardcoded known-unavailable: `VLTO` (Veralto spinoff — no intraday data), `BNY` (use "BK" instead), `FDXF` (no data from any source).
+
+**`DataStore.clear_tf_cache(tf_label, dry_run=False)`:**
+Deletes all parquet files for a specific TF without touching others. Use when a TF cache is contaminated (wrong frequency, wrong data). Pass `dry_run=True` to count files without deleting.
+
+### Episodic Cointegration and Survivorship Bias
+
+**The problem:** Standard EG test over the full historical window finds cointegration if the relationship held for any sufficiently long subperiod, even if it broke down completely afterward. A pair cointegrated 2010-2015 but not since will pass the full-sample EG test, produce excellent backtest results over the integration period, and generate losses live.
+
+**Primary defense: `coint_fraction_rolling`**
+Already in `PairResult`. Measures the fraction of rolling 252-day windows where the pair passes EG at the 5% level. A pair cointegrated 2010-2015 out of a 2005-2025 sample would show `coint_fraction_rolling ≈ 0.25` (5 of 20 years). Filter threshold: require `coint_fraction_rolling ≥ 0.70` for inclusion in the confirmed pair universe. This filters historical-only cointegration without requiring any architectural changes.
+
+**Secondary defense: walk-forward validation structure**
+Backtest trains on data through time T, tests on data after T. If cointegration broke before T, the OOS test catches it. If it broke after T (post-test period), no test can prevent that — it is the fundamental limitation of all statistical arbitrage, not a fixable bias. Document explicitly in the paper.
+
+**Stress test approach (future implementation in stats.py):**
+For each confirmed pair, run EG on successive non-overlapping 252-day windows and produce a binary cointegration timeline: integrated (1) or not integrated (0) for each window. Plot as a binary time series per pair. Classify pairs by stability pattern:
+- "Stable current": cointegrated in the last 3+ years continuously → highest quality
+- "Recovered": was not cointegrated for 1-2 years, now re-cointegrated → acceptable with monitoring
+- "Historical episode": cointegrated 5+ years ago, not recently → exclude regardless of full-sample EG result
+- "Episodic": alternates between integrated and not → likely sector rotation or regime-dependent; require `coint_fraction_rolling ≥ 0.85`
+
+This timeline visualization becomes Exhibit X in the paper: "Cointegration Stability Profiles for Confirmed Pairs."
+
+### Planned: FRED Macro Regime Context
+
+**Why it matters for the paper:**
+If NTRS↔STT only works when the yield curve is steepening, the strategy is a yield curve bet expressed through bank stocks — not genuine pairs alpha. Splitting backtest results by macro regime proves (or disproves) that the strategy is robust across economic environments. A regime-robust strategy is a much stronger claim than aggregate performance.
+
+**Implementation: `macro.py` (new module)**
+Fetch at daily frequency via `fredapi` (free, requires API key) or direct FRED CSV download:
+- `T10Y2Y`: 10Y-2Y Treasury spread (yield curve shape)
+- `BAMLH0A0HYM2`: HY-IG credit spread (credit risk appetite)
+- `VIXCLS`: VIX daily close (equity volatility regime)
+- `FEDFUNDS`: Fed Funds rate (monetary policy stance)
+- `DCOILWTICO`: WTI crude oil (commodity/inflation regime)
+- `CPIAUCSL`: CPI monthly (inflation regime, monthly frequency)
+- `USREC`: NBER recession indicator (binary, monthly)
+
+Macro regime classification (for each trading date):
+- Yield curve: steep (T10Y2Y > 1.5%), normal (0-1.5%), flat/inverted (< 0%)
+- Credit: tight (spread < 300bp), normal (300-500bp), wide (> 500bp)  
+- Volatility: low (VIX < 15), normal (15-25), high (> 25), crisis (> 35)
+- Recession: NBER expansion vs contraction
+
+Integration with analyzer.py:
+Each trade entry is tagged with the macro regime at that date. `PairCharacteristicsAnalyzer` includes macro regime as an additional dimension in the conditional performance matrix. Enables: "NTRS↔STT performs best in high-vol + tight credit + steep yield curve" — a complete macro context for the strategy.
+
+Paper contribution: "Strategy robustness across macro regimes" section showing Sharpe by regime combination. Regime-robust pairs are preferred over regime-sensitive pairs for live deployment.
+
+**Implementation effort:** ~1 day. `fredapi` or direct HTTP CSV fetch; daily alignment to trading calendar; regime binning; integration with backtest trade log.
+
+### Planned: Sentiment Analysis (Future Work)
+
+Two approaches considered:
+1. **Per-leg sentiment divergence** (useful): NLP on earnings calls, news, 8-Ks for each pair leg. When one leg has strongly positive sentiment and the other neutral, spread widening may be fundamental repricing, not tradeable noise. This signal conditions when to trade vs avoid a spread.
+2. **Aggregate market sentiment** (noisier): fear/greed indexes, social media tone. More crowded signal, harder to justify in academic paper.
+
+Decision: FRED macro context (above) is higher priority for the paper. Per-leg sentiment divergence is in "future work" — it would require a substantial NLP pipeline and the payoff in the paper is lower than macro regime robustness. Aggregate sentiment analysis not planned.
+
+### Session 6 Log
+
+2026-06-17:
+- Fixed BUG-A12: _clean_close NameError (import added to analysis.py)
+- Fixed BUG-D22: 8h TF removed entirely from all data.py constants and analysis.py
+- Fixed BUG-D23: DataStore.clear_tf_cache() utility added for targeted cache purge
+- Added dual-failure retry system with persistent failure tracking and auto-exclusion
+- Reset exclusion list (cleared session-accumulated dynamic exclusions)
+- Cache fully deleted by user — next run starts completely fresh
+- Documented episodic cointegration methodology and coint_fraction_rolling defense
+- Designed FRED macro regime module (macro.py) — planned post-backtest implementation
+- Documented sentiment analysis as future work (per-leg divergence, not aggregate)
+- Added analyzer.py full design (conditional performance attribution per pair)
+
+### Next Session (after data.py runs cleanly)
+
+1. Verify 0 frequency mismatches in analysis.py log (1h cache was fully deleted, fresh fetch)
+2. Verify EG testing runs without NameError (BUG-A12 fixed)
+3. Check confirmed pairs across all TFs — expect results at 15m, 1h, 4h, 1D, 7D
+4. Verify coint_fraction_rolling filter (≥ 0.70) is applied before pair confirmation
+5. Add FRED macro regime fetch to macro.py (one session)
+6. Begin stats.py: cointegration stability timeline per confirmed pair
+7. Begin backtest.py architecture once confirmed pairs are stable
+
+
+---
+
+## Planned Enhancement: Rich Regime Classification for Entry/Exit Gating
+
+### Concept
+
+The current HMM/GMM regime classification discovers hidden states without semantic labels.
+The enhancement adds economically interpretable regime layers at three levels:
+
+**Level 1 — Individual leg regimes (per asset)**
+- Directional: bull (persistent uptrend), bear (persistent downtrend), neutral (range-bound)
+- Structure: trending (H_rs > 0.55, ADX > 25) vs mean-reverting (H_rs < 0.45)
+- Volatility: low, normal, elevated, crisis (relative to asset's own vol history)
+
+**Level 2 — Spread regimes (per pair)**
+- Spread structure: compressing (consolidating), ranging (tradeable), widening (trending), breaking (breakdown)
+- Spread vol regime: spread volatility relative to its own history
+- Cointegration strength: rolling Johansen test p-value trend — is the relationship strengthening or weakening?
+
+**Level 3 — Macro overlay (from macro.py)**
+- Yield curve regime: steep, normal, flat/inverted
+- Credit regime: tight, normal, wide, stressed
+- Equity vol regime: VIX < 15 (calm), 15-25 (normal), 25-35 (elevated), > 35 (crisis)
+- Business cycle: NBER expansion vs contraction
+
+---
+
+### Why This Matters for Pairs Trading Specifically
+
+Pairs trading works when spread mean reversion is reliable. Mean reversion requires
+the spread to be stationary, which breaks when either leg trends independently.
+
+**The interaction that matters:**
+- Both legs in mean-reverting regime + spread consolidating + macro calm → ideal entry
+- One leg trending + spread widening → do not enter (not mean reversion, fundamental repricing)
+- High vol macro regime + bank pairs → spread widens more but also reverts more strongly
+  (stress-driven divergence, not fundamental repricing)
+- Yield curve inversion + bank pairs → cointegration weakens (NIM compression affects legs
+  differently based on liability/asset duration mix)
+
+This is not cosmetic — it directly explains when the strategy is theoretically valid
+and when it isn't. A pair with coint_frac=1.00 in a low-vol macro regime may have
+coint_frac=0.60 in a credit-stress regime. Knowing this changes position sizing,
+entry thresholds, and stop-loss design.
+
+---
+
+### Implementation Design (for analyzer.py / ml.py build session)
+
+**Features to compute per entry signal:**
+
+Leg-level:
+- `leg_a_hurst`, `leg_b_hurst` — rolling 60-day Hurst on each leg
+- `leg_a_adx`, `leg_b_adx` — Average Directional Index (trend strength)
+- `leg_a_above_ma`, `leg_b_above_ma` — price vs 20-period MA (directional bias)
+- `leg_a_vol_pctile`, `leg_b_vol_pctile` — realized vol percentile vs own history
+
+Spread-level:
+- `spread_bb_width` — Bollinger Band width (consolidating = low, breaking = high)
+- `spread_atr_pctile` — ATR relative to its own history
+- `spread_vel` — spread velocity (rate of change, positive = widening, negative = compressing)
+- `spread_zscore_mag` — |z-score| at entry (too wide may be fundamental, not noise)
+- `spread_johansen_pval_trend` — is rolling Johansen p-value improving or worsening?
+
+Macro (from macro.py FRED data aligned to trading dates):
+- `yield_curve_regime` — categorical: steep/normal/flat/inverted
+- `credit_regime` — categorical: tight/normal/wide/stressed
+- `vix_regime` — categorical: calm/normal/elevated/crisis
+- `recession_flag` — NBER binary
+
+**HMM state labeling:**
+After the existing HMM discovers hidden states, post-hoc label each state using:
+- Modal directional regime of its member bars
+- Modal spread structure
+- Modal macro context
+This connects the statistical states to economic interpretation without requiring
+the HMM to be explicitly informed by these labels (preserving unsupervised discovery).
+
+---
+
+### Research Contribution for Paper
+
+Current literature: most pairs trading papers test cointegration, find a threshold rule,
+backtest. Regime conditioning is rare, macro-aware pairs strategies are rarer.
+
+CAMARF contribution:
+1. Show HMM-discovered states correspond to economically meaningful regime combinations
+2. Show conditional Sharpe (high_vol + mean-reverting + spread_compressing) >> unconditional
+3. Show which regime combinations produce the failure modes (trending + credit_stress)
+4. Demonstrate that the ML meta-labeler is implicitly learning these regime combinations
+   (SHAP analysis of feature importance)
+
+This turns the paper from "here's a cointegration-based strategy" to "here's a regime-aware
+conditional statistical arbitrage framework with economic grounding" — substantially stronger
+for MFE applications.
+
+---
+
+### Implementation Sequence
+
+1. macro.py FRED data fetch (1 day, can run before backtest.py)
+2. Leg-level features (in analysis.py PairResult, 1 day)
+3. Spread-level features (in analysis.py SpreadModel, 1 day)
+4. HMM state labeling (in analysis.py RegimeClassifier, 0.5 days)
+5. All features available as conditioning variables in analyzer.py decision tree
+6. Full paper exhibit: 3D conditional Sharpe matrix (macro × spread structure × Hurst)
+
+### Prerequisites
+
+- Confirmed stable pair universe (currently building)
+- backtest.py trade log (needed for outcome variables in analyzer.py)
+- macro.py FRED fetch (independent of backtest)
+
+
+---
+
+## Session 7 — yfinance Reliability Overhaul (data.py Stabilization)
+
+### Context
+
+This session was almost entirely spent making `data.py`'s Phase 2A (yfinance intraday
+sweep) reliable. What looked like one problem ("data won't fetch") turned out to be
+six distinct, unrelated bugs discovered one at a time through log evidence. Documented
+here in full so the debugging sequence isn't repeated.
+
+### Session 7 Bug Registry
+
+**BUG-D24: 4h derivation produces silent wrong-frequency output**
+Symptom: `[4h] derived: 4 saved | 0 skip_fresh | 6 no_source | 0 resample_fail | 1507 freq_invalid`
+Root cause: 4h is derived by resampling cached 1h data (`df_1h.resample("4h")`). The
+original code had a bare `except Exception: pass` around the resample call and no
+validation of the OUTPUT frequency — if the source 1h data was itself sparse/malformed,
+resample succeeded without error but produced ~1 bar/day (86400s gap) instead of the
+expected 14400s.
+Fix: added explicit per-stage failure counters (`skip_fresh`, `no_source`,
+`resample_fail`, `freq_invalid`) and a post-resample frequency validation check
+(reject if median gap > 14400×3). First-failure diagnostic captures source origin
+(this-run vs disk), row count, and source's own pre-resample gap — converts silent
+failure into actionable diagnosis instead of guesswork.
+
+**BUG-D25: RunSummary table empty despite Phase 2A running**
+Root cause: `_summary.record_tf()` was never called from inside Phase 2A's fetch loop
+(only existed in the IBKR sweep path, which doesn't run in yfinance-only mode).
+Fix: `_summary.record_tf()` wired into both the main TF fetch loop and the 4h
+derivation block. `RunSummary.write()` table columns made dynamic (union of all keys
+actually recorded) instead of a fixed schema, so derivation-specific diagnostics
+(skip_fresh, no_source, resample_fail, freq_invalid) display alongside fetch
+diagnostics (yf_ok, yf_fail) without a schema mismatch.
+
+**BUG-D26: 2m systematic 100% fetch failure — period interpretation**
+Symptom: `[2m] complete: 0/220 saved | fail_fetch=220`. Root cause investigation went
+through two incorrect hypotheses before landing on the real one:
+- *Wrong hypothesis 1*: yfinance's `period="60d"` means 60 trading days (~84 calendar
+  days), exceeding Yahoo's 60-calendar-day API limit. Attempted fix: reduce to `"55d"`.
+  Did not resolve the issue.
+- *Wrong hypothesis 2*: switched from `yf.download(period=...)` to
+  `yf.download(start=..., end=...)` with explicit datetime objects to eliminate any
+  period-string ambiguity. This introduced BUG-D27 (below) and still didn't fix 2m.
+- *Real root cause*: confirmed via user's own standalone test script
+  (`yf.Ticker(symbol).history(period="60d", interval="5m")` returned 85 days/4680 rows
+  successfully) that period-string interpretation was never the problem. The actual
+  issue was `yf.download()` itself behaving unreliably under rapid sequential calls
+  compared to `yf.Ticker().history()` — see BUG-D28.
+
+**BUG-D27: explicit-date day-count keyed by wrong variable (introduced, then fixed, by D26's wrong-hypothesis-2 attempt)**
+Root cause: the `_CAL_DAYS` lookback table built during the (later-reverted) explicit-date
+experiment was keyed by `tf_label` instead of the underlying `yf_interval`. Since
+`tf_label="3m"` downloads at `yf_interval="1m"` (then resamples), `_CAL_DAYS["3m"]=55`
+caused a 55-calendar-day request at 1m granularity — 7× over Yahoo's hard 8-day limit
+for 1m data. 100% failure for every 3m request, confirmed by the exact Yahoo error
+text: `"Only 8 days worth of 1m granularity data are allowed to be fetched per
+request"` on a request spanning 55 days.
+Fix: this entire mechanism (`_CAL_DAYS`, explicit `start=`/`end=` dates) was removed
+in BUG-D28's fix — superseded, not patched.
+
+**BUG-D28: yf.download() unreliable for bulk sequential calls; yf.Ticker().history() is the correct API**
+Root cause: empirically confirmed (not theorized) via the user's standalone test
+script that `yf.Ticker(symbol).history(period=X, interval=Y)` succeeds reliably,
+including for 1m (where `yf.download()` with explicit dates failed 100% of the time).
+Fix: replaced `yf.download()` entirely with `yf.Ticker(yf_sym).history(period=...)`
+in `get_intraday_fallback`, using the period strings already correctly defined in
+`_YF_INTRADAY_MAP` (1m→5d, 3m→5d via 1m, 2m→55d, 5m/15m/30m→60d, 1h→730d). Removed
+the "Yahoo session-block" pause/abandon mechanism that had been built on the wrong
+diagnosis (BUG-D26 wrong-hypothesis-1) — there was no real Yahoo-side block, only a
+malformed request.
+
+**BUG-D29: stale "45d_fallback" string reaching the API as a literal period**
+Symptom: `ERROR MCRI: Period '45d_fallback' is invalid, must be one of: 1d, 5d, 1mo, ...`
+Root cause: a file-sync/merge artifact on the user's machine — a fragment of the
+already-reverted BUG-D27 code (`_attempts.append(("45d_fallback", ...))`) survived
+in the locally-saved file alongside newer code, despite the canonical version
+(verified via direct grep) never containing that string. Diagnosed by MD5 checksum
+comparison between the canonical file and the user's local copy.
+Fix: added a defensive regex guard (`_VALID_PERIOD` pattern) validating any period
+string immediately before it reaches `yf.Ticker().history()`. Any malformed value
+(from any future merge/sync issue) is now caught with a clear, specific error instead
+of a cryptic per-asset API failure. This is permanent insurance, not a one-time patch.
+
+**BUG-D30: missing `pytz` dependency in the `trading` conda environment**
+Symptom: `ModuleNotFoundError: No module named 'pytz'` at `import yfinance`.
+Root cause: environment dependency gap, surfaced after a conda/pip upgrade. Not a
+code issue.
+Fix: `pip install pytz` in the `trading` environment. One-time environment fix.
+
+**BUG-D31 (CRITICAL — root cause of the entire 1h/2m/1m failure pattern): fresh `yf.Ticker()` per call triggers Yahoo anti-bot throttling under rapid sequential calls**
+Symptom: after BUG-D30's pytz fix, `yf.Ticker('SPY').history(period='730d',
+interval='1h')` succeeded perfectly as a standalone interactive call (5082 rows), but
+the IDENTICAL call inside Phase 2A's loop failed 100% (87/87) for completely
+unremarkable, liquid tickers (A, AOS, etc.) with NO exception raised — silent empty
+DataFrames.
+Diagnosis: confirmed via the "works once standalone, fails 100% inside a tight loop"
+signature — a well-documented yfinance 0.2.x behavior. Creating a fresh `yf.Ticker()`
+object per call forces a new cookie/crumb authentication negotiation with Yahoo on
+every single request. A one-off interactive call never triggers Yahoo's anti-bot
+detection; a loop of hundreds/thousands of fresh `Ticker()` instantiations does,
+almost immediately.
+Fix: `YFinanceFeed._get_session()` creates ONE shared `requests.Session` (with a
+browser-like User-Agent header) on first use, reused for the lifetime of the process.
+Every `yf.Ticker()` call in `get_intraday_fallback` now passes `session=
+YFinanceFeed._get_session()`. Wrapped in a `try/except TypeError` fallback to a plain
+`Ticker()` call in case a yfinance version doesn't support the `session=` kwarg the
+same way (some versions moved to `curl_cffi`-based sessions internally — fallback
+prevents this from being a hard crash if the assumption doesn't hold for a given
+version). Also added a small universal 0.15s inter-request delay across ALL intraday
+TFs (not just 1m/2m, since 1h hit the identical 100%-failure signature) as
+additional insurance against burst-rate triggers.
+
+### Other Session 7 Fixes
+
+**Pylance/type-checking cleanliness:**
+- `FrozenSet` added to `typing` imports in both `data.py` and `analysis.py`
+  (was being used without import — worked at runtime via duck typing but flagged
+  by static analysis)
+- `Any` added to `data.py`'s typing imports (used by `RunSummary.phase1` type hint)
+- Cleaned up a comment in `_clean_contaminated_cache` that contained the literal
+  string `_summary` and was being flagged as a false-positive undefined-variable
+  reference by Pylance (it was always inside a comment, never executed)
+
+**Retry-with-auto-exclusion system (data.py):**
+Failed fetch-TF combinations are now retried up to 3 times at the end of the Phase 2A
+sweep (after all TFs complete), with results persisted to
+`output/cache/persistent_failures.json`. A symbol accumulating
+`UniverseBuilder._PERSISTENT_FAIL_THRESHOLD` (= 3) consecutive full-run failures
+across all TFs is automatically added to the exclusion list via
+`UniverseBuilder.add_exclusion()`. Exclusion list was also manually reset this
+session — only `VLTO`, `BNY`, `FDXF` remain as confirmed permanently-unavailable
+tickers; all session-accumulated dynamic exclusions from earlier unstable runs
+were cleared.
+
+**Full Phase 2A TF coverage:**
+Extended from `["5m","15m","30m","1h"]` to the complete intraday set
+`["1h","30m","15m","5m","2m","1m","3m"]`, ordered longest-to-shortest depth so a
+partial/interrupted run preserves the most analytically valuable data first.
+
+**DataAligner gap-rate fix (re-confirmed working):**
+The fix from Session 6 (recompute `missing` after trimming to `first_valid_index`,
+rather than computing gap rate over the full 1962-present calendar) was verified via
+direct synthetic test to correctly retain assets like a simulated 2013 IPO (0% gap
+rate post-trim vs the previous incorrect 79%).
+
+### Session 7 Log
+
+2026-06-18:
+- Diagnosed and fixed BUG-D24: 4h derivation silent wrong-frequency output —
+  added per-stage failure counters and post-resample frequency validation
+- Diagnosed and fixed BUG-D25: RunSummary table empty — wired record_tf() into
+  Phase 2A, made table columns dynamic
+- Diagnosed (2 wrong hypotheses, then correct) and fixed BUG-D26/D27: 2m/3m
+  systematic failure — root cause was wrong-variable-keyed day-count table built
+  during an unnecessary fix attempt
+- Diagnosed and fixed BUG-D28 (major revert): replaced yf.download() with
+  yf.Ticker().history() based on user's empirical standalone test — restored
+  the pre-existing correct period strings in _YF_INTRADAY_MAP
+- Diagnosed and fixed BUG-D29: stale string reaching API as literal period —
+  added defensive regex validation guard, diagnosed via MD5 checksum comparison
+  between canonical and user's local file
+- Diagnosed and fixed BUG-D30: missing pytz dependency — environment fix, not code
+- Diagnosed and fixed BUG-D31 (root cause of entire session's failure pattern):
+  fresh yf.Ticker() per call triggering Yahoo anti-bot cookie/crumb throttling
+  under rapid sequential calls — implemented shared requests.Session reuse
+- Added retry-with-auto-exclusion system with persistent_failures.json tracking
+- Reset exclusion list to only confirmed-permanent unavailable tickers
+- Extended Phase 2A to full 7-TF intraday coverage (was 4 TFs)
+- Fixed Pylance type-checking warnings (FrozenSet, Any imports)
+- Discussed and documented (not yet implemented): rich regime classification
+  system — see "Planned Enhancement: Rich Regime Classification" section above
+- Discussed and documented (not yet implemented): ML ensemble / multi-system
+  discovery architecture — see new section below
+
+### Next Session
+
+1. Run data.py with the shared-session fix — confirm 1h/2m/1m all reach
+   normal success rates (95%+) instead of the 100%-failure pattern
+2. If shared session resolves it: re-run analysis.py, expect meaningfully more
+   confirmed pairs at 1h (previously 0 due to cascading upstream fetch failures)
+3. If shared session does NOT fully resolve it: the fallback diagnostic
+   (unconditional WARNING-level empty-result logging) will show the actual
+   per-symbol failure text — read those lines before further hypothesizing
+4. Once 1h is confirmed working: verify 4h derivation produces valid output
+   (BUG-D24 fix should show near-zero freq_invalid count)
+5. Confirm 1D aligned universe grew from ~590 to ~1400+ (DataAligner gap-rate
+   fix from Session 6, re-verified this session)
+6. Dial back the temporary unconditional WARNING-level empty-result logging
+   to DEBUG once the shared-session fix is confirmed stable (currently verbose
+   by design for diagnosis — see BUG-D31 fix)
+
+---
+
+## Planned Enhancement: ML Ensemble / Multi-System Discovery Architecture
+
+### Concept
+
+Beyond a single meta-labeler, the hypothesis is that the confirmed pair universe
+contains multiple distinct behavioral archetypes — e.g., a cluster of pairs that
+behave like classic mean-reversion systems (bank pairs: FITB↔FULT, PNC↔FULT) and a
+cluster that behaves more like near-arbitrage with little regime dependency
+(SPY↔VOO: coint_frac=1.00, H=0.778, structurally different from the bank cluster).
+
+Rather than forcing one global entry/exit model across all pairs, the architecture
+should:
+1. Discover these archetypes empirically (via `PairCharacteristicsAnalyzer` clustering
+   on each pair's characteristic profile — which regimes/features predict its success)
+2. Allow different entry/exit logic per archetype, rather than one-size-fits-all rules
+
+### Connection to Existing Planned Architecture
+
+This is not a new module — it's a refinement of how `ml.py` and `analyzer.py` are
+designed to work together, consistent with the Lopez de Prado meta-labeling framework
+already locked into the methodology:
+
+**The "binary threshold past 80/100" intuition = meta-labeler predicted probability.**
+Rather than hand-specifying "if Hurst<0.4 AND regime=high_vol AND z>2: enter" (which
+is what the `analyzer.py` decision tree does transparently, per pair), a trained
+classifier learns the WEIGHTED combination of all available features (Hurst, regime,
+z-score, ADX, spread velocity, macro context, eigenportfolio tier — everything in the
+Level 1/2/3 regime feature set documented above) and outputs a single probability.
+Entering when that probability crosses a threshold (e.g. 0.80) IS the binary gate the
+person described — except learned from data rather than hand-tuned.
+
+**The "discover multiple systems" idea = archetype clustering via PairCharacteristicsAnalyzer.**
+Once enough pairs have characteristics cards (decision tree + heatmap per pair, as
+designed in the analyzer.py section above), cluster pairs by their characteristic
+PROFILE (which features/regimes predict success, not the raw P&L). This reveals
+natural families:
+- "Mean-reversion archetype": best in low-vol + tight spread + neutral macro,
+  regime-sensitive, fails in trending/credit-stress conditions
+- "Near-arbitrage archetype": minimal regime dependency, consistently high
+  coint_frac, structural relationship (e.g. ETF share-class-equivalents)
+- Potentially others not yet hypothesized — let the clustering reveal them rather
+  than assuming the taxonomy upfront
+
+Each archetype may warrant a SEPARATE meta-labeler (or separate feature weighting
+within one model) rather than forcing one global model to learn all archetypes'
+rules simultaneously — analogous to a mixture-of-experts approach.
+
+### Critical Overfitting Risk (must be designed in from the start)
+
+With this many features (leg-level, spread-level, macro, regime — dozens of
+candidate features per entry) and a few hundred confirmed pair-trades, there is
+real risk that an ML model "discovers" a system that is actually noise rather
+than genuine structure. This is the same risk class already identified for
+`PairCharacteristicsAnalyzer`'s decision tree, and the SAME discipline applies:
+
+- **CPCV (Combinatorial Purged Cross-Validation)** — already a locked methodological
+  decision for backtest.py; applies equally to ml.py's meta-labeler training
+- **Chronological hold-out** — train on first 60-70% of trade history per archetype,
+  validate on the remainder; a "discovered system" that doesn't hold up out-of-sample
+  is not reported as a finding
+- **Permutation testing** — shuffle outcomes, refit, compare against the null
+  distribution (same technique as analyzer.py's decision tree validation)
+- **Minimum N per archetype** — don't split into more archetypes than the data can
+  support; a 3rd or 4th cluster with only 15 trades is noise, not a system
+- **SHAP analysis** — for the trained meta-labeler(s), SHAP values show WHICH
+  features actually drove each prediction; this is the audit trail proving the
+  model learned the hypothesized economic structure (e.g. "the model relies heavily
+  on yield curve regime for bank pairs but not for SPY↔VOO") rather than spurious
+  correlation
+
+### Paper Contribution
+
+This elevates the paper's contribution beyond "we found N cointegrated pairs and
+backtested a generic rule": **"we found M distinct behavioral archetypes among
+cointegrated pairs, each requiring different conditional entry/exit logic, and built
+a regime-aware meta-labeling architecture that adapts to each archetype rather than
+applying a uniform global rule."** This is a more sophisticated and more defensible
+claim for MFE program review — it demonstrates understanding that statistical
+arbitrage is not monolithic, and that na\u00efve global backtesting (the most common
+methodological weakness in retail/amateur pairs trading research) is explicitly
+being avoided.
+
+### Implementation Sequence (when ml.py is built)
+
+1. Confirmed, stable pair universe with sufficient trade history per pair (prerequisite,
+   currently in progress)
+2. `PairCharacteristicsAnalyzer` decision trees + heatmaps per confirmed pair (designed,
+   not yet built — see earlier section)
+3. Archetype clustering on characteristic profiles across all confirmed pairs
+4. Per-archetype (or globally-weighted, if clustering doesn't show clean separation)
+   meta-labeler training with CPCV + chronological hold-out + permutation testing
+5. SHAP analysis confirming learned feature importance matches economic hypothesis
+6. Paper exhibit: archetype taxonomy + per-archetype conditional Sharpe + SHAP summary
+
+### Prerequisites
+
+- Confirmed stable pair universe (in progress — blocked on data.py reliability,
+  Session 7 work)
+- `PairCharacteristicsAnalyzer` built and run on enough pairs to support clustering
+  (needs backtest.py trade log — not yet built)
+- macro.py FRED data (for the macro-context features feeding the meta-labeler)
