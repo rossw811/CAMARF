@@ -89,6 +89,9 @@ from data import (
     DataAligner,
     DataStore,
     QualityReport,
+    GapFlag,
+    _gap_aware_returns,
+    _clean_close,
 )
 
 warnings.filterwarnings("ignore", category=RuntimeWarning)
@@ -3971,15 +3974,19 @@ class AnalysisPipeline:
         # Returns the returns matrix and Pearson correlation matrix alongside
         # candidates so EigenportfolioDecomposer can reuse them without
         # recomputing the (expensive) N×N matrix from scratch.
-        candidates, retained_symbols, _returns_mat, _corr_mat, _sym_order = (
-            UniverseFilter.run(
-                aligned,
-                asset_class_map,
-                threshold=Config.UNIVERSE.MIN_PEARSON_CORR,
-                tf_label=tf_label,
-                return_matrices=True,
-            )
+        _uf_raw = UniverseFilter.run(
+            aligned,
+            asset_class_map,
+            threshold=Config.UNIVERSE.MIN_PEARSON_CORR,
+            tf_label=tf_label,
+            return_matrices=True,
         )
+        # Guard: returns 2-tuple ([], []) when no assets pass filtering
+        # (e.g. 6M with only 4 qualifying assets)
+        if not isinstance(_uf_raw, tuple) or len(_uf_raw) < 5:
+            log.info(f"  [{tf_label}] no candidate pairs above threshold")
+            return [], [], [], [], {}
+        candidates, retained_symbols, _returns_mat, _corr_mat, _sym_order = _uf_raw
         if not candidates:
             log.info(f"  [{tf_label}] no candidate pairs above threshold")
             return [], [], [], [], {}
@@ -4328,12 +4335,31 @@ class AnalysisPipeline:
 
         # Exclude structural pairs (forex triangles, share-class pairs) from the
         # primary pairs.parquet. They are logged in bias_audit.json only.
+        # Remove structural pairs (forex triangles, share-class)
         discovered_pairs = [
             p
             for p in pairs
             if not CrossAssetTagger._shared_currency(p.symbol_a, p.symbol_b)
             and not CrossAssetTagger._is_share_class_pair(p.symbol_a, p.symbol_b)
         ]
+
+        # Enforce coint_fraction_rolling minimum (episodic cointegration defense).
+        # Pairs cointegrated in <40% of rolling windows are historical episodes.
+        # Documented threshold in DEVELOPMENT.md.
+        _MIN_COINT_FRAC = getattr(Config.UNIVERSE, "MIN_COINT_FRAC", 0.40)
+        _n_before = len(discovered_pairs)
+        discovered_pairs = [
+            p
+            for p in discovered_pairs
+            if not np.isfinite(getattr(p, "coint_fraction_rolling", np.nan))
+            or getattr(p, "coint_fraction_rolling", 0.0) >= _MIN_COINT_FRAC
+        ]
+        if len(discovered_pairs) < _n_before:
+            log.info(
+                f"  [{tf_label}] coint_frac filter: "
+                f"{_n_before - len(discovered_pairs)} pairs removed "
+                f"(coint_fraction_rolling < {_MIN_COINT_FRAC:.2f})"
+            )
         if discovered_pairs:
             pairs_df = pd.DataFrame([asdict(p) for p in discovered_pairs])
             pairs_df.to_parquet(os.path.join(out_dir, "pairs.parquet"))
@@ -4341,6 +4367,27 @@ class AnalysisPipeline:
                 f"  [{tf_label}] saved {len(discovered_pairs)} pairs "
                 f"→ {out_dir}/pairs.parquet"
             )
+            # Write/update the confirmed pairs manifest for data_ibkr.py.
+            # This tells the IBKR supplemental pipeline which symbols need
+            # deep history for episodic cointegration testing.
+            _manifest_path = os.path.join(
+                os.path.dirname(out_dir), "confirmed_pairs_manifest.json"
+            )
+            try:
+                _manifest: Dict[str, Any] = {}
+                if os.path.exists(_manifest_path):
+                    with open(_manifest_path) as _f:
+                        _manifest = json.load(_f)
+                for _p in discovered_pairs:
+                    for _sym in (_p.symbol_a, _p.symbol_b):
+                        if _sym not in _manifest:
+                            _manifest[_sym] = {"tfs": [], "added": tf_label}
+                        if tf_label not in _manifest[_sym]["tfs"]:
+                            _manifest[_sym]["tfs"].append(tf_label)
+                with open(_manifest_path, "w") as _f:
+                    json.dump(_manifest, _f, indent=2)
+            except Exception as _e:
+                log.debug(f"Manifest write failed: {_e}")
         n_structural = len(pairs) - len(discovered_pairs)
         if n_structural:
             log.info(
@@ -4403,12 +4450,16 @@ def main(
 
     # Step 1: build / load universe via data.py
     # Temporarily override clientId so analysis.py uses id=2, avoiding
-    # "clientId 1 already in use" errors when data.py is still running.
+    # analysis.py is a consumer of cached data — it should NEVER do IBKR
+    # fetches. That is exclusively data.py's responsibility.
+    # connect=False: skips Phase 2 IBKR entirely, loads all data from cache.
+    # The clientId patch is still kept as a safety net in case connect=True
+    # is ever passed accidentally.
     _orig_client_id = Config.IBKR.CLIENT_ID
     Config.IBKR.CLIENT_ID = Config.IBKR.CLIENT_ID_ANALYSIS
     builder = UniverseBuilder()
-    universe = builder.build()
-    Config.IBKR.CLIENT_ID = _orig_client_id  # restore
+    universe = builder.build(connect=False)
+    Config.IBKR.CLIENT_ID = _orig_client_id
     log.info(
         f"Universe loaded: {len(universe.assets)} assets, "
         f"{len(universe.data)} symbol-TF combinations"
@@ -4439,7 +4490,75 @@ def main(
     log.info(f"  Total bias-audit entries: {len(results.bias_audit)}")
     log.info(f"  Runtime: {results.runtime_seconds/60:.1f} min")
     log.info("=" * 70)
+
+    # Write compact run summary for LLM diagnosis
+    _write_analysis_summary(results, universe)
     return results
+
+
+def _write_analysis_summary(results: Any, universe: Any) -> None:
+    """
+    Write a compact structured run summary to latest_run_analysis.log.
+    Designed for direct upload to an LLM for diagnosis.
+    """
+    import json as _json
+
+    _LOG_PATH = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), "latest_run_analysis.log"
+    )
+    lines = [
+        "=== CAMARF analysis.py ===",
+        f"date:        {pd.Timestamp.now().strftime('%Y-%m-%d %H:%M')}",
+        f"runtime_min: {results.runtime_seconds/60:.1f}",
+        f"universe:    {len(universe.assets)} assets  "
+        f"{len(universe.data)} symbol-TF keys",
+        "",
+        "=== results_by_tf ===",
+        "tf    pairs cross trios regimes",
+    ]
+    total_pairs = total_trios = total_regimes = 0
+    for tf in results.timeframes_processed:
+        p = len(results.pairs_by_tf.get(tf, []))
+        cr = len(results.cross_asset_pairs.get(tf, []))
+        tr = len(results.trios_by_tf.get(tf, []))
+        rg = len(results.regimes_by_tf.get(tf, []))
+        total_pairs += p + cr
+        total_trios += tr
+        total_regimes += rg
+        lines.append(f"{tf:<6}{p:<6}{cr:<6}{tr:<6}{rg}")
+    lines += [
+        f"TOTAL  {total_pairs:<6}      {total_trios:<6}{total_regimes}",
+        f"bias_audit_entries: {len(results.bias_audit)}",
+        "",
+        "=== confirmed_pairs ===",
+    ]
+    all_pairs = []
+    for tf, pairs in results.pairs_by_tf.items():
+        for pr in pairs:
+            all_pairs.append(
+                f"{tf:<6} {pr.symbol_a:<8} {pr.symbol_b:<8} "
+                f"hl={getattr(pr,'half_life_rolling', getattr(pr,'half_life_expanding', 0)):.1f}  "
+                f"H={getattr(pr,'hurst_rs',0):.3f}  "
+                f"tier={getattr(pr,'confidence_tier','?')}  "
+                f"coint_frac={getattr(pr,'coint_fraction_rolling',0):.2f}"
+            )
+    lines += all_pairs if all_pairs else ["  none"]
+    lines += ["", "=== errors_and_skipped ==="]
+    # Collect from bias audit
+    skipped_tfs = [
+        e
+        for e in results.bias_audit
+        if "skipped" in str(e).lower() or "mismatch" in str(e).lower()
+    ]
+    for e in skipped_tfs[:20]:
+        lines.append(f"  {str(e)[:100]}")
+    lines += ["", "=== end ==="]
+    try:
+        with open(_LOG_PATH, "w", encoding="utf-8") as f:
+            f.write("\n".join(lines) + "\n")
+        log.info(f"Run summary → {_LOG_PATH}")
+    except Exception as e:
+        log.debug(f"Analysis summary write failed: {e}")
 
 
 if __name__ == "__main__":

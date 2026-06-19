@@ -1,0 +1,57 @@
+=== CAMARF analysis.py ===
+date:        2026-06-18 14:00
+runtime_min: 78.2
+universe:    1524 assets  16262 symbol-TF keys
+
+=== results_by_tf ===
+tf    pairs cross trios regimes
+1m    0     0     0     0
+2m    13    0     9     22
+3m    0     0     0     0
+5m    5     0     1     9
+15m   8     0     5     12
+30m   1     0     0     2
+1h    0     0     0     0
+4h    0     0     0     0
+8h    0     0     0     0
+1D    0     0     0     0
+7D    1     0     0     2
+1M    0     0     0     0
+3M    0     0     0     0
+6M    0     0     0     0
+TOTAL  28          15    47
+bias_audit_entries: 47
+
+=== confirmed_pairs ===
+2m     CBRE     JLL      hl=6.6  H=0.410  tier=gold  coint_frac=0.18
+2m     ED       SO       hl=6.8  H=0.406  tier=gold  coint_frac=0.35
+2m     HAL      PTEN     hl=4.8  H=0.377  tier=gold  coint_frac=0.21
+2m     HLT      H        hl=5.5  H=0.422  tier=gold  coint_frac=0.08
+2m     NWSA     NWS      hl=5.8  H=0.390  tier=gold  coint_frac=0.17
+2m     PHM      TOL      hl=5.9  H=0.383  tier=gold  coint_frac=0.39
+2m     SWKS     QRVO     hl=8.6  H=0.413  tier=gold  coint_frac=0.33
+2m     LUV      MHK      hl=7.1  H=0.409  tier=gold  coint_frac=0.10
+2m     UAL      MHK      hl=6.8  H=0.396  tier=gold  coint_frac=0.06
+2m     AAL      MHK      hl=6.5  H=0.418  tier=gold  coint_frac=0.01
+2m     ALK      MHK      hl=9.4  H=0.405  tier=gold  coint_frac=0.03
+2m     BC       PII      hl=7.3  H=0.390  tier=gold  coint_frac=0.03
+2m     ALGT     MHK      hl=13.5  H=0.399  tier=gold  coint_frac=0.05
+5m     NWSA     NWS      hl=11.0  H=0.385  tier=gold  coint_frac=0.38
+5m     BKH      NWE      hl=19.6  H=0.405  tier=gold  coint_frac=0.21
+5m     FFIN     FHB      hl=29.8  H=0.370  tier=gold  coint_frac=0.10
+5m     FFIN     SFNC     hl=33.4  H=0.406  tier=gold  coint_frac=0.04
+5m     BKU      CVBF     hl=26.3  H=0.373  tier=gold  coint_frac=0.08
+15m    FITB     FULT     hl=51.6  H=0.461  tier=gold  coint_frac=0.94
+15m    PNC      FULT     hl=32.2  H=0.444  tier=gold  coint_frac=1.00
+15m    ASB      ABCB     hl=63.9  H=0.451  tier=gold  coint_frac=1.00
+15m    COLB     ABCB     hl=60.5  H=0.459  tier=gold  coint_frac=1.00
+15m    EWBC     FBP      hl=44.9  H=0.466  tier=gold  coint_frac=0.82
+15m    ONB      ABCB     hl=60.9  H=0.464  tier=gold  coint_frac=1.00
+15m    UBSI     AUB      hl=45.7  H=0.421  tier=gold  coint_frac=0.88
+15m    AUB      CVBF     hl=61.6  H=0.463  tier=gold  coint_frac=1.00
+30m    SPY      VOO      hl=217.8  H=0.778  tier=gold  coint_frac=1.00
+7D     AXTA     ENVA     hl=106.4  H=0.735  tier=silver  coint_frac=0.12
+
+=== errors_and_skipped ===
+
+=== end ===

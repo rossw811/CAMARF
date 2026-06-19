@@ -29,7 +29,7 @@ import yfinance as yf
 import pandas_market_calendars as mcal
 from datetime import datetime, timedelta, timezone
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, FrozenSet, List, Optional, Set, Tuple
 
 import nest_asyncio
 
@@ -116,7 +116,6 @@ class DataStore:
         "30m": "30min",
         "1h": "1hr",
         "4h": "4hr",
-        "8h": "8hr",
         "1D": "1day",
         "7D": "7day",
         "1M": "1mo",  # ← was "1M"; would collide with "1m" on Windows
@@ -158,7 +157,6 @@ class DataStore:
             "_30m.parquet": "_30min.parquet",
             "_1h.parquet": "_1hr.parquet",
             "_4h.parquet": "_4hr.parquet",
-            "_8h.parquet": "_8hr.parquet",
             "_1D.parquet": "_1day.parquet",
             "_7D.parquet": "_7day.parquet",
         }
@@ -264,7 +262,6 @@ class DataStore:
         "30m": 1800,
         "1h": 3600,
         "4h": 14400,
-        "8h": 28800,
         "1D": 86400,
         "7D": 604800,
         "1M": 2592000,
@@ -284,7 +281,6 @@ class DataStore:
         "30m": 1_500,
         "1h": 1_200,  # yfinance max 730 days; IBKR goes further
         "4h": 2_500,
-        "8h": 4_000,  # yfinance ~1458, IBKR ~5861 — prefer IBKR
         "1D": 2_000,  # ~8 years daily
         "7D": 400,  # ~8 years weekly
         "1M": 80,  # ~7 years monthly
@@ -310,6 +306,37 @@ class DataStore:
         if df is None:
             return False  # missing entirely
         return len(df) >= min_bars
+
+    @staticmethod
+    def clear_tf_cache(tf_label: str, dry_run: bool = False) -> int:
+        """
+        Delete cached parquet files for a specific timeframe.
+        Use when cached data has the wrong frequency (e.g., 8h data
+        stored under the 1h key after a batch fallback bug).
+
+        Returns count of deleted files.
+        Example: DataStore.clear_tf_cache("1h") before re-running data.py
+        to force a fresh 1h fetch for all assets.
+        """
+        safe = DataStore._TF_SAFE.get(tf_label, tf_label)
+        suffix = f"_{safe}.parquet"
+        cache_dir = Config.DATA.CACHE_DIR
+        deleted = 0
+        for fname in os.listdir(cache_dir):
+            if fname.endswith(suffix):
+                if not dry_run:
+                    try:
+                        os.remove(os.path.join(cache_dir, fname))
+                        deleted += 1
+                    except OSError:
+                        pass
+                else:
+                    deleted += 1
+        log.info(
+            f"DataStore.clear_tf_cache('{tf_label}'): "
+            f"{'would delete' if dry_run else 'deleted'} {deleted} files"
+        )
+        return deleted
 
     @staticmethod
     def validate_frequency(
@@ -547,15 +574,34 @@ class ProgressLogger:
         entry = progress.get("completed", {}).get(symbol)
         if entry is None:
             return False
+
         stored_hash = entry.get("config_hash", "")
         current_hash = ProgressLogger.compute_config_hash()
-        if stored_hash != current_hash:
-            log.info(
-                f"Config changed since {symbol} was last fetched "
-                f"({stored_hash[:8]} → {current_hash[:8]}) — re-fetching"
-            )
-            return False
-        return True
+
+        if stored_hash == current_hash:
+            return True
+
+        # Config hash changed — but check if the asset's cached data is still
+        # valid before forcing a full re-fetch. Adding new config parameters
+        # (universe expansion, new TF labels, new analysis flags) doesn't
+        # invalidate existing price data. Only re-fetch if data is missing
+        # or insufficient.
+        #
+        # Check using the daily TF as a proxy for "was this asset ever fetched".
+        # If daily data is fresh and sufficient, accept the cache and silently
+        # update the hash. If not, force re-fetch.
+        if DataStore.is_fresh(symbol, "1D") and DataStore.is_data_sufficient(
+            symbol, "1D"
+        ):
+            # Data is valid — update the stored hash without re-fetching
+            entry["config_hash"] = current_hash
+            return True
+
+        log.debug(
+            f"Config changed and data is stale/missing for {symbol} "
+            f"({stored_hash[:8]} → {current_hash[:8]}) — re-fetching"
+        )
+        return False
 
     @staticmethod
     def reset() -> None:
@@ -794,7 +840,12 @@ class DataAligner:
             df_aligned.loc[still_nan, "gap_flag"] = GapFlag.SPARSE
 
             # ---- Quality gate: exclude >50% gap rate ----
-            gap_pct = float(missing.mean())
+            # Recompute missing AFTER the first_valid trim above so gap_pct
+            # reflects only the asset's actual trading history — not the
+            # pre-IPO void. Without this, a 2013 IPO has 79% "gap rate"
+            # on a 1962-present calendar and gets excluded incorrectly.
+            missing_trimmed = df_aligned["close"].isna()
+            gap_pct = float(missing_trimmed.mean()) if len(missing_trimmed) > 0 else 0.0
             if gap_pct > 0.50:
                 log.warning(f"DataAligner: {symbol} {gap_pct:.1%} gap rate — excluded")
                 continue
@@ -830,7 +881,6 @@ class DataAligner:
         """
         freq_map = {
             "4h": "4h",
-            "8h": "8h",
             "1h": "1h",
             "30m": "30min",
             "15m": "15min",
@@ -850,7 +900,6 @@ class DataAligner:
             "30min": 30,
             "1h": 60,
             "4h": 240,
-            "8h": 480,
         }
         _MAX_REINDEX = 500_000
 
@@ -967,6 +1016,173 @@ class DataAligner:
 # CLASS 2 — DataCleaner
 # =============================================================================
 
+# =============================================================================
+# Bar alignment utilities — canonical cutoff and timestamp snapping
+# =============================================================================
+
+# NYSE intraday session bar boundaries (minutes after midnight Eastern)
+# Used for timestamp snapping to ensure IBKR and yfinance agree on bar stamps.
+_SESSION_OPEN_MIN = 9 * 60 + 30  # 9:30 AM ET
+_SESSION_CLOSE_MIN = 16 * 60  # 4:00 PM ET
+
+# TF → bar duration in minutes
+_TF_MINUTES: Dict[str, int] = {
+    "1m": 1,
+    "2m": 2,
+    "3m": 3,
+    "5m": 5,
+    "15m": 15,
+    "30m": 30,
+    "1h": 60,
+    "4h": 240,  # 8h = full 6.5h session
+}
+
+
+def compute_canonical_cutoff(tf_label: str) -> Optional[pd.Timestamp]:
+    """
+    Compute the last COMPLETE bar boundary for this TF as of right now.
+
+    All fetched data is truncated to this timestamp before saving so that
+    every asset in the sweep has data through exactly the same bar —
+    regardless of when during the sweep it was fetched.
+
+    Logic:
+      - During market hours: floor to the last complete bar open
+      - Pre-market: use previous session's last bar open
+      - Post-market / weekend: use today's (or Friday's) last bar open
+
+    Returns a timezone-naive Eastern-time timestamp, or None for
+    daily/weekly/monthly TFs where partial-bar alignment isn't needed.
+    """
+    if tf_label not in _TF_MINUTES or tf_label in ("1D", "7D", "1M", "3M", "6M"):
+        return None  # daily+ TFs: partial bar not an issue
+
+    bar_mins = _TF_MINUTES[tf_label]
+    now_et = pd.Timestamp.now(tz="America/New_York").tz_localize(None)
+    today = now_et.normalize()
+
+    open_today = today + pd.Timedelta(minutes=_SESSION_OPEN_MIN)
+    close_today = today + pd.Timedelta(minutes=_SESSION_CLOSE_MIN)
+
+    def last_bar_open_on(date: pd.Timestamp) -> pd.Timestamp:
+        """Last complete bar open of a given trading session date."""
+        open_dt = date + pd.Timedelta(minutes=_SESSION_OPEN_MIN)
+        close_dt = date + pd.Timedelta(minutes=_SESSION_CLOSE_MIN)
+        session_mins = _SESSION_CLOSE_MIN - _SESSION_OPEN_MIN  # 390 min
+        n_complete = session_mins // bar_mins
+        last_open_min = (n_complete - 1) * bar_mins
+        return open_dt + pd.Timedelta(minutes=last_open_min)
+
+    if now_et < open_today:
+        # Pre-market — use previous session
+        prev_day = today - pd.Timedelta(days=1)
+        while prev_day.dayofweek >= 5:  # skip weekend
+            prev_day -= pd.Timedelta(days=1)
+        return last_bar_open_on(prev_day)
+    elif now_et >= close_today:
+        # Post-market — today's last bar is complete
+        return last_bar_open_on(today)
+    else:
+        # During session: floor to last complete bar open
+        mins_into_session = (now_et - open_today).total_seconds() / 60
+        complete_bars = int(mins_into_session // bar_mins)
+        if complete_bars == 0:
+            # Haven't completed even one bar today
+            prev_day = today - pd.Timedelta(days=1)
+            while prev_day.dayofweek >= 5:
+                prev_day -= pd.Timedelta(days=1)
+            return last_bar_open_on(prev_day)
+        last_complete_open = open_today + pd.Timedelta(
+            minutes=(complete_bars - 1) * bar_mins
+        )
+        return last_complete_open
+
+
+def snap_timestamps(
+    df: pd.DataFrame,
+    tf_label: str,
+    source: str = "ibkr",
+) -> pd.DataFrame:
+    """
+    Normalize bar timestamps to open-of-bar convention, Eastern time,
+    timezone-naive.
+
+    Problem: yfinance sometimes stamps intraday bars at bar CLOSE
+    (e.g., the 9:30-10:30 bar appears as 10:30). IBKR stamps at bar OPEN
+    (same bar appears as 9:30). When correlated, this produces an apparent
+    1-bar lead-lag that contaminates cross-source pair comparisons —
+    including the ES↔utility 15m finding.
+
+    Fix: snap every timestamp to the nearest valid bar OPEN for this TF
+    that falls within the NYSE session, then drop any that don't land
+    on a valid boundary (they're off-session bars).
+
+    For daily+ TFs: only normalize timezone (no bar-open snapping needed).
+    """
+    if df is None or df.empty:
+        return df
+
+    df = df.copy()
+
+    # Step 1: normalize to tz-naive Eastern time
+    if hasattr(df.index, "tz") and df.index.tz is not None:
+        try:
+            df.index = df.index.tz_convert("America/New_York").tz_localize(None)
+        except Exception:
+            df.index = df.index.tz_localize(None)
+
+    if tf_label not in _TF_MINUTES:
+        return df  # daily+ TFs: timezone normalize is sufficient
+
+    bar_mins = _TF_MINUTES[tf_label]
+
+    # Step 2: snap each timestamp to the nearest session bar open
+    def _snap(ts: pd.Timestamp) -> Optional[pd.Timestamp]:
+        """Snap ts to the nearest bar open on the same date within session."""
+        day_open = ts.normalize() + pd.Timedelta(minutes=_SESSION_OPEN_MIN)
+        day_close = ts.normalize() + pd.Timedelta(minutes=_SESSION_CLOSE_MIN)
+        if ts < day_open or ts >= day_close:
+            return None  # outside session — drop
+
+        mins_since_open = (ts - day_open).total_seconds() / 60
+        # Round to nearest bar boundary
+        nearest_bar = round(mins_since_open / bar_mins) * bar_mins
+        snapped = day_open + pd.Timedelta(minutes=nearest_bar)
+
+        # Clamp to session
+        last_open = day_open + pd.Timedelta(
+            minutes=((_SESSION_CLOSE_MIN - _SESSION_OPEN_MIN) // bar_mins - 1)
+            * bar_mins
+        )
+        if snapped > last_open:
+            snapped = last_open
+        return snapped
+
+    new_idx = [_snap(ts) for ts in df.index]
+    valid = [t is not None for t in new_idx]
+
+    df = df[valid].copy()
+    df.index = pd.DatetimeIndex([t for t in new_idx if t is not None])
+
+    # Drop duplicates that arose from snapping (keep last — most recent data wins)
+    df = df[~df.index.duplicated(keep="last")]
+    df.sort_index(inplace=True)
+    return df
+
+
+def truncate_to_cutoff(
+    df: pd.DataFrame,
+    cutoff: Optional[pd.Timestamp],
+) -> pd.DataFrame:
+    """
+    Drop bars after the canonical cutoff timestamp.
+    Ensures every asset in a sweep has data through the same point in time.
+    """
+    if df is None or df.empty or cutoff is None:
+        return df
+    # cutoff is the OPEN of the last complete bar — include it
+    return df[df.index <= cutoff]
+
 
 class DataCleaner:
     """
@@ -974,12 +1190,13 @@ class DataCleaner:
 
     Pipeline:
         1. Standardize columns and promote date column to DatetimeIndex
-        2. Remove duplicate timestamps
-        3. Gap detection and forward-fill (NYSE calendar for daily equities,
-           skipped for intraday — markets are genuinely closed overnight)
-        4. Roll adjustment for futures
-        5. Dollar-volume liquidity filter for equities
-        6. Minimum bar count validation (per-timeframe threshold)
+        2. Timestamp snapping (open-of-bar convention, Eastern time, tz-naive)
+        3. Canonical cutoff truncation (all assets aligned to same last bar)
+        4. Remove duplicate timestamps
+        5. Gap detection and forward-fill
+        6. Roll adjustment for futures
+        7. Dollar-volume liquidity filter
+        8. Minimum bar count validation
     """
 
     _REQUIRED_COLS = {"open", "high", "low", "close", "volume", "average"}
@@ -1214,7 +1431,40 @@ class YFinanceFeed:
 
     yfinance MultiIndex columns: (Price, Ticker) — flattened per ticker
     before passing to DataCleaner.
+
+    SHARED SESSION (critical for bulk intraday loops):
+    Creating a fresh yf.Ticker() per call forces Yahoo's client to
+    renegotiate cookie/crumb authentication on every single request.
+    A single interactive call never triggers Yahoo's anti-bot throttling;
+    a tight loop of hundreds/thousands of fresh Ticker() instantiations
+    does — almost immediately, with empty results and no exception
+    (confirmed empirically: same exact call succeeds standalone, fails
+    100% of the time inside Phase 2A's sequential per-asset loop).
+    Fix: one requests.Session is created once and reused across every
+    yf.Ticker(symbol, session=...) call in get_intraday_fallback.
     """
+
+    # Shared session for all intraday yfinance requests. Created lazily on
+    # first use, reused for the lifetime of the process. Avoids the
+    # per-call cookie/crumb renegotiation that triggers Yahoo throttling
+    # under rapid sequential Ticker() instantiation.
+    _shared_session: Optional[requests.Session] = None
+
+    @classmethod
+    def _get_session(cls) -> requests.Session:
+        if cls._shared_session is None:
+            s = requests.Session()
+            s.headers.update(
+                {
+                    "User-Agent": (
+                        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                        "AppleWebKit/537.36 (KHTML, like Gecko) "
+                        "Chrome/120.0.0.0 Safari/537.36"
+                    )
+                }
+            )
+            cls._shared_session = s
+        return cls._shared_session
 
     # yfinance fetches daily/weekly/monthly only.
     # Intraday (1m through 8h) fetched from IBKR for proper historical depth:
@@ -1519,20 +1769,18 @@ class YFinanceFeed:
     # yfinance intraday interval mapping: tf_label → (yf_interval, max_period)
     _YF_INTRADAY_MAP: Dict[str, Tuple[str, str]] = {
         "4h": ("1h", "730d"),  # resample from 1h
-        "8h": ("1h", "730d"),  # resample from 1h
         "1h": ("1h", "730d"),
         "30m": ("30m", "60d"),
         "15m": ("15m", "60d"),
         "5m": ("5m", "60d"),
         "3m": ("1m", "5d"),  # resample from 1m; Yahoo 1m limit = 8 days
-        "2m": ("2m", "60d"),
+        "2m": ("2m", "55d"),  # 55d ≈ 39 trading days; within 60-calendar-day API limit
         "1m": ("1m", "5d"),  # Yahoo 1m hard limit = 8 days; 5d is safe
     }
 
     # TFs that require resampling from their yfinance source interval
     _YF_RESAMPLE_RULES: Dict[str, str] = {
         "4h": "4h",
-        "8h": "8h",
         "3m": "3min",
     }
 
@@ -1578,36 +1826,145 @@ class YFinanceFeed:
         except Exception:
             pass
 
-        periods_to_try = [period, "60d"] if period != "60d" else ["60d"]
+        # Download via yf.Ticker().history() — NOT yf.download().
+        #
+        # Empirically verified (2026-06-18 user test script): .history() with
+        # a plain period string ("7d" for 1m, "60d" for 5m/2m/30m/15m, "730d"
+        # for 1h) succeeds reliably, including 1m which previously failed
+        # 100% of the time under yf.download() with explicit start/end dates.
+        #
+        # A prior fix attempted to solve a (real) period-ambiguity concern by
+        # switching to explicit start/end timestamps via yf.download(). That
+        # introduced a worse bug: the day-count table was keyed by tf_label
+        # instead of the underlying yf_interval, so "3m" (which downloads at
+        # yf_interval="1m") was requesting a 55-day span at 1m granularity —
+        # nearly 7x over Yahoo's 8-day hard limit for 1m data. This silently
+        # failed for every single asset. Reverting to the simpler, proven
+        # period-string approach removes the whole class of bug along with it.
+        #
+        # _YF_INTRADAY_MAP already encodes the correct conservative period
+        # per yf_interval (1m→5d, 2m→55d, 5m/15m/30m→60d, 1h→730d) — trust it.
+        _attempts = [period] if period != "max" else ["max"]
+        if period != "max":
+            _attempts.append("max")  # final fallback for edge cases
+
+        # Defensive guard: validate period format before it ever reaches the
+        # API. Catches any malformed period string (e.g. a stray text label
+        # from a mismatched or partially-merged file) with a clear, specific
+        # error instead of a cryptic per-asset API failure.
+        import re as _re
+
+        _VALID_PERIOD = _re.compile(
+            r"^(\d+d|\d+mo|\d+y|1d|5d|1mo|3mo|6mo|1y|2y|5y|10y|ytd|max)$"
+        )
+        _attempts = [p for p in _attempts if _VALID_PERIOD.match(p)]
+        if not _attempts:
+            log.error(
+                f"yfinance {symbol} {tf_label}: no valid period strings "
+                f"after validation (got {[period, 'max']}) — this indicates "
+                f"a corrupted _YF_INTRADAY_MAP entry or a stale/mismatched "
+                f"data.py file. Skipping."
+            )
+            return None
+
         raw = None
         worked_period = None
-        for try_period in periods_to_try:
+        for _try_period in _attempts:
             try:
                 import contextlib, io
 
                 with contextlib.redirect_stderr(io.StringIO()):
-                    r = yf.download(
-                        yf_sym,
-                        period=try_period,
-                        interval=yf_interval,
-                        auto_adjust=True,
-                        progress=False,
-                        threads=False,
-                    )
+                    # Try with shared session first (avoids per-call cookie/
+                    # crumb renegotiation that triggers Yahoo throttling).
+                    # Fall back to a plain Ticker() if this yfinance version's
+                    # session parameter is incompatible (some versions moved
+                    # to curl_cffi sessions internally) — never let a session
+                    # API mismatch break the fetch entirely.
+                    try:
+                        r = yf.Ticker(
+                            yf_sym, session=YFinanceFeed._get_session()
+                        ).history(
+                            period=_try_period,
+                            interval=yf_interval,
+                            auto_adjust=True,
+                        )
+                    except TypeError:
+                        r = yf.Ticker(yf_sym).history(
+                            period=_try_period,
+                            interval=yf_interval,
+                            auto_adjust=True,
+                        )
                 if r is not None and not r.empty:
                     raw = r
-                    worked_period = try_period
+                    worked_period = _try_period
                     break
+                else:
+                    # TEMPORARY: unconditional WARNING (not DEBUG) while
+                    # diagnosing the post-pytz-install regression where 1h
+                    # dropped from 99% success to 0% with no exceptions
+                    # raised — meaning yf.Ticker().history() is returning
+                    # empty silently. This is the only way to see WHICH
+                    # symbols/periods are affected. Dial back to log.debug
+                    # once root cause is confirmed and fixed.
+                    log.warning(
+                        f"yfinance {symbol} {tf_label} "
+                        f"[period={_try_period}]: returned EMPTY (no exception) "
+                        f"— ticker={yf_sym}, interval={yf_interval}"
+                    )
             except Exception as e:
-                log.debug(
-                    f"yfinance {symbol} {tf_label} period={try_period} {type(e).__name__}: {e}"
+                _err_str = str(e)
+                _is_network_error = any(
+                    s in _err_str
+                    for s in (
+                        "DNSError",
+                        "Could not resolve host",
+                        "ConnectionError",
+                        "Network is unreachable",
+                        "Failed to establish a new connection",
+                    )
                 )
+                if _is_network_error:
+                    log.error(
+                        f"NETWORK ERROR (not a data issue) — {symbol} {tf_label}: "
+                        f"{type(e).__name__}: {e}. Check internet connection."
+                    )
+                else:
+                    _log_fn = log.warning if worked_period is None else log.debug
+                    _log_fn(
+                        f"yfinance {symbol} {tf_label} "
+                        f"[period={_try_period}] {type(e).__name__}: {e}"
+                    )
 
         if raw is None or raw.empty:
+            log.debug(
+                f"yfinance {symbol} {tf_label}: all periods tried "
+                f"({_attempts}) — ticker may be delisted or genuinely "
+                f"unavailable at this interval"
+            )
             return None
 
-        # Cache the period that worked if different from default
-        if worked_period and periods_to_try and worked_period != periods_to_try[0]:
+        # Validate returned frequency matches the requested TF.
+        # yfinance silently returns daily bars when intraday isn't available.
+        # Daily data has ~82800-86400s median gap; 1h expects 3600s.
+        # Saving daily data to a 1h/4h cache file is the contamination bug.
+        _expected_gap = DataStore._EXPECTED_GAP_SECONDS.get(tf_label)
+        if _expected_gap and len(raw) > 10:
+            try:
+                _idx = pd.to_datetime(raw.index)
+                _med = float(
+                    _idx.to_series().diff().dt.total_seconds().dropna().median()
+                )
+                if _med > _expected_gap * 3:
+                    log.debug(
+                        f"yfinance {symbol} {tf_label}: wrong frequency "
+                        f"(expected ~{_expected_gap}s, got {_med:.0f}s) — discarding"
+                    )
+                    return None
+            except Exception:
+                pass
+
+        # Cache the attempt label that worked (if it was a fallback, not the primary)
+        if worked_period and _attempts and worked_period != _attempts[0][0]:
             try:
                 DataStore.save(_pkey, "meta", pd.DataFrame([{"period": worked_period}]))
             except Exception:
@@ -1650,6 +2007,60 @@ class YFinanceFeed:
 # IBKR Gateway connection for futures, forex, crypto, commodities.
 # Also handles equity intraday gaps (3m) not available from yfinance.
 # =============================================================================
+
+
+class ConIdCache:
+    """
+    Caches IBKR contract IDs (conId) to skip the per-request
+    symbol-to-exchange string resolution step.
+
+    First successful request: IBKR resolves "AAPL" to conId 265598.
+    All subsequent requests: build Contract(conId=265598) directly.
+    Saves ~0.5-1s per request = 750-1500s total for 1,500 assets.
+    Persisted to output/cache/conid_cache.json between sessions.
+    """
+
+    _PATH = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)),
+        "output",
+        "cache",
+        "conid_cache.json",
+    )
+    _cache: Dict[str, int] = {}
+    _dirty = False
+
+    @classmethod
+    def load(cls) -> None:
+        if os.path.exists(cls._PATH):
+            try:
+                with open(cls._PATH) as f:
+                    cls._cache = json.load(f)
+                log.debug(f"ConIdCache: {len(cls._cache)} entries loaded")
+            except Exception:
+                cls._cache = {}
+
+    @classmethod
+    def save(cls) -> None:
+        if not cls._dirty:
+            return
+        try:
+            os.makedirs(os.path.dirname(cls._PATH), exist_ok=True)
+            with open(cls._PATH, "w") as f:
+                json.dump(cls._cache, f, indent=2)
+            cls._dirty = False
+            log.debug(f"ConIdCache: {len(cls._cache)} entries saved")
+        except Exception as e:
+            log.debug(f"ConIdCache save failed: {e}")
+
+    @classmethod
+    def get(cls, symbol: str) -> Optional[int]:
+        return cls._cache.get(symbol)
+
+    @classmethod
+    def put(cls, symbol: str, con_id: int) -> None:
+        if con_id and con_id != 0 and cls._cache.get(symbol) != con_id:
+            cls._cache[symbol] = con_id
+            cls._dirty = True
 
 
 class IBKRFeed:
@@ -1714,6 +2125,7 @@ class IBKRFeed:
         self._tf_ibkr_attempts = 0
         self._tf_ibkr_successes = 0
         self._upstream_broken = False  # set True on Warning 2110 — reconnect futile
+        self._session_dead = False  # set True after 30-min reconnect failure
 
     # ------------------------------------------------------------------
     # Connection management with auto-reconnect
@@ -1751,6 +2163,14 @@ class IBKRFeed:
 
         Returns True if reconnected, False if timed out.
         """
+        # If the session is already known dead (previous reconnect failed),
+        # return immediately — don't burn another 30 minutes.
+        # This prevents the infinite loop where every asset failure in the
+        # last TF (1m) triggers a new 30-minute reconnect cycle.
+        if self._session_dead:
+            log.debug("Session already dead — skipping reconnect attempt")
+            return False
+
         deadline = time.time() + (max_wait_minutes * 60)
         attempt = 0
 
@@ -1805,8 +2225,10 @@ class IBKRFeed:
 
         log.warning(
             f"Could not reconnect after {max_wait_minutes} minutes — "
-            f"falling back to yfinance for remaining assets"
+            f"TWS is down for this session. Setting kill switch: "
+            f"all future TFs will skip IBKR immediately."
         )
+        self._session_dead = True
         return False
 
     def _on_ibkr_error(self, reqId, errorCode, errorString, contract) -> None:
@@ -2277,7 +2699,6 @@ class IBKRFeed:
     # 2m and 3m are derived by resampling from 1m (same 42D depth, no loss).
     INTRADAY_TFS = [
         ("4 hours", "4h", "10 Y"),
-        ("8 hours", "8h", "10 Y"),
         ("1 hour", "1h", "5 Y"),
         ("30 mins", "30m", "2 Y"),
         ("15 mins", "15m", "1 Y"),
@@ -2481,6 +2902,104 @@ class CBOEFeed:
 # =============================================================================
 
 
+class RunSummary:
+    """
+    Accumulates key metrics during a data.py run and writes a compact
+    structured summary at completion. Upload latest_run_data.log directly
+    to an LLM for diagnosis without needing to summarize first.
+    """
+
+    _LOG_PATH = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), "latest_run_data.log"
+    )
+
+    def __init__(self):
+        self.start_time = time.time()
+        self.config_hash = ""
+        self.n_universe = 0
+        self.n_resumed = 0
+        self.n_excluded = 0
+        self.contaminated_cleaned = 0
+        self.phase1: Dict[str, Any] = {}
+        self.tfs: Dict[str, Dict] = {}
+        self.ibkr_disconnects = 0
+        self.ibkr_session_killed = False
+        self.errors: List[str] = []
+        self.warnings: Dict[str, int] = {}
+
+    def record_tf(self, tf: str, **kwargs) -> None:
+        self.tfs.setdefault(tf, {}).update(kwargs)
+
+    def error(self, msg: str) -> None:
+        key = msg[:100]
+        if key not in self.errors:
+            self.errors.append(key)
+
+    def warn(self, category: str) -> None:
+        self.warnings[category] = self.warnings.get(category, 0) + 1
+
+    def write(self) -> None:
+        elapsed = (time.time() - self.start_time) / 60
+        lines = [
+            "=== CAMARF data.py ===",
+            f"date:        {pd.Timestamp.now().strftime('%Y-%m-%d %H:%M')}",
+            f"runtime_min: {elapsed:.1f}",
+            f"config_hash: {self.config_hash}",
+            "",
+            "=== universe ===",
+            f"candidates:  {self.n_universe}",
+            f"resumed:     {self.n_resumed}",
+            f"excluded:    {self.n_excluded}",
+            f"cache_contamination_cleared: {self.contaminated_cleaned}",
+            "",
+            "=== phase1_daily ===",
+        ]
+        for k, v in self.phase1.items():
+            lines.append(f"{k}: {v}")
+
+        lines += ["", "=== intraday_tfs ==="]
+        if self.tfs:
+            # Dynamic columns: union of all keys actually recorded across TFs,
+            # so derivation diagnostics (skip_fresh, no_source, resample_fail,
+            # freq_invalid) show up alongside fetch diagnostics (yf_ok, yf_fail)
+            # without needing a fixed schema.
+            all_keys = []
+            for s in self.tfs.values():
+                for k in s.keys():
+                    if k not in all_keys:
+                        all_keys.append(k)
+            header = "tf    | " + " | ".join(f"{k:<13}" for k in all_keys)
+            lines.append(header)
+            for tf, s in self.tfs.items():
+                row = f"{tf:<6}| " + " | ".join(f"{s.get(k,0):<13}" for k in all_keys)
+                lines.append(row)
+
+        lines += [
+            "",
+            "=== ibkr ===",
+            f"disconnects:    {self.ibkr_disconnects}",
+            f"session_killed: {self.ibkr_session_killed}",
+        ]
+
+        if self.warnings:
+            lines += ["", "=== warnings (top 10) ==="]
+            for cat, n in sorted(self.warnings.items(), key=lambda x: -x[1])[:10]:
+                lines.append(f"  {n:>4}x  {cat}")
+
+        if self.errors:
+            lines += ["", "=== errors ==="]
+            for e in self.errors:
+                lines.append(f"  {e}")
+
+        lines += ["", "=== end ==="]
+        try:
+            with open(self._LOG_PATH, "w", encoding="utf-8") as f:
+                f.write("\n".join(lines) + "\n")
+            log.info(f"Run summary → {self._LOG_PATH}")
+        except Exception as e:
+            log.debug(f"RunSummary write failed: {e}")
+
+
 class UniverseBuilder:
     """
     Constructs the full CAMARF asset universe and fetches all historical data.
@@ -2499,6 +3018,7 @@ class UniverseBuilder:
         "BNY",  # BNY Mellon ticker variant — use "BK" instead
         "FDXF",  # No daily data from yfinance
     }
+    _PERSISTENT_FAIL_THRESHOLD: int = 3  # auto-exclude after N full-run failures
     _EXCLUSION_CACHE: str = os.path.join(
         os.path.dirname(os.path.abspath(__file__)),
         "output",
@@ -2526,6 +3046,80 @@ class UniverseBuilder:
             open(flag, "w").close()
         except OSError:
             pass
+
+    @staticmethod
+    def _clean_contaminated_cache() -> None:
+        """
+        Scan the cache directory and delete files whose actual bar frequency
+        doesn't match the expected frequency for their TF suffix.
+
+        This catches the yfinance silent-fallback bug where daily bars are
+        written to a 1h or 4h cache file. Without this cleanup, is_fresh()
+        returns True on the contaminated file and data.py never re-fetches.
+
+        Only runs the scan once per session (flag file prevents repeated work).
+        Deletes contaminated files so they get re-fetched on this run.
+        """
+        # No flag file — scan runs on every data.py startup.
+        # The scan reads only the first 10 rows of each parquet file to check
+        # median gap frequency. For 1500 files this takes ~3-5 seconds total.
+        # A persistent flag would skip the scan when contaminated files are
+        # older than the flag (the common case), defeating the purpose.
+
+        cleaned = 0
+        # Map safe TF name → (expected_gap_seconds, tolerance_multiplier)
+        checks = {
+            safe: (gap, 3)
+            for tf, gap in DataStore._EXPECTED_GAP_SECONDS.items()
+            if (safe := DataStore._TF_SAFE.get(tf, tf)) and gap
+        }
+
+        try:
+            for fname in os.listdir(Config.DATA.CACHE_DIR):
+                if not fname.endswith(".parquet"):
+                    continue
+                # Identify which TF this file belongs to
+                matched_safe = None
+                for safe_tf in checks:
+                    if fname.endswith(f"_{safe_tf}.parquet"):
+                        matched_safe = safe_tf
+                        break
+                if matched_safe is None:
+                    continue
+
+                expected_gap, tol = checks[matched_safe]
+                fpath = os.path.join(Config.DATA.CACHE_DIR, fname)
+                try:
+                    df = pd.read_parquet(fpath, columns=["close"])
+                    if len(df) < 10:
+                        continue
+                    idx = pd.to_datetime(df.index)
+                    med = float(
+                        idx.to_series().diff().dt.total_seconds().dropna().median()
+                    )
+                    if med > expected_gap * tol:
+                        os.remove(fpath)
+                        cleaned += 1
+                        log.debug(
+                            f"  Removed contaminated cache: {fname} "
+                            f"(expected ~{expected_gap}s, got {med:.0f}s)"
+                        )
+                except Exception:
+                    pass  # unreadable or corrupt file — leave it
+
+            if cleaned:
+                log.info(
+                    f"Cache scan: removed {cleaned} contaminated files "
+                    f"(wrong frequency — will be re-fetched this run)"
+                )
+                # Contamination count logged above via log.info().
+                # (RunSummary.contaminated_cleaned updated from build() scope)
+            else:
+                log.debug("Cache scan: no contaminated files found")
+
+            # Scan complete — no flag file written (scan always runs)
+        except Exception as e:
+            log.debug(f"Contamination scan failed: {e}")
 
     @staticmethod
     def load_exclusions() -> set:
@@ -2567,21 +3161,24 @@ class UniverseBuilder:
 
     def build(
         self,
-        connect: bool = True,
+        connect: bool = False,  # yfinance-only by default; True = IBKR mode
         reset_progress: bool = False,
     ) -> UniverseResult:
         """
         Full pipeline: build universe, fetch data, validate, return result.
         Crash-safe via ProgressLogger. Config-hash-aware cache invalidation.
         """
+        _summary = RunSummary()  # tracks metrics; written to latest_run_data.log at end
         Config.ensure_dirs()
         UniverseBuilder._run_cache_migration()  # one-time safe filename migration
+        UniverseBuilder._clean_contaminated_cache()  # delete wrong-freq cache files
 
         if reset_progress:
             ProgressLogger.reset()
 
         progress = ProgressLogger.load()
         current_hash = ProgressLogger.compute_config_hash()
+        _summary.config_hash = current_hash[:16]
         n_done = sum(
             1
             for sym in progress["completed"]
@@ -2591,6 +3188,7 @@ class UniverseBuilder:
             log.info(
                 f"Resuming — {n_done} assets already complete (config hash {current_hash})"
             )
+        _summary.n_resumed = n_done
 
         log.info("Building asset universe...")
         raw_assets_all = self._build_raw_list()
@@ -2601,6 +3199,7 @@ class UniverseBuilder:
             skipped_names = sorted(exclusions & {s for s, _ in raw_assets_all})
             log.info(f"Exclusion list: skipping {n_skipped} assets {skipped_names}")
         log.info(f"Universe candidates: {len(raw_assets)} assets")
+        _summary.n_universe = len(raw_assets)
 
         all_data: Dict[str, pd.DataFrame] = {}
         all_reports: List[QualityReport] = []
@@ -2764,6 +3363,272 @@ class UniverseBuilder:
 
         ibkr_work = equity_needing_intraday + forex_needing_intraday + non_equity
         if ibkr_work:
+            if not connect:
+                log.info("  Phase 2A: yfinance intraday sweep (primary pipeline)")
+                # yfinance intraday depth limits:
+                #   1h:  730 days (deepest intraday available)
+                #   5m/15m/30m/2m: 60 days
+                #   1m/3m: 7 days (Yahoo hard limit)
+                # 4h: no native yfinance 4h — derived from 1h via resample.
+                # All TFs fetched regardless of depth. IBKR (data_ibkr.py)
+                # deepens confirmed pairs to 10 years after analysis.py runs.
+                # Full TF list — ordered longest-to-shortest depth so the
+                # most analytically valuable data is prioritised if a run is
+                # interrupted. 1m/2m/3m are last: short windows (7-60 days)
+                # but still real signal for intraday pair screening.
+                _YF_INTRADAY_TFS = ["1h", "30m", "15m", "5m", "2m", "1m", "3m"]
+                _phase2a_fail_registry: Dict[str, List[Tuple[str, str]]] = {}
+                _all_intraday_assets = [
+                    (s, cls)
+                    for s, cls in raw_assets
+                    if cls in ("equity", "etf", "crypto")
+                ]
+                for _tf in _YF_INTRADAY_TFS:
+                    _cutoff = compute_canonical_cutoff(_tf)
+                    _needs = [
+                        (s, cls)
+                        for s, cls in _all_intraday_assets
+                        if not DataStore.is_fresh(s, _tf)
+                    ]
+                    if not _needs:
+                        log.info(f"    [{_tf}] all assets current — skip")
+                        _summary.record_tf(
+                            _tf,
+                            yf_ok=0,
+                            yf_fail=0,
+                            saved=0,
+                            skipped_fresh=len(_all_intraday_assets),
+                        )
+                        continue
+                    log.info(f"    [{_tf}] {len(_needs)} assets to fetch")
+                    _saved = 0
+                    _fail_fetch = 0  # get_intraday_fallback returned None/empty
+                    _fail_snap = 0  # snap_timestamps produced empty
+                    _fail_cutoff = 0  # truncate_to_cutoff produced empty
+                    _first_fail = None
+
+                    # Light per-request delay for high-frequency intervals —
+                    # politeness toward the API, not a workaround for a
+                    # diagnosed problem. (Root cause of the earlier 1m/2m
+                    # 100% failure was a request-construction bug — see
+                    # get_intraday_fallback — not a Yahoo-side block. A user
+                    # test script using plain yf.Ticker().history(period=...)
+                    # succeeded immediately for 1m with zero failures,
+                    # confirming there was never a session-level rate limit.)
+                    # Small universal delay across ALL intraday TFs, not just
+                    # 1m/2m — the cookie/crumb-renegotiation throttling that
+                    # caused 100% failure was observed on 1h too (87/87
+                    # failed), so this isn't a high-frequency-only problem.
+                    # The shared session (above) is the primary fix; this
+                    # delay is additional insurance against burst-rate
+                    # triggers in Yahoo's anti-bot detection.
+                    _inter_request_delay = 0.15
+                    _checkpoint_done = False
+
+                    for _idx, (_sym, _cls) in enumerate(_needs):
+                        if _idx > 0 and _idx % 200 == 0:
+                            log.info(
+                                f"    [{_tf}] {_idx}/{len(_needs)} "
+                                f"({_saved} saved | "
+                                f"fetch_fail={_fail_fetch} snap_fail={_fail_snap} "
+                                f"cutoff_fail={_fail_cutoff})"
+                            )
+
+                        # Sanity checkpoint at idx=50: if still failing at a
+                        # high rate after the get_intraday_fallback fix, this
+                        # would indicate a genuinely new problem (not the old
+                        # request-construction bug) — surfaced clearly rather
+                        # than silently burning through the rest of the list.
+                        if not _checkpoint_done and _idx == 50:
+                            _checkpoint_done = True
+                            _fail_rate = _fail_fetch / max(_idx, 1)
+                            if _fail_rate > 0.85:
+                                log.warning(
+                                    f"    [{_tf}] {_fail_fetch}/{_idx} failed "
+                                    f"({_fail_rate:.0%}) early on — if this "
+                                    f"persists, check the WARNING-level "
+                                    f"yfinance exception logged above for the "
+                                    f"actual error (not assumed to be a rate "
+                                    f"limit; could be network or API change)."
+                                )
+
+                        if _inter_request_delay:
+                            time.sleep(_inter_request_delay)
+
+                        _df = YFinanceFeed.get_intraday_fallback(_sym, _cls, _tf)
+                        if _df is None or _df.empty:
+                            _fail_fetch += 1
+                            if _first_fail is None:
+                                _first_fail = f"fetch:{_sym}"
+                            _phase2a_fail_registry.setdefault(_tf, []).append(
+                                (_sym, _cls)
+                            )
+                            continue
+                        _df2 = snap_timestamps(_df, _tf, "yfinance")
+                        if _df2 is None or _df2.empty:
+                            _fail_snap += 1
+                            if _first_fail is None:
+                                _first_fail = (
+                                    f"snap:{_sym} "
+                                    f"(input {len(_df)} rows, "
+                                    f"tz={getattr(_df.index, 'tz', None)}, "
+                                    f"first={_df.index[0] if len(_df) else 'empty'})"
+                                )
+                            continue
+                        _df3 = truncate_to_cutoff(_df2, _cutoff)
+                        if _df3 is None or _df3.empty:
+                            _fail_cutoff += 1
+                            if _first_fail is None:
+                                _first_fail = (
+                                    f"cutoff:{_sym} "
+                                    f"(cutoff={_cutoff}, "
+                                    f"data_end={_df2.index[-1] if len(_df2) else 'empty'})"
+                                )
+                            continue
+                        DataStore.save(_sym, _tf, _df3)
+                        all_data[f"{_sym}_{_tf}"] = _df3
+                        _saved += 1
+                    log.info(
+                        f"    [{_tf}] complete: {_saved}/{len(_needs)} saved | "
+                        f"fail_fetch={_fail_fetch} fail_snap={_fail_snap} "
+                        f"fail_cutoff={_fail_cutoff}"
+                    )
+                    if _first_fail:
+                        log.warning(f"    [{_tf}] first failure: {_first_fail}")
+                    _summary.record_tf(
+                        _tf,
+                        saved=_saved,
+                        fail_fetch=_fail_fetch,
+                        fail_snap=_fail_snap,
+                        fail_cutoff=_fail_cutoff,
+                    )
+
+                # ── 4h derived from 1h supplement ──────────────────────────
+                # yfinance has no native 4h interval; derived via OHLCV resample.
+                # Failure reasons tracked explicitly (no more silent swallowing) —
+                # the previous version's bare `except: pass` made a systemic
+                # resample failure indistinguishable from normal skips.
+                _4h_skip_fresh = 0
+                _4h_no_1h_data = 0
+                _4h_resample_err = 0
+                _4h_freq_invalid = 0
+                _4h_saved = 0
+                _4h_first_error = None
+
+                for _sym, _cls in _all_intraday_assets:
+                    if DataStore.is_fresh(_sym, "4h"):
+                        _4h_skip_fresh += 1
+                        continue
+
+                    _df1h = all_data.get(f"{_sym}_1h")
+                    if _df1h is None:
+                        _df1h = DataStore.load(_sym, "1h")
+                    if _df1h is None or _df1h.empty:
+                        _4h_no_1h_data += 1
+                        continue
+
+                    try:
+                        # Ensure clean DatetimeIndex before resampling —
+                        # duplicate or unsorted timestamps silently corrupt
+                        # resample() output without raising an exception.
+                        _src = _df1h[~_df1h.index.duplicated(keep="last")].sort_index()
+                        _df4h = (
+                            _src.resample("4h", closed="left", label="left")
+                            .agg(
+                                {
+                                    "open": "first",
+                                    "high": "max",
+                                    "low": "min",
+                                    "close": "last",
+                                    "volume": "sum",
+                                }
+                            )
+                            .dropna(subset=["close"])
+                        )
+                    except Exception as e:
+                        _4h_resample_err += 1
+                        if _4h_first_error is None:
+                            _4h_first_error = f"{_sym}: {type(e).__name__}: {e}"
+                        continue
+
+                    if _df4h.empty:
+                        _4h_resample_err += 1
+                        continue
+
+                    # Validate derived frequency before saving. A resample
+                    # collapsing to ~1 bar/day (86400s) instead of 14400s
+                    # indicates the source 1h data was itself malformed —
+                    # this check prevents re-contaminating the 4h cache.
+                    _gap = (
+                        float(
+                            _df4h.index.to_series()
+                            .diff()
+                            .dt.total_seconds()
+                            .dropna()
+                            .median()
+                        )
+                        if len(_df4h) > 5
+                        else 14400.0
+                    )
+                    if _gap > 14400 * 3:
+                        _4h_freq_invalid += 1
+                        if _4h_first_error is None:
+                            # Diagnose the SOURCE data directly — was it freshly
+                            # fetched this run (all_data) or loaded from disk?
+                            # And what's the source's own bar-gap, independent
+                            # of the resample step, to isolate where the
+                            # corruption actually originates.
+                            _src_origin = (
+                                "all_data(this-run)"
+                                if all_data.get(f"{_sym}_1h") is not None
+                                else "disk(DataStore.load)"
+                            )
+                            _src_gap = (
+                                float(
+                                    _src.index.to_series()
+                                    .diff()
+                                    .dt.total_seconds()
+                                    .dropna()
+                                    .median()
+                                )
+                                if len(_src) > 5
+                                else float("nan")
+                            )
+                            _4h_first_error = (
+                                f"{_sym}: derived 4h gap={_gap:.0f}s (expected ~14400s). "
+                                f"source={_src_origin}, src_rows={len(_src)}, "
+                                f"src_gap={_src_gap:.0f}s, "
+                                f"src_range={_src.index.min()}→{_src.index.max()}"
+                            )
+                        continue
+
+                    DataStore.save(_sym, "4h", _df4h)
+                    all_data[f"{_sym}_4h"] = _df4h
+                    _4h_saved += 1
+
+                log.info(
+                    f"    [4h] derived: {_4h_saved} saved | "
+                    f"{_4h_skip_fresh} already fresh | "
+                    f"{_4h_no_1h_data} no 1h source | "
+                    f"{_4h_resample_err} resample failed | "
+                    f"{_4h_freq_invalid} wrong frequency after resample"
+                )
+                if _4h_first_error:
+                    log.warning(f"    [4h] first failure detail: {_4h_first_error}")
+                    _summary.error(f"4h derivation: {_4h_first_error}")
+                _summary.record_tf(
+                    "4h",
+                    saved=_4h_saved,
+                    skip_fresh=_4h_skip_fresh,
+                    no_source=_4h_no_1h_data,
+                    resample_fail=_4h_resample_err,
+                    freq_invalid=_4h_freq_invalid,
+                )
+
+                log.info(
+                    "  Phase 2A complete. "
+                    "Run data_ibkr.py for deep IBKR history on confirmed pairs."
+                )
             if connect:
                 success = self._ibkr.connect()
                 if not success:
@@ -2869,6 +3734,45 @@ class UniverseBuilder:
                         log.info(
                             f"  TF: {tf_label} — {len(all_intraday_assets)} assets"
                         )
+
+                        # Canonical cutoff: computed first so it's always in scope
+                        # regardless of which code path (session_dead, normal, etc.)
+                        # handles this TF.
+                        _canonical_cutoff = compute_canonical_cutoff(tf_label)
+
+                        # Session kill switch: TWS crashed and couldn't recover.
+                        # Route all unfetched assets directly to yfinance for this TF.
+                        if getattr(self._ibkr, "_session_dead", False):
+                            _dead_assets = [
+                                (s, cls)
+                                for s, cls in all_intraday_assets
+                                if not DataStore.is_fresh(s, tf_label)
+                                and cls in ("equity", "etf", "crypto")
+                            ]
+                            if _dead_assets:
+                                log.warning(
+                                    f"  [{tf_label}] IBKR session dead — "
+                                    f"routing {len(_dead_assets)} assets directly to yfinance"
+                                )
+                                _dead_cutoff = compute_canonical_cutoff(tf_label)
+                                n_dead = 0
+                                for sym, cls in _dead_assets:
+                                    yf_df = YFinanceFeed.get_intraday_fallback(
+                                        sym, cls, tf_label
+                                    )
+                                    if yf_df is not None and not yf_df.empty:
+                                        yf_df = snap_timestamps(
+                                            yf_df, tf_label, source="yfinance"
+                                        )
+                                        yf_df = truncate_to_cutoff(yf_df, _dead_cutoff)
+                                    if yf_df is not None and not yf_df.empty:
+                                        DataStore.save(sym, tf_label, yf_df)
+                                        all_data[f"{sym}_{tf_label}"] = yf_df
+                                        n_dead += 1
+                                log.info(
+                                    f"  [{tf_label}] Dead-session: {n_dead}/{len(_dead_assets)} saved via yfinance"
+                                )
+                            continue  # skip IBKR sweep for this TF
                         # Reset per-TF counters and rolling failure window
                         self._ibkr._consecutive_fails = 0
                         self._ibkr._circuit_open = False
@@ -2881,7 +3785,8 @@ class UniverseBuilder:
                             maxlen=10
                         )  # track last 10 IBKR outcomes per TF
                         _ibkr_degraded = False  # True = IBKR too flaky, use batch yf
-                        _pending_yf: List[Tuple[str, str]] = []  # queued for batch yf
+                        _pending_yf: List[Tuple[str, str]] = []
+                        _dual_fail_queue: Dict[str, List[Tuple[str, str]]] = {}
 
                         for symbol, asset_class in all_intraday_assets:
                             _bn += 1
@@ -2913,6 +3818,13 @@ class UniverseBuilder:
                                 "crypto",
                             ):
                                 _pending_yf.append((symbol, asset_class))
+                                continue
+
+                            # Check session kill switch here too (may be set mid-TF)
+                            if getattr(self._ibkr, "_session_dead", False):
+                                if asset_class in ("equity", "etf", "crypto"):
+                                    _pending_yf.append((symbol, asset_class))
+                                    _ibkr_degraded = True
                                 continue
 
                             base_dur = Config.DATA.HISTORY_DEPTH.get(
@@ -2952,35 +3864,120 @@ class UniverseBuilder:
                                 _rolling.append(True)
 
                             if df is not None:
+                                df = snap_timestamps(df, tf_label)
+                                df = truncate_to_cutoff(df, _canonical_cutoff)
+                            if df is not None and not df.empty:
                                 DataStore.save(symbol, tf_label, df)
                                 all_data[f"{symbol}_{tf_label}"] = df
+                            elif df is None:
+                                # Both sources failed — queue for end-of-sweep retry
+                                _dual_fail_queue.setdefault(tf_label, []).append(
+                                    (symbol, asset_class)
+                                )
 
-                        # Batch yfinance download for assets queued during degraded mode
+                        # Batch yfinance download for assets queued during degraded mode.
+                        # Uses get_intraday_fallback() — the correct path for intraday TFs.
+                        # get_equity_history() only returns 1D keys; calling it for
+                        # "8h"/"1h"/etc. then looking up sym_data.get("8h") always gives None.
                         if _pending_yf:
-                            _yf_syms = [s for s, _ in _pending_yf]
-                            _yf_ticks = [to_yf_ticker(s, cls) for s, cls in _pending_yf]
-                            _yf_period = YFinanceFeed._YF_INTRADAY_MAP.get(tf_label)
                             log.info(
                                 f"  [{tf_label}] Batch yfinance fallback: "
-                                f"{len(_yf_syms)} assets (IBKR was degraded)..."
+                                f"{len(_pending_yf)} assets (IBKR was degraded)..."
                             )
-                            if _yf_period:
-                                _batch = YFinanceFeed.get_equity_history(
-                                    _yf_syms,
-                                    chunk_size=Config.DATA.YF_CHUNK_SIZE,
-                                    yf_tickers=_yf_ticks,
-                                    period=_yf_period,
+                            n_saved = 0
+                            for _bi, (sym, cls) in enumerate(_pending_yf):
+                                if _bi > 0 and _bi % 50 == 0:
+                                    log.info(
+                                        f"  [{tf_label}] batch yf progress: "
+                                        f"{_bi}/{len(_pending_yf)} ({n_saved} saved)"
+                                    )
+                                yf_df = YFinanceFeed.get_intraday_fallback(
+                                    sym, cls, tf_label
                                 )
-                                n_saved = 0
-                                for sym, sym_data in _batch.items():
-                                    df = sym_data.get(tf_label) if sym_data else None
-                                    if df is not None and not df.empty:
-                                        DataStore.save(sym, tf_label, df)
-                                        all_data[f"{sym}_{tf_label}"] = df
-                                        n_saved += 1
-                                log.info(
-                                    f"  [{tf_label}] Batch yf: {n_saved}/{len(_yf_syms)} saved"
+                                if yf_df is not None and not yf_df.empty:
+                                    yf_df = snap_timestamps(
+                                        yf_df, tf_label, source="yfinance"
+                                    )
+                                    yf_df = truncate_to_cutoff(yf_df, _canonical_cutoff)
+                                if yf_df is not None and not yf_df.empty:
+                                    DataStore.save(sym, tf_label, yf_df)
+                                    all_data[f"{sym}_{tf_label}"] = yf_df
+                                    n_saved += 1
+                            log.info(
+                                f"  [{tf_label}] Batch yf complete: "
+                                f"{n_saved}/{len(_pending_yf)} saved"
+                            )
+
+                    # Save conId cache (new resolutions from this sweep)
+                    ConIdCache.save()
+
+                    # ── Dual-failure retry ───────────────────────────────────
+                    # Assets where both IBKR and yfinance returned nothing.
+                    # IBKR may have recovered; yfinance may have been transiently
+                    # rate-limited. One retry pass at end of sweep.
+                    # Persistent multi-run failures trigger auto-exclusion.
+                    _all_dual = [
+                        (tf_f, s, c)
+                        for tf_f, pairs in _dual_fail_queue.items()
+                        for s, c in pairs
+                    ]
+                    if _all_dual:
+                        log.info(
+                            f"  Dual-fail retry: {len(_all_dual)} asset-TF combos..."
+                        )
+                        _n_recovered = 0
+                        _fail_path = os.path.join(
+                            Config.DATA.CACHE_DIR, "persistent_failures.json"
+                        )
+                        _pfails: Dict[str, int] = {}
+                        if os.path.exists(_fail_path):
+                            try:
+                                with open(_fail_path) as _f:
+                                    _pfails = json.load(_f)
+                            except Exception:
+                                pass
+
+                        for tf_f, sym_f, cls_f in _all_dual:
+                            r = YFinanceFeed.get_intraday_fallback(sym_f, cls_f, tf_f)
+                            if r is not None and not r.empty:
+                                r = snap_timestamps(r, tf_f, "yfinance")
+                                r = truncate_to_cutoff(
+                                    r, compute_canonical_cutoff(tf_f)
                                 )
+                            if r is not None and not r.empty:
+                                DataStore.save(sym_f, tf_f, r)
+                                all_data[f"{sym_f}_{tf_f}"] = r
+                                _n_recovered += 1
+                            else:
+                                key = f"{sym_f}:{tf_f}"
+                                _pfails[key] = _pfails.get(key, 0) + 1
+                                # Auto-exclude when ALL TFs for this symbol have
+                                # failed >= _PERSISTENT_FAIL_THRESHOLD times
+                                _sym_total = sum(
+                                    v
+                                    for k, v in _pfails.items()
+                                    if k.startswith(f"{sym_f}:")
+                                )
+                                if (
+                                    _sym_total
+                                    >= UniverseBuilder._PERSISTENT_FAIL_THRESHOLD
+                                ):
+                                    UniverseBuilder.add_exclusion(
+                                        sym_f,
+                                        f"Auto-excluded: {_sym_total} run failures",
+                                    )
+                                    log.warning(
+                                        f"  Auto-excluded {sym_f} after "
+                                        f"{_sym_total} persistent failures"
+                                    )
+                        try:
+                            with open(_fail_path, "w") as _f:
+                                json.dump(_pfails, _f, indent=2)
+                        except Exception:
+                            pass
+                        log.info(
+                            f"  Dual-fail retry: {_n_recovered}/{len(_all_dual)} recovered"
+                        )
 
                     # IBKR upgrade pass: re-try assets where yfinance gave
                     # truncated history. IBKR congestion typically clears after
@@ -3149,6 +4146,7 @@ class UniverseBuilder:
             f"({backfill_count} loaded from cache)"
         )
 
+        _summary.write()
         return UniverseResult(
             assets=passed,
             excluded=excluded,
@@ -3594,7 +4592,7 @@ if __name__ == "__main__":
     log.info("=" * 60)
 
     builder = UniverseBuilder()
-    result = builder.build(connect=True)
+    result = builder.build(connect=False)  # yfinance-only; use data_ibkr.py for IBKR
 
     log.info(f"\nFinal universe: {len(result.assets)} assets")
     log.info(f"Excluded:       {len(result.excluded)} assets")
