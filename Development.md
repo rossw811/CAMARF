@@ -2249,3 +2249,248 @@ being avoided.
 - `PairCharacteristicsAnalyzer` built and run on enough pairs to support clustering
   (needs backtest.py trade log — not yet built)
 - macro.py FRED data (for the macro-context features feeding the meta-labeler)
+
+
+---
+
+## Session 7 Continued — sp600/sp400 Wikipedia Scraper Saga (Full Account)
+
+### The Full Diagnostic Journey (documented to prevent re-investigation)
+
+This was the longest single debugging thread of Session 7, spanning multiple
+wrong hypotheses before reaching ground truth. Documented in full because the
+journey itself contains the lesson, not just the conclusion.
+
+**Symptom:** `S&P SmallCap 600: fetched 0 tickers` and a correspondingly
+collapsed universe (536 assets instead of ~1500+), recurring across many runs.
+
+**Hypothesis 1 (wrong):** Generic bot-identifying User-Agent string
+(`"CAMARF/1.0"`) was being blocked by Wikipedia. Fixed by switching to a
+realistic Chrome User-Agent across all Wikipedia-facing requests (sp400,
+sp600, Nasdaq-100, BRK holdings, iShares CSV). This fix was real and correct
+but did NOT resolve the sp600 issue — proving the User-Agent was A bug, not
+THE bug blocking sp600 specifically.
+
+**Hypothesis 2 (wrong, briefly held):** Stale/mismatched local file —
+diagnosed via the exact same symptom pattern that had explained earlier
+yfinance issues (old code persisting despite "fixes"). Ruled out via direct
+MD5 checksum verification — the file genuinely matched what was provided,
+and a targeted grep confirmed only one definition of each relevant function
+existed (no duplicate/shadowing).
+
+**Hypothesis 3 (wrong):** Logic bug in `_fetch_sp_index_wikipedia`'s
+column-matching — specifically, that the function might be finding a
+secondary "recent changes" history table before the main 600+ row
+constituent table, with a flawed best-candidate selection.
+
+**Resolution method:** rather than add a fourth layer of speculative fix,
+built a fully isolated standalone test script (`test_sp600_isolated.py`)
+that mirrors the production scraper logic exactly, run completely outside
+data.py. This succeeded immediately: HTTP 200, 16 tables found, table[3]
+correctly identified with 579/603 valid tickers — comfortably above the
+500-ticker threshold.
+
+**Conclusion:** the scraping logic itself was correct all along. The
+intermittent "0 tickers" failures are genuine transient Wikipedia/network
+flakiness — the same exact code succeeds on some invocations and fails on
+others, with no reproducible code-level cause found despite three rounds
+of hypothesis-driven fixes. This matches the broader pattern seen with
+yfinance throughout the day (DNS errors, intermittent timeouts) — likely
+related to sustained heavy request volume against free-tier endpoints
+over many hours of iterative debugging.
+
+**Practical resolution (not a root-cause fix, a mitigation):**
+1. `seed_sp_caches.py` — standalone script with retry logic (5 attempts,
+   8s delay between), run manually/periodically to populate
+   `output/cache/sp400.json` and `output/cache/sp600.json` independent of
+   the main data.py run.
+2. Fixed a genuine bug found along the way: `_fetch_constituents_cached`
+   was unconditionally caching whatever the live fetch returned, INCLUDING
+   empty results — meaning a single transient failure during a `data.py`
+   run would silently overwrite a perfectly good previously-seeded cache
+   with an empty `[]`. Fixed to only persist non-empty results; an empty
+   live-fetch result is simply returned without touching the cache file.
+
+### Key Methodological Lesson From This Saga
+
+When a third-party tool (DeepSeek, or any other LLM) is used to summarize
+raw log/script output before sharing it for diagnosis, treat that summary
+as a hypothesis, not ground truth. During this investigation, a summary was
+shared claiming the scraper "found table[3] with 579 tickers, met the
+threshold, but still failed after 5 retry attempts and gave up" — this is
+a logical impossibility given the actual retry script's structure (meeting
+the threshold causes an immediate return; there is no code path where both
+things are true). The summarizing tool had apparently conflated two
+different indices' results (MidCap 400's genuine failure and SmallCap 600's
+genuine success) into one garbled description, and was speculating about
+a "Python traceback" it likely never actually saw.
+
+**Rule going forward:** when a summary contains something that doesn't add
+up logically against the actual code's structure, ask for the literal raw
+text directly, not a re-summary. This resolved the contradiction
+immediately once requested.
+
+---
+
+## Claude Code Integration — Framework for Working With Claude on This Project
+
+### Why This Section Exists
+
+A significant fraction of Session 5-7's time cost was pure file-transfer
+and verification overhead inherent to working through claude.ai's chat
+interface: generating a fix, copying it to outputs, the user downloading
+and replacing a local file, MD5 checksum verification to confirm the
+replace actually happened, and round-trips of "run this isolated test
+script and paste the output back" for things that could have been directly
+observed in a live terminal. None of this overhead is fundamental to the
+debugging difficulty — it's a consequence of the chat interface lacking
+direct filesystem/terminal access to the user's actual environment.
+
+**Decision: set up Claude Code for this project**, using `CLAUDE.md` (new
+file, project root) as the persistent context bridge. Claude Code uses the
+same underlying model — the reasoning depth and verification discipline
+that characterized this conversation are properties of the model given
+good context, not something unique to this specific chat thread's hidden
+state. `DEVELOPMENT.md` (this file) plus `CLAUDE.md` are the mechanism for
+that context to transfer to any new session, on any surface.
+
+### What CLAUDE.md Contains (see actual file for full content)
+
+- Project thesis and architecture (condensed from this document)
+- Non-negotiable architecture rules (data.py/analysis.py separation,
+  yfinance-primary, GapFlag system, no-bandaid-fixes)
+- A "known-resolved issues, do not re-suggest" list — the yfinance
+  curl_cffi session bug, the period-string-keyed-by-wrong-variable bug,
+  the 8h removal, the 4h session-alignment requirement, the sp400/600
+  scraper flakiness conclusion — anything a fresh session might otherwise
+  waste time re-discovering
+- A "working style" section capturing the collaboration patterns that
+  have proven effective: full comprehension before code, one best fix not
+  multiple options, verify with a reproducing test before claiming done,
+  stop and ask for raw evidence after ~3 failed fix attempts rather than
+  guessing a 4th time, distrust third-party log summaries when they don't
+  logically add up
+- Recommended plugin list with concrete trigger conditions
+
+### Plugin Decisions (Session 7)
+
+Researched and verified (not assumed) before recommending:
+
+- **`context7`** (installed) — live documentation lookup. Concrete trigger:
+  before writing/debugging code against yfinance, ib_insync, statsmodels,
+  or scikit-learn, where training-data knowledge may be stale relative to
+  the installed version's actual behavior. Directly motivated by the
+  curl_cffi session surprise — a context7 lookup would likely have
+  surfaced that requirement immediately instead of requiring empirical
+  discovery through repeated failures.
+
+- **`feature-dev`** (confirmed official, bundled with Claude Code itself —
+  `anthropics/claude-code` repo) — guided feature development workflow
+  with three specialist agents (code-explorer, code-architect,
+  code-reviewer). Recommended specifically for the upcoming `ml.py`,
+  `backtest.py`, `analyzer.py`, `macro.py` builds, which are genuine new
+  feature development rather than the bug-fixing that has dominated
+  Sessions 5-7.
+
+- **`claude-md-management`** (confirmed from the official, Anthropic-
+  managed `anthropics/claude-plugins-official` marketplace) — keeps
+  CLAUDE.md from drifting into an unmaintained mess as the project's
+  context needs grow.
+
+- **`skill-creator`** (confirmed official) — available if a CAMARF-specific
+  recurring workflow emerges that's worth packaging as a custom skill
+  (e.g. "diagnose a data.py run from its log file" as a standing,
+  reusable skill rather than ad-hoc each time).
+
+- **`ponytail`** (real, verified, explicitly NOT recommended) — a popular
+  (40k+ star) plugin whose entire philosophy is minimizing code written,
+  flagging "over-engineering." This directly conflicts with this
+  project's established discipline of thorough verification, explicit
+  diagnostic instrumentation, and no-bandaid-fixes. Documented here so a
+  future session doesn't install it on the assumption that a popular
+  plugin is automatically a good fit.
+
+- **`draw.io`** (real, verified, third-party plugin by `little-hands`) —
+  genuinely useful for visualizing the data.py/analysis.py architecture
+  and decision trees (e.g. the yfinance/IBKR fallback logic) as actual
+  diagrams. Noted for use near v1 shipment, not a current priority while
+  still in active data-pipeline debugging.
+
+- **Investigated and found NOT to be Claude Code plugins at all:**
+  `Handy` (github.com/cjpais/handy) is an unrelated standalone speech-to-
+  text desktop application (Whisper/Parakeet-based, Rust+Tauri) — no
+  integration with Claude or this codebase, though could be used
+  separately for voice-dictating messages during long sessions.
+  `SkillSpector` (github.com/nvidia/skillspector) IS relevant but in a
+  different way than initially assumed — it's a security SCANNER for
+  Claude Code skills/plugins (64 vulnerability patterns, research-backed
+  finding that 26.1% of scanned skills had at least one vulnerability and
+  5.2% showed likely malicious intent). Recommended practice: scan any
+  new third-party plugin with SkillSpector before installing, going
+  forward — not just for this project, as general practice.
+
+### What Does NOT Automatically Transfer to a Fresh Claude Code Session
+
+Being explicit about this rather than overselling continuity: the specific
+turn-by-turn memory of this conversation — which exact hypotheses were
+tried and ruled out in which order, the precise wording of every fix — does
+not transfer automatically. That is exactly what the "Known-Resolved
+Issues" list in CLAUDE.md and the full bug registries in this document are
+FOR. They are not a backup of memory; they are the actual mechanism by
+which a fresh session reconstructs equivalent understanding. Keeping both
+files current after every substantive session is not optional bookkeeping
+— it is the continuity system.
+
+---
+
+## Session 7 — Final Log Entry
+
+2026-06-19 through 2026-06-20:
+- Diagnosed and fixed BUG-D24 through BUG-D31 (see earlier Session 7
+  bug registry section): 4h derivation diagnostics, Phase 2A full TF
+  coverage, 2m/3m period-string bug, yf.download→Ticker().history()
+  revert, defensive period validation, pytz dependency, the yfinance
+  shared-session false lead and correction (curl_cffi requirement)
+- Fixed BUG-D32: 4h resample using clock-aligned bins instead of
+  session-aligned (origin="start_day", offset="9h30min"); frequency
+  validation now filters structural overnight/weekend gaps before
+  computing the validation median
+- Investigated and resolved (via isolated testing, not further code
+  guessing) the S&P 400/600 Wikipedia scraper saga — concluded genuine
+  intermittent network flakiness, not a code bug; built
+  seed_sp_caches.py with retry logic as practical mitigation
+- Fixed BUG-D33: _fetch_constituents_cached was unconditionally caching
+  empty live-fetch results, overwriting good seeded caches on any
+  subsequent transient failure — fixed to never persist empty results
+- Added universe-size sanity guard (loud banner if < 1000 assets)
+- Researched and verified (not assumed) a set of Claude Code plugins:
+  context7, feature-dev, claude-md-management, skill-creator (recommend),
+  ponytail (verified real, explicitly do not recommend — philosophy
+  conflict), draw.io (verified real, note for later), Handy (verified —
+  unrelated speech-to-text app, not a Claude plugin), SkillSpector
+  (verified — security scanner for AI agent skills, recommend running
+  against any new third-party plugin before install)
+- Created CLAUDE.md as the persistent Claude Code context file
+- Decided to set up Claude Code for this project going forward, with
+  CLAUDE.md + DEVELOPMENT.md as the continuity mechanism between sessions
+  and across surfaces (claude.ai chat vs Claude Code)
+
+### Next Session
+
+1. Confirm `seed_sp_caches.py`'s retry logic successfully populates both
+   sp400.json and sp600.json (check for SAVED vs GAVE UP in its output)
+2. Run data.py — confirm universe size reaches ~1500 (no more `!!!`
+   abnormal-size banner)
+3. Verify the 4h session-alignment fix (BUG-D32) produces near-zero
+   freq_invalid count in the next run's latest_run_data.log
+4. Run analysis.py — check for new confirmed pairs at 1h, 4h, 1D now
+   that data quality issues are resolved at those TFs
+5. Set up Claude Code: install, point at the CAMARF repo, verify
+   CLAUDE.md is being read at session start, install context7 +
+   feature-dev + claude-md-management + skill-creator
+6. Once data.py/analysis.py are stable: begin macro.py (FRED integration)
+   as a relatively self-contained build, good candidate for testing the
+   feature-dev workflow
+7. Then: PairCharacteristicsAnalyzer (designed, not built) once enough
+   confirmed pairs exist with stable characteristics
+

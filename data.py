@@ -1432,39 +1432,20 @@ class YFinanceFeed:
     yfinance MultiIndex columns: (Price, Ticker) — flattened per ticker
     before passing to DataCleaner.
 
-    SHARED SESSION (critical for bulk intraday loops):
-    Creating a fresh yf.Ticker() per call forces Yahoo's client to
-    renegotiate cookie/crumb authentication on every single request.
-    A single interactive call never triggers Yahoo's anti-bot throttling;
-    a tight loop of hundreds/thousands of fresh Ticker() instantiations
-    does — almost immediately, with empty results and no exception
-    (confirmed empirically: same exact call succeeds standalone, fails
-    100% of the time inside Phase 2A's sequential per-asset loop).
-    Fix: one requests.Session is created once and reused across every
-    yf.Ticker(symbol, session=...) call in get_intraday_fallback.
+    SESSION HANDLING — do NOT pass a custom session to yf.Ticker().
+    yfinance 0.2.66+ uses curl_cffi internally for its HTTP layer and
+    explicitly rejects any other session type at runtime: "Yahoo API
+    requires curl_cffi session not requests.sessions.Session. Solution:
+    stop setting session, let YF handle." A prior fix attempt added a
+    shared requests.Session (hypothesizing cookie/crumb renegotiation
+    overhead under rapid sequential Ticker() calls as the cause of a
+    100%-failure pattern) — this was wrong for this yfinance version and
+    was reverted. yfinance manages its own session/cookie/crumb caching
+    internally across Ticker() instantiations within a process; let it.
+    The actual mitigation for burst-rate concerns is the small
+    inter-request delay applied in the Phase 2A calling loop, not a
+    custom session object.
     """
-
-    # Shared session for all intraday yfinance requests. Created lazily on
-    # first use, reused for the lifetime of the process. Avoids the
-    # per-call cookie/crumb renegotiation that triggers Yahoo throttling
-    # under rapid sequential Ticker() instantiation.
-    _shared_session: Optional[requests.Session] = None
-
-    @classmethod
-    def _get_session(cls) -> requests.Session:
-        if cls._shared_session is None:
-            s = requests.Session()
-            s.headers.update(
-                {
-                    "User-Agent": (
-                        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                        "AppleWebKit/537.36 (KHTML, like Gecko) "
-                        "Chrome/120.0.0.0 Safari/537.36"
-                    )
-                }
-            )
-            cls._shared_session = s
-        return cls._shared_session
 
     # yfinance fetches daily/weekly/monthly only.
     # Intraday (1m through 8h) fetched from IBKR for proper historical depth:
@@ -1874,42 +1855,44 @@ class YFinanceFeed:
                 import contextlib, io
 
                 with contextlib.redirect_stderr(io.StringIO()):
-                    # Try with shared session first (avoids per-call cookie/
-                    # crumb renegotiation that triggers Yahoo throttling).
-                    # Fall back to a plain Ticker() if this yfinance version's
-                    # session parameter is incompatible (some versions moved
-                    # to curl_cffi sessions internally) — never let a session
-                    # API mismatch break the fetch entirely.
-                    try:
-                        r = yf.Ticker(
-                            yf_sym, session=YFinanceFeed._get_session()
-                        ).history(
-                            period=_try_period,
-                            interval=yf_interval,
-                            auto_adjust=True,
-                        )
-                    except TypeError:
-                        r = yf.Ticker(yf_sym).history(
-                            period=_try_period,
-                            interval=yf_interval,
-                            auto_adjust=True,
-                        )
+                    # DO NOT pass a custom session. yfinance 0.2.66+ uses
+                    # curl_cffi internally for its HTTP layer and explicitly
+                    # rejects a plain requests.Session — confirmed directly
+                    # via the library's own runtime error: "Yahoo API
+                    # requires curl_cffi session not requests.sessions.
+                    # Session. Solution: stop setting session, let YF
+                    # handle." (BUG-D31 follow-up, 2026-06-19.)
+                    #
+                    # yfinance manages its own session/cookie/crumb caching
+                    # internally across Ticker() instantiations within the
+                    # same process — a DIY session override was actively
+                    # breaking that mechanism rather than helping it.
+                    # The inter-request delay (set in the calling loop) is
+                    # the correct mitigation for burst-rate concerns, not a
+                    # custom session.
+                    r = yf.Ticker(yf_sym).history(
+                        period=_try_period,
+                        interval=yf_interval,
+                        auto_adjust=True,
+                    )
                 if r is not None and not r.empty:
                     raw = r
                     worked_period = _try_period
                     break
                 else:
-                    # TEMPORARY: unconditional WARNING (not DEBUG) while
-                    # diagnosing the post-pytz-install regression where 1h
-                    # dropped from 99% success to 0% with no exceptions
-                    # raised — meaning yf.Ticker().history() is returning
-                    # empty silently. This is the only way to see WHICH
-                    # symbols/periods are affected. Dial back to log.debug
-                    # once root cause is confirmed and fixed.
+                    # RE-ELEVATED to WARNING (2026-06-19): removing the bad
+                    # session fixed the self-inflicted YFDataException, but
+                    # the underlying 100%-failure pattern persisted with NO
+                    # exception text visible — meaning this branch (silent
+                    # empty result) IS actually firing, contrary to what was
+                    # assumed when this was dialed back to DEBUG minutes
+                    # earlier. That was premature. Keeping at WARNING until
+                    # we have direct evidence of what's actually happening.
                     log.warning(
                         f"yfinance {symbol} {tf_label} "
                         f"[period={_try_period}]: returned EMPTY (no exception) "
-                        f"— ticker={yf_sym}, interval={yf_interval}"
+                        f"— ticker={yf_sym}, interval={yf_interval}, "
+                        f"rows_returned={0 if r is None else len(r)}"
                     )
             except Exception as e:
                 _err_str = str(e)
@@ -3201,6 +3184,30 @@ class UniverseBuilder:
         log.info(f"Universe candidates: {len(raw_assets)} assets")
         _summary.n_universe = len(raw_assets)
 
+        # Loud, impossible-to-miss guard: the full S&P 1500 + crypto/forex/
+        # commodities/futures/ETF universe should always be 1400+. A count
+        # well below that means one or more constituent scrapers silently
+        # failed (confirmed incident: 2026-06-19, universe silently shrank
+        # to 86 assets after Wikipedia/iShares both failed in the same run
+        # and nothing flagged it). This is impossible to miss in the log
+        # or the run summary, even if scrolled past in a terminal.
+        if len(raw_assets) < 1000:
+            log.error(
+                f"\n{'!'*70}\n"
+                f"!! UNIVERSE SIZE ABNORMALLY LOW: {len(raw_assets)} assets "
+                f"(expected 1400+) !!\n"
+                f"!! One or more constituent scrapers (S&P 500/400/600) "
+                f"likely failed.\n"
+                f"!! Check the log above for 'fetch failed' or 'tickers from "
+                f"Wikipedia' lines.\n"
+                f"!! Results from this run should NOT be trusted for "
+                f"analysis until resolved.\n"
+                f"{'!'*70}"
+            )
+            _summary.error(
+                f"UNIVERSE SIZE ABNORMAL: {len(raw_assets)} assets (expected 1400+)"
+            )
+
         all_data: Dict[str, pd.DataFrame] = {}
         all_reports: List[QualityReport] = []
         passed: List[Tuple[str, str]] = []
@@ -3532,8 +3539,27 @@ class UniverseBuilder:
                         # duplicate or unsorted timestamps silently corrupt
                         # resample() output without raising an exception.
                         _src = _df1h[~_df1h.index.duplicated(keep="last")].sort_index()
+                        # CRITICAL: pandas resample("4h") bins to CLOCK-aligned
+                        # boundaries (00:00, 04:00, 08:00, 12:00...) by default,
+                        # NOT to market open. A 9:30-16:00 session only produces
+                        # ~2 non-empty clock-aligned buckets/day, creating an
+                        # alternating ~4h / ~20h gap pattern where the ~20h
+                        # overnight gap dominates the median (confirmed via
+                        # diagnostic: src_gap=3600s correct, derived gap=72000s
+                        # = exactly the overnight-bucket-to-overnight-bucket
+                        # span under clock alignment). Fix: align bins to
+                        # market open (9:30) via origin/offset instead of
+                        # midnight, so each session cleanly produces bins
+                        # starting at 9:30 and 13:30 — matching how the data
+                        # actually trades.
                         _df4h = (
-                            _src.resample("4h", closed="left", label="left")
+                            _src.resample(
+                                "4h",
+                                closed="left",
+                                label="left",
+                                origin="start_day",
+                                offset="9h30min",
+                            )
                             .agg(
                                 {
                                     "open": "first",
@@ -3555,19 +3581,20 @@ class UniverseBuilder:
                         _4h_resample_err += 1
                         continue
 
-                    # Validate derived frequency before saving. A resample
-                    # collapsing to ~1 bar/day (86400s) instead of 14400s
-                    # indicates the source 1h data was itself malformed —
-                    # this check prevents re-contaminating the 4h cache.
+                    # Validate derived frequency before saving. Even with
+                    # correct session-aligned bins, the overnight gap between
+                    # a session's last bin and the next session's first bin
+                    # (~20h) is LEGITIMATE — with only ~2 bins/day, it's not
+                    # a rare outlier the way it is for 1h (6 bins/day), so it
+                    # must be excluded before computing the validation median.
+                    # Filter to intra-day gaps only (< 8h) before checking.
+                    _all_gaps = (
+                        _df4h.index.to_series().diff().dt.total_seconds().dropna()
+                    )
+                    _intraday_gaps = _all_gaps[_all_gaps < 8 * 3600]
                     _gap = (
-                        float(
-                            _df4h.index.to_series()
-                            .diff()
-                            .dt.total_seconds()
-                            .dropna()
-                            .median()
-                        )
-                        if len(_df4h) > 5
+                        float(_intraday_gaps.median())
+                        if len(_intraday_gaps) > 3
                         else 14400.0
                     )
                     if _gap > 14400 * 3:
@@ -4229,32 +4256,91 @@ class UniverseBuilder:
         fetch_fn,
         max_age_hours: float = 24,
     ) -> List[str]:
-        """Generic cached constituent fetcher with 24-hour staleness check."""
+        """
+        Generic cached constituent fetcher with 24-hour staleness check.
+
+        Safety net: if the live fetch_fn() returns suspiciously few tickers
+        (or zero) — e.g. from a transient Wikipedia/network failure — fall
+        back to the last-known-good cache EVEN IF IT'S STALE, rather than
+        silently caching/returning a broken result. A 2-day-old complete
+        list (e.g. 600 SmallCap tickers) is far more useful than a fresh
+        but empty/truncated one. This prevents a single bad network moment
+        from silently shrinking the entire universe (confirmed incident:
+        2026-06-19, SmallCap 600 returned 0 tickers, S&P 500 fell through
+        to its 50-name emergency fallback — both scrapers failed in the
+        same run, most likely from heavy repeated usage that day).
+        """
         Config.ensure_dirs()
         cache_path = os.path.join(
             UniverseBuilder._CONSTITUENT_CACHE_DIR, f"{cache_name}.json"
         )
+
+        # Load whatever cache exists, regardless of age, as a fallback
+        # candidate and (if fresh enough) as the immediate return value.
+        cached_tickers: List[str] = []
+        cache_age_h = float("inf")
         if os.path.exists(cache_path):
-            age_h = (time.time() - os.path.getmtime(cache_path)) / 3600
-            if age_h < max_age_hours:
-                try:
-                    with open(cache_path) as f:
-                        tickers = json.load(f)
-                    if tickers:
-                        log.info(
-                            f"  {cache_name}: {len(tickers)} tickers from cache "
-                            f"({age_h:.1f}h old)"
-                        )
-                        return tickers
-                except Exception:
-                    pass
-        tickers = fetch_fn()
-        try:
-            with open(cache_path, "w") as f:
-                json.dump(tickers, f)
-        except Exception:
-            pass
-        return tickers
+            cache_age_h = (time.time() - os.path.getmtime(cache_path)) / 3600
+            try:
+                with open(cache_path) as f:
+                    cached_tickers = json.load(f) or []
+            except Exception:
+                cached_tickers = []
+
+        if cached_tickers and cache_age_h < max_age_hours:
+            log.info(
+                f"  {cache_name}: {len(cached_tickers)} tickers from cache "
+                f"({cache_age_h:.1f}h old)"
+            )
+            return cached_tickers
+
+        # Cache missing or stale — attempt a live fetch
+        fresh_tickers = fetch_fn()
+
+        # Sanity check: a live result with fewer than half the previously
+        # cached count (or zero, with no prior cache) is treated as a
+        # failed fetch, not a legitimate small universe.
+        _suspiciously_small = len(fresh_tickers) == 0 or (
+            cached_tickers and len(fresh_tickers) < len(cached_tickers) * 0.5
+        )
+
+        if _suspiciously_small and cached_tickers:
+            log.warning(
+                f"  {cache_name}: live fetch returned {len(fresh_tickers)} "
+                f"tickers (suspiciously low vs {len(cached_tickers)} in "
+                f"last-known-good cache, {cache_age_h:.1f}h old) — "
+                f"using stale cache instead of broken fresh result"
+            )
+            return cached_tickers
+
+        if _suspiciously_small:
+            log.warning(
+                f"  {cache_name}: live fetch returned {len(fresh_tickers)} "
+                f"tickers and no prior cache exists to fall back on — "
+                f"using this result anyway, but it is likely incomplete"
+            )
+
+        # CRITICAL: never write an empty result to the cache file.
+        # Bug found 2026-06-20: this function previously cached
+        # fresh_tickers unconditionally, including empty lists — which
+        # overwrote a perfectly good manually-seeded cache (written by
+        # seed_sp_caches.py) the moment a single transient live-fetch
+        # failure occurred on a later run. An empty result is never worth
+        # persisting: either leave an existing good cache file untouched,
+        # or simply don't create one — next run will just retry the live
+        # fetch again, exactly as if no cache attempt had been made.
+        if fresh_tickers:
+            try:
+                with open(cache_path, "w") as f:
+                    json.dump(fresh_tickers, f)
+            except Exception:
+                pass
+        else:
+            log.debug(
+                f"  {cache_name}: empty result — leaving cache file "
+                f"untouched (not overwriting with empty data)"
+            )
+        return fresh_tickers
 
     @staticmethod
     def _fetch_nasdaq100_tickers() -> List[str]:
@@ -4263,7 +4349,18 @@ class UniverseBuilder:
             import requests
 
             url = "https://en.wikipedia.org/wiki/Nasdaq-100"
-            resp = requests.get(url, headers={"User-Agent": "CAMARF/1.0"}, timeout=15)
+            resp = requests.get(
+                url,
+                headers={
+                    # Realistic browser User-Agent (fixes 2026-06-19 incident:
+                    # the old bot-identifying string was being blocked/
+                    # degraded by Wikipedia — S&P 400/600 scrapers consistently
+                    # returned 0 tickers while S&P 500's scraper, which already
+                    # used a realistic browser UA, worked reliably throughout).
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+                },
+                timeout=15,
+            )
             tables = pd.read_html(resp.text)
             for t in tables:
                 for col in t.columns:
@@ -4301,7 +4398,9 @@ class UniverseBuilder:
             )
             resp = requests.get(
                 url,
-                headers={"User-Agent": "Mozilla/5.0 CAMARF/1.0"},
+                headers={
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+                },
                 timeout=30,
             )
             if resp.status_code == 200:
@@ -4341,7 +4440,18 @@ class UniverseBuilder:
 
             # Wikipedia doesn't have the full 2000 but has notable components
             url = "https://en.wikipedia.org/wiki/Russell_2000_Index"
-            resp = requests.get(url, headers={"User-Agent": "CAMARF/1.0"}, timeout=15)
+            resp = requests.get(
+                url,
+                headers={
+                    # Realistic browser User-Agent (fixes 2026-06-19 incident:
+                    # the old bot-identifying string was being blocked/
+                    # degraded by Wikipedia — S&P 400/600 scrapers consistently
+                    # returned 0 tickers while S&P 500's scraper, which already
+                    # used a realistic browser UA, worked reliably throughout).
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+                },
+                timeout=15,
+            )
             tables = pd.read_html(resp.text)
             for t in tables:
                 for col in t.columns:
@@ -4372,7 +4482,18 @@ class UniverseBuilder:
             import requests
 
             url = "https://en.wikipedia.org/wiki/Berkshire_Hathaway"
-            resp = requests.get(url, headers={"User-Agent": "CAMARF/1.0"}, timeout=15)
+            resp = requests.get(
+                url,
+                headers={
+                    # Realistic browser User-Agent (fixes 2026-06-19 incident:
+                    # the old bot-identifying string was being blocked/
+                    # degraded by Wikipedia — S&P 400/600 scrapers consistently
+                    # returned 0 tickers while S&P 500's scraper, which already
+                    # used a realistic browser UA, worked reliably throughout).
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+                },
+                timeout=15,
+            )
             tables = pd.read_html(resp.text)
             for t in tables:
                 for col in t.columns:
@@ -4421,10 +4542,35 @@ class UniverseBuilder:
         """
         import requests
 
+        _UA = (
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) "
+            "Chrome/120.0.0.0 Safari/537.36"
+        )
         try:
-            resp = requests.get(url, headers={"User-Agent": "CAMARF/1.0"}, timeout=15)
+            resp = requests.get(url, headers={"User-Agent": _UA}, timeout=15)
+            log.debug(
+                f"  {cache_name}: HTTP {resp.status_code}, "
+                f"{len(resp.text)} chars received"
+            )
+            if resp.status_code != 200:
+                log.warning(
+                    f"  {cache_name}: HTTP {resp.status_code} (expected 200) "
+                    f"— Wikipedia may be blocking or redirecting this request"
+                )
+                return []
+
             tables = pd.read_html(resp.text)
-            for t in tables:
+            log.debug(f"  {cache_name}: pd.read_html found {len(tables)} tables")
+
+            # Track the best candidate even if below expected_min, so we can
+            # report exactly why nothing qualified instead of returning a
+            # silent empty list with zero diagnostic information.
+            best_tickers: List[str] = []
+            best_col_desc = "none"
+            candidates_seen = []
+
+            for ti, t in enumerate(tables):
                 for col in t.columns:
                     col_s = str(col).lower()
                     if "symbol" in col_s or "ticker" in col_s:
@@ -4435,13 +4581,52 @@ class UniverseBuilder:
                             and len(str(x).strip()) <= 6
                             and str(x).strip()[0].isalpha()
                         ]
+                        candidates_seen.append(
+                            f"table[{ti}] col={col!r} -> {len(tickers)} tickers"
+                        )
                         if len(tickers) >= expected_min:
                             log.info(
                                 f"  {cache_name}: {len(tickers)} tickers from Wikipedia"
                             )
                             return tickers
+                        if len(tickers) > len(best_tickers):
+                            best_tickers = tickers
+                            best_col_desc = f"table[{ti}] col={col!r}"
+
+            # Nothing met expected_min — log exactly what WAS found so the
+            # next run's log shows the real reason instead of silence.
+            if candidates_seen:
+                log.warning(
+                    f"  {cache_name}: no symbol/ticker column reached "
+                    f"expected_min={expected_min}. Candidates found: "
+                    f"{'; '.join(candidates_seen)}"
+                )
+            else:
+                log.warning(
+                    f"  {cache_name}: scanned {len(tables)} tables, found "
+                    f"{sum(len(t.columns) for t in tables)} total columns, "
+                    f"NONE matched 'symbol' or 'ticker' in the column name. "
+                    f"Page structure may have changed. First table columns "
+                    f"(if any): {list(tables[0].columns) if tables else 'no tables found'}"
+                )
+
+            # Best-effort fallback: if the closest candidate is at least
+            # half of expected_min, use it rather than returning nothing —
+            # a slightly-short list is still far more useful than empty,
+            # and this is clearly logged so it's never mistaken for a
+            # full, verified result.
+            if len(best_tickers) >= expected_min * 0.5:
+                log.warning(
+                    f"  {cache_name}: using best-effort partial result "
+                    f"({best_col_desc}, {len(best_tickers)} tickers, below "
+                    f"the {expected_min} threshold) rather than nothing"
+                )
+                return best_tickers
+
         except Exception as e:
-            log.warning(f"Wikipedia fetch failed for {cache_name}: {e}")
+            log.warning(
+                f"Wikipedia fetch failed for {cache_name}: {type(e).__name__}: {e}"
+            )
         return []
 
     @staticmethod
@@ -4527,7 +4712,36 @@ class UniverseBuilder:
         except Exception as e:
             log.warning(f"iShares IVV fetch failed: {e}")
 
-        log.warning("Using hardcoded S&P 500 fallback (top 50)")
+        # Both Wikipedia and iShares failed. Before falling all the way
+        # to the 50-name emergency list, check for ANY existing cache —
+        # even badly stale — since a week-old complete 503-ticker list
+        # is far better than a hardcoded 50-name placeholder. This is
+        # what should have triggered on 2026-06-19 when both live
+        # sources failed in the same run (likely from heavy repeated
+        # usage that day) — instead the run silently used the 50-name
+        # fallback and shrank the entire universe without warning.
+        if os.path.exists(cache):
+            try:
+                with open(cache) as f:
+                    stale_tickers = json.load(f)
+                if len(stale_tickers) > 400:
+                    stale_age_h = (time.time() - os.path.getmtime(cache)) / 3600
+                    log.warning(
+                        f"S&P 500: both live sources failed. Using stale "
+                        f"cache ({len(stale_tickers)} tickers, "
+                        f"{stale_age_h:.1f}h old) instead of the 50-name "
+                        f"emergency fallback."
+                    )
+                    return stale_tickers
+            except Exception:
+                pass
+
+        log.error(
+            "S&P 500: ALL sources failed (Wikipedia, iShares, AND no "
+            "usable cache) — falling back to hardcoded 50-name emergency "
+            "list. The universe for this run will be severely incomplete. "
+            "Check network connectivity before trusting results."
+        )
         return [
             "AAPL",
             "MSFT",
