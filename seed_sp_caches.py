@@ -25,7 +25,16 @@ import requests
 import pandas as pd
 import json
 import os
+import sys
 import time
+from io import StringIO
+
+# Windows console pipes (e.g. `| Tee-Object`) default to the legacy cp1252
+# codepage, which can't encode characters Wikipedia pages routinely contain
+# (e.g. U+2010 HYPHEN). Without this, an exception message containing such
+# a character crashes the script with UnicodeEncodeError instead of being
+# printed and handled by the retry loop below.
+sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 _UA = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -59,13 +68,23 @@ def fetch_index(url: str, name: str, expected_min: int):
         print(f"  FAILED: non-200 status")
         return []
 
-    tables = pd.read_html(resp.text)
+    tables = pd.read_html(StringIO(resp.text))
     print(f"  Found {len(tables)} tables")
 
     best_tickers = []
     best_desc = "none"
     for ti, t in enumerate(tables):
         for col in t.columns:
+            # Skip MultiIndex columns (e.g. ('Added', 'Ticker')) — these
+            # belong to the "Selected changes to the list" historical log,
+            # which lists every ticker ever added/removed over the index's
+            # full history, not the current constituents. That table's
+            # "Added" sub-column can outnumber the real constituents table
+            # (607 vs 400 for S&P 400 on 2026-06-20), so picking by raw
+            # count alone silently prefers it. The real constituents table
+            # always has flat string column names (e.g. plain "Symbol").
+            if isinstance(col, tuple):
+                continue
             col_s = str(col).lower()
             if "symbol" in col_s or "ticker" in col_s:
                 tickers = [

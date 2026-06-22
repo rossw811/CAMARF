@@ -94,9 +94,18 @@ class DataConfig:
     # Futures/commodities: lower floor because front-month contracts
     # naturally have 300-400 bars of history — that is valid data.
     MIN_BARS_REQUIRED: Dict[str, int] = {
-        "1m": 5000,  # ~35 days * 390 bars/day
+        # 1m/3m fixed 2026-06-20: the "~35 days" comments below predate the
+        # Yahoo 8-day hard limit on 1m-granularity data. _YF_INTRADAY_MAP
+        # actually fetches 1m at period="5d" (~1950 bars max: 5 trading
+        # days * 390 bars/day) and derives 3m by resampling that same 5-day
+        # source (~650 bars max). The old 5000/3000 thresholds were
+        # mathematically unreachable from either source — every single
+        # fetch failed DataCleaner.clean()'s min_bars check silently,
+        # regardless of data quality. New values are ~80% of the real max,
+        # matching the fill-rate ratio already used for 2m below.
+        "1m": 1500,  # ~80% of 1950 max (5 trading days * 390 bars/day)
         "2m": 5000,  # ~35 days * 195 bars/day
-        "3m": 3000,  # ~35 days * 130 bars/day
+        "3m": 500,  # ~80% of ~650 max (derived from the same 5d/1m source)
         "5m": 2000,  # ~6 months of 5m bars
         "15m": 1000,  # ~6 months of 15m bars
         "30m": 500,  # ~6 months of 30m bars

@@ -1,6 +1,6 @@
 [
   {
-    "timestamp": "2026-06-18T12:42:27",
+    "timestamp": "2026-06-21T11:54:58",
     "bias_type": "survivorship",
     "classification": "data",
     "mechanism": "Universe uses current S&P 500 constituents \u2014 historically removed names (bankruptcies, acquisitions, delistings) absent",
@@ -9,7 +9,7 @@
     "residual_risk": "Historical cointegration findings biased toward survivors; may overstate strategy profitability vs reality"
   },
   {
-    "timestamp": "2026-06-18T12:42:27",
+    "timestamp": "2026-06-21T11:54:58",
     "bias_type": "non_stationarity",
     "classification": "statistical",
     "mechanism": "Cointegration relationships break down over time; full-sample tests may average over distinct structural regimes",
@@ -18,7 +18,61 @@
     "residual_risk": "Rolling tests have lower power than full-sample; some genuine decay signals may not reach significance"
   },
   {
-    "timestamp": "2026-06-18T12:42:43",
+    "timestamp": "2026-06-21T11:55:05",
+    "bias_type": "lookahead",
+    "classification": "data",
+    "mechanism": "Cross-asset analysis requires shared time index; naive joining could leak information",
+    "remedy": "DataAligner uses NYSE master calendar with strict forward-fill; is_gap column flags every imputed bar; no future data used",
+    "scope": "tf=1m",
+    "residual_risk": "none"
+  },
+  {
+    "timestamp": "2026-06-21T11:55:05",
+    "bias_type": "lookahead",
+    "classification": "statistical",
+    "mechanism": "All three correlation pre-filters use full or near-full sample \u2014 inherently lookahead-biased",
+    "remedy": "Used only as candidate pre-filter; EG cointegration + BH-FDR correction + rolling spread modeling are the primary statistical decisions",
+    "scope": "tf=1m",
+    "residual_risk": "Pairs that are not currently correlated but are still cointegrated in subperiods may be excluded"
+  },
+  {
+    "timestamp": "2026-06-21T11:56:23",
+    "bias_type": "multiple_testing",
+    "classification": "statistical",
+    "mechanism": "Testing 2218 pairs at \u03b1=0.05 produces ~110 expected false positives under the null hypothesis",
+    "remedy": "Benjamini-Hochberg FDR correction at \u03b1=0.05; adjusted p-values used for significance decision",
+    "scope": "tf=1m",
+    "residual_risk": "Expected proportion of false positives among rejected pairs \u2248 0.05"
+  },
+  {
+    "timestamp": "2026-06-21T11:56:42",
+    "bias_type": "factor_contamination",
+    "classification": "statistical",
+    "mechanism": "Raw EG cointegration may detect shared factor exposure (market, sector, style) rather than genuine idiosyncratic co-movement. Factor-contaminated pairs produce false signals.",
+    "remedy": "Eigenportfolio decomposition projects out Marchenko-Pastur justified systematic factors (K determined by \u03bb+ threshold). EG re-run on residuals. Gold tier = confirmed by both.",
+    "scope": "tf=1m",
+    "residual_risk": "OLS projection itself may have finite-sample bias; small K mis-estimates the factor space"
+  },
+  {
+    "timestamp": "2026-06-21T11:56:42",
+    "bias_type": "lookahead",
+    "classification": "model",
+    "mechanism": "Hedge ratio estimated on full sample is lookahead-biased",
+    "remedy": "Three hedge ratios estimated: OLS rolling 252-bar (primary, no lookahead), Kalman calibrated on first 252 bars then frozen (no lookahead), TLS full-sample (lookahead \u2014 used for comparison in methodology only)",
+    "scope": "tf=1m",
+    "residual_risk": "TLS point estimate has lookahead; documented in pair results but not used as primary signal"
+  },
+  {
+    "timestamp": "2026-06-21T11:57:10",
+    "bias_type": "regime_lookahead",
+    "classification": "model",
+    "mechanism": "Fitting regime model on full sample uses future data to define regime labels, contaminating downstream backtests",
+    "remedy": "Primary result reports full-sample regimes for descriptive analysis. For OOS validation in backtest.py, regimes are refitted in expanding windows \u2014 that machinery lives there",
+    "scope": "tf=1m",
+    "residual_risk": "ML features extracted from full-sample regimes inherit lookahead; mitigated by backtest layer's WFA refit"
+  },
+  {
+    "timestamp": "2026-06-21T11:57:40",
     "bias_type": "lookahead",
     "classification": "data",
     "mechanism": "Cross-asset analysis requires shared time index; naive joining could leak information",
@@ -27,7 +81,7 @@
     "residual_risk": "none"
   },
   {
-    "timestamp": "2026-06-18T12:42:43",
+    "timestamp": "2026-06-21T11:57:40",
     "bias_type": "lookahead",
     "classification": "statistical",
     "mechanism": "All three correlation pre-filters use full or near-full sample \u2014 inherently lookahead-biased",
@@ -36,61 +90,79 @@
     "residual_risk": "Pairs that are not currently correlated but are still cointegrated in subperiods may be excluded"
   },
   {
-    "timestamp": "2026-06-18T12:59:54",
+    "timestamp": "2026-06-21T12:03:30",
     "bias_type": "multiple_testing",
     "classification": "statistical",
-    "mechanism": "Testing 11519 pairs at \u03b1=0.05 produces ~575 expected false positives under the null hypothesis",
+    "mechanism": "Testing 1206 pairs at \u03b1=0.05 produces ~60 expected false positives under the null hypothesis",
     "remedy": "Benjamini-Hochberg FDR correction at \u03b1=0.05; adjusted p-values used for significance decision",
     "scope": "tf=2m",
     "residual_risk": "Expected proportion of false positives among rejected pairs \u2248 0.05"
   },
   {
-    "timestamp": "2026-06-18T13:00:37",
+    "timestamp": "2026-06-21T12:03:49",
+    "bias_type": "lookahead",
+    "classification": "data",
+    "mechanism": "Cross-asset analysis requires shared time index; naive joining could leak information",
+    "remedy": "DataAligner uses NYSE master calendar with strict forward-fill; is_gap column flags every imputed bar; no future data used",
+    "scope": "tf=3m",
+    "residual_risk": "none"
+  },
+  {
+    "timestamp": "2026-06-21T12:03:49",
+    "bias_type": "lookahead",
+    "classification": "statistical",
+    "mechanism": "All three correlation pre-filters use full or near-full sample \u2014 inherently lookahead-biased",
+    "remedy": "Used only as candidate pre-filter; EG cointegration + BH-FDR correction + rolling spread modeling are the primary statistical decisions",
+    "scope": "tf=3m",
+    "residual_risk": "Pairs that are not currently correlated but are still cointegrated in subperiods may be excluded"
+  },
+  {
+    "timestamp": "2026-06-21T17:17:58",
+    "bias_type": "multiple_testing",
+    "classification": "statistical",
+    "mechanism": "Testing 15470 pairs at \u03b1=0.05 produces ~773 expected false positives under the null hypothesis",
+    "remedy": "Benjamini-Hochberg FDR correction at \u03b1=0.05; adjusted p-values used for significance decision",
+    "scope": "tf=3m",
+    "residual_risk": "Expected proportion of false positives among rejected pairs \u2248 0.05"
+  },
+  {
+    "timestamp": "2026-06-21T17:18:25",
     "bias_type": "factor_contamination",
     "classification": "statistical",
     "mechanism": "Raw EG cointegration may detect shared factor exposure (market, sector, style) rather than genuine idiosyncratic co-movement. Factor-contaminated pairs produce false signals.",
     "remedy": "Eigenportfolio decomposition projects out Marchenko-Pastur justified systematic factors (K determined by \u03bb+ threshold). EG re-run on residuals. Gold tier = confirmed by both.",
-    "scope": "tf=2m",
+    "scope": "tf=3m",
     "residual_risk": "OLS projection itself may have finite-sample bias; small K mis-estimates the factor space"
   },
   {
-    "timestamp": "2026-06-18T13:00:40",
+    "timestamp": "2026-06-21T17:18:26",
     "bias_type": "lookahead",
     "classification": "model",
     "mechanism": "Hedge ratio estimated on full sample is lookahead-biased",
     "remedy": "Three hedge ratios estimated: OLS rolling 252-bar (primary, no lookahead), Kalman calibrated on first 252 bars then frozen (no lookahead), TLS full-sample (lookahead \u2014 used for comparison in methodology only)",
-    "scope": "tf=2m",
+    "scope": "tf=3m",
     "residual_risk": "TLS point estimate has lookahead; documented in pair results but not used as primary signal"
   },
   {
-    "timestamp": "2026-06-18T13:02:26",
+    "timestamp": "2026-06-21T17:19:29",
     "bias_type": "regime_lookahead",
     "classification": "model",
     "mechanism": "Fitting regime model on full sample uses future data to define regime labels, contaminating downstream backtests",
     "remedy": "Primary result reports full-sample regimes for descriptive analysis. For OOS validation in backtest.py, regimes are refitted in expanding windows \u2014 that machinery lives there",
-    "scope": "tf=2m",
+    "scope": "tf=3m",
     "residual_risk": "ML features extracted from full-sample regimes inherit lookahead; mitigated by backtest layer's WFA refit"
   },
   {
-    "timestamp": "2026-06-18T13:02:26",
-    "bias_type": "snooping",
-    "classification": "data",
-    "mechanism": "Pair NWSA\u2194NWS is structural (same-company share classes) \u2014 cointegration is guaranteed, not discovered",
-    "remedy": "Excluded from primary findings; reported separately",
-    "scope": "pair=NWSA-NWS",
-    "residual_risk": "None \u2014 documented as structural"
-  },
-  {
-    "timestamp": "2026-06-18T13:02:26",
+    "timestamp": "2026-06-21T17:19:29",
     "bias_type": "multiple_testing",
     "classification": "statistical",
-    "mechanism": "Testing 10 trios after pair confirmation compounds multiple-testing burden",
+    "mechanism": "Testing 6 trios after pair confirmation compounds multiple-testing burden",
     "remedy": "Trios capped at 500; only trios where ALL pairs already passed BH-FDR enter; Johansen significance at 0.05",
-    "scope": "tf=2m",
+    "scope": "tf=3m",
     "residual_risk": "Trios inherit any false discoveries from pair-level FDR"
   },
   {
-    "timestamp": "2026-06-18T13:02:43",
+    "timestamp": "2026-06-21T17:20:12",
     "bias_type": "lookahead",
     "classification": "data",
     "mechanism": "Cross-asset analysis requires shared time index; naive joining could leak information",
@@ -99,7 +171,7 @@
     "residual_risk": "none"
   },
   {
-    "timestamp": "2026-06-18T13:02:43",
+    "timestamp": "2026-06-21T17:20:12",
     "bias_type": "lookahead",
     "classification": "statistical",
     "mechanism": "All three correlation pre-filters use full or near-full sample \u2014 inherently lookahead-biased",
@@ -108,16 +180,16 @@
     "residual_risk": "Pairs that are not currently correlated but are still cointegrated in subperiods may be excluded"
   },
   {
-    "timestamp": "2026-06-18T13:25:05",
+    "timestamp": "2026-06-21T17:30:19",
     "bias_type": "multiple_testing",
     "classification": "statistical",
-    "mechanism": "Testing 24955 pairs at \u03b1=0.05 produces ~1247 expected false positives under the null hypothesis",
+    "mechanism": "Testing 4099 pairs at \u03b1=0.05 produces ~204 expected false positives under the null hypothesis",
     "remedy": "Benjamini-Hochberg FDR correction at \u03b1=0.05; adjusted p-values used for significance decision",
     "scope": "tf=5m",
     "residual_risk": "Expected proportion of false positives among rejected pairs \u2248 0.05"
   },
   {
-    "timestamp": "2026-06-18T13:25:45",
+    "timestamp": "2026-06-21T17:31:23",
     "bias_type": "factor_contamination",
     "classification": "statistical",
     "mechanism": "Raw EG cointegration may detect shared factor exposure (market, sector, style) rather than genuine idiosyncratic co-movement. Factor-contaminated pairs produce false signals.",
@@ -126,7 +198,7 @@
     "residual_risk": "OLS projection itself may have finite-sample bias; small K mis-estimates the factor space"
   },
   {
-    "timestamp": "2026-06-18T13:25:46",
+    "timestamp": "2026-06-21T17:31:24",
     "bias_type": "lookahead",
     "classification": "model",
     "mechanism": "Hedge ratio estimated on full sample is lookahead-biased",
@@ -135,7 +207,7 @@
     "residual_risk": "TLS point estimate has lookahead; documented in pair results but not used as primary signal"
   },
   {
-    "timestamp": "2026-06-18T13:26:16",
+    "timestamp": "2026-06-21T17:31:43",
     "bias_type": "regime_lookahead",
     "classification": "model",
     "mechanism": "Fitting regime model on full sample uses future data to define regime labels, contaminating downstream backtests",
@@ -144,88 +216,70 @@
     "residual_risk": "ML features extracted from full-sample regimes inherit lookahead; mitigated by backtest layer's WFA refit"
   },
   {
-    "timestamp": "2026-06-18T13:26:16",
-    "bias_type": "snooping",
+    "timestamp": "2026-06-21T17:32:09",
+    "bias_type": "lookahead",
     "classification": "data",
-    "mechanism": "Pair NWSA\u2194NWS is structural (same-company share classes) \u2014 cointegration is guaranteed, not discovered",
-    "remedy": "Excluded from primary findings; reported separately",
-    "scope": "pair=NWSA-NWS",
-    "residual_risk": "None \u2014 documented as structural"
+    "mechanism": "Cross-asset analysis requires shared time index; naive joining could leak information",
+    "remedy": "DataAligner uses NYSE master calendar with strict forward-fill; is_gap column flags every imputed bar; no future data used",
+    "scope": "tf=15m",
+    "residual_risk": "none"
   },
   {
-    "timestamp": "2026-06-18T13:26:16",
+    "timestamp": "2026-06-21T17:32:09",
+    "bias_type": "lookahead",
+    "classification": "statistical",
+    "mechanism": "All three correlation pre-filters use full or near-full sample \u2014 inherently lookahead-biased",
+    "remedy": "Used only as candidate pre-filter; EG cointegration + BH-FDR correction + rolling spread modeling are the primary statistical decisions",
+    "scope": "tf=15m",
+    "residual_risk": "Pairs that are not currently correlated but are still cointegrated in subperiods may be excluded"
+  },
+  {
+    "timestamp": "2026-06-21T17:36:32",
+    "bias_type": "multiple_testing",
+    "classification": "statistical",
+    "mechanism": "Testing 14412 pairs at \u03b1=0.05 produces ~720 expected false positives under the null hypothesis",
+    "remedy": "Benjamini-Hochberg FDR correction at \u03b1=0.05; adjusted p-values used for significance decision",
+    "scope": "tf=15m",
+    "residual_risk": "Expected proportion of false positives among rejected pairs \u2248 0.05"
+  },
+  {
+    "timestamp": "2026-06-21T17:37:28",
+    "bias_type": "factor_contamination",
+    "classification": "statistical",
+    "mechanism": "Raw EG cointegration may detect shared factor exposure (market, sector, style) rather than genuine idiosyncratic co-movement. Factor-contaminated pairs produce false signals.",
+    "remedy": "Eigenportfolio decomposition projects out Marchenko-Pastur justified systematic factors (K determined by \u03bb+ threshold). EG re-run on residuals. Gold tier = confirmed by both.",
+    "scope": "tf=15m",
+    "residual_risk": "OLS projection itself may have finite-sample bias; small K mis-estimates the factor space"
+  },
+  {
+    "timestamp": "2026-06-21T17:37:29",
+    "bias_type": "lookahead",
+    "classification": "model",
+    "mechanism": "Hedge ratio estimated on full sample is lookahead-biased",
+    "remedy": "Three hedge ratios estimated: OLS rolling 252-bar (primary, no lookahead), Kalman calibrated on first 252 bars then frozen (no lookahead), TLS full-sample (lookahead \u2014 used for comparison in methodology only)",
+    "scope": "tf=15m",
+    "residual_risk": "TLS point estimate has lookahead; documented in pair results but not used as primary signal"
+  },
+  {
+    "timestamp": "2026-06-21T17:37:52",
+    "bias_type": "regime_lookahead",
+    "classification": "model",
+    "mechanism": "Fitting regime model on full sample uses future data to define regime labels, contaminating downstream backtests",
+    "remedy": "Primary result reports full-sample regimes for descriptive analysis. For OOS validation in backtest.py, regimes are refitted in expanding windows \u2014 that machinery lives there",
+    "scope": "tf=15m",
+    "residual_risk": "ML features extracted from full-sample regimes inherit lookahead; mitigated by backtest layer's WFA refit"
+  },
+  {
+    "timestamp": "2026-06-21T17:37:52",
     "bias_type": "multiple_testing",
     "classification": "statistical",
     "mechanism": "Testing 1 trios after pair confirmation compounds multiple-testing burden",
     "remedy": "Trios capped at 500; only trios where ALL pairs already passed BH-FDR enter; Johansen significance at 0.05",
-    "scope": "tf=5m",
-    "residual_risk": "Trios inherit any false discoveries from pair-level FDR"
-  },
-  {
-    "timestamp": "2026-06-18T13:26:28",
-    "bias_type": "lookahead",
-    "classification": "data",
-    "mechanism": "Cross-asset analysis requires shared time index; naive joining could leak information",
-    "remedy": "DataAligner uses NYSE master calendar with strict forward-fill; is_gap column flags every imputed bar; no future data used",
-    "scope": "tf=15m",
-    "residual_risk": "none"
-  },
-  {
-    "timestamp": "2026-06-18T13:26:28",
-    "bias_type": "lookahead",
-    "classification": "statistical",
-    "mechanism": "All three correlation pre-filters use full or near-full sample \u2014 inherently lookahead-biased",
-    "remedy": "Used only as candidate pre-filter; EG cointegration + BH-FDR correction + rolling spread modeling are the primary statistical decisions",
-    "scope": "tf=15m",
-    "residual_risk": "Pairs that are not currently correlated but are still cointegrated in subperiods may be excluded"
-  },
-  {
-    "timestamp": "2026-06-18T13:35:55",
-    "bias_type": "multiple_testing",
-    "classification": "statistical",
-    "mechanism": "Testing 62017 pairs at \u03b1=0.05 produces ~3100 expected false positives under the null hypothesis",
-    "remedy": "Benjamini-Hochberg FDR correction at \u03b1=0.05; adjusted p-values used for significance decision",
-    "scope": "tf=15m",
-    "residual_risk": "Expected proportion of false positives among rejected pairs \u2248 0.05"
-  },
-  {
-    "timestamp": "2026-06-18T13:36:37",
-    "bias_type": "factor_contamination",
-    "classification": "statistical",
-    "mechanism": "Raw EG cointegration may detect shared factor exposure (market, sector, style) rather than genuine idiosyncratic co-movement. Factor-contaminated pairs produce false signals.",
-    "remedy": "Eigenportfolio decomposition projects out Marchenko-Pastur justified systematic factors (K determined by \u03bb+ threshold). EG re-run on residuals. Gold tier = confirmed by both.",
-    "scope": "tf=15m",
-    "residual_risk": "OLS projection itself may have finite-sample bias; small K mis-estimates the factor space"
-  },
-  {
-    "timestamp": "2026-06-18T13:36:38",
-    "bias_type": "lookahead",
-    "classification": "model",
-    "mechanism": "Hedge ratio estimated on full sample is lookahead-biased",
-    "remedy": "Three hedge ratios estimated: OLS rolling 252-bar (primary, no lookahead), Kalman calibrated on first 252 bars then frozen (no lookahead), TLS full-sample (lookahead \u2014 used for comparison in methodology only)",
-    "scope": "tf=15m",
-    "residual_risk": "TLS point estimate has lookahead; documented in pair results but not used as primary signal"
-  },
-  {
-    "timestamp": "2026-06-18T13:37:18",
-    "bias_type": "regime_lookahead",
-    "classification": "model",
-    "mechanism": "Fitting regime model on full sample uses future data to define regime labels, contaminating downstream backtests",
-    "remedy": "Primary result reports full-sample regimes for descriptive analysis. For OOS validation in backtest.py, regimes are refitted in expanding windows \u2014 that machinery lives there",
-    "scope": "tf=15m",
-    "residual_risk": "ML features extracted from full-sample regimes inherit lookahead; mitigated by backtest layer's WFA refit"
-  },
-  {
-    "timestamp": "2026-06-18T13:37:18",
-    "bias_type": "multiple_testing",
-    "classification": "statistical",
-    "mechanism": "Testing 5 trios after pair confirmation compounds multiple-testing burden",
-    "remedy": "Trios capped at 500; only trios where ALL pairs already passed BH-FDR enter; Johansen significance at 0.05",
     "scope": "tf=15m",
     "residual_risk": "Trios inherit any false discoveries from pair-level FDR"
   },
   {
-    "timestamp": "2026-06-18T13:37:28",
+    "timestamp": "2026-06-21T17:38:06",
     "bias_type": "lookahead",
     "classification": "data",
     "mechanism": "Cross-asset analysis requires shared time index; naive joining could leak information",
@@ -234,7 +288,7 @@
     "residual_risk": "none"
   },
   {
-    "timestamp": "2026-06-18T13:37:28",
+    "timestamp": "2026-06-21T17:38:06",
     "bias_type": "lookahead",
     "classification": "statistical",
     "mechanism": "All three correlation pre-filters use full or near-full sample \u2014 inherently lookahead-biased",
@@ -243,43 +297,124 @@
     "residual_risk": "Pairs that are not currently correlated but are still cointegrated in subperiods may be excluded"
   },
   {
-    "timestamp": "2026-06-18T13:44:35",
+    "timestamp": "2026-06-21T17:42:31",
     "bias_type": "multiple_testing",
     "classification": "statistical",
-    "mechanism": "Testing 97035 pairs at \u03b1=0.05 produces ~4851 expected false positives under the null hypothesis",
+    "mechanism": "Testing 19476 pairs at \u03b1=0.05 produces ~973 expected false positives under the null hypothesis",
     "remedy": "Benjamini-Hochberg FDR correction at \u03b1=0.05; adjusted p-values used for significance decision",
     "scope": "tf=30m",
     "residual_risk": "Expected proportion of false positives among rejected pairs \u2248 0.05"
   },
   {
-    "timestamp": "2026-06-18T13:45:21",
+    "timestamp": "2026-06-21T17:44:00",
+    "bias_type": "lookahead",
+    "classification": "data",
+    "mechanism": "Cross-asset analysis requires shared time index; naive joining could leak information",
+    "remedy": "DataAligner uses NYSE master calendar with strict forward-fill; is_gap column flags every imputed bar; no future data used",
+    "scope": "tf=1h",
+    "residual_risk": "none"
+  },
+  {
+    "timestamp": "2026-06-21T17:44:00",
+    "bias_type": "lookahead",
+    "classification": "statistical",
+    "mechanism": "All three correlation pre-filters use full or near-full sample \u2014 inherently lookahead-biased",
+    "remedy": "Used only as candidate pre-filter; EG cointegration + BH-FDR correction + rolling spread modeling are the primary statistical decisions",
+    "scope": "tf=1h",
+    "residual_risk": "Pairs that are not currently correlated but are still cointegrated in subperiods may be excluded"
+  },
+  {
+    "timestamp": "2026-06-21T17:54:56",
+    "bias_type": "multiple_testing",
+    "classification": "statistical",
+    "mechanism": "Testing 65721 pairs at \u03b1=0.05 produces ~3286 expected false positives under the null hypothesis",
+    "remedy": "Benjamini-Hochberg FDR correction at \u03b1=0.05; adjusted p-values used for significance decision",
+    "scope": "tf=1h",
+    "residual_risk": "Expected proportion of false positives among rejected pairs \u2248 0.05"
+  },
+  {
+    "timestamp": "2026-06-21T18:01:43",
     "bias_type": "factor_contamination",
     "classification": "statistical",
     "mechanism": "Raw EG cointegration may detect shared factor exposure (market, sector, style) rather than genuine idiosyncratic co-movement. Factor-contaminated pairs produce false signals.",
     "remedy": "Eigenportfolio decomposition projects out Marchenko-Pastur justified systematic factors (K determined by \u03bb+ threshold). EG re-run on residuals. Gold tier = confirmed by both.",
-    "scope": "tf=30m",
+    "scope": "tf=1h",
     "residual_risk": "OLS projection itself may have finite-sample bias; small K mis-estimates the factor space"
   },
   {
-    "timestamp": "2026-06-18T13:45:22",
+    "timestamp": "2026-06-21T18:01:55",
     "bias_type": "lookahead",
     "classification": "model",
     "mechanism": "Hedge ratio estimated on full sample is lookahead-biased",
     "remedy": "Three hedge ratios estimated: OLS rolling 252-bar (primary, no lookahead), Kalman calibrated on first 252 bars then frozen (no lookahead), TLS full-sample (lookahead \u2014 used for comparison in methodology only)",
-    "scope": "tf=30m",
+    "scope": "tf=1h",
     "residual_risk": "TLS point estimate has lookahead; documented in pair results but not used as primary signal"
   },
   {
-    "timestamp": "2026-06-18T13:45:38",
+    "timestamp": "2026-06-21T18:04:03",
     "bias_type": "regime_lookahead",
     "classification": "model",
     "mechanism": "Fitting regime model on full sample uses future data to define regime labels, contaminating downstream backtests",
     "remedy": "Primary result reports full-sample regimes for descriptive analysis. For OOS validation in backtest.py, regimes are refitted in expanding windows \u2014 that machinery lives there",
-    "scope": "tf=30m",
+    "scope": "tf=1h",
     "residual_risk": "ML features extracted from full-sample regimes inherit lookahead; mitigated by backtest layer's WFA refit"
   },
   {
-    "timestamp": "2026-06-18T13:45:55",
+    "timestamp": "2026-06-21T18:04:17",
+    "bias_type": "lookahead",
+    "classification": "data",
+    "mechanism": "Cross-asset analysis requires shared time index; naive joining could leak information",
+    "remedy": "DataAligner uses NYSE master calendar with strict forward-fill; is_gap column flags every imputed bar; no future data used",
+    "scope": "tf=4h",
+    "residual_risk": "none"
+  },
+  {
+    "timestamp": "2026-06-21T18:04:17",
+    "bias_type": "lookahead",
+    "classification": "statistical",
+    "mechanism": "All three correlation pre-filters use full or near-full sample \u2014 inherently lookahead-biased",
+    "remedy": "Used only as candidate pre-filter; EG cointegration + BH-FDR correction + rolling spread modeling are the primary statistical decisions",
+    "scope": "tf=4h",
+    "residual_risk": "Pairs that are not currently correlated but are still cointegrated in subperiods may be excluded"
+  },
+  {
+    "timestamp": "2026-06-21T18:12:28",
+    "bias_type": "multiple_testing",
+    "classification": "statistical",
+    "mechanism": "Testing 68925 pairs at \u03b1=0.05 produces ~3446 expected false positives under the null hypothesis",
+    "remedy": "Benjamini-Hochberg FDR correction at \u03b1=0.05; adjusted p-values used for significance decision",
+    "scope": "tf=4h",
+    "residual_risk": "Expected proportion of false positives among rejected pairs \u2248 0.05"
+  },
+  {
+    "timestamp": "2026-06-21T18:19:12",
+    "bias_type": "factor_contamination",
+    "classification": "statistical",
+    "mechanism": "Raw EG cointegration may detect shared factor exposure (market, sector, style) rather than genuine idiosyncratic co-movement. Factor-contaminated pairs produce false signals.",
+    "remedy": "Eigenportfolio decomposition projects out Marchenko-Pastur justified systematic factors (K determined by \u03bb+ threshold). EG re-run on residuals. Gold tier = confirmed by both.",
+    "scope": "tf=4h",
+    "residual_risk": "OLS projection itself may have finite-sample bias; small K mis-estimates the factor space"
+  },
+  {
+    "timestamp": "2026-06-21T18:19:21",
+    "bias_type": "lookahead",
+    "classification": "model",
+    "mechanism": "Hedge ratio estimated on full sample is lookahead-biased",
+    "remedy": "Three hedge ratios estimated: OLS rolling 252-bar (primary, no lookahead), Kalman calibrated on first 252 bars then frozen (no lookahead), TLS full-sample (lookahead \u2014 used for comparison in methodology only)",
+    "scope": "tf=4h",
+    "residual_risk": "TLS point estimate has lookahead; documented in pair results but not used as primary signal"
+  },
+  {
+    "timestamp": "2026-06-21T18:20:05",
+    "bias_type": "regime_lookahead",
+    "classification": "model",
+    "mechanism": "Fitting regime model on full sample uses future data to define regime labels, contaminating downstream backtests",
+    "remedy": "Primary result reports full-sample regimes for descriptive analysis. For OOS validation in backtest.py, regimes are refitted in expanding windows \u2014 that machinery lives there",
+    "scope": "tf=4h",
+    "residual_risk": "ML features extracted from full-sample regimes inherit lookahead; mitigated by backtest layer's WFA refit"
+  },
+  {
+    "timestamp": "2026-06-21T18:20:29",
     "bias_type": "lookahead",
     "classification": "data",
     "mechanism": "Cross-asset analysis requires shared time index; naive joining could leak information",
@@ -288,7 +423,7 @@
     "residual_risk": "none"
   },
   {
-    "timestamp": "2026-06-18T13:45:55",
+    "timestamp": "2026-06-21T18:20:29",
     "bias_type": "lookahead",
     "classification": "statistical",
     "mechanism": "All three correlation pre-filters use full or near-full sample \u2014 inherently lookahead-biased",
@@ -297,16 +432,16 @@
     "residual_risk": "Pairs that are not currently correlated but are still cointegrated in subperiods may be excluded"
   },
   {
-    "timestamp": "2026-06-18T13:56:06",
+    "timestamp": "2026-06-21T18:32:41",
     "bias_type": "multiple_testing",
     "classification": "statistical",
-    "mechanism": "Testing 122057 pairs at \u03b1=0.05 produces ~6102 expected false positives under the null hypothesis",
+    "mechanism": "Testing 122082 pairs at \u03b1=0.05 produces ~6104 expected false positives under the null hypothesis",
     "remedy": "Benjamini-Hochberg FDR correction at \u03b1=0.05; adjusted p-values used for significance decision",
     "scope": "tf=1D",
     "residual_risk": "Expected proportion of false positives among rejected pairs \u2248 0.05"
   },
   {
-    "timestamp": "2026-06-18T13:56:29",
+    "timestamp": "2026-06-21T18:33:20",
     "bias_type": "lookahead",
     "classification": "data",
     "mechanism": "Cross-asset analysis requires shared time index; naive joining could leak information",
@@ -315,7 +450,7 @@
     "residual_risk": "none"
   },
   {
-    "timestamp": "2026-06-18T13:56:29",
+    "timestamp": "2026-06-21T18:33:20",
     "bias_type": "lookahead",
     "classification": "statistical",
     "mechanism": "All three correlation pre-filters use full or near-full sample \u2014 inherently lookahead-biased",
@@ -324,16 +459,16 @@
     "residual_risk": "Pairs that are not currently correlated but are still cointegrated in subperiods may be excluded"
   },
   {
-    "timestamp": "2026-06-18T13:59:23",
+    "timestamp": "2026-06-21T18:36:25",
     "bias_type": "multiple_testing",
     "classification": "statistical",
-    "mechanism": "Testing 150423 pairs at \u03b1=0.05 produces ~7521 expected false positives under the null hypothesis",
+    "mechanism": "Testing 150377 pairs at \u03b1=0.05 produces ~7518 expected false positives under the null hypothesis",
     "remedy": "Benjamini-Hochberg FDR correction at \u03b1=0.05; adjusted p-values used for significance decision",
     "scope": "tf=7D",
     "residual_risk": "Expected proportion of false positives among rejected pairs \u2248 0.05"
   },
   {
-    "timestamp": "2026-06-18T13:59:32",
+    "timestamp": "2026-06-21T18:36:36",
     "bias_type": "factor_contamination",
     "classification": "statistical",
     "mechanism": "Raw EG cointegration may detect shared factor exposure (market, sector, style) rather than genuine idiosyncratic co-movement. Factor-contaminated pairs produce false signals.",
@@ -342,7 +477,7 @@
     "residual_risk": "OLS projection itself may have finite-sample bias; small K mis-estimates the factor space"
   },
   {
-    "timestamp": "2026-06-18T13:59:34",
+    "timestamp": "2026-06-21T18:36:38",
     "bias_type": "lookahead",
     "classification": "model",
     "mechanism": "Hedge ratio estimated on full sample is lookahead-biased",
@@ -351,7 +486,7 @@
     "residual_risk": "TLS point estimate has lookahead; documented in pair results but not used as primary signal"
   },
   {
-    "timestamp": "2026-06-18T13:59:46",
+    "timestamp": "2026-06-21T18:36:53",
     "bias_type": "regime_lookahead",
     "classification": "model",
     "mechanism": "Fitting regime model on full sample uses future data to define regime labels, contaminating downstream backtests",
@@ -360,7 +495,7 @@
     "residual_risk": "ML features extracted from full-sample regimes inherit lookahead; mitigated by backtest layer's WFA refit"
   },
   {
-    "timestamp": "2026-06-18T13:59:47",
+    "timestamp": "2026-06-21T18:36:55",
     "bias_type": "lookahead",
     "classification": "data",
     "mechanism": "Cross-asset analysis requires shared time index; naive joining could leak information",
@@ -369,7 +504,7 @@
     "residual_risk": "none"
   },
   {
-    "timestamp": "2026-06-18T13:59:47",
+    "timestamp": "2026-06-21T18:36:55",
     "bias_type": "lookahead",
     "classification": "statistical",
     "mechanism": "All three correlation pre-filters use full or near-full sample \u2014 inherently lookahead-biased",
@@ -378,16 +513,16 @@
     "residual_risk": "Pairs that are not currently correlated but are still cointegrated in subperiods may be excluded"
   },
   {
-    "timestamp": "2026-06-18T14:00:33",
+    "timestamp": "2026-06-21T18:37:39",
     "bias_type": "multiple_testing",
     "classification": "statistical",
-    "mechanism": "Testing 34243 pairs at \u03b1=0.05 produces ~1712 expected false positives under the null hypothesis",
+    "mechanism": "Testing 34263 pairs at \u03b1=0.05 produces ~1713 expected false positives under the null hypothesis",
     "remedy": "Benjamini-Hochberg FDR correction at \u03b1=0.05; adjusted p-values used for significance decision",
     "scope": "tf=1M",
     "residual_risk": "Expected proportion of false positives among rejected pairs \u2248 0.05"
   },
   {
-    "timestamp": "2026-06-18T14:00:37",
+    "timestamp": "2026-06-21T18:37:45",
     "bias_type": "lookahead",
     "classification": "data",
     "mechanism": "Cross-asset analysis requires shared time index; naive joining could leak information",
@@ -396,7 +531,7 @@
     "residual_risk": "none"
   },
   {
-    "timestamp": "2026-06-18T14:00:37",
+    "timestamp": "2026-06-21T18:37:45",
     "bias_type": "lookahead",
     "classification": "statistical",
     "mechanism": "All three correlation pre-filters use full or near-full sample \u2014 inherently lookahead-biased",
@@ -405,7 +540,7 @@
     "residual_risk": "Pairs that are not currently correlated but are still cointegrated in subperiods may be excluded"
   },
   {
-    "timestamp": "2026-06-18T14:00:37",
+    "timestamp": "2026-06-21T18:37:46",
     "bias_type": "lookahead",
     "classification": "data",
     "mechanism": "Cross-asset analysis requires shared time index; naive joining could leak information",
@@ -414,7 +549,7 @@
     "residual_risk": "none"
   },
   {
-    "timestamp": "2026-06-18T14:00:37",
+    "timestamp": "2026-06-21T18:37:46",
     "bias_type": "lookahead",
     "classification": "statistical",
     "mechanism": "All three correlation pre-filters use full or near-full sample \u2014 inherently lookahead-biased",
