@@ -22,6 +22,7 @@ import hashlib
 import logging
 import requests
 import warnings
+from io import StringIO
 import asyncio
 import numpy as np
 import pandas as pd
@@ -365,7 +366,17 @@ class DataStore:
         diffs = df.index.to_series().diff().dropna()
         if diffs.empty:
             return True
-        median_gap = diffs.median().total_seconds()
+        # Exclude structural overnight/weekend gaps (>8h) before computing
+        # the median — same fix as _clean_contaminated_cache(). A correctly
+        # session-aligned 4h file has exactly 2 bars/day, so half its gaps
+        # are the legitimate ~20h overnight break; including them pushed
+        # the median toward "looks like daily data" and wrongly rejected
+        # good 4h files here too.
+        gap_seconds = diffs.dt.total_seconds()
+        intraday_gaps = gap_seconds[gap_seconds <= 8 * 3600]
+        median_gap = (
+            intraday_gaps if len(intraday_gaps) >= 3 else gap_seconds
+        ).median()
 
         # Valid: median gap within [expected/tolerance, expected*tolerance]
         ok = (
@@ -1741,7 +1752,22 @@ class YFinanceFeed:
             agg = {"open": "first", "high": "max", "low": "min", "close": "last"}
             if "volume" in df.columns:
                 agg["volume"] = "sum"
-            resampled = df.resample(rule).agg(agg).dropna(subset=["open", "close"])
+            # 4h fixed 2026-06-20: plain df.resample("4h") clock-aligns bins
+            # to 00:00/04:00/08:00/12:00/16:00/20:00, NOT market open. For a
+            # 9:30-16:00 NYSE session that puts real bars in the 08:00 and
+            # 12:00 buckets — stamped wrong and with the overnight gap
+            # dominating frequency checks. origin="start_day" + offset=
+            # "9h30min" anchors bins to 09:30/13:30 instead (confirmed via
+            # direct test: was producing 08:00/12:00 stamps with a 20h
+            # median gap before this fix).
+            if rule == "4h":
+                resampled = (
+                    df.resample(rule, origin="start_day", offset="9h30min")
+                    .agg(agg)
+                    .dropna(subset=["open", "close"])
+                )
+            else:
+                resampled = df.resample(rule).agg(agg).dropna(subset=["open", "close"])
             return resampled if len(resampled) >= 2 else None
         except Exception as e:
             log.debug(f"Resample failed ({rule}): {e}")
@@ -3077,8 +3103,21 @@ class UniverseBuilder:
                     if len(df) < 10:
                         continue
                     idx = pd.to_datetime(df.index)
+                    gaps = idx.to_series().diff().dt.total_seconds().dropna()
+                    # Exclude structural overnight/weekend gaps (>8h) before
+                    # computing the median. Fixed 2026-06-21: a correctly
+                    # session-aligned 4h file has exactly 2 bars/day, so HALF
+                    # its gaps are the legitimate ~20h overnight break —
+                    # including them pushed the median right up near the
+                    # contamination threshold, so this was silently deleting
+                    # good 4h files on every single build() call (data.py
+                    # AND analysis.py both call this unconditionally at
+                    # startup), confirmed via a live run: 1500+ valid 4h
+                    # files written by data.py, only 7 left by the time
+                    # analysis.py read the cache moments later.
+                    intraday_gaps = gaps[gaps <= 8 * 3600]
                     med = float(
-                        idx.to_series().diff().dt.total_seconds().dropna().median()
+                        (intraday_gaps if len(intraday_gaps) >= 3 else gaps).median()
                     )
                     if med > expected_gap * tol:
                         os.remove(fpath)
@@ -3146,10 +3185,20 @@ class UniverseBuilder:
         self,
         connect: bool = False,  # yfinance-only by default; True = IBKR mode
         reset_progress: bool = False,
+        fetch: bool = True,  # False = read-only — never touch IBKR or yfinance
     ) -> UniverseResult:
         """
         Full pipeline: build universe, fetch data, validate, return result.
         Crash-safe via ProgressLogger. Config-hash-aware cache invalidation.
+
+        fetch=False (used by analysis.py): `connect` alone does NOT make this
+        read-only — connect only chooses IBKR vs yfinance as the intraday
+        *source*, both branches still fetch. Fixed 2026-06-21: analysis.py
+        called build(connect=False) believing that was sufficient to never
+        touch yfinance (per CLAUDE.md's "analysis.py must never fetch" rule),
+        but connect=False actually ran the full Phase 2A yfinance sweep —
+        confirmed directly via a live run. fetch=False is the real "use
+        cache as-is, fetch nothing" switch.
         """
         _summary = RunSummary()  # tracks metrics; written to latest_run_data.log at end
         Config.ensure_dirs()
@@ -3253,6 +3302,16 @@ class UniverseBuilder:
             for s, cls in yf_assets
             if DataStore.is_fresh(s, "1D") and DataStore.needs_refresh(s, "1D")
         ]
+
+        if not fetch:
+            if uncached_yf or stale_yf:
+                log.info(
+                    f"  Read-only mode (fetch=False): skipping yfinance fetch "
+                    f"for {len(uncached_yf)} uncached + {len(stale_yf)} stale "
+                    f"daily assets — using cache as-is"
+                )
+            uncached_yf = []
+            stale_yf = []
 
         if uncached_yf or stale_yf:
             # Full fetch for uncached; incremental (last 30 days) for stale
@@ -3369,6 +3428,14 @@ class UniverseBuilder:
         )
 
         ibkr_work = equity_needing_intraday + forex_needing_intraday + non_equity
+        if not fetch and ibkr_work:
+            log.info(
+                f"  Read-only mode (fetch=False): {len(ibkr_work)} assets need "
+                f"intraday data but fetching is disabled — using cache as-is "
+                f"(expected for analysis.py; run data.py to backfill)"
+            )
+            ibkr_work = []
+
         if ibkr_work:
             if not connect:
                 log.info("  Phase 2A: yfinance intraday sweep (primary pipeline)")
@@ -4361,7 +4428,7 @@ class UniverseBuilder:
                 },
                 timeout=15,
             )
-            tables = pd.read_html(resp.text)
+            tables = pd.read_html(StringIO(resp.text))
             for t in tables:
                 for col in t.columns:
                     if "ticker" in str(col).lower() or "symbol" in str(col).lower():
@@ -4452,7 +4519,7 @@ class UniverseBuilder:
                 },
                 timeout=15,
             )
-            tables = pd.read_html(resp.text)
+            tables = pd.read_html(StringIO(resp.text))
             for t in tables:
                 for col in t.columns:
                     if "ticker" in str(col).lower() or "symbol" in str(col).lower():
@@ -4494,7 +4561,7 @@ class UniverseBuilder:
                 },
                 timeout=15,
             )
-            tables = pd.read_html(resp.text)
+            tables = pd.read_html(StringIO(resp.text))
             for t in tables:
                 for col in t.columns:
                     if "ticker" in str(col).lower() or "symbol" in str(col).lower():
@@ -4560,7 +4627,7 @@ class UniverseBuilder:
                 )
                 return []
 
-            tables = pd.read_html(resp.text)
+            tables = pd.read_html(StringIO(resp.text))
             log.debug(f"  {cache_name}: pd.read_html found {len(tables)} tables")
 
             # Track the best candidate even if below expected_min, so we can
@@ -4684,7 +4751,7 @@ class UniverseBuilder:
             url = "https://en.wikipedia.org/wiki/List_of_S%26P_500_companies"
             resp = requests.get(url, headers=headers, timeout=15)
             resp.raise_for_status()
-            tables = pd.read_html(resp.text, header=0)
+            tables = pd.read_html(StringIO(resp.text), header=0)
             tickers = tables[0]["Symbol"].tolist()
             tickers = [str(t).replace(".", " ") for t in tickers]
             log.info(f"S&P 500: {len(tickers)} tickers from Wikipedia")

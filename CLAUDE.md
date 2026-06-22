@@ -192,14 +192,22 @@ This is as important as the technical rules above.
 ## Current State (update this section each session)
 
 See `DEVELOPMENT.md` "Next Session" block at the end of the most recent
-session entry for the authoritative current state and next steps. As of
-the most recent session: stabilizing `data.py`'s yfinance-only pipeline
-(Session 7), working through intermittent S&P 400/600 Wikipedia scraper
-reliability via `seed_sp_caches.py`. Confirmed pairs exist at 5m, 15m, 7D
-timeframes from earlier successful analysis.py runs (bank-sector cluster
-at 15m, near-arbitrage SPY/VOO at 30m). `ml.py`, `backtest.py`,
-`analyzer.py`, `macro.py` are designed in DEVELOPMENT.md but not yet built
-— blocked on a fully stable confirmed-pair universe first.
+session entry (Session 8) for the authoritative current state and next
+steps. As of Session 8: `data.py` and `analysis.py` are verified
+end-to-end — not just "ran without crashing," but reproduced identically
+across four separate runs (full run, two targeted `--timeframes` backfills,
+and a from-scratch full re-run). The S&P 400/600 Wikipedia scraper bugs
+that caused the universe to collapse were real code bugs (`pd.read_html`
+needing `io.StringIO`, plus a wrong-table-selected bug in
+`seed_sp_caches.py`), not network flakiness as previously believed — see
+Session 8's bug registry. **Confirmed pairs as of Session 8: 11 validated
+pairs across 3m (7), 15m (3), and 1h (1) — not 5m/30m as stated in earlier
+session notes, which were stale.** `data_ibkr.py` has already been run
+against these 15 manifest symbols. `ml.py`, `backtest.py`, `analyzer.py`,
+`macro.py` are designed in DEVELOPMENT.md but not yet built — the
+confirmed-pair universe is now genuinely stable, so the blocker on starting
+one of these is resolved; which one to build next is an open decision (see
+DEVELOPMENT.md Session 8 "Next Session").
 
 ---
 

@@ -12,6 +12,57 @@ The standard is professional and institutional — not a class project.
 
 ---
 
+## Development Process & AI Tool Disclosure
+
+This project was developed using Claude (Anthropic) as an active coding and
+debugging collaborator throughout. This section documents how, honestly, for
+anyone evaluating the work.
+
+**Division of labor:**
+- Research thesis, methodology selection, and all judgment calls: the author
+- Code implementation, debugging, and documentation drafting: AI-assisted,
+  directed and reviewed by the author at every step
+- Bug diagnosis: collaborative — many bugs in this project's history were
+  caught or correctly diagnosed by the author pushing back on an AI-proposed
+  explanation that didn't hold up, or by re-verifying an AI claim directly
+  against the running code rather than trusting it
+
+**Documented examples of this in practice (shown, not asserted):**
+- Session 7's sp600 Wikipedia scraper investigation: a third-party summary of
+  diagnostic output claimed a result that was logically inconsistent with the
+  actual retry script's structure — caught by requesting the literal raw text
+  instead of continuing to theorize from a summary (full account: "Session 7
+  Continued" below).
+- Session 8: this very document claimed BUG-D31 (shared yfinance session) and
+  BUG-D32 (4h session-aligned resample) were fixed in Session 7. Both claims
+  were directly tested against the live code at the start of Session 8 and
+  found to be false — the described fixes were never actually present. Caught
+  by running the actual code against live data rather than trusting the prior
+  session's written record. This is exactly why Session 8 treats every
+  "documented as fixed" claim in this file as a hypothesis to verify, not a
+  fact — see Session 8 below for what else that standard turned up.
+
+**Why this record exists:** the session-by-session bug registry and decision
+log in this document were maintained throughout development, not
+reconstructed afterward. They serve as a working record of the actual
+reasoning process — why HRP and minimum-CVaR are included alongside (not
+instead of) tangency/mean-variance optimization specifically as a
+fragile-to-robust comparison, why the GapFlag system has six specific codes,
+why coint_fraction_rolling exists as a defense against episodic
+cointegration — available for review by anyone evaluating this work's depth
+of understanding.
+
+A condensed, public-facing version of this disclosure belongs in the paper
+and repo README (not duplicating this internal detail): state plainly that
+Claude was used as a coding/debugging collaborator throughout, that all
+research design choices and judgment calls were the author's, and point to
+this file for the full record. Check each target program's (Baruch/Berkeley/
+Columbia) actual current application instructions for any required
+disclosure format before finalizing that version — institutional AI-tool
+policies are fast-moving and shouldn't be assumed from general knowledge.
+
+---
+
 ## Architecture Principles
 
 1. **Comprehension before code** — full logic walkthrough before any implementation
@@ -369,10 +420,76 @@ Four methods tested:
 
 ### Portfolio Construction
 
-Three approaches:
-1. **Mean-variance efficient frontier** — maximize Sharpe given the covariance matrix of pair P&L streams. Requires at least 2× the number of pairs in observations for stable covariance estimates.
-2. **Maximum diversification** — minimize average pairwise correlation between positions. Naturally downweights clusters of similar pairs.
-3. **Equal-weight baseline** — all confirmed pairs equally weighted. The paper reports whether MV or max-div beats equal-weight OOS; this is often not the case (parameter estimation error in the covariance matrix), and reporting the failure honestly is rigorous.
+**Fragile-to-robust comparison spectrum (expanded 2026-06-21):** the original
+three approaches below are retained; three more are added specifically to
+build a fragile→robust comparison spectrum as a single paper exhibit, per
+Michaud (1989)'s point that MV optimization "maximizes estimation error" —
+the GAP between fragile and robust methods, not any one method's standalone
+performance, is itself the paper finding.
+
+1. **Tangency portfolio (max Sharpe / mean-variance optimal)** — maximizes
+   w'μ/√(w'Σw) using the sample covariance and mean estimated in-sample.
+   This **is** the mean-variance efficient frontier's optimal point — item 4
+   below is the same object viewed as a curve rather than a single point.
+   Included DELIBERATELY as the fragile baseline, not as a candidate for
+   live use: the point is to quantify, not avoid, its estimation-error
+   sensitivity against the actual confirmed pair universe.
+2. **Minimum variance** — minimize w'Σw with no expected-return assumption
+   at all. More robust to μ-estimation error than tangency since it drops
+   one of the two noisy inputs.
+3. **Minimum CVaR** — minimize portfolio CVaR(95%) directly, using the
+   actual (likely fat-tailed, per the EVT/GPD fit in stats.py) shape of pair
+   P&L rather than assuming variance captures tail risk. Natural comparison
+   point against minimum variance once returns are confirmed non-normal.
+4. **Mean-variance efficient frontier** — for each target return, minimize
+   w'Σw; the (σ, μ) locus traces the frontier. Reports where equal-weight,
+   risk parity, and HRP sit relative to it — the distance from the frontier
+   IS the quantified "cost of not optimizing" (see Markowitz/efficient
+   frontier section above).
+5. **Maximum diversification** — minimize average pairwise correlation
+   between positions. Naturally downweights clusters of similar pairs (e.g.
+   the bank-pair cluster).
+6. **Equal-weight baseline** — all confirmed pairs equally weighted. Reports
+   whether any optimized method beats equal-weight OOS; often not the case
+   (covariance estimation error), and reporting that failure honestly is
+   itself rigorous.
+7. **Independent / true portfolio / HRP risk parity** — see Position Sizing
+   above; included again here as rows in the comparison table below rather
+   than re-described.
+8. **Constrained optimizer (added 2026-06-21)** — maximize a target metric
+   (Sharpe, primarily; CVaR-adjusted Sharpe as a secondary objective) subject
+   to: leverage ≤ L (gross exposure cap), turnover ≤ T per rebalance (an
+   explicit cost penalty the OTHER seven methods don't have — they're
+   re-solved each rebalance with no penalty for how far the new weights are
+   from the old ones), and sector/concentration limits (e.g. via the HHI
+   index already documented under Lopez de Prado above, or a hard per-sector
+   exposure cap given the bank-pair cluster's concentration risk). This
+   tests a DIFFERENT robustness axis than items 1-7: operational/
+   implementation realism rather than covariance-estimation-error
+   robustness. Compare against the unconstrained tangency/MV result
+   specifically — the gap between unconstrained-optimal and
+   constrained-optimal Sharpe is the "cost of realistic operating
+   constraints," parallel to how the existing frontier distance is the
+   "cost of not optimizing" (item 4 above). Implementation: standard convex
+   optimization (`cvxpy` or `scipy.optimize` with linear/quadratic
+   constraints) — turnover and gross-leverage limits are linear in the
+   weight vector, so this stays a well-behaved QP/SOCP, not a harder
+   combinatorial problem.
+
+**Paper exhibit — Portfolio Construction Comparison Table (new):** one
+table, rows ordered fragile → robust (tangency → minimum variance → minimum
+CVaR → independent risk parity → true portfolio risk parity → HRP →
+constrained optimizer), columns = OOS Sharpe, Max Drawdown, CVaR(95%),
+computed on the confirmed pair universe. This is the exhibit that makes
+"fragile vs. robust" a falsifiable empirical claim rather than an
+assumption: if tangency's IS Sharpe is dramatically higher than its OOS
+Sharpe while HRP/min-CVaR show a much smaller IS/OOS gap, that differential
+decay — not any single Sharpe number — is the finding. If tangency instead
+holds up OOS, that is a genuine, reportable surprise rather than something
+to suppress. The constrained-optimizer row additionally quantifies how much
+of any optimized method's apparent edge survives once leverage, turnover,
+and concentration limits are imposed — a second, independent robustness
+check alongside the IS/OOS gap.
 
 ### Risk Management Variants
 
@@ -1185,6 +1302,18 @@ Monte Carlo paths conditioned on crisis distributions (EVT/GPD tail fitting):
 **Key output:** strategy "stress map" — a matrix of (crisis scenario × severity level × Sharpe outcome). Pairs that survive all scenarios are the highest-conviction positions. Pairs that fail under mild stress are Silver tier regardless of raw Sharpe.
 
 **Why stress testing matters for the paper:** any reviewer at a CFA/CAIA level will ask "what happens in 2008?" Having the answer explicitly — with numbers, not just "diversification helps" — is what separates academic research from naive backtesting. Lopez de Prado makes this point strongly: a strategy that hasn't been stress-tested hasn't been tested.
+
+**Priority note (added 2026-06-21):** this section, plus the per-position
+VaR(95%)/CVaR(95%) already listed under Performance Metrics, is core to
+the thesis, not an optional add-on to consider later. A stat-arb paper
+without explicit crisis-period survival evidence is incomplete, especially
+given the confirmed bank-pair cluster (FITB↔FULT, PNC↔FULT) — Category 1's
+"Regional bank stress (Mar 2023)" scenario is directly testing whether
+THOSE specific confirmed pairs survive the exact kind of stress event their
+own sector is most exposed to. When `backtest.py` gets built, this
+portfolio-level VaR + historical-crash stress-test work should be
+prioritized alongside the core performance metrics, not sequenced after
+them as a nice-to-have.
 
 ### Cross-Validation Methodology (Combinatorial Purged CV)
 
@@ -2253,6 +2382,93 @@ being avoided.
 
 ---
 
+## Planned Enhancement: Fundamental Valuation Correlation Model
+
+### Concept
+
+The current pipeline establishes that two assets' PRICES are cointegrated
+(EG/Johansen) and that their RETURNS are correlated (Pearson/Spearman/
+rolling-avg pre-filter). Neither test asks whether the two companies'
+underlying VALUATIONS move together — i.e., whether a pair is cointegrated
+because the market is pricing both legs off correlated fundamental inputs
+(consistent, structural, economically grounded), or whether the price-level
+cointegration is a purely statistical/flow-driven artifact not reflected in
+how the market is actually valuing the two businesses.
+
+**Core question:** do two price-cointegrated legs also show correlated
+valuation dynamics over time — P/E, EV/EBITDA, and DCF-implied fair value —
+or does price cointegration sometimes exist WITHOUT fundamental co-movement?
+Either answer is a paper finding: confirmed co-movement strengthens the
+economic-mechanism argument already made for pairs like ES↔utilities
+(Ilmanen framing, Session 4); a confirmed pair with DIVERGING valuation
+dynamics is itself a flag — trading on a flow/statistical relationship that
+fundamentals don't support is a different, probably lower-conviction risk
+profile than one where price and valuation move together.
+
+### Proposed Metrics (per leg, time series — not point-in-time)
+
+- **P/E** — trailing and forward; quarterly cadence (matches earnings
+  release frequency, the natural update cadence for fundamental data, unlike
+  price data's continuous update)
+- **EV/EBITDA** — capital-structure-neutral, more comparable across pairs
+  with different leverage than P/E alone
+- **DCF-implied fair value** — requires a standardized DCF methodology
+  (WACC estimation, terminal growth assumption) applied IDENTICALLY across
+  all pair legs for comparability; the most assumption-heavy of the three —
+  report with explicit sensitivity to WACC/terminal growth, not as a single
+  point estimate
+
+### Methodology Sketch
+
+1. For each confirmed pair (A, B), pull quarterly fundamental data (earnings,
+   EBITDA, FCF) for both legs over the full backtest period.
+2. Compute the time series of P/E, EV/EBITDA, and DCF-implied value per leg.
+3. Correlate the TWO LEGS' valuation-metric time series. Pearson on levels
+   is lookahead-biased/spurious for non-stationary ratios the same way
+   raw price-level correlation is — use returns/changes in the ratio, or
+   test cointegration of the ratio time series itself, mirroring the
+   existing EG framework rather than inventing a separate test.
+4. Compare: does valuation-dynamics correlation increase, decrease, or track
+   price-dynamics correlation/cointegration strength for each confirmed pair?
+
+### Bias Considerations (resolve before implementation, not after)
+
+- **Look-ahead in fundamentals:** reported EPS/EBITDA for a quarter is not
+  KNOWN until the earnings release date, not the quarter-end date — must
+  align fundamental data to ANNOUNCEMENT date, not period-end date, or this
+  introduces exactly the kind of lookahead bias this project's
+  bias-first-design principle exists to catch.
+- **Survivorship in fundamental data sources:** confirm the fundamental data
+  provider's historical coverage doesn't silently exclude delisted/acquired
+  names — compounds with the existing current-S&P-1500-only survivorship
+  bias rather than introducing a new independent one.
+- **DCF assumption sensitivity:** a DCF-implied-value correlation finding
+  that only holds under one specific WACC/growth assumption is not a robust
+  finding — report the correlation across a small grid of assumptions (e.g.
+  WACC ± 1%, terminal growth ± 0.5%), analogous to the Tier 1/Tier 2
+  parameter sensitivity already locked in for backtest.py.
+
+### Data Source (not yet selected)
+
+Candidates: yfinance's `.info`/`.quarterly_financials` (free, but historical
+fundamental depth and reliability are unverified — same caution as any new
+yfinance surface, check via context7 before relying on it), a paid
+fundamentals API (FMP, Tiingo, etc.), or SEC EDGAR XBRL directly (free, most
+reliable, most implementation effort — would need a structured extraction
+layer). Decision deferred; do not build against yfinance's fundamentals
+endpoints without first confirming historical depth covers the full backtest
+period for at least the current confirmed-pair universe.
+
+### Status
+
+Idea stage — not yet scoped into a build session. Lower priority than
+ml.py/backtest.py (the core predictive/performance claims), and explicitly
+gated on having a stable confirmed-pair universe with real trade history
+first, same prerequisite as analyzer.py and the regime-classification
+enhancement.
+
+---
+
 ## Session 7 Continued — sp600/sp400 Wikipedia Scraper Saga (Full Account)
 
 ### The Full Diagnostic Journey (documented to prevent re-investigation)
@@ -2493,4 +2709,371 @@ files current after every substantive session is not optional bookkeeping
    feature-dev workflow
 7. Then: PairCharacteristicsAnalyzer (designed, not built) once enough
    confirmed pairs exist with stable characteristics
+
+---
+
+## Session 8 — Claude Code First Real Session: data.py/analysis.py Verified End-to-End
+
+### Context
+
+First session actually running Claude Code on this project (Session 7 set it
+up but didn't yet use it for a full run). The request was a straightforward
+diagnosis ("figure out why data.py isn't working") plus explicit permission
+to act autonomously overnight. What followed was not a single fix — it was
+six distinct, previously-undiscovered bugs, several of which directly
+contradicted what this very document claimed was already fixed. The
+methodological lesson of this session: **"documented as fixed" is a claim
+to verify against the running code, not a fact to build on** — see the new
+"Development Process & AI Tool Disclosure" section above for the two
+concrete examples (BUG-D31, BUG-D32) that motivated this.
+
+### Session 8 Bug Registry
+
+**BUG-D34 (root cause of the universe collapsing to 86 assets): `pd.read_html(resp.text)` no longer accepts literal HTML strings on pandas 2.2.3/3.0.3**
+Root cause: pandas hands a raw string `io` argument to lxml's `etree.parse()`,
+which always treats a string as a filename/URL, never as literal content —
+not a network/Wikipedia flakiness issue as Session 7's CLAUDE.md entry
+concluded. 100% reproducible, not intermittent. Affected all 5
+`pd.read_html()` call sites in `data.py` (S&P 500/400/600, Nasdaq-100,
+Russell 2000, BRK holdings) plus `seed_sp_caches.py`. S&P 500 survived via
+its stale-cache fallback; S&P 400/600 had no fallback cache, so they
+returned 0 tickers, collapsing the universe.
+Fix: wrap every `resp.text` in `io.StringIO()` before passing to
+`pd.read_html()`. Verified live against the real Wikipedia pages (607/603
+ticker candidates parsed correctly) before declaring fixed.
+
+**BUG-D35: `seed_sp_caches.py` (and transitively `data.py`'s cache) picked Wikipedia's historical "Selected changes" table instead of current constituents for S&P 400**
+Root cause: the "pick whichever column has the most matching tickers"
+heuristic preferred a MultiIndex column `('Added', 'Ticker')` — the
+"Selected changes to the list" table, which lists every ticker ever added
+to the index over its full history (607 entries, full of names delisted/
+acquired 8-15 years ago: JDSU, APOL, CBST, HSH, ANR, LXK, WWAV...) — over
+the real current-constituents table (400 entries, flat `'Symbol'` column),
+purely because 607 > 400. `data.py`'s OWN live-fetch table-selection logic
+was already correct (verified directly: returns clean 400 tickers); the bad
+data came entirely from a cache file `seed_sp_caches.py` had written
+earlier in the session with the wrong table, which `data.py`'s 24h
+freshness check then trusted over its own (correct) live fetch.
+Fix: skip MultiIndex columns entirely in `seed_sp_caches.py`'s
+`fetch_index()` — the real constituents table always has flat string
+column names. Verified: 400/603 clean tickers, zero historical zombies.
+
+**BUG-D36: `MIN_BARS_REQUIRED['1m']`/`['3m']` were mathematically impossible to satisfy**
+Root cause: `config.py`'s comments ("~35 days * 390 bars/day") predate the
+Yahoo 8-day hard limit on 1m-granularity data. `_YF_INTRADAY_MAP` correctly
+fetches 1m at `period="5d"` (~1950 bars max) and derives 3m from that same
+5-day source (~650 bars max) — but the thresholds (5000, 3000) assumed a
+35-day source that was never actually used. Every single 1m/3m fetch,
+regardless of data quality, failed `DataCleaner.clean()`'s min_bars check
+silently — 100% guaranteed failure, forever, for both timeframes.
+Fix: `1m` → 1500, `3m` → 500 (~80% of the real achievable max, matching the
+fill-rate ratio already used for `2m`). Verified: AAPL now returns
+1950/650 bars respectively, clearing the new thresholds.
+
+**BUG-D37 (contradicts this document's own BUG-D32 entry — that fix was never actually applied): 4h resample used clock-aligned bins, not session-aligned**
+Root cause: `YFinanceFeed._resample()` called `df.resample("4h")` with no
+`origin`/`offset`, defaulting to clock-aligned bins (00:00/04:00/08:00/
+12:00/16:00/20:00). For a 9:30-16:00 NYSE session this puts real bars in
+the 08:00 and 12:00 buckets — wrong timestamps, and the resulting ~20h
+median gap (one bucket capturing only 2.5h of session, the other 4h)
+would corrupt any time-of-day/session-based downstream analysis. Verified
+directly: a real fetch produced bars stamped 08:00/12:00, not 09:30/13:30,
+despite Development.md claiming this was fixed in Session 7.
+Fix: `origin="start_day", offset="9h30min"` on the 4h resample specifically
+(left the 3m resample untouched — no evidence it was misaligned). Verified:
+bars now correctly stamped 09:30/13:30, exactly 14400s apart within a day.
+
+**BUG-D38: stale per-ticker `yf_period_<SYMBOL>_<interval>` cache entries with no expiry, silently capping ~80 tickers' 1h fetches forever**
+Root cause: `get_intraday_fallback()` caches whichever period string
+"worked" per ticker+interval in a meta parquet file, with no age limit and
+no re-validation against current `MIN_BARS_REQUIRED`. ~81 of 1510 cached
+1h entries held a stale `"60d"` override (from some earlier, since-changed
+default) instead of the correct `"730d"` — `60d` at 1h only yields ~420
+bars, below the 500-bar minimum, so `DataCleaner.clean()` silently rejected
+the result with the reason never logged anywhere in the call chain. Because
+no valid data ever got saved, these tickers stayed flagged "needs fetch"
+and failed identically every run, forever — explains why a sample of
+"needs fetch" tickers showed ~98% failure while a fresh random sample of
+the same universe succeeded at ~94%+.
+Fix: deleted all 3,254 `yf_period_*` cache files; they regenerate cleanly
+under the now-corrected `MIN_BARS_REQUIRED` thresholds.
+
+**BUG-D39 (the most severe finding this session — direct violation of the project's Non-Negotiable Architecture Rule #1): `analysis.py` was never actually read-only**
+Root cause: `UniverseBuilder.build()`'s `connect` parameter only ever chose
+the intraday-fetch SOURCE (IBKR vs. yfinance) — it never gated WHETHER
+fetching happened. `connect=False` literally means "if anything needs
+intraday data, fetch it via yfinance instead of IBKR," not "never fetch."
+Phase 1's daily yfinance fetch ALSO runs unconditionally whenever cache is
+stale, regardless of `connect`. `analysis.py` calling `build(connect=False)`
+— believing this satisfied "analysis.py must never touch IBKR or
+yfinance" — had been silently running the full Phase 2A yfinance intraday
+sweep every single time it ran. Caught live: watching a real `analysis.py`
+run log "Phase 2A: yfinance intraday sweep (primary pipeline)", which
+should be structurally impossible for analysis.py to print.
+Fix: added a genuine `fetch: bool = True` parameter to `build()`. When
+`False`, both Phase 1's daily-fetch trigger and Phase 2's `ibkr_work` list
+are forced empty before their existing (untouched) logic runs — a
+surgical guard rather than a rewrite of either multi-hundred-line block.
+`analysis.py` now calls `build(connect=False, fetch=False)`. Verified via
+a direct read-only `build()` call (logs "Read-only mode (fetch=False):
+... using cache as-is" at both phases, no Phase 2A line) and confirmed
+identically in a live `analysis.py` run afterward.
+
+**BUG-A13 (bias-relevant): `build_returns_matrix()` imported `_gap_aware_returns` but never called it**
+Root cause: the function computed log returns directly off raw `df["close"]`
+values with zero GapFlag masking, contradicting CLAUDE.md's "never silently
+forward-fill a DATA_GAP bar into a correlation calculation" rule. A bar
+forward-filled across a >5-bar gap produces one artificially large return
+when the real price resumes, which fed directly into the Pearson/Spearman/
+rolling-avg correlation pre-filter undetected.
+Fix: replaced the raw close-diff computation with per-asset
+`_gap_aware_returns(df)` calls before padding/stacking into the returns
+matrix. Verified with a synthetic DATA_GAP bar (artificial +80%/-40% jump):
+both the gap bar's own return and the adjacent transition return correctly
+become NaN instead of contaminating the matrix.
+
+**BUG-D40: cache-contamination frequency checks computed the median bar-gap including overnight/weekend gaps, silently deleting/rejecting good 4h files on every single `build()` call**
+Root cause: both `_clean_contaminated_cache()` (runs unconditionally at the
+start of every `build()`, in data.py AND analysis.py) and
+`DataStore.validate_frequency()` computed `diffs.median()` over the WHOLE
+file. A correctly session-aligned 4h file has exactly 2 bars/day, so HALF
+its gaps are the legitimate ~20h overnight break — including them pushes
+the median right up near (often past) the contamination threshold. This
+silently destroyed BUG-D37's fix on every subsequent run: confirmed live,
+1500+ valid 4h files written by `data.py`, only 7 left by the time
+`analysis.py` read the cache moments later, with zero error or warning
+logged (the deletion itself logs only at DEBUG level). This is the THIRD
+distinct place this session where Development.md's BUG-D32 "filter
+structural gaps before computing the median" fix was claimed-done but
+absent from the actual code.
+Fix: both functions now exclude gaps >8h before computing the median
+(falling back to the unfiltered median when fewer than 3 intraday-scale
+gaps exist, so 1D/7D/1M/etc. — which have no "intraday" component at all —
+are unaffected). Verified: a real 4h file now survives repeated
+`_clean_contaminated_cache()` calls; a full `analysis.py` run confirmed
+1507 aligned 4h assets (not 7) and produced 1 confirmed pair.
+
+**BUG-D41 (Session 8 continuation, 2026-06-21 morning, not a current code bug — cache hygiene): stale `30m` cache from an older pipeline version, missing the entire morning session**
+Symptom: `30m` correlation matrices observed showing single-digit
+asset counts. Root cause: every cached `_30min.parquet` file (1511 of
+them) had only 5 of the expected 13 daily bars — 13:30-15:30 ET only,
+missing 09:30-13:00 entirely, for every single trading day in every single
+file. Confirmed via direct testing that a FRESH fetch with TODAY's code
+(`get_intraday_fallback`, `snap_timestamps`, raw yfinance call) correctly
+returns all 13 bars/day — this was leftover data from some earlier, no-
+longer-present bug, not an active defect.
+Fix: `DataStore.clear_tf_cache("30m")` (existing utility, not a new one) to
+delete all 1511 stale files, then a normal `data.py` run to refetch.
+1510/1514 succeeded; verified full 13-bars/day on a fresh random sample.
+`analysis.py --timeframes 30m` backfilled the corrected result (0 confirmed
+pairs survive FDR on the complete data — a legitimate finding, not an
+artifact).
+
+**BUG-A14 (found and fixed same session, 2026-06-21 afternoon): `output/results/3m/` and `output/results/3M/` collide on Windows**
+Root cause: `_output_dir(tf_label)` joined `tf_label` directly into the
+results path. NTFS is case-insensitive, so "3m" (3-minute) and "3M"
+(3-month) — and, not initially noticed, "1m"/"1M" (1-minute/1-month) —
+resolved to the same physical directory. No data was lost before the fix
+(3M/1M consistently found 0 significant pairs every run, so they never
+reached the write step that would have overwritten 3m/1m's results), but
+the risk was live: whichever timeframe processed second would have
+silently overwritten the other's `pairs.parquet` the first time both
+produced confirmed pairs in the same run.
+Fix: `_output_dir()` now maps `tf_label` through `DataStore._TF_SAFE`
+(`output/results/3min`, `output/results/3mo`, etc.) — the SAME
+case-distinct naming convention already used for cache filenames, not a
+new one invented for this. Existing live result directories were renamed
+in place (not regenerated) to avoid an unnecessary full re-run; a
+subsequent full clean `analysis.py` run (the one that also re-verified
+Session 8's other fixes a fourth time, see "Final Verified State" above)
+confirmed the new naming takes effect correctly and produced a
+byte-for-byte identical 11-pair result and 15-symbol manifest — confirming
+the rename was purely cosmetic, not a methodology change.
+
+### Other Findings (flagged, not yet fixed)
+
+- **Final pipeline summary table is misleading.** The printed per-TF
+  `pairs=N` count in `analysis.py`'s end-of-run summary is the pre-
+  `coint_fraction_rolling≥0.70`-filter EG/FDR-survivor count, not what
+  actually gets saved to `pairs.parquet` / the confirmed-pairs manifest.
+  E.g. printed `3m: pairs=15` vs. 7 actually saved; `1h: pairs=2` vs. 1
+  actually saved. The SAVED data and manifest are correct (the episodic-
+  cointegration defense is doing its job); only the human-facing summary
+  overstates the count. Worth fixing the print statement, not urgent.
+- **`UA/UAA`-style malformed tickers**: a small number of Wikipedia table
+  cells list dual share classes in one cell (e.g. Under Armour). Not
+  investigated further — low volume, absorbed fine by the existing
+  exclusion-list/retry architecture.
+- Dead `"8h"` references remain in a few generic IBKR duration tables and
+  one `MIN_BARS_REQUIRED` entry in `config.py` — functionally inert
+  (nothing calls them with `tf_label="8h"`), cosmetic cleanup only.
+
+### Final Verified State (full clean `analysis.py` run, 87.0 min, 2026-06-21)
+
+| TF | EG/FDR survivors (printed) | Actually saved (post coint_frac filter) | Trios | Cross-asset | Regimes |
+|----|------|------|------|------|------|
+| 1m | 1 | 0 | 0 | 0 | 2 |
+| 2m | 0 | 0 | 0 | 0 | 0 |
+| 3m | 15 | **7** | 1 | 1 | 11 |
+| 5m | 1 | 0 | 0 | 0 | 2 |
+| 15m | 3 | **3** | 1 | 0 | 5 |
+| 30m | 0 | 0 | 0 | 0 | 0 |
+| 1h | 2 | **1** | 0 | 0 | 4 |
+| 4h | 1 | 0 | 0 | 0 | 2 |
+| 8h | — | 0 | 0 | 0 | 0 |
+| 1D | 0 | 0 | 0 | 0 | 0 |
+| 7D | 1 | 0 | 0 | 0 | 2 |
+| 1M | 0 | 0 | 0 | 0 | 0 |
+| 3M | 0 | 0 | 0 | 0 | 0 |
+| 6M | 0 | 0 | 0 | 0 | 0 |
+
+11 validated confirmed pairs across 3 timeframes (3m, 15m, 1h), 2 trios,
+1 cross-asset pair. `confirmed_pairs_manifest.json`: 15 symbols. Result
+reproduced identically five separate times: the original full run, a
+targeted `--timeframes 4h` backfill, a targeted `--timeframes 30m`
+backfill, a completely fresh full re-run from scratch, and a second fresh
+full re-run after the BUG-A14 directory-rename fix (below) — same 11
+pairs, same 15-symbol manifest, every time. That five-for-five
+reproducibility, not the absence of a crash, is the actual basis for
+calling this "verified."
+
+`data_ibkr.py` run against the live IB Gateway (127.0.0.1:4001): 15/15
+symbols, 105/105 TF-fetches (7 TFs × 15 symbols) saved, 0 failed, clean
+connect/disconnect.
+
+### Why 1D/1M/3M/6M Show Near-Zero Confirmed Pairs (Investigated, Not a Bug)
+
+Question raised on seeing the table above: with a ~1500-asset universe,
+shouldn't there be more daily/monthly pairs? Investigated directly rather
+than assumed away — confirmed it's a real methodological property of the
+full-sample EG screen at long horizons, not a data or code defect.
+
+**Raw (pre-FDR) significance rates by TF, full pipeline run:**
+
+| TF | tested | raw p<0.05 | raw rate | vs. ~5% expected under H₀ |
+|----|--------|-----------|----------|---------------------------|
+| 15m | 14,412 | 585 | 4.06% | close to chance — consistent with real signal |
+| 1h | 65,721 | 2,335 | 3.55% | close to chance — consistent with real signal |
+| 1D | 122,082 | 2 | 0.0016% | ~3,000x *below* chance |
+| 1M | 34,263 | 9 | 0.026% | ~190x below chance |
+
+A raw rate far *below* the chance rate isn't noise — it means the test
+itself is unusually strict at these TFs, not that the universe lacks
+relationships.
+
+**Direct evidence (EG on full price history vs. just the last 5 years, several pairs including this project's own established confirmed pairs):**
+
+| Pair | Full-sample EG p | Last-5y EG p | Full-sample n (days) |
+|------|------------------|--------------|----------------------|
+| XOM/CVX | 0.436 | 0.408 | 14,546 (since 1968) |
+| JPM/BAC | 0.911 | 0.753 | 11,571 (since 1980) |
+| KO/PEP | 0.114 | 0.916 | 13,423 (since 1973) |
+| **NTRS/STT** | **0.000** | 0.345 | 10,939 (since 1983) |
+| **SHW/UNP** | **0.004** | 0.265 | 11,548 (since 1980) |
+
+NTRS↔STT and SHW↔UNP — the project's own headline confirmed pairs from
+earlier (intraday) sessions — show strong full-sample cointegration but NO
+significant cointegration in just the last 5 years. The full-sample EG
+screen at 1D is testing whether two price levels stayed cointegrated across
+40-60+ years of M&A, business-model change, and sector rotation — a
+genuinely demanding bar, and one that current relationships can fail while
+still showing up as "confirmed" if the test only looks at the full sample.
+
+**Why this is a real limitation, not just an explanation:** `coint_fraction_rolling`
+(the existing episodic-cointegration defense, Session 6) is a SECONDARY
+filter applied only to pairs that already pass the PRIMARY full-sample EG
+screen. At 1D/1M/3M/6M, the primary screen is so strict that almost nothing
+ever reaches the secondary filter in the first place — `coint_fraction_rolling`
+can't rescue a pair that the full-sample test never let through. The two
+defenses operate at the wrong stage for this specific failure mode at long
+horizons.
+
+**Secondary, independently-predicted factor:** Ilmanen's term structure of
+mean reversion (Session 3 Additions, "Term structure of mean reversion")
+predicts momentum — not mean reversion — dominates at 1-12 month horizons,
+with mean reversion only returning at multi-year horizons. So 1M/3M/6M
+showing near-zero pairs is independently expected from the economics
+literature already cited in this document, separate from the full-sample-
+window issue above.
+
+**Confirmed as a planned point of comparison (not yet implemented):** run
+EG (and `coint_fraction_rolling`) twice per pair at 1D/1M/3M/6M — once on
+the full sample (current behavior) and once on a bounded recent lookback
+(e.g. 5-10 years) used as its own PRIMARY screen, not just as a secondary
+diagnostic gating pairs that already survived a 40-60 year full-sample
+test. Report both Gold/Silver/Bronze tier assignments side by side per
+pair. This directly tests "is this pair cointegrated now" — the actually
+decision-relevant question for a tradeable strategy — against "has this
+pair ever, on average, been cointegrated across its entire trading
+history," and the GAP between the two screens at long-horizon TFs becomes
+its own paper exhibit (same fragile-vs-robust comparison logic as the
+portfolio construction table above, applied to the cointegration test
+itself rather than to position sizing). Cross-reference: "Cointegration
+Hierarchy" under Methodological Decisions Locked, near the top of this
+document — add the bounded-window screen there as a fourth tier dimension
+once implemented, alongside EG/KPSS/PO.
+
+### Also This Session (infrastructure, not CAMARF methodology)
+
+- Recovered a corrupted local git repository (missing/broken objects,
+  missing `.git/index`) — almost certainly OneDrive interfering with `.git`
+  internals, not anything in this session's own actions. Repaired
+  non-destructively (recovered objects from the GitHub remote, rebuilt the
+  index from HEAD via `git reset`) without touching any working-tree file.
+  Flagged as an ongoing environmental risk: this is a OneDrive-synced
+  folder, and `.git/` plus the run-log files vanished unprompted more than
+  once in one session.
+- Added a scoped Claude Code permission allowlist (read-only commands only;
+  declined a blanket "skip all permissions" request pending explicit
+  confirmation, consistent with this project's stated caution around
+  unattended execution).
+
+### Next Session
+
+**Confirmed 2026-06-21 (later same session):** `analysis.py` re-verified a
+fourth time after the `3m`/`3M` path-collision fix (see item 2, now
+resolved) with a full clean run — identical 11-pair result, directory
+structure now correctly `1min`/`3min`/`1hr`/`4hr`/`5min`/`15min`/`7day`
+(collision-free). `confirmed_pairs_manifest.json` came out byte-for-byte
+the same 15 symbols as before the fix, confirming the rename was purely
+cosmetic and `data_ibkr.py`'s prior run (105/105 fetches, 0 failed) remains
+valid — no re-fetch needed.
+
+**Build order locked in: `macro.py` → `ml.py` (not `ml.py` first).**
+Rationale: macro context (yield curve, credit spread, VIX regime, NBER
+recession flag) is already specified as a Level 3 feature in the "Rich
+Regime Classification" enhancement above, feeding the SAME meta-labeler
+`ml.py` is designed around — building `macro.py` first means `ml.py`'s
+first version ships with its full intended feature set instead of being
+built narrow and retrofitted later (which would mean re-running SHAP/
+ablation analysis a second time). `macro.py` is also small and
+self-contained (~1 day estimate, already noted as a good `feature-dev`
+test case). The macro/spread correlation question doesn't need a separate
+analysis step — it falls out of `ml.py`'s already-planned SHAP feature
+importance and ablation analysis (full model vs. full-minus-regime OOS
+Sharpe) once both exist.
+
+1. ~~Decide macro.py vs. ml.py first~~ — resolved above.
+2. ~~Fix the `3m`/`3M` Windows path collision~~ — resolved, verified above.
+3. Fix the misleading pipeline-summary print (pre-filter vs. saved counts).
+4. Re-run `seed_sp_caches.py` periodically (weekly, per its own docstring)
+   now that it's fixed — and consider whether `data.py`'s own live
+   `_fetch_sp_index_wikipedia` should be the ONLY source of truth, given it
+   was already correct all along and the seed script was the one with the
+   bug.
+5. Build the fragile-to-robust portfolio comparison table (tangency / min-
+   variance / min-CVaR / independent RP / true RP / HRP / constrained
+   optimizer) as a `backtest.py` exhibit once `backtest.py` exists — see
+   expanded "Portfolio Construction" section above.
+6. Consider scoping the fundamental valuation correlation model (P/E,
+   EV/EBITDA, DCF-implied value) — see "Planned Enhancement" section above.
+   Idea stage only; not prioritized over macro.py/ml.py.
+7. Implement the bounded-recent-window EG/`coint_fraction_rolling` screen
+   at 1D/1M/3M/6M as a point of comparison against the full-sample screen —
+   see "Why 1D/1M/3M/6M Show Near-Zero Confirmed Pairs" above.
+8. Prioritize the portfolio-level VaR + historical-crash stress-test work
+   (Category 1: 2008 GFC, 2020 COVID, 2022 rate shock, 2023 regional bank
+   stress) alongside core performance metrics when `backtest.py` is built —
+   not after, as a nice-to-have. See "Stress Testing Framework" priority
+   note above.
 

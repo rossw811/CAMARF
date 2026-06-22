@@ -338,8 +338,20 @@ def _minimum_bars_for_test(test_name: str, tf_label: str = None) -> int:
 
 
 def _output_dir(tf_label: str) -> str:
-    """Where results for this TF get written."""
-    d = os.path.join(Config.DATA.OUTPUT_DIR, "results", tf_label)
+    """Where results for this TF get written.
+
+    Uses DataStore._TF_SAFE (already the cache-filename convention) rather
+    than tf_label directly. Fixed 2026-06-21: Windows/NTFS is case-
+    insensitive, so the raw labels "3m"/"3M" (3-minute vs. 3-month) and
+    "1m"/"1M" (1-minute vs. 1-month) collided onto the same physical
+    directory — whichever timeframe processed second would silently
+    overwrite the other's results. _TF_SAFE already maps every active TF
+    to a case-distinct name (1min/1mo, 3min/3mo, ...) for exactly this
+    reason on the data cache side; reusing it here closes the same hole
+    for analysis.py's results directories.
+    """
+    safe = DataStore._TF_SAFE.get(tf_label, tf_label)
+    d = os.path.join(Config.DATA.OUTPUT_DIR, "results", safe)
     os.makedirs(d, exist_ok=True)
     return d
 
@@ -587,7 +599,7 @@ class UniverseFilter:
              correlation — no spurious signal from the padding.
         """
         symbols = []
-        close_list = []
+        ret_list = []
         for sym, df in aligned_data.items():
             if df is None or df.empty or "close" not in df.columns:
                 continue
@@ -597,30 +609,35 @@ class UniverseFilter:
             if valid < min_overlap:
                 continue
             symbols.append(sym)
-            close_list.append(close)
+            # Gap-aware (fixed 2026-06-20): was computing log returns
+            # directly off raw "close" here, with zero GapFlag masking —
+            # contradicting CLAUDE.md's "never silently forward-fill a
+            # DATA_GAP bar into a correlation calculation" rule. A bar that
+            # forward-fills across a >5-bar gap produces one artificially
+            # large return when the real price resumes; _gap_aware_returns
+            # masks exactly that return to NaN (DATA_GAP only — FILL and
+            # NO_ACTIVITY bars are left as genuine zero-ish returns).
+            ret_list.append(_gap_aware_returns(df))
 
-        if not close_list:
+        if not ret_list:
             return np.empty((0, 0)), [], pd.DatetimeIndex([])
 
         # Cap each series at _MAX_COLS from the right to bound memory
         _MAX_COLS = 50_000
-        close_list = [c[-_MAX_COLS:] if len(c) > _MAX_COLS else c for c in close_list]
+        ret_list = [r[-_MAX_COLS:] if len(r) > _MAX_COLS else r for r in ret_list]
 
         # Pad shorter series with NaN at the beginning so all are same width.
         # NaN prefix does not contribute to pairwise correlations.
-        max_len = max(len(c) for c in close_list)
-        padded = [
-            np.concatenate([np.full(max_len - len(c), np.nan), c.astype(float)])
-            for c in close_list
-        ]
-
-        close_matrix = np.array(padded, dtype=float)  # (N, max_len)
-        returns = np.full_like(close_matrix, np.nan, dtype=float)
-        # log return: NaN propagates correctly through NaN close values
-        with np.errstate(invalid="ignore", divide="ignore"):
-            returns[:, 1:] = np.log(close_matrix[:, 1:] / close_matrix[:, :-1])
-        # First bar of each padded prefix produces NaN return — correct
-        # First actual bar produces NaN return (no prior price) — correct
+        max_len = max(len(r) for r in ret_list)
+        returns = np.array(
+            [
+                np.concatenate([np.full(max_len - len(r), np.nan), r.astype(float)])
+                for r in ret_list
+            ],
+            dtype=float,
+        )  # (N, max_len)
+        # First bar of each padded prefix is NaN — correct
+        # First actual bar of each series is NaN (no prior price) — correct
 
         # Filter assets with insufficient finite return bars
         valid_counts = np.sum(np.isfinite(returns), axis=1)
@@ -4458,7 +4475,7 @@ def main(
     _orig_client_id = Config.IBKR.CLIENT_ID
     Config.IBKR.CLIENT_ID = Config.IBKR.CLIENT_ID_ANALYSIS
     builder = UniverseBuilder()
-    universe = builder.build(connect=False)
+    universe = builder.build(connect=False, fetch=False)
     Config.IBKR.CLIENT_ID = _orig_client_id
     log.info(
         f"Universe loaded: {len(universe.assets)} assets, "

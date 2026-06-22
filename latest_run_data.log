@@ -1,26 +1,17 @@
 === CAMARF data.py ===
-date:        2026-06-19 22:58
-runtime_min: 2.2
-config_hash: edd6977c3ff65bed
+date:        2026-06-21 11:54
+runtime_min: 5.4
+config_hash: 7cf2d3948ed3219e
 
 === universe ===
-candidates:  86
-resumed:     1524
+candidates:  1538
+resumed:     1357
 excluded:    0
 cache_contamination_cleared: 0
 
 === phase1_daily ===
 
 === intraday_tfs ===
-tf    | saved         | fail_fetch    | fail_snap     | fail_cutoff   | yf_ok         | yf_fail       | skipped_fresh | skip_fresh    | no_source     | resample_fail | freq_invalid 
-1h    | 0             | 4             | 0             | 0             | 0             | 0             | 0             | 0             | 0             | 0             | 0            
-30m   | 0             | 0             | 0             | 0             | 0             | 0             | 62            | 0             | 0             | 0             | 0            
-15m   | 0             | 0             | 0             | 0             | 0             | 0             | 62            | 0             | 0             | 0             | 0            
-5m    | 0             | 0             | 0             | 0             | 0             | 0             | 62            | 0             | 0             | 0             | 0            
-2m    | 0             | 0             | 0             | 0             | 0             | 0             | 62            | 0             | 0             | 0             | 0            
-1m    | 0             | 57            | 0             | 0             | 0             | 0             | 0             | 0             | 0             | 0             | 0            
-3m    | 0             | 57            | 0             | 0             | 0             | 0             | 0             | 0             | 0             | 0             | 0            
-4h    | 57            | 0             | 0             | 0             | 0             | 0             | 0             | 1             | 4             | 0             | 0            
 
 === ibkr ===
 disconnects:    0
