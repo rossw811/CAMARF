@@ -1,0 +1,30 @@
+=== CAMARF macro.py ===
+date:        2026-06-21 21:07
+runtime_min: 0.0
+
+=== series ===
+  T10Y2Y         rows=13058  source=cache
+  BAMLH0A0HYM2   rows=795    source=cache
+  VIXCLS         rows=9512   source=cache
+  DCOILWTICO     rows=10553  source=cache
+  BAA10Y         rows=10555  source=cache
+  DTWEXBGS       rows=5335   source=cache
+  DFII10         rows=6120   source=cache
+  T10YIE         rows=6121   source=cache
+  FEDFUNDS       rows=863    source=cache
+  CPIAUCSL       rows=953    source=cache
+  USREC          rows=2058   source=cache
+  UNRATE         rows=941    source=cache
+
+=== regime_distributions ===
+yield_curve: {'normal': 5935, 'steep': 2949, 'flat_inverted': 1224, nan: 86}
+credit: {nan: 9441, 'normal': 456, 'tight': 297}
+credit_proxy: {'normal': 4603, 'tight': 4226, 'wide': 1276, nan: 89}
+vix: {'normal': 4632, 'calm': 2948, 'elevated': 1247, nan: 1014, 'crisis': 353}
+dollar: {nan: 5361, 'strong': 1906, 'neutral': 1744, 'weak': 1183}
+real_rate: {nan: 4585, 'low': 2029, 'normal': 1811, 'high': 1769}
+inflation_expectation: {nan: 4585, 'normal': 2280, 'high': 1746, 'low': 1583}
+recession: {'expansion': 9441, 'contraction': 753}
+recession_realtime: {'expansion': 8273, 'contraction_risk': 1741, nan: 180}
+
+=== end ===

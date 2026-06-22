@@ -1,0 +1,61 @@
+# CAMARF — Python dependencies
+#
+# Generated 2026-06-21 from the actual installed "trading" conda environment
+# (verified via direct `import X; print(X.__version__)` calls, not assumed —
+# see CLAUDE.md's "always verify" rule). Install into the "trading" conda
+# environment specifically; this project has never used a different one
+# (see DEVELOPMENT.md "Dependencies").
+#
+#   conda activate trading
+#   pip install -r requirements.txt
+
+# --- data.py ---
+yfinance==0.2.66
+ib-insync==0.9.86
+nest-asyncio==1.6.0
+pandas-market-calendars==5.4.0
+requests
+pyarrow==24.0.0
+
+# --- analysis.py ---
+statsmodels
+scikit-learn==1.9.0
+hmmlearn==0.3.3
+
+# --- core (shared) ---
+pandas==2.3.2
+numpy==2.4.6
+scipy==1.16.2
+
+# --- macro.py ---
+# No new dependency: fetches FRED's public keyless CSV endpoint using
+# `requests` (already listed above) — deliberately chosen over fredapi to
+# avoid introducing API-key/secrets management into this project.
+
+# --- ml.py (planned, not yet built) ---
+xgboost==3.1.0
+lightgbm==4.6.0
+shap==0.49.1
+arch==8.0.0
+
+# =============================================================================
+# KNOWN ISSUE (found 2026-06-21, UNRESOLVED — needs a decision before ml.py's
+# SHAP analysis can run):
+#
+# shap depends on numba, and the installed numba==0.62.1 does not support
+# numpy>=2.4 ("Numba needs NumPy 2.3 or less. Got NumPy 2.4."). shap fails to
+# import in this environment right now.
+#
+# Also: `pip freeze` reports numpy==2.3.3, but the actually-importable
+# numpy.__version__ is 2.4.6 — a real conda/pip metadata mismatch in this
+# environment, not a typo here. The pin above (2.4.6) reflects the version
+# that's actually active.
+#
+# Options (none applied yet — flagged for King to decide):
+#   1. Downgrade numpy to <=2.3 — risk: untested against the pandas 2.3.2 /
+#      pyarrow 24.0.0 versions already in use throughout data.py/analysis.py.
+#   2. Wait for a numba release supporting numpy 2.4.
+#   3. Skip SHAP for now; use MDI/MDA/SFI instead (already planned in
+#      DEVELOPMENT.md as the Lopez de Prado alternative feature-importance
+#      method, doesn't depend on numba).
+# =============================================================================

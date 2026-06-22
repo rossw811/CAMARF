@@ -74,6 +74,19 @@ This list exists because King and a prior Claude session spent real time
 re-discovering each of these. Check here BEFORE proposing a fix that touches
 yfinance, the Wikipedia scrapers, or the universe-construction pipeline.
 
+- **Run project scripts with the `trading` conda env, not base anaconda.**
+  `C:\Users\RossW\anaconda3\envs\trading\python.exe` is the project's real
+  environment (yfinance, pyarrow 24.0.0 pinned, everything in
+  requirements.txt). Bare `python` on PATH resolves to base anaconda, which
+  is missing yfinance entirely and caused a real, hard-to-diagnose failure
+  (every confirmed pair in an `ml.py` run silently skipped with a swallowed
+  `ModuleNotFoundError`) — see DEVELOPMENT.md BUG-D44. If you ever need an
+  ad-hoc pip install to inspect something, do it in a throwaway/no
+  consequence way — installing into base previously downgraded pyarrow and
+  made every parquet file written by `trading`'s pyarrow 24.0.0 look
+  corrupted to base's pyarrow 19.0.0 (it wasn't corrupted — cross-version
+  pyarrow incompatibility, "Repetition level histogram size mismatch").
+
 - **yfinance 0.2.66+ requires its own internal `curl_cffi` session.**
   NEVER pass a custom `requests.Session()` to `yf.Ticker()`. It will raise
   `YFDataException: Yahoo API requires curl_cffi session`. Use plain
@@ -139,6 +152,21 @@ yfinance, the Wikipedia scrapers, or the universe-construction pipeline.
 
 This is as important as the technical rules above.
 
+- **This is a learn-as-you-go research thesis for King, not an execution
+  exercise for Claude.** Every new concept, technique, or design idea — a
+  new ML methodology, a new architectural pattern, a new metric, anything
+  not already locked in this file or DEVELOPMENT.md — goes through King
+  first: explain what it is, why it's relevant, the tradeoffs, and get
+  explicit buy-in BEFORE building it. King wants to understand and direct
+  each methodological choice, with Claude as a teaching/implementation
+  partner, not a black box that silently picks the "right" answer. This is
+  a different category from the bug-fixing rules below (e.g. "one best
+  fix, not three alternatives" is about technical correctness once
+  direction is already set — it does not mean skip the discussion when
+  introducing something new). Even under autonomous/auto-mode operation,
+  pause on concept-level decisions for King's input rather than treating
+  "technically the right call" as sufficient justification to proceed
+  alone.
 - **Full comprehension before code.** Walk through the actual logic before
   touching anything. No code changes based on a guessed root cause.
 - **One best fix, not three alternatives.** King doesn't want "Option A vs
@@ -191,23 +219,25 @@ This is as important as the technical rules above.
 
 ## Current State (update this section each session)
 
-See `DEVELOPMENT.md` "Next Session" block at the end of the most recent
-session entry (Session 8) for the authoritative current state and next
-steps. As of Session 8: `data.py` and `analysis.py` are verified
-end-to-end — not just "ran without crashing," but reproduced identically
-across four separate runs (full run, two targeted `--timeframes` backfills,
-and a from-scratch full re-run). The S&P 400/600 Wikipedia scraper bugs
-that caused the universe to collapse were real code bugs (`pd.read_html`
-needing `io.StringIO`, plus a wrong-table-selected bug in
-`seed_sp_caches.py`), not network flakiness as previously believed — see
-Session 8's bug registry. **Confirmed pairs as of Session 8: 11 validated
-pairs across 3m (7), 15m (3), and 1h (1) — not 5m/30m as stated in earlier
-session notes, which were stale.** `data_ibkr.py` has already been run
-against these 15 manifest symbols. `ml.py`, `backtest.py`, `analyzer.py`,
-`macro.py` are designed in DEVELOPMENT.md but not yet built — the
-confirmed-pair universe is now genuinely stable, so the blocker on starting
-one of these is resolved; which one to build next is an open decision (see
-DEVELOPMENT.md Session 8 "Next Session").
+See `DEVELOPMENT.md` "Next Session" block at the end of Session 9 for the
+authoritative current state and next steps. As of Session 9: `macro.py`
+(FRED regime context, 25/25 verified) and `ml.py` v1 (Stage 1 meta-labeler)
+are both built. The data pipeline now genuinely accumulates intraday
+history via `append()` instead of overwriting (`data.py`), confirmed pairs'
+real per-bar spread/z-score series and per-bar regime labels are persisted
+(`analysis.py`), and `data_ibkr.py`'s deep history is actually consumed
+(`_enrich_with_deep_history()`). **BUG-D42** (1m/2m/3m fetch failures —
+`MIN_BARS_REQUIRED` miscalibrated against yfinance's calendar-day, not
+trading-day, `period="5d"`) is root-caused and fixed. **Confirmed pairs as
+of the first post-fix full run: 1m=8, 3m=5, 15m=3 (+1 trio), 1h=1** — 1m
+producing confirmed pairs at all is new this session. `ml.py` runs
+end-to-end on real data: 32 labeled entry events across 3 classes, still
+below the training threshold (expected — intraday history just started
+accumulating in earnest). **Always run scripts via
+`C:\Users\RossW\anaconda3\envs\trading\python.exe`**, not bare `python`
+(see Known-Resolved Issues). `backtest.py` and `analyzer.py` are designed
+in DEVELOPMENT.md but not yet built — next build candidate is an open
+decision (see DEVELOPMENT.md Session 9 "Next Session").
 
 ---
 

@@ -126,6 +126,10 @@ Every bias is recorded in `output/results/bias_audit.json` at runtime.
 | 8h ≈ 1D | Data | NYSE 6.5h session = one 8h bar per day | Noted as equivalent to 1D; reported separately | Minor — bar labels differ but data is same |
 | Kelly lookahead | Model | Kelly fraction derived from full IS period | Half-Kelly; 60+ live trades before updating | Overcalibrated sizing on IS data |
 | Intraday cross-asset alignment | Data | Crypto 24/7, equity 9:30-4:00 ET; forward-fill convention | Documented; convention: forward-fill crypto into equity gaps | Non-trading-hours crypto moves enter equity session open |
+| Operational-history-dependent reproducibility (added 2026-06-21) | Data | Intraday caches (1m-4h, 3m) now accumulate via append() across runs instead of being wholesale-replaced — the archive is a function of *when and how often the pipeline ran*, not a pure function of script+config; a fresh clone can't regenerate the same accumulated history | Cache parquet files are git-committed (existing project convention); reproducibility model shifts from "regenerate from nothing" to "given this committed cache state, downstream reproduces identically" — same model already implicit for long-history 1D data | A run six months from now starting from a different git commit will have different accumulated intraday depth than this one; document the commit hash alongside any intraday-dependent result |
+| Adjustment-factor drift (added 2026-06-21) | Data | yfinance dividend/split adjustment factors are occasionally revised retroactively; once an intraday bar ages out of the rolling fetch window it's never re-touched, so very old archived bars may reflect a stale adjustment factor while recent ones reflect a current one | Not engineered around — documented here rather than adding periodic full-refetch-and-overwrite complexity | Old archived intraday bars may be very slightly mispriced relative to a from-scratch fetch; immaterial for short spans, untested for long accumulated spans |
+| Deep-history gap_flag loss (added 2026-06-21) | Data | The new episodic coint_fraction_rolling_deep re-test (ibkr_supplement-merged series) has no gap_flag column — DataAligner only ever processed the main cache, not ibkr_supplement — so DATA_GAP bars within the deep history aren't masked from this specific test | Documented; the original (short-window, gap-flag-aware) coint_fraction_rolling remains the primary decision input, deep version is a secondary/comparison column | An unmasked DATA_GAP bar in deep history could inflate or deflate coint_fraction_rolling_deep; not expected to be large given IBKR's own data quality, but unverified |
+| Deferred per-bar regime labels (added 2026-06-21) | Model | RegimeClassifier.predict_labels() remains unused/orphaned — per-bar leg-level regime state is NOT included in the new spread_series_*.parquet persistence, only spread/z-score/half-life | Deliberate scope decision: enabling it would add ~15-20% pipeline runtime; deferred to a follow-up pass rather than blocking the higher-value spread/z-score persistence | ml.py's first pass (Stage 1, per the staged-build discussion) won't have per-bar regime context from this persistence step alone — macro.py's daily regime context is unaffected and already available |
 
 ---
 
@@ -292,7 +296,55 @@ Momentum features:
 - `ctsmom_rank_divergence` — cross-sectional momentum rank difference
 - `factor_desert` — binary: all signal magnitudes simultaneously near zero
 
-**Dimensionality:** ~25 features after correlation filtering (>0.85 pairs dropped)
+Asset characteristics features (static, not time-varying — added 2026-06-21
+per discussion with King: the spread/regime/momentum features above answer
+"what predicts convergence," characteristics answer "is that pattern
+universal or specific to this kind of pair"):
+- `sector_a`, `sector_b` — GICS sector (or closest available classification)
+  per leg; categorical, used for cross-pair characteristic correlation in
+  analyzer.py (do bank pairs share optimal conditions with other bank
+  pairs but not with cross-asset pairs?)
+- `asset_class_a`, `asset_class_b` — equity/etf/futures/forex/crypto/commodity
+  per leg (already tracked in `UniverseConfig`/`UniverseResult`, just not
+  yet exposed as an ML feature)
+- `same_sector` — binary: both legs share a sector (proxy for the
+  "structural vs idiosyncratic co-movement" question already raised by
+  EigenportfolioDecomposer's Gold/Silver tier split)
+- `market_cap_tier_a`, `market_cap_tier_b` — S&P 500/400/600 tier per leg
+  (large/mid/small-cap), since UniverseConfig already segments the universe
+  this way
+- `liquidity_tier_a`, `liquidity_tier_b` — bucketed `MIN_DOLLAR_VOLUME`-style
+  liquidity rank per leg
+
+Macro context features (from `macro.py`, Level 3 of the "Rich Regime
+Classification" enhancement — module built and verified 2026-06-21):
+- `yield_curve_regime`, `credit_regime` (BAMLH0A0HYM2, ~3yr history —
+  FRED keyless-endpoint licensing cap, see macro.py), `credit_regime_proxy`
+  (BAA10Y, full history since 1986 — NOT interchangeable with credit_regime,
+  different instrument/scale), `vix_regime`, `dollar_regime` (DTWEXBGS,
+  relative-percentile), `real_rate_regime` (DFII10, relative-percentile),
+  `inflation_expectation_regime` (T10YIE, relative-percentile),
+  `recession_state` (USREC/NBER — 6-18mo announcement lag, documented
+  bias), `recession_state_realtime` (Sahm Rule on UNRATE — real-time
+  complement to recession_state's lag, this is the one to use for
+  "what would a live strategy actually have known")
+- Join key: align each pair-trade's entry date against macro.py's daily-
+  indexed output; macro.py is fetch+classify only (mirrors data.py's role)
+  and has no consumer code yet — ml.py is the first consumer
+
+**Dimensionality:** ~25 features after correlation filtering (>0.85 pairs
+dropped) from the spread/regime/volume/momentum groups; characteristics and
+macro context features are mostly categorical/regime labels (one-hot or
+ordinal encoded) and are evaluated separately for inclusion in that filter
+rather than assumed to survive it automatically.
+
+**Modeling note (added 2026-06-21):** a Hierarchical Bayesian Model (HBM)
+is a strong candidate alongside XGBoost/RF/MLP specifically for the
+archetype-pooling problem described in "Planned Enhancement: ML Ensemble /
+Multi-System Discovery Architecture" below — see that section's
+"Critical Overfitting Risk" subsection for why partial pooling fits this
+project's small-N-per-archetype situation better than either one global
+model or fully separate per-archetype models.
 
 ### Class Imbalance Handling
 
@@ -556,6 +608,23 @@ Report both; if combined and per-pair aggregate produce meaningfully different r
 - ML go-threshold: 0.50, 0.55, 0.60, 0.65
 
 **Stability region:** the contiguous parameter space where OOS Sharpe stays within 1σ of the baseline. Wide stability region = robust; narrow = fragile/overfit. Visualized as a 2D heatmap per pair of parameters. This is a required section for any serious quant finance paper.
+
+**Local sensitivity gradients (added 2026-06-22, from a curiosity-check
+discussion on where gradients show up in this project — most uses are
+already implicit: Greeks in options.py, XGBoost being gradient *boosting*,
+`zscore_velocity` as a discrete gradient of the z-score; this is the one
+genuinely new idea that came out of it):** alongside the grid-search
+heatmap above, compute the local gradient ∂(OOS Sharpe)/∂(parameter) at
+the chosen operating point for every Tier 1/Tier 2 parameter — a simple
+finite-difference estimate (perturb one parameter by a small step,
+re-run, divide the Sharpe delta by the step size) using the SAME backtest
+results the heatmap already requires, not a separate pipeline. This is a
+complement to the heatmap, not a replacement: the heatmap shows the SHAPE
+of the stability region (wide vs. narrow, any non-monotonic structure),
+the gradient gives a single precise number — "moving entry z-score by 0.1
+moves OOS Sharpe by X" — for whichever parameters the paper wants to
+highlight as the strategy's most/least sensitive dials. Cheap to add once
+the grid-search infrastructure exists; not worth building standalone.
 
 ---
 
@@ -2324,6 +2393,43 @@ Each archetype may warrant a SEPARATE meta-labeler (or separate feature weightin
 within one model) rather than forcing one global model to learn all archetypes'
 rules simultaneously — analogous to a mixture-of-experts approach.
 
+**Synthesis (added 2026-06-21): the staged-validation discipline and the
+analyzer.py decision tree are different LEVELS, not competing ideas, and
+nest together.** Staged validation (ml.py core model validated first via
+CPCV/holdout/SHAP → macro/characteristics ablation on that validated model
+→ archetype clustering last) is a *pipeline-level* discipline about not
+conflating multiple research questions into one simultaneous search. The
+analyzer.py decision tree is a *tool* that answers one narrow question
+(which entry-condition combinations predict outcomes, per pair) — and it
+already sits downstream of ml.py/backtest.py's own validation, with its
+own matching discipline (min-N=10/leaf, 1000-permutation test, chronological
+60/40 holdout) applied at a finer grain. Concretely, this means:
+
+- **Cluster pairs on the decision tree's OUTPUT, not on raw
+  features/regime profiles.** Each pair's best-Sharpe leaf, failure-mode
+  leaf, and which conditions actually survived permutation+holdout are
+  already-validated, denoised "behavioral fingerprints" — clustering on
+  these is more robust than clustering on noisy raw spread/regime data
+  directly. This sharpens the "cluster by characteristic PROFILE" idea
+  above into "cluster by VALIDATED characteristic profile."
+- **The decision tree's cross-pair consistency check (a rule appearing in
+  10+ pairs is more credible than one appearing in 1) is already informal
+  archetype discovery** — it just hasn't been treated as such. HBM (see
+  "Critical Overfitting Risk" below) is the more rigorous version of this
+  exact same instinct: instead of a hand-picked N-pairs threshold, it
+  directly models how much an archetype-specific effect should be trusted
+  given how much data that archetype actually has, with pooling strength
+  determined by the data itself.
+- **Revised build order**: ml.py (Stage 1: core feature set, validated;
+  Stage 2: macro/characteristics ablation on the validated model) →
+  backtest.py (produces the trade log) → analyzer.py's per-pair decision
+  tree (Stage 3, already disciplined) → archetype clustering on the tree's
+  outputs, optionally formalized via HBM instead of the raw cross-pair-
+  count heuristic (Stage 4). A failure at Stage 3/4 doesn't cast doubt on
+  Stage 1's already-validated result, since each stage's output only
+  becomes the next stage's input AFTER its own validation checkpoint —
+  the whole point of staging, applied here concretely.
+
 ### Critical Overfitting Risk (must be designed in from the start)
 
 With this many features (leg-level, spread-level, macro, regime — dozens of
@@ -2346,6 +2452,31 @@ than genuine structure. This is the same risk class already identified for
   model learned the hypothesized economic structure (e.g. "the model relies heavily
   on yield curve regime for bank pairs but not for SPY↔VOO") rather than spurious
   correlation
+
+**Hierarchical Bayesian Model (HBM) as a structural answer to this risk
+(added 2026-06-21):** the bullets above are all detection/validation
+discipline applied AFTER fitting per-archetype or global models. A
+Hierarchical Bayesian Model addresses the underlying problem directly,
+at the modeling-architecture level, rather than only checking for it
+after the fact: each archetype gets its own parameter estimate (e.g. its
+own meta-labeler coefficients/weights), but that estimate is partially
+pooled toward the global (all-archetype) estimate, with the pooling
+strength determined automatically by how much data that archetype has.
+A 4th archetype with only 15-20 trades gets shrunk heavily toward the
+global pattern (appropriately distrusting its own small sample); a
+well-populated archetype like the bank-pair cluster gets to deviate from
+the global pattern with more confidence. This is strictly better than the
+two extremes the "ML Ensemble" framing above otherwise forces a choice
+between: one global model (which ignores genuine archetype differences
+the whole point of this section is trying to capture) or fully separate
+per-archetype models (which overfits exactly the small archetypes the
+overfitting-risk bullets above are warning about). Treat HBM as a
+comparison/alternative to the mixture-of-experts framing in "Connection
+to Existing Planned Architecture" above, evaluated alongside XGBoost/RF/
+MLP in the existing model-comparison matrix — not a replacement for them,
+since it answers "how much should archetype-specific patterns be trusted
+given how little data each one has," a different question than "what
+predicts convergence."
 
 ### Paper Contribution
 
@@ -3076,4 +3207,330 @@ Sharpe) once both exist.
    stress) alongside core performance metrics when `backtest.py` is built —
    not after, as a nice-to-have. See "Stress Testing Framework" priority
    note above.
+
+---
+
+## Session 9 — macro.py Built; Data Pipeline Now Accumulates; ml.py v1; Overnight Autonomous Run
+
+### Context
+
+King requested macro.py (the FRED regime-context module already designed in
+Session 6), then an extended overnight session with explicit autonomous
+authorization: implement, run, and answer-as-best-possible on open
+questions rather than blocking until morning. Three things got built:
+`macro.py` (new), a 3-piece upgrade to the data.py/analysis.py pipeline
+(intraday accumulation, confirmed-pair spread persistence, episodic
+cointegration re-test on IBKR deep history), and `ml.py` v1.
+
+### macro.py (new file)
+
+Fetches 12 FRED series via the public keyless CSV endpoint (no API key —
+confirmed live, BAMLH0A0HYM2 specifically is capped to ~3yr by ICE/BofA
+licensing on FRED's free route, not fixable; BAA10Y added as a flagged,
+independently-calibrated full-history proxy). Produces a single wide
+DataFrame of regime labels (yield curve, credit, credit-proxy, VIX,
+dollar, real rate, inflation expectation, recession, recession-realtime/
+Sahm) aligned to the NYSE calendar. Verified against 2008 GFC, 2020 COVID,
+1987 Black Monday, 1998 LTCM, 2011 downgrade, 2015-16 oil crash, 2021 ZIRP,
+2023 hiking, 2022 inflation surge — 25/25 checks pass. Not yet consumed by
+ml.py (Stage 1 of the staged-build discipline below deliberately excludes
+macro context; planned for a Stage 2 ablation pass).
+
+### Three-piece data pipeline upgrade
+
+**Piece 1 — data.py intraday TFs now accumulate instead of replacing.**
+11 `DataStore.save()` call sites switched to `DataStore.append()`
+(1m/2m/3m/5m/15m/30m/1h/4h). Two `is_fresh()` early-return guards removed
+(4h-from-1h and 2m/3m-from-1m derivation) — they would have silently
+frozen derived-TF depth at whatever it was on the first run forever, since
+re-deriving from a growing source only works if you actually re-derive
+every run. Reproducibility model deliberately shifts from "regenerate from
+nothing" to "given this git-committed cache state, downstream
+reproduces" — documented as a bias (see BiasAuditLog table), same model
+already implicit for 1D's long history. Adjustment-factor drift (yfinance
+revises old bars; bars that age out of the rolling fetch window never get
+re-touched) documented as a known, accepted bias, not engineered around.
+
+**Piece 2 — confirmed-pair spread/z-score persistence.**
+`SpreadModel.fit_pair()` already computed full per-bar `spread`/
+`z_rolling`/`z_expanding`/`half_life_rolling_series` arrays, discarded
+after `_build_pair_result()` returned. Now carried forward and persisted
+to `output/results/{tf}/spread_series_{symbol_a}_{symbol_b}.parquet` for
+whichever pairs survive final filtering — this is ml.py's actual training
+data source. Per-bar REGIME labels (RegimeClassifier.predict_labels(),
+orphaned/unused) deliberately NOT included — ~15-20% runtime cost,
+deferred to a follow-up pass.
+
+**Piece 3 — episodic cointegration re-test on IBKR deep history.**
+`output/cache/ibkr_supplement/{symbol}_{tf}_deep.parquet` was fetched by
+data_ibkr.py but never read by analysis.py until now (data_ibkr.py's own
+docstring already said "analysis.py loads these via load_supplement" —
+this was always the intended design, just never wired up). New
+`AnalysisPipeline._enrich_with_deep_history()`: merges supplement + main
+cache per leg, batches ALL pairs needing enrichment into ONE
+`rolling_fraction()` call (a per-pair-process-pool version was tried
+first during verification, found to be much slower, fixed before the
+overnight run), adds `coint_fraction_rolling_deep`/`deep_history_used`
+fields to `PairResult` alongside (never replacing) the original. 3m
+correctly gets zero enrichment always (not a native IBKR bar size, no
+supplement file can exist); 15m/1h got real enrichment tonight.
+Observation worth a closer look later: `coint_fraction_rolling_deep`
+came out IDENTICAL to `coint_fraction_rolling` for all 4 pairs where
+enrichment fired (FITB/FULT, PNC/FULT, UBSI/AUB, SPY/VOO) — not
+investigated further tonight, plausibly main cache and ibkr_supplement
+have already substantially converged for these specific symbols.
+
+### Bugs found and fixed this session
+
+- **`_4h_skip_fresh` NameError** — removing the is_fresh() guard (Piece 1)
+  left a dangling reference in a `record_tf()` call elsewhere in the same
+  block; crashed a live overnight data.py run partway through. Caught via
+  the actual traceback, fixed, re-verified with a clean re-run.
+- **`confirmed_pairs_manifest.json` silently reset on every script-hash
+  change** — `clear_stale_results()`'s rename loop excluded
+  `analysis_hash.json` but not the manifest, which is equally meant to
+  persist/accumulate across runs. Every analysis.py source edit during
+  tonight's active development was wiping the manifest back to whatever
+  the single most recent run's TFs happened to confirm — caught by
+  noticing the manifest only had 2 symbols (SPY/VOO) after a full night of
+  confirming pairs across multiple TFs. Fixed by adding it to the same
+  exclusion as analysis_hash.json.
+- **`ml.py` entry-event detection was using padded/gap-filled bars** —
+  `DataAligner.align_intraday()` reindexes onto the FULL 24/7 calendar
+  (not just trading hours) and forward-fills; the persisted spread_series
+  files are mostly overnight/weekend padding (SPY/VOO @ 1h: 25,446 total
+  rows vs. ~4,359 real trading-hour bars — this is also the explanation
+  for a `pairs.parquet` n_bars/actual-cache-row-count mystery flagged
+  earlier in the night, confirmed pre-existing and unrelated to tonight's
+  other changes, not a new bug). Fixed: entry events and their outcome
+  bars now both require `gap_flag == GapFlag.NONE` on both legs.
+
+### Known unresolved issue (not fixed, observed and documented)
+
+yfinance 1m/2m/3m/5m/15m/30m/1h intraday fetch had a 96-100% failure rate
+across two consecutive data.py runs tonight (0-2 successes per TF out of
+hundreds of assets) — matches the exact signature of BUG-D31 (Yahoo
+anti-bot/session throttling under rapid sequential calls), and got WORSE
+on the second run, consistent with cumulative request volume from one
+session over one night. Per this project's "stop after ~3 attempts, ask
+for raw evidence" rule, not re-theorized further tonight — flagged for
+King with the raw log evidence rather than guessed at a 4th time. Net
+effect: tonight's accumulation benefit for Phase 2A's TFs was limited by
+this; 4h derivation (1506 assets) and daily refresh both succeeded fully.
+
+### ml.py (new file) — v1, Stage 1 only
+
+Reads `spread_series_*.parquet` for every confirmed pair across every TF,
+finds entry events (|z_rolling| crossing `Config.ANALYSIS.OU_ZSCORE_ENTRY`
+from below, clean bars only), labels outcomes at horizon = `RESOLUTION_BARS_MULT
+* half_life` via a priority-ordered 4-class rule (resolves an ambiguity in
+the original spec between absolute z-bands and "wider than entry" — see
+`_classify_outcome()` docstring). Core spread-level features only
+(zscore, zscore_velocity, half_life_current, hurst_exponent,
+coint_fraction_rolling, half_life_trend_slope, mean_reversion_speed,
+hedge_ratio_drift) — macro/characteristics/regime context deliberately
+deferred to a later stage per the staged-build discipline (this document,
+"ML Ensemble" section). XGBoost primary; SHAP skipped (broken in this
+environment — numba doesn't support the installed numpy 2.4, see
+requirements.txt's documented KNOWN ISSUE) in favor of sklearn's
+permutation_importance (MDA-style, no numba dependency). Honestly reports
+"insufficient data to train" below `MIN_CLASS_SAMPLES` rather than
+training on too little to trust — final tonight: 14 labeled examples
+across 3 classes from 9 confirmed pairs, real but small, exactly as
+expected this early in the accumulation curve.
+
+### End-of-session verified state
+
+Full clean 13-TF analysis.py run, 147.8 min, zero crashes after the
+NameError fix: confirmed pairs 3m=5, 15m=3 (+1 trio), 1h=1 — 9 pairs
+total, manifest now correctly cumulative (14 symbols). data_ibkr.py
+confirmed all 14 manifest symbols already fully supplemented (98/98
+fetches fresh, 0 needed). ml.py ran end-to-end against the real,
+final results.
+
+### BUG-D42 (supersedes the BUG-D31-throttling guess above): 1m/2m/3m
+fetch failures were never Yahoo throttling — MIN_BARS_REQUIRED was still
+miscalibrated, a second time
+
+King correctly pushed back on accepting "looks like BUG-D31 throttling"
+without direct evidence, and was right to. Traced live, directly: a fresh
+`yf.Ticker('ALGN').history(period='5d', interval='1m')` returns HTTP 200
+with 1172 real OHLC rows — the fetch was succeeding every time. The
+rejection was happening one layer downstream, inside
+`DataCleaner.clean()`, with `fail_reason='insufficient_bars_1169_min_1500'`
+— no exception, so nothing in the run log showed a reason, which is
+exactly why it read as silent/throttling-shaped from the outside.
+
+Root cause: the 2026-06-20 fix (BUG-D36, see registry above) calculated
+1m's ceiling as "5 trading days × 390 bars/day = 1950" and set the
+threshold to 1500 (~80% of that). But yfinance's `period="5d"` means 5
+**calendar** days, not 5 trading days — on a Monday/Tuesday fetch, the
+weekend eats 2 of those days, so the real ceiling is far lower than 1950.
+Confirmed directly: ALGN (a liquid name) got 1172; ERIE (less liquid) got
+only 383 over the identical calendar window. The exact same miscalibration
+existed independently for 2m (its own native yfinance interval, 55-day
+period, not derived from 1m at all): ALGN got 5343 against a 5000 floor
+(passing by luck), ERIE got 2407 (failing).
+
+Fix: `MIN_BARS_REQUIRED` recalibrated to the observed real ceilings with
+margin — 1m 1500→900, 2m 5000→2200, 3m 500→300 — not threshold-removal,
+a recalibration. This is a deliberate liquidity-tier design, not a
+fully-permissive one: ERIE-tier names are now intentionally excluded at
+1m (383 bars is genuinely thin for minute-bar work) but included at 2m/3m,
+where the same calendar window yields proportionally more usable bars.
+Verified on a random sample of 25 real S&P 500 tickers (not hand-picked):
+1m 24/25 succeeded (was ~0-2/25 the two nights before), 2m 25/25, 3m
+25/25. The lesson generalizes: when a fetch-failure log shows "no
+exception, just empty," the cause is almost always downstream validation
+silently rejecting good data, not the fetch itself — check
+`DataCleaner.clean()`'s `fail_reason` before reaching for a network/
+throttling explanation a second time.
+
+### Per-bar regime persistence enabled, methodology confirmed against code
+
+`RegimeClassifier.predict_labels()` existed, fully implemented, never
+called — wired up in `_regime_worker()` (which already had the per-asset
+DataFrame in scope from fitting) and persisted to
+`output/results/{tf}/regime_labels_{symbol}.parquet` (columns
+`regime_kmeans`, `regime_gmm`, `regime_hmm`, one row per bar). Verified
+live on 4h/SPY: 6362 rows, 5 HMM states, sensible distribution (1039-1619
+per state), <1% NaN (burn-in only).
+
+**Methodology, confirmed directly against the code (King asked specifically
+whether this is per-bar-instantaneous or time-averaged — it's the latter,
+three layers deep):**
+1. `build_raw_features()` — `realized_vol`/`trend_strength`/
+   `mean_reversion_speed` are already 20-bar rolling quantities (rolling
+   std, rolling return-sum ÷ rolling vol, rolling AR(1) phi);
+   `relative_vol_ratio` is a 20-bar ÷ 252-bar rolling ratio. No raw
+   single-bar values reach this point.
+2. `aggregate_features(features, window)` — rolling MEAN of those features
+   over `window` bars (10, 20, or 40, auto-selected by silhouette/BIC).
+   Docstring states the intent directly: smooth bar-level noise so
+   regimes reflect persistent structural change, not single-bar moves.
+3. `standardize()` — divides by a rolling std over 252+ bars, so inputs
+   to KMeans/GMM/HMM are dimensionless and scale-invariant.
+
+KMeans, GMM, and the HMM all consume the identical aggregated/standardized
+feature matrix from this pipeline — there is no per-model difference in
+this respect. Output granularity is one label per bar (that's what makes
+persisting it meaningful), but the input basis for every single label is
+a multi-layer rolling-window aggregate, never an instantaneous value.
+
+### Full post-BUG-D42 analysis.py run — real confirmed pairs at 1m for the first time
+
+First full 14-TF run after the BUG-D42 threshold recalibration, 155.8 min,
+1521 assets / 19356 symbol-TF keys. Confirmed pairs per TF (post coint-frac
+filter): **1m=8** (CRWD/DDOG, D/NEE, APAM/AZTA, APAM/INVX, APAM/NBHC,
+AZTA/INVX, AZTA/NBHC, INVX/NBHC — 1 cross-asset also), 2m=0 (0 survived
+BH-FDR — genuine, not a data problem), **3m=5** (CCL/NCLH, ORCL/SPY,
+ACAD/CUBI, CUBI/FCPT, FCPT/NSSC — 1 cross-asset also), 5m=0 (filtered),
+**15m=3** (FITB/FULT, PNC/FULT, UBSI/AUB) **+1 confirmed trio**, 30m=0,
+**1h=1** (SPY/VOO), 4h=0 (filtered), 8h=skipped (0 assets, expected — no
+native interval), 1D=0, **7D=0** (filtered, was 1 pre-filter), 1M/3M/6M=0.
+This is the first time 1m has ever produced confirmed pairs — direct
+downstream proof the BUG-D42 fix works at the cointegration-discovery
+level, not just the fetch level.
+
+### BUG-D43: `_write_analysis_summary()` crashed on `Optional[float]=None` hurst_rs
+
+The live run above crashed at the very last step with
+`TypeError: unsupported format string passed to NoneType.__format__`.
+Root cause: `PairResult.hurst_rs` is legitimately `Optional[float] = None`
+(set when the R/S estimate isn't finite — by design, not a bug) but the
+summary formatter used `getattr(pr, 'hurst_rs', 0):.3f`, which only
+substitutes the default when the *attribute is missing*, not when its
+*value is None* — so a `None` hurst_rs reached `:.3f}` directly. This had
+never fired before because 1m never had confirmed pairs to format. Fixed
+with a null-safe `_fnum()` helper. Importantly: the crash happened *after*
+all real work — every pairs.parquet/spread_series/regime_labels file,
+bias_audit.json, script_hash, and confirmed_pairs_manifest.json had
+already saved successfully. Only the cosmetic `latest_run_analysis.log`
+was missing; no data was lost. Did not re-run the 155-min pipeline just
+for the log — confirmed pairs were instead read and verified directly
+from the already-saved `pairs.parquet` files per TF.
+
+### Environment correction: project scripts must run under the `trading` conda env, not base anaconda
+
+While investigating BUG-D43, an ad-hoc `pip install fastparquet` in the
+**base** anaconda environment silently downgraded `pyarrow` 24.0.0→19.0.0
+there, which made every parquet file written by tonight's run (in the
+correct `trading` env, still on 24.0.0) appear completely unreadable
+("Repetition level histogram size mismatch" — a real pyarrow cross-version
+incompatibility, not file corruption). Reinstalling `pyarrow==24.0.0` and
+removing `fastparquet` from base fixed it; all 166 result files then read
+cleanly. No actual data was ever at risk. Lesson made concrete: this
+machine has two relevant Python installs —
+`C:\Users\RossW\anaconda3\envs\trading\python.exe` (the project's real
+environment — yfinance, pinned pyarrow 24.0.0, everything in
+requirements.txt) vs. base anaconda (`python` on PATH — missing yfinance
+entirely, and now correctly back on pyarrow 24.0.0). Always invoke
+data.py/analysis.py/macro.py/ml.py via the `trading` env's python
+explicitly; don't rely on bare `python` resolving correctly.
+
+### BUG-D44: ml.py's confirmed-pair discovery — two bugs, same session
+
+1. **Unnecessary yfinance coupling.** `_tf_dirname()` did
+   `from data import DataStore; return DataStore._TF_SAFE.get(...)` just
+   to translate a tf_label ('3m') to a results-dir name ('3min'). Importing
+   `data.py` pulls in its module-level `import yfinance` — fine inside the
+   `trading` env, but it silently broke the very first real `ml.py` run
+   tonight (run under base anaconda, see environment note above) with
+   every single one of 26 pairs failing with a swallowed
+   `ModuleNotFoundError: No module named 'yfinance'`, caught by a bare
+   `except Exception` and only visible by inspecting `result.pairs_skipped`
+   directly in a REPL — `latest_run_ml.log`'s pairs section showed `(none)`
+   with no hint why. ml.py's own docstring says it "never fetches or
+   re-runs analysis"; importing `data.py` for a 13-entry dict violated that
+   in spirit even when it happened to work. Fixed by duplicating the tiny
+   `_TF_SAFE` map locally in ml.py — zero dependency on data.py/yfinance.
+2. **Stale-directory glob leak.** `_discover_confirmed_pairs()` globbed
+   `output/results/*/pairs.parquet`, which also matches leftover
+   `{tf}_stale_*` snapshot directories from `clear_stale_results()`'s
+   rename-on-change mechanism. Tonight this double-counted 9 pairs from a
+   superseded ~08:20 run (3m×5 + 15m×3 + 1h×1, each already live too),
+   inflating "26 confirmed pairs" when only 17 were real. Fixed by
+   skipping any `tf_dir` containing `_stale_`.
+3. Also added `pairs_skipped` (with reasons) to `latest_run_ml.log`'s
+   output — previously computed but never written anywhere, which is
+   exactly why bug #1 took a REPL session to diagnose instead of a log
+   read.
+
+**Verified real run after both fixes** (`trading` env): 17 confirmed pairs
+discovered (correct, deduped), 7 produced labeled examples, 10 had zero
+qualifying entry events (mostly the very-short-history 1m pairs added
+APAM/AZTA/INVX/NBHC cluster + a couple 3m pairs). **32 total labeled
+entry events, 3 classes** (no_move=19, diverge_further=11,
+strong_converge=2) — correctly still below
+`Config.ML.MIN_CLASS_SAMPLES` (need ≥30/class, min class count=2), so
+training honestly declined to run. This is real progress over the
+previous "0 examples" result — the full chain (gap-flag-aware entry
+detection → half-life horizon → 4-class labeling) is now verified
+working end-to-end on real intraday data, just not yet enough volume.
+
+### Next Session
+
+1. ~~Re-run data.py to see whether the yfinance failure rate recovers~~ —
+   superseded; root-caused and fixed (BUG-D42 above), not a network issue.
+2. Investigate the identical coint_fraction_rolling/_deep values for the
+   4 enriched pairs — confirm whether main cache and ibkr_supplement have
+   genuinely converged for these symbols (expected/fine) or whether the
+   merge logic has a subtle issue making it a near-no-op (would need a fix).
+3. ~~Re-run data.py/analysis.py/ml.py now that 1m/2m/3m actually populate~~
+   — done (see above): 1m/3m/15m/1h now have real confirmed pairs, ml.py
+   produces 32 real labeled examples. Sample size still below training
+   threshold — re-run again as more intraday history accumulates day over
+   day.
+4. ~~Decide on enabling per-bar regime-state persistence~~ — done, see above.
+5. Resolve the shap/numba/numpy environment conflict (requirements.txt has
+   3 documented options) if SHAP analysis is wanted before MDA/permutation
+   importance is judged sufficient.
+6. Continue toward Stage 2 (macro/characteristics ablation on the now-
+   working Stage 1 pipeline) once sample size supports it. Per-bar regime
+   labels (now persisted) are Level 1 of the "Rich Regime Classification"
+   enhancement — natural first addition for Stage 2.
+7. Periodically clean up old `{tf}_stale_*` result directories — they're
+   harmless to analysis.py (never read) but now matter to ml.py too (fixed
+   to skip them, but a sweep/retention policy would be tidier than manual
+   awareness).
 

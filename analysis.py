@@ -39,6 +39,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
 import time
 import traceback
 import warnings
@@ -184,6 +185,14 @@ class PairResult:
     # Source provenance
     source_a: str
     source_b: str
+
+    # Episodic cointegration re-test on IBKR deep history (ibkr_supplement/),
+    # added 2026-06-21 — see DEVELOPMENT.md. None/False when no supplement
+    # file exists for either leg at this TF (e.g. always for 3m — not a
+    # native IBKR bar size — and a near-no-op for 15m, whose supplement is
+    # no deeper than the main cache; both documented, not bugs).
+    coint_fraction_rolling_deep: Optional[float] = None
+    deep_history_used: bool = False
 
 
 @dataclass
@@ -389,6 +398,11 @@ _HASH_FILE = os.path.join(
     "analysis_hash.json",
 )
 
+# Matches {name}_stale_{timestamp}, e.g. "15m_stale_20260621_115458" or
+# "bias_audit.json_stale_20260621_115458". {name} itself may already end in
+# this same suffix (a leftover that survived a previous cleanup attempt).
+_STALE_SUFFIX_RE = re.compile(r".+_stale_\d{8}_\d{6}$")
+
 
 def _load_stored_hash() -> Optional[str]:
     """Read the hash from the previous run, or None if no previous run."""
@@ -445,12 +459,39 @@ def clear_stale_results(force: bool = False) -> bool:
     )
     log.info(f"Clearing stale results: {reason}")
 
+    # Clean up leftovers from the PREVIOUS run's rename first, before renaming
+    # anything new. By now those entries have had a full run's duration
+    # (~90 min) for OneDrive to release any sync locks, instead of being
+    # rmtree'd a moment after they were touched — which failed almost every
+    # time and silently chained another "_stale_{ts}" suffix onto the same
+    # entries on every subsequent run (one bias_audit.json leftover reached
+    # 213 characters across 9 runs before it broke `git add .` outright on
+    # Windows' path-length limit).
+    _cleanup_stale(results_dir)
+
     n_renamed = 0
     n_failed = 0
+    n_left_for_next_pass = 0
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
 
     for entry in os.scandir(results_dir):
-        if entry.name == "analysis_hash.json":
+        # Both are meant to persist/accumulate ACROSS hash changes, not get
+        # cleared with the rest of results/ — analysis_hash.json by design;
+        # confirmed_pairs_manifest.json was missing this same exclusion
+        # (found 2026-06-21: every analysis.py source edit during active
+        # development silently wiped it back to whatever the single most
+        # recent run's TFs happened to confirm, losing prior runs'/TFs'
+        # symbols — e.g. tonight's 3m-run pairs and Session 8's original 15
+        # manifest symbols were both gone by the time the 1h-scoped run
+        # finished, since the hash changed in between).
+        if entry.name in ("analysis_hash.json", "confirmed_pairs_manifest.json"):
+            continue
+        if _STALE_SUFFIX_RE.match(entry.name):
+            # Survived the cleanup pass above (lock still held). Leave its
+            # name alone — renaming it again would chain another
+            # "_stale_{ts}" suffix on forever. Retried by the next run's
+            # _cleanup_stale() call instead.
+            n_left_for_next_pass += 1
             continue
         # Rename strategy: move old results to {name}_stale_{ts}
         # Rename works on Windows even when OneDrive has files open,
@@ -467,34 +508,37 @@ def clear_stale_results(force: bool = False) -> bool:
             # Old results will be overwritten by new writes — no action needed.
             n_failed += 1
 
+    log_msg = f"  Stale results: renamed {n_renamed} old result directories"
     if n_failed:
-        log.info(
-            f"  Stale results: renamed {n_renamed} dirs; "
-            f"{n_failed} could not be renamed (pipeline will overwrite in place)"
-        )
-    else:
-        log.info(f"  Stale results: renamed {n_renamed} old result directories")
+        log_msg += f"; {n_failed} could not be renamed (pipeline will overwrite in place)"
+    if n_left_for_next_pass:
+        log_msg += f"; {n_left_for_next_pass} pre-existing stale leftovers held for next cleanup pass"
+    log.info(log_msg)
 
     _save_current_hash(current_hash)
-    _cleanup_stale(results_dir)  # remove any stale dirs from previous runs
     return True
 
 
 def _cleanup_stale(results_dir: str) -> None:
     """
-    Remove stale result directories left by previous clear_stale_results() calls.
-    These have the pattern {tf_label}_stale_{timestamp}.
-    Called after renaming so the cleanup doesn't interfere with the current run.
+    Remove stale result files/directories left by a previous
+    clear_stale_results() call. Matches the pattern {name}_stale_{timestamp},
+    regardless of whether {name} is a file (e.g. bias_audit.json) or a
+    directory (e.g. a TF result dir) — a prior version only handled
+    directories, so stale top-level files could never be cleaned up.
     """
-    import shutil, re
+    import shutil
 
-    pattern = re.compile(r".+_stale_\d{8}_\d{6}$")
     for entry in os.scandir(results_dir):
-        if pattern.match(entry.name) and entry.is_dir():
-            try:
+        if not _STALE_SUFFIX_RE.match(entry.name):
+            continue
+        try:
+            if entry.is_dir():
                 shutil.rmtree(entry.path, ignore_errors=True)
-            except Exception:
-                pass  # Best-effort; stale dirs don't affect correctness
+            else:
+                os.remove(entry.path)
+        except Exception:
+            pass  # Best-effort; leftover stale entries don't affect correctness
 
 
 def _benjamini_hochberg(
@@ -3723,7 +3767,7 @@ class ThresholdCalibrator:
 # =============================================================================
 
 
-def _regime_worker(args) -> Optional["RegimeResult"]:
+def _regime_worker(args) -> Optional[Tuple["RegimeResult", Optional[pd.DataFrame]]]:
     """
     Top-level (not nested) function for ProcessPoolExecutor.
 
@@ -3731,7 +3775,14 @@ def _regime_worker(args) -> Optional["RegimeResult"]:
     processes. This must live at module scope.
 
     Receives serialized DataFrame bytes to avoid shared-memory issues;
-    deserializes, fits all regime models (K-means, GMM, HMM), returns result.
+    deserializes, fits all regime models (K-means, GMM, HMM), returns
+    (summary RegimeResult, per-bar label DataFrame). The per-bar labels
+    come from RegimeClassifier.predict_labels(), which existed and was
+    fully implemented but never called until 2026-06-22 — added so
+    per-bar regime context (Level 1 of the "Rich Regime Classification"
+    enhancement, DEVELOPMENT.md) is available for ml.py's later stages,
+    at the documented ~15-20% extra runtime cost (re-fitting all 3 models
+    a second time to produce labels, not just summary stats).
     """
     sym, df_bytes, tf_label = args
     try:
@@ -3740,9 +3791,11 @@ def _regime_worker(args) -> Optional["RegimeResult"]:
         df = pickle.loads(df_bytes)
         df.index.name = sym
         rr = RegimeClassifier.fit_asset(df, tf_label)
-        if rr is not None:
-            rr.symbol = sym
-        return rr
+        if rr is None:
+            return None
+        rr.symbol = sym
+        labels = RegimeClassifier.predict_labels(df, rr)
+        return rr, labels
     except Exception:
         return None
 
@@ -4031,12 +4084,15 @@ class AnalysisPipeline:
         # Steps 6: per-pair full modeling — hedge ratios, spread, decay
         log.info(f"  [{tf_label}] Per-pair modeling: hedge ratios + spread + decay...")
         pair_results: List[PairResult] = []
+        per_bar_by_pair: Dict[Tuple[str, str], Dict[str, Any]] = {}
         t0 = time.time()
         for i, pd_meta in enumerate(confirmed_dicts):
             try:
-                pr = AnalysisPipeline._build_pair_result(pd_meta, aligned, tf_label)
-                if pr is not None:
+                built = AnalysisPipeline._build_pair_result(pd_meta, aligned, tf_label)
+                if built is not None:
+                    pr, per_bar = built
                     pair_results.append(pr)
+                    per_bar_by_pair[(pr.symbol_a, pr.symbol_b)] = per_bar
             except Exception as e:
                 log.warning(
                     f"    pair {pd_meta.get('symbol_a')}-{pd_meta.get('symbol_b')} "
@@ -4139,14 +4195,32 @@ class AnalysisPipeline:
             except Exception:
                 pass
 
+        n_labels_persisted = 0
         if regime_tasks:
+            _regime_out_dir = _output_dir(tf_label)
             with ProcessPoolExecutor(max_workers=n_workers) as pool:
-                for rr in pool.map(_regime_worker, regime_tasks, chunksize=1):
-                    if rr is not None:
-                        regime_results.append(rr)
+                for result in pool.map(_regime_worker, regime_tasks, chunksize=1):
+                    if result is None:
+                        continue
+                    rr, labels = result
+                    regime_results.append(rr)
+                    if labels is not None and not labels.empty:
+                        try:
+                            labels.to_parquet(
+                                os.path.join(
+                                    _regime_out_dir,
+                                    f"regime_labels_{rr.symbol}.parquet",
+                                )
+                            )
+                            n_labels_persisted += 1
+                        except Exception as _e:
+                            log.debug(
+                                f"  regime_labels persist failed for {rr.symbol}: {_e}"
+                            )
 
         log.info(
             f"  [{tf_label}] Regimes fitted: {len(regime_results)} assets "
+            f"({n_labels_persisted} per-bar label files saved) "
             f"in {time.time()-t0:.1f}s"
         )
 
@@ -4213,6 +4287,7 @@ class AnalysisPipeline:
             regime_results,
             cross_pairs,
             calib_dict,
+            per_bar_by_pair,
         )
         # Checkpoint: mark this TF as complete in the hash store.
         # The full hash is only confirmed at pipeline end, but partial
@@ -4226,10 +4301,17 @@ class AnalysisPipeline:
         pd_meta: Dict[str, Any],
         aligned_data: Dict[str, pd.DataFrame],
         tf_label: str,
-    ) -> Optional[PairResult]:
+    ) -> Optional[Tuple[PairResult, Dict[str, Any]]]:
         """
         Build PairResult from confirmed-pair metadata. Computes hedge ratios,
         spread, half-life trend, structural break tests.
+
+        Also returns the per-bar spread/z-score/half-life arrays SpreadModel
+        already computes internally (previously discarded after this function
+        returned) — carried forward so _save_tf_results() can persist them for
+        whichever pairs survive final filtering, without recomputing anything.
+        A future ml.py needs real historical entry/exit events, not just the
+        summary scalars in PairResult; see DEVELOPMENT.md ml.py section.
         """
         sym_a = pd_meta["symbol_a"]
         sym_b = pd_meta["symbol_b"]
@@ -4293,7 +4375,19 @@ class AnalysisPipeline:
         n_bars = log_a.size
         n_overlap = int(np.sum(np.isfinite(log_a) & np.isfinite(log_b)))
 
-        return PairResult(
+        # Per-bar series for persistence (see docstring) — carried forward
+        # exactly as SpreadModel computed them, not recomputed later.
+        per_bar = {
+            "index": df_a.index,
+            "spread": sm["spread"],
+            "z_rolling": sm["z_rolling"],
+            "z_expanding": sm["z_expanding"],
+            "half_life_rolling_series": sm["half_life_rolling_series"],
+            "gap_flag_a": df_a["gap_flag"].values if "gap_flag" in df_a else None,
+            "gap_flag_b": df_b["gap_flag"].values if "gap_flag" in df_b else None,
+        }
+
+        pair_result = PairResult(
             symbol_a=sym_a,
             symbol_b=sym_b,
             asset_class_a=pd_meta.get("asset_class_a", "unknown"),
@@ -4337,6 +4431,146 @@ class AnalysisPipeline:
             source_a=src_a,
             source_b=src_b,
         )
+        return pair_result, per_bar
+
+    @staticmethod
+    def _enrich_with_deep_history(
+        discovered_pairs: List[PairResult],
+        per_bar_by_pair: Dict[Tuple[str, str], Dict[str, Any]],
+        tf_label: str,
+    ) -> None:
+        """
+        Episodic cointegration re-test on IBKR deep history — the purpose
+        CLAUDE.md Rule 2 already documents for ibkr_supplement/, finally
+        wired up (it existed, fetched by data_ibkr.py, but unread by
+        analysis.py until 2026-06-21).
+
+        For each confirmed pair, tries output/cache/ibkr_supplement/
+        {symbol}_{tf}_deep.parquet for both legs. Where available, merges
+        it with the main cache (supplement's older history + main cache's
+        current window, main cache wins on any overlapping date — it's the
+        freshest, gap-flag-aware fetch) and recomputes hedge ratio, spread,
+        z-score, and a SEPARATE coint_fraction_rolling_deep on the merged
+        series — added as a new field alongside (never replacing) the
+        original short-window coint_fraction_rolling, so both are visible
+        side by side (the project's established fragile-vs-robust
+        comparison pattern, applied to the cointegration test itself).
+
+        Mutates discovered_pairs and per_bar_by_pair in place. No-ops
+        cleanly when no supplement exists for either leg — by design, not
+        by bug, for TFs/pairs where the supplement adds no real depth (3m
+        has none at all; 15m's is no deeper than the main cache).
+
+        Known limitation: ibkr_supplement files carry no gap_flag column
+        (added by DataAligner, which only ever processed the main cache),
+        so DATA_GAP bars within the supplement's OWN history aren't masked
+        from this specific deep re-test — documented here and in
+        DEVELOPMENT.md rather than silently accepted.
+        """
+        from data_ibkr import load_supplement  # read-only file I/O, no fetch
+
+        def _merge(main_df, sup_df):
+            if sup_df is None:
+                return main_df
+            combined = pd.concat([sup_df, main_df])
+            combined = combined[~combined.index.duplicated(keep="last")]
+            return combined.sort_index()
+
+        # Pass 1 (cheap, no process pool): figure out which pairs actually
+        # have usable deep data and build their merged close-price series.
+        deep_aligned: Dict[str, pd.DataFrame] = {}
+        shared_idx_by_pair: Dict[Tuple[str, str], pd.DatetimeIndex] = {}
+        pairs_to_test: List[PairResult] = []
+
+        for p in discovered_pairs:
+            sup_a = load_supplement(p.symbol_a, tf_label)
+            sup_b = load_supplement(p.symbol_b, tf_label)
+            if sup_a is None and sup_b is None:
+                continue
+            main_a = DataStore.load(p.symbol_a, tf_label)
+            main_b = DataStore.load(p.symbol_b, tf_label)
+            if main_a is None or main_b is None:
+                continue
+
+            merged_a = _merge(main_a, sup_a)
+            merged_b = _merge(main_b, sup_b)
+            shared_idx = merged_a.index.intersection(merged_b.index)
+            if len(shared_idx) < 100:
+                continue  # not enough overlap to bother re-testing
+
+            deep_aligned[p.symbol_a] = merged_a.loc[shared_idx, ["close"]]
+            deep_aligned[p.symbol_b] = merged_b.loc[shared_idx, ["close"]]
+            shared_idx_by_pair[(p.symbol_a, p.symbol_b)] = shared_idx
+            pairs_to_test.append(p)
+
+        if not pairs_to_test:
+            return
+
+        # Pass 2: ONE batched rolling_fraction call covering every pair that
+        # needs it, instead of spinning up a fresh ProcessPoolExecutor per
+        # pair (the original design — fixed 2026-06-21 after a verification
+        # run showed this taking far longer than the main per-pair modeling
+        # step, which processes ALL pairs through a single shared pool).
+        confirmed_dicts = [
+            {"symbol_a": p.symbol_a, "symbol_b": p.symbol_b} for p in pairs_to_test
+        ]
+        deep_results = CointScanner.rolling_fraction(
+            confirmed_dicts, deep_aligned, tf_label, n_workers=min(12, len(pairs_to_test))
+        )
+        deep_frac_by_key = {
+            (r["symbol_a"], r["symbol_b"]): r.get("coint_fraction_rolling", np.nan)
+            for r in deep_results
+        }
+
+        # Pass 3 (cheap, no process pool — plain numpy/statsmodels calls):
+        # refit hedge ratio + spread per pair on its own merged series.
+        for p in pairs_to_test:
+            key = (p.symbol_a, p.symbol_b)
+            shared_idx = shared_idx_by_pair[key]
+            close_a = deep_aligned[p.symbol_a]["close"].values
+            close_b = deep_aligned[p.symbol_b]["close"].values
+            with np.errstate(invalid="ignore", divide="ignore"):
+                log_a = np.log(close_a)
+                log_b = np.log(close_b)
+            log_a[~np.isfinite(log_a)] = np.nan
+            log_b[~np.isfinite(log_b)] = np.nan
+
+            try:
+                hr_window = min(252, max(60, log_a.size // 4))
+                hr = HedgeRatioEstimator.estimate_all_for_pair(log_a, log_b, hr_window)
+                sm = SpreadModel.fit_pair(
+                    log_a, log_b, hr["ols_series"], hr["ols_point"], window=hr_window
+                )
+            except Exception as e:
+                log.debug(
+                    f"  deep-history spread refit failed for "
+                    f"{p.symbol_a}/{p.symbol_b}: {type(e).__name__}: {e}"
+                )
+                continue
+
+            p.coint_fraction_rolling_deep = float(deep_frac_by_key.get(key, np.nan))
+            p.deep_history_used = True
+
+            existing_pb = per_bar_by_pair.get(key)
+            if existing_pb is None or len(shared_idx) > len(existing_pb["index"]):
+                per_bar_by_pair[key] = {
+                    "index": shared_idx,
+                    "spread": sm["spread"],
+                    "z_rolling": sm["z_rolling"],
+                    "z_expanding": sm["z_expanding"],
+                    "half_life_rolling_series": sm["half_life_rolling_series"],
+                    # ibkr_supplement carries no gap_flag — documented
+                    # limitation in this method's docstring, not silently
+                    # dropped.
+                    "gap_flag_a": None,
+                    "gap_flag_b": None,
+                }
+                log.info(
+                    f"  [{tf_label}] {p.symbol_a}/{p.symbol_b}: deep history "
+                    f"extended series to {len(shared_idx)} bars "
+                    f"({shared_idx.min()} to {shared_idx.max()}), "
+                    f"coint_fraction_rolling_deep={p.coint_fraction_rolling_deep:.3f}"
+                )
 
     @staticmethod
     def _save_tf_results(
@@ -4346,6 +4580,7 @@ class AnalysisPipeline:
         regimes: List[RegimeResult],
         cross: List[PairResult],
         calibration: Dict[str, Any],
+        per_bar_by_pair: Optional[Dict[Tuple[str, str], Dict[str, Any]]] = None,
     ) -> None:
         """Save all dataclass results to Parquet/JSON in output/results/{tf_label}/."""
         out_dir = _output_dir(tf_label)
@@ -4405,6 +4640,65 @@ class AnalysisPipeline:
                     json.dump(_manifest, _f, indent=2)
             except Exception as _e:
                 log.debug(f"Manifest write failed: {_e}")
+
+            # Episodic cointegration re-test on IBKR deep history, where
+            # available — mutates discovered_pairs/per_bar_by_pair in place
+            # BEFORE the persistence step below, so spread_series_*.parquet
+            # reflects the deepest available history.
+            if per_bar_by_pair:
+                AnalysisPipeline._enrich_with_deep_history(
+                    discovered_pairs, per_bar_by_pair, tf_label
+                )
+                # coint_fraction_rolling_deep was added after pairs_df was
+                # already built/saved above — re-save with the enriched
+                # columns now that they're populated.
+                pairs_df = pd.DataFrame([asdict(p) for p in discovered_pairs])
+                pairs_df.to_parquet(os.path.join(out_dir, "pairs.parquet"))
+
+            # Persist per-bar spread/z-score/half-life series for confirmed
+            # pairs only (not the superset that survived EG+FDR before
+            # structural/coint_frac filtering) — added 2026-06-21 so a future
+            # ml.py has real historical entry/exit events to build labeled
+            # training examples from, instead of just pairs.parquet's summary
+            # scalars. See DEVELOPMENT.md ml.py section. Per-bar regime-state
+            # labels deliberately NOT included here (RegimeClassifier.predict_labels()
+            # is unused/orphaned today and fitting it would add ~15-20% pipeline
+            # runtime) — deferred to a follow-up pass, not this one.
+            if per_bar_by_pair:
+                _n_persisted = 0
+                for _p in discovered_pairs:
+                    _pb = per_bar_by_pair.get((_p.symbol_a, _p.symbol_b))
+                    if _pb is None:
+                        continue
+                    try:
+                        _series_df = pd.DataFrame(
+                            {
+                                "spread": _pb["spread"],
+                                "z_rolling": _pb["z_rolling"],
+                                "z_expanding": _pb["z_expanding"],
+                                "half_life_rolling": _pb["half_life_rolling_series"],
+                                "gap_flag_a": _pb["gap_flag_a"],
+                                "gap_flag_b": _pb["gap_flag_b"],
+                            },
+                            index=_pb["index"],
+                        )
+                        _series_df.to_parquet(
+                            os.path.join(
+                                out_dir,
+                                f"spread_series_{_p.symbol_a}_{_p.symbol_b}.parquet",
+                            )
+                        )
+                        _n_persisted += 1
+                    except Exception as _e:
+                        log.debug(
+                            f"  spread_series persist failed for "
+                            f"{_p.symbol_a}/{_p.symbol_b}: {_e}"
+                        )
+                if _n_persisted:
+                    log.info(
+                        f"  [{tf_label}] persisted per-bar spread/z-score series "
+                        f"for {_n_persisted}/{len(discovered_pairs)} confirmed pairs"
+                    )
         n_structural = len(pairs) - len(discovered_pairs)
         if n_structural:
             log.info(
@@ -4549,15 +4843,21 @@ def _write_analysis_summary(results: Any, universe: Any) -> None:
         "",
         "=== confirmed_pairs ===",
     ]
+    def _fnum(val, fmt):
+        return format(val, fmt) if val is not None and np.isfinite(val) else "nan"
+
     all_pairs = []
     for tf, pairs in results.pairs_by_tf.items():
         for pr in pairs:
+            hl = pr.half_life_rolling
+            if hl is None or not np.isfinite(hl):
+                hl = pr.half_life_expanding
             all_pairs.append(
                 f"{tf:<6} {pr.symbol_a:<8} {pr.symbol_b:<8} "
-                f"hl={getattr(pr,'half_life_rolling', getattr(pr,'half_life_expanding', 0)):.1f}  "
-                f"H={getattr(pr,'hurst_rs',0):.3f}  "
+                f"hl={_fnum(hl, '.1f')}  "
+                f"H={_fnum(pr.hurst_rs, '.3f')}  "
                 f"tier={getattr(pr,'confidence_tier','?')}  "
-                f"coint_frac={getattr(pr,'coint_fraction_rolling',0):.2f}"
+                f"coint_frac={_fnum(pr.coint_fraction_rolling, '.2f')}"
             )
     lines += all_pairs if all_pairs else ["  none"]
     lines += ["", "=== errors_and_skipped ==="]
