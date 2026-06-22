@@ -2657,7 +2657,7 @@ class IBKRFeed:
                     symbol, asset_class, tf_label
                 )
                 if yf_df is not None:
-                    DataStore.save(symbol, tf_label, yf_df)
+                    DataStore.append(symbol, tf_label, yf_df)
                     log.info(f"  ✓ yfinance {symbol} {tf_label} → {len(yf_df)} bars")
                     # Don't reset consecutive_fails — IBKR is still failing
                     # Only actual IBKR success (below) resets the circuit counter
@@ -2680,7 +2680,7 @@ class IBKRFeed:
                     symbol, asset_class, tf_label
                 )
                 if yf_df is not None:
-                    DataStore.save(symbol, tf_label, yf_df)
+                    DataStore.append(symbol, tf_label, yf_df)
                     log.info(
                         f"  ✓ yfinance (1-bar fallback) {symbol} {tf_label} → {len(yf_df)} bars"
                     )
@@ -2690,7 +2690,7 @@ class IBKRFeed:
             raw_bars, symbol, asset_class, tf_label, tf_ibkr, source="ibkr"
         )
         if cleaned is not None:
-            DataStore.save(symbol, tf_label, cleaned)
+            DataStore.append(symbol, tf_label, cleaned)
             log.info(
                 f"Fetched  {symbol} {tf_label}  →  {len(cleaned)} bars  (dropped {report.bars_dropped})"
             )
@@ -3559,7 +3559,7 @@ class UniverseBuilder:
                                     f"data_end={_df2.index[-1] if len(_df2) else 'empty'})"
                                 )
                             continue
-                        DataStore.save(_sym, _tf, _df3)
+                        DataStore.append(_sym, _tf, _df3)
                         all_data[f"{_sym}_{_tf}"] = _df3
                         _saved += 1
                     log.info(
@@ -3582,18 +3582,20 @@ class UniverseBuilder:
                 # Failure reasons tracked explicitly (no more silent swallowing) —
                 # the previous version's bare `except: pass` made a systemic
                 # resample failure indistinguishable from normal skips.
-                _4h_skip_fresh = 0
                 _4h_no_1h_data = 0
                 _4h_resample_err = 0
                 _4h_freq_invalid = 0
                 _4h_saved = 0
                 _4h_first_error = None
 
+                # No is_fresh() skip here, deliberately: 1h now accumulates
+                # (DataStore.append, not save), so 4h must be re-derived from
+                # the FULL accumulated 1h every run for its own depth to grow
+                # — skipping derivation once 4h existed would silently freeze
+                # 4h's depth at whatever it was on the first run forever.
+                # append()'s dedup makes re-deriving from an unchanged 1h
+                # source a harmless no-op, not wasted work worth guarding.
                 for _sym, _cls in _all_intraday_assets:
-                    if DataStore.is_fresh(_sym, "4h"):
-                        _4h_skip_fresh += 1
-                        continue
-
                     _df1h = all_data.get(f"{_sym}_1h")
                     if _df1h is None:
                         _df1h = DataStore.load(_sym, "1h")
@@ -3696,13 +3698,12 @@ class UniverseBuilder:
                             )
                         continue
 
-                    DataStore.save(_sym, "4h", _df4h)
+                    DataStore.append(_sym, "4h", _df4h)
                     all_data[f"{_sym}_4h"] = _df4h
                     _4h_saved += 1
 
                 log.info(
                     f"    [4h] derived: {_4h_saved} saved | "
-                    f"{_4h_skip_fresh} already fresh | "
                     f"{_4h_no_1h_data} no 1h source | "
                     f"{_4h_resample_err} resample failed | "
                     f"{_4h_freq_invalid} wrong frequency after resample"
@@ -3713,7 +3714,6 @@ class UniverseBuilder:
                 _summary.record_tf(
                     "4h",
                     saved=_4h_saved,
-                    skip_fresh=_4h_skip_fresh,
                     no_source=_4h_no_1h_data,
                     resample_fail=_4h_resample_err,
                     freq_invalid=_4h_freq_invalid,
@@ -3860,7 +3860,7 @@ class UniverseBuilder:
                                         )
                                         yf_df = truncate_to_cutoff(yf_df, _dead_cutoff)
                                     if yf_df is not None and not yf_df.empty:
-                                        DataStore.save(sym, tf_label, yf_df)
+                                        DataStore.append(sym, tf_label, yf_df)
                                         all_data[f"{sym}_{tf_label}"] = yf_df
                                         n_dead += 1
                                 log.info(
@@ -3961,7 +3961,7 @@ class UniverseBuilder:
                                 df = snap_timestamps(df, tf_label)
                                 df = truncate_to_cutoff(df, _canonical_cutoff)
                             if df is not None and not df.empty:
-                                DataStore.save(symbol, tf_label, df)
+                                DataStore.append(symbol, tf_label, df)
                                 all_data[f"{symbol}_{tf_label}"] = df
                             elif df is None:
                                 # Both sources failed — queue for end-of-sweep retry
@@ -3994,7 +3994,7 @@ class UniverseBuilder:
                                     )
                                     yf_df = truncate_to_cutoff(yf_df, _canonical_cutoff)
                                 if yf_df is not None and not yf_df.empty:
-                                    DataStore.save(sym, tf_label, yf_df)
+                                    DataStore.append(sym, tf_label, yf_df)
                                     all_data[f"{sym}_{tf_label}"] = yf_df
                                     n_saved += 1
                             log.info(
@@ -4039,7 +4039,7 @@ class UniverseBuilder:
                                     r, compute_canonical_cutoff(tf_f)
                                 )
                             if r is not None and not r.empty:
-                                DataStore.save(sym_f, tf_f, r)
+                                DataStore.append(sym_f, tf_f, r)
                                 all_data[f"{sym_f}_{tf_f}"] = r
                                 _n_recovered += 1
                             else:
@@ -4112,11 +4112,14 @@ class UniverseBuilder:
                                     sym, cls, up_tf_ibkr, up_tf, eff_dur
                                 )
                                 if df_new is not None and not df_new.empty:
-                                    existing = DataStore.load(sym, up_tf)
-                                    if existing is None or len(df_new) > len(existing):
-                                        DataStore.save(sym, up_tf, df_new)
-                                        all_data[f"{sym}_{up_tf}"] = df_new
-                                        n_upgraded += 1
+                                    # No longer gated on "only if longer than what's
+                                    # cached" — now that the cache accumulates,
+                                    # append's own dedup (keep latest overlapping
+                                    # bar) is the correct merge regardless of which
+                                    # fetch happens to be longer in isolation.
+                                    DataStore.append(sym, up_tf, df_new)
+                                    all_data[f"{sym}_{up_tf}"] = df_new
+                                    n_upgraded += 1
                             if n_upgraded:
                                 log.info(
                                     f"  Upgraded {n_upgraded}/{len(up_assets)} assets "
@@ -4124,20 +4127,26 @@ class UniverseBuilder:
                                 )
                         self._ibkr_upgrade_queue = {}
 
-                    # Derive 2m and 3m from 1m for all assets that have 1m data
+                    # Derive 2m and 3m from 1m for all assets that have 1m data.
+                    # Always re-derive from the FULL accumulated 1m (DataStore.load
+                    # returns everything on disk, not just this run's fresh fetch)
+                    # — no is_fresh() skip here, deliberately, for the same reason
+                    # as the 4h-from-1h derivation above: 1m now accumulates, so
+                    # 2m/3m must be re-derived every run for their own depth to
+                    # grow, and append()'s dedup makes re-deriving from an
+                    # unchanged source a harmless no-op.
                     log.info("  Deriving 2m and 3m from 1m bars...")
                     for symbol, asset_class in all_intraday_assets:
                         df_1m = DataStore.load(symbol, "1m")
                         if df_1m is not None:
                             for tf_label, rule in IBKRFeed.RESAMPLED_FROM_1M:
-                                if not DataStore.is_fresh(symbol, tf_label):
-                                    resampled = IBKRFeed._resample(df_1m, rule)
-                                    if resampled is not None:
-                                        DataStore.save(symbol, tf_label, resampled)
-                                        all_data[f"{symbol}_{tf_label}"] = resampled
-                                        log.debug(
-                                            f"  Resampled {symbol} {tf_label} from 1m"
-                                        )
+                                resampled = IBKRFeed._resample(df_1m, rule)
+                                if resampled is not None:
+                                    DataStore.append(symbol, tf_label, resampled)
+                                    all_data[f"{symbol}_{tf_label}"] = resampled
+                                    log.debug(
+                                        f"  Resampled {symbol} {tf_label} from 1m"
+                                    )
 
                     # Mark all assets complete and add to passed
                     all_derived = [tf for tf, _ in IBKRFeed.RESAMPLED_FROM_1M]

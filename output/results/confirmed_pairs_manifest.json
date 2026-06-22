@@ -1,4 +1,17 @@
 {
+  "SPY": {
+    "tfs": [
+      "1h",
+      "3m"
+    ],
+    "added": "1h"
+  },
+  "VOO": {
+    "tfs": [
+      "1h"
+    ],
+    "added": "1h"
+  },
   "CCL": {
     "tfs": [
       "3m"
@@ -17,14 +30,7 @@
     ],
     "added": "3m"
   },
-  "SPY": {
-    "tfs": [
-      "3m",
-      "1h"
-    ],
-    "added": "3m"
-  },
-  "CNXC": {
+  "ACAD": {
     "tfs": [
       "3m"
     ],
@@ -37,12 +43,6 @@
     "added": "3m"
   },
   "FCPT": {
-    "tfs": [
-      "3m"
-    ],
-    "added": "3m"
-  },
-  "ACAD": {
     "tfs": [
       "3m"
     ],
@@ -84,10 +84,52 @@
     ],
     "added": "15m"
   },
-  "VOO": {
+  "CRWD": {
     "tfs": [
-      "1h"
+      "1m"
     ],
-    "added": "1h"
+    "added": "1m"
+  },
+  "DDOG": {
+    "tfs": [
+      "1m"
+    ],
+    "added": "1m"
+  },
+  "D": {
+    "tfs": [
+      "1m"
+    ],
+    "added": "1m"
+  },
+  "NEE": {
+    "tfs": [
+      "1m"
+    ],
+    "added": "1m"
+  },
+  "APAM": {
+    "tfs": [
+      "1m"
+    ],
+    "added": "1m"
+  },
+  "AZTA": {
+    "tfs": [
+      "1m"
+    ],
+    "added": "1m"
+  },
+  "INVX": {
+    "tfs": [
+      "1m"
+    ],
+    "added": "1m"
+  },
+  "NBHC": {
+    "tfs": [
+      "1m"
+    ],
+    "added": "1m"
   }
 }

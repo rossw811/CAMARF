@@ -94,18 +94,35 @@ class DataConfig:
     # Futures/commodities: lower floor because front-month contracts
     # naturally have 300-400 bars of history — that is valid data.
     MIN_BARS_REQUIRED: Dict[str, int] = {
-        # 1m/3m fixed 2026-06-20: the "~35 days" comments below predate the
-        # Yahoo 8-day hard limit on 1m-granularity data. _YF_INTRADAY_MAP
-        # actually fetches 1m at period="5d" (~1950 bars max: 5 trading
-        # days * 390 bars/day) and derives 3m by resampling that same 5-day
-        # source (~650 bars max). The old 5000/3000 thresholds were
-        # mathematically unreachable from either source — every single
-        # fetch failed DataCleaner.clean()'s min_bars check silently,
-        # regardless of data quality. New values are ~80% of the real max,
-        # matching the fill-rate ratio already used for 2m below.
-        "1m": 1500,  # ~80% of 1950 max (5 trading days * 390 bars/day)
-        "2m": 5000,  # ~35 days * 195 bars/day
-        "3m": 500,  # ~80% of ~650 max (derived from the same 5d/1m source)
+        # 1m/2m/3m fixed AGAIN 2026-06-22 (previous 2026-06-20 fix at
+        # 1500/5000/500 was itself still miscalibrated — verified live, not
+        # guessed). yfinance's period="5d" for 1m means 5 CALENDAR days,
+        # not 5 trading days as the prior fix's comment assumed — when
+        # fetched on a Monday/Tuesday, the weekend eats 2 of those days, so
+        # the achievable ceiling is far below the naive "5 trading days *
+        # 390 bars/day = 1950" estimate. Direct live test (2026-06-22):
+        # ALGN (liquid) got 1169 raw 1m bars; ERIE (less liquid) got only
+        # 383 — both genuinely fetched (HTTP 200, real OHLC data), both
+        # silently rejected by the old 1500/500 thresholds with ZERO
+        # exceptions raised, which is exactly why this looked like Yahoo-
+        # side throttling from the run logs alone (96-100% "fail_fetch"
+        # with no visible reason) until traced directly to
+        # DataCleaner.clean()'s fail_reason. Same issue independently
+        # confirmed for 2m (its own native yfinance interval, period=55d,
+        # NOT derived from 1m): ALGN got 5343 bars (barely above the old
+        # 5000 floor), ERIE got 2407 (well below it).
+        #
+        # New thresholds are calibrated to ALGN/ERIE's actual observed
+        # counts with real margin, not a theoretical maximum: liquid names
+        # comfortably pass at every TF; less-liquid names like ERIE are
+        # intentionally excluded from 1m (383 bars is genuinely thin for
+        # minute-bar statistical work) but DO qualify at 2m/3m, where the
+        # same calendar window naturally yields proportionally more usable
+        # bars. This is a deliberate liquidity-tier distinction, not an
+        # oversight — see DEVELOPMENT.md Session 9 for the full trace.
+        "1m": 900,  # below ALGN's 1169; above ERIE's 383 (excluded at 1m by design)
+        "2m": 2200,  # below ERIE's 2407; ALGN's 5343 passes easily
+        "3m": 300,  # below ERIE's 383 (included at 3m, unlike 1m)
         "5m": 2000,  # ~6 months of 5m bars
         "15m": 1000,  # ~6 months of 15m bars
         "30m": 500,  # ~6 months of 30m bars
@@ -266,12 +283,17 @@ class MLConfig:
     RESOLUTION_THRESHOLD = 0.5  # fraction of sigma for resolution
     RESOLUTION_BARS_MULT = 2.0  # max bars = MULT * OU half-life
 
-    # Multiclass labels
+    # Multiclass labels — at horizon N = RESOLUTION_BARS_MULT * half_life bars
+    # ahead of entry, classify by where |z-score| lands (see ml.py's
+    # _classify_outcome() for the exact priority-ordered rule; these
+    # comments previously described a different, never-implemented
+    # time-to-resolve scheme — corrected 2026-06-21 to match the definition
+    # actually locked in DEVELOPMENT.md's ml.py section).
     CLASS_LABELS = [
-        "strong_converge",  # spread resolves within 0.5 * half-life
-        "weak_converge",  # spread resolves within 1.0 * half-life
-        "no_move",  # spread does not resolve within 2.0 * half-life
-        "diverge_further",  # spread widens beyond 3.0 sigma
+        "strong_converge",  # |z_future| <= RESOLUTION_THRESHOLD (0.5)
+        "weak_converge",  # RESOLUTION_THRESHOLD < |z_future| <= 1.0
+        "no_move",  # 1.0 < |z_future| < |z_entry| (improved, not enough)
+        "diverge_further",  # |z_future| >= |z_entry| (no improvement at all)
     ]
 
     # Feature engineering
@@ -416,6 +438,123 @@ class StatsConfig:
 
 
 # =============================================================================
+# MACRO REGIME CONTEXT
+# =============================================================================
+
+
+class MacroConfig:
+    # FRED series fetched, split by native release frequency. Daily series
+    # are reindexed/ffilled onto the NYSE calendar as-is; monthly series get
+    # the same treatment plus a *_days_stale column (see macro.py) since a
+    # monthly print held flat for ~21 trading days is expected, not a gap.
+    #
+    # BAA10Y is a deliberate addition beyond the original spec's 7 series:
+    # BAMLH0A0HYM2 (the spec's HY-IG credit spread) is capped to a ~3yr
+    # rolling window by FRED's keyless CSV endpoint (confirmed via repeated
+    # live probes with explicit date-range params — looks like an ICE
+    # data-licensing restriction on the public route specifically, not a
+    # bug). BAA10Y (Moody's Baa corporate yield minus 10Y Treasury) has full
+    # history since 1986 with no such restriction, but is a DIFFERENT
+    # metric — investment-grade corporate-Treasury spread, not a high-yield
+    # option-adjusted spread — so it is fetched and classified as its own
+    # `credit_regime_proxy` column, never merged into or treated as
+    # interchangeable with the primary `credit_regime`. See
+    # CREDIT_PROXY_TIGHT_PCT/CREDIT_PROXY_WIDE_PCT below for its
+    # independently-calibrated thresholds.
+    #
+    # DTWEXBGS (Fed broad trade-weighted dollar index), DFII10 (10Y TIPS
+    # real yield), and T10YIE (10Y breakeven inflation) are a second
+    # deliberate addition (2026-06-21), beyond the original 7-series spec —
+    # full breadth per King's direction. All three confirmed via live probe
+    # to need no API key and carry no licensing restriction (unlike
+    # BAMLH0A0HYM2). DTWEXBGS only starts 2006 (the broad index wasn't
+    # compiled before then — the older "major currencies" DTWEXM series
+    # runs 1973-2019 but is discontinued; not added here, same
+    # proxy-extension option as BAA10Y if deeper dollar history is wanted
+    # later). DFII10/T10YIE start 2003 (TIPS market maturity).
+    #
+    # UNRATE feeds the derived Sahm Rule recession signal (see macro.py
+    # build()) — a real-time complement to USREC's NBER-lagged call.
+    FRED_SERIES_DAILY: List[str] = [
+        "T10Y2Y",
+        "BAMLH0A0HYM2",
+        "VIXCLS",
+        "DCOILWTICO",
+        "BAA10Y",
+        "DTWEXBGS",
+        "DFII10",
+        "T10YIE",
+    ]
+    FRED_SERIES_MONTHLY: List[str] = ["FEDFUNDS", "CPIAUCSL", "USREC", "UNRATE"]
+
+    # Public, keyless CSV endpoint — confirmed via live probe (2026-06-21) to
+    # need no API key/account. Missing observations come back as an empty
+    # field (e.g. bond-market holidays); a few older FRED series have used a
+    # literal "." for the same purpose — macro.py's parser handles both.
+    FRED_CSV_URL = "https://fred.stlouisfed.org/graph/fredgraph.csv?id={series_id}"
+
+    FETCH_RETRY_ATTEMPTS = 3
+    FETCH_RETRY_DELAY_SEC = 5
+    CACHE_MAX_AGE_HOURS = 20.0  # re-fetch at most once per day
+
+    # 1986-01-02 matches BAA10Y's/DCOILWTICO's actual start — extended back
+    # from VIXCLS's 1990-01-02 start specifically so BAA10Y's full history
+    # (the reason it was added) actually gets used, including 1987 Black
+    # Monday. vix_close/vix_regime/credit_regime correctly show NaN before
+    # their own series' real start (1990 / ~2023 respectively) rather than
+    # a fabricated value — that's the leading-NaN guard working as intended,
+    # not a regression.
+    MIN_HISTORY_START = "1986-01-02"
+
+    # Regime thresholds — DEVELOPMENT.md "Planned: FRED Macro Regime Context".
+    # T10Y2Y and VIXCLS are published by FRED in the same units the spec used
+    # (percentage points / index points) — no conversion needed.
+    YIELD_CURVE_STEEP = 1.5  # T10Y2Y > 1.5  -> steep
+    YIELD_CURVE_INVERTED = 0.0  # T10Y2Y < 0.0  -> flat_inverted
+
+    # BAMLH0A0HYM2 is published by FRED in PERCENT (e.g. 4.15 = 4.15% =
+    # 415bp), not basis points — confirmed via live probe. The original
+    # 300bp/500bp spec is expressed here in percent to match the raw series.
+    CREDIT_TIGHT_PCT = 3.0  # BAMLH0A0HYM2 < 3.0% (300bp) -> tight
+    CREDIT_WIDE_PCT = 5.0  # > 5.0% (500bp) -> wide
+
+    # BAA10Y proxy thresholds — independently calibrated against real BAA10Y
+    # history (live-probed 2026-06-21), NOT a unit conversion of the
+    # BAMLH0A0HYM2 thresholds above (different instrument, different scale:
+    # BAA10Y troughs ~1.5% in calm markets and peaked at 6.16% in the 2008
+    # GFC vs. BAMLH0A0HYM2's much wider high-yield range).
+    # Calibration points: calm 2006 ~1.6%, calm 2026 ~1.5%; 1987 Black
+    # Monday ~2.7%, 1998 LTCM ~2.8% (equity/liquidity shocks, mild on this
+    # IG-credit measure); 2011 US downgrade/Eurozone ~3.4%, 2015-16 oil
+    # crash ~3.6% (genuine credit-stress episodes); 2020 COVID ~4.3%, 2008
+    # GFC ~6.2% (systemic crises).
+    CREDIT_PROXY_TIGHT_PCT = 2.0  # BAA10Y < 2.0% -> tight
+    CREDIT_PROXY_WIDE_PCT = 3.0  # BAA10Y >= 3.0% -> wide (captures 2011/2015-16/2020/2008)
+
+    VIX_CALM = 15.0
+    VIX_NORMAL_HI = 25.0
+    VIX_ELEVATED_HI = 35.0  # > 35 -> crisis
+
+    # Sahm Rule (Claudia Sahm, Fed/Brookings) — real-time recession-risk
+    # signal: triggers when the 3-month moving average of UNRATE rises this
+    # many points above its own trailing-12-month low. Standard published
+    # trigger value; not a CAMARF-specific calibration.
+    SAHM_TRIGGER = 0.50
+
+    # Rolling-percentile regime classification window for series whose
+    # "normal" level drifts structurally over a multi-year horizon (dollar
+    # index, real yields, breakeven inflation) — an absolute-level
+    # threshold (like VIX's) would misclassify across different eras (e.g.
+    # post-2008 ZIRP vs. now for real yields). 504 trading days = ~2yr
+    # trailing reference window; MIN_PERIODS = 1yr so classification starts
+    # after 1yr of history rather than waiting the full 2yr window.
+    RELATIVE_LEVEL_WINDOW = 504
+    RELATIVE_LEVEL_MIN_PERIODS = 252
+    RELATIVE_LEVEL_LOW_PCTILE = 0.25
+    RELATIVE_LEVEL_HIGH_PCTILE = 0.75
+
+
+# =============================================================================
 # REPORT
 # =============================================================================
 
@@ -462,6 +601,7 @@ class Config:
     OPTIONS = OptionsConfig
     STATS = StatsConfig
     REPORT = ReportConfig
+    MACRO = MacroConfig
 
     @staticmethod
     def ensure_dirs():

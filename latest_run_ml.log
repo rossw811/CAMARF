@@ -1,0 +1,44 @@
+=== CAMARF ml.py ===
+date:        2026-06-22 11:59
+runtime_min: 0.0
+
+=== pairs ===
+  FITB/FULT@15m            entry_events=9     labeled=1     censored=0     no_half_life=0     future_not_clean=8
+  PNC/FULT@15m             entry_events=8     labeled=2     censored=0     no_half_life=0     future_not_clean=6
+  UBSI/AUB@15m             entry_events=5     labeled=0     censored=0     no_half_life=0     future_not_clean=5
+  SPY/VOO@1h               entry_events=25    labeled=3     censored=3     no_half_life=0     future_not_clean=19
+  CRWD/DDOG@1m             entry_events=12    labeled=11    censored=0     no_half_life=0     future_not_clean=1
+  D/NEE@1m                 entry_events=10    labeled=10    censored=0     no_half_life=0     future_not_clean=0
+  APAM/AZTA@1m             entry_events=0     labeled=0     censored=0     no_half_life=0     future_not_clean=0
+  APAM/INVX@1m             entry_events=0     labeled=0     censored=0     no_half_life=0     future_not_clean=0
+  APAM/NBHC@1m             entry_events=0     labeled=0     censored=0     no_half_life=0     future_not_clean=0
+  AZTA/INVX@1m             entry_events=0     labeled=0     censored=0     no_half_life=0     future_not_clean=0
+  AZTA/NBHC@1m             entry_events=0     labeled=0     censored=0     no_half_life=0     future_not_clean=0
+  INVX/NBHC@1m             entry_events=0     labeled=0     censored=0     no_half_life=0     future_not_clean=0
+  CCL/NCLH@3m              entry_events=2     labeled=1     censored=0     no_half_life=0     future_not_clean=1
+  ORCL/SPY@3m              entry_events=5     labeled=4     censored=0     no_half_life=0     future_not_clean=1
+  ACAD/CUBI@3m             entry_events=0     labeled=0     censored=0     no_half_life=0     future_not_clean=0
+  CUBI/FCPT@3m             entry_events=1     labeled=0     censored=1     no_half_life=0     future_not_clean=0
+  FCPT/NSSC@3m             entry_events=1     labeled=0     censored=0     no_half_life=0     future_not_clean=1
+
+=== label_distribution ===
+  no_move: 19
+  diverge_further: 11
+  strong_converge: 2
+
+=== notes ===
+  Insufficient data to train: 32 total examples across 3 classes (min class count=2, need >=30/class per Config.ML.MIN_CLASS_SAMPLES). This is the expected, honest result tonight — most confirmed pairs are on intraday TFs whose history just started accumulating (see DEVELOPMENT.md's data.py append-switch, 2026-06-21). Re-run as more history accumulates.
+
+=== pairs_skipped ===
+  UBSI/AUB@15m: zero labeled entry events
+  APAM/AZTA@1m: zero labeled entry events
+  APAM/INVX@1m: zero labeled entry events
+  APAM/NBHC@1m: zero labeled entry events
+  AZTA/INVX@1m: zero labeled entry events
+  AZTA/NBHC@1m: zero labeled entry events
+  INVX/NBHC@1m: zero labeled entry events
+  ACAD/CUBI@3m: zero labeled entry events
+  CUBI/FCPT@3m: zero labeled entry events
+  FCPT/NSSC@3m: zero labeled entry events
+
+=== end ===
