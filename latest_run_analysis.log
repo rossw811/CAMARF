@@ -1,16 +1,60 @@
 === CAMARF analysis.py ===
-date:        2026-06-22 08:41
-runtime_min: 21.0
-universe:    1521 assets  18831 symbol-TF keys
+date:        2026-06-22 20:17
+runtime_min: 139.9
+universe:    1521 assets  19356 symbol-TF keys
 
 === results_by_tf ===
 tf    pairs cross trios regimes
+1m    11    1     0     10
+2m    0     0     0     0
+3m    13    1     0     11
+5m    1     0     0     2
+15m   3     0     1     5
+30m   0     0     0     0
+1h    2     0     0     4
 4h    1     0     0     2
-TOTAL  1           0     2
-bias_audit_entries: 8
+8h    0     0     0     0
+1D    0     0     0     0
+7D    1     0     0     2
+1M    0     0     0     0
+3M    0     0     0     0
+6M    0     0     0     0
+TOTAL  34          1     36
+bias_audit_entries: 63
 
 === confirmed_pairs ===
-4h     SPY      VOO      hl=161.0  H=0.846  tier=silver  coint_frac=0.36
+1m     CRWD     DDOG     hl=28.6  H=0.506  tier=silver  coint_frac=0.67
+1m     FANG     OXY      hl=31.0  H=0.456  tier=silver  coint_frac=0.27
+1m     D        NEE      hl=28.1  H=0.479  tier=gold  coint_frac=0.41
+1m     ORCL     SPY      hl=0.3  H=0.477  tier=silver  coint_frac=0.14
+1m     QCOM     TXN      hl=24.7  H=0.523  tier=silver  coint_frac=0.30
+1m     APAM     AZTA     hl=114.7  H=nan  tier=gold  coint_frac=1.00
+1m     APAM     INVX     hl=66.7  H=0.503  tier=gold  coint_frac=1.00
+1m     APAM     NBHC     hl=93.9  H=nan  tier=gold  coint_frac=1.00
+1m     AZTA     INVX     hl=35.6  H=0.504  tier=gold  coint_frac=1.00
+1m     AZTA     NBHC     hl=67.6  H=nan  tier=gold  coint_frac=1.00
+1m     INVX     NBHC     hl=80.8  H=nan  tier=gold  coint_frac=1.00
+3m     ANET     ETN      hl=55.5  H=0.529  tier=silver  coint_frac=0.37
+3m     CCL      NCLH     hl=35.1  H=0.605  tier=gold  coint_frac=0.95
+3m     FIX      TER      hl=2.4  H=0.470  tier=silver  coint_frac=0.37
+3m     HPE      INTC     hl=35.8  H=0.501  tier=silver  coint_frac=0.26
+3m     ORCL     SPY      hl=3.7  H=0.494  tier=silver  coint_frac=1.00
+3m     DLB      AVA      hl=29.3  H=0.473  tier=silver  coint_frac=0.08
+3m     MTDR     ITGR     hl=608.7  H=0.420  tier=silver  coint_frac=0.15
+3m     MTDR     MGY      hl=41.0  H=0.403  tier=silver  coint_frac=0.08
+3m     SIGI     WEN      hl=3.5  H=0.445  tier=gold  coint_frac=0.23
+3m     ACAD     CUBI     hl=0.2  H=0.483  tier=silver  coint_frac=nan
+3m     CUBI     FCPT     hl=61.2  H=0.513  tier=gold  coint_frac=nan
+3m     FCPT     NSSC     hl=12.6  H=0.477  tier=silver  coint_frac=nan
+3m     WGO      WLY      hl=73.0  H=0.647  tier=silver  coint_frac=0.00
+5m     BKH      NWE      hl=15.0  H=0.405  tier=silver  coint_frac=0.21
+15m    FITB     FULT     hl=6.4  H=0.461  tier=silver  coint_frac=0.94
+15m    PNC      FULT     hl=5.0  H=0.444  tier=silver  coint_frac=1.00
+15m    UBSI     AUB      hl=7.9  H=0.421  tier=silver  coint_frac=0.88
+1h     PNC      ZION     hl=30.8  H=0.707  tier=silver  coint_frac=0.18
+1h     SPY      VOO      hl=14.0  H=0.771  tier=silver  coint_frac=0.45
+4h     SPY      VOO      hl=43.6  H=0.846  tier=silver  coint_frac=0.36
+7D     AXTA     ENVA     hl=70.9  H=0.735  tier=silver  coint_frac=0.12
 
 === errors_and_skipped ===
 

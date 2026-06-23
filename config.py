@@ -230,6 +230,18 @@ class UniverseConfig:
     MAX_HALF_LIFE_DAYS = 90  # OU half-life ceiling — beyond this, not tradeable
     MIN_HALF_LIFE_DAYS = 1  # OU half-life floor — below this, too noisy
 
+    # Episodic-cointegration defense (post-EG, applied in analysis.py's
+    # coint_frac filter). Documented design has always said 0.70; this
+    # constant didn't actually exist here, so the filter silently ran on
+    # its getattr(..., 0.40) fallback instead — a deliberate stopgap from
+    # when 0.70 filtered out everything before BUG-D42/D45 were fixed, never
+    # reconciled with the doc afterward (caught by the improve-skill audit,
+    # 2026-06-22). Restored to the documented 0.70 now that real sensitivity
+    # data shows it's achievable: 11/14 confirmed pairs already clear it
+    # (the other 3 are NaN — exempt from this filter by design, not affected
+    # by this value either way). Only D/NEE (0.41) and SPY/VOO (0.45) drop.
+    MIN_COINT_FRAC = 0.70
+
 
 # =============================================================================
 # CO-MOVEMENT ANALYSIS
@@ -247,9 +259,23 @@ class AnalysisConfig:
     JOHANSEN_SIGNIFICANCE = 0.05
 
     # Ornstein-Uhlenbeck spread model
-    OU_LOOKBACK_DAYS = 252  # rolling window for OU parameter estimation
+    OU_LOOKBACK_DAYS = 252  # ceiling on the rolling window (bars), used when
+    # half-life is NaN/degenerate; otherwise the window adapts per pair, see
+    # OU_WINDOW_HALFLIFE_MULT_MEAN below.
     OU_ZSCORE_ENTRY = 2.0  # z-score threshold to flag divergence event
     OU_ZSCORE_EXIT = 0.5  # z-score threshold for mean reversion target
+
+    # Adaptive rolling-window sizing for z-score/half-life (replaces a single
+    # fixed bar count applied uniformly across all TFs and pairs): window ~=
+    # OU_WINDOW_HALFLIFE_MULT_MEAN x half-life, spanning several reversion
+    # cycles for a stable mean/std estimate. Mean and std deliberately use
+    # the SAME window (tested decoupling a shorter vol-only window — biased
+    # the z-score on real data instead of helping, see SpreadModel.fit_pair's
+    # docstring / DEVELOPMENT.md BUG-D45). A separate volatility-regime
+    # diagnostic (short/long vol ratio, same convention as relative_vol_ratio
+    # below) is a candidate future feature, not wired into this z-score.
+    OU_WINDOW_HALFLIFE_MULT_MEAN = 8  # window ~= 8x half-life
+    OU_WINDOW_MIN_BARS = 30  # floor — below this, the estimate is too noisy
 
     # Trio construction (derivative method)
     # A↔B confirmed + B↔C confirmed → test A↔B↔C
@@ -295,6 +321,34 @@ class MLConfig:
         "no_move",  # 1.0 < |z_future| < |z_entry| (improved, not enough)
         "diverge_further",  # |z_future| >= |z_entry| (no improvement at all)
     ]
+
+    # Label scheme actually used for class-count checks and training (2026-06-22,
+    # decided given the current data-scarcity bottleneck). "binary" collapses
+    # the 4 granular CLASS_LABELS above down to 2 (converged vs not) so the
+    # MIN_CLASS_SAMPLES gate needs less data to clear; the granular label is
+    # still stored on every EntryEvent regardless, so nothing is lost — this
+    # only changes what the model trains on, not what gets recorded. Switch
+    # back to "4class" once there's enough volume. Deliberately NOT the same
+    # decision as switching to Lopez de Prado's triple-barrier method (a
+    # different labeling MECHANISM, not just a different class count,
+    # already noted elsewhere in Development.md as a stronger but bigger
+    # methodology change) — that stays a separate, dedicated discussion.
+    LABEL_SCHEME = "binary"  # "binary" | "4class"
+    BINARY_LABEL_MAP = {
+        "strong_converge": "converged",
+        "weak_converge": "converged",
+        "no_move": "not_converged",
+        "diverge_further": "not_converged",
+    }
+
+    # Entry threshold used ONLY for generating ml.py training examples —
+    # deliberately separate from Config.ANALYSIS.OU_ZSCORE_ENTRY (2.0), which
+    # remains the live/production entry signal. Lower here on purpose so the
+    # meta-labeler sees a broader range of divergence outcomes while data is
+    # scarce (standard Lopez de Prado meta-labeling practice: train broader
+    # than you trade). Revisit this value once there's enough volume to
+    # afford training only on the live threshold's own examples.
+    TRAINING_ENTRY_THRESHOLD = 1.5
 
     # Feature engineering
     RSI_PERIOD = 14

@@ -80,14 +80,18 @@ policies are fast-moving and shouldn't be assumed from general knowledge.
 
 | File | Lines | Status | Purpose |
 |------|-------|--------|---------|
-| `config.py` | ~120 | ✅ Complete | All configuration parameters |
-| `data.py` | ~2100 | ✅ Complete | Data pipeline: IBKR + yfinance hybrid |
-| `analysis.py` | ~3250 | ✅ Complete | Analysis pipeline |
-| `ml.py` | — | 🔲 Planned | Feature engineering + ML classifier |
+| `config.py` | ~630 | ✅ Complete | All configuration parameters |
+| `data.py` | ~4900 | ✅ Complete | Data pipeline: yfinance-primary, IBKR fallback/intraday |
+| `data_ibkr.py` | ~500 | ✅ Complete | IBKR supplemental deep-history pipeline (confirmed pairs only) |
+| `analysis.py` | ~4980 | ✅ Complete | Analysis pipeline |
+| `macro.py` | ~684 | ✅ Complete | FRED macro regime context |
+| `ml.py` | ~530 | ✅ Complete (Stage 1) | Spread-resolution meta-labeler — see Feature Set below for what's actually implemented vs. deferred to Stage 2 |
 | `backtest.py` | — | 🔲 Planned | Walk-forward backtesting |
 | `stats.py` | — | 🔲 Planned | Statistical validation + Monte Carlo |
 | `options.py` | — | 🔲 Planned | Options overlay pricing |
 | `report.py` | — | 🔲 Planned | LaTeX report generation |
+
+*(Line counts as of 2026-06-22 — this table had drifted badly stale: it predated macro.py and ml.py entirely, and data.py/analysis.py had roughly doubled since it was last updated. Caught by the improve-skill audit this session.)*
 
 ---
 
@@ -129,7 +133,7 @@ Every bias is recorded in `output/results/bias_audit.json` at runtime.
 | Operational-history-dependent reproducibility (added 2026-06-21) | Data | Intraday caches (1m-4h, 3m) now accumulate via append() across runs instead of being wholesale-replaced — the archive is a function of *when and how often the pipeline ran*, not a pure function of script+config; a fresh clone can't regenerate the same accumulated history | Cache parquet files are git-committed (existing project convention); reproducibility model shifts from "regenerate from nothing" to "given this committed cache state, downstream reproduces identically" — same model already implicit for long-history 1D data | A run six months from now starting from a different git commit will have different accumulated intraday depth than this one; document the commit hash alongside any intraday-dependent result |
 | Adjustment-factor drift (added 2026-06-21) | Data | yfinance dividend/split adjustment factors are occasionally revised retroactively; once an intraday bar ages out of the rolling fetch window it's never re-touched, so very old archived bars may reflect a stale adjustment factor while recent ones reflect a current one | Not engineered around — documented here rather than adding periodic full-refetch-and-overwrite complexity | Old archived intraday bars may be very slightly mispriced relative to a from-scratch fetch; immaterial for short spans, untested for long accumulated spans |
 | Deep-history gap_flag loss (added 2026-06-21) | Data | The new episodic coint_fraction_rolling_deep re-test (ibkr_supplement-merged series) has no gap_flag column — DataAligner only ever processed the main cache, not ibkr_supplement — so DATA_GAP bars within the deep history aren't masked from this specific test | Documented; the original (short-window, gap-flag-aware) coint_fraction_rolling remains the primary decision input, deep version is a secondary/comparison column | An unmasked DATA_GAP bar in deep history could inflate or deflate coint_fraction_rolling_deep; not expected to be large given IBKR's own data quality, but unverified |
-| Deferred per-bar regime labels (added 2026-06-21) | Model | RegimeClassifier.predict_labels() remains unused/orphaned — per-bar leg-level regime state is NOT included in the new spread_series_*.parquet persistence, only spread/z-score/half-life | Deliberate scope decision: enabling it would add ~15-20% pipeline runtime; deferred to a follow-up pass rather than blocking the higher-value spread/z-score persistence | ml.py's first pass (Stage 1, per the staged-build discussion) won't have per-bar regime context from this persistence step alone — macro.py's daily regime context is unaffected and already available |
+| ~~Deferred per-bar regime labels~~ — **RESOLVED later the same session (2026-06-21), see "Per-bar regime persistence enabled" below** | Model | ~~RegimeClassifier.predict_labels() remains unused/orphaned~~ — wired up in `_regime_worker()`; per-bar regime labels ARE persisted, to `output/results/{tf}/regime_labels_{symbol}.parquet` (verified on disk by the improve-skill audit, 2026-06-22 — this row had gone stale, never struck through after the fix landed) | N/A — resolved, not a live bias | N/A |
 
 ---
 
@@ -266,16 +270,28 @@ Supervised multiclass classification of spread resolution outcomes. The ML layer
 
 ### Feature Set (All Volatility-Standardized)
 
-Spread-level features:
-- `zscore` — rolling 252-bar z-score (primary entry signal)
+**Caught stale by the improve-skill audit (2026-06-22): this section listed
+features as if all were implemented; ml.py v1's actual `_FEATURE_COLS` only
+has 8 of them, plus one (`mean_reversion_speed`) that's implemented but
+wasn't listed here. Split below into what's actually live vs. deferred, so
+this doesn't drift again.**
+
+#### Stage 1 — Implemented (verified directly against ml.py's `_FEATURE_COLS`)
+
+- `zscore` — rolling, half-life-adaptive-window z-score (primary entry signal; window is now adaptive per pair, see BUG-D45 — no longer a fixed 252-bar window)
 - `zscore_velocity` — change in z-score over last K bars (momentum of the spread)
-- `garch_zscore` — GARCH(1,1)-normalized z-score (adaptive to vol clustering)
 - `half_life_current` — current rolling half-life estimate (quality signal)
 - `hurst_exponent` — H < 0.5 = mean-reverting; continuous quality score
-- `realized_skewness` — negative = left-tail risk; feeds Kelly scaling
 - `coint_fraction_rolling` — fraction of recent windows showing cointegration
-- `half_life_trend` — slope of rolling half-life (positive = decaying relationship)
+- `half_life_trend_slope` — slope of rolling half-life (positive = decaying relationship)
+- `mean_reversion_speed` — θ = ln(2)/half-life (implemented, was missing from this list entirely)
 - `hedge_ratio_drift` — |OLS β - Kalman β| / OLS β (normalized stability signal)
+
+#### Stage 2 — Planned, Not Yet Implemented
+
+- `garch_zscore` — GARCH-normalized z-score (adaptive to vol clustering). **Update per the EGARCH/GJR discussion (2026-06-22): when this gets built, use an asymmetric GARCH variant (EGARCH or GJR-GARCH), not plain GARCH(1,1) as originally worded here — avoids building it once and redoing it.** Exposed as a separate feature alongside `zscore`, never as a replacement for it or baked into its denominator (tested and rejected, see BUG-D45).
+- `realized_skewness` — negative = left-tail risk; feeds Kelly scaling
+- The entire **Regime features**, **Volume/microstructure features**, and **Momentum features** groups below are also Stage 2 — none are in ml.py v1's `EntryEvent` dataclass or `_FEATURE_COLS` yet.
 
 Regime features (from HMM/GMM):
 - `regime_prob_meanreverting` — HMM state probability for the mean-reverting regime
@@ -391,6 +407,8 @@ Step: rolling forward in 6-month increments
 Refit: model retrained from scratch at each step (no warm-starting)
 ```
 
+**Decision (2026-06-22, caught underspecified by the improve-skill audit):** a flat 6-month refit step doesn't work for every pair — several confirmed pairs currently have only days of real intraday history (e.g. CRWD/DDOG, confirmed this session, ~4.7 days of real 1m bars). A 6-month window would oversample that same week dozens of times. The principled fix is a **history-scaled refit step** (interval ∝ available history per pair, same spirit as the half-life-adaptive z-score window from BUG-D45) — but **for now, gate instead**: don't run WFO on a pair at all until it clears a minimum total history floor (TBD exact bar count when backtest.py is actually built — depends on how much history has accumulated by then via data.py's append() pipeline). Revisit the scaled version once enough calendar time has passed that the gate itself becomes the binding constraint rather than a non-issue.
+
 **PBO Test (Probability of Backtest Overfitting):** combinatorial cross-validation across 16 subperiods. PBO < 0.25 is the threshold for "not overfit." This directly addresses the overfitting concern that any reviewer will raise.
 
 ### SHAP Feature Importance
@@ -438,6 +456,15 @@ Columns (12 metrics): IS Sharpe, OOS Sharpe, Sharpe decay ratio, Win rate, Profi
 ### Purpose
 
 Walk-forward backtesting of confirmed cointegrated pairs with multiple strategy variants, risk management approaches, and portfolio construction methods. Produces the performance statistics section of the paper and validates the ML signal's practical profitability.
+
+### Trade Log Schema (Decision, 2026-06-22 — caught entirely unspecified by the improve-skill audit)
+
+`analyzer.py`'s Phase 2 (conditional P&L by regime, Hurst quintile, time-of-day, z-score magnitude, sector context — see that module's outline) and `stats.py`'s DCC-GARCH both need things from backtest.py's trade log that were never given a concrete schema — only described in prose. Two pure options were considered and rejected in favor of a hybrid:
+
+- *Wide flat row* (every entry condition pre-computed and stored per trade): simple for analyzer.py to read, but the schema has to be right upfront — adding a new condition later means replaying every backtest to backfill it.
+- *Narrow log + re-join* (log only entry/exit/pnl/symbols, look everything else up later): schema stays maximally stable, but every read needs a join.
+
+**Hybrid, decided:** log the cheap scalars already known at the moment of entry directly as columns (no recomputation needed, no replay needed if removed later): `entry_time`, `exit_time`, `symbol_a`, `symbol_b`, `tf_label`, `side`, `z_entry`, `z_exit`, `half_life_at_entry`, `hurst_at_entry`, `pnl`. For anything NOT cheap/already-known at entry (regime label, sector ETF context, macro state) — don't pre-compute it into the log; `analyzer.py` joins back to it by `entry_time` against analysis.py's already-persisted per-bar series (`spread_series_*.parquet`, `regime_labels_{symbol}.parquet` — confirmed these exist and are read-only inputs, same pattern as `ml.py`/`data_ibkr.py`). This keeps the schema stable against new entry-condition ideas (analyzer.py just joins to a different existing file) without the wide-row approach's upfront-correctness requirement.
 
 ### Strategy Variants
 
@@ -654,6 +681,8 @@ Run after EG screening to produce Gold/Silver/Bronze tier assignments.
 - Silver: two of three → included with notation
 - Bronze: EG only → appendix with strong caveat
 
+**Decision (2026-06-22, caught underspecified by the improve-skill audit):** there are 8 possible confirm/reject combinations across the three tests, and the rule above doesn't say whether every "two of three" combination is treated identically. Resolved: yes — **any two-of-three agreement is Silver, regardless of which two tests agree.** No principled reason to weight, say, EG+PO above EG+KPSS — introducing finer sub-tiers to capture that would add complexity without a clear justification. For genuine **disagreement** (not just "fewer than 3 confirm," but an actual conflict — e.g. EG confirms cointegration while KPSS also rejects stationarity, suggesting a structural break rather than weaker evidence), reuse the mechanism already decided two lines above rather than inventing a new tier: **flag for StrategyDecayDetector** review. Disagreement is a different kind of signal (possible regime change) than simple under-confirmation, and the existing flagging path already exists for exactly this.
+
 ### Robust Hedge Ratio Comparison (Huber + MM)
 
 For every confirmed pair, compute alongside existing OLS/TLS/Kalman:
@@ -787,6 +816,77 @@ Tested alongside outright shares to determine:
 - Under which conditions options outperform (high-vol environments where defined-risk matters)
 - Under which conditions options underperform (low-vol environments where premium cost exceeds upside)
 - What the implied breakeven convergence is for each options structure vs the OU model's expected convergence
+
+### Implied-Correlation Divergence — A Genuine Arbitrage Signal, Not Just a Hedging Overlay
+
+The section above uses options purely as an *execution vehicle* for a view
+the price-based pipeline already found. This section proposes a second,
+independent use: let the options market generate its *own* signal, then
+trade the disagreement between the two markets.
+
+**Concept.** A confirmed pair (A, B) is cointegrated because King's
+pipeline found persistent co-movement in realized prices. Each leg
+separately has its own CBOEFeed-sourced implied volatility surface
+(already fetched, `data.py`'s `CBOEFeed.get_surface()`). If the options
+market believes A and B will keep moving together (consistent with the
+realized cointegration), the *relationship* between their two IV surfaces
+should reflect that — e.g. their term structures and skews should move in
+a correlated way over time, and any forward-looking event (earnings, a
+sector shock) priced into one leg's IV should show up, scaled by the
+hedge ratio, in the other's. When the options market's *implied* view of
+co-movement diverges from what the *price* data just confirmed, that gap
+is the tradable signal — not a microsecond mispricing, a slower
+relative-value disagreement between two markets pricing the same
+underlying relationship. This is the academically standard "dispersion
+trading" idea (index implied vol vs. constituent implied vols reveals
+implied correlation), adapted from index/constituent to pair/pair.
+
+**Why this is the right "arbitrage" framing and put-call-parity-style
+arbitrage is not (discussed and rejected — recorded so it isn't
+re-proposed):** classic options arbitrage (put-call parity violations, box
+spreads, American/European mispricing) requires real-time, executable
+bid/ask quotes to be genuine — those mispricings are arbed away by
+co-located market makers in microseconds. `CBOEFeed` is a free, delayed,
+smoothed IV surface snapshot, not a live order book. Backtesting
+put-call-parity "arbitrage" on delayed snapshots would mostly measure
+quote staleness, not real edge, and would not hold up to MFE-program
+reviewer scrutiny. Implied-correlation divergence is structurally
+different: it's a slower-moving relative-value signal between two
+markets' *forward-looking views*, which is realistically capturable
+without needing sub-second execution.
+
+**Open methodology question (not yet resolved — scope before building):**
+a rigorous "implied correlation" number in the classic dispersion-trade
+sense comes from comparing an index option's IV to its constituents' IVs
+— CAMARF's pairs aren't index/constituent relationships, so there's no
+off-the-shelf formula to lift. Two tractable starting proxies, in
+increasing order of rigor:
+1. **IV co-movement proxy (simplest, buildable now):** track each leg's
+   ATM IV (or IV-implied expected move) over time and measure the
+   rolling correlation between the two legs' IV *changes* — directly
+   analogous to how the price pipeline already measures realized
+   correlation, just applied to IV instead of returns. A drop in this IV
+   correlation while price correlation stays high (or vice versa) is the
+   divergence signal.
+2. **True implied correlation (more rigorous, needs more scoping):**
+   requires a basket/spread option's IV on the pair itself (CBOE's free
+   feed is single-name only, so this would need either an actual listed
+   spread option, which likely doesn't exist for most confirmed pairs, or
+   a Monte-Carlo-implied-from-marginals approach using the Heston
+   calibration already planned above — i.e. given both legs' calibrated
+   Heston parameters, solve for the correlation ρ_AB that makes a
+   model-priced spread option consistent with observed single-name
+   surfaces).
+
+**Build dependency:** like the Greeks/Heston work above, this consumes
+`confirmed_pairs_manifest.json` (read-only, same pattern as
+`data_ibkr.py`/`ml.py` — never fetches independently) and is most coherent
+built *after* `backtest.py` exists, since "is the divergence signal
+actually profitable" needs the same outright-shares backtest baseline the
+options-overlay section above already wants. Proxy #1 is simple enough
+that it could be decoupled and prototyped earlier as a standalone
+diagnostic if useful sooner — not yet decided, ask before building either
+version.
 
 ### Greeks (Options Positions)
 
@@ -1762,7 +1862,7 @@ The fundamental bottleneck (pacing limits on 10,500 historical data requests) ca
 
 ### Concept
 
-For each confirmed pair, identify which specific observable conditions at entry predict the best outcomes for *that pair specifically*. Not a global "what makes pairs work" analysis — a per-pair conditional attribution system.
+For each confirmed pair, identify which specific observable conditions at entry predict the best outcomes for *that pair specifically*. Not a global "what makes pairs work" analysis — a per-pair conditional attribution system. A second, complementary axis (added 2026-06-22, see "TF-Level Funnel Analysis" below) asks the same "why" question one level up: not why a given pair works under given conditions, but why an entire TIMEFRAME yields confirmed pairs or doesn't.
 
 The key insight: the same pair behaves differently under different conditions. NTRS↔STT in a high-vol banking stress environment may mean-revert in 8 bars. The same pair during a low-vol trending market may have near-zero spread (nothing to trade) or a trending spread (fundamental repricing, not noise). The analyzer finds the specific combination of conditions that characterize each pair's "best self."
 
@@ -1895,14 +1995,113 @@ The negative results (pairs that don't show identifiable characteristics) are al
 
 ---
 
+### TF-Level Funnel Analysis — Why Do Some Timeframes Yield Nothing?
+
+**Motivating observation:** the 2026-06-22 full run shows 1m=8, 3m=5,
+15m=3 confirmed pairs, but their immediate neighbors 2m, 5m, and 30m all
+show ZERO FDR-survivors. This is a different "why" question than the
+per-pair analyzer above — it's about the discovery funnel (correlation
+pre-filter → EG raw p-value → BH-FDR → coint_fraction_rolling filter)
+itself, not about conditional performance of an already-confirmed pair.
+Genuinely useful for two reasons: (1) if real, it's a publishable finding
+("co-movement signal strength as a function of sampling frequency," not
+something most pairs-trading papers report), and (2) if it's a bug
+instead, it's the same class of issue as BUG-D42/D45 and should be caught
+the same way — verify before concluding either way.
+
+**Why this is the most buildable, least-blocked slice of analyzer.py:**
+unlike the per-pair Phase 2 work above, this needs no `backtest.py` trade
+log at all — every input already exists in analysis.py's own saved
+output (the `EG: tested=X, raw<0.05=Y, FDR-adjusted<0.05=Z` summary per
+TF, plus the underlying p-value/correlation/half-life distributions of
+the FULL candidate pool, not just the survivors). This could be a small,
+standalone analyzer.py slice built and validated before the rest of the
+module needs backtest.py to exist.
+
+**Preliminary funnel-count observation (NOT yet an explanation — flagged
+honestly, not concluded; one candidate variable already checked and
+ruled out, recorded so it isn't re-checked):**
+
+| TF  | tested | raw<0.05 | raw rate | FDR survivors | cross-asset | gold tier |
+|-----|--------|----------|----------|----------------|-------------|-----------|
+| 1m  | 4200   | 79       | 1.9%     | 11             | 229         | 735       |
+| 3m  | 15433  | 139      | 0.9%     | 13             | 290         | 7844      |
+| 5m  | 4099   | 158      | 3.9%     | 0              | 0           | 6         |
+| 15m | 14414  | 586      | 4.1%     | 3              | 0           | 6         |
+| 30m | 19519  | 847      | 4.3%     | 0              | 1234        | 12059     |
+| 1h  | 65796  | 2336     | 3.6%     | 2              | 3157        | 9865      |
+
+5m and 30m don't simply have low raw pass rates (5m's 3.9% and 30m's 4.3%
+are actually comparable to or higher than 15m's 4.1%, which DOES yield
+survivors) and it isn't simply test-count-driven either (5m has the
+FEWEST tests of this group, 30m has the MOST — opposite ends, same zero
+result).
+
+**Checked and ruled out:** cross-asset candidate count. 15m has ZERO
+cross-asset candidates — identical to 5m — yet still yields 3 survivors;
+30m has 1234 cross-asset candidates (more than 1m's 229) yet yields zero.
+No clean split along this variable. Gold-tier count is also not clean:
+5m and 15m both show an unusually tiny gold count (6, vs. hundreds-to-
+thousands for every other TF) — interesting that they match each other,
+but since 15m survives and 5m doesn't, gold-tier count alone doesn't
+explain the divergence either.
+
+The actual mechanism needs the real p-value distributions, not just
+these summary counts. Candidate hypothesis still worth checking: are
+5m/30m's near-misses systematically WEAKER (many marginal p-values just
+under 0.05, which BH-FDR is specifically designed to reject) vs. 1m/15m's
+passes including some genuinely strong ones — i.e. a real, frequency-
+dependent signal-strength effect rather than anything about candidate
+pool composition.
+
+**Resolved (2026-06-22), and both turn out to be the system working correctly, not a bug or a weak-signal issue.** Recomputed the correlation pre-filter + EG step directly for 5m, 15m (control), and 30m, capturing the FULL raw p-value array rather than just the summary counts the real pipeline persists (`debug/_investigate_5m_30m_gap.py`, read-only, never touches saved output). The bucketed p-value distribution shapes are nearly identical across all three TFs (~0.2% below p=0.001, ~79% above p=0.25 for every one of them) — the original "many weak near-misses" hypothesis is refuted; 5m and 30m both have genuinely strong minimum raw p-values (1.2e-6 and 3.0e-6 respectively), comparable to 15m's (1.7e-7).
+
+Running the actual BH-FDR procedure on the raw arrays gives the real, separate explanation for each:
+
+- **5m has exactly 1 genuine BH-FDR survivor** (p=1.2e-6, clears its threshold comfortably at k=1) — matching what the real pipeline log already showed (`FDR-adjusted<0.05=1`). The reason 5m shows 0 *confirmed* pairs has nothing to do with EG/FDR at all: that one survivor failed the separate `coint_fraction_rolling` episodic-cointegration defense (the same mechanism just refined above) — it was a real but historically narrow relationship, correctly excluded. The discovery stage worked fine; a downstream, intentional filter is doing its job.
+- **30m has zero BH-FDR survivors, genuinely** — and it's a textbook multiple-testing-correction effect, not a weak-signal one. 30m's candidate pool (19,519 pairs) is the largest of the TFs compared; BH-FDR's per-rank threshold is `(k/m) × α`, so a larger `m` demands a smaller p-value to clear the same rank. 30m's smallest p-value (3.0×10⁻⁶) misses its own threshold (2.67×10⁻⁶) by a sliver — literally a 7th-decimal-place margin — while 15m's comparably-sized smallest p-value clears its (smaller-pool, less strict) threshold easily. This is FDR control doing exactly what it's designed to do: stay conservative as the number of tests grows. Not a flaw to fix. Worth re-checking once more history accumulates — that p-value could plausibly cross with more data, or might not; it's genuinely a near-coin-flip case right now.
+
+No code changes needed for either TF — this was a discovery/diagnosis task, not a bug fix. Worth keeping as a documented example, for the paper, that the multi-stage statistical discipline (correlation pre-filter → EG/FDR → episodic-cointegration defense) is functioning conservatively, occasionally at the cost of a borderline-real signal — exactly the expected tradeoff of rigorous multiple-testing control, not evidence of something broken.
+
+### Sequencing Decision (2026-06-22) — TF-funnel now, per-pair analyzer stays behind backtest.py
+
+King agreed this is worth pursuing, with this explicit sequencing — recorded
+so a future session doesn't re-litigate or accidentally pull the blocked
+half forward:
+
+- **Proceed now:** the TF-Level Funnel Analysis above. Cheap, parallel, no
+  opportunity cost — it reuses analysis.py output that already exists and
+  blocks nothing else.
+- **Stays behind `backtest.py`, not pulled forward:** the per-pair Phase 2
+  work (conditional P&L heatmaps, regime-sensitivity scores) — it
+  structurally needs a trade log, full stop. Phase 1 (pre-backtest pair
+  characteristics) was already buildable before this conversation and
+  remains so, unaffected by this decision either way.
+
+**Statistical rigor caveats, stated explicitly so findings aren't
+oversold later:**
+1. Per-pair decision trees fit on small samples are a real overfitting
+   risk. The existing Overfitting/Bias Controls (min N=10/leaf,
+   permutation test, chronological hold-out, cross-pair consistency
+   check) are the mitigation — apply them rigorously, don't skip them
+   under time pressure once `backtest.py` exists and this becomes
+   buildable.
+2. The TF-level funnel analysis has an unavoidably small sample: there
+   are only 14 timeframes, period. Whatever pattern emerges should be
+   framed as "a plausible mechanism, investigated and evidenced" rather
+   than "a statistically validated result" — there's no path to a large-N
+   significance test on a 14-row table. This is a real limitation to
+   state plainly in the paper if this section makes it there, not to
+   paper over with false statistical confidence.
+
 ### Implementation Notes (when building)
 
-- `analyzer.py` imports from `analysis.py` (pair metadata, spread series, regimes) and `backtest.py` (trade log)
+- `analyzer.py` imports from `analysis.py` (pair metadata, spread series, regimes) always, and from `backtest.py` (trade log) only for the per-pair Phase 2 / conditional-P&L work — the TF-Level Funnel Analysis and per-pair Phase 1 work need analysis.py only, per the Sequencing Decision above
 - Decision tree: `sklearn.tree.DecisionTreeClassifier(max_depth=4, min_samples_leaf=10)`
 - Heatmap: matplotlib with `seaborn.heatmap` or `plt.imshow` + custom annotations for N and Win%
 - Feature engineering happens in the analyzer, not in backtest.py — backtest.py only logs raw entries/exits
 - The analyzer should be runnable incrementally: as more pairs accumulate in the backtest, characteristics sharpen
-- Output: one PDF per confirmed pair (the "characteristics card") + one cross-pair summary PDF
+- Output: one PDF per confirmed pair (the "characteristics card") + one cross-pair summary PDF + one TF-level funnel summary PDF
 
 ---
 
@@ -1964,6 +2163,20 @@ Deletes all parquet files for a specific TF without touching others. Use when a 
 
 **Primary defense: `coint_fraction_rolling`**
 Already in `PairResult`. Measures the fraction of rolling 252-day windows where the pair passes EG at the 5% level. A pair cointegrated 2010-2015 out of a 2005-2025 sample would show `coint_fraction_rolling ≈ 0.25` (5 of 20 years). Filter threshold: require `coint_fraction_rolling ≥ 0.70` for inclusion in the confirmed pair universe. This filters historical-only cointegration without requiring any architectural changes.
+
+**Caught by the improve-skill audit, resolved 2026-06-22: the code never actually enforced 0.70.** `Config.UNIVERSE.MIN_COINT_FRAC` didn't exist in config.py; the filter silently ran on a `getattr(..., 0.40)` fallback the whole time. Root cause (per King, confirmed): 0.70 genuinely did filter out every possible pair earlier in the project, before BUG-D42/BUG-D45 were fixed — 0.40 was a deliberate stopgap to get anything through, never reconciled with the doc once the underlying data problems were resolved. Pulled the real sensitivity data once a clean post-fix run existed: 14 of 17 confirmed pairs have a real (non-NaN) coint_fraction_rolling value, and the survivor count only changes AT each pair's actual value (it's a step function on 14 data points, not a continuum — testing intermediate values like 0.55 or 0.62 would not surface anything, since no pair sits there). `MIN_COINT_FRAC = 0.70` now actually set in config.py.
+
+**Refinement (2026-06-22): coint_fraction_rolling alone doesn't always agree with the other stability signals, so a flat cutoff isn't quite right either.** Checked the three pairs that actually sit near the boundary, against signals that ask essentially the same underlying question (is this relationship stable over time, not just historically cointegrated) — half-life trend slope and the two structural-break tests (Zivot-Andrews, CUSUM):
+
+| pair | coint_fraction_rolling | half_life trend | structural break (ZA / CUSUM) | verdict |
+|---|---|---|---|---|
+| D/NEE | 0.41 | +0.042 (decaying) | both fire | genuinely unstable — exclude |
+| SPY/VOO | 0.45 | ~flat | both fire | also fails Hurst gate (H=0.77) — exclude |
+| CRWD/DDOG | 0.67 | -0.010 (improving) | neither fires | clean on every other signal — would be a false exclusion under a flat cutoff |
+
+D/NEE and SPY/VOO are both genuinely bad on independent evidence — the low coint_fraction_rolling is correctly flagging something real. CRWD/DDOG is not — it just happens to sit below the cutoff while looking as healthy as pairs sitting at 0.88-1.0 on every other measure. Hurst is deliberately NOT part of this check (it's already a separate, dedicated gate — `passes_ml_gate` — answering a different question, reversion *strength* given mean-reversion is happening, not relationship *stability* over time; folding it in here would muddy two distinct ideas into one).
+
+**Implemented:** a pair below `MIN_COINT_FRAC` is excluded UNLESS it passes a secondary-evidence check (half-life trend slope ≤ 0 AND no break detected by either structural-break test) — see `SpreadModel`'s coint_frac filter in `AnalysisPipeline._save_tf_results()`, `PairResult.coint_frac_secondary_override` (new field, makes the override auditable in `pairs.parquet` rather than an invisible side effect of the filter). Verified against the 3 real cases above: produces exactly the intended exclude/exclude/keep outcome.
 
 **Secondary defense: walk-forward validation structure**
 Backtest trains on data through time T, tests on data after T. If cointegration broke before T, the OOS test catches it. If it broke after T (post-test period), no test can prevent that — it is the fundamental limitation of all statistical arbitrage, not a fixable bias. Document explicitly in the paper.
@@ -3508,15 +3721,106 @@ previous "0 examples" result — the full chain (gap-flag-aware entry
 detection → half-life horizon → 4-class labeling) is now verified
 working end-to-end on real intraday data, just not yet enough volume.
 
+### Investigated: identical coint_fraction_rolling/_deep values for the 4 enriched pairs — resolved, not a bug
+
+For FITB/FULT, PNC/FULT, UBSI/AUB (15m) and SPY/VOO (1h), the IBKR
+supplement file and the main yfinance cache have **identical date ranges
+and bar counts** (e.g. SPY @ 1h: both exactly 4,359 bars, 2023-07-24 →
+2026-06-18). `_enrich_with_deep_history()`'s merge is correct — it's
+merging two already-identical datasets. Traced further: yfinance's native
+1h window is only 730 days, but the main cache goes back ~3 years, meaning
+these specific symbols' main cache was already IBKR-backfilled at some
+earlier point via `data.py`'s own `IBKRFeed` (equity-intraday-IBKR-
+fallback path, gated behind `connect=True` — separate from
+`data_ibkr.py`). So `data_ibkr.py`'s "deep history" step currently adds
+nothing new for these 4 pairs — it'll matter for newly-confirmed pairs
+that haven't gone through that backfill yet. Note 1m pairs structurally
+can't benefit much either way — IBKR's own max duration for "1 min" bars
+is 42 days (`IBKRFeed._MAX_DURATION`).
+
+### BUG-D45: SpreadModel.fit_pair's rolling z-score/half-life were computed on padded, not real, bars — plus a vol-window idea tested and reverted
+
+Inspecting ml.py's first real 32 examples (post-BUG-D44) by hand, 4 of 32
+(12.5%) had |z_entry| > 10 — implausible for an OU entry signal. All four
+fired at exactly market open. Traced exactly: `rolling_zscore()` used a
+252-bar window on `DataAligner.align_intraday()`'s 24/7-padded series,
+where overnight/weekend non-trading minutes are forward-filled, not NaN.
+Right after any gap longer than the window, the window is 251 identical
+padded values + 1 real value. Derived algebraically: a window of n points
+with (n-1) identical values and 1 different one always produces a z-score
+of EXACTLY `(n-1)/sqrt(n)` for that point, regardless of the actual price
+move. For n=252 that's 15.8115 — matched the observed values to 10
+significant digits. Not a one-time error: recurs every trading day, for
+every pair, forever (every day starts after a gap).
+
+**Also found while scoping the fix:** `OU_LOOKBACK_DAYS=252` was applied
+as a flat BAR count identically across every TF — 252 bars is ~4 hours at
+1m vs. a full trading year at 1D, and `half_life_ar1()` (used as the
+window-sizing seed and for `mean_reversion_speed`) was ALSO computed on
+the same padding-contaminated series, not just `rolling_zscore`.
+
+**Fix** (`SpreadModel.fit_pair`, both call sites): rolling mean/std/half-
+life now compute on a compact trading-bars-only sub-series (`clean_mask`
+= both legs `GapFlag.NONE`, threaded in from `df_a/b["gap_flag"]` at the
+main call site; `None` — i.e. all-clean — at the IBKR deep-history
+enrichment call site, which carries no gap_flag, a pre-existing documented
+limitation, not a new gap), then scattered back to the full-length array
+(NaN at padding positions — never used as entry/outcome bars anyway). The
+window itself is now adaptive per pair: `window ≈
+OU_WINDOW_HALFLIFE_MULT_MEAN(8) × half-life`, clipped to
+`[OU_WINDOW_MIN_BARS(30), OU_LOOKBACK_DAYS(252)]` — replacing the flat
+252-bar constant, which finally gives `OU_LOOKBACK_DAYS` real purpose (it
+was defined but never read before this fix).
+
+**Tried and reverted (real finding, not just theory):** King's instinct
+to also adjust for volatility was right in spirit, so the first version
+used a SEPARATE, shorter window (`OU_WINDOW_HALFLIFE_MULT_VOL=2×half-life`)
+for the std (current-conditions-responsive) while keeping the longer
+window for the mean (stable-equilibrium). Measured directly on CRWD/DDOG:
+mean=-1.50, std=7.13, 12.3% of bars |z|>10 — much WORSE than the original
+252-bar version, not better. Mechanism: decoupling breaks the z-score's
+own mean=0/std=1-over-its-window guarantee — if the spread drifts at all
+within the longer mean window, a fast-shrinking std denominator amplifies
+that lag into a systematic bias rather than tracking real volatility.
+Reverted to a single shared window for both mean and std. Verified across
+3 pairs spanning very different history lengths after reverting: CRWD/DDOG
+(1m, ~4.7 days real history) mean=-0.28 std=1.59 frac|z|>10=0.16%;
+ORCL/SPY (3m) mean=0.10 std=1.47 frac|z|>10=0%; SPY/VOO (1h, ~3 years
+history) mean=0.11 std=1.54 frac|z|>10=0.16%. The two originally-flagged
+CRWD/DDOG bug bars dropped from a mathematically-forced ±15.8115 to -7.65
+and +12.99 respectively — still large, but now genuine (computed from
+real trading history, no longer decoupled from the actual price move),
+consistent with real overnight gap risk on a brand-new, only-4.7-day-old
+confirmed pair rather than a guaranteed artifact.
+
+**Deferred, not built:** surfacing volatility-regime information (short
+vol / long vol ratio, same convention as `relative_vol_ratio` already used
+in regime classification) as a separate diagnostic/ml.py feature rather
+than baking it into the entry z-score's own denominator — candidate Stage
+2 feature, needs King's sign-off before building like everything else
+Stage 2.
+
+**Not yet done:** the persisted `spread_series_*.parquet`/`pairs.parquet`
+half_life_rolling/expanding fields for the 17 confirmed pairs still reflect
+the OLD (padding-contaminated) computation — `_enrich_with_deep_history`'s
+discovery itself (EG/coint_fraction_rolling, unaffected by this fix) is
+correct, but the descriptive per-bar series need a re-run of analysis.py
+to refresh. A full re-run is unavoidably the ~155-min full pipeline (no
+cheaper "re-save just the per-pair modeling step" path exists without
+duplicating real pipeline logic in a standalone script — not done, to
+avoid the risk of that duplication silently diverging from the real path).
+
 ### Next Session
 
 1. ~~Re-run data.py to see whether the yfinance failure rate recovers~~ —
    superseded; root-caused and fixed (BUG-D42 above), not a network issue.
-2. Investigate the identical coint_fraction_rolling/_deep values for the
-   4 enriched pairs — confirm whether main cache and ibkr_supplement have
-   genuinely converged for these symbols (expected/fine) or whether the
-   merge logic has a subtle issue making it a near-no-op (would need a fix).
-3. ~~Re-run data.py/analysis.py/ml.py now that 1m/2m/3m actually populate~~
+2. ~~Investigate the identical coint_fraction_rolling/_deep values for the
+   4 enriched pairs~~ — done, see above (not a bug, IBKR backfill already
+   baked into main cache for these specific symbols).
+3. Re-run the full analysis.py pipeline (~155 min) to refresh persisted
+   per-bar series with the BUG-D45 fix, then re-run ml.py to see the
+   corrected example set. ~~Re-run data.py/analysis.py/ml.py now that
+   1m/2m/3m actually populate~~
    — done (see above): 1m/3m/15m/1h now have real confirmed pairs, ml.py
    produces 32 real labeled examples. Sample size still below training
    threshold — re-run again as more intraday history accumulates day over

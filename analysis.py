@@ -194,6 +194,15 @@ class PairResult:
     coint_fraction_rolling_deep: Optional[float] = None
     deep_history_used: bool = False
 
+    # Secondary-evidence override on the coint_frac filter (added 2026-06-22,
+    # see DEVELOPMENT.md): True only for a pair that fell BELOW
+    # Config.UNIVERSE.MIN_COINT_FRAC but was kept anyway because the
+    # independent stability signals (half-life trend, structural-break
+    # tests) came back clean. False/None for every other pair — passed the
+    # primary threshold cleanly, or excluded outright. Makes the override
+    # auditable in pairs.parquet rather than an invisible side effect.
+    coint_frac_secondary_override: bool = False
+
 
 @dataclass
 class TrioResult:
@@ -1979,20 +1988,35 @@ class SpreadModel:
         return spread
 
     @staticmethod
-    def rolling_zscore(spread: np.ndarray, window: int = 252) -> np.ndarray:
-        """Rolling z-score: (x - rolling_mean) / rolling_std."""
+    def rolling_zscore(spread: np.ndarray, window: int) -> np.ndarray:
+        """
+        Rolling z-score: (x - rolling_mean) / rolling_std, same window for
+        both — that shared-window property is what makes "z > 2" mean
+        "2 std devs from this series' own typical range". A decoupled,
+        shorter window for std (tried and measured, see fit_pair's
+        docstring / DEVELOPMENT.md BUG-D45) breaks that guarantee whenever
+        the spread drifts at all, producing a systematically biased z-score
+        rather than a more vol-responsive one.
+        """
         n = spread.size
         z = np.full(n, np.nan, dtype=float)
-        if n < window:
+        if n < Config.ANALYSIS.OU_WINDOW_MIN_BARS:
             return z
-        # Vectorized via pandas for speed and NaN handling
         s = pd.Series(spread)
-        mu = s.rolling(window, min_periods=window // 2).mean()
-        sd = s.rolling(window, min_periods=window // 2).std(ddof=1)
+        mu = s.rolling(window, min_periods=max(2, window // 2)).mean()
+        sd = s.rolling(window, min_periods=max(2, window // 2)).std(ddof=1)
         with np.errstate(invalid="ignore", divide="ignore"):
             z_ser = (s - mu) / sd
         z[:] = z_ser.values
         return z
+
+    @staticmethod
+    def _adaptive_window(half_life: float, mult: float, min_bars: int, max_bars: int) -> int:
+        """window ~= mult x half_life, clipped to [min_bars, max_bars]. Falls
+        back to max_bars when half-life is NaN/degenerate."""
+        if not np.isfinite(half_life) or half_life <= 0:
+            return max_bars
+        return int(np.clip(round(mult * half_life), min_bars, max_bars))
 
     @staticmethod
     def expanding_zscore(spread: np.ndarray, min_periods: int = 60) -> np.ndarray:
@@ -2086,23 +2110,73 @@ class SpreadModel:
         log_b: np.ndarray,
         hedge_series: np.ndarray,
         hedge_static: float,
-        window: int = 252,
+        clean_mask: Optional[np.ndarray] = None,
     ) -> Dict[str, Any]:
         """
         Compute full spread model for one pair. Returns dict with all
         time series and scalar summaries.
+
+        Rolling mean/std/half-life are computed on TRADING BARS ONLY
+        (clean_mask True), not the full 24/7-reindexed calendar that
+        DataAligner.align_intraday() forward-fills for intraday TFs.
+        Without this, the first real bar after any gap longer than the
+        rolling window sits in a window of (window-1) identical
+        forward-filled values plus 1 real value — a degenerate case whose
+        z-score is EXACTLY (window-1)/sqrt(window) regardless of the
+        actual price move (BUG-D45, DEVELOPMENT.md), not a real
+        divergence signal. clean_mask=None (e.g. the IBKR deep-history
+        enrichment path, which carries no gap_flag) treats every bar as
+        real — documented limitation there, not a bug here.
+
+        The window itself is adaptive per pair rather than one fixed bar
+        count applied uniformly across every TF: window ~=
+        OU_WINDOW_HALFLIFE_MULT_MEAN x half-life, spanning several
+        reversion cycles for a stable mean/std estimate.
+
+        Mean and std deliberately use the SAME window here (verified
+        empirically, not just by theory — see DEVELOPMENT.md BUG-D45): an
+        earlier version used a shorter, separately-scaled window for std
+        only (current-volatility-responsive), but on real data this
+        decouples the z-score from its own textbook mean=0/std=1-over-its-
+        window property — if the spread drifts at all over the longer mean
+        window, a fast-shrinking std denominator amplifies that lag into a
+        systematic bias (tested on CRWD/DDOG: mean -1.5, std 7.1, 12% of
+        bars |z|>10, vs. mean -0.05..0.11, std 1.4-1.7, ~0.1% |z|>10 once
+        mean and std share one window). Volatility-regime information is
+        better surfaced as a separate diagnostic feature than baked into
+        the entry signal's own denominator — not yet built, see
+        DEVELOPMENT.md.
         """
         spread = SpreadModel.compute_spread(log_a, log_b, hedge_series, hedge_static)
-        z_rolling = SpreadModel.rolling_zscore(spread, window)
-        z_expanding = SpreadModel.expanding_zscore(spread)
-        hl_full = SpreadModel.half_life_ar1(spread)
-        hl_rolling = SpreadModel.rolling_half_life(spread, window=window)
+        n = spread.size
+        if clean_mask is None:
+            clean_mask = np.ones(n, dtype=bool)
+        real_pos = np.flatnonzero(clean_mask & np.isfinite(spread))
+        spread_real = spread[real_pos]
+
+        cfg = Config.ANALYSIS
+        hl_full = SpreadModel.half_life_ar1(spread_real)
+        mean_window = SpreadModel._adaptive_window(
+            hl_full, cfg.OU_WINDOW_HALFLIFE_MULT_MEAN, cfg.OU_WINDOW_MIN_BARS, cfg.OU_LOOKBACK_DAYS
+        )
+
+        z_real = SpreadModel.rolling_zscore(spread_real, mean_window)
+        z_exp_real = SpreadModel.expanding_zscore(spread_real)
+        hl_roll_real = SpreadModel.rolling_half_life(spread_real, window=mean_window)
+
+        z_rolling = np.full(n, np.nan, dtype=float)
+        z_expanding = np.full(n, np.nan, dtype=float)
+        hl_rolling = np.full(n, np.nan, dtype=float)
+        z_rolling[real_pos] = z_real
+        z_expanding[real_pos] = z_exp_real
+        hl_rolling[real_pos] = hl_roll_real
+
         hl_rolling_median = (
-            float(np.nanmedian(hl_rolling))
-            if np.any(np.isfinite(hl_rolling))
+            float(np.nanmedian(hl_roll_real))
+            if np.any(np.isfinite(hl_roll_real))
             else np.nan
         )
-        trend_slope = SpreadModel.half_life_trend_slope(hl_rolling)
+        trend_slope = SpreadModel.half_life_trend_slope(hl_roll_real)
         theta = SpreadModel.mean_reversion_speed(hl_full)
 
         return {
@@ -2114,6 +2188,7 @@ class SpreadModel:
             "half_life_rolling_median": hl_rolling_median,
             "half_life_trend_slope": trend_slope,
             "mean_reversion_speed": theta,
+            "window": mean_window,
         }
 
 
@@ -4329,13 +4404,21 @@ class AnalysisPipeline:
         log_a[~np.isfinite(log_a)] = np.nan
         log_b[~np.isfinite(log_b)] = np.nan
 
+        gap_flag_a = df_a["gap_flag"].values if "gap_flag" in df_a else None
+        gap_flag_b = df_b["gap_flag"].values if "gap_flag" in df_b else None
+        clean_mask = (
+            (gap_flag_a == GapFlag.NONE) & (gap_flag_b == GapFlag.NONE)
+            if gap_flag_a is not None and gap_flag_b is not None
+            else None
+        )
+
         # Hedge ratios
         hr_window = min(252, max(60, log_a.size // 4))
         hr = HedgeRatioEstimator.estimate_all_for_pair(log_a, log_b, hr_window)
 
         # Spread model with rolling OLS hedge series as primary
         sm = SpreadModel.fit_pair(
-            log_a, log_b, hr["ols_series"], hr["ols_point"], window=hr_window
+            log_a, log_b, hr["ols_series"], hr["ols_point"], clean_mask=clean_mask
         )
 
         # Half-life — full sample as "expanding", rolling median for primary
@@ -4383,8 +4466,8 @@ class AnalysisPipeline:
             "z_rolling": sm["z_rolling"],
             "z_expanding": sm["z_expanding"],
             "half_life_rolling_series": sm["half_life_rolling_series"],
-            "gap_flag_a": df_a["gap_flag"].values if "gap_flag" in df_a else None,
-            "gap_flag_b": df_b["gap_flag"].values if "gap_flag" in df_b else None,
+            "gap_flag_a": gap_flag_a,
+            "gap_flag_b": gap_flag_b,
         }
 
         pair_result = PairResult(
@@ -4539,7 +4622,7 @@ class AnalysisPipeline:
                 hr_window = min(252, max(60, log_a.size // 4))
                 hr = HedgeRatioEstimator.estimate_all_for_pair(log_a, log_b, hr_window)
                 sm = SpreadModel.fit_pair(
-                    log_a, log_b, hr["ols_series"], hr["ols_point"], window=hr_window
+                    log_a, log_b, hr["ols_series"], hr["ols_point"]
                 )
             except Exception as e:
                 log.debug(
@@ -4573,6 +4656,37 @@ class AnalysisPipeline:
                 )
 
     @staticmethod
+    def passes_coint_frac_secondary_evidence(p: PairResult) -> bool:
+        """
+        True if a pair below Config.UNIVERSE.MIN_COINT_FRAC should be kept
+        anyway because the OTHER stability-over-time signals (half-life
+        trend, structural-break tests) are clean. Pulled out as its own
+        testable static method (2026-06-22) rather than left as a nested
+        function inside _save_tf_results, specifically so the reasoning
+        behind it (see Development.md's coint_fraction_rolling section) can
+        be re-verified directly — e.g. debug/_verify_coint_frac_override.py
+        — without re-running the full ~140-min analysis.py pipeline.
+
+        Hurst is deliberately NOT part of this check — it answers a
+        different question (reversion strength given mean-reversion is
+        happening), already gated separately via passes_ml_gate.
+
+        Uses pd.isna() rather than `is None`: zivot_andrews_break/
+        cusum_first_excursion are genuine Python None on the live in-memory
+        PairResult (set in StrategyDecayDetector.analyze_pair()), but a
+        parquet round-trip turns that None into float NaN — caught by
+        debug/_verify_coint_frac_override.py running this same function
+        against persisted data, not just live objects.
+        """
+        slope = getattr(p, "half_life_trend_slope", np.nan)
+        if not np.isfinite(slope) or slope > 0:
+            return False  # decaying or unknown — can't vouch for it
+        return bool(
+            pd.isna(getattr(p, "zivot_andrews_break", None))
+            and pd.isna(getattr(p, "cusum_first_excursion", None))
+        )
+
+    @staticmethod
     def _save_tf_results(
         tf_label: str,
         pairs: List[PairResult],
@@ -4596,21 +4710,45 @@ class AnalysisPipeline:
         ]
 
         # Enforce coint_fraction_rolling minimum (episodic cointegration defense).
-        # Pairs cointegrated in <40% of rolling windows are historical episodes.
+        # Pairs cointegrated in <70% of rolling windows are historical episodes.
         # Documented threshold in DEVELOPMENT.md.
+        #
+        # Secondary-evidence override (added 2026-06-22 — see Development.md,
+        # "TF-Level Funnel Analysis" investigation): coint_fraction_rolling
+        # alone doesn't always agree with the OTHER signals that measure the
+        # same underlying question (is this relationship stable over time,
+        # not just historically cointegrated). Checked directly against 3
+        # real borderline pairs: D/NEE (0.41) and SPY/VOO (0.45) both showed
+        # a decaying half-life trend AND a structural break on both Zivot-
+        # Andrews and CUSUM — genuinely unstable, correctly excluded. CRWD/
+        # DDOG (0.67) showed neither — an IMPROVING half-life trend and no
+        # break on either test — and would have been a false exclusion under
+        # a flat cutoff. Hurst is deliberately NOT part of this check: it
+        # answers a different question (how strong is the reversion, given
+        # it's happening) already gated separately via passes_ml_gate, not
+        # whether the relationship itself is stable over time.
         _MIN_COINT_FRAC = getattr(Config.UNIVERSE, "MIN_COINT_FRAC", 0.40)
+
         _n_before = len(discovered_pairs)
-        discovered_pairs = [
-            p
-            for p in discovered_pairs
-            if not np.isfinite(getattr(p, "coint_fraction_rolling", np.nan))
-            or getattr(p, "coint_fraction_rolling", 0.0) >= _MIN_COINT_FRAC
-        ]
+        _n_override = 0
+        _kept = []
+        for p in discovered_pairs:
+            cf = getattr(p, "coint_fraction_rolling", np.nan)
+            if not np.isfinite(cf) or cf >= _MIN_COINT_FRAC:
+                _kept.append(p)
+            elif AnalysisPipeline.passes_coint_frac_secondary_evidence(p):
+                p.coint_frac_secondary_override = True
+                _kept.append(p)
+                _n_override += 1
+            # else: excluded
+        discovered_pairs = _kept
         if len(discovered_pairs) < _n_before:
             log.info(
                 f"  [{tf_label}] coint_frac filter: "
                 f"{_n_before - len(discovered_pairs)} pairs removed "
-                f"(coint_fraction_rolling < {_MIN_COINT_FRAC:.2f})"
+                f"(coint_fraction_rolling < {_MIN_COINT_FRAC:.2f} and no clean "
+                f"secondary evidence); {_n_override} pairs below the threshold "
+                f"kept anyway via secondary-evidence override"
             )
         if discovered_pairs:
             pairs_df = pd.DataFrame([asdict(p) for p in discovered_pairs])
