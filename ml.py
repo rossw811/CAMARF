@@ -173,7 +173,9 @@ def _build_examples_for_pair(
         _RESULTS_DIR, _tf_dirname(tf_label), f"spread_series_{symbol_a}_{symbol_b}.parquet"
     )
     series = pd.read_parquet(series_path)
-    entry_threshold = Config.ANALYSIS.OU_ZSCORE_ENTRY
+    # Deliberately the training-only threshold, not the live OU_ZSCORE_ENTRY
+    # (2.0) — see Config.ML.TRAINING_ENTRY_THRESHOLD's comment.
+    entry_threshold = Config.ML.TRAINING_ENTRY_THRESHOLD
 
     # Clean bars only — both legs GapFlag.NONE. See _find_entry_events'
     # docstring: intraday spread_series files are mostly overnight/weekend
@@ -301,7 +303,8 @@ class MLRunSummary:
     def __init__(self):
         self.start_time = time.time()
         self.pairs: Dict[str, Dict] = {}
-        self.label_distribution: Dict[str, int] = {}
+        self.label_distribution: Dict[str, int] = {}  # what's actually trained on
+        self.granular_label_distribution: Dict[str, int] = {}  # always the full 4-class breakdown
         self.notes: List[str] = []
         self.pairs_skipped: List[Tuple[str, str, str, str]] = []
 
@@ -332,8 +335,13 @@ class MLRunSummary:
             lines.append("  (none)")
 
         if self.label_distribution:
-            lines += ["", "=== label_distribution ==="]
+            lines += ["", f"=== label_distribution (label_scheme={Config.ML.LABEL_SCHEME}, this is what training/the MIN_CLASS_SAMPLES gate sees) ==="]
             for label, n in self.label_distribution.items():
+                lines.append(f"  {label}: {n}")
+
+        if self.granular_label_distribution:
+            lines += ["", "=== granular_label_distribution (always the full 4-class outcome, regardless of label_scheme) ==="]
+            for label, n in self.granular_label_distribution.items():
                 lines.append(f"  {label}: {n}")
 
         if self.notes:
@@ -400,7 +408,17 @@ def build(min_class_samples: Optional[int] = None) -> MLResult:
 
     examples_df = pd.DataFrame([vars(e) for e in all_events])
     if not examples_df.empty:
+        # label stays the granular 4-class outcome on every record regardless
+        # of training scheme — nothing is lost by collapsing for training.
+        if Config.ML.LABEL_SCHEME == "binary":
+            examples_df["label_for_training"] = examples_df["label"].map(
+                Config.ML.BINARY_LABEL_MAP
+            )
+        else:
+            examples_df["label_for_training"] = examples_df["label"]
         for label, n in examples_df["label"].value_counts().items():
+            summary.granular_label_distribution[label] = int(n)
+        for label, n in examples_df["label_for_training"].value_counts().items():
             summary.label_distribution[label] = int(n)
 
     log.info(
@@ -412,15 +430,20 @@ def build(min_class_samples: Optional[int] = None) -> MLResult:
     result = MLResult(examples=examples_df, pairs_used=pairs_used, pairs_skipped=pairs_skipped)
 
     min_per_class = min_class_samples or Config.ML.MIN_CLASS_SAMPLES
-    n_classes_present = examples_df["label"].nunique() if not examples_df.empty else 0
+    n_classes_present = (
+        examples_df["label_for_training"].nunique() if not examples_df.empty else 0
+    )
     min_class_count = (
-        examples_df["label"].value_counts().min() if not examples_df.empty else 0
+        examples_df["label_for_training"].value_counts().min()
+        if not examples_df.empty
+        else 0
     )
 
     if examples_df.empty or n_classes_present < 2 or min_class_count < min_per_class:
         msg = (
             f"Insufficient data to train: {len(examples_df)} total examples across "
-            f"{n_classes_present} classes (min class count={min_class_count}, "
+            f"{n_classes_present} classes (label_scheme={Config.ML.LABEL_SCHEME}, "
+            f"min class count={min_class_count}, "
             f"need >={min_per_class}/class per Config.ML.MIN_CLASS_SAMPLES). "
             f"This is the expected, honest result tonight — most confirmed pairs "
             f"are on intraday TFs whose history just started accumulating "
@@ -467,7 +490,7 @@ def _train_and_validate(result: MLResult, summary: MLRunSummary) -> None:
     df = result.examples.sort_values("entry_time").reset_index(drop=True)
     X = df[_FEATURE_COLS].fillna(df[_FEATURE_COLS].median())
     le = LabelEncoder()
-    y = le.fit_transform(df["label"])
+    y = le.fit_transform(df["label_for_training"])
 
     n = len(df)
     train_end = int(n * Config.ML.TRAIN_PCT)
@@ -480,7 +503,12 @@ def _train_and_validate(result: MLResult, summary: MLRunSummary) -> None:
         return
 
     model = xgb.XGBClassifier(
-        n_estimators=200, max_depth=4, learning_rate=0.05, eval_metric="mlogloss"
+        n_estimators=200,
+        max_depth=4,
+        learning_rate=0.05,
+        eval_metric="mlogloss",
+        random_state=42,  # matches the project's seed convention (KMeans/GMM/HMM all use 42)
+        n_jobs=1,  # avoids thread-scheduling float non-determinism; free at this data size
     )
     model.fit(X_train, y_train)
 

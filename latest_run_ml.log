@@ -1,35 +1,42 @@
 === CAMARF ml.py ===
-date:        2026-06-22 11:59
+date:        2026-06-22 20:37
 runtime_min: 0.0
 
 === pairs ===
-  FITB/FULT@15m            entry_events=9     labeled=1     censored=0     no_half_life=0     future_not_clean=8
-  PNC/FULT@15m             entry_events=8     labeled=2     censored=0     no_half_life=0     future_not_clean=6
-  UBSI/AUB@15m             entry_events=5     labeled=0     censored=0     no_half_life=0     future_not_clean=5
-  SPY/VOO@1h               entry_events=25    labeled=3     censored=3     no_half_life=0     future_not_clean=19
-  CRWD/DDOG@1m             entry_events=12    labeled=11    censored=0     no_half_life=0     future_not_clean=1
-  D/NEE@1m                 entry_events=10    labeled=10    censored=0     no_half_life=0     future_not_clean=0
+  FITB/FULT@15m            entry_events=7     labeled=0     censored=0     no_half_life=0     future_not_clean=7
+  PNC/FULT@15m             entry_events=2     labeled=0     censored=0     no_half_life=0     future_not_clean=2
+  UBSI/AUB@15m             entry_events=1     labeled=0     censored=0     no_half_life=0     future_not_clean=1
+  SPY/VOO@1h               entry_events=11    labeled=2     censored=0     no_half_life=0     future_not_clean=9
+  CRWD/DDOG@1m             entry_events=14    labeled=11    censored=0     no_half_life=0     future_not_clean=3
+  D/NEE@1m                 entry_events=23    labeled=17    censored=1     no_half_life=0     future_not_clean=5
   APAM/AZTA@1m             entry_events=0     labeled=0     censored=0     no_half_life=0     future_not_clean=0
   APAM/INVX@1m             entry_events=0     labeled=0     censored=0     no_half_life=0     future_not_clean=0
   APAM/NBHC@1m             entry_events=0     labeled=0     censored=0     no_half_life=0     future_not_clean=0
   AZTA/INVX@1m             entry_events=0     labeled=0     censored=0     no_half_life=0     future_not_clean=0
   AZTA/NBHC@1m             entry_events=0     labeled=0     censored=0     no_half_life=0     future_not_clean=0
   INVX/NBHC@1m             entry_events=0     labeled=0     censored=0     no_half_life=0     future_not_clean=0
-  CCL/NCLH@3m              entry_events=2     labeled=1     censored=0     no_half_life=0     future_not_clean=1
-  ORCL/SPY@3m              entry_events=5     labeled=4     censored=0     no_half_life=0     future_not_clean=1
-  ACAD/CUBI@3m             entry_events=0     labeled=0     censored=0     no_half_life=0     future_not_clean=0
-  CUBI/FCPT@3m             entry_events=1     labeled=0     censored=1     no_half_life=0     future_not_clean=0
+  CCL/NCLH@3m              entry_events=5     labeled=4     censored=0     no_half_life=0     future_not_clean=1
+  ORCL/SPY@3m              entry_events=16    labeled=0     censored=0     no_half_life=16    future_not_clean=0
+  ACAD/CUBI@3m             entry_events=3     labeled=0     censored=0     no_half_life=3     future_not_clean=0
+  CUBI/FCPT@3m             entry_events=0     labeled=0     censored=0     no_half_life=0     future_not_clean=0
   FCPT/NSSC@3m             entry_events=1     labeled=0     censored=0     no_half_life=0     future_not_clean=1
 
-=== label_distribution ===
-  no_move: 19
-  diverge_further: 11
-  strong_converge: 2
+=== label_distribution (label_scheme=binary, this is what training/the MIN_CLASS_SAMPLES gate sees) ===
+  not_converged: 28
+  converged: 6
+
+=== granular_label_distribution (always the full 4-class outcome, regardless of label_scheme) ===
+  no_move: 15
+  diverge_further: 13
+  strong_converge: 4
+  weak_converge: 2
 
 === notes ===
-  Insufficient data to train: 32 total examples across 3 classes (min class count=2, need >=30/class per Config.ML.MIN_CLASS_SAMPLES). This is the expected, honest result tonight — most confirmed pairs are on intraday TFs whose history just started accumulating (see DEVELOPMENT.md's data.py append-switch, 2026-06-21). Re-run as more history accumulates.
+  Insufficient data to train: 34 total examples across 2 classes (label_scheme=binary, min class count=6, need >=30/class per Config.ML.MIN_CLASS_SAMPLES). This is the expected, honest result tonight — most confirmed pairs are on intraday TFs whose history just started accumulating (see DEVELOPMENT.md's data.py append-switch, 2026-06-21). Re-run as more history accumulates.
 
 === pairs_skipped ===
+  FITB/FULT@15m: zero labeled entry events
+  PNC/FULT@15m: zero labeled entry events
   UBSI/AUB@15m: zero labeled entry events
   APAM/AZTA@1m: zero labeled entry events
   APAM/INVX@1m: zero labeled entry events
@@ -37,6 +44,7 @@ runtime_min: 0.0
   AZTA/INVX@1m: zero labeled entry events
   AZTA/NBHC@1m: zero labeled entry events
   INVX/NBHC@1m: zero labeled entry events
+  ORCL/SPY@3m: zero labeled entry events
   ACAD/CUBI@3m: zero labeled entry events
   CUBI/FCPT@3m: zero labeled entry events
   FCPT/NSSC@3m: zero labeled entry events
