@@ -1,14 +1,12 @@
 === CAMARF ml.py ===
-date:        2026-06-22 20:37
+date:        2026-06-23 14:51
 runtime_min: 0.0
 
 === pairs ===
   FITB/FULT@15m            entry_events=7     labeled=0     censored=0     no_half_life=0     future_not_clean=7
   PNC/FULT@15m             entry_events=2     labeled=0     censored=0     no_half_life=0     future_not_clean=2
   UBSI/AUB@15m             entry_events=1     labeled=0     censored=0     no_half_life=0     future_not_clean=1
-  SPY/VOO@1h               entry_events=11    labeled=2     censored=0     no_half_life=0     future_not_clean=9
-  CRWD/DDOG@1m             entry_events=14    labeled=11    censored=0     no_half_life=0     future_not_clean=3
-  D/NEE@1m                 entry_events=23    labeled=17    censored=1     no_half_life=0     future_not_clean=5
+  FANG/OXY@1m              entry_events=10    labeled=8     censored=0     no_half_life=0     future_not_clean=2
   APAM/AZTA@1m             entry_events=0     labeled=0     censored=0     no_half_life=0     future_not_clean=0
   APAM/INVX@1m             entry_events=0     labeled=0     censored=0     no_half_life=0     future_not_clean=0
   APAM/NBHC@1m             entry_events=0     labeled=0     censored=0     no_half_life=0     future_not_clean=0
@@ -20,19 +18,19 @@ runtime_min: 0.0
   ACAD/CUBI@3m             entry_events=3     labeled=0     censored=0     no_half_life=3     future_not_clean=0
   CUBI/FCPT@3m             entry_events=0     labeled=0     censored=0     no_half_life=0     future_not_clean=0
   FCPT/NSSC@3m             entry_events=1     labeled=0     censored=0     no_half_life=0     future_not_clean=1
+  SPY/VOO@4h               entry_events=1     labeled=0     censored=0     no_half_life=0     future_not_clean=1
 
 === label_distribution (label_scheme=binary, this is what training/the MIN_CLASS_SAMPLES gate sees) ===
-  not_converged: 28
-  converged: 6
+  not_converged: 11
+  converged: 1
 
 === granular_label_distribution (always the full 4-class outcome, regardless of label_scheme) ===
-  no_move: 15
-  diverge_further: 13
-  strong_converge: 4
-  weak_converge: 2
+  diverge_further: 9
+  no_move: 2
+  strong_converge: 1
 
 === notes ===
-  Insufficient data to train: 34 total examples across 2 classes (label_scheme=binary, min class count=6, need >=30/class per Config.ML.MIN_CLASS_SAMPLES). This is the expected, honest result tonight — most confirmed pairs are on intraday TFs whose history just started accumulating (see DEVELOPMENT.md's data.py append-switch, 2026-06-21). Re-run as more history accumulates.
+  Insufficient data to train: 12 total examples across 2 classes (label_scheme=binary, min class count=1, need >=30/class per Config.ML.MIN_CLASS_SAMPLES). This is the expected, honest result tonight — most confirmed pairs are on intraday TFs whose history just started accumulating (see DEVELOPMENT.md's data.py append-switch, 2026-06-21). Re-run as more history accumulates.
 
 === pairs_skipped ===
   FITB/FULT@15m: zero labeled entry events
@@ -48,5 +46,6 @@ runtime_min: 0.0
   ACAD/CUBI@3m: zero labeled entry events
   CUBI/FCPT@3m: zero labeled entry events
   FCPT/NSSC@3m: zero labeled entry events
+  SPY/VOO@4h: zero labeled entry events
 
 === end ===

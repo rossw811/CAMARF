@@ -232,13 +232,21 @@ class DataStore:
         day behind today. We define "stale" as: last_bar < today - 2 calendar
         days (to account for weekends and holidays).
 
-        Intraday TFs: always considered fresh (we re-fetch intraday at each
-        run because the history window is short and yfinance/IBKR don't
-        support appending — they always return a fixed lookback window).
+        Intraday TFs: NOT handled by this function at all — it unconditionally
+        returns False for them (see below), which simply means "not handled
+        here," not "never refreshed." Real intraday staleness gating lives in
+        DataStore.is_fresh(symbol, tf, max_age_hours=...) via
+        DataStore.intraday_max_age_hours(tf), used directly at each fetch call
+        site. Corrected 2026-06-23: this docstring previously claimed
+        "intraday always re-fetched at each run," which was true in intent
+        but not in the actual code — the real gating (is_fresh with no
+        max_age_hours at all) had silently meant "never re-fetched past the
+        first successful fetch," a real bug, now fixed; see BUG-D45-adjacent
+        notes in Development.md Session 10.
         """
         _INCREMENTAL_TFS = {"1D", "7D", "1M"}
         if tf_label not in _INCREMENTAL_TFS:
-            return False  # intraday always re-fetched from scratch
+            return False  # intraday staleness is handled by is_fresh() + intraday_max_age_hours(), not here
         cached = DataStore.load(symbol, tf_label)
         if cached is None or cached.empty:
             return True
@@ -444,6 +452,30 @@ class DataStore:
             return age_hours < max_age_hours
         return True
 
+    # Native-fetch intraday TFs only — excludes 4h/2m/3m, which are derived
+    # from 1h/1m and deliberately have NO is_fresh() guard at all (re-derive
+    # every run from the full accumulated source; see the comments at their
+    # derivation call sites).
+    _NATIVE_INTRADAY_TFS = {"1m", "2m", "3m", "5m", "15m", "30m", "1h"}
+
+    @staticmethod
+    def intraday_max_age_hours(tf_label: str) -> Optional[float]:
+        """
+        Found overnight (2026-06-23): every native-intraday is_fresh() call
+        site was passing no max_age_hours, so is_fresh() just meant "file
+        exists" — once a symbol/TF was cached even once, it was skipped on
+        every future run forever, regardless of staleness. This silently
+        broke the entire "intraday history accumulates day over day" premise
+        (BUG-D42/BUG-D45's append() work, the scheduled daily data.py task)
+        for any symbol that had already been successfully fetched once.
+        20h (not 24h) so a once-daily scheduled run always sees yesterday's
+        fetch as stale enough to refresh, with margin for the run firing a
+        few hours early/late on a given day. Returns None (preserves the
+        existing exists-only behavior) for daily+ TFs, which already pair
+        is_fresh() with needs_refresh()'s real date-based staleness check.
+        """
+        return 20.0 if tf_label in DataStore._NATIVE_INTRADAY_TFS else None
+
     @staticmethod
     def list_cached() -> List[str]:
         Config.ensure_dirs()
@@ -514,16 +546,6 @@ class ProgressLogger:
             "started_at": datetime.now().isoformat(),
             "completed": {},
         }
-        try:
-            with open(ProgressLogger.PROGRESS_FILE, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except Exception:
-            log.warning("Progress file corrupt — starting fresh")
-            return {
-                "config_hash": ProgressLogger.compute_config_hash(),
-                "started_at": datetime.now().isoformat(),
-                "completed": {},
-            }
 
     @staticmethod
     def save(progress: dict) -> None:
@@ -1673,7 +1695,9 @@ class YFinanceFeed:
         uncached_pairs = [
             (ibkr, yf)
             for ibkr, yf in zip(tickers, yf_tickers)
-            if not DataStore.is_fresh(ibkr, tf_label)
+            if not DataStore.is_fresh(
+                ibkr, tf_label, max_age_hours=DataStore.intraday_max_age_hours(tf_label)
+            )
         ]
         if not uncached_pairs:
             log.debug(f"    {tf_label}: all {len(tickers)} tickers cached — skipping")
@@ -1701,11 +1725,16 @@ class YFinanceFeed:
                 )
         except Exception as e:
             log.warning(f"    yfinance download failed {tf_label}: {e}")
-            return {t: None for t in uncached}
+            # Found overnight (2026-06-23): was `uncached` (undefined name —
+            # NameError), masking the real yfinance exception and crashing
+            # the whole chunked download uncaught instead of gracefully
+            # marking this chunk's tickers as failed. Result dict is keyed
+            # by IBKR symbol (see "result[ibkr_ticker] = ..." below).
+            return {t: None for t in uncached_ibkr}
 
         if raw is None or raw.empty:
             log.warning(f"    yfinance returned empty for {tf_label}")
-            return {t: None for t in uncached}
+            return {t: None for t in uncached_ibkr}
 
         result = {}
 
@@ -2461,7 +2490,9 @@ class IBKRFeed:
         Fetch historical bars for one symbol + timeframe from IBKR.
         Cache-first, rate-limited, with reconnect on disconnection.
         """
-        if DataStore.is_fresh(symbol, tf_label):
+        if DataStore.is_fresh(
+            symbol, tf_label, max_age_hours=DataStore.intraday_max_age_hours(tf_label)
+        ):
             cached = DataStore.load(symbol, tf_label)
             if cached is not None:
                 return cached
@@ -2743,8 +2774,10 @@ class IBKRFeed:
         time.sleep(self._intraday_delay)
 
         for tf_ibkr, tf_label, max_dur in IBKRFeed.INTRADAY_TFS:
-            # Skip if already cached
-            if DataStore.is_fresh(symbol, tf_label):
+            # Skip if already cached AND still fresh (not just present)
+            if DataStore.is_fresh(
+                symbol, tf_label, max_age_hours=DataStore.intraday_max_age_hours(tf_label)
+            ):
                 cached = DataStore.load(symbol, tf_label)
                 if cached is not None:
                     result[tf_label] = cached
@@ -3394,13 +3427,27 @@ class UniverseBuilder:
         # This includes equities cached in previous sessions (not just this run).
         # Skip only if all intraday TFs are already fully cached.
         def _intraday_complete(symbol: str) -> bool:
-            """True only if every intraday TF (native + derived) is cached."""
+            """True only if every intraday TF (native + derived) is cached and fresh.
+
+            Found 2026-06-23: this gate was missed when intraday_max_age_hours()
+            was threaded into every other native-intraday is_fresh() call site
+            overnight. Left unguarded, it always returned True for any symbol
+            cached even once, emptying equity_needing_intraday/forex_needing_intraday
+            and silently skipping the entire Phase 2A yfinance sweep below —
+            confirmed via a real run (9.7min, blank intraday_tfs section).
+            """
             native_complete = all(
-                DataStore.is_fresh(symbol, tf_label)
+                DataStore.is_fresh(
+                    symbol, tf_label,
+                    max_age_hours=DataStore.intraday_max_age_hours(tf_label),
+                )
                 for _, tf_label, _ in IBKRFeed.INTRADAY_TFS
             )
             derived_complete = all(
-                DataStore.is_fresh(symbol, tf_label)
+                DataStore.is_fresh(
+                    symbol, tf_label,
+                    max_age_hours=DataStore.intraday_max_age_hours(tf_label),
+                )
                 for tf_label, _ in IBKRFeed.RESAMPLED_FROM_1M
             )
             return native_complete and derived_complete
@@ -3462,7 +3509,15 @@ class UniverseBuilder:
                     _needs = [
                         (s, cls)
                         for s, cls in _all_intraday_assets
-                        if not DataStore.is_fresh(s, _tf)
+                        # Found overnight (2026-06-23): was a bare exists
+                        # check with no max_age_hours — once a symbol/TF was
+                        # cached even once, it was skipped on every future
+                        # run forever, regardless of staleness. This is the
+                        # primary fetch loop the scheduled daily data.py run
+                        # depends on to actually accumulate intraday history.
+                        if not DataStore.is_fresh(
+                            s, _tf, max_age_hours=DataStore.intraday_max_age_hours(_tf)
+                        )
                     ]
                     if not _needs:
                         log.info(f"    [{_tf}] all assets current — skip")
@@ -3840,7 +3895,10 @@ class UniverseBuilder:
                             _dead_assets = [
                                 (s, cls)
                                 for s, cls in all_intraday_assets
-                                if not DataStore.is_fresh(s, tf_label)
+                                if not DataStore.is_fresh(
+                                    s, tf_label,
+                                    max_age_hours=DataStore.intraday_max_age_hours(tf_label),
+                                )
                                 and cls in ("equity", "etf", "crypto")
                             ]
                             if _dead_assets:
@@ -3887,7 +3945,10 @@ class UniverseBuilder:
                             if _bn % 50 == 0:
                                 log.info(f"  Batch rest #{_bn} — 60s cooldown")
                                 time.sleep(60)
-                            if DataStore.is_fresh(symbol, tf_label):
+                            if DataStore.is_fresh(
+                                symbol, tf_label,
+                                max_age_hours=DataStore.intraday_max_age_hours(tf_label),
+                            ):
                                 cached = DataStore.load(symbol, tf_label)
                                 if cached is not None:
                                     all_data[f"{symbol}_{tf_label}"] = cached

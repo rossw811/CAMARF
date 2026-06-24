@@ -1,135 +1,231 @@
 {
   "SPY": {
     "tfs": [
-      "1h",
-      "3m"
+      "4h"
     ],
     "added": "1h"
   },
   "VOO": {
     "tfs": [
+      "4h"
+    ],
+    "added": "1h"
+  },
+  "NBHC": {
+    "tfs": [
+      "1m",
+      "3m"
+    ],
+    "added": "1m"
+  },
+  "C": {
+    "tfs": [
+      "1m"
+    ],
+    "added": "1m"
+  },
+  "MS": {
+    "tfs": [
+      "1m"
+    ],
+    "added": "1m"
+  },
+  "SNDK": {
+    "tfs": [
+      "1m"
+    ],
+    "added": "1m"
+  },
+  "TXN": {
+    "tfs": [
+      "1m"
+    ],
+    "added": "1m"
+  },
+  "HRMY": {
+    "tfs": [
+      "1m"
+    ],
+    "added": "1m"
+  },
+  "PRDO": {
+    "tfs": [
+      "1m"
+    ],
+    "added": "1m"
+  },
+  "TILE": {
+    "tfs": [
+      "1m"
+    ],
+    "added": "1m"
+  },
+  "WS": {
+    "tfs": [
+      "1m"
+    ],
+    "added": "1m"
+  },
+  "ADSK": {
+    "tfs": [
+      "3m"
+    ],
+    "added": "3m"
+  },
+  "INTU": {
+    "tfs": [
+      "3m"
+    ],
+    "added": "3m"
+  },
+  "D": {
+    "tfs": [
+      "3m"
+    ],
+    "added": "3m"
+  },
+  "NEE": {
+    "tfs": [
+      "3m"
+    ],
+    "added": "3m"
+  },
+  "MTDR": {
+    "tfs": [
+      "3m"
+    ],
+    "added": "3m"
+  },
+  "MGY": {
+    "tfs": [
+      "3m"
+    ],
+    "added": "3m"
+  },
+  "ACT": {
+    "tfs": [
+      "3m"
+    ],
+    "added": "3m"
+  },
+  "AZTA": {
+    "tfs": [
+      "3m"
+    ],
+    "added": "3m"
+  },
+  "EIG": {
+    "tfs": [
+      "3m"
+    ],
+    "added": "3m"
+  },
+  "INVX": {
+    "tfs": [
+      "3m"
+    ],
+    "added": "3m"
+  },
+  "CPF": {
+    "tfs": [
+      "3m"
+    ],
+    "added": "3m"
+  },
+  "WAFD": {
+    "tfs": [
+      "3m"
+    ],
+    "added": "3m"
+  },
+  "CPK": {
+    "tfs": [
+      "3m"
+    ],
+    "added": "3m"
+  },
+  "CTKB": {
+    "tfs": [
+      "3m"
+    ],
+    "added": "3m"
+  },
+  "PRAA": {
+    "tfs": [
+      "3m"
+    ],
+    "added": "3m"
+  },
+  "UHT": {
+    "tfs": [
+      "3m"
+    ],
+    "added": "3m"
+  },
+  "EQR": {
+    "tfs": [
+      "30m"
+    ],
+    "added": "30m"
+  },
+  "INVH": {
+    "tfs": [
+      "30m"
+    ],
+    "added": "30m"
+  },
+  "LNT": {
+    "tfs": [
       "1h"
     ],
     "added": "1h"
   },
-  "CCL": {
+  "WELL": {
     "tfs": [
-      "3m"
+      "1h"
     ],
-    "added": "3m"
+    "added": "1h"
   },
-  "NCLH": {
+  "DD": {
     "tfs": [
-      "3m"
+      "1h"
     ],
-    "added": "3m"
+    "added": "1h"
   },
-  "ORCL": {
+  "GPN": {
     "tfs": [
-      "3m"
+      "1h"
     ],
-    "added": "3m"
+    "added": "1h"
   },
-  "ACAD": {
+  "JCI": {
     "tfs": [
-      "3m"
+      "1h"
     ],
-    "added": "3m"
+    "added": "1h"
   },
-  "CUBI": {
+  "EG": {
     "tfs": [
-      "3m"
+      "1h"
     ],
-    "added": "3m"
+    "added": "1h"
   },
-  "FCPT": {
+  "ORI": {
     "tfs": [
-      "3m"
+      "1h"
     ],
-    "added": "3m"
+    "added": "1h"
   },
-  "NSSC": {
+  "VRT": {
     "tfs": [
-      "3m"
+      "1h"
     ],
-    "added": "3m"
+    "added": "1h"
   },
-  "FITB": {
+  "MTZ": {
     "tfs": [
-      "15m"
+      "1h"
     ],
-    "added": "15m"
-  },
-  "FULT": {
-    "tfs": [
-      "15m"
-    ],
-    "added": "15m"
-  },
-  "PNC": {
-    "tfs": [
-      "15m"
-    ],
-    "added": "15m"
-  },
-  "UBSI": {
-    "tfs": [
-      "15m"
-    ],
-    "added": "15m"
-  },
-  "AUB": {
-    "tfs": [
-      "15m"
-    ],
-    "added": "15m"
-  },
-  "CRWD": {
-    "tfs": [
-      "1m"
-    ],
-    "added": "1m"
-  },
-  "DDOG": {
-    "tfs": [
-      "1m"
-    ],
-    "added": "1m"
-  },
-  "D": {
-    "tfs": [
-      "1m"
-    ],
-    "added": "1m"
-  },
-  "NEE": {
-    "tfs": [
-      "1m"
-    ],
-    "added": "1m"
-  },
-  "APAM": {
-    "tfs": [
-      "1m"
-    ],
-    "added": "1m"
-  },
-  "AZTA": {
-    "tfs": [
-      "1m"
-    ],
-    "added": "1m"
-  },
-  "INVX": {
-    "tfs": [
-      "1m"
-    ],
-    "added": "1m"
-  },
-  "NBHC": {
-    "tfs": [
-      "1m"
-    ],
-    "added": "1m"
+    "added": "1h"
   }
 }

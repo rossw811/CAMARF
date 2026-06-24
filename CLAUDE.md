@@ -4,7 +4,7 @@
 and detailed design rationale, see `DEVELOPMENT.md` in this same directory —
 that file is the canonical project memory. This file is the fast-orientation
 layer: what the project is, what's locked in, what NOT to re-suggest, and how
-to work with King (the developer) effectively.
+to work with Ross (the developer) effectively.
 
 ---
 
@@ -13,7 +13,7 @@ to work with King (the developer) effectively.
 CAMARF (Cross-Asset Co-Movement Arbitrage Research Framework) is an
 institutional-grade statistical arbitrage research framework targeting
 1,500+ assets (S&P Composite 1500 + crypto/forex/commodities/futures/ETFs).
-Built by King, sole developer, in part to support MFE program applications
+Built by Ross, sole developer, in part to support MFE program applications
 (Baruch, Berkeley, Columbia).
 
 A connected but separate project: a live futures pairs-trading system
@@ -53,7 +53,7 @@ statistically significant rates using multiclass ML.
    `_clean_close()`. Never silently forward-fill a DATA_GAP bar into a
    correlation or cointegration calculation.
 
-4. **No bandaid fixes. No multiple alternative solutions offered.** King
+4. **No bandaid fixes. No multiple alternative solutions offered.** Ross
    wants the single best fix for the actual root cause, verified before
    being presented as done. See "Working Style" below — this is the most
    important behavioral instruction in this file.
@@ -70,7 +70,7 @@ statistically significant rates using multiclass ML.
 
 ## Known-Resolved Issues — Do Not Re-Suggest These Fixes
 
-This list exists because King and a prior Claude session spent real time
+This list exists because Ross and a prior Claude session spent real time
 re-discovering each of these. Check here BEFORE proposing a fix that touches
 yfinance, the Wikipedia scrapers, or the universe-construction pipeline.
 
@@ -148,28 +148,28 @@ yfinance, the Wikipedia scrapers, or the universe-construction pipeline.
 
 ---
 
-## Working Style — How to Collaborate With King
+## Working Style — How to Collaborate With Ross
 
 This is as important as the technical rules above.
 
-- **This is a learn-as-you-go research thesis for King, not an execution
+- **This is a learn-as-you-go research thesis for Ross, not an execution
   exercise for Claude.** Every new concept, technique, or design idea — a
   new ML methodology, a new architectural pattern, a new metric, anything
-  not already locked in this file or DEVELOPMENT.md — goes through King
+  not already locked in this file or DEVELOPMENT.md — goes through Ross
   first: explain what it is, why it's relevant, the tradeoffs, and get
-  explicit buy-in BEFORE building it. King wants to understand and direct
+  explicit buy-in BEFORE building it. Ross wants to understand and direct
   each methodological choice, with Claude as a teaching/implementation
   partner, not a black box that silently picks the "right" answer. This is
   a different category from the bug-fixing rules below (e.g. "one best
   fix, not three alternatives" is about technical correctness once
   direction is already set — it does not mean skip the discussion when
   introducing something new). Even under autonomous/auto-mode operation,
-  pause on concept-level decisions for King's input rather than treating
+  pause on concept-level decisions for Ross's input rather than treating
   "technically the right call" as sufficient justification to proceed
   alone.
 - **Full comprehension before code.** Walk through the actual logic before
   touching anything. No code changes based on a guessed root cause.
-- **One best fix, not three alternatives.** King doesn't want "Option A vs
+- **One best fix, not three alternatives.** Ross doesn't want "Option A vs
   Option B" — find the single correct fix for the actual problem.
 - **Verify before claiming done.** Write a synthetic test that reproduces
   the bug, confirm the fix resolves it, THEN present the fix. This project
@@ -180,14 +180,14 @@ This is as important as the technical rules above.
   time sinks were extended guessing loops on yfinance failures and the
   sp600 scraper — both were eventually solved in one step once asked for
   literal, unsummarized output instead of continuing to theorize.
-- **Distrust third-party summaries of technical output.** When King pastes
+- **Distrust third-party summaries of technical output.** When Ross pastes
   a summary of a log (from DeepSeek or another tool) rather than the raw
   text, treat it as a hypothesis, not ground truth — these summaries have
   contained outright contradictions and fabricated detail (e.g. claiming
   a nonexistent traceback). Ask for the literal raw text when something
   doesn't add up logically.
 - **Don't curse, keep it direct and technical, no excessive hedging.**
-  King wants production-ready answers, not a menu of possibilities.
+  Ross wants production-ready answers, not a menu of possibilities.
 - **Use `latest_run_data.log` / `latest_run_analysis.log`** — these are
   structured, LLM-readable run summaries written automatically after every
   `data.py` / `analysis.py` run. Ask for these directly instead of raw
@@ -219,25 +219,62 @@ This is as important as the technical rules above.
 
 ## Current State (update this section each session)
 
-See `DEVELOPMENT.md` "Next Session" block at the end of Session 9 for the
-authoritative current state and next steps. As of Session 9: `macro.py`
-(FRED regime context, 25/25 verified) and `ml.py` v1 (Stage 1 meta-labeler)
-are both built. The data pipeline now genuinely accumulates intraday
-history via `append()` instead of overwriting (`data.py`), confirmed pairs'
-real per-bar spread/z-score series and per-bar regime labels are persisted
-(`analysis.py`), and `data_ibkr.py`'s deep history is actually consumed
-(`_enrich_with_deep_history()`). **BUG-D42** (1m/2m/3m fetch failures —
-`MIN_BARS_REQUIRED` miscalibrated against yfinance's calendar-day, not
-trading-day, `period="5d"`) is root-caused and fixed. **Confirmed pairs as
-of the first post-fix full run: 1m=8, 3m=5, 15m=3 (+1 trio), 1h=1** — 1m
-producing confirmed pairs at all is new this session. `ml.py` runs
-end-to-end on real data: 32 labeled entry events across 3 classes, still
-below the training threshold (expected — intraday history just started
-accumulating in earnest). **Always run scripts via
-`C:\Users\RossW\anaconda3\envs\trading\python.exe`**, not bare `python`
-(see Known-Resolved Issues). `backtest.py` and `analyzer.py` are designed
-in DEVELOPMENT.md but not yet built — next build candidate is an open
-decision (see DEVELOPMENT.md Session 9 "Next Session").
+See `DEVELOPMENT.md`'s Session 10 entries (long — this was a single
+extended overnight-into-night session) for full detail. Headline items:
+
+- **BUG-D45 extended** to five more contaminated consumers (HurstEstimator,
+  StrategyDecayDetector, TrioBuilder/Johansen, EigenportfolioDecomposer's
+  `eigh` NaN handling, RegimeClassifier/VolumeStructure). `MIN_COINT_FRAC`
+  restored to the documented 0.70 with a secondary-evidence override
+  (`coint_frac_secondary_override` on `PairResult`) — current worked
+  example is FANG/OXY, not the original CRWD/DDOG (that no longer
+  qualifies post-fix).
+- **BUG-D46/D47/D48** (is_fresh staleness gap, inflated confirmed-pair
+  count in the run summary, manifest never pruning stale pairs) — all
+  found, fixed, and verified via synthetic tests in `debug/`.
+- **BUG-D49 — the big one**: ~32% of the 1m universe (and similarly at
+  2m/3m, falling off sharply by 5m/15m/30m) is genuinely liquid by daily
+  dollar volume but shows implausibly sparse intraday price discovery
+  (median 14 distinct close prices across the ENTIRE cached history for
+  flagged symbols). Independently corroborated against IBKR's own feed —
+  real market data, not a fetch bug. 10 of 12 current 1m confirmed pairs
+  have both legs flagged. Root cause (why these specific liquid names
+  trade this way) under active investigation as of session end — see
+  `output/research/price_degeneracy_with_metadata.parquet` once that
+  finishes. A reusable screen (`price_density_screen.py`) and full
+  multi-TF audit (`audit_price_degeneracy.py`) exist; **not adopted in
+  the real pipeline yet** — Ross's explicit call: keep as a comparison
+  arm until backtest.py can show whether it actually matters.
+- **Idea #3 (basket-weight optimization)**: built and walk-forward-tested
+  four variants (unconstrained predictability-ratio optimization,
+  shrinkage toward OLS, sparsity via real trios, the actual
+  Johansson/Schmelzer/Boyd 2024 moving-band CCP mechanism). **All four
+  lose to plain OLS out-of-sample** — a real, three-times-replicated
+  negative result. Keep OLS/Kalman as the production hedge-ratio method.
+- **Idea #4 (BH-FDR robustness)**: knockoffs don't fit this problem
+  shape; built a circular-shift permutation check instead
+  (`eg_permutation_check.py`), run alongside (not replacing) production
+  BH-FDR. 12/30 confirmed pairs flagged as possibly not robust to
+  dependence. Policy for a flagged pair is, like the price-density
+  screen, being kept as a comparison-only question until backtest.py
+  exists — not decided.
+- ml.py: 16 confirmed pairs, 12 labeled entry events, 2 classes (binary
+  scheme), still below training threshold. `ConformalPredictor` added
+  and verified, not yet exercisable on real training output.
+- `PAPER.md` (new file, started this session) is a living draft —
+  methodology-first framing locked in with Ross, Strictness Paradox and
+  calendar-padding sections drafted with real numbers, BUG-D49 flagged
+  as a candidate third pillar pending the root-cause investigation above.
+- **Ross's explicit standing instruction (2026-06-23 night)**: no
+  concrete `backtest.py` code without an interactive session — see
+  `Development.md`'s "Discussion Starter" section for the
+  methodology/sequencing outline prepared instead. Architecture/
+  portfolio-management backlog lenses (from the Session 10 ~60-idea
+  list) explicitly deferred to be discussed with Ross directly, not
+  actioned solo.
+- **Always run scripts via
+  `C:\Users\RossW\anaconda3\envs\trading\python.exe`**, not bare
+  `python` (see Known-Resolved Issues).
 
 ---
 
@@ -248,6 +285,10 @@ decision (see DEVELOPMENT.md Session 9 "Next Session").
 - `analysis.py` — full analysis pipeline (correlation, EG, eigenportfolio,
   Hurst, regimes, trios) (4,100+ lines)
 - `DEVELOPMENT.md` — canonical project memory, full bug registry, session logs
+- `PAPER.md` — living draft of the actual paper/thesis, started Session 10
+  (2026-06-23). Sections marked [DRAFTED]/[OUTLINED]/[TBD] — update
+  alongside DEVELOPMENT.md whenever a session produces a citable finding,
+  not just at project completion.
 - `seed_sp_caches.py` — standalone S&P 400/600 cache seeder with retry logic
 - `latest_run_data.log` / `latest_run_analysis.log` — auto-generated run
   summaries, written after every run, read these first when diagnosing

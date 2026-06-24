@@ -82,6 +82,7 @@ class MLResult:
     model: Optional[Any] = None
     holdout_report: Optional[Dict[str, Any]] = None
     feature_importance: Optional[Dict[str, float]] = None
+    conformal: Optional["ConformalPredictor"] = None
 
 
 # =============================================================================
@@ -126,9 +127,12 @@ def _find_entry_events(
     intraday TFs is mostly overnight/weekend padding (e.g. SPY/VOO at 1h:
     25,446 total rows vs. ~4,359 actual trading-hour bars). Without this
     filter, entry events would fire on forward-filled prices at 2am, which
-    is meaningless. Reuses Config.ANALYSIS.OU_ZSCORE_ENTRY — the same
-    entry-signal convention already locked in for the rest of the
-    pipeline, not a new ml.py-specific threshold.
+    is meaningless. entry_threshold is caller-supplied — as of 2026-06-22
+    this is Config.ML.TRAINING_ENTRY_THRESHOLD (1.5), deliberately lower
+    than the live Config.ANALYSIS.OU_ZSCORE_ENTRY (2.0), so the
+    meta-labeler trains on a broader range of divergence outcomes than the
+    live signal trades on. This docstring previously claimed it reused
+    OU_ZSCORE_ENTRY directly — stale as of that change, corrected here.
     """
     az = z_rolling.abs()
     crossed = (az.shift(1) < entry_threshold) & (az >= entry_threshold)
@@ -429,7 +433,9 @@ def build(min_class_samples: Optional[int] = None) -> MLResult:
 
     result = MLResult(examples=examples_df, pairs_used=pairs_used, pairs_skipped=pairs_skipped)
 
-    min_per_class = min_class_samples or Config.ML.MIN_CLASS_SAMPLES
+    min_per_class = (
+        min_class_samples if min_class_samples is not None else Config.ML.MIN_CLASS_SAMPLES
+    )  # `or` previously ate an explicit 0 (e.g. --min-class-samples 0 to force a smoke-test run)
     n_classes_present = (
         examples_df["label_for_training"].nunique() if not examples_df.empty else 0
     )
@@ -472,6 +478,69 @@ _FEATURE_COLS = [
 ]
 
 
+class ConformalPredictor:
+    """
+    Split conformal prediction wrapper around the meta-labeler's
+    XGBClassifier (Development.md Session 10 academic backlog, idea #9).
+
+    The XGBoost probability output is a point estimate with no calibrated
+    notion of uncertainty — at this project's current sample size (12-32
+    labeled examples), that's a real liability, not a detail. Split
+    conformal prediction is distribution-free (no assumption on the
+    underlying probability model, only exchangeability of the calibration
+    and test data) and gives a marginal coverage GUARANTEE: P(true label
+    in the returned set) >= 1 - alpha, for ANY model, ANY sample size,
+    given the exchangeability assumption holds. That guarantee is the
+    honest tool for a small-N classifier — it doesn't make the model more
+    accurate, it makes its stated uncertainty trustworthy. Caveat this
+    project must keep in view: exchangeability is exactly the assumption
+    time series structurally tends to violate (regime shifts, serial
+    correlation in the underlying spread). Framed as an exploratory
+    calibration overlay, not a load-bearing guarantee on real trading
+    decisions, until that caveat is investigated further.
+
+    Calibration data source: the existing chronological train/val/test
+    split (Config.ML.TRAIN_PCT / VAL_PCT) already carves out a validation
+    slice between train and test, but nothing previously consumed it —
+    found while building this feature. That slice is exactly a calibration
+    set in conformal-prediction terms; using it gives this orphaned data
+    real purpose instead of leaving it allocated but unused.
+    """
+
+    def __init__(self, model: Any, classes: np.ndarray):
+        self.model = model
+        self.classes = classes  # predict_proba column order
+        self.calibration_scores: Optional[np.ndarray] = None
+
+    def calibrate(self, X_cal: pd.DataFrame, y_cal: np.ndarray) -> None:
+        """y_cal: integer-encoded labels matching self.classes' index order."""
+        probs = self.model.predict_proba(X_cal)
+        true_class_probs = probs[np.arange(len(y_cal)), y_cal]
+        # Nonconformity score: how surprising the true label's predicted
+        # probability was. Higher = more surprising = less conforming.
+        self.calibration_scores = 1.0 - true_class_probs
+
+    def predict_sets(self, X: pd.DataFrame, alpha: float = 0.1) -> List[List[Any]]:
+        """
+        Returns one prediction SET per row — a list of class labels whose
+        nonconformity score clears the calibrated (1-alpha) threshold. A
+        set can contain 0 (model is confident and confidently wrong on
+        calibration data — rare), 1, or all classes (model is uncertain).
+        Finite-sample-corrected quantile per Lei et al. (2018).
+        """
+        if self.calibration_scores is None:
+            raise RuntimeError("calibrate() must be called before predict_sets()")
+        n_cal = len(self.calibration_scores)
+        q_level = min(1.0, np.ceil((n_cal + 1) * (1 - alpha)) / n_cal)
+        threshold = np.quantile(self.calibration_scores, q_level, method="higher")
+        probs = self.model.predict_proba(X)
+        nonconformity = 1.0 - probs
+        return [
+            [self.classes[i] for i in range(len(row)) if row[i] <= threshold]
+            for row in nonconformity
+        ]
+
+
 def _train_and_validate(result: MLResult, summary: MLRunSummary) -> None:
     """
     Chronological holdout (not full CPCV — that needs more data than a
@@ -496,17 +565,30 @@ def _train_and_validate(result: MLResult, summary: MLRunSummary) -> None:
     train_end = int(n * Config.ML.TRAIN_PCT)
     val_end = train_end + int(n * Config.ML.VAL_PCT)
     X_train, y_train = X.iloc[:train_end], y[:train_end]
+    X_val, y_val = X.iloc[train_end:val_end], y[train_end:val_end]
     X_test, y_test = X.iloc[val_end:], y[val_end:]
 
     if len(X_train) == 0 or len(X_test) == 0:
         summary.note("Chronological split left an empty train or test fold — skipping training.")
         return
 
+    # objective/eval_metric must be derived from the actual class count, not
+    # hardcoded — Config.ML.LABEL_SCHEME="binary" means y can have 2 classes,
+    # and XGBoost's mlogloss is invalid for a binary objective (would crash
+    # at fit() the first time enough data exists to reach this code at all —
+    # caught overnight 2026-06-23 before it could fire silently in practice).
+    n_classes = len(le.classes_)
+    if n_classes <= 2:
+        objective, eval_metric = "binary:logistic", "logloss"
+    else:
+        objective, eval_metric = "multi:softprob", "mlogloss"
+
     model = xgb.XGBClassifier(
         n_estimators=200,
         max_depth=4,
         learning_rate=0.05,
-        eval_metric="mlogloss",
+        objective=objective,
+        eval_metric=eval_metric,
         random_state=42,  # matches the project's seed convention (KMeans/GMM/HMM all use 42)
         n_jobs=1,  # avoids thread-scheduling float non-determinism; free at this data size
     )
@@ -532,6 +614,41 @@ def _train_and_validate(result: MLResult, summary: MLRunSummary) -> None:
         f"Trained: n_train={len(X_train)} n_test={len(X_test)} "
         f"test_accuracy={test_acc:.2%}"
     )
+
+    # Conformal calibration uses the val slice (train_end:val_end) that the
+    # chronological split already carves out but nothing previously
+    # consumed — see ConformalPredictor's docstring.
+    if len(X_val) > 0:
+        conformal = ConformalPredictor(model, le.inverse_transform(model.classes_))
+        conformal.calibrate(X_val, y_val)
+        pred_sets = conformal.predict_sets(X_test, alpha=0.1)
+        avg_set_size = float(np.mean([len(s) for s in pred_sets]))
+        y_test_labels = le.inverse_transform(y_test)
+        empirical_coverage = float(
+            np.mean([y_test_labels[i] in pred_sets[i] for i in range(len(pred_sets))])
+        )
+        result.conformal = conformal
+        result.holdout_report["conformal"] = {
+            "n_calibration": len(X_val),
+            "alpha": 0.1,
+            "avg_prediction_set_size": avg_set_size,
+            "empirical_coverage_on_test": empirical_coverage,
+            "n_classes": n_classes,
+        }
+        log.info(
+            f"  Conformal (n_cal={len(X_val)}, alpha=0.1): avg set size "
+            f"{avg_set_size:.2f}/{n_classes} classes, empirical coverage on "
+            f"test {empirical_coverage:.2%} (target >=90%)"
+        )
+        summary.note(
+            f"Conformal: n_cal={len(X_val)} avg_set_size={avg_set_size:.2f} "
+            f"empirical_coverage={empirical_coverage:.2%}"
+        )
+    else:
+        summary.note(
+            "Conformal calibration skipped — empty validation slice "
+            "(Config.ML.VAL_PCT too small relative to current sample size)."
+        )
 
 
 def main(min_class_samples: Optional[int] = None) -> MLResult:
