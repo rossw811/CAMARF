@@ -519,7 +519,7 @@ class MacroConfig:
     # DTWEXBGS (Fed broad trade-weighted dollar index), DFII10 (10Y TIPS
     # real yield), and T10YIE (10Y breakeven inflation) are a second
     # deliberate addition (2026-06-21), beyond the original 7-series spec —
-    # full breadth per King's direction. All three confirmed via live probe
+    # full breadth per Ross's direction. All three confirmed via live probe
     # to need no API key and carry no licensing restriction (unlike
     # BAMLH0A0HYM2). DTWEXBGS only starts 2006 (the broad index wasn't
     # compiled before then — the older "major currencies" DTWEXM series

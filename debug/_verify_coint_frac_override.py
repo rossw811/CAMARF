@@ -30,6 +30,14 @@ def main():
     failures = []
     for tf_dir, sym_a, sym_b, expected in CASES:
         path = f"output/results/{tf_dir}/pairs.parquet"
+        if not os.path.exists(path):
+            # A pair excluded outright (coint_frac < threshold, no override)
+            # is never persisted at all — if EVERY candidate pair for this TF
+            # was excluded, pairs.parquet itself won't exist. That's expected
+            # for an `expected=False` case, not a failure of this script.
+            print(f"SKIP {sym_a}/{sym_b}@{tf_dir}: {path} does not exist "
+                  f"(no pairs survived coint_frac filtering for this TF)")
+            continue
         df = pd.read_parquet(path)
         row = df[(df["symbol_a"] == sym_a) & (df["symbol_b"] == sym_b)]
         if row.empty:

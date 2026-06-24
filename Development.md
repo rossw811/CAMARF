@@ -80,18 +80,18 @@ policies are fast-moving and shouldn't be assumed from general knowledge.
 
 | File | Lines | Status | Purpose |
 |------|-------|--------|---------|
-| `config.py` | ~630 | ✅ Complete | All configuration parameters |
-| `data.py` | ~4900 | ✅ Complete | Data pipeline: yfinance-primary, IBKR fallback/intraday |
+| `config.py` | ~670 | ✅ Complete | All configuration parameters |
+| `data.py` | ~4960 | ✅ Complete | Data pipeline: yfinance-primary, IBKR fallback/intraday |
 | `data_ibkr.py` | ~500 | ✅ Complete | IBKR supplemental deep-history pipeline (confirmed pairs only) |
-| `analysis.py` | ~4980 | ✅ Complete | Analysis pipeline |
+| `analysis.py` | ~5300 | ✅ Complete | Analysis pipeline |
 | `macro.py` | ~684 | ✅ Complete | FRED macro regime context |
-| `ml.py` | ~530 | ✅ Complete (Stage 1) | Spread-resolution meta-labeler — see Feature Set below for what's actually implemented vs. deferred to Stage 2 |
+| `ml.py` | ~675 | ✅ Complete (Stage 1) | Spread-resolution meta-labeler — see Feature Set below for what's actually implemented vs. deferred to Stage 2 |
 | `backtest.py` | — | 🔲 Planned | Walk-forward backtesting |
 | `stats.py` | — | 🔲 Planned | Statistical validation + Monte Carlo |
 | `options.py` | — | 🔲 Planned | Options overlay pricing |
 | `report.py` | — | 🔲 Planned | LaTeX report generation |
 
-*(Line counts as of 2026-06-22 — this table had drifted badly stale: it predated macro.py and ml.py entirely, and data.py/analysis.py had roughly doubled since it was last updated. Caught by the improve-skill audit this session.)*
+*(Line counts as of 2026-06-24, taken directly from `wc -l` against the live files, not carried forward from the previous count — analysis.py grew ~320 lines and ml.py ~145 lines over Session 10's BUG-D45-extension/eval_metric/conformal-predictor work.)*
 
 ---
 
@@ -313,7 +313,7 @@ Momentum features:
 - `factor_desert` — binary: all signal magnitudes simultaneously near zero
 
 Asset characteristics features (static, not time-varying — added 2026-06-21
-per discussion with King: the spread/regime/momentum features above answer
+per discussion with Ross: the spread/regime/momentum features above answer
 "what predicts convergence," characteristics answer "is that pattern
 universal or specific to this kind of pair"):
 - `sector_a`, `sector_b` — GICS sector (or closest available classification)
@@ -655,6 +655,105 @@ the grid-search infrastructure exists; not worth building standalone.
 
 ---
 
+## backtest.py — Discussion Starter for the Build Session (2026-06-24, ideas/methodology only, no code)
+
+Ross's explicit instruction (2026-06-23 night, before bed): no concrete
+backtest.py code tonight — this stays an interactive build, per
+CLAUDE.md's standing rule that real methodology choices need his direct
+involvement, not a finished module handed over unattended. What follows
+is a bridge between the comprehensive design above (already extensive —
+trade log schema, strategy variants, position sizing, the full
+fragile→robust portfolio-construction spectrum, risk management,
+Greeks, performance metrics, MAE/MFE, parameter sensitivity) and what
+tonight's session actually learned that bears on it. Not a replacement
+for that design — a discussion starter for the specific things tonight
+changed or left open.
+
+### What tonight directly resolves or informs
+
+1. **The WFO history-floor gate (line ~410 above, marked TBD "exact bar
+   count when backtest.py is actually built") now has a real, tested
+   reference point, not a guess.** Tonight's `predictability_optimizer.py`/
+   `ccp_variants.py` built and ran exactly this kind of gate for real:
+   skip a pair from walk-forward entirely if it has fewer than
+   `30 * (n_folds + 1)` overlapping bars (30 as a floor per fold, scaled
+   by however many folds are wanted). This isn't necessarily THE right
+   number for backtest.py's specific WFO (different question, different
+   data requirements — a full strategy backtest needs enough bars for
+   meaningful trade counts, not just enough for a stable covariance
+   estimate), but it's a concrete, already-validated STARTING POINT and
+   pattern to adapt, not a from-scratch design problem.
+2. **OLS as the production hedge-ratio method is now empirically
+   supported, not just "what we happened to build first."** Three
+   independently-built, independently-verified alternatives (predictability-
+   ratio optimization, shrinkage toward OLS, the actual moving-band CCP
+   mechanism) all failed to beat plain OLS out-of-sample across 33 real
+   pairs tonight. backtest.py's strategy variants (A/B/C above) can
+   safely build on the existing OLS/Kalman hedge-ratio convention
+   without first re-deriving whether a fancier weight-construction
+   method should be used instead — that question has a real answer now.
+3. **Tonight's "keep as comparison, decide via backtest results" calls
+   for price-density screening and flagged-pair policy aren't backtest.py
+   features — they're an argument for backtest.py's basic loop structure
+   needing to support multiple PARALLEL UNIVERSE VARIANTS from day one,**
+   not bolted on later. Concretely: backtest.py should be able to run
+   the identical strategy/sizing/portfolio-construction logic against
+   (a) the current universe as-is, (b) the universe with the
+   price-density screen applied, (c) the universe with idea #4's flagged
+   pairs excluded — and report performance for each variant side by
+   side. This is a real architectural decision worth making explicit
+   before backtest.py's main loop is written, not after: does it take a
+   single confirmed-pairs list as input (requiring a separate full run
+   per variant), or a confirmed-pairs list PLUS a set of named
+   inclusion/exclusion masks (one run, multiple reported variants)? The
+   latter is more work upfront but is exactly what "let the data decide"
+   requires to be practical rather than requiring N full re-runs by hand.
+
+### Genuinely new open questions tonight surfaced (not in the existing design at all)
+
+4. **Should backtest.py exclude, downweight, or flag-but-include pairs
+   from BUG-D49's affected universe (1m/2m/3m specifically — 15m/30m+
+   barely show the pattern) by default, or treat it as one of the
+   universe variants in point 3?** Leaning toward: treat as a variant,
+   not a default exclusion — consistent with tonight's "compare, don't
+   commit" philosophy, and the scope (1m/2m/3m-specific) means it
+   doesn't block backtest.py from running meaningfully on 15m/30m+ pairs
+   regardless of how this is decided.
+5. **Minimum-viable-portfolio gate (already flagged in the Session 10
+   portfolio-lens backlog, idea-equivalent of point 8 there) interacts
+   directly with point 3** — with a small, actively-growing confirmed-
+   pair universe (12-37 pairs depending on TF and which screening
+   variant), some portfolio-construction methods (true risk parity, HRP,
+   the constrained optimizer) need enough pairs to be meaningful at all.
+   Worth deciding the minimum N before attempting those specifically,
+   separately from whether they're attempted at all.
+
+### Suggested sequencing for the actual build session (proposal, not a decision)
+
+Given the scope above is large, a concrete proposal for what to build
+first, fastest path to a real, even if narrow, end-to-end result:
+1. Trade log schema (already fully decided, line ~460) + Variant A
+   (standard long/short spread) only, fixed 2% sizing only, equal-weight
+   portfolio only — the simplest possible vertical slice, deliberately
+   skipping every comparison axis (B/C variants, Kelly/risk-parity,
+   the 8-method portfolio spectrum) at first.
+2. Get that slice running end-to-end against the REAL confirmed-pair
+   universe, including the WFO history-floor gate (point 1) and at
+   least two of the three universe variants from point 3, even if the
+   third comes later.
+3. Only once that narrow slice produces real trade-level output does
+   layering in the comparison axes (position sizing methods, portfolio
+   construction spectrum, risk management variants) become meaningful —
+   each of those is itself a "run the same backtest N ways and compare"
+   exercise, same shape as tonight's CCP/price-density comparisons, just
+   at the strategy level instead of the weight-construction level.
+
+This is a proposal for sequencing, not a claim about what the FINAL
+backtest.py should contain — the comprehensive design above remains the
+target; this is about what order to build toward it.
+
+---
+
 ## stats.py — Comprehensive Outline
 
 ### Purpose
@@ -824,7 +923,7 @@ the price-based pipeline already found. This section proposes a second,
 independent use: let the options market generate its *own* signal, then
 trade the disagreement between the two markets.
 
-**Concept.** A confirmed pair (A, B) is cointegrated because King's
+**Concept.** A confirmed pair (A, B) is cointegrated because Ross's
 pipeline found persistent co-movement in realized prices. Each leg
 separately has its own CBOEFeed-sourced implied volatility surface
 (already fetched, `data.py`'s `CBOEFeed.get_surface()`). If the options
@@ -2065,7 +2164,7 @@ No code changes needed for either TF — this was a discovery/diagnosis task, no
 
 ### Sequencing Decision (2026-06-22) — TF-funnel now, per-pair analyzer stays behind backtest.py
 
-King agreed this is worth pursuing, with this explicit sequencing — recorded
+Ross agreed this is worth pursuing, with this explicit sequencing — recorded
 so a future session doesn't re-litigate or accidentally pull the blocked
 half forward:
 
@@ -2164,7 +2263,7 @@ Deletes all parquet files for a specific TF without touching others. Use when a 
 **Primary defense: `coint_fraction_rolling`**
 Already in `PairResult`. Measures the fraction of rolling 252-day windows where the pair passes EG at the 5% level. A pair cointegrated 2010-2015 out of a 2005-2025 sample would show `coint_fraction_rolling ≈ 0.25` (5 of 20 years). Filter threshold: require `coint_fraction_rolling ≥ 0.70` for inclusion in the confirmed pair universe. This filters historical-only cointegration without requiring any architectural changes.
 
-**Caught by the improve-skill audit, resolved 2026-06-22: the code never actually enforced 0.70.** `Config.UNIVERSE.MIN_COINT_FRAC` didn't exist in config.py; the filter silently ran on a `getattr(..., 0.40)` fallback the whole time. Root cause (per King, confirmed): 0.70 genuinely did filter out every possible pair earlier in the project, before BUG-D42/BUG-D45 were fixed — 0.40 was a deliberate stopgap to get anything through, never reconciled with the doc once the underlying data problems were resolved. Pulled the real sensitivity data once a clean post-fix run existed: 14 of 17 confirmed pairs have a real (non-NaN) coint_fraction_rolling value, and the survivor count only changes AT each pair's actual value (it's a step function on 14 data points, not a continuum — testing intermediate values like 0.55 or 0.62 would not surface anything, since no pair sits there). `MIN_COINT_FRAC = 0.70` now actually set in config.py.
+**Caught by the improve-skill audit, resolved 2026-06-22: the code never actually enforced 0.70.** `Config.UNIVERSE.MIN_COINT_FRAC` didn't exist in config.py; the filter silently ran on a `getattr(..., 0.40)` fallback the whole time. Root cause (per Ross, confirmed): 0.70 genuinely did filter out every possible pair earlier in the project, before BUG-D42/BUG-D45 were fixed — 0.40 was a deliberate stopgap to get anything through, never reconciled with the doc once the underlying data problems were resolved. Pulled the real sensitivity data once a clean post-fix run existed: 14 of 17 confirmed pairs have a real (non-NaN) coint_fraction_rolling value, and the survivor count only changes AT each pair's actual value (it's a step function on 14 data points, not a continuum — testing intermediate values like 0.55 or 0.62 would not surface anything, since no pair sits there). `MIN_COINT_FRAC = 0.70` now actually set in config.py.
 
 **Refinement (2026-06-22): coint_fraction_rolling alone doesn't always agree with the other stability signals, so a flat cutoff isn't quite right either.** Checked the three pairs that actually sit near the boundary, against signals that ask essentially the same underlying question (is this relationship stable over time, not just historically cointegrated) — half-life trend slope and the two structural-break tests (Zivot-Andrews, CUSUM):
 
@@ -3427,7 +3526,7 @@ Sharpe) once both exist.
 
 ### Context
 
-King requested macro.py (the FRED regime-context module already designed in
+Ross requested macro.py (the FRED regime-context module already designed in
 Session 6), then an extended overnight session with explicit autonomous
 authorization: implement, run, and answer-as-best-possible on open
 questions rather than blocking until morning. Three things got built:
@@ -3527,7 +3626,7 @@ anti-bot/session throttling under rapid sequential calls), and got WORSE
 on the second run, consistent with cumulative request volume from one
 session over one night. Per this project's "stop after ~3 attempts, ask
 for raw evidence" rule, not re-theorized further tonight — flagged for
-King with the raw log evidence rather than guessed at a 4th time. Net
+Ross with the raw log evidence rather than guessed at a 4th time. Net
 effect: tonight's accumulation benefit for Phase 2A's TFs was limited by
 this; 4h derivation (1506 assets) and daily refresh both succeeded fully.
 
@@ -3565,7 +3664,7 @@ final results.
 fetch failures were never Yahoo throttling — MIN_BARS_REQUIRED was still
 miscalibrated, a second time
 
-King correctly pushed back on accepting "looks like BUG-D31 throttling"
+Ross correctly pushed back on accepting "looks like BUG-D31 throttling"
 without direct evidence, and was right to. Traced live, directly: a fresh
 `yf.Ticker('ALGN').history(period='5d', interval='1m')` returns HTTP 200
 with 1172 real OHLC rows — the fetch was succeeding every time. The
@@ -3609,7 +3708,7 @@ DataFrame in scope from fitting) and persisted to
 live on 4h/SPY: 6362 rows, 5 HMM states, sensible distribution (1039-1619
 per state), <1% NaN (burn-in only).
 
-**Methodology, confirmed directly against the code (King asked specifically
+**Methodology, confirmed directly against the code (Ross asked specifically
 whether this is per-bar-instantaneous or time-averaged — it's the latter,
 three layers deep):**
 1. `build_raw_features()` — `realized_vol`/`trend_strength`/
@@ -3772,7 +3871,7 @@ OU_WINDOW_HALFLIFE_MULT_MEAN(8) × half-life`, clipped to
 252-bar constant, which finally gives `OU_LOOKBACK_DAYS` real purpose (it
 was defined but never read before this fix).
 
-**Tried and reverted (real finding, not just theory):** King's instinct
+**Tried and reverted (real finding, not just theory):** Ross's instinct
 to also adjust for volatility was right in spirit, so the first version
 used a SEPARATE, shorter window (`OU_WINDOW_HALFLIFE_MULT_VOL=2×half-life`)
 for the std (current-conditions-responsive) while keeping the longer
@@ -3797,7 +3896,7 @@ confirmed pair rather than a guaranteed artifact.
 vol / long vol ratio, same convention as `relative_vol_ratio` already used
 in regime classification) as a separate diagnostic/ml.py feature rather
 than baking it into the entry z-score's own denominator — candidate Stage
-2 feature, needs King's sign-off before building like everything else
+2 feature, needs Ross's sign-off before building like everything else
 Stage 2.
 
 **Not yet done:** the persisted `spread_series_*.parquet`/`pairs.parquet`
@@ -3838,3 +3937,1172 @@ avoid the risk of that duplication silently diverging from the real path).
    to skip them, but a sweep/retention policy would be tidier than manual
    awareness).
 
+## Session 10 — Overnight Autonomous Block: BUG-D45 Extended to 5 More Consumers, coint_frac Restored to 0.70 with Secondary-Evidence Override, BUG-D46/D47/D48 Found and Fixed on Morning Verification, ~60-Idea Backlog
+
+### Context
+
+Ross gave explicit overnight authorization to work unattended: "continue
+and complete all you can... squash bugs, build big pieces, optimize where
+we can... build new components or make already existing components even
+better... If you run out of things to do... create a huge list of
+meaningful contributory ideas." Per CLAUDE.md's "new methodology goes
+through Ross first" rule, no greenfield modules (backtest.py/stats.py/
+options.py) were built and no EGARCH/GJR upgrade was implemented without
+buy-in — the night was spent on bug-hunting and hardening already-built
+code, running already-decided pipeline work, and producing the requested
+ideas backlog. Ross's standing "don't commit/push until my final word"
+instruction stayed in force throughout.
+
+### Overnight: BUG-D45 was only ever fixed in one of six contaminated consumers
+
+BUG-D45 (previous session) fixed `SpreadModel.fit_pair`'s rolling z-score/
+half-life to use real-bars-only positions instead of `DataAligner`'s 24/7
+padded series. A systematic sweep this session found the exact same
+contamination mechanism — long runs of identical forward-filled padding
+values, invisible to a bare `np.isfinite()` check — still live in five
+more consumers, all feeding every confirmed pair's reported Hurst exponent,
+structural-break flags, eigenportfolio tier, and (for trios) Johansen
+result:
+
+1. **HurstEstimator + StrategyDecayDetector** (in `_build_pair_result`) —
+   both ran on `sm["spread"]` unmasked. Highest-stakes of the five: the
+   coint_frac secondary-evidence override (see below) reads
+   `zivot_andrews_break`/`cusum_first_excursion` straight from
+   StrategyDecayDetector, so the override's own original 3-pair
+   verification was potentially built on contaminated structural-break
+   data. Fixed to share the same masked real-bars-only positions
+   `SpreadModel.fit_pair` already computes internally.
+2. **TrioBuilder.test_trios (Johansen)** — built log-prices from raw
+   `df["close"].values`, zero gap masking. Fixed to use
+   `_clean_close(df, exclude_flags=(GapFlag.DATA_GAP,))`, matching
+   `CointScanner._build_log_price_map`'s existing convention.
+3. **EigenportfolioDecomposer.compute_factor_residuals — NaN entries fed
+   directly into `np.linalg.eigh`.** A comment claimed "use only finite
+   rows/cols" but no such filtering existed. NaN correlation entries are
+   *expected* (pairwise overlap < min_overlap across a universe spanning
+   1980s IPOs to 2020s ones plus crypto/forex), not a bug in the
+   correlation step — but `np.linalg.eigh` on a NaN-containing matrix
+   doesn't reliably raise; it can silently return garbage eigenvalues/
+   eigenvectors (numpy/numpy#20280), corrupting every pair's Gold/Silver
+   tier with no diagnostic trail. Fixed: NaN treated as uncorrelated (0)
+   before eigendecomposition, diagonal forced back to 1.0, count logged.
+4. **RegimeClassifier.build_raw_features** — computed
+   `realized_vol`/`trend_strength`/`mean_reversion_speed`/
+   `relative_vol_ratio` directly off padded closes, with returns at gap
+   boundaries explicitly **zero-filled**, not NaN-filled — silently
+   treating excluded padding as real zero-return observations. Fixed:
+   gap-aware close via `_clean_close`, non-finite returns NaN-filled
+   (`.rolling()` already skips NaN correctly — zero-filling was
+   re-introducing exactly the contamination BUG-D45 was supposed to kill).
+5. **VolumeStructure.compute_features** — same mechanism, worse for RSI
+   specifically (Wilder smoothing is a sequential recursive filter, so
+   early contamination propagates forward indefinitely). Partial fix only:
+   masked OHLC inputs at the source (fixes RSI and every `.rolling()`-based
+   feature), but no line-by-line audit of every downstream sub-calculation
+   (e.g. the cumsum-based `cvd_proxy`). Lower urgency — not yet consumed by
+   ml.py (Stage 2, unbuilt) — flagged for a dedicated follow-up pass.
+
+**This morning's eigenportfolio diagnostic (see below) confirms fix #3
+worked correctly in a real run**: 0/16 persisted pairs have a NaN
+`eigenport_pvalue` (previously a live risk), and the Marchenko-Pastur
+factor count K landed at 9-20% of N across every TF (1m K=230/N=1284,
+3m K=130/N=1386, 5m K=288/N=1504, 15m K=207/N=1502) — in line with
+published RMT-on-real-markets findings, not a degenerate all-or-nothing
+result. Every persisted pair's confidence_tier matches its
+`eigenport_pvalue` threshold exactly (silver ⟺ p≥0.05, gold ⟺ p<0.05, 2/16
+gold tonight: APAM/INVX, AZTA/INVX).
+
+### Overnight: coint_fraction_rolling threshold restored to the documented 0.70, with a secondary-evidence override for borderline pairs
+
+`Config.UNIVERSE.MIN_COINT_FRAC` had drifted to 0.40 at some point pre-
+session (undocumented, found during the bug hunt); restored to the
+0.70 documented in this file's coint_fraction_rolling section. A flat 0.70
+cutoff would have produced silent Type II errors at the boundary, so a
+secondary-evidence override was added: a pair below 0.70 is kept anyway if
+`half_life_trend_slope ≤ 0` (improving, not decaying) AND neither
+Zivot-Andrews nor CUSUM detect a structural break — corroboration across
+independent evidence, not a stricter/looser single threshold. Implemented
+in `AnalysisPipeline._save_tf_results` as
+`passes_coint_frac_secondary_evidence()`, with `coint_frac_secondary_override`
+added to `PairResult` so an overridden pair is auditable in pairs.parquet
+rather than an invisible side effect.
+
+**Originally verified overnight against D/NEE (0.41, excluded — decaying
+slope + breaks on both tests), SPY/VOO (0.45, excluded — same pattern),
+CRWD/DDOG (0.67, kept — improving slope, no breaks).** This verification
+predated fix #1 above (HurstEstimator/StrategyDecayDetector gap-masking) —
+flagged overnight as needing re-confirmation once the pipeline re-ran
+clean. **It did not hold.** Re-checked this morning against the first
+fully-clean run (see below): CRWD/DDOG no longer survives the override —
+it's absent from `1min/pairs.parquet` entirely. FANG/OXY (0.27) is the
+pair that actually survives via override this run (`half_life_trend_slope
+=-0.617`, `zivot_andrews_break=NaN`, `cusum_first_excursion=None`,
+`coint_frac_secondary_override=True`). D/NEE and SPY/VOO remain correctly
+excluded either way. **The override mechanism itself is verified correct
+(synthetic test, `debug/_verify_save_tf_results_return.py`); the specific
+worked example changed because the inputs it reads were contaminated
+before fix #1 — any Development.md prose or future thesis-narrative
+material citing "CRWD/DDOG" as the override's motivating case should cite
+FANG/OXY instead, or note both as a real before/after comparison.**
+
+### Overnight: data.py bugs found and fixed
+
+1. **CRITICAL — `DataStore.is_fresh()` was called with no `max_age_hours`
+   at every native-intraday fetch gate** — once a symbol/TF was cached
+   even once, it was skipped on every future run forever, regardless of
+   staleness. Silently broke the entire "intraday history accumulates day
+   over day" premise BUG-D42/this session's append() work and the
+   scheduled daily data.py task all depend on. Verified directly: a real
+   48.6-hour-old `AAL_1min.parquet` reported `is_fresh=True` (never
+   refresh) under the old behavior, `False` (correctly stale) under the
+   fix. Fix: new `DataStore.intraday_max_age_hours(tf_label)` (20h for
+   native intraday TFs, `None`/unchanged for daily+ TFs which already
+   pair `is_fresh()` with `needs_refresh()`'s real date check), threaded
+   into the main Phase 2A sweep, `IBKRFeed.get_bars`, the IBKR intraday
+   loop, `_download_chunk`, and both `connect=True`-path sweeps. **See
+   BUG-D46 below — one more call site was missed, found and fixed this
+   morning.**
+2. **NameError masking the real yfinance exception in `_download_chunk`**
+   — referenced an undefined `uncached` instead of the real variable
+   `uncached_ibkr`; any yfinance failure crashed the whole chunked
+   download uncaught instead of gracefully marking that chunk failed.
+   Fixed.
+3. Dead/unreachable code in `ProgressLogger.load()` (~10 lines after an
+   unconditional early return) and a stale docstring on `needs_refresh()`
+   (still describes pre-append() "always re-fetched from scratch")  —
+   both cosmetic, queued not urgent, not yet cleaned up.
+4. `_roll_adjust`'s 5% single-bar-move threshold for futures roll
+   detection flagged as a possible false-positive risk on genuinely
+   volatile commodities (NG, CL) — not confirmed as currently misfiring,
+   needs a targeted check against real `roll_dates` output, not actioned.
+
+### Overnight: ml.py + macro.py bugs found and fixed
+
+1. **CRITICAL — `eval_metric="mlogloss"` hardcoded, incompatible with
+   `Config.ML.LABEL_SCHEME="binary"`'s auto-selected
+   `objective="binary:logistic"`.** Hadn't fired yet only because every
+   real run so far correctly declined to train (insufficient data) — would
+   have hard-crashed at `model.fit()` the instant there was enough data to
+   train. Fixed: objective/eval_metric now derived from actual class count.
+   Verified with a synthetic test for both the binary and multiclass
+   schemes. **This morning's ml.py re-run exercised the binary path for
+   real (still correctly declined to train on 12 examples) — no crash.**
+2. `min_class_samples or Config.ML.MIN_CLASS_SAMPLES` silently ate an
+   explicit `0` (Python falsy-zero bug) — `--min-class-samples 0` was
+   silently ignored, falling back to 30 with no warning. Fixed to an
+   `is not None` check.
+3. Stale docstring on `_find_entry_events` (still claimed it reused
+   `Config.ANALYSIS.OU_ZSCORE_ENTRY` directly; the actual caller passes
+   `Config.ML.TRAINING_ENTRY_THRESHOLD`). Corrected.
+4. macro.py: no bugs found.
+
+### Overnight: ~60-idea backlog across five lenses (architecture/engineering, academic/literature, ML/feature-engineering, portfolio/risk-management, paper/thesis-narrative)
+
+Generated by five parallel agents, each grounded directly in the real
+codebase/data (not generic advice) and cross-checked against this
+document's existing Reference Authors/design sections to avoid
+re-suggesting anything already locked in. Full numbered lists, each
+agent's own prioritization, and explicit "already covered, don't
+re-suggest" notes are preserved verbatim in this session's working notes;
+condensed here to the standout items per lens — **all of these are
+discussion items for Ross, not yet actioned**:
+
+**Architecture/engineering** (14 ideas) — top picks: a startup check that
+greps for `getattr(Config\.` call sites and asserts the attribute
+actually exists (config-attribute drift has now bitten this project at
+least three times — MIN_COINT_FRAC, half_life_trend_slope, and see
+BUG-D46/47 below for a fourth and fifth instance of the same *class* of
+silent-drift bug); `analysis.py`'s read-only `build(connect=False,
+fetch=False)` still unconditionally running cache-mutating scans before
+checking `fetch` (contradicts CLAUDE.md Rule 1, and this exact mechanism
+caused a real near-incident before — 1,500+ valid 4h files reduced to 7 —
+flagged as needing a careful, unrushed look, not a 2am fix); the N×N
+correlation kernel is a hand-rolled O(N²) Python loop (likely
+100-1000x vectorizable, but real risk of silently shifting which pairs
+clear MIN_PEARSON_CORR if done carelessly); a short SCHEMAS.md for the
+implicit/undocumented persisted parquet schemas (ml.py already had to
+reverse-engineer column names; backtest.py/analyzer.py will hit the same
+wall — **see BUG-D47/48 below for exactly this kind of implicit-contract
+bug already surfacing**).
+
+**Academic/literature** (12 ideas) — top picks: sequential bootstrap /
+sample-uniqueness weighting (Lopez de Prado, AFML Ch.4) as a direct fix
+for the already-documented rolling-window-overlap bias; transfer entropy
+for lead-lag detection, extending the still-unbuilt Granger-causality
+backlog item and mapping directly onto the ES↔utility-sector framing in
+the paper outline. Explicit Ross-buy-in items flagged as the most
+novel/highest-risk: Deep Learning Statistical Arbitrage (Guijarro-Ordoñez/
+Pelger/Zanotti) as a citation not a build target, and reinforcement
+learning as a 4th model class (would compete with, not extend, the
+existing meta-labeling design — its own well-known overfitting/
+reward-hacking failure modes).
+
+**ML/feature-engineering** (12 ideas) — top picks: conformal prediction
+wrapper around the existing XGBoost output (low-risk, gives honest
+coverage instead of an uncalibratable point probability at this sample
+size); half-life-windowed sample weighting (multiple threshold
+re-crossings within one half-life window aren't independent observations
+— mechanical, low-risk); a flagged check that `RegimeClassifier` may have
+only ever called `.predict()` not `.predict_proba()`, meaning Stage 2's
+planned `regime_prob_*` features might need more work than budgeted.
+Most methodologically sensitive item, explicit go/no-go required before
+any code: synthetic OU-simulated training augmentation.
+
+**Portfolio/risk-management** (11 ideas) — cross-cutting observation: four
+of the ideas (history-depth-scaled allocation floor, probation/core
+sub-books, minimum-viable-portfolio gate, new-pair-arrival shock
+absorption) are all about temporal/N-pair-growth dynamics the existing
+8-method design doesn't address at all, because every existing method
+assumes a fixed, stable universe — and the universe is still actively
+growing (9→17→16 pairs across the last three sessions, see below). These
+may be more urgent to resolve than further refining the existing 8 methods.
+
+**Paper/thesis-narrative** (10 ideas) — the standout result of the night.
+Reframes the actual headline contribution: NTRS/STT and SHW/UNP (this
+project's own original headline pairs) show strong full-sample
+cointegration but no significant cointegration in the last 5 years alone
+— direct evidence the standard full-sample EG screen can certify
+"cointegrated" using statistical power borrowed from a regime that no
+longer holds. Proposed reframe: `coint_fraction_rolling` isn't a
+defensive patch on EG, it's the actual primary contribution; EG is a
+necessary-but-weak pre-filter. Also proposed: the 5m/30m zero-confirmed-
+pairs result as "Exhibit 1" of the bias chapter ("The Strictness Paradox:
+When a Null Result Indicates Test Miscalibration, Not Signal Absence");
+the coint_frac override as a boxed worked methodology example (now
+FANG/OXY, not CRWD/DDOG — see above); BUG-D45's exact ±15.8115 derivation
+as a standalone, generalizable methods note ("Calendar-Padding Artifacts
+in Rolling Window Statistics") with applicability beyond CAMARF; and the
+observation that the strongest defensible abstract sentence right now is
+about methodology (the multi-stage cointegration confirmation pipeline
+and its bias-correction discipline), not returns — backtest.py doesn't
+exist yet and ML sample size is still 12-32 examples.
+
+### BUG-D46: the overnight is_fresh() fix was incomplete — one more call site, found by the very first real verification run
+
+Tested the overnight fix for real this morning: `data.py` ran in 9.7
+minutes (vs. the documented ~30-40 min) and `latest_run_data.log`'s
+`intraday_tfs` section came back completely blank — no fetch activity
+recorded for any of the 7 native intraday TFs at all.
+
+Root cause: `_intraday_complete(symbol)` — the gate that decides whether
+an equity/forex symbol needs the Phase 2A intraday sweep in the first
+place — still called `DataStore.is_fresh(symbol, tf_label)` with no
+`max_age_hours`, exactly the bug the overnight fix was supposed to close
+everywhere. Left unguarded, it returned `True` (exists-only) for any
+symbol cached even once, emptying `equity_needing_intraday`/
+`forex_needing_intraday` → emptying `ibkr_work` → skipping the entire
+Phase 2A sweep before it ever reached the (correctly-fixed) per-TF
+freshness loop inside it. Confirmed mechanically with a synthetic test
+(`debug/_verify_save_tf_results_return.py`'s sibling for data.py): the old
+call shape returns `True` for a 30-hour-old file; the fixed call shape
+(`max_age_hours=DataStore.intraday_max_age_hours(tf_label)`) returns
+`False`. Fixed; grepped every remaining `is_fresh()` call site in data.py
+to confirm no sixth instance exists.
+
+Re-ran data.py for real after the fix (started 12:13pm, still running at
+the time of writing): "1499 equities + 10 forex need IBKR intraday" (was
+silently empty before) → "Phase 2A: yfinance intraday sweep (primary
+pipeline)" actually engaging, "[1h] 1512 assets to fetch", progressing
+normally (400/1512 saved, 0 failures, as of the last check before this
+entry was written). **This is the first time the Phase 2A sweep has
+actually run end-to-end since the overnight append-based-accumulation
+work was built — check `latest_run_data.log` for the final tallies once
+it completes; this run was still in progress when this session ended.**
+
+### BUG-D47: confirmed-pair counts in latest_run_analysis.log were overstated by more than 2x — pairs excluded by the coint_frac filter still printed as "confirmed"
+
+While re-verifying the coint_frac override (above), found that
+`output/results/1hr/pairs.parquet` doesn't exist on disk at all, yet
+`latest_run_analysis.log` printed two "confirmed" 1h pairs (PNC/ZION,
+SPY/VOO). Traced via the run's own raw console log
+(`be3sbqfx9.output`, the actual overnight analysis.py run): `_run_one_tf`
+logged `"[1h] coint_frac filter: 2 pairs removed; 0 kept anyway via
+override"` and never logged a `"[1h] saved N pairs"` line at all — i.e.
+**both** 1h candidates were correctly excluded by the coint_frac gate and
+never persisted anywhere.
+
+Root cause: `_write_analysis_summary()` (and the console "ANALYSIS
+RESULTS — SUMMARY" block) both read from `results.pairs_by_tf`, which
+`AnalysisPipeline.run()`'s TF loop populates directly from `_run_one_tf`'s
+return value — the **pre-coint_frac-filter** list. `_save_tf_results`
+builds its own separate, correctly-filtered `discovered_pairs` list
+internally (used for the actual parquet/manifest/spread_series writes)
+but, before this fix, returned `None` — the filtering result never
+propagated back up to what the run summary displays. Quantified against
+the real 07:51 run: the log claimed 34 total confirmed pairs; only 16
+were ever actually persisted (cross-checked independently against ml.py's
+own "Discovered 16 confirmed pairs with persisted spread series" from the
+same data — exact match). The 18 phantom pairs spanned 1m (11 displayed,
+7 real), 3m (13 displayed, 5 real), 5m (1 displayed, 0 real), 1h (2
+displayed, 0 real), 7D (1 displayed, 0 real); 15m and 4h were already
+accurate (no coint_frac exclusions that run).
+
+Fix: `_save_tf_results` now returns `discovered_pairs` (the actually-
+persisted, post-filter set); `_run_one_tf` reassigns its `pair_results`
+to that return value before returning, so every downstream consumer of
+`pairs_by_tf` — the run summary log, the console summary, and any future
+consumer — can no longer diverge from what's actually on disk. Verified
+with a synthetic test (`debug/_verify_save_tf_results_return.py`):
+constructed pairs spanning clean-pass / clean-fail / override-kept /
+NaN-exempt, confirmed the returned set exactly equals what
+`pairs.parquet` contains in every case.
+
+**Related, found in the same pass: `n_structural` (the "N structural
+pairs excluded" log line) was computed as `len(pairs) - len
+(discovered_pairs)` AFTER the coint_frac filter had already run** — so it
+silently included coint_frac exclusions in a count labeled "structural"
+(forex triangles/share-class pairs specifically). Fixed by capturing the
+true structural-only count immediately after the structural filter,
+before coint_frac filtering touches `discovered_pairs` at all.
+
+### BUG-D48: confirmed_pairs_manifest.json only ever accumulated symbols, never pruned ones no longer confirmed — data_ibkr.py was fetching deep history for pairs that aren't pairs anymore
+
+Found while preparing to run `data_ibkr.py` against the freshly-corrected
+manifest: it still listed `D`, `NEE`, `CRWD`, `DDOG` as confirmed-pair
+symbols (all four genuinely excluded from every current `pairs.parquet`
+— see BUG-D47/coint_frac override sections above) and tagged `SPY`/`VOO`
+with `"1h"` despite that exact 1h pair being excluded this run too.
+
+This is a different bug from Session 9's manifest fix (which stopped
+`clear_stale_results()`'s directory-archival mechanism from wiping the
+whole manifest file on every script-hash change — that fix is correct and
+unrelated). This one is in `_save_tf_results`'s own manifest-merge logic:
+it only ever read the existing file, added newly-confirmed symbols, and
+wrote it back — a symbol confirmed in a past session/run stayed in the
+manifest forever even after a later run correctly excluded it, since
+nothing ever removed an entry. `data_ibkr.py` reads `manifest.keys()` and
+fetches IBKR deep history (1m/5m/15m/30m/1h/4h/1D, "10 Y" depth where
+applicable) for every symbol present, with no awareness of the `tfs` list
+at all — so this was silently burning IBKR fetch budget/pacing on symbols
+that are no longer actually confirmed pairs.
+
+Fix: `_save_tf_results` now removes its own `tf_label` from every
+symbol's `tfs` list at the top of every call (whether or not
+`discovered_pairs` is non-empty for this TF), then re-adds it only for
+symbols in this run's actual `discovered_pairs`, then drops any symbol
+whose `tfs` list is now empty. This correctly handles same-TF re-runs
+(stale pairs removed), scoped `--timeframes` runs (untouched TFs'
+entries left alone), and full runs (every TF's contribution refreshed).
+Verified with a synthetic test (`debug/_verify_manifest_pruning.py`,
+backs up/restores the real manifest around itself) covering both the
+multi-TF-accumulation case and the goes-empty-on-re-run case.
+
+The real manifest was corrected by hand to match (20 symbols, down from
+24 — `D`/`NEE`/`CRWD`/`DDOG` removed entirely, `SPY`/`VOO`'s stale `"1h"`
+tag removed) before running `data_ibkr.py` for real against it.
+**Caution for whoever reads the git history here: an earlier synthetic
+test for the unrelated BUG-D47 fix
+(`debug/_verify_save_tf_results_return.py`) briefly wrote 6 fake symbols
+(AAA/BBB/EEE/FFF/GGG/HHH) into this same shared manifest file before its
+cleanup step was corrected to also revert the manifest, not just its own
+throwaway output directory — caught and fixed before `data_ibkr.py` ran
+against it for real, but a reminder that any debug script touching
+`confirmed_pairs_manifest.json` needs to back up and restore it, the same
+way `_verify_manifest_pruning.py` now does.**
+
+### This morning's verification runs (ml.py, eigenportfolio diagnostic, data_ibkr.py)
+
+- **ml.py**, re-run against the fresh (BUG-D45-extended-fix) analysis.py
+  output: 16 confirmed pairs discovered (2 produced labeled examples), 12
+  total labeled entry events across 2 classes (binary scheme:
+  not_converged=11, converged=1; granular 4-class: diverge_further=9,
+  no_move=2, strong_converge=1) — correctly still below
+  `MIN_CLASS_SAMPLES`, declined to train, no crash (exercises the
+  eval_metric fix's code path for the first time on real data). Down from
+  the previous session's 32 labeled examples across 3 classes — expected
+  and correct: several of those 32 came from pairs that no longer survive
+  the coint_frac filter under properly gap-masked structural-break data
+  (D/NEE chief among them), so this is the gap-masking fix doing its job,
+  not a regression.
+- **Eigenportfolio Gold/Silver tier diagnostic**: see the BUG-D45-extended
+  section above — 0/16 NaN eigenport_pvalue, K/N ratios in the 9-20% range
+  across every TF (statistically reasonable for real, non-IID financial
+  returns under Marchenko-Pastur, not a degenerate result), every tier
+  assignment internally consistent with its own eigenport_pvalue.
+- **data_ibkr.py**, run for real (not dry-run) against the corrected
+  20-symbol manifest with IB Gateway open and connected
+  (`127.0.0.1:4001`): "20 symbols × 7 TFs = 42 fetches needed (98 already
+  fresh, skipped)" — most of the manifest's symbols already had deep
+  history from a prior session; only the newly-confirmed ones (FANG/OXY,
+  CCL/NCLH, ACAD/CUBI/FCPT/NSSC cluster) needed real fetches. Connected
+  cleanly, fetching at the time this session ended (some transient,
+  bounded IBKR request retries observed on APAM/15m — normal HMDS
+  data-farm flakiness, already handled by the existing 4-attempt retry +
+  yfinance-fallback logic, not a new bug).
+- **data.py**, re-run for real after BUG-D46's fix: **completed**, 147.0
+  min, confirms the fix fully end-to-end. `intraday_tfs` section (blank
+  before the fix) now shows real activity across every native TF: 1h
+  1506 saved, 30m 1506, 15m 1505, 5m 1506, 2m 1495, 1m 1363, 3m 1486
+  (plus 4h derived 1506 from 1h). BUG-D46 closed — the Phase 2A sweep
+  the scheduled daily data.py cloud routine depends on now genuinely
+  fires and accumulates. `data_ibkr.py` retried twice more after IB
+  Gateway was reopened — both attempts failed with the same
+  `TimeoutError`/`ConnectionResetError` even with the gateway visibly
+  listening on 127.0.0.1:4001. Environment-side (Gateway/TWS session
+  state), not a CAMARF bug — needs a manual Gateway relogin or restart
+  on Ross's end, not further code investigation.
+
+### Next Session
+
+**Items 1-2 below were written mid-session, while the post-BUG-D46 data.py
+run was still in flight — verified at the start of the following session
+(2026-06-24) that both actually completed before Session 10 ended, by
+cross-referencing `_data_run_verify.log`'s timestamps against
+`latest_run_data.log`/`latest_run_analysis.log`: the 147-min data.py run
+started 12:13pm and finished 14:40pm (console log confirms "[4h] derived:
+1506 saved... Universe complete: 1521 assets passed"); a quick 9.6-min
+data.py re-check immediately followed (16:05-16:15, correctly blank —
+everything was still fresh under the 20h intraday staleness window, not a
+regression); analysis.py then ran the full pipeline 16:15-18:53 (158.1
+min), landing 37 confirmed pairs across 1m/3m/30m/1h/4h — this is the
+"fresh re-run" that the BUG-D49 universe-wide audit, idea #3/#4 builds,
+and the price-density screen all already used. Left here, struck through
+rather than deleted, so the next reader doesn't have to re-derive this
+from raw logs the way this check just did.**
+
+1. ~~Check `latest_run_data.log` for BUG-D46's fix's final results...~~
+   **Done — confirmed complete during Session 10 itself** (see above).
+2. ~~Once data.py's fresh fetch lands, re-run analysis.py fully...~~
+   **Done — confirmed complete during Session 10 itself** (see above).
+   Note `latest_run_data.log` on disk currently shows the quick 16:15
+   no-op recheck (9.6 min, blank `intraday_tfs`), not the preceding
+   147-min real run — accurate for "is data.py currently healthy" but
+   misleading if read as "did the BUG-D46 fix ever produce real intraday
+   activity." The real evidence for that is `_data_run_verify.log` (the
+   147-min run's raw console output) and this file's BUG-D46 section
+   above, not the auto-generated summary file in isolation.
+3. Re-run ml.py against the 37-pair output from the 18:53 analysis.py run
+   above — `latest_run_ml.log` is still from 14:51, reflecting the
+   earlier 16-pair set (FANG/OXY, the APAM/AZTA/INVX/NBHC cluster,
+   CCL/NCLH, etc.), not the later, larger, differently-composed 37-pair
+   set (C/MS, SNDK/TXN, the HRMY/NBHC/PRDO/TILE/WS cluster, the bank
+   pairs at 1h, SPY/VOO at 4h, ...). This is the one genuinely still-open
+   item from the original three — sample size has been oscillating
+   (14→32→12) as the coint_frac/gap-masking fixes change which pairs
+   survive; worth tracking whether it trends up over the next few
+   accumulation cycles as intended, now that data.py's accumulation
+   actually works (BUG-D46).
+4. Decide whether to act on any of the ~60 backlog ideas above — none are
+   actioned yet, all need Ross's discussion first per CLAUDE.md's
+   methodology-buy-in rule. Likely highest-leverage starting points per
+   the agents' own prioritization: sequential bootstrap (academic lens,
+   direct fix for an already-documented bias), the config-attribute-drift
+   startup check (architecture lens, would have caught BUG-D46-style
+   issues faster), and deciding the temporal/N-pair-growth design
+   questions (portfolio lens) before backtest.py's basic loop structure
+   gets locked in.
+5. VolumeStructure's partial BUG-D45 fix (masked at the source, but no
+   line-by-line audit of cumsum-based sub-calculations like `cvd_proxy`)
+   needs a dedicated follow-up pass before Stage 2 ml.py consumes it.
+6. The `analysis.py` read-only-mode cache-mutation gate (architecture
+   lens idea #5, tied to a real past near-incident) still needs a
+   deliberate, unrushed look — flagged twice now (this session and the
+   ideas backlog), not yet actioned either time.
+
+### Paper drafting started — `PAPER.md` (new file)
+
+Ross wants the actual paper drafted incrementally as findings accumulate,
+not written from scratch once the project is "done" — discussed and
+agreed: lead with the methodology contribution (the horizon-miscalibration
+finding, §4.2-4.5 of the new doc), structure the strategy/backtest chapter
+as the empirical demonstration of that methodology rather than a separate
+claim, since Ross wants the strategy to matter but recognizes the
+calibration finding is the more exportable, defensible contribution at
+this stage. `PAPER.md` created with this framing decision recorded,
+Abstract/Introduction/Literature Review/Methodology sections 4.2-4.4
+drafted using hard, already-verified numbers (Session 6's TF-level
+funnel-analysis table, this session's FANG/OXY override worked example),
+§4.5/Empirical Findings/Statistical Validation/Strategy/Bias/AI-Disclosure
+sections outlined with explicit [PLACEHOLDER] markers pending
+backtest.py/stats.py/further data accumulation. Literature review
+citations for Gregory-Hansen (1996) and Quintos-Phillips
+(Hansen 1992/Quintos & Phillips 1993) structural-break-in-cointegration
+tests, and Vidyamurthy (2004) as the standard EG-based pairs-trading
+reference, verified via direct source lookup before inclusion — these
+are the formal econometric tools that justify framing
+`coint_fraction_rolling` as "a scalable version of an existing-but-
+impractical-at-scale idea," not an unprecedented one. Gatev-Goetzmann-
+Rouwenhorst/Avellaneda-Lee/Krauss citations deliberately left as [TBD] —
+named correctly but their specific performance figures not yet verified,
+per the academic-lens backlog's own flagged gap. Update `PAPER.md`
+alongside this file going forward whenever a session produces a citable
+finding — see CLAUDE.md's File Map entry for the section-status
+convention ([DRAFTED]/[OUTLINED]/[TBD]).
+
+**Follow-up same session:** §4.5 (calendar-padding methods note) and a
+new §4.6 (the reverted vol-window experiment, paper-narrative idea #6)
+both fully drafted, using BUG-D45's exact derivation and verified
+numbers already in this file. The three previously-[TBD] citations
+resolved via direct source lookup: Gatev/Goetzmann/Rouwenhorst (2006,
+*Review of Financial Studies* 19(3) 797-827 — distance method, ~11%
+annualized excess return, 1962-2002; explicitly noted in `PAPER.md` as
+NOT directly comparable to a cointegration result, to avoid the paper
+implicitly conflating the two methods), Avellaneda & Lee (2010,
+*Quantitative Finance* 10(7) 761-782 — PCA-based Sharpe 1.44 over
+1997-2007 dropping to 0.9 over 2003-2007 alone, ETF-based Sharpe 1.1 with
+the same post-2002 degradation — flagged in `PAPER.md` as small
+corroborating evidence that within-sample performance decay is a general
+property of this research area, not unique to CAMARF's own critique),
+and Krauss (2017, *Journal of Economic Surveys* 31(2) 513-545 — five-way
+taxonomy of stat-arb approaches, used as the literature review's
+organizing citation). All ten references in `PAPER.md` now carry working
+source links (gathered via direct web lookup, not from memory), per
+Ross's explicit request to include sources.
+
+**Further fleshed out same session** (per Ross: "flesh out what you can
+in the paper... following our conversation"): §8 (Bias Documentation)
+now explicitly connects the already-documented rolling-window-overlap
+bias to sequential bootstrap as its not-yet-built candidate remedy. §9
+(AI-Tool Disclosure) now has three fully-written concrete examples
+instead of a bullet list — the BUG-D31/D32 false-fixed-claim incident
+(written precisely: a documented "fixed" claim was tested against live
+code and found false, not just "the AI was wrong"), the sp600
+third-party-summary contradiction, and this very session's own
+manifest-pollution self-catch (`debug/_verify_save_tf_results_return.py`)
+as a live example of the same discipline being applied to this session's
+own work, not just past sessions' mistakes. §10 (Future Work) now
+records the actual reasoning for the two academic-lens candidates
+discussed in depth this session (sequential bootstrap, transfer entropy)
+rather than just naming them — both are now genuinely paper-ready
+content, not placeholders. Confirmed with Ross this is the standing
+pattern going forward: update `PAPER.md`/`Development.md` opportunistically
+as each session produces material, not on a fixed schedule.
+
+### Found undocumented: `UniverseFilter._pairwise_corr` was vectorized earlier this same session, before the rate-limit resume
+
+Architecture-lens backlog idea #1 (the hand-rolled O(N²) correlation
+kernel, 532-580s per TF in production) was apparently already addressed
+in the part of this session that happened before the rate-limit pause —
+`analysis.py`'s `_pairwise_corr` docstring is dated 2026-06-23 and
+describes a masked-matmul vectorization (`_vectorized_pairwise_stats` +
+`_fix_ambiguous_variance_cells` for near-zero-variance edge cases),
+claiming verification against the original loop. This was never written
+up here, and `git diff --stat analysis.py` shows ~344 insertions/80
+deletions of currently-uncommitted change beyond this session's own
+documented fixes (BUG-D46/47/48) — consistent with real, substantial,
+undocumented work having happened pre-pause. **Independently
+re-verified post-resume**: a fresh synthetic test (40×300 returns matrix,
+random NaN patches per asset simulating different history lengths, one
+deliberately zero-variance row) compared `UniverseFilter.correlation_matrix`
+against a from-scratch naive nested-loop reference — identical NaN
+pattern, max absolute difference 1.4e-16 (machine precision) on the
+68 finite, non-trivial pairwise cells produced. Only `correlation_matrix`
+itself was independently re-checked; `spearman_matrix` and
+`rolling_corr_avg_matrix` share the same `_vectorized_pairwise_stats`/
+`_fix_ambiguous_variance_cells` core per the docstring but were not
+separately re-verified this pass — flag for a follow-up check before
+leaning on either of those two specifically. Architecture backlog idea
+#1 can be marked done once that follow-up check clears.
+
+### BUG-D49: degenerate, repeated-price 1m bars for APAM/AZTA/INVX/NBHC — their 1m "confirmed pair" status is suspect, found while investigating graph_clustering.py's idea #2 comparison
+
+Graph clustering (idea #2) showed APAM/AZTA/INVX with entirely NaN
+pairwise correlation against almost the whole universe — including
+against EACH OTHER, despite being a confirmed cointegrated group at 1m.
+Checked with raw evidence rather than theorizing (per this project's own
+"ask for raw evidence" rule): individual bar counts are fine (1195-4396
+bars each), and daily dollar volume is genuinely liquid — APAM
+$27.4M/day, AZTA $24.2M/day, INVX $10.9M/day, NBHC $14.0M/day over the
+trailing 60 days, all well above `Config.DATA.MIN_DOLLAR_VOLUME`
+($1M). The actual cause is at the 1-minute bar level itself, and it is
+severe:
+
+- **AZTA**: 53.5% of bars have NaN OHLC outright. Of the 637 non-NaN
+  bars, only **2 distinct close prices appear in the entire dataset**
+  (23.030001 × 211 bars, 23.299999 × 426 bars), and every one of those
+  bars has `open == high == low == close` exactly — a real, continuously
+  quoted $24M/day stock should not have a flat, identical OHLC for hours
+  at a stretch.
+- **INVX / NBHC**: same pattern — 591/594 non-NaN bars each, but only
+  **2 distinct close prices in the entire dataset** for each symbol
+  (INVX: 25.50 × 348, 26.23 × 243; NBHC: 42.78 × 419, 42.28 × 175).
+  Unlike AZTA, these bars are NOT individually flat (open/high/low do
+  vary within a bar), but the bar-close itself never takes a third value
+  across the whole multi-day window.
+- **APAM**: less extreme but the same failure class — 7 distinct closes
+  across 4006 non-NaN bars, 53.2% of bars with `open==high==low==close`
+  exactly, and separately 58.8% of ALL bars (NaN or not) showing zero
+  recorded volume.
+- **Control check, AAPL over the identical window**: 1.5% zero-return
+  bars, no NaN-OHLC issue, normal continuous price variation. This is
+  not a universal artifact of the recent BUG-D46 data-gap window — it is
+  specific to these (and very plausibly other, unaudited) tickers.
+
+**Consequence:** a cointegration/correlation test computed on a return
+series that is ~99.8% exactly zero by construction (because the
+underlying price feed is repeating 1-2 stale values for hours) is not
+testing genuine intraday price discovery. The 1m confirmed-pair status
+of APAM/AZTA/INVX/NBHC (6 pairs + trio-adjacent structure, all built
+from just these 4 names) should be treated as **suspect pending
+investigation**, not as a real finding — this is very plausibly a
+degenerate/spurious cointegration result, not genuine economic
+co-movement. This also means `data_ibkr.py`'s IBKR fetch budget spent on
+these 4 symbols this session was likely spent validating a data-quality
+artifact, not a real candidate pair.
+
+**Not yet root-caused or fixed** — the IMMEDIATE finding (these specific
+bars are degenerate) is verified with hard evidence; WHY yfinance is
+returning this for these specific tickers is not yet diagnosed (candidate
+explanations, not confirmed: a stale-quote/repeated-last-price fallback
+behavior for tickers where Yahoo's true 1-minute tick feed has gaps;
+some interaction with `snap_timestamps`/the alignment pipeline; or a
+genuine quirk of these specific tickers' listing/quoting venue). Per
+this project's "stop after ~3 attempts, ask for raw evidence" rule — the
+raw evidence has now been gathered (this entry), but the root cause
+investigation itself has not yet been attempted 3 times, so this is not
+yet at the "ask Ross for help" threshold; flagged as the clear next
+investigation step, not guessed at further tonight.
+
+**No existing gate would have caught this.** `Config.DATA.MIN_DOLLAR_VOLUME`
+operates on DAILY dollar volume and both confirms these tickers are
+liquid at that level — exactly why it doesn't help here. The GapFlag
+system (DATA_GAP/FILL/NO_ACTIVITY/HALT/NONE) detects MISSING bars, not
+bars that are PRESENT but carrying a non-informative repeated price.
+This is a genuinely new failure-mode class, distinct from every
+previously-documented data-quality bug in this registry. Candidate fix,
+not yet built or discussed with Ross: an intraday data-quality check that
+flags a symbol/TF as suspect when the number of distinct close prices
+over a window is implausibly low relative to bar count (e.g., a real-
+quote heuristic — flag if fewer than some small number of distinct
+prices appear across a multi-hour session for a stock trading above the
+daily liquidity floor). This is a new methodology decision (how to
+detect and handle this), not a bug-fix-with-an-obvious-single-answer —
+needs Ross's input before building anything, per this file's standing
+rule on introducing new concepts.
+
+**Action items, not yet done:**
+1. Audit the rest of the universe (not just these 4 names) for the same
+   degenerate-price pattern at 1m and other intraday TFs — this could
+   affect more symbols than currently known, with the same silent
+   spurious-cointegration risk.
+2. Decide whether to retract/flag APAM/AZTA/INVX/NBHC's confirmed-pair
+   status pending this investigation, including removing them from
+   `confirmed_pairs_manifest.json` if confirmed spurious (would stop
+   further wasted IBKR fetch budget).
+3. `PAPER.md`'s §5 Empirical Findings placeholder currently lists
+   APAM/INVX and AZTA/INVX as the project's only two Gold-tier pairs —
+   flag this prominently before that section is ever locked in; both are
+   built from the symbols implicated here.
+
+**CORRECTION, same session, ~20 minutes later — Ross's "try Gateway" suggestion
+disproved the "yfinance fetch bug" hypothesis above; this is corroborated
+real market data, not a data-pipeline defect:**
+
+Fetched fresh IBKR 1m data directly (`data_ibkr.py --symbols APAM AZTA
+INVX NBHC --tfs 1m --force`, IB Gateway connected cleanly this time) and
+compared against the yfinance cache independently. **IBKR shows the
+identical degenerate pattern**: AZTA and NBHC each show exactly 2
+distinct close prices across their entire IBKR history too (matching
+yfinance's values almost exactly — e.g. AZTA 23.299999/23.360001 on both
+feeds), INVX the same, APAM the same 7-value/48%-flat-bar pattern. Two
+independent data providers agreeing this precisely rules out "yfinance
+is returning stale/repeated quotes" — if it were a fetch-side defect,
+IBKR's own independently-sourced market data would not reproduce the
+exact same price levels.
+
+**Revised understanding: this is a genuine market-microstructure
+property of these four names, not a bug.** They appear to have very
+infrequent *effective* price discovery at 1-minute granularity relative
+to their daily volume — consistent with trading patterns dominated by a
+small number of larger prints/crosses rather than continuous small-size
+quoting, even though daily dollar volume looks adequate in aggregate.
+**This does NOT resolve the methodological concern, it relocates it**:
+the open question is no longer "is the data corrupted" (it isn't) but
+"is an Engle-Granger cointegration test well-specified on a price series
+that effectively only takes 2-7 distinct values over multiple days" —
+a legitimate, citable question about test applicability to thin-
+information securities, structurally similar in spirit to this paper's
+own central horizon-miscalibration finding (§4.2) but a distinct
+mechanism (sparse information content vs. full-sample statistical
+power). APAM/AZTA/INVX/NBHC's confirmed-pair status remains genuinely
+uncertain — not because the data is wrong, but because whether EG
+testing is appropriate for data this sparse is an open methodological
+question requiring Ross's input, not a bug fix. The candidate
+intraday data-quality gate proposed above is now better framed as a
+"thin-information-content" flag (number of distinct prices over a
+session) rather than a "stale-quote" detector — same detection
+mechanism, different and more accurate justification.
+
+`PAPER.md`'s §5 flag stands as-is — these pairs still should not be
+cited until this is resolved, just for a different reason than
+originally written.
+
+### Built: EG permutation robustness check (idea #4, reframed) — found a real, substantive false-positive signal
+
+Per Ross's direction, kept BH-FDR exactly as-is in production and built
+a circular-shift permutation robustness check alongside it
+(`eg_permutation_check.py`) rather than forcing knockoffs onto a problem
+shape they don't fit. Method: for each confirmed pair, recompute the
+identical EG test analysis.py uses, then build a null by circularly
+shifting one leg's log-price series (preserves that series' own
+autocorrelation/trend; breaks only the temporal alignment between legs)
+500 times and re-testing.
+
+**Result: 12/30 confirmed pairs flagged** (real EG p<0.05, permutation
+p>=0.05) on the fresh re-run's growing pair set. **Mean
+null_frac_significant across all 30 pairs = 0.146** — circular-shift
+nulls that share NOTHING with the real pair beyond each leg's own
+internal structure still come back "significant" at ~3x the ~5% rate a
+well-calibrated test should produce by chance. One standout: **MTDR/MGY
+@3m** — real p=0.000022 (highly significant) but **86% of 300 random
+circular shifts also produced p<0.05** — about as clean a signature of
+"this is detecting each series' own trend/structure, not real temporal
+co-movement" as a permutation test can give. This directly corroborates
+the motivating concern behind idea #4 (BH-FDR's guarantee doesn't
+protect against this) with a real example, not a hypothetical.
+
+Partial, mixed corroboration of BUG-D49: NBHC/WS flagged, but
+NBHC/PRDO and NBHC/TILE were not — illiquidity-pattern symbols don't
+uniformly fail this check, so this isn't a clean confirmation either way
+for those specific four names, just a generally useful new layer of
+evidence. Full results: `output/research/eg_permutation_check.parquet`.
+**Not yet decided with Ross**: what to do operationally with a flagged
+pair (exclude outright, downweight, require additional corroborating
+evidence like the existing coint_frac override) — this session built and
+ran the diagnostic, the response policy is a separate decision.
+
+### Built: MIDAS feature construction (idea #11, scoped) — math verified, predictive comparison not yet possible
+
+Per Ross's direction (keep the existing per-TF approach, add MIDAS as a
+comparison). Built `midas_feature.py`: beta-polynomial lag weighting
+(Ghysels et al.), verified correct via synthetic checks (weights sum to
+1, non-negative, theta1=1/theta2>1 produces genuine monotonic recency
+decay, theta1=theta2=1 collapses to a flat average exactly). One minor,
+non-blocking numerical edge case found and documented in the module
+docstring/code comments, not fixed: for theta<1 (a U-shaped weighting
+CAMARF doesn't actually need — the relevant case is theta1=1,
+theta2>1's monotonic decay, which works correctly), the boundary epsilon
+at x=1.0 causes one extreme term to dominate the normalization. Demoed
+real construction on SPY/VOO's actual 1h log-ratio history, decay-
+weighted vs. flat-average versions correlate at 0.948 (sensible — same
+underlying information, different recency emphasis).
+
+**Honest limitation, not glossed over**: evaluating whether a MIDAS
+feature actually IMPROVES prediction needs labeled entry-event outcomes
+at the slow TF, and SPY/VOO@4h (the natural candidate pair, confirmed at
+3m/1h/4h simultaneously) has exactly 1 entry event total as of the last
+ml.py run — nowhere near enough for any train/test comparison. Built and
+verified the construction machinery now so it's ready; the actual
+"does this help" comparison is correctly deferred, same discipline as
+ml.py's own insufficient-data handling, not glossed over or faked with
+a single-data-point claim.
+
+### Non-issue, resolved immediately: apparent ~2 hour 1h alignment stall was Ross's laptop sleeping, not a performance bug
+
+Flagged above as a possible `DataAligner.align_universe` scaling issue
+(16:27:59 → 18:33:02 gap for 1h vs. ~11s for 30m). Ross closed the
+laptop lid to let it cool down during that exact window — Windows sleep
+suspends all processes, so the gap is wall-clock sleep time, not CPU
+time. Confirmed on resume: 1h's actual EG step (the next real
+computation) completed in a normal 412.1s for 65,068 candidate pairs,
+consistent with this TF's real cost, not a hidden scaling problem.
+No further investigation needed — false alarm, corrected within the
+same session it was raised.
+
+### Built: predictability-optimized basket weights vs. OLS hedge ratio, strict walk-forward (idea #3) — clean, real demonstration that the naive optimizer overfits
+
+Implemented per the 2026-06-23 design discussion (general Box-Tiao/
+Bewley predictability-portfolio formulation — minimize the lag-1
+"predictability ratio" w'Aw/w'Bw — in the spirit of the Johansson/
+Schmelzer/Boyd 2024 moving-band literature and d'Aspremont 2011, not a
+verified reproduction of one specific paper's exact algorithm; see
+`predictability_optimizer.py`'s docstring for the honest scope
+statement). For a 2-asset basket this has an exact closed-form solution
+via generalized eigendecomposition — no CCP/iterative solver needed at
+this basket size; CCP becomes necessary once baskets grow past 2 assets
+with real constraints (sparsity, no-short, a moving threshold), flagged
+as future scope. Verified the core math with a synthetic test first
+(constructed a system with a KNOWN mean-reverting combination buried in
+a shared trend; the optimizer recovered the true combining weight to
+within 0.04%, and correctly ranked it as more predictable than two
+deliberately-wrong weight vectors) before trusting it on real data.
+
+**Ran strict walk-forward (expanding-window, 4 folds, pairs with <150
+overlapping bars skipped as too short for genuine WFO) across every
+current confirmed pair. Result: a clean, textbook overfitting signature
+the original design discussion specifically asked to guard against.**
+Mean in-sample advantage for the optimized weights: +0.136 (lower
+predictability ratio than OLS, as expected — it's optimizing directly
+for this). Mean out-of-sample advantage: **-0.466 — the optimized
+weights are WORSE than the simple, non-adaptive OLS hedge ratio
+out-of-sample, on average**, and only 19% of pairs still favor the
+optimized method out-of-sample. **Conclusion: the naive (unconstrained,
+single-fold-fit) version of this method does not generalize and should
+not replace OLS/Kalman as currently used — exactly the risk Ross and
+this session's design discussion both flagged before any code was
+written.** This is a real, useful negative result, not a wasted build —
+it answers the actual question ("does this yield better information")
+with a clear "not in this form," and rules out a specific concrete
+direction rather than leaving it as an open guess.
+
+**Side finding, corroborating and likely extending BUG-D49's scope**: a
+large fraction of pairs hit `LinAlgError: ... not positive definite`
+inside specific folds (handled gracefully — skip that fold, keep going,
+report the count) — affecting not just APAM/AZTA/INVX/NBHC but also
+**HRMY, PRDO, TILE, WS, EIG, ACT, CTKB, PRAA, UHT** and others. This is
+independent evidence (a numerical failure mode, not a price-level count)
+pointing at the same underlying issue: BUG-D49's "audit the rest of the
+universe" action item is now better-evidenced, not just theorized — the
+thin-information-content pattern likely affects substantially more of
+the universe than the original 4 symbols. Full per-pair results:
+`output/research/predictability_optimizer_wfo.parquet`.
+
+### BUG-D49 universe-wide audit: confirmed — this affects ~32% of the 1m universe, not a handful of names
+
+Built `audit_price_degeneracy.py` and ran it for real (per Ross's
+"audit on the universe can also be in order," 2026-06-23). Method:
+scanned every symbol with cached 1m data, counted distinct close prices
+over its entire cached history, flagged any symbol that is (a)
+genuinely liquid at the daily level (avg daily dollar volume over the
+trailing 60 days >= `Config.DATA.MIN_DOLLAR_VOLUME`) but (b) shows
+fewer than 20 distinct 1-minute close prices OR a distinct-price-to-bar
+ratio below 2%.
+
+**Result: 1,354 symbols had enough 1m data to evaluate. 432 of them
+(31.9%) are flagged — genuinely liquid by daily dollar volume, but with
+implausibly few distinct prices intraday.** Median flagged symbol has
+only 14 distinct close prices across its *entire* cached 1m history;
+some have as few as 1. This is not a handful-of-names anomaly — it is a
+structural property affecting roughly a third of the universe at 1m.
+
+**Cross-referenced directly against the fresh re-run's current 1m
+confirmed pairs (12 total): 10 of 12 (83%) have BOTH legs in the
+flagged list** — the entire HRMY/NBHC/PRDO/TILE/WS cluster (all 10 of
+those pairs). Only C/MS and SNDK/TXN (real, recognizable companies —
+Citigroup/Morgan Stanley, SanDisk/Texas Instruments — with normal-
+looking coint_fraction_rolling values, 0.25/0.24, kept via the
+secondary-evidence override) are clean. The HRMY/NBHC/PRDO/TILE/WS
+cluster's `coint_fraction_rolling = 1.000000` *exactly*, for every pair
+in the cluster — itself a strong degenerate-data signature: a price
+series with almost no real variation will trivially "pass" cointegration
+in every single rolling window, since there's nothing for the test to
+fail on.
+
+**This materially changes the picture for the whole project's 1m
+timeframe, not just these specific pairs.** A real possibility worth
+taking seriously: a substantial fraction of 1m's historical instability
+across this project's entire session history (BUG-D42's fetch failures,
+the general flakiness of 1m results run to run) may trace back to this
+same underlying phenomenon — a large fraction of nominally-liquid mid/
+small-cap names simply do not have continuous price discovery at
+1-minute resolution, regardless of daily volume — rather than being
+purely a fetch/code reliability problem. Not confirmed, but worth
+holding in mind before attributing future 1m oddities to a new code bug
+without checking this list first.
+
+**Candidate paper contribution, not yet decided with Ross**: this could
+be more than an engineering finding — "daily liquidity is not a valid
+proxy for intraday price-discovery density, and screening on it alone
+silently lets ~32% of a nominally-liquid universe into intraday
+cointegration testing on information-sparse data" is a third, distinct
+mechanism alongside the existing Strictness Paradox (§4.2, full-sample
+power at long horizons) and the calendar-padding artifact (§4.5,
+forward-filled non-trading periods) — three separate, real ways
+intraday stat-arb screening can silently fail at scale, each with a
+different root cause and a different fix. Not yet written into
+`PAPER.md` — this needs Ross's input on whether/how to frame it before
+drafting, per this project's standing methodology-buy-in rule, given how
+much weight this could carry in the paper if elevated to a third pillar
+finding.
+
+**Not yet decided/done:**
+1. What to do with the 10 implicated 1m confirmed pairs specifically
+   (exclude, flag, or hold pending a broader policy decision — likely
+   the same conversation as the idea #4 flagged-pair policy above, since
+   both are "what do we do when independent evidence undermines a
+   nominally-confirmed pair" questions).
+2. Whether to add a price-density screen to the universe-construction
+   step itself (alongside `MIN_DOLLAR_VOLUME`), and at what threshold —
+   a new methodology decision, not built.
+3. Run the same audit at other native intraday TFs (2m, 3m, 5m) — only
+   1m was audited this pass; the scope at other granularities is
+   unknown.
+4. Full audit results: `output/research/price_degeneracy_audit_1m.parquet`
+   (all 1,354 evaluated symbols) and
+   `output/research/price_degeneracy_flagged_1m.parquet` (the 432
+   flagged subset).
+
+**Resolved same session: not a bug, confirmed via fresh IBKR fetch.**
+Per Ross's request, fetched fresh IBKR 1m data for all 5 symbols behind
+the 10 implicated pairs (HRMY, NBHC, PRDO, TILE, WS). Result: **identical
+bar counts, identical non-NaN counts, identical distinct-close counts,
+and the exact same repeated float64 values on both providers** for
+every one of the 5 (e.g. HRMY: both feeds show exactly 576 non-NaN bars,
+exactly 2 distinct closes, 33.295/424-bars and 33.870/152-bars on both).
+Same conclusion as the original 4-symbol finding: this is real,
+corroborated market data, not a yfinance fetch defect. The open question
+is and remains methodological — is EG cointegration well-specified on a
+price series this information-sparse — not a data-integrity bug to
+patch. Action item #1 above is now resolved as "not a bug, needs a
+methodology decision"; items #2-3 remain open.
+
+### Built and ran all three idea #3 constraint extensions (`ccp_variants.py`) — clean, consistent negative result across the board, plus two real implementation bugs caught by the synthetic-test discipline
+
+Per Ross's request to try all three and compare. All three required
+fixing a real bug surfaced by synthetic tests before trusting any real
+result — worth recording in detail since the debugging itself produced
+genuine methodological insight, not just code fixes:
+
+1. **Shrinkage toward OLS** (`w = α·w_pred + (1-α)·w_ols`, sign-aligned)
+   — straightforward, verified correct (α=1 matches pure predictability
+   weights, α=0 matches pure OLS).
+2. **Sparsity** (exact enumeration over 3-leg confirmed trios — full
+   basket vs. each 2-leg sub-basket, exhaustive at this scale rather
+   than an L0 relaxation). First test design was simply wrong: an
+   unconstrained 3-leg fit is a strictly LARGER feasible set than any
+   2-leg subset, so it will ALWAYS look at least as good in-sample by
+   construction — testing in-sample fit defeats the entire purpose of
+   sparsity. Fixed by selecting which legs to use via an internal
+   validation split, then refitting on the full data — real
+   cross-validation for structure selection, not raw in-sample
+   comparison. **Second, more interesting bug found while building the
+   test**: a pure i.i.d.-noise "irrelevant leg" trivially MINIMIZES the
+   Box-Tiao predictability ratio on its own (~-0.018, near the
+   theoretical floor) purely because i.i.d. noise has near-zero lag-1
+   autocorrelation — meaning it can spuriously "win" predictability-
+   ratio comparisons despite being a meaningless, untradeable series.
+   This is a real, generalizable limitation of the raw Box-Tiao ratio
+   as an objective, not just a test artifact — it doesn't distinguish
+   "genuinely mean-reverting around a stable level" from "just
+   unpredictable white noise." Fixed the test by using a persistent
+   (random-walk) irrelevant leg instead, which doesn't game the metric.
+   This is itself a methodological reason to prefer the moving-band
+   formulation's "maximize variance subject to a band" framing over a
+   raw predictability-ratio minimization — the band constraint forces
+   genuine activity, ruling out the "just be unpredictable noise"
+   degenerate solution.
+3. **The actual moving-band mechanism** — researched properly first
+   (Johansson, Schmelzer & Boyd, arXiv:2402.08108, *Optimization and
+   Engineering*, Oct 2024, confirmed via direct source lookup before
+   implementing): maximize portfolio variance subject to (i) price
+   staying within a band around a moving midpoint and (ii) a leverage
+   limit, solved via CCP (linearize the variance objective at each
+   iterate, solve the resulting LP, repeat). This is a genuinely
+   different objective from #1/#2's Box-Tiao ratio, not the same thing
+   under a different name. Two real bugs found and fixed via the
+   synthetic tests before trusting real-data output:
+   - A fixed absolute band width across pairs with wildly different
+     natural spread scales left many pairs' CCP solution unable to move
+     at all (stuck at a heavily-downscaled OLS direction) — and because
+     `predictability_ratio()` is scale-invariant, this silently reported
+     as numerically IDENTICAL to OLS, masking that no real optimization
+     had happened. Fixed: band width is now set relative to each pair's
+     own OLS-spread standard deviation, not a fixed value.
+   - **More serious**: naive CCP without a trust region let one LP
+     subproblem jump straight to a degenerate vertex of the feasible
+     polytope — caught directly on real data (SPY/VOO@4h): the solver
+     returned `w=(4.0, ~0.000001)`, i.e. abandon the hedge entirely and
+     leverage a single leg 4x, which trivially has high variance and
+     (surprisingly) still satisfied the band/leverage constraints as
+     written, while destroying the entire point of a basket spread.
+     This is a well-known, well-documented pitfall of unguarded
+     sequential-LP/CCP implementations — the linear approximation of
+     the true (quadratic) objective is only accurate near the
+     linearization point, and an unconstrained re-solve can walk
+     arbitrarily far from it. Fixed by adding a trust region
+     (`||w - w_k||_∞ <= trust_region`, shrinking on a rejected step)
+     that only accepts a step if the TRUE (not linearized) objective
+     actually improved — standard CCP hygiene, missing from the first
+     implementation attempt.
+
+**Real-data comparison, strict walk-forward, 33 pairs with sufficient
+history, mean OOS predictability ratio (lower = better):**
+
+| Method | Mean OOS ratio | Wins (fraction of pairs) |
+|--------|---------------|---------------------------|
+| OLS (baseline) | 3.698 | 18% |
+| Unconstrained predictability (this session's earlier build) | 4.130 | 21% |
+| Shrinkage toward OLS (α=0.5) | 3.821 | 0% |
+| Moving-band (CCP, trust-region-stabilized) | 4.199 | 18% |
+
+**Consistent conclusion across all three extensions, all three
+independently verified: none improves on plain OLS out-of-sample for
+this project's current confirmed pairs.** Shrinkage interpolates between
+OLS and the (worse) unconstrained method, as expected, but doesn't beat
+pure OLS. Moving-band, even properly stabilized, doesn't either — one
+fold (SPY/VOO) still shows real degradation (ratio 5.03 vs OLS's 0.89)
+even after the trust-region fix, flagged as not fully resolved, not
+swept under the rug. **This reinforces, with three separately-tested
+mechanisms rather than one, that simple OLS remains the more robust
+choice for this project's pairs at current sample sizes** — a real,
+useful, three-times-replicated negative result, not a wasted afternoon.
+Full per-pair results: `output/research/ccp_variants_comparison.parquet`.
+
+### Built: price-density screen as a comparison method, with a clean before/after on real confirmed pairs
+
+`price_density_screen.py` formalizes the audit's logic into a reusable
+`passes_price_density(symbol, tf_label)` predicate (same shape as a
+candidate addition to data.py's universe construction — deliberately
+NOT wired in, that's a separate methodology decision). Before/after on
+the current 1m confirmed pairs: **921/1369 cached symbols pass; applying
+it would keep 2/12 current pairs (C/MS, SNDK/TXN) and exclude the other
+10 (the entire HRMY/NBHC/PRDO/TILE/WS cluster, all "both legs fail")** —
+exactly matching the manual cross-reference done earlier, now backed by
+a clean, reusable, demonstrable comparison artifact rather than an
+ad-hoc check. Full before/after table:
+`output/research/price_density_screen_effect_1m.parquet`.
+
+**Still not decided with Ross**: whether to actually adopt this screen
+in data.py's real universe construction (alongside MIN_DOLLAR_VOLUME),
+and at what threshold — this comparison shows the EFFECT of adopting it,
+it doesn't make that call.
+
+### Late-session check-in: Ross's direction for the rest of the night
+
+Three decisions discussed: (1) price-density screen and (2) flagged-pair
+policy both stay as comparison-only — Ross's reasoning, worth recording
+verbatim in spirit: these are ranking/selection decisions, and the only
+honest way to evaluate one is against what it's meant to improve
+(eventual trading performance), so locking either in before backtest.py
+exists would optimize for a proxy instead of the real target. (3) Third
+paper pillar — undecided, Ross asked for my read. Given before bed:
+**no concrete backtest.py code tonight** (explicitly declined, in favor
+of an interactive session later — only a design/methodology outline,
+no code, is in scope tonight); **yes, investigate why the flagged
+symbols show this pattern** (directly informs the third-pillar
+question); architecture/portfolio backlog lenses explicitly deferred to
+the morning, not tonight.
+
+### BUG-D49 scope confirmed across all native intraday TFs — concentrated at 1m-3m, drops off sharply beyond 5m
+
+Ran `audit_price_degeneracy.py` across every native intraday TF, not
+just 1m:
+
+| TF | symbols evaluated | flagged | fraction |
+|----|-------------------|---------|----------|
+| 1m | 1,354 | 432 | 31.9% |
+| 2m | 1,496 | 368 | 24.6% |
+| 3m | 1,490 | 453 | 30.4% |
+| 5m | 1,513 | 152 | 10.0% |
+| 15m | 1,512 | 19 | 1.3% |
+| 30m | 1,511 | 5 | 0.3% |
+
+Clean, well-bounded scope: the phenomenon is concentrated at the finest
+granularities (1m/2m/3m, 25-32% of the universe each) and falls off
+sharply beyond 5m, becoming rare by 15m/30m. Mechanistically sensible:
+wider bars aggregate more underlying trades, so a name with sparse
+trade *frequency* (not necessarily low volume — could trade in
+occasional larger blocks) is far more likely to show a real price
+change within a 15-30 minute window than within any single 1-minute
+window. 2m's lower flagged fraction than 3m (24.6% vs 30.4%, breaking
+strict monotonicity with bar width) is plausibly explained by 2m's
+longer native yfinance fetch window (55-60 days vs 1m/3m's 5-7 day Yahoo
+hard limit) accumulating more total trading days via `append()`, giving
+more chances for a real price change to register — not independently
+confirmed, flagged as a minor open detail, not the headline finding.
+
+This re-centers the open methodology question: any price-density gate,
+if adopted, should likely be scoped to sub-5-minute TFs specifically,
+not applied uniformly across the whole intraday TF set — 15m/30m barely
+show this pattern at all and don't obviously need it.
+
+### Investigating root cause: why do these specific liquid symbols show sparse intraday price discovery?
+
+Per Ross's explicit request before bed. Built
+`investigate_price_degeneracy_cause.py`: fetches yfinance `.info`
+metadata (sector, industry, exchange tier, market cap, float ratio,
+average volume) for every symbol in the 1m audit, courteous
+inter-request delay (0.3s, same convention as data.py's own
+`_inter_request_delay`) given this project's prior yfinance rate-limit
+history (BUG-D31). Read-only company metadata, not historical bars —
+does not touch data.py's cache/pipeline. Running in the background as
+this entry is written; results to follow once it completes. Leading
+hypothesis worth testing directly rather than assuming: **low float
+ratio** (closely-held stocks trade in occasional larger blocks rather
+than continuous small prints, which would show up as real volume with
+sparse price *ticks*) — float ratio and exchange tier (Nasdaq Global
+Select vs Global Market vs Capital Market — a real, meaningful
+liquidity-standard distinction yfinance's `fullExchangeName` field
+distinguishes) are the two most promising candidate explanations to
+check against the data, not yet confirmed either way.
+
+### Checked two overnight-queued small items — both already resolved, not re-fixed
+
+`ProgressLogger.load()`'s previously-flagged dead code after an
+unconditional early return and `needs_refresh()`'s previously-flagged
+stale docstring (both queued in last night's bug-hunt notes) are both
+already correct in the current code — the docstring is explicitly
+dated "Corrected 2026-06-23" and matches the actual BUG-D46 fix, and
+`load()` has no unreachable code at all. Both were apparently already
+fixed during the part of this session that happened before the
+rate-limit pause (same part of the session that vectorized
+`_pairwise_corr`, found earlier tonight). No action needed — checked
+directly against the live file rather than assumed fixed, per this
+project's own verification rule.
+
+### Checked the third queued item — `_roll_adjust`'s 5% threshold — inconclusive, needs a more targeted check than tonight's time allows
+
+Checked real cached daily data directly: NG shows 7/2329 days (0.30%)
+with |return|>5%, max single-day move 30.5%; CL shows 131/13395 days
+(0.98%), max 20%; ES 120/13444 (0.89%); NQ 3/371 (0.81%). These rates
+and magnitudes are plausibly consistent with EITHER genuine roll
+artifacts OR genuine extreme-volatility days for these specific
+commodities/indices (oil and natural gas both have well-documented
+double-digit-percent single-day moves completely independent of
+contract rolls — 2020's negative-WTI day, various NG weather-driven
+spikes). Cannot distinguish the two from this data alone: CL's 13,395
+bars (~51+ years) suggests this cached series may already be a
+continuously-rolled/pre-adjusted feed from its source, in which case
+`_roll_adjust` might not even be the mechanism producing these specific
+numbers — would need to check against the actual IBKR raw single-
+contract series specifically (not the blended continuous series checked
+here) to resolve properly. Left exactly where the original overnight
+note left it — flagged as needing a targeted check against real
+`roll_dates` output specifically, not the broader return-distribution
+check just done. Not pursued further tonight; lower priority than the
+flagged-symbol investigation actually requested.
+
+### BUG-D49 root cause found: market capitalization, statistically overwhelming — this is no longer an unexplained anomaly
+
+`investigate_price_degeneracy_cause.py` completed: fetched yfinance
+`.info` metadata (sector, exchange tier, market cap, float, average
+volume) for all 1,354 symbols in the 1m audit. Tested four candidate
+explanations directly against the data rather than assuming:
+
+- **Exchange tier — rejected.** NYSE is 64.0% of BOTH the flagged and
+  clean groups, identically. NasdaqGS (top tier) 31.2% vs 32.5% — no
+  meaningful difference. Exchange venue/listing tier explains nothing.
+- **Float ratio — weak at best.** Flagged median 0.955 vs clean 0.988 —
+  real but small; not a convincing standalone explanation.
+- **Sector — a real but secondary signal.** Financial Services (19.0%
+  vs 12.5%) and Real Estate (13.4% vs 5.4%, more than double) are
+  over-represented among flagged symbols; Technology (10.9% vs 17.9%)
+  and Industrials (11.3% vs 17.8%) are under-represented. Plausibly
+  downstream of market cap rather than an independent cause (this
+  universe's small/mid-cap REITs and regional banks are exactly where
+  this sector skew would show up).
+- **Market capitalization — the dominant, statistically overwhelming
+  explanation.** Flagged median $3.03B vs clean median $17.3B — almost
+  6x smaller. Mann-Whitney U test (flagged < clean): **p = 1.82e-145**.
+  Correlation between log(market cap) and flagged status: **-0.629** —
+  a strong, real effect, not a marginal one. Average daily share volume
+  also lower for flagged (1.20M vs 2.08M shares), consistent with the
+  same underlying story.
+
+**Mechanism, now characterizable rather than mysterious:** smaller-cap
+names can clear a *dollar*-volume liquidity floor (a handful of larger,
+sporadic trades moving real dollar amounts) without trading
+*frequently* at the tick level the way mega-caps do via continuous
+small-lot order flow. `Config.DATA.MIN_DOLLAR_VOLUME` measures trade
+SIZE aggregated over a day; it says nothing about trade FREQUENCY,
+which is what intraday price-discovery density actually depends on.
+These are two genuinely different liquidity concepts that this
+project's (and likely most projects') universe construction has been
+conflating under one threshold.
+
+**This changes the recommendation for the candidate third paper
+pillar from "maybe" to "this is now a real, well-characterized,
+citable finding"**: not just "daily liquidity doesn't equal intraday
+price-discovery density" as an observed correlation, but a specific,
+economically sensible, statistically airtight mechanism — trade
+frequency and trade size are different dimensions of liquidity, and
+screening on dollar volume alone silently admits ~32% of a nominally-
+liquid universe into intraday testing on frequency-starved data. Worth
+discussing with Ross directly before drafting into `PAPER.md` (per his
+own "not sure" on this), but the open question has shifted from "is
+there even a real phenomenon here" (yes, conclusively) to "how should
+this be framed and whether to build the obvious next check" (does a
+market-cap or trade-frequency-based screen perform better than the
+current price-density screen — same comparison-arm philosophy Ross
+already established for the other open methodology questions tonight).
+Full data: `output/research/price_degeneracy_with_metadata.parquet`.

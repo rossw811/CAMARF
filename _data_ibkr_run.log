@@ -1,0 +1,91 @@
+2026-06-23 12:31:58  INFO      CAMARF  —  data_ibkr.py  —  IBKR Supplemental Pipeline
+2026-06-23 12:31:58  INFO      Primary yfinance cache is untouched by this script.
+2026-06-23 12:31:58  INFO      Manifest: 20 confirmed pair/trio symbols from C:\Users\RossW\OneDrive\Documents\CAMARF\output\results\confirmed_pairs_manifest.json
+2026-06-23 12:31:58  INFO      Fetching all TFs: ['1m', '5m', '15m', '30m', '1h', '4h', '1D']
+2026-06-23 12:31:58  INFO      IBKR Supplement: 20 symbols × 7 TFs = 42 fetches needed (98 already fresh, skipped)
+2026-06-23 12:31:58  INFO      Connecting to 127.0.0.1:4001 with clientId 1...
+2026-06-23 12:31:58  INFO      Connected
+2026-06-23 12:31:59  INFO      Logged on to server version 176
+2026-06-23 12:31:59  INFO      API connection ready
+2026-06-23 12:31:59  INFO      Warning 2104, reqId -1: Market data farm connection is OK:usfarm
+2026-06-23 12:31:59  INFO      Warning 2107, reqId -1: HMDS data farm connection is inactive but should be available upon demand.ushmds
+2026-06-23 12:31:59  INFO      Warning 2158, reqId -1: Sec-def data farm connection is OK:secdefil
+2026-06-23 12:31:59  INFO      Synchronization complete
+2026-06-23 12:31:59  INFO      IBKR connected  \u2192  127.0.0.1:4001
+2026-06-23 12:32:04  INFO      Warning 2106, reqId -1: HMDS data farm connection is OK:ushmds
+2026-06-23 12:32:09  INFO      Fetched  APAM 1m  \u2192  4396 bars  (dropped 0)
+2026-06-23 12:32:23  INFO      Fetched  APAM 5m  \u2192  16074 bars  (dropped 0)
+2026-06-23 12:32:48  WARNING   IBKR request failed APAM 15m attempt 1: . Retrying in 3s
+2026-06-23 12:33:06  WARNING   IBKR request failed APAM 15m attempt 2: . Retrying in 5s
+2026-06-23 12:33:26  WARNING   IBKR request failed APAM 15m attempt 3: . Retrying in 10s
+2026-06-23 12:33:51  WARNING   IBKR request failed APAM 15m attempt 4: . Retrying in 10s
+2026-06-23 12:34:01  INFO        APAM 15m: IBKR failed \u2192 trying yfinance
+2026-06-23 12:34:02  INFO        \u2713 yfinance APAM 15m \u2192 1559 bars
+2026-06-23 12:34:17  WARNING   IBKR request failed APAM 30m attempt 1: . Retrying in 3s
+2026-06-23 12:34:35  WARNING   IBKR request failed APAM 30m attempt 2: . Retrying in 5s
+2026-06-23 12:34:57  WARNING   IBKR request failed APAM 30m attempt 3: . Retrying in 10s
+2026-06-23 12:35:22  WARNING   IBKR request failed APAM 30m attempt 4: . Retrying in 10s
+2026-06-23 12:35:32  INFO        APAM 30m: IBKR failed \u2192 trying yfinance
+2026-06-23 12:35:32  INFO        \u2713 yfinance APAM 30m \u2192 780 bars
+2026-06-23 12:35:47  WARNING   IBKR request failed APAM 1h attempt 1: . Retrying in 3s
+2026-06-23 12:36:09  WARNING   IBKR request failed APAM 1h attempt 2: . Retrying in 5s
+2026-06-23 12:36:29  WARNING   IBKR request failed APAM 1h attempt 3: . Retrying in 10s
+2026-06-23 12:36:54  WARNING   IBKR request failed APAM 1h attempt 4: . Retrying in 10s
+2026-06-23 12:37:04  INFO        APAM 1h: IBKR failed \u2192 trying yfinance
+2026-06-23 12:37:05  INFO        \u2713 yfinance APAM 1h \u2192 5082 bars
+2026-06-23 12:37:06  INFO        APAM: 7/7 TFs saved (1m, 5m, 15m, 30m, 1h, 4h, 1D)
+2026-06-23 12:37:21  WARNING   IBKR request failed AZTA 1m attempt 1: . Retrying in 3s
+2026-06-23 12:37:39  WARNING   IBKR request failed AZTA 1m attempt 2: . Retrying in 5s
+2026-06-23 12:37:59  WARNING   IBKR request failed AZTA 1m attempt 3: . Retrying in 10s
+2026-06-23 12:38:24  WARNING   IBKR request failed AZTA 1m attempt 4: . Retrying in 10s
+2026-06-23 12:38:34  INFO        AZTA 1m: IBKR failed \u2192 trying yfinance
+2026-06-23 12:38:34  INFO        \u2713 yfinance AZTA 1m \u2192 1118 bars
+2026-06-23 12:38:49  WARNING   IBKR request failed AZTA 5m attempt 1: . Retrying in 3s
+2026-06-23 12:39:07  WARNING   IBKR request failed AZTA 5m attempt 2: . Retrying in 5s
+2026-06-23 12:39:29  WARNING   IBKR request failed AZTA 5m attempt 3: . Retrying in 10s
+2026-06-23 12:39:54  WARNING   IBKR request failed AZTA 5m attempt 4: . Retrying in 10s
+2026-06-23 12:40:04  INFO        AZTA 5m: IBKR failed \u2192 trying yfinance
+2026-06-23 12:40:04  INFO        \u2713 yfinance AZTA 5m \u2192 4641 bars
+2026-06-23 12:40:20  WARNING   IBKR request failed AZTA 15m attempt 1: . Retrying in 3s
+2026-06-23 12:40:42  WARNING   IBKR request failed AZTA 15m attempt 2: . Retrying in 5s
+2026-06-23 12:41:02  WARNING   IBKR request failed AZTA 15m attempt 3: . Retrying in 10s
+2026-06-23 12:41:27  WARNING   IBKR request failed AZTA 15m attempt 4: . Retrying in 10s
+2026-06-23 12:41:37  INFO        AZTA 15m: IBKR failed \u2192 trying yfinance
+2026-06-23 12:41:37  INFO        \u2713 yfinance AZTA 15m \u2192 1559 bars
+2026-06-23 12:41:52  WARNING   IBKR request failed AZTA 30m attempt 1: . Retrying in 3s
+2026-06-23 12:42:10  WARNING   IBKR request failed AZTA 30m attempt 2: . Retrying in 5s
+2026-06-23 12:42:30  WARNING   IBKR request failed AZTA 30m attempt 3: . Retrying in 10s
+2026-06-23 12:42:55  WARNING   IBKR request failed AZTA 30m attempt 4: . Retrying in 10s
+2026-06-23 12:43:05  INFO        AZTA 30m: IBKR failed \u2192 trying yfinance
+2026-06-23 12:43:06  INFO        \u2713 yfinance AZTA 30m \u2192 780 bars
+2026-06-23 12:43:07  INFO        AZTA: 7/7 TFs saved (1m, 5m, 15m, 30m, 1h, 4h, 1D)
+2026-06-23 12:43:22  WARNING   IBKR request failed INVX 1m attempt 1: . Retrying in 3s
+2026-06-23 12:43:40  WARNING   IBKR request failed INVX 1m attempt 2: . Retrying in 5s
+2026-06-23 12:44:02  WARNING   IBKR request failed INVX 1m attempt 3: . Retrying in 10s
+2026-06-23 12:44:27  WARNING   IBKR request failed INVX 1m attempt 4: . Retrying in 10s
+2026-06-23 12:44:37  INFO        INVX 1m: IBKR failed \u2192 trying yfinance
+2026-06-23 12:44:37  INFO        \u2713 yfinance INVX 1m \u2192 977 bars
+2026-06-23 12:44:52  WARNING   IBKR request failed INVX 5m attempt 1: . Retrying in 3s
+2026-06-23 12:45:14  WARNING   IBKR request failed INVX 5m attempt 2: . Retrying in 5s
+2026-06-23 12:45:34  WARNING   IBKR request failed INVX 5m attempt 3: . Retrying in 10s
+2026-06-23 12:45:59  WARNING   IBKR request failed INVX 5m attempt 4: . Retrying in 10s
+2026-06-23 12:46:09  INFO        INVX 5m: IBKR failed \u2192 trying yfinance
+2026-06-23 12:46:09  INFO        \u2713 yfinance INVX 5m \u2192 4404 bars
+2026-06-23 12:46:25  WARNING   IBKR request failed INVX 15m attempt 1: . Retrying in 3s
+2026-06-23 12:46:43  WARNING   IBKR request failed INVX 15m attempt 2: . Retrying in 5s
+2026-06-23 12:47:03  WARNING   IBKR request failed INVX 15m attempt 3: . Retrying in 10s
+2026-06-23 12:47:28  WARNING   IBKR request failed INVX 15m attempt 4: . Retrying in 10s
+2026-06-23 12:47:38  WARNING   Circuit OPEN (#1) after 10 failures
+2026-06-23 12:47:38  INFO        INVX 15m: IBKR failed \u2192 trying yfinance
+2026-06-23 12:47:38  INFO        \u2713 yfinance INVX 15m \u2192 1560 bars
+2026-06-23 12:47:39  INFO        INVX: 6/7 TFs saved (1m, 5m, 15m, 30m, 1h, 4h)
+2026-06-23 12:47:40  INFO        NBHC: 3/7 TFs saved (1m, 5m, 15m)
+2026-06-23 12:47:40  INFO        FANG: 3/7 TFs saved (1m, 5m, 15m)
+2026-06-23 12:47:41  INFO        OXY: 3/7 TFs saved (1m, 5m, 15m)
+2026-06-23 12:47:41  INFO      Disconnecting from 127.0.0.1:4001, 3.88 kB sent in 48 messages, 5.03 MB received in 408 messages, session time 943 s.
+2026-06-23 12:47:41  INFO      Disconnecting
+2026-06-23 12:47:41  INFO      IBKR disconnected
+2026-06-23 12:47:41  INFO      ======================================================================
+2026-06-23 12:47:41  INFO      IBKR Supplement complete: 29 TF-fetches saved across 6 symbols | 13 failed | 0 skipped (session killed)
+2026-06-23 12:47:41  INFO      Re-run analysis.py to use deep history for episodic cointegration analysis.
+2026-06-23 12:47:41  INFO      ======================================================================
