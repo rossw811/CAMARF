@@ -5106,3 +5106,648 @@ market-cap or trade-frequency-based screen perform better than the
 current price-density screen — same comparison-arm philosophy Ross
 already established for the other open methodology questions tonight).
 Full data: `output/research/price_degeneracy_with_metadata.parquet`.
+
+---
+
+## Session 11 (2026-06-24) — Lead-lag scan and copula-fitting comparison
+
+### Context
+
+Start-of-session orientation pass (read Development.md/PAPER.md/
+CLAUDE.md in full, cross-checked Session 10's claims against the actual
+code via grep and against `latest_run_data.log`/`_data_run_verify.log`'s
+timestamps) found Session 10's "Next Session" list had gone stale mid-
+session — items #1 and #2 (confirm the BUG-D46 data.py fix completed;
+re-run analysis.py fully) had actually both completed before Session 10
+ended, just after that list was written. Corrected in place (struck
+through, not deleted) rather than left misleading for a future reader.
+File Inventory's line counts (dated 2026-06-22) were also re-taken
+directly from `wc -l` rather than carried forward again.
+
+All "King" references across `CLAUDE.md`/`Development.md`/`PAPER.md`
+(and a handful of code comments in `config.py`/`eg_permutation_check.py`/
+`graph_clustering.py`/`predictability_optimizer.py`/`price_density_screen.py`)
+renamed to "Ross" per his direction — a straightforward retroactive
+rename, no content change.
+
+Committed and pushed Session 10's full body of work (commit `3b2b174`,
+message `6/24`, per Ross's direct instruction) — `CLAUDE.md`,
+`Development.md`, `PAPER.md`, the BUG-D45-extension/BUG-D46/47/48 fixes
+in `data.py`/`analysis.py`/`ml.py`, and the full output/cache and
+output/results trees (this project's standing convention, see the
+reproducibility bias-audit entry above).
+
+Discussed the Session 10 backlog (the condensed top-picks per lens, not
+the full ~60-item list — that list was never persisted to a file, only
+generated in the prior session's own subagent calls; worth remembering
+next time this matters). Ross's own new idea, raised independently: a
+lead-lag system (two assets not contemporaneously cointegrated, but one
+leads the other) plus Gaussian/Clayton copulas. Both scoped and built
+this session, per Ross's explicit "why not start on both."
+
+### Built: `lead_lag_scan.py` — lagged-correlation + lagged-EG scan on confirmed pairs
+
+Generalizes the production pipeline's lag-0-only assumption (every
+existing stage — correlation pre-filter, EG, OLS/Kalman — tests only
+bar t of A against bar t of B). Two-stage design mirroring the
+production pipeline's own cheap-filter → expensive-confirm structure:
+sweep `corr(ret_a_t, ret_b_{t+k})` for k in [-10, 10] bars (gap-aware
+returns, reusing `_gap_aware_returns`); for any pair where the best
+non-zero lag beats lag 0 by ≥0.05 correlation, re-run the identical
+production EG test (same `coint()` call shape as
+`eg_permutation_check.py`) at both lag 0 and the best lag for comparison.
+Confirmed-pairs-only scope, same discipline as `tail_dependence.py`/
+`eg_permutation_check.py` — a full O(N²×K) universe-wide lag sweep is a
+separate, much more expensive undertaking, flagged but not attempted.
+
+**Synthetic verification** (`debug/_verify_lead_lag_scan.py`): planted a
+known lag (B_t = A_{t-6} + small i.i.d. level noise, A a random walk,
+600 visible bars + 15-bar buffer). Correlation scan recovered lag=6
+exactly (corr=0.991 at the planted lag vs corr=-0.045 at lag 0). EG
+confirmed the planted lag is far more significant (p≈0.0) than lag 0
+(p≈5.3e-9) — note BOTH are nominally "significant," not just the planted
+lag: a known, generalizable property surfaced by this check, not a test
+bug — any I(1) series is trivially cointegrated with its own fixed-lag
+copy (A_t − A_{t-k} is a finite sum of i.i.d. increments, hence bounded/
+stationary for any fixed k), so in a single-random-walk-source synthetic
+design the WRONG alignment can still nominally pass EG, just with much
+higher residual variance. The correlation lift and the EG p-value
+MAGNITUDE (not a significant/not-significant split) are the discriminating
+signals — worth keeping in mind when reading real-data results below,
+which show exactly this pattern.
+
+**Bug caught on real data, not by the synthetic test**: the first real
+run against confirmed pairs returned `best_lag=-10` (the search window's
+edge) with `corr=nan` for several BUG-D49-flagged degenerate-price pairs
+(HRMY/PRDO, NBHC/WS, PRDO/WS, TILE/WS, ACT/NBHC, CPF/WAFD, CTKB/PRAA,
+CTKB/UHT, EIG/INVX, EIG/NBHC, PRAA/UHT). Root cause: a shifted-overlap
+window landing entirely inside one of these symbols' flat, repeated-price
+stretches has zero variance, so `np.corrcoef` returns NaN rather than
+raising; `best_lag()`'s `max(..., key=abs)` only filtered `None`, not
+NaN, and NaN comparisons are always False, so `max()` couldn't reliably
+discard it. Fixed by normalizing any non-finite correlation to `None` at
+the source (`lagged_corr_scan`), re-verified the synthetic test still
+passes (no zero-variance windows there, so unaffected), then re-ran real
+data — all previously-NaN pairs now correctly resolve to `best_lag=0`.
+The synthetic test never exercised this because clean synthetic data has
+no degenerate-variance windows — a reminder that synthetic verification
+catches what it's designed to catch, and real data's own pathologies
+(here, BUG-D49) can surface a different class of bug a synthetic test
+would need to be deliberately constructed to find.
+
+**Real-data result, current confirmed-pairs set (37 pairs)**: 36/37
+already sit at `best_lag=0` exactly matching `corr_at_lag0` — expected,
+since these pairs were selected by a pipeline that already only tests
+lag 0, so it isn't surprising lag 0 looks optimal for the pairs that
+passed. The one exception, **CPK/WAFD@3m**: best_lag=-6, corr lift
++0.052 (corr*=-0.731 vs corr0=-0.679), EG p-value modestly better at the
+lag (0.0231 vs 0.0259 at lag 0) — a real but weak result, both already
+significant at lag 0, not a dramatic finding. **This result does not
+address the more interesting version of Ross's original question**:
+pairs that FAIL the lag-0 pre-filter and never reach the confirmed-pairs
+list at all might still hide real lagged structure — that's the
+separate, much more expensive universe-wide scan flagged above, not
+attempted this session. Full results:
+`output/research/lead_lag_scan.parquet`.
+
+### Built: `near_miss_lag_scan.py` — the actual universe-wide test of Ross's hypothesis, and a real, sector-clustered result
+
+**RETRACTED, same session, a few hours later — see "BUG FOUND: raw-cache
+gap-convention mismatch" below for the full account.** Every number in
+this section was computed by feeding raw, un-aligned `DataStore.load()`
+data into `UniverseFilter.build_returns_matrix`, which silently
+misaligned calendar bars whenever two symbols had different lengths
+from different gap histories (not just different listing dates, which
+the function's right-pad-by-count scheme can handle correctly — this
+needed genuine `DataAligner` processing first, which production
+`analysis.py` always does and this script originally skipped). Verified
+directly: CATY/UCB's "true" lag-0 correlation is 0.558-0.730 depending
+on which correction is applied, not the 0.267 reported below, and all 9
+"flagged" pairs turn out to already sit at lag 0 with no lag structure
+at all once correctly computed — see the correction section for the
+full re-run. Left below, struck through in spirit but not literally
+deleted, per this file's standing convention (see the BUG-D31/D32
+account in §9 of PAPER.md) — the ORIGINAL reasoning is preserved so a
+future reader can see exactly what looked convincing and why, not just
+that it was wrong.
+
+Ross's follow-up framing (2026-06-24) sharpened the question correctly:
+the confirmed-pairs-only null above can't speak to it — those pairs were
+*selected* by a lag-0-only filter, so by construction lag 0 looks
+optimal for them. The real test is pairs the production correlation
+pre-filter (`MIN_PEARSON_CORR=0.40`) currently *excludes*, where the
+true relationship might be lag-diluted below threshold. Same cheap-
+filter → confirm architecture as `lead_lag_scan.py`, scaled up: reused
+`UniverseFilter.build_returns_matrix`/`correlation_matrix` directly
+(the already-vectorized production kernel — no reimplementation) to
+compute the full lag-0 correlation matrix for one TF in a single pass,
+then ran the (non-vectorized, per-pair) lagged-correlation sweep only on
+pairs landing in a "near miss" band (0.25 ≤ |corr_lag0| < 0.40) — not
+the full N² space.
+
+**Real run, 1h, full universe**: 1,511 symbols, 1,140,805 total pairs
+evaluated at lag 0; **204,734 near-miss pairs**. Of those, **9 show a
+non-zero-lag lift ≥ 0.10** over lag 0 (min-lift set higher than
+`lead_lag_scan.py`'s 0.05 default, since near-miss pairs start from a
+weaker base signal).
+
+**The 9 are not scattered noise — verified directly against yfinance
+sector/industry metadata, not assumed from ticker familiarity:**
+- **Regional banks**: CATY, FIBK, SBCF, TCBI, UMBF (all "Banks -
+  Regional") each show their best alignment with **UCB (United
+  Community Banks) leading by exactly 1 hour bar** — same direction,
+  same lag, five separate pairs.
+- **Asset managers**: BX (Blackstone) and ARES (Ares Management) each
+  lead **STEP (StepStone Group) by 1 hour** — same lag, same direction,
+  both "Asset Management."
+- **Semiconductors/semicap**: DIOD/VSH (both "Semiconductors") and
+  AEIS/MKSI (semicap-equipment-adjacent) — both lagged by 1 hour.
+
+This is the textbook lead-lag signature from the literature (a more-
+covered/faster-price-discovery name leading less-covered peers in the
+same narrow industry by a short, consistent lag — Hou 2007-style
+information-diffusion mechanism). A pure look-elsewhere artifact from
+searching 21 lags per pair would not be expected to cluster this
+cleanly by industry with consistent direction and magnitude across
+independent pairs.
+
+**Honest statistical caveat, not resolved by this result alone**: 9/204,734
+is a tiny fraction, and the look-elsewhere correction (searching 21 lags
+per pair mechanically inflates the best-of-K correlation for ANY pair,
+real or noise — `lead_lag_scan.py`'s own synthetic test already
+demonstrated a version of this) has NOT been applied yet. The sector
+clustering makes a pure-noise explanation considerably less likely, but
+it is corroborating structure, not a substitute for the actual
+permutation-corrected significance test discussed with Ross and not yet
+built. Full results: `output/research/near_miss_lag_scan_1h.parquet`.
+
+**Not yet done**: the permutation-corrected "best p-value across K lags"
+test (generalizing `eg_permutation_check.py`'s circular-shift null),
+which is the actual filter-tightening mechanism Ross and Claude
+converged on independently this session (his framing: "more false
+positives from the lag adjustment, so adjust filters to weed them out";
+the technical implementation of that is exactly this permutation test,
+not an arbitrary stricter threshold) — the natural, well-justified next
+step given this real result, scoped to at least these 9 pairs rather
+than the full 204,734.
+
+### Built: `copula_pairs.py` — Gaussian vs. Clayton vs. rotated-Clayton, out-of-sample
+
+Direct follow-on from `tail_dependence.py`'s idea #8 finding (CCL/NCLH
+@3m: λ_U≈0.5 vs λ_L≈0.32 — real, reliability-screened, UPPER-tail-
+dominant asymmetry). OLS/EG and a Gaussian copula are all implicitly
+symmetric/linear and cannot represent this. **Framing correction caught
+while scoping, not silently fixed**: a standard Clayton copula only has
+LOWER-tail dependence (built for "crash together," λ_U=0 always) — the
+wrong shape for CCL/NCLH's actual, already-measured asymmetry direction.
+Fix: also fit the 180°-rotated ("survival") Clayton — identical density/
+fit applied to (1-u, 1-v) instead of (u, v), which flips the dependence
+into the upper tail with no new family or dependency needed. Both
+orientations fit independently (not assumed equal via the Kendall's-tau
+invariance under joint reflection, even though that invariance does
+hold — verified directly, see below) and compared alongside plain
+Gaussian, out-of-sample, via the identical `_expanding_folds` walk-
+forward convention `predictability_optimizer.py`/`ccp_variants.py`
+already established (4 expanding folds). Gaussian fit via the normal-
+scores correlation estimator; Clayton fit via the closed-form Kendall's-
+tau moment estimator (θ=2τ/(1-τ)) — no numerical optimizer, consistent
+with this project's preference for simple/robust estimators over
+iterative ones after the CCP-variants trust-region experience. Scope
+deliberately narrow, same discipline as `tail_dependence.py`: the one
+pair it actually flagged, not a universe-wide build. This answers "does
+the data prefer a non-Gaussian copula here, out of sample" — it does
+NOT build a trading signal (Mispricing Index) or a backtest; that is an
+appropriately-scoped next step if this result is corroborated, same
+staged-build discipline already used for the MIDAS feature.
+
+**Synthetic verification** (`debug/_verify_copula_pairs.py`): simulated
+data from each of the three known copulas (Gaussian ρ=0.6; standard
+Clayton θ=3.0; rotated Clayton θ=3.0, generated by reflecting a standard
+Clayton draw — a rotated/survival copula's draws are exactly (1-U,1-V)
+for (U,V)~base copula, by definition). All three parameters recovered
+within tolerance (ρ̂=0.604, θ̂=3.003, rotated θ̂=2.943) and — the more
+important check — each family's log-likelihood correctly wins on its
+OWN generating data, including the critical case: rotated-Clayton beats
+plain Clayton on upper-tail data (0.630 vs -0.047 mean log-lik), and
+plain Clayton beats rotated-Clayton on lower-tail data (0.642 vs
+-0.075). This is the specific mechanism the CCL/NCLH application
+depends on — not just "some non-Gaussian copula wins," but the CORRECT
+orientation winning and the wrong orientation actively losing. Also
+confirmed the Kendall's-tau invariance claim directly: θ fit on (u,v)
+exactly equals θ fit on (1-u,1-v) for the same data (rel. diff 0.0000),
+validating the derivation even though production code fits both
+independently rather than relying on it.
+
+**Real-data result, CCL/NCLH @3m (909 obs, 4 expanding folds)**: mean
+out-of-sample log-likelihood — Gaussian 0.0733, Clayton (wrong shape)
+0.0275, **rotated Clayton 0.0853, best overall**. Fold-by-fold: rotated-
+Clayton wins 3 of 4 folds (folds 2-4), Gaussian wins fold 1; plain
+Clayton (wrong shape) is worst or near-worst in every fold. **Honest
+read, not oversold**: this is a real, fold-robust signal corroborating
+`tail_dependence.py`'s original finding via a genuinely independent
+method (out-of-sample parametric copula fit vs. a nonparametric tail-
+counting heuristic) — but the margin between rotated-Clayton and
+Gaussian (0.085 vs 0.073) is modest, not a landslide; the much larger,
+more decisive gap is rotated-Clayton vs. plain (wrong-shape) Clayton
+(0.085 vs 0.028). One pair, one timeframe — this is exactly the
+single-pair, narrow-scope comparison the build was scoped for for
+this round, not a universe-wide finding. Full results:
+`output/research/copula_comparison.parquet`.
+
+### Not yet decided (original list — item 1 below resolved same session, see `near_miss_lag_scan.py` above; items 2-3 still open)
+
+Both builds answer narrowly-scoped diagnostic questions, not "should
+this go into production" questions — same discipline as every other
+comparison-arm build this project has done (price-density screen, EG
+permutation check, all three idea #3 CCP variants). Specifically open,
+not actioned:
+1. ~~Whether the lead-lag mechanism is worth the cost of a universe-wide
+   (not confirmed-pairs-only) lag sweep~~ — **done, see
+   `near_miss_lag_scan.py` above**: a real, sector-clustered signal
+   found at 1h. Struck through rather than deleted, per this file's
+   convention for resolved items.
+2. Whether copula-fitting is worth extending past CCL/NCLH to the rest
+   of the universe, and if so, whether via `tail_dependence.py`'s
+   existing asymmetry gate (screen first, only copula-fit pairs that
+   clear it) or unconditionally.
+3. Whether either of these becomes an actual entry-signal mechanism
+   (a Mispricing-Index-style copula trading rule; a lag-realigned
+   z-score/half-life pipeline) — both are deliberately stopped short of
+   this, per the project's staged-build discipline.
+
+### Built: `lead_lag_permutation_check.py` — the look-elsewhere correction for the near-miss scan's 9 flagged pairs
+
+Direct follow-on to `near_miss_lag_scan.py`'s 9 flagged pairs. Ross's
+framing of the needed correction ("more false positives from the lag
+adjustment, so adjust filters to weed them out") and Claude's framing
+(searching K=21 lags per pair is extra researcher degrees of freedom —
+a look-elsewhere effect — and needs a permutation-corrected null, not
+an arbitrary stricter threshold) converged on the same mechanism.
+Generalizes `eg_permutation_check.py`'s circular-shift null to the
+lag-search two-stage procedure: for the real pair, find the best lag
+via correlation sweep, then EG-confirm at that lag only (the same
+procedure `lead_lag_scan.py`/`near_miss_lag_scan.py` already use);
+build a null by circularly shifting one leg N times and running the
+IDENTICAL two-stage procedure on each shifted null; the permutation
+p-value is the fraction of null draws at least as extreme as the real
+result. This is the correct null for "is the best-of-21-lags result
+better than what circularly-shifted (no true relationship) data ALSO
+achieves when given the same 21-lag search freedom" — unlike applying
+lag-0's calibrated threshold to a best-of-21 result, which is invalid.
+
+**Synthetic verification** (`debug/_verify_lead_lag_permutation_check.py`),
+two checks:
+1. **Positive control**: the same planted-lag synthetic pair from
+   `lead_lag_scan.py`'s own verification (B_t = A_{t-6} + small noise)
+   remains significant AFTER the correction (corr_perm_pvalue=0.0066,
+   eg_perm_pvalue=0.0100, n_perm=300) — a genuine signal survives proper
+   correction, not just a lag-0 test.
+2. **False-positive calibration** (the actual point of building this):
+   24 independent pairs of completely unrelated random walks, tested
+   with the correlation-only permutation (n_perm=200 each, EG skipped
+   for speed). 1/24 falsely rejected at p<0.05 (rate=0.042) — within
+   sampling noise of the nominal 5% rate. If the correction weren't
+   working, this rate would be inflated well above 5%, since each null
+   draw is ALSO searching 21 lags. This is the check that actually
+   validates the correction is doing its job, not just adding noise.
+
+### Built: reproducibility audit — three ad-hoc verification checks turned into saved, rerunnable scripts
+
+Per Ross's explicit request (2026-06-24): "make sure for any claims
+we've made that there are scripts to confirm and be reproducible."
+Found three checks from this session that were one-off `python -c`
+commands or missing entirely, not saved scripts — exactly the kind of
+drift CLAUDE.md's "always verify file changes actually landed" rule
+warns against, applied here to claims rather than code edits:
+
+1. **The "9 flagged pairs cluster by sector" claim** had no saved
+   script — the original check was a one-off yfinance `.info` lookup.
+   Built `annotate_symbol_metadata.py`: given a parquet with
+   symbol_a/symbol_b columns, looks up sector/industry/longName for
+   every unique symbol and writes an annotated copy. Re-ran against the
+   real 9 flagged pairs: reproduces the original finding exactly —
+   8/9 pairs share an identical yfinance industry classification (the
+   one exception, AEIS/MKSI, was already described as
+   "semicap-equipment-adjacent" rather than claimed identical, so this
+   is a confirmation, not a correction).
+2. **The SPY/VOO@4h "deep history adds nothing" check** was also a
+   one-off command. Rather than re-running it ad hoc, instrumented
+   `tail_dependence_deep.py` itself to report actual date ranges
+   achieved (not the requested fetch depth) and flag
+   `deep_actually_extends_{a,b}` directly in its normal output — now a
+   permanent, reusable part of the tool, not a side check. See that
+   build's entry below for what this found on real data.
+3. **`near_miss_lag_scan.py` had no synthetic test at all** — its
+   core logic (near-miss band filter + lag scan) was inline in `main()`,
+   untestable without real cache files on disk. Extracted into
+   `find_lagged_near_misses()` (pure function, no file I/O) and added
+   `debug/_verify_near_miss_lag_scan.py`: a 4-symbol synthetic universe
+   with three deliberately distinct cases — a near-miss pair with a real
+   planted lag (correctly found AND flagged), a near-miss pair with no
+   real lag structure (correctly found but NOT flagged), and a pair
+   already above the near-miss band's upper bound (correctly excluded
+   from the near-miss set entirely). All three routed correctly. Re-ran
+   the real 1h scan after the refactor to confirm identical output to
+   the pre-refactor run (same 9 flagged pairs) — the extraction changed
+   structure, not behavior.
+
+### Built: `tail_dependence_deep.py` — deep-history extension, real result is a clean negative
+
+Per Ross's "how can we get as much data and inference as possible"
+(2026-06-24). Reuses `data_ibkr.py`'s own `load_supplement` +
+`merge_with_yfinance` directly (the exact merge `analysis.py`'s
+`_enrich_with_deep_history` already uses) rather than reimplementing —
+extends `tail_dependence.py`'s reliability check (n_L/n_U >= 10) by
+comparing the regular rolling-cache series against the IBKR-deep-merged
+series side by side, for every confirmed pair where both legs have a
+supplement file.
+
+**Real result: the deep-history lever currently provides essentially
+no additional data.** Ran against every confirmed pair with a
+supplement (11 pairs/TFs: the BUG-D49 HRMY/NBHC/PRDO/TILE/WS cluster at
+1m, SPY/VOO at 4h) and explicitly against CCL/NCLH at every TF with a
+supplement format (1h, 4h, 15m, 30m, 1D — 3m, CCL/NCLH's own confirmed
+TF, has no supplement at all). **Zero gain in 15/16 checks**; the one
+exception (CCL/NCLH@30m) gained only 5 bars. Root cause, verified
+directly via date ranges rather than assumed from the requested fetch
+depth: in every zero-gain case, the supplement's actual earliest date
+is IDENTICAL to the main cache's, despite `data_ibkr.py` requesting up
+to "10 Y" of depth (e.g. SPY/VOO@4h: both supplement and main cache
+start 2023-07-24; CCL/NCLH@1D: yfinance already has CCL back to 1987
+and NCLH back to its 2013 IPO, so there is nothing for IBKR to add at
+daily granularity in the first place). For the intraday TFs, the
+likely mechanism is that the supplement was fetched once and never
+refreshed, while the main rolling cache has been actively accumulating
+via the BUG-D46/BUG-D42 append() fixes from this same week — the
+rolling cache may simply have caught up to or surpassed a static
+supplement snapshot.
+
+**Decision: did not build the planned `--deep` extension to
+`copula_pairs.py`.** The premise (deep history gives copula fitting
+more data) doesn't hold for the pair it would have been tested on
+(CCL/NCLH) — building the extension anyway would add complexity for a
+data source that currently provides nothing. A clean, useful negative
+result, not a wasted build: it directly answers Ross's "how do we get
+more data" question with "not via this lever, right now" rather than
+silently building something that wouldn't help. Full results:
+`output/research/tail_dependence_deep_comparison.parquet`.
+
+**Not yet decided**: whether `data_ibkr.py`'s deep-history fetch itself
+needs a follow-up (re-fetch supplements that are stale relative to the
+now-accumulating main cache; or investigate whether IBKR's actual
+historical-data availability for sub-daily bars is shorter than the
+requested duration strings imply, independent of any CAMARF-side bug) —
+this session only diagnosed that the lever isn't currently delivering,
+not why at the IBKR/data_ibkr.py level specifically.
+
+### BUG FOUND: raw-cache gap-convention mismatch across six scripts — the 9-pair sector-clustering finding is fully retracted
+
+While re-verifying the near-miss probe via an independent method
+(`lead_lag_permutation_check.py`, direct DatetimeIndex joins instead of
+the matrix approach), CATY/UCB's reported lag-0 correlation disagreed
+sharply across methods: 0.267 (original `near_miss_lag_scan.py`), 0.730
+(direct join, raw cache), 0.558 (direct join, after masking returns that
+span the overnight/weekend gap). Investigated with raw evidence at each
+step rather than trusting any one number:
+
+1. **First hypothesis (wrong, ruled out with evidence): calendar
+   misalignment in `build_returns_matrix`.** Confirmed `build_returns_matrix`'s
+   right-pad-by-row-count scheme produces real misalignment
+   (1764/2810 — 62.8% — of CATY's last-N timestamps did NOT match UCB's
+   when checked directly) when fed raw, un-aligned caches with different
+   gap histories. Production `analysis.py` never hits this because
+   `AnalysisPipeline._run_one_tf` always calls `DataAligner.align_universe`
+   first (Step 2) — `near_miss_lag_scan.py` had skipped that step. Fixed
+   by routing through `DataAligner.align_universe` exactly like
+   production, before `build_returns_matrix` ever sees the data.
+2. **Real root cause, found after the "fix" produced a THIRD different
+   number (0.558) and still didn't match the direct-join figure
+   (0.730): raw `DataStore.load()` output has no `gap_flag` column at
+   all** — it's only added by `DataAligner`. `_gap_aware_returns`/
+   `_clean_close`, when called directly on raw cache data (as
+   `lead_lag_scan.py`, `copula_pairs.py`, `lead_lag_permutation_check.py`
+   — all built this session — plus `eg_permutation_check.py` and
+   `tail_dependence.py` from Session 10 all do), silently skip ALL gap
+   masking, because `"gap_flag" in df.columns` is simply `False`. This is
+   NOT a calendar-misalignment bug (raw-cache joins by real DatetimeIndex
+   are alignment-safe) — it's a DIFFERENT bug: every consecutive-real-bar
+   return, including the one spanning the overnight/weekend gap, gets
+   treated as an ordinary one-bar return. Verified directly: excluding
+   only the overnight/weekend-spanning returns from the raw CATY/UCB join
+   recovers 0.5578 — matching the `DataAligner`-routed figure to four
+   decimal places. Mechanism: overnight/weekend gap-driven moves are far
+   more cross-sectionally correlated (market-wide news) than intraday
+   moves are, so including them inflates correlation. This matters
+   because the project's own GapFlag system is explicitly designed to
+   exclude exactly this (`align_intraday` builds a dense calendar grid
+   specifically so the overnight span gets flagged DATA_GAP and the
+   return crossing it excluded) — these six scripts were silently using
+   a less strict convention than the one already built and documented.
+
+**Fix**: built `aligned_pair_loader.py` (`load_aligned_pair(symbol_a,
+symbol_b, tf_label)` — wraps `DataStore.load` + `DataAligner.align_universe`
+for exactly two symbols) and migrated all six scripts to use it instead
+of bare `DataStore.load`. Smoke-tested directly against the known-correct
+CATY/UCB figure (0.5577) before touching any of the six. Re-ran every
+affected synthetic test (`debug/_verify_lead_lag_scan.py`,
+`_verify_copula_pairs.py`, `_verify_near_miss_lag_scan.py` — unaffected,
+none of these touch `DataStore.load` directly, they construct synthetic
+data in-memory — and `_verify_lead_lag_permutation_check.py`, which DID
+need its monkey-patching fixed since the module it patches no longer
+imports `DataStore` directly) — all pass, no regressions.
+
+**Re-verified real-data results, every affected script:**
+- **`lead_lag_scan.py` (confirmed pairs)**: 0/37 pairs show any lag-lift
+  now (was 1/37, the weak CPK/WAFD exception) — the null result got
+  *cleaner*, not weaker.
+- **`copula_pairs.py` (CCL/NCLH@3m)**: rotated-Clayton still wins
+  out-of-sample (0.0713 vs Gaussian 0.0608 vs Clayton 0.0157; was 0.0853
+  vs 0.0733 vs 0.0275) — same qualitative conclusion, similar relative
+  margins. **This finding is robust to the bug, not an artifact of it.**
+- **`eg_permutation_check.py` (confirmed pairs)**: the BUG-D49-adjacent
+  spurious-significance finding got STRONGER, not weaker — 19/37 pairs
+  flagged (was 12/30), mean `null_frac_significant` = 0.224 (was 0.146,
+  vs. an expected ~0.05). Masking overnight returns shrinks effective
+  sample size and changes each series' autocorrelation structure in a
+  way that makes "this pair's significance is really just its own
+  structure" more visible, not less.
+- **`tail_dependence.py` (confirmed pairs)**: 0/74 flagged — but this is
+  unrelated to the bug fix: CCL/NCLH is simply no longer in today's
+  confirmed-pairs list at all (the universe has evolved since Session 10;
+  confirmed directly against `output/results/3min/pairs.parquet`), so
+  it was never reached by this run either way.
+- **`near_miss_lag_scan.py` (universe-wide, 1h)**: see next entry — the
+  big one, the actual retraction.
+
+### Corrected universe-wide near-miss rescan: the 9-pair finding was 100% an artifact
+
+Re-ran `near_miss_lag_scan.py --tf 1h` end-to-end with the
+`DataAligner`-routing fix (1,511 symbols, full alignment — this run took
+roughly 90 minutes including resource contention from a stale competing
+background job; see "Performance note" below). **Result: 314,330
+near-miss pairs (up from 204,734 — the gap-masked correlations are
+systematically different, pushing more pairs into the 0.25-0.40 band),
+of which only 2 show a lift ≥ 0.10 (down from 9).**
+
+**The original 9, re-checked directly via `lead_lag_permutation_check.py`
+(cheap, pair-at-a-time, doesn't need the full matrix): all 9 now show
+`best_lag=0`, correlations 0.49-0.63 — comfortably ABOVE the 0.40
+production threshold, not near-misses at all.** They were never lag-
+diluted; they're ordinary sector-correlated stocks (regional banks,
+asset managers, semiconductors — confirmed via yfinance sector/industry
+metadata, same as before) whose TRUE contemporaneous correlation the
+original buggy computation simply understated. **Their EG p-values are
+now all insignificant (0.06-0.89)** — correlated but not cointegrated,
+exactly the mundane, expected outcome the EG confirmatory stage exists
+to catch (see next section). The sector clustering that looked like
+compelling corroborating evidence for a real lead-lag effect was, in
+hindsight, just confirmation that the SAME bug affected every pair built
+from the same kind of gappy intraday data consistently — clustering by
+sector is what you'd expect from a systematic measurement bug hitting
+real economic relationships, not evidence the bug wasn't there.
+
+**The 2 new candidates (CVSA/STEP, MPT/SPG) are very likely a different,
+smaller artifact, not a real discovery.** Both have suspiciously thin
+overlap (n=82, n=97) — checked directly: CVSA and MPT both have only
+~4 months of cached 1h history (497/587 raw bars, vs. STEP/SPG's full
+~3 years), so the "near miss" pairing is bounded by the short leg's tiny
+window. At n=82-97, the standard error on a correlation is ~0.11-0.12 —
+the reported "lift" of 0.11-0.14 is within one standard error of pure
+noise. Ran `lead_lag_permutation_check.py` on both anyway: both
+nominally survive the correlation-based look-elsewhere correction
+(corr_perm_p = 0.010, 0.008) but show completely insignificant EG
+(0.61, 0.95) — the identical correlated-not-cointegrated pattern as the
+original 9, just with thinner data. **Not promoted to anything; flagged
+as a live illustration that very short overlaps can produce nominally-
+significant-looking correlation lifts from noise alone**, directly
+relevant to the open question (below) about whether overlap length
+needs to become an explicit confidence signal.
+
+**Performance note**: the corrected, `DataAligner`-routed universe-wide
+run took roughly 90 minutes (vs. a few minutes for the original buggy
+version) — `align_intraday` reindexes each symbol onto a dense
+continuous calendar grid (CATY: 4,369 real bars → 25,565 aligned rows,
+a ~5.9x blowup), and the subsequent vectorized correlation-matrix step
+then scales with that much larger T. Discussed with Ross whether to
+vectorize `align_intraday` itself to fix this — decided against it for
+now: (1) no evidence yet that the per-symbol alignment loop itself
+(vs. resource contention from a stale concurrent job, confirmed via
+CPU-time sampling to still be actively progressing throughout) is the
+actual bottleneck; (2) `DataAligner`/GapFlag classification has a
+documented multi-consumer contamination history (BUG-D45) and shouldn't
+be rewritten for speed without the same rigor the `_pairwise_corr`
+vectorization got; (3) the likely real cost driver, once isolated, may
+be the correlation-matrix step scaling with the now-much-larger T from
+dense-grid padding, not the alignment loop itself — a different fix
+than "vectorize align_intraday" would target. Cataloged as a candidate
+item for the planned overnight pipeline audit, not actioned tonight.
+
+### Significance for the paper: correlated-but-not-cointegrated, found live rather than constructed
+
+The retracted-then-corrected near-miss finding produced something more
+useful than the original (wrong) headline: a clean, real, citable
+demonstration of the single most important conceptual distinction the
+whole pipeline is built around. Correlation measures whether *returns*
+move together (shared sector/market beta — regional banks rally and
+selloff together on the same macro news); cointegration measures whether
+*price levels* stay anchored to a stable long-run relationship that
+reverts when it diverges. A pair can satisfy the first while completely
+lacking the second, in which case trading it as a "spread reversion"
+strategy has no statistical basis — you'd be holding an unhedged
+directional bet dressed up as market-neutral. Tonight's numbers make
+this concrete rather than abstract: 0.49-0.63 correlation, 0.06-0.89 EG
+p-values, for real, named, economically-sensible pairs (UCB and four
+regional-bank peers; BX/ARES leading STEP; the semiconductor pairs) —
+not a hypothetical.
+
+**Candidate addition to `PAPER.md`** (not yet drafted in that file,
+flagged here first): a worked example for §4.1's already-stated-but-
+never-illustrated claim that the Pearson correlation step is *explicitly
+just a cheap pre-filter, not a confirmatory criterion* (already in the
+bias-audit table). Complementary to, not redundant with, the Strictness
+Paradox (§4.2): that's cointegration testing being too STRICT at some
+horizons (false negatives); this is correlation alone being too LOOSE
+(false positives) — both are about why the multi-stage pipeline's
+calibration matters at every stage, not just one.
+
+### Open backlog (explicitly deferred, not built — for a future interactive session per Ross's direction)
+
+1. **Factor-level cointegration and lead-lag.** Ross's idea (2026-06-24):
+   does cointegration or lead-lag structure show up between FACTOR
+   portfolios (sector-level, e.g. regional-bank or asset-manager
+   composites) rather than individual stocks, and/or between such
+   factors and `macro.py`'s existing series (yield curve, credit
+   spreads)? Mirrors `EigenportfolioDecomposer`'s existing logic in
+   reverse (that removes shared factor exposure to find idiosyncratic
+   cointegration; this would test whether the factors THEMSELVES have a
+   stable relationship). Naturally pairs with testing lead-lag on the
+   same factor portfolios — diversification washes out idiosyncratic
+   noise, so a real lead-lag effect (if one exists) should be easier to
+   detect there than between two noisy individual stocks. **Explicitly
+   not to be iron-ed out or built until a dedicated interactive session
+   after the planned overnight block — Ross's call, recorded verbatim.**
+2. **Overlap length as an explicit confidence signal.** Raised by Ross
+   (2026-06-24, the SPY-20yr/AMD-2yr question): pairwise-complete
+   correlation/EG already use ONLY the genuine overlap between two
+   series — a long leg's extra history never dilutes or penalizes a
+   shorter, real relationship, verified directly against the actual
+   `_pairwise_corr`/`_eg_pvalue` masking logic. The real, valid version
+   of the concern is whether the overlap itself is long enough to trust
+   — governed today by ungraded minimum-sample thresholds
+   (`min_overlap=252`, the various `_MIN_*_N` constants), not a tiered
+   confidence signal. Tonight's CVSA/MPT result (above) is a live
+   example of the failure mode this would catch: thin overlaps (n=82-97)
+   produced a nominally-significant-looking but EG-insignificant result.
+   Proposed shape: extend the EXISTING Gold/Silver/Bronze confidence-tier
+   philosophy (currently Pearson/Spearman/rolling-avg agreement) to also
+   reflect overlap adequacy, rather than a blanket exclusion threshold
+   that would also exclude genuinely short-but-real relationships. Not
+   built — a real methodology decision, flagged for discussion.
+3. **`report.py` needs to actually produce the proof scripts'
+   visuals.** Ross's note (2026-06-24): every comparison script this
+   session already writes its findings to `output/research/*.parquet`
+   specifically so this is possible without re-running anything later —
+   `report.py`'s existing outline (Key Exhibits table, Fig 1-15) already
+   accounts for this. No new design needed, just execution once
+   `report.py` is built. Logged here so it isn't lost, not actioned.
+
+### Housekeeping: project root reorganized into `research/` + `debug/` + pipeline
+
+Per Ross's request (2026-06-24) to keep the working directory navigable
+now that ~16 standalone comparison scripts had accumulated alongside the
+6 real pipeline modules at the project root. New `research/` directory
+(deliberately named to pair with the existing `output/research/`
+convention those scripts already write to) holds every comparison/
+diagnostic script: `aligned_pair_loader.py`, `annotate_symbol_metadata.py`,
+`audit_price_degeneracy.py`, `ccp_variants.py`, `copula_pairs.py`,
+`eg_permutation_check.py`, `graph_clustering.py`,
+`investigate_price_degeneracy_cause.py`, `lead_lag_permutation_check.py`,
+`lead_lag_scan.py`, `midas_feature.py`, `near_miss_lag_scan.py`,
+`predictability_optimizer.py`, `price_density_screen.py`,
+`tail_dependence.py`, `tail_dependence_deep.py`. Three ad-hoc scratch
+scripts (`clear.py`, `results.py`, `test_sp600_isolated.py`) moved into
+`debug/`. **Deliberately did NOT rename `debug/` itself** (Ross's
+original suggestion, "extras" or "supplementaries") — it's cross-
+referenced by that exact name dozens of times throughout this document
+for the `_verify_*.py` synthetic tests, and renaming it would mean
+either a lot of low-value doc churn or stale references; introducing a
+new, separate folder for the comparison scripts gets the same
+decluttering benefit without that cost.
+
+Mechanically: every moved script needed a `sys.path.insert` fix to reach
+the project root (`from data import ...`/`from analysis import ...`
+otherwise fail once the script's own directory, not the project root, is
+what Python puts on `sys.path[0]`), and — caught only by actually running
+one after the move, not by inspection — every script's `output/research/`
+path construction also needed fixing, since `os.path.join(dirname(__file__),
+"output", "research")` silently resolved to a NEW, wrong
+`research/output/research/` once the script itself moved into
+`research/`. Found via a real run (`lead_lag_permutation_check.py`
+reported writing to the wrong path), fixed across all 13 occurrences
+in 12 files, the stray directory deleted, and re-verified with both a
+full synthetic-test re-run (all 4 affected tests pass) and a real-data
+smoke test (`eg_permutation_check.py`, confirmed output lands at the
+correct `output/research/eg_permutation_check.parquet`). `CLAUDE.md`'s
+File Map updated to describe the new structure (and, while there, fixed
+pre-existing drift: `ml.py`/`macro.py`/`config.py` were missing from the
+map entirely, and `data.py`/`analysis.py` line counts were stale).

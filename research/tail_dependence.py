@@ -17,22 +17,28 @@ A symmetric (e.g. Gaussian) dependence structure implies lambda_L ~ lambda_U.
 A material, well-supported gap between them is the actual gate condition
 for considering an asymmetric copula.
 
-Read-only. Loads cached price data directly via DataStore.load — never
-fetches. Reuses data.py's own _gap_aware_returns rather than
+Read-only. Loads cached price data via aligned_pair_loader.load_aligned_pair
+(fixed 2026-06-24 — raw DataStore.load() output has no gap_flag column at
+all, so _gap_aware_returns was NOT actually gap-aware as the name and the
+original docstring claimed; see Development.md Session 11) rather than
 reimplementing gap-handling logic.
 
 Usage:
-    python tail_dependence.py
-    python tail_dependence.py --q 0.05 0.10
+    python research/tail_dependence.py
+    python research/tail_dependence.py --q 0.05 0.10
 """
 import argparse
 import glob
 import os
+import sys
 
 import numpy as np
 import pandas as pd
 
-from data import DataStore, _gap_aware_returns
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from aligned_pair_loader import load_aligned_pair
+from data import _gap_aware_returns
 
 _TF_DIRS = [
     "1min", "2min", "3min", "5min", "15min", "30min", "1hr", "4hr",
@@ -91,8 +97,7 @@ def main():
         df = pd.read_parquet(path)
         for _, row in df.iterrows():
             sym_a, sym_b = row["symbol_a"], row["symbol_b"]
-            df_a = DataStore.load(sym_a, tf_label)
-            df_b = DataStore.load(sym_b, tf_label)
+            df_a, df_b = load_aligned_pair(sym_a, sym_b, tf_label)
             if df_a is None or df_b is None:
                 print(f"SKIP {sym_a}/{sym_b}@{tf_label}: cache missing for one leg")
                 continue
@@ -145,7 +150,7 @@ def main():
                         "n_L", "n_U", "n_obs"]].to_string(index=False))
 
     out_dir = os.path.join(
-        os.path.dirname(os.path.abspath(__file__)), "output", "research"
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "output", "research"
     )
     os.makedirs(out_dir, exist_ok=True)
     out_path = os.path.join(out_dir, "tail_dependence_summary.parquet")

@@ -45,10 +45,13 @@ Read-only. Loads cached price data directly via DataStore.load.
 """
 import argparse
 import os
+import sys
 
 import numpy as np
 import pandas as pd
 import scipy.linalg
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from data import DataStore, _clean_close
 
@@ -246,7 +249,7 @@ def main():
     print(f"Fraction of pairs where predictability-optimized weights still beat OLS "
           f"out-of-sample on average: {win_frac:.0%}")
 
-    out_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "output", "research")
+    out_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "output", "research")
     os.makedirs(out_dir, exist_ok=True)
     out_path = os.path.join(out_dir, "predictability_optimizer_wfo.parquet")
     result_df.to_parquet(out_path)

@@ -28,8 +28,13 @@ claim a predictive comparison, exactly matching ml.py's own "honestly
 reports insufficient data" discipline rather than overclaiming on a
 single data point.
 """
+import os
+import sys
+
 import numpy as np
 import pandas as pd
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from data import DataStore
 

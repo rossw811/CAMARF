@@ -32,21 +32,29 @@ structure rather than genuine temporal co-movement, circular-shift
 permutation should show a high rate of "accidentally significant" shifts
 too.
 
-Read-only. Loads cached price data directly via DataStore.load — never
-fetches.
+Read-only. Loads cached price data via aligned_pair_loader.load_aligned_pair
+(fixed 2026-06-24 — raw DataStore.load() output has no gap_flag column at
+all, so the _clean_close call below was NOT actually masking DATA_GAP bars
+despite the comment claiming it matched production; see Development.md
+Session 11 for the full account, including which other findings this
+affected) — never fetches.
 
 Usage:
-    python eg_permutation_check.py --n-perm 500
+    python research/eg_permutation_check.py --n-perm 500
 """
 import argparse
 import os
+import sys
 
 import numpy as np
 import pandas as pd
 from statsmodels.tsa.stattools import coint
 
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from aligned_pair_loader import load_aligned_pair
 from analysis import Config
-from data import DataStore, _clean_close
+from data import _clean_close
 
 _TF_DIRS = [
     "1min", "2min", "3min", "5min", "15min", "30min", "1hr", "4hr",
@@ -60,7 +68,9 @@ _DIR_TO_LABEL = {
 
 
 def _gap_masked_log_price(df):
-    close = _clean_close(df)  # NaN at DATA_GAP bars, matches production
+    close = _clean_close(df)  # NaN at DATA_GAP bars — requires df to already
+    # have a gap_flag column (i.e. df must come from load_aligned_pair, not
+    # a bare DataStore.load) — see this module's docstring, fixed 2026-06-24.
     with np.errstate(invalid="ignore", divide="ignore"):
         log_p = np.log(close)
     log_p[~np.isfinite(log_p)] = np.nan
@@ -110,8 +120,7 @@ def main():
         df = pd.read_parquet(path)
         for _, row in df.iterrows():
             sym_a, sym_b = row["symbol_a"], row["symbol_b"]
-            df_a = DataStore.load(sym_a, tf_label)
-            df_b = DataStore.load(sym_b, tf_label)
+            df_a, df_b = load_aligned_pair(sym_a, sym_b, tf_label)
             if df_a is None or df_b is None:
                 print(f"SKIP {sym_a}/{sym_b}@{tf_label}: cache missing")
                 continue
@@ -167,7 +176,7 @@ def main():
           f"materially higher indicates spurious-significance risk from each "
           f"series' own structure, independent of true cross-series alignment).")
 
-    out_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "output", "research")
+    out_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "output", "research")
     os.makedirs(out_dir, exist_ok=True)
     out_path = os.path.join(out_dir, "eg_permutation_check.parquet")
     result_df.to_parquet(out_path)

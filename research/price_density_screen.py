@@ -13,12 +13,15 @@ methodology decision pending Ross's sign-off, per this project's
 standing buy-in rule, not something to silently wire in here).
 
 Usage:
-    python price_density_screen.py --tf 1m
+    python research/price_density_screen.py --tf 1m
 """
 import argparse
 import os
+import sys
 
 import pandas as pd
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from config import Config
 from data import DataStore
@@ -95,7 +98,7 @@ def main():
         reason = "both legs fail" if not a_ok and not b_ok else f"{a if not a_ok else b} fails"
         print(f"  EXCLUDE {a}/{b}  ({reason})")
 
-    out_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "output", "research")
+    out_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "output", "research")
     os.makedirs(out_dir, exist_ok=True)
     out_path = os.path.join(out_dir, f"price_density_screen_effect_{tf_label}.csv")
     pd.DataFrame(

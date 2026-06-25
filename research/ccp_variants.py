@@ -45,10 +45,13 @@ gap as the overfitting diagnostic) for direct comparability.
 """
 import argparse
 import os
+import sys
 
 import cvxpy as cp
 import numpy as np
 import pandas as pd
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from data import DataStore, _clean_close
 from predictability_optimizer import (
@@ -392,7 +395,7 @@ def main():
                        ("oos_shrink", f"Shrinkage (alpha={args.alpha})"), ("oos_mb", "Moving-band (CCP)")]:
         print(f"  {name:32s}: {rdf[col].mean():.4f}  (wins {((rdf[col]==rdf[['oos_ols','oos_pred','oos_shrink','oos_mb']].min(axis=1)).mean()):.0%} of pairs)")
 
-    out_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "output", "research")
+    out_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "output", "research")
     os.makedirs(out_dir, exist_ok=True)
     rdf.to_parquet(os.path.join(out_dir, "ccp_variants_comparison.parquet"))
     print(f"\nFull results: {out_dir}/ccp_variants_comparison.parquet")

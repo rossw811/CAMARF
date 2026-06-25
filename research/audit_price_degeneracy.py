@@ -23,14 +23,17 @@ Flag condition: a symbol is flagged if BOTH
 Read-only. Scans whatever is in output/cache/ already — never fetches.
 
 Usage:
-    python audit_price_degeneracy.py --tf 1m
-    python audit_price_degeneracy.py --tf 1m --min-distinct 20
+    python research/audit_price_degeneracy.py --tf 1m
+    python research/audit_price_degeneracy.py --tf 1m --min-distinct 20
 """
 import argparse
 import os
+import sys
 
 import numpy as np
 import pandas as pd
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from config import Config
 from data import DataStore
@@ -131,7 +134,7 @@ def main():
           f"the more mundane, expected explanation (genuinely illiquid stock), "
           f"not the BUG-D49 anomaly (liquid daily, degenerate intraday).")
 
-    out_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "output", "research")
+    out_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "output", "research")
     os.makedirs(out_dir, exist_ok=True)
     out_path = os.path.join(out_dir, f"price_degeneracy_audit_{args.tf}.parquet")
     df.to_parquet(out_path)

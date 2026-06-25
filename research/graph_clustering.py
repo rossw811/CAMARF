@@ -20,17 +20,20 @@ is bit-identical to what analysis.py's real pipeline computed, not a
 separately-reimplemented version that could silently drift.
 
 Usage:
-    python graph_clustering.py --tf 1m
-    python graph_clustering.py --tf 3m --min-corr 0.5
+    python research/graph_clustering.py --tf 1m
+    python research/graph_clustering.py --tf 3m --min-corr 0.5
 """
 import argparse
 import json
 import os
+import sys
 
 import networkx as nx
 import numpy as np
 import pandas as pd
 from networkx.algorithms.community import louvain_communities, modularity
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from analysis import Config, DataAligner, DataStore, UniverseFilter
 from data import UniverseBuilder
@@ -40,7 +43,7 @@ from data import UniverseBuilder
 # the production pipeline's actual per-TF output. This is exploratory
 # comparison output and stays clearly separate.
 _RESEARCH_DIR = os.path.join(
-    os.path.dirname(os.path.abspath(__file__)), "output", "research", "graph_clustering"
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "output", "research", "graph_clustering"
 )
 
 _SHALLOW_CAP = {"1m": 5_000, "2m": 5_000, "3m": 5_000}
