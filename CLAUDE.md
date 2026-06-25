@@ -280,15 +280,36 @@ extended overnight-into-night session) for full detail. Headline items:
 
 ## File Map
 
-- `data.py` — yfinance-primary fetch pipeline (4,300+ lines)
+**Production pipeline (root) — runs daily, ~6pm scheduled rerun for fresh data:**
+- `data.py` — yfinance-primary fetch pipeline (~4,960 lines)
 - `data_ibkr.py` — IBKR supplemental deep-history pipeline for confirmed pairs
 - `analysis.py` — full analysis pipeline (correlation, EG, eigenportfolio,
-  Hurst, regimes, trios) (4,100+ lines)
+  Hurst, regimes, trios) (~5,300 lines)
+- `ml.py` — spread-resolution meta-labeler (Stage 1)
+- `macro.py` — FRED macro regime context
+- `config.py` — all configuration parameters
+- `seed_sp_caches.py` — standalone S&P 400/600 cache seeder with retry logic
+
+**`research/` — standalone comparison/diagnostic scripts, NOT part of the
+production pipeline (reorganized out of root 2026-06-24 for clarity).**
+Each script tests exactly one claim, has its own synthetic verification in
+`debug/`, and writes its findings to `output/research/*.parquet`. Examples:
+`lead_lag_scan.py`, `copula_pairs.py`, `near_miss_lag_scan.py`,
+`lead_lag_permutation_check.py`, `tail_dependence.py`,
+`eg_permutation_check.py`, `aligned_pair_loader.py` (shared utility these
+import). Run from the project root, e.g. `python research/lead_lag_scan.py`
+— never `cd research` first, the scripts add the project root to `sys.path`
+themselves.
+
+**`debug/` — ad-hoc scratch utilities and synthetic verification tests.**
+`_verify_*.py` files are NOT scratch — they're the synthetic proof each
+`research/` script's claims rest on, cited throughout DEVELOPMENT.md. Keep
+this name; it's referenced by exact path dozens of times in DEVELOPMENT.md.
+
 - `DEVELOPMENT.md` — canonical project memory, full bug registry, session logs
 - `PAPER.md` — living draft of the actual paper/thesis, started Session 10
   (2026-06-23). Sections marked [DRAFTED]/[OUTLINED]/[TBD] — update
   alongside DEVELOPMENT.md whenever a session produces a citable finding,
   not just at project completion.
-- `seed_sp_caches.py` — standalone S&P 400/600 cache seeder with retry logic
 - `latest_run_data.log` / `latest_run_analysis.log` — auto-generated run
   summaries, written after every run, read these first when diagnosing

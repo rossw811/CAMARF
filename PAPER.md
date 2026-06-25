@@ -336,6 +336,59 @@ CRWD/DDOG entries dropped from the mathematically-forced ±15.8115 to
 overnight gap risk on a pair with under a week of trading history, not a
 guaranteed artifact of the computation itself.
 
+### 4.7 Correlation is a pre-filter, not a confirmatory test — a worked example [DRAFTED — numbers verified 2026-06-24]
+
+§4.1 already states that the Pearson correlation step is a cheap
+pre-filter, not a confirmatory criterion — Engle-Granger cointegration on
+price levels is what actually decides a pair. This section gives the
+claim a concrete, real worked example rather than leaving it asserted.
+
+**The mechanism.** Correlation measures whether *returns* move together
+— two stocks sharing sector or market beta will rally and sell off
+together on the same macro news. Cointegration measures something
+categorically different: whether *price levels* stay anchored to a
+stable long-run relationship that reverts when it diverges. A pair can
+satisfy the first while completely lacking the second. Trading such a
+pair as a spread-reversion strategy has no statistical basis — the
+position is an unhedged directional bet on relative re-rating, dressed
+up as market-neutral, because nothing requires the price levels to ever
+come back together.
+
+**The worked example.** A universe-wide scan for lagged correlation
+structure (testing whether some pairs are missed by the lag-0-only
+correlation pre-filter because the true relationship is time-shifted)
+surfaced nine real, named pairs clustered tightly by industry: five
+regional banks (CATY, FIBK, SBCF, TCBI, UMBF) each correlating most
+strongly with United Community Banks (UCB); Blackstone and Ares
+Management each correlating with StepStone Group; two semiconductor
+pairs (DIOD/VSH, AEIS/MKSI). Correlations of 0.49–0.63 — real,
+substantial, and (confirmed via sector/industry metadata, not assumed)
+entirely explained by shared-industry beta. **Engle-Granger p-values for
+all nine: 0.06–0.89 — nowhere near significant.** A correlation-only
+screen would have waved every one of these through as "related." The
+actual confirmatory test correctly says no, for the ordinary and
+expected reason: correlated returns, no cointegrated price levels.
+
+**Honest methodological note.** These nine pairs were originally
+mis-measured by a data-alignment bug (overnight/weekend-spanning returns
+incorrectly included in a correlation calculation, inflating the
+apparent relationship — full account in Development.md) and the
+*lagged* relationship they were first reported to show was a complete
+artifact of that bug. The corrected computation is what produced the
+*correlated-but-not-cointegrated* finding used here — itself a small
+illustration of this project's standing discipline (§9): a result was
+checked against an independently-built computation, found to disagree,
+and traced to a specific, fixable cause before being trusted.
+
+This is a different failure mode than the Strictness Paradox (§4.2):
+that section is about cointegration testing being too STRICT at long
+horizons (false negatives — real relationships rejected). This section
+is about correlation alone being too LOOSE (false positives — unrelated-
+at-the-cointegration-level pairs that look related). Both point to the
+same conclusion: the multi-stage pipeline's calibration matters at every
+stage, not just one, and no single metric — correlation or a single
+full-sample cointegration test — is sufficient on its own.
+
 ## 5. Empirical Findings [PLACEHOLDER — fill in as confirmed-pair set stabilizes]
 
 Current state (2026-06-23, will change as intraday history accumulates):
