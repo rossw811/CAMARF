@@ -203,6 +203,22 @@ class PairResult:
     # auditable in pairs.parquet rather than an invisible side effect.
     coint_frac_secondary_override: bool = False
 
+    # BUG-D49 price-degeneracy flag (added 2026-06-27): True when one or
+    # both legs appear in the research/price_density_screen output with
+    # genuinely_liquid=True — adequate dollar volume but implausibly few
+    # distinct close prices (median 2-7 distinct values across hundreds of
+    # bars). ml.py skips these pairs; the pipeline still keeps them in
+    # pairs.parquet so the backtest comparison arm can evaluate whether the
+    # degeneracy actually matters for live strategy outcomes.
+    thin_info_content: bool = False
+
+    # EG circular-shift permutation robustness flag (added 2026-06-27):
+    # True = pair survived research/eg_permutation_check.py's null (real
+    # EG p-value is distinguishable from the null of its own autocorrelation
+    # structure); False = flagged divergent; None = not yet checked.
+    # Policy as of 2026-06-27: comparison arm only until backtest.py exists.
+    permutation_robust: Optional[bool] = None
+
 
 @dataclass
 class TrioResult:
@@ -4425,6 +4441,11 @@ class AnalysisPipeline:
             "but not used as primary signal",
         )
 
+        # Step 6c: annotate research-screen flags (thin_info_content,
+        # permutation_robust) from pre-computed output/research/ parquets.
+        # Read-only, no-ops cleanly when screens haven't been run.
+        pair_results = AnalysisPipeline._apply_research_screen_flags(pair_results, tf_label)
+
         # Step 7: VolumeStructure feature engineering
         log.info(f"  [{tf_label}] Computing VolumeStructure features...")
         feat_dir = _output_dir(tf_label)
@@ -4737,6 +4758,68 @@ class AnalysisPipeline:
             source_b=src_b,
         )
         return pair_result, per_bar
+
+    @staticmethod
+    def _apply_research_screen_flags(
+        pair_results: List["PairResult"],
+        tf_label: str,
+    ) -> List["PairResult"]:
+        """
+        Annotate PairResult objects with flags derived from the research/
+        comparison-arm screens. Never fetches or modifies pipeline state —
+        reads pre-computed parquet files from output/research/ if they exist,
+        silently no-ops when they don't (screens may not have been run yet).
+
+        Flags applied:
+          thin_info_content — one/both legs in the BUG-D49 price-degeneracy
+            screen (genuinely_liquid=True but implausibly few distinct prices).
+          permutation_robust — EG circular-shift null result from
+            eg_permutation_check.py; None if the pair hasn't been checked.
+
+        Mutates pair_results in place AND returns the list (for call-site
+        symmetry with EigenportfolioDecomposer.run_for_tf()).
+        """
+        import dataclasses as _dc
+
+        research_dir = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)), "output", "research"
+        )
+
+        # --- thin_info_content ---
+        degenerate_syms: set = set()
+        deg_path = os.path.join(research_dir, f"price_degeneracy_flagged_{tf_label}.parquet")
+        if os.path.exists(deg_path):
+            try:
+                deg_df = pd.read_parquet(deg_path)
+                if "symbol" in deg_df.columns:
+                    degenerate_syms = set(deg_df["symbol"].tolist())
+            except Exception:
+                pass
+
+        # --- permutation_robust ---
+        perm_lookup: Dict[Tuple[str, str], bool] = {}
+        perm_path = os.path.join(research_dir, "eg_permutation_check.parquet")
+        if os.path.exists(perm_path):
+            try:
+                perm_df = pd.read_parquet(perm_path)
+                perm_tf = perm_df[perm_df["tf"] == tf_label]
+                for _, row in perm_tf.iterrows():
+                    key = (row["symbol_a"], row["symbol_b"])
+                    perm_lookup[key] = not bool(row["flagged_divergent"])
+            except Exception:
+                pass
+
+        updated = []
+        for pr in pair_results:
+            thin = bool(
+                degenerate_syms
+                and (pr.symbol_a in degenerate_syms or pr.symbol_b in degenerate_syms)
+            )
+            perm = perm_lookup.get((pr.symbol_a, pr.symbol_b), None)
+            if thin != pr.thin_info_content or perm != pr.permutation_robust:
+                pr = _dc.replace(pr, thin_info_content=thin, permutation_robust=perm)
+            updated.append(pr)
+        return updated
 
     @staticmethod
     def _enrich_with_deep_history(

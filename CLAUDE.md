@@ -146,6 +146,59 @@ yfinance, the Wikipedia scrapers, or the universe-construction pipeline.
   live. Don't just trust that a `str_replace` or `create_file` call
   succeeded — verify the actual file state.
 
+- **CFTC COT API: dataset ID is 6dca-aqww, not jun7-7nt5 (BUG-D50).**
+  Correct dataset: `https://publicreporting.cftc.gov/resource/6dca-aqww.json`
+  (Legacy Futures Only). Correct contract name prefixes: `"E-MINI S&P 500"` (ES)
+  and `"NASDAQ MINI"` (NQ). Old "E-MINI NASDAQ-100 STOCK INDEX" was a pre-2000
+  contract name; "E-MINI NASDAQ 100 STOCK INDEX - INTERNATIONAL MONETARY MARKET"
+  is a legacy alias that hasn't been current for 20+ years. Use `requests.get(
+  url, params=dict)` — never hand-encode `%27`/`%25` in the URL template, which
+  breaks when test strings go through PowerShell (dollar signs eaten) and
+  produces opaque LIKE-filter failures at the server if encoding is wrong.
+
+---
+
+## Hardware / Environment Specs (added 2026-06-24)
+
+Ross's current development machine: **Microsoft Surface, Snapdragon(R) X
+Elite X1E80100 (ARM64), 12 cores @ 3.40 GHz, 16 GB LPDDR5 RAM, Windows 11.**
+
+**Important, found during the 2026-06-24 audit, not previously
+documented:** the `trading` conda environment's Python is an **x86-64
+(AMD64) build running under Windows' ARM64 emulation layer (Prism)**, not
+a native ARM64 build — confirmed directly: `platform.machine()` reports
+`AMD64` while `platform.processor()` reports the real underlying chip
+(`ARMv8 ... Qualcomm`). `numpy`'s BLAS backend is Intel MKL, which is
+heavily optimized for genuine Intel x86 silicon — running an x86-emulated
+MKL build on ARM hardware is a real, likely nontrivial performance
+penalty (emulation overhead stacked on top of a BLAS library not
+optimized for this CPU at all), not just a theoretical concern. This is
+a plausible contributing factor to this session's slower-than-expected
+runtimes (e.g. the ~90-minute `DataAligner`-routed universe-wide
+near-miss rescan) — not confirmed as the dominant factor (the
+`align_intraday` row-bloat dead-code bug, fixed this session, is a more
+directly-verified contributor), but a real, previously-unconsidered
+variable worth keeping in mind for any future performance work. A
+native-ARM64 conda/Python build, if one exists with adequate scientific-
+stack support, would be worth investigating separately — not something
+to switch to casually given how much of this project's reproducibility
+story already depends on the current `trading` environment's exact
+pinned versions (pyarrow 24.0.0 especially, see below).
+
+**Minimum practical specs to run this project**, inferred from observed
+behavior, not benchmarked: 16 GB RAM is adequate but not generous —
+`DataAligner`'s dense intraday reindex (even with the OOM guard at
+500,000 rows/symbol) and the vectorized `_pairwise_corr` correlation
+matrix over the full ~1,500-symbol universe have both been observed
+using several GB at once. A machine with less RAM should expect to hit
+the existing OOM guards more often, not crash, but should be tested
+before assuming it'll run an identical full pipeline pass cleanly.
+
+See `requirements.txt` for exact pinned package versions — already
+verified against the actual installed environment (not assumed), with
+one known, unresolved version conflict flagged inline (`shap`/`numba`
+vs. `numpy>=2.4`).
+
 ---
 
 ## Working Style — How to Collaborate With Ross
@@ -219,59 +272,40 @@ This is as important as the technical rules above.
 
 ## Current State (update this section each session)
 
-See `DEVELOPMENT.md`'s Session 10 entries (long — this was a single
-extended overnight-into-night session) for full detail. Headline items:
+See `DEVELOPMENT.md` Sessions 10–12 for full detail. Headline items:
 
-- **BUG-D45 extended** to five more contaminated consumers (HurstEstimator,
-  StrategyDecayDetector, TrioBuilder/Johansen, EigenportfolioDecomposer's
-  `eigh` NaN handling, RegimeClassifier/VolumeStructure). `MIN_COINT_FRAC`
-  restored to the documented 0.70 with a secondary-evidence override
-  (`coint_frac_secondary_override` on `PairResult`) — current worked
-  example is FANG/OXY, not the original CRWD/DDOG (that no longer
-  qualifies post-fix).
-- **BUG-D46/D47/D48** (is_fresh staleness gap, inflated confirmed-pair
-  count in the run summary, manifest never pruning stale pairs) — all
-  found, fixed, and verified via synthetic tests in `debug/`.
-- **BUG-D49 — the big one**: ~32% of the 1m universe (and similarly at
-  2m/3m, falling off sharply by 5m/15m/30m) is genuinely liquid by daily
-  dollar volume but shows implausibly sparse intraday price discovery
-  (median 14 distinct close prices across the ENTIRE cached history for
-  flagged symbols). Independently corroborated against IBKR's own feed —
-  real market data, not a fetch bug. 10 of 12 current 1m confirmed pairs
-  have both legs flagged. Root cause (why these specific liquid names
-  trade this way) under active investigation as of session end — see
-  `output/research/price_degeneracy_with_metadata.parquet` once that
-  finishes. A reusable screen (`price_density_screen.py`) and full
-  multi-TF audit (`audit_price_degeneracy.py`) exist; **not adopted in
-  the real pipeline yet** — Ross's explicit call: keep as a comparison
-  arm until backtest.py can show whether it actually matters.
-- **Idea #3 (basket-weight optimization)**: built and walk-forward-tested
-  four variants (unconstrained predictability-ratio optimization,
-  shrinkage toward OLS, sparsity via real trios, the actual
-  Johansson/Schmelzer/Boyd 2024 moving-band CCP mechanism). **All four
-  lose to plain OLS out-of-sample** — a real, three-times-replicated
-  negative result. Keep OLS/Kalman as the production hedge-ratio method.
-- **Idea #4 (BH-FDR robustness)**: knockoffs don't fit this problem
-  shape; built a circular-shift permutation check instead
-  (`eg_permutation_check.py`), run alongside (not replacing) production
-  BH-FDR. 12/30 confirmed pairs flagged as possibly not robust to
-  dependence. Policy for a flagged pair is, like the price-density
-  screen, being kept as a comparison-only question until backtest.py
-  exists — not decided.
-- ml.py: 16 confirmed pairs, 12 labeled entry events, 2 classes (binary
-  scheme), still below training threshold. `ConformalPredictor` added
-  and verified, not yet exercisable on real training output.
-- `PAPER.md` (new file, started this session) is a living draft —
-  methodology-first framing locked in with Ross, Strictness Paradox and
-  calendar-padding sections drafted with real numbers, BUG-D49 flagged
-  as a candidate third pillar pending the root-cause investigation above.
-- **Ross's explicit standing instruction (2026-06-23 night)**: no
-  concrete `backtest.py` code without an interactive session — see
-  `Development.md`'s "Discussion Starter" section for the
-  methodology/sequencing outline prepared instead. Architecture/
-  portfolio-management backlog lenses (from the Session 10 ~60-idea
-  list) explicitly deferred to be discussed with Ross directly, not
-  actioned solo.
+- **BUG-D50 (COT API, Session 12)**: CFTC Socrata dataset ID was wrong
+  (`jun7-7nt5` → `6dca-aqww`), ES/NQ contract name filters were wrong,
+  and URL was hand-encoded instead of using `requests.get(params=)`.
+  Fixed and verified: ES 1,497 rows (since 1997), NQ 229 rows (NASDAQ
+  MINI, newer contract). macro.py now produces cot_es and cot_nq regime
+  distributions without warnings.
+- **ml.py training threshold crossed (Session 12)**: 79 confirmed pairs,
+  125 labeled entry events (up from 12). Trained on 75, 68% holdout
+  accuracy on 25 examples. ConformalPredictor: 88% empirical coverage
+  (target ≥90%), avg set size 1.52. Class imbalance (75% not_converged
+  vs. 25% converged) — evaluation metric choice (precision on converged
+  vs. overall accuracy) is a backtest.py discussion item.
+- **EG permutation check updated (Session 12)**: 38/79 flagged (48%),
+  mean null_frac_sig = 0.230 (4.6× expected 0.05). DD-hub pattern: 7/17
+  DD pairs at 1h pass, 10/17 flagged (high null_frac_sig 0.50-0.57).
+  APOG cluster at 3m also heavily flagged. Policy: comparison arm until
+  backtest.py, `permutation_robust` flag on PairResult populated from
+  research parquet on each analysis.py run.
+- **8h timeframe removed (Session 12)**: Scrubbed from data.py,
+  config.py, and all related sets/dicts. Was never a valid analytical
+  timeframe; showed "0 assets" in every analysis.py run.
+- **VIX term structure + CFTC COT added to macro.py (Session 12)**:
+  VIX 3m via VXVCLS (FRED). COT via CFTC Socrata 6dca-aqww. Both
+  producing regime distributions (vix_term_structure, cot_es, cot_nq).
+- **thin_info_content + permutation_robust on PairResult (Session 12)**:
+  New flags, populated by `_apply_research_screen_flags()` from research
+  parquets. Not in current pairs.parquet (old analysis.py ran); will
+  populate on next analysis.py run. ml.py already has skip logic for
+  `thin_info_content=True`.
+- **backtest.py**: No code written; standing instruction unchanged.
+  `backtest_discussion_questions.md` prepared for Ross's review. Awaiting
+  Ross's answers before interactive build session.
 - **Always run scripts via
   `C:\Users\RossW\anaconda3\envs\trading\python.exe`**, not bare
   `python` (see Known-Resolved Issues).

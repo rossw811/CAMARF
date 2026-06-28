@@ -43,6 +43,7 @@ _RAW_COLUMN_NAMES: Dict[str, str] = {
     "T10Y2Y": "t10y2y",
     "BAMLH0A0HYM2": "hy_oas_spread_pct",
     "VIXCLS": "vix_close",
+    "VXVCLS": "vix_3m",  # CBOE VXV — 3-month implied vol for term structure ratio
     "DCOILWTICO": "wti_crude",
     "BAA10Y": "baa10y_spread_pct",  # full-history credit-stress PROXY — see
     # MacroConfig comment; not the same metric as hy_oas_spread_pct
@@ -354,6 +355,165 @@ def _classify_breakeven(breakeven_inflation_10y: pd.Series) -> pd.Series:
     )
 
 
+def _classify_vix_term_structure(vix_close: pd.Series, vix_3m: pd.Series) -> pd.Series:
+    """
+    VIX term structure regime from VXV/VIX ratio (VXVCLS/VIXCLS).
+
+    backwardation  (ratio < 0.95): current fear > 3-month expected vol —
+      stress/crisis episode. Historically coincides with fast selloffs.
+    flat           (0.95 <= ratio < 1.00): market uncertainty transitional.
+    contango       (1.00 <= ratio < 1.10): normal; future uncertainty priced
+      above current. Typical baseline for a functioning equity market.
+    deep_contango  (ratio >= 1.10): complacency/calm — market expects future
+      vol to be significantly higher than current (low current fear).
+
+    NaN wherever either input is NaN (VXVCLS starts 2007-12-04 on FRED;
+    ratio is undefined when VIX is 0, which never occurs in practice).
+    """
+    c = Config.MACRO
+    ratio = vix_3m / vix_close.replace(0, np.nan)
+    return _bucket(
+        ratio,
+        [c.VIX_TS_BACKWARDATION, c.VIX_TS_FLAT_HI, c.VIX_TS_CONTANGO_HI],
+        ["backwardation", "flat", "contango", "deep_contango"],
+    )
+
+
+def _classify_cot_net_spec(net_spec_pct: pd.Series) -> pd.Series:
+    """
+    CFTC COT net speculative position regime.
+
+    crowded_long  (net >= COT_NET_LONG_THRESHOLD):  speculators heavily long —
+      crowding risk; historically precedes mean-reversion selloffs.
+    neutral       (between thresholds): balanced positioning.
+    crowded_short (net <= COT_NET_SHORT_THRESHOLD): speculators heavily short —
+      potential squeeze risk; positioning tailwind for longs.
+    """
+    c = Config.MACRO
+    return _bucket(
+        net_spec_pct,
+        [c.COT_NET_SHORT_THRESHOLD, c.COT_NET_LONG_THRESHOLD],
+        ["crowded_short", "neutral", "crowded_long"],
+    )
+
+
+# =============================================================================
+# CFTC COT FEED
+# =============================================================================
+
+
+class COTFeed:
+    """
+    Fetches CFTC Commitment of Traders (Legacy) report data for a small set
+    of financial futures contracts (ES, NQ) from the CFTC's public Socrata
+    API. No API key required.
+
+    Endpoint: CFTC Legacy Futures Only (dataset 6dca-aqww) report via
+    publicreporting.cftc.gov. Covers non-commercial (speculative) long/short
+    positions and total open interest weekly.
+
+    Same caching pattern as FREDFeed: in-memory session cache + DataStore
+    disk cache keyed as "cot_{contract_key}" under "weekly" frequency.
+    """
+
+    # Contract filter strings (market_and_exchange_names field in CFTC data).
+    # Verified 2026-06-27 against 6dca-aqww (Legacy Futures Only).
+    # ES: "E-MINI S&P 500 - CHICAGO MERCANTILE EXCHANGE" (prefix match)
+    # NQ: "NASDAQ MINI - CHICAGO MERCANTILE EXCHANGE" (renamed; old "E-MINI NASDAQ 100" is pre-2000)
+    CONTRACTS: Dict[str, str] = {
+        "ES": "E-MINI S&P 500",
+        "NQ": "NASDAQ MINI",
+    }
+
+    # CFTC Socrata API — public, no key.
+    # Dataset 6dca-aqww: Legacy Futures Only (COT) report via publicreporting.cftc.gov.
+    # URL is a base; params dict is built per-request so requests handles LIKE quoting safely.
+    _API_BASE = "https://publicreporting.cftc.gov/resource/6dca-aqww.json"
+
+    _SESSION_CACHE: Dict[str, Optional[pd.DataFrame]] = {}
+
+    @staticmethod
+    def get_net_spec(
+        contract_key: str,
+        force_refresh: bool = False,
+        summary: Optional["MacroRunSummary"] = None,
+    ) -> Optional[pd.DataFrame]:
+        """
+        Returns a DataFrame indexed by date with column `net_spec_pct`:
+        (non_commercial_long - non_commercial_short) / open_interest.
+        Weekly frequency; forward-fill to daily is done in _align_to_trading_calendar.
+        Returns None on complete failure (no cache, no live data).
+        """
+        cache_key = f"cot_{contract_key.lower()}"
+
+        if not force_refresh and contract_key in COTFeed._SESSION_CACHE:
+            return COTFeed._SESSION_CACHE[contract_key]
+
+        cached = DataStore.load(cache_key, "weekly")
+
+        if not force_refresh and DataStore.is_fresh(
+            cache_key, "weekly", max_age_hours=Config.MACRO.CACHE_MAX_AGE_HOURS * 7
+        ):
+            if summary:
+                summary.record_series(
+                    cache_key, rows=len(cached) if cached is not None else 0, source="cache"
+                )
+            COTFeed._SESSION_CACHE[contract_key] = cached
+            return cached
+
+        name_filter = COTFeed.CONTRACTS.get(contract_key, contract_key)
+        params = {
+            "$where": f"market_and_exchange_names like '{name_filter}%'",
+            "$select": "report_date_as_yyyy_mm_dd,noncomm_positions_long_all,"
+                       "noncomm_positions_short_all,open_interest_all",
+            "$order": "report_date_as_yyyy_mm_dd ASC",
+            "$limit": "5000",
+        }
+
+        fresh = None
+        for attempt in range(Config.MACRO.FETCH_RETRY_ATTEMPTS):
+            try:
+                resp = requests.get(COTFeed._API_BASE, params=params, timeout=30)
+                if resp.status_code != 200:
+                    time.sleep(Config.MACRO.FETCH_RETRY_DELAY_SEC)
+                    continue
+                records = resp.json()
+                if not records:
+                    break
+                df = pd.DataFrame(records)
+                df["date"] = pd.to_datetime(df["report_date_as_yyyy_mm_dd"])
+                for col in ("noncomm_positions_long_all", "noncomm_positions_short_all",
+                            "open_interest_all"):
+                    df[col] = pd.to_numeric(df[col], errors="coerce")
+                df = df.set_index("date").sort_index()
+                oi = df["open_interest_all"].replace(0, np.nan)
+                df["net_spec_pct"] = (
+                    df["noncomm_positions_long_all"] - df["noncomm_positions_short_all"]
+                ) / oi
+                fresh = df[["net_spec_pct"]]
+                break
+            except Exception as e:
+                log.debug(f"COT fetch error ({contract_key}, attempt {attempt+1}): {e}")
+                time.sleep(Config.MACRO.FETCH_RETRY_DELAY_SEC)
+
+        if fresh is None or fresh.empty:
+            if summary:
+                summary.warn(
+                    f"cot_{contract_key}_fetch_failed_used_cache"
+                    if cached is not None
+                    else f"cot_{contract_key}_fetch_failed_no_cache"
+                )
+            result = cached
+        else:
+            DataStore.save(cache_key, "weekly", fresh)
+            result = fresh
+            if summary:
+                summary.record_series(cache_key, rows=len(fresh), source="cftc")
+
+        COTFeed._SESSION_CACHE[contract_key] = result
+        return result
+
+
 # =============================================================================
 # CALENDAR ALIGNMENT — genuinely new ground for this codebase: no existing
 # coarse-to-fine (monthly -> daily) forward-fill utility to reuse. The
@@ -590,6 +750,10 @@ def build(
         wide["credit_regime_proxy"] = _classify_credit_proxy(wide["baa10y_spread_pct"])
     if "vix_close" in wide:
         wide["vix_regime"] = _classify_vix(wide["vix_close"])
+    if "vix_close" in wide and "vix_3m" in wide:
+        wide["vix_term_structure"] = _classify_vix_term_structure(
+            wide["vix_close"], wide["vix_3m"]
+        )
     if "usd_index" in wide:
         wide["dollar_regime"] = _classify_dollar(wide["usd_index"])
     if "real_yield_10y" in wide:
@@ -610,16 +774,34 @@ def build(
             wide["sahm_indicator"]
         )
 
+    # CFTC COT: net speculative positioning for ES and NQ futures.
+    # Weekly release (every Friday evening); forward-filled to daily via
+    # the daily-native path (COT is treated as a daily series for alignment
+    # purposes — the last-known-weekly value holds until the next release,
+    # which is correct and expected, not a gap). Fetched independently of
+    # the FRED path: COTFeed hits CFTC's Socrata API.
+    for cot_contract in ("ES", "NQ"):
+        cot_df = COTFeed.get_net_spec(cot_contract, force_refresh=force_refresh, summary=summary)
+        if cot_df is not None and not cot_df.empty and "net_spec_pct" in cot_df.columns:
+            col_raw = f"cot_{cot_contract.lower()}_net_spec"
+            col_regime = f"cot_{cot_contract.lower()}_regime"
+            aligned_cot = cot_df["net_spec_pct"].sort_index().reindex(master_idx, method="ffill")
+            wide[col_raw] = aligned_cot
+            wide[col_regime] = _classify_cot_net_spec(aligned_cot)
+
     for regime_col, dist_name in [
         ("yield_curve_regime", "yield_curve"),
         ("credit_regime", "credit"),
         ("credit_regime_proxy", "credit_proxy"),
         ("vix_regime", "vix"),
+        ("vix_term_structure", "vix_term_structure"),
         ("dollar_regime", "dollar"),
         ("real_rate_regime", "real_rate"),
         ("inflation_expectation_regime", "inflation_expectation"),
         ("recession_state", "recession"),
         ("recession_state_realtime", "recession_realtime"),
+        ("cot_es_regime", "cot_es"),
+        ("cot_nq_regime", "cot_nq"),
     ]:
         if regime_col in wide:
             summary.record_regime_distribution(
