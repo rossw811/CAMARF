@@ -51,7 +51,7 @@ arch==8.0.0
 # environment, not a typo here. The pin above (2.4.6) reflects the version
 # that's actually active.
 #
-# Options (none applied yet — flagged for King to decide):
+# Options (none applied yet — flagged for Ross to decide):
 #   1. Downgrade numpy to <=2.3 — risk: untested against the pandas 2.3.2 /
 #      pyarrow 24.0.0 versions already in use throughout data.py/analysis.py.
 #   2. Wait for a numba release supporting numpy 2.4.

@@ -42,6 +42,14 @@ via the same strict walk-forward protocol as predictability_optimizer.py.
 All three run through the IDENTICAL strict-WFO harness as
 predictability_optimizer.py (expanding folds, in-sample vs out-of-sample
 gap as the overfitting diagnostic) for direct comparability.
+
+Loads cached price data via aligned_pair_loader.load_aligned_pair (fixed
+2026-06-24 — found in the targeted bug-class sweep: raw DataStore.load()
+output has no gap_flag column, so _clean_close was not actually masking
+DATA_GAP bars; see Development.md Session 11). The original Session 10
+real-data comparison numbers (OLS 3.698, predictability 4.130, shrinkage
+3.821, moving-band 4.199) were computed before this fix — not yet
+re-verified against the corrected convention.
 """
 import argparse
 import os
@@ -53,7 +61,8 @@ import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from data import DataStore, _clean_close
+from aligned_pair_loader import load_aligned_pair
+from data import _clean_close
 from predictability_optimizer import (
     ols_weights, predictability_ratio, predictability_weights, _expanding_folds,
 )
@@ -323,8 +332,7 @@ def _verify():
 # ---------------------------------------------------------------------------
 
 def run_pair_comparison(sym_a, sym_b, tf_label, n_folds=4, alpha=0.5):
-    df_a = DataStore.load(sym_a, tf_label)
-    df_b = DataStore.load(sym_b, tf_label)
+    df_a, df_b = load_aligned_pair(sym_a, sym_b, tf_label)
     if df_a is None or df_b is None:
         return None
     log_a = np.log(_clean_close(df_a))
