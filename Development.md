@@ -6614,3 +6614,164 @@ near-term vol decline) → fastest convergence after crisis. Contango (normal st
 VIX futures > spot) → 2.4× slower. This ordering makes economic sense: backwardation
 marks the crisis→calm transition, which is when pairs are most violently mean-reverting.
 Output: `output/research/regime_conditional_analysis.parquet`.
+
+---
+
+## Session 14 (2026-06-28) — backtest.py build; config.py BacktestConfig additions
+
+### Ross Q&A decisions (recorded verbatim for auditability)
+
+All decisions from the "backtest_discussion_questions.md" pre-read session. Ross's answers
+are the governing architecture choices; they override any previous placeholder comments.
+
+1. **Layer 1**: event-driven (enter on signal, hold until exit or max-hold; no sizing model)
+2. **Capital concentration**: max capital concentration per pair (MAX_CONCENTRATION_PCT=0.20)
+3. **Transaction costs**: configurable; defaulting to COMMISSION_PER_SHARE=$0.005 + SLIPPAGE_BPS=5
+4. **Survivorship**: labeled "episodic survivorship bias" (confirmed pairs only, not full
+   history of cointegrated-then-broke pairs); document, don't correct. Expose BOTH OLS and
+   Kalman hedge ratios (HEDGE_METHOD="both").
+5. **Holdout**: 20% chronological holdout — Layer 1 runs full series (in-sample, labeled IS);
+   Layer 2 runs holdout only. Adjust after results.
+6. **Output**: parquet + console sufficient; must be interpretable by report.py (not yet built).
+7. **Layer 2**: build but disable (LAYER2_ENABLED=False) until Layer 1 verified.
+8. **Regime conditioning**: both ML filter AND hard filter; try binary AND continuous sizing.
+9. **ml.py Stage 2**: build Stage 2; aggregate SHAP primary, per-entry for comparison.
+
+### config.py additions (BacktestConfig)
+
+Added to the existing BacktestConfig class (which already had cost model, sizing,
+walk-forward parameters from earlier sessions):
+
+```python
+# Layer 1 event-driven baseline (Ross Q&A 2026-06-28)
+ENTRY_ZSCORE = 2.0           # |z_rolling| >= this triggers entry
+EXIT_ZSCORE = 0.0            # z crosses this toward mean → exit
+STOP_ZSCORE = 3.5            # |z| widens to this → stop loss
+MAX_HOLD_MULTIPLIER = 2.0    # max bars in position = multiplier × half_life_at_entry
+CORR_EXIT_THRESHOLD = 0.20   # rolling correlation drops below this → structural breakdown exit
+CORR_EXIT_WINDOW = 60        # bars for rolling correlation check
+MIN_HALF_LIFE_BARS = 5       # skip entry if half_life_at_entry < this (degenerate)
+MAX_CONCENTRATION_PCT = 0.20  # max fraction of account in any one pair at any time
+N_SHARES_PER_TRADE = 100      # fixed share count for leg A; leg B = N × hedge_ratio
+HEDGE_METHOD = "both"         # "both" runs OLS and Kalman separately, reports each
+HOLDOUT_PCT = 0.20
+LAYER2_ENABLED = False
+ML_GO_THRESHOLD = 0.60
+REGIME_HARD_FILTER = False
+REGIME_SIZING = "binary"      # "binary" | "continuous" | "none"
+UNFAVORABLE_VIX_TS = {"contango"}
+UNFAVORABLE_YIELD = {"normal"}
+```
+
+### backtest.py architecture
+
+**File:** `backtest.py` (root, runs alongside data.py/analysis.py/ml.py)
+
+**Key classes:**
+
+- `Trade` (dataclass): per-trade record. Fields: tf, symbol_a, symbol_b, hedge_method,
+  hedge_ratio, entry/exit times+z+spread, side, n_shares_a/b, half_life/hurst at entry,
+  exit_reason, pnl_gross/cost/net, mae, mfe, hold_bars. Layer 2 fields: ml_prob,
+  vix_ts_regime, yield_regime, comomentum_at_entry, regime_size_multiplier.
+
+- `RegimeConditioner`: loads hmm_regimes.parquet + macro.build(). When LAYER2_ENABLED,
+  returns (allow_entry, size_mult, regime_ctx) per bar. Hard filter: rejects entries when
+  vix_term_structure in UNFAVORABLE_VIX_TS or yield_curve_regime in UNFAVORABLE_YIELD.
+  Continuous sizing: size_mult = clip(1/hl_ratio, 0.5, 2.0) — from the documented
+  hl_ratio lookup table (regime_conditional_analysis results). Binary sizing: 1.5×
+  in favorable regimes (backwardation, flat_inverted). Disabled by default.
+
+- `MLConditioner`: loads `output/ml/model_stage1.pkl`. Returns P(converge) per entry.
+  When enabled: reject if prob < ML_GO_THRESHOLD. Disabled by default (pkl path may
+  not exist until ml.py Stage 2 is built).
+
+- `BacktestEngine.run()`: event-driven bar loop over spread_series_{A}_{B}.parquet.
+  Entry logic:
+    1. abs(z_rolling) >= ENTRY_ZSCORE (2.0)
+    2. half_life_rolling must be finite and >= MIN_HALF_LIFE_BARS (5)
+    3. Skip DATA_GAP bars (gap_flag_a or gap_flag_b == GapFlag.DATA_GAP)
+    4. Layer 2: regime check → allow/reject/size
+    5. Layer 2: ML gate → P(converge) >= ML_GO_THRESHOLD
+  Exit logic (priority order):
+    1. STOP: abs(z) >= STOP_ZSCORE (3.5) → stop loss
+    2. SIGNAL_EXIT: z crosses through EXIT_ZSCORE (0.0) in the convergent direction
+    3. MAX_HOLD: hold_bars >= MAX_HOLD_MULTIPLIER (2.0) × half_life_at_entry
+    4. CORR_EXIT (simplified): abs(z) > 2× abs(z_entry) after 5+ bars (structural divergence)
+    5. DATA_GAP: force-close on any DATA_GAP bar (position invalidated)
+    6. EOD: close any open position at end of series
+
+  P&L model:
+    - Gross: direction × (spread_exit - spread_entry) × n_shares_a
+      (spread units = dollar spread for 1 share of leg-A, with leg-B sized by hedge ratio)
+    - Cost: round-trip commission (both legs, both directions) + slippage on spread value
+    - MAE/MFE tracked per-position during hold
+
+- `compute_metrics()`: per-pair performance — Sharpe (annualized by TF-specific bars/year),
+  Sortino, Calmar, win rate, profit factor, total_pnl, max_drawdown, avg_hold_bars, MAE/MFE,
+  Bliss factor (MFE/MAE), exit reason distribution.
+
+- `aggregate_portfolio()`: portfolio-level Sharpe (daily P&L aggregation across all pairs),
+  max drawdown, pair concentration (max pct contribution to total P&L).
+
+**Output files:**
+- `output/backtest/trades_{label}.parquet` — one row per trade (full Trade record)
+- `output/backtest/summary_{label}.parquet` — one row per pair (metrics)
+- `output/backtest/portfolio_{label}.parquet` — single-row portfolio stats
+- `latest_run_backtest.log` — same pattern as latest_run_data.log / latest_run_analysis.log
+
+**Run modes:**
+- `python backtest.py` → Layer 1, both OLS+Kalman, full series (IS), all TFs
+- `python backtest.py --tf 1h` → 1h TF only
+- `python backtest.py --hedge ols` → OLS only
+- `python backtest.py --holdout` → last 20% only (OOS test)
+- `python backtest.py --layer2` → enable Layer 2 (requires trained model)
+
+**Output label scheme:** `layer1`, `layer1_holdout`, `layer2`, `layer2_holdout`
+
+### Bias audit (backtest.py)
+
+| Bias | Type | Handling |
+|------|------|----------|
+| Episodic survivorship | Mild | Documented in docstring and DEVELOPMENT.md. Pairs that were cointegrated historically but broke down are absent from the confirmed set entirely. Mid-backtest breakdown IS captured (corr_exit / stop triggers). Cannot correct without full delistment history. |
+| OLS hedge lookahead | Moderate | OLS estimated on full sample → strategy wouldn't have known. Exposed both methods via HEDGE_METHOD="both". Kalman_mean is roll-forward calibrated — substantially less lookahead than OLS. Report both; Kalman is the "honest" number. |
+| In-sample threshold bias | Mild | ENTRY/EXIT/STOP thresholds come from Config, not from grid-searching the backtest. The thresholds were set from practitioner defaults + OUP literature (Bertram 2010, Vidyamurthy 2004), not optimized to this data. Documented, not corrected. |
+| Holdout purity | Accounted for | Layer 1 is labeled IS. Layer 2 holdout is labeled OOS. analysis.py parameters were calibrated on full history — some contamination of OOS via shared analysis window. Cannot cleanly prevent without full walk-forward calibration. |
+
+### Literature grounding (backtest.py decisions)
+
+Per Ross's standing instruction: "a lot of answers should be in development.md so
+make sure to refer to it and consider principals of all the authors listed."
+
+- **Bertram (2010)**: "Analytic solutions for optimal statistical arbitrage trading."
+  Governs entry/exit threshold selection — 2.0σ entry, 0.0 exit, 3.5 stop follows
+  Bertram's optimal trading band under an OU process assumption.
+- **Vidyamurthy (2004)**: "Pairs Trading." Motivates the half-life × MAX_HOLD_MULTIPLIER
+  exit (2× half-life is the practical mean-reversion window).
+- **Lo & MacKinlay (1990)**: Contemporaneous co-movement is the confirmed structure
+  (all 79 confirmed pairs best_lag=0). Layer 1 does not attempt lead-lag.
+- **Gatev, Goetzmann & Rouwenhorst (2006)**: Original statistical arbitrage study.
+  Their cost sensitivity analysis is the template for COMMISSION_PER_SHARE + SLIPPAGE_BPS.
+- **Jondeau & Rockinger (2012)** / **Avellaneda & Lee (2010)**: Regime conditioning
+  (VIX crisis → 11× faster convergence) is the empirical motivator for Layer 2's
+  RegimeConditioner. The HMM-based state detection (vs. heuristic thresholds) follows
+  Hamilton (1989) / Ang & Bekaert (2002).
+- **Lou & Polk (2022)**: Comomentum crowding signal. Entries during elevated comomentum
+  (>P75 rolling correlation among spread returns) may have lower convergence rates —
+  scheduled for Layer 2 feature enrichment.
+- **Richman & Moorman (2000)**: Sample entropy on z-scored spreads. Lower SampEn at
+  1h (e.g. CAT/DD = 0.024) is a candidate ML Stage 2 feature.
+
+### Next steps after backtest.py
+
+1. **Run backtest.py** — `python backtest.py` on full confirmed pair set. Review Layer 1
+   results before enabling Layer 2.
+2. **ml.py Stage 2** — enrich feature vector with SampEn, comomentum at entry time,
+   HMM state at entry date, VIX term structure. Add SHAP (aggregate primary, per-entry
+   for comparison). Target: holdout accuracy > 68% baseline before declaring Stage 2 win.
+3. **Re-run analysis.py** — populate thin_info_content + permutation_robust in
+   pairs.parquet. Required for ml.py's skip logic to take effect.
+4. **follower_direction_validation.py** — currently produces 0 results because all
+   lead_lag best_lag=0. Either: (a) remove the best_lag filter and test same-bar
+   directional structure directly, or (b) accept the null result as paper-ready validation
+   of the contemporaneous assumption and move on.
+5. **PAPER.md update** — add backtest methodology section once Layer 1 results are in hand.
