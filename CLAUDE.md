@@ -278,40 +278,35 @@ This is as important as the technical rules above.
 
 ## Current State (update this section each session)
 
-See `DEVELOPMENT.md` Sessions 10–13 for full detail. Headline items:
+See `DEVELOPMENT.md` Sessions 10–14 for full detail. Headline items:
 
-- **BUG-D50 (COT API, Session 12)**: Fixed. CFTC dataset 6dca-aqww, correct
-  contract names, `requests.get(params=)`. In Known-Resolved Issues.
-- **BUG-D51 (Session 13)**: `_clean_close()` returns `np.ndarray`, not
-  `pd.Series` — `.rename()` fails on it. Fix: wrap with `pd.Series(...,
-  index=df.index)`. Applied to `comomentum.py`, `sample_entropy_spreads.py`,
-  `regime_conditional_analysis.py`. In Known-Resolved Issues.
+- **backtest.py built (Session 14)**: Layer 1 event-driven baseline complete.
+  Layer 2 (ML + regime conditioning) built but `LAYER2_ENABLED=False` until
+  Layer 1 results are verified. Config params in `BacktestConfig`; see
+  DEVELOPMENT.md Session 14 for full architecture, bias audit, literature
+  grounding. Run: `python backtest.py` (or `--tf 1h`, `--holdout`, `--layer2`).
+- **Ross Q&A decisions (Session 14)**: episodic survivorship documented; both
+  OLS+Kalman exposed; 20% chronological holdout; N=100 shares flat; Layer 2
+  disabled pending Layer 1 verification; regime sizing binary+continuous both
+  wired; ml.py Stage 2 with SHAP deferred until backtest generates more events.
+- **BUG-D51 (Session 13)**: `_clean_close()` returns `np.ndarray` — always
+  wrap with `pd.Series(..., index=df.index)`. In Known-Resolved Issues.
 - **ml.py class imbalance (Session 13)**: `compute_sample_weight("balanced",
-  y_train)` as `sample_weight` kwarg to `model.fit()`. Accuracy 68%→56%
-  (expected: trades majority-class accuracy for minority recall).
-- **Lead-lag scan (Session 13, null result)**: All 29 confirmed 1h pairs
-  have `best_lag=0`, lift=0.000. Contemporaneous assumption validated.
-  Only flag is AZTA/MLKN@1m (small-n artifact, EG p=0 at both lags).
-  Directional prediction via temporal lag is not supported by the data.
-- **Regime-conditional analysis (Session 13, strong finding)**: VIX crisis
-  → hl_ratio=0.09 (11× faster mean-reversion); VIX backwardation →
-  hl_ratio=0.65; VIX contango → 2.36× slower; yield curve normal → 4.4×
-  slower. Most multi-regime variation from 1h pairs (17.5 months history).
-- **HMM regime detection (Session 13)**: Gaussian HMMs on T10Y2Y (2-state,
-  persist 540-620 days), VIXCLS (3-state calm/normal/crisis), COT ES net-spec
-  (2-state). State sequences: `output/research/hmm_regimes.parquet`.
-- **Comomentum (Session 13)**: Mean pairwise spread return correlation = 0.09
-  (vs. static baseline 0.048). P75 elevated threshold = 0.113 (25% of bars).
-  Low volatility (std=0.035) → crowding is slowly-varying, not spiking.
-- **Sample entropy (Session 13)**: Reliable for 1h pairs (n≈4,389). Most
-  regular 1h spreads: CAT/DD (0.024), SPY/VOO (0.046), AMAT/DD (0.051).
-  Candidate Stage 2 feature.
-- **backtest.py**: No code written; standing instruction unchanged.
-  `backtest_discussion_questions.md` now has 9 questions including regime
-  conditioning (Q8) and unified ML signal + SHAP (Q9).
-- **New research scripts**: `comomentum.py`, `sample_entropy_spreads.py`,
-  `regime_conditional_analysis.py`, `hmm_regime_detection.py`,
-  `follower_direction_validation.py` (0 pairs — lead-lag scan null).
+  y_train)` as `sample_weight` kwarg. Accuracy 68%→56% (expected trade-off).
+- **Lead-lag scan (Session 13, null result)**: All 79 confirmed pairs
+  `best_lag=0`, contemporaneous assumption validated. Directional prediction
+  via temporal lag not supported.
+- **Regime-conditional analysis (Session 13, strong finding)**: VIX crisis →
+  hl_ratio=0.09 (11× faster); backwardation → 0.65; contango → 2.36× slower;
+  yield_curve normal → 4.4× slower. Layer 2 RegimeConditioner wired to this.
+- **HMM regime detection (Session 13)**: 3-state VIXCLS (calm/normal/crisis),
+  2-state T10Y2Y, 2-state COT ES. `output/research/hmm_regimes.parquet`.
+- **Comomentum (Session 13)**: mean=0.09, P75=0.113, std=0.035.
+- **Sample entropy (Session 13)**: reliable at 1h (n≈4,389). CAT/DD=0.024
+  (most regular). Candidate Stage 2 feature.
+- **Research scripts built (Session 13)**: `comomentum.py`,
+  `sample_entropy_spreads.py`, `regime_conditional_analysis.py`,
+  `hmm_regime_detection.py`, `follower_direction_validation.py`.
 - **Always run scripts via
   `C:\Users\RossW\anaconda3\envs\trading\python.exe`**, not bare
   `python` (see Known-Resolved Issues).
@@ -325,7 +320,8 @@ See `DEVELOPMENT.md` Sessions 10–13 for full detail. Headline items:
 - `data_ibkr.py` — IBKR supplemental deep-history pipeline for confirmed pairs
 - `analysis.py` — full analysis pipeline (correlation, EG, eigenportfolio,
   Hurst, regimes, trios) (~5,300 lines)
-- `ml.py` — spread-resolution meta-labeler (Stage 1)
+- `ml.py` — spread-resolution meta-labeler (Stage 1; Stage 2 + SHAP pending)
+- `backtest.py` — event-driven backtest engine (Layer 1 baseline + Layer 2 stub)
 - `macro.py` — FRED macro regime context
 - `config.py` — all configuration parameters
 - `seed_sp_caches.py` — standalone S&P 400/600 cache seeder with retry logic

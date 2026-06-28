@@ -441,6 +441,36 @@ class BacktestConfig:
     DAILY_LOSS_LIMIT_PCT = 0.03  # halt day if drawdown > 3% of account
     CONSECUTIVE_LOSS_LIMIT = 5  # halt if 5 consecutive losses
 
+    # Layer 1 event-driven baseline (Ross Q&A 2026-06-28)
+    ENTRY_ZSCORE = 2.0           # |z_rolling| >= this triggers entry
+    EXIT_ZSCORE = 0.0            # z crosses this toward mean → exit
+    STOP_ZSCORE = 3.5            # |z| widens to this → stop loss
+    MAX_HOLD_MULTIPLIER = 2.0    # max bars in position = multiplier × half_life_at_entry
+    CORR_EXIT_THRESHOLD = 0.20   # rolling correlation drops below this → structural breakdown exit
+    CORR_EXIT_WINDOW = 60        # bars for rolling correlation check
+    MIN_HALF_LIFE_BARS = 5       # skip entry if half_life_at_entry < this (degenerate)
+
+    # Capital concentration (per pair)
+    MAX_CONCENTRATION_PCT = 0.20  # max fraction of account in any one pair at any time
+    N_SHARES_PER_TRADE = 100      # fixed share count for leg A; leg B = N × hedge_ratio
+
+    # Hedge ratio to use in backtest: "ols" | "kalman" | "both"
+    HEDGE_METHOD = "both"         # "both" runs OLS and Kalman separately, reports each
+
+    # Hold-out split (chronological; Layer 1 runs full series labeled IS,
+    # Layer 2 runs hold-out only)
+    HOLDOUT_PCT = 0.20
+
+    # Layer 2 — disabled until Layer 1 verified (per Ross Q&A 2026-06-28)
+    LAYER2_ENABLED = False
+    ML_GO_THRESHOLD = 0.60        # P(converge) >= this to allow entry under ML gate
+    REGIME_HARD_FILTER = False    # hard-reject entries in unfavorable regimes
+    REGIME_SIZING = "binary"      # "binary" | "continuous" | "none"
+    # binary: normal size in favorable, 0 in unfavorable
+    # continuous: size = n_shares × hl_ratio_weight (lower hl_ratio → larger size)
+    UNFAVORABLE_VIX_TS = {"contango"}       # vix_term_structure values to reject
+    UNFAVORABLE_YIELD = {"normal"}           # yield_curve_regime values to reject
+
 
 # =============================================================================
 # OPTIONS
