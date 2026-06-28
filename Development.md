@@ -6474,6 +6474,35 @@ All three series fit successfully. States ordered by ascending mean (state 0 = l
 Outputs: `output/research/hmm_regimes.parquet` (daily state sequences),
          `output/research/hmm_regimes_summary.parquet` (state statistics).
 
+**Lead-lag scan results on confirmed pairs (Session 13):**
+
+`lead_lag_scan.py` re-run against full 79-pair confirmed universe (was previously run on
+a smaller near-miss set, all `best_lag=0`). Results: **1/79 flagged**, and the single flag
+is not actionable.
+
+Flagged pair: AZTA/MLKN@1m, best_lag=8, corr*=-1.000 (vs corr0=+0.415), lift=0.585.
+EG p-values: eg_p0=0.0, eg_p_best_lag=0.0. Both alignments are already maximally
+significant — the lagged alignment does NOT improve cointegration significance.
+This is a small-n artifact: n=350 bars (5 days of 1m), short enough that a ±10-lag
+search routinely finds |corr|≈1.0 by chance. AZTA/MLKN is also in the short-history
+cluster where corr=-1.000 at lag-8 is implausible in real data.
+
+All 29 confirmed 1h pairs: best_lag=0, lift=0.000 across the full ±10-bar window.
+SPY/VOO@4h: corr=0.998 at lag-0, no lift (expected — same underlying ETF).
+
+**Gate result: confirmed.** The production pipeline's contemporaneous cointegration
+assumption is correct for all pairs in the current confirmed set. Exploitable lead-lag
+structure does NOT exist in the confirmed pair list at ±10 bars. Directional prediction
+on these pairs (if it exists) must come from macro regime conditioning (regime_conditional
+analysis, comomentum), not from temporal lag structure.
+
+Note: several short-history 1m pairs show corr=±1.000 at lag-0 (COLM/CNMD, INVX/TILE,
+CNMD/QTWO, etc.). These are degenerate BUG-D49-adjacent pairs — too few bars for
+meaningful correlation, likely noise with systematic drift. Consistent with thin_info_content
+flags on these pairs.
+
+Output: `output/research/lead_lag_scan.parquet` (re-written with full 79-pair results).
+
 **Comomentum results (Session 13):**
 
 29 confirmed 1h pairs loaded, all with ≥120 bars. Common grid: 4,388 bars (~3 trading
