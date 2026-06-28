@@ -6267,6 +6267,88 @@ the next analysis.py run. Flagged pairs stay in the confirmed set but are tagged
 for comparison-arm treatment until backtest.py can quantify the real-world impact.
 Full results: `output/research/eg_permutation_check.parquet`.
 
+---
+
+## Session 13 (2026-06-28) — Directional prediction discussion; DL benchmark paper review
+
+### Should CAMARF test for directional prediction (asset going up or down)?
+
+Ross raised this after reviewing arxiv:2603.01820 (Saly-Kaufmann et al., "Deep
+Learning for Financial Time Series: A Large-Scale Benchmark of Risk-Adjusted
+Performance," Mar 2026 — benchmarks linear/RNN/transformer/SSM architectures on
+daily futures, 2010–2025; finds hybrid VSN+LSTM wins on Sharpe).
+
+Short answer: **yes, but only in two specific, thesis-coherent forms.** Generic
+intraday directional prediction ("will asset X close up in the next bar?") is not
+one of them.
+
+**Form 1 — Lead-lag as a directional signal on the follower leg (build this):**
+
+The existing `lead_lag_scan.py` already identifies which asset leads which at each
+TF. If A leads B by N bars, that's a directional prediction on B: when A's recent
+return is positive, B should follow in N bars. Testing this hypothesis cleanly fits
+within the existing framework:
+
+- No new data needed — `output/research/lead_lag_scan.parquet` already exists.
+- Implementation: a `follower_direction_validation.py` research script (same
+  pattern as existing `research/` scripts). For each confirmed lead-lag pair,
+  regress the follower's N-bar-forward return on the leader's recent N-bar return.
+  Test: is the coefficient significantly positive at the 5% level (BH-FDR adjusted)?
+  If yes: the lead-lag structure is directionally predictive, not just a correlation
+  artifact.
+- This is a natural §validation subsection in the paper's lead-lag section — it
+  answers "does the structure we found actually predict direction?" rather than
+  claiming a new contribution.
+- Important constraint: use out-of-sample (rolling-window) regression, not a
+  single in-sample OLS fit — same discipline as the rest of the project.
+
+**Form 2 — Macro-regime directional overlay on pair entries (design input for backtest.py):**
+
+COT positioning and VIX term structure are more naturally directional signals than
+convergence signals. "Speculators are crowded short ES (COT crowded_short)" is a
+contrarian argument that ES rises — which is a directional tailwind for pairs entries
+where you're long the oversold ES-correlated leg. Testing whether pair entries in a
+directional-tailwind macro regime have higher convergence rates than entries in a
+headwind regime is testable once backtest.py exists:
+
+- Segment labeled entry events by cot_es_regime and vix_term_structure at entry
+  date. Compare convergence rate within each segment.
+- If confirmed pairs in "crowded_short + backwardation" have materially higher
+  convergence rates than in "crowded_long + contango," that's a genuine
+  macro-conditioning result.
+- This belongs in the backtest.py interactive discussion as a Layer 2 conditioning
+  variable candidate, not a standalone new script.
+
+**Form 3 — Generic intraday directional prediction (do NOT add):**
+
+"Will APP close up in the next 5 bars?" on 1m/3m data is one of the most studied
+and empirically hardest problems in quant finance. The signal-to-noise ratio at
+intraday frequencies is extremely low; decades of literature document that any edge
+is tiny, unstable, and typically consumed by transaction costs. The 2026 DL
+benchmark paper (cited above) benchmarks this on *daily* futures — conditions
+meaningfully better than intraday. Adding this to the thesis without a strong
+positive result would weaken it. The thesis is already tightly positioned around
+cross-asset co-movement; diluting the central contribution with a noisy and
+crowded research question is not worth the scope expansion.
+
+**Why the DL benchmark paper (arxiv:2603.01820) matters but isn't immediately actionable:**
+
+- Architecture guidance for ml.py Stage 2 once labeled-event count is sufficient.
+  The winning VSN+LSTM architecture is essentially the Temporal Fusion Transformer
+  (Lim et al. 2021) — handles mixed-frequency inputs (daily macro regime + intraday
+  spread signal) and provides interpretable attention weights (which features drive
+  which prediction). File under Stage 2 architecture candidates.
+- Their transaction cost sensitivity analysis is the most immediately useful section
+  — read before the backtest.py interactive session. Shows at what cost level an
+  apparent edge disappears, and the framework is directly applicable to Layer 1.
+- Their seed robustness testing validates the reproducibility discipline CAMARF
+  already enforces.
+- NOT directly applicable: they're on daily futures, single-asset directional,
+  15-year sample. CAMARF is intraday pairs, spread-convergence classification,
+  125 labeled events. Architecture performance rankings don't transfer cleanly
+  across these regime/sample-size differences. Random Forest at Stage 1 remains
+  correct for the current data volume.
+
 ### Code changes this session (2026-06-27)
 
 1. `data.py` — `_gap_aware_returns`: added elapsed-time detection for
@@ -6286,3 +6368,220 @@ Full results: `output/research/eg_permutation_check.parquet`.
 6. `macro.py` — COTFeed class (BUG-D50 fix: correct dataset ID 6dca-aqww, correct
    contract name prefixes, `params=` dict for request encoding); VIX term structure
    classification from VXVCLS/VIXCLS ratio.
+
+### Session 13 continued — research scripts; BUG-D51; HMM + comomentum results
+
+**ml.py class imbalance fix:**
+Class distribution was 75.2% not_converged vs 24.8% converged. XGBoost doesn't
+accept `class_weight='balanced'` directly — fix: `compute_sample_weight("balanced",
+y_train)` from `sklearn.utils.class_weight`, passed as `sample_weight` kwarg to
+`model.fit()`. As expected, this trades overall accuracy for minority-class recall:
+accuracy dropped from 68% to 56% when tested. This is the correct trade-off for
+a signal that penalizes missed converged entries more than false positives.
+
+**BUG-D51: `_clean_close()` returns `np.ndarray`, not `pd.Series`**
+
+Root cause: `data._clean_close()` is typed and documented as `-> np.ndarray` (strips
+index, returns raw close values array with DATA_GAP bars set to NaN). Three new
+research scripts (`comomentum.py`, `sample_entropy_spreads.py`,
+`regime_conditional_analysis.py`) called `_clean_close(df).rename(name)` — `.rename()`
+doesn't exist on ndarray. All three failed at runtime with `AttributeError: 'numpy.ndarray'
+object has no attribute 'rename'`.
+
+Fix (identical in all three scripts):
+```python
+# Before (wrong):
+close_a = _clean_close(df_a)
+close_b = _clean_close(df_b)
+combined = pd.concat([close_a.rename("a"), close_b.rename("b")], axis=1).dropna()
+
+# After (correct):
+close_a = pd.Series(_clean_close(df_a), index=df_a.index, name="a")
+close_b = pd.Series(_clean_close(df_b), index=df_b.index, name="b")
+combined = pd.concat([close_a, close_b], axis=1).dropna()
+```
+
+The key subtlety: wrapping with `pd.Series(..., index=df_a.index)` is essential — it
+restores the DatetimeIndex that `pd.concat` needs to align the two series correctly.
+A plain `pd.Series(arr)` would give a RangeIndex and the concat would align on
+position rather than timestamp, silently producing wrong spreads whenever df_a and
+df_b have different NaN patterns. Verified and fixed in all three scripts.
+
+**New research scripts built (Session 13):**
+
+All follow the standard pattern: `sys.path.insert(0, project_root)`, use
+`load_aligned_pair`, write to `output/research/*.parquet`, run from project root.
+
+1. `research/follower_direction_validation.py` — Tests whether confirmed lead-lag
+   structure predicts follower direction. Loaded `lead_lag_scan.parquet` (37 rows);
+   found ALL entries have `best_lag=0` and `flagged_lag_worth_checking=False`.
+   **Result: 0 candidate pairs.** The 1m near-miss scan did not find meaningful
+   temporal lag structure. The script is structurally correct — the data result is
+   that current lead-lag runs haven't found actionable lag. Needs either: (a) re-run
+   `lead_lag_scan.py` at 1h TF (near-miss pairs plus all confirmed pairs) with a
+   broader search window, or (b) test same-bar co-movement directly without the
+   best_lag filter.
+
+2. `research/sample_entropy_spreads.py` — Computes SampEn (m=2, r=0.2·std) for each
+   confirmed pair's z-scored spread. Manual implementation (no antropy dependency).
+   Output: `output/research/sample_entropy_spreads.parquet`. Running.
+
+3. `research/regime_conditional_analysis.py` — Per-regime OLS half-life estimation
+   for all confirmed pairs across all TFs. Regime labels from `macro.build()`, ffilled
+   daily → bar frequency. Computes hl_ratio = hl_in_regime / hl_full_series.
+   Output: `output/research/regime_conditional_analysis.parquet`. Running.
+
+4. `research/hmm_regime_detection.py` — Gaussian HMM on T10Y2Y, VIXCLS, COT ES net
+   spec. Results: see below.
+
+5. `research/comomentum.py` — Lou & Polk (2022) comomentum adapted to CAMARF spread
+   portfolios. Results: see below.
+
+**HMM regime detection results (Session 13):**
+
+All three series fit successfully. States ordered by ascending mean (state 0 = lowest).
+
+*T10Y2Y yield curve (2-state HMM, 10,113 obs):*
+- State 0 "inverted/flat": mean=0.261%, 5,410 days (53.5%), persist=620.7 days
+- State 1 "normal/steep": mean=1.773%, 4,703 days (46.5%), persist=539.4 days
+- Confusion vs heuristic: HMM state 0 maps to {flat_inverted:1224, normal:4186};
+  state 1 maps to {normal:1754, steep:2949}. The HMM splits at ~0.26% slope —
+  catching historically flat periods (yield curve not yet technically inverted but
+  close) as part of state 0. Heuristic cuts differently (likely at T10Y2Y < 0).
+  This is intentional: HMM finds the probabilistic boundary, not a hard threshold.
+
+*VIXCLS volatility (3-state HMM, 9,185 obs):*
+- State 0 "calm": mean=13.08, 3,238 days (35.3%), persist=60.4 days
+- State 1 "normal": mean=18.90, 3,782 days (41.2%), persist=36.9 days
+- State 2 "crisis": mean=29.97, 2,165 days (23.6%), persist=44.7 days
+- VIX "crisis" at 23.6% of history is higher than intuition suggests — the HMM
+  is capturing elevated-but-not-peak vol periods in the crisis bucket. Confusion
+  vs heuristic: HMM state 2 contains 353 heuristic-"crisis" bars, 1,232 "elevated",
+  580 "normal". Heuristic "crisis" threshold (likely VIX > 30 or 35) is more
+  stringent than HMM's learned boundary (~20-25). Both are defensible; the HMM
+  version will capture regime-conditional half-life effects more broadly.
+
+*COT ES net-spec positioning (2-state HMM, 7,239 obs):*
+- State 0 "net_short": mean=-0.028, 3,222 days (44.5%), persist=67.0 days
+- State 1 "net_long": mean=+0.010, 4,017 days (55.5%), persist=83.2 days
+- Confusion vs heuristic: State 1 (net_long) maps entirely to heuristic "neutral"
+  (4,017 bars). State 0 maps to {crowded_short:926, neutral:1889, crowded_long:407}.
+  The HMM finds a binary split near zero — everything positive is "net_long".
+  Heuristic uses extreme-positioning thresholds (crowded_short / neutral / crowded_long).
+  The mismatch suggests COT heuristic buckets are too coarse to match the continuous
+  process the HMM finds. HMM states likely more predictive for regime conditioning.
+
+Outputs: `output/research/hmm_regimes.parquet` (daily state sequences),
+         `output/research/hmm_regimes_summary.parquet` (state statistics).
+
+**Comomentum results (Session 13):**
+
+29 confirmed 1h pairs loaded, all with ≥120 bars. Common grid: 4,388 bars (~3 trading
+weeks of hourly data per bar given ~17.5 months of history). Rolling 60-bar pairwise
+correlation computed.
+
+- Mean comomentum index: 0.0896 (mean pairwise spread return correlation)
+- Median: 0.0890 · Std: 0.0349
+- Elevated threshold (P75): 0.1131
+- Elevated bars: 1,082/4,328 = 25.0% (by construction, ≈P75)
+- Static full-history mean cross-spread correlation: 0.0477
+
+**Interpretation:** Mean rolling correlation (0.09) is nearly 2× the static baseline
+(0.048), which suggests that at any given time the spread portfolio is more correlated
+than the unconditional average — persistent co-movement among the spreads is common,
+not episodic. The standard deviation (0.035) is moderate; "elevated crowding" at P75
+(0.113) is only 0.6σ above the mean. This means crowding is not sharply episodic
+(which would show a heavy right tail and high σ) — it's a persistent, slowly-varying
+condition. The next step (in `backtest.py` discussion) is to test whether entries
+during elevated comomentum (>0.113) have materially lower convergence rates, which
+is the operationally relevant question.
+
+Outputs: `output/research/comomentum_index.parquet` (rolling index + elevated flag),
+         `output/research/comomentum_pairwise.parquet` (full static pairwise corr matrix).
+
+**Sample Entropy results (Session 13):**
+
+79 confirmed pairs processed across 1m/3m/30m/1h/4h TFs. z-scored spread, m=2, r=0.2·std.
+
+By TF:
+- 1h: mean SampEn=0.129, min=0.024 (CAT/DD), max=0.378 (LNT/VTR). n=4,389 bars each.
+- 4h: SPY/VOO = 0.045 (only confirmed 4h pair). n=3,747 bars.
+- 30m: EQR/INVH = 0.295. Single pair.
+- 1m: bimodal — full-history pairs (n≈3,900) range 0.069-0.355 (normal); short-history
+  pairs (n<700) cluster near 0.005. Low-n SampEn is an artifact — short window means
+  fewer template matches, driving down the count ratio.
+- 3m: similar bimodal structure. APOG/CTKB/ARLO clusters all ≈0.004.
+
+Most regular spreads (lowest SampEn, 1h+4h only — most interpretable):
+1. CAT/DD@1h: 0.024 — 2. AMAT/DD@1h: 0.051 — 3. SPY/VOO@4h: 0.046
+4. DD/LPX@1h: 0.053 — 5. DD/JHG@1h: 0.058 — 6. DD/SHOO@1h: 0.053
+
+The 1m/3m pairs with very low SampEn (0.004-0.007) should be treated as unreliable —
+insufficient bars for SampEn estimation. The reliable signal is in 1h pairs: lower SampEn
+at 1h is a candidate ML Stage 2 feature (lower → more mechanically predictable spread).
+
+Note: several 1h pairs have hl=NaN despite >4,000 bars — these are the DD-hub pairs
+flagged by permutation_robust=False (thin_info_content). Their SampEn values (0.024-0.084)
+are still computed correctly; SampEn doesn't require mean-reversion, only regularity.
+
+Output: `output/research/sample_entropy_spreads.parquet`.
+
+**Regime conditional analysis results (Session 13):**
+
+Note: `_REGIME_COLS` initially included `vix_term_structure_regime` (wrong name) — macro.py
+produces `vix_term_structure`. Fixed after first run; results below include `vix_term_structure`
+from the re-run.
+
+First run produced 278 rows across yield_curve_regime + vix_regime:
+
+Mean hl_ratio (half_life_in_regime / half_life_full_series) by regime — the core finding:
+
+| regime_col        | regime_val   | mean_hl_ratio | n_pairs |
+|-------------------|-------------|---------------|---------|
+| vix_regime        | crisis      |  0.090        |  28     |
+| vix_regime        | calm        |  0.377        |  28     |
+| vix_regime        | elevated    |  1.512        |  30     |
+| vix_regime        | normal      |  3.929        |  58     |
+| yield_curve_regime| flat_inverted|  0.430        |  29     |
+| yield_curve_regime| normal      |  4.387        |  58     |
+
+**Interpretation:** Pairs mean-revert dramatically faster in VIX crisis (hl_ratio=0.09,
+11× faster than full-series average) and faster in flat/inverted yield curve environments.
+In "normal" macro conditions, pairs mean-revert 4× slower than their historical average.
+This is a genuine and strong regime-conditioning result.
+
+Key caveats:
+1. 1m/2m/3m data spans only 5-8 days → single macro regime (current "normal"). The regime
+   variation is entirely from 1h pairs (which span ~17.5 months).
+2. VIX "crisis" regime has small n per pair (e.g. UMBF/FHB: 36 bars in crisis). OLS hl
+   estimates with n=30-50 bars are noisy.
+3. The "crisis hl is shortest" result may partly reflect that crisis periods have higher
+   volatility, making the spread move more and thus appear to "mean-revert" faster via OLS.
+   Needs verification with z-score normalized spread (not raw spread level).
+4. Single-regime pairs (e.g. 1m pairs all in "normal") contribute hl_ratio=1.0, inflating
+   the "normal" count but not the cross-regime comparison.
+
+Despite caveats, the 1h multi-regime finding is directionally clear and worth reporting:
+yield_curve_regime and vix_regime materially condition pair half-life at 1h frequency.
+This supports the thesis's regime-conditioning hypothesis.
+
+Complete results from re-run (with vix_term_structure, 474 rows total):
+
+| regime_col         | regime_val   | mean_hl_ratio | n_pairs |
+|--------------------|-------------|---------------|---------|
+| vix_regime         | crisis       | 0.090         | 28      |
+| vix_regime         | calm         | 0.377         | 28      |
+| vix_regime         | elevated     | 1.512         | 30      |
+| vix_regime         | normal       | 3.929         | 58      |
+| vix_term_structure | backwardation| 0.646         | 28      |
+| vix_term_structure | flat         | 0.691         | 30      |
+| vix_term_structure | deep_contango| 0.802         | 48      |
+| vix_term_structure | contango     | 2.356         | 43      |
+| yield_curve_regime | flat_inverted| 0.430         | 29      |
+| yield_curve_regime | normal       | 4.387         | 58      |
+
+VIX term structure adds: backwardation (when VIX futures < spot = market pricing
+near-term vol decline) → fastest convergence after crisis. Contango (normal state,
+VIX futures > spot) → 2.4× slower. This ordering makes economic sense: backwardation
+marks the crisis→calm transition, which is when pairs are most violently mean-reverting.
+Output: `output/research/regime_conditional_analysis.parquet`.

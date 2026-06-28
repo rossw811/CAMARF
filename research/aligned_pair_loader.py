@@ -26,6 +26,24 @@ RETURNS get included, to match the GapFlag system's actual design
 intent (align_intraday builds a dense per-symbol grid specifically so
 the overnight span gets flagged and the return crossing it excluded).
 
+REVERTED same day: briefly passed drop_data_gap_rows=True here, then
+reverted after direct verification showed it silently breaks
+_gap_aware_returns' OWN masking mechanism — that function identifies
+"the return spanning a gap" by checking gap_flag at the CURRENT and
+PREVIOUS row position; once DATA_GAP rows are removed, the first real
+bar after a gap becomes positionally adjacent to the last real bar
+before it with no marker between them, so the function can no longer
+tell that return crosses a multi-hour gap and stops masking it.
+Verified directly: CATY/UCB@1h correlation reverted from the correct
+0.5577 back to the wrong 0.7304 the instant this was enabled — the
+exact bug this module exists to fix, reopened through a different
+mechanism. Fixing this properly needs _gap_aware_returns/_clean_close
+to ALSO check the real time gap between surviving rows (not just
+gap_flag at each position) before any row-dropping can be safe — a
+separate, not-yet-built fix. drop_data_gap_rows stays available on
+DataAligner (default False, unused by this module for now) for if/when
+that fix lands.
+
 Usage (drop-in replacement for `DataStore.load(symbol, tf_label)` when
 you need a SINGLE pair's two legs on the production-matching
 convention):
@@ -42,16 +60,19 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from data import DataAligner, DataStore
 
 
-def load_aligned_pair(symbol_a, symbol_b, tf_label):
-    """Load both legs and run them through DataAligner.align_universe
-    together, exactly mirroring analysis.py's own Step 2. Returns
-    (df_a, df_b), either of which may be None if that symbol has no
-    cached data or fails alignment."""
+def align_pair_dataframes(symbol_a, df_a, symbol_b, df_b, tf_label):
+    """Run two ALREADY-LOADED dataframes through DataAligner.align_universe
+    together. Factored out of load_aligned_pair so callers with a non-
+    DataStore source (e.g. an IBKR-supplement-merged series, which also
+    has no gap_flag column) can get the same treatment — align_intraday
+    doesn't require a pre-existing gap_flag, it computes one fresh by
+    reindexing onto a dense grid, so this works regardless of source.
+    Returns (aligned_a, aligned_b), either may be None."""
     raw = {}
-    for sym in (symbol_a, symbol_b):
-        df = DataStore.load(sym, tf_label)
-        if df is not None and not df.empty:
-            raw[sym] = df
+    if df_a is not None and not df_a.empty:
+        raw[symbol_a] = df_a
+    if df_b is not None and not df_b.empty:
+        raw[symbol_b] = df_b
     if not raw:
         return None, None
 
@@ -59,3 +80,13 @@ def load_aligned_pair(symbol_a, symbol_b, tf_label):
         {f"{sym}_{tf_label}": df for sym, df in raw.items()}, tf_label
     )
     return aligned.get(symbol_a), aligned.get(symbol_b)
+
+
+def load_aligned_pair(symbol_a, symbol_b, tf_label):
+    """Load both legs via DataStore and run them through
+    DataAligner.align_universe together, exactly mirroring analysis.py's
+    own Step 2. Returns (df_a, df_b), either of which may be None if that
+    symbol has no cached data or fails alignment."""
+    df_a = DataStore.load(symbol_a, tf_label)
+    df_b = DataStore.load(symbol_b, tf_label)
+    return align_pair_dataframes(symbol_a, df_a, symbol_b, df_b, tf_label)

@@ -41,7 +41,10 @@ of method carries by construction):
     optimized weight's edge survive walk-forward," not a trading
     simulation.
 
-Read-only. Loads cached price data directly via DataStore.load.
+Read-only. Loads cached price data via aligned_pair_loader.load_aligned_pair
+(fixed 2026-06-24 — found in the targeted bug-class sweep: raw DataStore.load()
+output has no gap_flag column, so _clean_close below was not actually masking
+DATA_GAP bars; see Development.md Session 11).
 """
 import argparse
 import os
@@ -53,7 +56,8 @@ import scipy.linalg
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from data import DataStore, _clean_close
+from aligned_pair_loader import load_aligned_pair
+from data import _clean_close
 
 _TF_DIRS = [
     "1min", "2min", "3min", "5min", "15min", "30min", "1hr", "4hr",
@@ -124,8 +128,7 @@ def _expanding_folds(n: int, n_folds: int):
 
 
 def run_comparison(sym_a, sym_b, tf_label, n_folds=4):
-    df_a = DataStore.load(sym_a, tf_label)
-    df_b = DataStore.load(sym_b, tf_label)
+    df_a, df_b = load_aligned_pair(sym_a, sym_b, tf_label)
     if df_a is None or df_b is None:
         return None
     log_a = np.log(_clean_close(df_a))

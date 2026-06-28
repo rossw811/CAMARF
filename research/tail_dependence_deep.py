@@ -45,7 +45,8 @@ import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from data import DataStore, _gap_aware_returns
+from aligned_pair_loader import align_pair_dataframes, load_aligned_pair
+from data import _gap_aware_returns
 from data_ibkr import load_supplement, merge_with_yfinance
 from tail_dependence import _empirical_tail_dependence
 
@@ -80,15 +81,32 @@ def deep_series(symbol, tf_label):
     return merged
 
 
-def shallow_series(symbol, tf_label):
-    return DataStore.load(symbol, tf_label)
-
-
 def compare_pair(symbol_a, symbol_b, tf_label, q=0.10):
-    shallow_a = shallow_series(symbol_a, tf_label)
-    shallow_b = shallow_series(symbol_b, tf_label)
-    deep_a = deep_series(symbol_a, tf_label)
-    deep_b = deep_series(symbol_b, tf_label)
+    # Fixed 2026-06-24 (targeted bug-class sweep): was bare DataStore.load
+    # per symbol — same gap-convention bug as the rest of the scripts this
+    # session, found because shallow_a/b feed _gap_aware_returns below for
+    # the reported lambda_L/lambda_U, not just the date-range comparison
+    # this script was originally built for.
+    shallow_a, shallow_b = load_aligned_pair(symbol_a, symbol_b, tf_label)
+
+    # deep_a_raw/deep_b_raw: used for date-range reporting only — alignment
+    # doesn't change min/max, so reporting on the raw merge vs. the aligned
+    # version is equivalent there, but keeping the raw version explicit
+    # avoids any doubt. deep_a/deep_b (aligned): used for returns/lambda —
+    # found 2026-06-24 that the merged IBKR+yfinance series ALSO has no
+    # gap_flag column (a pre-existing, documented limitation of
+    # analysis.py's _enrich_with_deep_history too, not unique to this
+    # script), so without this step shallow would be gap-masked but deep
+    # would not be — an inconsistent, apples-to-oranges comparison that
+    # made "deep has more observations" look like real extra history when
+    # it was actually just deep's returns NOT being masked at session
+    # boundaries the way shallow's now correctly are. align_intraday
+    # doesn't need a pre-existing gap_flag — it computes one fresh by
+    # reindexing onto a dense grid — so this works on the merged series
+    # exactly as well as on a regular cache.
+    deep_a_raw = deep_series(symbol_a, tf_label)
+    deep_b_raw = deep_series(symbol_b, tf_label)
+    deep_a, deep_b = align_pair_dataframes(symbol_a, deep_a_raw, symbol_b, deep_b_raw, tf_label)
 
     out = {"symbol_a": symbol_a, "symbol_b": symbol_b, "tf": tf_label}
 
@@ -99,8 +117,8 @@ def compare_pair(symbol_a, symbol_b, tf_label, q=0.10):
 
     out["shallow_a_start"], out["shallow_a_end"] = _date_range(shallow_a)
     out["shallow_b_start"], out["shallow_b_end"] = _date_range(shallow_b)
-    out["deep_a_start"], out["deep_a_end"] = _date_range(deep_a)
-    out["deep_b_start"], out["deep_b_end"] = _date_range(deep_b)
+    out["deep_a_start"], out["deep_a_end"] = _date_range(deep_a_raw)
+    out["deep_b_start"], out["deep_b_end"] = _date_range(deep_b_raw)
 
     # Did the supplement actually extend earlier than the main cache for
     # EITHER leg, or does it just duplicate the same window (the SPY/VOO

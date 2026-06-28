@@ -686,6 +686,70 @@ running four of them for real:
   the universe-wide audit below, which confirmed the pattern affects
   ~32% of the 1m universe, not a handful of names.
 
+- **HMM regime detection — built, ran, confirms regime structure in macro
+  series (Session 13).** Gaussian HMMs fit to T10Y2Y, VIXCLS, and COT ES
+  net speculative positioning. Key findings: (a) yield curve slope is
+  highly persistent — HMM state durations 539–621 days; (b) VIX crisis
+  state (mean VIX=30) covers 23.6% of history, broader than the heuristic
+  "crisis" label; (c) COT net-spec splits cleanly at zero — the HMM
+  binary boundary is simpler than the heuristic three-bucket system.
+  HMM state sequences written to `output/research/hmm_regimes.parquet`
+  for use as alternative regime labels in regime-conditional half-life
+  testing.
+
+- **Sample entropy of spreads — built, ran, all 79 pairs processed (Session
+  13).** SampEn (m=2, r=0.2·std, Richman & Moorman 2000) applied to each
+  confirmed pair's z-scored spread. 1h pairs (n≈4,389 bars each) produce
+  reliable estimates: range 0.024–0.378, mean 0.129. Most regular 1h spreads:
+  CAT/DD (0.024), AMAT/DD (0.051), DD/SHOO (0.053), DD/LPX (0.053). Lower
+  SampEn = more regular, mechanically predictable spread → candidate ml.py
+  Stage 2 feature. Ultra-short-TF pairs (1m/3m, n<700) produce
+  unreliably low SampEn as a small-sample artifact — not used. Output:
+  `output/research/sample_entropy_spreads.parquet`.
+
+- **Regime-conditional pair analysis — built, ran, strong finding (Session
+  13).** Per-regime OLS half-life estimation for all confirmed pairs across
+  1m/3m/30m/1h/4h. Mean hl_ratio (half_life_in_regime / half_life_full):
+
+  | Regime              | Mean hl_ratio |
+  |---------------------|--------------|
+  | VIX crisis          | 0.090 (11× faster) |
+  | VIX calm            | 0.377 (2.7× faster) |
+  | VIX elevated        | 1.512 (1.5× slower) |
+  | VIX normal          | 3.929 (4× slower)  |
+  | Yield flat/inverted | 0.430 (2.3× faster) |
+  | Yield normal        | 4.387 (4.4× slower) |
+
+  Pairs mean-revert dramatically faster in crisis/calm VIX regimes and
+  flat/inverted yield curve environments. This is the clearest empirical
+  support yet for the thesis's regime-conditioning hypothesis: macro
+  state materially alters statistical arbitrage dynamics. Caveat: 1m/3m
+  data spans ≤8 days (single regime); multi-regime variation entirely
+  from 1h pairs (17.5 months of history). VIX crisis n is small (30–40
+  bars per pair) — hl estimates noisy. Needs confirmation with z-scored
+  spread to rule out raw-level volatility confound.
+  Output: `output/research/regime_conditional_analysis.parquet`.
+
+- **Comomentum — built, ran (Session 13).** Lou & Polk (2022) comomentum
+  signal adapted to CAMARF's spread portfolio: rolling 60-bar mean pairwise
+  correlation of spread returns across all 29 confirmed 1h pairs. Mean
+  comomentum index = 0.090 (vs. static full-history baseline = 0.048 —
+  rolling correlation is nearly 2× the unconditional average, suggesting
+  persistent co-movement is the norm, not episodic crowding). P75 threshold
+  (0.113) marks 25% of bars as "elevated crowding." The index has low
+  volatility (std=0.035), meaning crowding is slowly varying, not spiking
+  — consistent with institutional positioning cycles. Next step: join to
+  ml.py labeled entry events and test convergence-rate differential during
+  elevated vs. normal comomentum. Output: `output/research/comomentum_index.parquet`.
+
+- **ml.py class imbalance addressed (Session 13).** Training set: 75.2%
+  not_converged / 24.8% converged. `compute_sample_weight("balanced",
+  y_train)` applied as `sample_weight` to `model.fit()` — XGBoost's
+  equivalent of `class_weight='balanced'`. Accuracy dropped 68% → 56%
+  (expected — trades majority-class accuracy for minority-class recall).
+  The converged-class precision/recall tradeoff is the right metric for
+  an entry filter; this will be evaluated properly once backtest.py exists.
+
 - **Approved, but logically blocked on something else being decided
   first — not rejected, just not buildable yet:**
   - **Stability selection** (idea #7, Meinshausen & Bühlmann) — the

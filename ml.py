@@ -571,6 +571,7 @@ def _train_and_validate(result: MLResult, summary: MLRunSummary) -> None:
     import xgboost as xgb
     from sklearn.inspection import permutation_importance
     from sklearn.preprocessing import LabelEncoder
+    from sklearn.utils.class_weight import compute_sample_weight
 
     df = result.examples.sort_values("entry_time").reset_index(drop=True)
     X = df[_FEATURE_COLS].fillna(df[_FEATURE_COLS].median())
@@ -608,7 +609,8 @@ def _train_and_validate(result: MLResult, summary: MLRunSummary) -> None:
         random_state=42,  # matches the project's seed convention (KMeans/GMM/HMM all use 42)
         n_jobs=1,  # avoids thread-scheduling float non-determinism; free at this data size
     )
-    model.fit(X_train, y_train)
+    train_weights = compute_sample_weight("balanced", y_train)
+    model.fit(X_train, y_train, sample_weight=train_weights)
 
     test_acc = float(model.score(X_test, y_test))
     perm = permutation_importance(model, X_test, y_test, n_repeats=20, random_state=0)
