@@ -343,10 +343,13 @@ class BacktestEngine:
         sym_b = pair_row["symbol_b"]
         tf = pair_row["tf_label"]
 
-        hedge = float(pair_row["hedge_ratio_ols"] if hedge_method == "ols"
-                      else pair_row.get("hedge_ratio_kalman_mean", pair_row["hedge_ratio_ols"]))
-        if not np.isfinite(hedge) or hedge <= 0:
-            log.debug("SKIP %s/%s@%s: invalid hedge ratio %.3f", sym_a, sym_b, tf, hedge)
+        # Scalar fallbacks from pairs.parquet (used when point-in-time series absent)
+        hedge_scalar_ols = float(pair_row.get("hedge_ratio_ols", np.nan))
+        hedge_scalar_kalman = float(pair_row.get("hedge_ratio_kalman_mean",
+                                                  hedge_scalar_ols))
+        hedge_scalar = hedge_scalar_ols if hedge_method == "ols" else hedge_scalar_kalman
+        if not np.isfinite(hedge_scalar) or hedge_scalar <= 0:
+            log.debug("SKIP %s/%s@%s: invalid hedge ratio %.3f", sym_a, sym_b, tf, hedge_scalar)
             return []
 
         hurst = float(pair_row.get("hurst_rs", np.nan))
@@ -374,6 +377,13 @@ class BacktestEngine:
         hl_arr = df["half_life_rolling"].values
         timestamps = df.index
         n = len(df)
+
+        # Point-in-time causal hedge ratio series (added to spread_series by
+        # analysis.py after the lookahead-bias fix). Falls back to scalar when
+        # the column is absent (pre-fix spread_series files).
+        _pit_col = "hedge_ratio_ols_t" if hedge_method == "ols" else "hedge_ratio_kalman_t"
+        _pit_series = df[_pit_col].values if _pit_col in df.columns else None
+        _has_pit = _pit_series is not None and np.any(np.isfinite(_pit_series))
 
         # Rolling correlation for structural breakdown exit
         _default_flags = pd.Series(0, index=df.index)
@@ -411,6 +421,17 @@ class BacktestEngine:
                 if not np.isfinite(hl_at_entry):
                     continue  # can't set max hold without half-life
 
+                # Point-in-time hedge ratio at this bar (causal, no lookahead).
+                # Uses the Kalman/OLS trajectory from analysis.py if available;
+                # falls back to the scalar from pairs.parquet when the spread_series
+                # file predates the lookahead-bias fix (analysis.py re-run required).
+                if _has_pit:
+                    hedge_pit = float(_pit_series[i])
+                    if not np.isfinite(hedge_pit) or hedge_pit <= 0:
+                        hedge_pit = hedge_scalar  # warmup bars: scalar fallback
+                else:
+                    hedge_pit = hedge_scalar
+
                 # Layer 2: regime check
                 allow, size_mult, regime_ctx = self.regime_cond.check_entry(ts, tf)
                 if not allow:
@@ -432,9 +453,9 @@ class BacktestEngine:
 
                 current_trade = Trade(
                     tf=tf, symbol_a=sym_a, symbol_b=sym_b,
-                    hedge_method=hedge_method, hedge_ratio=hedge,
+                    hedge_method=hedge_method, hedge_ratio=hedge_pit,
                     entry_time=ts, entry_z=z, entry_spread=spread, side=side,
-                    n_shares_a=n_shares, n_shares_b=n_shares * abs(hedge),
+                    n_shares_a=n_shares, n_shares_b=n_shares * abs(hedge_pit),
                     half_life_at_entry=hl_at_entry, hurst_at_entry=hurst,
                     ml_prob=ml_prob,
                     vix_ts_regime=regime_ctx.get("vix_ts", ""),

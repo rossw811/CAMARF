@@ -6733,9 +6733,32 @@ UNFAVORABLE_YIELD = {"normal"}
 | Bias | Type | Handling |
 |------|------|----------|
 | Episodic survivorship | Mild | Documented in docstring and DEVELOPMENT.md. Pairs that were cointegrated historically but broke down are absent from the confirmed set entirely. Mid-backtest breakdown IS captured (corr_exit / stop triggers). Cannot correct without full delistment history. |
-| OLS hedge lookahead | Moderate | OLS estimated on full sample → strategy wouldn't have known. Exposed both methods via HEDGE_METHOD="both". Kalman_mean is roll-forward calibrated — substantially less lookahead than OLS. Report both; Kalman is the "honest" number. |
+| OLS hedge lookahead | **Fixed (Session 14)** | analysis.py now persists `hedge_ratio_ols_t` + `hedge_ratio_kalman_t` (point-in-time causal series) in each spread_series file. backtest.py uses these at entry time. Falls back to scalar when old files present. Requires analysis.py re-run to activate. |
+| Kalman mean lookahead | **Fixed (Session 14)** | Same fix — `hedge_ratio_kalman_t` is the causal filter state at each bar (Q/R calibrated on first 252 bars, filter run forward). Using the trajectory instead of the mean eliminates the remaining Kalman lookahead. |
+| Spread construction | Mild/residual | Spread computed with rolling OLS series (causal after warmup); `ols_point` fallback only for early warmup bars. Already mostly clean pre-fix. |
 | In-sample threshold bias | Mild | ENTRY/EXIT/STOP thresholds come from Config, not from grid-searching the backtest. The thresholds were set from practitioner defaults + OUP literature (Bertram 2010, Vidyamurthy 2004), not optimized to this data. Documented, not corrected. |
 | Holdout purity | Accounted for | Layer 1 is labeled IS. Layer 2 holdout is labeled OOS. analysis.py parameters were calibrated on full history — some contamination of OOS via shared analysis window. Cannot cleanly prevent without full walk-forward calibration. |
+
+### Layer 1 results (Session 14, first run — pre-point-in-time hedge fix)
+
+**Full-series IS run:**
+- 3,382 trades, 84 pair/method combos
+- Portfolio Sharpe: 5.49, max drawdown: $16,397
+- 1h mean win rate: 65.7%, mean Sharpe: 24.4
+- Dominant pair: DD/JHG@1h ($54,828, 12.7% concentration)
+- ARLO@3m cluster: 0% WR Kalman-only (OLS rejected by `hedge <= 0`; Kalman mean positive but sizing direction wrong — needs investigation)
+- OLS ≈ Kalman on 1h (expected for stable pairs with 17 months history)
+
+**20% chronological holdout OOS run:**
+- 695 trades, 73 pair/method combos
+- Portfolio Sharpe: 4.98 (−9% vs IS), max drawdown: $7,259
+- 1h mean win rate: 69.5% (improves vs IS — pairs most established at holdout boundary)
+- DD/JHG@1h concentration jumps to 34.8% OOS — pair carries the portfolio; DD-hub thematic concentration is the primary risk
+- CRWD/NOW@1m turns negative OOS (WR 35%→17%) — thin history artifact
+
+**IS vs OOS delta interpretation:** Portfolio Sharpe 5.49→4.98 is a small degradation. Signal survives holdout. The win rate improvement at 1h OOS is consistent with the regime-conditional finding (pairs increasingly established in their cointegrated relationship over time). The DD/JHG concentration in OOS is the paper's main concentration risk to quantify and disclose.
+
+**Note:** These numbers reflect the scalar hedge ratio (pre-fix). Post-fix numbers require analysis.py re-run + backtest re-run. Delta expected to be small for Kalman (filter is already nearly causal), more visible for OLS.
 
 ### Literature grounding (backtest.py decisions)
 
@@ -6763,15 +6786,16 @@ make sure to refer to it and consider principals of all the authors listed."
 
 ### Next steps after backtest.py
 
-1. **Run backtest.py** — `python backtest.py` on full confirmed pair set. Review Layer 1
-   results before enabling Layer 2.
-2. **ml.py Stage 2** — enrich feature vector with SampEn, comomentum at entry time,
+1. ~~**Run backtest.py**~~ — **DONE.** IS Sharpe=5.49, OOS Sharpe=4.98. Signal survives holdout.
+2. **Re-run analysis.py** — IN PROGRESS (Session 14). Populates `hedge_ratio_ols_t` +
+   `hedge_ratio_kalman_t` in spread_series files + `thin_info_content`/`permutation_robust`
+   in pairs.parquet. Once done: re-run `backtest.py` to get post-fix IS and OOS numbers.
+3. **ml.py Stage 2** — enrich feature vector with SampEn, comomentum at entry time,
    HMM state at entry date, VIX term structure. Add SHAP (aggregate primary, per-entry
    for comparison). Target: holdout accuracy > 68% baseline before declaring Stage 2 win.
-3. **Re-run analysis.py** — populate thin_info_content + permutation_robust in
-   pairs.parquet. Required for ml.py's skip logic to take effect.
-4. **follower_direction_validation.py** — currently produces 0 results because all
-   lead_lag best_lag=0. Either: (a) remove the best_lag filter and test same-bar
-   directional structure directly, or (b) accept the null result as paper-ready validation
-   of the contemporaneous assumption and move on.
-5. **PAPER.md update** — add backtest methodology section once Layer 1 results are in hand.
+4. **ARLO@3m investigation** — all Kalman trades 0% WR; OLS trades absent (hedge<=0 rejection).
+   Negative-correlation pairs have negative OLS hedge → rejected. Need to decide: skip
+   negative-correlation pairs, or flip the leg ordering in analysis.py.
+5. **DD-hub concentration** — 34.8% OOS concentration in DD/JHG alone. Paper needs explicit
+   discussion of hub-and-spoke risk. Consider a concentration cap by hub-membership in Layer 2.
+6. **PAPER.md update** — add backtest methodology + Layer 1 results section.
