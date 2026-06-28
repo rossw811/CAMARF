@@ -4703,6 +4703,10 @@ class AnalysisPipeline:
 
         # Per-bar series for persistence (see docstring) — carried forward
         # exactly as SpreadModel computed them, not recomputed later.
+        # hedge_ratio_ols_t / hedge_ratio_kalman_t: point-in-time causal hedge
+        # series persisted so backtest.py can use them at entry time without
+        # lookahead (backtest previously used scalar mean values from
+        # pairs.parquet which embed full-sample information).
         per_bar = {
             "index": df_a.index,
             "spread": sm["spread"],
@@ -4711,6 +4715,8 @@ class AnalysisPipeline:
             "half_life_rolling_series": sm["half_life_rolling_series"],
             "gap_flag_a": gap_flag_a,
             "gap_flag_b": gap_flag_b,
+            "hedge_ratio_ols_t": hr["ols_series"],
+            "hedge_ratio_kalman_t": hr["kalman_series"],
         }
 
         pair_result = PairResult(
@@ -4952,6 +4958,8 @@ class AnalysisPipeline:
                     # dropped.
                     "gap_flag_a": None,
                     "gap_flag_b": None,
+                    "hedge_ratio_ols_t": hr["ols_series"],
+                    "hedge_ratio_kalman_t": hr["kalman_series"],
                 }
                 log.info(
                     f"  [{tf_label}] {p.symbol_a}/{p.symbol_b}: deep history "
@@ -5163,6 +5171,8 @@ class AnalysisPipeline:
                                 "half_life_rolling": _pb["half_life_rolling_series"],
                                 "gap_flag_a": _pb["gap_flag_a"],
                                 "gap_flag_b": _pb["gap_flag_b"],
+                                "hedge_ratio_ols_t": _pb.get("hedge_ratio_ols_t"),
+                                "hedge_ratio_kalman_t": _pb.get("hedge_ratio_kalman_t"),
                             },
                             index=_pb["index"],
                         )
