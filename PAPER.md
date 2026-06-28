@@ -593,23 +593,34 @@ running four of them for real:
 - **Idea #9 (conformal prediction) — built, integrated into ml.py
   directly** (`ConformalPredictor`, calibrated on the validation slice
   the existing 60/20/20 split already carved out but never used).
-  Verified with a synthetic test; real evaluation waits on more labeled
-  examples, same as the rest of ml.py.
+  Verified with a synthetic test. **Updated 2026-06-27: training
+  threshold crossed — 125 labeled entry events (up from 12), 79
+  confirmed pairs. Trained on 75, test accuracy 68.00% on 25 holdout.
+  Conformal: 88% empirical coverage (target ≥90%), avg set size 1.52.
+  Note: class imbalance (75% not_converged / 25% converged) means the
+  trivial "predict not_converged always" baseline is ~75%, so 68%
+  accuracy is below the trivial baseline on this split — precision/
+  recall on the converged class is the right evaluation metric for an
+  entry filter, not overall accuracy. Threshold / evaluation-metric
+  decision deferred to backtest.py interactive session.**
 - **Idea #4 (BH-FDR robustness check), reframed** — knockoff filters
   don't transplant cleanly onto pairwise hypothesis testing on time
   series (they're built for regression variable selection). Built a
   circular-shift permutation check instead (`eg_permutation_check.py`),
-  run alongside production BH-FDR, not replacing it. **Real result: 12 of
-  30 confirmed pairs flagged** (real EG significant, permutation-based
-  check not); mean "null also looks significant" rate across all 30 is
-  14.6% vs. an expected ~5%. MTDR/MGY@3m is a clean case: p=0.000022 on
-  real data, 86% of random circular shifts also significant — that
-  pair's apparent cointegration is very likely driven by each leg's own
-  trend, not real co-movement. **Policy for a flagged pair (exclude /
-  downweight / require corroboration) is a separate decision from the
-  diagnostic itself — discussed with Ross 2026-06-23, leaning toward
-  "require corroboration" to stay consistent with the coint_frac
-  override's own precedent, not yet finalized.**
+  run alongside production BH-FDR, not replacing it. **Updated result
+  (2026-06-27, 79-pair universe): 38 of 79 confirmed pairs flagged**
+  (real EG significant, permutation-based check not); mean
+  null_frac_significant across all 79 is 0.230 vs. an expected ~0.05
+  (4.6×). Earlier run (30-pair set): 12/30 flagged, 14.6% mean — the
+  higher rate in the expanded universe is driven by the DD-hub cluster
+  at 1h (10/17 DD pairs flagged, null_frac_sig 0.50–0.57, indicating
+  DD's own within-series autocorrelation is the dominant driver) and the
+  APOG cluster at 3m. Clean pairs from the expanded set: APP/NOW,
+  CRWD/NOW, IWM/SLV, the AZTA cluster at 1m, and most 1h non-DD pairs.
+  **Policy: `permutation_robust` flag on PairResult; flagged pairs remain
+  in confirmed set as a comparison arm until backtest.py quantifies
+  real-world impact — consistent with coint_frac_override precedent.
+  Discussed with Ross 2026-06-23, confirmed 2026-06-27.**
 - **Idea #11 (MIDAS) — math verified, evaluation correctly deferred.**
   Beta-polynomial lag weighting confirmed correct via synthetic checks
   and demonstrated on real SPY/VOO 1h data. Evaluating whether it

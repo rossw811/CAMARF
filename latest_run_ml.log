@@ -1,51 +1,155 @@
 === CAMARF ml.py ===
-date:        2026-06-23 14:51
-runtime_min: 0.0
+date:        2026-06-27 21:07
+runtime_min: 0.1
 
 === pairs ===
-  FITB/FULT@15m            entry_events=7     labeled=0     censored=0     no_half_life=0     future_not_clean=7
-  PNC/FULT@15m             entry_events=2     labeled=0     censored=0     no_half_life=0     future_not_clean=2
-  UBSI/AUB@15m             entry_events=1     labeled=0     censored=0     no_half_life=0     future_not_clean=1
-  FANG/OXY@1m              entry_events=10    labeled=8     censored=0     no_half_life=0     future_not_clean=2
-  APAM/AZTA@1m             entry_events=0     labeled=0     censored=0     no_half_life=0     future_not_clean=0
-  APAM/INVX@1m             entry_events=0     labeled=0     censored=0     no_half_life=0     future_not_clean=0
-  APAM/NBHC@1m             entry_events=0     labeled=0     censored=0     no_half_life=0     future_not_clean=0
+  ARE/DD@1h                entry_events=3     labeled=0     censored=0     no_half_life=0     future_not_clean=3
+  LNT/VTR@1h               entry_events=5     labeled=2     censored=0     no_half_life=0     future_not_clean=3
+  AME/DD@1h                entry_events=9     labeled=0     censored=0     no_half_life=0     future_not_clean=9
+  AMAT/DD@1h               entry_events=3     labeled=0     censored=0     no_half_life=0     future_not_clean=3
+  CAT/DD@1h                entry_events=7     labeled=2     censored=0     no_half_life=0     future_not_clean=5
+  C/DD@1h                  entry_events=5     labeled=1     censored=0     no_half_life=0     future_not_clean=4
+  CMS/DUK@1h               entry_events=5     labeled=3     censored=0     no_half_life=0     future_not_clean=2
+  DE/DD@1h                 entry_events=3     labeled=0     censored=0     no_half_life=0     future_not_clean=3
+  DAL/DD@1h                entry_events=8     labeled=0     censored=0     no_half_life=0     future_not_clean=8
+  DD/ETN@1h                entry_events=3     labeled=1     censored=0     no_half_life=0     future_not_clean=2
+  DD/GPN@1h                entry_events=8     labeled=3     censored=0     no_half_life=0     future_not_clean=5
+  DD/JCI@1h                entry_events=9     labeled=2     censored=0     no_half_life=0     future_not_clean=7
+  DD/H@1h                  entry_events=7     labeled=1     censored=0     no_half_life=0     future_not_clean=6
+  DD/JHG@1h                entry_events=8     labeled=1     censored=0     no_half_life=0     future_not_clean=7
+  DD/LPX@1h                entry_events=6     labeled=2     censored=1     no_half_life=0     future_not_clean=3
+  DD/OSK@1h                entry_events=9     labeled=1     censored=0     no_half_life=0     future_not_clean=8
+  DD/UNM@1h                entry_events=3     labeled=0     censored=0     no_half_life=0     future_not_clean=3
+  DD/YETI@1h               entry_events=10    labeled=1     censored=1     no_half_life=0     future_not_clean=8
+  DD/SHOO@1h               entry_events=5     labeled=0     censored=0     no_half_life=0     future_not_clean=5
+  EG/WRB@1h                entry_events=4     labeled=0     censored=0     no_half_life=0     future_not_clean=4
+  EG/ORI@1h                entry_events=5     labeled=1     censored=0     no_half_life=0     future_not_clean=4
+  HAL/NOV@1h               entry_events=5     labeled=1     censored=0     no_half_life=0     future_not_clean=4
+  MET/TMHC@1h              entry_events=5     labeled=0     censored=0     no_half_life=0     future_not_clean=5
+  PFG/STLD@1h              entry_events=4     labeled=0     censored=0     no_half_life=0     future_not_clean=4
+  PRU/AXTA@1h              entry_events=5     labeled=0     censored=0     no_half_life=0     future_not_clean=5
+  VRT/MTZ@1h               entry_events=9     labeled=0     censored=0     no_half_life=0     future_not_clean=9
+  MTSI/WCC@1h              entry_events=4     labeled=0     censored=0     no_half_life=0     future_not_clean=4
+  TMHC/WAL@1h              entry_events=4     labeled=0     censored=0     no_half_life=0     future_not_clean=4
+  UMBF/FHB@1h              entry_events=1     labeled=0     censored=0     no_half_life=0     future_not_clean=1
+  AMD/CIEN@1m              entry_events=17    labeled=10    censored=1     no_half_life=0     future_not_clean=6
+  APP/NOW@1m               entry_events=23    labeled=17    censored=1     no_half_life=0     future_not_clean=5
+  COHR/GEV@1m              entry_events=20    labeled=14    censored=0     no_half_life=0     future_not_clean=6
+  CRWD/NOW@1m              entry_events=23    labeled=15    censored=2     no_half_life=0     future_not_clean=6
+  IWM/SLV@1m               entry_events=17    labeled=10    censored=0     no_half_life=0     future_not_clean=7
+  COLM/CNMD@1m             entry_events=1     labeled=0     censored=0     no_half_life=1     future_not_clean=0
+  AWR/INVX@1m              entry_events=0     labeled=0     censored=0     no_half_life=0     future_not_clean=0
+  AWR/TILE@1m              entry_events=1     labeled=0     censored=0     no_half_life=0     future_not_clean=1
+  AZTA/HRMY@1m             entry_events=1     labeled=0     censored=0     no_half_life=1     future_not_clean=0
   AZTA/INVX@1m             entry_events=0     labeled=0     censored=0     no_half_life=0     future_not_clean=0
-  AZTA/NBHC@1m             entry_events=0     labeled=0     censored=0     no_half_life=0     future_not_clean=0
+  AZTA/MLKN@1m             entry_events=1     labeled=0     censored=0     no_half_life=1     future_not_clean=0
+  AZTA/NBHC@1m             entry_events=1     labeled=1     censored=0     no_half_life=0     future_not_clean=0
+  AZTA/TILE@1m             entry_events=0     labeled=0     censored=0     no_half_life=0     future_not_clean=0
+  CALX/CNMD@1m             entry_events=0     labeled=0     censored=0     no_half_life=0     future_not_clean=0
+  CNMD/HUBG@1m             entry_events=0     labeled=0     censored=0     no_half_life=0     future_not_clean=0
+  CNMD/QTWO@1m             entry_events=14    labeled=7     censored=0     no_half_life=0     future_not_clean=7
+  CNMD/SFNC@1m             entry_events=0     labeled=0     censored=0     no_half_life=0     future_not_clean=0
+  EFC/MWA@1m               entry_events=1     labeled=0     censored=1     no_half_life=0     future_not_clean=0
+  EFC/OSW@1m               entry_events=19    labeled=0     censored=0     no_half_life=19    future_not_clean=0
+  EFOR/UPBD@1m             entry_events=0     labeled=0     censored=0     no_half_life=0     future_not_clean=0
+  EFOR/VSTS@1m             entry_events=0     labeled=0     censored=0     no_half_life=0     future_not_clean=0
+  EPAC/MD@1m               entry_events=1     labeled=0     censored=0     no_half_life=0     future_not_clean=1
+  GPI/MD@1m                entry_events=0     labeled=0     censored=0     no_half_life=0     future_not_clean=0
+  HE/INVX@1m               entry_events=1     labeled=0     censored=0     no_half_life=1     future_not_clean=0
+  HRMY/INVX@1m             entry_events=0     labeled=0     censored=0     no_half_life=0     future_not_clean=0
+  HRMY/TILE@1m             entry_events=1     labeled=0     censored=0     no_half_life=0     future_not_clean=1
   INVX/NBHC@1m             entry_events=0     labeled=0     censored=0     no_half_life=0     future_not_clean=0
-  CCL/NCLH@3m              entry_events=5     labeled=4     censored=0     no_half_life=0     future_not_clean=1
-  ORCL/SPY@3m              entry_events=16    labeled=0     censored=0     no_half_life=16    future_not_clean=0
-  ACAD/CUBI@3m             entry_events=3     labeled=0     censored=0     no_half_life=3     future_not_clean=0
-  CUBI/FCPT@3m             entry_events=0     labeled=0     censored=0     no_half_life=0     future_not_clean=0
-  FCPT/NSSC@3m             entry_events=1     labeled=0     censored=0     no_half_life=0     future_not_clean=1
+  INVX/TILE@1m             entry_events=1     labeled=0     censored=0     no_half_life=0     future_not_clean=1
+  INVX/WS@1m               entry_events=0     labeled=0     censored=0     no_half_life=0     future_not_clean=0
+  SFBS/WAFD@1m             entry_events=0     labeled=0     censored=0     no_half_life=0     future_not_clean=0
+  EQR/INVH@30m             entry_events=2     labeled=0     censored=0     no_half_life=0     future_not_clean=2
+  COHR/NXPI@3m             entry_events=6     labeled=4     censored=0     no_half_life=0     future_not_clean=2
+  D/NEE@3m                 entry_events=37    labeled=0     censored=0     no_half_life=37    future_not_clean=0
+  KVUE/KMB@3m              entry_events=18    labeled=9     censored=2     no_half_life=0     future_not_clean=7
+  APOG/HCSG@3m             entry_events=17    labeled=14    censored=1     no_half_life=0     future_not_clean=2
+  APOG/LKFN@3m             entry_events=0     labeled=0     censored=0     no_half_life=0     future_not_clean=0
+  APOG/SAFT@3m             entry_events=0     labeled=0     censored=0     no_half_life=0     future_not_clean=0
+  APOG/UFCS@3m             entry_events=0     labeled=0     censored=0     no_half_life=0     future_not_clean=0
+  ARLO/FCF@3m              entry_events=0     labeled=0     censored=0     no_half_life=0     future_not_clean=0
+  ARLO/HCSG@3m             entry_events=1     labeled=0     censored=1     no_half_life=0     future_not_clean=0
+  ARLO/NWBI@3m             entry_events=2     labeled=1     censored=1     no_half_life=0     future_not_clean=0
+  CTKB/PRAA@3m             entry_events=0     labeled=0     censored=0     no_half_life=0     future_not_clean=0
+  CTKB/UHT@3m              entry_events=0     labeled=0     censored=0     no_half_life=0     future_not_clean=0
+  FCF/HCSG@3m              entry_events=1     labeled=1     censored=0     no_half_life=0     future_not_clean=0
+  FCF/NWBI@3m              entry_events=0     labeled=0     censored=0     no_half_life=0     future_not_clean=0
+  LKFN/SAFT@3m             entry_events=0     labeled=0     censored=0     no_half_life=0     future_not_clean=0
+  LKFN/UFCS@3m             entry_events=0     labeled=0     censored=0     no_half_life=0     future_not_clean=0
+  PRAA/UHT@3m              entry_events=0     labeled=0     censored=0     no_half_life=0     future_not_clean=0
+  SAFT/UFCS@3m             entry_events=0     labeled=0     censored=0     no_half_life=0     future_not_clean=0
   SPY/VOO@4h               entry_events=1     labeled=0     censored=0     no_half_life=0     future_not_clean=1
 
 === label_distribution (label_scheme=binary, this is what training/the MIN_CLASS_SAMPLES gate sees) ===
-  not_converged: 11
-  converged: 1
+  not_converged: 94
+  converged: 31
 
 === granular_label_distribution (always the full 4-class outcome, regardless of label_scheme) ===
-  diverge_further: 9
-  no_move: 2
-  strong_converge: 1
+  diverge_further: 68
+  no_move: 26
+  weak_converge: 18
+  strong_converge: 13
 
 === notes ===
-  Insufficient data to train: 12 total examples across 2 classes (label_scheme=binary, min class count=1, need >=30/class per Config.ML.MIN_CLASS_SAMPLES). This is the expected, honest result tonight — most confirmed pairs are on intraday TFs whose history just started accumulating (see DEVELOPMENT.md's data.py append-switch, 2026-06-21). Re-run as more history accumulates.
+  Trained: n_train=75 n_test=25 test_accuracy=68.00%
+  Conformal: n_cal=25 avg_set_size=1.52 empirical_coverage=88.00%
 
 === pairs_skipped ===
-  FITB/FULT@15m: zero labeled entry events
-  PNC/FULT@15m: zero labeled entry events
-  UBSI/AUB@15m: zero labeled entry events
-  APAM/AZTA@1m: zero labeled entry events
-  APAM/INVX@1m: zero labeled entry events
-  APAM/NBHC@1m: zero labeled entry events
+  ARE/DD@1h: zero labeled entry events
+  AME/DD@1h: zero labeled entry events
+  AMAT/DD@1h: zero labeled entry events
+  DE/DD@1h: zero labeled entry events
+  DAL/DD@1h: zero labeled entry events
+  DD/UNM@1h: zero labeled entry events
+  DD/SHOO@1h: zero labeled entry events
+  EG/WRB@1h: zero labeled entry events
+  MET/TMHC@1h: zero labeled entry events
+  PFG/STLD@1h: zero labeled entry events
+  PRU/AXTA@1h: zero labeled entry events
+  VRT/MTZ@1h: zero labeled entry events
+  MTSI/WCC@1h: zero labeled entry events
+  TMHC/WAL@1h: zero labeled entry events
+  UMBF/FHB@1h: zero labeled entry events
+  COLM/CNMD@1m: zero labeled entry events
+  AWR/INVX@1m: zero labeled entry events
+  AWR/TILE@1m: zero labeled entry events
+  AZTA/HRMY@1m: zero labeled entry events
   AZTA/INVX@1m: zero labeled entry events
-  AZTA/NBHC@1m: zero labeled entry events
+  AZTA/MLKN@1m: zero labeled entry events
+  AZTA/TILE@1m: zero labeled entry events
+  CALX/CNMD@1m: zero labeled entry events
+  CNMD/HUBG@1m: zero labeled entry events
+  CNMD/SFNC@1m: zero labeled entry events
+  EFC/MWA@1m: zero labeled entry events
+  EFC/OSW@1m: zero labeled entry events
+  EFOR/UPBD@1m: zero labeled entry events
+  EFOR/VSTS@1m: zero labeled entry events
+  EPAC/MD@1m: zero labeled entry events
+  GPI/MD@1m: zero labeled entry events
+  HE/INVX@1m: zero labeled entry events
+  HRMY/INVX@1m: zero labeled entry events
+  HRMY/TILE@1m: zero labeled entry events
   INVX/NBHC@1m: zero labeled entry events
-  ORCL/SPY@3m: zero labeled entry events
-  ACAD/CUBI@3m: zero labeled entry events
-  CUBI/FCPT@3m: zero labeled entry events
-  FCPT/NSSC@3m: zero labeled entry events
+  INVX/TILE@1m: zero labeled entry events
+  INVX/WS@1m: zero labeled entry events
+  SFBS/WAFD@1m: zero labeled entry events
+  EQR/INVH@30m: zero labeled entry events
+  D/NEE@3m: zero labeled entry events
+  APOG/LKFN@3m: zero labeled entry events
+  APOG/SAFT@3m: zero labeled entry events
+  APOG/UFCS@3m: zero labeled entry events
+  ARLO/FCF@3m: zero labeled entry events
+  ARLO/HCSG@3m: zero labeled entry events
+  CTKB/PRAA@3m: zero labeled entry events
+  CTKB/UHT@3m: zero labeled entry events
+  FCF/NWBI@3m: zero labeled entry events
+  LKFN/SAFT@3m: zero labeled entry events
+  LKFN/UFCS@3m: zero labeled entry events
+  PRAA/UHT@3m: zero labeled entry events
+  SAFT/UFCS@3m: zero labeled entry events
   SPY/VOO@4h: zero labeled entry events
 
 === end ===

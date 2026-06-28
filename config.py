@@ -37,7 +37,7 @@ class DataConfig:
     # 12 hours removed — not a valid IBKR bar size (confirmed via Error 321)
     # 1W and 1M use IBKR's exact format for weekly/monthly bars
     # Valid IBKR bar sizes confirmed: 1 min, 5 mins, 15 mins, 30 mins,
-    #   1 hour, 4 hours, 8 hours, 1 day, 1W, 1M
+    #   1 hour, 4 hours, 1 day, 1W, 1M
     TIMEFRAMES: List[str] = [
         "1 min",
         "2 mins",
@@ -47,13 +47,14 @@ class DataConfig:
         "30 mins",
         "1 hour",
         "4 hours",
-        "8 hours",
         "1 day",
         "1W",
         "1M",
     ]
 
-    # Human-readable labels aligned to TIMEFRAMES list (12 TFs)
+    # Human-readable labels used throughout the analysis pipeline (14 TFs — superset
+    # of IBKR's TIMEFRAMES; includes 7D/3M/6M which IBKR names differently or
+    # doesn't expose as standalone bar sizes)
     TIMEFRAME_LABELS: List[str] = [
         "1m",
         "2m",
@@ -63,7 +64,6 @@ class DataConfig:
         "30m",
         "1h",
         "4h",
-        "8h",
         "1D",
         "7D",
         "1M",
@@ -128,7 +128,6 @@ class DataConfig:
         "30m": 500,  # ~6 months of 30m bars
         "1h": 500,  # ~1 year of hourly bars
         "4h": 200,  # ~2 years of 4h bars
-        "8h": 100,  # ~2 years of 8h bars
         "1D": 100,  # lowered from 500 — futures front-month ~300 bars is valid
         "7D": 50,  # ~1 year of weekly bars
         "1M": 24,  # ~2 years of monthly bars
@@ -533,6 +532,7 @@ class MacroConfig:
         "T10Y2Y",
         "BAMLH0A0HYM2",
         "VIXCLS",
+        "VXVCLS",   # CBOE VXV — 3-month implied vol; VXV/VIX ratio = term structure
         "DCOILWTICO",
         "BAA10Y",
         "DTWEXBGS",
@@ -588,6 +588,27 @@ class MacroConfig:
     VIX_CALM = 15.0
     VIX_NORMAL_HI = 25.0
     VIX_ELEVATED_HI = 35.0  # > 35 -> crisis
+
+    # VIX term structure (VXV/VIX ratio): VXV = 3-month implied vol (VXVCLS
+    # on FRED). Ratio > 1.0 = contango (normal; market pricing in FUTURE
+    # uncertainty higher than current). Ratio < 1.0 = backwardation/inverted
+    # (crisis; current fear higher than expected future). Thresholds calibrated
+    # against VXV history (FRED VXVCLS starts 2007-12-04):
+    #   Deep contango (ratio >= 1.10): calm/complacent regime
+    #   Normal contango (1.00 <= ratio < 1.10): standard risk-on
+    #   Flat (~0.95-1.00): transitional/uncertain
+    #   Backwardation (< 0.95): stress/crisis episode
+    VIX_TS_BACKWARDATION = 0.95   # VXV/VIX < 0.95 -> backwardation (stress)
+    VIX_TS_FLAT_HI = 1.00         # 0.95-1.00 -> flat
+    VIX_TS_CONTANGO_HI = 1.10     # 1.00-1.10 -> contango; >= 1.10 -> deep_contango
+
+    # CFTC COT net-speculative-position thresholds: net = (long - short) / OI.
+    # Positive = net long speculators, negative = net short. Thresholds are
+    # symmetric around zero with a neutral band. Calibrated to ES futures
+    # historical extremes: crowded long peaks ~25-30% net, crowded short troughs
+    # ~-15 to -20% during 2018/2022 selloffs.
+    COT_NET_LONG_THRESHOLD = 0.15   # >= 15% net long -> crowded_long (crowding risk)
+    COT_NET_SHORT_THRESHOLD = -0.10  # <= -10% net short -> crowded_short
 
     # Sahm Rule (Claudia Sahm, Fed/Brookings) — real-time recession-risk
     # signal: triggers when the 3-month moving average of UNRATE rises this

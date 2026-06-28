@@ -2577,6 +2577,22 @@ version). Also added a small universal 0.15s inter-request delay across ALL intr
 TFs (not just 1m/2m, since 1h hit the identical 100%-failure signature) as
 additional insurance against burst-rate triggers.
 
+**SUPERSEDED, found stale during the 2026-06-24 full bug-registry
+re-verification audit.** The shared-`requests.Session()` approach above
+is NOT what the current code does — confirmed live: `data.py` now
+explicitly does NOT pass a custom session to `yf.Ticker()` at all
+(matches `CLAUDE.md`'s "Known-Resolved Issues" guidance: "yfinance
+0.2.66+ uses curl_cffi internally... NEVER pass a custom
+requests.Session() to yf.Ticker(). It will raise YFDataException: Yahoo
+API requires curl_cffi session."). yfinance versions after this fix was
+written moved to managing their own curl_cffi-based session/cookie/crumb
+caching internally, making the original shared-`requests.Session`
+workaround actively incompatible rather than merely unnecessary — this
+is presumably what the original fix's own `try/except TypeError`
+fallback was catching once that version landed. Current code is correct
+for the now-installed yfinance version; this entry's description of
+HOW it's fixed is what's stale, not the fact that it's fixed.
+
 ### Other Session 7 Fixes
 
 **Pylance/type-checking cleanliness:**
@@ -3212,6 +3228,22 @@ silently — 100% guaranteed failure, forever, for both timeframes.
 Fix: `1m` → 1500, `3m` → 500 (~80% of the real achievable max, matching the
 fill-rate ratio already used for `2m`). Verified: AAPL now returns
 1950/650 bars respectively, clearing the new thresholds.
+
+**SUPERSEDED 2026-06-22 (Session 9, see BUG-D42) — found stale during the
+2026-06-24 full bug-registry re-verification audit.** This fix's own
+"~80% of real achievable max" assumption was itself wrong: `period="5d"`
+means 5 CALENDAR days, not 5 trading days, so a Monday/Tuesday fetch loses
+2 of those days to the weekend — the achievable ceiling is well below the
+1950-bar estimate this fix was calibrated against. Live-verified
+2026-06-22: ALGN (liquid) got 1169 raw 1m bars, ERIE (less liquid) got
+383 — both genuinely fetched, both silently rejected by these exact
+1500/500 thresholds. Current values in `config.py`'s `MIN_BARS_REQUIRED`:
+`1m=900, 2m=2200, 3m=300` (2m also recalibrated, same root cause). Left
+this entry's original numbers un-edited above (matches this file's
+standing convention of not rewriting history) — current code values are
+the source of truth, not this entry, exactly the kind of gap the
+BUG-D32→BUG-D37 cross-reference below already established a precedent
+for.
 
 **BUG-D37 (contradicts this document's own BUG-D32 entry — that fix was never actually applied): 4h resample used clock-aligned bins, not session-aligned**
 Root cause: `YFinanceFeed._resample()` called `df.resample("4h")` with no
@@ -5751,3 +5783,506 @@ correct `output/research/eg_permutation_check.parquet`). `CLAUDE.md`'s
 File Map updated to describe the new structure (and, while there, fixed
 pre-existing drift: `ml.py`/`macro.py`/`config.py` were missing from the
 map entirely, and `data.py`/`analysis.py` line counts were stale).
+
+---
+
+## Session 11 continued (2026-06-24, later same day) — full bug-registry audit + a real DataAligner finding
+
+Ross requested a genuinely comprehensive pass: re-verify every entry in
+this file's bug registry against the live code (not trust the
+documentation), then a full-depth read-through of the production
+pipeline looking for anything not yet caught. Scope explicitly: quality
+over speed, no time pressure.
+
+### Bug registry re-verification: 61/63 entries confirmed correct against live code; 2 documentation-only fixes
+
+Checked every `BUG-D01`–`BUG-D49` and `BUG-A01`–`BUG-A14` entry directly
+against the current code (not just re-read the prose) — grep/read
+verification of the actual fix signature for each, not a sampling.
+**Result: every fix is genuinely present and working.** Found exactly 2
+issues, both documentation drift (the code itself was already correct,
+just description out of date), both fixed in place rather than
+rewritten:
+
+- **BUG-D36** (`MIN_BARS_REQUIRED['1m']/['3m']`): the entry's numbers
+  (1500/500) were superseded by a later, more carefully-calibrated
+  recalibration on 2026-06-22 (current values: 1m=900, 2m=2200, 3m=300)
+  that was never cross-referenced back to this entry, unlike the
+  BUG-D32→BUG-D37 precedent already in this file. Added the same kind of
+  forward-pointer.
+- **BUG-D31** (yfinance shared-session fix): the entry describes a
+  shared `requests.Session()` workaround that is NOT what the current
+  code does — `data.py` now explicitly does NOT pass a custom session at
+  all, matching `CLAUDE.md`'s documented guidance that yfinance 0.2.66+
+  manages its own `curl_cffi` session internally and raises
+  `YFDataException` if you try. The underlying yfinance version moved
+  on; the bug is still fixed, just via a different (and now-correct)
+  mechanism than originally described. Added a note explaining this.
+
+Also fixed two stray "King" references this rename pass missed
+(`requirements.txt`'s SHAP/numba note; confirmed no others remain
+repo-wide via a fresh grep).
+
+### Real finding: `align_intraday`'s overnight-gap-drop logic is dead code (performance, not correctness)
+
+While reading `DataAligner.align_intraday` line by line: the "drop the
+bar after each overnight break" step computes `time_diffs` on
+`df_aligned.index` AFTER `df.reindex(full_idx)`, where `full_idx` is a
+`pd.date_range(...)` — a *uniformly-spaced* index by construction. Every
+gap on a uniform-frequency index is identical (exactly the bar
+frequency), so the `> 12h` check can never be true. Verified directly
+with a 5-line synthetic reproduction (a 1h-freq `date_range` — every
+diff came back exactly `1:00:00`, zero rows flagged). This has been
+silently inert since whenever it was written — not a regression from
+tonight's other changes.
+
+**Not a correctness bug**: `_gap_aware_returns`/`_clean_close` already
+mask `DATA_GAP`-flagged rows downstream wherever they're called, so no
+existing numerical result is wrong because of this. **Is a real
+performance cost**: every intraday alignment carries ~6x more rows than
+necessary (verified: CATY @1h, 4,369 real bars → 25,565 aligned rows,
+21,195 of them `DATA_GAP`-flagged padding that was supposed to be
+dropped and never was). This is the same `DataAligner.align_universe`
+production's `analysis.py` calls for every intraday TF, every day —
+plausibly a real contributor to both tonight's ~90-minute universe-wide
+near-miss rescan and analysis.py's already-long documented runtimes
+(87–158 min across sessions).
+
+**Discussed with Ross before touching anything** (this is core,
+multi-consumer, historically fragile code — BUG-D45's six-consumer
+contamination saga lives here): the "obvious" fix (drop `DATA_GAP` rows
+unconditionally) is NOT safe by default, because `build_returns_matrix`
+relies on every symbol sharing the exact same dense, uniform-frequency
+grid for its right-pad-by-row-count cross-symbol alignment to be
+calendar-correct (verified directly earlier this session) — dropping
+rows would silently reintroduce a different version of the exact
+misalignment bug already found and fixed tonight, for that specific
+consumer.
+
+**Ross's recollection, confirmed relevant**: the dense/untrimmed default
+was originally intentional — to support comparing results with vs.
+without the padded data, while staying aligned. Checked: there's no
+separate boolean flag implementing this anywhere in the code; the
+mechanism that actually serves this purpose is `_gap_aware_returns`/
+`_clean_close`'s existing `exclude_flags` parameter (defaults to masking
+`DATA_GAP`, but callable with `exclude_flags=()` to include it) — rows
+stay in the dataframe, tagged, and the caller chooses. This already
+works and wasn't broken by anything found tonight.
+
+**Fix built and verified safe**: added an explicit, opt-in
+`drop_data_gap_rows: bool = False` parameter to `align_intraday`,
+`align_daily`, and `align_universe`. Default `False` preserves *exactly*
+today's behavior — verified byte-for-byte: CATY/UCB@1h via
+`aligned_pair_loader` still gives correlation 0.5577 and the same
+~25,590/16,492 row counts after the change as before it. When `True`,
+drops rows where `gap_flag == GapFlag.DATA_GAP` directly (simpler and
+more obviously correct than re-deriving "is this an overnight break"
+from post-reindex timestamps, which is exactly what was broken).
+
+### Found and reverted same session: the opt-in, naively wired up, silently breaks `_gap_aware_returns`' own masking
+
+Wired `aligned_pair_loader.py` to pass `drop_data_gap_rows=True` (seemed
+safe — it only ever handles 2 symbols joined by real DatetimeIndex, no
+dependency on `build_returns_matrix`'s cross-symbol concern). Verified
+the row count dropped as expected (CATY 25,590→4,377) — but the
+correlation came back **0.7304, the WRONG (overnight-included) value**,
+not the correct 0.5577. Root cause, found immediately rather than
+shipped: `_gap_aware_returns` identifies "the return that spans a gap"
+by checking `gap_flag` at the current AND previous array position
+(`bad_return = bad | np.roll(bad, 1)`) — this depends on the `DATA_GAP`
+rows still being physically present as markers between the last real
+bar before a gap and the first real bar after it. Delete those marker
+rows first, and the first real bar after the gap becomes positionally
+adjacent to the last real bar before it with nothing between them —
+`_gap_aware_returns` has no way left to know that specific return spans
+a multi-hour gap, and stops masking it. **This reopens the exact bug
+fixed earlier tonight, through a different mechanism than the original
+one.**
+
+**Immediately reverted** — `aligned_pair_loader.py` no longer passes
+`drop_data_gap_rows=True`; verified the revert restores 0.5577 exactly.
+The `drop_data_gap_rows` infrastructure on `DataAligner` itself stays
+(harmless, default-False, unused by anything currently) for if/when the
+real fix lands. **The real fix, not yet built**: `_gap_aware_returns`/
+`_clean_close` need to ALSO check the actual elapsed time between
+surviving rows (not just `gap_flag` at each position) before any
+row-dropping can be paired safely with them — e.g. mask any return
+where the real time gap to the previous surviving row exceeds some
+threshold, independent of whether a `DATA_GAP`-flagged row used to sit
+between them. Not scoped or built this session; logged as the
+concrete next step if the row-bloat performance cost is worth pursuing
+further.
+
+**Net effect on this session's findings**: zero — nothing currently
+shipped relies on `drop_data_gap_rows=True`, so no previously-reported
+number from tonight is affected by either the fix or the revert. This
+is a clean illustration of the same discipline that caught the original
+gap-convention bug: verify the new code against a known-correct
+benchmark before trusting it, not after.
+
+### Hardware/environment finding: the `trading` env's Python is x86-64-emulated on ARM64, not native
+
+Ross's machine: Surface, Snapdragon X Elite (ARM64), 12 cores, 16GB RAM,
+Windows 11 — see `CLAUDE.md`'s new "Hardware / Environment Specs"
+section for the full disclaimer. Checked directly:
+`platform.machine()` reports `AMD64` while `platform.processor()`
+reports the real chip (`ARMv8 ... Qualcomm`) — confirming the `trading`
+conda environment's Python is an x86-64 build running under Windows'
+ARM64 emulation layer (Prism), not native. `numpy`'s BLAS backend is
+Intel MKL, optimized for genuine Intel silicon specifically — running
+an emulated x86 MKL build on ARM hardware stacks two real performance
+penalties (emulation overhead + a BLAS library not optimized for this
+CPU at all). Not confirmed as the dominant cause of tonight's slow
+runs (the `align_intraday` row-bloat bug above is a more directly-
+verified contributor), but a real, previously-undocumented variable —
+logged for awareness, not acted on (switching environments is a bigger
+decision than this session's scope, given how much of this project's
+reproducibility already depends on the current environment's exact
+pinned versions).
+
+---
+
+## Session 12 (2026-06-27) — Policy decisions, new ideas backlog, free data sources
+
+### Context
+
+analysis.py launched at session start on fresh data (data.py last ran
+2026-06-26); ml.py to follow once analysis completes. Session 11's
+confirmed-pair set is stale — 4 days of intraday accumulation not yet
+analyzed.
+
+### Policy decisions (Ross + Claude discussion, 2026-06-27)
+
+**BUG-D49 policy (resolved):** Do NOT exclude degenerate pairs from
+`confirmed_pairs_manifest.json` yet — can't evaluate exclusion without
+backtest.py. DO exclude from ml.py training immediately. Rationale:
+degenerate pairs (HRMY/NBHC/PRDO/TILE/WS @1m; ACT/AZTA/EIG/INVX/NBHC
+cluster @3m) have `coint_frac=1.000` as a red flag — every rolling
+window passes because there is no real price variation to fail on. Entry
+events generated on 2-distinct-price data produce meaningless training
+labels; letting them into the classifier poisons it. Implementation:
+add a `thin_info_content: bool` flag to `PairResult` (same pattern as
+`coint_frac_secondary_override`). ml.py skips any pair where
+`thin_info_content=True`. Confirmed-pairs manifest keeps them so the
+data trail isn't lost. Reversible — doesn't prejudge the backtest
+outcome.
+
+**EG permutation flagged-pair policy (resolved):** Add a
+`permutation_robust: bool` field to `PairResult`. `True` = NOT flagged
+by `eg_permutation_check.py`'s circular-shift null.
+`permutation_robust=False` pairs are NOT removed from the confirmed
+set but are excluded or down-weighted in ml.py Stage 2 training once
+that becomes possible. In `PAPER.md` the 19/37 flagging rate (mean
+null_frac_significant 0.224 vs expected ~0.05) is a citable finding
+(§4 or §8 bias audit), not merely a limitation. MTDR/MGY@3m (86% of
+random circular shifts significant) is the canonical worked example.
+Not yet implemented — flagged for the next code session.
+
+**backtest.py architecture direction (Ross + Claude, 2026-06-27):**
+First version is a simple rule-based baseline — NO ml classifier. Rule:
+z-score exceeds threshold → enter, z-score crosses zero → exit, max
+holding period = 2× half_life. Equal-weight portfolio. Purpose: a clean
+baseline to know whether the ML layer is adding value, and to verify
+the pairs are tradeable at all, before adding complexity. Then layer in
+sequence:
+- Layer 1: Rule-based z-score entry/exit, equal-weight (baseline)
+- Layer 2: ML entry filter once 30/class labels exist (keep baseline
+  as a comparison arm, same discipline as research/ scripts)
+- Layer 3: Portfolio construction (HRP / NCO per existing design)
+- Layer 4: Lou & Polk comomentum as position-sizing/risk signal
+No concrete backtest.py code to be written without an interactive
+session — standing instruction from Ross, unchanged. This outline is
+the methodology/sequencing decision, not a build spec yet.
+
+### New ideas backlog — discussed 2026-06-27, tiered by actionability
+
+Not built or decided, recorded here for next interactive discussion.
+
+**Tier 1 — Fits current infrastructure, no new data source needed:**
+
+- **LPPL / HLPPL bubble regime feature**: LPPL (Log-Periodic Power Law
+  Singularity, Sornette et al.) fits super-exponential price growth
+  with log-periodic oscillations to detect speculative bubbles
+  approaching a critical point `tc`. HLPPL is a JHU-attributed variant
+  (exact paper TBD — Ross to locate original reference) that extends
+  LPPL with a three-pillar structure: (1) price/LPPL dynamics,
+  (2) hype/attention metrics (Google Trends, social volume), and
+  (3) NLP sentiment. For CAMARF: no new data needed — fit on existing
+  cached price series. Add `bubble_signature_a/b: bool` features for
+  each pair leg in ml.py Stage 2. Relevant as a risk signal: a bubble
+  leg will eventually crash hard, but timing is uncertain. Note: Ross
+  to find original HLPPL/JHU paper citation before implementing.
+
+- **Transfer entropy for lead-lag** (already in PAPER.md §10): no new
+  data needed. Nonlinear, information-theoretic extension of
+  cross-correlation for lead-lag detection. The right follow-on once
+  lead-lag structure is confirmed on the universe-wide scan. Needs
+  careful binning/embedding-dimension choices + permutation-based
+  significance testing to avoid finite-sample bias.
+
+- **HMM/GMM multi-factor regime detection → ml.py Stage 2 architecture**:
+  Fit independent HMMs to each macro/factor series (yield curve shape,
+  credit spreads, VIX level, COT speculative positioning — see free
+  data below). Each HMM produces a latent state sequence + Markov
+  transition matrix (regime persistence / expected duration). GMM
+  clusters the joint factor state space. Look for convergence
+  (multiple independent series agreeing on a regime) vs. divergence as
+  a meta-signal — stronger conditioning signal than any single series.
+  This is what ml.py Stage 2's regime component should become, not the
+  current heuristic `RegimeClassifier`. Design discussion required
+  before any code; no new data needed beyond Tier 2 macro additions
+  below.
+
+- **Markov transition matrices**: fall out of HMM fits naturally —
+  transition probabilities between regime states. Lets you ask "how
+  long will this regime persist" rather than only "what regime are we
+  in." Include as part of the HMM/Stage 2 design.
+
+- **Sample entropy / approximate entropy of spreads**: measures
+  complexity/predictability of a spread time series. Low entropy →
+  more regular/mean-reverting (favorable for stat-arb). High entropy
+  → noisy/trending (unfavorable). Candidate ml.py Stage 2 feature.
+  Computable from existing cached data, no new data needed.
+
+- **Regime-conditional tail dependence (Longin & Solnik 2001 angle)**:
+  Current `tail_dependence.py` pools all observations.
+  Longin & Solnik (2001) showed international equity correlations spike
+  during market downturns more than upswings — same asymmetry logic
+  motivating the copula work. Extension: compute tail dependence
+  separately within HMM-defined regime states. Whether asymmetric tail
+  dependence is a bull or bear phenomenon for specific pairs is useful
+  pair-selection and sizing information. Natural follow-on once HMM
+  regime states exist.
+
+- **Regime-conditional pair analysis**: which regimes give highest
+  correlation stability? Which give best entry timing? The
+  `RegimeClassifier` already produces per-bar regime labels in
+  analysis.py output — the raw material for this analysis exists.
+  Needs a `regime_conditional_analysis.py` research script (same
+  pattern as the existing research/ scripts), not a pipeline change.
+
+- **Lou & Polk (2022) comomentum → backtest.py portfolio risk layer**:
+  Paper: "Comomentum: Inferring Arbitrage Activity from Return
+  Correlations." Key idea: return correlations *among stocks trading
+  on the same signal* proxy for crowding. For CAMARF: compute return
+  correlations across confirmed-pair SPREADS (not the legs). Elevated
+  cross-spread correlation = many arbs in the same positions = crowding
+  risk and impending unwind. Use as a position-sizing signal in
+  Layer 4 of the backtest.py architecture above. Belongs in
+  backtest.py's portfolio layer, not the pair-selection pipeline.
+
+- **Donchian channels as ml.py features**: upper/lower channel over N
+  bars, position of current price within channel. Trivial to compute
+  from existing cached data. Useful for capturing "is this pair in a
+  breakout vs. range regime." Low effort addition to ml.py Stage 2
+  feature engineering once that stage is being built.
+
+- **Hidden order flow / order flow imbalance (Singh et al. and related
+  literature)**: signed order flow leads price; hidden/iceberg order
+  size predicts price move magnitude. Real, well-documented in
+  literature (Cont/Kukanov/Stoikov 2014, Roşu 2009, Grinblatt/
+  Keloharju). For CAMARF: IBKR exposes real-time order flow but not
+  historical in a clean form. Practical near-term proxy: FINRA
+  biweekly short interest (see free data below) as a directional
+  positioning signal. Exact "Singha" reference not yet located — Ross
+  to track down; likely in the order flow impact / microstructure
+  literature.
+
+**Tier 2 — Free data source additions to macro.py:**
+
+All sources below are free and accessible without new subscriptions.
+Worth implementing together in one macro.py extension session.
+
+- **CFTC COT (Commitments of Traders)**: Free, published weekly at
+  cftc.gov. Covers ES/NQ/treasuries/crude/gold futures. Key series:
+  speculative (non-commercial) net position as a fraction of open
+  interest. Extreme speculative positioning is a contrarian regime
+  signal. `cot_reports` Python library or direct CFTC API.
+  Add to macro.py as a new data source block.
+
+- **VIX term structure**: `^VIX`, `^VIX3M`, `^VIX6M` — free yfinance
+  tickers. VIX term structure slope (VIX3M - VIX, VIX6M/VIX) is a
+  well-documented regime signal: contango (normal low-stress) vs.
+  backwardation (stress/fear). Easy macro.py addition.
+
+- **CBOE SKEW index**: `^SKEW` in yfinance. Measures implied tail risk
+  (how much the market is paying for OTM put protection). High SKEW =
+  market pricing in fat-left-tail risk. Free.
+
+- **Put/call ratio**: CBOE publishes daily equity and index put/call
+  ratios. Sentiment/regime signal. Free from CBOE website; may need
+  a light scraper since it's not a yfinance ticker. Check for a
+  direct CSV download endpoint before writing a scraper.
+
+- **FINRA short interest (biweekly)**: Free from
+  finra.org/investors/learn-to-invest/advanced-investing/
+  short-selling/regsho/short-interest. Per-ticker short interest,
+  biweekly settlement. Proxy for directional positioning / crowded
+  short signal. Limited frequency but the accessible version of prime
+  brokerage flow data. Add as a supplemental feature source for ml.py
+  rather than a macro.py series.
+
+**Tier 3 — Require data source decision / subscription:**
+
+- **Dealer gamma / Net GEX (Gross Exposure)**: SpotGamma / SqueezeMetrics
+  provide daily GEX estimates. Some free content on both sites; full
+  historical series is paid. When dealers are net short gamma they must
+  buy dips and sell rips — amplifying intraday moves. When net long
+  gamma they pin price. Powerful intraday regime signal. Worth
+  investigating what SqueezeMetrics' free historical endpoint provides
+  before assuming it needs a subscription.
+
+- **IV surface / vanna / charm / 0DTE**: Requires OPRA or similar
+  options data feed. vanna (dDelta/dIV) tells you hedging flow
+  direction when vol moves; charm (dDelta/dt) tells you delta decay
+  flows near expiry. 0DTE options create near-infinite gamma on SPX
+  every session (every weekday is now a 0DTE expiry). Meaningful scope
+  expansion — data source decision needed before scoping.
+
+- **Prime brokerage / securities lending data**: Most behind
+  Bloomberg/FactSet paywalls. FINRA short interest (Tier 2 above) is
+  the free substitute.
+
+**Tier 4 — Needs clarification before scoping:**
+
+- **JHU HLPPL model**: Ross to locate original paper citation. Concept
+  understood and relevant (see above). Do not build until the exact
+  reference is confirmed — multiple variants exist in the LPPL
+  literature and the specific implementation details matter.
+
+- **"Singha" hidden order paper**: Ross to track down original
+  reference. Treated as order flow / market impact literature (see
+  Tier 1 above) until the specific paper is identified.
+
+### Free data source summary
+
+| Source | Ticker/URL | Frequency | Status |
+|--------|-----------|-----------|--------|
+| CFTC COT | publicreporting.cftc.gov/resource/6dca-aqww.json | Weekly | **Done** — macro.py COTFeed (2026-06-27) |
+| VIX term structure | VXVCLS (FRED) | Daily | **Done** — macro.py (2026-06-27) |
+| CBOE SKEW | ^SKEW (yfinance) | Daily | Not yet |
+| Put/Call ratio | CBOE daily CSV | Daily | Not yet — check for CSV endpoint first |
+| FINRA short interest | finra.org/... | Biweekly | Not yet — ml.py feature source |
+| FRED macro series | Already via macro.py | Varies | Yes |
+| Google Trends | pytrends library | Weekly | Not yet — LPPL/hype angle |
+
+### Not-yet-decided, explicitly deferred
+
+- Whether to extend `near_miss_lag_scan.py` to other TFs (currently
+  only 1h was run with the DataAligner-corrected version). The result
+  was null at 1h; other TFs may differ.
+- Factor-level cointegration and lead-lag (Ross idea, 2026-06-24) —
+  deferred to a dedicated interactive session per Ross's direction.
+- Overlap length as explicit confidence signal (CVSA/MPT finding) —
+  methodology decision, not yet scoped.
+- `report.py` build — precondition is a stable confirmed-pair set
+  (needs BUG-D49 policy implemented first).
+
+---
+
+## Session 12 continued (2026-06-27) — Analysis run, ml.py milestone, COT fix, EG permutation update
+
+### Analysis run results (2026-06-27 21:04)
+
+79 confirmed pairs across 6 TFs:
+- 1m: 30 pairs (30 confirmed but many have coint_frac=1.00 or nan — degenerate cluster)
+- 3m: 18 pairs
+- 30m: 1 pair (EQR/INVH)
+- 1h: 29 pairs (DD-hub cluster: 10/29 pairs have DD as a leg)
+- 4h: 1 pair (SPY/VOO)
+- 8h: 0 (no data — residual TF from stale config, harmless)
+
+### ml.py milestone (2026-06-27 21:07)
+
+**Training threshold crossed for the first time.** Key numbers:
+- 79 confirmed pairs, 26 contributed labeled examples, 53 skipped (zero events)
+- 125 total labeled entry events (up from 12 in Session 10)
+- Train: 75 examples. Test: 25. Calibration: 25.
+- **Holdout accuracy: 68.00%**
+- Conformal predictor: avg set size 1.52, empirical coverage 88% (target ≥90%)
+
+Label distribution (binary):
+- not_converged: 94 (75.2%)
+- converged: 31 (24.8%)
+
+**Class imbalance note (important for backtest discussion):** The trivial baseline
+of always predicting "not_converged" gives 75.2% accuracy on the full labeled set.
+The model's 68% holdout accuracy is below this trivial baseline if the test split
+preserves the overall class ratio. Two caveats: (1) the test split is 25 samples
+— very high variance; (2) if the model is trained with `class_weight='balanced'`
+(which the current implementation does not do, but should), overall accuracy drops
+because it trades majority-class precision for better minority-class recall, which
+is the right tradeoff for an entry filter. Address in the backtest.py discussion:
+agree on the evaluation metric (accuracy, F1-converged, precision-recall curve)
+before tuning. For a stat-arb entry filter, precision on the converged class
+matters more than overall accuracy — a conservative entry filter with 50%
+precision but 80% recall on "converged" might still be valuable if the converge
+events have positive EV.
+
+### BUG-D50: CFTC COT API (wrong dataset ID + wrong contract names + wrong URL construction)
+
+**Root cause:** Three separate errors in the COTFeed implementation:
+1. Dataset ID `jun7-7nt5` does not exist on publicreporting.cftc.gov (404).
+   Confirmed via direct HTTP test. Correct ID: `6dca-aqww` (Legacy Futures Only).
+2. Contract name filter for ES: `"E-MINI S&P 500 STOCK INDEX"` doesn't match
+   actual CFTC field value `"E-MINI S&P 500 - CHICAGO MERCANTILE EXCHANGE"`.
+   Correct prefix: `"E-MINI S&P 500"`.
+3. Contract name filter for NQ: `"E-MINI NASDAQ-100 STOCK INDEX"` doesn't match
+   any recent record (that name was used ~1999). Current name:
+   `"NASDAQ MINI - CHICAGO MERCANTILE EXCHANGE"`. Correct prefix: `"NASDAQ MINI"`.
+4. URL construction used hand-encoded `%27`/`%25` instead of `requests.get(params=)`.
+   PowerShell dollar-sign consumption masked this in earlier tests.
+
+**Fix:** Changed `_API_URL` template to `_API_BASE` (base URL only), `CONTRACTS`
+dict updated to correct prefix strings, `get_net_spec` now builds a `params={}` dict
+and passes it to `requests.get()` — requests handles LIKE-clause quoting safely.
+
+**Verification:** macro.py run after fix:
+- `cot_es`: 1,497 rows (source=cftc), weekly since ~1997. ES consistently sourced.
+- `cot_nq`: 229 rows (source=cftc). NASDAQ MINI contract is newer (~2021).
+- Regime distributions: `cot_es`: neutral 5906, crowded_short 926, crowded_long 407.
+  Historically ES speculators are net short more often than net long (consistent with
+  institutional hedging demand being structurally long — speculators trade against it).
+
+### EG permutation check update (2026-06-27, fresh 79-pair set)
+
+**38/79 confirmed pairs flagged** (48%). Mean null_frac_significant = 0.230
+across all pairs (expected ~0.05 under a well-behaved null — 4.6× higher).
+
+Notable patterns:
+- **DD-hub at 1h**: DD has 10 confirmed pairs in the 1h set. Of these, ARE/DD,
+  AME/DD, AMAT/DD, CAT/DD, C/DD, DE/DD, DAL/DD all pass (ok). But DD/ETN,
+  DD/GPN, DD/JCI, DD/H, DD/JHG, DD/LPX, DD/OSK, DD/UNM, DD/YETI, DD/SHOO
+  are all flagged — null_frac_sig 0.50-0.57. DD's own autocorrelation structure
+  is likely driving spurious EG significance on the latter group; the passing
+  pairs (7 of 17 DD pairs) have stronger real-p values and lower null_frac_sig,
+  suggesting they pass despite DD's structure rather than because of the LIKE test.
+- **3m APOG cluster**: All 4 APOG pairs flagged, consistent with APOG itself
+  having excess within-series structure.
+- **Robust 1m pairs**: APP/NOW, CRWD/NOW, IWM/SLV, AWR/TILE, AZTA/HRMY, all
+  AZTA pairings, GPI/MD, HE/INVX, HRMY pairs, INVX cluster pass cleanly.
+
+Policy unchanged: `permutation_robust` flag populates from research parquet on
+the next analysis.py run. Flagged pairs stay in the confirmed set but are tagged
+for comparison-arm treatment until backtest.py can quantify the real-world impact.
+Full results: `output/research/eg_permutation_check.parquet`.
+
+### Code changes this session (2026-06-27)
+
+1. `data.py` — `_gap_aware_returns`: added elapsed-time detection for
+   `drop_data_gap_rows=True` mode (masks returns where bar gap > 4× median
+   interval, handles absent DATA_GAP sentinel rows safely).
+2. `data.py` + `config.py` — removed all 8h timeframe references (TIMEFRAMES,
+   TIMEFRAME_LABELS, MIN_BARS_REQUIRED, INTRADAY sets, rate limiter, get_bars,
+   retry logic, ADJUSTED_LAST fallback comment, MAX_DURATION).
+3. `config.py` — added VXVCLS to FRED_SERIES_DAILY; VIX term structure thresholds;
+   COT net-spec thresholds.
+4. `analysis.py` — added `thin_info_content: bool` and `permutation_robust:
+   Optional[bool]` to `PairResult`; added `_apply_research_screen_flags()` static
+   method; wired as Step 6c in the analysis pipeline.
+5. `ml.py` — skip pairs where `thin_info_content=True`; record `permutation_robust`
+   per pair in run summary. Will take effect once analysis.py re-runs and pairs.parquet
+   has the new columns.
+6. `macro.py` — COTFeed class (BUG-D50 fix: correct dataset ID 6dca-aqww, correct
+   contract name prefixes, `params=` dict for request encoding); VIX term structure
+   classification from VXVCLS/VIXCLS ratio.

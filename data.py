@@ -703,6 +703,12 @@ def _gap_aware_returns(
     returns from accumulated price movement and are excluded.
     FILL bars (≤5 missing) are kept — forward-fill is acceptable.
     NO_ACTIVITY (crypto zero-trade) are kept as genuine zero returns.
+
+    Elapsed-time detection is applied after gap-flag masking so this
+    function is correct even when DATA_GAP sentinel rows were removed
+    (drop_data_gap_rows=True). Any return spanning > 4× the median bar
+    interval is masked — catches data holes np.roll cannot detect when
+    the marker rows are absent. No-op when all diffs equal one bar width.
     """
     import numpy as np
 
@@ -717,6 +723,17 @@ def _gap_aware_returns(
             bad_return = bad | np.roll(bad, 1)
             bad_return[0] = False
             returns[bad_return] = np.nan
+    if len(df) > 1:
+        try:
+            diffs = df.index.to_series().diff().dt.total_seconds().values
+            finite_diffs = diffs[np.isfinite(diffs) & (diffs > 0)]
+            if len(finite_diffs) > 0:
+                expected = np.median(finite_diffs)
+                large_gap = diffs > expected * 4
+                large_gap[0] = False
+                returns[large_gap] = np.nan
+        except AttributeError:
+            pass
     return returns
 
 
@@ -772,6 +789,7 @@ class DataAligner:
         asset_classes: Dict[str, str] = None,  # {symbol: class} for per-type treatment
         start_date: str = None,
         end_date: str = None,
+        drop_data_gap_rows: bool = False,
     ) -> Dict[str, pd.DataFrame]:
         """
         Align all daily DataFrames to the NYSE master calendar.
@@ -784,6 +802,14 @@ class DataAligner:
           - >5 consecutive missing bars:     GapFlag.DATA_GAP (fill price, flag for exclusion)
           - Asset age gap (pre-IPO period):  GapFlag.SPARSE (leading NaN = new listing)
           - Crypto missing single bar:       GapFlag.NO_ACTIVITY (24/7, genuine zero-trade)
+
+        drop_data_gap_rows: see align_intraday's docstring for the full
+        rationale (2026-06-24) — same opt-in, same default-False safety
+        for build_returns_matrix's cross-symbol dense alignment. The NYSE
+        calendar already excludes weekends/holidays entirely (they never
+        enter the index), so the row-bloat this addresses for intraday is
+        much smaller here — added for consistency, not because daily had
+        the same severity of issue.
         """
         if not data:
             return {}
@@ -888,6 +914,9 @@ class DataAligner:
                     f"DataAligner: {symbol} gap rate {gap_pct:.1%} (kept, flagged)"
                 )
 
+            if drop_data_gap_rows:
+                df_aligned = df_aligned[df_aligned["gap_flag"] != GapFlag.DATA_GAP]
+
             aligned[symbol] = df_aligned
 
         log.info(
@@ -900,6 +929,7 @@ class DataAligner:
     def align_intraday(
         data: Dict[str, pd.DataFrame],
         tf_label: str,
+        drop_data_gap_rows: bool = False,
     ) -> Dict[str, pd.DataFrame]:
         """
         Align intraday DataFrames within each asset's own trading session.
@@ -911,6 +941,28 @@ class DataAligner:
           3. Ensure all assets share the same frequency (no irregular spacing)
 
         Returns aligned DataFrames with is_gap column added.
+
+        drop_data_gap_rows (default False, preserves exact existing
+        behavior): found 2026-06-24 that the dense reindex below makes
+        EVERY row's distance from its predecessor identically the bar
+        frequency, by construction — meaning a "drop the bar after each
+        overnight break" check based on timestamp diffs computed AFTER
+        reindexing can never fire (diffs are constant on a uniform-freq
+        index). This was silent dead code, not a correctness bug — every
+        overnight/weekend hour gets reindexed in, forward-filled, and
+        correctly flagged DATA_GAP, and _gap_aware_returns/_clean_close
+        already mask DATA_GAP downstream — but it means every aligned
+        intraday symbol carries ~6x more rows than necessary (verified:
+        CATY @1h, 4369 real bars -> 25565 aligned rows). Left as an
+        explicit opt-in rather than changed unconditionally: production's
+        build_returns_matrix relies on every symbol sharing the SAME
+        dense, uniform-frequency grid for its right-pad-by-row-count
+        cross-symbol alignment to be calendar-correct (verified directly
+        this session) — dropping DATA_GAP rows by default would silently
+        reintroduce a different version of the exact misalignment bug
+        this session already found and fixed elsewhere. Single-pair
+        consumers that join by real DatetimeIndex (aligned_pair_loader.py
+        and everything built on it) have no such dependency and opt in.
         """
         freq_map = {
             "4h": "4h",
@@ -1001,16 +1053,16 @@ class DataAligner:
                 if "volume" in df_aligned.columns:
                     df_aligned["volume"] = df_aligned["volume"].where(~missing, 0)
 
-                # ---- Drop overnight/weekend gaps (> 12h natural break) ----
-                # These are structural — don't forward-fill across sessions.
-                # For equity intraday: 4:00 PM → 9:30 AM next day = 17.5h gap
-                # For crypto: no overnight gaps (24/7) — all gaps are fills or data issues
-                time_diffs = df_aligned.index.to_series().diff()
-                natural_break = time_diffs > pd.Timedelta("12h")
-                if not is_crypto_asset:
-                    # Drop the bar after each overnight break (it's a gap-fill
-                    # across sessions, not a within-session fill)
-                    df_aligned = df_aligned[~natural_break]
+                # ---- Optionally drop DATA_GAP rows (opt-in, see docstring) ----
+                # Uses the gap_flag classification directly rather than
+                # re-deriving "is this an overnight break" from timestamp
+                # diffs — the diff-based check (former implementation here)
+                # cannot distinguish a real gap from a normal bar-to-bar
+                # step once the index has already been reindexed onto a
+                # uniform-frequency grid, since every diff is identical by
+                # construction at that point.
+                if drop_data_gap_rows:
+                    df_aligned = df_aligned[gap_flag != GapFlag.DATA_GAP]
 
                 aligned[symbol] = df_aligned.dropna(subset=["close"])
             else:
@@ -1024,6 +1076,7 @@ class DataAligner:
     def align_universe(
         universe_data: Dict[str, pd.DataFrame],
         tf_label: str = "1D",
+        drop_data_gap_rows: bool = False,
     ) -> Dict[str, pd.DataFrame]:
         """
         Top-level alignment method. Routes to daily or intraday aligner
@@ -1031,6 +1084,11 @@ class DataAligner:
 
         Keys in universe_data are "SYMBOL_TFLABEL" format.
         Returns same format with is_gap column added to each DataFrame.
+
+        drop_data_gap_rows: see align_intraday's docstring — default False
+        preserves exact existing (production) behavior. Pass True only for
+        single-pair/real-timestamp-join consumers, never for anything
+        feeding build_returns_matrix's cross-symbol dense alignment.
         """
         # Extract only the requested timeframe
         tf_data = {
@@ -1040,9 +1098,11 @@ class DataAligner:
         }
 
         if tf_label == "1D":
-            return DataAligner.align_daily(tf_data)
+            return DataAligner.align_daily(tf_data, drop_data_gap_rows=drop_data_gap_rows)
         else:
-            return DataAligner.align_intraday(tf_data, tf_label)
+            return DataAligner.align_intraday(
+                tf_data, tf_label, drop_data_gap_rows=drop_data_gap_rows
+            )
 
 
 # =============================================================================
@@ -1067,7 +1127,7 @@ _TF_MINUTES: Dict[str, int] = {
     "15m": 15,
     "30m": 30,
     "1h": 60,
-    "4h": 240,  # 8h = full 6.5h session
+    "4h": 240,  # 4h = 240 minutes
 }
 
 
@@ -1377,7 +1437,6 @@ class DataCleaner:
             "30 mins",
             "1 hour",
             "4 hours",
-            "8 hours",
         }
 
         if tf_ibkr in INTRADAY:
@@ -1830,7 +1889,7 @@ class YFinanceFeed:
         yfinance fallback for intraday bars when IBKR fails or returns no data.
 
         Attempts to download the closest available yfinance interval,
-        resampling to the target TF where necessary (4h/8h from 1h, 3m from 1m).
+        resampling to the target TF where necessary (4h from 1h, 3m from 1m).
         Tags the returned data with source="yfinance" or "yfinance_resampled"
         via DataCleaner so the QualityReport records the data provenance.
 
@@ -2124,7 +2183,6 @@ class IBKRFeed:
         "30 mins": "2 Y",
         "1 hour": "5 Y",
         "4 hours": "10 Y",
-        "8 hours": "10 Y",
         "1 day": "20 Y",
         "1W": "20 Y",
         "1M": "20 Y",
@@ -2378,7 +2436,6 @@ class IBKRFeed:
             "30 mins",
             "1 hour",
             "4 hours",
-            "8 hours",
         }
         is_intraday = tf_ibkr in INTRADAY_SIZES
 
@@ -2534,7 +2591,6 @@ class IBKRFeed:
             "30 mins",
             "1 hour",
             "4 hours",
-            "8 hours",
         }
         end_dt = (
             datetime.now(tz=timezone.utc).strftime("%Y%m%d %H:%M:%S UTC")
@@ -2556,7 +2612,6 @@ class IBKRFeed:
                     "30 mins",
                     "1 hour",
                     "4 hours",
-                    "8 hours",
                 }
                 self._ib.RequestTimeout = 15 if tf_ibkr in INTRADAY_SET else 30
                 bars = self._ib.reqHistoricalData(
@@ -2600,7 +2655,6 @@ class IBKRFeed:
                     "30 mins",
                     "1 hour",
                     "4 hours",
-                    "8 hours",
                 }
                 if tf_ibkr in INTRADAY_TFS:
                     wait = [3, 5, 10][min(attempt, 2)]
@@ -2635,7 +2689,6 @@ class IBKRFeed:
                         "30 mins",
                         "1 hour",
                         "4 hours",
-                        "8 hours",
                     }
                     else 30
                 )

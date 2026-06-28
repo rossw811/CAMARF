@@ -258,6 +258,9 @@ def _build_examples_for_pair(
                 hedge_ratio_drift=float(hedge_drift),
             )
         )
+    perm_robust = pair_row.get("permutation_robust", None)
+    if perm_robust is not None:
+        perm_robust = bool(perm_robust)
     summary.record_pair(
         f"{symbol_a}/{symbol_b}@{tf_label}",
         entry_events=len(entries),
@@ -265,6 +268,7 @@ def _build_examples_for_pair(
         censored=n_censored,
         no_half_life=n_no_half_life,
         future_not_clean=n_future_not_clean,
+        permutation_robust=perm_robust,
     )
     return events
 
@@ -329,11 +333,13 @@ class MLRunSummary:
         ]
         if self.pairs:
             for pk, s in self.pairs.items():
+                perm = s.get("permutation_robust", None)
+                perm_str = "" if perm is None else f" perm_robust={perm}"
                 lines.append(
                     f"  {pk:<24} entry_events={s.get('entry_events','?'):<5} "
                     f"labeled={s.get('labeled','?'):<5} censored={s.get('censored','?'):<5} "
                     f"no_half_life={s.get('no_half_life','?'):<5} "
-                    f"future_not_clean={s.get('future_not_clean','?')}"
+                    f"future_not_clean={s.get('future_not_clean','?')}{perm_str}"
                 )
         else:
             lines.append("  (none)")
@@ -398,6 +404,16 @@ def build(min_class_samples: Optional[int] = None) -> MLResult:
         except Exception as e:
             pairs_skipped.append((symbol_a, symbol_b, tf_label, f"pairs.parquet lookup failed: {e}"))
             continue
+        # Skip BUG-D49 degenerate pairs: one/both legs have implausibly few
+        # distinct close prices despite adequate dollar volume. Training on
+        # these would teach the model to exploit pricing artifacts, not real
+        # co-movement — they stay in pairs.parquet for the backtest
+        # comparison arm but are excluded from ML training.
+        if bool(row.get("thin_info_content", False)):
+            pairs_skipped.append((symbol_a, symbol_b, tf_label, "thin_info_content: BUG-D49 price degeneracy — excluded from ML training"))
+            summary.pairs_skipped = pairs_skipped
+            continue
+
         try:
             events = _build_examples_for_pair(symbol_a, symbol_b, tf_label, row, summary)
         except Exception as e:
