@@ -146,6 +146,12 @@ yfinance, the Wikipedia scrapers, or the universe-construction pipeline.
   live. Don't just trust that a `str_replace` or `create_file` call
   succeeded — verify the actual file state.
 
+- **`_clean_close()` returns `np.ndarray`, not `pd.Series` (BUG-D51).**
+  Calling `.rename()` on its return value raises `AttributeError`. Always wrap
+  with `pd.Series(_clean_close(df), index=df.index, name="colname")` before
+  using pandas operations (`.rename()`, `pd.concat` axis-alignment, etc.).
+  Applies anywhere `_clean_close` is used outside data.py itself.
+
 - **CFTC COT API: dataset ID is 6dca-aqww, not jun7-7nt5 (BUG-D50).**
   Correct dataset: `https://publicreporting.cftc.gov/resource/6dca-aqww.json`
   (Legacy Futures Only). Correct contract name prefixes: `"E-MINI S&P 500"` (ES)
@@ -272,40 +278,40 @@ This is as important as the technical rules above.
 
 ## Current State (update this section each session)
 
-See `DEVELOPMENT.md` Sessions 10–12 for full detail. Headline items:
+See `DEVELOPMENT.md` Sessions 10–13 for full detail. Headline items:
 
-- **BUG-D50 (COT API, Session 12)**: CFTC Socrata dataset ID was wrong
-  (`jun7-7nt5` → `6dca-aqww`), ES/NQ contract name filters were wrong,
-  and URL was hand-encoded instead of using `requests.get(params=)`.
-  Fixed and verified: ES 1,497 rows (since 1997), NQ 229 rows (NASDAQ
-  MINI, newer contract). macro.py now produces cot_es and cot_nq regime
-  distributions without warnings.
-- **ml.py training threshold crossed (Session 12)**: 79 confirmed pairs,
-  125 labeled entry events (up from 12). Trained on 75, 68% holdout
-  accuracy on 25 examples. ConformalPredictor: 88% empirical coverage
-  (target ≥90%), avg set size 1.52. Class imbalance (75% not_converged
-  vs. 25% converged) — evaluation metric choice (precision on converged
-  vs. overall accuracy) is a backtest.py discussion item.
-- **EG permutation check updated (Session 12)**: 38/79 flagged (48%),
-  mean null_frac_sig = 0.230 (4.6× expected 0.05). DD-hub pattern: 7/17
-  DD pairs at 1h pass, 10/17 flagged (high null_frac_sig 0.50-0.57).
-  APOG cluster at 3m also heavily flagged. Policy: comparison arm until
-  backtest.py, `permutation_robust` flag on PairResult populated from
-  research parquet on each analysis.py run.
-- **8h timeframe removed (Session 12)**: Scrubbed from data.py,
-  config.py, and all related sets/dicts. Was never a valid analytical
-  timeframe; showed "0 assets" in every analysis.py run.
-- **VIX term structure + CFTC COT added to macro.py (Session 12)**:
-  VIX 3m via VXVCLS (FRED). COT via CFTC Socrata 6dca-aqww. Both
-  producing regime distributions (vix_term_structure, cot_es, cot_nq).
-- **thin_info_content + permutation_robust on PairResult (Session 12)**:
-  New flags, populated by `_apply_research_screen_flags()` from research
-  parquets. Not in current pairs.parquet (old analysis.py ran); will
-  populate on next analysis.py run. ml.py already has skip logic for
-  `thin_info_content=True`.
+- **BUG-D50 (COT API, Session 12)**: Fixed. CFTC dataset 6dca-aqww, correct
+  contract names, `requests.get(params=)`. In Known-Resolved Issues.
+- **BUG-D51 (Session 13)**: `_clean_close()` returns `np.ndarray`, not
+  `pd.Series` — `.rename()` fails on it. Fix: wrap with `pd.Series(...,
+  index=df.index)`. Applied to `comomentum.py`, `sample_entropy_spreads.py`,
+  `regime_conditional_analysis.py`. In Known-Resolved Issues.
+- **ml.py class imbalance (Session 13)**: `compute_sample_weight("balanced",
+  y_train)` as `sample_weight` kwarg to `model.fit()`. Accuracy 68%→56%
+  (expected: trades majority-class accuracy for minority recall).
+- **Lead-lag scan (Session 13, null result)**: All 29 confirmed 1h pairs
+  have `best_lag=0`, lift=0.000. Contemporaneous assumption validated.
+  Only flag is AZTA/MLKN@1m (small-n artifact, EG p=0 at both lags).
+  Directional prediction via temporal lag is not supported by the data.
+- **Regime-conditional analysis (Session 13, strong finding)**: VIX crisis
+  → hl_ratio=0.09 (11× faster mean-reversion); VIX backwardation →
+  hl_ratio=0.65; VIX contango → 2.36× slower; yield curve normal → 4.4×
+  slower. Most multi-regime variation from 1h pairs (17.5 months history).
+- **HMM regime detection (Session 13)**: Gaussian HMMs on T10Y2Y (2-state,
+  persist 540-620 days), VIXCLS (3-state calm/normal/crisis), COT ES net-spec
+  (2-state). State sequences: `output/research/hmm_regimes.parquet`.
+- **Comomentum (Session 13)**: Mean pairwise spread return correlation = 0.09
+  (vs. static baseline 0.048). P75 elevated threshold = 0.113 (25% of bars).
+  Low volatility (std=0.035) → crowding is slowly-varying, not spiking.
+- **Sample entropy (Session 13)**: Reliable for 1h pairs (n≈4,389). Most
+  regular 1h spreads: CAT/DD (0.024), SPY/VOO (0.046), AMAT/DD (0.051).
+  Candidate Stage 2 feature.
 - **backtest.py**: No code written; standing instruction unchanged.
-  `backtest_discussion_questions.md` prepared for Ross's review. Awaiting
-  Ross's answers before interactive build session.
+  `backtest_discussion_questions.md` now has 9 questions including regime
+  conditioning (Q8) and unified ML signal + SHAP (Q9).
+- **New research scripts**: `comomentum.py`, `sample_entropy_spreads.py`,
+  `regime_conditional_analysis.py`, `hmm_regime_detection.py`,
+  `follower_direction_validation.py` (0 pairs — lead-lag scan null).
 - **Always run scripts via
   `C:\Users\RossW\anaconda3\envs\trading\python.exe`**, not bare
   `python` (see Known-Resolved Issues).

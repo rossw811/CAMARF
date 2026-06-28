@@ -125,6 +125,69 @@ attribute ML alpha to the conditioned strategy.
 
 ---
 
+## 8. Regime conditioning as a Layer 2 entry filter (new — based on Session 13 results)
+
+`regime_conditional_analysis.py` found that VIX crisis regime → pairs converge
+11× faster than their full-series average (hl_ratio=0.09); VIX backwardation →
+2.3× faster (hl_ratio=0.65); VIX contango → 2.4× slower. Yield curve flat/
+inverted → 2.3× faster; normal → 4.4× slower.
+
+This means macro regime at entry time is potentially a strong predictor of
+whether a given entry will converge. The `comomentum_index.parquet` adds a
+crowding signal: entries during elevated comomentum (>P75, ~25% of bars) may
+have lower convergence rates (not yet tested against labeled events).
+
+**Questions:**
+
+a. Do you want Layer 2 to include macro regime as a feature in the ML model
+   (requiring ml.py feature enrichment first), OR as a hard filter on entry
+   (e.g. "only enter when VIX term structure is NOT contango"), OR both?
+
+b. For the crisis/backwardation sizing question: the data supports entering more
+   aggressively when VIX is in backwardation. Do you want a continuous sizing
+   multiplier (e.g. size = base × (2 - hl_ratio)) or a binary gate (enter
+   normally vs. enter at 2× size)?
+
+**My recommendation:** start with a hard filter for the first backtest pass
+(reject entries when vix_term_structure = contango), measure lift vs. Layer 1
+baseline, THEN consider continuous sizing. Keeps the evaluation interpretable.
+
+---
+
+## 9. Unified binary signal + SHAP factor table (new — from Session 13 discussion)
+
+Ross proposed a "singular signal" that compresses all factors into one YES/NO
+entry decision, with an interpretable table showing which factors drove that
+decision for each entry. This maps to:
+
+- **ml.py Stage 2**: enrich the feature vector with the macro/characteristics
+  features we just computed (SampEn per pair, comomentum at entry time, VIX
+  term structure, yield curve, HMM state). XGBoost outputs one probability.
+- **SHAP attribution**: for each entry event, SHAP values show "SampEn=0.024
+  contributed +0.12 (favorable), contango contributed -0.07 (unfavorable), etc."
+
+The constraint: 125 labeled events → 75 training examples. Adding ~6 new features
+is an overfitting risk. The right evaluation is:
+- Permutation importance (not impurity-based) — unbiased at small N
+- Hold-out accuracy must improve over the base model (68% → higher) before declaring win
+
+**Questions:**
+
+a. Build ml.py Stage 2 now (before backtest.py), or defer until backtest.py
+   establishes the evaluation framework first?
+
+b. If we build now: should the SHAP table be per-entry (real-time, shows "why
+   this specific signal fired"), or aggregate (shows "across all 125 labeled
+   events, which features mattered most")?
+
+**My recommendation:** defer ml.py Stage 2 until after the backtest.py session.
+Reason: the backtest will generate additional labeled events (every simulated
+trade generates an outcome), giving us more training data before we add feature
+complexity. Building Stage 2 now on 125 examples risks overfitting that backtest
+data will immediately expose.
+
+---
+
 ## Standing instruction
 
 Per CLAUDE.md: **no concrete backtest.py code without an interactive session.**
