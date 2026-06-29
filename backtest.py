@@ -428,11 +428,16 @@ class BacktestEngine:
         _session_edge = self.storm_flags.get("session_edge", False)
         _is_intraday = any(c in tf for c in ["m", "h"]) and "D" not in tf and "W" not in tf
 
-        # STORM: coint_frac_sizing — continuous size scaling by rolling confirmation fraction
-        _coint_frac_sizing = self.storm_flags.get("coint_frac_sizing", False)
+        # STORM: coint_frac — read fraction; apply threshold gate or continuous sizing
         _coint_frac = float(pair_row.get("coint_fraction_rolling", 1.0))
         if not np.isfinite(_coint_frac) or _coint_frac <= 0:
             _coint_frac = 1.0
+        _coint_frac_threshold = float(self.storm_flags.get("coint_frac_threshold", 0.0))
+        if _coint_frac_threshold > 0 and _coint_frac < _coint_frac_threshold:
+            log.debug("SKIP %s/%s@%s: coint_frac %.3f < threshold %.3f",
+                      sym_a, sym_b, tf, _coint_frac, _coint_frac_threshold)
+            return []
+        _coint_frac_sizing = self.storm_flags.get("coint_frac_sizing", False)
 
         # Point-in-time causal hedge ratio series (added to spread_series by
         # analysis.py after the lookahead-bias fix). Falls back to scalar when
