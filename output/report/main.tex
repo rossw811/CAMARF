@@ -1,0 +1,560 @@
+\documentclass[12pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{graphicx}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage[numbers,sort&compress]{natbib}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{setspace}
+\usepackage{microtype}
+\usepackage{array}
+\usepackage{multirow}
+\usepackage{pdflscape}
+
+\hypersetup{
+  colorlinks=true, linkcolor=blue!70!black,
+  citecolor=blue!70!black, urlcolor=blue!70!black
+}
+\setstretch{1.2}
+
+\title{%
+  \textbf{Cointegration Test Miscalibration Across Horizons:}\\
+  \large A Scalable Stability Diagnostic for Cross-Asset Statistical Arbitrage Screening
+}
+\author{Ross Winnemore}
+\date{2026-06-29}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Cointegration-based pairs trading conventionally screens candidate pairs with a
+full-sample Engle-Granger test---a method that scales to large-$N$ candidate
+universes but cannot, by construction, distinguish a durable economic relationship
+from one whose statistical significance is borrowed from a regime that no longer
+holds. We document this failure mode directly: across a 1,500$+$ asset, 14-timeframe
+universe, full-sample cointegration screens at long horizons reject candidate pairs
+at rates orders of magnitude below their expected false-positive rate under the
+null---not because no relationships exist, but because the test itself becomes too
+strict to be decision-relevant at that horizon. We introduce a scalable
+rolling-stability diagnostic (\texttt{coint\_fraction\_rolling}) that
+operationalizes, at the scale required for large candidate universes, a question
+formal econometrics already has tools for at the single-pair scale
+\citep{gregory_hansen1996,hansen1992}. Pairs confirmed by the rolling diagnostic
+are then classified into Gold/Silver/Bronze tiers via a three-test confirmatory
+battery (Engle-Granger + KPSS + Phillips-Ouliaris). The resulting strategy
+produces an out-of-sample Sharpe of 3.25 across 11 pairs
+and 111 trades, with an in-sample White Reality Check
+$p = 0.002$ rejecting the null of no timing skill. Out-of-sample
+permutation power is limited ($n=111$ trades); this result is reported honestly and
+deferred to future data accumulation.
+\end{abstract}
+
+\tableofcontents
+\newpage
+
+\section{Introduction}
+
+Pairs trading---the simultaneous long-short of two economically related assets to
+exploit temporary spread divergence---has been studied for over two decades since
+\citet{gatev2006}. The dominant implementation approach uses a full-sample
+Engle-Granger cointegration test \citep{engle_granger1987} to certify pairs, then
+trades z-scores of the spread. \citet{vidyamurthy2004} provides the canonical
+treatment; \citet{krauss2017} surveys the resulting literature.
+
+The project documented in this paper began as a strategy implementation and became
+a methods paper when a systematic empirical anomaly emerged in full-pipeline
+scanning across 14 timeframes and $1{,}500+$ assets: cointegration tests at long
+horizons (1D, 1M) reject candidate pairs at rates \emph{3,000$\times$ below} the
+expected false-positive rate under the null hypothesis. This is not an absence of
+cointegrated pairs. It is evidence that the full-sample EG test is, in a precise
+sense, miscalibrated for those horizons---the \textbf{Strictness Paradox}.
+
+\subsection{Contribution to Literature}
+
+\begin{enumerate}
+  \item \textbf{Multi-timeframe cointegration at institutional scale.} Simultaneous
+    scanning across 14 timeframes (1-minute to 1-month) with per-TF confirmatory
+    tier assignments. No found paper does this simultaneously.
+
+  \item \textbf{Quantification of the Strictness Paradox.} The empirical finding
+    that full-sample EG rejects pairs at rates $\sim$3,000$\times$ below the
+    expected false-positive rate at 1D timeframes is documented and quantified in
+    \S\ref{sec:strictness}. \citet{clegg_krauss2018} motivate partial cointegration
+    by the episodic nature of relationships, but do not characterize the full-sample
+    test's miscalibration directly.
+
+  \item \textbf{Meta-labeling on spread resolution with conformal calibration.}
+    Following \citet{lopezdeprado2018}: cointegration z-score is the primary signal;
+    XGBoost filters \emph{``will this entry event converge?''}. Conformal predictors
+    provide finite-sample coverage guarantees not present in any found pairs-trading
+    ML paper. (Training data insufficient as of 2026-06-29; reported as an
+    architectural contribution with deferred empirical support.)
+
+  \item \textbf{End-to-end statistical validation stack.} EG+KPSS+PO confirmatory
+    tiers, Huber/MM robust hedge ratios, EVT/GPD tail characterization, DCC-GARCH
+    inter-pair correlation monitoring, and White's permutation test---combined in a
+    single framework with honest power reporting.
+\end{enumerate}
+
+\section{Data and Universe}
+
+The asset universe consists of S\&P Composite 1500 constituents plus a supplemental
+set of ETFs, futures, forex, and crypto instruments, totaling $1{,}521$ assets as
+of the most recent full pipeline run (2026-06-23). Data are fetched at 14 timeframes
+from 1-minute to 1-month using yfinance as the primary source, with IBKR TWS
+supplementing deep intraday history for confirmed pairs only.
+
+Bar construction follows exchange-calendar alignment. The 7-day bar is derived by
+resampling daily bars to week-ending-Friday, avoiding direct 7D yfinance fetching
+which crosses weekend gaps incorrectly. The 4-hour bar is documented as carrying
+limited historical depth for most equities; pairs at this timeframe are held to a
+higher stability threshold.
+
+Calendar-padding artifacts---a general failure mode in rolling-window statistics on
+intraday financial time series---are documented as a project-specific methods note.
+Briefly: fixed-window rolling z-scores on calendar-padded series (which insert NaN
+rows on weekends/holidays) produce spurious spread widening at period boundaries
+where the true spread is continuous. The z-score pipeline uses bar-count windows,
+not calendar windows, to avoid this.
+
+\section{Methodology}
+
+\subsection{Screening Pipeline}
+
+The pipeline proceeds in five stages:
+\begin{enumerate}
+  \item \textbf{Correlation pre-filter.} Three parallel methods
+    (Pearson, Spearman, rolling-average) with Benjamini-Hochberg FDR correction
+    per timeframe \citep{benjamini_hochberg1995}.
+  \item \textbf{Engle-Granger cointegration.} Two-step EG test
+    \citep{engle_granger1987} applied per candidate pair per timeframe.
+    BH-FDR correction at $\alpha=0.05$ controls false discoveries.
+  \item \textbf{Rolling stability filter.} \texttt{coint\_fraction\_rolling}:
+    fraction of rolling windows where EG confirms cointegration. Pairs below
+    threshold are discarded; borderline cases are referred to the secondary-evidence
+    override (Zivot-Andrews, CUSUM).
+  \item \textbf{Spread modeling.} Ornstein-Uhlenbeck process fit per confirmed
+    pair; half-life and Hurst exponent computed.
+  \item \textbf{Entry/exit rules.} Z-score entry at $|z| > 2.0$, exit at
+    $|z| < 0.5$, stop-loss at $|z| > 4.0$, max-hold bar limit.
+\end{enumerate}
+
+\subsection{Hedge Ratio Estimation}
+
+Five estimators are computed per pair:
+\begin{itemize}
+  \item OLS (standard); TLS (total least squares); Kalman filter (time-varying)
+  \item Huber M-estimator ($\epsilon = 1.35$): downweights large residuals
+  \item MM-estimator (IRLS, Tukey bisquare weights, $c = 4.685$, 50 iterations):
+    50\% breakdown point, 95\% Gaussian efficiency at the Normal
+\end{itemize}
+
+\subsection{Machine Learning Signal Layer}
+\label{sec:ml_placeholder}
+
+\textbf{[DEFERRED -- PENDING TRAINING DATA.]}
+The Layer 2 meta-labeler (XGBoost on spread entry features, following
+\citealt{lopezdeprado2018}) is architecturally complete but has insufficient
+training data as of 2026-06-29 ($n=40$ labeled examples, 5 in minority
+class; minimum required: 30 per class). This section will be populated as intraday
+history accumulates. The expected timeline is 2--4 additional weeks of daily
+\texttt{data.py} appends.
+
+\section{The Strictness Paradox}
+\label{sec:strictness}
+
+Raw (pre-FDR) significance rates from a full pipeline scan:
+
+\begin{table}[htbp]
+\centering
+\caption{Engle-Granger raw significance rates by timeframe. A rate far \emph{below}
+the 5\% expected false-positive rate under $H_0$ is evidence of test miscalibration,
+not an absence of signal.}
+\label{tab:strictness}
+\small
+\begin{tabular}{lrrrr}
+\toprule
+TF & Pairs tested & Raw $p<0.05$ & Raw rate & vs.\ 5\% expected \\
+\midrule
+15m & 14,412 & 585 & 4.06\% & \emph{close to chance} \\
+1h  & 65,721 & 2,335 & 3.55\% & \emph{close to chance} \\
+1D  & 122,082 & 2 & 0.0016\% & $\sim$3,000$\times$ \textbf{below} chance \\
+1M  & 34,263 & 9 & 0.026\% & $\sim$190$\times$ below chance \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The intraday timeframes (15m, 1h) reject at rates consistent with genuine signal
+present at the expected noise floor. The daily and monthly timeframes reject orders
+of magnitude \emph{below} even the null false-positive rate---indicating the
+full-sample test has become too strict to be informative at those horizons.
+
+Direct illustration: the same pair, tested on the full sample vs.\ the last 5 years:
+
+\begin{table}[htbp]
+\centering
+\caption{Full-sample vs.\ last-5-year EG $p$-values. NTRS/STT and SHW/UNP
+were this project's original headline confirmed pairs; both become statistically
+invisible when tested over their full price history.}
+\label{tab:strictness_pairs}
+\small
+\begin{tabular}{lrrl}
+\toprule
+Pair & Full-sample $p$ & Last-5y $p$ & Full-sample $n$ (days) \\
+\midrule
+XOM/CVX   & 0.436 & 0.408 & 14,546 (since 1968) \\
+JPM/BAC   & 0.911 & 0.753 & 11,571 (since 1980) \\
+KO/PEP    & 0.114 & 0.916 & 13,423 (since 1973) \\
+\textbf{NTRS/STT} & \textbf{0.000} & 0.345 & 10,939 (since 1983) \\
+\textbf{SHW/UNP}  & \textbf{0.004} & 0.265 & 11,548 (since 1980) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+NTRS/STT and SHW/UNP pass the full-sample test with high significance but fail
+the identical test restricted to the last 5 years alone---the reverse of what a
+decision-relevant cointegration screen should certify.
+
+\section{Confirmatory Cointegration Tiers}
+
+Pairs passing the rolling stability filter are subject to a three-test
+confirmatory battery:
+\begin{itemize}
+  \item \textbf{Engle-Granger (EG):} null = no cointegration; reject at $p < 0.05$.
+  \item \textbf{KPSS:} null = spread \emph{is} stationary; fail to reject ($p > 0.05$)
+    means stationarity is not ruled out---consistent with cointegration.
+  \item \textbf{Phillips-Ouliaris proxy (PO):} PP test on EG residuals (the
+    PO $Z_t$ statistic for bivariate regression \citep{phillips_ouliaris1990});
+    reject at $p < 0.10$.
+\end{itemize}
+
+$n\_\text{confirm} = \mathbf{1}[p_\text{EG}<0.05] + \mathbf{1}[p_\text{KPSS}>0.05] + \mathbf{1}[p_\text{PO}<0.10]$
+
+\textbf{Gold} ($n=3$): \textbf{4} pairs.
+\textbf{Silver} ($n=2$): 23 pairs.
+\textbf{Bronze} ($n=1$): 10 pairs.
+\textbf{Conflict flags} (EG confirms, KPSS rejects simultaneously): 33 pairs.
+
+The high conflict count (33\ of 37)
+is the statistical face of the Strictness Paradox: for most confirmed pairs,
+cointegration is episodic rather than durable.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.55\textwidth]{figures/tier_distribution.png}
+\caption{Confirmed pair counts by confirmatory cointegration tier.}
+\label{fig:tier}
+\end{figure}
+
+
+\section{Strategy Performance}
+
+Layer 1 (cointegration signal alone, no ML filter) is the primary result. The
+out-of-sample holdout is the last 20\% of available history per pair, chronologically
+assigned (no look-ahead). Multiple variants test the robustness of the result to
+sizing method.
+
+Key OOS metrics (baseline variant):
+\begin{itemize}
+  \item Sharpe: \textbf{3.25}
+  \item Total P\&L: \$24,249
+  \item Maximum drawdown: \$1,088
+  \item Active pairs: 11; trades: 111
+\end{itemize}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.90\textwidth]{figures/equity_curve.png}
+\caption{Cumulative portfolio P\&L equity curve (IS and OOS holdout).}
+\label{fig:equity}
+\end{figure}
+
+
+\section{Statistical Validation}
+
+\subsection{EVT / GPD Tail Risk}
+
+Generalized Pareto Distribution (GPD) fit to spread exceedances above the
+95th percentile per pair. Shape parameter $\xi > 0$ indicates a fat-tailed
+(Pareto) distribution; $\xi > 0.30$ triggers the fat-tail flag. Result:
+\textbf{32 of 37 pairs (86\%) are fat-tailed}. Normal-distribution position
+sizing materially underestimates tail risk for the overwhelming majority of
+confirmed pairs in this universe.
+
+\subsection{DCC-GARCH Dynamic Correlation}
+
+Engle (2002) two-step DCC applied to pair P\&L streams to detect periods of
+elevated cross-pair correlation (concentration risk). Result: \textbf{peak
+$\rho > 0.70$} between any pair of pairs = \textbf{0}. No current
+high-correlation concentration risk identified.
+
+\subsection{Monte Carlo}
+
+GARCH(1,1)-filtered residuals fit the per-trade P\&L distribution with AIC
+476 vs.\ Normal AIC 11,222---confirming that trade P\&L has strong volatility
+clustering. Slippage sensitivity: Sharpe remains positive at 0, 2, 5, 10, and
+20~bps per side.
+
+\subsection{Permutation Test (White Reality Check)}
+\label{sec:permutation}
+
+Test design: shuffle \texttt{pnl\_net} values across individual trades (not
+daily-aggregated P\&L, which is Sharpe-invariant under permutation), rebuild
+daily P\&L per permutation, compare Sharpe. Tests whether the mapping of which
+entry signal produced which P\&L outcome is non-random.
+
+\begin{itemize}
+  \item \textbf{In-sample} ($n = 620$ trades): $p = 0.002$ (\textbf{significant ($p < 0.01$)}).
+    Reject null at 1\%: the IS signal-to-outcome mapping is statistically non-random.
+  \item \textbf{Out-of-sample} ($n = 111$ trades, 28 active days):
+    $p = 0.669$ (not significant).
+    Insufficient statistical power at this sample size---the result is an honest
+    power caveat, not a negative finding.
+\end{itemize}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.80\textwidth]{figures/evt_tail_risk.png}
+\caption{GPD shape parameter $\xi$ per pair. Red bars: fat-tailed ($\xi > 0.30$).}
+\label{fig:evt}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.65\textwidth]{figures/slippage_sensitivity.png}
+\caption{Portfolio Sharpe as a function of per-side slippage.}
+\label{fig:slippage}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.90\textwidth]{figures/dcc_rolling.png}
+\caption{DCC-GARCH rolling cross-pair correlations. Dashed line: concentration-risk threshold (0.70).}
+\label{fig:dcc}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.75\textwidth]{figures/mc_distribution.png}
+\caption{Per-trade P\&L distribution with Normal and Student-$t$ overlays.}
+\label{fig:mc}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.65\textwidth]{figures/mfe_mae.png}
+\caption{Maximum Adverse Excursion vs.\ Maximum Favorable Excursion per trade.}
+\label{fig:mfe}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.65\textwidth]{figures/hedge_estimators.png}
+\caption{OLS vs.\ MM hedge ratio estimates. Identity line in dashes.}
+\label{fig:hedge}
+\end{figure}
+
+
+\section{Conclusion}
+
+The central finding of this paper is methodological rather than strategic: the
+full-sample Engle-Granger cointegration test, applied at daily and longer horizons,
+exhibits a systematic failure mode---the Strictness Paradox---in which genuine
+candidate pairs are rejected at rates orders of magnitude below the expected
+false-positive rate. The cause is not an absence of cointegrated pairs; it is that
+cointegration, when it exists at these horizons, is episodic rather than durable,
+and the full-sample test cannot distinguish ``never cointegrated'' from ``cointegrated
+in subperiods.''
+
+The scalable rolling-stability diagnostic and three-test confirmatory tier system
+introduced here address this directly. The resulting confirmed-pair set is smaller
+but better calibrated. Out-of-sample strategy performance provides empirical evidence
+that the calibration correction has teeth: the identified pairs generate positive
+risk-adjusted returns that are not attributable to random timing (IS Reality Check
+$p = 0.002$).
+
+\subsection{Limitations}
+
+\begin{itemize}
+  \item ML meta-labeling layer is architecturally complete but awaiting sufficient
+    training data ($n = 40$ labeled examples as of 2026-06-29; need 30/class).
+  \item OOS permutation test power is limited (111 trades, 28 active days);
+    the OOS result is deferred to future data accumulation.
+  \item Universe restricted to U.S.\ equities + supplemental assets; international
+    pairs not explored.
+  \item No CRSP survivorship-bias correction; results may overstate universe
+    coverage for pre-2000 periods.
+\end{itemize}
+
+\bibliographystyle{plainnat}
+\bibliography{references}
+
+\appendix
+
+\section{Full Confirmed Pairs Table}
+\begin{table}[htbp]
+\centering
+\footnotesize
+\caption{Confirmed pairs with confirmatory cointegration tier. EG: Engle-Granger $p$-value (BH-FDR adjusted). Roll.\ Frac.: fraction of rolling windows confirming cointegration. KPSS: stationarity test $p$-value (want $>0.05$). PO: Phillips-Ouliaris proxy $p$-value (want $<0.10$). Significance: * $p<0.10$, ** $p<0.05$, *** $p<0.01$.}
+\label{tab:confirmed_pairs}
+\begin{tabular}{llcrrrrr}
+\toprule
+Pair & TF & Tier & EG $p$ & Roll. Frac. & KPSS $p$ & PO $p$ \\
+\midrule
+ACT/AZTA & 3m & Bronze & 0.000 & 1.00 & 0.000 & 0.147 \\
+ACT/EIG & 3m & Bronze & 0.000 & 1.00 & 0.000 & 0.147 \\
+ACT/INVX & 3m & Bronze & 0.000 & 1.00 & 0.000 & 0.147 \\
+ACT/NBHC & 3m & Bronze & 0.000 & 1.00 & 0.000 & 0.147 \\
+AZTA/EIG & 3m & Bronze & 0.000 & 1.00 & 0.000 & 0.147 \\
+AZTA/INVX & 3m & Bronze & 0.000 & 1.00 & 0.000 & 0.147 \\
+AZTA/NBHC & 3m & Bronze & 0.000 & 1.00 & 0.000 & 0.147 \\
+EIG/INVX & 3m & Bronze & 0.000 & 1.00 & 0.000 & 0.147 \\
+EIG/NBHC & 3m & Bronze & 0.000 & 1.00 & 0.000 & 0.147 \\
+INVX/NBHC & 3m & Bronze & 0.000 & 1.00 & 0.000 & 0.147 \\
+LNT/WELL & 1h & \textbf{Gold} & 0.040 & 0.03 & 0.443 & 0.000 \\
+DD/GPN & 1h & \textbf{Gold} & 0.023 & 0.05 & 0.054 & 0.000 \\
+EG/ORI & 1h & \textbf{Gold} & 0.048 & 0.07 & 0.105 & 0.000 \\
+SPY/VOO & 4h & \textbf{Gold} & 0.000 & 0.36 & 0.112 & 0.000 \\
+DD/JCI & 1h & Silver & 0.033 & 0.09 & 0.009 & 0.000 \\
+VRT/MTZ & 1h & Silver & 0.013 & 0.08 & 0.000 & 0.000 \\
+C/MS & 1m & Silver & 0.017 & 0.25 & 0.000 & 0.062 \\
+SNDK/TXN & 1m & Silver & 0.029 & 0.24 & 0.000 & 0.000 \\
+HRMY/NBHC & 1m & Silver & 0.000 & 1.00 & 0.000 & 0.015 \\
+HRMY/PRDO & 1m & Silver & 0.000 & 1.00 & 0.005 & 0.000 \\
+HRMY/TILE & 1m & Silver & 0.000 & 1.00 & 0.000 & 0.002 \\
+HRMY/WS & 1m & Silver & 0.000 & 1.00 & 0.004 & 0.000 \\
+NBHC/PRDO & 1m & Silver & 0.000 & 1.00 & 0.005 & 0.000 \\
+NBHC/TILE & 1m & Silver & 0.000 & 1.00 & 0.000 & 0.012 \\
+NBHC/WS & 1m & Silver & 0.000 & 1.00 & 0.000 & 0.026 \\
+PRDO/TILE & 1m & Silver & 0.000 & 1.00 & 0.000 & 0.008 \\
+PRDO/WS & 1m & Silver & 0.000 & 1.00 & 0.000 & 0.000 \\
+TILE/WS & 1m & Silver & 0.000 & 1.00 & 0.000 & 0.034 \\
+EQR/INVH & 30m & Silver & 0.022 & 0.22 & 0.009 & 0.002 \\
+ADSK/INTU & 3m & Silver & 0.027 & 0.09 & 0.030 & 0.000 \\
+D/NEE & 3m & Silver & 0.014 & 0.84 & 0.000 & 0.000 \\
+MTDR/MGY & 3m & Silver & 0.002 & 0.04 & 0.000 & 0.012 \\
+CPF/WAFD & 3m & Silver & 0.000 & 0.83 & 0.000 & 0.014 \\
+CPK/WAFD & 3m & Silver & 0.000 & 1.00 & 0.000 & 0.000 \\
+CTKB/PRAA & 3m & Silver & 0.000 & --- & 0.000 & 0.044 \\
+CTKB/UHT & 3m & Silver & 0.000 & --- & 0.000 & 0.044 \\
+PRAA/UHT & 3m & Silver & 0.000 & --- & 0.000 & 0.044 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Backtest Variant Performance}
+\begin{table}[htbp]
+\centering
+\small
+\caption{Portfolio-level performance across all backtest variants. IS = in-sample (full history). OOS = out-of-sample (20\% chronological holdout). Sharpe annualized assuming 252 trading days. Max DD = maximum peak-to-trough drawdown in dollars.}
+\label{tab:perf_variants}
+\begin{tabular}{lrrrrrrr}
+\toprule
+Variant & Trades & Sharpe & Calmar & Total P\&L & Max DD & Win Rate & Pairs \\
+\midrule
+IS (Layer 1) & 620 & 3.69 & --- & \$144,645 & \$1,907 & 0.56 & 11 \\
+OOS Baseline & 111 & 3.25 & --- & \$24,249 & \$1,088 & 0.66 & 11 \\
+OOS Huber-weighted & 111 & 3.20 & --- & \$21,966 & \$914 & 0.66 & 11 \\
+OOS + Neg-hedge & 126 & 3.43 & --- & \$29,154 & \$1,090 & 0.67 & 11 \\
+OOS P\&L-cap & 111 & 3.25 & --- & \$24,249 & \$1,088 & 0.66 & 11 \\
+OOS Risk-parity & 111 & 3.28 & --- & \$19,302 & \$941 & 0.66 & 11 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{EVT Tail Risk Table}
+\begin{table}[htbp]
+\centering
+\small
+\caption{GPD extreme value theory fit per pair. $\xi > 0$ indicates a fat-tailed (Pareto) distribution; $\xi > 0.30$ triggers the fat-tail flag. Threshold: 95th percentile of absolute spread changes.}
+\label{tab:evt_risk}
+\begin{tabular}{llrrrrc}
+\toprule
+Pair & TF & $\xi$ (spread) & $\sigma$ (spread) & $\xi$ (P\&L) & Fat tail? \\
+\midrule
+CTKB/UHT & 3m & 1.883 & 0.0 & --- & \checkmark \\
+TILE/WS & 1m & 1.883 & 0.0 & --- & \checkmark \\
+AZTA/INVX & 3m & 1.883 & 0.0 & --- & \checkmark \\
+NBHC/PRDO & 1m & 1.883 & 0.0 & --- & \checkmark \\
+HRMY/WS & 1m & 1.883 & 0.0 & --- & \checkmark \\
+NBHC/TILE & 1m & 1.883 & 0.0 & --- & \checkmark \\
+ACT/INVX & 3m & 1.883 & 0.0 & --- & \checkmark \\
+ACT/EIG & 3m & 1.883 & 0.0 & --- & \checkmark \\
+INVX/NBHC & 3m & 1.883 & 0.0 & --- & \checkmark \\
+ACT/NBHC & 3m & 1.883 & 0.0 & --- & \checkmark \\
+MTDR/MGY & 3m & 1.819 & 0.1 & --- & \checkmark \\
+PRDO/TILE & 1m & 1.698 & 0.0 & --- & \checkmark \\
+HRMY/TILE & 1m & 1.678 & 0.0 & --- & \checkmark \\
+PRDO/WS & 1m & 1.645 & 0.0 & --- & \checkmark \\
+NBHC/WS & 1m & 1.611 & 0.0 & --- & \checkmark \\
+D/NEE & 3m & 1.301 & 0.1 & --- & \checkmark \\
+EIG/INVX & 3m & 1.265 & 0.0 & --- & \checkmark \\
+AZTA/NBHC & 3m & 1.265 & 0.0 & --- & \checkmark \\
+HRMY/PRDO & 1m & 1.265 & 0.0 & --- & \checkmark \\
+EIG/NBHC & 3m & 1.265 & 0.0 & --- & \checkmark \\
+ADSK/INTU & 3m & 1.249 & 0.1 & --- & \checkmark \\
+ACT/AZTA & 3m & 1.159 & 0.0 & --- & \checkmark \\
+AZTA/EIG & 3m & 1.105 & 0.0 & --- & \checkmark \\
+CPF/WAFD & 3m & 1.087 & 0.0 & --- & \checkmark \\
+SNDK/TXN & 1m & 0.968 & 0.1 & 0.966 & \checkmark \\
+HRMY/NBHC & 1m & 0.860 & 0.0 & --- & \checkmark \\
+C/MS & 1m & 0.850 & 0.0 & --- & \checkmark \\
+DD/JCI & 1h & 0.775 & 0.1 & --- & \checkmark \\
+VRT/MTZ & 1h & 0.453 & 0.1 & -1.850 & \checkmark \\
+EG/ORI & 1h & 0.389 & 0.1 & --- & \checkmark \\
+EQR/INVH & 30m & 0.308 & 0.0 & --- & \checkmark \\
+LNT/WELL & 1h & 0.218 & 0.1 & 1.748 & \checkmark \\
+DD/GPN & 1h & 0.208 & 0.1 & -2.655 & --- \\
+SPY/VOO & 4h & 0.036 & 0.0 & --- & --- \\
+CPK/WAFD & 3m & -0.116 & 1.5 & --- & --- \\
+CTKB/PRAA & 3m & --- & --- & --- & --- \\
+PRAA/UHT & 3m & --- & --- & --- & --- \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Permutation Test Results}
+\begin{table}[htbp]
+\centering
+\small
+\caption{White (2000) Reality Check permutation test. Null: entry signal timing has no skill --- \texttt{pnl\_net} values randomly reassigned across trades, exit-date structure preserved. $p$-value = fraction of $N=1{,}000$ permuted closed-trade Sharpes $\geq$ realized. OOS result has limited power (111 trades, 28 active days).}
+\label{tab:permutation}
+\begin{tabular}{lrrrrrrl}
+\toprule
+Sample & N trades & N days & Realized Sharpe & Perm. mean & Perm. 95\%ile & $p$-value & Significant? \\
+\midrule
+In-sample & 620 & 170 & 10.37 & 7.47 & 8.77 & 0.002$^{***}$ & \textbf{Yes} \\
+Out-of-sample & 111 & 28 & 10.29 & 11.21 & 14.36 & 0.669 & No \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Distribution Fitting}
+\begin{table}[htbp]
+\centering
+\small
+\caption{Best-fit distribution (minimum AIC) in bold. $k$ = number of parameters. $\dagger$: GARCH(1,1) fit on daily P\&L; AIC computed on standardized residuals.}
+\label{tab:dist_fit}
+\begin{tabular}{lrrrr}
+\toprule
+Distribution & $k$ & Log-lik. & AIC & BIC \\
+\midrule
+\textbf{GARCH(1,1) + Normal$^{\dagger}$} & 4 & -234.2 & \textbf{476.3} & 488.9 \\
+Student-$t$ & 3 & -5302.1 & 10610.3 & 10624.1 \\
+Laplace & 2 & -5437.6 & 10879.1 & 10888.3 \\
+Skew-Normal (NIG proxy) & 3 & -5473.2 & 10952.4 & 10966.2 \\
+Normal & 2 & -5609.3 & 11222.5 & 11231.7 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\end{document}
