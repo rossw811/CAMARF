@@ -1,0 +1,10 @@
+backtest.py run: layer1_holdout_neghedge
+layer2_enabled: False
+n_pairs_run: 11
+n_trades_total: 126
+total_net_pnl: 29153.97
+mean_sharpe: 50.0365
+mean_win_rate: 0.6694
+portfolio_sharpe: 3.4329
+max_concentration_pct: 0.2424
+outputs: output/backtest/trades_layer1_holdout_neghedge.parquet, summary_layer1_holdout_neghedge.parquet, portfolio_layer1_holdout_neghedge.parquet
