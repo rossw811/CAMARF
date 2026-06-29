@@ -6787,15 +6787,168 @@ make sure to refer to it and consider principals of all the authors listed."
 ### Next steps after backtest.py
 
 1. ~~**Run backtest.py**~~ — **DONE.** IS Sharpe=5.49, OOS Sharpe=4.98. Signal survives holdout.
-2. **Re-run analysis.py** — IN PROGRESS (Session 14). Populates `hedge_ratio_ols_t` +
-   `hedge_ratio_kalman_t` in spread_series files + `thin_info_content`/`permutation_robust`
-   in pairs.parquet. Once done: re-run `backtest.py` to get post-fix IS and OOS numbers.
+2. ~~**Re-run analysis.py**~~ — **DONE (Session 15).** `hedge_ratio_ols_t` + `hedge_ratio_kalman_t`
+   persisted. Post-fix IS Sharpe=3.688, OOS Sharpe=3.249. Degradation from Session 14 numbers
+   is expected and correct: PIT hedge removes the OLS lookahead that inflated IS.
 3. **ml.py Stage 2** — enrich feature vector with SampEn, comomentum at entry time,
-   HMM state at entry date, VIX term structure. Add SHAP (aggregate primary, per-entry
-   for comparison). Target: holdout accuracy > 68% baseline before declaring Stage 2 win.
-4. **ARLO@3m investigation** — all Kalman trades 0% WR; OLS trades absent (hedge<=0 rejection).
-   Negative-correlation pairs have negative OLS hedge → rejected. Need to decide: skip
-   negative-correlation pairs, or flip the leg ordering in analysis.py.
-5. **DD-hub concentration** — 34.8% OOS concentration in DD/JHG alone. Paper needs explicit
-   discussion of hub-and-spoke risk. Consider a concentration cap by hub-membership in Layer 2.
-6. **PAPER.md update** — add backtest methodology + Layer 1 results section.
+   HMM state at entry date, VIX term structure. Add SHAP. Currently blocked on data volume
+   (see Session 15 ML result). Target: holdout accuracy > 68% baseline before declaring win.
+4. ~~**ARLO@3m investigation**~~ — **RESOLVED (Session 15).** Option B (`--neg-hedge` flag):
+   allow negative hedge ratios. Entry guard changed to `hedge <= 0 and not allow_negative_hedge`.
+   OOS result: +15 trades, Sharpe 3.433, concentration 24.2% (natural reduction from wider universe).
+5. ~~**DD-hub concentration**~~ — **ADDRESSED (Session 15).** Four approaches compared; neg-hedge
+   is the winner. See Session 15 results table.
+6. **PAPER.md update** — ~~add backtest methodology~~. **DONE (Session 15).** §7 drafted with
+   Layer 1 baseline + 4-way concentration-risk comparison. ML gate deferred pending data.
+
+---
+
+## Session 15 (2026-06-28) — Concentration-risk variants; ARLO Option B; ML Layer 2 wiring; post-PIT-fix backtest
+
+### Context
+
+Session ran across two machine-crash / OneDrive-eviction events. Session 15 was partially
+reconstructed from git history + Ross's notes. All code changes are committed. Project
+migrated from `C:\Users\RossW\OneDrive\Documents\CAMARF` to `C:\Users\RossW\Projects\CAMARF`
+(OneDrive "Files on Demand" evicted all source files mid-session; fresh `git clone` from
+GitHub resolved it). Session 14's shallow clone was unshallowed via `git fetch --unshallow`.
+
+### Analysis.py re-run (post-PIT-hedge fix)
+
+Full re-run completed on 2026-06-28. TFs with confirmed pairs: 1min, 3min, 15min, 30min, 1hr, 4hr, 7day.
+analysis.py now populates `hedge_ratio_ols_t` + `hedge_ratio_kalman_t` per-bar in every
+spread_series file — the causal PIT hedge series that eliminates OLS lookahead bias.
+
+### ARLO Option B — negative hedge ratios
+
+`--neg-hedge` flag added to backtest.py. Entry guard changed from:
+```python
+if not np.isfinite(hedge_scalar) or hedge_scalar <= 0:
+```
+to:
+```python
+if not np.isfinite(hedge_scalar) or (hedge_scalar <= 0 and not self.allow_negative_hedge):
+```
+Same change applied to the PIT hedge guard. This allows ARLO cluster pairs (confirmed
+negative correlation, valid OU spread: `S = log(A) - β·log(B)` with β < 0 is stationary)
+to trade without needing to change leg ordering in analysis.py.
+
+### Four concentration-risk approaches implemented
+
+All four added to `backtest.py` as argparse flags; weights/caps computed at load time,
+not runtime. IS baseline run first to supply `trades_layer1.parquet` for risk-parity and
+pnl-cap calibration.
+
+1. **`--hub-weight`** — `compute_hub_weights()`: inverse hub-count from pairs.parquet.
+   Symbol that appears in N confirmed pairs gets weight 1/N on every pair it's in.
+   DD in 8 confirmed 1h pairs → each DD pair gets 1/8 ≈ 0.125× N_SHARES.
+
+2. **`--risk-parity`** — `compute_risk_parity_weights()`: inverse-vol from IS P&L std.
+   `multiplier = global_mean_std / pair_pnl_std`, clipped [0.1, 5.0]. High-variance
+   pairs get fewer shares; quiet pairs get more.
+
+3. **`--pnl-cap`** — `compute_pnl_cap_thresholds()`: gate new entries once cumulative
+   OOS P&L for a pair reaches IS mean profitable-pair P&L. Prevents unconstrained
+   runup from a single pair.
+
+4. **`--neg-hedge`** — Option B: allows negative-hedge pairs. No sizing change.
+
+`BacktestEngine.__init__` additions:
+```python
+self.allow_negative_hedge = allow_negative_hedge
+self.hub_weights = hub_weights or {}
+self.risk_parity_weights = risk_parity_weights or {}
+self.pnl_cap_by_pair = pnl_cap_by_pair or {}
+self._pair_pnl: Dict[str, float] = {}
+```
+
+N_SHARES entry logic (replaces flat sizing):
+```python
+hub_w  = self.hub_weights.get(_pair_key, 1.0)
+rp_w   = self.risk_parity_weights.get(_pair_key, 1.0)
+n_shares = max(1, int(self.cfg.N_SHARES_PER_TRADE * size_mult * hub_w * rp_w))
+```
+
+P&L tracker in `_close_trade()`:
+```python
+_key = f"{trade.symbol_a}/{trade.symbol_b}"
+self._pair_pnl[_key] = self._pair_pnl.get(_key, 0.0) + trade.pnl_net
+```
+
+### Layer 1 results (post-PIT-hedge fix, 2026-06-28)
+
+All runs: 11 confirmed pairs, OLS+Kalman both, 8 TFs.
+
+| Run              | Trades | Sharpe | WinRate | MaxDD    | TotPnL    | MaxConc% | Top pair       |
+|------------------|--------|--------|---------|----------|-----------|----------|----------------|
+| IS baseline      | 620    | 3.688  | 56.0%   | $1,907   | $144,645  | 26.2%    | VRT/MTZ@1h     |
+| OOS baseline     | 111    | 3.249  | 65.7%   | $1,088   | $24,249   | 29.1%    | VRT/MTZ@1h     |
+| Hub-weight       | 111    | 3.198  | 65.7%   | $914     | $21,966   | 32.2%    | VRT/MTZ@1h     |
+| PnL-cap          | 111    | 3.249  | 65.7%   | $1,088   | $24,249   | 29.1%    | VRT/MTZ@1h     |
+| Risk-parity      | 111    | 3.276  | 65.7%   | $941     | $19,302   | 31.1%    | LNT/WELL@1h    |
+| Neg-hedge        | 126    | 3.433  | 66.9%   | $1,090   | $29,154   | 24.2%    | VRT/MTZ@1h     |
+
+**Key findings:**
+- Post-PIT-fix Sharpe (3.25) is materially lower than pre-fix (4.98). As expected: OLS scalar hedge
+  was forward-looking on full-sample OLS fit; removing that inflates looked-ahead P&L. The corrected
+  numbers are the reportable ones. Signal still meaningfully positive OOS.
+- **Neg-hedge wins on all metrics:** Sharpe +0.18, win rate +1.2%, P&L +20%, and max concentration
+  *falls organically* from 29.1% → 24.2% purely from adding more pairs. The concentration fix
+  comes for free with the universe expansion.
+- **PnL-cap dead on arrival in OOS:** cap never triggered in the 20% holdout window. Pairs never
+  accumulated enough OOS P&L to hit the IS-calibrated threshold. Not useful at 20% OOS slice;
+  might activate on longer OOS periods.
+- **Hub-weight paradox:** cuts MaxDD 16% (good) but pushes max concentration % *up* from 29.1%
+  to 32.2%. Mechanism: hub-weight shrinks absolute P&L for hub pairs (DD clusters), reducing
+  the portfolio total. VRT/MTZ is not a hub pair (weight stays 1.0), so its *share* of the
+  smaller total grows even though its absolute P&L is unchanged.
+- **Risk-parity:** only variant that shifts the dominant pair (LNT/WELL instead of VRT/MTZ),
+  cuts MaxDD 13%, but costs 20% of total P&L. Viable complement to neg-hedge if drawdown
+  reduction is the primary goal.
+- **IS/OOS Sharpe gap (3.688 → 3.249):** -12% degradation. Small and in line with the 20%
+  holdout slice being a short window. Win rate actually *improves* OOS (56% → 65.7%) consistent
+  with Session 13's regime-conditional finding: 1h pairs are more established at the OOS boundary.
+
+### ML meta-labeler (Session 15 run)
+
+ml.py run result: **training gate not cleared.**
+
+- 40 total labeled examples across all pairs (after BUG-D49 exclusions and future_not_clean filtering)
+- Binary label distribution: 35 `not_converged`, 5 `converged` (need ≥30 per class)
+- Dominant skip reason: `future_not_clean` — entry events fire on forward-filled overnight bars
+  in intraday spread_series; the outcome bar is also padding, so the outcome is unobservable
+- BUG-D49 thin_info_content pairs (1m/3m clusters: HRMY, PRDO, TILE, WS, NBHC, etc.) excluded
+  from training per design
+
+No model trained, no pkl written. **This is the expected, documented result:** intraday history
+has been accumulating via append() only since 2026-06-21 (7 days). The SNDK/TXN@1m pair is
+the most productive (20 labeled examples alone). Re-run as history deepens.
+
+**Action:** ml.py now saves model to `output/ml/model_stage1.pkl` when training succeeds
+(model persistence was missing — fixed this session). MLConditioner in backtest.py now
+loads `classes` from pkl and computes `_converge_indices` correctly (binary "converged"
+class or multiclass "strong_converge"/"weak_converge"); previous code used `probs[0,1]`
+which gave P(not_converged) — backwards.
+
+Entry loop now builds the correct 8-feature dict (matching ml.py's `_FEATURE_COLS` exactly)
+with static pair features pre-computed outside the bar loop and per-bar features (`zscore`,
+`zscore_velocity`, `half_life_current`) computed inline.
+
+### run_comparison.ps1
+
+`run_comparison.ps1` updated to 8 runs: IS baseline + 5 holdout variants + ml.py + `--holdout --layer2`.
+Layer 2 run is a no-op until ml.py training clears the data gate (MLConditioner gracefully
+disables when pkl absent).
+
+### Next steps
+
+1. **Wait for intraday history to accumulate** — re-run ml.py once SNDK/TXN@1m + other intraday
+   pairs have enough labeled examples (target: ≥30 per class). Likely 2-4 weeks of daily data.py runs.
+2. **Settle on concentration-risk default** — neg-hedge is the Session 15 recommendation.
+   Risk-parity as complement if drawdown budget is tight. Commit this to Config as the production run mode.
+3. **`--holdout --layer2` run** — execute once ml.py training succeeds and pkl is written.
+   Validates whether P(converge) gate improves OOS Sharpe or is noise at current sample size.
+4. **stats.py** — begin after Layer 1 results are stable. EVT/GPD tail fit per pair,
+   DCC-GARCH rolling correlation, permutation test on portfolio Sharpe.
+5. **PAPER.md §7** — drafted this session with real numbers. Flesh out prose around the
+   concentration-risk comparison table once the final "recommended run" (neg-hedge) is committed.

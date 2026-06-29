@@ -668,6 +668,20 @@ def _train_and_validate(result: MLResult, summary: MLRunSummary) -> None:
             "(Config.ML.VAL_PCT too small relative to current sample size)."
         )
 
+    # Persist model for Layer 2 backtest gate (MLConditioner._load expects this path)
+    import pickle
+    _pkl_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "output", "ml", "model_stage1.pkl")
+    os.makedirs(os.path.dirname(_pkl_path), exist_ok=True)
+    with open(_pkl_path, "wb") as _f:
+        pickle.dump({
+            "model": model,
+            "label_encoder": le,
+            "feature_names": _FEATURE_COLS,
+            "classes": list(le.classes_),
+        }, _f)
+    log.info("  Model saved → %s", _pkl_path)
+    summary.note(f"Model persisted → {_pkl_path}")
+
 
 def main(min_class_samples: Optional[int] = None) -> MLResult:
     """Entry point — build labeled examples and train the meta-labeler if viable."""

@@ -269,6 +269,7 @@ class MLConditioner:
         self.enabled = enabled
         self._model = None
         self._features: Optional[List[str]] = None
+        self._converge_indices: List[int] = []
         if enabled:
             self._load()
 
@@ -284,7 +285,13 @@ class MLConditioner:
                 saved = pickle.load(f)
             self._model = saved.get("model")
             self._features = saved.get("feature_names", [])
-            log.info("MLConditioner: loaded model, features=%s", self._features)
+            _classes = saved.get("classes", [])
+            self._converge_indices = [
+                i for i, c in enumerate(_classes)
+                if c in ("converged", "strong_converge", "weak_converge")
+            ]
+            log.info("MLConditioner: loaded model, features=%s, converge_classes=%s",
+                     self._features, [_classes[i] for i in self._converge_indices])
         except Exception as e:
             log.warning("MLConditioner: model load failed (%s) — ML gate disabled", e)
             self.enabled = False
@@ -295,8 +302,10 @@ class MLConditioner:
             return 1.0
         try:
             X = pd.DataFrame([features])[self._features].fillna(0.0)
-            prob = self._model.predict_proba(X)[0, 1]
-            return float(prob)
+            probs = self._model.predict_proba(X)[0]
+            if self._converge_indices:
+                return float(sum(probs[i] for i in self._converge_indices))
+            return float(probs[0])
         except Exception:
             return 1.0
 
@@ -315,11 +324,23 @@ class BacktestEngine:
         regime_cond: RegimeConditioner,
         ml_cond: MLConditioner,
         layer2_enabled: bool = False,
+        allow_negative_hedge: bool = False,
+        hub_weights: Optional[Dict[str, float]] = None,
+        risk_parity_weights: Optional[Dict[str, float]] = None,
+        pnl_cap_by_pair: Optional[Dict[str, float]] = None,
     ):
         self.cfg = cfg
         self.regime_cond = regime_cond
         self.ml_cond = ml_cond
         self.layer2 = layer2_enabled
+        self.allow_negative_hedge = allow_negative_hedge
+        # hub_weights: {sym_a/sym_b -> 1/max_hub_peers} — pre-computed from pairs.parquet
+        self.hub_weights = hub_weights or {}
+        # risk_parity_weights: {sym_a/sym_b -> global_mean_std/pair_std} — from IS trades
+        self.risk_parity_weights = risk_parity_weights or {}
+        # pnl_cap_by_pair: {sym_a/sym_b -> cap_threshold} — gates new entries above cap
+        self.pnl_cap_by_pair = pnl_cap_by_pair or {}
+        self._pair_pnl: Dict[str, float] = {}  # cumulative net P&L per pair (for cap)
 
     def run(
         self,
@@ -342,13 +363,14 @@ class BacktestEngine:
         sym_a = pair_row["symbol_a"]
         sym_b = pair_row["symbol_b"]
         tf = pair_row["tf_label"]
+        _pair_key = f"{sym_a}/{sym_b}"
 
         # Scalar fallbacks from pairs.parquet (used when point-in-time series absent)
         hedge_scalar_ols = float(pair_row.get("hedge_ratio_ols", np.nan))
         hedge_scalar_kalman = float(pair_row.get("hedge_ratio_kalman_mean",
                                                   hedge_scalar_ols))
         hedge_scalar = hedge_scalar_ols if hedge_method == "ols" else hedge_scalar_kalman
-        if not np.isfinite(hedge_scalar) or hedge_scalar <= 0:
+        if not np.isfinite(hedge_scalar) or (hedge_scalar <= 0 and not self.allow_negative_hedge):
             log.debug("SKIP %s/%s@%s: invalid hedge ratio %.3f", sym_a, sym_b, tf, hedge_scalar)
             return []
 
@@ -384,6 +406,15 @@ class BacktestEngine:
         _pit_col = "hedge_ratio_ols_t" if hedge_method == "ols" else "hedge_ratio_kalman_t"
         _pit_series = df[_pit_col].values if _pit_col in df.columns else None
         _has_pit = _pit_series is not None and np.any(np.isfinite(_pit_series))
+
+        # Static pair features for ML gate (constant per pair, avoid recomputing in loop)
+        _ml_coint_frac = float(pair_row.get("coint_fraction_rolling", np.nan))
+        _ml_hl_slope = float(pair_row.get("half_life_trend_slope", np.nan))
+        _ml_mean_rev = float(pair_row.get("mean_reversion_speed", np.nan))
+        _ml_hedge_drift = np.nan
+        if (np.isfinite(hedge_scalar_ols) and hedge_scalar_ols != 0
+                and np.isfinite(hedge_scalar_kalman)):
+            _ml_hedge_drift = abs(hedge_scalar_ols - hedge_scalar_kalman) / abs(hedge_scalar_ols)
 
         # Rolling correlation for structural breakdown exit
         _default_flags = pd.Series(0, index=df.index)
@@ -427,7 +458,7 @@ class BacktestEngine:
                 # file predates the lookahead-bias fix (analysis.py re-run required).
                 if _has_pit:
                     hedge_pit = float(_pit_series[i])
-                    if not np.isfinite(hedge_pit) or hedge_pit <= 0:
+                    if not np.isfinite(hedge_pit) or (hedge_pit <= 0 and not self.allow_negative_hedge):
                         hedge_pit = hedge_scalar  # warmup bars: scalar fallback
                 else:
                     hedge_pit = hedge_scalar
@@ -437,18 +468,30 @@ class BacktestEngine:
                 if not allow:
                     continue
 
-                # Layer 2: ML gate
+                # Layer 2: ML gate — feature names must match ml.py's _FEATURE_COLS exactly
                 ml_features = {
-                    "z_score": abs(z),
-                    "half_life_rolling": hl_at_entry,
-                    "hurst_rs": hurst,
+                    "zscore": abs(z),
+                    "zscore_velocity": float(z_arr[i] - z_arr[max(0, i - 5)]),
+                    "half_life_current": hl_at_entry,
+                    "hurst_exponent": hurst,
+                    "coint_fraction_rolling": _ml_coint_frac,
+                    "half_life_trend_slope": _ml_hl_slope,
+                    "mean_reversion_speed": _ml_mean_rev,
+                    "hedge_ratio_drift": _ml_hedge_drift,
                 }
                 ml_prob = self.ml_cond.predict_prob(ml_features)
                 if self.layer2 and ml_prob < self.cfg.ML_GO_THRESHOLD:
                     continue
 
-                # Capital concentration: n_shares floor/cap
-                n_shares = max(1, int(self.cfg.N_SHARES_PER_TRADE * size_mult))
+                # P&L cap: gate new entries once pair has hit its IS-calibrated budget
+                _cap = self.pnl_cap_by_pair.get(_pair_key)
+                if _cap is not None and self._pair_pnl.get(_pair_key, 0.0) >= _cap:
+                    continue
+
+                # N_SHARES: hub-count and risk-parity multipliers on top of Layer 2 size_mult
+                hub_w = self.hub_weights.get(_pair_key, 1.0)
+                rp_w = self.risk_parity_weights.get(_pair_key, 1.0)
+                n_shares = max(1, int(self.cfg.N_SHARES_PER_TRADE * size_mult * hub_w * rp_w))
                 side = "short" if z > 0 else "long"
 
                 current_trade = Trade(
@@ -532,6 +575,8 @@ class BacktestEngine:
         trade.pnl_net = round(gross - cost, 4)
         trade.mae = round(mae * n, 4)
         trade.mfe = round(mfe * n, 4)
+        _key = f"{trade.symbol_a}/{trade.symbol_b}"
+        self._pair_pnl[_key] = self._pair_pnl.get(_key, 0.0) + trade.pnl_net
 
 
 # ---------------------------------------------------------------------------
@@ -722,6 +767,100 @@ def _print_summary(all_metrics: List[Dict], portfolio_stats: Dict, label: str) -
 
 
 # ---------------------------------------------------------------------------
+# Concentration-risk helpers
+# ---------------------------------------------------------------------------
+def compute_hub_weights(tf_dirs: List[Tuple[str, str]], tf_filter: Optional[str]) -> Dict[str, float]:
+    """
+    Inverse hub-count N_SHARES multipliers: 1 / max(peers_A, peers_B).
+
+    DD appears in 8 confirmed 1h pairs → each DD pair gets weight 1/8 ≈ 0.125.
+    A standalone pair (CMS/DUK) gets weight 1.0.
+    Computed at load time from pairs.parquet — no cross-pair runtime state needed.
+    """
+    from collections import Counter
+    symbol_counts: Counter = Counter()
+    pair_keys = []
+    for tf_dir, tf_label in tf_dirs:
+        if tf_filter and tf_label != tf_filter:
+            continue
+        ppath = f"output/results/{tf_dir}/pairs.parquet"
+        if not os.path.exists(ppath):
+            continue
+        pairs = pd.read_parquet(ppath)
+        for _, row in pairs.iterrows():
+            sym_a, sym_b = row["symbol_a"], row["symbol_b"]
+            symbol_counts[sym_a] += 1
+            symbol_counts[sym_b] += 1
+            pair_keys.append((sym_a, sym_b))
+
+    weights: Dict[str, float] = {}
+    for sym_a, sym_b in pair_keys:
+        hub_count = max(symbol_counts[sym_a], symbol_counts[sym_b])
+        weights[f"{sym_a}/{sym_b}"] = 1.0 / hub_count if hub_count > 0 else 1.0
+
+    if weights:
+        vals = list(weights.values())
+        log.info("Hub weights: %d pairs, range [%.3f, %.3f], mean=%.3f",
+                 len(weights), min(vals), max(vals), sum(vals) / len(vals))
+    return weights
+
+
+def compute_risk_parity_weights(
+    is_trades_path: str = "output/backtest/trades_layer1.parquet",
+) -> Dict[str, float]:
+    """
+    Inverse-volatility N_SHARES multipliers from IS trade P&L std.
+
+    multiplier = global_mean_std / pair_pnl_std, clipped to [0.1, 5.0].
+    High-variance pairs (DD/JHG) get fewer shares; quiet pairs get more.
+    Grouped by (symbol_a, symbol_b) — TF and hedge_method averaged out.
+    """
+    if not os.path.exists(is_trades_path):
+        log.warning("Risk parity: IS trades not found at %s — flat sizing", is_trades_path)
+        return {}
+    trades = pd.read_parquet(is_trades_path)
+    grp = trades.groupby(["symbol_a", "symbol_b"])["pnl_net"].std()
+    valid = grp[grp > 0].dropna()
+    if valid.empty:
+        log.warning("Risk parity: no pairs with positive P&L std — flat sizing")
+        return {}
+    global_mean_std = float(valid.mean())
+    weights: Dict[str, float] = {}
+    for (sym_a, sym_b), std in valid.items():
+        weights[f"{sym_a}/{sym_b}"] = float(np.clip(global_mean_std / std, 0.1, 5.0))
+    vals = list(weights.values())
+    log.info("Risk parity: %d pairs, range [%.3f, %.3f], mean=%.3f (global_mean_std=%.4f)",
+             len(weights), min(vals), max(vals), sum(vals) / len(vals), global_mean_std)
+    return weights
+
+
+def compute_pnl_cap_thresholds(
+    is_trades_path: str = "output/backtest/trades_layer1.parquet",
+) -> Dict[str, float]:
+    """
+    Per-pair P&L caps from IS total pair P&L.
+
+    Cap = IS mean pair P&L across all profitable pairs. Once a pair's cumulative
+    OOS P&L hits this level, no new entries are taken. Prevents DD/JHG-style
+    34.8% OOS concentration from a single pair running unconstrained.
+    """
+    if not os.path.exists(is_trades_path):
+        log.warning("P&L cap: IS trades not found at %s — cap disabled", is_trades_path)
+        return {}
+    trades = pd.read_parquet(is_trades_path)
+    pair_totals = trades.groupby(["symbol_a", "symbol_b"])["pnl_net"].sum()
+    profitable = pair_totals[pair_totals > 0]
+    if profitable.empty:
+        log.warning("P&L cap: no profitable IS pairs — cap disabled")
+        return {}
+    cap_threshold = float(profitable.mean())
+    thresholds = {f"{a}/{b}": cap_threshold for (a, b) in pair_totals.index}
+    log.info("P&L cap: IS mean profitable-pair P&L = %.2f → cap on %d pairs",
+             cap_threshold, len(thresholds))
+    return thresholds
+
+
+# ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
 def main() -> None:
@@ -734,14 +873,34 @@ def main() -> None:
                    help="Run on hold-out slice only (last 20%% of each pair).")
     p.add_argument("--layer2", action="store_true",
                    help="Enable Layer 2 (ML + regime gate). Requires trained model.")
+    p.add_argument("--neg-hedge", action="store_true",
+                   help="Option B: allow negative hedge ratios (e.g. ARLO pairs). "
+                        "Default (Option A): skip hedge<=0 pairs.")
+    p.add_argument("--hub-weight", action="store_true",
+                   help="Inverse hub-count N_SHARES weighting. DD in 8 pairs → 1/8 sizing.")
+    p.add_argument("--risk-parity", action="store_true",
+                   help="Inverse-volatility N_SHARES scaling from IS P&L std. "
+                        "Requires trades_layer1.parquet (IS run first).")
+    p.add_argument("--pnl-cap", action="store_true",
+                   help="Cap each pair's cumulative P&L at IS mean pair P&L. "
+                        "Requires trades_layer1.parquet (IS run first).")
     args = p.parse_args()
 
     layer2 = args.layer2 or Config.BACKTEST.LAYER2_ENABLED
     regime_cond = RegimeConditioner(enabled=layer2)
     ml_cond = MLConditioner(enabled=layer2)
+
+    hub_weights = compute_hub_weights(_TF_DIRS, args.tf) if args.hub_weight else {}
+    risk_parity_weights = compute_risk_parity_weights() if args.risk_parity else {}
+    pnl_cap_by_pair = compute_pnl_cap_thresholds() if args.pnl_cap else {}
+
     engine = BacktestEngine(
         cfg=Config.BACKTEST, regime_cond=regime_cond, ml_cond=ml_cond,
         layer2_enabled=layer2,
+        allow_negative_hedge=args.neg_hedge,
+        hub_weights=hub_weights,
+        risk_parity_weights=risk_parity_weights,
+        pnl_cap_by_pair=pnl_cap_by_pair,
     )
 
     hedge_methods = (["ols", "kalman"] if args.hedge == "both"
@@ -749,6 +908,14 @@ def main() -> None:
     label = "layer2" if layer2 else "layer1"
     if args.holdout:
         label += "_holdout"
+    if args.neg_hedge:
+        label += "_neghedge"
+    if args.hub_weight:
+        label += "_hubw"
+    if args.risk_parity:
+        label += "_riskparity"
+    if args.pnl_cap:
+        label += "_pnlcap"
 
     # Run over confirmed pairs
     all_trades: List[Trade] = []

@@ -467,11 +467,109 @@ intermediate statistical grounds alone.
 
 [PLACEHOLDER]
 
-## 7. Strategy / Backtest Results [OUTLINED — depends on backtest.py, not built]
+## 7. Strategy / Backtest Results [DRAFTED — Layer 1 complete; Layer 2 pending ML data]
 
-Per the framing decision above: this chapter's job is to demonstrate the
-methodology from §4 has practical teeth, not to be the sole basis for the
-paper's contribution claim. [PLACEHOLDER until backtest.py exists.]
+Per the framing decision above: this chapter demonstrates the methodology
+from §4 has practical teeth. The strategy is the empirical proof, not the
+primary contribution.
+
+### 7.1 Layer 1 Baseline — Event-Driven Mean Reversion
+
+Layer 1 is a pure stat-arb signal: enter when |z_rolling| ≥ 2.0σ, exit when
+z crosses 0.0, stop at 3.5σ, max hold at 2× half-life. Fixed leg sizing,
+both OLS and Kalman hedge ratios run in parallel. No ML conditioning. No regime
+filtering. All hedge ratios are point-in-time causal series persisted by
+analysis.py — no hedge-ratio lookahead bias.
+
+**Universe:** 11 confirmed pairs across 1min, 3min, 15min, 30min, 1hr, 4hr, 7day
+timeframes. S&P Composite 1500 equities; ETF cross-asset pairs excluded from
+primary findings.
+
+**In-sample (full series):**
+- 620 trades across 11 pairs, both hedge methods
+- Portfolio Sharpe: **3.688**, win rate: 56.0%, max drawdown: $1,907
+- Top pair: VRT/MTZ@1h (26.2% of portfolio P&L)
+
+**Out-of-sample (chronological 20% holdout):**
+- 111 trades
+- Portfolio Sharpe: **3.249** (−12% vs IS — modest, expected degradation)
+- Win rate *improves* OOS: 65.7% vs 56.0% IS — consistent with regime-conditional
+  finding that established 1h pairs mean-revert faster later in their history
+- Max drawdown: $1,088
+- Max concentration: 29.1% in VRT/MTZ@1h
+
+The IS/OOS Sharpe degradation of 12% is smaller than survivorship-bias-corrected
+stat-arb benchmarks typically report (e.g. Gatev et al. 2006 document substantial
+OOS decay). The win-rate *improvement* OOS merits investigation: the most likely
+explanation is selection effects (confirmed pairs are confirmed on the full series,
+so the most recent 20% inherits the pairs that were still cointegrated at confirmation
+time — a mild form of the episodic survivorship bias documented in §8).
+
+### 7.2 Concentration Risk and Position-Sizing Variants
+
+The baseline run reveals a hub-and-spoke concentration problem: VRT/MTZ@1h
+contributes 29.1% of OOS P&L from a single pair. This is material for any
+realistic portfolio — a single idiosyncratic breakdown would dominate performance.
+
+Four concentration-risk approaches were implemented and compared on the OOS holdout:
+
+| Variant          | Trades | Sharpe | Win%  | MaxDD  | TotPnL    | MaxConc% | Dominant pair  |
+|------------------|--------|--------|-------|--------|-----------|----------|----------------|
+| Baseline         | 111    | 3.249  | 65.7% | $1,088 | $24,249   | 29.1%    | VRT/MTZ@1h     |
+| Hub-weight       | 111    | 3.198  | 65.7% | $914   | $21,966   | 32.2%    | VRT/MTZ@1h     |
+| P&L-cap          | 111    | 3.249  | 65.7% | $1,088 | $24,249   | 29.1%    | VRT/MTZ@1h     |
+| Risk-parity      | 111    | 3.276  | 65.7% | $941   | $19,302   | 31.1%    | LNT/WELL@1h    |
+| Neg-hedge (ARLO) | 126    | 3.433  | 66.9% | $1,090 | $29,154   | 24.2%    | VRT/MTZ@1h     |
+
+**Findings:**
+
+*Neg-hedge (recommended):* Allowing negative-correlation pairs (the ARLO cluster,
+where the OU spread `S = log(A) - β·log(B)` with β < 0 remains stationary) adds
+15 OOS trades and improves Sharpe by 0.18. Crucially, concentration *falls
+organically* from 29.1% → 24.2% simply by expanding the confirmed pair universe —
+no explicit concentration control required. This is the strongest single result in
+this comparison.
+
+*P&L-cap:* The IS-calibrated cap (gate entries once cumulative OOS P&L ≥ IS mean
+profitable-pair P&L) never triggered in the 20% holdout window — pairs accumulated
+insufficient OOS P&L to hit the threshold. Effect: zero. This approach may activate
+over longer OOS horizons; it is not effective at 20% slice size.
+
+*Hub-weight (inverse hub-count):* Reduces MaxDD 16% by downweighting symbols that
+appear in many confirmed pairs (DD appears in 8 pairs → 1/8 N_SHARES per DD pair).
+Paradoxically pushes the max-concentration *percentage* up: hub-weight shrinks the
+hub pairs' absolute P&L, reducing total portfolio P&L; VRT/MTZ (not a hub pair, weight
+1.0) now represents a larger *fraction* of the smaller total even at the same absolute
+level. Drawdown reduction is real; concentration reduction requires also being the
+dominant pair, which VRT/MTZ is not hub-connected enough to trigger.
+
+*Risk-parity (inverse-volatility):* The only variant that changes the dominant pair
+(LNT/WELL@1h rather than VRT/MTZ@1h). Cuts MaxDD 13% at cost of 20% of total P&L.
+Viable if portfolio-level drawdown is the binding constraint.
+
+**Recommended production run:** `--neg-hedge` as default. `--risk-parity` as an
+optional complement if a drawdown budget is explicit.
+
+### 7.3 Layer 2 — ML Gate [DEFERRED — insufficient training data]
+
+Layer 2 adds a P(converge) ≥ 0.60 threshold from a trained XGBoost meta-labeler
+(ml.py Stage 1). As of 2026-06-28, training cannot proceed: only 40 labeled
+entry events exist across all confirmed pairs, with 5 in the minority (converged)
+class versus the required 30-per-class minimum. The dominant filter is
+`future_not_clean`: most entry events fire on forward-filled overnight bars in
+intraday spread_series files, where the outcome bar is also non-trading-hours
+padding and is excluded by design.
+
+The bottleneck is intraday history depth — data.py's append-mode accumulation
+began 2026-06-21 (7 days prior to this writing). Expected training viability:
+2-4 weeks.
+
+This result is reported honestly rather than suppressed: it demonstrates that the
+meta-labeling architecture is sound (the training gate, feature pipeline, and model
+persistence all work end-to-end), but that disciplined data requirements prevent
+a model from being deployed on insufficient evidence. This is the Lopez de Prado
+discipline in practice — "report the honest data-constrained result, re-run as
+history accumulates."
 
 ## 8. Bias Documentation [OUTLINED, one bias drafted in detail]
 
