@@ -1,0 +1,20 @@
+=== CAMARF stats.py ===
+date:        2026-06-29 00:05
+runtime_min: 0.1
+
+Input: 37 confirmed pairs
+Trades: IS=620 OOS=111 neghedge=126
+[S1 Cointegration tiers] gold=4 silver=23 bronze=10 no_spread=0 conflict=33
+[S2 Hedge ratios] robust=1/37 (spread_bps < 500)
+[S3 EVT/GPD] fat_tail_pairs=32/37 (xi > 0.30)
+[S4 DCC-GARCH] 6 pair-pairs; peak_rho>0.70: 0 (correlated-loss risk)
+[S5 Phase 1] best_fit_dist=garch11_normal_resid (AIC), n_trades=731
+[S5 Phase 2] regime_bootstrap: 1 groups, iid_median_sharpe=7.10
+[S5 Phase 3] slippage tested at [0, 2, 5, 10, 20] bps/side
+[S5 Phase 4] efficiency=0.516 bliss=11.485 win_rate=0.870
+[S6 Permutation] backtest_equity_sharpe=3.2490 closed_trade_sharpe=10.2870 p_value=0.6690 significant=False n_perms=1000
+[S6 Permutation] backtest_equity_sharpe=3.6883 closed_trade_sharpe=10.3714 p_value=0.0020 significant=True n_perms=1000
+
+runtime_min: 0.1
+
+=== end ===
