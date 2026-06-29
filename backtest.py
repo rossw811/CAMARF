@@ -328,6 +328,8 @@ class BacktestEngine:
         hub_weights: Optional[Dict[str, float]] = None,
         risk_parity_weights: Optional[Dict[str, float]] = None,
         pnl_cap_by_pair: Optional[Dict[str, float]] = None,
+        storm_flags: Optional[Dict[str, bool]] = None,
+        mm_hedge_map: Optional[Dict[str, float]] = None,
     ):
         self.cfg = cfg
         self.regime_cond = regime_cond
@@ -341,6 +343,11 @@ class BacktestEngine:
         # pnl_cap_by_pair: {sym_a/sym_b -> cap_threshold} — gates new entries above cap
         self.pnl_cap_by_pair = pnl_cap_by_pair or {}
         self._pair_pnl: Dict[str, float] = {}  # cumulative net P&L per pair (for cap)
+        # STORM experimental variants
+        # storm_flags keys: coint_frac_sizing, garch_stop, session_edge, mm_exec
+        self.storm_flags = storm_flags or {}
+        # mm_hedge_map: {sym_a/sym_b -> beta_mm} loaded from hedge_ratio_comparison.parquet
+        self.mm_hedge_map = mm_hedge_map or {}
 
     def run(
         self,
@@ -400,6 +407,33 @@ class BacktestEngine:
         timestamps = df.index
         n = len(df)
 
+        # STORM: pre-compute rolling z-score volatility for garch_stop variant
+        _garch_stop = self.storm_flags.get("garch_stop", False)
+        _rolling_z_std = None
+        _hist_z_std = 1.0
+        if _garch_stop:
+            _hist_z_std = float(np.nanstd(z_arr)) or 1.0
+            _rolling_z_std = (pd.Series(z_arr)
+                               .rolling(100, min_periods=10)
+                               .std()
+                               .fillna(_hist_z_std)
+                               .values)
+
+        # STORM: MM execution — look up beta_mm for this pair
+        _mm_exec = self.storm_flags.get("mm_exec", False)
+        _pair_key_full = f"{sym_a}/{sym_b}"
+        _beta_mm = self.mm_hedge_map.get(_pair_key_full) if _mm_exec else None
+
+        # STORM: intraday TF detection for session_edge filter
+        _session_edge = self.storm_flags.get("session_edge", False)
+        _is_intraday = any(c in tf for c in ["m", "h"]) and "D" not in tf and "W" not in tf
+
+        # STORM: coint_frac_sizing — continuous size scaling by rolling confirmation fraction
+        _coint_frac_sizing = self.storm_flags.get("coint_frac_sizing", False)
+        _coint_frac = float(pair_row.get("coint_fraction_rolling", 1.0))
+        if not np.isfinite(_coint_frac) or _coint_frac <= 0:
+            _coint_frac = 1.0
+
         # Point-in-time causal hedge ratio series (added to spread_series by
         # analysis.py after the lookahead-bias fix). Falls back to scalar when
         # the column is absent (pre-fix spread_series files).
@@ -446,6 +480,12 @@ class BacktestEngine:
 
             if not in_position:
                 # ---- Entry logic ----
+                # STORM: session_edge filter — skip entries near open/close (intraday only)
+                if _session_edge and _is_intraday:
+                    _hr, _mn = getattr(ts, "hour", -1), getattr(ts, "minute", 0)
+                    if (_hr == 9 and _mn < 30) or _hr >= 15:
+                        continue
+
                 if abs(z) < self.cfg.ENTRY_ZSCORE:
                     continue
                 hl_at_entry = hl if np.isfinite(hl) and hl >= self.cfg.MIN_HALF_LIFE_BARS else np.nan
@@ -492,6 +532,15 @@ class BacktestEngine:
                 hub_w = self.hub_weights.get(_pair_key, 1.0)
                 rp_w = self.risk_parity_weights.get(_pair_key, 1.0)
                 n_shares = max(1, int(self.cfg.N_SHARES_PER_TRADE * size_mult * hub_w * rp_w))
+
+                # STORM: coint_frac_sizing — scale shares by rolling confirmation fraction
+                if _coint_frac_sizing:
+                    n_shares = max(1, int(n_shares * _coint_frac))
+
+                # STORM: mm_exec — use MM hedge ratio for position sizing if available
+                if _mm_exec and _beta_mm is not None and np.isfinite(_beta_mm) and _beta_mm > 0:
+                    hedge_pit = _beta_mm
+
                 side = "short" if z > 0 else "long"
 
                 current_trade = Trade(
@@ -522,8 +571,14 @@ class BacktestEngine:
                 # Exit conditions (checked in priority order)
                 exit_reason = ""
 
+                # STORM: garch_stop — tighten stop when conditional vol > 2× historical
+                _effective_stop = self.cfg.STOP_ZSCORE
+                if _garch_stop and _rolling_z_std is not None:
+                    if _rolling_z_std[i] > 2.0 * _hist_z_std:
+                        _effective_stop = min(_effective_stop, 3.0)
+
                 # 1. Stop loss: spread widened further
-                if abs(z) >= self.cfg.STOP_ZSCORE:
+                if abs(z) >= _effective_stop:
                     exit_reason = "stop"
 
                 # 2. Signal exit: z crossed toward zero past EXIT_ZSCORE
@@ -767,6 +822,26 @@ def _print_summary(all_metrics: List[Dict], portfolio_stats: Dict, label: str) -
 
 
 # ---------------------------------------------------------------------------
+# STORM helper: MM hedge map loader
+# ---------------------------------------------------------------------------
+def load_mm_hedge_map() -> Dict[str, float]:
+    """Load MM hedge ratios from stats.py output for STORM mm_exec variant."""
+    p = os.path.join("output", "stats", "hedge_ratio_comparison.parquet")
+    if not os.path.exists(p):
+        log.warning("MM hedge map: %s not found — mm_exec disabled", p)
+        return {}
+    df = pd.read_parquet(p)
+    result: Dict[str, float] = {}
+    for _, row in df.iterrows():
+        key = f"{row['symbol_a']}/{row['symbol_b']}"
+        beta_mm = float(row.get("beta_mm", np.nan))
+        if np.isfinite(beta_mm) and beta_mm > 0:
+            result[key] = beta_mm
+    log.info("MM hedge map: %d pairs loaded", len(result))
+    return result
+
+
+# ---------------------------------------------------------------------------
 # Concentration-risk helpers
 # ---------------------------------------------------------------------------
 def compute_hub_weights(tf_dirs: List[Tuple[str, str]], tf_filter: Optional[str]) -> Dict[str, float]:
@@ -884,6 +959,17 @@ def main() -> None:
     p.add_argument("--pnl-cap", action="store_true",
                    help="Cap each pair's cumulative P&L at IS mean pair P&L. "
                         "Requires trades_layer1.parquet (IS run first).")
+    # STORM experimental variants
+    p.add_argument("--storm-coint-frac", action="store_true",
+                   help="STORM: scale N_SHARES by coint_fraction_rolling (0–1 continuous sizing).")
+    p.add_argument("--storm-garch-stop", action="store_true",
+                   help="STORM: tighten stop to |z|>3.0 when rolling z-vol > 2× historical.")
+    p.add_argument("--storm-session-edge", action="store_true",
+                   help="STORM: skip entries in first/last 30 min of session (intraday only).")
+    p.add_argument("--storm-mm-exec", action="store_true",
+                   help="STORM: use MM (outlier-robust) hedge ratio for execution sizing.")
+    p.add_argument("--storm-all", action="store_true",
+                   help="STORM: enable all 4 experimental variants simultaneously.")
     args = p.parse_args()
 
     layer2 = args.layer2 or Config.BACKTEST.LAYER2_ENABLED
@@ -894,6 +980,16 @@ def main() -> None:
     risk_parity_weights = compute_risk_parity_weights() if args.risk_parity else {}
     pnl_cap_by_pair = compute_pnl_cap_thresholds() if args.pnl_cap else {}
 
+    # STORM flags
+    _storm_all = getattr(args, "storm_all", False)
+    storm_flags = {
+        "coint_frac_sizing": getattr(args, "storm_coint_frac", False) or _storm_all,
+        "garch_stop":        getattr(args, "storm_garch_stop", False) or _storm_all,
+        "session_edge":      getattr(args, "storm_session_edge", False) or _storm_all,
+        "mm_exec":           getattr(args, "storm_mm_exec", False) or _storm_all,
+    }
+    mm_hedge_map = load_mm_hedge_map() if storm_flags.get("mm_exec") else {}
+
     engine = BacktestEngine(
         cfg=Config.BACKTEST, regime_cond=regime_cond, ml_cond=ml_cond,
         layer2_enabled=layer2,
@@ -901,6 +997,8 @@ def main() -> None:
         hub_weights=hub_weights,
         risk_parity_weights=risk_parity_weights,
         pnl_cap_by_pair=pnl_cap_by_pair,
+        storm_flags=storm_flags,
+        mm_hedge_map=mm_hedge_map,
     )
 
     hedge_methods = (["ols", "kalman"] if args.hedge == "both"
@@ -916,6 +1014,15 @@ def main() -> None:
         label += "_riskparity"
     if args.pnl_cap:
         label += "_pnlcap"
+    if _storm_all:
+        label += "_stormall"
+    elif any(storm_flags.values()):
+        sfx = "_storm"
+        if storm_flags.get("coint_frac_sizing"): sfx += "_cfrac"
+        if storm_flags.get("garch_stop"):        sfx += "_gstop"
+        if storm_flags.get("session_edge"):      sfx += "_sedge"
+        if storm_flags.get("mm_exec"):           sfx += "_mmexec"
+        label += sfx
 
     # Run over confirmed pairs
     all_trades: List[Trade] = []

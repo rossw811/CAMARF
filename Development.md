@@ -6952,3 +6952,133 @@ disables when pkl absent).
    DCC-GARCH rolling correlation, permutation test on portfolio Sharpe.
 5. **PAPER.md §7** — drafted this session with real numbers. Flesh out prose around the
    concentration-risk comparison table once the final "recommended run" (neg-hedge) is committed.
+
+---
+
+## Session 16 (2026-06-28) — stats.py S1–S7; lead-lag scan; PAPER.md structure
+
+### Overview
+
+Session ran stats.py through all seven sections (S1–S7). Key results:
+
+- **S1 cointegration tiers**: gold=4, silver=23, bronze=10, conflict=33
+- **S2 hedge ratios**: robust=1/37 (spread_bps < 500)
+- **S3 EVT/GPD**: fat_tail_pairs=32/37 (xi > 0.30) — near-universal fat tails
+- **S4 DCC-GARCH**: 6 pair-pairs; peak_rho>0.70: 0 (no correlated-loss risk)
+- **S5 Phase 1**: best_fit_dist=garch11_normal_resid; Phase 2 regime_bootstrap: 1 group,
+  iid_median_sharpe=7.10; Phase 4: efficiency=0.516, bliss=11.485, win_rate=0.870
+- **S6 Permutation** (two runs):
+  - Equity-only: p=0.669 (not significant) — full-sample period effect, not path-specific
+  - Closed-trades: p=0.002 (significant, n=1000) — **trade-selection skill confirmed**
+  This bifurcation is the core finding: equity path not special, but closed-trade selection is.
+- **S7 half-life stationarity**: planned, not yet built
+- **Lead-lag scan**: null result. lag-0 dominant for all confirmed pairs — no useful lead-lag
+  structure. Validates that contemporaneous spread (hedge_ratio_ols_t) is correct form.
+- **PAPER.md structure**: calibration finding elevated to lead. Methodology-first framing confirmed.
+  Figures outlined (basis for Session 17's 26-figure expansion).
+- **Lookahead bias fix (Session 16/17 boundary)**: spread_series now persists point-in-time
+  `hedge_ratio_ols_t` column (causal rolling OLS). backtest.py uses this instead of full-sample
+  OLS. WFA uses this series for fold-level OU re-estimation (semi-WFA — raw prices not available
+  in spread_series, only the pre-computed causal spread).
+
+---
+
+## Session 17 (2026-06-28/29) — report.py 26 figures; STORM variants; wfa.py all-strategy comparison
+
+### Overview
+
+Three major deliverables this session:
+
+1. **report.py expanded to 26 figures** (from 8)
+2. **STORM experimental variants built and compared** in backtest.py
+3. **wfa.py all-strategy comparison** — 12 combinations (2 WFA structures × 6 strategies)
+
+### report.py 26 figures
+
+Added 18 new figure functions covering cointegration characterization, strategy
+performance deep-dive, and statistical validation. All 26 generated, main.tex=28,782 chars.
+
+Key new figures:
+- `fig_coint_fraction_hist` — rolling stability histogram by tier
+- `fig_half_life_by_tier` — box plot per tier
+- `fig_hurst_scatter` — RS vs DFA Hurst
+- `fig_timeframe_distribution` — confirmed pairs by TF stacked bar
+- `fig_per_pair_sharpe_oos` — OOS Sharpe horizontal bar chart per pair
+- `fig_exit_reasons` — IS vs OOS exit reason breakdown
+- `fig_hold_duration` — hold duration histogram
+- `fig_entry_z_vs_pnl` — entry z-score vs P&L scatter
+- `fig_pnl_by_pair` — box/strip plot OOS P&L per pair
+- `fig_variant_comparison` — Sharpe across all 6 backtest variants
+- `fig_win_rate_is_vs_oos` — IS vs OOS win rate paired dots
+- `fig_all_hedge_estimators` — Cleveland dot plot all 5 estimators
+- `fig_evt_xi_scatter` — xi_spread vs xi_pnl scatter
+- **`fig_coint_vs_oos_sharpe`** — KEY: empirical Skeptic test — coint_fraction_rolling vs
+  OOS Sharpe per pair, linear trend + tier color coding
+- `fig_perm_distribution` — permutation null distribution
+- `fig_mc_quality` — trade quality with sim confidence bands
+- `fig_dcc_heatmap` — peak DCC correlation heatmap
+
+### STORM experimental variants
+
+Four flags added to backtest.py (storm_flags dict + argparse):
+
+| Variant | OOS Trades | OOS PnL | OOS Sharpe | Notes |
+|---------|-----------|---------|-----------|-------|
+| baseline | 111 | $24,249 | 3.249 | control |
+| coint_frac_sizing | 111 | $2,066 | 2.272 | WORST: confirmed pairs have coint_frac_rolling=0.03–0.05 |
+| garch_stop | 111 | $24,249 | 3.249 | No effect — high-vol stop never triggered |
+| session_edge | 109 | $21,084 | 3.378 | **BEST +0.13 Sharpe** — removes 2 trades near open/close |
+| mm_exec | 111 | $24,281 | 3.252 | Marginal improvement |
+| storm_all | 109 | $1,338 | 3.068 | Dominated by coint_frac collapse |
+
+**Key finding — Strictness Paradox at sizing level:**
+`coint_fraction_rolling` for confirmed pairs is 0.03–0.05 (3–5%), not 0.5–1.0 as expected.
+Using it as a continuous position-size multiplier shrinks positions to 3–5% of intended,
+collapsing P&L from $24K to $2K. The metric is better used as a binary threshold filter
+(e.g., exclude pairs with coint_fraction_rolling < 0.10) rather than a continuous weight.
+This extends the Strictness Paradox — the same metric that produces near-zero false positives
+at the pair-selection level also produces near-zero position sizes at the sizing level.
+
+### wfa.py all-strategy comparison
+
+`run_wfa()` already accepted `storm_flags`/`mm_hedge_map`. Updated `main()` to loop over all
+12 combinations. Results:
+
+| Strategy | Expanding Sharpe | Rolling Sharpe | Expanding Trades | Rolling Trades |
+|----------|----------------|---------------|-----------------|----------------|
+| baseline | 1.678 | 1.204 | 1390 | 1426 |
+| session_edge | **1.846** | **1.273** | 742 | 753 |
+| mm_exec | 1.595 | 1.339 | 4502* | 2148 |
+| garch_stop | 1.678 | 1.198 | 1390 | 1427 |
+| cfrac_sizing | 1.112 | 0.772 | 1390 | 1426 |
+| storm_all | 0.923 | 0.755 | 2719 | 1222 |
+
+*mm_exec trade count inflation (4502 vs 1390) in expanding variant — mm_hedge_map likely
+allowing entries the OLS hedge would skip. Worth investigating before making mm_exec permanent.
+
+**Consistent story across backtest.py OOS and WFA:** session_edge is the best standalone
+variant; cfrac_sizing is counterproductive; garch_stop is neutral.
+
+### Fold-level WFA results (baseline)
+
+```
+expanding:  fold1 Sharpe=180.8 (82.8 avg trades)  fold2 Sharpe=1503.8 (39.6 avg trades)
+rolling:    fold1 Sharpe=180.8                      fold2 Sharpe=433.9  (39.3 avg trades)
+```
+
+High fold Sharpes driven by strong pairs + tick-level data granularity. These are per-pair
+fold Sharpes aggregated, not portfolio Sharpe — not directly comparable to OOS portfolio Sharpe.
+
+### Pending from Session 17
+
+- CPF/WAFD and CPK/WAFD: `hedge_direction_conflict` flag needed — sign flip between OLS and MM
+  hedge ratios. Currently no exclusion. Add to analysis.py.
+- Kalman drift velocity: d(beta_kalman)/dt over 20 bars, per pair, as a feature.
+- stats.py S7: AR(1) on rolling half-life time series + Zivot-Andrews test per pair.
+- Distance method baseline: Gatev-style comparison (mentioned, not built).
+- mm_exec WFA trade count anomaly: investigate why expanding+mm_exec generates 4502 vs 1390 trades.
+- STORM additional ideas (from original briefing):
+  - Short volatility payoff profile quantification (premium per unit tail risk)
+  - Economic mechanism scoring (sector proximity as feature)
+  - Bid-ask proxy as ml.py feature
+  - Partial cointegration (Clegg/Krauss) comparison

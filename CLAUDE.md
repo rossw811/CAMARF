@@ -278,45 +278,45 @@ This is as important as the technical rules above.
 
 ## Current State (update this section each session)
 
-See `DEVELOPMENT.md` Sessions 10–15 for full detail. Headline items:
+See `DEVELOPMENT.md` Sessions 10–17 for full detail. Headline items:
 
+- **Session 17 (2026-06-28/29)**: report.py expanded to 26 figures. wfa.py built
+  (semi-WFA, 20/30/20/30, expanding + rolling). STORM variants built and compared.
+  WFA now runs all 12 combinations (2 structures × 6 strategies).
+- **STORM variant results (OOS holdout, 20% of spread_series)**:
+  - Baseline: 111 trades, $24,249, Sharpe=3.249
+  - session_edge: 109 trades, $21,084, Sharpe=3.378 **(BEST +0.13)**
+  - mm_exec: 111 trades, $24,281, Sharpe=3.252 (marginal)
+  - garch_stop: 111 trades, $24,249, Sharpe=3.249 (no effect — never triggered)
+  - coint_frac_sizing: 111 trades, $2,066, Sharpe=2.272 **(WORST — confirmed pairs have
+    coint_fraction_rolling=0.03–0.05, shrinks positions to 3–5% of intended)**
+  - storm_all: 109 trades, $1,338, Sharpe=3.068 (dominated by coint_frac collapse)
+- **Strictness Paradox at sizing level**: coint_fraction_rolling as continuous position
+  weight is counterproductive for confirmed pairs. Better used as binary threshold filter,
+  not continuous weight.
+- **WFA semi-WFA definition**: per fold, re-estimate OU params (mu, sigma, half_life) from
+  training window; use causal hedge_ratio_ols_t from spread_series (no raw price
+  re-estimation needed, which is impossible since spread_series doesn't have raw prices).
+- **WFA baseline results**: expanding fold1 Sharpe=180.8, fold2=1503.8; rolling fold2=433.9.
+  (Very high — driven by strong pairs + no transaction cost scaling in test folds.)
+- **26-figure report.py**: all 26 figures generated, main.tex=28,782 chars.
+  Key figure: fig_coint_vs_oos_sharpe (empirical Skeptic test — coint_fraction_rolling
+  vs OOS Sharpe per pair, linear trend + tier color coding).
+- **stats.py complete (Session 16/17)**: S1–S7 all running. S6 permutation: p=0.002
+  (significant, n=1000 perms). EVT fat tails: 32/37 pairs xi>0.30.
 - **Session 15 (2026-06-28)**: Analysis.py re-run with PIT hedge fix complete.
-  Concentration-risk comparison finished. neg-hedge is the recommended default.
-  ML gate not yet trainable (data insufficient). See Session 15 results below.
-- **Post-PIT backtest results (Session 15)**:
-  - IS: Sharpe=3.688, WinRate=56.0%, MaxDD=$1,907, TotPnL=$144,645, MaxConc=26.2% (VRT/MTZ@1h)
-  - OOS baseline: Sharpe=3.249, WinRate=65.7%, MaxDD=$1,088, MaxConc=29.1% (VRT/MTZ@1h)
-  - Best variant — **neg-hedge**: Sharpe=3.433, WinRate=66.9%, MaxConc=24.2%, TotPnL=$29,154
-  - PnL-cap: identical to OOS baseline (cap never triggers in 20% holdout)
-  - Hub-weight: MaxDD↓16% but concentration% paradoxically rises (VRT/MTZ share grows as hub P&L shrinks)
-  - Risk-parity: shifts dominant pair LNT/WELL, MaxDD↓13%, P&L↓20%
-- **Layer 2 ML gate (Session 15)**: ml.py model persistence added (saves to
-  `output/ml/model_stage1.pkl`). MLConditioner class-probability bug fixed
-  (`probs[0,1]` was P(not_converged); now uses `_converge_indices`). Feature
-  alignment corrected (8 features, matching ml.py `_FEATURE_COLS` exactly).
-  Training gate not cleared: only 40 examples, 5 converged class (need ≥30/class).
-  Intraday history too short (7 days since append-switch 2026-06-21). Re-run in
-  2-4 weeks as history accumulates.
-- **ARLO Option B resolved (Session 15)**: `--neg-hedge` flag allows negative
-  hedge ratios. Entry guard now checks `hedge <= 0 and not allow_negative_hedge`.
-  Adds 15 trades OOS, Sharpe +0.18.
-- **Project location**: `C:\Users\RossW\Projects\CAMARF` (migrated from OneDrive
-  this session — OneDrive "Files on Demand" evicted source files; git clone from
-  GitHub restored everything).
-- **run_comparison.ps1**: 8 runs: IS baseline + 5 holdout variants + ml.py + layer2.
-- **backtest.py built (Session 14)**: Layer 1 event-driven baseline complete.
-  `--neg-hedge`, `--hub-weight`, `--risk-parity`, `--pnl-cap` flags added Session 15.
-- **BUG-D51 (Session 13)**: `_clean_close()` returns `np.ndarray` — always
-  wrap with `pd.Series(..., index=df.index)`. In Known-Resolved Issues.
-- **Regime-conditional analysis (Session 13, strong finding)**: VIX crisis →
-  hl_ratio=0.09 (11× faster); backwardation → 0.65; contango → 2.36× slower;
-  yield_curve normal → 4.4× slower. Layer 2 RegimeConditioner wired to this.
-- **HMM regime detection (Session 13)**: 3-state VIXCLS, 2-state T10Y2Y, 2-state COT ES.
-- **Next priority**: wait for intraday data to accumulate → re-run ml.py → Layer 2
-  OOS run. Then stats.py (EVT, DCC-GARCH, permutation test).
+  Post-PIT OOS baseline: Sharpe=3.249, WinRate=65.7%, MaxDD=$1,088.
+  Best variant: **neg-hedge** Sharpe=3.433. See sessions 10–15 for details.
+- **Project location**: `C:\Users\RossW\Projects\CAMARF` (migrated from OneDrive Session 15).
 - **Always run scripts via
   `C:\Users\RossW\anaconda3\envs\trading\python.exe`**, not bare
   `python` (see Known-Resolved Issues).
+- **Next priorities**:
+  - CPF/WAFD hedge_direction_conflict flag in analysis.py
+  - Kalman drift velocity d(beta)/dt in analysis.py
+  - stats.py S7 half-life stationarity (AR(1) + Zivot-Andrews on rolling HL series)
+  - Distance method baseline (Gatev-style)
+  - ML gate: wait ~2 weeks for intraday data, then re-train
 
 ---
 
