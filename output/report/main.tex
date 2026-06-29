@@ -255,6 +255,41 @@ cointegration is episodic rather than durable.
 \label{fig:tier}
 \end{figure}
 
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.70\textwidth]{figures/coint_fraction_hist.png}
+\caption{Distribution of rolling cointegration stability by tier.}
+\label{fig:coint_frac_hist}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.65\textwidth]{figures/half_life_by_tier.png}
+\caption{Half-life by tier. Gold pairs exhibit shorter, more reliable mean-reversion.}
+\label{fig:half_life_tier}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.60\textwidth]{figures/hurst_scatter.png}
+\caption{R/S vs DFA Hurst exponent. Quadrant III (both $< 0.5$) indicates mean-reversion.}
+\label{fig:hurst_scatter}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.75\textwidth]{figures/timeframe_distribution.png}
+\caption{Confirmed pairs by timeframe. Intraday timeframes dominate.}
+\label{fig:tf_dist}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.65\textwidth]{figures/half_life_trend.png}
+\caption{Distribution of half-life trend slope. Positive values indicate slowing mean-reversion over time.}
+\label{fig:half_life_trend}
+\end{figure}
+
 
 \section{Strategy Performance}
 
@@ -274,8 +309,65 @@ Key OOS metrics (baseline variant):
 \begin{figure}[htbp]
 \centering
 \includegraphics[width=0.90\textwidth]{figures/equity_curve.png}
-\caption{Cumulative portfolio P\&L equity curve (IS and OOS holdout).}
+\caption{Cumulative portfolio P\&L equity curve (IS and OOS holdout) with drawdown panel.}
 \label{fig:equity}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.75\textwidth]{figures/per_pair_sharpe_oos.png}
+\caption{OOS Sharpe by pair (OLS hedge). C/MS is the primary performance drag.}
+\label{fig:pair_sharpe_oos}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.62\textwidth]{figures/exit_reasons.png}
+\caption{Exit reason breakdown IS vs OOS. Elevated stop rate OOS reflects episodic convergence failure.}
+\label{fig:exit_reasons}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.70\textwidth]{figures/hold_duration.png}
+\caption{Hold duration distribution. OOS shows heavier right tail --- trades take longer to resolve.}
+\label{fig:hold_duration}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.62\textwidth]{figures/entry_z_vs_pnl.png}
+\caption{Entry z-score vs net P\&L (OOS). No strong monotonic relationship visible at this sample size.}
+\label{fig:entry_z_pnl}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.80\textwidth]{figures/pnl_by_pair.png}
+\caption{Per-trade P\&L box plot by pair (OOS). VRT/MTZ dominates positive contribution.}
+\label{fig:pnl_by_pair}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.75\textwidth]{figures/variant_comparison.png}
+\caption{Sharpe comparison across backtest variants. All OOS variants remain positive.}
+\label{fig:variant_cmp}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.70\textwidth]{figures/win_rate_is_vs_oos.png}
+\caption{Win rate IS vs OOS by pair. Degradation is heterogeneous across pairs.}
+\label{fig:win_rate_cmp}
+\end{figure}
+
+\subsection{Rolling Stability as Performance Predictor}
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.80\textwidth]{figures/coint_vs_oos_sharpe.png}
+\caption{Rolling stability fraction vs OOS Sharpe per pair (empirical Skeptic test). Bubble size $\propto$ trade count. Positive slope supports the hypothesis that rolling stability is a valid predictor of OOS profitability.}
+\label{fig:coint_vs_sharpe}
 \end{figure}
 
 
@@ -330,6 +422,13 @@ entry signal produced which P\&L outcome is non-random.
 
 \begin{figure}[htbp]
 \centering
+\includegraphics[width=0.60\textwidth]{figures/evt_xi_scatter.png}
+\caption{Spread $\xi$ vs P\&L $\xi$. Fat-tailed spreads do not always produce fat-tailed P\&L.}
+\label{fig:evt_xi_scatter}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
 \includegraphics[width=0.65\textwidth]{figures/slippage_sensitivity.png}
 \caption{Portfolio Sharpe as a function of per-side slippage.}
 \label{fig:slippage}
@@ -338,8 +437,15 @@ entry signal produced which P\&L outcome is non-random.
 \begin{figure}[htbp]
 \centering
 \includegraphics[width=0.90\textwidth]{figures/dcc_rolling.png}
-\caption{DCC-GARCH rolling cross-pair correlations. Dashed line: concentration-risk threshold (0.70).}
+\caption{DCC-GARCH rolling cross-pair correlations. Dashed line: 0.70 concentration-risk threshold.}
 \label{fig:dcc}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.70\textwidth]{figures/dcc_heatmap.png}
+\caption{Peak pairwise DCC correlation heatmap. No pair-pair correlation exceeds 0.30.}
+\label{fig:dcc_heatmap}
 \end{figure}
 
 \begin{figure}[htbp]
@@ -351,6 +457,13 @@ entry signal produced which P\&L outcome is non-random.
 
 \begin{figure}[htbp]
 \centering
+\includegraphics[width=0.65\textwidth]{figures/mc_quality.png}
+\caption{Trade quality metrics (efficiency, bliss, win rate) vs MC simulation 5th--95th percentile band.}
+\label{fig:mc_quality}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
 \includegraphics[width=0.65\textwidth]{figures/mfe_mae.png}
 \caption{Maximum Adverse Excursion vs.\ Maximum Favorable Excursion per trade.}
 \label{fig:mfe}
@@ -358,9 +471,23 @@ entry signal produced which P\&L outcome is non-random.
 
 \begin{figure}[htbp]
 \centering
+\includegraphics[width=0.90\textwidth]{figures/perm_distribution.png}
+\caption{White Reality Check: permuted vs realized closed-trade Sharpe (Normal approximation of null distribution).}
+\label{fig:perm_dist}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
 \includegraphics[width=0.65\textwidth]{figures/hedge_estimators.png}
 \caption{OLS vs.\ MM hedge ratio estimates. Identity line in dashes.}
 \label{fig:hedge}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.80\textwidth]{figures/all_hedge_estimators.png}
+\caption{All five hedge estimators per pair (Cleveland dot plot, sorted by estimator range).}
+\label{fig:all_hedge_est}
 \end{figure}
 
 
