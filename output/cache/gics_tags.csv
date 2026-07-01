@@ -1,0 +1,1504 @@
+symbol,sector,industry_group,industry,sub_industry,name,index
+MMM,Industrials,,,Industrial Conglomerates,3M,sp500
+AOS,Industrials,,,Building Products,A. O. Smith,sp500
+ABT,Health Care,,,Health Care Equipment,Abbott Laboratories,sp500
+ABBV,Health Care,,,Biotechnology,AbbVie,sp500
+ACN,Information Technology,,,IT Consulting & Other Services,Accenture,sp500
+ADBE,Information Technology,,,Application Software,Adobe Inc.,sp500
+AMD,Information Technology,,,Semiconductors,Advanced Micro Devices,sp500
+AES,Utilities,,,Independent Power Producers & Energy Traders,AES Corporation,sp500
+AFL,Financials,,,Life & Health Insurance,Aflac,sp500
+A,Health Care,,,Life Sciences Tools & Services,Agilent Technologies,sp500
+APD,Materials,,,Industrial Gases,Air Products,sp500
+ABNB,Consumer Discretionary,,,"Hotels, Resorts & Cruise Lines",Airbnb,sp500
+AKAM,Information Technology,,,Internet Services & Infrastructure,Akamai Technologies,sp500
+ALB,Materials,,,Specialty Chemicals,Albemarle Corporation,sp500
+ARE,Real Estate,,,Office REITs,Alexandria Real Estate Equities,sp500
+ALGN,Health Care,,,Health Care Supplies,Align Technology,sp500
+ALLE,Industrials,,,Building Products,Allegion,sp500
+LNT,Utilities,,,Electric Utilities,Alliant Energy,sp500
+ALL,Financials,,,Property & Casualty Insurance,Allstate,sp500
+GOOGL,Communication Services,,,Interactive Media & Services,Alphabet Inc. (Class A),sp500
+GOOG,Communication Services,,,Interactive Media & Services,Alphabet Inc. (Class C),sp500
+MO,Consumer Staples,,,Tobacco,Altria,sp500
+AMZN,Consumer Discretionary,,,Broadline Retail,Amazon,sp500
+AMCR,Materials,,,Paper & Plastic Packaging Products & Materials,Amcor,sp500
+AEE,Utilities,,,Multi-Utilities,Ameren,sp500
+AEP,Utilities,,,Electric Utilities,American Electric Power,sp500
+AXP,Financials,,,Consumer Finance,American Express,sp500
+AIG,Financials,,,Multi-line Insurance,American International Group,sp500
+AMT,Real Estate,,,Telecom Tower REITs,American Tower,sp500
+AWK,Utilities,,,Water Utilities,American Water Works,sp500
+AMP,Financials,,,Asset Management & Custody Banks,Ameriprise Financial,sp500
+AME,Industrials,,,Electrical Components & Equipment,Ametek,sp500
+AMGN,Health Care,,,Biotechnology,Amgen,sp500
+APH,Information Technology,,,Electronic Components,Amphenol,sp500
+ADI,Information Technology,,,Semiconductors,Analog Devices,sp500
+AON,Financials,,,Insurance Brokers,Aon plc,sp500
+APA,Energy,,,Oil & Gas Exploration & Production,APA Corporation,sp500
+APO,Financials,,,Asset Management & Custody Banks,Apollo Global Management,sp500
+AAPL,Information Technology,,,"Technology Hardware, Storage & Peripherals",Apple Inc.,sp500
+AMAT,Information Technology,,,Semiconductor Materials & Equipment,Applied Materials,sp500
+APP,Information Technology,,,Application Software,AppLovin,sp500
+APTV,Consumer Discretionary,,,Automotive Parts & Equipment,Aptiv,sp500
+ACGL,Financials,,,Property & Casualty Insurance,Arch Capital Group,sp500
+ADM,Consumer Staples,,,Agricultural Products & Services,Archer Daniels Midland,sp500
+ARES,Financials,,,Asset Management & Custody Banks,Ares Management,sp500
+ANET,Information Technology,,,Communications Equipment,Arista Networks,sp500
+AJG,Financials,,,Insurance Brokers,Arthur J. Gallagher & Co.,sp500
+AIZ,Financials,,,Multi-line Insurance,Assurant,sp500
+T,Communication Services,,,Integrated Telecommunication Services,AT&T,sp500
+ATO,Utilities,,,Gas Utilities,Atmos Energy,sp500
+ADSK,Information Technology,,,Application Software,Autodesk,sp500
+ADP,Industrials,,,Human Resource & Employment Services,Automatic Data Processing,sp500
+AZO,Consumer Discretionary,,,Automotive Retail,AutoZone,sp500
+AVB,Real Estate,,,Multi-Family Residential REITs,AvalonBay Communities,sp500
+AVY,Materials,,,Paper & Plastic Packaging Products & Materials,Avery Dennison,sp500
+AXON,Industrials,,,Aerospace & Defense,Axon Enterprise,sp500
+BKR,Energy,,,Oil & Gas Equipment & Services,Baker Hughes,sp500
+BALL,Materials,,,"Metal, Glass & Plastic Containers",Ball Corporation,sp500
+BAC,Financials,,,Diversified Banks,Bank of America,sp500
+BAX,Health Care,,,Health Care Equipment,Baxter International,sp500
+BDX,Health Care,,,Health Care Equipment,Becton Dickinson,sp500
+BRK-B,Financials,,,Multi-Sector Holdings,Berkshire Hathaway,sp500
+BBY,Consumer Discretionary,,,Computer & Electronics Retail,Best Buy,sp500
+TECH,Health Care,,,Life Sciences Tools & Services,Bio-Techne,sp500
+BIIB,Health Care,,,Biotechnology,Biogen,sp500
+BLK,Financials,,,Asset Management & Custody Banks,BlackRock,sp500
+BX,Financials,,,Asset Management & Custody Banks,Blackstone Inc.,sp500
+XYZ,Financials,,,Transaction & Payment Processing Services,"Block, Inc.",sp500
+BNY,Financials,,,Asset Management & Custody Banks,BNY Mellon,sp500
+BA,Industrials,,,Aerospace & Defense,Boeing,sp500
+BKNG,Consumer Discretionary,,,"Hotels, Resorts & Cruise Lines",Booking Holdings,sp500
+BSX,Health Care,,,Health Care Equipment,Boston Scientific,sp500
+BMY,Health Care,,,Pharmaceuticals,Bristol Myers Squibb,sp500
+AVGO,Information Technology,,,Semiconductors,Broadcom,sp500
+BR,Industrials,,,Data Processing & Outsourced Services,Broadridge Financial Solutions,sp500
+BRO,Financials,,,Insurance Brokers,Brown & Brown,sp500
+BF-B,Consumer Staples,,,Distillers & Vintners,Brown–Forman,sp500
+BLDR,Industrials,,,Building Products,Builders FirstSource,sp500
+BG,Consumer Staples,,,Agricultural Products & Services,Bunge Global,sp500
+BXP,Real Estate,,,Office REITs,"BXP, Inc.",sp500
+CHRW,Industrials,,,Air Freight & Logistics,C.H. Robinson,sp500
+CDNS,Information Technology,,,Application Software,Cadence Design Systems,sp500
+CPT,Real Estate,,,Multi-Family Residential REITs,Camden Property Trust,sp500
+COF,Financials,,,Consumer Finance,Capital One,sp500
+CAH,Health Care,,,Health Care Distributors,Cardinal Health,sp500
+CCL,Consumer Discretionary,,,"Hotels, Resorts & Cruise Lines",Carnival Corporation,sp500
+CARR,Industrials,,,Building Products,Carrier Global,sp500
+CVNA,Consumer Discretionary,,,Automotive Retail,Carvana,sp500
+CASY,Consumer Staples,,,Food Retail,Casey's,sp500
+CAT,Industrials,,,Construction Machinery & Heavy Transportation Equipment,Caterpillar Inc.,sp500
+CBOE,Financials,,,Financial Exchanges & Data,Cboe Global Markets,sp500
+CBRE,Real Estate,,,Real Estate Services,CBRE Group,sp500
+CDW,Information Technology,,,Technology Distributors,CDW Corporation,sp500
+COR,Health Care,,,Health Care Distributors,Cencora,sp500
+CNC,Health Care,,,Managed Health Care,Centene Corporation,sp500
+CNP,Utilities,,,Multi-Utilities,CenterPoint Energy,sp500
+CF,Materials,,,Fertilizers & Agricultural Chemicals,CF Industries,sp500
+CRL,Health Care,,,Life Sciences Tools & Services,Charles River Laboratories,sp500
+SCHW,Financials,,,Investment Banking & Brokerage,Charles Schwab Corporation,sp500
+CHTR,Communication Services,,,Cable & Satellite,Charter Communications,sp500
+CVX,Energy,,,Integrated Oil & Gas,Chevron Corporation,sp500
+CMG,Consumer Discretionary,,,Restaurants,Chipotle Mexican Grill,sp500
+CB,Financials,,,Property & Casualty Insurance,Chubb Limited,sp500
+CHD,Consumer Staples,,,Household Products,Church & Dwight,sp500
+CIEN,Information Technology,,,Communications Equipment,Ciena,sp500
+CI,Health Care,,,Health Care Services,Cigna,sp500
+CINF,Financials,,,Property & Casualty Insurance,Cincinnati Financial,sp500
+CTAS,Industrials,,,Diversified Support Services,Cintas,sp500
+CSCO,Information Technology,,,Communications Equipment,Cisco,sp500
+C,Financials,,,Diversified Banks,Citigroup,sp500
+CFG,Financials,,,Regional Banks,Citizens Financial Group,sp500
+CLX,Consumer Staples,,,Household Products,Clorox,sp500
+CME,Financials,,,Financial Exchanges & Data,CME Group,sp500
+CMS,Utilities,,,Multi-Utilities,CMS Energy,sp500
+KO,Consumer Staples,,,Soft Drinks & Non-alcoholic Beverages,Coca-Cola Company (The),sp500
+CTSH,Information Technology,,,IT Consulting & Other Services,Cognizant,sp500
+COHR,Information Technology,,,Electronic Components,Coherent Corp.,sp500
+COIN,Financials,,,Financial Exchanges & Data,Coinbase,sp500
+CL,Consumer Staples,,,Household Products,Colgate-Palmolive,sp500
+CMCSA,Communication Services,,,Cable & Satellite,Comcast,sp500
+FIX,Industrials,,,Construction & Engineering,Comfort Systems USA,sp500
+CAG,Consumer Staples,,,Packaged Foods & Meats,Conagra Brands,sp500
+COP,Energy,,,Oil & Gas Exploration & Production,ConocoPhillips,sp500
+ED,Utilities,,,Multi-Utilities,Consolidated Edison,sp500
+STZ,Consumer Staples,,,Distillers & Vintners,Constellation Brands,sp500
+CEG,Utilities,,,Electric Utilities,Constellation Energy,sp500
+COO,Health Care,,,Health Care Supplies,Cooper Companies (The),sp500
+CPRT,Industrials,,,Diversified Support Services,Copart,sp500
+GLW,Information Technology,,,Electronic Components,Corning Inc.,sp500
+CPAY,Financials,,,Transaction & Payment Processing Services,Corpay,sp500
+CTVA,Materials,,,Fertilizers & Agricultural Chemicals,Corteva,sp500
+CSGP,Real Estate,,,Real Estate Services,CoStar Group,sp500
+COST,Consumer Staples,,,Consumer Staples Merchandise Retail,Costco,sp500
+CRH,Materials,,,Construction Materials,CRH plc,sp500
+CRWD,Information Technology,,,Systems Software,CrowdStrike,sp500
+CCI,Real Estate,,,Telecom Tower REITs,Crown Castle,sp500
+CSX,Industrials,,,Rail Transportation,CSX Corporation,sp500
+CMI,Industrials,,,Construction Machinery & Heavy Transportation Equipment,Cummins,sp500
+CVS,Health Care,,,Health Care Services,CVS Health,sp500
+DHR,Health Care,,,Life Sciences Tools & Services,Danaher Corporation,sp500
+DRI,Consumer Discretionary,,,Restaurants,Darden Restaurants,sp500
+DDOG,Information Technology,,,Application Software,Datadog,sp500
+DVA,Health Care,,,Health Care Services,DaVita,sp500
+DECK,Consumer Discretionary,,,Footwear,Deckers Brands,sp500
+DE,Industrials,,,Agricultural & Farm Machinery,Deere & Company,sp500
+DELL,Information Technology,,,"Technology Hardware, Storage & Peripherals",Dell Technologies,sp500
+DAL,Industrials,,,Passenger Airlines,Delta Air Lines,sp500
+DVN,Energy,,,Oil & Gas Exploration & Production,Devon Energy,sp500
+DXCM,Health Care,,,Health Care Equipment,Dexcom,sp500
+FANG,Energy,,,Oil & Gas Exploration & Production,Diamondback Energy,sp500
+DLR,Real Estate,,,Data Center REITs,Digital Realty,sp500
+DG,Consumer Staples,,,Consumer Staples Merchandise Retail,Dollar General,sp500
+DLTR,Consumer Staples,,,Consumer Staples Merchandise Retail,Dollar Tree,sp500
+D,Utilities,,,Multi-Utilities,Dominion Energy,sp500
+DPZ,Consumer Discretionary,,,Restaurants,Domino's,sp500
+DASH,Consumer Discretionary,,,Specialized Consumer Services,DoorDash,sp500
+DOV,Industrials,,,Industrial Machinery & Supplies & Components,Dover Corporation,sp500
+DOW,Materials,,,Commodity Chemicals,Dow Inc.,sp500
+DHI,Consumer Discretionary,,,Homebuilding,D. R. Horton,sp500
+DTE,Utilities,,,Multi-Utilities,DTE Energy,sp500
+DUK,Utilities,,,Electric Utilities,Duke Energy,sp500
+DD,Materials,,,Specialty Chemicals,DuPont,sp500
+ETN,Industrials,,,Electrical Components & Equipment,Eaton Corporation,sp500
+EBAY,Consumer Discretionary,,,Broadline Retail,eBay Inc.,sp500
+ECHO,Communication Services,,,Wireless Telecommunication Services,EchoStar,sp500
+ECL,Materials,,,Specialty Chemicals,Ecolab,sp500
+EIX,Utilities,,,Electric Utilities,Edison International,sp500
+EW,Health Care,,,Health Care Equipment,Edwards Lifesciences,sp500
+EA,Communication Services,,,Interactive Home Entertainment,Electronic Arts,sp500
+ELV,Health Care,,,Managed Health Care,Elevance Health,sp500
+EME,Industrials,,,Construction & Engineering,Emcor,sp500
+EMR,Industrials,,,Electrical Components & Equipment,Emerson Electric,sp500
+ETR,Utilities,,,Electric Utilities,Entergy,sp500
+EOG,Energy,,,Oil & Gas Exploration & Production,EOG Resources,sp500
+EQT,Energy,,,Oil & Gas Exploration & Production,EQT Corporation,sp500
+EFX,Industrials,,,Research & Consulting Services,Equifax,sp500
+EQIX,Real Estate,,,Data Center REITs,Equinix,sp500
+EQR,Real Estate,,,Multi-Family Residential REITs,Equity Residential,sp500
+ERIE,Financials,,,Insurance Brokers,Erie Indemnity,sp500
+ESS,Real Estate,,,Multi-Family Residential REITs,Essex Property Trust,sp500
+EL,Consumer Staples,,,Personal Care Products,Estée Lauder Companies (The),sp500
+EG,Financials,,,Reinsurance,Everest Group,sp500
+EVRG,Utilities,,,Electric Utilities,Evergy,sp500
+ES,Utilities,,,Electric Utilities,Eversource Energy,sp500
+EXC,Utilities,,,Electric Utilities,Exelon,sp500
+EXE,Energy,,,Oil & Gas Exploration & Production,Expand Energy,sp500
+EXPE,Consumer Discretionary,,,"Hotels, Resorts & Cruise Lines",Expedia Group,sp500
+EXPD,Industrials,,,Air Freight & Logistics,Expeditors International,sp500
+EXR,Real Estate,,,Self-Storage REITs,Extra Space Storage,sp500
+XOM,Energy,,,Integrated Oil & Gas,ExxonMobil,sp500
+FFIV,Information Technology,,,Communications Equipment,"F5, Inc.",sp500
+FDS,Financials,,,Financial Exchanges & Data,FactSet,sp500
+FICO,Information Technology,,,Application Software,Fair Isaac,sp500
+FAST,Industrials,,,Trading Companies & Distributors,Fastenal,sp500
+FRT,Real Estate,,,Retail REITs,Federal Realty Investment Trust,sp500
+FDX,Industrials,,,Air Freight & Logistics,FedEx,sp500
+FDXF,Industrials,,,Cargo Ground Transportation,FedEx Freight,sp500
+FIS,Financials,,,Transaction & Payment Processing Services,Fidelity National Information Services,sp500
+FITB,Financials,,,Regional Banks,Fifth Third Bancorp,sp500
+FSLR,Information Technology,,,Semiconductors,First Solar,sp500
+FE,Utilities,,,Electric Utilities,FirstEnergy,sp500
+FISV,Financials,,,Transaction & Payment Processing Services,Fiserv,sp500
+FLEX,Information Technology,,,Electronic Manufacturing Services,Flex Ltd.,sp500
+F,Consumer Discretionary,,,Automobile Manufacturers,Ford Motor Company,sp500
+FTNT,Information Technology,,,Systems Software,Fortinet,sp500
+FTV,Industrials,,,Industrial Machinery & Supplies & Components,Fortive,sp500
+FOXA,Communication Services,,,Broadcasting,Fox Corporation (Class A),sp500
+FOX,Communication Services,,,Broadcasting,Fox Corporation (Class B),sp500
+BEN,Financials,,,Asset Management & Custody Banks,Franklin Resources,sp500
+FCX,Materials,,,Copper,Freeport-McMoRan,sp500
+GRMN,Consumer Discretionary,,,Consumer Electronics,Garmin,sp500
+IT,Information Technology,,,IT Consulting & Other Services,Gartner,sp500
+GE,Industrials,,,Aerospace & Defense,GE Aerospace,sp500
+GEHC,Health Care,,,Health Care Equipment,GE HealthCare,sp500
+GEV,Industrials,,,Heavy Electrical Equipment,GE Vernova,sp500
+GEN,Information Technology,,,Systems Software,Gen Digital,sp500
+GNRC,Industrials,,,Electrical Components & Equipment,Generac,sp500
+GD,Industrials,,,Aerospace & Defense,General Dynamics,sp500
+GIS,Consumer Staples,,,Packaged Foods & Meats,General Mills,sp500
+GM,Consumer Discretionary,,,Automobile Manufacturers,General Motors,sp500
+GPC,Consumer Discretionary,,,Distributors,Genuine Parts Company,sp500
+GILD,Health Care,,,Biotechnology,Gilead Sciences,sp500
+GPN,Financials,,,Transaction & Payment Processing Services,Global Payments,sp500
+GL,Financials,,,Life & Health Insurance,Globe Life,sp500
+GDDY,Information Technology,,,Internet Services & Infrastructure,GoDaddy,sp500
+GS,Financials,,,Investment Banking & Brokerage,Goldman Sachs,sp500
+HAL,Energy,,,Oil & Gas Equipment & Services,Halliburton,sp500
+HIG,Financials,,,Property & Casualty Insurance,Hartford (The),sp500
+HAS,Consumer Discretionary,,,Leisure Products,Hasbro,sp500
+HCA,Health Care,,,Health Care Facilities,HCA Healthcare,sp500
+DOC,Real Estate,,,Health Care REITs,Healthpeak Properties,sp500
+HSIC,Health Care,,,Health Care Distributors,Henry Schein,sp500
+HSY,Consumer Staples,,,Packaged Foods & Meats,Hershey Company (The),sp500
+HPE,Information Technology,,,"Technology Hardware, Storage & Peripherals",Hewlett Packard Enterprise,sp500
+HLT,Consumer Discretionary,,,"Hotels, Resorts & Cruise Lines",Hilton Worldwide,sp500
+HD,Consumer Discretionary,,,Home Improvement Retail,Home Depot (The),sp500
+HON,Industrials,,,Industrial Conglomerates,Honeywell,sp500
+HRL,Consumer Staples,,,Packaged Foods & Meats,Hormel Foods,sp500
+HST,Real Estate,,,Hotel & Resort REITs,Host Hotels & Resorts,sp500
+HWM,Industrials,,,Aerospace & Defense,Howmet Aerospace,sp500
+HPQ,Information Technology,,,"Technology Hardware, Storage & Peripherals",HP Inc.,sp500
+HUBB,Industrials,,,Industrial Machinery & Supplies & Components,Hubbell Incorporated,sp500
+HUM,Health Care,,,Managed Health Care,Humana,sp500
+HBAN,Financials,,,Regional Banks,Huntington Bancshares,sp500
+HII,Industrials,,,Aerospace & Defense,Huntington Ingalls Industries,sp500
+IBM,Information Technology,,,IT Consulting & Other Services,IBM,sp500
+IEX,Industrials,,,Industrial Machinery & Supplies & Components,IDEX Corporation,sp500
+IDXX,Health Care,,,Health Care Equipment,Idexx Laboratories,sp500
+ITW,Industrials,,,Industrial Machinery & Supplies & Components,Illinois Tool Works,sp500
+INCY,Health Care,,,Biotechnology,Incyte,sp500
+IR,Industrials,,,Industrial Machinery & Supplies & Components,Ingersoll Rand,sp500
+PODD,Health Care,,,Health Care Equipment,Insulet Corporation,sp500
+INTC,Information Technology,,,Semiconductors,Intel,sp500
+IBKR,Financials,,,Investment Banking & Brokerage,Interactive Brokers,sp500
+ICE,Financials,,,Financial Exchanges & Data,Intercontinental Exchange,sp500
+IFF,Materials,,,Specialty Chemicals,International Flavors & Fragrances,sp500
+IP,Materials,,,Paper & Plastic Packaging Products & Materials,International Paper,sp500
+INTU,Information Technology,,,Application Software,Intuit,sp500
+ISRG,Health Care,,,Health Care Equipment,Intuitive Surgical,sp500
+IVZ,Financials,,,Asset Management & Custody Banks,Invesco,sp500
+INVH,Real Estate,,,Single-Family Residential REITs,Invitation Homes,sp500
+IQV,Health Care,,,Life Sciences Tools & Services,IQVIA,sp500
+IRM,Real Estate,,,Other Specialized REITs,Iron Mountain,sp500
+JBHT,Industrials,,,Cargo Ground Transportation,J.B. Hunt,sp500
+JBL,Information Technology,,,Electronic Manufacturing Services,Jabil,sp500
+JKHY,Financials,,,Transaction & Payment Processing Services,Jack Henry & Associates,sp500
+J,Industrials,,,Construction & Engineering,Jacobs Solutions,sp500
+JNJ,Health Care,,,Pharmaceuticals,Johnson & Johnson,sp500
+JCI,Industrials,,,Building Products,Johnson Controls,sp500
+JPM,Financials,,,Diversified Banks,JPMorgan Chase,sp500
+KVUE,Consumer Staples,,,Personal Care Products,Kenvue,sp500
+KDP,Consumer Staples,,,Soft Drinks & Non-alcoholic Beverages,Keurig Dr Pepper,sp500
+KEY,Financials,,,Regional Banks,KeyCorp,sp500
+KEYS,Information Technology,,,Electronic Equipment & Instruments,Keysight Technologies,sp500
+KMB,Consumer Staples,,,Household Products,Kimberly-Clark,sp500
+KIM,Real Estate,,,Retail REITs,Kimco Realty,sp500
+KMI,Energy,,,Oil & Gas Storage & Transportation,Kinder Morgan,sp500
+KKR,Financials,,,Asset Management & Custody Banks,KKR & Co.,sp500
+KLAC,Information Technology,,,Semiconductor Materials & Equipment,KLA Corporation,sp500
+KHC,Consumer Staples,,,Packaged Foods & Meats,Kraft Heinz,sp500
+KR,Consumer Staples,,,Food Retail,Kroger,sp500
+LHX,Industrials,,,Aerospace & Defense,L3Harris,sp500
+LH,Health Care,,,Health Care Services,Labcorp,sp500
+LRCX,Information Technology,,,Semiconductor Materials & Equipment,Lam Research,sp500
+LVS,Consumer Discretionary,,,Casinos & Gaming,Las Vegas Sands,sp500
+LDOS,Industrials,,,Diversified Support Services,Leidos,sp500
+LEN,Consumer Discretionary,,,Homebuilding,Lennar,sp500
+LII,Industrials,,,Building Products,Lennox International,sp500
+LLY,Health Care,,,Pharmaceuticals,Lilly (Eli),sp500
+LIN,Materials,,,Industrial Gases,Linde plc,sp500
+LYV,Communication Services,,,Movies & Entertainment,Live Nation Entertainment,sp500
+LMT,Industrials,,,Aerospace & Defense,Lockheed Martin,sp500
+L,Financials,,,Multi-line Insurance,Loews Corporation,sp500
+LOW,Consumer Discretionary,,,Home Improvement Retail,Lowe's,sp500
+LULU,Consumer Discretionary,,,"Apparel, Accessories & Luxury Goods",Lululemon Athletica,sp500
+LITE,Information Technology,,,Communications Equipment,Lumentum,sp500
+LYB,Materials,,,Specialty Chemicals,LyondellBasell,sp500
+MTB,Financials,,,Regional Banks,M&T Bank,sp500
+MPC,Energy,,,Oil & Gas Refining & Marketing,Marathon Petroleum,sp500
+MAR,Consumer Discretionary,,,"Hotels, Resorts & Cruise Lines",Marriott International,sp500
+MRSH,Financials,,,Insurance Brokers,Marsh McLennan,sp500
+MLM,Materials,,,Construction Materials,Martin Marietta Materials,sp500
+MRVL,Information Technology,,,Semiconductors,Marvell Technology,sp500
+MAS,Industrials,,,Building Products,Masco,sp500
+MA,Financials,,,Transaction & Payment Processing Services,Mastercard,sp500
+MKC,Consumer Staples,,,Packaged Foods & Meats,McCormick & Company,sp500
+MCD,Consumer Discretionary,,,Restaurants,McDonald's,sp500
+MCK,Health Care,,,Health Care Distributors,McKesson Corporation,sp500
+MDT,Health Care,,,Health Care Equipment,Medtronic,sp500
+MRK,Health Care,,,Pharmaceuticals,Merck & Co.,sp500
+META,Communication Services,,,Interactive Media & Services,Meta Platforms,sp500
+MET,Financials,,,Life & Health Insurance,MetLife,sp500
+MTD,Health Care,,,Life Sciences Tools & Services,Mettler Toledo,sp500
+MGM,Consumer Discretionary,,,Casinos & Gaming,MGM Resorts,sp500
+MCHP,Information Technology,,,Semiconductors,Microchip Technology,sp500
+MU,Information Technology,,,Semiconductors,Micron Technology,sp500
+MSFT,Information Technology,,,Systems Software,Microsoft,sp500
+MAA,Real Estate,,,Multi-Family Residential REITs,Mid-America Apartment Communities,sp500
+MRNA,Health Care,,,Biotechnology,Moderna,sp500
+TAP,Consumer Staples,,,Brewers,Molson Coors Beverage Company,sp500
+MDLZ,Consumer Staples,,,Packaged Foods & Meats,Mondelez International,sp500
+MPWR,Information Technology,,,Semiconductors,Monolithic Power Systems,sp500
+MNST,Consumer Staples,,,Soft Drinks & Non-alcoholic Beverages,Monster Beverage,sp500
+MCO,Financials,,,Financial Exchanges & Data,Moody's Corporation,sp500
+MS,Financials,,,Investment Banking & Brokerage,Morgan Stanley,sp500
+MOS,Materials,,,Fertilizers & Agricultural Chemicals,Mosaic Company (The),sp500
+MSI,Information Technology,,,Communications Equipment,Motorola Solutions,sp500
+MSCI,Financials,,,Financial Exchanges & Data,MSCI Inc.,sp500
+NDAQ,Financials,,,Financial Exchanges & Data,"Nasdaq, Inc.",sp500
+NTAP,Information Technology,,,"Technology Hardware, Storage & Peripherals",NetApp,sp500
+NFLX,Communication Services,,,Movies & Entertainment,Netflix,sp500
+NEM,Materials,,,Gold,Newmont,sp500
+NWSA,Communication Services,,,Publishing,News Corp (Class A),sp500
+NWS,Communication Services,,,Publishing,News Corp (Class B),sp500
+NEE,Utilities,,,Multi-Utilities,NextEra Energy,sp500
+NKE,Consumer Discretionary,,,"Apparel, Accessories & Luxury Goods","Nike, Inc.",sp500
+NI,Utilities,,,Multi-Utilities,NiSource,sp500
+NDSN,Industrials,,,Industrial Machinery & Supplies & Components,Nordson Corporation,sp500
+NSC,Industrials,,,Rail Transportation,Norfolk Southern,sp500
+NTRS,Financials,,,Asset Management & Custody Banks,Northern Trust,sp500
+NOC,Industrials,,,Aerospace & Defense,Northrop Grumman,sp500
+NCLH,Consumer Discretionary,,,"Hotels, Resorts & Cruise Lines",Norwegian Cruise Line Holdings,sp500
+NRG,Utilities,,,Independent Power Producers & Energy Traders,NRG Energy,sp500
+NUE,Materials,,,Steel,Nucor,sp500
+NVDA,Information Technology,,,Semiconductors,Nvidia,sp500
+NVR,Consumer Discretionary,,,Homebuilding,"NVR, Inc.",sp500
+NXPI,Information Technology,,,Semiconductors,NXP Semiconductors,sp500
+ORLY,Consumer Discretionary,,,Automotive Retail,O’Reilly Automotive,sp500
+OXY,Energy,,,Oil & Gas Exploration & Production,Occidental Petroleum,sp500
+ODFL,Industrials,,,Cargo Ground Transportation,Old Dominion,sp500
+OMC,Communication Services,,,Advertising,Omnicom Group,sp500
+ON,Information Technology,,,Semiconductors,ON Semiconductor,sp500
+OKE,Energy,,,Oil & Gas Storage & Transportation,Oneok,sp500
+ORCL,Information Technology,,,Application Software,Oracle Corporation,sp500
+OTIS,Industrials,,,Industrial Machinery & Supplies & Components,Otis Worldwide,sp500
+PCAR,Industrials,,,Construction Machinery & Heavy Transportation Equipment,Paccar,sp500
+PKG,Materials,,,Paper & Plastic Packaging Products & Materials,Packaging Corporation of America,sp500
+PLTR,Information Technology,,,Application Software,Palantir Technologies,sp500
+PANW,Information Technology,,,Systems Software,Palo Alto Networks,sp500
+PSKY,Communication Services,,,Movies & Entertainment,Paramount Skydance Corporation,sp500
+PH,Industrials,,,Industrial Machinery & Supplies & Components,Parker Hannifin,sp500
+PAYX,Industrials,,,Human Resource & Employment Services,Paychex,sp500
+PYPL,Financials,,,Transaction & Payment Processing Services,PayPal,sp500
+PNR,Industrials,,,Industrial Machinery & Supplies & Components,Pentair,sp500
+PEP,Consumer Staples,,,Soft Drinks & Non-alcoholic Beverages,PepsiCo,sp500
+PFE,Health Care,,,Pharmaceuticals,Pfizer,sp500
+PCG,Utilities,,,Multi-Utilities,PG&E Corporation,sp500
+PM,Consumer Staples,,,Tobacco,Philip Morris International,sp500
+PSX,Energy,,,Oil & Gas Refining & Marketing,Phillips 66,sp500
+PNW,Utilities,,,Multi-Utilities,Pinnacle West Capital,sp500
+PNC,Financials,,,Diversified Banks,PNC Financial Services,sp500
+PPG,Materials,,,Specialty Chemicals,PPG Industries,sp500
+PPL,Utilities,,,Electric Utilities,PPL Corporation,sp500
+PFG,Financials,,,Life & Health Insurance,Principal Financial Group,sp500
+PG,Consumer Staples,,,Personal Care Products,Procter & Gamble,sp500
+PGR,Financials,,,Property & Casualty Insurance,Progressive Corporation,sp500
+PLD,Real Estate,,,Industrial REITs,Prologis,sp500
+PRU,Financials,,,Life & Health Insurance,Prudential Financial,sp500
+PEG,Utilities,,,Electric Utilities,Public Service Enterprise Group,sp500
+PTC,Information Technology,,,Application Software,PTC Inc.,sp500
+PSA,Real Estate,,,Self-Storage REITs,Public Storage,sp500
+PHM,Consumer Discretionary,,,Homebuilding,PulteGroup,sp500
+PWR,Industrials,,,Construction & Engineering,Quanta Services,sp500
+QCOM,Information Technology,,,Semiconductors,Qualcomm,sp500
+DGX,Health Care,,,Health Care Services,Quest Diagnostics,sp500
+Q,Information Technology,,,Semiconductor Materials & Equipment,Qnity Electronics,sp500
+RL,Consumer Discretionary,,,"Apparel, Accessories & Luxury Goods",Ralph Lauren Corporation,sp500
+RJF,Financials,,,Investment Banking & Brokerage,Raymond James Financial,sp500
+RTX,Industrials,,,Aerospace & Defense,RTX Corporation,sp500
+O,Real Estate,,,Retail REITs,Realty Income,sp500
+REG,Real Estate,,,Retail REITs,Regency Centers,sp500
+REGN,Health Care,,,Biotechnology,Regeneron Pharmaceuticals,sp500
+RF,Financials,,,Regional Banks,Regions Financial Corporation,sp500
+RSG,Industrials,,,Environmental & Facilities Services,Republic Services,sp500
+RMD,Health Care,,,Health Care Equipment,ResMed,sp500
+RVTY,Health Care,,,Health Care Equipment,Revvity,sp500
+HOOD,Financials,,,Investment Banking & Brokerage,Robinhood Markets,sp500
+ROK,Industrials,,,Electrical Components & Equipment,Rockwell Automation,sp500
+ROL,Industrials,,,Environmental & Facilities Services,"Rollins, Inc.",sp500
+ROP,Information Technology,,,Electronic Equipment & Instruments,Roper Technologies,sp500
+ROST,Consumer Discretionary,,,Apparel Retail,Ross Stores,sp500
+RCL,Consumer Discretionary,,,"Hotels, Resorts & Cruise Lines",Royal Caribbean Group,sp500
+SPGI,Financials,,,Financial Exchanges & Data,S&P Global,sp500
+CRM,Information Technology,,,Application Software,Salesforce,sp500
+SNDK,Information Technology,,,"Technology Hardware, Storage & Peripherals",Sandisk,sp500
+SBAC,Real Estate,,,Telecom Tower REITs,SBA Communications,sp500
+SLB,Energy,,,Oil & Gas Equipment & Services,Schlumberger,sp500
+STX,Information Technology,,,"Technology Hardware, Storage & Peripherals",Seagate Technology,sp500
+SRE,Utilities,,,Multi-Utilities,Sempra,sp500
+NOW,Information Technology,,,Systems Software,ServiceNow,sp500
+SHW,Materials,,,Specialty Chemicals,Sherwin-Williams,sp500
+SPG,Real Estate,,,Retail REITs,Simon Property Group,sp500
+SWKS,Information Technology,,,Semiconductors,Skyworks Solutions,sp500
+SJM,Consumer Staples,,,Packaged Foods & Meats,J.M. Smucker Company (The),sp500
+SW,Materials,,,Paper & Plastic Packaging Products & Materials,Smurfit Westrock,sp500
+SNA,Industrials,,,Industrial Machinery & Supplies & Components,Snap-on,sp500
+SOLV,Health Care,,,Health Care Technology,Solventum,sp500
+SO,Utilities,,,Electric Utilities,Southern Company,sp500
+LUV,Industrials,,,Passenger Airlines,Southwest Airlines,sp500
+SWK,Industrials,,,Industrial Machinery & Supplies & Components,Stanley Black & Decker,sp500
+SBUX,Consumer Discretionary,,,Restaurants,Starbucks,sp500
+STT,Financials,,,Asset Management & Custody Banks,State Street Corporation,sp500
+STLD,Materials,,,Steel,Steel Dynamics,sp500
+STE,Health Care,,,Health Care Equipment,Steris,sp500
+SYK,Health Care,,,Health Care Equipment,Stryker Corporation,sp500
+SMCI,Information Technology,,,"Technology Hardware, Storage & Peripherals",Supermicro,sp500
+SYF,Financials,,,Consumer Finance,Synchrony Financial,sp500
+SNPS,Information Technology,,,Application Software,Synopsys,sp500
+SYY,Consumer Staples,,,Food Distributors,Sysco,sp500
+TMUS,Communication Services,,,Wireless Telecommunication Services,T-Mobile US,sp500
+TROW,Financials,,,Asset Management & Custody Banks,T. Rowe Price,sp500
+TTWO,Communication Services,,,Interactive Home Entertainment,Take-Two Interactive,sp500
+TPR,Consumer Discretionary,,,"Apparel, Accessories & Luxury Goods","Tapestry, Inc.",sp500
+TRGP,Energy,,,Oil & Gas Storage & Transportation,Targa Resources,sp500
+TGT,Consumer Staples,,,Consumer Staples Merchandise Retail,Target Corporation,sp500
+TEL,Information Technology,,,Electronic Manufacturing Services,TE Connectivity,sp500
+TDY,Information Technology,,,Electronic Equipment & Instruments,Teledyne Technologies,sp500
+TER,Information Technology,,,Semiconductor Materials & Equipment,Teradyne,sp500
+TSLA,Consumer Discretionary,,,Automobile Manufacturers,"Tesla, Inc.",sp500
+TXN,Information Technology,,,Semiconductors,Texas Instruments,sp500
+TPL,Energy,,,Oil & Gas Exploration & Production,Texas Pacific Land Corporation,sp500
+TXT,Industrials,,,Aerospace & Defense,Textron,sp500
+TMO,Health Care,,,Life Sciences Tools & Services,Thermo Fisher Scientific,sp500
+TJX,Consumer Discretionary,,,Apparel Retail,TJX Companies,sp500
+TKO,Communication Services,,,Movies & Entertainment,TKO Group Holdings,sp500
+TTD,Communication Services,,,Advertising,Trade Desk (The),sp500
+TSCO,Consumer Discretionary,,,Other Specialty Retail,Tractor Supply,sp500
+TT,Industrials,,,Building Products,Trane Technologies,sp500
+TDG,Industrials,,,Aerospace & Defense,TransDigm Group,sp500
+TRV,Financials,,,Property & Casualty Insurance,Travelers Companies (The),sp500
+TRMB,Information Technology,,,Application Software,Trimble Inc.,sp500
+TFC,Financials,,,Diversified Banks,Truist Financial,sp500
+TYL,Information Technology,,,Application Software,Tyler Technologies,sp500
+TSN,Consumer Staples,,,Packaged Foods & Meats,Tyson Foods,sp500
+USB,Financials,,,Diversified Banks,U.S. Bancorp,sp500
+UBER,Industrials,,,Passenger Ground Transportation,Uber,sp500
+UDR,Real Estate,,,Multi-Family Residential REITs,"UDR, Inc.",sp500
+ULTA,Consumer Discretionary,,,Other Specialty Retail,Ulta Beauty,sp500
+UNP,Industrials,,,Rail Transportation,Union Pacific Corporation,sp500
+UAL,Industrials,,,Passenger Airlines,United Airlines Holdings,sp500
+UPS,Industrials,,,Air Freight & Logistics,United Parcel Service,sp500
+URI,Industrials,,,Trading Companies & Distributors,United Rentals,sp500
+UNH,Health Care,,,Managed Health Care,UnitedHealth Group,sp500
+UHS,Health Care,,,Health Care Facilities,Universal Health Services,sp500
+VLO,Energy,,,Oil & Gas Refining & Marketing,Valero Energy,sp500
+VEEV,Health Care,,,Health Care Technology,Veeva Systems,sp500
+VTR,Real Estate,,,Health Care REITs,Ventas,sp500
+VLTO,Industrials,,,Environmental & Facilities Services,Veralto,sp500
+VRSN,Information Technology,,,Internet Services & Infrastructure,Verisign,sp500
+VRSK,Industrials,,,Research & Consulting Services,Verisk Analytics,sp500
+VZ,Communication Services,,,Integrated Telecommunication Services,Verizon,sp500
+VRTX,Health Care,,,Biotechnology,Vertex Pharmaceuticals,sp500
+VRT,Industrials,,,Electrical Components & Equipment,Vertiv,sp500
+VTRS,Health Care,,,Pharmaceuticals,Viatris,sp500
+VICI,Real Estate,,,Hotel & Resort REITs,Vici Properties,sp500
+V,Financials,,,Transaction & Payment Processing Services,Visa Inc.,sp500
+VST,Utilities,,,Electric Utilities,Vistra Corp.,sp500
+VMC,Materials,,,Construction Materials,Vulcan Materials Company,sp500
+WRB,Financials,,,Property & Casualty Insurance,W. R. Berkley Corporation,sp500
+GWW,Industrials,,,Industrial Machinery & Supplies & Components,W. W. Grainger,sp500
+WAB,Industrials,,,Construction Machinery & Heavy Transportation Equipment,Wabtec,sp500
+WMT,Consumer Staples,,,Consumer Staples Merchandise Retail,Walmart,sp500
+DIS,Communication Services,,,Movies & Entertainment,Walt Disney Company (The),sp500
+WBD,Communication Services,,,Broadcasting,Warner Bros. Discovery,sp500
+WM,Industrials,,,Environmental & Facilities Services,Waste Management,sp500
+WAT,Health Care,,,Life Sciences Tools & Services,Waters Corporation,sp500
+WEC,Utilities,,,Electric Utilities,WEC Energy Group,sp500
+WFC,Financials,,,Diversified Banks,Wells Fargo,sp500
+WELL,Real Estate,,,Health Care REITs,Welltower,sp500
+WST,Health Care,,,Health Care Supplies,West Pharmaceutical Services,sp500
+WDC,Information Technology,,,"Technology Hardware, Storage & Peripherals",Western Digital,sp500
+WY,Real Estate,,,Timber REITs,Weyerhaeuser,sp500
+WSM,Consumer Discretionary,,,Homefurnishing Retail,"Williams-Sonoma, Inc.",sp500
+WMB,Energy,,,Oil & Gas Storage & Transportation,Williams Companies,sp500
+WTW,Financials,,,Insurance Brokers,Willis Towers Watson,sp500
+WDAY,Information Technology,,,Application Software,"Workday, Inc.",sp500
+WYNN,Consumer Discretionary,,,Casinos & Gaming,Wynn Resorts,sp500
+XEL,Utilities,,,Multi-Utilities,Xcel Energy,sp500
+XYL,Industrials,,,Industrial Machinery & Supplies & Components,Xylem Inc.,sp500
+YUM,Consumer Discretionary,,,Restaurants,Yum! Brands,sp500
+ZBRA,Information Technology,,,Electronic Equipment & Instruments,Zebra Technologies,sp500
+ZBH,Health Care,,,Health Care Equipment,Zimmer Biomet,sp500
+ZTS,Health Care,,,Pharmaceuticals,Zoetis,sp500
+AA,Materials,,,Aluminum,Alcoa,sp400
+AAL,Industrials,,,Passenger Airlines,American Airlines Group,sp400
+AAON,Industrials,,,Building Products,AAON,sp400
+ACI,Consumer Staples,,,Food Retail,Albertsons,sp400
+ACM,Industrials,,,Construction & Engineering,AECOM,sp400
+ADC,Real Estate,,,Retail REITs,Agree Realty,sp400
+AEIS,Information Technology,,,Semiconductor Materials & Equipment,Advanced Energy,sp400
+AFG,Financials,,,Multi-line Insurance,American Financial Group,sp400
+AGCO,Industrials,,,Agricultural & Farm Machinery,AGCO,sp400
+AHR,Real Estate,,,Health Care REITs,American Healthcare REIT,sp400
+AIT,Industrials,,,Trading Companies & Distributors,Applied Industrial Technologies,sp400
+ALGM,Information Technology,,,Semiconductors,Allegro MicroSystems,sp400
+ALK,Industrials,,,Passenger Airlines,Alaska Air Group,sp400
+ALLY,Financials,,,Consumer Finance,Ally Financial,sp400
+ALV,Consumer Discretionary,,,Automotive Parts & Equipment,Autoliv,sp400
+AM,Energy,,,Oil & Gas Storage & Transportation,Antero Midstream,sp400
+AMG,Financials,,,Asset Management & Custody Banks,Affiliated Managers Group,sp400
+AMH,Real Estate,,,Single-Family Residential REITs,American Homes 4 Rent,sp400
+AMKR,Information Technology,,,Semiconductors,Amkor Technology,sp400
+AN,Consumer Discretionary,,,Automotive Retail,AutoNation,sp400
+ANF,Consumer Discretionary,,,Apparel Retail,Abercrombie & Fitch,sp400
+APG,Industrials,,,Construction & Engineering,APi Group,sp400
+APPF,Information Technology,,,Application Software,AppFolio,sp400
+AR,Energy,,,Oil & Gas Exploration & Production,Antero Resources,sp400
+ARMK,Consumer Discretionary,,,Distributors,Aramark,sp400
+ARW,Information Technology,,,Technology Distributors,Arrow Electronics,sp400
+ARWR,Health Care,,,Biotechnology,Arrowhead Pharmaceuticals,sp400
+ASB,Financials,,,Regional Banks,Associated Bank,sp400
+ASH,Materials,,,Diversified Chemicals,Ashland Global,sp400
+ATI,Industrials,,,Aerospace & Defense,ATI Inc.,sp400
+ATR,Materials,,,"Metal, Glass & Plastic Containers",AptarGroup,sp400
+AVAV,Industrials,,,Aerospace & Defense,AeroVironment,sp400
+AVNT,Materials,,,Specialty Chemicals,Avient,sp400
+AVT,Information Technology,,,Technology Distributors,Avnet,sp400
+AVTR,Health Care,,,Life Sciences Tools & Services,Avantor,sp400
+AXTA,Materials,,,Specialty Chemicals,Axalta,sp400
+AYI,Industrials,,,Electrical Components & Equipment,Acuity Brands,sp400
+BAH,Industrials,,,Research & Consulting Services,Booz Allen Hamilton,sp400
+BBWI,Consumer Discretionary,,,Other Specialty Retail,"Bath & Body Works, Inc.",sp400
+BC,Consumer Discretionary,,,Leisure Products,Brunswick,sp400
+BCO,Industrials,,,Security & Alarm Services,Brink's,sp400
+BDC,Information Technology,,,Electronic Components,Belden Inc.,sp400
+BHF,Financials,,,Life & Health Insurance,Brighthouse Financial,sp400
+BILL,Information Technology,,,Application Software,Bill Holdings,sp400
+BIO,Health Care,,,Life Sciences Tools & Services,Bio-Rad Laboratories,sp400
+BJ,Consumer Staples,,,Consumer Staples Merchandise Retail,BJ's Wholesale Club,sp400
+BKH,Utilities,,,Multi-Utilities,Black Hills Corporation,sp400
+BLD,Consumer Discretionary,,,Homebuilding,TopBuild Corp.,sp400
+BMRN,Health Care,,,Biotechnology,BioMarin Pharmaceutical,sp400
+BRKR,Health Care,,,Health Care Equipment,Bruker,sp400
+BROS,Consumer Discretionary,,,Restaurants,Dutch Bros Inc.,sp400
+BRX,Real Estate,,,Retail REITs,Brixmor Property Group,sp400
+BSY,Information Technology,,,Application Software,Bentley Systems,sp400
+BURL,Consumer Discretionary,,,Apparel Retail,Burlington Stores,sp400
+BWA,Consumer Discretionary,,,Automotive Parts & Equipment,BorgWarner,sp400
+BWXT,Industrials,,,Aerospace & Defense,BWX Technologies,sp400
+BYD,Consumer Discretionary,,,Casinos & Gaming,Boyd Gaming,sp400
+CACI,Industrials,,,Diversified Support Services,CACI International,sp400
+CAR,Industrials,,,Passenger Ground Transportation,Avis Budget Group,sp400
+CART,Consumer Staples,,,Food Retail,Maplebear Inc.,sp400
+CAVA,Consumer Discretionary,,,Restaurants,Cava Group,sp400
+CBSH,Financials,,,Regional Banks,Commerce Bancshares,sp400
+CBT,Materials,,,Diversified Chemicals,Cabot Corp,sp400
+CCK,Materials,,,Paper & Plastic Packaging Products & Materials,Crown Holdings,sp400
+CDE,Materials,,,Gold,Coeur Mining,sp400
+CDP,Real Estate,,,Office REITs,COPT Defense Properties,sp400
+CELH,Consumer Staples,,,Soft Drinks & Non-alcoholic Beverages,Celsius Holdings,sp400
+CFR,Financials,,,Regional Banks,Frost Bank,sp400
+CG,Financials,,,Asset Management & Custody Banks,Carlyle Group (The),sp400
+CGNX,Information Technology,,,Electronic Equipment & Instruments,Cognex,sp400
+CHDN,Consumer Discretionary,,,Casinos & Gaming,Churchill Downs Inc.,sp400
+CHE,Health Care,,,Health Care Services,Chemed Corp.,sp400
+CHH,Consumer Discretionary,,,"Hotels, Resorts & Cruise Lines",Choice Hotels,sp400
+CHRD,Energy,,,Oil & Gas Exploration & Production,Chord Energy,sp400
+CHWY,Consumer Discretionary,,,Other Specialty Retail,Chewy,sp400
+CLF,Materials,,,Steel,Cleveland-Cliffs,sp400
+CLH,Industrials,,,Environmental & Facilities Services,Clean Harbors,sp400
+CMC,Materials,,,Steel,Commercial Metals,sp400
+CNH,Industrials,,,Agricultural & Farm Machinery,CNH Industrial,sp400
+CNM,Industrials,,,Trading Companies & Distributors,Core & Main,sp400
+CNO,Financials,,,Life & Health Insurance,CNO Financial Group,sp400
+CNX,Energy,,,Oil & Gas Exploration & Production,CNX Resources,sp400
+COKE,Consumer Staples,,,Soft Drinks & Non-alcoholic Beverages,Coca-Cola Consolidated,sp400
+COLB,Financials,,,Regional Banks,Columbia Banking System,sp400
+COLM,Consumer Discretionary,,,"Apparel, Accessories & Luxury Goods",Columbia Sportswear,sp400
+CPRI,Consumer Discretionary,,,"Apparel, Accessories & Luxury Goods",Capri Holdings,sp400
+CR,Industrials,,,Industrial Machinery & Supplies & Components,Crane,sp400
+CRBG,Financials,,,Asset Management & Custody Banks,Corebridge Financial,sp400
+CROX,Consumer Discretionary,,,Footwear,Crocs,sp400
+CRS,Industrials,,,Industrial Machinery & Supplies & Components,Carpenter Technology,sp400
+CRUS,Information Technology,,,Semiconductors,Cirrus Logic,sp400
+CSL,Industrials,,,Industrial Conglomerates,Carlisle Companies,sp400
+CTRE,Real Estate,,,Health Care REITs,CareTrust REIT,sp400
+CUBE,Real Estate,,,Industrial REITs,CubeSmart,sp400
+CUZ,Real Estate,,,Office REITs,Cousins Properties,sp400
+CVLT,Information Technology,,,Systems Software,CommVault Systems,sp400
+CW,Industrials,,,Aerospace & Defense,Curtiss-Wright,sp400
+CXT,Information Technology,,,Electronic Equipment & Instruments,Crane NXT,sp400
+CYTK,Health Care,,,Biotechnology,Cytokinetics,sp400
+DAR,Consumer Staples,,,Agricultural Products & Services,Darling Ingredients,sp400
+DBX,Information Technology,,,Application Software,Dropbox,sp400
+DCI,Industrials,,,Industrial Machinery & Supplies & Components,Donaldson Company,sp400
+DINO,Energy,,,Oil & Gas Refining & Marketing,HF Sinclair,sp400
+DKS,Consumer Discretionary,,,Specialty Stores,Dick's Sporting Goods,sp400
+DLB,Information Technology,,,Application Software,Dolby,sp400
+DOCN,Information Technology,,,Internet Services & Infrastructure,DigitalOcean,sp400
+DOCS,Health Care,,,Health Care Technology,Doximity,sp400
+DOCU,Information Technology,,,Application Software,Docusign,sp400
+DT,Information Technology,,,Application Software,Dynatrace,sp400
+DTM,Energy,,,Oil & Gas Storage & Transportation,DT Midstream,sp400
+DUOL,Consumer Discretionary,,,Education Services,Duolingo,sp400
+DY,Industrials,,,Construction & Engineering,Dycom Industries,sp400
+EEFT,Financials,,,Transaction & Payment Processing Services,Euronet Worldwide,sp400
+EGP,Real Estate,,,Industrial REITs,EastGroup Properties,sp400
+EHC,Health Care,,,Health Care Facilities,Encompass Health,sp400
+ELAN,Health Care,,,Pharmaceuticals,Elanco,sp400
+ELF,Consumer Staples,,,Personal Care Products,e.l.f. Beauty,sp400
+ELS,Real Estate,,,Single-Family Residential REITs,Equity Lifestyle Properties,sp400
+ENS,Industrials,,,Electrical Components & Equipment,EnerSys,sp400
+ENSG,Health Care,,,Health Care Facilities,Ensign Group,sp400
+ENTG,Information Technology,,,Semiconductor Materials & Equipment,Entegris,sp400
+EPR,Real Estate,,,Other Specialized REITs,EPR Properties,sp400
+EQH,Financials,,,Diversified Financial Services,Equitable Holdings,sp400
+ESAB,Industrials,,,Industrial Machinery & Supplies & Components,ESAB,sp400
+ESNT,Financials,,,Commercial & Residential Mortgage Finance,Essent Group Ltd.,sp400
+EVR,Financials,,,Investment Banking & Brokerage,Evercore,sp400
+EWBC,Financials,,,Regional Banks,East West Bancorp,sp400
+EXEL,Health Care,,,Biotechnology,Exelixis,sp400
+EXLS,Industrials,,,Data Processing & Outsourced Services,EXL Service,sp400
+EXP,Materials,,,Construction Materials,Eagle Materials,sp400
+EXPO,Industrials,,,Research & Consulting Services,"Exponent, Inc.",sp400
+FAF,Financials,,,Property & Casualty Insurance,First American Financial Corporation,sp400
+FBIN,Industrials,,,Building Products,Fortune Brands Innovations,sp400
+FCFS,Financials,,,Consumer Finance,FirstCash,sp400
+FCN,Industrials,,,Research & Consulting Services,FTI Consulting,sp400
+FFIN,Financials,,,Regional Banks,First Financial Bankshares,sp400
+FHI,Financials,,,Asset Management & Custody Banks,Federated Hermes,sp400
+FHN,Financials,,,Regional Banks,First Horizon,sp400
+FIVE,Consumer Discretionary,,,Specialty Stores,Five Below,sp400
+FLG,Financials,,,Regional Banks,Flagstar Bank,sp400
+FLR,Industrials,,,Construction & Engineering,Fluor,sp400
+FLS,Industrials,,,Industrial Machinery & Supplies & Components,Flowserve,sp400
+FN,Information Technology,,,Electronic Manufacturing Services,Fabrinet,sp400
+FNB,Financials,,,Regional Banks,FNB Corporation,sp400
+FND,Consumer Discretionary,,,Home Improvement Retail,Floor & Decor,sp400
+FNF,Financials,,,Property & Casualty Insurance,Fidelity National Financial,sp400
+FOUR,Financials,,,Transaction & Payment Processing Services,Shift4,sp400
+FR,Real Estate,,,Industrial REITs,First Industrial Realty Trust,sp400
+FTI,Energy,,,Oil & Gas Equipment & Services,TechnipFMC,sp400
+G,Industrials,,,Data Processing & Outsourced Services,Genpact,sp400
+GAP,Consumer Discretionary,,,Apparel Retail,Gap Inc.,sp400
+GATX,Industrials,,,Construction Machinery & Heavy Transportation Equipment,GATX,sp400
+GBCI,Financials,,,Regional Banks,Glacier Bancorp,sp400
+GEF,Materials,,,"Metal, Glass & Plastic Containers","Greif, Inc.",sp400
+GGG,Industrials,,,Industrial Machinery & Supplies & Components,Graco Inc.,sp400
+GHC,Consumer Discretionary,,,Education Services,Graham Holdings,sp400
+GLPI,Real Estate,,,Other Specialized REITs,Gaming and Leisure Properties,sp400
+GME,Consumer Discretionary,,,Computer & Electronics Retail,GameStop,sp400
+GMED,Health Care,,,Health Care Equipment,Globus Medical,sp400
+GNTX,Consumer Discretionary,,,Automotive Parts & Equipment,Gentex,sp400
+GPK,Materials,,,Paper & Plastic Packaging Products & Materials,Graphic Packaging,sp400
+GT,Consumer Discretionary,,,Tires & Rubber,Goodyear Tire & Rubber,sp400
+GTLS,Industrials,,,Industrial Machinery & Supplies & Components,Chart Industries,sp400
+GWRE,Information Technology,,,Application Software,Guidewire Software,sp400
+GXO,Industrials,,,Air Freight & Logistics,GXO Logistics,sp400
+H,Consumer Discretionary,,,"Hotels, Resorts & Cruise Lines",Hyatt,sp400
+HAE,Health Care,,,Health Care Supplies,Haemonetics,sp400
+HALO,Health Care,,,Biotechnology,Halozyme,sp400
+HGV,Consumer Discretionary,,,"Hotels, Resorts & Cruise Lines",Hilton Grand Vacations,sp400
+HIMS,Health Care,,,Health Care Services,Hims & Hers Health,sp400
+HL,Materials,,,Silver,Hecla Mining,sp400
+HLI,Financials,,,Investment Banking & Brokerage,Houlihan Lokey,sp400
+HLNE,Financials,,,Asset Management & Custody Banks,Hamilton Lane,sp400
+HOG,Consumer Discretionary,,,Motorcycle Manufacturers,Harley-Davidson,sp400
+HOMB,Financials,,,Regional Banks,Home BancShares,sp400
+HQY,Health Care,,,Managed Health Care,HealthEquity,sp400
+HR,Real Estate,,,Health Care REITs,Healthcare Realty Trust,sp400
+HRB,Consumer Discretionary,,,Specialized Consumer Services,H&R Block,sp400
+HWC,Financials,,,Regional Banks,Hancock Whitney,sp400
+HXL,Industrials,,,Aerospace & Defense,Hexcel,sp400
+IBOC,Financials,,,Regional Banks,Intl Bancshares Corp,sp400
+IDA,Utilities,,,Electric Utilities,Idacorp,sp400
+IDCC,Information Technology,,,Communications Equipment,InterDigital,sp400
+ILMN,Health Care,,,Life Sciences Tools & Services,"Illumina, Inc.",sp400
+INGR,Consumer Staples,,,Agricultural Products & Services,Ingredion,sp400
+IPGP,Information Technology,,,Electronic Manufacturing Services,IPG Photonics,sp400
+IRT,Real Estate,,,Multi-Family Residential REITs,IRT Living,sp400
+ITT,Industrials,,,Industrial Machinery & Supplies & Components,ITT Inc.,sp400
+JAZZ,Health Care,,,Pharmaceuticals,Jazz Pharmaceuticals,sp400
+JEF,Financials,,,Multi-Sector Holdings,Jefferies,sp400
+JHG,Financials,,,Asset Management & Custody Banks,Janus Henderson,sp400
+JLL,Real Estate,,,Real Estate Services,Jones Lang LaSalle,sp400
+KBH,Consumer Discretionary,,,Homebuilding,KB Home,sp400
+KBR,Industrials,,,Diversified Support Services,"KBR, Inc.",sp400
+KD,Information Technology,,,IT Consulting & Other Services,Kyndryl,sp400
+KEX,Industrials,,,Marine Transportation,Kirby Corporation,sp400
+KNF,Materials,,,Construction Materials,Knife River Corporation,sp400
+KNSL,Financials,,,Property & Casualty Insurance,Kinsale Capital Group,sp400
+KNX,Industrials,,,Cargo Ground Transportation,Knight-Swift,sp400
+KRC,Real Estate,,,Office REITs,Kilroy Realty Corp,sp400
+KRG,Real Estate,,,Retail REITs,Kite Realty Group Trust,sp400
+KTOS,Industrials,,,Aerospace & Defense,Kratos Defense & Security Solutions,sp400
+LAD,Consumer Discretionary,,,Automotive Retail,Lithia Motors,sp400
+LAMR,Real Estate,,,Other Specialized REITs,Lamar Advertising Company,sp400
+LEA,Consumer Discretionary,,,Automotive Parts & Equipment,Lear,sp400
+LECO,Industrials,,,Industrial Machinery & Supplies & Components,Lincoln Electric,sp400
+LFUS,Information Technology,,,Electronic Components,Littelfuse,sp400
+LIVN,Health Care,,,Health Care Equipment,LivaNova,sp400
+LNTH,Health Care,,,Health Care Supplies,Lantheus Holdings,sp400
+LOPE,Consumer Discretionary,,,Education Services,Grand Canyon Education,sp400
+LPX,Materials,,,Forest Products,Louisiana-Pacific,sp400
+LSCC,Information Technology,,,Semiconductors,Lattice Semiconductor,sp400
+LSTR,Industrials,,,Cargo Ground Transportation,Landstar System,sp400
+M,Consumer Discretionary,,,Broadline Retail,Macy's,sp400
+MANH,Information Technology,,,Application Software,Manhattan Associates,sp400
+MAT,Consumer Discretionary,,,Leisure Products,Mattel,sp400
+MEDP,Health Care,,,Life Sciences Tools & Services,Medpace,sp400
+MIDD,Industrials,,,Industrial Machinery & Supplies & Components,Middleby,sp400
+MKSI,Information Technology,,,Semiconductor Materials & Equipment,MKS Instruments,sp400
+MLI,Industrials,,,Industrial Machinery & Supplies & Components,Mueller Industries,sp400
+MMS,Industrials,,,Data Processing & Outsourced Services,Maximus Inc.,sp400
+MOG-A,Industrials,,,Aerospace & Defense,Moog Inc.,sp400
+MORN,Financials,,,Financial Exchanges & Data,"Morningstar, Inc.",sp400
+MP,Materials,,,Diversified Metals & Mining,MP Materials,sp400
+MSA,Industrials,,,Office Services & Supplies,MSA Safety,sp400
+MSM,Industrials,,,Trading Companies & Distributors,MSC Industrial Direct,sp400
+MTDR,Energy,,,Oil & Gas Exploration & Production,Matador Resources,sp400
+MTG,Financials,,,Reinsurance,MGIC Investment Corporation,sp400
+MTN,Consumer Discretionary,,,"Hotels, Resorts & Cruise Lines",Vail Resorts,sp400
+MTSI,Information Technology,,,Semiconductors,MACOM Technology Solutions,sp400
+MTZ,Industrials,,,Construction & Engineering,MasTec,sp400
+MUR,Energy,,,Oil & Gas Exploration & Production,Murphy Oil,sp400
+MUSA,Consumer Discretionary,,,Automotive Retail,Murphy USA,sp400
+MZTI,Consumer Staples,,,Packaged Foods & Meats,The Marzetti Company,sp400
+NBIX,Health Care,,,Biotechnology,Neurocrine Biosciences,sp400
+NEU,Materials,,,Specialty Chemicals,NewMarket Corporation,sp400
+NFG,Utilities,,,Gas Utilities,National Fuel Gas,sp400
+NJR,Utilities,,,Gas Utilities,New Jersey Resources,sp400
+NLY,Financials,,,Mortgage REITs,Annaly Capital Management,sp400
+NNN,Real Estate,,,Retail REITs,NNN Reit,sp400
+NOV,Energy,,,Oil & Gas Equipment & Services,NOV Inc.,sp400
+NOVT,Information Technology,,,Electronic Equipment & Instruments,Novanta,sp400
+NSA,Real Estate,,,Self-Storage REITs,National Storage Affiliates Trust,sp400
+NTNX,Information Technology,,,Systems Software,Nutanix,sp400
+NVST,Health Care,,,Health Care Supplies,Envista Holdings,sp400
+NVT,Industrials,,,Electrical Components & Equipment,nVent Electric plc,sp400
+NWE,Utilities,,,Multi-Utilities,NorthWestern Energy,sp400
+NXST,Communication Services,,,Broadcasting,Nexstar Media Group,sp400
+NXT,Industrials,,,Electrical Components & Equipment,Nextpower,sp400
+NYT,Communication Services,,,Publishing,New York Times Company,sp400
+OC,Industrials,,,Building Products,Owens Corning,sp400
+OGE,Utilities,,,Multi-Utilities,OGE Energy,sp400
+OGS,Utilities,,,Gas Utilities,One Gas,sp400
+OHI,Real Estate,,,Health Care REITs,Omega Healthcare Investors,sp400
+OKTA,Information Technology,,,Application Software,"Okta, Inc.",sp400
+OLED,Information Technology,,,Semiconductors,Universal Display,sp400
+OLLI,Consumer Discretionary,,,Broadline Retail,Ollie's Bargain Outlet,sp400
+OLN,Materials,,,Diversified Chemicals,Olin Corporation,sp400
+ONB,Financials,,,Regional Banks,Old National Bank,sp400
+ONTO,Information Technology,,,Semiconductor Materials & Equipment,Onto Innovation,sp400
+OPCH,Health Care,,,Health Care Facilities,Option Care Health,sp400
+ORA,Utilities,,,Renewable Electricity,Ormat Technologies,sp400
+ORI,Financials,,,Property & Casualty Insurance,Old Republic International,sp400
+OSK,Industrials,,,Construction Machinery & Heavy Transportation Equipment,Oshkosh,sp400
+OVV,Energy,,,Oil & Gas Exploration & Production,Ovintiv,sp400
+OZK,Financials,,,Regional Banks,Bank OZK,sp400
+P,Information Technology,,,"Technology Hardware, Storage & Peripherals",Everpure,sp400
+PAG,Consumer Discretionary,,,Automotive Retail,Penske Automotive Group,sp400
+PATH,Information Technology,,,Systems Software,UiPath,sp400
+PB,Financials,,,Regional Banks,Prosperity Bancshares,sp400
+PBF,Energy,,,Oil & Gas Refining & Marketing,PBF Energy,sp400
+PCTY,Industrials,,,Human Resource & Employment Services,Paylocity,sp400
+PEGA,Information Technology,,,Application Software,Pegasystems,sp400
+PEN,Health Care,,,Health Care Equipment,"Penumbra, Inc.",sp400
+PFGC,Consumer Staples,,,Food Distributors,Performance Food Group,sp400
+PII,Consumer Discretionary,,,Leisure Products,Polaris,sp400
+PINS,Communication Services,,,,Pinterest,sp400
+PK,Real Estate,,,Hotel & Resort REITs,Park Hotels & Resorts,sp400
+PLNT,Consumer Discretionary,,,Leisure Facilities,Planet Fitness,sp400
+PNFP,Financials,,,Regional Banks,Pinnacle Financial Partners,sp400
+POR,Utilities,,,Electric Utilities,Portland General Electric,sp400
+POST,Consumer Staples,,,Packaged Foods & Meats,Post Holdings,sp400
+PPC,Consumer Staples,,,Packaged Foods & Meats,Pilgrim's Pride,sp400
+PR,Energy,,,Oil & Gas Exploration & Production,Permian Resources,sp400
+PRI,Financials,,,Life & Health Insurance,Primerica,sp400
+PSN,Industrials,,,Aerospace & Defense,Parsons Corporation,sp400
+PVH,Consumer Discretionary,,,"Apparel, Accessories & Luxury Goods",PVH Corp.,sp400
+QLYS,Information Technology,,,Systems Software,Qualys,sp400
+R,Industrials,,,Cargo Ground Transportation,Ryder,sp400
+RBA,Industrials,,,Diversified Support Services,RB Global,sp400
+RBC,Industrials,,,Industrial Machinery & Supplies & Components,RBC Bearings,sp400
+REXR,Real Estate,,,Industrial REITs,Rexford Industrial Realty,sp400
+RGA,Financials,,,Reinsurance,Reinsurance Group of America,sp400
+RGEN,Health Care,,,Biotechnology,Repligen,sp400
+RGLD,Materials,,,Gold,Royal Gold,sp400
+RH,Consumer Discretionary,,,Homefurnishing Retail,RH,sp400
+RLI,Financials,,,Property & Casualty Insurance,RLI Corp.,sp400
+RMBS,Information Technology,,,Semiconductors,Rambus,sp400
+RNR,Financials,,,Reinsurance,RenaissanceRe,sp400
+ROIV,Health Care,,,Biotechnology,Roivant Sciences,sp400
+ROKU,Communication Services,,,Movies & Entertainment,"Roku, Inc.",sp400
+RPM,Materials,,,Specialty Chemicals,RPM International,sp400
+RRC,Energy,,,Oil & Gas Exploration & Production,Range Resources,sp400
+RRX,Industrials,,,Electrical Components & Equipment,Regal Rexnord,sp400
+RS,Materials,,,Steel,"Reliance, Inc.",sp400
+RYAN,Financials,,,Insurance Brokers,Ryan Specialty,sp400
+RYN,Real Estate,,,Timber REITs,Rayonier,sp400
+SAIA,Industrials,,,Cargo Ground Transportation,Saia,sp400
+SAIC,Industrials,,,Diversified Support Services,Science Applications Intl Corp,sp400
+SAM,Consumer Staples,,,Brewers,Boston Beer Company,sp400
+SANM,Information Technology,,,Electronic Manufacturing Services,Sanmina Corporation,sp400
+SARO,Industrials,,,Aerospace & Defense,StandardAero,sp400
+SBRA,Real Estate,,,Health Care REITs,Sabra Health Care REIT,sp400
+SCI,Consumer Discretionary,,,Specialized Consumer Services,Service Corp Intl,sp400
+SEIC,Financials,,,Asset Management & Custody Banks,SEI Investments Company,sp400
+SF,Financials,,,Investment Banking & Brokerage,Stifel,sp400
+SFM,Consumer Staples,,,Food Retail,Sprouts Farmers Market,sp400
+SGI,Consumer Discretionary,,,Home Furnishings,Somnigroup International,sp400
+SHC,Health Care,,,Health Care Services,Sotera Health,sp400
+SIGI,Financials,,,Property & Casualty Insurance,Selective Insurance Group,sp400
+SIRI,Communication Services,,,Broadcasting,SiriusXM,sp400
+SITM,Information Technology,,,Semiconductors,SiTime,sp400
+SLAB,Information Technology,,,Semiconductors,Silicon Labs,sp400
+SLGN,Materials,,,"Metal, Glass & Plastic Containers",Silgan Holdings,sp400
+SLM,Financials,,,Consumer Finance,SLM Corp,sp400
+SMG,Materials,,,Fertilizers & Agricultural Chemicals,Scotts Miracle-Gro Company,sp400
+SMTC,Information Technology,,,Semiconductors,Semtech,sp400
+SN,Consumer Discretionary,,,Household Appliances,SharkNinja,sp400
+SNX,Information Technology,,,Technology Distributors,TD Synnex,sp400
+SOLS,Materials,,,Specialty Chemicals,Solstice Advanced Materials,sp400
+SON,Materials,,,Paper & Plastic Packaging Products & Materials,Sonoco,sp400
+SPXC,Industrials,,,Industrial Machinery & Supplies & Components,SPX Technologies,sp400
+SR,Utilities,,,Gas Utilities,Spire,sp400
+SSB,Financials,,,Regional Banks,South State Bank,sp400
+SSD,Industrials,,,Building Products,Simpson Manufacturing,sp400
+ST,Industrials,,,Electrical Components & Equipment,Sensata Technologies,sp400
+STAG,Real Estate,,,Industrial REITs,STAG Industrial,sp400
+STRL,Industrials,,,Construction & Engineering,Sterling Infrastructure,sp400
+STWD,Financials,,,Mortgage REITs,Starwood Property Trust,sp400
+SWX,Utilities,,,Gas Utilities,Southwest Gas Corp,sp400
+SYNA,Information Technology,,,Semiconductors,Synaptics,sp400
+TCBI,Financials,,,Regional Banks,Texas Capital Bancshares,sp400
+TEX,Industrials,,,Construction Machinery & Heavy Transportation Equipment,Terex,sp400
+THC,Health Care,,,Health Care Facilities,Tenet Health,sp400
+THG,Financials,,,Property & Casualty Insurance,Hanover Insurance,sp400
+THO,Consumer Discretionary,,,Leisure Products,Thor Industries,sp400
+TKR,Industrials,,,Industrial Machinery & Supplies & Components,Timken,sp400
+TLN,Utilities,,,Independent Power Producers & Energy Traders,Talen Energy,sp400
+TMHC,Consumer Discretionary,,,Homebuilding,Taylor Morrison,sp400
+TNL,Consumer Discretionary,,,"Hotels, Resorts & Cruise Lines",Travel + Leisure Co.,sp400
+TOL,Consumer Discretionary,,,Homebuilding,Toll Brothers,sp400
+TREX,Industrials,,,Building Products,Trex,sp400
+TRU,Industrials,,,Research & Consulting Services,TransUnion,sp400
+TTC,Industrials,,,Agricultural & Farm Machinery,Toro,sp400
+TTEK,Industrials,,,Construction & Engineering,Tetra Tech,sp400
+TTMI,Information Technology,,,Electronic Manufacturing Services,TTM Technologies,sp400
+TWLO,Information Technology,,,Systems Software,Twilio,sp400
+TXNM,Utilities,,,Electric Utilities,TXNM Energy,sp400
+TXRH,Consumer Discretionary,,,Restaurants,Texas Roadhouse,sp400
+UBSI,Financials,,,Regional Banks,United Bankshares,sp400
+UFPI,Industrials,,,Building Products,UFP Industries,sp400
+UGI,Utilities,,,Gas Utilities,UGI Corp,sp400
+ULS,Industrials,,,,UL Solutions,sp400
+UMBF,Financials,,,Regional Banks,UMB Financial Corp.,sp400
+UNM,Financials,,,Life & Health Insurance,Unum,sp400
+USFD,Consumer Staples,,,Food Distributors,US Foods,sp400
+UTHR,Health Care,,,Biotechnology,United Therapeutics,sp400
+VAL,Energy,,,Oil & Gas Drilling,Valaris,sp400
+VC,Consumer Discretionary,,,Automotive Parts & Equipment,Visteon,sp400
+VFC,Consumer Discretionary,,,"Apparel, Accessories & Luxury Goods",VF Corporation,sp400
+VIAV,Information Technology,,,Communications Equipment,Viavi Solutions,sp400
+VICR,Industrials,,,Electrical Components & Equipment,Vicor Corporation,sp400
+VLY,Financials,,,Regional Banks,Valley Bank,sp400
+VMI,Industrials,,,Industrial Machinery & Supplies & Components,Valmont Industries,sp400
+VNO,Real Estate,,,Office REITs,Vornado Realty Trust,sp400
+VNOM,Energy,,,Oil & Gas Storage & Transportation,Viper Energy,sp400
+VNT,Information Technology,,,Electronic Equipment & Instruments,Vontier,sp400
+VOYA,Financials,,,Multi-Sector Holdings,Voya Financial,sp400
+VVV,Consumer Discretionary,,,Automotive Retail,Valvoline,sp400
+WAL,Financials,,,Regional Banks,Western Alliance Bancorporation,sp400
+WBS,Financials,,,Regional Banks,Webster Bank,sp400
+WCC,Industrials,,,Trading Companies & Distributors,WESCO International,sp400
+WEX,Financials,,,Transaction & Payment Processing Services,WEX Inc.,sp400
+WFRD,Energy,,,Oil & Gas Equipment & Services,Weatherford International,sp400
+WH,Consumer Discretionary,,,"Hotels, Resorts & Cruise Lines",Wyndham Hotels & Resorts,sp400
+WHR,Consumer Discretionary,,,Household Appliances,Whirlpool Corporation,sp400
+WING,Consumer Discretionary,,,Restaurants,Wingstop,sp400
+WLK,Materials,,,Specialty Chemicals,Westlake Corporation,sp400
+WMG,Communication Services,,,Movies & Entertainment,Warner Music Group,sp400
+WMS,Industrials,,,Building Products,Advanced Drainage Systems,sp400
+WPC,Real Estate,,,Diversified REITs,W. P. Carey,sp400
+WSO,Industrials,,,Trading Companies & Distributors,Watsco,sp400
+WTFC,Financials,,,Regional Banks,Wintrust Financial,sp400
+WTRG,Utilities,,,Water Utilities,Essential Utilities,sp400
+WTS,Industrials,,,Building Products,Watts Water Technologies,sp400
+WWD,Industrials,,,Electrical Components & Equipment,"Woodward, Inc.",sp400
+XPO,Industrials,,,Cargo Ground Transportation,"XPO, Inc.",sp400
+XRAY,Health Care,,,Health Care Supplies,Dentsply Sirona,sp400
+YETI,Consumer Discretionary,,,Leisure Products,Yeti Holdings,sp400
+ZION,Financials,,,Regional Banks,Zions Bancorporation,sp400
+AAMI,Financials,,,Asset Management & Custody Banks,Acadian Asset Management Inc.,sp600
+AAP,Consumer Discretionary,,,Automotive Retail,"Advance Auto Parts, Inc.",sp600
+AAT,Real Estate,,,Diversified REITs,American Assets Trust,sp600
+ABCB,Financials,,,Regional Banks,Ameris Bancorp,sp600
+ABG,Consumer Discretionary,,,Automotive Retail,Asbury Automotive Group,sp600
+ABM,Industrials,,,Environmental & Facilities Services,"ABM Industries, Inc.",sp600
+ABR,Financials,,,Mortgage REITs,Arbor Realty Trust,sp600
+ACA,Industrials,,,Construction & Engineering,"Arcosa, Inc.",sp600
+ACAD,Health Care,,,Pharmaceuticals,Acadia Pharmaceuticals,sp600
+ACHC,Health Care,,,Health Care Facilities,Acadia Healthcare,sp600
+ACIW,Information Technology,,,Application Software,ACI Worldwide,sp600
+ACLS,Information Technology,,,Semiconductor Materials & Equipment,"Axcelis Technologies, Inc.",sp600
+ACMR,Information Technology,,,Semiconductor Materials & Equipment,"ACM Research, Inc.",sp600
+ACT,Financials,,,Commercial & Residential Mortgage Finance,"Enact Holdings, Inc.",sp600
+ADAM,Real Estate,,,Mortgage REITs,"Adamas Trust, Inc.",sp600
+ADEA,Information Technology,,,IT Consulting & Other Services,"Adeia, Inc.",sp600
+ADMA,Health Care,,,Biotechnology,"ADMA Biologics, Inc.",sp600
+ADNT,Consumer Discretionary,,,Automotive Parts & Equipment,Adient,sp600
+ADT,Consumer Discretionary,,,Specialized Consumer Services,ADT Inc.,sp600
+ADUS,Health Care,,,Health Care Services,Addus HomeCare Corp.,sp600
+AEO,Consumer Discretionary,,,Apparel Retail,American Eagle Outfitters,sp600
+AESI,Energy,,,Oil & Gas Equipment & Services,"Atlas Energy Solutions, Inc.",sp600
+AGNT,Real Estate,,,Real Estate Services,"eXp World Holdings, Inc.",sp600
+AGO,Financials,,,Property & Casualty Insurance,Assured Guaranty Ltd.,sp600
+AGX,Industrials,,,Construction & Engineering,"Argan, Inc.",sp600
+AGYS,Information Technology,,,Application Software,"Agilysys, Inc.",sp600
+AHCO,Health Care,,,Health Care Equipment,AdaptHealth Corp.,sp600
+AIN,Industrials,,,Industrial Machinery & Supplies & Components,Albany International Corp.,sp600
+AIR,Industrials,,,Aerospace & Defense,AAR CORP.,sp600
+AKR,Real Estate,,,Retail REITs,Acadia Realty Trust,sp600
+ALG,Industrials,,,Construction Machinery & Heavy Transportation Equipment,Alamo Group,sp600
+ALGT,Industrials,,,Passenger Airlines,Allegiant Travel Company,sp600
+ALHC,Health Care,,,Health Care Services,"Alignment Healthcare, Inc.",sp600
+ALKS,Health Care,,,Pharmaceuticals,Alkermes plc,sp600
+ALRM,Financials,,,Application Software,"Alarm.Com, Inc.",sp600
+AMN,Health Care,,,Health Care Services,"Amn Healthcare Services, Inc.",sp600
+AMPH,Health Care,,,Pharmaceuticals,"Amphstar Pharmaceuticals, Inc.",sp600
+AMR,Materials,,,Steel,"Alpha Metallurgical Resources, Inc.",sp600
+AMRX,Health Care,,,Pharmaceuticals,Amneal Pharmaceuticals,sp600
+AMSF,Financials,,,Property & Casualty Insurance,"Amerisafe, Inc.",sp600
+AMTM,Industrials,,,Diversified Support Services,Amentum,sp600
+ANDE,Consumer Staples,,,Food Distributors,"The Andersons, Inc.",sp600
+ANIP,Health Care,,,Pharmaceuticals,"ANI Pharmaceuticals, Inc.",sp600
+AORT,Health Care,,,Health Care Equipment,Artivion,sp600
+AOSL,Information Technology,,,Semiconductors,"Alpha and Omega Semiconductor, Ltd.",sp600
+APAM,Financials,,,Asset Management & Custody Banks,"Artisan Partners Asset Management, Inc.",sp600
+APLE,Real Estate,,,Hotel & Resort REITs,"Apple Hospitality REIT, Inc.",sp600
+APOG,Industrials,,,Building Products,"Apogee Enterprises, Inc.",sp600
+ARCB,Industrials,,,Cargo Ground Transportation,ArcBest Corp.,sp600
+ARI,Real Estate,,,Mortgage REITs,Apollo Commercial Real Estate Finance,sp600
+ARLO,Information Technology,,,Communications Equipment,Arlo Technologies,sp600
+AROC,Energy,,,Oil & Gas Equipment & Services,"Archrock, Inc.",sp600
+ARR,Real Estate,,,Mortgage REITs,Armour Residential REIT,sp600
+ASO,Consumer Discretionary,,,Specialty Stores,Academy Sports + Outdoors,sp600
+ASTE,Industrials,,,Construction Machinery & Heavy Transportation Equipment,"Astec Industries, Inc.",sp600
+ASTH,Health Care,,,Health Care Facilities,"Astrana Health, Inc.",sp600
+ATEN,Information Technology,,,Systems Software,"A10 Networks, Inc.",sp600
+ATMU,Industrials,,,Industrial Machinery & Supplies & Components,Atmus Filtration Technologies Inc.,sp600
+AUB,Financials,,,Regional Banks,"Atlantic Union Bankshares, Corp.",sp600
+AVA,Utilities,,,Multi-Utilities,Avista Corporation,sp600
+AVNS,Health Care,,,Health Care Supplies,"Avanos Medical, Inc.",sp600
+AWI,Industrials,,,Building Products,"Armstrong World Industries, Inc.",sp600
+AWR,Utilities,,,Water Utilities,American States Water Company,sp600
+AX,Financials,,,Regional Banks,"Axos Financial, Inc.",sp600
+AZTA,Health Care,,,Life Sciences Tools & Services,"Azenta, Inc.",sp600
+AZZ,Industrials,,,Heavy Electrical Equipment,"AZZ, Inc.",sp600
+BANC,Financials,,,Regional Banks,"Banc Of California, Inc.",sp600
+BANF,Financials,,,Regional Banks,Bancfirst Corp,sp600
+BANR,Financials,,,Regional Banks,Banner Corporation,sp600
+BBT,Financials,,,Regional Banks,Beacon Financial Corp.,sp600
+BCC,Industrials,,,Building Products,Boise Cascade,sp600
+BCPC,Materials,,,Specialty Chemicals,Balchem Corporation,sp600
+BFAM,Consumer Discretionary,,,Specialized Consumer Services,Bright Horizons Family Solutions Inc.,sp600
+BFH,Financials,,,Consumer Finance,"Bread Financial Holdings, Inc.",sp600
+BFS,Real Estate,,,Retail REITs,"Saul Centers, Inc.",sp600
+BGC,Financials,,,Investment Banking & Brokerage,"BGC Group, Inc.",sp600
+BHE,Information Technology,,,Electronic Manufacturing Services,"Benchmark Electronics, Inc.",sp600
+BJRI,Consumer Discretionary,,,Restaurants,"BJ's Restaurants, Inc.",sp600
+BKE,Consumer Discretionary,,,Apparel Retail,"The Buckle, Inc.",sp600
+BKU,Financials,,,Regional Banks,"BankUnited, Inc.",sp600
+BL,Information Technology,,,Application Software,"BlackLine Systems, Inc.",sp600
+BLFS,Health Care,,,Health Care Supplies,"BioLife Solutions, Inc.",sp600
+BMI,Information Technology,,,Electronic Equipment & Instruments,"Badger Meter, Inc.",sp600
+BNL,Real Estate,,,Industrial REITs,"Broadstone Net Lease, Inc.",sp600
+BOH,Financials,,,Regional Banks,Bank of Hawaii,sp600
+BOOT,Consumer Discretionary,,,Apparel Retail,"Boot Barn Holdings, Inc.",sp600
+BOX,Information Technology,,,Application Software,"Box, Inc.",sp600
+BRC,Industrials,,,Commercial Printing,Brady Corporation,sp600
+BTSG,Health Care,,,Health Care Services,"BrightSpring Health Services, Inc.",sp600
+BTU,Energy,,,Coal & Consumable Fuels,"Peabody Energy, Inc.",sp600
+BXMT,Financials,,,Mortgage REITs,"Blackstone Mortgage Trust, Inc.",sp600
+CABO,Communication Services,,,Cable & Satellite,Cable One,sp600
+CAKE,Consumer Discretionary,,,Restaurants,"The Cheesecake Factory, Inc.",sp600
+CALM,Consumer Staples,,,Packaged Foods & Meats,"Cal-Maine Foods, Inc.",sp600
+CALX,Information Technology,,,Application Software,Calix,sp600
+CALY,Consumer Discretionary,,,Leisure Products,Callaway Golf Company,sp600
+CARG,Communication Services,,,Interactive Media & Services,CarGurus,sp600
+CASH,Financials,,,Regional Banks,"Pathward Financial, Inc.",sp600
+CATY,Financials,,,Regional Banks,Cathay General Bancorp,sp600
+CBRL,Consumer Discretionary,,,Restaurants,Cracker Barrel,sp600
+CBU,Financials,,,Regional Banks,"Community Bank System, Inc.",sp600
+CC,Materials,,,Diversified Chemicals,Chemours,sp600
+CCOI,Communication Services,,,Alternative Carriers,"Cogent Communications Holdings, Inc.",sp600
+CCS,Consumer Discretionary,,,Homebuilding,"Century Communities, Inc.",sp600
+CE,Materials,,,Specialty Chemicals,Celanese,sp600
+CENT,Consumer Staples,,,Household Products,Central Garden & Pet Company,sp600
+CENTA,Consumer Staples,,,Household Products,Central Garden & Pet Company (Class A),sp600
+CENX,Materials,,,Aluminum,Century Aluminum Company,sp600
+CERT,Health Care,,,Health Care Technology,"Certara, Inc.",sp600
+CFFN,Financials,,,Regional Banks,Capitol Federal Savings Bank,sp600
+CHCO,Financials,,,Regional Banks,City Holding Company,sp600
+CHEF,Consumer Staples,,,Food Distributors,"Chefs' Warehouse, Inc.",sp600
+CLB,Energy,,,Oil & Gas Equipment & Services,Core Laboratories,sp600
+CLSK,Information Technology,,,Internet Services & Infrastructure,"CleanSpark, Inc.",sp600
+CNK,Communication Services,,,Movies & Entertainment,"Cinemark Holdings, Inc.",sp600
+CNMD,Health Care,,,Health Care Equipment,CONMED Corporation,sp600
+CNR,Energy,,,Coal & Consumable Fuels,"Core Natural Resources, Inc.",sp600
+CNS,Financials,,,Asset Management & Custody Banks,"Cohen & Steers, Inc.",sp600
+CNXN,Information Technology,,,Technology Distributors,"PC Connection, Inc.",sp600
+COCO,Consumer Staples,,,Soft Drinks & Non-alcoholic Beverages,The Vita Coco Company,sp600
+COHU,Information Technology,,,Semiconductor Materials & Equipment,"Cohu, Inc.",sp600
+COLL,Health Care,,,Pharmaceuticals,"Collegium Pharmaceutical, Inc.",sp600
+CON,Health Care,,,Health Care Services,"Concentra Group Holdings Parent, Inc.",sp600
+CORT,Health Care,,,Pharmaceuticals,Corcept Therapeutics Incorporated,sp600
+CPF,Financials,,,Regional Banks,Central Pacific Financial Corp.,sp600
+CPK,Utilities,,,Gas Utilities,Chesapeake Utilities Corp.,sp600
+CPRX,Health Care,,,Biotechnology,"Catalyst Pharmaceuticals Partners, Inc.",sp600
+CRC,Energy,,,Oil & Gas Exploration & Production,California Resources Corporation,sp600
+CRGY,Energy,,,Oil & Gas Exploration & Production,Crescent Energy Company,sp600
+CRI,Consumer Discretionary,,,"Apparel, Accessories & Luxury Goods","Carter's, Inc.",sp600
+CRK,Energy,,,Oil & Gas Exploration & Production,"Comstock Resources, Inc.",sp600
+CRSR,Information Technology,,,"Technology Hardware, Storage & Peripherals",Corsair Gaming,sp600
+CRVL,Health Care,,,Health Care Services,CorVel Corporation,sp600
+CSR,Real Estate,,,Multi-Family Residential REITs,Centerspace Trust,sp600
+CSW,Industrials,,,Industrial Conglomerates,"CSW Industrials, Inc.",sp600
+CTKB,Health Care,,,Health Care Equipment,"Cytek Biosciences, Inc.",sp600
+CTS,Information Technology,,,Electronic Manufacturing Services,CTS Corporation,sp600
+CUBI,Financials,,,Regional Banks,"Customers Bancorp, Inc.",sp600
+CURB,Real Estate,,,Retail REITs,Curbline Properties Corp.,sp600
+CVBF,Financials,,,Regional Banks,CVB Financial Corp.,sp600
+CVCO,Consumer Discretionary,,,Homebuilding,"Cavco Industries, Inc.",sp600
+CVI,Energy,,,Oil & Gas Refining & Marketing,"CVR Energy, Inc.",sp600
+CVSA,Consumer Discretionary,,,Education Services,Covista Inc.,sp600
+CWEN,Utilities,,,Renewable Electricity,"Clearway Energy, Inc. (Class C)",sp600
+CWEN-A,Utilities,,,Renewable Electricity,"Clearway Energy, Inc. (Class A)",sp600
+CWK,Real Estate,,,Real Estate Services,Cushman & Wakefield plc,sp600
+CWST,Industrials,,,Environmental & Facilities Services,"Casella Waste Systems, Inc.",sp600
+CWT,Utilities,,,Water Utilities,California Water Service Group,sp600
+CXM,Information Technology,,,Application Software,"Sprinklr, Inc.",sp600
+CXW,Industrials,,,Diversified Support Services,CoreCivic,sp600
+CZR,Consumer Discretionary,,,Casinos & Gaming,Caesars Entertainment,sp600
+DAN,Consumer Discretionary,,,Automotive Parts & Equipment,Dana Incorporated,sp600
+DAVE,Financials,,,Consumer Finance,"Dave, Inc.",sp600
+DBD,Information Technology,,,Electronic Equipment & Instruments,Diebold Nixdorf,sp600
+DCH,Consumer Discretionary,,,Automotive Parts & Equipment,Dauch Corporation,sp600
+DCOM,Financials,,,Regional Banks,"Dime Community Bancshares, Inc.",sp600
+DEA,Real Estate,,,Office REITs,"Easterly Government Properties, Inc.",sp600
+DEI,Real Estate,,,Office REITs,Douglas Emmett,sp600
+DFH,Consumer Discretionary,,,Homebuilding,"Dream Finders Homes, Inc.",sp600
+DFIN,Financials,,,Financial Exchanges & Data,"Donnelley Financial Solutions, Inc.",sp600
+DGII,Information Technology,,,Communications Equipment,Digi International Inc.,sp600
+DIOD,Information Technology,,,Semiconductors,Diodes Incorporated,sp600
+DLX,Industrials,,,Commercial Printing,Deluxe Corporation,sp600
+DNOW,Industrials,,,Trading Companies & Distributors,NOW Inc,sp600
+DORM,Consumer Discretionary,,,Automotive Parts & Equipment,"Dorman Products, Inc.",sp600
+DRH,Real Estate,,,Hotel & Resort REITs,DiamondRock Hospitality Company,sp600
+DV,Communication Services,,,Advertising,"DoubleVerify Holdings, Inc.",sp600
+DXC,Information Technology,,,IT Consulting & Other Services,DXC Technology,sp600
+DXPE,Industrials,,,Trading Companies & Distributors,"DXP Enterprises, Inc.",sp600
+EAT,Consumer Discretionary,,,Restaurants,"Brinker International, Inc.",sp600
+ECG,Industrials,,,Construction & Engineering,"Everus Construction Group, Inc.",sp600
+ECPG,Financials,,,Consumer Finance,"Encore Capital Group, Inc.",sp600
+EFC,Financials,,,Specialized Finance,"Ellington Financial, Inc.",sp600
+EFOR,Information Technology,,,IT Consulting & Other Services,Everforth Inc.,sp600
+EGBN,Financials,,,Regional Banks,Eagle Bancorp Inc,sp600
+EIG,Financials,,,Property & Casualty Insurance,"Employers Holdings, Inc.",sp600
+EMBC,Health Care,,,Health Care Equipment,Embecta Corp.,sp600
+EMN,Materials,,,Specialty Chemicals,Eastman Chemical Company,sp600
+ENOV,Health Care,,,Health Care Equipment,Enovis,sp600
+ENPH,Information Technology,,,Semiconductor Materials & Equipment,Enphase Energy,sp600
+ENR,Consumer Staples,,,Household Products,Energizer,sp600
+ENVA,Financials,,,Consumer Finance,"Enova International, Inc.",sp600
+EPAC,Industrials,,,Industrial Machinery & Supplies & Components,Enerpac Tool Group,sp600
+EPAM,Information Technology,,,IT Consulting & Other Services,EPAM Systems,sp600
+EPC,Consumer Staples,,,Household Products,Edgewell Personal Care,sp600
+EPRT,Real Estate,,,Diversified REITs,"Essential Properties Realty Trust, Inc.",sp600
+ESE,Industrials,,,Industrial Machinery & Supplies & Components,ESCO Technologies Inc.,sp600
+ESI,Materials,,,Specialty Chemicals,Element Solutions,sp600
+ETD,Consumer Discretionary,,,Home Furnishings,"Ethan Allen Interiors, Inc.",sp600
+ETSY,Consumer Discretionary,,,Broadline Retail,Etsy,sp600
+EVTC,Financials,,,Transaction & Payment Processing Services,"EVERTEC, Inc.",sp600
+EXTR,Information Technology,,,Communications Equipment,"Extreme Networks, Inc.",sp600
+EYE,Consumer Discretionary,,,Specialty Stores,National Vision Holdings,sp600
+EZPW,Financials,,,Consumer Finance,"EZCORP, Inc.",sp600
+FA,Industrials,,,Human Resource & Employment Services,First Advantage Corporation,sp600
+FBK,Financials,,,Regional Banks,FB Financial Corp.,sp600
+FBNC,Financials,,,Regional Banks,First Bancorp (Southern Pines NC),sp600
+FBP,Financials,,,Regional Banks,First BanCorp (Puerto Rico),sp600
+FBRT,Real Estate,,,Mortgage REITs,"Franklin BSP Realty Trust, Inc.",sp600
+FCF,Financials,,,Regional Banks,"First Commonwealth Financial, Corp.",sp600
+FCPT,Real Estate,,,Other Specialized REITs,"Four Corners Property Trust, Inc.",sp600
+FDP,Consumer Staples,,,Packaged Foods & Meats,"Fresh Del Monte Produce, Inc.",sp600
+FELE,Industrials,,,Industrial Machinery & Supplies & Components,Franklin Electric,sp600
+FFBC,Financials,,,Regional Banks,First Financial Bancorp,sp600
+FG,Financials,,,Life & Health Insurance,"F&G Annuities & Life, Inc.",sp600
+FHB,Financials,,,Regional Banks,"First Hawaiian, Inc.",sp600
+FIBK,Financials,,,Regional Banks,"First Interstate BancSystem, Inc.",sp600
+FIZZ,Consumer Staples,,,Soft Drinks & Non-alcoholic Beverages,National Beverage Corp.,sp600
+FLO,Consumer Staples,,,Packaged Foods & Meats,Flowers Foods,sp600
+FMC,Materials,,,Fertilizers & Agricultural Chemicals,FMC Corporation,sp600
+FORM,Information Technology,,,Semiconductor Materials & Equipment,"FormFactor, Inc.",sp600
+FOXF,Consumer Discretionary,,,Automotive Parts & Equipment,Fox Factory,sp600
+FRPT,Consumer Staples,,,Packaged Foods & Meats,Freshpet,sp600
+FSS,Industrials,,,Construction Machinery & Heavy Transportation Equipment,Federal Signal Corporation,sp600
+FTDR,Consumer Discretionary,,,Specialized Consumer Services,"Frontdoor, Inc.",sp600
+FTRE,Health Care,,,Biotechnology,Fortrea,sp600
+FUL,Materials,,,Specialty Chemicals,H.B. Fuller Company,sp600
+FULT,Financials,,,Regional Banks,Fulton Financial Corporation,sp600
+FUN,Consumer Discretionary,,,Leisure Facilities,Six Flags,sp600
+FWRD,Industrials,,,Air Freight & Logistics,Forward Air Corp.,sp600
+GBX,Industrials,,,Construction Machinery & Heavy Transportation Equipment,"The Greenbrier Companies, Inc.",sp600
+GDYN,Information Technology,,,IT Consulting & Other Services,"Grid Dynamics Holdings, Inc.",sp600
+GEO,Industrials,,,Environmental & Facilities Services,"GEO Group, Inc.",sp600
+GFF,Industrials,,,Building Products,Griffon Corporation,sp600
+GIII,Consumer Discretionary,,,"Apparel, Accessories & Luxury Goods","G-III Apparel Group, Ltd.",sp600
+GKOS,Health Care,,,Health Care Equipment,Glaukos Corp.,sp600
+GNL,Real Estate,,,Diversified REITs,"Global Net Lease, Inc.",sp600
+GNW,Financials,,,Multi-line Insurance,"Genworth Financial, Inc.",sp600
+GO,Consumer Staples,,,Food Retail,Grocery Outlet,sp600
+GOGO,Communication Services,,,Wireless Telecommunication Services,"Gogo, Inc.",sp600
+GOLF,Consumer Discretionary,,,Leisure Products,Acushnet Company,sp600
+GPI,Consumer Discretionary,,,Automotive Retail,"Group 1 Automotive, Inc.",sp600
+GRBK,Consumer Discretionary,,,Homebuilding,"Green Brick Partners, Inc.",sp600
+GSHD,Financials,,,Insurance Brokers,"Goosehead Insurance, Inc.",sp600
+GTES,Industrials,,,Industrial Machinery & Supplies & Components,Gates Corporation,sp600
+GTM,Communication Services,,,Interactive Media & Services,ZoomInfo,sp600
+GTY,Real Estate,,,Retail REITs,Getty Realty Corp.,sp600
+GVA,Industrials,,,Construction & Engineering,"Granite Construction, Inc.",sp600
+HAFC,Financials,,,Regional Banks,Hanmi Financial Corporation,sp600
+HASI,Financials,,,Specialized Finance,"Hannon Armstrong Sustainable Infrastructure Capital, Inc.",sp600
+HAYW,Industrials,,,Electrical Components & Equipment,"Hayward Holdings, Inc.",sp600
+HCC,Materials,,,Steel,"Warrior Met Coal, Inc.",sp600
+HCI,Financials,,,Property & Casualty Insurance,"HCI Group, Inc.",sp600
+HCSG,Industrials,,,Environmental & Facilities Services,"Healthcare Services Group, Inc.",sp600
+HE,Utilities,,,Electric Utilities,"Hawaiian Electric Industries, Inc.",sp600
+HFWA,Health Care,,,Regional Banks,Heritage Financial Corporation,sp600
+HIW,Real Estate,,,Office REITs,Highwoods Properties,sp600
+HLIT,Information Technology,,,Communications Equipment,Harmonic Inc.,sp600
+HLX,Energy,,,Oil & Gas Equipment & Services,"Helix Energy Solutions Group, Inc.",sp600
+HMN,Financials,,,Multi-line Insurance,Horace Mann Educators Corporation,sp600
+HNI,Industrials,,,Office Services & Supplies,HNI Corporation,sp600
+HOPE,Financials,,,Regional Banks,"Hope Bancorp, Inc.",sp600
+HP,Energy,,,Oil & Gas Drilling,"Helmerich & Payne, Inc.",sp600
+HRMY,Health Care,,,Biotechnology,"Harmony Biosciences Holdings, Inc.",sp600
+HSTM,Health Care,,,Health Care Technology,"HealthStream, Inc.",sp600
+HTH,Financials,,,Regional Banks,Hilltop Holdings Inc.,sp600
+HTLD,Industrials,,,Cargo Ground Transportation,"Heartland Express, Inc.",sp600
+HTO,Utilities,,,Water Utilities,H2O America,sp600
+HTZ,Industrials,,,Passenger Ground Transportation,Hertz,sp600
+HUBG,Industrials,,,Air Freight & Logistics,"Hub Group, Inc.",sp600
+HWKN,Materials,,,Commodity Chemicals,"Hawkins, Inc.",sp600
+HZO,Consumer Discretionary,,,Specialty Stores,"MarineMax, Inc.",sp600
+IART,Health Care,,,Health Care Equipment,Integra Lifesciences Holdings,sp600
+IBP,Consumer Discretionary,,,Homebuilding,"Installed Building Products, Inc.",sp600
+ICHR,Information Technology,,,Semiconductor Materials & Equipment,"Ichor Holdings, Ltd.",sp600
+ICUI,Health Care,,,Health Care Supplies,ICU Medical,sp600
+IIIN,Industrials,,,Building Products,"Insteel Industries, Inc.",sp600
+IIPR,Real Estate,,,Industrial REITs,"Innovative Industrial Properties, Inc.",sp600
+INDB,Financials,,,Regional Banks,Independent Bank Corp.,sp600
+INDV,Health Care,,,Pharmaceuticals,Indivior,sp600
+INSP,Health Care,,,Health Care Equipment,"Inspire Medical Systems, Inc.",sp600
+INSW,Energy,,,Oil & Gas Storage & Transportation,"International Seaways, Inc.",sp600
+INVA,Health Care,,,Pharmaceuticals,"Innoviva, Inc.",sp600
+INVX,Energy,,,Oil & Gas Equipment & Services,"Innovex International, Inc.",sp600
+IOSP,Materials,,,Specialty Chemicals,"Innospec, Inc.",sp600
+IPAR,Consumer Staples,,,Household Products,"Inter Parfums, Inc.",sp600
+IRDM,Communication Services,,,Alternative Carriers,Iridium Communications,sp600
+ITGR,Health Care,,,Health Care Equipment,Integer Holdings Corporation,sp600
+ITRI,Information Technology,,,Electronic Equipment & Instruments,"Itron, Inc.",sp600
+JBGS,Real Estate,,,Office REITs,JBG Smith,sp600
+JBLU,Industrials,,,Passenger Airlines,JetBlue,sp600
+JBSS,Consumer Staples,,,Packaged Foods & Meats,"John B. Sanfilippo & Son, Inc.",sp600
+JBTM,Industrials,,,Industrial Machinery & Supplies & Components,JBT Marel Corporation,sp600
+JJSF,Consumer Staples,,,Packaged Foods & Meats,J&J Snack Foods Corp.,sp600
+JOE,Real Estate,,,Real Estate Development,St. Joe Company,sp600
+JXN,Financials,,,Life & Health Insurance,"Jackson Financial, Inc.",sp600
+KAI,Industrials,,,Industrial Machinery & Supplies & Components,Kadant Inc.,sp600
+KALU,Materials,,,Aluminum,Kaiser Aluminum Corporation,sp600
+OPLN,Industrials,,,Diversified Support Services,"OPENLANE, Inc.",sp600
+KFY,Industrials,,,Human Resource & Employment Services,Korn/Ferry International,sp600
+KGS,Energy,,,Oil & Gas Equipment & Services,"Kodiak Gas Services, Inc.",sp600
+KLIC,Information Technology,,,Semiconductor Materials & Equipment,"Kulicke and Soffa Industries, Inc.",sp600
+KMPR,Financials,,,Multi-line Insurance,Kemper Corporation,sp600
+KMT,Industrials,,,Industrial Machinery & Supplies & Components,Kennametal,sp600
+KMX,Consumer Discretionary,,,Automotive Retail,"CarMax, Inc.",sp600
+KN,Information Technology,,,Electronic Components,Knowles Corporation,sp600
+KNTK,Energy,,,Oil & Gas Storage & Transportation,"Kinetik Holdings, Inc.",sp600
+KOP,Materials,,,Commodity Chemicals,"Koppers Holdings, Inc.",sp600
+KRYS,Health Care,,,Biotechnology,"Krystal Biotech, Inc.",sp600
+KSS,Consumer Discretionary,,,Broadline Retail,Kohl's Corp.,sp600
+KTB,Consumer Discretionary,,,"Apparel, Accessories & Luxury Goods",Kontoor Brands,sp600
+KWR,Materials,,,Specialty Chemicals,Quaker Chemical Corporation,sp600
+LAUR,Consumer Discretionary,,,Education Services,"Laureate Education, Inc.",sp600
+LBRT,Energy,,,Oil & Gas Equipment & Services,"Liberty Energy, Inc.",sp600
+LCII,Consumer Discretionary,,,Automotive Parts & Equipment,LCI Industries,sp600
+LEG,Consumer Discretionary,,,Home Furnishings,Leggett & Platt,sp600
+LFST,Health Care,,,Health Care Services,Lifestance Health,sp600
+LGIH,Consumer Discretionary,,,Homebuilding,LGI Homes,sp600
+LIF,Information Technology,,,Application Software,Life360,sp600
+LGND,Health Care,,,Biotechnology,"Ligand Pharmaceuticals, Inc.",sp600
+LKFN,Financials,,,Regional Banks,Lakeland Financial,sp600
+LKQ,Consumer Discretionary,,,Distributors,LKQ Corporation,sp600
+LMAT,Health Care,,,Health Care Equipment,LeMaitre Vascular,sp600
+LNC,Financials,,,Multi-line Insurance,Lincoln Financial,sp600
+LNN,Materials,,,Agricultural & Farm Machinery,Lindsay Corporation,sp600
+LPG,Energy,,,Oil & Gas Storage & Transportation,Dorian LPG Ltd.,sp600
+LQDT,Industrials,,,Diversified Support Services,"Liquidity Services, Inc.",sp600
+LRN,Consumer Discretionary,,,Education Services,"Stride, Inc.",sp600
+LTC,Real Estate,,,Health Care REITs,"LTC Properties, Inc.",sp600
+LTH,Consumer Discretionary,,,Leisure Facilities,"Life Time Group Holdings, Inc.",sp600
+LUMN,Communication Services,,,Alternative Carriers,Lumen Technologies,sp600
+LW,Consumer Staples,,,Packaged Foods & Meats,Lamb Weston,sp600
+LXP,Real Estate,,,Diversified REITs,Lexington Realty Trust,sp600
+LYFT,Industrials,,,Passenger Ground Transportation,"Lyft, Inc.",sp600
+LZ,Industrials,,,Research & Consulting Services,"LegalZoom.com, Inc.",sp600
+LZB,Consumer Discretionary,,,Home Furnishings,"La-Z-Boy, Inc.",sp600
+MAC,Real Estate,,,Retail REITs,Macerich,sp600
+MAN,Industrials,,,Human Resource & Employment Services,ManpowerGroup,sp600
+MARA,Information Technology,,,Internet Services & Infrastructure,"MARA Holdings, Inc.",sp600
+MATW,Consumer Discretionary,,,Specialized Consumer Services,Matthews International Corporation,sp600
+MATX,Industrials,,,Marine Transportation,"Matson, Inc.",sp600
+MBC,Industrials,,,Building Products,"MasterBrand, Inc.",sp600
+MBIN,Financials,,,Regional Banks,Merchants Bancorp,sp600
+MC,Financials,,,Investment Banking & Brokerage,Moelis & Company,sp600
+MCRI,Consumer Discretionary,,,Casinos & Gaming,"Monarch Casino & Resort, Inc.",sp600
+MCY,Financials,,,Property & Casualty Insurance,Mercury General,sp600
+MD,Health Care,,,Health Care Services,Pediatrix Medical Group,sp600
+MDU,Utilities,,,Multi-Utilities,"MDU Resources Group, Inc.",sp600
+MGEE,Utilities,,,Electric Utilities,"MGE Energy, Inc.",sp600
+MGY,Energy,,,Oil & Gas Exploration & Production,"Magnolia Oil & Gas, Corp.",sp600
+MHK,Consumer Discretionary,,,Home Furnishings,Mohawk Industries,sp600
+MHO,Consumer Discretionary,,,Homebuilding,"M/I Homes, Inc.",sp600
+MIR,Information Technology,,,Electronic Equipment & Instruments,"Mirion Technologies, Inc.",sp600
+MKTX,Financials,,,Financial Exchanges & Data,MarketAxess,sp600
+MLKN,Industrials,,,Office Services & Supplies,"MillerKnoll, Inc.",sp600
+MMI,Real Estate,,,Real Estate Services,"Marcus & Millichap, Inc.",sp600
+MMSI,Health Care,,,Health Care Supplies,"Merit Medical Systems, Inc.",sp600
+MNRO,Consumer Discretionary,,,Automotive Retail,"Monro, Inc.",sp600
+MOH,Health Care,,,Managed Health Care,Molina Healthcare,sp600
+MPT,Real Estate,,,Health Care REITs,Medical Properties Trust,sp600
+MRCY,Industrials,,,Electrical Components & Equipment,Mercury Systems,sp600
+MRP,Real Estate,,,Single-Family Residential REITs,"Millrose Properties, Inc.",sp600
+MRTN,Industrials,,,Cargo Ground Transportation,"Marten Transport, Ltd.",sp600
+MSEX,Utilities,,,Water Utilities,Middlesex Water Company,sp600
+MSGS,Communication Services,,,Movies & Entertainment,Madison Square Garden Sports Corp.,sp600
+MTCH,Communication Services,,,Interactive Media & Services,Match Group,sp600
+MTH,Consumer Discretionary,,,Homebuilding,Meritage Homes Corporation,sp600
+MTRN,Materials,,,Diversified Metals & Mining,Materion Corp.,sp600
+MTUS,Materials,,,Steel,Metallus Inc,sp600
+MTX,Materials,,,Specialty Chemicals,Minerals Technologies,sp600
+MWA,Industrials,,,Industrial Machinery & Supplies & Components,Mueller Water Products,sp600
+MXL,Information Technology,,,Semiconductors,"MaxLinear, Inc.",sp600
+MYRG,Industrials,,,Construction & Engineering,"MYR Group, Inc.",sp600
+NABL,Information Technology,,,Systems Software,"N-able, Inc.",sp600
+NATL,Financials,,,Transaction & Payment Processing Services,NCR Atleos,sp600
+NAVI,Financials,,,Consumer Finance,Navient,sp600
+NBHC,Financials,,,Regional Banks,National Bank Holdings Corporation,sp600
+NBTB,Financials,,,Regional Banks,"NBT Bancorp, Inc.",sp600
+NE,Energy,,,Oil & Gas Drilling,Noble Corporation,sp600
+NEO,Health Care,,,Health Care Services,"NeoGenomics Laboratories, Inc.",sp600
+NEOG,Health Care,,,Health Care Supplies,Neogen,sp600
+NGVT,Materials,,,Specialty Chemicals,"Ingevity, Corp.",sp600
+NHC,Health Care,,,Health Care Facilities,"National Healthcare, Corp.",sp600
+NMIH,Financials,,,Commercial & Residential Mortgage Finance,"NMI Holdings, Inc.",sp600
+NOG,Energy,,,Oil & Gas Exploration & Production,"Northern Oil and Gas, Inc.",sp600
+NPK,Industrials,,,Aerospace & Defense,"National Presto Industries, Inc.",sp600
+NPO,Industrials,,,Industrial Machinery & Supplies & Components,"EnPro Industries, Inc.",sp600
+NSIT,Industrials,,,Technology Distributors,"Insight Enterprises, Inc.",sp600
+NSP,Industrials,,,Human Resource & Employment Services,Insperity,sp600
+NSSC,Information Technology,,,Electronic Equipment & Instruments,Napco Security Technologies,sp600
+NTCT,Information Technology,,,Communications Equipment,"NETSCOUT Systems, Inc.",sp600
+NWBI,Financials,,,Regional Banks,"Northwest Bancshares, Inc.",sp600
+NWL,Consumer Discretionary,,,Housewares & Specialties,Newell Brands,sp600
+NWN,Utilities,,,Gas Utilities,NW Natural,sp600
+NX,Industrials,,,Building Products,Quanex Building Products Corporation,sp600
+NXRT,Real Estate,,,Multi-Family Residential REITs,"NexPoint Residential Trust, Inc.",sp600
+OFG,Financials,,,Regional Banks,OFG Bancorp,sp600
+OGN,Health Care,,,Pharmaceuticals,Organon & Co.,sp600
+OI,Materials,,,"Metal, Glass & Plastic Containers","O-I Glass, Inc.",sp600
+OII,Energy,,,Oil & Gas Equipment & Services,"Oceaneering International, Inc.",sp600
+OMCL,Health Care,,,Health Care Technology,Omnicell,sp600
+OSIS,Information Technology,,,Electronic Equipment & Instruments,"OSI Systems, Inc.",sp600
+OSW,Consumer Discretionary,,,Leisure Facilities,OneSpaWorld Holdings Limited,sp600
+OTTR,Utilities,,,Electric Utilities,Otter Tail Corporation,sp600
+OUT,Real Estate,,,Other Specialized REITs,Outfront Media,sp600
+OXM,Consumer Discretionary,,,"Apparel, Accessories & Luxury Goods","Oxford Industries, Inc.",sp600
+PAHC,Health Care,,,Pharmaceuticals,Phibro Animal Health,sp600
+PARR,Energy,,,Oil & Gas Refining & Marketing,"Par Pacific Holdings, Inc.",sp600
+PAYC,Industrials,,,Human Resource & Employment Services,Paycom,sp600
+PAYO,Financials,,,Transaction & Payment Processing Services,Payoneer Global Inc.,sp600
+PATK,Consumer Discretionary,,,Automotive Parts & Equipment,"Patrick Industries, Inc.",sp600
+PBH,Health Care,,,Pharmaceuticals,Prestige Consumer Healthcare,sp600
+PBI,Industrials,,,Office Services & Supplies,"Pitney Bowes, Inc.",sp600
+PCRX,Health Care,,,Pharmaceuticals,"Pacira BioSciences, Inc.",sp600
+PDFS,Information Technology,,,Semiconductor Materials & Equipment,"PDF Solutions, Inc.",sp600
+PEB,Real Estate,,,Hotel & Resort REITs,Pebblebrook Hotel Trust,sp600
+PECO,Real Estate,,,Retail REITs,Phillips Edison & Company,sp600
+PENG,Information Technology,,,Semiconductors,"Penguin Solutions, Inc.",sp600
+PENN,Consumer Discretionary,,,Casinos & Gaming,Penn Entertainment,sp600
+PFBC,Financials,,,Regional Banks,Preferred Bank,sp600
+PFS,Financials,,,Regional Banks,"Provident Financial Services, Inc.",sp600
+PGNY,Health Care,,,Health Care Services,Progyny,sp600
+PHIN,Consumer Discretionary,,,Automotive Retail,"PHINIA, Inc.",sp600
+PI,Information Technology,,,Electronic Equipment & Instruments,"Impinj, Inc.",sp600
+PIPR,Financials,,,Investment Banking & Brokerage,Piper Sandler Companies,sp600
+PJT,Financials,,,Investment Banking & Brokerage,"PJT Partners, Inc.",sp600
+PLAB,Information Technology,,,Semiconductor Materials & Equipment,"Photronics, Inc.",sp600
+PLMR,Financials,,,Property & Casualty Insurance,"Palomar Holdings, Inc.",sp600
+PLUS,Information Technology,,,Technology Distributors,"ePlus, Inc.",sp600
+PLXS,Information Technology,,,Electronic Manufacturing Services,Plexus Corp.,sp600
+PMT,Real Estate,,,Mortgage REITs,PennyMac Mortgage Investment Trust,sp600
+POWI,Information Technology,,,Semiconductors,Power Integrations,sp600
+POWL,Industrials,,,Electrical Components & Equipment,"Powell Industries, Inc.",sp600
+PPLI,Communication Services,,,Interactive Media & Services,People Inc.,sp600
+PRA,Financials,,,Property & Casualty Insurance,ProAssurance Corporation,sp600
+PRAA,Financials,,,Consumer Finance,"PRA Group, Inc.",sp600
+PRDO,Consumer Discretionary,,,Education Services,Perdoceo Education Corp.,sp600
+PRG,Financials,,,Consumer Finance,"PROG Holdings, Inc.",sp600
+PRGO,Health Care,,,Pharmaceuticals,Perrigo,sp600
+PRGS,Information Technology,,,Systems Software,Progress Software Corporation,sp600
+PRIM,Industrials,,,Construction & Engineering,Primoris Services Corporation,sp600
+PRK,Financials,,,Regional Banks,Park National Corp.,sp600
+PRKS,Consumer Discretionary,,,Leisure Facilities,United Parks & Resorts,sp600
+PRLB,Industrials,,,Industrial Machinery & Supplies & Components,Protolabs,sp600
+PRSU,Consumer Discretionary,,,"Hotels, Resorts & Cruise Lines","Pursuit Attractions & Hospitality, Inc.",sp600
+PRVA,Health Care,,,Health Care Services,"Privia Health Group, Inc.",sp600
+PSMT,Consumer Staples,,,Consumer Staples Merchandise Retail,PriceSmart,sp600
+PTCT,Health Care,,,Pharmaceuticals,"PTC Therapeutics, Inc.",sp600
+PTEN,Energy,,,Oil & Gas Drilling,"Patterson-UTI Energy, Inc.",sp600
+PTGX,Health Care,,,Biotechnology,"Protagonist Therapeutics, Inc.",sp600
+PTON,Consumer Discretionary,,,Leisure Products,"Peloton Interactive, Inc.",sp600
+PZZA,Consumer Discretionary,,,Restaurants,Papa John's Pizza,sp600
+QDEL,Health Care,,,Health Care Supplies,QuidelOrtho,sp600
+QNST,Communication Services,,,Interactive Media & Services,"QuinStreet, Inc.",sp600
+QRVO,Information Technology,,,Semiconductors,Qorvo,sp600
+QTWO,Information Technology,,,Application Software,"Q2 Holdings, Inc.",sp600
+RAMP,Information Technology,,,Application Software,"LiveRamp Holdings, Inc.",sp600
+RAL,Information Technology,,,Electronic Equipment & Instruments,Ralliant Corp,sp600
+RCUS,Health Care,,,Biotechnology,"Arcus Biosciences, Inc.",sp600
+RDN,Financials,,,Property & Casualty Insurance,"Radian Group, Inc.",sp600
+RDNT,Health Care,,,Health Care Services,"RadNet, Inc.",sp600
+RELY,Financials,,,Transaction & Payment Processing Services,Remitly,sp600
+RES,Energy,,,Oil & Gas Equipment & Services,"RPC, Inc.",sp600
+REYN,Consumer Staples,,,Household Products,Reynolds Consumer Products,sp600
+REX,Energy,,,Oil & Gas Refining & Marketing,REX American Resources Corporation,sp600
+REZI,Industrials,,,Trading Companies & Distributors,"Resideo Technologies, Inc.",sp600
+RHI,Industrials,,,Human Resource & Employment Services,Robert Half,sp600
+RHP,Real Estate,,,Hotel & Resort REITs,Ryman Hospitality Properties,sp600
+RITM,Financials,,,Mortgage REITs,Rithm Capital,sp600
+RNG,Information Technology,,,Application Software,"RingCentral, Inc.",sp600
+RNST,Financials,,,Regional Banks,Renasant Corp.,sp600
+ROCK,Industrials,,,Building Products,"Gibraltar Industries, Inc.",sp600
+ROG,Information Technology,,,Electronic Components,Rogers Corporation,sp600
+RRR,Consumer Discretionary,,,Casinos & Gaming,"Red Rock Resorts, Inc.",sp600
+RUN,Industrials,,,Building Products,Sunrun,sp600
+RUSHA,Industrials,,,Construction Machinery & Heavy Transportation Equipment,Rush Enterprises,sp600
+RWT,Real Estate,,,Mortgage REITs,"Redwood Trust, Inc.",sp600
+RXO,Industrials,,,Cargo Ground Transportation,"RXO, Inc.",sp600
+SAFE,Real Estate,,,Other Specialized REITs,"Safehold, Inc.",sp600
+SABR,Consumer Discretionary,,,"Hotels, Resorts & Cruise Lines",Sabre,sp600
+SAFT,Financials,,,Property & Casualty Insurance,"Safety Insurance Group, Inc.",sp600
+SAH,Consumer Discretionary,,,Automotive Retail,"Sonic Automotive, Inc.",sp600
+SBCF,Financials,,,Regional Banks,Seacoast Banking Corporation of Florida,sp600
+SBH,Consumer Discretionary,,,Specialty Stores,"Sally Beauty Holdings, Inc.",sp600
+SBSI,Financials,,,Regional Banks,"Southside Bancshares, Inc.",sp600
+SCHL,Consumer Discretionary,,,Publishing,Scholastic Corporation,sp600
+SCL,Materials,,,Specialty Chemicals,Stepan Company,sp600
+SCSC,Information Technology,,,Technology Distributors,"ScanSource, Inc.",sp600
+SDGR,Health Care,,,Health Care Services,"Schrödinger, Inc.",sp600
+SEDG,Information Technology,,,Semiconductor Materials & Equipment,SolarEdge,sp600
+SEM,Health Care,,,Health Care Facilities,"Select Medical Holdings, Corp.",sp600
+SEZL,Financials,,,Transaction & Payment Processing Services,Sezzle,sp600
+SFBS,Financials,,,Regional Banks,"ServisFirst Bancshares, Inc.",sp600
+SFNC,Financials,,,Regional Banks,Simmons First National Corporation,sp600
+SHAK,Consumer Discretionary,,,Restaurants,"Shake Shack, Inc.",sp600
+SHEN,Communication Services,,,Wireless Telecommunication Services,Shenandoah Telecommunications Co,sp600
+SHO,Real Estate,,,Hotel & Resort REITs,"Sunstone Hotel Investors, Inc.",sp600
+SHOO,Consumer Discretionary,,,Footwear,"Steven Madden, Ltd.",sp600
+SIG,Consumer Discretionary,,,Specialty Stores,Signet Jewelers,sp600
+SKT,Real Estate,,,Retail REITs,"Tanger Factory Outlet Centers, Inc.",sp600
+SKY,Consumer Discretionary,,,Homebuilding,"Champion Homes, Inc.",sp600
+SKYW,Industrials,,,Passenger Airlines,"SkyWest, Inc.",sp600
+SLG,Real Estate,,,Office REITs,SL Green Realty,sp600
+SLVM,Materials,,,Paper Products,Sylvamo Corp.,sp600
+SM,Energy,,,Oil & Gas Exploration & Production,SM Energy Company,sp600
+SMP,Consumer Discretionary,,,Automotive Parts & Equipment,"Standard Motor Products, Inc.",sp600
+SMPL,Consumer Staples,,,Packaged Foods & Meats,Simply Good Foods Company,sp600
+SNDR,Industrials,,,Cargo Ground Transportation,Schneider National,sp600
+SNEX,Financials,,,Investment Banking & Brokerage,StoneX Group Inc.,sp600
+SONO,Consumer Discretionary,,,Consumer Electronics,"Sonos, Inc.",sp600
+SPHR,Communication Services,,,Movies & Entertainment,Sphere Entertainment,sp600
+SPNT,Financials,,,Reinsurance,SiriusPoint Ltd.,sp600
+SPSC,Information Technology,,,Application Software,"SPS Commerce, Inc.",sp600
+SRPT,Health Care,,,Biotechnology,Sarepta Therapeutics,sp600
+STAA,Health Care,,,Health Care Equipment,STAAR Surgical Company,sp600
+STBA,Financials,,,Regional Banks,"S&T Bancorp, Inc.",sp600
+STC,Financials,,,Property & Casualty Insurance,Stewart Information Services Corporation,sp600
+STEL,Financials,,,Regional Banks,"Stellar Bancorp, Inc.",sp600
+STEP,Financials,,,Asset Management & Custody Banks,StepStone Group,sp600
+STRA,Consumer Discretionary,,,Education Services,"Strategic Education, Inc.",sp600
+SUPN,Health Care,,,Pharmaceuticals,"Supernus Pharmaceuticals, Inc.",sp600
+SXI,Industrials,,,Industrial Machinery & Supplies & Components,Standex International Corporation,sp600
+SXT,Materials,,,Specialty Chemicals,Sensient Technologies,sp600
+TALO,Energy,,,Oil & Gas Exploration & Production,"Talos Energy, Inc.",sp600
+TBBK,Financials,,,Regional Banks,"The Bancorp, Inc.",sp600
+TDC,Information Technology,,,IT Consulting & Other Services,Teradata,sp600
+TDS,Communication Services,,,Integrated Telecommunication Services,"Telephone and Data Systems, Inc.",sp600
+TDW,Energy,,,Oil & Gas Equipment & Services,"Tidewater, Inc.",sp600
+TFIN,Financials,,,Regional Banks,"Triumph Bancorp, Inc.",sp600
+TFX,Health Care,,,Health Care Equipment,Teleflex,sp600
+TGTX,Health Care,,,Biotechnology,"TG Therapeutics, Inc.",sp600
+THRM,Consumer Discretionary,,,Automotive Parts & Equipment,Gentherm Incorporated,sp600
+TILE,Industrials,,,Office Services & Supplies,"Interface, Inc.",sp600
+TMDX,Health Care,,,Health Care Equipment,"TransMedics Group, Inc.",sp600
+TMP,Financials,,,Regional Banks,Tompkins Financial Corporation,sp600
+TNC,Industrials,,,Industrial Machinery & Supplies & Components,Tennant Company,sp600
+TNDM,Health Care,,,Health Care Equipment,Tandem Diabetes Care,sp600
+TR,Consumer Staples,,,Packaged Foods & Meats,"Tootsie Roll Industries, Inc.",sp600
+TRIP,Communication Services,,,Interactive Media & Services,TripAdvisor,sp600
+TRMK,Financials,,,Regional Banks,Trustmark Corp.,sp600
+TRN,Industrials,,,Construction Machinery & Heavy Transportation Equipment,"Trinity Industries, Inc.",sp600
+TRNO,Real Estate,,,Industrial REITs,Terreno Realty Corporation,sp600
+TRST,Financials,,,Regional Banks,TrustCo Bank Corp NY,sp600
+TRUP,Financials,,,Life & Health Insurance,Trupanion,sp600
+TWO,Financials,,,Mortgage REITs,Two Harbors Investment Corp.,sp600
+UA,Consumer Discretionary,,,"Apparel, Accessories & Luxury Goods",Under Armour (Class C),sp600
+UAA,Consumer Discretionary,,,"Apparel, Accessories & Luxury Goods",Under Armour (Class A),sp600
+UCB,Financials,,,Regional Banks,"United Community Banks, Inc.",sp600
+UCTT,Information Technology,,,Semiconductor Materials & Equipment,"Ultra Clean Holdings, Inc.",sp600
+UE,Real Estate,,,Retail REITs,Urban Edge Properties,sp600
+UFCS,Financials,,,Property & Casualty Insurance,"United Fire Group, Inc.",sp600
+UFPT,Health Care,,,Health Care Equipment,"UFP Technologies, Inc.",sp600
+UHT,Real Estate,,,Health Care REITs,Universal Health Realty Income Trust,sp600
+UNF,Industrials,,,Diversified Support Services,UniFirst Corporation,sp600
+UNFI,Consumer Staples,,,Food Retail,United Natural Foods Inc,sp600
+UNIT,Communication Services,,,Alternative Carriers,Uniti Group,sp600
+UPBD,Consumer Discretionary,,,Computer & Electronics Retail,"Upbound Group, Inc.",sp600
+UPWK,Industrials,,,Human Resource & Employment Services,"Upwork, Inc.",sp600
+URBN,Consumer Discretionary,,,Apparel Retail,"Urban Outfitters, Inc.",sp600
+USPH,Health Care,,,Health Care Facilities,"U.S. Physical Therapy, Inc.",sp600
+UTI,Consumer Discretionary,,,Education Services,Universal Technical Institute,sp600
+UTL,Utilities,,,Electric Utilities,Unitil Corporation,sp600
+UVV,Consumer Staples,,,Tobacco,Universal Corporation,sp600
+VAC,Consumer Discretionary,,,"Hotels, Resorts & Cruise Lines",Marriott Vacations Worldwide,sp600
+VCEL,Health Care,,,Biotechnology,Vericel,sp600
+VCTR,Financials,,,Asset Management & Custody Banks,"Victory Capital Holdings, Inc.",sp600
+VCYT,Health Care,,,Health Care Services,"Veracyte, Inc.",sp600
+VECO,Information Technology,,,Semiconductor Materials & Equipment,Veeco Instruments Inc.,sp600
+VGNT,Consumer Discretionary,,,Other Specialty Retail,Versigent PLC,sp600
+VIR,Health Care,,,Biotechnology,"Vir Biotechnology, Inc.",sp600
+VIRT,Financials,,,Financial Exchanges & Data,"Virtu Financial, Inc.",sp600
+VITL,Consumer Staples,,,Agricultural Products & Services,"Vital Farms, Inc.",sp600
+VRRM,Industrials,,,Data Processing & Outsourced Services,Verra Mobility Corporation,sp600
+VRTS,Financials,,,Asset Management & Custody Banks,"Virtus Investment Partners, Inc.",sp600
+VSAT,Information Technology,,,Communications Equipment,"Viasat, Inc.",sp600
+VSEC,Industrials,,,Aerospace & Defense,VSE Corporation,sp600
+VSH,Information Technology,,,Electronic Components,Vishay Intertechnology,sp600
+VSNT,Communication Services,,,Cable & Satellite,"Versant Media Group, Inc.",sp600
+VSTS,Industrials,,,Diversified Support Services,Vestis,sp600
+VSXY,Consumer Discretionary,,,Apparel Retail,Victoria's Secret,sp600
+VTOL,Energy,,,Oil & Gas Equipment & Services,Bristow Group Inc.,sp600
+VYX,Information Technology,,,IT Consulting & Other Services,NCR Voyix,sp600
+WABC,Financials,,,Regional Banks,Westamerica Bank,sp600
+WAFD,Financials,,,Regional Banks,"WaFd, Inc.",sp600
+WAY,Health Care,,,Health Care Technology,Waystar Holding Corp,sp600
+WD,Financials,,,Commercial & Residential Mortgage Finance,"Walker & Dunlop, Inc.",sp600
+WDFC,Consumer Staples,,,Household Products,WD-40 Company,sp600
+WEN,Consumer Discretionary,,,Restaurants,The Wendy's Company,sp600
+WERN,Industrials,,,Cargo Ground Transportation,Werner Enterprises,sp600
+WGO,Consumer Discretionary,,,Automobile Manufacturers,"Winnebago Industries, Inc.",sp600
+WHD,Energy,,,Oil & Gas Equipment & Services,"Cactus, Inc.",sp600
+WINA,Consumer Discretionary,,,Other Specialty Retail,Winmark,sp600
+WKC,Energy,,,Oil & Gas Refining & Marketing,World Kinect Corporation,sp600
+WLY,Communication Services,,,Publishing,John Wiley & Sons,sp600
+WOR,Industrials,,,Building Products,Worthington Enterprises,sp600
+WRLD,Financials,,,Consumer Finance,World Acceptance Corporation,sp600
+WS,Materials,,,Steel,Worthington Steel,sp600
+WSC,Industrials,,,Office Services & Supplies,WillScot Holdings Corp.,sp600
+WSFS,Financials,,,Regional Banks,WSFS Financial Corporation,sp600
+WSR,Real Estate,,,Retail REITs,Whitestone REIT,sp600
+WT,Financials,,,Asset Management & Custody Banks,"WisdomTree Investments, Inc.",sp600
+WU,Financials,,,Transaction & Payment Processing Services,Western Union,sp600
+WWW,Consumer Discretionary,,,Footwear,"Wolverine World Wide, Inc.",sp600
+XHR,Real Estate,,,Hotel & Resort REITs,"Xenia Hotels & Resorts, Inc.",sp600
+XNCR,Health Care,,,Biotechnology,Xencor Inc,sp600
+XPEL,Consumer Discretionary,,,Automotive Parts & Equipment,"XPEL, Inc.",sp600
+YELP,Communication Services,,,Interactive Media & Services,"Yelp, Inc.",sp600
+YOU,Information Technology,,,Application Software,"Clear Secure, Inc.",sp600
+ZD,Communication Services,,,Advertising,Ziff Davis,sp600
+ZWS,Industrials,,,Industrial Machinery & Supplies & Components,Zurn Elkay Water Solutions Corp.,sp600

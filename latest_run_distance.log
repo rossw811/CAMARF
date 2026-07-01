@@ -1,0 +1,29 @@
+11:03:41 INFO  distance.py — Gatev-style SSD baseline
+11:03:41 INFO  ============================================================
+11:03:41 INFO  Loaded 23 confirmed cointegration pairs
+11:03:41 INFO  
+--- Timeframe: 1h ---
+11:03:41 INFO    Formation window: 2023-07-24 => 2025-01-10
+11:03:41 INFO    Trading window:   2025-01-10 => 2026-06-30
+11:03:41 INFO    Loading prices for 27 symbols (formation <= 2025-01-10)
+11:03:41 INFO    27 symbols loaded with sufficient formation data
+11:03:41 INFO    Top-20 distance pairs by SSD (lowest = most co-moving):
+11:03:41 INFO      MET/PRU  SSD=5.2343  n=2203
+11:03:41 INFO      MET/ORI  SSD=6.0090  n=2203
+11:03:41 INFO      AXTA/FHB  SSD=8.4957  n=2203
+11:03:41 INFO      LNT/PFG  SSD=11.9698  n=2203
+11:03:41 INFO      ORI/PRU  SSD=12.2293  n=2203
+11:03:41 INFO    Overlap: 2/17 confirmed pairs also selected by distance (top-20)
+11:03:41 INFO    Running distance-method OOS simulation...
+11:03:42 INFO    Distance portfolio: Sharpe=-0.208  n_trades=35  total_pnl=-15.78%  WR=60.0%
+11:03:42 INFO    Running cointegration OOS via BacktestEngine...
+11:03:42 INFO    Coint portfolio: mean_pair_Sharpe=11.741  n_pairs=15/17 with valid Sharpe
+11:03:42 INFO  
+  === 1h SUMMARY ===
+  Distance (top-20 by SSD):  Sharpe = -0.208  n_trades = 35
+  Cointegration (17 pairs):  mean pair Sharpe = 11.741
+  Pairs in both selections: 2/17
+11:03:42 INFO  Saved => C:\Users\RossW\Projects\CAMARF\output\stats\distance_baseline.parquet (17 rows)
+11:03:42 INFO  Saved => C:\Users\RossW\Projects\CAMARF\output\stats\distance_summary.json
+11:03:42 INFO  ============================================================
+11:03:42 INFO  distance.py complete (0.0 min)

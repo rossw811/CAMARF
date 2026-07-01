@@ -13,7 +13,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import pandas as pd
 
-_TF_DIRS = ["1min", "2min", "3min", "5min", "15min", "30min", "1hr", "4hr", "8hr", "1day", "7day", "1mo", "3mo", "6mo"]
+_TF_DIRS = ["1min", "2min", "3min", "5min", "15min", "30min", "1hr", "4hr", "1day", "7day", "1mo", "3mo", "6mo"]
 
 
 def main():

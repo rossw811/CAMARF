@@ -11,157 +11,6 @@
     ],
     "added": "1h"
   },
-  "NBHC": {
-    "tfs": [
-      "1m",
-      "3m"
-    ],
-    "added": "1m"
-  },
-  "C": {
-    "tfs": [
-      "1m"
-    ],
-    "added": "1m"
-  },
-  "MS": {
-    "tfs": [
-      "1m"
-    ],
-    "added": "1m"
-  },
-  "SNDK": {
-    "tfs": [
-      "1m"
-    ],
-    "added": "1m"
-  },
-  "TXN": {
-    "tfs": [
-      "1m"
-    ],
-    "added": "1m"
-  },
-  "HRMY": {
-    "tfs": [
-      "1m"
-    ],
-    "added": "1m"
-  },
-  "PRDO": {
-    "tfs": [
-      "1m"
-    ],
-    "added": "1m"
-  },
-  "TILE": {
-    "tfs": [
-      "1m"
-    ],
-    "added": "1m"
-  },
-  "WS": {
-    "tfs": [
-      "1m"
-    ],
-    "added": "1m"
-  },
-  "ADSK": {
-    "tfs": [
-      "3m"
-    ],
-    "added": "3m"
-  },
-  "INTU": {
-    "tfs": [
-      "3m"
-    ],
-    "added": "3m"
-  },
-  "D": {
-    "tfs": [
-      "3m"
-    ],
-    "added": "3m"
-  },
-  "NEE": {
-    "tfs": [
-      "3m"
-    ],
-    "added": "3m"
-  },
-  "MTDR": {
-    "tfs": [
-      "3m"
-    ],
-    "added": "3m"
-  },
-  "MGY": {
-    "tfs": [
-      "3m"
-    ],
-    "added": "3m"
-  },
-  "ACT": {
-    "tfs": [
-      "3m"
-    ],
-    "added": "3m"
-  },
-  "AZTA": {
-    "tfs": [
-      "3m"
-    ],
-    "added": "3m"
-  },
-  "EIG": {
-    "tfs": [
-      "3m"
-    ],
-    "added": "3m"
-  },
-  "INVX": {
-    "tfs": [
-      "3m"
-    ],
-    "added": "3m"
-  },
-  "CPF": {
-    "tfs": [
-      "3m"
-    ],
-    "added": "3m"
-  },
-  "WAFD": {
-    "tfs": [
-      "3m"
-    ],
-    "added": "3m"
-  },
-  "CPK": {
-    "tfs": [
-      "3m"
-    ],
-    "added": "3m"
-  },
-  "CTKB": {
-    "tfs": [
-      "3m"
-    ],
-    "added": "3m"
-  },
-  "PRAA": {
-    "tfs": [
-      "3m"
-    ],
-    "added": "3m"
-  },
-  "UHT": {
-    "tfs": [
-      "3m"
-    ],
-    "added": "3m"
-  },
   "EQR": {
     "tfs": [
       "30m"
@@ -192,18 +41,6 @@
     ],
     "added": "1h"
   },
-  "GPN": {
-    "tfs": [
-      "1h"
-    ],
-    "added": "1h"
-  },
-  "JCI": {
-    "tfs": [
-      "1h"
-    ],
-    "added": "1h"
-  },
   "EG": {
     "tfs": [
       "1h"
@@ -227,5 +64,173 @@
       "1h"
     ],
     "added": "1h"
+  },
+  "CVX": {
+    "tfs": [
+      "3m"
+    ],
+    "added": "3m"
+  },
+  "OXY": {
+    "tfs": [
+      "3m"
+    ],
+    "added": "3m"
+  },
+  "KVUE": {
+    "tfs": [
+      "3m"
+    ],
+    "added": "3m"
+  },
+  "KMB": {
+    "tfs": [
+      "3m"
+    ],
+    "added": "3m"
+  },
+  "AMD": {
+    "tfs": [
+      "1h"
+    ],
+    "added": "1h"
+  },
+  "VTR": {
+    "tfs": [
+      "1h"
+    ],
+    "added": "1h"
+  },
+  "AME": {
+    "tfs": [
+      "1h"
+    ],
+    "added": "1h"
+  },
+  "AMAT": {
+    "tfs": [
+      "1h"
+    ],
+    "added": "1h"
+  },
+  "CMI": {
+    "tfs": [
+      "1h"
+    ],
+    "added": "1h"
+  },
+  "DAL": {
+    "tfs": [
+      "1h"
+    ],
+    "added": "1h"
+  },
+  "WRB": {
+    "tfs": [
+      "1h"
+    ],
+    "added": "1h"
+  },
+  "HAL": {
+    "tfs": [
+      "1h"
+    ],
+    "added": "1h"
+  },
+  "NOV": {
+    "tfs": [
+      "1h"
+    ],
+    "added": "1h"
+  },
+  "MET": {
+    "tfs": [
+      "1h"
+    ],
+    "added": "1h"
+  },
+  "TMHC": {
+    "tfs": [
+      "1h"
+    ],
+    "added": "1h"
+  },
+  "PFG": {
+    "tfs": [
+      "1h"
+    ],
+    "added": "1h"
+  },
+  "STLD": {
+    "tfs": [
+      "1h"
+    ],
+    "added": "1h"
+  },
+  "PRU": {
+    "tfs": [
+      "1h"
+    ],
+    "added": "1h"
+  },
+  "AXTA": {
+    "tfs": [
+      "1h"
+    ],
+    "added": "1h"
+  },
+  "MTSI": {
+    "tfs": [
+      "1h"
+    ],
+    "added": "1h"
+  },
+  "WCC": {
+    "tfs": [
+      "1h"
+    ],
+    "added": "1h"
+  },
+  "WAL": {
+    "tfs": [
+      "1h"
+    ],
+    "added": "1h"
+  },
+  "UMBF": {
+    "tfs": [
+      "1h"
+    ],
+    "added": "1h"
+  },
+  "FHB": {
+    "tfs": [
+      "1h"
+    ],
+    "added": "1h"
+  },
+  "PNC": {
+    "tfs": [
+      "4h"
+    ],
+    "added": "4h"
+  },
+  "ZION": {
+    "tfs": [
+      "4h"
+    ],
+    "added": "4h"
+  },
+  "7267.T": {
+    "tfs": [
+      "1M"
+    ],
+    "added": "1M"
+  },
+  "8058.T": {
+    "tfs": [
+      "1M"
+    ],
+    "added": "1M"
   }
 }

@@ -1,0 +1,13 @@
+{
+  "method": "Gatev GGR (2006) SSD distance baseline",
+  "formation_frac": 0.5,
+  "top_k": 20,
+  "entry_zscore": 2.0,
+  "1h": {
+    "distance_sharpe": -0.208,
+    "coint_mean_sharpe": 11.741,
+    "n_distance_trades": 35,
+    "n_coint_pairs": 17,
+    "overlap_in_top_k": 2
+  }
+}

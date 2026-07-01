@@ -305,8 +305,7 @@ class DataStore:
         or if the file doesn't exist (caller handles missing separately).
 
         Primary use: flag assets where yfinance fallback gave truncated
-        history (e.g. 1458 bars at 8h) so IBKR can be retried for the
-        deeper history (5861 bars) in a later upgrade pass.
+        history so IBKR can be retried for deeper history in a later upgrade pass.
         """
         min_bars = DataStore._MIN_BARS.get(tf_label)
         if min_bars is None:
@@ -320,8 +319,8 @@ class DataStore:
     def clear_tf_cache(tf_label: str, dry_run: bool = False) -> int:
         """
         Delete cached parquet files for a specific timeframe.
-        Use when cached data has the wrong frequency (e.g., 8h data
-        stored under the 1h key after a batch fallback bug).
+        Use when cached data has the wrong frequency (e.g., data
+        stored under the wrong key after a batch fallback bug).
 
         Returns count of deleted files.
         Example: DataStore.clear_tf_cache("1h") before re-running data.py
@@ -750,6 +749,11 @@ def _clean_close(
         for code in exclude_flags:
             prices[flags == code] = np.nan
     return prices
+
+
+# Public API aliases — analysis.py imports these (not the underscore versions)
+gap_aware_returns = _gap_aware_returns
+clean_close = _clean_close
 
 
 class DataAligner:
@@ -1540,8 +1544,8 @@ class YFinanceFeed:
     """
 
     # yfinance fetches daily/weekly/monthly only.
-    # Intraday (1m through 8h) fetched from IBKR for proper historical depth:
-    #   IBKR 1h  → 5Y,  IBKR 4h/8h → 10Y,  IBKR 1m → 42D
+    # Intraday (1m through 4h) fetched from IBKR for proper historical depth:
+    #   IBKR 1h → 5Y,  IBKR 4h → 10Y,  IBKR 1m → 42D
     # yfinance intraday depths are too shallow for meaningful analysis:
     #   yfinance 1h → 730D,  yfinance 5m → 60D,  yfinance 1m → 7D
     _YF_INTERVALS: List[Tuple[str, str, str]] = [
@@ -2175,15 +2179,18 @@ class IBKRFeed:
     """
 
     _MAX_DURATION: Dict[str, str] = {
-        "1 min": "42 D",
-        "2 mins": "42 D",
-        "3 mins": "42 D",
-        "5 mins": "6 M",
-        "15 mins": "1 Y",
-        "30 mins": "2 Y",
-        "1 hour": "5 Y",
-        "4 hours": "10 Y",
-        "1 day": "20 Y",
+        # Empirical IBKR live-account limits (confirmed in data_ibkr.py).
+        # These cap what get_bars() will ever request — data_ibkr.py was
+        # previously silently capped here even when requesting deeper depths.
+        "1 min": "7 D",    # IBKR hard limit: 7 days for 1m bars
+        "2 mins": "14 D",  # similar to 1m; IBKR rarely used
+        "3 mins": "14 D",  # similar to 1m
+        "5 mins": "1 Y",   # up from 6 M — IBKR allows 1 year for 5m
+        "15 mins": "2 Y",  # up from 1 Y — IBKR allows 2 years for 15m
+        "30 mins": "2 Y",  # unchanged
+        "1 hour": "10 Y",  # up from 5 Y — IBKR allows 10 years for 1h
+        "4 hours": "10 Y", # unchanged
+        "1 day": "20 Y",   # unchanged
         "1W": "20 Y",
         "1M": "20 Y",
     }
@@ -2788,7 +2795,7 @@ class IBKRFeed:
     # Intraday timeframes fetched from IBKR for all asset classes
     # Fetched natively from IBKR — each has unique depth that cannot be
     # recovered by resampling from a finer timeframe:
-    #   4h/8h = 10Y,  1h = 5Y,  30m = 2Y,  15m = 1Y,  5m = 6M,  1m = 42D
+    #   4h = 10Y,  1h = 5Y,  30m = 2Y,  15m = 1Y,  5m = 6M,  1m = 42D
     # 2m and 3m are derived by resampling from 1m (same 42D depth, no loss).
     INTRADAY_TFS = [
         ("4 hours", "4h", "10 Y"),
@@ -3360,20 +3367,26 @@ class UniverseBuilder:
                 # yfinance uses EURUSD=X format
                 # Our config stores "EUR.USD" — remove dot, add =X
                 return symbol.replace(".", "") + "=X"
+            elif asset_class == "fx_spot":
+                # FX spot rates already in yfinance format: "GBPUSD=X"
+                return symbol
+            # equity, equity_intl, etf: pass through as-is
+            # International suffixes (.L, .T, .HK) are native yfinance format
             return symbol.replace(" ", "-")  # BRK B → BRK-B
 
-        # yfinance handles: equities, crypto (BTC-USD), forex (EURUSD=X)
+        # yfinance handles: equities (incl. international), crypto, forex, ETFs, FX spots
         # IBKR handles: commodities, futures, and all intraday
         yf_assets = [
             (s, cls)
             for s, cls in raw_assets
-            if cls in ("equity", "crypto", "forex", "etf")
+            if cls in ("equity", "equity_intl", "crypto", "forex", "etf", "fx_spot")
         ]
         log.info(
             f"Phase 1 (yfinance daily): "
             f"{sum(1 for _,c in yf_assets if c=='equity')} equities + "
+            f"{sum(1 for _,c in yf_assets if c in ('equity_intl',))} intl equities + "
             f"{sum(1 for _,c in yf_assets if c=='crypto')} crypto + "
-            f"{sum(1 for _,c in yf_assets if c=='forex')} forex + "
+            f"{sum(1 for _,c in yf_assets if c in ('forex','fx_spot'))} forex/FX + "
             f"{sum(1 for _,c in yf_assets if c=='etf')} ETFs"
         )
 
@@ -4432,6 +4445,31 @@ class UniverseBuilder:
             f"{sum(1 for _, cls in raw if cls == 'equity')}"
         )
 
+        # -----------------------------------------------------------------------
+        # International equities — FTSE 100, Nikkei 225, Hang Seng
+        # Added as asset_class="equity_intl" so analysis.py can treat them
+        # differently (daily TF only; intraday excluded by DataAligner gap filter).
+        # ADR counterparts use standard "equity" class (already in S&P lists
+        # or added here).
+        # -----------------------------------------------------------------------
+        if getattr(Config.UNIVERSE, "INCLUDE_INTL_EQUITIES", False):
+            n_before = len(raw)
+            for sym in getattr(Config.UNIVERSE, "FTSE100", []):
+                add(sym, "equity_intl")
+            for sym in getattr(Config.UNIVERSE, "NIKKEI225", []):
+                add(sym, "equity_intl")
+            for sym in getattr(Config.UNIVERSE, "HANG_SENG", []):
+                add(sym, "equity_intl")
+            # ADRs are listed on US exchanges — treat as regular equity
+            for sym in getattr(Config.UNIVERSE, "INTL_ADRS", []):
+                add(sym, "equity")
+            # FX spot rates for cross-market currency adjustment
+            for sym in getattr(Config.UNIVERSE, "FX_SPOT_RATES", []):
+                add(sym, "fx_spot")
+            n_intl = len(raw) - n_before
+            log.info(f"  International equities + ADRs + FX spots added: {n_intl} symbols")
+
+        log.info(f"  Total universe: {len(raw)} assets")
         return raw
 
     # -----------------------------------------------------------------------

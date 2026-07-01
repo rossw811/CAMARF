@@ -79,9 +79,12 @@ log = logging.getLogger("CAMARF")
 # ---------------------------------------------------------------------------
 # Paths
 # ---------------------------------------------------------------------------
-SUPPLEMENT_DIR = os.path.join(
-    os.path.dirname(os.path.abspath(__file__)), "output", "cache", "ibkr_supplement"
+from ibkr_supplement_reader import (
+    SUPPLEMENT_DIR,
+    supplement_path,
+    load_supplement,
 )
+
 MANIFEST_PATH = os.path.join(
     os.path.dirname(os.path.abspath(__file__)),
     "output",
@@ -111,13 +114,8 @@ _SUPPLEMENT_FRESHNESS_DAYS = 7
 
 # ---------------------------------------------------------------------------
 # Supplement I/O helpers
+# supplement_path and load_supplement are imported from ibkr_supplement_reader
 # ---------------------------------------------------------------------------
-
-
-def supplement_path(symbol: str, tf_label: str) -> str:
-    """Absolute path to the deep-history parquet for this symbol-TF."""
-    safe_tf = DataStore._TF_SAFE.get(tf_label, tf_label.replace(" ", ""))
-    return os.path.join(SUPPLEMENT_DIR, f"{symbol}_{safe_tf}_deep.parquet")
 
 
 def is_supplemented(symbol: str, tf_label: str) -> bool:
@@ -127,22 +125,6 @@ def is_supplemented(symbol: str, tf_label: str) -> bool:
         return False
     age_days = (time.time() - os.path.getmtime(p)) / 86400
     return age_days < _SUPPLEMENT_FRESHNESS_DAYS
-
-
-def load_supplement(symbol: str, tf_label: str) -> Optional[pd.DataFrame]:
-    """
-    Load deep IBKR history for a symbol-TF if it exists.
-    Called by analysis.py for episodic cointegration testing.
-    Returns None if no supplement exists — caller degrades gracefully.
-    """
-    p = supplement_path(symbol, tf_label)
-    if not os.path.exists(p):
-        return None
-    try:
-        df = pd.read_parquet(p)
-        return df if not df.empty else None
-    except Exception:
-        return None
 
 
 def merge_with_yfinance(

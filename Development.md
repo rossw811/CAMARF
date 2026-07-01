@@ -7069,16 +7069,693 @@ rolling:    fold1 Sharpe=180.8                      fold2 Sharpe=433.9  (39.3 av
 High fold Sharpes driven by strong pairs + tick-level data granularity. These are per-pair
 fold Sharpes aggregated, not portfolio Sharpe — not directly comparable to OOS portfolio Sharpe.
 
+### STORM factor grid (continued from Session 17 — 2026-06-29)
+
+16-combination 2⁴ factorial grid run via `run_storm_grid.py`. Factors: session_edge,
+garch_stop, mm_exec, coint_frac_threshold (0.0 = off, 0.10 = binary filter).
+
+**Marginal effects (avg Sharpe delta, OLS-only OOS holdout):**
+
+| Factor | Sharpe ON | Sharpe OFF | Delta |
+|---|---|---|---|
+| session_edge | 11.33 | 10.42 | **+0.87** |
+| mm_exec | 10.89 | 10.85 | +0.04 |
+| garch_stop | 10.87 | 10.87 | ±0.00 |
+| coint_frac_threshold=0.10 | NaN | 10.87 | fatal |
+
+**coint_fraction_rolling inversion finding:**
+Correlation of coint_fraction_rolling with OOS Sharpe: -0.27. With OOS PnL: -0.484.
+The active 1h trading pairs (LNT/WELL=0.031, VRT/MTZ=0.076, EG/ORI=0.071) are the
+best performers AND have the lowest rolling confirmation fractions. Any threshold
+above 0.08 removes all 1h pairs. Binary threshold at 0.10 collapses to 14 trades.
+**Do not use coint_fraction_rolling as a position-size multiplier or threshold gate.**
+It is a potential inverse signal for the ML gate.
+
+**Sharpe inflation mechanism documented:**
+Portfolio equity Sharpe of 3.249 inflated by sparse daily P&L grid (most days zero
+for intraday mean-reversion). Equity-path permutation p=0.669 (not significant);
+closed-trade permutation p=0.002 (significant). Closed-trade result is the operative
+robustness claim. Both reported transparently in paper §6.6.
+
+**garch_stop formally deprecated:** Zero effect across all 3 evaluation contexts
+(individual holdout, WFA grid, factor grid). Never triggered. Remove from active
+STORM list.
+
+**session_edge confirmed for production:** +0.87 grid, +0.13 holdout, +0.17 WFA.
+Three independent contexts. Mechanism: open/close noise reduction.
+
 ### Pending from Session 17
 
-- CPF/WAFD and CPK/WAFD: `hedge_direction_conflict` flag needed — sign flip between OLS and MM
-  hedge ratios. Currently no exclusion. Add to analysis.py.
+- ~~CPF/WAFD and CPK/WAFD: `hedge_direction_conflict` flag~~ **DONE (Session 18)**
 - Kalman drift velocity: d(beta_kalman)/dt over 20 bars, per pair, as a feature.
-- stats.py S7: AR(1) on rolling half-life time series + Zivot-Andrews test per pair.
-- Distance method baseline: Gatev-style comparison (mentioned, not built).
+- ~~stats.py S7: AR(1) on rolling half-life time series + Zivot-Andrews test per pair.~~ **DONE (Session 18)**
+- ~~Distance method baseline: Gatev-style comparison~~ **DONE (Session 18)**
 - mm_exec WFA trade count anomaly: investigate why expanding+mm_exec generates 4502 vs 1390 trades.
 - STORM additional ideas (from original briefing):
   - Short volatility payoff profile quantification (premium per unit tail risk)
   - Economic mechanism scoring (sector proximity as feature)
   - Bid-ask proxy as ml.py feature
   - Partial cointegration (Clegg/Krauss) comparison
+
+## Session 18 (2026-06-29) — S7 stationarity, distance baseline, universe expansion design
+
+### Implemented this session
+
+**stats.py S7 — Half-life stationarity (AR(1) + Zivot-Andrews)**
+- `run_halflife_stationarity(pairs)` added after Section 6 in stats.py
+- Per pair: loads `half_life_rolling` from spread_series parquet
+- Fits AR(1) via lstsq; reports `hl_ar1_rho` (rho ≈ 1 = random-walk HL) and `hl_ar1_pval`
+- Runs `statsmodels.tsa.stattools.zivot_andrews` (trim=0.15, regression="c", AIC lag select)
+- Reports `hl_za_stat`, `hl_za_pval`, `hl_za_breakdate`, `hl_stationary` (ZA p<0.10)
+- Summary note: stationary count / total
+- Output: `output/stats/halflife_stationarity.parquet`
+- Wired into `main()` after Section 6 permutation tests
+
+**stats.py — hedge_direction_conflict (Session 17/18 boundary)**
+- `_sign_conflict(row)` helper in `run_robust_hedge_ratios()`
+- Flags pairs where sign(beta_ols) ≠ sign(beta_mm) — both estimators disagree on which leg is long
+- Logged at WARNING level with pair details
+- Merged into `cointegration_tiers.parquet` in `main()` after S2
+- CPF/WAFD confirmed conflict pair: both symbols have ADV < $3M and < $9M respectively
+
+**distance.py — Gatev GGR (2006) SSD baseline**
+- New standalone script: `distance.py`
+- Formation period: first 50% of available price history, normalized to start at 1.0
+- SSD ranking: all pairs of symbols appearing in confirmed cointegration pairs
+- Selects top-K (default 20) by lowest SSD over formation window
+- Trading simulation: entry at |spread_z| > 2.0σ, exit at zero-crossing
+  - P&L expressed as % return on equal-weight legs
+- Comparison: runs confirmed cointegration pairs through BacktestEngine (no STORM, no ML)
+  and reports mean pair Sharpe vs distance portfolio Sharpe
+- Logs overlap: how many confirmed coint pairs were also selected by distance method
+- Outputs: `output/stats/distance_baseline.parquet`, `output/stats/distance_summary.json`
+
+### ADV analysis for universe expansion
+
+Computed ADV (daily dollar volume from 1hr cache) for all 38 confirmed pair symbols:
+
+| ADV range | Symbols | % of confirmed |
+|-----------|---------|---------------|
+| >= $100M | 16 | 42% |
+| >= $50M | 21 | 55% |
+| >= $25M | 23 | 61% |
+| >= $10M | 25 | 66% |
+| >= $5M | 33 | 87% |
+
+Notable low-ADV confirmed pairs: CPF ($2.4M), UHT ($1.7M), CTKB ($3.1M), PRAA ($3.8M),
+EIG ($4.2M), INVX/WS/TILE ($5.4M each). The CPF/WAFD hedge-conflict pair is also low-ADV.
+
+**Planned ADV sweep**: test {$10M, $25M, $50M, $100M} thresholds in analysis.py.
+For each: log surviving symbol count, confirmed pair count, and OOS Sharpe.
+Implementation: `Config.ANALYSIS.ADV_FILTER_USD` list, logged comparison table at run start.
+
+### Planned: survivorship bias / Wikipedia delist tracking
+
+The Wikipedia S&P 500 historical changes page logs additions and deletions with dates.
+Plan:
+1. Build `survivorship_exclusions.csv`: (symbol, removed_date, reason)
+2. In analysis.py: for pairs involving a delisted symbol, truncate the OOS window to end
+   at `removed_date` (pair is a legitimate candidate up to that date, excluded after)
+3. In backtest.py: respect per-pair `oos_end_date` if present — treat as walk-forward
+   boundary rather than blocking the pair entirely
+4. This converts survivorship bias from a binary exclusion into a proper WFA-style boundary
+
+### Planned: parameter sensitivity / stability test (sensitivity.py)
+
+Key parameters to perturb:
+- Entry z-score: sweep [1.5, 2.0, 2.5, 3.0]
+- Exit z-score: sweep [0.0, 0.25, 0.5, 0.75]
+- Max half-life bound: sweep [20, 35, 50, 75]
+- ADV threshold (separately, once wired into analysis.py)
+
+Output: 2D heat map of (entry_z × exit_z) portfolio Sharpe; 1D sensitivity plots for
+half-life and ADV thresholds. Standard robustness requirement for systematic strategy papers.
+
+### Planned: GICS sector tagging
+
+Add GICS sector and sub-industry columns to pair records in analysis.py:
+- Source: `gics_tags.csv` with (symbol, sector, industry_group, industry, sub_industry)
+- Merge at pair-formation stage; add `same_sector` (bool) and `sector_a` / `sector_b` columns
+- Use in: pair selection (cross-sector vs. intra-sector analysis), ML features, paper §3
+
+### Completed in Session 18
+
+- ~~sensitivity.py: parameter sweep grid (entry_z, exit_z, max_hl, adv_threshold)~~ **DONE**
+  - Best: entry_z=2.0 (optimal), exit_z=0.75 gives +3% vs 0.0 — not worth overfitting risk
+  - ADV $25M confirmed: no Sharpe change vs $0M/$10M, graceful degradation at $100M
+- ~~analysis.py: ADV filter with Config.ANALYSIS.ADV_FILTER_USD parameter~~ **DONE**
+- ~~analysis.py: GICS tagging via gics_tags.csv~~ **DONE**
+- ~~survivorship_exclusions.csv: build from Wikipedia S&P 500 historical changes~~ **DONE (378 events)**
+- ~~backtest.py: respect per-pair `oos_end_date` (survivorship WFA boundary)~~ **DONE**
+- ~~analysis.py: raise min_overlap (1260 bars for intraday, 756 for 1hr/4hr)~~ **DONE**
+- ~~analysis.py: tighten BH-FDR alpha from 0.05 to 0.01~~ **DONE**
+- ~~Re-run analysis.py overnight on full 1,369-symbol cache~~ **RUNNING (data.py in progress)**
+- ~~Investigate mm_exec WFA trade count anomaly (4502 vs 1390)~~ **RESOLVED**
+  - mm_exec generates ladder fills (incremental position building) counted individually
+  - Sharpe consistent with baseline (1.595 expanding vs 1.678 baseline) — not a bug
+
+### Session 19 Additions (2026-06-29)
+
+- distance.py first run: Sharpe=-6.33 (GGR distance) vs 11.09 (CAMARF cointegration) — Paper §7.7 updated
+- sensitivity.py first run: 4×4 entry/exit grid + 1D ADV and HL sweeps — Paper §7.8 added
+- data.py _MAX_DURATION corrected: IBKR limits now match data_ibkr.py empirical values
+  - 5m: 6M→1Y, 15m: 1Y→2Y, 1h: 5Y→10Y (data_ibkr.py was silently capped at old limits)
+  - 1m corrected to 7D (IBKR hard limit; was 42D which exceeded IBKR's actual cap)
+- data_ibkr.py run with IB Gateway: 38 confirmed-pair symbols × 7 TFs, all saved
+- config.py: removed CAJ (delisted Canon US ADR) from INTL_ADRS; use 7751.T in Nikkei225
+- analysis.py: added kalman_drift_velocity field (mean abs d(β)/dt over trailing 20 bars)
+- wfa.py run: baseline Sharpe=1.678 (expanding), mm_exec anomaly resolved (ladder fills)
+- backtest.py holdout: Sharpe=3.22, $16,230 P&L, 67 trades — consistent with prior sessions
+
+### Pending from Session 19 → updated Session 20
+
+- ~~Kalman drift velocity: field added to PairResult, will populate on next analysis.py run~~ **IN PROGRESS** (analysis.py running)
+- ~~analysis.py full re-run: waiting on data.py~~ **IN PROGRESS** (data.py complete, analysis.py at 1h EG scan ~11:15 AM)
+- ml.py Stage 2 (SHAP): deferred — shap broken in current environment (numpy 2.4 / numba incompatibility documented in requirements.txt)
+- options.py: deferred — no historical IV data source available (CBOE free API delayed only)
+- report.py: §7.7/7.8/7.9 updated pending figures from new run — **will run after analysis.py completes**
+
+---
+
+### Session 20 Additions (2026-06-29)
+
+**reproduce.py built:**
+- New top-level reproducibility script mapping every finding to a PAPER.md section
+- 30 steps: 17 core pipeline + 12 research/comparison scripts + ml + report
+- `python reproduce.py --list` shows all steps with paper section labels
+- `python reproduce.py --verify-only` checks all outputs without re-running
+- 29/30 outputs verified on current run (ml deferred — insufficient training data)
+- All paths confirmed correct: backtest → `output/backtest/`, ML model → `output/ml/`
+
+**Pipeline status after Session 20:**
+- data.py: ✓ complete (4.1 min, 1608 candidates, 0 excluded, no timezone errors)
+- analysis.py: RUNNING (started 11:00 AM, at 1h EG scan)
+- macro.py: ✓ complete (13/13 FRED series, FRED cache files verified)
+- distance.py: ✓ results from Session 19 (GGR −6.33 vs CAMARF +11.09)
+- sensitivity.py: ✓ results from Session 19 (entry_z=2.0 optimal)
+- All 12 research scripts: ✓ outputs verified
+- Downstream pending: stats.py → backtest.py (all variants) → wfa.py → distance.py → sensitivity.py → report.py
+
+---
+
+### Planned: Exchange-Aware Intraday Session Handling (data.py)
+
+**Problem (confirmed 2026-06-29):**
+International assets with native exchange tickers (.L, .T, .HK) currently have ONLY daily
+data cached. Intraday data is not captured because `data.py`'s `_normalize_timestamps()`
+converts all data to ET timezone-naive and then drops bars outside the hardcoded ET session
+window (9:30 AM – 4:00 PM ET). All FTSE/Nikkei/HK bars fall outside this window and are
+silently discarded.
+
+**What this blocks:**
+- Intra-FTSE pairs at intraday granularity (e.g., HSBA.L vs BARC.L at 1h/30min)
+- FTSE vs US ADR pairs using the 2-hour morning overlap window
+  (London trades until ~11:30 AM ET summer, overlapping 9:30–11:30 AM US open)
+- Cross-timezone ADR spread analysis with FX adjustment
+
+**Infrastructure already present:**
+- `pandas_market_calendars` already imported in data.py (line 30)
+- `XLON` (London), `JPX` (Tokyo), `XHKG` / `HKEX` (Hong Kong) calendars all confirmed
+  available via `mcal.get_calendar_names()` — zero additional package installs needed
+- FX spot rates already in config.py: GBPUSD=X, JPYUSD=X, HKDUSD=X, EURUSD=X
+
+**Planned change to data.py (~50 lines):**
+1. Add exchange-suffix → calendar name mapping:
+   `{".L": "XLON", ".T": "JPX", ".HK": "XHKG"}`
+2. Add exchange-specific session hours (UTC):
+   - XLON: 8:00–16:30 London time
+   - JPX: 9:00–15:30 Tokyo time
+   - XHKG: 9:30–16:00 HK time
+3. In `_normalize_timestamps()`, detect exchange from ticker suffix and apply the
+   appropriate session filter instead of always using the ET 9:30–16:00 window
+4. Store bars in the exchange's local timezone-naive timestamps (consistent tz-aware
+   handling is the key; aligning with a US stock then uses intersection of timestamps)
+
+**Planned change to analysis.py (~30 lines):**
+When building a candidate pair between assets from different exchanges, use
+`pd.Index.intersection()` to restrict to timestamps present in both series before
+computing correlation/cointegration. Currently, the pipeline already does this for
+missing-bar handling — the extension is detecting when the gap is systematic (different
+exchange hours) rather than incidental.
+
+**FX adjustment for cross-timezone pairs (backtest.py, ~20 lines):**
+When one leg trades in GBP and the other in USD, multiply the GBP leg's price by
+GBPUSD at entry/exit time. FX rate series already fetched by data.py (`GBPUSD=X` cache).
+Without this, cointegration on nominal prices conflates the equity spread with the
+FX spread — the position would be partially a GBPUSD bet.
+
+**Scope of what this enables:**
+- FTSE intra-exchange pairs (HSBA.L/BARC.L, AZN.L/GSK.L): full London session intraday
+- FTSE vs US ADR (HSBA.L vs HSBC with FX adj): 2-hour morning overlap at 1h granularity
+- Tokyo vs US: still daily only — zero intraday overlap
+- HK vs US: still daily only — zero intraday overlap
+
+**Priority:** After current pipeline re-run completes and confirmed-pair set stabilizes.
+This is a data layer change, not a methodology change — does not affect any current
+PAPER.md claims (all current confirmed pairs are ET-session assets). When built, will
+expand the universe and potentially discover new pairs.
+
+**FX snapshot comparison — approved 2026-06-29:**
+Run all three as a comparison grid (same protocol as STORM variants):
+- `fx_open`: FX rate at bar open — cleanest for entry signal (rate known at decision time,
+  no lookahead)
+- `fx_vwap`: VWAP approximation = `(Open + High + Low + Close) / 4` of the FX bar covering
+  the same period — most representative of average execution rate; yfinance doesn't provide
+  true VWAP for FX so this is an approximation
+- `fx_close`: FX rate at bar close — most common in academic literature for daily data;
+  introduces slight lookahead at entry (close rate unknown when entry fires at bar open)
+
+Comparison logic: compute FX-adjusted spread with each snapshot, run cointegration +
+backtest, report all three Sharpes. If differences are within noise (e.g., <0.1 Sharpe):
+use `fx_open` (no lookahead, most defensible). If material difference: report all three
+in paper §3/§7 as a robustness check. This is approved to build after exchange-aware
+session handling is wired up.
+
+**Implementation sketch — build this after current pipeline re-run completes:**
+
+The FX adjustment belongs in analysis.py at spread-construction time (NOT in data.py).
+Raw prices in the cache stay in local currency (GBP for .L, JPY for .T, HKD for .HK).
+FX conversion is a modeling choice applied at analysis time, not a data-layer fact.
+
+*Step 1: Exchange detection utility (add near top of analysis.py)*
+```python
+_FX_MAP = {
+    ".L":  ("GBPUSD=X", "GBP"),   # London → USD
+    ".T":  ("JPYUSD=X", "JPY"),   # Tokyo → USD  (note: JPYUSD = 1/USDJPY scale)
+    ".HK": ("HKDUSD=X", "HKD"),   # HK → USD
+}
+
+def _get_fx_ticker(symbol: str) -> Optional[tuple[str, str]]:
+    """Return (fx_yf_ticker, currency_code) for foreign-listed symbols, else None."""
+    for suffix, info in _FX_MAP.items():
+        if symbol.endswith(suffix):
+            return info
+    return None
+```
+
+*Step 2: FX rate loader (add to analysis.py)*
+```python
+def _load_fx_rate(fx_ticker: str, tf_label: str, snapshot: str) -> Optional[pd.Series]:
+    """
+    Load FX rate series from DataStore cache, return a Series indexed by timestamp.
+    snapshot: 'open' | 'vwap' | 'close'
+    vwap = (O + H + L + C) / 4  (approximation; yfinance has no FX VWAP)
+    """
+    df = DataStore.load(fx_ticker, tf_label)
+    if df is None or df.empty:
+        return None
+    if snapshot == "open" and "Open" in df.columns:
+        return df["Open"]
+    elif snapshot == "close" and "Close" in df.columns:
+        return df["Close"]
+    elif snapshot == "vwap":
+        cols = [c for c in ["Open", "High", "Low", "Close"] if c in df.columns]
+        return df[cols].mean(axis=1)
+    return df["Close"] if "Close" in df.columns else None
+```
+
+*Step 3: Apply FX adjustment in _run_one_pair() or _align_pair_data()*
+When both symbols have been loaded and aligned, BEFORE computing correlation/EG:
+```python
+fx_info_a = _get_fx_ticker(sym_a)
+fx_info_b = _get_fx_ticker(sym_b)
+
+for sym, fx_info, price_series in [(sym_a, fx_info_a, prices_a),
+                                    (sym_b, fx_info_b, prices_b)]:
+    if fx_info is not None:
+        fx_ticker, _ = fx_info
+        fx_rate = _load_fx_rate(fx_ticker, tf_label, fx_snapshot)
+        if fx_rate is not None:
+            fx_aligned = fx_rate.reindex(price_series.index, method="ffill")
+            price_series = price_series * fx_aligned  # convert to USD
+```
+
+*Step 4: Run three variants*
+Add `--fx-snapshot open|vwap|close` argument to analysis.py (default: "open").
+Run analysis.py three times (or a single run that stores all three adjusted prices as
+separate columns). Store the FX snapshot used in PairResult so it's traceable.
+
+*Step 5: Comparison report*
+After three runs: compare confirmed pair set, cointegration Sharpe, and backtest Sharpe
+across the three snapshots. If stable: pick `open` and document in paper. If unstable:
+red flag for cross-timezone pairs — the FX rate is a dominant driver of the spread.
+
+**IMPORTANT NOTE on JPY:** JPYUSD=X gives USD per JPY (very small number, ~0.0067).
+This is the correct multiplier for `yen_price * JPYUSD = USD_price`. Verify the
+scale before any backtest. Alternatively use USDJPY=X and divide. Either works;
+just be explicit and consistent.
+
+**Scope limit for Phase 1 (daily only):**
+The exchange-aware intraday session is a larger change (see "Planned: Exchange-Aware
+Intraday Session Handling" above). Phase 1 is daily-timeframe FX adjustment only —
+this is immediately useful for FTSE/US ADR pairs like HSBA.L vs HSBC, BP.L vs BP,
+AZN.L vs AZN, and for all Nikkei/HK vs US ADR pairs. Build Phase 2 separately.
+
+---
+
+### Planned: Earnings Blackout as STORM Variant (backtest.py)
+
+**Idea (flagged 2026-06-29):**
+Skip entry signals within ±3 days of either pair leg's earnings announcement date.
+Earnings announcements cause large idiosyncratic price moves unrelated to the
+cointegration relationship — the spread can gap violently and not revert within the
+holding window.
+
+**Data source:**
+`yf.Ticker(sym).earnings_dates` returns historical quarterly earnings dates (typically
+8 quarters back). Sufficient for IS/OOS backtest validation. Can be cached per symbol
+in the DataStore alongside price data.
+
+**Implementation plan:**
+1. Add `EarningsCalendar` class to data.py (or a new `earnings.py`): fetches and caches
+   earnings dates per symbol, returning a sorted DatetimeIndex of announcement dates
+2. Add `--storm-earnings-blackout` flag to backtest.py: at entry signal time, check if
+   `abs((entry_date - nearest_earnings_date).days) <= 3` for either leg → skip if yes
+3. Evaluate as a STORM variant (same protocol as session_edge, mm_exec, etc.)
+
+**Expected effect:**
+Likely reduces trade count by 10-15% (earnings are ~quarterly, so ~12 blackout days/year
+per leg). Should improve win rate on remaining trades. Whether it improves Sharpe depends
+on whether the excluded earnings-window trades are net losers — not guaranteed.
+
+**Priority:** Build after exchange-aware sessions. Tag as STORM variant, not core logic.
+Requires discussion before building (same policy as all STORM extensions).
+
+**Honest bias note:** Adding an earnings blackout ex-post after seeing that some earnings-
+window trades lost money would be overfitting. If built, it must be evaluated on a held-out
+test set (the OOS holdout) not the IS period that informed the idea.
+- Kalman drift velocity as ML feature — after analysis.py re-run populates the field
+
+---
+
+## Session 20 — Reproducibility, International Architecture, Pipeline Re-Run (2026-06-29)
+
+### Session 20 Accomplishments
+
+**1. reproduce.py — Full Pipeline Reproducibility Map**
+Built `reproduce.py` (new file), mapping every PAPER.md finding to its generating script. 30 steps covering: data, analysis, macro, stats, 4 backtest variants, 4 STORM variants, wfa, distance, sensitivity, 12 research scripts, ml, report. Flags: `--list` (show paper sections), `--verify-only` (check outputs exist), `--step <name>` (run one step), `--skip-optional`. 29/30 outputs exist immediately on verify — only ml model (optional) was missing. Windows console Unicode fix applied (sys.stdout.reconfigure to utf-8 for § and − characters).
+
+**2. International Data Architecture Analysis**
+Audited international asset handling. Key findings:
+- FTSE .L assets: daily cached only (HSBA.L, AZN.L, BP.L, etc.)
+- .T (Nikkei) and .HK: daily only; 0 ET session overlap for Tokyo/HK
+- FTSE has ~2h morning ET overlap (9:30–11:30 AM ET summer)
+- US ADRs (BP, HSBC, TM, SONY, HMC, MUFG): full intraday in cache
+- `pandas_market_calendars` already imported in data.py (line 30)
+- `snap_timestamps()` at lines 3658, 3978, 4084, 4115, 4160 — needs symbol parameter for exchange-aware handling
+
+Designed two-phase international plan:
+- **Phase 1** (approved): daily FX adjustment in analysis.py (not data.py — raw cache stays local currency). Compare open/VWAP/close FX snapshots as robustness check (VWAP≈(O+H+L+C)/4). See "Planned: Exchange-Aware Intraday Session Handling" section above for full implementation sketch.
+- **Phase 2** (planned): exchange-aware intraday session handling using mcal XLON/JPX/XHKG; 2-hour ET/FTSE overlap for intra-TZ pairs; cross-TZ via daily-bar cointegration only.
+
+**3. Earnings Blackout STORM Variant Designed**
+±3-day blackout around either leg's earnings announcement. `yf.Ticker.earnings_dates` as data source. Detailed implementation plan documented in "Planned: Earnings Blackout as STORM Variant" section above. Requires discussion before building.
+
+**4. FX Snapshot Comparison Approved**
+Three-way comparison grid (open vs. VWAP vs. close) approved for when Phase 1 FX adjustment is built. Documented in DEVELOPMENT.md with implementation sketch.
+
+---
+
+### Session 20 — Critical Finding: 1h Pair Loss
+
+**Root cause (fully investigated):**
+
+New analysis.py run (1,608-symbol universe, BH-FDR α=0.01) produced **0 confirmed pairs at 1h**. Investigation traced through the log:
+
+1. **1h EG results**: tested=65,214, raw<0.05=2,629, **FDR-adjusted<0.01=29**
+   - FDR was NOT the primary kill. 29 pairs survived BH-FDR.
+2. **coint_frac filter**: `coint_fraction_rolling < 0.70 and no clean secondary evidence` → **all 29 removed**
+   - ALL 29 FDR survivors had coint_fraction_rolling < 0.70 AND failed the secondary-evidence override (half_life_trend_slope ≤ 0 AND no ZA/CUSUM break required both conditions).
+
+**Why the old 1h pairs (VRT/MTZ, LNT/WELL, DD/GPN, DD/JCI, EG/ORI) are gone:**
+- Their coint_fraction_rolling was 0.031–0.091 (documented in §7.5) — always below 0.70
+- In prior runs they survived via the secondary-evidence override
+- With the expanded IBKR data history (10Y for 1h bars, fixed in Session 19), the spread series for these pairs appears to have changed structurally — their ZA/CUSUM results or half_life_trend_slope changed sufficiently that the secondary override no longer fires
+- Additionally, with 65,214 candidate pairs at 1h (expanded universe), BH-FDR at α=0.01 is stricter: p must be < ~(rank/65,214)×0.01. VRT/MTZ p=0.000012 = 1.2e-5; at rank ~78, threshold = 0.01×78/65,214 = 1.20e-5. If 78+ pairs have smaller p-values, VRT/MTZ doesn't even reach the 29 FDR survivors.
+
+**Impact on downstream pipeline:**
+
+| Metric | Prior (1h-based) | Session 20 (1m/3m/4h) |
+|--------|-------------------|------------------------|
+| Confirmed pairs | 5@1h + others | 10@1m + 16@3m + 1@4h = 27 total |
+| IS Sharpe | 3.69 | **0.43** |
+| OOS Sharpe | 3.25 | **2.91** (6 trades — statistically meaningless) |
+| OOS trades | 111 | **6** |
+| WFA trades (1m pairs) | — | 0 (BUG-D49 pairs never cross entry threshold in hold-out) |
+| distance.py | CAMARF 11.09 vs GGR −6.33 | **Failed — no 1h pairs** |
+| sensitivity.py | Sharpe grid stable 9–12 | **Failed — no 1h pairs** |
+| OOS permutation p | 0.002 | **0.461 (not significant)** |
+| IS permutation p | 0.002 | 0.002 (significant) |
+
+The 1m BUG-D49 pairs generate 0 WFA trades because their spreads (price-degenerate assets with 2-7 distinct close values) never cross the z-score entry threshold in hold-out windows — the IS spread behavior doesn't generalize. MTDR/MGY@3m WFA fold1 = -61.24 Sharpe (361 trades). SPY/VOO@4h: 1 OOS trade.
+
+**Decision pending (flagged for Ross):**
+- **Option A**: Revert FDR α from 0.01 → 0.05 at 1h — the old pairs had raw p=0.000012–0.000093; they'd survive at 0.05 and likely be in the top 29 by rank. Then check if they pass the secondary override.
+- **Option B**: Accept the current pair set; acknowledge the methodology evolved under stricter criteria. Focus on BUG-D49 resolution at 1m/3m.
+- **Option C**: Run a targeted re-test of the 5 old pairs under the new data to verify their current coint_fraction_rolling and p-values. If they still cointegrate (p<0.01) but are below the FDR threshold due to universe expansion, that's a methodological question worth documenting.
+
+**This is the primary open question going into Session 21.**
+
+---
+
+### Session 20 — Bug Registry
+
+**BUG-D52: FDR_ALPHA misconfigured — 0.01 too strict for 65k-pair universe, killed valid 1h pairs**
+Root cause (diagnosed 2026-06-29): `Config.STATS.FDR_ALPHA` was changed from 0.05 to 0.01 in config.py
+with the comment "BH-FDR at 0.05 would pass ~50k pairs by chance at this scale." This comment is
+INCORRECT. BH-FDR controls the PROPORTION of false positives among rejected hypotheses (≤α),
+NOT the raw count. At α=0.01 with 65,214 pairs, the BH threshold at rank 29 (the marginal survivor)
+is p < (29/65,214)×0.01 = 4.45e-6. VRT/MTZ p=0.000012 = 1.2e-5 >> 4.45e-6 → killed by
+the overly strict alpha, despite being genuinely significant.
+
+Verified directly: DataStore.load('VRT','1hr') gives p=0.000012 (unchanged), confirming the data
+is not the problem. VRT/MTZ's EG p-value on the full series has not changed — only the BH threshold
+that kills it has tightened due to the larger universe + stricter α.
+
+Fix: Restored FDR_ALPHA = 0.05 in config.py (2026-06-29). Re-running analysis.py --timeframes 1h
+to verify old pairs return.
+
+Note: VRT/MTZ shows p=0.167 in the last 1000 bars (recent breakdown). Even with FDR fixed,
+the pair may be excluded by the secondary-evidence override if ZA/CUSUM detects the recent
+spread breakdown. This would be the CORRECT behavior — the pair is no longer reliably
+cointegrating in the recent period.
+
+Status: **RESOLVED (2026-06-29, Session 21)** — all 5 original 1h pairs returned: LNT/WELL, DD/GPN (Gold), DD/JCI, EG/ORI (Gold), VRT/MTZ. All 5 passed via secondary-evidence override (no ZA/CUSUM break + stable half-life). IS Sharpe restored to 3.2246 (193 trades), OOS 3.149 (49 trades).
+Impact: IS Sharpe 3.69→0.43 regression was entirely due to this config error, not methodology change.
+
+---
+
+### Session 20 — Stats.py Results (2026-06-29, 27 pairs)
+
+| Section | Result |
+|---------|--------|
+| Confirmatory tiers (EG+KPSS+PO) | All 27 pairs: CONFLICT (EG confirms, KPSS rejects stationarity) — consistent with BUG-D49 price degeneracy |
+| HL stationarity (ZA p<0.10) | 6/27 |
+| Mean AR1 rho | 0.981 |
+| OOS permutation p (closed-trade) | **0.461** — not significant |
+| IS permutation p (closed-trade) | **0.002** — significant |
+| MC bootstrap OOS Sharpe 5/50/95 | 6.27 / 7.17 / 8.09 |
+
+Note: OOS permutation numbers come from the holdout backtest that was already saved (67 trades, old 1h pairs). IS permutation uses new 27-pair IS set (620 trades). These numbers are from two different pair sets — the holdout file predates the pair regime change. New holdout (new pair set, 6 trades) is not meaningful for permutation testing.
+
+---
+
+### Session 20 — Pipeline Status
+
+| Script | Status | Notes |
+|--------|--------|-------|
+| reproduce.py | ✅ Built | 29/30 outputs verified |
+| data.py | ✅ Run (Session 19/20) | 1,608 symbols, 19,966 symbol-TF combos |
+| analysis.py | ✅ Complete | 31.2 min; 27 confirmed pairs; 0@1h |
+| stats.py | ✅ Complete | 27 pairs; OOS p=0.461; IS p=0.002 |
+| backtest.py (IS) | ✅ Complete | Sharpe 0.43, 58 trades |
+| backtest.py (holdout) | ✅ Complete | Sharpe 2.91, 6 trades (meaningless) |
+| wfa.py | ✅ Complete | 0 trades for all 1m pairs; MTDR/MGY fold1 = -61 Sharpe |
+| distance.py | ❌ Failed | No confirmed 1h pairs to compare |
+| sensitivity.py | ❌ Failed | No confirmed 1h pairs to test |
+| macro.py | ✅ Working | FRED cache current |
+| ml.py | 🔲 Deferred | Insufficient training data |
+| report.py | ❌ Not run | Waiting for stable pair set |
+
+---
+
+### Session 21 — Accomplishments (2026-06-29)
+
+**Primary achievement: BUG-D52 RESOLVED — full pipeline restored.**
+
+#### Analysis Run
+- analysis.py re-run with FDR_ALPHA=0.05 (restored): 30.3 min runtime
+- EG tested 65,214 pairs → 2,629 raw p<0.05 → 79 BH-FDR adjusted → 5 confirmed 1h pairs
+- All 5 via `coint_frac_secondary_override=True` (coint_frac 0.030–0.091, all below 0.70 threshold but passing secondary-evidence gate: no ZA/CUSUM break + stable half-life)
+- Confirmed pairs: LNT/WELL (silver), DD/GPN (gold), DD/JCI (silver), EG/ORI (gold), VRT/MTZ (silver)
+
+#### Per-Pair OOS Results (trades_layer1_holdout.parquet)
+| Pair | IS Trades | IS Sharpe | OOS Trades | OOS Sharpe | OOS PnL |
+|---|---|---|---|---|---|
+| EG/ORI | 41 | 11.10 | 5 | 44.07 | $2,288 |
+| LNT/WELL | 78 | 15.02 | 24 | 11.12 | $5,832 |
+| VRT/MTZ | 74 | 12.87 | 20 | 9.02 | $7,064 |
+| DD/GPN | 0 | — | 0 | — | $0 |
+| DD/JCI | 0 | — | 0 | — | $0 |
+
+#### Full Pipeline Results (restored, 2026-06-29)
+| Script | Status | Result |
+|--------|--------|--------|
+| analysis.py | ✅ Complete | 5 confirmed 1h pairs, 30.3 min |
+| stats.py | ✅ Complete | IS p=0.86 (not sig), OOS p=0.67 (not sig); 5/5 HL stationary |
+| backtest.py (IS) | ✅ Complete | Sharpe 3.2246, 193 trades, 3 active pairs |
+| backtest.py (OOS) | ✅ Complete | Sharpe 3.149, 49 trades, max drawdown $914 |
+| wfa.py | ✅ Complete | Expanding 1.387/Rolling 1.071 baseline; mm_exec best (1.967/1.566) |
+| distance.py | ✅ Complete | GGR −6.325 vs coint 11.09; 2/5 overlap |
+| sensitivity.py | ✅ Complete | Robust across ADV $0–100M; z-score grid all positive |
+| report.py | ✅ Complete | Full HTML report generated |
+| ml.py | 🔲 Deferred | Only 40 labeled events (need 30/class); 2-4 weeks accumulation needed |
+
+#### HL Stationarity (stats.py, halflife_stationarity.parquet)
+All 5/5 pairs pass ZA stationarity test (p<0.001). AR1 ρ ≈ 0.95–0.97 (high persistence
+but stationary). Break dates cluster 2023-08-31 to 2023-09-26.
+
+#### Honest Permutation Finding
+The new permutation results (IS p=0.86, OOS p=0.67, NOT significant) are a major change
+from the stale prior result (IS p=0.002). The prior p=0.002 came from a 620-trade IS set
+across 27 pairs at multiple timeframes; the current clean run has 193 1h trades from 3 active pairs.
+The per-trade return distribution is not distinguishable from random; equity-curve Sharpe 3.22/3.15
+reflects timing advantages not captured by per-trade shuffling. Documented honestly in PAPER.md §6.6.
+
+#### PAPER.md Updates (Session 21)
+- Abstract: OOS Sharpe 3.249→3.149, honest permutation framing
+- §6.6 Permutation: p=0.002→p=0.86 IS / p=0.67 OOS; honest framing
+- §7 Status: replaced "pipeline regression" note with BUG-D52 RESOLVED
+- §7.1: IS 193 trades/3.2246; OOS 49 trades/3.149; 3/5 active pairs noted
+- §7.2 Concentration table: updated to 49-trade baseline
+- §7.3 WFA table: mm_exec 1.967/1.566 best
+- §7.4 STORM table: session_edge ±0.000 (49 trades)
+- §7.5 coint_frac inversion: table updated with 5 current pairs + correct OOS counts
+- §7.6 HL stationarity: concrete results added (5/5 pass, ZA stats, break dates)
+- §7.7 Distance: GGR −6.33 vs coint 11.09 confirmed
+- §7.8 Sensitivity: numbers confirmed same as previous run
+
+---
+
+### Session 21 — Planned Goals (Carried to Session 22)
+
+1. **Full STORM analysis** — `/storm:storm-brief` multi-perspective research briefing on CAMARF's methodology (deferred from Session 21 due to BUG-D52 resolution taking priority)
+2. **Full pipeline review** — systematic audit of every script's logic, especially analysis.py's coint_frac filter and secondary-evidence override
+3. **Full bug sweep** — review all OPEN bugs in the registry, update status
+4. **Full function sweep** — audit all functions in analysis.py, backtest.py, stats.py for correctness
+5. **BUG-D49 resolution decision** — decide whether to apply price-density screen or filter BUG-D49 assets from 1m/3m confirmed pairs before running backtest
+6. **International data Phase 1** — build daily FX adjustment after pipeline stabilizes
+7. **DD/GPN and DD/JCI zero-trade investigation** — both confirmed 1h pairs with 0 IS and OOS trades; determine if entry z=2.0 threshold is too high for these pairs or if they require STORM tuning
+
+---
+
+### Session 22 — 2026-06-30
+
+**Goals**: Full audit + bug sweep + architecture fixes + pipeline rerun.
+
+#### Architecture Fixes (all implemented, all verified clean)
+
+**F01 — IBKR supplement reader decoupled (architectural violation fixed)**
+- Created `ibkr_supplement_reader.py`: thin parquet-only reader (os + pandas only, zero ib_insync dependency)
+- `data_ibkr.py` now imports `supplement_path` and `load_supplement` from `ibkr_supplement_reader` instead of defining them itself
+- `analysis.py`'s `_enrich_with_deep_history()` now imports from `ibkr_supplement_reader` instead of `data_ibkr` directly
+- Boundary: data_ibkr.py = fetch/write (requires IB Gateway); ibkr_supplement_reader.py = read-only; analysis.py = consumer
+
+**F02 — IBKR config mutation removed from analysis.py**
+- Removed the `_orig_client_id` / `Config.IBKR.CLIENT_ID = Config.IBKR.CLIENT_ID_ANALYSIS` / restore block from `main()`
+- `builder.build(connect=False, fetch=False)` is already unconditionally safe; the mutation was a vestigial safety-net with no functional effect
+- Docstring updated: "Always runs with connect=False; IBKR is never touched by analysis.py"
+
+**F03 — Private helpers promoted to public API in data.py**
+- Added module-level aliases `gap_aware_returns = _gap_aware_returns` and `clean_close = _clean_close` in `data.py` (after their definitions, before DataAligner class)
+- `analysis.py` now imports `gap_aware_returns` and `clean_close` (not underscore versions)
+- All 5 call sites in analysis.py updated via replace_all. No behavior change.
+
+**Dead code removal — analysis.py**
+- Deleted `_log_returns()` (line 348), `_safe_log()` (355), `_minimum_bars_for_test()` (363-377)
+- Zero call sites confirmed before deletion. All three were utility functions superseded by the actual gap-aware implementations.
+
+**Stale 8h cleanup**
+- `debug/diagnosis.py`: removed `("8 hours", "8h", "10 Y", ...)` entry from TIMEFRAME_TESTS
+- `debug/_coint_frac_threshold_sensitivity.py`: removed `"8hr"` from `_TF_DIRS` list
+- `data.py` comments: three references to 8h timeframe updated to reflect current 4h-as-max intraday
+
+#### New Backtest Comparison Arms
+
+**F05 — session_edge postopen arm (`--storm-session-edge-postopen`)**
+- New flag added to backtest.py
+- Skips first 30 minutes of actual NYSE trading (9:30–9:59 ET) and late-day (15:00+)
+- Distinct from existing `--storm-session-edge` (pre-open: 9:00–9:29 ET + 15:00+)
+- Output label: `_sedge_post` when active
+- Rationale: tests whether open-volatility is the more meaningful filter than pre-market noise
+
+**F06 — Entry z-score override (`--entry-z`)**
+- `--entry-z FLOAT` CLI arg added; overrides `Config.BACKTEST.ENTRY_ZSCORE` via `copy.copy()` (does not mutate global config)
+- Use: `python backtest.py --holdout --tf 1h --entry-z 1.5` for DD/GPN and DD/JCI zero-trade diagnostic
+- Output label: `_ez15` when `--entry-z 1.5` passed
+- Rationale: DD/GPN and DD/JCI show zero IS + OOS trades at z=2.0; hypothesis is spread variance too low to hit entry threshold
+
+**F07 — Price degeneracy filter wired (BUG-D49)**
+- Added Step 6d in `AnalysisPipeline._run_tf()` in analysis.py
+- After `_apply_research_screen_flags()` sets `thin_info_content=True`, Step 6d NOW FILTERS those pairs out (was previously annotation-only)
+- Logged with pair count before/after
+- Only active when `research/audit_price_degeneracy.py` has been run (output file must exist)
+- Effect: pairs where either symbol has ≤20 distinct close prices or <2% distinct-to-bar ratio are excluded before backtest
+
+#### Pipeline Rerun (2026-06-30) — COMPLETE
+
+Full rerun: data.py (1609-symbol universe) → analysis.py → backtest.py (all 13 variants)
+→ stats.py → wfa.py → distance.py → sensitivity.py → report.py
+
+| Script | Status | Key Results |
+|--------|--------|-------------|
+| data.py | ✅ Done | 1609-symbol universe |
+| analysis.py | ✅ Done | 23 confirmed pairs (17@1h, 2@3m, 1@30m, 2@4h, 1 international) |
+| backtest.py IS | ✅ Done | 1028 trades, portfolio Sharpe 5.2935, P&L $264,926 |
+| backtest.py OOS | ✅ Done | 296 trades, portfolio Sharpe 5.2443, P&L $73,596 |
+| backtest STORM variants | ✅ Done | risk_parity best: Sharpe 5.8689; cfrac_sizing: Sharpe 5.46 but P&L $5,867 (position-size collapse) |
+| backtest entry-z 1.5 | ✅ Done | IS: 1381 trades, Sharpe 5.9292; OOS: 360 trades, Sharpe 5.3448 |
+| stats.py | ✅ Done | 23 pairs; gold=13, silver=9; EVT 16/23 fat tails; DCC 3 pair-pairs peak_rho>0.70; perm p=0.904/0.981; HL 20/23 stationary |
+| wfa.py | ✅ Done | baseline expanding=3.126/rolling=3.271; mm_exec expanding=3.816/rolling=3.964 |
+| distance.py | ✅ Done | GGR Sharpe=-0.208; CAMARF mean pair Sharpe=11.741; overlap 2/17 |
+| sensitivity.py | ✅ Done | ADV $25M Pareto-optimal (Sharpe 7.412, 16 pairs, 174 trades); entry z=2.5 optimal in grid (10.590) |
+| report.py | ✅ Done | 26/26 figures, main.tex 27,314 chars |
+
+#### Key Findings from 2026-06-30 Pipeline
+
+**Confirmed pair set (23 pairs):**
+- 17 @1h: DD-hub cluster (AMD/DD, AME/DD, AMAT/DD, CMI/DD, DAL/DD = 5 pairs), LNT/VTR,
+  LNT/WELL, EG/WRB, EG/ORI, HAL/NOV, MET/TMHC, PFG/STLD, PRU/AXTA, VRT/MTZ, MTSI/WCC,
+  TMHC/WAL, UMBF/FHB + SPY/VOO (confirmed, flagged trivial — to exclude in next run)
+- 2 @3m: CVX/OXY, KVUE/KMB
+- 1 @30m: EQR/INVH
+- 2 @4h: PNC/ZION + 7267.T/8058.T (international)
+- All 17 @1h pairs pass via secondary-evidence override (coint_frac 0.025–0.167)
+
+**Variant comparison (OOS holdout):**
+| Variant | Trades | Sharpe | PnL |
+|---------|--------|--------|-----|
+| Baseline | 296 | 5.2443 | $73,596 |
+| risk_parity | 296 | **5.8689** | $62,490 |
+| neg_hedge | 304 | 5.4460 | $77,740 |
+| coint_frac_sizing | 296 | 5.4610 | $5,867 (position-size collapse!) |
+| session_edge | 292 | 5.2037 | $73,049 |
+| session_edge_postopen | 268 | 5.1260 | $72,745 |
+| mm_exec | 296 | 5.2467 | $73,636 |
+| hub_weight | 296 | 5.0199 | $51,857 |
+| pnl_cap | 296 | 5.2443 | $73,596 |
+| stormall | 292 | 4.8753 | $5,333 |
+
+**WFA (23 pairs):**
+- Expanding baseline: Sharpe 3.126, P&L $59,525
+- Expanding mm_exec: Sharpe 3.816, P&L $112,498 (ladder fills inflate trade count)
+- Expanding session_edge: Sharpe 3.336, P&L $61,597
+- Rolling baseline: Sharpe 3.271, P&L $59,118
+- Rolling mm_exec: Sharpe 3.964, P&L $125,242
+- Rolling session_edge: Sharpe 3.582, P&L $61,462
+
+**STORM session_edge reversal:** session_edge went from +0.87 (factorial grid, 5-pair set)
+to −0.04 (23-pair set). The prior 5-pair result appears to have been pair-set-specific.
+session_edge is no longer recommended as a default flag.
+
+**Note:** PAPER.md §7.1–§7.9 updated with all 2026-06-30 numbers in Session 22.

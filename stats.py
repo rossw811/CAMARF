@@ -162,6 +162,27 @@ def _load_spread_series(symbol_a: str, symbol_b: str, tf_label: str) -> Optional
     return None
 
 
+def _load_spread_df(symbol_a: str, symbol_b: str, tf_label: str) -> Optional[pd.DataFrame]:
+    """Return the full spread_series DataFrame (not just the spread column)."""
+    dir_prefix = _TF_DIR_MAP.get(tf_label, tf_label)
+    fname = f"spread_series_{symbol_a}_{symbol_b}.parquet"
+    exact = os.path.join(_RESULTS_DIR, dir_prefix, fname)
+    if os.path.exists(exact):
+        candidates = [exact]
+    else:
+        all_matches = sorted(glob.glob(os.path.join(_RESULTS_DIR, f"{dir_prefix}_*", fname)))
+        non_stale = [p for p in all_matches if "stale" not in os.path.basename(os.path.dirname(p))]
+        candidates = non_stale if non_stale else all_matches
+    for path in candidates:
+        try:
+            df = pd.read_parquet(path)
+            if len(df) >= 20:
+                return df
+        except Exception:
+            continue
+    return None
+
+
 def _load_trades(suffix: str = "layer1") -> pd.DataFrame:
     pth = os.path.join(_BACKTEST_DIR, f"trades_{suffix}.parquet")
     if not os.path.exists(pth):
@@ -437,8 +458,27 @@ def run_robust_hedge_ratios(pairs: pd.DataFrame) -> pd.DataFrame:
     out = pd.DataFrame(rows)
     n_robust = int(out["robust"].sum())
     n_total = len(out)
+
+    # hedge_direction_conflict: OLS and MM disagree on sign of the hedge ratio.
+    # Flags pairs like CPF/WAFD where OLS says long A/short B but MM says
+    # the opposite — the two estimators see different "true" relationships,
+    # which means the spread definition is ambiguous. Should not be traded
+    # without resolving which estimator is correct.
+    def _sign_conflict(row: pd.Series) -> bool:
+        ols, mm = row["beta_ols"], row["beta_mm"]
+        if np.isnan(ols) or np.isnan(mm):
+            return False
+        return (ols > 0) != (mm > 0)
+
+    out["hedge_direction_conflict"] = out.apply(_sign_conflict, axis=1)
+    n_conflict = int(out["hedge_direction_conflict"].sum())
+    if n_conflict:
+        conflict_pairs = out[out["hedge_direction_conflict"]][["symbol_a", "symbol_b", "tf_label", "beta_ols", "beta_mm"]].to_string(index=False)
+        log.warning("  hedge_direction_conflict (%d pairs):\n%s", n_conflict, conflict_pairs)
+
     log.info("  Robust pairs (all estimators agree within 5%%): %d/%d", n_robust, n_total)
-    summary.note(f"[S2 Hedge ratios] robust={n_robust}/{n_total} (spread_bps < 500)")
+    log.info("  Hedge direction conflicts (OLS vs MM sign flip): %d/%d", n_conflict, n_total)
+    summary.note(f"[S2 Hedge ratios] robust={n_robust}/{n_total} (spread_bps < 500) conflicts={n_conflict}")
     return out
 
 
@@ -1009,6 +1049,114 @@ def run_permutation_test(
 
 
 # =============================================================================
+# SECTION 7 — HALF-LIFE STATIONARITY
+# =============================================================================
+
+
+def run_halflife_stationarity(pairs: pd.DataFrame) -> pd.DataFrame:
+    """AR(1) + Zivot-Andrews on the rolling half-life series per pair.
+
+    Tests whether each pair's mean-reversion speed is itself stable or
+    drifts over time.  A stationary HL series (ZA rejects unit root) means
+    the pair's dynamics are well-behaved; a unit-root HL means reversion
+    speed wanders and the OU model parameters estimated in-sample may not
+    hold OOS.
+
+    Outputs per pair:
+      hl_ar1_rho      — AR(1) lag-1 coefficient (1=random walk, 0=white noise)
+      hl_ar1_pval     — t-test p-value for rho != 0
+      hl_za_stat      — Zivot-Andrews test statistic (more negative = more stationary)
+      hl_za_pval      — ZA p-value (< 0.05 → reject unit root → HL is stationary)
+      hl_za_breakdate — Detected structural break date in HL series
+      hl_stationary   — bool: ZA p-value < 0.10
+    """
+    log.info("=== Section 7: Half-Life Stationarity (AR(1) + Zivot-Andrews) ===")
+
+    try:
+        from statsmodels.tsa.stattools import zivot_andrews
+        _za_available = True
+    except ImportError:
+        log.warning("  statsmodels.tsa.stattools.zivot_andrews not available — ZA skipped")
+        _za_available = False
+
+    rows = []
+
+    for _, row in pairs.iterrows():
+        a, b, tf = row["symbol_a"], row["symbol_b"], row["tf_label"]
+
+        rec = {
+            "symbol_a": a, "symbol_b": b, "tf_label": tf,
+            "hl_ar1_rho": np.nan, "hl_ar1_pval": np.nan,
+            "hl_za_stat": np.nan, "hl_za_pval": np.nan,
+            "hl_za_breakdate": None, "hl_stationary": False,
+        }
+
+        spread = _load_spread_df(a, b, tf)
+        if spread is None or "half_life_rolling" not in spread.columns:
+            rows.append(rec)
+            continue
+
+        hl = spread["half_life_rolling"].dropna()
+        hl = hl[np.isfinite(hl) & (hl > 0)]
+
+        if len(hl) < 30:
+            log.debug("  %s/%s@%s: insufficient HL observations (%d)", a, b, tf, len(hl))
+            rows.append(rec)
+            continue
+
+        # AR(1): regress hl[t] on hl[t-1]
+        try:
+            y = hl.values[1:]
+            x = hl.values[:-1]
+            x2 = np.column_stack([np.ones(len(x)), x])
+            coef, _, _, _ = np.linalg.lstsq(x2, y, rcond=None)
+            rho = float(coef[1])
+            resid = y - x2 @ coef
+            se = float(np.sqrt(np.var(resid) / np.sum((x - x.mean()) ** 2)))
+            t_stat = rho / se if se > 1e-10 else np.nan
+            ar1_pval = float(2 * (1 - sp_stats.t.cdf(abs(t_stat), df=len(y) - 2))) if np.isfinite(t_stat) else np.nan
+            rec["hl_ar1_rho"] = round(rho, 4)
+            rec["hl_ar1_pval"] = round(ar1_pval, 4) if np.isfinite(ar1_pval) else np.nan
+        except Exception as e:
+            log.debug("  AR(1) failed for %s/%s@%s: %s", a, b, tf, e)
+
+        # Zivot-Andrews: unit root test allowing for one structural break
+        if _za_available and len(hl) >= 20:
+            try:
+                za_result = zivot_andrews(hl.values, trim=0.15, regression="c", autolag="AIC")
+                rec["hl_za_stat"] = round(float(za_result[0]), 4)
+                rec["hl_za_pval"] = round(float(za_result[1]), 4)
+                # za_result[4] is baselag; za_result[3] is the break index
+                break_idx = int(za_result[3]) if len(za_result) > 3 else None
+                if break_idx is not None and break_idx < len(hl):
+                    rec["hl_za_breakdate"] = str(hl.index[break_idx])
+                rec["hl_stationary"] = bool(za_result[1] < 0.10)
+            except Exception as e:
+                log.debug("  ZA failed for %s/%s@%s: %s", a, b, tf, e)
+
+        log.info(
+            "  %s/%s@%s  AR1_rho=%.3f  ZA_stat=%.2f  ZA_pval=%.3f  stationary=%s",
+            a, b, tf,
+            rec["hl_ar1_rho"] if np.isfinite(rec["hl_ar1_rho"]) else float("nan"),
+            rec["hl_za_stat"] if np.isfinite(rec["hl_za_stat"]) else float("nan"),
+            rec["hl_za_pval"] if np.isfinite(rec["hl_za_pval"]) else float("nan"),
+            rec["hl_stationary"],
+        )
+        rows.append(rec)
+
+    out = pd.DataFrame(rows)
+    n_stat = int(out["hl_stationary"].sum())
+    n_total = len(out)
+    log.info(
+        "  HL stationary (ZA p<0.10): %d/%d  |  mean AR1_rho=%.3f",
+        n_stat, n_total,
+        out["hl_ar1_rho"].mean() if not out["hl_ar1_rho"].isna().all() else float("nan"),
+    )
+    summary.note(f"[S7 HL stationarity] stationary={n_stat}/{n_total} (ZA p<0.10)")
+    return out
+
+
+# =============================================================================
 # MAIN
 # =============================================================================
 
@@ -1054,6 +1202,17 @@ def main() -> None:
     hedge_df.to_parquet(os.path.join(_STATS_DIR, "hedge_ratio_comparison.parquet"), index=False)
     log.info("  Saved → output/stats/hedge_ratio_comparison.parquet")
 
+    # Propagate hedge_direction_conflict into tiers parquet so downstream
+    # scripts (backtest, wfa, report) can filter on it without re-running S2.
+    conflict_cols = ["symbol_a", "symbol_b", "tf_label", "hedge_direction_conflict"]
+    if "hedge_direction_conflict" in hedge_df.columns:
+        tier_df = tier_df.merge(
+            hedge_df[conflict_cols], on=["symbol_a", "symbol_b", "tf_label"], how="left"
+        )
+        tier_df["hedge_direction_conflict"] = tier_df["hedge_direction_conflict"].fillna(False)
+        tier_df.to_parquet(os.path.join(_STATS_DIR, "cointegration_tiers.parquet"), index=False)
+        log.info("  Updated cointegration_tiers.parquet with hedge_direction_conflict")
+
     # ---- Section 3: EVT / GPD tail risk -----------------------------------------
     evt_df = run_evt_tail_risk(pairs, all_trades)
     evt_df.to_parquet(os.path.join(_STATS_DIR, "evt_tail_risk.parquet"), index=False)
@@ -1090,6 +1249,12 @@ def main() -> None:
             with open(os.path.join(_STATS_DIR, "permutation_test_is.json"), "w") as fh:
                 json.dump(perm_is, fh, indent=2)
             log.info("  Saved IS permutation → output/stats/permutation_test_is.json")
+
+    # ---- Section 7: Half-life stationarity ----
+    if tier_df is not None and len(tier_df) > 0:
+        hl_stat = run_halflife_stationarity(tier_df)
+        hl_stat.to_parquet(os.path.join(_STATS_DIR, "halflife_stationarity.parquet"), index=False)
+        log.info("  Saved => output/stats/halflife_stationarity.parquet (%d rows)", len(hl_stat))
 
     # ---- Final log --------------------------------------------------------------
     runtime = (time.time() - t0) / 60
