@@ -1625,26 +1625,31 @@ class EigenportfolioDecomposer:
         return float(lambda_plus), None  # K determined from actual eigenvalues
 
     @staticmethod
-    def compute_factor_residuals(
-        returns: np.ndarray,  # (N, T) — pairwise-complete, NaN for missing
-        corr: np.ndarray,  # (N, N) — already computed Pearson matrix
-        n_periods: int,  # T (for MP threshold)
-    ) -> Tuple[np.ndarray, int]:
+    def _eigendecompose(
+        corr: np.ndarray, n_periods: int
+    ) -> Tuple[np.ndarray, np.ndarray, float, int]:
         """
-        Project out systematic factors and return residual returns.
+        Shared eigendecomposition + Marchenko-Pastur factor count, extracted
+        out of compute_factor_residuals() (2026-06-30) so a caller that only
+        needs the eigenvalue spectrum itself — e.g. absorption_ratio.py's
+        Kritzman-Li-Page-Rigobon (2011) systemic-risk measure, which needs
+        the fraction of total variance explained by the top eigenvalues, not
+        the residual-return OLS projection — doesn't have to duplicate (and
+        risk silently diverging from) this NaN-handling/threshold logic.
 
-        Returns:
-            residuals: (N, T) array of idiosyncratic returns
-            K:         number of factors removed
+        Returns (eigenvalues_desc, eigenvectors_desc, lambda_plus, K).
+        K here is the MP-threshold factor count used for eigenportfolio
+        residual construction — NOT the same K convention the Absorption
+        Ratio uses (a fixed fraction of N per Kritzman et al., computed by
+        the caller from the returned eigenvalues directly).
         """
-        n = returns.shape[0]
+        n = corr.shape[0]
         lambda_plus, _ = EigenportfolioDecomposer.marchenko_pastur_threshold(
             n, n_periods
         )
 
-        # Eigendecompose the correlation matrix.
-        # Found overnight (2026-06-23): this comment claimed "use only
-        # finite rows/cols" but no such filtering ever happened —
+        # Found overnight (2026-06-23): a prior comment here claimed "use
+        # only finite rows/cols" but no such filtering ever happened —
         # np.linalg.eigh on a NaN-containing matrix doesn't reliably raise,
         # it can silently return garbage eigenvalues/eigenvectors
         # (numpy/numpy#20280). NaN entries here are EXPECTED, not a bug in
@@ -1674,8 +1679,26 @@ class EigenportfolioDecomposer:
         eigenvalues = eigenvalues[::-1]
         eigenvectors = eigenvectors[:, ::-1]
 
-        # Find K = number of genuine factors above MP threshold
         K = int(np.sum(eigenvalues > lambda_plus))
+        return eigenvalues, eigenvectors, lambda_plus, K
+
+    @staticmethod
+    def compute_factor_residuals(
+        returns: np.ndarray,  # (N, T) — pairwise-complete, NaN for missing
+        corr: np.ndarray,  # (N, N) — already computed Pearson matrix
+        n_periods: int,  # T (for MP threshold)
+    ) -> Tuple[np.ndarray, int]:
+        """
+        Project out systematic factors and return residual returns.
+
+        Returns:
+            residuals: (N, T) array of idiosyncratic returns
+            K:         number of factors removed
+        """
+        n = returns.shape[0]
+        eigenvalues, eigenvectors, lambda_plus, K = EigenportfolioDecomposer._eigendecompose(
+            corr, n_periods
+        )
         if K == 0:
             # No factors above noise floor — returns are independent
             # Return raw returns unchanged with K=0
@@ -4076,6 +4099,63 @@ def _regime_worker(args) -> Optional[Tuple["RegimeResult", Optional[pd.DataFrame
 # =============================================================================
 
 
+@dataclass
+class FilterFunnelStage:
+    """One gate's before/after count for one timeframe's filter funnel."""
+
+    stage: str
+    n_before: int
+    n_after: int
+
+    @property
+    def n_removed(self) -> int:
+        return self.n_before - self.n_after
+
+
+class FilterFunnel:
+    """
+    Tracks symbol/pair counts through each sequential gate in one timeframe's
+    analysis pipeline (ADV liquidity, Pearson pre-filter, EG+BH-FDR,
+    price-degeneracy, structural exclusion, coint_frac threshold+override),
+    so a filter-ablation study can measure each stage's real marginal effect
+    instead of only ever seeing the final confirmed-pair count.
+
+    Units differ by stage (ADV/price-degeneracy record symbol-level or
+    pair-level counts depending on what the gate actually operates on) — the
+    stage name itself documents the unit; this class does not normalize
+    across stages, it just records what each gate saw before/after.
+    """
+
+    def __init__(self, tf_label: str):
+        self.tf_label = tf_label
+        self.stages: List[FilterFunnelStage] = []
+
+    def record(self, stage: str, n_before: int, n_after: int) -> None:
+        self.stages.append(FilterFunnelStage(stage, n_before, n_after))
+
+    def to_dataframe(self) -> pd.DataFrame:
+        return pd.DataFrame(
+            [
+                {
+                    "tf_label": self.tf_label,
+                    "stage": s.stage,
+                    "n_before": s.n_before,
+                    "n_after": s.n_after,
+                    "n_removed": s.n_removed,
+                }
+                for s in self.stages
+            ]
+        )
+
+    def save(self) -> None:
+        df = self.to_dataframe()
+        if df.empty:
+            return
+        out_path = os.path.join(_output_dir(self.tf_label), "filter_funnel.parquet")
+        df.to_parquet(out_path, index=False)
+        log.info(f"  [{self.tf_label}] filter funnel:\n{df.to_string(index=False)}")
+
+
 class AnalysisPipeline:
     """
     Top-level orchestrator. Consumes a UniverseResult from data.py and
@@ -4288,6 +4368,8 @@ class AnalysisPipeline:
             )
         log.info(f"  [{tf_label}] {len(tf_data_raw)} assets have data for this TF")
 
+        funnel = FilterFunnel(tf_label)
+
         # ADV liquidity filter — requires both symbols in any pair to exceed threshold.
         # Computed from 1hr cache (close × volume, aggregated to daily sums) so it is
         # independent of the current TF being analyzed.
@@ -4313,6 +4395,7 @@ class AnalysisPipeline:
                     _adv_map[sym] = float("nan")
             _adv_filtered = {s: v for s, v in _adv_map.items() if v >= _adv_threshold}
             _adv_excluded = {s for s in tf_data_raw if s not in _adv_filtered}
+            funnel.record("adv_liquidity_symbols", len(tf_data_raw), len(_adv_filtered))
             if _adv_excluded:
                 log.info(
                     f"  [{tf_label}] ADV filter (>=${_adv_threshold/1e6:.0f}M): "
@@ -4358,13 +4441,19 @@ class AnalysisPipeline:
         )
         # Guard: returns 2-tuple ([], []) when no assets pass filtering
         # (e.g. 6M with only 4 qualifying assets)
+        _n_possible_pairs = len(aligned) * (len(aligned) - 1) // 2
         if not isinstance(_uf_raw, tuple) or len(_uf_raw) < 5:
+            funnel.record("pearson_prefilter_pairs", _n_possible_pairs, 0)
+            funnel.save()
             log.info(f"  [{tf_label}] no candidate pairs above threshold")
             return [], [], [], [], {}
         candidates, retained_symbols, _returns_mat, _corr_mat, _sym_order = _uf_raw
         if not candidates:
+            funnel.record("pearson_prefilter_pairs", _n_possible_pairs, 0)
+            funnel.save()
             log.info(f"  [{tf_label}] no candidate pairs above threshold")
             return [], [], [], [], {}
+        funnel.record("pearson_prefilter_pairs", _n_possible_pairs, len(candidates))
 
         # Step 4: Engle-Granger + BH-FDR
         confirmed_dicts, eg_stats = CointScanner.scan(
@@ -4375,8 +4464,11 @@ class AnalysisPipeline:
             n_workers=n_workers,
         )
         if not confirmed_dicts:
+            funnel.record("eg_bh_fdr_pairs", len(candidates), 0)
+            funnel.save()
             log.info(f"  [{tf_label}] no pairs survived BH-FDR")
             return [], [], [], [], {}
+        funnel.record("eg_bh_fdr_pairs", len(candidates), len(confirmed_dicts))
 
         # Step 5: rolling coint fraction (decay signal #1)
         confirmed_dicts = CointScanner.rolling_fraction(
@@ -4464,6 +4556,7 @@ class AnalysisPipeline:
         n_before_deg = len(pair_results)
         pair_results = [pr for pr in pair_results if not pr.thin_info_content]
         n_dropped_deg = n_before_deg - len(pair_results)
+        funnel.record("price_degeneracy_pairs", n_before_deg, len(pair_results))
         if n_dropped_deg:
             log.info(
                 f"  [{tf_label}] Price-degeneracy filter: dropped {n_dropped_deg} pairs "
@@ -4615,6 +4708,7 @@ class AnalysisPipeline:
             cross_pairs,
             calib_dict,
             per_bar_by_pair,
+            funnel,
         )
         # Checkpoint: mark this TF as complete in the hash store.
         # The full hash is only confirmed at pipeline end, but partial
@@ -5045,6 +5139,7 @@ class AnalysisPipeline:
         cross: List[PairResult],
         calibration: Dict[str, Any],
         per_bar_by_pair: Optional[Dict[Tuple[str, str], Dict[str, Any]]] = None,
+        funnel: Optional["FilterFunnel"] = None,
     ) -> List[PairResult]:
         """
         Save all dataclass results to Parquet/JSON in output/results/{tf_label}/.
@@ -5078,6 +5173,8 @@ class AnalysisPipeline:
         # silently include coint_frac exclusions too (found 2026-06-23 while
         # verifying the _save_tf_results return-value fix).
         n_structural = len(pairs) - len(discovered_pairs)
+        if funnel is not None:
+            funnel.record("structural_exclusion_pairs", len(pairs), len(discovered_pairs))
 
         # Enforce coint_fraction_rolling minimum (episodic cointegration defense).
         # Pairs cointegrated in <70% of rolling windows are historical episodes.
@@ -5112,6 +5209,9 @@ class AnalysisPipeline:
                 _n_override += 1
             # else: excluded
         discovered_pairs = _kept
+        if funnel is not None:
+            funnel.record("coint_frac_threshold_pairs", _n_before, len(discovered_pairs))
+            funnel.save()
         if len(discovered_pairs) < _n_before:
             log.info(
                 f"  [{tf_label}] coint_frac filter: "
@@ -5217,18 +5317,31 @@ class AnalysisPipeline:
                 pairs_df = pd.DataFrame([asdict(p) for p in discovered_pairs])
                 pairs_df.to_parquet(os.path.join(out_dir, "pairs.parquet"))
 
-            # Persist per-bar spread/z-score/half-life series for confirmed
-            # pairs only (not the superset that survived EG+FDR before
-            # structural/coint_frac filtering) — added 2026-06-21 so a future
-            # ml.py has real historical entry/exit events to build labeled
-            # training examples from, instead of just pairs.parquet's summary
-            # scalars. See DEVELOPMENT.md ml.py section. Per-bar regime-state
-            # labels deliberately NOT included here (RegimeClassifier.predict_labels()
+            # Persist per-bar spread/z-score/half-life series for every pair
+            # that survived EG+FDR and the price-degeneracy filter (`pairs`),
+            # NOT just the final post-coint_frac/post-structural set
+            # (`discovered_pairs`) — added 2026-06-21 for ml.py's labeled
+            # training examples; extended 2026-06-30 (Phase 1 filter-ablation
+            # work) to cover the broader `pairs` set specifically so a pair
+            # excluded by the coint_frac threshold or the structural-pair
+            # filter still has a spread_series file on disk and can be
+            # counterfactually backtested via `backtest.py --pairs-override`
+            # (research/filter_ablation.py). Before this change, spread_series
+            # existed only for `discovered_pairs`, making "what if this filter
+            # hadn't excluded these pairs" impossible to test — the very data
+            # needed to answer that question was never saved. Price-degeneracy
+            # exclusions are NOT covered here (those pairs are dropped from
+            # `pairs` itself, one step earlier in `_run_one_tf`, before this
+            # function is even called) — an accepted scope limit, since a
+            # spread built on a price-degenerate series (2-7 distinct closes)
+            # isn't a meaningful counterfactual to begin with. See
+            # DEVELOPMENT.md ml.py section. Per-bar regime-state labels
+            # deliberately NOT included here (RegimeClassifier.predict_labels()
             # is unused/orphaned today and fitting it would add ~15-20% pipeline
             # runtime) — deferred to a follow-up pass, not this one.
             if per_bar_by_pair:
                 _n_persisted = 0
-                for _p in discovered_pairs:
+                for _p in pairs:
                     _pb = per_bar_by_pair.get((_p.symbol_a, _p.symbol_b))
                     if _pb is None:
                         continue
@@ -5261,8 +5374,22 @@ class AnalysisPipeline:
                 if _n_persisted:
                     log.info(
                         f"  [{tf_label}] persisted per-bar spread/z-score series "
-                        f"for {_n_persisted}/{len(discovered_pairs)} confirmed pairs"
+                        f"for {_n_persisted}/{len(pairs)} EG+FDR-confirmed pairs "
+                        f"(post price-degeneracy filter, pre coint_frac/structural)"
                     )
+
+            # Persist the full pre-coint_frac/pre-structural candidate set
+            # (`pairs`, with the same schema as pairs.parquet) so
+            # research/filter_ablation.py can build --pairs-override files
+            # for the coint_frac and structural filters directly from this —
+            # no need to reconstruct pair metadata from scratch.
+            if pairs:
+                all_candidates_df = pd.DataFrame([asdict(p) for p in pairs])
+                all_candidates_df.to_parquet(os.path.join(out_dir, "all_candidates.parquet"))
+                log.info(
+                    f"  [{tf_label}] saved {len(pairs)} pre-coint_frac/pre-structural "
+                    f"candidates → {out_dir}/all_candidates.parquet"
+                )
         if n_structural:
             log.info(
                 f"  [{tf_label}] {n_structural} structural pairs excluded "

@@ -123,6 +123,58 @@ def _step(name: str, section: str, cmd: list[str], outputs: list[str], optional:
     STEPS.append(dict(name=name, section=section, cmd=cmd, outputs=outputs, optional=optional))
 
 
+# ---------------------------------------------------------------------------
+# Data provenance — see CLAUDE.md "Data Test Range & Reproducibility"
+# ---------------------------------------------------------------------------
+# reproduce.py maps every PAPER.md finding to the SCRIPT that generated it,
+# but not (before this) to the exact DATA that script ran against. Added
+# 2026-06-30 (Phase 4, filter-ablation/STORM research program) so a reader
+# can regenerate an equivalent dataset independently, not just re-run
+# analysis code against whatever happens to be cached locally. Keep this in
+# sync with CLAUDE.md's canonical copy whenever a new full pipeline run
+# becomes the one PAPER.md's numbers are drawn from — this is a pointer to
+# that source of truth, not a second independent copy to maintain by hand.
+DATA_PROVENANCE = {
+    "universe_snapshot_date": "2026-06-30",
+    "universe_snapshot_size": 1608,
+    "universe_source": "S&P Composite 1500 + international equities/ADRs/FX spots",
+    "data_py_runtime_min": 5.6,
+    "config_hash": "0c0e67a6b00ff0bb",
+    "per_tf_fetch_windows": {
+        "1m": "5 calendar days (Yahoo 1m hard limit = 8 days)",
+        "3m": "derived by resampling 1m (not fetched separately)",
+        "2m": "55 calendar days",
+        "5m": "60 calendar days",
+        "15m": "60 calendar days",
+        "30m": "60 calendar days",
+        "1h": "730 calendar days",
+        "4h": "derived by resampling 1h, session-aligned bins",
+        "1D": "full available history (yfinance period=max)",
+        "1M": "full available history (yfinance period=max)",
+    },
+    "pinned_versions_ref": "requirements.txt (pyarrow==24.0.0 specifically)",
+    "canonical_source": "CLAUDE.md 'Data Test Range & Reproducibility' section",
+}
+
+
+def print_data_provenance() -> None:
+    print("\n" + "=" * 70)
+    print("  Data provenance (see CLAUDE.md for the canonical, kept-current copy)")
+    print("=" * 70)
+    print(f"  Universe snapshot: {DATA_PROVENANCE['universe_snapshot_size']} symbols "
+          f"({DATA_PROVENANCE['universe_source']})")
+    print(f"  Snapshot date:     {DATA_PROVENANCE['universe_snapshot_date']}  "
+          f"(data.py runtime {DATA_PROVENANCE['data_py_runtime_min']} min, "
+          f"config_hash {DATA_PROVENANCE['config_hash']})")
+    print("  Per-timeframe fetch windows:")
+    for tf, window in DATA_PROVENANCE["per_tf_fetch_windows"].items():
+        print(f"    {tf:<4} {window}")
+    print(f"  Pinned versions: see {DATA_PROVENANCE['pinned_versions_ref']}")
+    print(f"  An independent party can regenerate statistically equivalent data by "
+          f"running data.py with these same parameters against a current S&P "
+          f"Composite 1500 constituent list — no need for this repo's output/cache/.")
+
+
 # 1. Data fetch -----------------------------------------------------------
 _step(
     name="data",
@@ -442,6 +494,8 @@ _EXPECTED_METRICS = {
 
 def verify_metrics() -> None:
     """Print key headline numbers alongside their PAPER.md expected values."""
+    print_data_provenance()
+
     print("\n" + "="*70)
     print("  Key metric verification")
     print("="*70)
@@ -511,10 +565,19 @@ def main() -> None:
         help="List all step names and exit",
     )
     parser.add_argument(
+        "--show-provenance", action="store_true",
+        help="Print the data test range/universe snapshot this run's numbers are "
+             "drawn from and exit — see CLAUDE.md for the canonical, kept-current copy.",
+    )
+    parser.add_argument(
         "--skip-optional", action="store_true", default=False,
         help="Skip steps marked optional=True (ml.py, report.py)",
     )
     args = parser.parse_args()
+
+    if args.show_provenance:
+        print_data_provenance()
+        return
 
     if args.list:
         print("\nAvailable steps:")

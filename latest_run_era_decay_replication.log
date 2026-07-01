@@ -1,0 +1,15 @@
+23:29:39 INFO  === era_decay_replication.py: Do & Faff (2010)-style era-decay replication on CAMARF's own data ===
+23:29:39 INFO  SCOPE: tests decay + convergence-property (half-life) trend only — cannot test the 'crowding' hypothesis (requires external capital-flow data CAMARF does not have). See module docstring.
+23:29:40 INFO  
+era       n_pairs   n_trades  sharpe_port mean_half_life
+23:29:40 INFO  0              15        185       5.0476          38.57
+23:29:40 INFO  1              15        185       5.1806          39.68
+23:29:40 INFO  2              15        290       5.2062          30.98
+23:29:40 INFO  
+--- Honest interpretation (report whichever pattern actually appears) ---
+23:29:40 INFO  Portfolio Sharpe monotonically declining across eras: False
+23:29:40 INFO  Mean half-life monotonically increasing across eras: False
+23:29:40 INFO  No consistent decay pattern found across %d eras in CAMARF's available history for confirmed 1h pairs. This is a genuine null result, not a failure — CAMARF's history window may simply be too short relative to the multi-decade span Do & Faff's original replication covered.
+23:29:40 INFO  Saved -> C:\Users\RossW\Projects\CAMARF\output\research\era_decay_replication.parquet, C:\Users\RossW\Projects\CAMARF\output\research\era_decay_replication_summary.parquet
+23:29:40 INFO  ============================================================
+23:29:40 INFO  era_decay_replication.py complete (0.0 min)

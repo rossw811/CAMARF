@@ -1,2 +1,16 @@
 __pycache__/
 *.pyc
+
+# Large generated data/output — regenerate via the pipeline (see README.md
+# "Reproducibility" / CLAUDE.md "Data Test Range & Reproducibility") rather
+# than tracking multi-GB binary parquet in git history. latest_run_*.log
+# summaries at repo root are small, curated, and intentionally still tracked.
+output/cache/
+output/backtest/
+output/stats/
+output/research/
+output/sensitivity/
+output/results/
+output/report/
+output/reports/
+_*.log

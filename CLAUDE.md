@@ -88,7 +88,65 @@ statistically significant rates using multiclass ML.
    universe, small-n filtering) are documented, never silently corrected
    away or ignored.
 
+7. **Honest, ethical, methodologically true and fair, and reproducible —
+   non-negotiable, not aspirational.** This governs every claim, number,
+   and finding in this project, not just the bias-audit entries in rule 6.
+   Concretely: never inflate a confidence score, Sharpe ratio, or reliability
+   rating to make a result look stronger than the evidence supports — if a
+   finding is genuinely contested in the literature or the data, say so and
+   report the honest number, don't engineer around it. When citing external
+   research, represent both sides of a genuine dispute, not just the side
+   that favors CAMARF's thesis. Every empirical claim should be reproducible
+   by an independent party: document the exact data range, universe
+   snapshot, and parameters used for any headline result (see "Data Test
+   Range & Reproducibility" below) so someone with no access to this
+   repository's cached data could re-fetch equivalent data and verify the
+   claim independently.
+
 ---
+
+## Data Test Range & Reproducibility
+
+Every headline result in `PAPER.md` must be traceable to the exact data an
+independent party could re-fetch to verify it — not just to a cached parquet
+file in this repo. For each full pipeline run reported in `PAPER.md` or
+`Development.md`, record: the universe snapshot date and source (e.g. S&P
+Composite 1500 constituents as of a given date, scraped from a named
+Wikipedia revision or index provider), the exact calendar date range fetched
+per timeframe (yfinance's own per-interval lookback limits mean 1m/2m/3m
+history is much shorter than 1D/1h — see `_YF_INTRADAY_MAP` in
+`Known-Resolved Issues` above), and the yfinance/pyarrow/statsmodels versions
+pinned in `requirements.txt` at the time of that run. `reproduce.py` is the
+existing mechanism for mapping a `PAPER.md` finding to the script that
+generated it — extend it (or a paired document) so a reader can also
+regenerate the *data* an entry depends on, not just re-run the analysis code
+against whatever happens to be sitting in `output/cache/`.
+
+**Current canonical data footprint (Session 22 full pipeline run, verified
+against `latest_run_data.log`, not assumed):**
+
+- **Universe snapshot:** 1,608 candidate symbols (S&P Composite 1500 +
+  international equities/ADRs/FX spots), `data.py` run completed
+  **2026-06-30 10:10**, runtime 5.6 minutes, config_hash `0c0e67a6b00ff0bb`.
+  1,357 symbols resumed from existing cache; 0 excluded; 0 cache-contamination
+  clears this run.
+- **Per-timeframe yfinance fetch windows** (`_YF_INTRADAY_MAP`,
+  `data.py:1869-1878`): `1m`/`3m` → 5 calendar days (3m is derived by
+  resampling 1m, not fetched separately — Yahoo's 1m interval has an 8-day
+  hard limit, 5d stays safely inside it); `2m` → 55 days; `5m`/`15m`/`30m` →
+  60 days; `1h`/`4h` → 730 days (4h derived by resampling 1h with
+  session-aligned bins, `origin="start_day", offset="9h30min"`); `1D`/`1M` →
+  full available history via yfinance `period="max"`.
+- **Pinned versions:** see `requirements.txt`, in particular `pyarrow==24.0.0`
+  (cross-version pyarrow reads misreport valid parquet as corrupted — see
+  Known-Resolved Issues above).
+
+An independent party can regenerate statistically equivalent data by running
+`data.py` with these same parameters against a current S&P Composite 1500
+constituent list, without needing this repo's `output/cache/` directory at
+all. Update this block whenever a new full pipeline run becomes the
+canonical one for `PAPER.md`'s reported numbers — don't let it drift stale
+the way `README.md` did before this section existed.
 
 ## Known-Resolved Issues — Do Not Re-Suggest These Fixes
 
