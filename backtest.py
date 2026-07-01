@@ -344,7 +344,10 @@ class BacktestEngine:
         self.pnl_cap_by_pair = pnl_cap_by_pair or {}
         self._pair_pnl: Dict[str, float] = {}  # cumulative net P&L per pair (for cap)
         # STORM experimental variants
-        # storm_flags keys: coint_frac_sizing, garch_stop, session_edge, mm_exec
+        # storm_flags keys: coint_frac_sizing, garch_stop, session_edge,
+        #   session_edge_postopen, mm_exec
+        # session_edge: skip pre-open bars (9:00–9:29) and late-day (15:00+)
+        # session_edge_postopen: skip first 30-min of trading (9:30–9:59) and late-day
         self.storm_flags = storm_flags or {}
         # mm_hedge_map: {sym_a/sym_b -> beta_mm} loaded from hedge_ratio_comparison.parquet
         self.mm_hedge_map = mm_hedge_map or {}
@@ -355,6 +358,7 @@ class BacktestEngine:
         spread_df: pd.DataFrame,
         hedge_method: str,
         holdout_only: bool = False,
+        oos_end_date: Optional[pd.Timestamp] = None,
     ) -> List[Trade]:
         """
         Run Layer 1 event loop.
@@ -366,6 +370,9 @@ class BacktestEngine:
         spread_df : spread_series_{A}_{B}.parquet
         hedge_method : "ols" | "kalman"
         holdout_only : if True, run only on the last HOLDOUT_PCT of bars
+        oos_end_date : survivorship boundary — truncate OOS window at this date.
+                       Pairs involving delisted stocks use this to avoid
+                       look-ahead bias. None = no truncation.
         """
         sym_a = pair_row["symbol_a"]
         sym_b = pair_row["symbol_b"]
@@ -396,6 +403,17 @@ class BacktestEngine:
         if len(df) < 30:
             return []
 
+        # Survivorship boundary: truncate OOS window at delist/removal date
+        if oos_end_date is not None:
+            oos_end_ts = pd.Timestamp(oos_end_date)
+            df = df[df.index <= oos_end_ts]
+            if len(df) < 30:
+                log.debug(
+                    "SKIP %s/%s@%s: oos_end_date %s truncates to < 30 bars",
+                    sym_a, sym_b, tf, oos_end_date,
+                )
+                return []
+
         trades: List[Trade] = []
         in_position = False
         current_trade: Optional[Trade] = None
@@ -424,8 +442,9 @@ class BacktestEngine:
         _pair_key_full = f"{sym_a}/{sym_b}"
         _beta_mm = self.mm_hedge_map.get(_pair_key_full) if _mm_exec else None
 
-        # STORM: intraday TF detection for session_edge filter
+        # STORM: intraday TF detection for session_edge filters
         _session_edge = self.storm_flags.get("session_edge", False)
+        _session_edge_postopen = self.storm_flags.get("session_edge_postopen", False)
         _is_intraday = any(c in tf for c in ["m", "h"]) and "D" not in tf and "W" not in tf
 
         # STORM: coint_frac — read fraction; apply threshold gate or continuous sizing
@@ -485,10 +504,15 @@ class BacktestEngine:
 
             if not in_position:
                 # ---- Entry logic ----
-                # STORM: session_edge filter — skip entries near open/close (intraday only)
+                # STORM: session_edge filter — skip pre-open (9:00–9:29) and late-day
                 if _session_edge and _is_intraday:
                     _hr, _mn = getattr(ts, "hour", -1), getattr(ts, "minute", 0)
                     if (_hr == 9 and _mn < 30) or _hr >= 15:
+                        continue
+                # STORM: session_edge_postopen — skip first 30-min of trading (9:30–9:59) and late-day
+                if _session_edge_postopen and _is_intraday:
+                    _hr, _mn = getattr(ts, "hour", -1), getattr(ts, "minute", 0)
+                    if (_hr == 9 and _mn >= 30) or _hr >= 15:
                         continue
 
                 if abs(z) < self.cfg.ENTRY_ZSCORE:
@@ -970,11 +994,16 @@ def main() -> None:
     p.add_argument("--storm-garch-stop", action="store_true",
                    help="STORM: tighten stop to |z|>3.0 when rolling z-vol > 2× historical.")
     p.add_argument("--storm-session-edge", action="store_true",
-                   help="STORM: skip entries in first/last 30 min of session (intraday only).")
+                   help="STORM: skip pre-open entries (9:00-9:29 ET) and late-day (15:00+) (intraday only).")
+    p.add_argument("--storm-session-edge-postopen", action="store_true",
+                   help="STORM: skip first 30-min of trading (9:30-9:59 ET) and late-day (15:00+) (intraday only).")
     p.add_argument("--storm-mm-exec", action="store_true",
                    help="STORM: use MM (outlier-robust) hedge ratio for execution sizing.")
     p.add_argument("--storm-all", action="store_true",
                    help="STORM: enable all 4 experimental variants simultaneously.")
+    p.add_argument("--entry-z", type=float, default=None,
+                   help="Override ENTRY_ZSCORE (default: Config.BACKTEST.ENTRY_ZSCORE=2.0). "
+                        "Use --entry-z 1.5 for DD/GPN and DD/JCI zero-trade diagnostic.")
     args = p.parse_args()
 
     layer2 = args.layer2 or Config.BACKTEST.LAYER2_ENABLED
@@ -988,15 +1017,24 @@ def main() -> None:
     # STORM flags
     _storm_all = getattr(args, "storm_all", False)
     storm_flags = {
-        "coint_frac_sizing": getattr(args, "storm_coint_frac", False) or _storm_all,
-        "garch_stop":        getattr(args, "storm_garch_stop", False) or _storm_all,
-        "session_edge":      getattr(args, "storm_session_edge", False) or _storm_all,
-        "mm_exec":           getattr(args, "storm_mm_exec", False) or _storm_all,
+        "coint_frac_sizing":       getattr(args, "storm_coint_frac", False) or _storm_all,
+        "garch_stop":              getattr(args, "storm_garch_stop", False) or _storm_all,
+        "session_edge":            getattr(args, "storm_session_edge", False) or _storm_all,
+        "session_edge_postopen":   getattr(args, "storm_session_edge_postopen", False),
+        "mm_exec":                 getattr(args, "storm_mm_exec", False) or _storm_all,
     }
     mm_hedge_map = load_mm_hedge_map() if storm_flags.get("mm_exec") else {}
 
+    # --entry-z override for z=1.5 comparison arm (DD/GPN, DD/JCI zero-trade diagnostic)
+    _backtest_cfg = Config.BACKTEST
+    if args.entry_z is not None:
+        import copy
+        _backtest_cfg = copy.copy(Config.BACKTEST)
+        _backtest_cfg.ENTRY_ZSCORE = args.entry_z
+        log.info("entry-z override: ENTRY_ZSCORE = %.2f", args.entry_z)
+
     engine = BacktestEngine(
-        cfg=Config.BACKTEST, regime_cond=regime_cond, ml_cond=ml_cond,
+        cfg=_backtest_cfg, regime_cond=regime_cond, ml_cond=ml_cond,
         layer2_enabled=layer2,
         allow_negative_hedge=args.neg_hedge,
         hub_weights=hub_weights,
@@ -1019,15 +1057,29 @@ def main() -> None:
         label += "_riskparity"
     if args.pnl_cap:
         label += "_pnlcap"
+    if args.entry_z is not None:
+        label += f"_ez{str(args.entry_z).replace('.', '')}"
     if _storm_all:
         label += "_stormall"
     elif any(storm_flags.values()):
         sfx = "_storm"
-        if storm_flags.get("coint_frac_sizing"): sfx += "_cfrac"
-        if storm_flags.get("garch_stop"):        sfx += "_gstop"
-        if storm_flags.get("session_edge"):      sfx += "_sedge"
-        if storm_flags.get("mm_exec"):           sfx += "_mmexec"
+        if storm_flags.get("coint_frac_sizing"):     sfx += "_cfrac"
+        if storm_flags.get("garch_stop"):            sfx += "_gstop"
+        if storm_flags.get("session_edge"):          sfx += "_sedge"
+        if storm_flags.get("session_edge_postopen"): sfx += "_sedge_post"
+        if storm_flags.get("mm_exec"):               sfx += "_mmexec"
         label += sfx
+
+    # Load survivorship exclusions for OOS-end-date truncation
+    _surv_path = os.path.join(os.path.dirname(__file__), "output", "cache", "survivorship_exclusions.csv")
+    _survivorship: pd.DataFrame = pd.DataFrame()
+    if os.path.exists(_surv_path):
+        try:
+            from survivorship import load_exclusions as _load_surv, get_oos_end_date as _get_oos_end
+            _survivorship = _load_surv(_surv_path)
+            log.info("Survivorship exclusions loaded: %d delist events", len(_survivorship))
+        except Exception as _e:
+            log.warning("Could not load survivorship exclusions: %s", _e)
 
     # Run over confirmed pairs
     all_trades: List[Trade] = []
@@ -1052,8 +1104,19 @@ def main() -> None:
                 log.debug("SKIP %s/%s@%s: no spread series", sym_a, sym_b, tf_label)
                 continue
 
+            # Survivorship boundary: use earliest delist date of either symbol
+            _oos_end = None
+            if len(_survivorship) > 0:
+                from survivorship import get_oos_end_date as _get_oos_end
+                d_a = _get_oos_end(sym_a, _survivorship)
+                d_b = _get_oos_end(sym_b, _survivorship)
+                if d_a is not None or d_b is not None:
+                    candidates = [d for d in [d_a, d_b] if d is not None]
+                    _oos_end = min(candidates)
+
             for hm in hedge_methods:
-                trades = engine.run(row, spread_df, hm, holdout_only=args.holdout)
+                trades = engine.run(row, spread_df, hm, holdout_only=args.holdout,
+                                    oos_end_date=_oos_end)
                 if not trades:
                     continue
                 all_trades.extend(trades)

@@ -9,6 +9,7 @@
     "feature-dev@claude-plugins-official": true,
     "context7@claude-plugins-official": true,
     "skill-creator@claude-plugins-official": true,
-    "improve@improve": true
+    "improve@improve": true,
+    "storm@storm-marketplace": true
   }
 }

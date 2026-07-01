@@ -8,6 +8,28 @@ to work with Ross (the developer) effectively.
 
 ---
 
+## Claude Behavioral Guidelines (Karpathy method, adapted)
+
+**Think before coding.** State assumptions explicitly. If multiple interpretations
+exist, surface them. If a simpler approach exists, say so. If something is
+genuinely unclear, stop and ask — don't silently pick the wrong path.
+
+**Simplicity first.** Minimum code that solves the problem. No speculative
+features. No abstractions for single-use code. No "flexibility" that wasn't
+asked for. If 200 lines could be 50, rewrite it.
+
+**Surgical changes.** Touch only what's required. Don't "improve" adjacent code
+or formatting. Don't refactor things that aren't broken. Match existing style.
+Every changed line should trace directly to the user's request.
+
+**Goal-driven execution.** For multi-step tasks, confirm success criteria before
+implementing. A strong definition of "done" means fewer re-dos.
+
+**Tradeoff note:** These guidelines bias toward caution over speed.
+For trivial, obviously-scoped tasks, apply judgment — don't over-process.
+
+---
+
 ## What This Project Is
 
 CAMARF (Cross-Asset Co-Movement Arbitrage Research Framework) is an
@@ -278,45 +300,34 @@ This is as important as the technical rules above.
 
 ## Current State (update this section each session)
 
-See `DEVELOPMENT.md` Sessions 10–17 for full detail. Headline items:
+See `DEVELOPMENT.md` Sessions 10–22 for full detail. Headline items:
 
-- **Session 17 (2026-06-28/29)**: report.py expanded to 26 figures. wfa.py built
-  (semi-WFA, 20/30/20/30, expanding + rolling). STORM variants built and compared.
-  WFA now runs all 12 combinations (2 structures × 6 strategies).
-- **STORM variant results (OOS holdout, 20% of spread_series)**:
-  - Baseline: 111 trades, $24,249, Sharpe=3.249
-  - session_edge: 109 trades, $21,084, Sharpe=3.378 **(BEST +0.13)**
-  - mm_exec: 111 trades, $24,281, Sharpe=3.252 (marginal)
-  - garch_stop: 111 trades, $24,249, Sharpe=3.249 (no effect — never triggered)
-  - coint_frac_sizing: 111 trades, $2,066, Sharpe=2.272 **(WORST — confirmed pairs have
-    coint_fraction_rolling=0.03–0.05, shrinks positions to 3–5% of intended)**
-  - storm_all: 109 trades, $1,338, Sharpe=3.068 (dominated by coint_frac collapse)
-- **Strictness Paradox at sizing level**: coint_fraction_rolling as continuous position
-  weight is counterproductive for confirmed pairs. Better used as binary threshold filter,
-  not continuous weight.
-- **WFA semi-WFA definition**: per fold, re-estimate OU params (mu, sigma, half_life) from
-  training window; use causal hedge_ratio_ols_t from spread_series (no raw price
-  re-estimation needed, which is impossible since spread_series doesn't have raw prices).
-- **WFA baseline results**: expanding fold1 Sharpe=180.8, fold2=1503.8; rolling fold2=433.9.
-  (Very high — driven by strong pairs + no transaction cost scaling in test folds.)
-- **26-figure report.py**: all 26 figures generated, main.tex=28,782 chars.
-  Key figure: fig_coint_vs_oos_sharpe (empirical Skeptic test — coint_fraction_rolling
-  vs OOS Sharpe per pair, linear trend + tier color coding).
-- **stats.py complete (Session 16/17)**: S1–S7 all running. S6 permutation: p=0.002
-  (significant, n=1000 perms). EVT fat tails: 32/37 pairs xi>0.30.
-- **Session 15 (2026-06-28)**: Analysis.py re-run with PIT hedge fix complete.
-  Post-PIT OOS baseline: Sharpe=3.249, WinRate=65.7%, MaxDD=$1,088.
-  Best variant: **neg-hedge** Sharpe=3.433. See sessions 10–15 for details.
-- **Project location**: `C:\Users\RossW\Projects\CAMARF` (migrated from OneDrive Session 15).
+- **Session 22 (2026-06-30)**: Full architecture audit + fixes + full pipeline rerun. **COMPLETE.**
+  - Architecture: F01 (ibkr_supplement_reader.py), F02 (IBKR config mutation removed),
+    F03 (public API), F05 (session_edge_postopen), F06 (--entry-z), F07 (BUG-D49 filter wired).
+  - **23 confirmed pairs**: IS Sharpe **5.2935** (1028 trades), OOS Sharpe **5.2443** (296 trades, 0.9% decay)
+  - **Best variant**: risk_parity OOS Sharpe **5.8689** (+0.63 vs baseline) — recommended production
+  - **WFA**: baseline expanding/rolling 3.13/3.27; mm_exec 3.82/3.96 (best); session_edge 3.34/3.58
+  - **GGR distance**: Sharpe -0.208 vs CAMARF 11.741 (mean pair Sharpe, 17 @1h)
+  - **ADV $25M Pareto-optimal**: Sharpe 7.412, 16 pairs, 174 trades
+  - **session_edge reversal**: +0.87 on 5-pair set → −0.04 on 23-pair set; no longer recommended
+  - **PAPER.md**: §3, §5, §6.1–§6.6, §7.1–§7.10 all updated with 2026-06-30 numbers
+- **Session 21 (2026-06-29)**: BUG-D52 fixed (FDR_ALPHA 0.01→0.05, restored all 5 confirmed pairs).
+  Full pipeline run: 5 1h pairs, Sharpe IS=3.2246, OOS=3.149, permutation p=0.86 IS / 0.67 OOS.
+- **Session 19 (2026-06-29)**: distance.py (prior GGR Sharpe=-6.33 on 5-pair set), sensitivity.py,
+  data_ibkr.py 38-symbol fetch, analysis.py kalman_drift_velocity field added.
 - **Always run scripts via
   `C:\Users\RossW\anaconda3\envs\trading\python.exe`**, not bare
   `python` (see Known-Resolved Issues).
 - **Next priorities**:
-  - CPF/WAFD hedge_direction_conflict flag in analysis.py
-  - Kalman drift velocity d(beta)/dt in analysis.py
-  - stats.py S7 half-life stationarity (AR(1) + Zivot-Andrews on rolling HL series)
-  - Distance method baseline (Gatev-style)
-  - ML gate: wait ~2 weeks for intraday data, then re-train
+  - **SPY/VOO exclusion**: Remove trivial pair from confirmed_pairs_manifest.json next session
+  - **STORM literature survey**: Raise monthly spend limit at claude.ai/settings/usage; run with
+    `--depth standard` + Sonnet 4.6 (session 23)
+  - **ML gate**: ~2 weeks from 2026-06-30 for training data accumulation (23-pair set clock reset)
+  - **New modules** (planned): `corporate_actions.py`, `coint_frac_window_grid.py`,
+    `cross_session_leadlag.py`, universe expansion (NASDAQ, Russell, crypto)
+  - **Known issue**: entry z=2.5 is optimal in sensitivity grid (10.59 vs 9.18 for z=2.0);
+    evaluate promoting to production default once 6+ months OOS history available
 
 ---
 
@@ -325,6 +336,7 @@ See `DEVELOPMENT.md` Sessions 10–17 for full detail. Headline items:
 **Production pipeline (root) — runs daily, ~6pm scheduled rerun for fresh data:**
 - `data.py` — yfinance-primary fetch pipeline (~4,960 lines)
 - `data_ibkr.py` — IBKR supplemental deep-history pipeline for confirmed pairs
+- `ibkr_supplement_reader.py` — parquet-only reader for IBKR supplements (no ib_insync); imported by both data_ibkr.py and analysis.py
 - `analysis.py` — full analysis pipeline (correlation, EG, eigenportfolio,
   Hurst, regimes, trios) (~5,300 lines)
 - `ml.py` — spread-resolution meta-labeler (Stage 1; Stage 2 + SHAP pending)

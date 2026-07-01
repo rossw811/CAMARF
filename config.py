@@ -198,13 +198,119 @@ class UniverseConfig:
     # VOO = S&P 500 ETF — its holdings are identical to SP500_TICKERS, but
     # VOO as an INSTRUMENT may trade at a premium/discount to NAV.
     ETFS: List[str] = [
-        "QQQ",  # Invesco QQQ — Nasdaq-100 ETF
-        "IWM",  # iShares Russell 2000 ETF
-        "SPY",  # SPDR S&P 500 ETF
-        "VOO",  # Vanguard S&P 500 ETF
-        "GLD",  # SPDR Gold Shares (ETF proxy for GC futures)
-        "SLV",  # iShares Silver Trust (ETF proxy for SI futures)
-        "USO",  # United States Oil Fund (ETF proxy for CL futures)
+        "QQQ",   # Invesco QQQ — Nasdaq-100 ETF
+        "IWM",   # iShares Russell 2000 ETF
+        "SPY",   # SPDR S&P 500 ETF
+        "VOO",   # Vanguard S&P 500 ETF
+        "GLD",   # SPDR Gold Shares (ETF proxy for GC futures)
+        "SLV",   # iShares Silver Trust (ETF proxy for SI futures)
+        "USO",   # United States Oil Fund (ETF proxy for CL futures)
+        # International session ETFs — proxy exposure for cross-market pairs
+        "EWJ",   # iShares MSCI Japan ETF (Tokyo session proxy)
+        "EWU",   # iShares MSCI United Kingdom ETF (London session proxy)
+        "EWG",   # iShares MSCI Germany ETF (European session proxy)
+        "EWH",   # iShares MSCI Hong Kong ETF (HK session proxy)
+        "EWQ",   # iShares MSCI France ETF
+        "FXI",   # iShares China Large-Cap ETF (HK/China session)
+        "EFA",   # iShares MSCI EAFE ETF (broad international)
+        "EEM",   # iShares MSCI Emerging Markets ETF
+    ]
+
+    # -----------------------------------------------------------------------
+    # International equities — cross-market / cross-session universe
+    # yfinance supports exchange suffixes: .L (London), .T (Tokyo), .HK (HK)
+    # These participate in daily-frequency cointegration analysis.
+    # At intraday TFs, DataAligner's gap filter naturally excludes them (their
+    # trading hours don't overlap with US session — expected, not an error).
+    # -----------------------------------------------------------------------
+    INCLUDE_INTL_EQUITIES: bool = True
+
+    # FTSE 100 — top constituents by ADV. Many have US ADRs for cross-listed pairs.
+    FTSE100: List[str] = [
+        "HSBA.L",   # HSBC (ADR: HSBC)
+        "BP.L",     # BP (ADR: BP)
+        "SHEL.L",   # Shell (ADR: SHEL)
+        "AZN.L",    # AstraZeneca (ADR: AZN)
+        "ULVR.L",   # Unilever (ADR: UL)
+        "RIO.L",    # Rio Tinto (ADR: RIO)
+        "GSK.L",    # GSK (ADR: GSK)
+        "VOD.L",    # Vodafone (ADR: VOD)
+        "BARC.L",   # Barclays (ADR: BCS)
+        "LLOY.L",   # Lloyds Banking Group
+        "NWG.L",    # NatWest Group
+        "DGE.L",    # Diageo (ADR: DEO)
+        "REL.L",    # RELX Group (ADR: RELX)
+        "EXPN.L",   # Experian
+        "LGEN.L",   # Legal & General
+        "PRU.L",    # Prudential plc
+        "NG.L",     # National Grid
+        "RR.L",     # Rolls-Royce
+        "BA.L",     # BAE Systems
+        "STAN.L",   # Standard Chartered
+    ]
+
+    # Nikkei 225 — top constituents. Many have US ADRs for cross-listed pairs.
+    NIKKEI225: List[str] = [
+        "7203.T",   # Toyota (ADR: TM)
+        "6758.T",   # Sony (ADR: SONY)
+        "9984.T",   # SoftBank Group
+        "7974.T",   # Nintendo
+        "6902.T",   # Denso
+        "7267.T",   # Honda (ADR: HMC)
+        "8306.T",   # Mitsubishi UFJ Financial (ADR: MUFG)
+        "9432.T",   # NTT (ADR: NTTYY)
+        "6861.T",   # Keyence
+        "4063.T",   # Shin-Etsu Chemical
+        "8058.T",   # Mitsubishi Corporation
+        "7751.T",   # Canon (ADR: CAJ)
+        "6954.T",   # Fanuc
+        "2802.T",   # Ajinomoto
+        "4519.T",   # Chugai Pharmaceutical
+    ]
+
+    # Hang Seng — top constituents by market cap.
+    HANG_SENG: List[str] = [
+        "0700.HK",  # Tencent Holdings
+        "9988.HK",  # Alibaba Group
+        "0005.HK",  # HSBC Holdings (same underlying as HSBA.L)
+        "2318.HK",  # Ping An Insurance
+        "3690.HK",  # Meituan
+        "0941.HK",  # China Mobile
+        "1299.HK",  # AIA Group
+        "0388.HK",  # Hong Kong Exchanges and Clearing
+        "0883.HK",  # CNOOC
+        "1109.HK",  # China Resources Land
+    ]
+
+    # US-listed ADRs corresponding to international stocks above.
+    # Including both sides of a cross-listed pair enables cross-market
+    # cointegration testing (home market vs US ADR spread).
+    INTL_ADRS: List[str] = [
+        "HSBC",     # HSBC Holdings (London: HSBA.L)
+        "BP",       # BP plc (London: BP.L)
+        "SHEL",     # Shell plc (London: SHEL.L)
+        "AZN",      # AstraZeneca (London: AZN.L)
+        "UL",       # Unilever (London: ULVR.L)
+        "RIO",      # Rio Tinto (London: RIO.L)
+        "GSK",      # GSK plc (London: GSK.L)
+        "VOD",      # Vodafone (London: VOD.L)
+        "BCS",      # Barclays (London: BARC.L)
+        "DEO",      # Diageo (London: DGE.L)
+        "TM",       # Toyota Motor (Tokyo: 7203.T)
+        "SONY",     # Sony Group (Tokyo: 6758.T)
+        "HMC",      # Honda Motor (Tokyo: 7267.T)
+        "MUFG",     # Mitsubishi UFJ (Tokyo: 8306.T)
+        # CAJ (Canon US ADR) removed — delisted from US exchanges; use 7751.T in Nikkei225
+    ]
+
+    # FX spot rates for currency adjustment of cross-market pairs.
+    # Stored as yfinance ticker format (pairs against USD).
+    FX_SPOT_RATES: List[str] = [
+        "GBPUSD=X",   # GBP/USD — for FTSE pairs
+        "JPYUSD=X",   # JPY/USD — for Nikkei pairs
+        "HKDUSD=X",   # HKD/USD — for Hang Seng pairs
+        "EURUSD=X",   # EUR/USD — for European pairs
+        "AUDUSD=X",   # AUD/USD — for resources/mining pairs
     ]
 
     # -----------------------------------------------------------------------
@@ -442,6 +548,7 @@ class BacktestConfig:
     CONSECUTIVE_LOSS_LIMIT = 5  # halt if 5 consecutive losses
 
     # Layer 1 event-driven baseline (Ross Q&A 2026-06-28)
+    MAX_HALF_LIFE = 50           # pair-selection ceiling: half_life_rolling > this → excluded
     ENTRY_ZSCORE = 2.0           # |z_rolling| >= this triggers entry
     EXIT_ZSCORE = 0.0            # z crosses this toward mean → exit
     STOP_ZSCORE = 3.5            # |z| widens to this → stop loss
@@ -511,7 +618,40 @@ class StatsConfig:
     PBO_N_PARTITIONS = 16  # combinatorial cross-validation partitions
 
     # Multiple comparison correction
-    FDR_ALPHA = 0.05  # Benjamini-Hochberg FDR threshold
+    # BH-FDR controls the expected proportion of false positives among REJECTED hypotheses,
+    # not the raw count. At alpha=0.05 with 65k pairs, BH guarantees ≤5% of passing pairs
+    # are false positives. The prior alpha=0.01 was too strict and killed valid pairs
+    # (VRT/MTZ p=0.000012) due to the larger 65k-pair universe raising the rank threshold.
+    # Restored to 0.05 (2026-06-29, BUG-D52 fix).
+    FDR_ALPHA = 0.05
+
+    # ADV (average daily dollar volume) liquidity filter
+    # Both symbols in a pair must exceed this threshold (USD) to be included.
+    # Sweep values for sensitivity analysis: 10e6, 25e6, 50e6, 100e6
+    # Set to 0 to disable.
+    ADV_FILTER_USD: float = 25_000_000.0
+
+    # Minimum overlap bars for build_returns_matrix (per TF).
+    # Short intraday TFs need higher bar counts for reliable correlation estimates.
+    # Values calibrated to yfinance depth limits and trading-day bar counts:
+    #   1m:  ~7 days available → 1260 bars ≈ 3.2 days (filters very sparse symbols)
+    #   3m:  similar constraint
+    #   1h:  ~730 days available → 756 bars ≈ 18 months
+    #   4h:  ~730 days → 252 bars ≈ 5 months
+    #   1D:  full history → 252 bars ≈ 1 year
+    MIN_OVERLAP_BY_TF: Dict[str, int] = {
+        "1m":  1260,
+        "2m":  1260,
+        "3m":  1260,
+        "5m":  756,
+        "15m": 756,
+        "30m": 504,
+        "1h":  756,
+        "4h":  252,
+        "1D":  252,
+        "7D":  52,
+        "1M":  24,
+    }
 
     # KS test
     KS_ALPHA = 0.05

@@ -1,64 +1,50 @@
 === CAMARF analysis.py ===
-date:        2026-06-28 21:36
-runtime_min: 40.7
-universe:    1520 assets  19413 symbol-TF keys
+date:        2026-06-30 11:01
+runtime_min: 50.8
+universe:    1592 assets  19954 symbol-TF keys
 
 === results_by_tf ===
 tf    pairs cross trios regimes
-1m    12    0     8     11
+1m    0     2     0     12
 2m    0     0     0     0
-3m    18    0     2     8
-5m    0     0     0     0
-15m   0     0     0     8
-30m   1     0     0     2
-1h    5     4     428   0
-4h    1     0     0     4
-1D    0     0     0     0
-7D    0     0     0     2
-1M    0     0     0     0
+3m    2     3     1     21
+5m    0     0     0     4
+15m   0     0     0     4
+30m   1     0     0     4
+1h    17    6     498   0
+4h    2     0     3     8
+1D    0     0     0     2
+7D    0     0     0     4
+1M    1     0     0     2
 3M    0     0     0     0
 6M    0     0     0     0
-TOTAL  41          438   35
-bias_audit_entries: 63
+TOTAL  34          502   61
+bias_audit_entries: 74
 
 === confirmed_pairs ===
-1m     C        MS       hl=69.9  H=0.695  tier=silver  coint_frac=0.25
-1m     SNDK     TXN      hl=24.7  H=0.597  tier=silver  coint_frac=0.24
-1m     HRMY     NBHC     hl=36.4  H=nan  tier=silver  coint_frac=1.00
-1m     HRMY     PRDO     hl=22.5  H=0.546  tier=silver  coint_frac=1.00
-1m     HRMY     TILE     hl=2.9  H=0.545  tier=silver  coint_frac=1.00
-1m     HRMY     WS       hl=27.5  H=0.547  tier=silver  coint_frac=1.00
-1m     NBHC     PRDO     hl=32.4  H=0.544  tier=gold  coint_frac=1.00
-1m     NBHC     TILE     hl=45.4  H=0.550  tier=gold  coint_frac=1.00
-1m     NBHC     WS       hl=73.9  H=0.565  tier=silver  coint_frac=1.00
-1m     PRDO     TILE     hl=71.5  H=0.563  tier=silver  coint_frac=1.00
-1m     PRDO     WS       hl=54.4  H=0.563  tier=silver  coint_frac=1.00
-1m     TILE     WS       hl=90.8  H=0.564  tier=silver  coint_frac=1.00
-3m     ADSK     INTU     hl=56.5  H=0.515  tier=silver  coint_frac=0.09
-3m     D        NEE      hl=0.3  H=0.562  tier=silver  coint_frac=0.84
-3m     MTDR     MGY      hl=19.8  H=0.510  tier=silver  coint_frac=0.04
-3m     ACT      AZTA     hl=63.4  H=nan  tier=gold  coint_frac=1.00
-3m     ACT      EIG      hl=64.1  H=nan  tier=silver  coint_frac=1.00
-3m     ACT      INVX     hl=64.8  H=nan  tier=gold  coint_frac=1.00
-3m     ACT      NBHC     hl=57.9  H=nan  tier=gold  coint_frac=1.00
-3m     AZTA     EIG      hl=74.5  H=nan  tier=silver  coint_frac=1.00
-3m     AZTA     INVX     hl=73.1  H=nan  tier=gold  coint_frac=1.00
-3m     AZTA     NBHC     hl=65.5  H=nan  tier=gold  coint_frac=1.00
-3m     CPF      WAFD     hl=34.1  H=0.495  tier=silver  coint_frac=0.83
-3m     CPK      WAFD     hl=0.5  H=0.337  tier=silver  coint_frac=1.00
-3m     CTKB     PRAA     hl=2.4  H=nan  tier=gold  coint_frac=nan
-3m     CTKB     UHT      hl=2.4  H=nan  tier=gold  coint_frac=nan
-3m     EIG      INVX     hl=73.1  H=nan  tier=silver  coint_frac=1.00
-3m     EIG      NBHC     hl=66.9  H=nan  tier=silver  coint_frac=1.00
-3m     INVX     NBHC     hl=65.5  H=nan  tier=gold  coint_frac=1.00
-3m     PRAA     UHT      hl=2.4  H=nan  tier=gold  coint_frac=nan
-30m    EQR      INVH     hl=17.8  H=0.551  tier=silver  coint_frac=0.22
-1h     LNT      WELL     hl=28.4  H=0.546  tier=silver  coint_frac=0.03
-1h     DD       GPN      hl=33.0  H=0.553  tier=gold  coint_frac=0.05
-1h     DD       JCI      hl=23.0  H=0.566  tier=silver  coint_frac=0.09
-1h     EG       ORI      hl=22.1  H=0.536  tier=gold  coint_frac=0.07
-1h     VRT      MTZ      hl=27.8  H=0.535  tier=silver  coint_frac=0.08
-4h     SPY      VOO      hl=43.6  H=0.744  tier=silver  coint_frac=0.36
+3m     CVX      OXY      hl=56.3  H=0.589  tier=silver  coint_frac=0.42
+3m     KVUE     KMB      hl=13.4  H=0.474  tier=silver  coint_frac=0.98
+30m    EQR      INVH     hl=17.6  H=0.548  tier=silver  coint_frac=0.20
+1h     AMD      DD       hl=24.3  H=0.512  tier=silver  coint_frac=0.05
+1h     LNT      VTR      hl=20.0  H=0.522  tier=silver  coint_frac=0.08
+1h     LNT      WELL     hl=28.4  H=0.538  tier=silver  coint_frac=0.03
+1h     AME      DD       hl=20.7  H=0.528  tier=silver  coint_frac=0.06
+1h     AMAT     DD       hl=29.5  H=0.530  tier=silver  coint_frac=0.04
+1h     CMI      DD       hl=26.4  H=0.530  tier=silver  coint_frac=0.04
+1h     DAL      DD       hl=30.7  H=0.548  tier=silver  coint_frac=0.03
+1h     EG       WRB      hl=28.8  H=0.542  tier=silver  coint_frac=0.03
+1h     EG       ORI      hl=21.9  H=0.536  tier=gold  coint_frac=0.07
+1h     HAL      NOV      hl=28.7  H=0.540  tier=silver  coint_frac=0.07
+1h     MET      TMHC     hl=23.9  H=0.529  tier=silver  coint_frac=0.06
+1h     PFG      STLD     hl=23.7  H=0.502  tier=gold  coint_frac=0.11
+1h     PRU      AXTA     hl=23.9  H=0.504  tier=silver  coint_frac=0.07
+1h     VRT      MTZ      hl=28.1  H=0.538  tier=silver  coint_frac=0.08
+1h     MTSI     WCC      hl=33.9  H=0.570  tier=silver  coint_frac=0.07
+1h     TMHC     WAL      hl=20.6  H=0.531  tier=silver  coint_frac=0.13
+1h     UMBF     FHB      hl=26.9  H=0.540  tier=silver  coint_frac=0.17
+4h     PNC      ZION     hl=84.4  H=0.763  tier=gold  coint_frac=0.12
+4h     SPY      VOO      hl=43.6  H=0.744  tier=silver  coint_frac=0.35
+1M     7267.T   8058.T   hl=207.0  H=0.789  tier=silver  coint_frac=0.75
 
 === errors_and_skipped ===
 

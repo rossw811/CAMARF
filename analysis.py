@@ -91,8 +91,8 @@ from data import (
     DataStore,
     QualityReport,
     GapFlag,
-    _gap_aware_returns,
-    _clean_close,
+    gap_aware_returns,
+    clean_close,
 )
 
 warnings.filterwarnings("ignore", category=RuntimeWarning)
@@ -219,6 +219,12 @@ class PairResult:
     # Policy as of 2026-06-27: comparison arm only until backtest.py exists.
     permutation_robust: Optional[bool] = None
 
+    # Kalman hedge-ratio drift velocity (added 2026-06-29):
+    # Mean absolute first-difference of the Kalman beta series over the
+    # trailing 20 bars. High drift → hedge ratio is moving, dynamic instability.
+    # Near-zero → beta is stable, OU process well-calibrated.
+    kalman_drift_velocity: Optional[float] = None
+
 
 @dataclass
 class TrioResult:
@@ -338,37 +344,6 @@ class BiasAuditLog:
 # UTILITIES
 # =============================================================================
 
-
-def _log_returns(prices: np.ndarray) -> np.ndarray:
-    """Log returns. First bar is NaN (no prior price)."""
-    out = np.full_like(prices, np.nan, dtype=float)
-    out[1:] = np.log(prices[1:] / prices[:-1])
-    return out
-
-
-def _safe_log(arr: np.ndarray) -> np.ndarray:
-    """Log of array, returning NaN where input is non-positive."""
-    with np.errstate(invalid="ignore", divide="ignore"):
-        out = np.log(arr)
-    out[~np.isfinite(out)] = np.nan
-    return out
-
-
-def _minimum_bars_for_test(test_name: str, tf_label: str = None) -> int:
-    """
-    Minimum observation count required for a given statistical test.
-    These are conservative — fewer observations may produce a number but
-    its statistical reliability drops sharply.
-    """
-    floor = {
-        "cointegration": 60,
-        "ou_fit": 100,
-        "regime": 200,
-        "rolling_252": 504,
-        "structural_break": 100,
-        "hedge_kalman": 50,
-    }
-    return floor.get(test_name, 60)
 
 
 def _output_dir(tf_label: str) -> str:
@@ -683,10 +658,10 @@ class UniverseFilter:
             # contradicting CLAUDE.md's "never silently forward-fill a
             # DATA_GAP bar into a correlation calculation" rule. A bar that
             # forward-fills across a >5-bar gap produces one artificially
-            # large return when the real price resumes; _gap_aware_returns
+            # large return when the real price resumes; gap_aware_returns
             # masks exactly that return to NaN (DATA_GAP only — FILL and
             # NO_ACTIVITY bars are left as genuine zero-ish returns).
-            ret_list.append(_gap_aware_returns(df))
+            ret_list.append(gap_aware_returns(df))
 
         if not ret_list:
             return np.empty((0, 0)), [], pd.DatetimeIndex([])
@@ -1171,9 +1146,10 @@ class UniverseFilter:
             "cointegrated in subperiods may be excluded",
         )
 
+        _min_overlap = getattr(Config.ANALYSIS, "MIN_OVERLAP_BY_TF", {}).get(tf_label, 252)
         returns, symbols, _idx = UniverseFilter.build_returns_matrix(
             aligned_data,
-            min_overlap=252,
+            min_overlap=_min_overlap,
         )
         if returns.size == 0:
             log.warning(
@@ -1377,7 +1353,7 @@ class CointScanner:
             df = aligned_data.get(sym)
             if df is None or "close" not in df.columns:
                 continue
-            close = _clean_close(df, exclude_flags=(GapFlag.DATA_GAP,))
+            close = clean_close(df, exclude_flags=(GapFlag.DATA_GAP,))
             with np.errstate(invalid="ignore", divide="ignore"):
                 lp = np.where(close > 0, np.log(close), np.nan)
             out[sym] = lp
@@ -2611,7 +2587,7 @@ class VolumeStructure:
         # consumer of ml.py (Stage 2, unimplemented) so lower urgency than
         # the Hurst/decay-test/Johansen fixes applied the same night.
         out = pd.DataFrame(index=df.index)
-        _clean = _clean_close(df, exclude_flags=(GapFlag.DATA_GAP,))
+        _clean = clean_close(df, exclude_flags=(GapFlag.DATA_GAP,))
         _gap_mask = ~np.isfinite(_clean)
         open_ = df["open"].values.astype(float).copy() if "open" in df.columns else df["close"].values.astype(float).copy()
         high = df["high"].values.astype(float).copy() if "high" in df.columns else df["close"].values.astype(float).copy()
@@ -2860,7 +2836,7 @@ class RegimeClassifier:
         Returns DataFrame with columns:
             realized_vol, trend_strength, mean_reversion_speed, relative_vol_ratio
         """
-        # _clean_close masks DATA_GAP bars to NaN before logging. Found
+        # clean_close masks DATA_GAP bars to NaN before logging. Found
         # overnight (2026-06-23): this previously used raw df["close"].values
         # with no gap_flag masking, the BUG-D45 contamination mechanism —
         # every overnight/weekend run is forward-filled, producing a long
@@ -2869,7 +2845,7 @@ class RegimeClassifier:
         # excluded padding as real zero-return observations feeding
         # realized_vol/trend_strength/mean_reversion_speed for every
         # intraday-TF regime fit and the persisted per-bar regime labels.
-        close = _clean_close(df, exclude_flags=(GapFlag.DATA_GAP,))
+        close = clean_close(df, exclude_flags=(GapFlag.DATA_GAP,))
         with np.errstate(invalid="ignore", divide="ignore"):
             ret = np.zeros_like(close, dtype=float)
             ret[1:] = np.log(close[1:] / close[:-1])
@@ -3736,14 +3712,14 @@ class TrioBuilder:
             df = aligned_data.get(sym)
             if df is None or "close" not in df.columns:
                 continue
-            # _clean_close masks DATA_GAP bars to NaN before logging — same
+            # clean_close masks DATA_GAP bars to NaN before logging — same
             # gap-aware convention as CointScanner._build_log_price_map.
             # Found overnight (2026-06-23): this Johansen path used raw
             # df["close"].values with no gap_flag masking at all, the exact
             # BUG-D45 contamination mechanism (forward-filled padding
             # treated as real prices), inconsistent with the pairwise EG
             # test that feeds trio candidacy in the first place.
-            close = _clean_close(df, exclude_flags=(GapFlag.DATA_GAP,))
+            close = clean_close(df, exclude_flags=(GapFlag.DATA_GAP,))
             with np.errstate(invalid="ignore", divide="ignore"):
                 lp = np.log(close)
             lp[~np.isfinite(lp)] = np.nan
@@ -4311,6 +4287,40 @@ class AnalysisPipeline:
                 f"Rerun data.py to refresh these cache files."
             )
         log.info(f"  [{tf_label}] {len(tf_data_raw)} assets have data for this TF")
+
+        # ADV liquidity filter — requires both symbols in any pair to exceed threshold.
+        # Computed from 1hr cache (close × volume, aggregated to daily sums) so it is
+        # independent of the current TF being analyzed.
+        _adv_threshold = getattr(Config.ANALYSIS, "ADV_FILTER_USD", 0.0)
+        if _adv_threshold > 0:
+            _cache_dir = Config.DATA.CACHE_DIR
+            _adv_map: dict = {}
+            for sym in list(tf_data_raw.keys()):
+                _hr_path = os.path.join(_cache_dir, f"{sym}_1hr.parquet")
+                if not os.path.exists(_hr_path):
+                    _adv_map[sym] = float("nan")
+                    continue
+                try:
+                    _hr = pd.read_parquet(_hr_path)
+                    if "close" in _hr.columns and "volume" in _hr.columns:
+                        _hr.index = pd.to_datetime(_hr.index)
+                        _dv = _hr["close"] * _hr["volume"]
+                        _daily_dv = _dv.groupby(_hr.index.date).sum()
+                        _adv_map[sym] = float(_daily_dv.mean()) if len(_daily_dv) > 0 else float("nan")
+                    else:
+                        _adv_map[sym] = float("nan")
+                except Exception:
+                    _adv_map[sym] = float("nan")
+            _adv_filtered = {s: v for s, v in _adv_map.items() if v >= _adv_threshold}
+            _adv_excluded = {s for s in tf_data_raw if s not in _adv_filtered}
+            if _adv_excluded:
+                log.info(
+                    f"  [{tf_label}] ADV filter (>=${_adv_threshold/1e6:.0f}M): "
+                    f"removed {len(_adv_excluded)} symbols "
+                    f"(kept {len(_adv_filtered)}/{len(tf_data_raw)})"
+                )
+                tf_data_raw = {s: df for s, df in tf_data_raw.items() if s in _adv_filtered}
+
         if len(tf_data_raw) < 10:
             log.warning(f"  [{tf_label}] insufficient assets — skipping TF")
             return [], [], [], [], {}
@@ -4445,6 +4455,20 @@ class AnalysisPipeline:
         # permutation_robust) from pre-computed output/research/ parquets.
         # Read-only, no-ops cleanly when screens haven't been run.
         pair_results = AnalysisPipeline._apply_research_screen_flags(pair_results, tf_label)
+
+        # Step 6d: BUG-D49 price-degeneracy filter — drop pairs where either
+        # leg has implausibly few distinct close prices (e.g. 2–7 distinct
+        # values across hundreds of bars). These produce near-zero-variance
+        # spreads and generate 0 backtest trades. Only active when
+        # audit_price_degeneracy.py has been run (thin_info_content populated).
+        n_before_deg = len(pair_results)
+        pair_results = [pr for pr in pair_results if not pr.thin_info_content]
+        n_dropped_deg = n_before_deg - len(pair_results)
+        if n_dropped_deg:
+            log.info(
+                f"  [{tf_label}] Price-degeneracy filter: dropped {n_dropped_deg} pairs "
+                f"({n_before_deg} → {len(pair_results)})"
+            )
 
         # Step 7: VolumeStructure feature engineering
         log.info(f"  [{tf_label}] Computing VolumeStructure features...")
@@ -4719,6 +4743,18 @@ class AnalysisPipeline:
             "hedge_ratio_kalman_t": hr["kalman_series"],
         }
 
+        # Kalman drift velocity: mean absolute 1-bar change in the Kalman beta
+        # over the trailing 20 bars. Captures hedge-ratio instability.
+        _kal_series = hr.get("kalman_series")
+        _kalman_drift_velocity: Optional[float] = None
+        if _kal_series is not None and len(_kal_series) > 21:
+            _kal_vals = np.asarray(_kal_series, dtype=float)
+            _d_beta = np.abs(np.diff(_kal_vals))
+            _tail = _d_beta[-20:]
+            _tail = _tail[np.isfinite(_tail)]
+            if len(_tail) > 0:
+                _kalman_drift_velocity = float(np.mean(_tail))
+
         pair_result = PairResult(
             symbol_a=sym_a,
             symbol_b=sym_b,
@@ -4762,6 +4798,7 @@ class AnalysisPipeline:
             n_overlap=int(n_overlap),
             source_a=src_a,
             source_b=src_b,
+            kalman_drift_velocity=_kalman_drift_velocity,
         )
         return pair_result, per_bar
 
@@ -4861,7 +4898,7 @@ class AnalysisPipeline:
         from this specific deep re-test — documented here and in
         DEVELOPMENT.md rather than silently accepted.
         """
-        from data_ibkr import load_supplement  # read-only file I/O, no fetch
+        from ibkr_supplement_reader import load_supplement
 
         def _merge(main_df, sup_df):
             if sup_df is None:
@@ -5127,6 +5164,39 @@ class AnalysisPipeline:
 
         if discovered_pairs:
             pairs_df = pd.DataFrame([asdict(p) for p in discovered_pairs])
+
+            # GICS sector tagging — merge sector/sub_industry onto pair records
+            _gics_path = os.path.join(Config.DATA.CACHE_DIR, "gics_tags.csv")
+            if os.path.exists(_gics_path):
+                try:
+                    _gics = pd.read_csv(_gics_path, dtype=str)[
+                        ["symbol", "sector", "industry_group", "sub_industry"]
+                    ].rename(columns={
+                        "sector": "sector_a", "industry_group": "industry_group_a",
+                        "sub_industry": "sub_industry_a",
+                    })
+                    pairs_df = pairs_df.merge(
+                        _gics.rename(columns=lambda c: c),
+                        left_on="symbol_a", right_on="symbol", how="left"
+                    ).drop(columns=["symbol"], errors="ignore")
+                    _gics_b = _gics.rename(columns={
+                        "sector_a": "sector_b",
+                        "industry_group_a": "industry_group_b",
+                        "sub_industry_a": "sub_industry_b",
+                    })
+                    pairs_df = pairs_df.merge(
+                        _gics_b, left_on="symbol_b", right_on="symbol", how="left"
+                    ).drop(columns=["symbol"], errors="ignore")
+                    pairs_df["same_sector"] = (
+                        pairs_df["sector_a"].notna() &
+                        pairs_df["sector_b"].notna() &
+                        (pairs_df["sector_a"] == pairs_df["sector_b"])
+                    )
+                    n_tagged = pairs_df["sector_a"].notna().sum()
+                    log.info(f"  [{tf_label}] GICS tagged: {n_tagged}/{len(pairs_df)} pairs have sector_a")
+                except Exception as _ge:
+                    log.debug(f"GICS merge failed: {_ge}")
+
             pairs_df.to_parquet(os.path.join(out_dir, "pairs.parquet"))
             log.info(
                 f"  [{tf_label}] saved {len(discovered_pairs)} pairs "
@@ -5240,9 +5310,8 @@ def main(
     n_workers: int = 12,
 ) -> AnalysisResults:
     """
-    Entry point — build universe, then run analysis pipeline.
-    Uses CLIENT_ID_ANALYSIS (2) instead of CLIENT_ID (1) to avoid
-    conflicts when data.py is still running or hasn't released the connection.
+    Entry point — build universe from cache, then run analysis pipeline.
+    Always runs with connect=False; IBKR is never touched by analysis.py.
 
     Args:
         timeframes:      Subset of Config.DATA.TIMEFRAME_LABELS to process,
@@ -5255,17 +5324,10 @@ def main(
     log.info("=" * 70)
 
     # Step 1: build / load universe via data.py
-    # Temporarily override clientId so analysis.py uses id=2, avoiding
-    # analysis.py is a consumer of cached data — it should NEVER do IBKR
-    # fetches. That is exclusively data.py's responsibility.
-    # connect=False: skips Phase 2 IBKR entirely, loads all data from cache.
-    # The clientId patch is still kept as a safety net in case connect=True
-    # is ever passed accidentally.
-    _orig_client_id = Config.IBKR.CLIENT_ID
-    Config.IBKR.CLIENT_ID = Config.IBKR.CLIENT_ID_ANALYSIS
+    # connect=False: skips IBKR entirely, loads all data from cache.
+    # analysis.py is a consumer of cached data — never fetches from IBKR.
     builder = UniverseBuilder()
     universe = builder.build(connect=False, fetch=False)
-    Config.IBKR.CLIENT_ID = _orig_client_id
     log.info(
         f"Universe loaded: {len(universe.assets)} assets, "
         f"{len(universe.data)} symbol-TF combinations"

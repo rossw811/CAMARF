@@ -74,7 +74,6 @@ TIMEFRAME_TESTS = [
     ("30 mins", "30m", "2 Y", end_dt_intraday),
     ("1 hour", "1h", "5 Y", end_dt_intraday),
     ("4 hours", "4h", "10 Y", end_dt_intraday),
-    ("8 hours", "8h", "10 Y", end_dt_intraday),
     ("1 day", "1D", "20 Y", ""),
     ("1W", "7D", "20 Y", ""),
     ("1M", "1M", "20 Y", ""),
