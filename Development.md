@@ -7759,3 +7759,297 @@ to −0.04 (23-pair set). The prior 5-pair result appears to have been pair-set-
 session_edge is no longer recommended as a default flag.
 
 **Note:** PAPER.md §7.1–§7.9 updated with all 2026-06-30 numbers in Session 22.
+
+---
+
+## Session 23 — STORM Literature Survey, GitHub Presentation, and STORM-Informed Research Program (2026-06-30)
+
+### Session 23 Overview
+
+Two threads: (1) a `/storm:storm` deep literature survey on statistical arbitrage
+pairs trading (6 perspectives, 57 sources, saved to
+`storm-statistical-arbitrage-pairs-trading.md`) surfaced several concrete gaps in the
+published literature CAMARF is well-positioned to address with its existing
+infrastructure; (2) a comprehensive follow-on build implementing those gaps end to
+end, plus GitHub-presentation cleanup. Every new script below was synthetic-tested
+(`debug/_verify_*.py`) before being trusted on real data, and every real-data run
+below is the actual verified output, not a projected/assumed number.
+
+**Ethics/reproducibility principle added to CLAUDE.md (rule 7) and a new "Data Test
+Range & Reproducibility" section:** never inflate a confidence score or Sharpe to
+make a result look stronger than the evidence supports; document exact data ranges so
+an independent party can regenerate equivalent data without this repo's cache.
+
+### GitHub Presentation Fixes
+
+- **README.md fully rewritten.** The prior README described the pre-pivot
+  IBKR-primary architecture, a 529-asset/12-timeframe universe, and headlined
+  NTRS/STT + SHW/UNP as winning pairs — all three factually superseded (yfinance-
+  primary is now locked-in architecture per this file's own Known-Resolved Issues;
+  universe is 1,609 assets/13 timeframes; those two pairs are PAPER.md's own
+  motivating *counter-example* for the Strictness Paradox, not a success story).
+  Rewritten to reflect Session 22 state, updated again below with Session 23's new
+  scripts and findings.
+- **`.gitignore` fixed.** Was `__pycache__/`/`*.pyc` only; `.git` history had already
+  grown to ~4.09 GB with `output/` (1.9 GB) fully tracked. Added `output/cache/`,
+  `output/backtest/`, `output/stats/`, `output/research/`, `output/sensitivity/`,
+  `output/results/`, `output/report/`, `output/reports/`, and `_*.log` going forward.
+  Did NOT rewrite existing git history (`git filter-repo`) — flagged as a separate,
+  higher-risk decision requiring its own explicit discussion, out of scope here.
+- **`CONTRIBUTING.md` added** — environment setup, the STORM-variant CLI-flag
+  pattern for adding a new backtest.py variant, where bias-audit/synthetic-test
+  conventions live, pointer to this file as canonical memory.
+
+### Phase 1 — Filter-Ablation Funnel
+
+**Where this sits in the pipeline:** `analysis.py`'s `_run_one_tf()` /
+`_save_tf_results()` — the same per-timeframe screening sequence documented in
+`README.md`'s Pipeline Architecture section (Steps 3–6d). Addresses Ross's
+observation that a multi-stage filter pipeline can quietly discard pairs that would
+have traded well, with no way to check.
+
+- New `FilterFunnel`/`FilterFunnelStage` classes (analysis.py, before
+  `AnalysisPipeline`) record `(stage, n_before, n_after)` at each of 5 measurable
+  gates: `adv_liquidity_symbols`, `pearson_prefilter_pairs`, `eg_bh_fdr_pairs`,
+  `price_degeneracy_pairs`, `structural_exclusion_pairs`, `coint_frac_threshold_pairs`.
+  Saved to `output/results/{tf}/filter_funnel.parquet`. Verified via
+  `debug/_verify_filter_funnel.py` before trusting on real data.
+- **Real 1h funnel (2026-06-30 scoped rerun):**
+  `pearson_prefilter_pairs 1,162,050→70,251`, `eg_bh_fdr_pairs 70,251→314`,
+  `price_degeneracy_pairs 314→314` (no effect at 1h), `structural_exclusion_pairs
+  314→314` (no forex triangles/share-classes among 1h candidates),
+  `coint_frac_threshold_pairs 314→17` (matches the existing confirmed 1h count
+  exactly — confirms the funnel instrumentation is purely additive, zero effect on
+  actual filtering behavior).
+- **Real architectural finding, not anticipated in the original plan:**
+  `spread_series_*.parquet` was previously persisted ONLY for the final
+  `discovered_pairs` (post coint_frac/structural filtering), not the broader
+  EG+FDR-survivor set — meaning pairs excluded by coint_frac/structural had NO
+  backtestable data at all. Fixed in `_save_tf_results()`: spread_series and a new
+  `all_candidates.parquet` (full pre-filter metadata) now persist for the whole
+  `pairs` argument (all EG+FDR+price-degeneracy survivors), not just
+  `discovered_pairs`. This is what makes the counterfactual ablation below possible
+  at all — the data literally did not exist before this fix.
+- New `--pairs-override <path>` flag in `backtest.py`'s `main()`: loads a pair
+  subset (same schema as `pairs.parquet`) instead of the real confirmed set,
+  enabling counterfactual backtests. Smoke-tested first with a stripped-down
+  symbol-only schema, which silently produced 0 trades — root-caused to
+  `engine.run()`'s hard gate on `pair_row.get("hedge_ratio_ols", nan)` (missing →
+  skip) — fixed by keeping the override file's full column set, not just
+  symbol_a/symbol_b.
+- **New `research/filter_ablation.py`:** for each of the two measurable filters
+  (coint_frac threshold, structural exclusion), backtests the excluded-pair subset
+  via `--pairs-override` and reports counterfactual Sharpe/PnL next to the real
+  confirmed baseline. Explicitly scoped OUT: Pearson/EG+FDR exclusions (no spread
+  model ever built for those pairs) and price-degeneracy exclusions (dropped one
+  step earlier, before `all_candidates.parquet` exists) — stated as an honest
+  limitation, not silently ignored.
+  - **Real result (1h, the TF with 17 of 23 confirmed pairs):** the 297 pairs
+    excluded by the coint_frac threshold would have produced OOS Sharpe **3.6682**
+    (495 trades, $150,286 PnL) vs. the confirmed set's actual OOS Sharpe **5.2443**
+    — the filter is net-positive (keeps the better-performing pairs), though the
+    excluded set is not worthless (3.67 is still a strong Sharpe on its own). 0
+    structural exclusions at 1h, so no counterfactual there.
+  - **Scope limit for future sessions:** only 1h has `all_candidates.parquet` today
+    (the scoped verification rerun only touched 1h); a full 13-TF `analysis.py`
+    rerun would extend filter-ablation coverage to all 5 TFs with confirmed pairs.
+
+### Phase 2 — Deflated Sharpe Ratio + Square-Root Market Impact
+
+**Where this sits in the pipeline:** new standalone scripts alongside `stats.py`
+(statistical validation) and new `backtest.py` STORM variants (same CLI-flag →
+engine-logic → output-suffix pattern as `--risk-parity`/`--storm-mm-exec`/etc.,
+documented in `CONTRIBUTING.md`).
+
+- **`trial_registry.py`** (new, shared module): append-only log of every
+  `backtest.py` run's label/Sharpe/n_trades, written automatically at the end of
+  `backtest.py main()`. Backing data for the DSR's "how many configurations were
+  tried" correction.
+- **`deflated_sharpe.py`** (new): Bailey & López de Prado (2014) Deflated Sharpe
+  Ratio. Retroactively backfills `trial_registry.json` from every existing
+  `output/backtest/portfolio_*.parquet`, then computes DSR against the real IS/OOS
+  daily P&L series (not the annualized Sharpe — per-period SR_hat/T/skew/kurtosis
+  computed directly from `trades_layer1[_holdout].parquet`, same grouping as
+  `stats.py`'s permutation test).
+  - Core math verified against the textbook formula in `debug/_verify_deflated_sharpe.py`
+    (monotonicity in N, exact arithmetic at skew=0/kurt=1, independent recomputation
+    of the expected-max-Sharpe-under-null formula) BEFORE running on real data.
+  - **Real bug caught by running on real data, not just the synthetic test:**
+    the first version computed Var[Sharpe-across-trials] directly from the trial
+    registry's ANNUALIZED sharpe_portfolio values, then compared it against a
+    PER-PERIOD SR_hat — a units mismatch that flipped the result from DSR≈1.0000
+    to DSR≈0.0000 depending on which was used. `aggregate_portfolio()` always
+    annualizes by a fixed `sqrt(252)` regardless of TF, so dividing every trial
+    Sharpe by `sqrt(252)` before computing variance is an exact fix, not an
+    approximation. This is exactly the kind of thing a synthetic test cannot catch
+    (it verifies the formula, not cross-source unit consistency) — only running on
+    real numbers surfaced it. Documented in the module docstring so it isn't
+    silently reintroduced.
+  - **Real result (14 backfilled trials):** IS per-period SR_hat=0.7351 (T=278,
+    skew=2.415, kurt=14.183) → DSR=1.0000, z=**11.02**. OOS SR_hat=0.6402 (T=70,
+    skew=2.864, kurt=14.332) → DSR=1.0000, z=**6.48**. Both decisively clear the
+    "no genuine skill" null even after correcting for 14 variants tried and heavy
+    non-normality — a genuinely reassuring, honestly-verified result. Saved to
+    `output/stats/deflated_sharpe.json`.
+- **Square-root market impact** (`--storm-sqrt-impact` in `backtest.py`): new
+  `_compute_cost_sqrt_impact()` replaces the flat-bps slippage term with
+  `slippage_bps × sqrt(order_shares/ADV_shares)` per leg (Kyle/Obizhaeva concave
+  impact law) — same commission structure as the existing `_compute_cost()`, only
+  the slippage functional form changes. New `load_adv_shares_map()` loads real ADV
+  from cached 1hr volume data. Verified in `debug/_verify_sqrt_impact_cost.py`
+  (identical-to-flat at the ADV==order-size crossover, cheaper for small orders,
+  more expensive for large orders, exact fallback to flat behavior when ADV is
+  missing).
+  - **Real result:** OOS Sharpe **5.2591** vs. baseline **5.2443** (ADV loaded for
+    37/37 symbols) — a small, sensible improvement, consistent with CAMARF's
+    position sizes being small relative to these liquid names' ADV (the concave
+    model implies lower cost than flat-bps for small orders, the documented
+    direction in the literature).
+
+### Phase 3 — Absorption Ratio + Hierarchical Risk Parity
+
+**Where this sits in the pipeline:** `absorption_ratio.py` (new) directly reuses
+`analysis.py`'s `EigenportfolioDecomposer` (refactored, see below) and
+`UniverseFilter._pairwise_corr` — the exact same PCA/correlation machinery already
+built for pair confirmation tiers, repurposed for a portfolio-level systemic-risk
+question. `compute_hrp_weights()` (new, in `backtest.py`) is a new STORM sizing
+variant alongside the existing `compute_risk_parity_weights()`.
+
+- **Refactor (behavior-preserving, verified):** extracted
+  `EigenportfolioDecomposer._eigendecompose()` out of `compute_factor_residuals()` so
+  a caller needing only the eigenvalue spectrum (Absorption Ratio) doesn't duplicate
+  the NaN-handling/Marchenko-Pastur logic. Verified against a synthetic
+  common-factor-plus-noise case: same K, same residual-correlation-near-zero
+  behavior as before the refactor.
+- **`absorption_ratio.py`** (Kritzman, Li, Page & Rigobon 2011): rolling (252-bar
+  window, 21-bar step, same convention as `coint_fraction_rolling`) fraction of
+  total variance explained by the top `round(N/5)` eigenvalues, over the daily
+  returns of every symbol appearing in any confirmed pair. Verified in
+  `debug/_verify_absorption_ratio.py` against the two degenerate cases (all-assets-
+  identical → AR≈1.0; all-assets-independent → AR≈K/N) plus a mixed case landing
+  strictly between them.
+  - **Real result:** 692 rolling windows over the 39-symbol confirmed-pair
+    universe, mean AR=**0.427**, range **0.205–0.847** (K=8 of 39 assets). Saved to
+    `output/stats/absorption_ratio.parquet`. Not yet wired into any position-sizing
+    or regime-gating decision — a candidate companion to the existing DCC-GARCH
+    peak-correlation concentration flag (stats.py §6.4) for a future session.
+- **`compute_hrp_weights()`** (Lopez de Prado 2016): standard quasi-diagonalization
+  + recursive-bisection HRP, using the TRUE cross-pair covariance matrix (unlike
+  risk-parity, which only uses each pair's own volatility). New `--hrp-weight` CLI
+  flag, mutually exclusive with `--risk-parity` (raises an explicit error if both
+  are passed — they're alternative theories of the same sizing decision).
+  - Building blocks verified in `debug/_verify_hrp_weights.py` (weights sum to 1,
+    equal-variance/zero-correlation → equal weights, 2-asset case matches
+    closed-form inverse-variance exactly).
+  - **Real bug caught by running on real data:** the first version required a
+    pair's ENTIRE correlation row to be finite before including it — on CAMARF's
+    real, sparsely-trading pairs (most pairs never share 5+ same-day trades), this
+    rejected all 15 confirmed pairs (only 2 of 105 pair-pair correlations were even
+    computable), silently falling back to flat sizing. Fixed by reusing the SAME
+    NaN-handling convention `_eigendecompose` already uses for the identical
+    problem elsewhere in the codebase: treat missing pairwise correlation as 0 (no
+    evidence of correlation), not as grounds for exclusion — only a pair's own std
+    needs to be a real, finite, positive number.
+  - **Real result:** OOS Sharpe **5.3752** — better than the plain baseline
+    (5.2443) but below risk-parity's **5.8689** for this 23-pair set. An honest,
+    negative-relative-to-risk-parity result: the simpler per-pair-volatility
+    approach outperforms the more sophisticated cross-pair-covariance approach
+    here, not the other way around.
+
+### Phase 4 — Reproducibility Chain
+
+**Where this sits in the pipeline:** `reproduce.py`, which already maps every
+PAPER.md finding to its generating script.
+
+- Added a `DATA_PROVENANCE` dict + `print_data_provenance()` (new
+  `--show-provenance` flag, also auto-printed by `--verify-only`): universe
+  snapshot (1,608 symbols, 2026-06-30, config_hash `0c0e67a6b00ff0bb`), exact
+  per-timeframe yfinance fetch windows, pinned-versions pointer. Mirrors the
+  canonical copy in `CLAUDE.md`'s "Data Test Range & Reproducibility" section
+  (added this session) — `reproduce.py`'s copy is a pointer to that source of
+  truth, not a second copy to maintain independently.
+
+### Phase 5 — Era-Decay Replication on CAMARF's Own Data
+
+**Where this sits in the pipeline:** `research/era_decay_replication.py` (new),
+reusing `backtest.py`'s `BacktestEngine`/`compute_metrics`/`aggregate_portfolio`
+directly (same "apples-to-apples, no STORM flags" convention `distance.py` uses).
+
+- Directly answers Ross's "involve our project as an answer to unresolved
+  literature questions" request: Do & Faff (2010) split GGR's sample into eras and
+  found ~70%+ decay, explicitly testing and rejecting crowding as the mechanism in
+  favor of weakening convergence properties (rising half-life). CAMARF's own data
+  cannot test the crowding side (needs external capital-flow data this project
+  doesn't have) — explicitly scoped out in the module docstring — but CAN test the
+  convergence-property side: split each confirmed 1h pair's available spread
+  history into 3 sequential chronological thirds, backtest each era independently,
+  and separately track mean half-life per era as the convergence-property proxy.
+- **Real result:** no decay found. Portfolio Sharpe across the 3 eras: **5.05 →
+  5.18 → 5.21** (mildly increasing, not decreasing); mean half-life: **38.6 → 39.7
+  → 31.0** bars (fell in the final era, not rose). A genuine null result — CAMARF's
+  available 1h history window is short relative to Do & Faff's multi-decade
+  original span, and this session's data doesn't show the decay pattern at all,
+  let alone one coincident with convergence weakening. Reported honestly as a null
+  result, not suppressed. Saved to
+  `output/research/era_decay_replication{,_summary}.parquet`.
+
+### Session 23 — Cross-References for PAPER.md (not yet written into PAPER.md itself)
+
+Candidate additions for a future PAPER.md pass, once Ross reviews these numbers:
+- §6 (Statistical Validation): DSR z=11.02/6.48 as a new subsection, addressing the
+  STORM survey's own critique that raw backtested Sharpe ratios (including CAMARF's
+  own 5.29/5.24) are not, by themselves, reliable significance measures under
+  multiple testing.
+- §7.2 (Concentration Risk): HRP vs. risk-parity head-to-head; Absorption Ratio as
+  a companion metric to the existing DCC-GARCH peak-correlation flag.
+- §7 new subsection: filter-ablation funnel table, era-decay replication's honest
+  null result.
+- §2 lit review: Do & Faff (2010), Hakkio & Rush (1991), Bailey & López de Prado
+  (2014 DSR), Harvey/Liu/Zhu (2016), and the historical crisis episodes (LTCM,
+  Aug 2007, Mar 2020) surfaced by the STORM survey but not yet cited in PAPER.md —
+  see `storm-statistical-arbitrage-pairs-trading.md` for full citations.
+
+### Session 23 — Deferred, design discussion held, ready to build next session
+
+Both items below were discussed with Ross (2026-06-30, end of session) per the
+standing methodology-buy-in rule. Scope is now locked — next session can build
+directly rather than re-discussing.
+
+- **Decoupling-as-tradeable-signal.** Two candidate mechanisms identified, not yet
+  chosen between: (A) momentum-continuation (bet the divergence keeps widening —
+  a real departure from CAMARF's mean-reversion thesis into trend/momentum), or
+  (B) new-equilibrium reversion (bet the pair re-settles around a shifted mean,
+  closer to the existing thesis but with a moving target instead of a fixed one).
+  Key risk flagged: this is structurally CAMARF's first "catching a falling knife"
+  trade — a permanent break (M&A, business-model change) has open-ended loss
+  potential the existing bounded-stop mean-reversion trades don't share.
+  **Ross's decision: build the research diagnostic first, but do the tradeable-
+  signal design in the SAME session using its findings** — not a purely
+  research-only pass deferred indefinitely. Plan for next session:
+  1. `research/decoupling_analysis.py` — identify historical decoupling events
+     across the confirmed-pair (or broader) universe (candidate detection
+     triggers: first ZA/CUSUM flag, coint_fraction_rolling crossing
+     MIN_COINT_FRAC, or a half-life-trend-slope sign flip — pick one and justify
+     it) and describe what happens after: reverts to a new mean, keeps
+     diverging, or fully breaks down (e.g. permanent delisting/M&A).
+  2. Use that descriptive result to choose between (A)/(B) above (or conclude
+     neither is supported) and design the entry/exit rule, interaction with the
+     existing coint_frac override (a decoupled pair currently gets fully
+     excluded from the confirmed set — would need its own separate bucket/
+     manifest if this becomes a real strategy), and expected holding period.
+  3. Statistical power caveat to flag explicitly when reporting: decoupling
+     events are rare by definition, so this will likely be a small-n analysis —
+     say so rather than overstating confidence from a handful of events.
+
+- **Real-time crowding/decay proxy.** **Ross's decision: per-run diagnostic, not
+  live/streaming infrastructure** — recomputed alongside existing `analysis.py`/
+  `backtest.py` runs, matching CAMARF's current capability (no live-trading
+  system exists yet, so true streaming monitoring would be a separate, much
+  larger build). Design landed on: a per-pair decay z-score — each confirmed
+  pair's recent-trade rolling Sharpe compared against its own IS Sharpe
+  distribution, flagged if it falls outside ~2 std devs. Conceptually reuses the
+  existing WFA fold infrastructure (`wfa.py`) rather than building new plumbing.
+  Still open for next session: exact window size for "recent," and what action
+  a flagged pair triggers (position-size reduction? manual-review flag? does NOT
+  mean auto-exclusion, since ordinary noise at CAMARF's per-pair trade counts
+  will produce some false flags).

@@ -44,6 +44,8 @@ from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
+from scipy.cluster.hierarchy import linkage
+from scipy.spatial.distance import squareform
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
@@ -157,6 +159,46 @@ def _compute_cost(
     n_shares_b = n_shares_a * abs(hedge)
     commission = commission_per_share * (n_shares_a + n_shares_b) * 2  # round trip
     slippage = slippage_bps / 10_000 * abs(entry_spread) * n_shares_a * 2
+    return commission + slippage
+
+
+def _compute_cost_sqrt_impact(
+    entry_spread: float,
+    hedge: float,
+    n_shares_a: int,
+    commission_per_share: float,
+    slippage_bps: float,
+    adv_shares_a: float,
+    adv_shares_b: float,
+) -> float:
+    """
+    Round-trip cost using a concave, square-root market-impact model
+    (Kyle & Obizhaeva; Bouchaud et al. — the "square-root law") instead of
+    _compute_cost's flat linear-bps slippage. Impact per leg scales as
+    slippage_bps/10_000 * sqrt(order_shares / ADV_shares) rather than a flat
+    slippage_bps — i.e. cost grows sub-linearly for small orders relative to
+    ADV (cheaper than the flat model here) and super-linearly as order size
+    approaches/exceeds ADV (more expensive than the flat model there), which
+    is the documented empirical shape linear cost models miss. Same
+    |entry_spread|-as-position-value proxy and commission structure as
+    _compute_cost — this changes only the slippage term's functional form,
+    for direct comparison via the --storm-sqrt-impact variant.
+
+    ADV_shares <= 0 or missing falls back to the flat-bps behavior for that
+    leg (sqrt(Q/ADV) term = 1) rather than raising or silently zeroing cost.
+    """
+    n_shares_b = n_shares_a * abs(hedge)
+    commission = commission_per_share * (n_shares_a + n_shares_b) * 2  # round trip
+
+    def _impact_factor(order_shares: float, adv_shares: float) -> float:
+        if not np.isfinite(adv_shares) or adv_shares <= 0:
+            return 1.0
+        return float(np.sqrt(order_shares / adv_shares))
+
+    impact_a = _impact_factor(n_shares_a, adv_shares_a)
+    impact_b = _impact_factor(n_shares_b, adv_shares_b)
+    avg_impact = (impact_a + impact_b) / 2.0
+    slippage = slippage_bps / 10_000 * avg_impact * abs(entry_spread) * n_shares_a * 2
     return commission + slippage
 
 
@@ -330,6 +372,7 @@ class BacktestEngine:
         pnl_cap_by_pair: Optional[Dict[str, float]] = None,
         storm_flags: Optional[Dict[str, bool]] = None,
         mm_hedge_map: Optional[Dict[str, float]] = None,
+        adv_shares_map: Optional[Dict[str, float]] = None,
     ):
         self.cfg = cfg
         self.regime_cond = regime_cond
@@ -351,6 +394,9 @@ class BacktestEngine:
         self.storm_flags = storm_flags or {}
         # mm_hedge_map: {sym_a/sym_b -> beta_mm} loaded from hedge_ratio_comparison.parquet
         self.mm_hedge_map = mm_hedge_map or {}
+        # adv_shares_map: {symbol -> avg daily share volume}, used only when
+        # storm_flags["sqrt_impact"] is set — see _compute_cost_sqrt_impact.
+        self.adv_shares_map = adv_shares_map or {}
 
     def run(
         self,
@@ -650,10 +696,18 @@ class BacktestEngine:
         n = trade.n_shares_a
         direction = 1 if trade.side == "long" else -1
         gross = direction * (trade.exit_spread - trade.entry_spread) * n
-        cost = _compute_cost(
-            trade.entry_spread, trade.hedge_ratio, n,
-            self.cfg.COMMISSION_PER_SHARE, self.cfg.SLIPPAGE_BPS,
-        )
+        if self.storm_flags.get("sqrt_impact"):
+            cost = _compute_cost_sqrt_impact(
+                trade.entry_spread, trade.hedge_ratio, n,
+                self.cfg.COMMISSION_PER_SHARE, self.cfg.SLIPPAGE_BPS,
+                adv_shares_a=self.adv_shares_map.get(trade.symbol_a, float("nan")),
+                adv_shares_b=self.adv_shares_map.get(trade.symbol_b, float("nan")),
+            )
+        else:
+            cost = _compute_cost(
+                trade.entry_spread, trade.hedge_ratio, n,
+                self.cfg.COMMISSION_PER_SHARE, self.cfg.SLIPPAGE_BPS,
+            )
         trade.pnl_gross = round(gross, 4)
         trade.pnl_cost = round(cost, 4)
         trade.pnl_net = round(gross - cost, 4)
@@ -870,6 +924,33 @@ def load_mm_hedge_map() -> Dict[str, float]:
     return result
 
 
+def load_adv_shares_map(symbols: List[str]) -> Dict[str, float]:
+    """
+    Average daily SHARE volume per symbol (not dollar volume — the
+    square-root impact model needs order size and ADV in the same units,
+    shares), computed from the cached 1hr parquet the same way analysis.py's
+    ADV liquidity filter does (close×volume aggregated to daily sums would
+    give dollar volume; here we only need the volume column). Used only by
+    the --storm-sqrt-impact variant.
+    """
+    cache_dir = Config.DATA.CACHE_DIR
+    result: Dict[str, float] = {}
+    for sym in symbols:
+        p = os.path.join(cache_dir, f"{sym}_1hr.parquet")
+        if not os.path.exists(p):
+            continue
+        try:
+            df = pd.read_parquet(p, columns=["volume"])
+            df.index = pd.to_datetime(df.index)
+            daily_vol = df["volume"].groupby(df.index.date).sum()
+            if len(daily_vol) > 0:
+                result[sym] = float(daily_vol.mean())
+        except Exception as e:
+            log.debug("ADV shares load failed for %s: %s", sym, e)
+    log.info("ADV shares map: %d/%d symbols loaded", len(result), len(symbols))
+    return result
+
+
 # ---------------------------------------------------------------------------
 # Concentration-risk helpers
 # ---------------------------------------------------------------------------
@@ -938,6 +1019,154 @@ def compute_risk_parity_weights(
     return weights
 
 
+def _hrp_ivp(cov: np.ndarray) -> np.ndarray:
+    """Inverse-variance weights within a single cluster (HRP building block)."""
+    ivp = 1.0 / np.diag(cov)
+    return ivp / ivp.sum()
+
+
+def _hrp_cluster_var(cov: np.ndarray, items: List[int]) -> float:
+    cov_slice = cov[np.ix_(items, items)]
+    w = _hrp_ivp(cov_slice).reshape(-1, 1)
+    return float((w.T @ cov_slice @ w)[0, 0])
+
+
+def _hrp_quasi_diag(link: np.ndarray) -> List[int]:
+    """Matrix seriation: order leaves by the clustering dendrogram so
+    similar pairs sit adjacent to each other (Lopez de Prado 2016, HRP)."""
+    link = link.astype(int)
+    sort_ix = pd.Series([link[-1, 0], link[-1, 1]])
+    num_items = link[-1, 3]
+    while sort_ix.max() >= num_items:
+        sort_ix.index = range(0, sort_ix.shape[0] * 2, 2)
+        df0 = sort_ix[sort_ix >= num_items]
+        i = df0.index
+        j = df0.values - num_items
+        sort_ix[i] = link[j, 0]
+        df0 = pd.Series(link[j, 1], index=i + 1)
+        sort_ix = pd.concat([sort_ix, df0])
+        sort_ix = sort_ix.sort_index()
+        sort_ix.index = range(sort_ix.shape[0])
+    return sort_ix.tolist()
+
+
+def _hrp_recursive_bisection(cov: np.ndarray, sort_ix: List[int]) -> pd.Series:
+    """Top-down recursive bisection: split the seriated order in half
+    repeatedly, allocating between the two halves inversely to each half's
+    own cluster variance (Lopez de Prado 2016, HRP)."""
+    w = pd.Series(1.0, index=sort_ix)
+    c_items = [sort_ix]
+    while len(c_items) > 0:
+        c_items = [
+            i[j:k] for i in c_items for j, k in ((0, len(i) // 2), (len(i) // 2, len(i)))
+            if len(i) > 1
+        ]
+        for i in range(0, len(c_items), 2):
+            c_items0 = c_items[i]
+            c_items1 = c_items[i + 1]
+            var0 = _hrp_cluster_var(cov, c_items0)
+            var1 = _hrp_cluster_var(cov, c_items1)
+            alpha = 1.0 - var0 / (var0 + var1)
+            w[c_items0] *= alpha
+            w[c_items1] *= 1.0 - alpha
+    return w
+
+
+def compute_hrp_weights(
+    is_trades_path: str = "output/backtest/trades_layer1.parquet",
+) -> Dict[str, float]:
+    """
+    Hierarchical Risk Parity (Lopez de Prado, 2016) N_SHARES multipliers,
+    using the TRUE cross-pair covariance matrix — unlike
+    compute_risk_parity_weights(), which only uses each pair's own P&L
+    volatility and ignores how pairs co-move with each other. Approved in
+    Development.md's backlog (idea #7/#12 vicinity) pending backtest.py's
+    portfolio layer existing; that layer now exists.
+
+    Method: build each pair's daily closed-trade P&L series (same grouping
+    stats.py's permutation test / DCC-GARCH use), pairwise-complete
+    correlation (UniverseFilter._pairwise_corr, reused directly — handles
+    pairs that don't all trade on the same days), convert to covariance via
+    each pair's own std, then run HRP's quasi-diagonalization + recursive
+    bisection to get portfolio weights that sum to 1. Converted to the same
+    "multiplier around 1.0" convention risk_parity_weights uses
+    (multiplier = hrp_weight * n_pairs, clipped [0.1, 5.0]) so it plugs into
+    the identical N_SHARES_PER_TRADE * ... * rp_w position-sizing formula.
+    """
+    from analysis import UniverseFilter  # local import: avoid a module-level
+    # circular dependency (analysis.py does not import backtest.py, but
+    # keeping this import scoped to where it's actually used matches how
+    # distance.py/research scripts import backtest.py's own engine pieces).
+
+    if not os.path.exists(is_trades_path):
+        log.warning("HRP: IS trades not found at %s — flat sizing", is_trades_path)
+        return {}
+    trades = pd.read_parquet(is_trades_path)
+    if trades.empty:
+        log.warning("HRP: IS trades file is empty — flat sizing")
+        return {}
+    trades = trades.copy()
+    trades["exit_date"] = pd.to_datetime(trades["exit_time"]).dt.date
+    trades["pair_key"] = trades["symbol_a"] + "/" + trades["symbol_b"]
+
+    daily_pnl = trades.groupby(["pair_key", "exit_date"])["pnl_net"].sum().unstack("pair_key")
+    pair_keys = list(daily_pnl.columns)
+    n_pairs = len(pair_keys)
+    if n_pairs < 3:
+        log.warning("HRP: fewer than 3 pairs (%d) — clustering not meaningful, flat sizing", n_pairs)
+        return {}
+
+    returns_matrix = daily_pnl.values.T  # (n_pairs, n_days), NaN where a pair had no trade that day
+    corr = UniverseFilter._pairwise_corr(returns_matrix, min_overlap=5)
+    stds = np.nanstd(returns_matrix, axis=1, ddof=1)
+
+    # Pairs trade sparsely by design (mean-reversion strategies don't fire
+    # every day), so most pair-pairs never share 5+ same-day trades — a
+    # strict "every entry in this pair's correlation row must be finite"
+    # requirement (tried first, found wrong on real data: 15 confirmed pairs
+    # all rejected, only 2 of 105 pair-pair correlations were even
+    # computable) would discard nearly everything. Reuse the SAME
+    # NaN-handling convention EigenportfolioDecomposer._eigendecompose
+    # already uses for the identical insufficient-overlap problem: treat a
+    # missing pairwise correlation as 0 (a conservative "no evidence of
+    # correlation" assumption), not as grounds to exclude the pair entirely.
+    # Only a pair's OWN std must be a real, finite, positive number —
+    # that's a genuine requirement (can't build a covariance row without it).
+    valid = np.isfinite(stds) & (stds > 0)
+    if valid.sum() < 3:
+        log.warning("HRP: fewer than 3 pairs with valid P&L std — flat sizing")
+        return {}
+
+    pair_keys = [pk for pk, ok in zip(pair_keys, valid) if ok]
+    corr = corr[np.ix_(valid, valid)]
+    n_nan = int(np.sum(~np.isfinite(corr)))
+    corr = np.nan_to_num(corr, nan=0.0)
+    np.fill_diagonal(corr, 1.0)
+    if n_nan:
+        log.info("HRP: %d/%d pair-pair correlations had <5 overlapping trade "
+                  "days — treated as uncorrelated (0)", n_nan, corr.size)
+    stds = stds[valid]
+    n_pairs = len(pair_keys)
+    cov = corr * np.outer(stds, stds)
+    np.fill_diagonal(cov, stds ** 2)  # exact variance on the diagonal, not corr-derived
+
+    dist = np.sqrt(np.clip(0.5 * (1 - corr), 0, None))
+    condensed = squareform(dist, checks=False)
+    link = linkage(condensed, method="single")
+    sort_ix = _hrp_quasi_diag(link)
+    hrp_weights_series = _hrp_recursive_bisection(cov, sort_ix)
+    hrp_weights_series = hrp_weights_series.sort_index()  # back to original pair_keys order
+
+    weights: Dict[str, float] = {}
+    for idx, pk in enumerate(pair_keys):
+        multiplier = float(np.clip(hrp_weights_series.iloc[idx] * n_pairs, 0.1, 5.0))
+        weights[pk] = multiplier
+    vals = list(weights.values())
+    log.info("HRP: %d pairs, range [%.3f, %.3f], mean=%.3f",
+             len(weights), min(vals), max(vals), sum(vals) / len(vals))
+    return weights
+
+
 def compute_pnl_cap_thresholds(
     is_trades_path: str = "output/backtest/trades_layer1.parquet",
 ) -> Dict[str, float]:
@@ -985,6 +1214,12 @@ def main() -> None:
     p.add_argument("--risk-parity", action="store_true",
                    help="Inverse-volatility N_SHARES scaling from IS P&L std. "
                         "Requires trades_layer1.parquet (IS run first).")
+    p.add_argument("--hrp-weight", action="store_true",
+                   help="Hierarchical Risk Parity (Lopez de Prado 2016) N_SHARES scaling "
+                        "using the true cross-pair covariance matrix, not just each pair's "
+                        "own volatility. Mutually exclusive with --risk-parity (both are "
+                        "alternative theories of the same sizing decision). Requires "
+                        "trades_layer1.parquet (IS run first).")
     p.add_argument("--pnl-cap", action="store_true",
                    help="Cap each pair's cumulative P&L at IS mean pair P&L. "
                         "Requires trades_layer1.parquet (IS run first).")
@@ -999,19 +1234,56 @@ def main() -> None:
                    help="STORM: skip first 30-min of trading (9:30-9:59 ET) and late-day (15:00+) (intraday only).")
     p.add_argument("--storm-mm-exec", action="store_true",
                    help="STORM: use MM (outlier-robust) hedge ratio for execution sizing.")
+    p.add_argument("--storm-sqrt-impact", action="store_true",
+                   help="STORM: replace the flat-bps slippage model with a concave "
+                        "square-root market-impact model (Kyle/Obizhaeva), scaled by "
+                        "each leg's order size relative to its own ADV.")
     p.add_argument("--storm-all", action="store_true",
                    help="STORM: enable all 4 experimental variants simultaneously.")
     p.add_argument("--entry-z", type=float, default=None,
                    help="Override ENTRY_ZSCORE (default: Config.BACKTEST.ENTRY_ZSCORE=2.0). "
                         "Use --entry-z 1.5 for DD/GPN and DD/JCI zero-trade diagnostic.")
+    p.add_argument("--pairs-override", type=str, default=None,
+                   help="Path to a parquet/CSV with columns [tf_label, symbol_a, symbol_b] "
+                        "to backtest instead of output/results/{tf_dir}/pairs.parquet — "
+                        "enables counterfactual runs on a specific pair subset (e.g. the "
+                        "pairs excluded by one filter stage, per research/filter_ablation.py).")
     args = p.parse_args()
+
+    _pairs_override_df: Optional[pd.DataFrame] = None
+    if args.pairs_override:
+        _pairs_override_df = (
+            pd.read_csv(args.pairs_override) if args.pairs_override.endswith(".csv")
+            else pd.read_parquet(args.pairs_override)
+        )
+        missing_cols = {"tf_label", "symbol_a", "symbol_b"} - set(_pairs_override_df.columns)
+        if missing_cols:
+            raise ValueError(
+                f"--pairs-override file {args.pairs_override} missing required "
+                f"columns: {missing_cols}"
+            )
+        log.info(
+            "Pairs override active: %s (%d pairs across %d TFs)",
+            args.pairs_override, len(_pairs_override_df),
+            _pairs_override_df["tf_label"].nunique(),
+        )
 
     layer2 = args.layer2 or Config.BACKTEST.LAYER2_ENABLED
     regime_cond = RegimeConditioner(enabled=layer2)
     ml_cond = MLConditioner(enabled=layer2)
 
+    if args.risk_parity and args.hrp_weight:
+        raise ValueError(
+            "--risk-parity and --hrp-weight are mutually exclusive — both compute "
+            "an alternative N_SHARES multiplier for the same sizing decision; "
+            "applying both would multiply two different portfolio theories together."
+        )
     hub_weights = compute_hub_weights(_TF_DIRS, args.tf) if args.hub_weight else {}
-    risk_parity_weights = compute_risk_parity_weights() if args.risk_parity else {}
+    risk_parity_weights = (
+        compute_hrp_weights() if args.hrp_weight
+        else compute_risk_parity_weights() if args.risk_parity
+        else {}
+    )
     pnl_cap_by_pair = compute_pnl_cap_thresholds() if args.pnl_cap else {}
 
     # STORM flags
@@ -1022,8 +1294,32 @@ def main() -> None:
         "session_edge":            getattr(args, "storm_session_edge", False) or _storm_all,
         "session_edge_postopen":   getattr(args, "storm_session_edge_postopen", False),
         "mm_exec":                 getattr(args, "storm_mm_exec", False) or _storm_all,
+        # Not folded into --storm-all: a new, separate comparison arm added
+        # 2026-06-30, not part of the original "4 experimental variants" set
+        # --storm-all's docstring/help text refers to.
+        "sqrt_impact":             getattr(args, "storm_sqrt_impact", False),
     }
     mm_hedge_map = load_mm_hedge_map() if storm_flags.get("mm_exec") else {}
+
+    # ADV shares map for sqrt_impact: collect every symbol across every TF's
+    # pairs (or the override file) that will actually be processed, so ADV
+    # only needs to be loaded once, before the engine is constructed.
+    adv_shares_map: Dict[str, float] = {}
+    if storm_flags.get("sqrt_impact"):
+        _adv_symbols = set()
+        if _pairs_override_df is not None:
+            _adv_symbols.update(_pairs_override_df["symbol_a"])
+            _adv_symbols.update(_pairs_override_df["symbol_b"])
+        else:
+            for tf_dir, tf_label in _TF_DIRS:
+                if args.tf and tf_label != args.tf:
+                    continue
+                _p = f"output/results/{tf_dir}/pairs.parquet"
+                if os.path.exists(_p):
+                    _df = pd.read_parquet(_p, columns=["symbol_a", "symbol_b"])
+                    _adv_symbols.update(_df["symbol_a"])
+                    _adv_symbols.update(_df["symbol_b"])
+        adv_shares_map = load_adv_shares_map(sorted(_adv_symbols))
 
     # --entry-z override for z=1.5 comparison arm (DD/GPN, DD/JCI zero-trade diagnostic)
     _backtest_cfg = Config.BACKTEST
@@ -1042,6 +1338,7 @@ def main() -> None:
         pnl_cap_by_pair=pnl_cap_by_pair,
         storm_flags=storm_flags,
         mm_hedge_map=mm_hedge_map,
+        adv_shares_map=adv_shares_map,
     )
 
     hedge_methods = (["ols", "kalman"] if args.hedge == "both"
@@ -1055,6 +1352,8 @@ def main() -> None:
         label += "_hubw"
     if args.risk_parity:
         label += "_riskparity"
+    if args.hrp_weight:
+        label += "_hrp"
     if args.pnl_cap:
         label += "_pnlcap"
     if args.entry_z is not None:
@@ -1068,7 +1367,10 @@ def main() -> None:
         if storm_flags.get("session_edge"):          sfx += "_sedge"
         if storm_flags.get("session_edge_postopen"): sfx += "_sedge_post"
         if storm_flags.get("mm_exec"):               sfx += "_mmexec"
+        if storm_flags.get("sqrt_impact"):           sfx += "_sqrtimpact"
         label += sfx
+    if args.pairs_override:
+        label += "_pairsoverride"
 
     # Load survivorship exclusions for OOS-end-date truncation
     _surv_path = os.path.join(os.path.dirname(__file__), "output", "cache", "survivorship_exclusions.csv")
@@ -1088,14 +1390,32 @@ def main() -> None:
     for tf_dir, tf_label in _TF_DIRS:
         if args.tf and tf_label != args.tf:
             continue
-        pairs_path = f"output/results/{tf_dir}/pairs.parquet"
-        if not os.path.exists(pairs_path):
-            continue
-        pairs = pd.read_parquet(pairs_path)
-        # Ensure tf_label column exists
-        if "tf_label" not in pairs.columns:
-            pairs["tf_label"] = tf_label
-        log.info("[%s] %d confirmed pairs", tf_label, len(pairs))
+        if _pairs_override_df is not None:
+            # Counterfactual mode: backtest only the pairs listed in the override
+            # file for this TF. Keeps every column the override file provides
+            # (not just symbol_a/symbol_b) — engine.run() reads scalar fallback
+            # fields directly off the pair row (hedge_ratio_ols, coint_fraction_
+            # rolling, etc., used as hard gates — e.g. a missing/NaN hedge ratio
+            # causes the pair to be silently skipped with 0 trades). The override
+            # file is therefore expected to carry the same schema as
+            # output/results/{tf_dir}/pairs.parquet or all_candidates.parquet
+            # (research/filter_ablation.py builds it from the latter), not a
+            # bare symbol list.
+            pairs = _pairs_override_df.loc[
+                _pairs_override_df["tf_label"] == tf_label
+            ].reset_index(drop=True)
+            if pairs.empty:
+                continue
+            log.info("[%s] %d pairs from --pairs-override", tf_label, len(pairs))
+        else:
+            pairs_path = f"output/results/{tf_dir}/pairs.parquet"
+            if not os.path.exists(pairs_path):
+                continue
+            pairs = pd.read_parquet(pairs_path)
+            # Ensure tf_label column exists
+            if "tf_label" not in pairs.columns:
+                pairs["tf_label"] = tf_label
+            log.info("[%s] %d confirmed pairs", tf_label, len(pairs))
 
         for _, row in pairs.iterrows():
             sym_a, sym_b = row["symbol_a"], row["symbol_b"]
@@ -1152,6 +1472,18 @@ def main() -> None:
         f.write(f"outputs: output/backtest/trades_{label}.parquet, "
                 f"summary_{label}.parquet, portfolio_{label}.parquet\n")
     log.info("Run summary → %s", _LOG_PATH)
+
+    # Record this run as one trial for the Deflated Sharpe Ratio (see
+    # trial_registry.py / deflated_sharpe.py) — every backtest.py invocation
+    # is a configuration "tried" in the multiple-testing sense the DSR
+    # corrects for, whether it's a named STORM variant, a --pairs-override
+    # counterfactual, or a plain baseline rerun.
+    from trial_registry import record_trial
+    record_trial(
+        label=label,
+        sharpe=portfolio_stats.get("sharpe_portfolio") if portfolio_stats else None,
+        n_trades=len(all_trades),
+    )
 
 
 if __name__ == "__main__":
