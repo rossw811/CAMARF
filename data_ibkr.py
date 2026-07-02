@@ -421,6 +421,14 @@ def main():
         action="store_true",
         help="List existing supplement files and exit",
     )
+    parser.add_argument(
+        "--client-id",
+        type=int,
+        default=None,
+        help="Override Config.IBKR.CLIENT_ID for this run only (process-local, not "
+             "persisted) — use when the default client ID (shared with data.py) is "
+             "already held by a stale/orphaned Gateway API connection.",
+    )
     args = parser.parse_args()
 
     logging.basicConfig(
@@ -428,6 +436,10 @@ def main():
         format="%(asctime)s  %(levelname)-8s  %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S",
     )
+
+    if args.client_id is not None:
+        Config.IBKR.CLIENT_ID = args.client_id
+        log.info("Client ID override: using %d for this run only", args.client_id)
 
     if args.list_supplements:
         if not os.path.exists(SUPPLEMENT_DIR):

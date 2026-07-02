@@ -8053,3 +8053,706 @@ directly rather than re-discussing.
   a flagged pair triggers (position-size reduction? manual-review flag? does NOT
   mean auto-exclusion, since ordinary noise at CAMARF's per-pair trade counts
   will produce some false flags).
+
+---
+
+## Session 24 — Decoupling Diagnostic + Re-Qualification, Decay Proxy, Full Pipeline Rerun (2026-07-01)
+
+### Decoupling Analysis — Real Result
+
+**`research/decoupling_analysis.py`** (new): classifies what happens after a
+detected Zivot-Andrews break by comparing the post-break spread's deviation
+from the pre-break equilibrium (normalized by pre-break std) via an OLS trend
+test on |deviation|, plus early/late-period magnitude comparison. Verified
+against 5 synthetic cases (`debug/_verify_decoupling_analysis.py`) — the first
+version's "reverted" criterion required an absolute near-zero threshold on
+late-period deviation, which failed on a genuine-but-incomplete exponential
+decay case; fixed to compare late-period deviation against early-period
+deviation (has it shrunk substantially, not necessarily fully arrived).
+
+**Real result (142 detected 1h breaks, all_candidates.parquet):**
+
+| Classification | Count | % |
+|---|---|---|
+| CONTINUED_DIVERGENCE | 71 | 50.0% |
+| INCONCLUSIVE | 49 | 34.5% |
+| NEW_EQUILIBRIUM_SHIFT | 22 | 15.5% |
+| REVERTED_TO_OLD_EQUILIBRIUM | 0 | 0% |
+
+**Interpretation, reviewed with Ross:** zero pairs revert to the old
+equilibrium — when Zivot-Andrews flags a break, something real changed; this
+*validates* the existing exclusion logic rather than undermining it. Half
+keep diverging with no way to time an exit in advance (an unbounded-risk
+"catching a falling knife" profile if traded directly). Neither of the two
+originally-proposed mechanisms (momentum-continuation, new-equilibrium
+mean-reversion traded directly) is well-supported: momentum is the majority
+outcome but structurally too risky given CAMARF's existing risk profile;
+direct reversion betting is empirically the wrong bet (0% revert to the OLD
+level). **Decision: build re-qualification instead** — not a new trading
+signal on the break itself.
+
+**`research/decoupling_requalification.py`** (new): reuses `_eg_worker`
+directly from `analysis.py` (the exact same `statsmodels.coint()` call,
+same `trend="c"`, `EG_MAX_LAG`, `autolag="aic"` the production pipeline
+uses for every candidate pair) — for every broken-and-excluded pair, skips
+`SETTLING_BARS=60` bars after the break, then re-tests cointegration on the
+post-break window alone (raw log-close prices reloaded via
+`DataStore.load()`, not the persisted spread which already bakes in the OLD
+hedge ratio). Smoke-tested against one real pair (ADI/DD) before the full
+batch run.
+
+**Real result (1h, 142 broken-and-excluded candidates re-tested):**
+**5/142 (3.5%) re-qualify** on their post-break window alone at the same
+`EG_SIGNIFICANCE=0.05` threshold production `analysis.py` uses: ALB/DD
+(p=0.033), CDW/DD (p=0.034), DD/FDX (p=0.033), DD/ROST (p=0.023), DD/ENS
+(p=0.016). DD appears in 4 of 5 — consistent with the already-documented
+DD-hub concentration pattern. Directionally consistent with the 15.5%
+NEW_EQUILIBRIUM_SHIFT descriptive rate above (a subset of shifted-but-not-
+reverted pairs pass a *formal* EG re-test; not all shifted pairs do).
+**Explicitly not a re-admission decision** — a passing re-qualification
+p-value is evidence a new relationship formed, not by itself sufficient to
+re-add a pair to a live confirmed set; that needs its own backtest evidence,
+per this project's standing "don't decide ranking/selection on statistical
+grounds alone" discipline (same precedent as the price-density-screen and
+permutation-robust-flag decisions).
+
+### Decay Proxy — Real Result
+
+**`decay_proxy.py`** (new, root-level alongside `deflated_sharpe.py`/
+`absorption_ratio.py`): per-pair decay z-score — a rolling series of
+15-trade-window Sharpes (stepped by 3 trades) built from all but a pair's
+most recent 15 trades, compared via z-score against that pair's own most
+recent 15-trade-window Sharpe. Requires >=40 total trades to attempt at all
+(else explicitly skipped, not forced). Flag threshold: z < -2.0. Verified
+against 4 synthetic cases (`debug/_verify_decay_proxy.py`) including that the
+flag is one-sided (a pair recently OUTPERFORMING must not flag — this is a
+decay detector, not a general-change detector).
+
+**Real result (IS trades, 12/15 confirmed pairs with enough trades to
+evaluate):** **0/12 pairs flagged.** z-scores ranged from -1.48 (KVUE/KMB) to
++6.20 (EG/ORI) — no pair's recent performance falls abnormally below its own
+historical variability. Consistent with CAMARF's already-documented strong
+IS/OOS consistency (0.9% degradation, PAPER.md §7.1). 3 pairs
+(CVX/OXY, EQR/INVH, SPY/VOO) correctly skipped for insufficient trades
+(28, 28, 38, all below the 40-trade minimum) rather than computing a forced,
+noisy z-score on too little data.
+
+**Cadence confirmed with Ross: per-run diagnostic, not live/streaming** — no
+live-trading infrastructure exists yet, so this reruns whenever
+`backtest.py`'s IS trades refresh, matching current project capability.
+
+### Full Pipeline Rerun (in progress)
+
+`analysis.py` (all 13 timeframes, no `--timeframes` restriction) launched in
+the background this session to: (a) extend `all_candidates.parquet` +
+`filter_funnel.parquet` coverage to every TF with confirmed pairs (Session 23
+only covered 1h), (b) regenerate `confirmed_pairs_manifest.json` and
+`bias_audit.json` properly across all TFs in one pass, (c) set up for
+`data_ibkr.py` (IB Gateway) once the manifest is current. Sequence:
+`analysis.py` (13 TFs) -> `data_ibkr.py` -> `analysis.py` re-run (deep-history
+enrichment) -> `ml.py` -> `backtest.py` -> `stats.py` -> `wfa.py` ->
+`distance.py` -> `sensitivity.py` -> `report.py`, explicitly skipping
+`data.py` (reusing already-cached yfinance data this session). Runtime note:
+the Session 23 scoped `--timeframes 1h` run alone took 43.9 minutes — longer
+than CLAUDE.md's documented ~30-40 min for the FULL 13-TF pipeline, likely
+reflecting current hardware conditions; a full rerun should be expected to
+take considerably longer than that historical estimate.
+
+### Decoupling Backtest — Real Result, and a Bug Caught Before Trusting It
+
+Per Ross's direction ("adjust it so it's actually usable, not just
+research"): built `research/decoupling_backtest.py` to actually model and
+backtest the 5 re-qualified pairs on their post-break window, rather than
+stopping at the requalification p-value. Reuses
+`AnalysisPipeline._build_pair_result()` directly (same hedge-ratio/OU/half-life
+machinery every real confirmed pair goes through) and the unmodified
+`BacktestEngine`.
+
+**Bug caught before trusting the result:** the first run reported Sharpe
+ratios of 20–55 — 4–10x anything else in this project — with post-break bar
+counts (20,000+) that didn't match the actual calendar time available
+(breaks were in 2024; post-break to now is ~2.5 years, which at 1h bars is
+~4,200 bars, not 20,000+). Root cause: `DataAligner.align_universe()` was
+called with its default `drop_data_gap_rows=False`, which — per the
+function's OWN docstring — calendar-pads onto a continuous grid and
+forward-fills gaps for the main pipeline's cross-symbol matrix use case; the
+docstring explicitly says to pass `drop_data_gap_rows=True` for "single-
+pair/real-timestamp-join consumers," which this script is. Caught by
+comparing the aligned bar count against the raw cached bar count for the
+same symbol/TF (raw: 4,397 bars; wrongly-aligned: 25,730 bars) — exactly the
+calendar-padding contamination mechanism PAPER.md §4.5 already documents as
+a general hazard, here self-inflicted by calling existing alignment code
+outside its intended calling convention rather than a new instance of the
+underlying bug. Fixed with the one parameter; re-ran.
+
+**Real result after the fix (IS-only, no holdout — too little post-break
+history to split further for most pairs):**
+
+| Pair | Trades | Sharpe | Total P&L |
+|---|---|---|---|
+| ALB/DD | 66 | -3.81 | -$1,258 |
+| CDW/DD | 0 | — | — |
+| DD/FDX | 92 | -9.82 | -$1,830 |
+| DD/ROST | 40 | **+7.09** | +$1,099 |
+| DD/ENS | 29 | -1.54 | -$88 |
+
+Only 1 of 5 re-qualified pairs shows positive performance, IS-only, no OOS
+validation. **Decision (Ross, 2026-07-01): keep the entire decoupling line
+of work (analysis, requalification, backtest) as research-only** — the
+statistical re-qualification does not translate into a reliable trading
+edge for these specific pairs. A real, useful negative result, not a dead
+end (same category as the moving-band/predictability-optimized basket
+weight negative result from Session 10) — do not wire into the live
+pipeline based on this evidence.
+
+### Full Pipeline Rerun — Complete, All Numbers Reproduced Exactly
+
+`analysis.py` (13 TFs, no `--timeframes` restriction) completed in 100.6
+minutes: **23 confirmed pairs** (17@1h, 2@3m, 1@30m, 2@4h, 1@1M/international)
+— identical to the pre-session count, confirming every Phase 1-3 code change
+(filter funnel, `all_candidates.parquet`, broader `spread_series`
+persistence, the `_eigendecompose` refactor) is purely additive with zero
+effect on the actual statistical results.
+
+**`data_ibkr.py` blocked, skipped for this run (Ross's call).** Failed
+identically 3 times ("Peer closed connection. clientId N already in use?")
+across two different client IDs (1, 7) and a retry after checking Gateway
+for a pending approval popup — ruling out an actual ID collision. Added a
+`--client-id` CLI override (process-local only, does not touch
+`config.py`'s shared `CLIENT_ID`/`CLIENT_ID_ANALYSIS` defaults) for future
+attempts, but the underlying Gateway-side issue (API settings, trusted IPs,
+live-vs-paper port mismatch, or a genuinely stuck session) needs Ross's own
+investigation directly on the Gateway, not further blind retries — stopped
+after 3 identical failures per this project's standing discipline. Deep
+IBKR history for confirmed pairs was NOT refreshed this session; the
+pipeline ran entirely on already-cached yfinance data + whatever IBKR
+supplement data existed from prior sessions.
+
+**Every remaining step run and verified against PAPER.md's existing numbers,
+all matching exactly (or within expected fresh-run noise for the two STORM
+variants noted):**
+
+| Step | Result | Matches PAPER.md |
+|---|---|---|
+| `ml.py` | 24 labeled examples, insufficient to train (need 30/class) | Yes — expected deferred state |
+| `backtest.py` (IS) | Sharpe 5.2935, 1028 trades | Exact |
+| `backtest.py` (OOS) | Sharpe 5.2443, 296 trades | Exact |
+| `stats.py` | IS perm p=0.981, OOS perm p=0.904 | Exact |
+| `--neg-hedge` | Sharpe 5.446, 304 trades | Exact |
+| `--hub-weight` | Sharpe 5.0199, 296 trades | Exact |
+| `--risk-parity` | Sharpe 5.8689, 296 trades | Exact |
+| `--pnl-cap` | Sharpe 5.2443 (no effect) | Exact |
+| `--storm-session-edge` | Sharpe 5.2037, 292 trades | Exact |
+| `--storm-mm-exec` | Sharpe 5.2552 (vs. 5.2467 prior — fresh-run noise) | Within noise |
+| `--storm-garch-stop` | Sharpe 5.2443 (null result) | Exact |
+| `--storm-all` | Sharpe 4.8871 (vs. 4.8753 prior — fresh-run noise) | Within noise |
+| `wfa.py` | expanding baseline 3.1258/rolling 3.2708; mm_exec best 3.8162/3.9638 | Exact |
+| `distance.py` | GGR -0.208 vs. CAMARF mean pair Sharpe 11.741 | Exact |
+| `sensitivity.py` | entry_z=2.5 grid max (10.590), z=2.0 production (9.178) | Exact |
+| `report.py` | 26/26 figures, main.tex (27,314 chars) | Exact |
+
+This is the strongest possible confirmation that Session 23-24's
+instrumentation work (filter funnel, DSR, Absorption Ratio, HRP,
+sqrt-impact, reproduce.py provenance, decoupling diagnostics, decay proxy)
+is genuinely additive — a full, independent pipeline rerun reproduces every
+single headline number in PAPER.md exactly, with the two STORM-variant
+Sharpes differing only in the third decimal place (consistent with ordinary
+run-to-run noise, not a methodology change).
+
+**Not yet re-run this session (lower priority, can be done alongside a
+future `data_ibkr.py` retry):** the optional research/diagnostic steps
+(`price_degeneracy_audit`, `near_miss_lag_scan`, `graph_clustering`,
+`eg_permutation_check`, `hmm_regime_detection`, etc.) — these are static
+one-off findings from prior sessions, not part of the core reproducibility
+cycle, and their numbers aren't expected to depend on this session's (in
+this case unchanged) confirmed-pair set.
+
+### pit_wfa.py — Point-In-Time Portfolio-Wide Walk-Forward Analysis
+
+**Motivation:** `wfa.py` is explicitly a "semi-WFA" per its own docstring —
+the confirmed-pair SELECTION is fixed (chosen using the full historical
+sample, which includes every fold's test period); only each pair's spread OU
+parameters are re-estimated per fold. That means wfa.py's walk-forward
+numbers still rest on a pair set chosen with look-ahead knowledge of how
+well it performs. Ross proposed removing this specific bias: at each fold's
+train cutoff, re-run the actual screening pipeline using only data available
+as of that cutoff, producing a genuinely point-in-time confirmed-pair set
+per fold, then trade that set forward.
+
+**Design (`pit_wfa.py`, new, root-level):** reuses analysis.py's production
+building blocks directly — `UniverseFilter.run`, `CointScanner.scan`,
+`CointScanner.rolling_fraction`, `AnalysisPipeline._build_pair_result`,
+`AnalysisPipeline.passes_coint_frac_secondary_evidence`,
+`CrossAssetTagger` — rather than reimplementing screening logic. Scoped to
+1h only (17 of 23 confirmed pairs, and a full-universe screening pass costs
+~45-50 min measured directly this session — extending to every TF would be
+many hours per fold for TFs contributing only 1-2 pairs each). Fold
+fractions identical to `wfa.py`'s `FOLD_EXPANDING`/`FOLD_ROLLING` for direct
+comparability. Per-fold spread construction matches wfa.py's own "causal
+series taken as-is" convention: once a pair is point-in-time confirmed using
+TRAIN-only data, its per-bar trading series is rebuilt over the full
+train+test window (already causal/trailing throughout — no `center=True`
+anywhere project-wide) and sliced to the test window for backtesting.
+Explicitly documented secondary limitation: scalar gating fields
+(`coint_fraction_rolling`, `half_life_trend_slope`, Hurst) are computed on
+train+test combined for the backtest step, not train-only — a smaller,
+secondary lookahead than the pair-SELECTION lookahead this module exists to
+eliminate.
+
+**Verification, and a real test-construction bug caught along the way:**
+`debug/_verify_pit_wfa.py` constructs a synthetic universe with a pair
+genuinely cointegrated only in a "future" window (after the fold cutoff) and
+a pair genuinely cointegrated within the train window — the core invariant
+under test is that the point-in-time screen finds the second and NOT the
+first. First attempt failed on both counts; root-caused (not a pit_wfa.py
+bug) to a construction error in the synthetic data itself: noise was added
+INSIDE the cumulative sum for both pairs, making each pair's spread a random
+walk (non-stationary) rather than a stationary, mean-reverting series — i.e.
+the synthetic pairs were highly CORRELATED but not actually COINTEGRATED,
+so Engle-Granger correctly rejected both (the classic spurious-regression-
+vs-cointegration distinction). Fixed by adding noise directly to the price
+LEVEL (stationary spread) rather than accumulating it — re-ran, both
+invariants now hold: the train-cointegrated pair is found, the future-only-
+cointegrated pair is not.
+
+**Real run**: launched in the background (2 expanding + 2 rolling folds,
+matching wfa.py's exact fractions) — expected ~45-50 min per fold, 3+ hours
+total. Results (point-in-time confirmed-pair sets per fold, and how they
+compare to the full-history 17-pair 1h confirmed set, plus portfolio-level
+OOS Sharpe per fold) to be added once complete.
+
+**Real run completed in 90.6 minutes (faster than the 3+ hour estimate).**
+Headline finding: **zero pair overlap** between any of the 4 point-in-time
+confirmed sets and the actual full-history 17-pair confirmed set —
+`screen_universe_at_cutoff` finds a completely different set of pairs at
+every cutoff (19 → 6 → 3 pairs as the training window moves later in time),
+none of which match AMD/DD, LNT/VTR, EG/ORI, etc. Ross asked, correctly, to
+verify this wasn't a bug before treating it as a finding.
+
+**Real bug found and fixed, changing the result materially.**
+`backtest_pair_on_test_window`'s isolated 2-symbol `DataAligner.align_universe`
+call used the default `drop_data_gap_rows=False` — the exact same calendar-
+padding bug class caught earlier this session in
+`research/decoupling_backtest.py` (same root cause: this is a "single-pair/
+real-timestamp-join consumer" per the function's own docstring, not the
+main pipeline's cross-symbol case the default is meant for). Confirmed via
+the same diagnostic (aligned bar count vs. raw cached bar count for the
+same symbol/TF — inflated from 4,397 to 25,730, same ~5.85x pattern).
+Fixing it surfaced a SECOND, related bug: `drop_data_gap_rows=True` drops
+each symbol's gap rows independently, so the two legs of a pair can come
+back different lengths even after alignment (a real shape mismatch, 2203 vs
+2202 bars, on the very first pair tested with the fix) — `_build_pair_result`
+needs identical-length arrays for its elementwise operations. Fixed with an
+explicit index-intersection step before building the pair result. Applied
+the same defensive fix to `decoupling_backtest.py` (didn't manifest there
+for the 5 pairs tested, but same latent risk existed).
+
+**Corrected result — the finding is more serious, not less, once the bug
+is fixed:**
+
+| Fold | Pairs | Trades | Sharpe (buggy, corrupted) | Sharpe (fixed) |
+|---|---|---|---|---|
+| expanding/fold1 | 18/19 traded | 204 | 5.2604 | **-1.0432** |
+| expanding/fold2 | 6 | 59 | 2.8881 | **-0.7873** |
+| rolling/fold1 | 18/19 traded | 204 | 5.2604 | **-1.0432** |
+| rolling/fold2 | 3 | 67 | 2.8097 | **-0.7176** |
+
+Spot-checked bar counts post-fix (APH/LECO: 4,396 aligned vs. 4,397 raw —
+matches almost exactly) to confirm the fix itself is trustworthy before
+reporting these numbers. The corrected Sharpe values are NEGATIVE across
+every fold, not just declining-but-positive as the buggy run showed — the
+point-in-time confirmed pairs, properly backtested, would have lost money.
+This makes the case for pair-selection lookahead in the full-history screen
+stronger, not weaker: not only does a genuinely causal process find a
+completely different pair set, that different set is not tradeable at all.
+
+**Decisive verification: screening function confirmed correct.** Ran
+`screen_universe_at_cutoff` on the exact full-history window production
+`analysis.py` screened (2023-07-24 to 2026-06-30). Result: 23 pairs found,
+**16 of the 17 known confirmed 1h pairs reproduced exactly** (AMD/DD,
+LNT/VTR, LNT/WELL, AME/DD, AMAT/DD, CMI/DD, DAL/DD, EG/WRB, EG/ORI, HAL/NOV,
+MET/TMHC, PFG/STLD, MTSI/WCC, TMHC/WAL, VRT/MTZ, UMBF/FHB). Only PRU/AXTA
+missing; 6 new pairs appear (mostly more DD-hub pairs — AA/DD, AMG/DD,
+ATI/DD, BBWI/DD — plus EWBC/HLT, BXMT/DOC, FELE/MAS), consistent with minor
+universe-composition differences (this script's cache-glob universe of 1535
+symbols vs. production's exact constituent list) rather than a bug in the
+screening logic itself.
+
+**Conclusion: the zero-overlap finding is real, not a bug.** Combined with
+the bug-fixed negative-Sharpe backtest result above, the full, verified
+picture is:
+- The screening function is trustworthy (94% exact reproduction of the
+  known confirmed set when given the same full-history window).
+- A genuinely causal, point-in-time re-screening process finds a completely
+  different pair set at every one of 3 independent historical checkpoints
+  (2024-02, 2025-01, 2025-08) than the full-history screen finds.
+- Those point-in-time pairs, properly backtested, LOSE money in every fold
+  (-1.04, -0.79, -0.72 Sharpe) — not just underperform.
+- The full-history screen behind PAPER.md's headline 5.24 OOS Sharpe
+  reproduces cleanly and consistently.
+
+This is strong evidence of pair-selection lookahead in the current
+methodology — not proof the 17-pair set's underlying cointegration
+relationships are fake, but strong evidence that a live, causally-run
+version of this pipeline would not have discovered and traded those same
+pairs at those points in time, and the pairs it WOULD have found were not
+profitable. This directly quantifies, with real numbers, the exact caveat
+`wfa.py`'s own "semi-WFA" framing already flagged in the abstract. Next
+step: discuss with Ross how this should reshape PAPER.md's framing of the
+headline OOS result.
+
+## Session 25 — STORM Infrastructure Gap Analysis, PAPER.md Dual-Finding Writeup, New Risk/Audit Modules, IBKR Circuit-Breaker Investigation (2026-07-01)
+
+### Overview
+
+Four threads, all resolved this session: (1) discussed with Ross how the
+pit_wfa point-in-time finding above should reshape PAPER.md's framing of the
+headline OOS Sharpe — resolved as "dual-finding," matching the Strictness
+Paradox pattern already used in the abstract; (2) ran a 6-persona STORM
+research pass comparing CAMARF against institutional-grade quant
+infrastructure, which initially mis-rated several already-built components
+as missing (corrected below) but surfaced a few genuine remaining gaps;
+(3) built and verified those remaining gaps (CI test runner, corporate-
+actions spot-check, historical CVaR, a historical-crisis stress test); (4)
+investigated the IBKR circuit-breaker cascade first reported at the end of
+the previous session, fixed a real (if not fully explanatory) logging gap,
+and reached the limit of what's diagnosable from the application side.
+
+### PAPER.md — Dual-Finding Resolution for the pit_wfa Result
+
+**Decision (discussed with Ross, "Option 1" of three framings offered):**
+keep the 5.24 OOS Sharpe as the honestly-reported result for the fixed,
+already-known 23-pair confirmed set, but give the pit_wfa point-in-time
+finding equal prominence as a second, co-headline finding — not a demoted
+footnote, not a reason to suppress or de-emphasize the 5.24 number. This
+mirrors the paper's existing pattern for the Strictness Paradox (report the
+positive finding and its own documented limit side by side).
+
+**Edits made, in order of the paper's structure:**
+
+- **Abstract**: the WFA sentence was rewritten from a single, now-inaccurate
+  claim ("Walk-forward Sharpe... confirming... not overfitting") into three
+  parts: (a) the semi-WFA's 3.1–4.0 range confirms OU-parameter
+  generalization specifically, not pair-selection robustness; (b) the DSR
+  result (below) confirms the headline isn't inflated by variant search;
+  (c) a direct statement of the pit_wfa finding — zero pair overlap at 3
+  independent checkpoints, Sharpe −1.04 to −0.72 on the pairs a causal
+  process actually finds. The HRP claim was also corrected from an implied
+  win to the honest loss vs. risk-parity (see below).
+- **§6.7 (new): Deflated Sharpe Ratio.** Not new work — this and the next
+  few items below were already built and run for real in the 6/30 evening
+  session (`deflated_sharpe.py`, `trial_registry.py`; commit `7a85220f`) but
+  never written into PAPER.md. Backfilled here: IS z=11.02, OOS z=6.48,
+  correcting for 14 backtest-variant trials. Framed explicitly as answering
+  a *narrower* question than pit_wfa's finding — DSR corrects for searching
+  strategy variants given a fixed pair set; it says nothing about whether
+  the pair set itself would be discoverable by a causal process.
+- **§6.8 (new): Historical CVaR.** New work this session (`cvar.py`, see
+  below) — not VaR, deliberately: the STORM Skeptic-lens research (below)
+  documents VaR's normal-distribution assumption as the specific mechanism
+  that failed institutions in 2008, and CAMARF's own P&L is already known
+  non-normal (skew 2.4–2.9, kurtosis 14.2–14.3 per §6.7). CVaR_95/99 for IS
+  and OOS baseline reported ($781/$1,153 IS, $770/$1,199 OOS).
+- **§7.2**: added HRP (`compute_hrp_weights()`, already built 6/30) as a
+  table row and paragraph — OOS Sharpe 5.3752, beats plain baseline (5.2443)
+  but loses to risk-parity (5.8689), reported as an honest negative result
+  consistent with DeMiguel/Garlappi/Uppal's (2009) 1/N caution surfaced by
+  the STORM gap analysis below. Added Absorption Ratio (`absorption_ratio.py`,
+  already built 6/30; mean AR=0.427, k=8/39 assets) as a companion metric to
+  the existing DCC-GARCH peak-correlation flag.
+- **§7.3.1 (new): Point-in-Time Portfolio-Wide Walk-Forward.** The pit_wfa
+  finding above, written up in full — methodology, the synthetic-test bug
+  and its fix, the calendar-padding bug and its fix, the negative-Sharpe
+  table, the 16/17 decisive-verification check, and the interpretation
+  paragraph distinguishing this from both §7.1's IS/OOS stability claim
+  (unaffected — that's about the fixed set's own OOS behavior, not its
+  discoverability) and §6.7's DSR correction (a different, narrower form of
+  lookahead).
+- **§7.11 (new): Filter-Ablation Funnel and Era-Decay Replication.** Both
+  already built and run 6/30 (`FilterFunnel` in analysis.py; `research/
+  era_decay_replication.py`) but not yet in PAPER.md. Funnel table: Pearson
+  pre-filter and EG+BH-FDR do essentially all the work (1,162,050 → 70,251
+  → 314 pairs); coint_frac threshold is the final gate (314 → 17).
+  Counterfactual via a new `--pairs-override` backtest.py flag: the 297
+  pairs the coint_frac filter excludes are themselves profitable if traded
+  (IS Sharpe 4.35, OOS 3.67) but below the confirmed set's 5.29/5.24 — the
+  filter is net-positive, not just noise removal. Era-decay: no decay found
+  across 3 sequential eras (Sharpe 5.05→5.18→5.21, half-life 38.6→39.7→31.0
+  bars), a genuine null result on Do & Faff's (2010) mechanism, honestly
+  reported as inconclusive given CAMARF's shorter available window rather
+  than as a refutation.
+- **§7.12 (new): Historical Crisis Stress Test.** Genuinely new work this
+  session — see full writeup below.
+- **§8**: new bias-audit entry for pair-selection lookahead, matching the
+  depth already given to the ml.py rolling-window-overlap entry — and,
+  unlike every other entry in this audit, actually wired into
+  `analysis.py`'s `BiasAuditLog.record()` call (in `_save_tf_results`, right
+  after the coint_frac filter finalizes `discovered_pairs`, once per TF) so
+  it's captured automatically in every future run's `bias_audit.json`, not
+  just described in prose.
+- **§2 Literature Review**: added Hakkio & Rush (1991) — cointegration test
+  power tracks calendar span, not sampling frequency, a genuine open tension
+  with Gregory-Hansen's own power/size tradeoff that this paper does not
+  claim to resolve; Do & Faff (2010) — the actual era-decay paper (distinct
+  from Do, Faff & Hamza 2006's OU-process paper already cited), tied
+  forward to §7.11's replication; Bailey & López de Prado (2014) — the
+  specific DSR paper, distinct from the 2018 book's broader CPCV/PBO
+  framework already cited; Harvey, Liu & Zhu (2016) — the "factor zoo"
+  t>3.0 critique, tied to both the existing BH-FDR correction and the new
+  DSR correction; and the LTCM/Aug 2007/March 2020 crisis-episode citation,
+  tied forward to §7.12. All citation details pulled from the verified
+  `storm-statistical-arbitrage-pairs-trading.md` STORM survey from the prior
+  session (6/30), not re-verified from scratch, since that survey already
+  did direct source lookups for each.
+- **§3**: added a corporate-actions spot-check note (see below).
+
+### STORM Infrastructure Gap Analysis — Dispatched, Then Corrected
+
+Ross asked what a comprehensive quant project has that CAMARF might be
+missing, wanting a STORM-grounded (externally-researched) rating, gap list,
+and implementation plan for every part of the project — a second, distinct
+STORM run from the 6/30 literature survey, this one about infrastructure
+components rather than pairs-trading methodology specifically.
+
+**Method:** 6 parallel `storm-researcher` subagents (Basic fact writer,
+Practitioner, Academic, Skeptic, Economist/Incentives, Historian), 3 rounds
+each, ~45 unique grounded sources. Saved to
+`storm-camarf-infrastructure-gap-analysis.md`.
+
+**Key research findings (condensed):** universal agreement across all 6
+personas that naive backtesting (uncorrected Sharpe, single-path WFA) is
+statistically invalid, with DSR/CPCV as the peer-reviewed correction: but
+the Practitioner and Skeptic push back that real fund engineering time is
+dominated by unglamorous data-pipeline work (~80% per one first-person
+account), and even DSR/CPCV-disciplined shops still get blindsided by
+regime-dependent failures (Aug 2007, 2008) that no amount of additional
+statistical correction catches — a genuine tension, not a contradiction,
+since DSR/CPCV and regime-risk are different problems. The Economist found
+"institutional-grade" operational infrastructure (compliance, model
+governance, real-time risk desks) exists at funds almost entirely because
+of regulatory/LP-due-diligence pressure a solo research project doesn't
+have — directly supporting treating those as out-of-scope, not deferred.
+The Skeptic surfaced DeMiguel/Garlappi/Uppal (2009): across 14 optimized
+portfolio models, none consistently beat naive 1/N out-of-sample — a direct
+caution against assuming HRP-style sophistication is a free upgrade,
+applied above in §7.2's writeup.
+
+**A real process failure, caught and corrected, not swept past:** the
+initial gap-analysis rating pass marked DSR, HRP, sqrt-impact, the
+filter-ablation funnel, era-decay replication, and reproduce.py's
+provenance flag as "Missing," without first checking the repo. All of these
+were already built, verified, and run for real in the 6/30 evening session
+(commit `7a85220f`, titled "STORM literature survey + GitHub cleanup +
+6-phase research build" — a different STORM run's output than this
+session's, done before this session's compacted conversation segment
+began). Caught by `git log --stat` and directly inspecting the named
+files/logs before writing any new code, per this project's own "always
+verify file changes actually landed" discipline — applied here to verifying
+absence, not just presence. The gap-analysis document was corrected inline
+(original wrong reasoning kept visible, not deleted, with a correction note
+at the point of each wrong rating) rather than silently rewritten.
+
+**What was genuinely still missing, after the correction:** none of the
+already-built results (DSR, HRP, filter-ablation, era-decay) were written
+into PAPER.md yet (confirmed via a "Session 23 — Cross-References for
+PAPER.md (not yet written into PAPER.md itself)" backlog note already in
+this file) — closed above. Plus four items that had never been built at
+all: a CI test runner, a corporate-actions spot-check, CVaR reporting, and
+a historical-crisis stress test. All four built and verified this session,
+below.
+
+### New Module: `run_verify_suite.py`
+
+Runs every `debug/_verify_*.py` script in one command instead of remembering
+to run each individually — CONTRIBUTING.md already documented these scripts
+as the project's test suite but nothing executed the whole suite at once.
+Discovers scripts via glob, runs each via `subprocess.run` with the
+project's existing sys.exit(1)-on-failure convention (confirmed identical
+across all 18 scripts existing at the time), reports a pass/fail summary,
+exits non-zero if any failed. `--fast` skips slow scripts (initially
+mis-tagged `_verify_pit_wfa.py` as slow instead of the actual slow one,
+`_verify_lead_lag_permutation_check.py` at 234s — caught by actually running
+it and checking the timings, fixed same session).
+
+**Real result: 18/18 passed** on first full run; **20/20** after the two
+new modules below added their own verify scripts.
+
+### New Module: `research/corporate_actions_audit.py`
+
+Spot-checks that `data.py`'s `auto_adjust=True` (set at 3 call sites) is
+actually landing correctly in cached data, not just requested in code —
+against 4 real, publicly-documented stock splits within the cached 1D
+window: NVDA (10:1, 2024-06-10), WMT (3:1, 2024-02-26), SMCI (10:1,
+2024-10-01), CMG (50:1, 2024-06-25). Checks for a >25% single-bar return
+near the split date (the signature of an unadjusted split) vs. a smooth,
+already-adjusted price level.
+
+**Real result: 4/4 correctly adjusted** — max |return| near each split date
+under 6% in every case, prices already at post-split scale (e.g. NVDA
+~$120-129, not ~$1200-1290). Confirms the upstream adjustment mechanism
+works; explicitly scoped as a spot-check against known ground truth, not a
+full reconciliation module.
+
+### New Module: `cvar.py` + `debug/_verify_cvar.py`
+
+Historical (non-parametric) CVaR/Expected Shortfall on portfolio daily P&L,
+reusing the same exit-date groupby convention as `deflated_sharpe.py`'s
+`_daily_pnl_stats()` and `stats.py`'s permutation test. Deliberately
+historical, not parametric VaR — the STORM Skeptic-lens research (above)
+documents VaR's normal-distribution assumption as the specific failure mode
+in 2008, and this project's own P&L is already known non-normal.
+
+**Verification (3 synthetic cases) before trusting on real data:** (1) a
+200,000-sample standard normal draw's empirical CVaR_95 matched the
+analytical closed-form (2.0659 vs. 2.0627, 0.16% relative error); (2) a
+known integer sequence's VaR/CVaR matched hand-computed values exactly; (3)
+an all-profitable synthetic day-set produced negative VaR/CVaR (no tail
+loss), not a crash or a zero-clip. All passed.
+
+**Real result (baseline configuration):** VaR_95=$489/CVaR_95=$781 IS,
+VaR_95=$540/CVaR_95=$770 OOS; VaR_99=$897/CVaR_99=$1,153 IS,
+VaR_99=$809/CVaR_99=$1,199 OOS. IS/OOS tail magnitudes consistent at 95%;
+99% not reliably estimable from only 70 OOS days (single-day tail).
+
+### New Module: `research/stress_test_replication.py` + `debug/_verify_stress_test_replication.py`
+
+**Real data constraint confronted up front, not glossed over:** the 17 @1h
+confirmed pairs only have cached intraday history back to 2023-07-24
+(yfinance's 730-day 1h cap) — Aug 2007/2008 GFC/2020 COVID cannot be
+replayed at the intraday resolution the actual strategy trades at. Checked
+directly (`DataStore.load` on a sample of confirmed-pair symbols at 1D)
+before designing anything: most symbols (AMD, DD, LNT, ORI, MTZ, EG, VTR,
+WAL) have daily history reaching back to the 1970s-2000s; only VRT (2018)
+and TMHC (2013) are too recent for the 2007 window specifically.
+
+**What was actually built, scoped to what the data supports:** does each
+confirmed pair's cointegration relationship — the same EG test and OLS
+hedge ratio (`_eg_worker`, reused directly from analysis.py, not
+reimplemented) the whole strategy rests on — hold up at **daily**
+resolution through 3 historical crisis windows, with hedge ratio and spread
+distribution fit strictly on a 2-year pre-crisis baseline (no lookahead
+into the crisis itself)?
+
+**A real confound was caught and checked before trusting the first
+result.** The initial run showed 0/13 pairs cointegrated through Aug 2007,
+0/13 through the GFC, 1/21 through COVID — ambiguous on its own, since it
+could mean genuine crisis fragility or simply that a single-shot daily EG
+test on any old window rarely finds cointegration for pairs discovered on
+2023-2026 hourly data, crisis or not. Fixed by adding 3 calm-period
+controls (matched window length/season, no documented crisis) and
+re-running before drawing any conclusion.
+
+**Result, with the control:** cointegration-holds rate is low in both
+conditions (crisis 2%, calm 9%) — not a discriminating metric here, reported
+as such. But extreme spread dislocation (|z|>3.5, the same threshold
+`backtest.py`'s own stop-loss uses) occurred in **62% of crisis-window
+tests (29/47) vs. 20% of calm-control tests (11/55)** — a 3× difference,
+supporting a genuine (if still partially confounded by everything else that
+differs between specific historical windows) crisis-specific effect rather
+than a pure test-design artifact. GFC and COVID show the sharpest effect
+(12/13 and 15/21 extreme); Aug 2007's brief ~2-week window shows less
+(2/13), plausibly because its short span gives a daily-resolution test
+little room to register a dislocation regardless of severity.
+
+**Synthetic verification (3 cases) before trusting the real run:** a
+same-process baseline+crisis pair (genuinely stationary spread throughout)
+showed no dislocation and cointegration held; an injected large sustained
+shock during the "crisis" window produced clear extreme dislocation
+(max|z|=98.4); a too-short baseline correctly returned
+`INSUFFICIENT_HISTORY` rather than proceeding on too little data. One test
+construction bug fixed en route: initial baseline length (520 bdays, an
+attempted "~2 years") fell just short of the 2-calendar-year requirement
+due to business-day/calendar-day rounding, tripped the same
+insufficient-history guard the test was checking; fixed by padding to 560.
+
+**Interpretation, stated at the scope this test supports (also the exact
+wording used in PAPER.md §7.12):** this does not show the strategy would
+have lost money in 2007/2008/2020 — intraday data to test that claim
+doesn't exist. It shows the statistical relationships underlying the
+confirmed pairs experience materially more extreme daily-resolution
+dislocation during known historical crisis windows than during matched calm
+periods, and that a simple EG re-test rarely confirms formal cointegration
+through either.
+
+### IBKR Circuit-Breaker Investigation
+
+Ross reported IB Gateway was up and asked to try `data_ibkr.py` again (prior
+session ended in 3 identical client-ID-conflict failures). Connected
+successfully this time — that specific issue is resolved. But the resulting
+33-symbol, all-TF fetch degraded badly: `Circuit OPEN (#1) after 10
+failures` at ~9 minutes in, after which most remaining symbols got only
+1m/5m saved (via yfinance fallback) with real IBKR effectively disabled for
+the rest of the run. **Final tally: 63 TF-fetches saved across 28 symbols,
+165 failed.**
+
+**First hypothesis, checked and found wrong (not just asserted):** every
+"IBKR request failed" log line showed an *empty* exception message
+(`f"...attempt {attempt+1}: {e}..."` with `e` rendering as blank). Suspected
+`_on_ibkr_error` (data.py:2337) was silently dropping a real numbered IB
+error — it only logged codes 1100/1102/2110, discarding everything else
+with no log line at all. Fixed to log any other code (excluding the routine
+2104/2106/2107/2108/2158 data-farm-status notices already logged elsewhere).
+**Re-ran a small, targeted fetch (CVX/OXY, 5m/1h) to check: the new logging
+fired zero times, even on a real failure (OXY 1h timed out).** This rules
+out a suppressed IB-side error code — IB Gateway isn't sending an explicit
+rejection at all for these; it's a genuine silent client-side timeout. The
+logging fix is kept (real value for any future numbered error) but doesn't
+explain this specific failure — reported honestly as a ruled-out hypothesis,
+not silently dropped when it turned out wrong.
+
+**Second hypothesis, partially checked:** pacing debt accumulating over a
+long sweep eventually breaks everything. Partially supported by the
+original run's shape (worked fine for ~9 minutes before the circuit
+tripped) but **contradicted by a fresh-connection test**: `KVUE 15m` failed
+as the very first request of a brand-new session, over an hour after the
+previous session ended — ruling out pure accumulated pacing debt as the
+sole explanation.
+
+**Full pattern established via 3 real test batches today:** IBKR does work
+— CVX succeeded on both tested bar sizes, OXY and KVUE each succeeded on
+one of their tested sizes — but fails intermittently (roughly 50-60%
+per-request success in these small batches) with no IB-side error ever
+surfacing. Critically, failures cluster: a sustained-batch test (KVUE, KMB,
+AMD, VTR, AME, AMAT × 5m/15m/1h) showed the existing 3-strikes-per-timeframe
+protection (already in `data.py`, working as designed) tripping for 5m,
+then 15m, then 1h in quick succession after just 5 consecutive real
+failures, which then disabled IBKR for the entire rest of that run (AMD,
+VTR, AME, AMAT never got a real attempt) — final tally 6/18 saved, 12
+failed.
+
+**Conclusion, reported at the actual limit of what's diagnosable from the
+application side:** the retry/circuit-breaker/3-strikes logic in `data.py`
+is functioning exactly as designed (gracefully degrading to yfinance, never
+crashing) — the underlying intermittent IB-side timeout has no visible
+cause from the API layer; `ib_insync` receives no explicit rejection, it
+just never gets a response within the timeout window. The one remaining
+diagnostic step — IB Gateway's own local API message log at these
+timestamps (Configuration → API → Settings → "Create API message log
+file") — requires Ross's own access to Gateway, not something diagnosable
+from application logs alone. Per this project's "stop after ~3 attempts,
+ask for raw evidence instead of guessing a 4th time" discipline, this was
+reported to Ross as the honest current state rather than a 4th or 5th
+guessed root cause. Separately noted: the 3-strikes threshold may be more
+aggressive than warranted if these are transient/intermittent rather than
+systemic failures (a short unlucky streak knocks out a whole bar size for
+the rest of a run) — flagged as a tuning question for Ross to decide on,
+not changed unilaterally, since it's a deliberate existing defensive
+control.
+
+### Pending / Next Steps
+
+- IBKR: awaiting Ross's decision — check Gateway's own API log for root
+  cause, loosen the 3-strikes threshold, or deprioritize IBKR deep-history
+  entirely and rely on yfinance-only (the pipeline already does this
+  successfully for everything except this supplemental deep-history
+  fetch).
+- STORM gap analysis's remaining lower-priority items (per the corrected
+  `storm-camarf-infrastructure-gap-analysis.md` §3): corporate-actions
+  reconciliation is now spot-checked (closed above) but not a full module;
+  §2's lit-review additions above are the only "writing task, not new
+  research" item, now closed.
+- Not yet re-run: `analysis.py` has a new `BiasAuditLog.record()` call
+  (pair-selection lookahead) that will only appear in `bias_audit.json`
+  after the next full pipeline run — currently only verified by code
+  inspection and the existing `debug/_verify_*.py` suite (which doesn't
+  cover this specific new call directly), not by a live run.

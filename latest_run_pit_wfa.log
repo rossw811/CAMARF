@@ -1,0 +1,25 @@
+11:10:08 INFO  === pit_wfa.py: Point-In-Time Portfolio-Wide Walk-Forward Analysis (1h) ===
+11:10:08 INFO  Unlike wfa.py's semi-WFA, pair SELECTION itself is re-derived per fold using only train-window data — see module docstring for exact scope.
+11:10:48 INFO  Universe: 1535 symbols with cached 1h data
+11:10:48 INFO  Analysis window: [2023-07-24, 2026-06-30]
+11:10:48 INFO  [expanding/fold1_exp] screening train window [2023-07-24, 2024-02-23] (point-in-time, no test-period data used)...
+11:18:09 INFO  [expanding/fold1_exp] 19 pairs point-in-time confirmed (7.3 min)
+11:18:30 INFO  [expanding/fold1_exp] backtest: 18 pairs traded, 268 trades, portfolio Sharpe=5.2604
+11:18:30 INFO  [expanding/fold2_exp] screening train window [2023-07-24, 2025-01-10] (point-in-time, no test-period data used)...
+11:25:40 INFO  [expanding/fold2_exp] 6 pairs point-in-time confirmed (7.2 min)
+11:25:51 INFO  [expanding/fold2_exp] backtest: 6 pairs traded, 95 trades, portfolio Sharpe=2.8881
+11:25:51 INFO  [rolling/fold1_roll] screening train window [2023-07-24, 2024-02-23] (point-in-time, no test-period data used)...
+11:33:12 INFO  [rolling/fold1_roll] 19 pairs point-in-time confirmed (7.4 min)
+11:33:34 INFO  [rolling/fold1_roll] backtest: 18 pairs traded, 268 trades, portfolio Sharpe=5.2604
+11:33:34 INFO  [rolling/fold2_roll] screening train window [2025-01-10, 2025-08-12] (point-in-time, no test-period data used)...
+12:40:40 INFO  [rolling/fold2_roll] 3 pairs point-in-time confirmed (67.1 min)
+12:40:44 INFO  [rolling/fold2_roll] backtest: 3 pairs traded, 36 trades, portfolio Sharpe=2.8097
+12:40:44 INFO  
+ n_pairs  n_trades_total  total_pnl_portfolio  sharpe_portfolio  max_drawdown_portfolio max_concentration_pair  max_concentration_pct wfa_variant       fold  n_pit_confirmed_pairs  n_pairs_with_trades
+      18             268             92106.60            5.2604                 1997.13             AMG/VOO@1h                 0.1359   expanding  fold1_exp                     19                   18
+       6              95             24067.42            2.8881                 2993.06              CRH/PH@1h                 0.3288   expanding  fold2_exp                      6                    6
+      18             268             92106.60            5.2604                 1997.13             AMG/VOO@1h                 0.1359     rolling fold1_roll                     19                   18
+       3              36             12709.35            2.8097                  844.66            OPCH/RMD@1h                 0.6193     rolling fold2_roll                      3                    3
+12:40:44 INFO  Saved -> output/backtest/pit_wfa_{fold_comparison,portfolio,pair_sets}.parquet
+12:40:44 INFO  ============================================================
+12:40:44 INFO  pit_wfa.py complete (90.6 min)

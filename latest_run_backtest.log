@@ -1,10 +1,10 @@
-backtest.py run: layer1_holdout_storm_sqrtimpact
+backtest.py run: layer1_holdout_stormall
 layer2_enabled: False
 n_pairs_run: 15
-n_trades_total: 296
-total_net_pnl: 73850.95
-mean_sharpe: 29.7267
-mean_win_rate: 0.6419
-portfolio_sharpe: 5.2591
-max_concentration_pct: 0.199
-outputs: output/backtest/trades_layer1_holdout_storm_sqrtimpact.parquet, summary_layer1_holdout_storm_sqrtimpact.parquet, portfolio_layer1_holdout_storm_sqrtimpact.parquet
+n_trades_total: 292
+total_net_pnl: 5345.83
+mean_sharpe: 24.1345
+mean_win_rate: 0.6132
+portfolio_sharpe: 4.8871
+max_concentration_pct: 0.3569
+outputs: output/backtest/trades_layer1_holdout_stormall.parquet, summary_layer1_holdout_stormall.parquet, portfolio_layer1_holdout_stormall.parquet

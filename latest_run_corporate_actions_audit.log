@@ -1,0 +1,8 @@
+16:12:50 INFO  === corporate_actions_audit.py: spot-check yfinance auto_adjust on real known splits ===
+16:12:50 INFO    NVDA (NVIDIA 10-for-1, 10:1 on 2024-06-10): ADJUSTED_CORRECTLY — max |return| near split = 0.0355, price $120.68 -> $129.40 (already at post-split scale)
+16:12:50 INFO    WMT (Walmart 3-for-1, 3:1 on 2024-02-26): ADJUSTED_CORRECTLY — max |return| near split = 0.0185, price $57.05 -> $57.14 (already at post-split scale)
+16:12:50 INFO    SMCI (Super Micro Computer 10-for-1, 10:1 on 2024-10-01): ADJUSTED_CORRECTLY — max |return| near split = 0.0358, price $41.64 -> $41.23 (already at post-split scale)
+16:12:50 INFO    CMG (Chipotle 50-for-1, 50:1 on 2024-06-25): ADJUSTED_CORRECTLY — max |return| near split = 0.0524, price $63.87 -> $62.65 (already at post-split scale)
+16:12:50 INFO  --- Result: 4/4 known splits show correctly-adjusted prices (0 symbols not in cache, skipped) ---
+16:12:50 INFO  No unadjusted-split artifacts found in any checked symbol. data.py's auto_adjust=True is confirmed working correctly on real data, not just requested in code.
+16:12:50 INFO  Saved -> C:\Users\RossW\Projects\CAMARF\output\research\corporate_actions_audit.parquet

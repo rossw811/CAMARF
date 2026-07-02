@@ -1,0 +1,13 @@
+08:22:16 INFO  === decoupling_analysis.py: descriptive study of post-decoupling behavior ===
+08:22:16 INFO  SCOPE: pure description, not a trading rule. Small-n by nature — decoupling events are rare and CAMARF's per-pair history is short.
+08:22:16 INFO  [1hr] 142/314 candidates have a detected Zivot-Andrews break
+08:22:17 INFO  
+--- Descriptive result across 142 detected decoupling events ---
+08:22:17 INFO    CONTINUED_DIVERGENCE           71  (50.0%)
+08:22:17 INFO    INCONCLUSIVE                   49  (34.5%)
+08:22:17 INFO    NEW_EQUILIBRIUM_SHIFT          22  (15.5%)
+08:22:17 INFO  
+Honest scope note: n=142 events, drawn from CAMARF's available history per TF (deepest: 10Y IBKR-supplemented 1h pairs; most TFs much shorter). This is a descriptive result to inform signal design, not a statistically powered claim.
+08:22:18 INFO  Saved -> C:\Users\RossW\Projects\CAMARF\output\research\decoupling_analysis.parquet
+08:22:18 INFO  ============================================================
+08:22:18 INFO  decoupling_analysis.py complete (0.0 min)

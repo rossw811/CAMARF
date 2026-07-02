@@ -5212,6 +5212,37 @@ class AnalysisPipeline:
         if funnel is not None:
             funnel.record("coint_frac_threshold_pairs", _n_before, len(discovered_pairs))
             funnel.save()
+
+        # Pair-selection lookahead (verified 2026-07-01 via pit_wfa.py, a
+        # standalone diagnostic — not a remedy applied here, so recorded
+        # once per TF as a residual, unmitigated bias rather than a
+        # mechanism/remedy pair like the entries above). The confirmed set
+        # above is selected using a full-history screen; a genuinely causal,
+        # point-in-time re-screen at 3 independent historical checkpoints
+        # found a completely different pair set at every checkpoint (zero
+        # overlap with the known @1h confirmed set) and those pairs, properly
+        # backtested, lost money in every fold (Sharpe -1.04 to -0.72). See
+        # PAPER.md §7.3.1 for the full methodology and result.
+        BiasAuditLog.record(
+            bias_type="lookahead",
+            classification="statistical",
+            mechanism="Confirmed pair set is selected via a full-history "
+            "cointegration screen that includes the period later reported "
+            "as the OOS holdout, so pair discovery itself borrows "
+            "information from the future relative to any real deployment "
+            "date",
+            remedy="Quantified, not corrected: pit_wfa.py re-runs the "
+            "full screening pipeline using only training-window data at "
+            "independent historical cutoffs and backtests the resulting "
+            "point-in-time pair sets forward",
+            scope=f"tf={tf_label}",
+            residual_risk="High and measured, not assumed: point-in-time "
+            "re-screens found zero pair overlap with the full-history "
+            "confirmed set and negative OOS Sharpe in every tested fold "
+            "(-1.04 to -0.72) — the headline OOS Sharpe is conditional on "
+            "the pair set already being known, not evidence a causally-run "
+            "pipeline would have found and traded it",
+        )
         if len(discovered_pairs) < _n_before:
             log.info(
                 f"  [{tf_label}] coint_frac filter: "
