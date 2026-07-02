@@ -1,0 +1,8 @@
+16:14:25 INFO  === cvar.py: Historical CVaR / Expected Shortfall (portfolio daily P&L) ===
+16:14:25 INFO    [layer1] in-sample baseline: VaR_95% = $489.27, CVaR_95% (mean of worst 15/295 days) = $781.18
+16:14:25 INFO    [layer1] in-sample baseline: VaR_99% = $897.15, CVaR_99% (mean of worst 3/295 days) = $1153.11
+16:14:25 INFO    [layer1_holdout] out-of-sample holdout baseline: VaR_95% = $539.70, CVaR_95% (mean of worst 4/70 days) = $769.67
+16:14:25 INFO    [layer1_holdout] out-of-sample holdout baseline: VaR_99% = $809.16, CVaR_99% (mean of worst 1/70 days) = $1198.80
+16:14:25 INFO  Saved => C:\Users\RossW\Projects\CAMARF\output\stats\cvar.json
+16:14:25 INFO  ============================================================
+16:14:25 INFO  cvar.py complete (0.0 min)

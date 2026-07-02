@@ -1,0 +1,20 @@
+14:01:21 INFO  === decoupling_backtest.py: backtest the re-qualified pairs on their post-break window ===
+14:01:21 INFO  5 re-qualified pairs to build and backtest
+14:01:22 INFO    ALB/DD@1h: 66 trades, Sharpe=-3.813, PnL=-1257.64, WR=12%, HL=181.0, coint_frac=nan
+14:01:22 INFO    CDW/DD@1h: 0 trades, Sharpe=nan, PnL=nan, WR=nan%, HL=161.8, coint_frac=nan
+14:01:23 INFO    DD/FDX@1h: 92 trades, Sharpe=-9.816, PnL=-1829.92, WR=8%, HL=129.3, coint_frac=nan
+14:01:24 INFO    DD/ROST@1h: 40 trades, Sharpe=7.090, PnL=1099.10, WR=22%, HL=326.8, coint_frac=nan
+14:01:24 INFO    DD/ENS@1h: 29 trades, Sharpe=-1.539, PnL=-88.26, WR=21%, HL=158.6, coint_frac=nan
+14:01:24 INFO  
+--- Result: 4/5 re-qualified pairs generated trades; 1/5 had positive Sharpe ---
+14:01:24 INFO  
+symbol_a symbol_b tf_label break_date  n_post_settling_bars  half_life_rolling  coint_fraction_rolling  n_trades  sharpe  total_pnl  win_rate
+     ALB       DD       1h 2024-03-05                  3410         181.003870                     NaN        66 -3.8133   -1257.64    0.1212
+     CDW       DD       1h 2024-11-04                  2399         161.769916                     NaN         0     NaN        NaN       NaN
+      DD      FDX       1h 2024-01-12                  3620         129.336237                     NaN        92 -9.8161   -1829.92    0.0761
+      DD     ROST       1h 2024-01-12                  3620         326.834800                     NaN        40  7.0895    1099.10    0.2250
+      DD      ENS       1h 2024-01-16                  3614         158.627929                     NaN        29 -1.5387     -88.26    0.2069
+14:01:24 INFO  Saved -> C:\Users\RossW\Projects\CAMARF\output\research\decoupling_backtest.parquet
+14:01:24 INFO  This is IS-only (no holdout split — too little post-break history to split further for most pairs). A positive result here is evidence for the live-pipeline wiring decision, not itself an OOS-validated claim.
+14:01:24 INFO  ============================================================
+14:01:24 INFO  decoupling_backtest.py complete (0.1 min)

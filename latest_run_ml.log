@@ -1,64 +1,61 @@
 === CAMARF ml.py ===
-date:        2026-06-28 22:30
+date:        2026-07-01 10:26
 runtime_min: 0.0
 
 === pairs ===
+  AMD/DD@1h                entry_events=9     labeled=2     censored=0     no_half_life=0     future_not_clean=7
+  LNT/VTR@1h               entry_events=6     labeled=4     censored=0     no_half_life=0     future_not_clean=2 perm_robust=True
   LNT/WELL@1h              entry_events=4     labeled=0     censored=0     no_half_life=0     future_not_clean=4
-  DD/GPN@1h                entry_events=8     labeled=3     censored=0     no_half_life=0     future_not_clean=5 perm_robust=False
-  DD/JCI@1h                entry_events=11    labeled=0     censored=0     no_half_life=0     future_not_clean=11 perm_robust=False
+  AME/DD@1h                entry_events=9     labeled=0     censored=0     no_half_life=0     future_not_clean=9 perm_robust=True
+  AMAT/DD@1h               entry_events=5     labeled=1     censored=0     no_half_life=0     future_not_clean=4 perm_robust=True
+  CMI/DD@1h                entry_events=3     labeled=0     censored=0     no_half_life=0     future_not_clean=3
+  DAL/DD@1h                entry_events=8     labeled=0     censored=0     no_half_life=0     future_not_clean=8 perm_robust=True
+  EG/WRB@1h                entry_events=4     labeled=0     censored=0     no_half_life=0     future_not_clean=4 perm_robust=False
   EG/ORI@1h                entry_events=6     labeled=2     censored=0     no_half_life=0     future_not_clean=4 perm_robust=True
-  VRT/MTZ@1h               entry_events=7     labeled=1     censored=0     no_half_life=0     future_not_clean=6 perm_robust=True
-  C/MS@1m                  entry_events=17    labeled=8     censored=0     no_half_life=0     future_not_clean=9
-  SNDK/TXN@1m              entry_events=24    labeled=20    censored=1     no_half_life=0     future_not_clean=3
+  HAL/NOV@1h               entry_events=5     labeled=1     censored=0     no_half_life=0     future_not_clean=4 perm_robust=True
+  MET/TMHC@1h              entry_events=5     labeled=0     censored=0     no_half_life=0     future_not_clean=5 perm_robust=True
+  PFG/STLD@1h              entry_events=4     labeled=0     censored=0     no_half_life=0     future_not_clean=4 perm_robust=True
+  PRU/AXTA@1h              entry_events=5     labeled=0     censored=0     no_half_life=0     future_not_clean=5 perm_robust=True
+  VRT/MTZ@1h               entry_events=6     labeled=0     censored=0     no_half_life=0     future_not_clean=6 perm_robust=True
+  MTSI/WCC@1h              entry_events=4     labeled=0     censored=0     no_half_life=0     future_not_clean=4 perm_robust=True
+  TMHC/WAL@1h              entry_events=4     labeled=0     censored=0     no_half_life=0     future_not_clean=4 perm_robust=True
+  UMBF/FHB@1h              entry_events=1     labeled=0     censored=0     no_half_life=0     future_not_clean=1 perm_robust=True
+  7267.T/8058.T@1M         entry_events=3     labeled=0     censored=3     no_half_life=0     future_not_clean=0
   EQR/INVH@30m             entry_events=2     labeled=0     censored=0     no_half_life=0     future_not_clean=2 perm_robust=True
-  ADSK/INTU@3m             entry_events=2     labeled=1     censored=0     no_half_life=0     future_not_clean=1
-  D/NEE@3m                 entry_events=27    labeled=0     censored=0     no_half_life=27    future_not_clean=0 perm_robust=True
-  MTDR/MGY@3m              entry_events=6     labeled=5     censored=0     no_half_life=0     future_not_clean=1
+  CVX/OXY@3m               entry_events=11    labeled=6     censored=0     no_half_life=0     future_not_clean=5
+  KVUE/KMB@3m              entry_events=16    labeled=8     censored=1     no_half_life=0     future_not_clean=7 perm_robust=True
+  PNC/ZION@4h              entry_events=1     labeled=0     censored=0     no_half_life=0     future_not_clean=1
   SPY/VOO@4h               entry_events=1     labeled=0     censored=0     no_half_life=0     future_not_clean=1 perm_robust=True
 
 === label_distribution (label_scheme=binary, this is what training/the MIN_CLASS_SAMPLES gate sees) ===
-  not_converged: 35
-  converged: 5
+  not_converged: 20
+  converged: 4
 
 === granular_label_distribution (always the full 4-class outcome, regardless of label_scheme) ===
-  diverge_further: 23
-  no_move: 12
-  strong_converge: 3
-  weak_converge: 2
+  diverge_further: 17
+  no_move: 3
+  weak_converge: 3
+  strong_converge: 1
 
 === notes ===
-  Insufficient data to train: 40 total examples across 2 classes (label_scheme=binary, min class count=5, need >=30/class per Config.ML.MIN_CLASS_SAMPLES). This is the expected, honest result tonight — most confirmed pairs are on intraday TFs whose history just started accumulating (see DEVELOPMENT.md's data.py append-switch, 2026-06-21). Re-run as more history accumulates.
+  Insufficient data to train: 24 total examples across 2 classes (label_scheme=binary, min class count=4, need >=30/class per Config.ML.MIN_CLASS_SAMPLES). This is the expected, honest result tonight — most confirmed pairs are on intraday TFs whose history just started accumulating (see DEVELOPMENT.md's data.py append-switch, 2026-06-21). Re-run as more history accumulates.
 
 === pairs_skipped ===
   LNT/WELL@1h: zero labeled entry events
-  DD/JCI@1h: zero labeled entry events
-  HRMY/NBHC@1m: thin_info_content: BUG-D49 price degeneracy — excluded from ML training
-  HRMY/PRDO@1m: thin_info_content: BUG-D49 price degeneracy — excluded from ML training
-  HRMY/TILE@1m: thin_info_content: BUG-D49 price degeneracy — excluded from ML training
-  HRMY/WS@1m: thin_info_content: BUG-D49 price degeneracy — excluded from ML training
-  NBHC/PRDO@1m: thin_info_content: BUG-D49 price degeneracy — excluded from ML training
-  NBHC/TILE@1m: thin_info_content: BUG-D49 price degeneracy — excluded from ML training
-  NBHC/WS@1m: thin_info_content: BUG-D49 price degeneracy — excluded from ML training
-  PRDO/TILE@1m: thin_info_content: BUG-D49 price degeneracy — excluded from ML training
-  PRDO/WS@1m: thin_info_content: BUG-D49 price degeneracy — excluded from ML training
-  TILE/WS@1m: thin_info_content: BUG-D49 price degeneracy — excluded from ML training
+  AME/DD@1h: zero labeled entry events
+  CMI/DD@1h: zero labeled entry events
+  DAL/DD@1h: zero labeled entry events
+  EG/WRB@1h: zero labeled entry events
+  MET/TMHC@1h: zero labeled entry events
+  PFG/STLD@1h: zero labeled entry events
+  PRU/AXTA@1h: zero labeled entry events
+  VRT/MTZ@1h: zero labeled entry events
+  MTSI/WCC@1h: zero labeled entry events
+  TMHC/WAL@1h: zero labeled entry events
+  UMBF/FHB@1h: zero labeled entry events
+  7267.T/8058.T@1M: zero labeled entry events
   EQR/INVH@30m: zero labeled entry events
-  D/NEE@3m: zero labeled entry events
-  ACT/AZTA@3m: thin_info_content: BUG-D49 price degeneracy — excluded from ML training
-  ACT/EIG@3m: thin_info_content: BUG-D49 price degeneracy — excluded from ML training
-  ACT/INVX@3m: thin_info_content: BUG-D49 price degeneracy — excluded from ML training
-  ACT/NBHC@3m: thin_info_content: BUG-D49 price degeneracy — excluded from ML training
-  AZTA/EIG@3m: thin_info_content: BUG-D49 price degeneracy — excluded from ML training
-  AZTA/INVX@3m: thin_info_content: BUG-D49 price degeneracy — excluded from ML training
-  AZTA/NBHC@3m: thin_info_content: BUG-D49 price degeneracy — excluded from ML training
-  CPF/WAFD@3m: thin_info_content: BUG-D49 price degeneracy — excluded from ML training
-  CPK/WAFD@3m: thin_info_content: BUG-D49 price degeneracy — excluded from ML training
-  CTKB/PRAA@3m: thin_info_content: BUG-D49 price degeneracy — excluded from ML training
-  CTKB/UHT@3m: thin_info_content: BUG-D49 price degeneracy — excluded from ML training
-  EIG/INVX@3m: thin_info_content: BUG-D49 price degeneracy — excluded from ML training
-  EIG/NBHC@3m: thin_info_content: BUG-D49 price degeneracy — excluded from ML training
-  INVX/NBHC@3m: thin_info_content: BUG-D49 price degeneracy — excluded from ML training
-  PRAA/UHT@3m: thin_info_content: BUG-D49 price degeneracy — excluded from ML training
+  PNC/ZION@4h: zero labeled entry events
   SPY/VOO@4h: zero labeled entry events
 
 === end ===

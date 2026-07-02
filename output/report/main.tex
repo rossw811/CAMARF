@@ -30,7 +30,7 @@
   \large A Scalable Stability Diagnostic for Cross-Asset Statistical Arbitrage Screening
 }
 \author{Ross Winnemore}
-\date{2026-06-30}
+\date{2026-07-01}
 
 \begin{document}
 \maketitle
@@ -96,7 +96,7 @@ sense, miscalibrated for those horizons---the \textbf{Strictness Paradox}.
     Following \citet{lopezdeprado2018}: cointegration z-score is the primary signal;
     XGBoost filters \emph{``will this entry event converge?''}. Conformal predictors
     provide finite-sample coverage guarantees not present in any found pairs-trading
-    ML paper. (Training data insufficient as of 2026-06-30; reported as an
+    ML paper. (Training data insufficient as of 2026-07-01; reported as an
     architectural contribution with deferred empirical support.)
 
   \item \textbf{End-to-end statistical validation stack.} EG+KPSS+PO confirmatory
@@ -164,7 +164,7 @@ Five estimators are computed per pair:
 \textbf{[DEFERRED -- PENDING TRAINING DATA.]}
 The Layer 2 meta-labeler (XGBoost on spread entry features, following
 \citealt{lopezdeprado2018}) is architecturally complete but has insufficient
-training data as of 2026-06-30 ($n=40$ labeled examples, 5 in minority
+training data as of 2026-07-01 ($n=40$ labeled examples, 5 in minority
 class; minimum required: 30 per class). This section will be populated as intraday
 history accumulates. The expected timeline is 2--4 additional weeks of daily
 \texttt{data.py} appends.
@@ -513,7 +513,7 @@ $p = 0.981$).
 
 \begin{itemize}
   \item ML meta-labeling layer is architecturally complete but awaiting sufficient
-    training data ($n = 40$ labeled examples as of 2026-06-30; need 30/class).
+    training data ($n = 40$ labeled examples as of 2026-07-01; need 30/class).
   \item OOS permutation test power is limited (111 trades, 28 active days);
     the OOS result is deferred to future data accumulation.
   \item Universe restricted to U.S.\ equities + supplemental assets; international

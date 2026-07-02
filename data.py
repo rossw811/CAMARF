@@ -2347,6 +2347,22 @@ class IBKRFeed:
         elif errorCode == 2110:
             log.warning("Warning 2110: TWS upstream broken — reconnect futile")
             self._upstream_broken = True
+        elif errorCode not in (2104, 2106, 2107, 2108, 2158):
+            # Any other error code was previously dropped entirely — no log
+            # line anywhere captured it, which is why every retry-loop
+            # exception in reqHistoricalData's request path logged with an
+            # empty message (2026-07-01: str(e) was blank on every "IBKR
+            # request failed" line; the request-side timeout exception
+            # carries no text of its own, and the real IB-side error/reason
+            # was arriving here and being discarded). 2104/2106/2107/2108/
+            # 2158 are the routine "data farm connection OK/inactive"
+            # status notices already logged elsewhere at connect time —
+            # excluded here to avoid duplicate noise, not because they're
+            # unimportant.
+            log.warning(
+                f"IBKR error {errorCode} (reqId={reqId}): {errorString}"
+                + (f" [contract={contract.symbol}]" if contract else "")
+            )
 
     def disconnect(self) -> None:
         if self._connected:

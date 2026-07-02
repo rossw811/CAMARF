@@ -1,6 +1,6 @@
 === CAMARF wfa.py ===
-date: 2026-06-30 11:03
-runtime_min: 0.7
+date: 2026-07-01 10:31
+runtime_min: 1.6
 pairs: 23
 Fold structures: expanding=[0-20%/20-50%, 0-50%/50-80%]  rolling=[0-20%/20-50%, 50-70%/70-100%]
 === end ===

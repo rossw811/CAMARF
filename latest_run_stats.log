@@ -1,6 +1,6 @@
 === CAMARF stats.py ===
-date:        2026-06-30 11:02
-runtime_min: 0.6
+date:        2026-07-01 10:28
+runtime_min: 1.2
 
 Input: 23 confirmed pairs
 Trades: IS=1028 OOS=296 neghedge=304
@@ -16,6 +16,6 @@ Trades: IS=1028 OOS=296 neghedge=304
 [S6 Permutation] backtest_equity_sharpe=5.2935 closed_trade_sharpe=11.6408 p_value=0.9810 significant=False n_perms=1000
 [S7 HL stationarity] stationary=20/23 (ZA p<0.10)
 
-runtime_min: 0.6
+runtime_min: 1.2
 
 === end ===

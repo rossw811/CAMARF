@@ -1,0 +1,21 @@
+08:28:49 INFO  === decay_proxy.py: per-pair decay z-score (per-run diagnostic, not live) ===
+08:28:49 INFO    CVX/OXY              SKIP (insufficient trades: 28 < 40)
+08:28:49 INFO    EG/ORI               recent_sharpe=1.336 hist_mean=0.636 hist_std=0.113 z=6.20
+08:28:49 INFO    EG/WRB               recent_sharpe=0.937 hist_mean=0.717 hist_std=0.076 z=2.90
+08:28:49 INFO    EQR/INVH             SKIP (insufficient trades: 28 < 40)
+08:28:49 INFO    KVUE/KMB             recent_sharpe=-0.073 hist_mean=0.246 hist_std=0.215 z=-1.48
+08:28:49 INFO    LNT/VTR              recent_sharpe=0.761 hist_mean=0.635 hist_std=0.274 z=0.46
+08:28:49 INFO    LNT/WELL             recent_sharpe=1.674 hist_mean=1.003 hist_std=0.483 z=1.39
+08:28:49 INFO    MET/TMHC             recent_sharpe=0.365 hist_mean=0.908 hist_std=0.438 z=-1.24
+08:28:49 INFO    MTSI/WCC             recent_sharpe=0.759 hist_mean=0.657 hist_std=0.381 z=0.27
+08:28:49 INFO    PFG/STLD             recent_sharpe=0.812 hist_mean=0.888 hist_std=0.242 z=-0.32
+08:28:49 INFO    PRU/AXTA             recent_sharpe=0.787 hist_mean=1.305 hist_std=0.541 z=-0.96
+08:28:49 INFO    SPY/VOO              SKIP (insufficient trades: 38 < 40)
+08:28:49 INFO    TMHC/WAL             recent_sharpe=0.633 hist_mean=1.070 hist_std=0.482 z=-0.90
+08:28:49 INFO    UMBF/FHB             recent_sharpe=0.361 hist_mean=0.741 hist_std=0.489 z=-0.78
+08:28:49 INFO    VRT/MTZ              recent_sharpe=0.642 hist_mean=0.934 hist_std=0.318 z=-0.92
+08:28:49 INFO  
+0/12 evaluated pairs flagged (recent Sharpe < 2.0 std devs below their own historical distribution). Review flag, not an exclusion decision — some false flags expected from ordinary noise at these trade counts.
+08:28:49 INFO  Saved -> C:\Users\RossW\Projects\CAMARF\output\stats\decay_proxy.parquet
+08:28:49 INFO  ============================================================
+08:28:49 INFO  decay_proxy.py complete (0.0 min)

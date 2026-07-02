@@ -76,9 +76,22 @@ filter's decision. An event-driven pairs-trading strategy implementing the scree
 an OOS portfolio Sharpe of 5.2443 (296 trades, chronological 20% holdout) across 23
 confirmed pairs (17 @1h, 2 @3m, 1 @30m, 2 @4h, 1 @1M), with IS Sharpe 5.2935 (1028 trades)
 and IS/OOS degradation of 0.9% — far below typical stat-arb decay rates. Walk-forward
-Sharpe ranges 3.1–4.0 across two WFA structures (expanding and rolling, 6 strategy variants)
-confirming that the corrected screening methodology, not overfitting, drives the performance
-advantage. Position-sizing variants: risk-parity improves OOS Sharpe to 5.87 (+0.63 vs baseline);
+Sharpe ranges 3.1–4.0 across two WFA structures (expanding and rolling, 6 strategy variants),
+confirming that the OU spread parameters generalize out of sample once a pair set is fixed.
+The Deflated Sharpe Ratio, correcting for the 14 backtest configurations tried against this
+universe, remains highly significant (IS z=11.02, OOS z=6.48) — the headline Sharpe is not an
+artifact of variant search. We separately, and directly, test the pair-*discovery* step itself
+for lookahead: a genuinely causal, point-in-time re-screening process, run at 3 independent
+historical checkpoints using only training-window data, finds a completely different pair set
+at every checkpoint than the full-history screen finds (zero overlap with the known confirmed
+set), and those independently-discovered pairs, properly backtested, lose money in every fold
+(Sharpe −1.04 to −0.72). This is strong, directly-quantified evidence of pair-selection
+lookahead in the full-history screening step: the reported 5.24 OOS Sharpe is conditional on
+already knowing which 23 pairs to trade, not a claim that this pipeline, run causally from an
+earlier point in time, would have discovered and traded them. Position-sizing variants:
+risk-parity improves OOS Sharpe to 5.87 (+0.63 vs baseline); a Hierarchical Risk Parity variant
+using the true cross-pair covariance matrix underperforms risk-parity (5.38 vs 5.87), an honest
+negative result for the more sophisticated approach;
 entry z=1.5 improves IS Sharpe to 5.93 (360 OOS trades). Individual-trade permutation tests
 (IS p = 0.981; OOS p = 0.904) show the per-trade return distribution is not distinguishable
 from random; the equity-curve Sharpe reflects timing advantages not captured by per-trade
@@ -166,6 +179,23 @@ argument. All citations were verified by direct source lookup.
   than EG in small samples. Implemented in stats.py Section 1 as PP test
   on EG residuals (the PO Z_t statistic). 2026-06-29 result: 4 Gold-tier
   pairs (EG + KPSS + PO all confirm), 23 Silver, 10 Bronze.
+- **Hakkio & Rush (1991)**, "Cointegration: How Short Is the Short Run?,"
+  *Journal of International Money and Finance* 10(4) — establishes that
+  cointegration test power tracks the total **calendar span** covered by
+  the data, not sampling frequency; increasing bar frequency within a fixed
+  start/end window yields only limited power gains, not the improvement a
+  naive "more data points" intuition predicts (a finding revisited and
+  qualified by Hooker 1993, Lahiri & Mamingi 1995, and Otero & Smith 2000).
+  **Direct implication for CAMARF, surfaced by the 2026-06-30 STORM
+  literature survey and not previously addressed in this paper:** a
+  framework screening the same universe across many timeframes
+  simultaneously compounds this tension with the multiple-testing burden
+  (§2.3, Harvey/Liu/Zhu) and with Gregory-Hansen's own power/size tradeoff
+  under large structural breaks — no source found in that survey
+  characterizes this three-way compounding for a multi-timeframe
+  institutional screen, which is exactly this project's terrain. This is
+  reported as an open methodological tension this paper does not claim to
+  resolve, not a gap CAMARF has already corrected for.
 
 ### 2.2 Pairs trading strategy methods
 
@@ -201,6 +231,35 @@ argument. All citations were verified by direct source lookup.
   (optimal mean-reversion rules), stochastic control, and ML-based.
   CAMARF sits in the cointegration category; the marginal contribution is
   a scalability/calibration correction within that category.
+- **Do & Faff (2010)**, "Does Simple Pairs Trading Still Work?," *Financial
+  Analysts Journal* 66(4) — a direct replication and extension of GGR's
+  distance-method methodology through 2009 (not the same paper as Do, Faff
+  & Hamza 2006 above), finding mean excess returns on the top-20 pairs
+  portfolio falling from ~0.86%/month (1962–1988) to ~0.24%/month
+  (2003–2009), a >70% decline, and explicitly testing and *rejecting*
+  capital-crowding as the cause in favor of a genuine weakening of pairs'
+  underlying convergence properties — a mechanism claim that remains
+  disputed against the broader limits-to-arbitrage/crowding literature (an
+  independent University of Warsaw replication reached the same
+  crowding-rejecting conclusion through 2008). **§7.11 replicates this
+  test directly on CAMARF's own confirmed pairs** (not just cited from the
+  literature): no decay found across 3 sequential eras of available
+  history, and mean half-life fell rather than rose — a genuine null
+  result on CAMARF's shorter available window, not a claim that Do &
+  Faff's finding is wrong.
+- **LTCM (1998), the August 2007 "Quant Quake," and the March 2020 "Quant
+  Bust"** — a recurring, structural vulnerability in convergence-style
+  statistical arbitrage documented across three separate crisis episodes
+  spanning more than two decades: crowded, correlated positions across
+  independently-run books unwinding simultaneously under liquidity stress,
+  not a failure of the underlying convergence logic (Khandani & Lo draw
+  this parallel explicitly between 1998 and August 2007; Kakushadze's
+  account of March 2020 documents the same selectivity — dollar-neutral
+  stat-arb specifically hit hard while other quant strategy categories were
+  unaffected or profitable). **§7.12 tests CAMARF's own confirmed pairs
+  against the two testable-with-available-data episodes (2008 GFC, 2020
+  COVID)** at daily resolution against a calm-period control, rather than
+  treating this history as a purely qualitative caveat.
 
 ### 2.3 Machine learning augmentation and statistical validation
 
@@ -220,6 +279,30 @@ argument. All citations were verified by direct source lookup.
   conformal predictors for finite-sample coverage guarantees is not present
   in any pairs trading ML paper found during the 2026-06-29 literature
   sweep.
+- **Bailey & López de Prado (2014)**, "The Deflated Sharpe Ratio: Correcting
+  for Selection Bias, Backtest Overfitting and Non-Normality," *Journal of
+  Portfolio Management* 40(5) — the specific correction implemented in
+  §6.7, distinct from the 2018 book's broader CPCV/PBO framework cited
+  above: a Sharpe ratio threshold and z-statistic that corrects for the
+  number of strategy variants tried, non-normal (skewed, fat-tailed)
+  returns, and sample length via the "False Strategy Theorem" — the
+  expected maximum Sharpe achievable by N genuinely skill-less strategies
+  grows with N, so an impressive raw Sharpe is not itself evidence of skill
+  without disclosing how many configurations were searched to find it.
+  CAMARF applies this directly to its own 14-trial backtest-variant search
+  in §6.7, not merely as a cited concept.
+- **Harvey, Liu & Zhu (2016)**, "…and the Cross-Section of Expected
+  Returns," *Review of Financial Studies* 29(1), 5-68 — the "factor zoo"
+  critique: given the number of return predictors already tested in the
+  published literature, a newly discovered factor should be required to
+  clear a t-statistic above 3.0, not the conventional 2.0, to survive
+  multiple-testing correction. Applied to cointegration-based research
+  generally, this implies a substantial share of claimed pairs-trading
+  findings in the literature are likely false positives absent an explicit
+  correction — directly motivating both CAMARF's existing per-TF BH-FDR
+  correction (§2.1) and the Deflated Sharpe Ratio correction added in §6.7
+  for the portfolio-level backtest-variant search, which BH-FDR alone does
+  not cover.
 - **Engle (2002)**, "Dynamic Conditional Correlation," *Journal of Business
   & Economic Statistics* 20(3), 339-350 — two-step DCC: univariate GARCH
   per series, dynamic correlation update. CAMARF applies DCC to pair P&L
@@ -305,6 +388,16 @@ confirmed pairs only (`data_ibkr.py`, 10Y for 1h, 1Y for 5m, 2Y for 15m).
 (CVX/OXY, KVUE/KMB), 1 @30m (EQR/INVH), 2 @4h (PNC/ZION + one international), and 1
 international pair (7267.T/8058.T). SPY/VOO is confirmed by the pipeline but flagged
 for exclusion (trivial pair — both legs track S&P 500; no economic cointegration hypothesis).
+
+**Corporate-actions handling, spot-checked (2026-07-01):** `data.py` requests yfinance's
+`auto_adjust=True` at every fetch call site; `research/corporate_actions_audit.py` verifies
+this is actually landing correctly in cached data, not just requested, against 4 real,
+publicly-documented stock splits within the cached window (NVDA 10:1, WMT 3:1, SMCI 10:1, CMG
+50:1) — all 4 show smooth, already-adjusted price levels through the split date (max daily
+return near the split date under 6% in every case, versus the ~90%+ single-bar discontinuity
+an unadjusted split would produce). This is a spot-check against known ground truth, not a
+full reconciliation module — sufficient to confirm the upstream adjustment mechanism works,
+not a guarantee against every possible corporate-action edge case.
 
 ## 4. Methodology [mixed — see per-subsection status]
 
@@ -732,6 +825,70 @@ Both results are reported honestly. The permutation test answers whether per-tra
 P&L *magnitudes* are non-random, not whether the strategy's entry *timing* is.
 The primary performance claim (equity-curve Sharpe IS 5.29, OOS 5.24, WFA 3.1–4.0)
 rests on IS/OOS consistency and walk-forward robustness, not on the permutation tests.
+
+### 6.7 Deflated Sharpe Ratio [DRAFTED — 2026-06-30]
+
+A 2026-06-30 STORM literature survey (`storm-statistical-arbitrage-pairs-trading.md`) raised
+a direct challenge, grounded in Bailey & López de Prado (2014): CAMARF has run 14 distinct
+backtest configurations against this universe by the time the headline result was settled on
+(baseline, risk-parity, neg-hedge, hub-weight, P&L-cap, HRP, four STORM factor-grid variants,
+plus entry-z overrides) without ever correcting the reported Sharpe for the fact that many
+configurations were searched before reporting one. The "False Strategy Theorem" formalizes why
+this matters: the expected maximum Sharpe ratio achievable by *N genuinely skill-less*
+strategies grows with N, so an impressive raw Sharpe, however large, is not by itself evidence
+of skill without disclosing how many configurations were tried to find it.
+
+`deflated_sharpe.py` implements the correction directly: it retroactively backfills a
+`trial_registry.json` from every `output/backtest/portfolio_*.parquet` file on disk (14 trials,
+counting configurations run in prior sessions before the registry existed), builds the true
+per-period (non-annualized) Sharpe from the actual daily closed-trade P&L series — not the
+annualized `sharpe_portfolio` figure, which uses a different time base — and estimates
+`Var[{SR_n}]` across the 14 recorded trials, converted to matching per-period units.
+
+**Result:** IS deflated Sharpe **z = 11.02** (SR_hat = 0.735/period, T = 278, skew = 2.41,
+kurtosis = 14.18); OOS deflated Sharpe **z = 6.48** (SR_hat = 0.640/period, T = 70, skew = 2.86,
+kurtosis = 14.33) — both corrected for the same 14-trial search. Both remain highly significant
+after correction: the multiple-testing exposure this survey flagged is real and now measured,
+not assumed away, and the conclusion is that it does not explain the headline result. This is a
+narrower claim than §7.3.1's pair-selection-lookahead finding below — DSR corrects for
+*strategy-variant* search given a fixed pair set; it says nothing about whether the pair set
+itself would have been discoverable by a causal process, which is a separate and more severe
+form of lookahead addressed directly in §7.3.1.
+
+A real implementation bug was caught before trusting this result: an early version mixed
+annualized Sharpe variance directly against the per-period SR_hat, silently flipping the
+computed DSR from ≈1.0 to ≈0.0 — caught by running on real data and checking the units, not by
+the synthetic test alone (`debug/_verify_deflated_sharpe.py`), which used matched units on both
+sides by construction and could not have surfaced this particular mismatch.
+
+### 6.8 Historical CVaR (Expected Shortfall) [DRAFTED — 2026-07-01]
+
+Portfolio-level tail risk is reported as **historical** (non-parametric) CVaR, not VaR — a
+deliberate choice, not a lesser substitute. The STORM survey's own Skeptic-lens research
+documents that VaR badly failed institutions heading into 2008 specifically because its
+normal-distribution assumption understates fat-tail risk, and this project's own P&L is
+already known to be strongly non-normal (§6.7's skew 2.4–2.9, kurtosis 14.2–14.3). Reporting a
+parametric VaR number here would repeat exactly that failure mode. Historical CVaR sidesteps
+the distributional assumption entirely: it is the mean of the worst (1−α) fraction of
+*realized* daily portfolio P&L, using the same exit-date grouping convention as §6.7 and
+`stats.py`'s permutation test.
+
+**Result (baseline configuration):**
+
+| | IS (295 days) | OOS (70 days) |
+|---|---|---|
+| VaR 95% | $489.27 | $539.70 |
+| CVaR 95% (mean of worst tail days) | $781.18 (15 days) | $769.67 (4 days) |
+| VaR 99% | $897.15 | $809.16 |
+| CVaR 99% (mean of worst tail days) | $1,153.11 (3 days) | $1,198.80 (1 day) |
+
+IS and OOS tail-loss magnitudes are consistent with each other (CVaR 95% within 1.5% of each
+other; CVaR 99% higher OOS, but from a single-day tail with only 70 total days — not a
+reliable estimate at that small a sample). This is a risk-*measurement* result, not a
+risk-*limit*: CAMARF does not currently gate position sizing or trading on a CVaR threshold,
+consistent with §2's scoping — that kind of real-time risk control exists at funds managing
+live client capital under regulatory/LP pressure this research project does not have.
+
 ## 7. Strategy / Backtest Results [DRAFTED — Layer 1 complete; Layer 2 pending ML data]
 
 Per the framing decision above: this chapter demonstrates the methodology
@@ -774,7 +931,9 @@ fold test windows.
 The IS/OOS Sharpe degradation of 0.9% is far below what survivorship-bias-corrected
 stat-arb benchmarks typically report (Gatev et al. 2006 document substantial OOS decay).
 The near-flat IS/OOS performance reflects the confirmed pair set's genuine OOS mean-reversion
-stability and is a primary empirical finding of this paper.
+stability and is a primary empirical finding of this paper — **conditional on this fixed pair
+set already being known**; §7.3.1 reports a direct test of whether a causal, point-in-time
+process would have discovered it.
 
 ### 7.2 Concentration Risk and Position-Sizing Variants
 
@@ -791,7 +950,7 @@ are not crossed in that 20% slice.
 TMHC/WAL), TMHC/WAL contributes 9.97% of OOS P&L (18 trades, $7,332) — the single
 largest OOS contributor. Max concentration in the baseline OOS is 19.9%.
 
-Five concentration-risk approaches were compared on the OOS holdout:
+Six concentration-risk approaches were compared on the OOS holdout:
 
 | Variant          | Trades | Sharpe | TotPnL    | MaxConc%    | Dominant Pair     |
 |------------------|--------|--------|-----------|-------------|-------------------|
@@ -800,6 +959,7 @@ Five concentration-risk approaches were compared on the OOS holdout:
 | P&L-cap          | 296    | 5.2443 | $73,596   | 19.9%       | TMHC/WAL@1h       |
 | Risk-parity      | 296    | **5.8689** | $62,490 | 21.1%    | TMHC/WAL@1h       |
 | Neg-hedge        | 304    | 5.4460 | $77,740   | 18.9%       | TMHC/WAL@1h       |
+| HRP              | 296    | 5.3752 | —         | —           | —                 |
 
 **Findings:**
 
@@ -823,8 +983,27 @@ threshold. Deactivated in practice until a longer OOS window is available.
 shrinks DD pairs' absolute P&L; non-hub pairs (like TMHC/WAL) maintain weight=1.0 and
 now represent a larger portfolio fraction. Drawdown reduction trades against P&L reduction.
 
+*HRP (Hierarchical Risk Parity, López de Prado 2016):* Uses quasi-diagonalization +
+recursive bisection over the true N×N cross-pair covariance matrix, rather than
+risk-parity's per-pair-only volatility. **An honest negative result relative to the simpler
+approach:** OOS Sharpe 5.3752 beats the plain baseline (5.2443) but falls short of
+risk-parity's 5.8689. This is consistent with a broader, literature-documented caution
+(DeMiguel, Garlappi & Uppal 2009) that more sophisticated covariance-based portfolio
+construction does not automatically beat simpler weighting schemes out of sample — reported
+here rather than suppressed, since it directly bears on whether to adopt HRP for production
+(it should not be, at least not on this evidence).
+
+*Absorption Ratio (Kritzman, Li, Page & Rigobon 2011), companion systemic-risk metric:*
+Computed on rolling windows across the 39 unique symbols spanning all confirmed pairs
+(k = 8 principal components, the fraction convention from the original paper): mean AR =
+0.427 (range 0.205–0.847). This is tracked alongside the existing DCC-GARCH peak-correlation
+concentration flag (§6.4) as a second, independent lens on the same underlying question —
+are the confirmed pairs' returns becoming more systemically entangled over time — rather than
+as a portfolio-sizing input in its own right.
+
 **Recommended production configuration:** `--risk-parity` as primary flag (best Sharpe);
 `--neg-hedge` as secondary addition if universe expansion from negative-β pairs is desired.
+HRP was evaluated and is not recommended — it underperforms risk-parity on this pair set.
 
 ### 7.3 Walk-Forward Analysis — Semi-WFA Robustness Check [DRAFTED — 2026-06-29]
 
@@ -860,6 +1039,75 @@ mm_exec produces the highest WFA Sharpe (3.82/3.96) but also the highest trade c
 fills being counted individually (not a bug; documented in Development.md). Relative
 Sharpe ranking is the operative finding; absolute P&L scale should be interpreted
 with the different trade count in mind.
+
+### 7.3.1 Point-in-Time Portfolio-Wide Walk-Forward: Testing the Pair-Discovery Step Itself [DRAFTED — 2026-07-01]
+
+§7.3's WFA is, by its own docstring, a *semi*-WFA: it re-estimates OU spread parameters per
+fold but does not re-run pair *selection* — the 23-pair confirmed set is fixed from the
+full-history screen for every fold, so §7.3 cannot, by construction, detect whether the
+screening methodology itself has lookahead. This subsection reports a direct, independent
+test of exactly that question, since it is the one caveat §7.3's own framing could not resolve.
+
+**Method (`pit_wfa.py`, new module):** at each of 4 fold cutoffs (2 expanding, 2 rolling,
+matching §7.3's fractions), the full confirmed-pair screening pipeline — `UniverseFilter`
+correlation pre-filter, `CointScanner` EG + BH-FDR, `coint_fraction_rolling`, structural-pair
+exclusion, and the secondary-evidence override — is re-run using **only** data up to that
+fold's training cutoff, exactly as a live deployment would have seen it at that point in time.
+The resulting point-in-time confirmed pairs are then backtested forward through the fold's
+test window with the same, unmodified `BacktestEngine` every other result in this paper uses.
+
+**Verification before trusting the result:** a synthetic universe was constructed with one
+pair genuinely cointegrated only *after* a cutoff date and one pair genuinely cointegrated
+*within* the training window, confirming the point-in-time screen finds the second and not
+the first (`debug/_verify_pit_wfa.py`). The first version of this synthetic test failed
+initially — traced not to a `pit_wfa.py` bug but to a construction error in the synthetic
+data itself (noise added inside a cumulative sum made the synthetic pair's spread a random
+walk — correlated but not cointegrated, the classic spurious-regression distinction) — fixed
+by adding noise directly to the price level instead.
+
+**Result: zero pair overlap, and the point-in-time pairs lose money.** At every one of 3
+independent historical checkpoints (2024-02, 2025-01, 2025-08), the point-in-time screen finds
+a completely different pair set (19, 6, and 3 pairs respectively) than the known 17-pair @1h
+full-history confirmed set — none of AMD/DD, LNT/VTR, EG/ORI, or any other member of the known
+set appear. Backtested forward, those independently-discovered pairs are **not tradeable**:
+
+| Fold | Point-in-Time Pairs | Trades | OOS Sharpe |
+|---|---|---|---|
+| expanding/fold1 | 18/19 traded | 204 | **−1.0432** |
+| expanding/fold2 | 6 | 59 | **−0.7873** |
+| rolling/fold1 | 18/19 traded | 204 | **−1.0432** |
+| rolling/fold2 | 3 | 67 | **−0.7176** |
+
+A real implementation bug was caught and fixed before trusting these numbers: the first run
+produced positive-but-declining Sharpes (5.26, 2.89, 2.89, 2.81) — the isolated 2-symbol
+alignment call in `backtest_pair_on_test_window` used the default calendar-padding alignment
+mode instead of the gap-dropping mode appropriate for a single-pair backtest (the same bug
+class caught earlier in `research/decoupling_backtest.py`), inflating bar counts roughly
+5.85× (confirmed by comparing aligned vs. raw cached bar counts for the same symbol). Fixing
+it flipped every fold from positive to negative — **the corrected result is more serious than
+the uncorrected one, not less.**
+
+**Decisive check that this is a real finding, not a second bug:** `screen_universe_at_cutoff`
+was re-run on the exact full-history window `analysis.py` itself screens, confirming it
+reproduces 16 of the 17 known confirmed @1h pairs exactly (the one miss and 6 additional pairs
+found are explained by minor universe-composition differences between this diagnostic's
+cache-glob universe and production's exact constituent list, not a screening-logic bug). The
+screening function is trustworthy; the zero-overlap, negative-Sharpe result at earlier
+cutoffs is real.
+
+**Interpretation:** this is strong evidence of pair-selection lookahead in the full-history
+screening methodology — not proof that the 17 known pairs' cointegration relationships are
+spurious, but direct, quantified evidence that a live, causally-run version of this pipeline
+would not have discovered and traded those same pairs at those points in time, and that the
+pairs it *would* have found and traded were not profitable. This is the exact caveat §7.3's
+"semi-WFA" framing already flagged qualitatively, now measured with real numbers. It does not
+overturn §7.1's IS/OOS stability finding for the fixed, already-known pair set, and it is a
+different and more severe form of lookahead than §6.7's DSR correction (DSR corrects for
+searching *strategy variants* given a fixed pair set; this result concerns whether the *pair
+set itself* would ever have been assembled by a causal process). Read together, §6.7 and this
+subsection are the paper's most important honesty check on its own headline claim: the 5.24
+OOS Sharpe is real for the pair set as given, well short of being explained away by variant
+search, and not yet demonstrated to be achievable by a prospective, point-in-time process.
 
 ### 7.4 STORM Experimental Variants — Factor Grid [DRAFTED — 2026-06-29]
 
@@ -1183,6 +1431,96 @@ a model from being deployed on insufficient evidence. This is the Lopez de Prado
 discipline in practice — "report the honest data-constrained result, re-run as
 history accumulates."
 
+### 7.11 Filter-Ablation Funnel and Era-Decay Replication [DRAFTED — 2026-06-30]
+
+**Filter-ablation funnel.** Ross's own recurring question — when a pipeline has this many
+sequential filters, how much is each one actually removing, and is what it removes worth
+removing — is answered directly rather than left to the final confirmed-pair count alone.
+A `FilterFunnel` tracker records the pair count before and after every gate in the @1h
+screening run:
+
+| Stage | n_before | n_after | n_removed |
+|---|---|---|---|
+| Pearson pre-filter | 1,162,050 | 70,251 | 1,091,799 |
+| EG + BH-FDR | 70,251 | 314 | 69,937 |
+| Price-degeneracy | 314 | 314 | 0 |
+| Structural exclusion | 314 | 314 | 0 |
+| `coint_frac` threshold + override | 314 | 17 | 297 |
+
+The Pearson pre-filter and EG+BH-FDR gates do essentially all of the work; price-degeneracy
+and structural exclusion remove nothing at @1h this run (their effect is real at other
+timeframes/universes, just not this one). The `coint_frac` threshold is the final, most
+selective gate. Building this funnel surfaced and fixed a real gap: `spread_series` was
+previously persisted only for pairs that survived to the final confirmed set, which made any
+counterfactual analysis of an excluded pair impossible — fixed so ablation studies have data
+to work with.
+
+**Counterfactual: is the `coint_frac` filter net-positive?** The 297 pairs it excludes were
+backtested anyway via a `--pairs-override` flag added to `backtest.py` for exactly this
+purpose: IS Sharpe 4.3526 (2,285 trades, $760,209 P&L), OOS Sharpe 3.6682 (495 trades,
+$150,286 P&L). Both are positive — these are not worthless pairs — but both are well below the
+confirmed set's 5.29 IS / 5.24 OOS. **The filter is net-positive**: it is not merely excluding
+noise, it is preferentially keeping the higher-quality subset of an already-profitable larger
+candidate pool.
+
+**Era-decay replication (Do & Faff 2010).** Do & Faff split Gatev-Goetzmann-Rouwenhorst's
+sample into sequential eras and found roughly 70%+ decay in pairs-trading returns, attributing
+it to weakening convergence properties (rising half-life) rather than crowding. CAMARF's own
+data cannot test the crowding side of that dispute (it requires external capital-flow data
+this project does not have — explicitly scoped out, not silently ignored), but can test the
+convergence-property side directly: each confirmed @1h pair's available history was split into
+3 sequential chronological thirds and backtested independently.
+
+**Result: no decay found, in either direction Do & Faff considered.** Portfolio Sharpe across
+the 3 eras: 5.05 → 5.18 → 5.21 (mildly increasing, not decreasing); mean half-life: 38.6 → 39.7
+→ 31.0 bars (fell in the final era, not rose, the opposite of what a weakening-convergence
+story predicts). This is reported as a genuine null result, not a failure: CAMARF's available
+1h history window is short relative to Do & Faff's original multi-decade span, and the honest
+conclusion is that this project's data does not show either the decay pattern or its proposed
+mechanism over the window available — not that the Do & Faff mechanism is wrong, or that
+CAMARF's pairs are immune to it.
+
+### 7.12 Historical Crisis Stress Test [DRAFTED — 2026-07-01]
+
+The Historian-lens finding from a STORM infrastructure survey (§8 below) motivates this test
+directly: every "institutional" risk control in the field's history — stress testing, crowding
+monitors, circuit breakers — was added reactively after a specific named crisis exposed its
+absence. CAMARF had none. Building one honestly requires stating a real data constraint up
+front: the confirmed @1h pairs only have cached intraday history back to 2023-07-24 (yfinance's
+730-day 1h cap), so **this is not a replay of the intraday strategy through 2007/2020** — that
+data does not exist and is not fabricated here. What is tested, precisely: does each confirmed
+pair's cointegration relationship — the same Engle-Granger test and OLS hedge ratio the whole
+strategy rests on — hold up at **daily** resolution through three historical crisis windows
+(Aug 2007 quant quake, 2008 GFC, Feb–Apr 2020 COVID crash), with the hedge ratio and spread
+distribution fit strictly on a 2-year pre-crisis baseline (no lookahead into the crisis itself)?
+
+**A confound was checked before trusting the headline numbers.** A raw result of "0/13 pairs
+still cointegrated through Aug 2007, 0/13 through the GFC, 1/21 through COVID" is ambiguous on
+its own — it could reflect genuine crisis fragility, or simply that a single-shot daily EG test
+on any arbitrary old window rarely finds cointegration for pairs discovered on 2023–2026 hourly
+data, crisis or not. Three calm-period controls of matching window length and season (2015-08,
+2016-09–2017-03, 2018-02–04) were run through the identical test before drawing any conclusion.
+
+**Result:** the cointegration-holds rate is low in both conditions (crisis 2%, calm 9%) — this
+metric alone cannot cleanly separate the two, and is reported as such rather than oversold. The
+**dislocation rate is the more informative comparison**: extreme spread dislocation (|z| > 3.5,
+the same stop-loss threshold `backtest.py`'s Layer 1 baseline uses) occurred in **62% of
+crisis-window tests (29/47) versus 20% of calm-control tests (11/55)** — a 3× rate difference,
+supporting a genuine, if still partially confounded, crisis-specific effect rather than a pure
+artifact of the test design. The GFC and COVID windows show the sharpest effect (12/13 and
+15/21 pairs extreme, respectively); Aug 2007's brief acute window shows less (2/13), plausibly
+because its ~2-week span gives the daily-resolution test little room to register a dislocation
+regardless of severity.
+
+**Interpretation, stated at the scope this test actually supports:** this does not show the
+strategy would have lost money in 2007/2008/2020 — the intraday backtest data to test that
+claim does not exist. It shows that the statistical relationships underlying the confirmed
+pairs experience materially more extreme daily-resolution dislocation during known historical
+crisis windows than during matched calm periods, and that a simple EG re-test rarely confirms
+formal cointegration through either — a genuine, if partial, historical-crisis analog to the
+correlation-in-stress finding from LTCM and the August 2007 quant quake, now measured directly
+on this project's own confirmed pairs rather than asserted from the literature.
+
 ## 8. Bias Documentation [OUTLINED, one bias drafted in detail]
 
 Pull directly from `BiasAuditLog` (`output/results/bias_audit.json`,
@@ -1208,6 +1546,28 @@ correction (only the rolling-window-overlap *mechanism* itself is
 captured in the bias audit's existing prose); §10 below proposes
 sequential bootstrap (Lopez de Prado, *AFML* Ch. 4) as the not-yet-built
 remedy.
+
+**A second entry, drafted in equal depth — the most material entry in
+this audit, and the only one classified as an unresolved, quantified
+residual risk rather than a mitigated one:** pair-selection lookahead in
+the full-history cointegration screen (`analysis.py`, recorded once per
+timeframe run since 2026-07-01, mechanism/remedy/residual-risk fields
+identical across TFs). The confirmed 23-pair set is selected using a
+screen run over the entire available history, including the period later
+reported as the OOS holdout — pair *discovery* therefore borrows
+information from the future relative to any real deployment date, a
+distinct and more severe failure mode than the OU-parameter lookahead
+§7.3's semi-WFA already addresses. Unlike every other entry in this
+audit, this one has no remedy applied — it is quantified, not corrected:
+§7.3.1 reports that a genuinely causal, point-in-time re-screen at 3
+independent historical checkpoints found a completely different pair set
+at every checkpoint (zero overlap with the known confirmed set) and that
+those independently-discovered pairs lost money in every backtested fold
+(Sharpe −1.04 to −0.72). The residual risk is therefore reported as high,
+not low: the paper's headline 5.24 OOS Sharpe is a real, correctly
+computed number conditional on the pair set already being known, and is
+not evidence that a live, causally-run version of this pipeline would
+have discovered and traded it.
 
 ## 9. AI-Tool Disclosure [OUTLINED, three concrete examples drafted]
 
