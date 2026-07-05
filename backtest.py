@@ -1074,6 +1074,7 @@ def _hrp_recursive_bisection(cov: np.ndarray, sort_ix: List[int]) -> pd.Series:
 
 def compute_hrp_weights(
     is_trades_path: str = "output/backtest/trades_layer1.parquet",
+    shrinkage: str = "none",
 ) -> Dict[str, float]:
     """
     Hierarchical Risk Parity (Lopez de Prado, 2016) N_SHARES multipliers,
@@ -1092,6 +1093,21 @@ def compute_hrp_weights(
     "multiplier around 1.0" convention risk_parity_weights uses
     (multiplier = hrp_weight * n_pairs, clipped [0.1, 5.0]) so it plugs into
     the identical N_SHARES_PER_TRADE * ... * rp_w position-sizing formula.
+
+    shrinkage: "none" (default, exact prior behavior, unchanged) or
+    "ledoit_wolf" — a comparison arm added 2026-07 per the DeMiguel/Garlappi/
+    Uppal (2009) + Michaud (1989) estimation-error literature, which argues
+    HRP's own raw-sample-covariance input is itself the likely source of
+    HRP underperforming simple risk-parity OOS (§7.2: 5.38 vs 5.87). Uses
+    sklearn.covariance.ledoit_wolf directly (the peer-reviewed reference
+    implementation of Ledoit & Wolf's identity-target shrinkage estimator)
+    rather than a hand-derived formula — deliberately not re-implementing
+    their asymptotic shrinkage-intensity derivation from memory. Applied to
+    the CORRELATION matrix (not the raw covariance) so the diagonal stays
+    exactly 1.0 and each pair's own P&L std is untouched — only the
+    cross-pair correlation structure gets shrunk toward a scaled-identity
+    (i.e., toward zero off-diagonal correlation), which is the estimation-
+    error-prone part of the matrix HRP actually clusters on.
     """
     from analysis import UniverseFilter  # local import: avoid a module-level
     # circular dependency (analysis.py does not import backtest.py, but
@@ -1147,6 +1163,38 @@ def compute_hrp_weights(
                   "days — treated as uncorrelated (0)", n_nan, corr.size)
     stds = stds[valid]
     n_pairs = len(pair_keys)
+
+    if shrinkage == "ledoit_wolf":
+        from sklearn.covariance import ledoit_wolf
+        # sklearn's ledoit_wolf() needs real (n_samples, n_features)
+        # observations — Ledoit & Wolf's own asymptotic shrinkage-intensity
+        # estimator (their pi_hat term) is a 4th-moment quantity computed
+        # FROM the observations, not derivable from a pre-built correlation
+        # matrix alone, so there is no honest shortcut around supplying a
+        # real sample here. The existing pairwise-complete `corr` above
+        # (NaN treated as "no evidence of correlation" per this function's
+        # own established convention) discards every day where a pair
+        # didn't trade; for a genuine multi-pair SAMPLE, this rebuilds the
+        # daily_pnl matrix with non-trading days filled to an honest,
+        # non-approximated 0.0 (a pair that didn't trade that day
+        # contributed exactly zero portfolio P&L — not an imputation) over
+        # the union of all trading days, giving sklearn a real, complete,
+        # correctly-T-scaled sample to shrink.
+        filled = daily_pnl[pair_keys].fillna(0.0).to_numpy()
+        if filled.shape[0] < 10:
+            log.warning("HRP: too few days (%d) in the trading-day union for "
+                        "Ledoit-Wolf shrinkage — falling back to unshrunk corr", filled.shape[0])
+        else:
+            shrunk_cov, shrinkage_coef = ledoit_wolf(filled)
+            row_std = np.sqrt(np.diag(shrunk_cov))
+            row_std[row_std == 0] = 1.0
+            shrunk_corr = shrunk_cov / np.outer(row_std, row_std)
+            np.fill_diagonal(shrunk_corr, 1.0)
+            log.info("HRP: Ledoit-Wolf shrinkage coefficient=%.4f (0=no shrinkage toward "
+                      "zero-correlation identity target, 1=fully shrunk) on %d zero-filled "
+                      "trading days", shrinkage_coef, filled.shape[0])
+            corr = shrunk_corr
+
     cov = corr * np.outer(stds, stds)
     np.fill_diagonal(cov, stds ** 2)  # exact variance on the diagonal, not corr-derived
 

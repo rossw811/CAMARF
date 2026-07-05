@@ -207,11 +207,12 @@ def screen_universe_at_cutoff(
         if built is not None:
             pair_results.append(built[0])
 
-    # Structural exclusion (forex triangles, share-class pairs)
+    # Structural exclusion (forex triangles, share-class pairs, same-index ETFs)
     pair_results = [
         p for p in pair_results
         if not CrossAssetTagger._shared_currency(p.symbol_a, p.symbol_b)
         and not CrossAssetTagger._is_share_class_pair(p.symbol_a, p.symbol_b)
+        and not CrossAssetTagger._is_index_tracking_pair(p.symbol_a, p.symbol_b)
     ]
 
     # coint_frac threshold + secondary-evidence override — identical logic

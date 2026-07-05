@@ -1395,7 +1395,7 @@ The standard industry reference. Less mathematically demanding than Shreve.
 - *Interest rate derivatives*: relevant for ZN/ZB pairs in our universe
 - Chapters 17-20 on exotic options are directly applicable to options.py
 
-**McDonnell ("Algorithmic Trading and DMA", 2010)**
+**Barry Johnson ("Algorithmic Trading and DMA: An Introduction to Direct Access Trading Strategies", 4Myeloma Press, 2010)** — corrected 2026-07-04: previously misattributed to "McDonnell" in this file; confirmed via 4+ independent bibliographic sources (Amazon, Internet Archive, AbeBooks, Goodreads) that Barry Johnson is the sole author, no "McDonnell" is associated with this title. Also confirmed to include a dedicated Pairs Trading execution-algorithms section, making it more directly on-topic for CAMARF's execution/slippage modeling than initially credited.
 
 Execution-focused. Key concepts for implementation:
 
@@ -8756,3 +8756,664 @@ control.
   after the next full pipeline run — currently only verified by code
   inspection and the existing `debug/_verify_*.py` suite (which doesn't
   cover this specific new call directly), not by a live run.
+
+## Session 26 — Author Concept-Backlog Research (2 rounds), Rate-Limit-Resilient Retry Infrastructure (2026-07-02)
+
+### Overview
+
+Ross asked for a deep research pass across every author/concept already
+cited in `Development.md`/`PAPER.md`, going beyond the single cited paper
+into each author's broader body of work, to build a discussion backlog —
+explicitly not a build list, per the project's standing "new methodology
+needs buy-in first" rule. Delivered as a standalone artifact (not a repo
+file): **"CAMARF — Author Concept Backlog"**, an HTML page covering two
+research rounds plus the project's own existing Session 10/11/12 idea
+backlogs merged into one place.
+
+**Round 1** — 9 parallel `general-purpose` research agents, one per
+author-cluster (cointegration/structural-break foundations; multiple
+testing/backtest overfitting; pairs-trading strategy lineage; Lopez de
+Prado's fuller AFML/MLAM toolkit; ML for statistical arbitrage; portfolio
+construction/systemic risk; crisis history/crowding; entropy/
+regularization/optimization; regime-switching/state-space). ~75 concepts
+surfaced, each web-verified at the abstract/title/venue level (not
+full-text) and confidence-marked.
+
+**Round 2** — a deeper, per-author (not per-cluster) pass: 19 separate
+research agents, each digging into ONE prolific author or a tight pair,
+plus five entirely new authors pulled from this file's own "Reference
+Authors" notes (§ Session 4) that had never been externally researched
+(Ilmanen, Chincarini & Kim, Shreve, Hull, and the Markowitz/Michaud/
+Ledoit-Wolf/Black-Litterman portfolio-estimation-error lineage).
+
+### Real findings worth keeping, independent of the backlog framing
+
+- **A genuine, standing citation gap resolved**: the "HLPPL" bubble-model
+  citation flagged as unconfirmed since Session 12 (2026-06-27) is now
+  resolved — Cao, Shao, Yan & Geman, "Identifying and Quantifying
+  Financial Bubbles with the Hyped Log-Periodic Power Law Model," arXiv
+  2510.10878 (submitted Oct 2025). Geman is Johns Hopkins-affiliated,
+  matching the original "JHU" attribution. Not yet peer-reviewed — cite
+  as a preprint, not an established result, and don't reuse its
+  self-reported 34.13% backtest figure without independent verification.
+- **A citation the paper should have and doesn't**: `PAPER.md` cites
+  Engle's DCC (2002) but never cites Engle (1982), the founding ARCH
+  paper everything else in that lineage generalizes. Fixed this session
+  (see below) — References list entry 14.
+- **A real, unbuilt gap in `cvar.py`**: it has no VaR-exceedance
+  backtesting/validation routine (counting how often realized P&L
+  actually breaches the VaR threshold against the stated confidence
+  level) — standard practice per Hull's risk-management chapter, not
+  present in the current historical-CVaR implementation. Not fixed this
+  session — flagged for a future build discussion.
+- **A caution, not a finding**: Kakushadze & Serur's *151 Trading
+  Strategies* (Springer/Palgrave Macmillan, 2018) is listed by Springer's
+  own book page as **retracted** — reason unconfirmed despite searching.
+  Do not cite any specific strategy claim from it without independently
+  verifying the content and understanding why it was withdrawn.
+- **Margrabe's formula** (1978, the option to exchange one asset for
+  another) confirmed as the direct closed-form pricing match for "an
+  option on a spread" — relevant if `options.py` is ever built for the
+  already-noted straddle/strangle-on-uncertainty design. Kirk's
+  approximation flagged as the more realistic fit once the straddle has
+  a nonzero strike (i.e., isn't a pure zero-strike exchange claim).
+- **Two "answers to a question CAMARF already asked itself"**, the
+  strongest hits across both rounds: (1) Barber & Ramdas (2017) "the
+  p-filter" and Katsevich & Sabatti (2019) Multilayer Knockoff Filter —
+  built specifically for hypotheses tested at multiple resolutions of
+  the same underlying structure, the closest existing statistics
+  literature to this project's unresolved cross-timeframe multiple-
+  testing tension (§2.1). (2) Psaradakis, Sola & Spagnolo (2004), a
+  Markov-Switching VECM where the cointegrating relationship itself
+  switches on/off via a hidden Markov chain — formalizes, as one
+  estimated model, what this project currently does as two separate
+  tools (EG cointegration testing + HMM regime detection).
+- **A concrete Box-Cox candidate check**: confirmed directly against
+  `analysis.py:2557` (`dollar_volume`) and `analysis.py:2662-2667`
+  (`amihud_illiquidity`) — both are textbook right-skewed features Box-Cox
+  targets, though the practical payoff is unclear since XGBoost's
+  tree-split learning is largely monotone-transform-invariant on a
+  single feature; only matters if these features ever feed a
+  distance/linear-model stage. Not actioned, flagged for later.
+- **McLean & Pontiff (2016)**, "Does Academic Research Destroy Stock
+  Return Predictability?" (*Journal of Finance*) — surfaced in
+  discussion, not yet researched by an agent — directly the most
+  relevant existing paper to Ross's own question about whether
+  exploiting/publishing an inefficiency causes its own decay. Queued for
+  a future batch, not yet run.
+
+### PAPER.md updated this session
+
+References list entries 11-14 added: Hamilton (1989, HMM regime-switching
+foundation), Durbin & Koopman (Kalman filter/state-space textbook),
+Rabiner (1989, HMM tutorial), and Engle (1982, ARCH) — all methodology
+CAMARF already runs (`RegimeClassifier`'s HMM, the Kalman hedge-ratio
+estimator, the `garch_stop` variant's conceptual lineage) but had never
+formally cited. Verified at the bibliographic level (title/venue/volume/
+page cross-checked across 2+ independent sources per entry) this
+session, not from memory — consistent with this file's own reference-
+verification convention. No numeric claim, empirical result, or
+methodology was changed — citation-completeness only.
+
+### Rate-limit-resilient retry infrastructure
+
+Two consecutive session rate limits interrupted Round 2 mid-batch (first
+at ~10/19 attempted, second at ~15/19 attempted after retry) — Claude
+Code agent-session limits, not a CAMARF-side issue. Handled by: (1)
+flagging every rate-limited agent's result honestly as a failure, not a
+silently-accepted "nothing found" (a `"You've hit your session limit"`
+string is a distinct failure mode from a real completed research pass
+that found nothing — conflating the two would have understated the
+concept space, not just missed items); (2) a scratchpad progress-log
+file (`research_progress_log.md`, session-local, not in the repo) tracking
+each of the 19 Round 2 targets' status (done/pending/failed-retry) so a
+future interrupted session can resume without re-deriving status from
+conversation scrollback; (3) per Ross's direction, subsequent batches are
+being run smaller and paced rather than all 19 (or more) in one shot, to
+avoid repeatedly hitting the same wall.
+
+### Status as of this entry — 10 of 19 Round 2 targets complete
+
+**Done** (in artifact): Clive Granger, Robert Engle (extended — ARCH/
+CAViaR/News Impact/SRISK/GARCH-MIDAS), Bruce Hansen + Donald Andrews
+(extended), Marco Avellaneda (extended), Christopher Krauss (consolidated
+across 5 existing citations, found 2 genuinely new: Krauss & Stübinger
+2017 bivariate-copula precursor, and — most relevant — Krauss & Herrmann
+2017 on cointegration test power/size under GARCH/jump/seasonality
+contamination in high-frequency data, directly bearing on CAMARF's own
+1h-resolution EG testing), George Box + Stephen Boyd (Box-Cox check
+above; Boyd's 2024 "Markowitz Portfolio Construction at Seventy" survey
+frames risk-parity as one point on a convex-objective spectrum),
+Goetzmann + Rouwenhorst (Goetzmann/Li/Rouwenhorst 2005 on 150-year
+correlation-regime shifts is the strongest hit — direct precedent for
+this project's own regime-conditioning thesis over multi-decade windows;
+Rouwenhorst's independent commodity-futures work ties directly to
+CAMARF's GC/SI/CL/NG/ZC/ZW/ZS/HG universe), Shreve + Hull (Margrabe/Kirk
+above; a confirmed real gap in `cvar.py`'s VaR backtesting), Kakushadze
+(retraction caution above; confirmed no Kakushadze paper directly
+addresses multiple-testing correction for formulaic-alpha search, an
+honest gap relative to this project's own DSR discipline), the bubbles/
+tail-dependence/order-flow cluster (HLPPL resolved above; confirmed
+Longin & Solnik 2001's asymmetric-tail-correlation EVT method is a
+natural extension of CAMARF's existing EVT/GPD module, not a separate
+build; confirmed Grinblatt & Keloharju does NOT actually connect to
+order-flow-imbalance theory — an honest non-link, not forced relevance).
+
+**Still pending** (rate-limited twice, queued for next paced batch):
+Peter C. B. Phillips (deeper), Søren Johansen (deeper), Yoav Benjamini +
+Halbert White, Marcos López de Prado (2022-2025 newest work), Campbell
+Harvey, Andrew Lo (deeper — specifically targeting "The Statistics of
+Sharpe Ratios," Lo 2002, given how heavily this project reports Sharpe),
+Antti Ilmanen, the portfolio estimation-error lineage (Markowitz/
+Michaud/Ledoit-Wolf/Black-Litterman), Chincarini & Kim + execution
+literature (also needs to verify/correct a possible author misattribution
+— "McDonnell" vs. the actual Barry Johnson "Algorithmic Trading and DMA").
+
+**New authors added to the queue this session, not yet researched**: Paul
+Wilmott, Timothy Masters, Jim Simons, Robert Carver, Peter Muller, Ed
+Thorp, Boaz Weinstein (assumed — Ross wrote "Boaz"), Ken Griffin (assumed
+— Ross wrote "Kenny G"), Ernest P. Chan. Mostly practitioner/book authors
+rather than peer-reviewed academics — expect more [moderate]-confidence
+findings than Rounds 1-2, and research prompts for this batch should
+target actual book tables-of-contents/core techniques rather than
+assuming SSRN/arXiv papers exist.
+
+**Round 3, scoped but not launched**: a subject-ranked (not overall-
+university-ranked) survey of finance/econometrics/stats faculty across
+top programs worldwide, explicitly always including Baruch, Berkeley,
+Columbia, and every transfer target (USC, UW CFRM, CMU Tepper, Cornell
+Dyson, UIUC Gies, Georgetown, UT Austin) regardless of their global rank.
+Confirmed with Ross 2026-07-02 (chose the "subject-ranked + target
+schools" option over a literal top-50-overall-university walk or a
+pure-topic-no-school-quota approach). Not yet launched — queued behind
+Round 2's completion and the new practitioner-author batch above.
+
+### Standing policy confirmed this session
+
+Nothing from either research round gets wired into production directly —
+every candidate gets built as a comparison arm/variant first (same
+precedent as `coint_frac_override`, `permutation_robust`, HRP vs.
+risk-parity, the STORM factor-grid variants), evaluated, discussed, and
+only then considered for a production default change. Saved to Claude's
+cross-session memory as a standing rule, not just recorded here.
+
+### Not yet done
+
+`Development.md` / `BUG_LOG.md` split (proposed to Ross this session,
+design: new `BUG_LOG.md` becomes the canonical bug registry with one
+entry per BUG-Dxx/BUG-Axx ID, `Development.md` keeps the session
+narrative but replaces each bug's full write-up with a one-line pointer)
+— awaiting explicit go-ahead given the scale of the retroactive move
+(~40+ entries across 8,700+ lines) and the project's own "verify file
+changes actually landed" discipline, which argues for doing this as its
+own careful, dedicated pass rather than folding it into a
+research-heavy session. SPY/VOO exclusion + affected-number rerun,
+DD-hub effective-independent-bet-count calculation (§7.2), and the
+DSR ↔ pit_wfa cross-reference in `PAPER.md` prose remain open from the
+prior session's discussion — also not started this session.
+
+### Addendum (2026-07-03) — Concept backlog reorganized; three foundational replications built
+
+Continued the same research thread the next day. Two structural additions
+to the concept-backlog artifact, at Ross's request: (1) split the ~200
+surfaced concepts into **gap-fillers** (no existing CAMARF analog) vs.
+**competing methods** (an alternative to something already in place), with
+a tiered "replica comparison" plan (Tier 1 cheap/existing-baseline, Tier 2
+new estimator code, Tier 3 real design decisions) — nothing built yet
+without picking a tier first, per the standing comparison-first policy;
+(2) a **synthesis** section identifying four places where multiple
+independently-surfaced findings converge on the same open question (the
+DD-hub effective-bet-count question now has three independent methods —
+Grinold-Kahn, Meucci, Carver's IDM — pointing at one number; the
+cross-timeframe multiplicity concern reads as an escalating narrative
+across Barber-Ramdas -> Benjamini -> Lopez de Prado/Fabozzi, with pit_wfa
+as CAMARF's own empirical confirmation; the Sharpe-reporting gap is now
+backed by both Lo and Engle independently; the Strictness Paradox's
+span-vs-frequency tension has a coherent combined fix via panel pooling +
+multilayer FDR together).
+
+Round 2 finished (19/19 -- Ilmanen, the Markowitz/Michaud/Ledoit-Wolf/
+Black-Litterman portfolio lineage, and Chincarini/Kim + execution
+literature completed the set). Round 2.5 (practitioner/legendary-trader
+sweep) ran across two rate-limit interruptions: Wilmott, Carver, Masters,
+Muller, and Thorp completed; Ernest Chan still pending as of this entry.
+Real findings worth keeping from this batch: Carver's Instrument
+Diversification Multiplier is a third independent method for the DD-hub
+question; Masters' full-pipeline Monte Carlo permutation test is a
+materially deeper validation than the trade-P&L-only shuffle currently in
+`stats.py`; MacLean, Thorp & Ziemba's 20:2:1 estimation-error ratio
+(mean-estimate error dominates variance/covariance error by an order of
+magnitude) is a real, quantified justification for why the documented
+Kelly-lookahead bias is the most dangerous piece of that bias to leave
+undocumented; Muller's own 2001 *Quantitative Finance* piece gives CAMARF
+a legitimate primary-source (not journalism-only) citation for the
+stat-arb category's origin and a first-person quote on the exact
+crowding/efficiency-erosion dynamic this project is separately interested
+in ("the mere knowledge that it is possible to beat the market
+consistently may increase competition and make our type of trading more
+difficult").
+
+**New: `debug/_replicate_*.py` -- a parallel convention to `_verify_*.py`.**
+Per Ross's explicit request ("i'd also ideally like to have scripts to
+replicate and validate those studies," not just cite them), three
+synthetic replications of foundational literature claims were built, run,
+and verified passing (not just written) under the `trading` conda env,
+extending this project's existing `debug/_verify_*.py` synthetic-
+reproduction discipline to validating a *published claim* rather than a
+CAMARF-specific bug fix:
+
+- `_replicate_granger_newbold_spurious_regression.py` -- confirms naive OLS
+  on independent random walks gives 84.8% false "significance" (naive SE)
+  / 74.6% (HAC-corrected -- HAC does NOT fix it, the actual Granger-Newbold
+  point), a stationary AR(1) control's 13% over-rejection IS fixed by HAC
+  (down to 8%, a separate, ordinary problem), and Engle-Granger
+  cointegration testing on the identical random-walk pairs correctly gives
+  6.0% false positives -- right at nominal 5%. A working demonstration of
+  why the pipeline's EG screen exists, not an assumed one.
+- `_replicate_benjamini_hochberg_fdr_control.py` -- realized FDR came in at
+  4.61% (independent tests) and 3.60% (positively-correlated tests, the
+  PRDS condition matching CAMARF's actual shared-symbol test structure),
+  both under the nominal 5% target -- confirms BH-FDR is validly invoked
+  for CAMARF's correlated pairwise tests. Does not address the separate
+  cross-timeframe multiplicity question (still open).
+- `_replicate_lo2002_sharpe_autocorrelation_correction.py` -- confirms the
+  correction is genuinely sign-sensitive: at rho=+0.33 naive Sharpe
+  overstated the corrected value by 36.2%; at rho=-0.27 naive Sharpe
+  *understated* by 29.1%. Deliberately does NOT assume which direction
+  applies to CAMARF's own portfolio -- that depends on the empirical sign
+  of autocorrelation in the real daily P&L series (`trades_layer1_*.parquet`),
+  not yet checked, and is a distinct question from the OU spread's own
+  mean-reversion (which is about the spread level, not necessarily the
+  realized daily P&L of the traded strategy). Computing that real
+  autocorrelation and applying this formula to the actual 5.24 Sharpe is
+  flagged as the natural next step -- not done here, since it touches the
+  headline number directly and needs its own sign-off before running.
+
+All three scripts are additive-only (new files, `debug/` directory,
+synthetic data) -- nothing in the production pipeline or `PAPER.md`'s
+reported numbers was touched.
+
+## Session 27 — Author Concept Backlog Reconciliation, Round 3 Batch H, 12 New Comparison/Diagnostic Modules (2026-07-05)
+
+### Overview
+
+Three threads this session: (1) reconciled and merged a second research pass
+into the "CAMARF — Author Concept Backlog" artifact, discovering the gap was
+much smaller than assumed since a separate concurrent session had already
+completed most of Round 2 and all of Round 2.5; (2) completed Round 3 Batch H
+(ML-for-Finance, Market Microstructure, Statistics/Applied Probability faculty
+at target schools), closing out the full three-round research effort; (3)
+triaged the ~155-concept backlog into implement/discuss/defer/discard buckets
+with Ross, then built, synthetically verified, and ran 12 new comparison/
+diagnostic modules against real confirmed-pair data — catching and fixing a
+real calendar-padding bug along the way.
+
+### Research reconciliation and Round 3 Batch H
+
+An initial batch of 12 parallel `general-purpose` research agents (targeting
+believed-missing Round 2 threads plus Round 3 Batch H) hit a session-wide API
+rate limit after only 3 completed. Investigation found two things: (a) several
+`general-purpose` agents had spawned their own uncontrolled child agents mid-
+task (general-purpose has Agent-tool access; the fix for future batches is to
+use `Explore`, which structurally cannot spawn children), and (b) a separate,
+still-open session had continued working on the same artifact and had already
+completed most of Round 2 and all of Round 2.5 by the time this session
+re-checked — cutting the genuinely-still-missing set from 9 topics down to 6.
+
+A reconciliation pass (read the full live artifact + all 3 completed
+scratchpad batches, classified every finding as DUPLICATE / OVERLAPPING-BUT-
+DISTINCT / GENUINELY NEW) found most of the "missing" Round 2 content
+(Harvey deeper, Lo 2002, Johansen deeper, Phillips deeper/span-vs-frequency,
+López de Prado newest work, the Barry Johnson citation fix) was already
+present in equal or greater depth. ~10 genuinely new citations survived the
+reconciliation (Ang & Chen 2002 and Poon/Rockinger/Tawn 2004 tail-dependence;
+Kupiec 1995 + Christoffersen 1998 VaR-backtesting primary sources; the
+Ekström-Lindberg-Tysk/Larsson-Lindberg-Warfheimer/Karatzas-Shreve pairs-
+trading optimal-stopping lineage; Sullivan-Timmermann-White 1999 + Lee-White-
+Granger 1993 + Stinchcombe-White 1998; Markowitz 1952 as its own citation;
+Box & Jenkins 1970; Ilmanen's 2011 book; Benjamini-Krieger-Yekutieli 2006 +
+TreeBH; two more Krauss application papers; a dedicated Chincarini & Kim
+non-finding entry) — merged into the artifact with a dashed-divider marking
+the follow-up pass, rather than duplicating existing content.
+
+Round 3 Batch H (3 `Explore`-type agents, chosen specifically because Explore
+has no Agent-tool access and cannot repeat the uncontrolled-fanout problem)
+completed cleanly. Headline finding, only visible once Batch G and Batch H
+are read together: **Cornell (CFEM/Johnson/ORIE) is the single strongest
+school across the entire Round 3 survey, not just one subfield** — Marcos
+López de Prado (direct meta-labeling architecture match), Maureen O'Hara +
+Mao Ye + Sasha Stoikov (market microstructure — Ye's tick-size/HFT research
+maps directly onto CAMARF's own price-degeneracy finding, §5), and David
+Ruppert + David Matteson + Sidney Resnick (statistics — cointegration
+textbook + multivariate time series + EVT) all cluster there. Other strong
+matches: Tim Leung (UW CFRM, optimal mean-reversion trading, reconfirmed from
+Batch G), Gordon Ritter (cross-affiliated Baruch/Cornell CFEM, stat-arb+RL).
+Confirmed gaps, reported honestly rather than padded: UC Berkeley's MFE
+program specifically (Statistics dept is strong, MFE/Haas isn't), USC's core
+Finance dept (strength is in DSO instead), UIUC's dedicated MSFE faculty pool
+(Mao Ye left for Cornell in 2022), UT Austin/Georgetown/Baruch's Statistics
+departments for the specific FDR/EVT/state-space axis.
+
+Artifact fully updated and redeployed (same URL both times): Round 2 complete
++ reconciled, Round 2.5 complete, Round 3 Batch G + Batch H complete. Nothing
+left open from the original three-round research plan.
+
+### Implementation triage
+
+Per Ross's direction ("for anything we can implement let's implement"), the
+~155-concept backlog (excluding the Round 3 faculty survey, which is
+application-prep material, not pipeline content) was triaged into four
+buckets: resolves-an-open-question, comparison-arm-vs-existing, fills-a-real-
+gap, and discard/already-settled. Full triage delivered to Ross in
+conversation, not duplicated here — see this session's chat log if the
+bucket assignments themselves are needed later. 12 items were built,
+synthetically verified, and run against real confirmed-pair data this
+session; the rest remain queued (Bertram-adjacent items like weak-exogeneity
+testing, Financial Turbulence Index, CAViaR, quantile regression forests,
+graphical lasso, multiscale entropy, and the three DISCUSS-tier items —
+convex MV/Sharpe/Sortino portfolio, RMT denoising, Carver continuous
+forecast scaling, and the Chan Kalman-filter slope+intercept divergence —
+are not yet built).
+
+### A real bug caught before trusting two of the twelve results
+
+`research/threshold_cointegration.py` and `research/variance_ratio_test.py`
+(both new this session, see below) initially loaded `spread_series_*.parquet`
+and filtered only `np.isfinite(spread)` before computing anything. This is
+the exact calendar-padding failure mode PAPER.md Section 4.5 already
+documents as a general hazard: `spread_series_*.parquet` is persisted on the
+FULL calendar-padded grid, not a compacted real-bars-only series — padded
+rows are still finite (forward-filled), so `isfinite` alone does not remove
+them. Confirmed directly: AMD/DD@1h has 25,730 total rows, only 4,397 with
+`gap_flag==0` (83% padding) — the same 4,397/25,730 pair of numbers already
+on record in this file's own pit_wfa bug account from Session 24/25, now
+recurring in a new pair of scripts rather than the original one. Fixed in
+both modules by excluding `gap_flag_a != 4 AND gap_flag_b != 4` (matching
+`CointScanner`'s exact existing convention) before any computation. The
+correction materially changed both results, not just cosmetically:
+
+- **Threshold cointegration**: pre-fix, 2/22 pairs "significant"; post-fix,
+  only 1/22 (TMHC/WAL@1h, p=0.007) — which does not survive BH-FDR for
+  testing 22 pairs (rank-1 threshold ≈0.0023). Corrected conclusion: no
+  confirmed pair shows a real threshold-cointegration effect.
+- **Variance ratio test**: pre-fix, VR grew monotonically ABOVE 1 for nearly
+  every pair as q grew — backwards for a genuinely stationary process (VR
+  should fall toward 0, not diverge, as q→∞). Post-fix, VR shows the
+  textbook-correct signature: above 1 at short horizons (~0.5x half-life),
+  crossing 1 near the half-life itself, clearly below 1 (0.35-0.52, mostly
+  p<0.01) at 2-4x half-life — strong, independent corroboration of the
+  confirmed pairs' mean-reversion via a completely different statistical
+  family (Lo & MacKinlay 1988) than Engle-Granger.
+
+Both scripts now fall back to the most recent `output/results/{tf}_stale_*`
+archive directory when no live (unsuffixed) directory exists for a
+timeframe — confirmed this "_stale_" naming is simply analysis.py's own
+archive-before-overwrite convention from a scoped rerun (a `--timeframes 4h`
+run archives every OTHER timeframe as stale without regenerating them), not
+"known-bad data," by diffing a live vs. its own just-archived stale
+counterpart directly (identical file lists, stale dir simply older).
+
+### New module: `research/threshold_cointegration.py` + `debug/_verify_threshold_cointegration.py`
+
+Hansen & Seo (2002) two-regime threshold VECM test, implemented as a
+practical grid-search + wild-bootstrap procedure (not a literal
+reproduction of their exact sup-Wald asymptotic theory — flagged explicitly
+in the docstring). Verification needed two tuning passes: the first
+synthetic "genuine threshold" scenario placed the true threshold at the 95th
+percentile of the simulated data, structurally unfindable since the grid
+search correctly restricts candidates to the trimmed empirical range
+(Hansen's own convention, not a bug to route around) — fixed by rebalancing
+the scenario so both regimes get a healthy observation share. Real result
+(post gap-flag fix): only TMHC/WAL@1h nominally significant (p=0.007),
+which does not survive BH-FDR correction for 22 simultaneous tests — no
+confirmed pair shows a real threshold-cointegration effect; the linear OU
+model already in production is adequate.
+
+### New module: `research/variance_ratio_test.py` + `debug/_verify_variance_ratio_test.py`
+
+Lo & MacKinlay (1988) variance ratio test (both homoskedastic z1 and
+heteroskedasticity-robust z2 statistics), q chosen per-pair as a multiple
+(0.5x/1x/2x/4x) of that pair's own median rolling half-life rather than a
+fixed grid — a fixed q=2..16 grid tested far below any 1h pair's ~35-40 bar
+half-life and produced the nonsensical pre-gap-fix result above even before
+the padding bug was found. Real result (post-fix): textbook mean-reversion
+signature across nearly every 1h pair (VR>1 short-horizon -> VR<1 at 2-4x
+half-life, e.g. AMD/DD 1.77->0.35 across its own half-life multiples) —
+independent corroboration of mean-reversion from outside the EG/cointegration
+family entirely.
+
+### New module: `cvar.py` addition — `var_exceedance_backtest()` + expanded `debug/_verify_cvar.py`
+
+Kupiec (1995) unconditional-coverage (POF) test + Christoffersen (1998)
+independence and conditional-coverage tests, added as a function inside the
+existing `cvar.py` (not a new file) since it operates on the same daily P&L
+series that module already loads. Closes a confirmed real gap flagged in
+the 2026-07-05 research pass (`cvar.py` had no VaR-exceedance validation at
+all). Verified via 6 synthetic cases including a deliberate volatility-
+regime-break scenario (Kupiec correctly rejects) and a deliberately clustered
+-exceedance scenario (Christoffersen's independence test, not Kupiec, is the
+one that should and does catch it). Real result: CAMARF's historical VaR is
+well-calibrated at both 95%/99%, IS and OOS (Kupiec does not reject;
+Christoffersen returns n/a on too few exceedances to compute reliably rather
+than a fabricated statistic).
+
+### New module: `research/dd_hub_effective_bets.py` + `debug/_verify_dd_hub_effective_bets.py`
+
+Three independent methods for the DD-hub effective-bet-count question
+(PAPER.md §7.2): Grinold-Kahn breadth (BR_eff = N/(1+(N-1)*rho_bar)), Meucci's
+Effective Number of Bets (eigenvalue-based diversification distribution),
+and Carver's Instrument Diversification Multiplier (IDM = 1/sqrt(w'Rw) —
+proven, not assumed, to equal sqrt(BR_eff) exactly under equal weighting).
+Verification surfaced a real, non-obvious mathematical property along the
+way: for an EXACTLY equicorrelated matrix under EXACTLY equal weights, the
+equal-weight vector is itself the top eigenvector, so Meucci's ENB collapses
+to exactly 1.0 regardless of rho — correct, not a bug, but degenerate;
+documented directly in the module rather than silently worked around. Real
+data (z_rolling deltas, since the DD-hub pairs currently have zero recorded
+trades in `trades_layer1.parquet` — a separate real finding, not a bug in
+this script): rho_bar=0.282 (heterogeneous, 0.107-0.487 range, genuinely not
+equicorrelated), giving BR_eff=2.35, Meucci ENB=1.14, Carver IDM=1.53 — all
+three agree the 5-pair DD-hub cluster behaves like roughly 1-2.3 effective
+independent bets, not 5.
+
+### `backtest.py` addition — `compute_hrp_weights(shrinkage=...)` + `debug/_verify_hrp_ledoit_wolf.py`
+
+Ledoit-Wolf shrinkage (via `sklearn.covariance.ledoit_wolf`, the peer-
+reviewed reference implementation — deliberately not a hand-derived closed
+form) added as an opt-in `shrinkage` parameter, default `"none"` reproducing
+prior behavior exactly (confirmed via regression test). Verification needed
+a redesign: the first version tested whether shrinkage narrowed HRP's
+resulting weight RANGE, which turned out to be the wrong thing to test — HRP's
+hierarchical clustering does not respond to a shrunk correlation matrix in a
+simple monotonic way (shrinkage widened the range on one genuinely-
+equicorrelated synthetic case). Fixed by testing the actual mechanism
+directly instead (does the correlation magnitude shrink toward zero; does
+the shrinkage coefficient fall as sample size grows) — both hold. Real-data
+comparison is currently uninformative, and the reason matters: raw and
+shrunk HRP produce byte-identical output on `trades_layer1.parquet` because
+BOTH variants saturate the same [0.1, 5.0] clipping bounds due to SPY/VOO's
+outlier behavior — the long-flagged, not-yet-actioned "SPY/VOO exclusion"
+pending item (Session 22) is now directly blocking evaluation of this
+comparison too, not just a paper-writing cleanliness item. Raises its
+priority.
+
+### New module: `research/news_impact_asymmetry.py` + `debug/_verify_news_impact_asymmetry.py`
+
+Engle & Ng (1993) asymmetric-volatility test — whether spread volatility
+responds differently to widening vs. narrowing moves, directly testable
+against `backtest.py`'s `garch_stop` variant (which assumes a symmetric
+rolling-std trigger). The textbook multi-term sign-bias regression
+(dz_t^2 ~ ARCH-control + sign/size-bias interaction terms) was built first
+and rejected after THREE fix attempts (an explicit ARCH control term, then a
+log-variance transform) all left a badly inflated false-rejection rate
+(75-90% instead of the nominal 5%) on genuinely symmetric synthetic
+GARCH(1,1) data — traced to severe multicollinearity among the sign/size
+interaction terms plus non-negativity issues in a squared/log-squared
+dependent variable under an additive wild bootstrap. Replaced with a much
+simpler, robust permutation-based two-group variance-ratio test (split dz_t
+by the sign of dz_{t-1}, permute group labels) that answers the identical
+substantive question without any of those failure modes — passed cleanly on
+the first attempt after the redesign. Real result: clean null across all 22
+confirmed pairs (0 significant at p<0.05) — CAMARF's spread volatility does
+NOT respond asymmetrically to widening vs. narrowing, validating
+`garch_stop`'s symmetric design rather than flagging a problem with it.
+
+### New module: `research/strategy_risk_precision.py` + `debug/_verify_strategy_risk_precision.py`
+
+AFML Ch. 15's symmetric binomial Sharpe formula (SR_per_bet =
+(2p-1)/(2*sqrt(p(1-p))), annualized by *sqrt(n)) — verified directly against
+2-million-draw Monte Carlo simulation rather than trusted from memory, per
+this session's now-standing practice of independently checking any formula
+recalled without a source in hand. Real result on IS trades: flags CVX/OXY
+and KVUE/KMB (both 3m pairs) with sub-50% win rates (42.9%, 43.8%) — these
+two pairs' edge, if real, cannot come from win rate and must come from
+payoff asymmetry (small losses, larger wins), a genuine per-pair
+characterization the pipeline didn't previously surface.
+
+### New module: `research/reimers_trio_correction.py` + `debug/_verify_reimers_trio_correction.py`
+
+Reimers (1992) small-sample degrees-of-freedom correction for Johansen's
+trace statistic (LR_corrected = LR*(T-nk)/T, compared against the SAME
+asymptotic critical values), applied to all 502 already-persisted candidate
+trios (`output/results/*/trios.parquet`) by re-running `coint_johansen`
+directly to recover the critical-value array the persisted output doesn't
+retain. Also added max-eigenvalue statistic + critical value from the same
+already-open `coint_johansen` call (no extra data cost) to flag trace/max-
+eigenvalue disagreement. Real results: 0/502 trios flip decision under the
+Reimers correction (sample sizes are large enough — thousands of bars — that
+the correction barely matters here, a legitimate honest null); 2/502 trios
+(TER/DD/AMKR@1h, TER/DD/ATI@1h — both sharing TER/DD) show trace-vs-max-
+eigenvalue disagreement, flagged as borderline/methodology-sensitive cases.
+
+### New module: `research/grid_bootstrap_ar_ci.py` + `debug/_verify_grid_bootstrap_ar_ci.py`
+
+Hansen (1999) grid bootstrap — inverts a bootstrap test over a grid of
+candidate null AR coefficients instead of bootstrapping the point estimate
+directly, staying valid near a unit root (exactly CAMARF's regime: slow
+spread mean-reversion means an AR coefficient close to 1). Verified via
+empirical coverage rate (14/15 trials covered the true rho=0.95 with a
+nominal 90% CI — right on target). Real result: every confirmed pair's AR
+coefficient CI sits well below 1 (tightest cases ~0.92-0.98, e.g. TMHC/WAL
+[0.9614, 0.9708]) except PNC/ZION@4h, whose CI [0.9990, 0.9990] sits right at
+the near-unit-root boundary — flagged as the one pair worth a second look on
+this specific axis.
+
+### New module: `research/bertram_ou_thresholds.py` + `debug/_verify_bertram_ou_thresholds.py`
+
+Bertram (2010) analytic optimal OU entry/exit thresholds, implemented via
+direct Monte Carlo simulation of the fitted OU process rather than his
+closed-form special-function solution (no independent way to check a
+hand-derived closed form against, so simulation — verifiable via known
+qualitative properties — was used instead; documented explicitly as a
+simplification, not a literal reproduction of his formula). First version
+failed its own sanity checks completely (optimal threshold stuck at the
+grid ceiling regardless of transaction cost) — root cause: only the hold-
+to-exit leg of a trading cycle was simulated, omitting the wait-to-enter
+leg (time for the spread to randomly wander back out to the entry level
+after a position closes), which is what creates the genuine cost-vs-
+frequency trade-off Bertram's objective depends on. Fixed by simulating the
+full wait+hold cycle; verification then passed cleanly (optimal threshold
+shrinks toward 0 as cost->0, grows monotonically as cost increases). Real
+result, important caveat attached: using a placeholder transaction cost
+(10% of the spread's own stationary std, since no principled way to convert
+to real dollar costs without a notional/share-count assumption existed),
+most pairs' analytically-optimal entry z sits at 0.75-1.25 — below
+production's z=2.0 — except PNC/ZION@4h (near-unit-root per the grid-
+bootstrap result above), whose optimum sits at the grid ceiling (3.5).
+Given the result's known sensitivity to the assumed cost, read this as
+directional (the framework works and is verified) rather than a literal
+recommendation to change the production entry threshold.
+
+### New module: `research/return_smoothing_audit.py` + `debug/_verify_return_smoothing_audit.py`
+
+Getmansky, Lo & Makarov (2004) return-smoothing model, theta estimated by
+matching the MA(2) process's theoretical rho1/rho2 to the sample
+autocorrelation of each pair's daily P&L via constrained least squares.
+Verification surfaced a real, known identification property (documented in
+the module, not worked around): matching only rho1/rho2 cannot distinguish
+theta=(a,b,c) from its reversal theta=(c,b,a) — both give identical
+theoretical autocorrelations — but the smoothing index xi=sum(theta^2) IS
+invariant under this reversal and was recovered correctly (0.373 vs. a true
+0.380) despite the individual theta values swapping order. Real result:
+9 of 10 testable pairs show xi at or near 1.0 (no smoothing signature);
+only EG/WRB shows a modest one (0.711) — consistent with CAMARF trading
+liquid, actively-marked instruments rather than illiquid, appraisal-priced
+ones, the regime Getmansky-Lo-Makarov's own paper is about.
+
+### Standing practices reinforced this session
+
+- **Verify against an independent method, not just "does it run."** Three
+  of twelve modules (news impact asymmetry, Bertram thresholds, and the
+  first attempt at both threshold cointegration and variance ratio's
+  synthetic scenarios) failed their own first verification pass and needed
+  real redesign, not just parameter tweaking — each fix is documented in
+  the module itself, not just in this file, so a future reader hits the
+  same "why is it built this way" context without re-deriving it.
+- **A formula recalled without a source in hand gets Monte Carlo-checked
+  before being trusted**, not just cited — applied explicitly to the
+  binomial Sharpe formula (strategy_risk_precision.py) and, more heavily,
+  to Bertram's simulation-based substitute for his own closed form.
+- **Gap-flag/calendar-padding masking is not optional in ANY new script
+  touching `spread_series_*.parquet`** — this is now the second time this
+  exact bug class has appeared (first in pit_wfa.py/decoupling_backtest.py,
+  Session 24; now in two more scripts, Session 27). Worth a standing
+  reminder at the top of any future research script template.
+
+### Addendum (same day) — RMT denoising/detoning/clustering applied to ml.py's own feature set
+
+Ross asked directly whether dimensionality reduction exists anywhere in CAMARF's ML pipeline.
+Answer, checked not assumed: PCA-based dimensionality reduction already exists in production
+(`analysis.py`'s `EigenportfolioDecomposer`, Marchenko-Pastur denoising) but is used for
+eigenportfolio construction/confirmatory tiering, not anywhere inside `ml.py` (confirmed via
+direct grep — zero PCA, zero `n_components` in that file). Also checked and corrected an
+assumption from this session's own earlier triage: PAPER.md §10's "flat 0.85-correlation
+feature-drop rule" is a planned rule for a not-yet-decided Stage-2 feature set, not something
+that exists today to replace — Stage 1's actual 8 features (`_FEATURE_COLS`) have no existing
+correlation-pruning step at all.
+
+Built `research/rmt_feature_denoising.py`: reuses `EigenportfolioDecomposer._eigendecompose`
+directly (not reimplemented) for Marchenko-Pastur signal/noise separation, adds a denoise step
+(noise eigenvalues replaced by their mean, preserving trace), a detone step (removes the top/
+market-mode eigenvector's contribution), and a practical version of Optimal Number of Clusters
+(hierarchical clustering + silhouette-score K selection, without ONC's full recursive refinement
+— not needed at only 8 features). Real labeled examples were gathered by reusing `ml.py`'s own
+`_build_examples_for_pair` directly across every confirmed pair, temporarily redirecting
+`_tf_dirname` per timeframe to whichever live-or-archived results directory actually has data
+(the same stale-directory resolution used throughout this session) rather than reimplementing
+the entry-event/labeling logic and risking silent divergence from production — restored
+afterward regardless of outcome.
+
+Verification needed one fix: the first version of Case 3 checked whether detoning reduced the
+"top eigenvalue's variance share," which is the wrong comparison — both the pre- and post-
+detoning matrices get independently rescaled to a unit diagonal, so the former #2 factor becomes
+the new #1 factor of a differently-normalized matrix, not a meaningful before/after comparison.
+Fixed by checking the actual, direct property instead: projecting the market eigenvector itself
+through the detoned (pre-rescale) matrix, which should be (and was, exactly 0.000000) null,
+since that exact outer product was subtracted. A separate case (a synthetic 2-block, 8-feature
+correlation structure with a known right answer) correctly recovered exactly 2 clusters matching
+the true block structure.
+
+**Real result (n=24 labeled examples currently available across all confirmed pairs — small,
+reported as exploratory not settled):** the raw correlation matrix alone is the more reliable,
+actionable finding at this sample size (Marchenko-Pastur finds only K=1 signal eigenvalue out of
+8 given the small n — a low-power result, honestly reported as such). Several `_FEATURE_COLS`
+pairs show substantial raw redundancy: `hurst_exponent`/`mean_reversion_speed` at -0.90,
+`hurst_exponent`/`half_life_trend_slope` at -0.85, `coint_fraction_rolling`/`mean_reversion_speed`
+at 0.85. The detoned-correlation clustering (silhouette=0.050, weak given n=24) split the 8
+features into 4 groups — {zscore_velocity, hurst_exponent, half_life_trend_slope},
+{half_life_current, coint_fraction_rolling}, {mean_reversion_speed, hedge_ratio_drift},
+{zscore alone} — worth re-running once more labeled examples accumulate (the ML gate's own
+30-per-class threshold) rather than treated as a final feature-pruning decision now.
+
+### Not yet done / queued
+
+SPY/VOO exclusion (now blocking two separate things: PAPER.md cleanliness
+AND the Ledoit-Wolf HRP comparison above); the remaining un-built backlog items from the triage
+(weak-exogeneity test, Financial Turbulence Index, CAViaR, quantile
+regression forests, graphical lasso, multiscale entropy, and the four
+DISCUSS-tier items still needing Ross's input before any code: convex
+MV/Sharpe/Sortino portfolio, Carver continuous forecast
+scaling, and the Chan Kalman-filter slope+intercept divergence — RMT
+denoising itself is no longer in this list, built and run above); a
+re-run of the RMT feature-denoising result once ml.py's labeled-example
+count clears its own 30-per-class training threshold.
