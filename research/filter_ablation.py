@@ -109,7 +109,8 @@ def main():
 
         is_structural = all_candidates.apply(
             lambda r: CrossAssetTagger._shared_currency(r["symbol_a"], r["symbol_b"])
-            or CrossAssetTagger._is_share_class_pair(r["symbol_a"], r["symbol_b"]),
+            or CrossAssetTagger._is_share_class_pair(r["symbol_a"], r["symbol_b"])
+            or CrossAssetTagger._is_index_tracking_pair(r["symbol_a"], r["symbol_b"]),
             axis=1,
         )
         structural_excluded = all_candidates[is_structural]

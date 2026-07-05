@@ -3452,6 +3452,18 @@ class CrossAssetTagger:
         frozenset({"HEI.A", "HEI"}),  # Heico Corp
     }
 
+    # Known same-index-tracking ETF pairs — different funds, identical mandate
+    # (both required to track the same benchmark index within a tight tracking
+    # error band). Cointegration here is a structural consequence of the fund
+    # mandates, not a discovered economic relationship — same category as
+    # share-class pairs above. Found 2026-07-01: SPY/VOO (both track the S&P
+    # 500) confirmed at 4h via the coint_frac secondary-evidence override
+    # (coint_fraction_rolling=0.35, below the 0.70 primary threshold) despite
+    # no economic cointegration hypothesis. See Development.md Session 25.
+    _INDEX_TRACKING_ETF_PAIRS: Set[FrozenSet[str]] = {
+        frozenset({"SPY", "VOO"}),  # both track the S&P 500
+    }
+
     @staticmethod
     def _shared_currency(sym_a: str, sym_b: str) -> bool:
         """
@@ -3471,16 +3483,23 @@ class CrossAssetTagger:
         return frozenset({sym_a, sym_b}) in CrossAssetTagger._SHARE_CLASS_PAIRS
 
     @staticmethod
+    def _is_index_tracking_pair(sym_a: str, sym_b: str) -> bool:
+        """True if the two symbols are ETFs tracking the same underlying index."""
+        return frozenset({sym_a, sym_b}) in CrossAssetTagger._INDEX_TRACKING_ETF_PAIRS
+
+    @staticmethod
     def split(
         confirmed_pairs: List[PairResult],
     ) -> Tuple[List[PairResult], List[PairResult]]:
         """
         Returns (same_asset_pairs, cross_asset_pairs).
 
-        Forex pairs sharing a common currency leg are tagged is_structural=True
+        Forex pairs sharing a common currency leg, same-company share-class
+        pairs, and same-index-tracking ETF pairs are tagged is_structural=True
         and separated. Structural pairs are stored in the audit log and report
         but NOT included in the primary discovered-cointegration findings —
-        triangular arbitrage is mathematical identity, not empirical discovery.
+        their cointegration is mathematical/mandate-driven identity, not
+        empirical discovery.
         """
         structural_forex = []
         same = []
@@ -3492,12 +3511,17 @@ class CrossAssetTagger:
             is_share_class = CrossAssetTagger._is_share_class_pair(
                 p.symbol_a, p.symbol_b
             )
-            if is_forex_triangle or is_share_class:
+            is_index_tracking = CrossAssetTagger._is_index_tracking_pair(
+                p.symbol_a, p.symbol_b
+            )
+            if is_forex_triangle or is_share_class or is_index_tracking:
                 structural_forex.append(p)
                 reason = (
                     "triangular arbitrage"
                     if is_forex_triangle
                     else "same-company share classes"
+                    if is_share_class
+                    else "same-index-tracking ETFs"
                 )
                 BiasAuditLog.record(
                     bias_type="snooping",
@@ -3514,8 +3538,9 @@ class CrossAssetTagger:
                 same.append(p)
         if structural_forex:
             log.info(
-                f"  CrossAssetTagger: {len(structural_forex)} structural forex pairs "
-                f"(triangular arbitrage) excluded from primary findings"
+                f"  CrossAssetTagger: {len(structural_forex)} structural pairs "
+                f"(triangular arbitrage / share-class / same-index-tracking ETFs) "
+                f"excluded from primary findings"
             )
         return same, cross
 
@@ -5167,6 +5192,7 @@ class AnalysisPipeline:
             for p in pairs
             if not CrossAssetTagger._shared_currency(p.symbol_a, p.symbol_b)
             and not CrossAssetTagger._is_share_class_pair(p.symbol_a, p.symbol_b)
+            and not CrossAssetTagger._is_index_tracking_pair(p.symbol_a, p.symbol_b)
         ]
         # Captured here, before the coint_frac filter below reassigns
         # discovered_pairs again — otherwise n_structural further down would

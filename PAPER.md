@@ -645,20 +645,29 @@ stats tier) but represents a methodologically trivial pair — both legs track t
 It is included in the 23-pair count here but omitted from §7 strategy results commentary
 wherever possible.
 
-**[FLAG — do not cite either Gold-tier pair below without resolving
-this first]** Both current Gold-tier pairs (APAM/INVX, AZTA/INVX) are
-built from the same 4-symbol cluster (APAM/AZTA/INVX/NBHC) flagged in
-BUG-D49 (`Development.md`, found 2026-06-23 while building the graph-
-clustering comparison): their 1-minute price data shows only 2-7
-distinct close values across hundreds to thousands of bars, despite
-being genuinely liquid ($11-27M/day) names. **Independently corroborated
-against IBKR's own data feed (not just yfinance) — same exact price
-levels on both providers — so this is real market data, not a fetch
-defect.** The open question is now whether Engle-Granger cointegration
-is even well-specified on a price series this information-sparse (2-7
-distinct values over multiple days), not whether the data is corrupted.
-Do not use either pair as a worked example anywhere in this paper until
-that methodological question is resolved.
+**[RESOLVED 2026-07-01 — structural, not prose]** APAM/INVX and AZTA/INVX
+(built from the 4-symbol cluster APAM/AZTA/INVX/NBHC flagged in BUG-D49,
+`Development.md`, found 2026-06-23 while building the graph-clustering
+comparison) were Gold-tier at 1-minute despite showing only 2-7 distinct
+close values across hundreds to thousands of bars, on genuinely liquid
+($11-27M/day) names — **independently corroborated against IBKR's own data
+feed (not just yfinance), so this is real market data, not a fetch defect.**
+Rather than carry an indefinite prose "do not cite" caveat, `analysis.py`
+Step 6d (the same `thin_info_content` filter BUG-D49 already built) now
+structurally drops any pair with either leg price-degenerate from
+`pairs.parquet` before the tiering step ever runs — verified directly
+against the current pipeline output: no APAM/AZTA/INVX/NBHC pair exists in
+any `output/results/*/pairs.parquet` as of this run. These pairs cannot
+produce a Gold-tier (or any-tier) result anymore; the exclusion is
+structural, not a reviewer instruction to remember. The underlying
+methodological question — whether Engle-Granger is even well-specified on
+a price series this information-sparse — remains open in the literature
+sense, but is no longer a live citation risk for this paper: the pipeline
+now refuses to confirm such pairs at all, at any timeframe with a
+price-degeneracy screen available. (Note: this filter is a no-op for any
+timeframe where `research/audit_price_degeneracy.py` hasn't been run —
+see the BUG-D49 mechanism note in §5 above — so this guarantee is
+contingent on that screen being current, not unconditional.)
 
 **Scope confirmed universe-wide (2026-06-23)**: a full audit
 (`audit_price_degeneracy.py`) across all 1,354 evaluated 1m symbols
@@ -889,6 +898,19 @@ risk-*limit*: CAMARF does not currently gate position sizing or trading on a CVa
 consistent with §2's scoping — that kind of real-time risk control exists at funds managing
 live client capital under regulatory/LP pressure this research project does not have.
 
+**VaR-exceedance backtest [DRAFTED — 2026-07-05]:** a confirmed gap flagged by a 2026-07-05
+literature pass — reporting a VaR/CVaR number is not the same as validating it against realized
+outcomes. Kupiec's (1995) unconditional-coverage test and Christoffersen's (1998) independence
+and conditional-coverage tests were added directly to `cvar.py` (`var_exceedance_backtest()`),
+using an expanding-window causal VaR forecast (never uses day *t*'s own outcome to forecast day
+*t*) compared against realized daily P&L. Result: **CAMARF's historical VaR is well-calibrated**
+at both the 95% and 99% confidence levels, IS and OOS — realized exceedance rates (3.8%/1.1% IS,
+7.5%/0% OOS) are not statistically distinguishable from their 5%/1% targets (Kupiec fails to
+reject in every case tested). Christoffersen's independence test returns not-applicable on the
+99% confidence level (too few exceedances — 3 IS, 0-1 OOS — to compute the transition-count
+statistic reliably), reported honestly as an inconclusive result rather than a fabricated
+statistic.
+
 ## 7. Strategy / Backtest Results [DRAFTED — Layer 1 complete; Layer 2 pending ML data]
 
 Per the framing decision above: this chapter demonstrates the methodology
@@ -1000,6 +1022,30 @@ Computed on rolling windows across the 39 unique symbols spanning all confirmed 
 concentration flag (§6.4) as a second, independent lens on the same underlying question —
 are the confirmed pairs' returns becoming more systemically entangled over time — rather than
 as a portfolio-sizing input in its own right.
+
+**Ledoit-Wolf shrinkage comparison arm for HRP [DRAFTED — 2026-07-05]:** the estimation-error
+literature (Michaud 1989; DeMiguel/Garlappi/Uppal 2009, both already cited above) predicts HRP's
+own raw-sample-covariance input is a likely source of its underperformance relative to
+risk-parity. Ledoit-Wolf shrinkage (Ledoit & Wolf 2004, via `sklearn.covariance.ledoit_wolf`, the
+peer-reviewed reference implementation) was added as an opt-in comparison arm on
+`compute_hrp_weights()`. **The real-data comparison is currently uninformative, and the reason
+is itself a finding:** raw-covariance and Ledoit-Wolf-shrunk HRP produce byte-identical output on
+the current trades file — both variants saturate the same [0.1, 5.0] position-multiplier clipping
+bounds because of SPY/VOO's outlier behavior. The long-flagged, not-yet-actioned SPY/VOO
+exclusion (§5) is now directly blocking evaluation of this comparison too, raising its priority
+beyond a paper-writing cleanliness item.
+
+**DD-hub effective independent bet count [DRAFTED — 2026-07-05]:** three independent methods —
+Grinold-Kahn breadth (BR_eff = N/(1+(N-1)ρ̄)), Meucci's (2009) Effective Number of Bets
+(eigenvalue-based diversification distribution), and Carver's (2015) Instrument Diversification
+Multiplier (IDM = 1/√(w'Rw), proven — not assumed — to equal √BR_eff exactly under equal
+weighting) — were run against the 5-pair DD-hub cluster's own z-score-delta correlation
+structure (trade-level P&L correlation was considered and rejected: the DD-hub pairs currently
+have zero recorded trades in the IS trades file, a separate real finding). Real average pairwise
+correlation ρ̄=0.282 (heterogeneous, 0.107–0.487, genuinely not equicorrelated). **All three
+methods agree the 5-pair DD-hub cluster behaves like roughly 1.1–2.3 effective independent bets,
+not 5** (BR_eff=2.35, Meucci ENB=1.14, Carver IDM=1.53) — a quantified answer to the concentration
+question this section could previously only describe qualitatively.
 
 **Recommended production configuration:** `--risk-parity` as primary flag (best Sharpe);
 `--neg-hedge` as secondary addition if universe expansion from negative-β pairs is desired.
@@ -1370,6 +1416,24 @@ half_life_rolling > 35. Any ceiling above 35 is non-binding at this TF. The
 ceiling of 20 isolates the single highest-Sharpe pair (12.42 Sharpe on 16 trades)
 — a useful diagnostic but not a production filter on such limited data.
 
+**Analytic entry-threshold check via Monte Carlo OU simulation (Bertram 2010) [DRAFTED —
+2026-07-05]:** the sensitivity grid above is empirical (search over a fixed set of z-values
+against realized OOS trades); Bertram (2010) offers an independent, analytically-motivated
+check — the OU-process threshold that maximizes expected profit per unit *time* (not per trade),
+net of a transaction cost. Bertram's own closed form requires a first-passage-time special-
+function integral with no independent way to check a hand-derived version against, so this was
+implemented instead as direct Monte Carlo simulation of each pair's own fitted OU parameters,
+verified against the qualitative properties his theory predicts (optimal threshold shrinks
+toward 0 as cost→0, grows monotonically as cost increases — confirmed, after an initial version
+that omitted the wait-to-enter leg of the trading cycle and had to be corrected). Using a
+placeholder transaction cost (10% of each pair's own stationary spread standard deviation, since
+no principled dollar-cost conversion exists without a notional/share-count assumption), most
+pairs' analytically-optimal entry z lands at 0.75–1.25 — below production's z=2.0 — with one
+notable exception, PNC/ZION@4h, whose near-unit-root persistence (§7.13's grid-bootstrap AR
+confidence interval below) pushes its optimum to the simulation's grid ceiling. Given the result's known sensitivity to the assumed
+cost, this is reported as directional confirmation that the framework and verification are sound,
+not a literal recommendation to change the production entry threshold.
+
 ### 7.9 Position Sizing and Entry Threshold Optimization [DRAFTED — 2026-06-30]
 
 Two complementary parameter decisions — inverse-volatility position sizing and
@@ -1430,6 +1494,19 @@ persistence all work end-to-end), but that disciplined data requirements prevent
 a model from being deployed on insufficient evidence. This is the Lopez de Prado
 discipline in practice — "report the honest data-constrained result, re-run as
 history accumulates."
+
+**Feature redundancy check via RMT denoising/detoning [DRAFTED — 2026-07-05]:** CAMARF already
+has PCA-based dimensionality reduction in production (`analysis.py`'s `EigenportfolioDecomposer`,
+Marchenko-Pastur denoising for eigenportfolio construction), but it had never been applied to
+`ml.py`'s own 8-feature set, which has no correlation-pruning step of any kind. Applied directly
+(same eigendecomposition machinery, plus a denoise/detone/cluster pipeline built for this
+purpose) to the 24 real labeled examples currently available — a small sample, so results are
+exploratory, not a settled feature-selection decision. The raw correlation matrix is the more
+reliable finding at this sample size: `hurst_exponent`/`mean_reversion_speed` (−0.90),
+`hurst_exponent`/`half_life_trend_slope` (−0.85), and `coint_fraction_rolling`/
+`mean_reversion_speed` (0.85) all show substantial redundancy, suggesting the 8-feature Stage-1
+set could likely be consolidated once more labeled examples accumulate past the ML gate's own
+30-per-class threshold and this check is re-run with real statistical power.
 
 ### 7.11 Filter-Ablation Funnel and Era-Decay Replication [DRAFTED — 2026-06-30]
 
@@ -1520,6 +1597,66 @@ crisis windows than during matched calm periods, and that a simple EG re-test ra
 formal cointegration through either — a genuine, if partial, historical-crisis analog to the
 correlation-in-stress finding from LTCM and the August 2007 quant quake, now measured directly
 on this project's own confirmed pairs rather than asserted from the literature.
+
+### 7.13 Additional Robustness Checks — Six Independent Diagnostics [DRAFTED — 2026-07-05]
+
+A batch of six further robustness checks, each testing the confirmed pair set or the production
+methodology against an independent statistical family not already covered above. All six are
+new comparison/diagnostic modules under `research/`, synthetically verified before being run on
+real data (three needed a real redesign after their first verification attempt failed — see
+Development.md Session 27 for the full account of each).
+
+**Threshold cointegration (Hansen & Seo, 2002):** tests whether a pair's error-correction
+adjustment is genuinely nonlinear (threshold-triggered, as a transaction-cost band would imply)
+rather than the constant-speed linear reversion the production OU model assumes. Result: only
+1 of 22 confirmed pairs is even nominally significant (TMHC/WAL@1h, p=0.007), and that one does
+not survive Benjamini-Hochberg correction for testing 22 pairs at once. **No confirmed pair shows
+a real threshold effect — the linear model already in production is adequate.**
+
+**Variance ratio test (Lo & MacKinlay, 1988):** corroborates mean-reversion from a completely
+different statistical family than Engle-Granger, using q scaled to each pair's own half-life
+rather than a fixed horizon. Result: the textbook mean-reversion signature holds across nearly
+every 1h pair — VR above 1 at short horizons (~0.5× half-life), crossing 1 near the half-life
+itself, clearly below 1 (0.35–0.52, mostly p<0.01) at 2–4× half-life. **Strong, independent
+confirmation that the confirmed pairs are genuinely mean-reverting**, not an artifact of the
+EG/cointegration test family specifically.
+
+**News impact asymmetry (Engle & Ng, 1993):** tests whether spread volatility responds
+asymmetrically to widening vs. narrowing moves — directly relevant to whether the `garch_stop`
+variant's symmetric rolling-std trigger (§7.4) is well-specified. Result: a clean null across all
+22 confirmed pairs (0 significant at p<0.05). **`garch_stop`'s symmetric design is validated, not
+undermined**, by this test.
+
+**Strategy risk via precision/frequency (López de Prado, AFML Ch. 15):** the symmetric binomial
+Sharpe formula, SR = (2p−1)/(2√(p(1−p))) annualized by √n, applied per pair using IS win rate
+(precision) and trade count/year (frequency) — verified directly against 2-million-draw Monte
+Carlo before use. Flags **CVX/OXY and KVUE/KMB (both 3m) with sub-50% win rates** (42.9%, 43.8%)
+— whatever edge these two pairs have cannot come from win rate alone and must rest on payoff
+asymmetry (smaller losses, larger wins), a per-pair characterization not previously surfaced.
+
+**Reimers (1992) small-sample correction, plus trace/max-eigenvalue agreement:** re-tests all
+502 currently-persisted candidate trios with a degrees-of-freedom-corrected Johansen trace
+statistic. Result: 0/502 trios flip from cointegrated to not-cointegrated under the correction —
+an honest null given the trios' large sample sizes (thousands of bars), where small-sample
+corrections are expected to matter least. A companion check (trace vs. max-eigenvalue test,
+computed from the same already-open Johansen call at no extra cost) finds 2/502 trios disagree
+between the two test statistics (TER/DD/AMKR@1h, TER/DD/ATI@1h — both sharing the TER/DD base
+pair), flagged as borderline/methodology-sensitive cases.
+
+**Grid bootstrap confidence intervals for the AR coefficient (Hansen, 1999):** gives a genuine
+confidence interval — not just a pass/fail test — for each pair's own spread mean-reversion
+speed, valid even near a unit root (verified via empirical coverage: 14/15 simulated trials
+covered the true value under a nominal 90% CI). Every confirmed pair's CI sits comfortably below
+1 (e.g. TMHC/WAL: [0.9614, 0.9708]) **except PNC/ZION@4h, whose CI ([0.9990, 0.9990]) sits right
+at the near-unit-root boundary** — flagged as the one pair worth a second look on this specific
+axis, and the same pair whose Bertram-threshold optimum (§7.8) independently lands at the
+opposite extreme of that analysis's grid.
+
+**Return-smoothing audit (Getmansky, Lo & Makarov, 2004):** checks each pair's daily P&L for the
+serial-correlation signature associated with stale/infrequent pricing in illiquid assets. Result:
+9 of 10 testable pairs show a smoothing index at or near 1.0 (no smoothing); only EG/WRB shows a
+modest signature (0.711). Consistent with CAMARF trading liquid, actively-marked instruments
+rather than the illiquid, appraisal-priced assets this diagnostic is designed to catch.
 
 ## 8. Bias Documentation [OUTLINED, one bias drafted in detail]
 
@@ -1913,3 +2050,84 @@ detail not yet confirmed; do not cite numbers from these until verified.
     pairs trading strategies: Review and outlook. *Journal of Economic
     Surveys*, 31(2), 513-545.
     [Wiley](https://onlinelibrary.wiley.com/doi/abs/10.1111/joes.12153)
+11. **[VERIFIED 2026-07-02, bibliographic level — title/venue/volume/page
+    cross-checked across 2+ independent sources this session, no direct
+    URL confirmed]** Hamilton, J. D. (1989). A new approach to the
+    economic analysis of nonstationary time series and the business
+    cycle. *Econometrica*, 57(2), 357-384. The foundational Markov
+    regime-switching model — the direct academic ancestor of the HMM
+    regime classifier already used in `analysis.py`/`RegimeClassifier`,
+    not previously cited despite being used since early sessions.
+12. **[VERIFIED 2026-07-02, bibliographic level, no direct URL confirmed]**
+    Durbin, J., & Koopman, S. J. (2001, 2nd ed. 2012). *Time Series
+    Analysis by State Space Methods*. Oxford University Press. The
+    standard modern reference for the Kalman filter/state-space
+    machinery underlying the Kalman dynamic hedge-ratio estimator, not
+    previously cited.
+13. **[VERIFIED 2026-07-02, bibliographic level, no direct URL confirmed]**
+    Rabiner, L. R. (1989). A tutorial on hidden Markov models and
+    selected applications in speech recognition. *Proceedings of the
+    IEEE*, 77(2), 257-286. The field-standard HMM tutorial (forward-
+    backward, Viterbi, Baum-Welch/EM) — the implementation-level
+    reference for the regime classifier's HMM component, distinct from
+    Hamilton's econometric framing above.
+14. **[VERIFIED 2026-07-02, bibliographic level, no direct URL confirmed]**
+    Engle, R. F. (1982). Autoregressive conditional heteroskedasticity
+    with estimates of the variance of United Kingdom inflation.
+    *Econometrica*, 50(4), 987-1007. The founding ARCH paper — everything
+    downstream in this paper's volatility-modeling lineage (GARCH,
+    Engle's DCC already cited above, the `garch_stop` backtest variant)
+    generalizes this model. Previously uncited despite DCC (Engle, 2002)
+    being cited; `garch_stop` itself is a rolling-window standard-
+    deviation proxy on the z-score, not a fitted ARCH/GARCH conditional-
+    variance model — noted here so the distinction is explicit rather
+    than implied.
+15. **[TBD, used correctly in §7.13, exact venue/pages not independently
+    re-verified this session]** Hansen, B. E., & Seo, B. (2002). Testing
+    for two-regime threshold cointegration in vector error-correction
+    models. *Journal of Econometrics*, 110(2), 293-318. The threshold
+    cointegration test implemented in `research/threshold_cointegration.py`.
+16. **[TBD]** Lo, A. W., & MacKinlay, A. C. (1988). Stock market prices do
+    not follow random walks: Evidence from a simple specification test.
+    *Review of Financial Studies*, 1(1), 41-66. The variance ratio test
+    implemented in `research/variance_ratio_test.py`.
+17. **[TBD]** Kupiec, P. H. (1995). Techniques for verifying the accuracy
+    of risk measurement models. *Journal of Derivatives*, 3(2), 73-84;
+    Christoffersen, P. F. (1998). Evaluating interval forecasts.
+    *International Economic Review*, 39(4), 841-862. The VaR-exceedance
+    backtesting tests implemented in `cvar.py`'s `var_exceedance_backtest()`.
+18. **[TBD]** Grinold, R. C., & Kahn, R. N. *Active Portfolio Management*
+    (2nd ed., 2000), McGraw-Hill — the breadth/"fundamental law" formula;
+    Meucci, A. (2009). Managing diversification. *Risk*, May 2009 issue;
+    Carver, R. (2015). *Systematic Trading*, Harriman House — the
+    Instrument Diversification Multiplier. All three implemented together
+    in `research/dd_hub_effective_bets.py`.
+19. **[TBD]** Ledoit, O., & Wolf, M. (2004). Honey, I shrunk the sample
+    covariance matrix. *Journal of Portfolio Management*, 30(4), 110-119.
+    The shrinkage estimator implemented as `compute_hrp_weights(shrinkage=
+    "ledoit_wolf")` in `backtest.py`, via `sklearn.covariance.ledoit_wolf`.
+20. **[TBD]** Engle, R. F., & Ng, V. K. (1993). Measuring and testing the
+    impact of news on volatility. *Journal of Finance*, 48(5), 1749-1778.
+    Motivates the asymmetric-volatility question tested (via a simpler
+    permutation-based method, not their original regression specification
+    — see Development.md Session 27) in `research/news_impact_asymmetry.py`.
+21. **[TBD]** López de Prado, M. (2018). *Advances in Financial Machine
+    Learning*, Wiley, Ch. 15 ("Understanding Strategy Risk") — already
+    cited above for meta-labeling/triple-barrier/CPCV/PBO; the symmetric
+    binomial Sharpe formula from this chapter is implemented in
+    `research/strategy_risk_precision.py`.
+22. **[TBD]** Reimers, H.-E. (1992). Comparisons of tests for multivariate
+    cointegration. *Statistical Papers*, 33(1), 335-359. The small-sample
+    correction implemented in `research/reimers_trio_correction.py`.
+23. **[TBD]** Hansen, B. E. (1999). The grid bootstrap and the
+    autoregressive model. *Review of Economics and Statistics*, 81(4),
+    594-607. The confidence-interval method implemented in
+    `research/grid_bootstrap_ar_ci.py`.
+24. **[TBD]** Bertram, W. K. (2010). Analytic solutions for optimal
+    statistical arbitrage trading. *Physica A*, 389(11), 2234-2243;
+    Getmansky, M., Lo, A. W., & Makarov, I. (2004). An econometric model
+    of serial correlation and illiquidity in hedge fund returns. *Journal
+    of Financial Economics*, 74(3), 529-609. Implemented (the former via
+    Monte Carlo simulation rather than the original closed form — see
+    Development.md Session 27 for why) in `research/bertram_ou_thresholds.py`
+    and `research/return_smoothing_audit.py` respectively.
