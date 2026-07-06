@@ -52,12 +52,48 @@ convention):
     # df_a, df_b now have a gap_flag column; _gap_aware_returns/_clean_close
     # will mask DATA_GAP-spanning returns exactly as production does.
 """
+import glob
 import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from data import DataAligner, DataStore
+
+# Shared timeframe-directory constants and stale-directory fallback resolver
+# (added 2026-07-05). Previously copy-pasted near-verbatim into ~9 separate
+# research/*.py comparison scripts (threshold_cointegration.py,
+# variance_ratio_test.py, news_impact_asymmetry.py, grid_bootstrap_ar_ci.py,
+# bertram_ou_thresholds.py, reimers_trio_correction.py, kalman_slope_
+# intercept.py, dd_hub_effective_bets.py, rmt_feature_denoising.py) — found
+# by a 2026-07-05 code review (three independent angles flagged it
+# separately) and consolidated here, the codebase's existing precedent for
+# shared research/ utilities, rather than left duplicated. One copy had
+# already drifted (dd_hub_effective_bets.py's local version returned a bare
+# path instead of the (path, is_stale) tuple every other copy used).
+TF_DIRS = [
+    "1min", "2min", "3min", "5min", "15min", "30min", "1hr", "4hr",
+    "7day", "1mo", "3mo", "6mo",
+]
+DIR_TO_LABEL = {
+    "1min": "1m", "2min": "2m", "3min": "3m", "5min": "5m", "15min": "15m",
+    "30min": "30m", "1hr": "1h", "4hr": "4h", "7day": "7D", "1mo": "1M",
+    "3mo": "3M", "6mo": "6M",
+}
+
+
+def resolve_tf_results_dir(tf_dir):
+    """output/results/{tf_dir} if it exists; otherwise the most recent
+    output/results/{tf_dir}_stale_* archive directory. See
+    threshold_cointegration.py's original docstring (Session 27) for the
+    full account of why "_stale_" just means "superseded by a scoped
+    rerun's archiving step," not "known-bad data." Returns (path, is_stale).
+    """
+    live = os.path.join("output", "results", tf_dir)
+    if os.path.isdir(live):
+        return live, False
+    candidates = sorted(glob.glob(os.path.join("output", "results", f"{tf_dir}_stale_*")))
+    return (candidates[-1], True) if candidates else (live, False)
 
 
 def align_pair_dataframes(symbol_a, df_a, symbol_b, df_b, tf_label):
@@ -90,3 +126,24 @@ def load_aligned_pair(symbol_a, symbol_b, tf_label):
     df_a = DataStore.load(symbol_a, tf_label)
     df_b = DataStore.load(symbol_b, tf_label)
     return align_pair_dataframes(symbol_a, df_a, symbol_b, df_b, tf_label)
+
+
+def load_aligned_symbols(symbols, tf_label):
+    """N-way generalization of load_aligned_pair, for trio/basket comparison
+    scripts (added 2026-07-05 — research/reimers_trio_correction.py needed a
+    3-symbol version of exactly this gap-flag-aware alignment and was instead
+    calling bare DataStore.load() directly with no gap_flag masking at all,
+    the same calendar-padding failure mode this module exists to prevent for
+    the 2-symbol case). Returns {symbol: aligned_df}; a symbol is absent from
+    the result if it has no cached data or fails alignment."""
+    raw = {}
+    for sym in symbols:
+        df = DataStore.load(sym, tf_label)
+        if df is not None and not df.empty:
+            raw[sym] = df
+    if not raw:
+        return {}
+    aligned = DataAligner.align_universe(
+        {f"{sym}_{tf_label}": df for sym, df in raw.items()}, tf_label
+    )
+    return {sym: aligned.get(sym) for sym in raw}

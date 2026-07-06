@@ -26,7 +26,6 @@ Read-only. Never fetches, never recomputes hedge ratios.
 Usage:
     python research/reimers_trio_correction.py
 """
-import glob
 import os
 import sys
 
@@ -35,20 +34,15 @@ import pandas as pd
 from statsmodels.tsa.vector_ar.vecm import coint_johansen
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))  # for aligned_pair_loader (lives in research/)
 
+from aligned_pair_loader import load_aligned_symbols, resolve_tf_results_dir as _resolve_tf_results_dir
 from config import Config
-from data import DataStore
 
-_TF_DIRS = ["1hr", "3min", "4hr"]  # the only TFs with a persisted trios.parquet
+# Narrower than aligned_pair_loader.TF_DIRS deliberately, not a drift — these
+# are the only 3 TFs with a persisted trios.parquet.
+_TF_DIRS = ["1hr", "3min", "4hr"]
 _DIR_TO_LABEL = {"1hr": "1h", "3min": "3m", "4hr": "4h"}
-
-
-def _resolve_tf_results_dir(tf_dir):
-    live = os.path.join("output", "results", tf_dir)
-    if os.path.isdir(live):
-        return live, False
-    candidates = sorted(glob.glob(os.path.join("output", "results", f"{tf_dir}_stale_*")))
-    return (candidates[-1], True) if candidates else (live, False)
 
 
 def reimers_correction(trace_stat, cvt, n_bars, n_vars=3, k=None):
@@ -76,9 +70,21 @@ def main():
         for _, row in trios_df.iterrows():
             sym_a, sym_b, sym_c = row["symbol_a"], row["symbol_b"], row["symbol_c"]
             try:
-                df_a = DataStore.load(sym_a, tf_label)
-                df_b = DataStore.load(sym_b, tf_label)
-                df_c = DataStore.load(sym_c, tf_label)
+                # BUG FIX (found by code review, 2026-07-05): this previously
+                # called bare DataStore.load() per symbol and masked only
+                # np.isfinite — data.py's raw per-symbol cache is
+                # unconditionally forward-filled at fetch time with NO
+                # gap_flag column, so that mask cannot catch already-padded
+                # bars. Identical calendar-padding failure mode already
+                # caught and fixed elsewhere this session; missed here on the
+                # first pass. Fixed via the project's own shared alignment
+                # utility (extended to N symbols for this trio case) so a
+                # real gap_flag survives to be masked before the Johansen
+                # test runs, exactly like every pairwise script this session.
+                aligned = load_aligned_symbols([sym_a, sym_b, sym_c], tf_label)
+                if sym_a not in aligned or sym_b not in aligned or sym_c not in aligned:
+                    continue
+                df_a, df_b, df_c = aligned[sym_a], aligned[sym_b], aligned[sym_c]
                 if df_a is None or df_b is None or df_c is None:
                     continue
                 la = np.log(df_a["close"].to_numpy(dtype=float))
@@ -86,7 +92,11 @@ def main():
                 lc = np.log(df_c["close"].to_numpy(dtype=float))
                 n = min(len(la), len(lb), len(lc))
                 la, lb, lc = la[-n:], lb[-n:], lc[-n:]
-                mask = np.isfinite(la) & np.isfinite(lb) & np.isfinite(lc)
+                gap_a = df_a["gap_flag"].to_numpy()[-n:] if "gap_flag" in df_a.columns else np.zeros(n)
+                gap_b = df_b["gap_flag"].to_numpy()[-n:] if "gap_flag" in df_b.columns else np.zeros(n)
+                gap_c = df_c["gap_flag"].to_numpy()[-n:] if "gap_flag" in df_c.columns else np.zeros(n)
+                real_bars = (gap_a != 4) & (gap_b != 4) & (gap_c != 4)
+                mask = np.isfinite(la) & np.isfinite(lb) & np.isfinite(lc) & real_bars
                 X = np.column_stack([la[mask], lb[mask], lc[mask]])
                 if X.shape[0] < 60:
                     continue

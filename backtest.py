@@ -1164,6 +1164,13 @@ def compute_hrp_weights(
     stds = stds[valid]
     n_pairs = len(pair_keys)
 
+    if shrinkage not in ("none", "ledoit_wolf"):
+        # BUG FIX (found by code review, 2026-07-05): an unrecognized value
+        # (typo, wrong case, wrong separator) previously fell through to the
+        # "none" path silently — no error, no log line — giving a false
+        # impression that shrinkage had been requested and applied.
+        raise ValueError(f"Unknown shrinkage={shrinkage!r}; expected 'none' or 'ledoit_wolf'")
+
     if shrinkage == "ledoit_wolf":
         from sklearn.covariance import ledoit_wolf
         # sklearn's ledoit_wolf() needs real (n_samples, n_features)

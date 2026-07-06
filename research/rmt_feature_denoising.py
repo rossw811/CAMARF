@@ -54,7 +54,6 @@ Read-only. Never fetches, never trains a model, never modifies ml.py.
 Usage:
     python research/rmt_feature_denoising.py
 """
-import glob
 import os
 import sys
 
@@ -65,29 +64,21 @@ from scipy.spatial.distance import squareform
 from sklearn.metrics import silhouette_score
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))  # for aligned_pair_loader
 
 import ml
+from aligned_pair_loader import TF_DIRS as _TF_DIRS, DIR_TO_LABEL as _DIR_TO_LABEL
+from aligned_pair_loader import resolve_tf_results_dir as _resolve_tf_results_dir_tuple
 from analysis import EigenportfolioDecomposer
-
-_TF_DIRS = [
-    "1min", "2min", "3min", "5min", "15min", "30min", "1hr", "4hr",
-    "7day", "1mo", "3mo", "6mo",
-]
-_DIR_TO_LABEL = {
-    "1min": "1m", "2min": "2m", "3min": "3m", "5min": "5m", "15min": "15m",
-    "30min": "30m", "1hr": "1h", "4hr": "4h", "7day": "7D", "1mo": "1M",
-    "3mo": "3M", "6mo": "6M",
-}
 
 
 def _resolve_tf_dirname(tf_dir):
-    """Returns just the directory NAME (not full path) — live if present,
-    else the most recent archived _stale_* snapshot's name."""
-    live = os.path.join("output", "results", tf_dir)
-    if os.path.isdir(live):
-        return tf_dir
-    candidates = sorted(glob.glob(os.path.join("output", "results", f"{tf_dir}_stale_*")))
-    return os.path.basename(candidates[-1]) if candidates else tf_dir
+    """Returns just the directory NAME (not full path) — needed here (not
+    the full path every other script uses) because this module redirects
+    ml.py's own `_tf_dirname` global, which expects a bare dirname. Thin
+    wrapper around the shared resolver rather than an independent copy."""
+    path, _is_stale = _resolve_tf_results_dir_tuple(tf_dir)
+    return os.path.basename(path)
 
 
 def gather_real_examples():

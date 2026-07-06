@@ -50,7 +50,6 @@ Read-only. Never fetches, never recomputes hedge ratios or spreads.
 Usage:
     python research/dd_hub_effective_bets.py
 """
-import glob
 import os
 import sys
 
@@ -58,6 +57,9 @@ import numpy as np
 import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))  # for aligned_pair_loader
+
+from aligned_pair_loader import resolve_tf_results_dir as _resolve_tf_results_dir_tuple
 
 DD_HUB_PAIRS = [
     ("AMD", "DD"), ("AME", "DD"), ("AMAT", "DD"), ("CMI", "DD"), ("DAL", "DD"),
@@ -65,11 +67,15 @@ DD_HUB_PAIRS = [
 
 
 def _resolve_tf_results_dir(tf_dir="1hr"):
-    live = os.path.join("output", "results", tf_dir)
-    if os.path.isdir(live):
-        return live
-    candidates = sorted(glob.glob(os.path.join("output", "results", f"{tf_dir}_stale_*")))
-    return candidates[-1] if candidates else live
+    # BUG FIX (found by code review, 2026-07-05): this file's own copy had
+    # already drifted from the other ~9 near-identical copies elsewhere in
+    # this session's new scripts — it returned a bare path instead of the
+    # (path, is_stale) tuple every other copy used, so it could never emit
+    # the "NOTE ... using archived ..." warning siblings print. Now a thin
+    # wrapper around the shared, de-duplicated implementation instead of an
+    # independently-drifting copy.
+    path, _is_stale = _resolve_tf_results_dir_tuple(tf_dir)
+    return path
 
 
 def _load_real_bar_series(results_dir, sym_a, sym_b, column="z_rolling"):
