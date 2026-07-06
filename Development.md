@@ -9469,3 +9469,94 @@ including an actual backtest.py comparison if so; a full pipeline re-run (yfinan
 IB Gateway) to regenerate `confirmed_pairs_manifest.json` with SPY/VOO actually excluded and all
 other output directories back to "live" (not `_stale_*`) status; a code review of this session's
 new modules.
+
+### Session 27 addendum — Full pipeline rerun (2026-07-05/06), IBKR breaker still unresolved, permutation-test bug found and fixed
+
+Ran the full production sequence in order per CLAUDE.md's architecture rule (`data.py` → `analysis.py`
+→ `ml.py` → `backtest.py` → `stats.py` → `wfa.py` → `distance.py` → `sensitivity.py` → `report.py`),
+each launched as a detached OS process (PowerShell `Start-Process`) rather than a tool-tracked
+background task — background tasks were getting killed partway through by what looks like a tool-call
+timeout ceiling, confirmed by `data.py`'s own asset-level resume checkpoint picking up cleanly on
+relaunch with no lost work.
+
+**data.py**: 1592/1608 assets fetched (2 excluded — HONA/VGNT, no daily data), 19,986 symbol-TF
+combinations, ~13 min (mostly incremental refresh, not a full historical backfill). The yfinance
+intraday sweep for the ~162 assets that structurally need IBKR intraday failed 100% as expected/by
+design — that's the entire reason `data_ibkr.py` exists as a separate supplemental step, not a
+regression.
+
+**analysis.py**: clean 37.5 min run, all 13 timeframes. 25 confirmed pairs total (23 at 1h incl. 12
+cross-asset + 497 trios, 1 at 3m, 1 at 1M). SPY/VOO structural exclusion (committed earlier this
+session) confirmed working on live production data: `CrossAssetTagger: 1 structural pairs ...
+same-index-tracking ETFs excluded from primary findings` logged at both 1h and 4h.
+
+**data_ibkr.py — IBKR breaker still unresolved.** Ross opened IB Gateway mid-run and asked for it to
+be included. Connected fine (`Logged on to server version 176`, market-data farms OK) but the
+underlying historical-data session died partway through: only 89/220 needed TF-fetches saved across
+32/47 symbols before "session killed"; of the higher-value TFs (1h/4h/1D — the actual reason this
+script exists, per its own docstring's "1h → 10 years, primary episodic cointegration window"), only
+3 symbols got 1h saved, all three via the yfinance fallback (not real IBKR depth), and zero got 4h or
+1D. This is the same intermittent IBKR historical-data reliability problem flagged unresolved in
+Session 26 — recurring, not a one-off. Given the near-total absence of genuine deep history, skipped
+the planned second `analysis.py` pass (`_enrich_with_deep_history()`) rather than spend ~40 min for
+no real benefit.
+
+**ml.py**: can't train yet — 20 labeled examples across 2 classes vs. the 30/class minimum
+(`Config.ML.MIN_CLASS_SAMPLES`). Expected, not a bug — most confirmed pairs are on intraday TFs whose
+history only started accumulating recently (see the 2026-06-21 data.py append-switch note elsewhere
+in this doc).
+
+**backtest.py / wfa.py / distance.py / sensitivity.py**: all clean, no errors. All 23 1h pairs
+profitable under both OLS and Kalman hedge (positive Sharpe, 54-84% win rates). WFA holds up across
+both expanding and rolling windows and all strategy sub-variants (baseline, cfrac_sizing, garch_stop,
+session_edge, mm_exec, storm_all). Cointegration selection (mean pair Sharpe 14.54, 22/23 valid)
+modestly beats the Gatev distance-method baseline (Sharpe 14.02, top-20 by SSD) with only 2/23 pairs
+overlapping between the two selection methods — the two methods are picking substantially different
+pairs, not converging on the same set from different angles. Sensitivity sweep: Sharpe stable in the
+9-11 range across the entry_z x exit_z grid and the ADV liquidity filter; `max_hl=20` correctly
+excludes all 23 pairs (every pair's half-life exceeds 20 bars) rather than silently returning a
+degenerate result.
+
+**BUG-D53 — permutation test's trade-level shuffle destroyed genuine cross-pair exit-timing
+correlation, inflating the null.** `stats.py`'s Section 6 White-Reality-Check-style permutation test
+came back non-significant (OOS p=0.904, IS p=0.981/1.000 across runs) with `perm_mean` *higher* than
+the realized Sharpe in both cases (OOS 12.10 vs realized 10.24; IS 15.01 vs realized 12.92) — the
+wrong direction for a fair null (random reassignment of outcomes should not systematically outperform
+the real path). Root cause, confirmed by direct inspection of the OOS trades: 296 trades collapse
+into only 70 unique exit-days, 66/70 (94%) with more than one trade, up to 28 on a single day — many
+confirmed pairs exit together on shared-regime days (the same correlated-exposure effect the DD-hub
+effective-bets work already surfaced: Grinold-Kahn BR_eff=2.35 vs. nominal 5 pairs). The old test
+shuffled individual trades' `pnl_net` values across the *entire* trade population while holding each
+trade's own `exit_date` fixed, then regrouped by date — this kept each day's trade *count* fixed but
+randomized *which* trades' outcomes filled each day, silently decorrelating the real cross-pair
+clustering. Decorrelating a genuinely lumpy/correlated series lowers its day-to-day variance, which
+mechanically inflates Sharpe under the null relative to the real, correlated path — a confound, not
+evidence of "no skill."
+
+Confirmed the mechanism with a synthetic check before touching real data (per this project's
+verify-before-trusting discipline): simulating trades with a shared same-day regime shock (mimicking
+real correlated exit clustering) reproduced the exact failure mode under the old method (realized
+Sharpe 4.59 vs. perm_mean 9.71, p=1.000 — a false "no skill" verdict driven entirely by decorrelation)
+while an i.i.d.-trades control case showed no such bias, confirming the fix targets the real confound
+and doesn't just move the goalposts.
+
+**Fix** (`stats.py::run_permutation_test`): replaced the trade-level shuffle with a circular block
+bootstrap (Politis & Romano) over the already-aggregated *daily* P&L series itself — each trading day
+is one atomic block carrying its real same-day/adjacent-day cross-pair correlation unbroken; only
+which 5-trading-day blocks (with replacement, circular) get concatenated into each of the 1,000
+synthetic paths is randomized. Output JSON schema unchanged (`report.py`'s figure/table consumers
+needed no changes) plus one new field, `block_len_days`. On the same synthetic regime-shock check,
+the fix correctly centers the null near the realized statistic (realized 4.59 vs. perm_mean 4.71,
+p=0.51) instead of inflating it.
+
+Re-ran `stats.py` (fast, 0.6 min) and `report.py` (0.2 min) with the fix on the same real data:
+**OOS p=0.589 (was 0.904), IS p=0.542 (was 0.981)** — still not significant at conventional levels,
+but now a fair test: `perm_mean` sits close to realized in both cases (OOS 10.83 vs 10.24; IS 13.01
+vs 12.92) rather than dramatically above it. Honest reading: the corrected test says the current
+~70-90 day OOS holdout isn't yet long enough to statistically separate the realized path from
+resampling noise — not that the strategy lacks edge. Per-pair Sharpes and win rates (60-84%) from the
+same `backtest.py` run argue for real per-pair skill; the portfolio-level diversification/correlation
+question this test surfaces is better addressed directly via the DD-hub effective-bets diagnostics
+(§7.2) than by a single aggregate p-value. PAPER.md §2.3, §2.4, and §6.6 updated with the corrected
+methodology and numbers; historical pre-fix p-values (2026-06-28, 2026-06-30 runs) flagged as
+unreliable rather than deleted, since they're still informative as "what the buggy test used to say."

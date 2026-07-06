@@ -312,10 +312,14 @@ argument. All citations were verified by direct source lookup.
 - **White (2000)**, "A Reality Check for Data Snooping," *Econometrica*
   68(5), 1097-1126 — bootstrap Reality Check; tests whether the best
   strategy among N is genuinely superior after multiple comparisons.
-  CAMARF implements a portfolio-level permutation test (shuffle pnl_net
-  across trades, recompute daily P&L per permutation). IS: p = 0.002
-  (reject null at 1%); OOS: p = 0.669 (insufficient power — 111 OOS
-  trades as of 2026-06-28; reported honestly).
+  CAMARF implements a portfolio-level test via circular block bootstrap
+  (Politis & Romano) of the realized daily P&L series, block length 5
+  trading days — see §6.6 for the 2026-07-06 methodology fix (an earlier
+  trade-level-shuffle implementation destroyed genuine cross-pair
+  exit-timing correlation and inflated the null; historical p-values from
+  before that fix, e.g. 2026-06-28/2026-06-30 runs, should not be treated
+  as reliable). Current (2026-07-06) result: IS p = 0.542, OOS p = 0.589
+  — not significant at conventional levels; see §6.6 for interpretation.
 
 ### 2.4 Methodology comparison table
 
@@ -331,7 +335,7 @@ argument. All citations were verified by direct source lookup.
 | Krauss/Do/Huck | 2017 | DNN/GBT/RF on lagged returns; daily long/short ranking | Yes | Ensemble 0.45%/day raw (1992-2015) | CAMARF uses ML as meta-labeler on cointegration signal; adds conformal calibration |
 | Lopez de Prado | 2018 | Meta-labeling; triple-barrier; CPCV/PBO | Yes | Framework (not empirical result) | CAMARF is a direct implementation; adds conformal prediction not found in pairs trading ML papers |
 | Engle | 2002 | Two-step DCC-GARCH; dynamic correlation | No | Time-varying correlations at low parameter count | CAMARF applies DCC to pair P&L streams for correlated-loss risk detection |
-| White | 2000 | Bootstrap Reality Check; best-of-N performance test | No | Correct p-value under multiple testing | Portfolio-level permutation test: IS p=0.002; OOS p=0.669 (honest power caveat) |
+| White | 2000 | Bootstrap Reality Check; best-of-N performance test | No | Correct p-value under multiple testing | Portfolio-level circular block bootstrap (day-level, block=5d): IS p=0.542; OOS p=0.589 (2026-07-06, post methodology fix — see §6.6) |
 
 ### 2.5 Where CAMARF advances the literature
 
@@ -796,44 +800,56 @@ Four-phase MC on closed-trade P&L distribution:
 
 ### 6.6 Permutation test (White 2000)
 
-Portfolio-level permutation test: shuffle pnl_net values across
-individual trades (trade-level, not daily — daily shuffle is
-Sharpe-invariant under permutation), rebuild daily P&L per permutation,
-compare Sharpe. Tests whether the mapping of which entry signal produced
-which P&L outcome is non-random.
+**Methodology fix (2026-07-06):** the original implementation shuffled
+`pnl_net` values across individual trades while keeping each trade's own
+exit date fixed, then re-grouped by exit date to rebuild daily P&L. This
+preserved each day's trade *count* but randomized *which* trades' outcomes
+landed on which day — silently destroying genuine cross-pair exit-timing
+correlation. Direct inspection of the OOS trade set confirms this
+correlation is real and substantial: 296 trades collapse into only 70
+unique exit-days (66/70 days have >1 trade, up to 28 on a single day) —
+many confirmed pairs exit together on shared-regime days, the same
+correlated-exposure effect already surfaced by the DD-hub effective-bets
+work (§7.2: Grinold-Kahn BR_eff=2.35 vs. nominal 5 pairs). Decorrelating a
+genuinely lumpy, correlated daily series lowers its variance, which
+mechanically *inflates* the permuted Sharpe relative to the realized one.
+A synthetic check confirms the direction and size of the effect: injecting
+a shared same-day regime shock into simulated trades reproduced the exact
+failure mode (realized Sharpe 4.59 vs. perm_mean 9.71, p=1.000 — a false
+"no skill" verdict from decorrelation alone, not from any real absence of
+edge).
 
-Two permutation tests were run on the 2026-06-30 full-pipeline results (23 pairs):
+**Fix:** circular block bootstrap (Politis & Romano) over the
+already-aggregated daily P&L series itself. Each trading day is one atomic
+block, so real same-day/adjacent-day cross-pair correlation rides along
+unbroken; the randomization is over which 5-trading-day blocks (with
+replacement, circular) get concatenated into each synthetic path, not over
+individual trade values. On the same synthetic regime-shock check, this
+correctly centers the null near the realized statistic (realized 4.59 vs.
+perm_mean 4.71, p=0.51) instead of inflating it.
 
-1. **OOS closed-trade Sharpe permutation (p = 0.904):**
-   Shuffle `pnl_net` values across individual OOS trade records (296 trades), rebuild
-   daily P&L from reshuffled trades, compare Sharpe. Tests whether the mapping of
-   *which signal* produced *which outcome* is non-random.
+Two block-bootstrap tests were run on the 2026-07-05 full-pipeline results (26 pairs,
+1,000 bootstrap draws each, block length 5 trading days):
 
-   - OOS: `backtest_equity_sharpe = 5.2443`; `closed_trade_sharpe = 10.2357`;
-     **p = 0.904** — fail to reject null (n=1000 permutations).
-   - IS: `backtest_equity_sharpe = 5.2935`; `closed_trade_sharpe = 11.6408`;
-     **p = 0.981** — fail to reject null.
+- **OOS:** `backtest_equity_sharpe = 5.2443`; `closed_trade_sharpe = 10.2357`;
+  `perm_mean = 10.8288`; **p = 0.589** — fail to reject null.
+- **IS:** `backtest_equity_sharpe = 6.3354`; `closed_trade_sharpe = 12.9242`;
+  `perm_mean = 13.0133`; **p = 0.542** — fail to reject null.
 
-   Both results are not significant. The individual trade P&L distribution is not
-   separable from random permutations at conventional levels, for IS or OOS.
-   Interpretation: the equity-curve Sharpe (IS 5.29, OOS 5.24) reflects a favorable
-   *temporal clustering* of entries — the strategy enters during high-mean-reversion
-   regimes and the sequence of wins drives the equity curve — but per-trade P&L
-   magnitude is high-variance enough that random shuffles of the same trades
-   routinely produce comparable Sharpes. The permutation test is shuffling away
-   exactly the information (timing) that generates the edge.
-
-2. **Why this is the honest and expected result:**
-   Intraday mean-reversion strategies produce sparse daily P&L vectors (most days
-   zero, occasional large positives). Sharpe computed on such vectors is inflated by
-   low denominator volatility even under random permutation — the null distribution
-   is already high-Sharpe, so the strategy's observed path does not stand out in
-   per-trade P&L space even when the equity curve is strongly positive.
-
-Both results are reported honestly. The permutation test answers whether per-trade
-P&L *magnitudes* are non-random, not whether the strategy's entry *timing* is.
-The primary performance claim (equity-curve Sharpe IS 5.29, OOS 5.24, WFA 3.1–4.0)
-rests on IS/OOS consistency and walk-forward robustness, not on the permutation tests.
+Both results remain not significant at conventional levels, but — unlike the
+pre-fix numbers (OOS p=0.904, IS p=0.981) — this is now a fair comparison: the
+null distribution's mean sits close to the realized statistic rather than
+dramatically above it, meaning the result reflects genuine resampling
+variability in a ~70-90 day holdout rather than an artifact of discarding the
+portfolio's real cross-pair correlation structure. The primary performance
+claim (equity-curve Sharpe, WFA robustness across expanding/rolling windows)
+does not rest on this test; the corrected test's honest conclusion is that
+the current OOS holdout is not yet long enough to statistically separate the
+realized path from resampling noise, not that the strategy lacks edge —
+individual pair Sharpes and win rates (60-84%) in the same backtest.py run
+argue for real per-pair skill, and the diversification/correlation question
+this test surfaces is better addressed directly via the DD-hub effective-bets
+diagnostics (§7.2) than by a single aggregate p-value.
 
 ### 6.7 Deflated Sharpe Ratio [DRAFTED — 2026-06-30]
 
