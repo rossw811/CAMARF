@@ -39,7 +39,6 @@ Read-only. Excludes DATA_GAP-flagged padding on both legs.
 Usage:
     python research/bertram_ou_thresholds.py
 """
-import glob
 import os
 import sys
 
@@ -47,24 +46,13 @@ import numpy as np
 import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))  # for aligned_pair_loader
 
-_TF_DIRS = [
-    "1min", "2min", "3min", "5min", "15min", "30min", "1hr", "4hr",
-    "7day", "1mo", "3mo", "6mo",
-]
-_DIR_TO_LABEL = {
-    "1min": "1m", "2min": "2m", "3min": "3m", "5min": "5m", "15min": "15m",
-    "30min": "30m", "1hr": "1h", "4hr": "4h", "7day": "7D", "1mo": "1M",
-    "3mo": "3M", "6mo": "6M",
-}
-
-
-def _resolve_tf_results_dir(tf_dir):
-    live = os.path.join("output", "results", tf_dir)
-    if os.path.isdir(live):
-        return live, False
-    candidates = sorted(glob.glob(os.path.join("output", "results", f"{tf_dir}_stale_*")))
-    return (candidates[-1], True) if candidates else (live, False)
+from aligned_pair_loader import (
+    TF_DIRS as _TF_DIRS,
+    DIR_TO_LABEL as _DIR_TO_LABEL,
+    resolve_tf_results_dir as _resolve_tf_results_dir,
+)
 
 
 def fit_discrete_ou(z):

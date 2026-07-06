@@ -154,10 +154,20 @@ def var_exceedance_backtest(daily_pnl: np.ndarray, alpha: float, min_calibration
     pi_overall = (n01 + n11) / (n00 + n01 + n10 + n11) if (n00 + n01 + n10 + n11) > 0 else np.nan
 
     def _safe_term(count, prob):
+        # BUG FIX (found by code review, 2026-07-05): previously also
+        # treated prob>=1 as degenerate, but count*log(1.0)==0 is perfectly
+        # well-defined (only log(0)=-inf is the actual problem case) — the
+        # old guard silently NaN'd out a legitimate, low-exceedance result
+        # (e.g. a single early tail breach with no exceedances afterward,
+        # giving pi_overall=0.0 exactly and prob=1.0 for the "no exceedance"
+        # transition probability), which is arguably the GOOD outcome a
+        # well-calibrated VaR model should produce, not an error state.
         if count == 0:
             return 0.0
-        if prob <= 0 or prob >= 1 or np.isnan(prob):
+        if prob < 0 or prob > 1 or np.isnan(prob):
             return np.nan
+        if prob == 0:
+            return np.nan  # log(0) is genuinely undefined here
         return count * np.log(prob)
 
     if np.isnan(pi01) or np.isnan(pi11) or np.isnan(pi_overall):
