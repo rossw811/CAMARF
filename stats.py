@@ -69,6 +69,11 @@ _NOTIONAL_PER_LEG = 5_000.0
 _MC_PATHS = 10_000
 # Permutation draws
 _N_PERMS = 1_000
+# Block bootstrap block length for the day-level permutation test (trading days).
+# ~1 trading week: long enough to keep same-day/adjacent-day cross-pair exit
+# clustering intact within a block, short enough to leave real resampling
+# variability across the ~70-90 day OOS/IS holdout series.
+_PERM_BLOCK_LEN_DAYS = 5
 # Minimum observations for GARCH(1,1) estimation
 _MIN_GARCH_OBS = 30
 # GPD exceedance threshold (percentile)
@@ -947,17 +952,43 @@ def run_montecarlo(trades: pd.DataFrame, daily_pnl: pd.DataFrame) -> Dict[str, p
 def run_permutation_test(
     trades: pd.DataFrame, portfolio_parquet_suffix: str = "layer1_holdout"
 ) -> Dict:
-    """Portfolio-level White Reality Check (White 2000).
+    """Portfolio-level White Reality Check (White 2000), day-level block bootstrap.
 
-    Null hypothesis: entry signal timing has no skill — any realized P&L distribution
-    could have been achieved by randomly reassigning trade outcomes to the same entry dates.
+    Null hypothesis: the realized daily-P&L generating process (with its actual
+    cross-pair exit-timing correlation intact) could, under its own resampling
+    variability, produce a Sharpe at least as high as the one actually realized.
+
+    BUG FIX (2026-07-06, per Ross): the original implementation permuted
+    individual trades' pnl_net values across the WHOLE trade population while
+    keeping each trade's own exit_date fixed, then re-grouped by exit_date.
+    Since day-block *membership* (how many trades close on a given day) was
+    preserved but *which* trades' outcomes landed in each day-block was fully
+    randomized, this silently destroyed genuine cross-pair exit-timing
+    correlation (many confirmed pairs exit together on shared-regime days —
+    confirmed directly: 66/70 OOS exit-days have >1 trade, up to 28 on a single
+    day) and replaced it with an artificial, decorrelated mix. Decorrelating a
+    genuinely lumpy/correlated daily series lowers its variance, which
+    mechanically INFLATES the permuted Sharpe relative to the real one —
+    exactly the observed direction (perm_mean 12.10 > realized 10.24 OOS). The
+    test was answering "is this portfolio well-diversified across time" dressed
+    up as "does the strategy have skill."
+
+    Fix: block bootstrap the ALREADY-AGGREGATED daily P&L series itself (each
+    day is one atomic block, so real same-day and near-day cross-pair
+    correlation rides along unbroken), resampling contiguous
+    _PERM_BLOCK_LEN_DAYS-day chunks with replacement (circular, to avoid edge
+    truncation) to build synthetic daily-P&L paths of the same length. This is
+    the standard fix for serially-dependent/clustered P&L in Reality-Check-style
+    tests (Politis & Romano's circular block bootstrap), and directly targets
+    the confound above instead of a different, unconfounded null.
 
     Method:
     1. Realized statistic: daily closed-trade portfolio Sharpe (consistent between
-       realized and permuted paths).  Backtest equity-curve Sharpe (3.249) also reported.
-    2. Generate N_PERMS permuted portfolios by randomly shuffling pnl_net values
-       across trades (keeps entry/exit date structure, destroys outcome-signal link).
-    3. p-value = fraction of permuted Sharpes >= realized closed-trade Sharpe.
+       realized and bootstrapped paths).  Backtest equity-curve Sharpe also reported.
+    2. Generate N_PERMS bootstrap daily-P&L paths by resampling
+       _PERM_BLOCK_LEN_DAYS-day contiguous blocks (with replacement, circular)
+       from the realized daily P&L series.
+    3. p-value = fraction of bootstrap Sharpes >= realized closed-trade Sharpe.
     """
     log.info("=== Section 6: Permutation Test / White Reality Check ===")
 
@@ -994,18 +1025,22 @@ def run_permutation_test(
         summary.note("[S6 Permutation] realized closed-trade Sharpe is NaN — skipping")
         return {}
 
-    # Permutation: shuffle pnl_net values across trades, recompute daily P&L + Sharpe
-    # This preserves the marginal distribution of per-trade outcomes but destroys the
-    # link between WHICH entry signal produced WHICH outcome — testing outcome-timing skill
-    pnl_arr = tr["pnl_net"].values.astype(float)
+    # Circular block bootstrap over the already-aggregated daily P&L series
+    # (chronological — groupby sorts date keys ascending by default). Each
+    # block is a contiguous run of real days, so any real same-day/adjacent-day
+    # cross-pair correlation travels with it unbroken; only which blocks land
+    # where (and which get repeated/omitted) is randomized.
+    n_days = len(daily_vals)
+    block_len = min(_PERM_BLOCK_LEN_DAYS, n_days) if n_days > 0 else 0
+    n_blocks_needed = int(np.ceil(n_days / block_len)) if block_len > 0 else 0
     rng = np.random.default_rng(42)
     perm_sharpes = []
     for _ in range(_N_PERMS):
-        perm_pnl = rng.permutation(pnl_arr)
-        tr_perm = tr.copy()
-        tr_perm["pnl_net"] = perm_pnl
-        daily_perm = tr_perm.groupby("exit_date")["pnl_net"].sum().values.astype(float)
-        s = _portfolio_sharpe(daily_perm)
+        starts = rng.integers(0, n_days, size=n_blocks_needed)
+        boot_series = np.concatenate(
+            [np.take(daily_vals, np.arange(s, s + block_len) % n_days) for s in starts]
+        )[:n_days]
+        s = _portfolio_sharpe(boot_series)
         if not np.isnan(s):
             perm_sharpes.append(s)
 
@@ -1039,10 +1074,13 @@ def run_permutation_test(
         "perm_95pct_sharpe": float(np.percentile(perm_arr, 95)) if len(perm_arr) else None,
         "pvalue": pvalue,
         "significant_at_0_05": significant,
+        "block_len_days": block_len,
         "note": (
-            "Null: entry signal timing has no skill — pnl_net values randomly reassigned "
-            "across trades, keeping exit-date structure.  p-value = fraction of permuted "
-            "closed-trade Sharpes >= realized.  Backtest equity-curve Sharpe (from "
+            f"Circular block bootstrap ({block_len}-trading-day blocks) over the "
+            "realized daily portfolio P&L series — preserves real same-day/adjacent-day "
+            "cross-pair exit-timing correlation instead of destroying it (see BUG FIX note "
+            "in run_permutation_test docstring, 2026-07-06). p-value = fraction of "
+            "bootstrap closed-trade Sharpes >= realized. Backtest equity-curve Sharpe (from "
             "backtest.py) reported separately as the primary paper number."
         ),
     }
