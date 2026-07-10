@@ -1,8 +1,12 @@
-16:14:25 INFO  === cvar.py: Historical CVaR / Expected Shortfall (portfolio daily P&L) ===
-16:14:25 INFO    [layer1] in-sample baseline: VaR_95% = $489.27, CVaR_95% (mean of worst 15/295 days) = $781.18
-16:14:25 INFO    [layer1] in-sample baseline: VaR_99% = $897.15, CVaR_99% (mean of worst 3/295 days) = $1153.11
-16:14:25 INFO    [layer1_holdout] out-of-sample holdout baseline: VaR_95% = $539.70, CVaR_95% (mean of worst 4/70 days) = $769.67
-16:14:25 INFO    [layer1_holdout] out-of-sample holdout baseline: VaR_99% = $809.16, CVaR_99% (mean of worst 1/70 days) = $1198.80
-16:14:25 INFO  Saved => C:\Users\RossW\Projects\CAMARF\output\stats\cvar.json
-16:14:25 INFO  ============================================================
-16:14:25 INFO  cvar.py complete (0.0 min)
+04:32:11 INFO  === cvar.py: Historical CVaR / Expected Shortfall (portfolio daily P&L) ===
+04:32:11 INFO    [layer1] in-sample baseline: VaR_95% = $489.27, CVaR_95% (mean of worst 15/295 days) = $781.18
+04:32:11 INFO    [layer1] VaR_95% backtest: 10/265 exceedances (rate=0.038 vs expected 0.050), Kupiec p=0.339, Christoffersen-independence p=n/a, conditional-coverage p=n/a
+04:32:11 INFO    [layer1] in-sample baseline: VaR_99% = $897.15, CVaR_99% (mean of worst 3/295 days) = $1153.11
+04:32:11 INFO    [layer1] VaR_99% backtest: 3/265 exceedances (rate=0.011 vs expected 0.010), Kupiec p=0.832, Christoffersen-independence p=n/a, conditional-coverage p=n/a
+04:32:11 INFO    [layer1_holdout] out-of-sample holdout baseline: VaR_95% = $539.70, CVaR_95% (mean of worst 4/70 days) = $769.67
+04:32:11 INFO    [layer1_holdout] VaR_95% backtest: 3/40 exceedances (rate=0.075 vs expected 0.050), Kupiec p=0.498, Christoffersen-independence p=n/a, conditional-coverage p=n/a
+04:32:11 INFO    [layer1_holdout] out-of-sample holdout baseline: VaR_99% = $809.16, CVaR_99% (mean of worst 1/70 days) = $1198.80
+04:32:11 INFO    [layer1_holdout] VaR_99% backtest: 0/40 exceedances (rate=0.000 vs expected 0.010), Kupiec p=n/a, Christoffersen-independence p=n/a, conditional-coverage p=n/a
+04:32:11 INFO  Saved => C:\Users\RossW\Projects\CAMARF\output\stats\cvar.json
+04:32:11 INFO  ============================================================
+04:32:11 INFO  cvar.py complete (0.0 min)

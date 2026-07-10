@@ -4,12 +4,35 @@
       "Bash(git fsck *)"
     ]
   },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "C:\\Users\\RossW\\.local\\bin\\graphify.EXE hook-guard search"
+          }
+        ]
+      },
+      {
+        "matcher": "Read|Glob",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "C:\\Users\\RossW\\.local\\bin\\graphify.EXE hook-guard read"
+          }
+        ]
+      }
+    ]
+  },
   "enabledPlugins": {
     "claude-md-management@claude-plugins-official": true,
     "feature-dev@claude-plugins-official": true,
     "context7@claude-plugins-official": true,
     "skill-creator@claude-plugins-official": true,
     "improve@improve": true,
-    "storm@storm-marketplace": true
+    "storm@storm-marketplace": true,
+    "last30days@last30days-skill": true
   }
 }

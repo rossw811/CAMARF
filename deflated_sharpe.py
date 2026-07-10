@@ -248,6 +248,35 @@ def main():
               "converted from annualized sharpe_portfolio via /sqrt(252))",
               n_trials, var_sr)
 
+    # Holdout-exposure count (added 2026-07-10): trial_registry.json already
+    # distinguishes holdout (OOS) trials via the "_holdout" label suffix —
+    # this was being collected for the DSR's n_trials correction but never
+    # surfaced as its own diagnostic. A long-running iterative project can
+    # examine the SAME OOS holdout window many times across many sessions
+    # (once per STORM variant, sizing scheme, entry-z override, etc.) without
+    # ever explicitly counting it — the Garden-of-Forking-Paths risk (Gelman
+    # & Loken 2013) this surfaces is distinct from the DSR's own correction:
+    # DSR corrects for "best Sharpe among N tried," this counts "how many
+    # times has this SPECIFIC holdout window itself been the judge."
+    holdout_trials = [t for t in trials if "_holdout" in t.get("label", "")]
+    n_holdout_exposures = len(holdout_trials)
+    holdout_labels = sorted(set(t["label"] for t in holdout_trials))
+    log.info(
+        "Holdout exposure: %d trial(s) evaluated against the OOS holdout window "
+        "across %d distinct labels (%s)%s",
+        n_holdout_exposures, len(holdout_labels),
+        ", ".join(holdout_labels[:5]), "..." if len(holdout_labels) > 5 else "",
+    )
+    if n_holdout_exposures > 20:
+        log.warning(
+            "Holdout window has been examined %d times — high Garden-of-Forking-Paths "
+            "risk (Gelman & Loken 2013). The DSR above already corrects for 'best Sharpe "
+            "among N variants,' but repeated looks at the SAME holdout data across sessions "
+            "is a related, not-fully-overlapping risk: consider a fresh, never-examined "
+            "holdout slice before treating any single variant's OOS number as final.",
+            n_holdout_exposures,
+        )
+
     results = {}
     for suffix, description in [
         ("layer1", "in-sample baseline"),
@@ -279,6 +308,10 @@ def main():
         }
 
     if results:
+        results["_holdout_exposure"] = {
+            "n_holdout_exposures": n_holdout_exposures,
+            "distinct_holdout_labels": holdout_labels,
+        }
         out_path = os.path.join(_STATS_DIR, "deflated_sharpe.json")
         os.makedirs(_STATS_DIR, exist_ok=True)
         with open(out_path, "w") as f:

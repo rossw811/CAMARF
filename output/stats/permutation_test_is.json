@@ -1,14 +1,15 @@
 {
-  "backtest_equity_sharpe": 5.2935,
-  "realized_closed_trade_sharpe": 11.640797837089488,
-  "n_trades": 1028,
-  "n_active_days": 295,
+  "backtest_equity_sharpe": 5.4048,
+  "realized_closed_trade_sharpe": 12.437356067537754,
+  "n_trades": 1042,
+  "n_active_days": 284,
   "n_perms": 1000,
-  "perm_mean_sharpe": 13.106073980611288,
-  "perm_std_sharpe": 0.722558289870776,
-  "perm_5pct_sharpe": 11.968927910969157,
-  "perm_95pct_sharpe": 14.271261693958326,
-  "pvalue": 0.981,
+  "perm_mean_sharpe": 12.520691402370616,
+  "perm_std_sharpe": 0.8042500611606469,
+  "perm_5pct_sharpe": 11.254110450056347,
+  "perm_95pct_sharpe": 13.865275809600185,
+  "pvalue": 0.526,
   "significant_at_0_05": false,
-  "note": "Null: entry signal timing has no skill \u2014 pnl_net values randomly reassigned across trades, keeping exit-date structure.  p-value = fraction of permuted closed-trade Sharpes >= realized.  Backtest equity-curve Sharpe (from backtest.py) reported separately as the primary paper number.  [IN-SAMPLE \u2014 reported for power; OOS result is primary for paper]"
+  "block_len_days": 5,
+  "note": "Circular block bootstrap (5-trading-day blocks) over the realized daily portfolio P&L series \u2014 preserves real same-day/adjacent-day cross-pair exit-timing correlation instead of destroying it (see BUG FIX note in run_permutation_test docstring, 2026-07-06). p-value = fraction of bootstrap closed-trade Sharpes >= realized. Backtest equity-curve Sharpe (from backtest.py) reported separately as the primary paper number.  [IN-SAMPLE \u2014 reported for power; OOS result is primary for paper]"
 }

@@ -1,44 +1,44 @@
 {
   "pearson": {
     "0.45": {
-      "n_candidates": 63042,
+      "n_candidates": 64036,
       "n_sampled": 2000,
       "n_eg_confirmed": 0,
       "confirmation_rate": 0.0
     },
     "0.5": {
-      "n_candidates": 28587,
+      "n_candidates": 29042,
       "n_sampled": 2000,
       "n_eg_confirmed": 0,
       "confirmation_rate": 0.0
     },
     "0.55": {
-      "n_candidates": 12633,
+      "n_candidates": 12883,
       "n_sampled": 2000,
-      "n_eg_confirmed": 0,
-      "confirmation_rate": 0.0
+      "n_eg_confirmed": 1,
+      "confirmation_rate": 0.0005
     },
     "0.6": {
-      "n_candidates": 5970,
+      "n_candidates": 6141,
       "n_sampled": 2000,
       "n_eg_confirmed": 1,
       "confirmation_rate": 0.0005
     },
     "0.65": {
-      "n_candidates": 2789,
+      "n_candidates": 2889,
       "n_sampled": 2000,
       "n_eg_confirmed": 1,
       "confirmation_rate": 0.0005
     },
     "0.7": {
-      "n_candidates": 1123,
-      "n_sampled": 1123,
+      "n_candidates": 1156,
+      "n_sampled": 1156,
       "n_eg_confirmed": 0,
       "confirmation_rate": 0.0
     },
     "0.75": {
-      "n_candidates": 382,
-      "n_sampled": 382,
+      "n_candidates": 384,
+      "n_sampled": 384,
       "n_eg_confirmed": 0,
       "confirmation_rate": 0.0
     }

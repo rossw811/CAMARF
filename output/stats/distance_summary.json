@@ -4,10 +4,10 @@
   "top_k": 20,
   "entry_zscore": 2.0,
   "1h": {
-    "distance_sharpe": -0.208,
-    "coint_mean_sharpe": 11.741,
-    "n_distance_trades": 35,
-    "n_coint_pairs": 17,
+    "distance_sharpe": 14.015,
+    "coint_mean_sharpe": 14.542,
+    "n_distance_trades": 47,
+    "n_coint_pairs": 23,
     "overlap_in_top_k": 2
   }
 }

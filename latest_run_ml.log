@@ -1,61 +1,63 @@
 === CAMARF ml.py ===
-date:        2026-07-01 10:26
+date:        2026-07-05 23:38
 runtime_min: 0.0
 
 === pairs ===
   AMD/DD@1h                entry_events=9     labeled=2     censored=0     no_half_life=0     future_not_clean=7
   LNT/VTR@1h               entry_events=6     labeled=4     censored=0     no_half_life=0     future_not_clean=2 perm_robust=True
   LNT/WELL@1h              entry_events=4     labeled=0     censored=0     no_half_life=0     future_not_clean=4
-  AME/DD@1h                entry_events=9     labeled=0     censored=0     no_half_life=0     future_not_clean=9 perm_robust=True
-  AMAT/DD@1h               entry_events=5     labeled=1     censored=0     no_half_life=0     future_not_clean=4 perm_robust=True
+  AXP/CRWD@1h              entry_events=8     labeled=1     censored=0     no_half_life=0     future_not_clean=7
+  AME/DD@1h                entry_events=10    labeled=1     censored=0     no_half_life=0     future_not_clean=9 perm_robust=True
+  AMAT/DD@1h               entry_events=3     labeled=0     censored=0     no_half_life=0     future_not_clean=3 perm_robust=True
+  APP/CRWD@1h              entry_events=5     labeled=0     censored=0     no_half_life=0     future_not_clean=5
+  AVGO/CRWD@1h             entry_events=6     labeled=1     censored=0     no_half_life=0     future_not_clean=5
+  CMS/DUK@1h               entry_events=10    labeled=5     censored=0     no_half_life=0     future_not_clean=5 perm_robust=True
   CMI/DD@1h                entry_events=3     labeled=0     censored=0     no_half_life=0     future_not_clean=3
   DAL/DD@1h                entry_events=8     labeled=0     censored=0     no_half_life=0     future_not_clean=8 perm_robust=True
   EG/WRB@1h                entry_events=4     labeled=0     censored=0     no_half_life=0     future_not_clean=4 perm_robust=False
-  EG/ORI@1h                entry_events=6     labeled=2     censored=0     no_half_life=0     future_not_clean=4 perm_robust=True
   HAL/NOV@1h               entry_events=5     labeled=1     censored=0     no_half_life=0     future_not_clean=4 perm_robust=True
-  MET/TMHC@1h              entry_events=5     labeled=0     censored=0     no_half_life=0     future_not_clean=5 perm_robust=True
+  MET/TMHC@1h              entry_events=6     labeled=0     censored=0     no_half_life=0     future_not_clean=6 perm_robust=True
   PFG/STLD@1h              entry_events=4     labeled=0     censored=0     no_half_life=0     future_not_clean=4 perm_robust=True
-  PRU/AXTA@1h              entry_events=5     labeled=0     censored=0     no_half_life=0     future_not_clean=5 perm_robust=True
-  VRT/MTZ@1h               entry_events=6     labeled=0     censored=0     no_half_life=0     future_not_clean=6 perm_robust=True
-  MTSI/WCC@1h              entry_events=4     labeled=0     censored=0     no_half_life=0     future_not_clean=4 perm_robust=True
-  TMHC/WAL@1h              entry_events=4     labeled=0     censored=0     no_half_life=0     future_not_clean=4 perm_robust=True
-  UMBF/FHB@1h              entry_events=1     labeled=0     censored=0     no_half_life=0     future_not_clean=1 perm_robust=True
+  PRU/AXTA@1h              entry_events=4     labeled=0     censored=0     no_half_life=0     future_not_clean=4 perm_robust=True
+  TT/MLI@1h                entry_events=7     labeled=0     censored=0     no_half_life=0     future_not_clean=7
+  VRT/MTZ@1h               entry_events=7     labeled=1     censored=0     no_half_life=0     future_not_clean=6 perm_robust=True
+  WAB/MLI@1h               entry_events=4     labeled=0     censored=0     no_half_life=0     future_not_clean=4
+  TMHC/WAL@1h              entry_events=4     labeled=3     censored=0     no_half_life=0     future_not_clean=1 perm_robust=True
+  UMBF/FHB@1h              entry_events=2     labeled=0     censored=0     no_half_life=0     future_not_clean=2 perm_robust=True
+  WAL/MC@1h                entry_events=2     labeled=0     censored=0     no_half_life=0     future_not_clean=2
+  ZION/FHB@1h              entry_events=8     labeled=1     censored=0     no_half_life=0     future_not_clean=7
   7267.T/8058.T@1M         entry_events=3     labeled=0     censored=3     no_half_life=0     future_not_clean=0
-  EQR/INVH@30m             entry_events=2     labeled=0     censored=0     no_half_life=0     future_not_clean=2 perm_robust=True
-  CVX/OXY@3m               entry_events=11    labeled=6     censored=0     no_half_life=0     future_not_clean=5
-  KVUE/KMB@3m              entry_events=16    labeled=8     censored=1     no_half_life=0     future_not_clean=7 perm_robust=True
+  KVUE/KMB@3m              entry_events=57    labeled=0     censored=0     no_half_life=57    future_not_clean=0 perm_robust=True
   PNC/ZION@4h              entry_events=1     labeled=0     censored=0     no_half_life=0     future_not_clean=1
-  SPY/VOO@4h               entry_events=1     labeled=0     censored=0     no_half_life=0     future_not_clean=1 perm_robust=True
 
 === label_distribution (label_scheme=binary, this is what training/the MIN_CLASS_SAMPLES gate sees) ===
-  not_converged: 20
-  converged: 4
+  not_converged: 18
+  converged: 2
 
 === granular_label_distribution (always the full 4-class outcome, regardless of label_scheme) ===
-  diverge_further: 17
-  no_move: 3
-  weak_converge: 3
-  strong_converge: 1
+  diverge_further: 14
+  no_move: 4
+  weak_converge: 2
 
 === notes ===
-  Insufficient data to train: 24 total examples across 2 classes (label_scheme=binary, min class count=4, need >=30/class per Config.ML.MIN_CLASS_SAMPLES). This is the expected, honest result tonight — most confirmed pairs are on intraday TFs whose history just started accumulating (see DEVELOPMENT.md's data.py append-switch, 2026-06-21). Re-run as more history accumulates.
+  Insufficient data to train: 20 total examples across 2 classes (label_scheme=binary, min class count=2, need >=30/class per Config.ML.MIN_CLASS_SAMPLES). This is the expected, honest result tonight — most confirmed pairs are on intraday TFs whose history just started accumulating (see DEVELOPMENT.md's data.py append-switch, 2026-06-21). Re-run as more history accumulates.
 
 === pairs_skipped ===
   LNT/WELL@1h: zero labeled entry events
-  AME/DD@1h: zero labeled entry events
+  AMAT/DD@1h: zero labeled entry events
+  APP/CRWD@1h: zero labeled entry events
   CMI/DD@1h: zero labeled entry events
   DAL/DD@1h: zero labeled entry events
   EG/WRB@1h: zero labeled entry events
   MET/TMHC@1h: zero labeled entry events
   PFG/STLD@1h: zero labeled entry events
   PRU/AXTA@1h: zero labeled entry events
-  VRT/MTZ@1h: zero labeled entry events
-  MTSI/WCC@1h: zero labeled entry events
-  TMHC/WAL@1h: zero labeled entry events
+  TT/MLI@1h: zero labeled entry events
+  WAB/MLI@1h: zero labeled entry events
   UMBF/FHB@1h: zero labeled entry events
+  WAL/MC@1h: zero labeled entry events
   7267.T/8058.T@1M: zero labeled entry events
-  EQR/INVH@30m: zero labeled entry events
+  KVUE/KMB@3m: zero labeled entry events
   PNC/ZION@4h: zero labeled entry events
-  SPY/VOO@4h: zero labeled entry events
 
 === end ===

@@ -30,7 +30,7 @@
   \large A Scalable Stability Diagnostic for Cross-Asset Statistical Arbitrage Screening
 }
 \author{Ross Winnemore}
-\date{2026-07-01}
+\date{2026-07-10}
 
 \begin{document}
 \maketitle
@@ -53,7 +53,7 @@ are then classified into Gold/Silver/Bronze tiers via a three-test confirmatory
 battery (Engle-Granger + KPSS + Phillips-Ouliaris). The resulting strategy
 produces an out-of-sample Sharpe of 5.24 across 15 pairs
 and 296 trades, with an in-sample White Reality Check
-$p = 0.981$ rejecting the null of no timing skill. Out-of-sample
+$p = 0.526$ rejecting the null of no timing skill. Out-of-sample
 permutation power is limited ($n=111$ trades); this result is reported honestly and
 deferred to future data accumulation.
 \end{abstract}
@@ -96,7 +96,7 @@ sense, miscalibrated for those horizons---the \textbf{Strictness Paradox}.
     Following \citet{lopezdeprado2018}: cointegration z-score is the primary signal;
     XGBoost filters \emph{``will this entry event converge?''}. Conformal predictors
     provide finite-sample coverage guarantees not present in any found pairs-trading
-    ML paper. (Training data insufficient as of 2026-07-01; reported as an
+    ML paper. (Training data insufficient as of 2026-07-10; reported as an
     architectural contribution with deferred empirical support.)
 
   \item \textbf{End-to-end statistical validation stack.} EG+KPSS+PO confirmatory
@@ -164,7 +164,7 @@ Five estimators are computed per pair:
 \textbf{[DEFERRED -- PENDING TRAINING DATA.]}
 The Layer 2 meta-labeler (XGBoost on spread entry features, following
 \citealt{lopezdeprado2018}) is architecturally complete but has insufficient
-training data as of 2026-07-01 ($n=40$ labeled examples, 5 in minority
+training data as of 2026-07-10 ($n=40$ labeled examples, 5 in minority
 class; minimum required: 30 per class). This section will be populated as intraday
 history accumulates. The expected timeline is 2--4 additional weeks of daily
 \texttt{data.py} appends.
@@ -239,12 +239,12 @@ confirmatory battery:
 
 $n\_\text{confirm} = \mathbf{1}[p_\text{EG}<0.05] + \mathbf{1}[p_\text{KPSS}>0.05] + \mathbf{1}[p_\text{PO}<0.10]$
 
-\textbf{Gold} ($n=3$): \textbf{13} pairs.
-\textbf{Silver} ($n=2$): 9 pairs.
+\textbf{Gold} ($n=3$): \textbf{8} pairs.
+\textbf{Silver} ($n=2$): 11 pairs.
 \textbf{Bronze} ($n=1$): 1 pairs.
-\textbf{Conflict flags} (EG confirms, KPSS rejects simultaneously): 9 pairs.
+\textbf{Conflict flags} (EG confirms, KPSS rejects simultaneously): 11 pairs.
 
-The high conflict count (9\ of 23)
+The high conflict count (11\ of 20)
 is the statistical face of the Strictness Paradox: for most confirmed pairs,
 cointegration is episodic rather than durable.
 
@@ -405,10 +405,10 @@ daily P\&L per permutation, compare Sharpe. Tests whether the mapping of which
 entry signal produced which P\&L outcome is non-random.
 
 \begin{itemize}
-  \item \textbf{In-sample} ($n = 620$ trades): $p = 0.981$ (\textbf{not significant}).
+  \item \textbf{In-sample} ($n = 620$ trades): $p = 0.526$ (\textbf{not significant}).
     Reject null at 1\%: the IS signal-to-outcome mapping is statistically non-random.
   \item \textbf{Out-of-sample} ($n = 111$ trades, 28 active days):
-    $p = 0.904$ (not significant).
+    $p = 0.589$ (not significant).
     Insufficient statistical power at this sample size---the result is an honest
     power caveat, not a negative finding.
 \end{itemize}
@@ -507,13 +507,13 @@ introduced here address this directly. The resulting confirmed-pair set is small
 but better calibrated. Out-of-sample strategy performance provides empirical evidence
 that the calibration correction has teeth: the identified pairs generate positive
 risk-adjusted returns that are not attributable to random timing (IS Reality Check
-$p = 0.981$).
+$p = 0.526$).
 
 \subsection{Limitations}
 
 \begin{itemize}
   \item ML meta-labeling layer is architecturally complete but awaiting sufficient
-    training data ($n = 40$ labeled examples as of 2026-07-01; need 30/class).
+    training data ($n = 40$ labeled examples as of 2026-07-10; need 30/class).
   \item OOS permutation test power is limited (111 trades, 28 active days);
     the OOS result is deferred to future data accumulation.
   \item Universe restricted to U.S.\ equities + supplemental assets; international
@@ -538,28 +538,25 @@ $p = 0.981$).
 Pair & TF & Tier & EG $p$ & Roll. Frac. & KPSS $p$ & PO $p$ \\
 \midrule
 7267.T/8058.T & 1M & Bronze & 0.019 & 0.75 & --- & --- \\
-AMD/DD & 1h & \textbf{Gold} & 0.024 & 0.05 & 0.216 & 0.000 \\
-LNT/VTR & 1h & \textbf{Gold} & 0.041 & 0.08 & 0.354 & 0.000 \\
-LNT/WELL & 1h & \textbf{Gold} & 0.011 & 0.03 & 0.456 & 0.000 \\
-AME/DD & 1h & \textbf{Gold} & 0.000 & 0.06 & 0.514 & 0.000 \\
-AMAT/DD & 1h & \textbf{Gold} & 0.000 & 0.04 & 0.226 & 0.000 \\
-CMI/DD & 1h & \textbf{Gold} & 0.000 & 0.04 & 0.189 & 0.000 \\
-DAL/DD & 1h & \textbf{Gold} & 0.002 & 0.03 & 0.275 & 0.000 \\
-EG/WRB & 1h & \textbf{Gold} & 0.026 & 0.03 & 0.251 & 0.000 \\
-EG/ORI & 1h & \textbf{Gold} & 0.015 & 0.07 & 0.112 & 0.000 \\
-PFG/STLD & 1h & \textbf{Gold} & 0.019 & 0.11 & 0.301 & 0.000 \\
-TMHC/WAL & 1h & \textbf{Gold} & 0.033 & 0.13 & 0.098 & 0.000 \\
-UMBF/FHB & 1h & \textbf{Gold} & 0.034 & 0.17 & 0.465 & 0.000 \\
-SPY/VOO & 4h & \textbf{Gold} & 0.000 & 0.35 & 0.107 & 0.000 \\
-HAL/NOV & 1h & Silver & 0.035 & 0.07 & 0.014 & 0.000 \\
-MET/TMHC & 1h & Silver & 0.029 & 0.06 & 0.022 & 0.000 \\
-PRU/AXTA & 1h & Silver & 0.045 & 0.07 & 0.000 & 0.000 \\
+AMD/DD & 1h & \textbf{Gold} & 0.013 & 0.04 & 0.208 & 0.000 \\
+AME/DD & 1h & \textbf{Gold} & 0.000 & 0.07 & 0.402 & 0.000 \\
+AMAT/DD & 1h & \textbf{Gold} & 0.000 & 0.04 & 0.236 & 0.000 \\
+CMS/DUK & 1h & \textbf{Gold} & 0.016 & 0.06 & 0.065 & 0.000 \\
+DAL/DD & 1h & \textbf{Gold} & 0.001 & 0.03 & 0.194 & 0.000 \\
+TT/MLI & 1h & \textbf{Gold} & 0.000 & 0.07 & 0.467 & 0.000 \\
+TMHC/WAL & 1h & \textbf{Gold} & 0.040 & 0.14 & 0.090 & 0.000 \\
+UMBF/FHB & 1h & \textbf{Gold} & 0.039 & 0.18 & 0.439 & 0.000 \\
+AXP/CRWD & 1h & Silver & 0.021 & 0.01 & 0.000 & 0.000 \\
+AME/MAR & 1h & Silver & 0.011 & 0.09 & 0.005 & 0.000 \\
+APP/CRWD & 1h & Silver & 0.044 & 0.09 & 0.006 & 0.000 \\
+AVGO/CRWD & 1h & Silver & 0.005 & 0.06 & 0.000 & 0.000 \\
+CAT/DD & 1h & Silver & 0.000 & 0.07 & 0.004 & 0.000 \\
+DE/DD & 1h & Silver & 0.049 & 0.11 & 0.000 & 0.000 \\
 VRT/MTZ & 1h & Silver & 0.002 & 0.08 & 0.000 & 0.000 \\
-MTSI/WCC & 1h & Silver & 0.040 & 0.07 & 0.027 & 0.000 \\
-EQR/INVH & 30m & Silver & 0.026 & 0.20 & 0.006 & 0.001 \\
-CVX/OXY & 3m & Silver & 0.037 & 0.42 & 0.000 & 0.000 \\
-KVUE/KMB & 3m & Silver & 0.013 & 0.98 & 0.000 & 0.000 \\
-PNC/ZION & 4h & Silver & 0.046 & 0.12 & 0.000 & 0.012 \\
+WAB/MLI & 1h & Silver & 0.000 & 0.11 & 0.013 & 0.000 \\
+WAL/MC & 1h & Silver & 0.044 & 0.06 & 0.000 & 0.000 \\
+ZION/FHB & 1h & Silver & 0.030 & 0.16 & 0.002 & 0.000 \\
+KVUE/KMB & 3m & Silver & 0.001 & 0.99 & 0.000 & 0.000 \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -574,7 +571,7 @@ PNC/ZION & 4h & Silver & 0.046 & 0.12 & 0.000 & 0.012 \\
 \toprule
 Variant & Trades & Sharpe & Calmar & Total P\&L & Max DD & Win Rate & Pairs \\
 \midrule
-IS (Layer 1) & 1028 & 5.29 & --- & \$264,926 & \$1,877 & 0.63 & 15 \\
+IS (Layer 1) & 1042 & 5.40 & --- & \$302,114 & \$3,702 & 0.67 & 12 \\
 OOS Baseline & 296 & 5.24 & --- & \$73,596 & \$1,227 & 0.61 & 15 \\
 OOS Huber-weighted & 296 & 5.02 & --- & \$51,857 & \$963 & 0.61 & 15 \\
 OOS + Neg-hedge & 304 & 5.45 & --- & \$77,740 & \$1,229 & 0.64 & 15 \\
@@ -594,28 +591,25 @@ OOS Risk-parity & 296 & 5.87 & --- & \$62,490 & \$1,136 & 0.61 & 15 \\
 \toprule
 Pair & TF & $\xi$ (spread) & $\sigma$ (spread) & $\xi$ (P\&L) & Fat tail? \\
 \midrule
-KVUE/KMB & 3m & 1.296 & 0.1 & --- & \checkmark \\
-CVX/OXY & 3m & 1.162 & 0.1 & --- & \checkmark \\
-TMHC/WAL & 1h & 0.510 & 0.1 & 3.153 & \checkmark \\
-PNC/ZION & 4h & 0.470 & 0.0 & --- & \checkmark \\
-CMI/DD & 1h & 0.462 & 0.1 & --- & \checkmark \\
-VRT/MTZ & 1h & 0.457 & 0.1 & -1.695 & \checkmark \\
-AMD/DD & 1h & 0.444 & 0.2 & --- & \checkmark \\
-MET/TMHC & 1h & 0.427 & 0.0 & -1.985 & \checkmark \\
-PRU/AXTA & 1h & 0.398 & 0.0 & 5.890 & \checkmark \\
-EG/ORI & 1h & 0.388 & 0.1 & --- & \checkmark \\
-AME/DD & 1h & 0.369 & 0.1 & --- & \checkmark \\
-PFG/STLD & 1h & 0.369 & 0.0 & -2.757 & \checkmark \\
-UMBF/FHB & 1h & 0.332 & 0.0 & 0.732 & \checkmark \\
-EG/WRB & 1h & 0.312 & 0.1 & --- & \checkmark \\
-EQR/INVH & 30m & 0.301 & 0.0 & --- & \checkmark \\
-DAL/DD & 1h & 0.299 & 0.1 & --- & --- \\
-MTSI/WCC & 1h & 0.298 & 0.1 & -1.814 & --- \\
-LNT/VTR & 1h & 0.287 & 0.1 & -1.626 & --- \\
-AMAT/DD & 1h & 0.261 & 0.2 & --- & --- \\
-HAL/NOV & 1h & 0.241 & 0.0 & --- & --- \\
-LNT/WELL & 1h & 0.217 & 0.1 & 1.752 & \checkmark \\
-SPY/VOO & 4h & 0.051 & 0.0 & --- & --- \\
+KVUE/KMB & 3m & 1.255 & 0.1 & --- & \checkmark \\
+AME/MAR & 1h & 0.545 & 0.0 & -2.762 & \checkmark \\
+TMHC/WAL & 1h & 0.511 & 0.1 & 2.788 & \checkmark \\
+AVGO/CRWD & 1h & 0.461 & 0.1 & 2.219 & \checkmark \\
+VRT/MTZ & 1h & 0.458 & 0.1 & -1.713 & \checkmark \\
+AMD/DD & 1h & 0.446 & 0.2 & --- & \checkmark \\
+CAT/DD & 1h & 0.396 & 0.1 & --- & \checkmark \\
+WAB/MLI & 1h & 0.393 & 0.0 & --- & \checkmark \\
+AME/DD & 1h & 0.368 & 0.1 & --- & \checkmark \\
+AXP/CRWD & 1h & 0.347 & 0.0 & 1.677 & \checkmark \\
+UMBF/FHB & 1h & 0.333 & 0.0 & 0.722 & \checkmark \\
+TT/MLI & 1h & 0.332 & 0.0 & -2.267 & \checkmark \\
+ZION/FHB & 1h & 0.323 & 0.0 & --- & \checkmark \\
+DE/DD & 1h & 0.307 & 0.1 & --- & \checkmark \\
+DAL/DD & 1h & 0.302 & 0.1 & --- & \checkmark \\
+APP/CRWD & 1h & 0.264 & 0.1 & -2.682 & --- \\
+AMAT/DD & 1h & 0.258 & 0.2 & --- & --- \\
+CMS/DUK & 1h & 0.253 & 0.0 & 0.747 & \checkmark \\
+WAL/MC & 1h & 0.194 & 0.1 & -1.426 & --- \\
 7267.T/8058.T & 1M & --- & --- & --- & --- \\
 \bottomrule
 \end{tabular}
@@ -631,8 +625,8 @@ SPY/VOO & 4h & 0.051 & 0.0 & --- & --- \\
 \toprule
 Sample & N trades & N days & Realized Sharpe & Perm. mean & Perm. 95\%ile & $p$-value & Significant? \\
 \midrule
-In-sample & 1028 & 295 & 11.64 & 13.11 & 14.27 & 0.981 & No \\
-Out-of-sample & 296 & 70 & 10.24 & 12.10 & 14.34 & 0.904 & No \\
+In-sample & 1042 & 284 & 12.44 & 12.52 & 13.87 & 0.526 & No \\
+Out-of-sample & 296 & 70 & 10.24 & 10.83 & 14.03 & 0.589 & No \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -647,11 +641,11 @@ Out-of-sample & 296 & 70 & 10.24 & 12.10 & 14.34 & 0.904 & No \\
 \toprule
 Distribution & $k$ & Log-lik. & AIC & BIC \\
 \midrule
-\textbf{GARCH(1,1) + Normal$^{\dagger}$} & 4 & -428.4 & \textbf{864.9} & 879.6 \\
-Skew-Normal (NIG proxy) & 3 & -9722.4 & 19450.7 & 19466.3 \\
-Student-$t$ & 3 & -9748.4 & 19502.9 & 19518.4 \\
-Laplace & 2 & -9809.0 & 19622.1 & 19632.4 \\
-Normal & 2 & -9909.7 & 19823.4 & 19833.7 \\
+\textbf{GARCH(1,1) + Normal$^{\dagger}$} & 4 & -442.4 & \textbf{892.7} & 907.7 \\
+Skew-Normal (NIG proxy) & 3 & -10085.1 & 20176.3 & 20191.9 \\
+Laplace & 2 & -10090.8 & 20185.6 & 20196.0 \\
+Student-$t$ & 3 & -10114.3 & 20234.6 & 20250.2 \\
+Normal & 2 & -10173.8 & 20351.6 & 20362.0 \\
 \bottomrule
 \end{tabular}
 \end{table}

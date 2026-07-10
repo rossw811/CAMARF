@@ -1,16 +1,4 @@
 {
-  "SPY": {
-    "tfs": [
-      "4h"
-    ],
-    "added": "1h"
-  },
-  "VOO": {
-    "tfs": [
-      "4h"
-    ],
-    "added": "1h"
-  },
   "EQR": {
     "tfs": [
       "30m"
@@ -23,31 +11,7 @@
     ],
     "added": "30m"
   },
-  "LNT": {
-    "tfs": [
-      "1h"
-    ],
-    "added": "1h"
-  },
-  "WELL": {
-    "tfs": [
-      "1h"
-    ],
-    "added": "1h"
-  },
   "DD": {
-    "tfs": [
-      "1h"
-    ],
-    "added": "1h"
-  },
-  "EG": {
-    "tfs": [
-      "1h"
-    ],
-    "added": "1h"
-  },
-  "ORI": {
     "tfs": [
       "1h"
     ],
@@ -65,18 +29,6 @@
     ],
     "added": "1h"
   },
-  "CVX": {
-    "tfs": [
-      "3m"
-    ],
-    "added": "3m"
-  },
-  "OXY": {
-    "tfs": [
-      "3m"
-    ],
-    "added": "3m"
-  },
   "KVUE": {
     "tfs": [
       "3m"
@@ -89,31 +41,7 @@
     ],
     "added": "3m"
   },
-  "AMD": {
-    "tfs": [
-      "1h"
-    ],
-    "added": "1h"
-  },
-  "VTR": {
-    "tfs": [
-      "1h"
-    ],
-    "added": "1h"
-  },
-  "AME": {
-    "tfs": [
-      "1h"
-    ],
-    "added": "1h"
-  },
   "AMAT": {
-    "tfs": [
-      "1h"
-    ],
-    "added": "1h"
-  },
-  "CMI": {
     "tfs": [
       "1h"
     ],
@@ -125,67 +53,7 @@
     ],
     "added": "1h"
   },
-  "WRB": {
-    "tfs": [
-      "1h"
-    ],
-    "added": "1h"
-  },
-  "HAL": {
-    "tfs": [
-      "1h"
-    ],
-    "added": "1h"
-  },
-  "NOV": {
-    "tfs": [
-      "1h"
-    ],
-    "added": "1h"
-  },
-  "MET": {
-    "tfs": [
-      "1h"
-    ],
-    "added": "1h"
-  },
   "TMHC": {
-    "tfs": [
-      "1h"
-    ],
-    "added": "1h"
-  },
-  "PFG": {
-    "tfs": [
-      "1h"
-    ],
-    "added": "1h"
-  },
-  "STLD": {
-    "tfs": [
-      "1h"
-    ],
-    "added": "1h"
-  },
-  "PRU": {
-    "tfs": [
-      "1h"
-    ],
-    "added": "1h"
-  },
-  "AXTA": {
-    "tfs": [
-      "1h"
-    ],
-    "added": "1h"
-  },
-  "MTSI": {
-    "tfs": [
-      "1h"
-    ],
-    "added": "1h"
-  },
-  "WCC": {
     "tfs": [
       "1h"
     ],
@@ -209,15 +77,9 @@
     ],
     "added": "1h"
   },
-  "PNC": {
-    "tfs": [
-      "4h"
-    ],
-    "added": "4h"
-  },
   "ZION": {
     "tfs": [
-      "4h"
+      "1h"
     ],
     "added": "4h"
   },
@@ -268,5 +130,95 @@
       "__TEST_SAVE__"
     ],
     "added": "__TEST_SAVE__"
+  },
+  "AXP": {
+    "tfs": [
+      "1h"
+    ],
+    "added": "1h"
+  },
+  "CRWD": {
+    "tfs": [
+      "1h"
+    ],
+    "added": "1h"
+  },
+  "APP": {
+    "tfs": [
+      "1h"
+    ],
+    "added": "1h"
+  },
+  "AVGO": {
+    "tfs": [
+      "1h"
+    ],
+    "added": "1h"
+  },
+  "CMS": {
+    "tfs": [
+      "1h"
+    ],
+    "added": "1h"
+  },
+  "DUK": {
+    "tfs": [
+      "1h"
+    ],
+    "added": "1h"
+  },
+  "TT": {
+    "tfs": [
+      "1h"
+    ],
+    "added": "1h"
+  },
+  "MLI": {
+    "tfs": [
+      "1h"
+    ],
+    "added": "1h"
+  },
+  "WAB": {
+    "tfs": [
+      "1h"
+    ],
+    "added": "1h"
+  },
+  "MC": {
+    "tfs": [
+      "1h"
+    ],
+    "added": "1h"
+  },
+  "AMD": {
+    "tfs": [
+      "1h"
+    ],
+    "added": "1h"
+  },
+  "AME": {
+    "tfs": [
+      "1h"
+    ],
+    "added": "1h"
+  },
+  "MAR": {
+    "tfs": [
+      "1h"
+    ],
+    "added": "1h"
+  },
+  "CAT": {
+    "tfs": [
+      "1h"
+    ],
+    "added": "1h"
+  },
+  "DE": {
+    "tfs": [
+      "1h"
+    ],
+    "added": "1h"
   }
 }

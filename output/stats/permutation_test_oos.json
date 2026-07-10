@@ -4,11 +4,12 @@
   "n_trades": 296,
   "n_active_days": 70,
   "n_perms": 1000,
-  "perm_mean_sharpe": 12.09661993483402,
-  "perm_std_sharpe": 1.3739888432367462,
-  "perm_5pct_sharpe": 9.819876620386665,
-  "perm_95pct_sharpe": 14.340063655218461,
-  "pvalue": 0.904,
+  "perm_mean_sharpe": 10.828776822919606,
+  "perm_std_sharpe": 1.8170523136447112,
+  "perm_5pct_sharpe": 8.152913328962024,
+  "perm_95pct_sharpe": 14.028603415680575,
+  "pvalue": 0.589,
   "significant_at_0_05": false,
-  "note": "Null: entry signal timing has no skill \u2014 pnl_net values randomly reassigned across trades, keeping exit-date structure.  p-value = fraction of permuted closed-trade Sharpes >= realized.  Backtest equity-curve Sharpe (from backtest.py) reported separately as the primary paper number."
+  "block_len_days": 5,
+  "note": "Circular block bootstrap (5-trading-day blocks) over the realized daily portfolio P&L series \u2014 preserves real same-day/adjacent-day cross-pair exit-timing correlation instead of destroying it (see BUG FIX note in run_permutation_test docstring, 2026-07-06). p-value = fraction of bootstrap closed-trade Sharpes >= realized. Backtest equity-curve Sharpe (from backtest.py) reported separately as the primary paper number."
 }

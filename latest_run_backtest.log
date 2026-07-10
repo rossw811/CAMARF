@@ -1,10 +1,10 @@
-backtest.py run: layer1_holdout_stormall
+backtest.py run: layer1
 layer2_enabled: False
-n_pairs_run: 15
-n_trades_total: 292
-total_net_pnl: 5345.83
-mean_sharpe: 24.1345
-mean_win_rate: 0.6132
-portfolio_sharpe: 4.8871
-max_concentration_pct: 0.3569
-outputs: output/backtest/trades_layer1_holdout_stormall.parquet, summary_layer1_holdout_stormall.parquet, portfolio_layer1_holdout_stormall.parquet
+n_pairs_run: 12
+n_trades_total: 521
+total_net_pnl: 150943.24
+mean_sharpe: 29.6799
+mean_win_rate: 0.6652
+portfolio_sharpe: 5.4019
+max_concentration_pct: 0.1662
+outputs: output/backtest/trades_layer1.parquet, summary_layer1.parquet, portfolio_layer1.parquet

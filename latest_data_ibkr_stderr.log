@@ -1,0 +1,119 @@
+2026-07-05 23:20:57  INFO      CAMARF  —  data_ibkr.py  —  IBKR Supplemental Pipeline
+2026-07-05 23:20:57  INFO      Primary yfinance cache is untouched by this script.
+2026-07-05 23:20:57  INFO      Manifest: 47 confirmed pair/trio symbols from C:\Users\RossW\Projects\CAMARF\output\results\confirmed_pairs_manifest.json
+2026-07-05 23:20:57  INFO      Fetching all TFs: ['1m', '5m', '15m', '30m', '1h', '4h', '1D']
+2026-07-05 23:20:57  INFO      IBKR Supplement: 47 symbols × 7 TFs = 220 fetches needed (109 already fresh, skipped)
+2026-07-05 23:20:57  INFO      Connecting to 127.0.0.1:4001 with clientId 1...
+2026-07-05 23:20:57  INFO      Connected
+2026-07-05 23:20:58  INFO      Logged on to server version 176
+2026-07-05 23:20:58  INFO      API connection ready
+2026-07-05 23:20:58  INFO      Warning 2104, reqId -1: Market data farm connection is OK:usfarm
+2026-07-05 23:20:58  INFO      Warning 2107, reqId -1: HMDS data farm connection is inactive but should be available upon demand.ushmds
+2026-07-05 23:20:58  INFO      Warning 2158, reqId -1: Sec-def data farm connection is OK:secdefil
+2026-07-05 23:20:58  INFO      Synchronization complete
+2026-07-05 23:20:58  INFO      IBKR connected  \u2192  127.0.0.1:4001
+2026-07-05 23:21:02  INFO      Warning 2106, reqId -1: HMDS data farm connection is OK:ushmds
+2026-07-05 23:21:08  INFO      Fetched  KVUE 30m  \u2192  13881 bars  (dropped 0)
+2026-07-05 23:21:09  INFO        KVUE: 1/1 TFs saved (30m)
+2026-07-05 23:21:25  WARNING   IBKR request failed KMB 30m attempt 1: . Retrying in 3s
+2026-07-05 23:21:47  WARNING   IBKR request failed KMB 30m attempt 2: . Retrying in 5s
+2026-07-05 23:22:07  WARNING   IBKR request failed KMB 30m attempt 3: . Retrying in 10s
+2026-07-05 23:22:32  WARNING   IBKR request failed KMB 30m attempt 4: . Retrying in 10s
+2026-07-05 23:22:42  INFO        KMB 30m: IBKR failed \u2192 trying yfinance
+2026-07-05 23:22:43  INFO        \u2713 yfinance KMB 30m \u2192 780 bars
+2026-07-05 23:22:43  INFO        KMB: 2/2 TFs saved (1m, 30m)
+2026-07-05 23:22:59  WARNING   IBKR request failed AMD 15m attempt 1: . Retrying in 3s
+2026-07-05 23:23:17  WARNING   IBKR request failed AMD 15m attempt 2: . Retrying in 5s
+2026-07-05 23:23:37  WARNING   IBKR request failed AMD 15m attempt 3: . Retrying in 10s
+2026-07-05 23:24:02  WARNING   IBKR request failed AMD 15m attempt 4: . Retrying in 10s
+2026-07-05 23:24:12  INFO        AMD 15m: IBKR failed \u2192 trying yfinance
+2026-07-05 23:24:12  INFO        \u2713 yfinance AMD 15m \u2192 1560 bars
+2026-07-05 23:24:27  WARNING   IBKR request failed AMD 30m attempt 1: . Retrying in 3s
+2026-07-05 23:24:45  WARNING   IBKR request failed AMD 30m attempt 2: . Retrying in 5s
+2026-07-05 23:25:07  WARNING   IBKR request failed AMD 30m attempt 3: . Retrying in 10s
+2026-07-05 23:25:32  WARNING   IBKR request failed AMD 30m attempt 4: . Retrying in 10s
+2026-07-05 23:25:42  INFO        AMD 30m: IBKR failed \u2192 trying yfinance
+2026-07-05 23:25:43  INFO        \u2713 yfinance AMD 30m \u2192 780 bars
+2026-07-05 23:25:58  WARNING   IBKR request failed AMD 1h attempt 1: . Retrying in 3s
+2026-07-05 23:26:20  WARNING   IBKR request failed AMD 1h attempt 2: . Retrying in 5s
+2026-07-05 23:26:40  WARNING   IBKR request failed AMD 1h attempt 3: . Retrying in 10s
+2026-07-05 23:27:05  WARNING   IBKR request failed AMD 1h attempt 4: . Retrying in 10s
+2026-07-05 23:27:15  INFO        AMD 1h: IBKR failed \u2192 trying yfinance
+2026-07-05 23:27:15  INFO        \u2713 yfinance AMD 1h \u2192 5082 bars
+2026-07-05 23:27:16  INFO        AMD: 5/5 TFs saved (1m, 5m, 15m, 30m, 1h)
+2026-07-05 23:27:31  WARNING   IBKR request failed VTR 15m attempt 1: . Retrying in 3s
+2026-07-05 23:27:49  WARNING   IBKR request failed VTR 15m attempt 2: . Retrying in 5s
+2026-07-05 23:28:09  WARNING   IBKR request failed VTR 15m attempt 3: . Retrying in 10s
+2026-07-05 23:28:34  WARNING   IBKR request failed VTR 15m attempt 4: . Retrying in 10s
+2026-07-05 23:28:44  INFO        VTR 15m: IBKR failed \u2192 trying yfinance
+2026-07-05 23:28:44  INFO        \u2713 yfinance VTR 15m \u2192 1560 bars
+2026-07-05 23:29:00  WARNING   IBKR request failed VTR 30m attempt 1: . Retrying in 3s
+2026-07-05 23:29:18  WARNING   IBKR request failed VTR 30m attempt 2: . Retrying in 5s
+2026-07-05 23:29:40  WARNING   IBKR request failed VTR 30m attempt 3: . Retrying in 10s
+2026-07-05 23:30:05  WARNING   IBKR request failed VTR 30m attempt 4: . Retrying in 10s
+2026-07-05 23:30:15  INFO        VTR 30m: IBKR failed \u2192 trying yfinance
+2026-07-05 23:30:15  INFO        \u2713 yfinance VTR 30m \u2192 780 bars
+2026-07-05 23:30:30  WARNING   IBKR request failed VTR 1h attempt 1: . Retrying in 3s
+2026-07-05 23:30:52  WARNING   IBKR request failed VTR 1h attempt 2: . Retrying in 5s
+2026-07-05 23:31:12  WARNING   IBKR request failed VTR 1h attempt 3: . Retrying in 10s
+2026-07-05 23:31:37  WARNING   IBKR request failed VTR 1h attempt 4: . Retrying in 10s
+2026-07-05 23:31:47  INFO        VTR 1h: IBKR failed \u2192 trying yfinance
+2026-07-05 23:31:48  INFO        \u2713 yfinance VTR 1h \u2192 5082 bars
+2026-07-05 23:31:48  INFO        VTR: 5/5 TFs saved (1m, 5m, 15m, 30m, 1h)
+2026-07-05 23:32:03  WARNING   IBKR request failed AME 15m attempt 1: . Retrying in 3s
+2026-07-05 23:32:21  WARNING   IBKR request failed AME 15m attempt 2: . Retrying in 5s
+2026-07-05 23:32:41  WARNING   IBKR request failed AME 15m attempt 3: . Retrying in 10s
+2026-07-05 23:33:06  WARNING   IBKR request failed AME 15m attempt 4: . Retrying in 10s
+2026-07-05 23:33:16  INFO        AME 15m: IBKR failed \u2192 trying yfinance
+2026-07-05 23:33:17  INFO        \u2713 yfinance AME 15m \u2192 1560 bars
+2026-07-05 23:33:32  WARNING   IBKR request failed AME 30m attempt 1: . Retrying in 3s
+2026-07-05 23:33:50  WARNING   IBKR request failed AME 30m attempt 2: . Retrying in 5s
+2026-07-05 23:34:12  WARNING   IBKR request failed AME 30m attempt 3: . Retrying in 10s
+2026-07-05 23:34:37  WARNING   IBKR request failed AME 30m attempt 4: . Retrying in 10s
+2026-07-05 23:34:47  INFO        AME 30m: IBKR failed \u2192 trying yfinance
+2026-07-05 23:34:47  INFO        \u2713 yfinance AME 30m \u2192 780 bars
+2026-07-05 23:35:02  WARNING   IBKR request failed AME 1h attempt 1: . Retrying in 3s
+2026-07-05 23:35:24  WARNING   IBKR request failed AME 1h attempt 2: . Retrying in 5s
+2026-07-05 23:35:44  WARNING   IBKR request failed AME 1h attempt 3: . Retrying in 10s
+2026-07-05 23:36:09  WARNING   IBKR request failed AME 1h attempt 4: . Retrying in 10s
+2026-07-05 23:36:19  WARNING   Circuit OPEN (#1) after 10 failures
+2026-07-05 23:36:19  INFO        AME 1h: IBKR failed \u2192 trying yfinance
+2026-07-05 23:36:20  INFO        \u2713 yfinance AME 1h \u2192 5082 bars
+2026-07-05 23:36:20  INFO        AME: 5/5 TFs saved (1m, 5m, 15m, 30m, 1h)
+2026-07-05 23:36:20  INFO        AMAT: 1/5 TFs saved (1m)
+2026-07-05 23:36:21  INFO        CMI: 2/5 TFs saved (1m, 5m)
+2026-07-05 23:36:21  INFO        DAL: 2/5 TFs saved (1m, 5m)
+2026-07-05 23:36:22  INFO        WRB: 2/5 TFs saved (1m, 5m)
+2026-07-05 23:36:22  INFO        HAL: 2/5 TFs saved (1m, 5m)
+2026-07-05 23:36:22  INFO        [10/39] 27 saved, 16 failed
+2026-07-05 23:36:22  INFO        NOV: 2/5 TFs saved (1m, 5m)
+2026-07-05 23:36:23  INFO        MET: 2/5 TFs saved (1m, 5m)
+2026-07-05 23:36:23  INFO        TMHC: 2/5 TFs saved (1m, 5m)
+2026-07-05 23:36:24  INFO        PFG: 2/5 TFs saved (1m, 5m)
+2026-07-05 23:36:24  INFO        STLD: 2/5 TFs saved (1m, 5m)
+2026-07-05 23:36:25  INFO        PRU: 2/5 TFs saved (1m, 5m)
+2026-07-05 23:36:25  INFO        AXTA: 2/5 TFs saved (1m, 5m)
+2026-07-05 23:36:26  INFO        WAL: 2/5 TFs saved (1m, 5m)
+2026-07-05 23:36:26  INFO        UMBF: 2/5 TFs saved (1m, 5m)
+2026-07-05 23:36:26  INFO        FHB: 2/5 TFs saved (1m, 5m)
+2026-07-05 23:36:26  INFO        [20/39] 47 saved, 46 failed
+2026-07-05 23:36:27  INFO        ZION: 2/5 TFs saved (1m, 5m)
+2026-07-05 23:36:27  INFO        GGG: 2/5 TFs saved (1m, 5m)
+2026-07-05 23:36:27  INFO        AXP: 3/7 TFs saved (1m, 5m, 15m)
+2026-07-05 23:36:27  INFO        [30/39] 54 saved, 103 failed
+2026-07-05 23:36:28  INFO        CRWD: 4/7 TFs saved (1m, 5m, 15m, 30m)
+2026-07-05 23:36:28  INFO        APP: 3/7 TFs saved (1m, 5m, 15m)
+2026-07-05 23:36:29  INFO        AVGO: 4/7 TFs saved (1m, 5m, 15m, 30m)
+2026-07-05 23:36:29  INFO        CMS: 4/7 TFs saved (1m, 5m, 15m, 30m)
+2026-07-05 23:36:30  INFO        DUK: 4/7 TFs saved (1m, 5m, 15m, 30m)
+2026-07-05 23:36:30  INFO        TT: 4/7 TFs saved (1m, 5m, 15m, 30m)
+2026-07-05 23:36:31  INFO        MLI: 4/7 TFs saved (1m, 5m, 15m, 30m)
+2026-07-05 23:36:31  INFO        WAB: 4/7 TFs saved (1m, 5m, 15m, 30m)
+2026-07-05 23:36:32  INFO        MC: 4/7 TFs saved (1m, 5m, 15m, 30m)
+2026-07-05 23:36:32  INFO      Disconnecting from 127.0.0.1:4001, 3.78 kB sent in 47 messages, 4.63 MB received in 403 messages, session time 935 s.
+2026-07-05 23:36:32  INFO      Disconnecting
+2026-07-05 23:36:32  INFO      IBKR disconnected
+2026-07-05 23:36:32  INFO      ======================================================================
+2026-07-05 23:36:32  INFO      IBKR Supplement complete: 89 TF-fetches saved across 32 symbols | 131 failed | 0 skipped (session killed)
+2026-07-05 23:36:32  INFO      Re-run analysis.py to use deep history for episodic cointegration analysis.
+2026-07-05 23:36:32  INFO      ======================================================================

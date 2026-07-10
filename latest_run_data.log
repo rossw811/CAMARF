@@ -1,10 +1,10 @@
 === CAMARF data.py ===
-date:        2026-07-01 08:31
-runtime_min: 12.8
+date:        2026-07-10 02:54
+runtime_min: 126.2
 config_hash: 0c0e67a6b00ff0bb
 
 === universe ===
-candidates:  1608
+candidates:  1611
 resumed:     1357
 excluded:    0
 cache_contamination_cleared: 0
@@ -12,6 +12,15 @@ cache_contamination_cleared: 0
 === phase1_daily ===
 
 === intraday_tfs ===
+tf    | saved         | fail_fetch    | fail_snap     | fail_cutoff   | no_source     | resample_fail | freq_invalid 
+1h    | 1527          | 10            | 0             | 0             | 0             | 0             | 0            
+30m   | 1531          | 6             | 0             | 0             | 0             | 0             | 0            
+15m   | 1531          | 6             | 0             | 0             | 0             | 0             | 0            
+5m    | 790           | 747           | 0             | 0             | 0             | 0             | 0            
+2m    | 0             | 1537          | 0             | 0             | 0             | 0             | 0            
+1m    | 0             | 1537          | 0             | 0             | 0             | 0             | 0            
+3m    | 0             | 1537          | 0             | 0             | 0             | 0             | 0            
+4h    | 1528          | 0             | 0             | 0             | 9             | 0             | 0            
 
 === ibkr ===
 disconnects:    0

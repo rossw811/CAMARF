@@ -1,8 +1,10 @@
-23:26:03 INFO  === deflated_sharpe.py: Deflated Sharpe Ratio (Bailey & Lopez de Prado 2014) ===
-23:26:03 INFO  Backfilled 14 historical trial(s) from output/backtest/portfolio_*.parquet not already in trial_registry.json
-23:26:03 INFO  N trials = 14, Var[Sharpe across trials] = 0.001670 (per-period/daily units, converted from annualized sharpe_portfolio via /sqrt(252))
-23:26:03 INFO    [layer1] in-sample baseline: per-period SR_hat=0.7351 (T=278, skew=2.415, kurt=14.183) -> DSR = 1.0000 (z=11.02, P(true Sharpe > 0), corrected for 14 trials)
-23:26:03 INFO    [layer1_holdout] out-of-sample holdout baseline: per-period SR_hat=0.6402 (T=70, skew=2.864, kurt=14.332) -> DSR = 1.0000 (z=6.48, P(true Sharpe > 0), corrected for 14 trials)
-23:26:03 INFO  Saved => C:\Users\RossW\Projects\CAMARF\output\stats\deflated_sharpe.json
-23:26:03 INFO  ============================================================
-23:26:03 INFO  deflated_sharpe.py complete (0.0 min)
+01:39:08 INFO  === deflated_sharpe.py: Deflated Sharpe Ratio (Bailey & Lopez de Prado 2014) ===
+01:39:08 INFO  Backfilled 0 historical trial(s) from output/backtest/portfolio_*.parquet not already in trial_registry.json
+01:39:08 INFO  N trials = 34, Var[Sharpe across trials] = 0.000953 (per-period/daily units, converted from annualized sharpe_portfolio via /sqrt(252))
+01:39:08 INFO  Holdout exposure: 27 trial(s) evaluated against the OOS holdout window across 14 distinct labels (layer1_holdout, layer1_holdout_ez15, layer1_holdout_hrp, layer1_holdout_hubw, layer1_holdout_neghedge)...
+01:39:08 WARNING  Holdout window has been examined 27 times — high Garden-of-Forking-Paths risk (Gelman & Loken 2013). The DSR above already corrects for 'best Sharpe among N variants,' but repeated looks at the SAME holdout data across sessions is a related, not-fully-overlapping risk: consider a fresh, never-examined holdout slice before treating any single variant's OOS number as final.
+01:39:09 INFO    [layer1] in-sample baseline: per-period SR_hat=0.5560 (T=558, skew=1.742, kurt=6.423) -> DSR = 1.0000 (z=17.25, P(true Sharpe > 0), corrected for 34 trials)
+01:39:09 INFO    [layer1_holdout] out-of-sample holdout baseline: per-period SR_hat=0.6402 (T=70, skew=2.864, kurt=14.332) -> DSR = 1.0000 (z=6.54, P(true Sharpe > 0), corrected for 34 trials)
+01:39:09 INFO  Saved => C:\Users\RossW\Projects\CAMARF\output\stats\deflated_sharpe.json
+01:39:09 INFO  ============================================================
+01:39:09 INFO  deflated_sharpe.py complete (0.0 min)
