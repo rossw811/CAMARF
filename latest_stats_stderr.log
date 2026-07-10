@@ -1,0 +1,192 @@
+2026-07-10 02:20:22  INFO      ======================================================================
+2026-07-10 02:20:22  INFO      CAMARF  —  stats.py  —  Statistical Validation Layer
+2026-07-10 02:20:22  INFO      ======================================================================
+2026-07-10 02:20:22  INFO      Loaded 20 confirmed pairs across 3 TFs
+2026-07-10 02:20:22  INFO      Trades: IS=1042  OOS=296  OOS+neg-hedge=304
+2026-07-10 02:20:22  INFO      === Section 1: Confirmatory Cointegration (KPSS + PO) ===
+C:\Users\RossW\Projects\CAMARF\stats.py:246: DeprecationWarning: Lag selection has changed to use a data-dependent method. To use the old method that only depends on time, set lags=-1
+  kpss = ArchKPSS(vals)  # lags=None \u2192 data-dependent selection (arch 8)
+2026-07-10 02:20:23  INFO        AMD/DD@1h  EG=0.013  KPSS=0.208  PO=0.000  n_confirm=3  tier=gold
+C:\Users\RossW\Projects\CAMARF\stats.py:246: DeprecationWarning: Lag selection has changed to use a data-dependent method. To use the old method that only depends on time, set lags=-1
+  kpss = ArchKPSS(vals)  # lags=None \u2192 data-dependent selection (arch 8)
+2026-07-10 02:20:24  INFO        AXP/CRWD@1h  EG=0.021  KPSS=0.000  PO=0.000  n_confirm=2  tier=silver [CONFLICT]
+C:\Users\RossW\Projects\CAMARF\stats.py:246: DeprecationWarning: Lag selection has changed to use a data-dependent method. To use the old method that only depends on time, set lags=-1
+  kpss = ArchKPSS(vals)  # lags=None \u2192 data-dependent selection (arch 8)
+2026-07-10 02:20:24  INFO        AME/DD@1h  EG=0.000  KPSS=0.402  PO=0.000  n_confirm=3  tier=gold
+C:\Users\RossW\Projects\CAMARF\stats.py:246: DeprecationWarning: Lag selection has changed to use a data-dependent method. To use the old method that only depends on time, set lags=-1
+  kpss = ArchKPSS(vals)  # lags=None \u2192 data-dependent selection (arch 8)
+2026-07-10 02:20:24  INFO        AME/MAR@1h  EG=0.011  KPSS=0.005  PO=0.000  n_confirm=2  tier=silver [CONFLICT]
+C:\Users\RossW\Projects\CAMARF\stats.py:246: DeprecationWarning: Lag selection has changed to use a data-dependent method. To use the old method that only depends on time, set lags=-1
+  kpss = ArchKPSS(vals)  # lags=None \u2192 data-dependent selection (arch 8)
+2026-07-10 02:20:24  INFO        AMAT/DD@1h  EG=0.000  KPSS=0.236  PO=0.000  n_confirm=3  tier=gold
+C:\Users\RossW\Projects\CAMARF\stats.py:246: DeprecationWarning: Lag selection has changed to use a data-dependent method. To use the old method that only depends on time, set lags=-1
+  kpss = ArchKPSS(vals)  # lags=None \u2192 data-dependent selection (arch 8)
+2026-07-10 02:20:24  INFO        APP/CRWD@1h  EG=0.044  KPSS=0.006  PO=0.000  n_confirm=2  tier=silver [CONFLICT]
+C:\Users\RossW\Projects\CAMARF\stats.py:246: DeprecationWarning: Lag selection has changed to use a data-dependent method. To use the old method that only depends on time, set lags=-1
+  kpss = ArchKPSS(vals)  # lags=None \u2192 data-dependent selection (arch 8)
+2026-07-10 02:20:24  INFO        AVGO/CRWD@1h  EG=0.005  KPSS=0.000  PO=0.000  n_confirm=2  tier=silver [CONFLICT]
+C:\Users\RossW\Projects\CAMARF\stats.py:246: DeprecationWarning: Lag selection has changed to use a data-dependent method. To use the old method that only depends on time, set lags=-1
+  kpss = ArchKPSS(vals)  # lags=None \u2192 data-dependent selection (arch 8)
+2026-07-10 02:20:24  INFO        CAT/DD@1h  EG=0.000  KPSS=0.004  PO=0.000  n_confirm=2  tier=silver [CONFLICT]
+C:\Users\RossW\Projects\CAMARF\stats.py:246: DeprecationWarning: Lag selection has changed to use a data-dependent method. To use the old method that only depends on time, set lags=-1
+  kpss = ArchKPSS(vals)  # lags=None \u2192 data-dependent selection (arch 8)
+2026-07-10 02:20:24  INFO        CMS/DUK@1h  EG=0.016  KPSS=0.065  PO=0.000  n_confirm=3  tier=gold
+C:\Users\RossW\Projects\CAMARF\stats.py:246: DeprecationWarning: Lag selection has changed to use a data-dependent method. To use the old method that only depends on time, set lags=-1
+  kpss = ArchKPSS(vals)  # lags=None \u2192 data-dependent selection (arch 8)
+2026-07-10 02:20:24  INFO        DE/DD@1h  EG=0.049  KPSS=0.000  PO=0.000  n_confirm=2  tier=silver [CONFLICT]
+C:\Users\RossW\Projects\CAMARF\stats.py:246: DeprecationWarning: Lag selection has changed to use a data-dependent method. To use the old method that only depends on time, set lags=-1
+  kpss = ArchKPSS(vals)  # lags=None \u2192 data-dependent selection (arch 8)
+2026-07-10 02:20:24  INFO        DAL/DD@1h  EG=0.001  KPSS=0.194  PO=0.000  n_confirm=3  tier=gold
+C:\Users\RossW\Projects\CAMARF\stats.py:246: DeprecationWarning: Lag selection has changed to use a data-dependent method. To use the old method that only depends on time, set lags=-1
+  kpss = ArchKPSS(vals)  # lags=None \u2192 data-dependent selection (arch 8)
+2026-07-10 02:20:24  INFO        TT/MLI@1h  EG=0.000  KPSS=0.467  PO=0.000  n_confirm=3  tier=gold
+C:\Users\RossW\Projects\CAMARF\stats.py:246: DeprecationWarning: Lag selection has changed to use a data-dependent method. To use the old method that only depends on time, set lags=-1
+  kpss = ArchKPSS(vals)  # lags=None \u2192 data-dependent selection (arch 8)
+2026-07-10 02:20:24  INFO        VRT/MTZ@1h  EG=0.002  KPSS=0.000  PO=0.000  n_confirm=2  tier=silver [CONFLICT]
+C:\Users\RossW\Projects\CAMARF\stats.py:246: DeprecationWarning: Lag selection has changed to use a data-dependent method. To use the old method that only depends on time, set lags=-1
+  kpss = ArchKPSS(vals)  # lags=None \u2192 data-dependent selection (arch 8)
+2026-07-10 02:20:24  INFO        WAB/MLI@1h  EG=0.000  KPSS=0.013  PO=0.000  n_confirm=2  tier=silver [CONFLICT]
+C:\Users\RossW\Projects\CAMARF\stats.py:246: DeprecationWarning: Lag selection has changed to use a data-dependent method. To use the old method that only depends on time, set lags=-1
+  kpss = ArchKPSS(vals)  # lags=None \u2192 data-dependent selection (arch 8)
+2026-07-10 02:20:24  INFO        TMHC/WAL@1h  EG=0.040  KPSS=0.090  PO=0.000  n_confirm=3  tier=gold
+C:\Users\RossW\Projects\CAMARF\stats.py:246: DeprecationWarning: Lag selection has changed to use a data-dependent method. To use the old method that only depends on time, set lags=-1
+  kpss = ArchKPSS(vals)  # lags=None \u2192 data-dependent selection (arch 8)
+2026-07-10 02:20:25  INFO        UMBF/FHB@1h  EG=0.039  KPSS=0.439  PO=0.000  n_confirm=3  tier=gold
+C:\Users\RossW\Projects\CAMARF\stats.py:246: DeprecationWarning: Lag selection has changed to use a data-dependent method. To use the old method that only depends on time, set lags=-1
+  kpss = ArchKPSS(vals)  # lags=None \u2192 data-dependent selection (arch 8)
+2026-07-10 02:20:25  INFO        WAL/MC@1h  EG=0.044  KPSS=0.000  PO=0.000  n_confirm=2  tier=silver [CONFLICT]
+C:\Users\RossW\Projects\CAMARF\stats.py:246: DeprecationWarning: Lag selection has changed to use a data-dependent method. To use the old method that only depends on time, set lags=-1
+  kpss = ArchKPSS(vals)  # lags=None \u2192 data-dependent selection (arch 8)
+2026-07-10 02:20:25  INFO        ZION/FHB@1h  EG=0.030  KPSS=0.002  PO=0.000  n_confirm=2  tier=silver [CONFLICT]
+C:\Users\RossW\Projects\CAMARF\stats.py:246: DeprecationWarning: Lag selection has changed to use a data-dependent method. To use the old method that only depends on time, set lags=-1
+  kpss = ArchKPSS(vals)  # lags=None \u2192 data-dependent selection (arch 8)
+2026-07-10 02:20:25  INFO        KVUE/KMB@3m  EG=0.001  KPSS=0.000  PO=0.000  n_confirm=2  tier=silver [CONFLICT]
+2026-07-10 02:20:25  INFO        Tiers: gold=8  silver=11  bronze=0  no_spread=1  flagged_conflict=11
+2026-07-10 02:20:25  INFO        Saved \u2192 output/stats/cointegration_tiers.parquet
+2026-07-10 02:20:25  INFO      === Section 2: Robust Hedge Ratio Comparison ===
+2026-07-10 02:20:27  INFO        AMD/DD@1h  OLS=1.669  TLS=0.361  Kal=1.098  Hub=1.595  MM=1.645  spread_bps=10276  robust=False
+2026-07-10 02:20:28  INFO        AXP/CRWD@1h  OLS=0.604  TLS=1.455  Kal=1.245  Hub=0.649  MM=0.646  spread_bps=9251  robust=False
+2026-07-10 02:20:29  INFO        AME/DD@1h  OLS=0.583  TLS=1.497  Kal=1.124  Hub=0.602  MM=0.622  spread_bps=10318  robust=False
+2026-07-10 02:20:30  INFO        AME/MAR@1h  OLS=0.691  TLS=1.412  Kal=0.934  Hub=0.689  MM=0.687  spread_bps=8209  robust=False
+2026-07-10 02:20:32  INFO        AMAT/DD@1h  OLS=1.702  TLS=0.454  Kal=1.151  Hub=1.682  MM=1.724  spread_bps=9456  robust=False
+2026-07-10 02:20:33  INFO        APP/CRWD@1h  OLS=2.315  TLS=0.290  Kal=1.153  Hub=2.419  MM=2.453  spread_bps=12528  robust=False
+2026-07-10 02:20:34  INFO        AVGO/CRWD@1h  OLS=1.181  TLS=0.683  Kal=1.177  Hub=1.218  MM=1.241  spread_bps=5068  robust=False
+2026-07-10 02:20:35  INFO        CAT/DD@1h  OLS=1.777  TLS=0.441  Kal=1.297  Hub=1.878  MM=1.903  spread_bps=10024  robust=False
+2026-07-10 02:20:36  INFO        CMS/DUK@1h  OLS=0.891  TLS=1.104  Kal=0.892  Hub=0.893  MM=0.896  spread_bps=2277  robust=False
+2026-07-10 02:20:38  INFO        DE/DD@1h  OLS=0.536  TLS=1.228  Kal=1.320  Hub=0.660  MM=0.623  spread_bps=8977  robust=False
+2026-07-10 02:20:39  INFO        DAL/DD@1h  OLS=0.964  TLS=0.669  Kal=0.855  Hub=0.983  MM=1.028  spread_bps=3990  robust=False
+2026-07-10 02:20:40  INFO        TT/MLI@1h  OLS=0.606  TLS=1.540  Kal=1.631  Hub=0.614  MM=0.617  spread_bps=10227  robust=False
+2026-07-10 02:20:41  INFO        VRT/MTZ@1h  OLS=1.105  TLS=0.834  Kal=0.940  Hub=1.058  MM=1.045  spread_bps=2716  robust=False
+2026-07-10 02:20:42  INFO        WAB/MLI@1h  OLS=0.646  TLS=1.494  Kal=1.442  Hub=0.665  MM=0.658  spread_bps=8643  robust=False
+2026-07-10 02:20:43  INFO        TMHC/WAL@1h  OLS=0.603  TLS=1.565  Kal=0.955  Hub=0.609  MM=0.606  spread_bps=11095  robust=False
+2026-07-10 02:20:44  INFO        UMBF/FHB@1h  OLS=1.715  TLS=0.549  Kal=1.453  Hub=1.719  MM=1.713  spread_bps=8187  robust=False
+2026-07-10 02:20:46  INFO        WAL/MC@1h  OLS=1.197  TLS=0.780  Kal=1.040  Hub=1.218  MM=1.208  spread_bps=4022  robust=False
+2026-07-10 02:20:47  INFO        ZION/FHB@1h  OLS=1.494  TLS=0.636  Kal=1.230  Hub=1.522  MM=1.503  spread_bps=6935  robust=False
+2026-07-10 02:20:47  INFO        KVUE/KMB@3m  OLS=0.773  TLS=1.291  Kal=0.627  Hub=0.759  MM=0.758  spread_bps=7892  robust=False
+2026-07-10 02:20:47  INFO        Robust pairs (all estimators agree within 5%): 0/20
+2026-07-10 02:20:47  INFO        Hedge direction conflicts (OLS vs MM sign flip): 0/20
+2026-07-10 02:20:47  INFO        Saved \u2192 output/stats/hedge_ratio_comparison.parquet
+2026-07-10 02:20:47  INFO        Updated cointegration_tiers.parquet with hedge_direction_conflict
+2026-07-10 02:20:47  INFO      === Section 3: EVT / GPD Tail Risk ===
+2026-07-10 02:20:47  INFO        AMD/DD@1h  \u03be_spread=0.446  \u03be_pnl=-99.000  fat_tail=True
+2026-07-10 02:20:47  INFO        AXP/CRWD@1h  \u03be_spread=0.347  \u03be_pnl=1.677  fat_tail=True
+2026-07-10 02:20:47  INFO        AME/DD@1h  \u03be_spread=0.368  \u03be_pnl=-99.000  fat_tail=True
+2026-07-10 02:20:47  INFO        AME/MAR@1h  \u03be_spread=0.545  \u03be_pnl=-2.762  fat_tail=True
+2026-07-10 02:20:47  INFO        AMAT/DD@1h  \u03be_spread=0.258  \u03be_pnl=-99.000  fat_tail=False
+2026-07-10 02:20:48  INFO        APP/CRWD@1h  \u03be_spread=0.264  \u03be_pnl=-2.682  fat_tail=False
+2026-07-10 02:20:48  INFO        AVGO/CRWD@1h  \u03be_spread=0.461  \u03be_pnl=2.219  fat_tail=True
+2026-07-10 02:20:48  INFO        CAT/DD@1h  \u03be_spread=0.396  \u03be_pnl=-99.000  fat_tail=True
+2026-07-10 02:20:48  INFO        CMS/DUK@1h  \u03be_spread=0.253  \u03be_pnl=0.747  fat_tail=True
+2026-07-10 02:20:48  INFO        DE/DD@1h  \u03be_spread=0.307  \u03be_pnl=-99.000  fat_tail=True
+2026-07-10 02:20:48  INFO        DAL/DD@1h  \u03be_spread=0.302  \u03be_pnl=-99.000  fat_tail=True
+2026-07-10 02:20:48  INFO        TT/MLI@1h  \u03be_spread=0.332  \u03be_pnl=-2.267  fat_tail=True
+2026-07-10 02:20:48  INFO        VRT/MTZ@1h  \u03be_spread=0.458  \u03be_pnl=-1.713  fat_tail=True
+2026-07-10 02:20:48  INFO        WAB/MLI@1h  \u03be_spread=0.393  \u03be_pnl=-99.000  fat_tail=True
+2026-07-10 02:20:48  INFO        TMHC/WAL@1h  \u03be_spread=0.511  \u03be_pnl=2.788  fat_tail=True
+2026-07-10 02:20:48  INFO        UMBF/FHB@1h  \u03be_spread=0.333  \u03be_pnl=0.722  fat_tail=True
+2026-07-10 02:20:48  INFO        WAL/MC@1h  \u03be_spread=0.194  \u03be_pnl=-1.426  fat_tail=False
+2026-07-10 02:20:48  INFO        ZION/FHB@1h  \u03be_spread=0.323  \u03be_pnl=-99.000  fat_tail=True
+2026-07-10 02:20:48  INFO        7267.T/8058.T@1M  \u03be_spread=-99.000  \u03be_pnl=-99.000  fat_tail=False
+2026-07-10 02:20:48  INFO        KVUE/KMB@3m  \u03be_spread=1.255  \u03be_pnl=-99.000  fat_tail=True
+2026-07-10 02:20:48  INFO        Fat-tailed pairs (\u03be > 0.3): 16/20
+2026-07-10 02:20:48  INFO        Saved \u2192 output/stats/evt_tail_risk.parquet
+2026-07-10 02:20:48  INFO      === Section 4: DCC-GARCH Dynamic Correlation ===
+2026-07-10 02:20:48  INFO        GARCH(1,1) fitted for AME/MAR@1h (38 non-zero days)
+2026-07-10 02:20:48  INFO        GARCH(1,1) fitted for APP/CRWD@1h (34 non-zero days)
+2026-07-10 02:20:48  INFO        GARCH(1,1) fitted for AVGO/CRWD@1h (39 non-zero days)
+2026-07-10 02:20:48  INFO        GARCH(1,1) fitted for AXP/CRWD@1h (40 non-zero days)
+2026-07-10 02:20:49  INFO        GARCH(1,1) fitted for CMS/DUK@1h (37 non-zero days)
+2026-07-10 02:20:49  INFO        Skipping CVX/OXY@3m (only 1 non-zero days)
+2026-07-10 02:20:49  INFO        Skipping EG/ORI@1h (only 4 non-zero days)
+2026-07-10 02:20:49  INFO        Skipping EG/WRB@1h (only 4 non-zero days)
+2026-07-10 02:20:49  INFO        Skipping EQR/INVH@30m (only 1 non-zero days)
+2026-07-10 02:20:49  INFO        Skipping KVUE/KMB@3m (only 2 non-zero days)
+2026-07-10 02:20:49  INFO        Skipping LNT/VTR@1h (only 11 non-zero days)
+2026-07-10 02:20:49  INFO        Skipping LNT/WELL@1h (only 8 non-zero days)
+2026-07-10 02:20:49  INFO        Skipping MET/TMHC@1h (only 10 non-zero days)
+2026-07-10 02:20:49  INFO        Skipping MTSI/WCC@1h (only 10 non-zero days)
+2026-07-10 02:20:49  INFO        Skipping PFG/STLD@1h (only 10 non-zero days)
+2026-07-10 02:20:49  INFO        Skipping PRU/AXTA@1h (only 9 non-zero days)
+2026-07-10 02:20:49  INFO        Skipping SPY/VOO@4h (only 1 non-zero days)
+2026-07-10 02:20:49  INFO        GARCH(1,1) fitted for TMHC/WAL@1h (48 non-zero days)
+2026-07-10 02:20:49  INFO        GARCH(1,1) fitted for TT/MLI@1h (35 non-zero days)
+2026-07-10 02:20:49  INFO        GARCH(1,1) fitted for UMBF/FHB@1h (30 non-zero days)
+2026-07-10 02:20:49  INFO        GARCH(1,1) fitted for VRT/MTZ@1h (30 non-zero days)
+2026-07-10 02:20:49  INFO        Skipping WAB/MLI@1h (only 28 non-zero days)
+2026-07-10 02:20:49  INFO        GARCH(1,1) fitted for WAL/MC@1h (34 non-zero days)
+2026-07-10 02:20:49  INFO        Skipping ZION/FHB@1h (only 6 non-zero days)
+2026-07-10 02:20:49  INFO        DCC complete: 45 pair-pairs, 0 with peak \u03c1 > 0.70
+2026-07-10 02:20:49  INFO        Saved \u2192 output/stats/dcc_garch_stats.parquet + dcc_peak_correlation.parquet
+2026-07-10 02:20:49  INFO      === Section 5: Monte Carlo Simulation ===
+2026-07-10 02:20:49  INFO        Phase 1: Distribution fitting (1338 per-trade P&L observations)
+2026-07-10 02:20:49  INFO          normal: AIC=20351.6  BIC=20362.0
+2026-07-10 02:20:49  INFO          t: AIC=20234.6  BIC=20250.2
+2026-07-10 02:20:49  INFO          nig_proxy_skewnorm: AIC=20176.3  BIC=20191.9
+2026-07-10 02:20:49  INFO          laplace: AIC=20185.6  BIC=20196.0
+2026-07-10 02:20:49  INFO          garch11_normal_resid: AIC=892.7  BIC=907.7
+2026-07-10 02:20:49  INFO        Best-fit distribution (AIC): garch11_normal_resid
+2026-07-10 02:20:49  INFO        Phase 2: Regime-conditional bootstrap
+2026-07-10 02:20:49  INFO        No regime tags — IID bootstrap: Sharpe 5/50/95 pct = 8.52/9.20/9.82
+2026-07-10 02:20:49  INFO        Phase 3: Slippage sensitivity
+2026-07-10 02:20:49  INFO           0 bps/side: Sharpe=11.433  TotalPnL=$375710
+2026-07-10 02:20:49  INFO           2 bps/side: Sharpe=11.270  TotalPnL=$370358
+2026-07-10 02:20:49  INFO           5 bps/side: Sharpe=11.026  TotalPnL=$362330
+2026-07-10 02:20:49  INFO          10 bps/side: Sharpe=10.618  TotalPnL=$348950
+2026-07-10 02:20:49  INFO          20 bps/side: Sharpe=9.804  TotalPnL=$322190
+2026-07-10 02:20:49  INFO        Strategy Sharpe positive across all tested slippage levels
+2026-07-10 02:20:49  INFO        Phase 4: Trade quality (MAE/MFE)
+2026-07-10 02:20:49  INFO        efficiency=-1.534  bliss=12.336  win_rate=0.881
+2026-07-10 02:20:49  INFO        Saved \u2192 output/stats/montecarlo_*.parquet
+2026-07-10 02:20:49  INFO      === Section 6: Permutation Test / White Reality Check ===
+2026-07-10 02:20:49  INFO        Realized: backtest_equity_sharpe=5.2443  closed_trade_sharpe=10.2357  n_trades=296
+2026-07-10 02:20:50  INFO        Permutation test: realized=10.2357  perm_mean=10.8288  perm_95pct=14.0286  p_value=0.5890  significant=False  n_perms=1000
+2026-07-10 02:20:50  INFO        Saved OOS permutation \u2192 output/stats/permutation_test_oos.json
+2026-07-10 02:20:50  INFO      === Section 6: Permutation Test / White Reality Check ===
+2026-07-10 02:20:50  INFO        Realized: backtest_equity_sharpe=5.4048  closed_trade_sharpe=12.4374  n_trades=1042
+2026-07-10 02:20:50  INFO        Permutation test: realized=12.4374  perm_mean=12.5207  perm_95pct=13.8653  p_value=0.5260  significant=False  n_perms=1000
+2026-07-10 02:20:50  INFO        Saved IS permutation \u2192 output/stats/permutation_test_is.json
+2026-07-10 02:20:50  INFO      === Section 7: Half-Life Stationarity (AR(1) + Zivot-Andrews) ===
+2026-07-10 02:20:53  INFO        AMD/DD@1h  AR1_rho=0.961  ZA_stat=-7.87  ZA_pval=0.000  stationary=True
+2026-07-10 02:20:55  INFO        AXP/CRWD@1h  AR1_rho=0.970  ZA_stat=-6.45  ZA_pval=0.000  stationary=True
+2026-07-10 02:20:57  INFO        AME/DD@1h  AR1_rho=0.964  ZA_stat=-7.35  ZA_pval=0.000  stationary=True
+2026-07-10 02:21:00  INFO        AME/MAR@1h  AR1_rho=0.973  ZA_stat=-6.11  ZA_pval=0.001  stationary=True
+2026-07-10 02:21:02  INFO        AMAT/DD@1h  AR1_rho=0.952  ZA_stat=-8.55  ZA_pval=0.000  stationary=True
+2026-07-10 02:21:04  INFO        APP/CRWD@1h  AR1_rho=0.980  ZA_stat=-6.03  ZA_pval=0.001  stationary=True
+2026-07-10 02:21:07  INFO        AVGO/CRWD@1h  AR1_rho=0.970  ZA_stat=-6.31  ZA_pval=0.001  stationary=True
+2026-07-10 02:21:09  INFO        CAT/DD@1h  AR1_rho=0.976  ZA_stat=-5.75  ZA_pval=0.002  stationary=True
+2026-07-10 02:21:11  INFO        CMS/DUK@1h  AR1_rho=0.973  ZA_stat=-5.85  ZA_pval=0.001  stationary=True
+2026-07-10 02:21:14  INFO        DE/DD@1h  AR1_rho=0.973  ZA_stat=-6.55  ZA_pval=0.000  stationary=True
+2026-07-10 02:21:16  INFO        DAL/DD@1h  AR1_rho=0.955  ZA_stat=-8.20  ZA_pval=0.000  stationary=True
+2026-07-10 02:21:19  INFO        TT/MLI@1h  AR1_rho=0.955  ZA_stat=-8.63  ZA_pval=0.000  stationary=True
+2026-07-10 02:21:21  INFO        VRT/MTZ@1h  AR1_rho=0.953  ZA_stat=-8.37  ZA_pval=0.000  stationary=True
+2026-07-10 02:21:23  INFO        WAB/MLI@1h  AR1_rho=0.952  ZA_stat=-8.41  ZA_pval=0.000  stationary=True
+2026-07-10 02:21:26  INFO        TMHC/WAL@1h  AR1_rho=0.953  ZA_stat=-8.71  ZA_pval=0.000  stationary=True
+2026-07-10 02:21:28  INFO        UMBF/FHB@1h  AR1_rho=0.985  ZA_stat=-5.65  ZA_pval=0.002  stationary=True
+2026-07-10 02:21:31  INFO        WAL/MC@1h  AR1_rho=0.952  ZA_stat=-8.62  ZA_pval=0.000  stationary=True
+2026-07-10 02:21:33  INFO        ZION/FHB@1h  AR1_rho=0.959  ZA_stat=-7.94  ZA_pval=0.000  stationary=True
+2026-07-10 02:21:33  INFO        HL stationary (ZA p<0.10): 18/20  |  mean AR1_rho=0.964
+2026-07-10 02:21:33  INFO        Saved => output/stats/halflife_stationarity.parquet (20 rows)
+2026-07-10 02:21:33  INFO      ======================================================================
+2026-07-10 02:21:33  INFO      stats.py complete  (1.2 min)
+2026-07-10 02:21:33  INFO      Output: C:\Users\RossW\Projects\CAMARF\output\stats
+2026-07-10 02:21:33  INFO      Log written \u2192 latest_run_stats.log

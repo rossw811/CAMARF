@@ -9560,3 +9560,424 @@ question this test surfaces is better addressed directly via the DD-hub effectiv
 (§7.2) than by a single aggregate p-value. PAPER.md §2.3, §2.4, and §6.6 updated with the corrected
 methodology and numbers; historical pre-fix p-values (2026-06-28, 2026-06-30 runs) flagged as
 unreliable rather than deleted, since they're still informative as "what the buggy test used to say."
+
+**IBKR breaker — third investigation, hypothesis tested and refuted, no new root cause found.**
+Ross authorized a real fix attempt. Corrected an earlier misreading first: this session's
+`data_ibkr.py` run did NOT actually hit a session-kill (`n_skipped=0`, no "session dead" warning
+ever fired in the log) — all 220 needed fetches were genuinely attempted; 131 failed individually
+via the existing per-request retry/backoff before falling back to yfinance. That's the exact same
+symptom Session 25 already diagnosed exhaustively (§ "IBKR Circuit-Breaker Investigation," above):
+genuine client-side timeouts with zero IB-side rejection ever surfacing, ~50-60% intermittent
+success in their test batches. New, previously-untested hypothesis this session: `data.py`'s
+`IBKRFeed.get_bars()` sets `self._ib.RequestTimeout = 15` uniformly for all intraday bar sizes
+(data.py:2639), including 1h/4h requests asking for up to `"10 Y"` duration (data.py:2191-2192) —
+a decade of hourly bars in one call. Reasoned that 15s might simply be too short for IB's server to
+assemble that much history, distinct from Session 25's pacing-debt/circuit-breaker framing.
+
+Tested directly against the live Gateway (still open) with a controlled A/B: same 6 symbols
+(KMB/AMD/VTR/AME/AMAT/CMI), same real `10 Y`/`1 hour` request data_ibkr.py actually issues, first at
+the current 15s timeout, then at 60s. **Result: 0/6 succeeded at 15s, 0/6 succeeded at 60s — every
+request hung for the full timeout with literally zero response, not a "some succeed once given more
+time" pattern.** This refutes the timeout-too-short hypothesis outright (if the server just needed
+more time, some of the 60s attempts should have gone through) and is actually worse than Session 25's
+50-60% intermittent rate, suggesting either a fresh, harder failure mode tonight (possibly residual
+server-side pacing pressure from the same session's earlier 220-request `data_ibkr.py` run) or that
+whatever's wrong isn't primarily about per-request timing at all.
+
+Per this project's own "stop after ~3 attempts, ask for raw evidence instead of guessing again"
+discipline (already invoked once on this exact issue in Session 25) — not attempting a fourth
+guessed root cause. Two independent, thorough application-side investigations (Session 25, and this
+one) now agree: no IB-side error ever surfaces, and the failure isn't cleanly explained by pacing
+debt, client-ID conflicts, or (now) request timeout length. The only remaining actionable lead is
+IB Gateway's own local API message log (Configuration → API → Settings → "Create API message log
+file"), which requires Ross's direct access to Gateway — not diagnosable from application logs
+alone. No code changes made to `data.py`'s timeout/pacing logic since the tested hypothesis was
+refuted, not confirmed — changing it anyway on a refuted theory would be a bandaid, not a fix.
+
+**Portfolio-wide effective-bets analysis (new `research/portfolio_effective_bets.py`).** Extended
+`dd_hub_effective_bets.py`'s three methods (Grinold-Kahn breadth, Meucci ENB, Carver IDM — imported
+directly, not reimplemented) from the 5-pair DD-hub cluster to the full confirmed-pair portfolio, using
+each pair's daily P&L (OLS hedge method, from `trades_layer1.parquet`/`trades_layer1_holdout.parquet`,
+0-filled on days without a trade) rather than z_rolling deltas — directly motivated by tonight's
+permutation-test fix, which surfaced the same correlated-exit-timing mechanism at the whole-portfolio
+level.
+
+Real, nuanced result: 21/26 confirmed pairs actually have recorded OLS trades (the 5 DD-hub pairs —
+AMD/DD, AME/DD, AMAT/DD, CMI/DD, DAL/DD — plus HAL/NOV all have **zero** trades in either
+`trades_layer1.parquet` or `trades_layer1_holdout.parquet`, confirmed directly; DD-hub's absence
+matches `dd_hub_effective_bets.py`'s own prior documented finding, HAL/NOV is a new, smaller instance
+of the same gap). Across those 21 pairs, **average pairwise correlation is near zero** (rho_bar=0.0039)
+— Grinold-Kahn's equicorrelation-based breadth accordingly finds almost no diversification loss
+(BR_eff=19.5/21). But **Meucci's eigenvalue-based ENB=9.78 — under half the nominal count** — a real,
+material divergence between the two methods. This isn't a contradiction: Grinold-Kahn assumes one
+uniform correlation applies to every pair; Meucci's eigen-decomposition instead detects that the
+correlation is *clustered* rather than uniform (a handful of specific pair-pairs — AVGO/CRWD↔CVX/OXY
+0.31, CVX/OXY↔KVUE/KMB 0.30, AXP/CRWD↔ZION/FHB 0.29 — carry real correlation while most pairs carry
+none), which concentrates variance into fewer effective factors than the low average alone would
+suggest. Carver IDM=4.41 (confirms IDM²=BR_eff=19.5 exactly under equal weighting, as proven
+algebraically in the DD-hub work).
+
+Important caveat, stated honestly rather than glossed over: since the DD-hub cluster has zero trades,
+it's entirely ABSENT from this 9.78 figure — and DD-hub's own separate z_rolling-delta-based analysis
+already found BR_eff=2.35 for just those 5 pairs. This portfolio-wide Meucci ENB=9.78 is therefore a
+lower-bound/incomplete picture, not the true whole-portfolio number — the actual effective bet count,
+if DD-hub's trades existed to include, would very likely be lower still. Combined with tonight's
+permutation-test finding (cross-pair exit-day clustering inflates realized daily-P&L variance), this
+is now three independent diagnostics (permutation test, DD-hub cluster, portfolio-wide Meucci) all
+pointing the same direction: CAMARF's 21-26 nominal confirmed pairs represent meaningfully fewer
+genuinely independent bets than the raw count suggests, concentrated in specific correlated clusters
+rather than spread evenly. Worth a position-sizing follow-up (e.g. correlation-aware weight scaling),
+not attempted here — this script is diagnostic only, per its own docstring.
+
+### Session 27 addendum — Kalman slope+intercept promoted to production, then reverted: a fully honest negative result
+
+Ross authorized promoting the verified slope+intercept Kalman filter (§ above: all 22 pairs showed a
+material intercept and lower spread variance under slope+intercept vs. CAMARF's origin-only production
+filter) to actually drive its own trading signal, not just a comparison-arm statistic. Scope was
+explicitly clarified via a 3-way choice: (1) fix the estimator only, (2) make Kalman drive its own
+spread/signal (chosen), or (3) replace OLS as the default. **Full attempt, verification, and reversal
+recorded here in detail — not just the final state — since the failure mode is genuinely instructive
+and cheap to re-derive wrongly if a future session tries this again without reading this first.**
+
+**What was built:** `HedgeRatioEstimator.kalman()` rewritten from a 1-state (β only, through-the-origin)
+filter to a 2-state filter tracking `x_t=[β_t, α_t]`, calibrated via OLS-with-intercept on the first
+252 bars, Q/R frozen after calibration (same no-lookahead discipline as before). `SpreadModel.
+compute_spread()`/`fit_pair()` extended with optional `intercept_series`/`intercept_static` params
+(backward-compatible — OLS/TLS callers omit them, intercept defaults to 0, unchanged behavior).
+Production `analysis.py` per-pair build ran `fit_pair()` a SECOND time with the Kalman β+α series,
+producing genuine `spread_kalman`/`z_rolling_kalman`/`half_life_rolling_kalman` columns in
+`spread_series_*.parquet` — a real fix to a separate, pre-existing gap found along the way: `backtest.
+py`'s "kalman" hedge-method variant had NEVER actually traded its own signal; it reused the OLS
+spread/z_rolling for every entry/exit and only swapped the position-sizing scalar, so the verified
+slope+intercept benefit could never have shown up in a Sharpe number under the old architecture even
+if it were still in use. `backtest.py` was updated to read the correct per-method columns.
+
+**Verification, in order, catching real bugs at each stage (nothing hand-waved):**
+1. Synthetic unit test (`debug/_verify_kalman_slope_intercept.py`, 1000-bar series): passed cleanly,
+   confirmed the intercept is recovered correctly and doesn't get invented spuriously.
+2. `compute_spread`/`fit_pair` backward-compatibility check: confirmed OLS/TLS behavior is
+   byte-identical with/without the new optional params.
+3. Full `analysis.py` rerun (all 13 TFs, ~96 min real compute — the "5735.5 min" logged runtime was a
+   wall-clock artifact from the machine sleeping mid-run across a multi-day gap, not a performance
+   regression): zero errors, 357 PairResult objects built at 1h. Per-pair modeling did take a real
+   ~4x longer (1099s vs 281.6s) from the added 2x2 matrix ops in the per-bar Kalman loop — a genuine,
+   noted-but-accepted cost.
+4. `backtest.py` rerun: this is where it fell apart. Kalman-variant PnL came back 100-600x SMALLER
+   than OLS's for nearly every pair (e.g. PFG/STLD: $9,555 OLS vs $15.87 Kalman), far beyond what
+   "worse signal" alone explains.
+
+**Root-caused, not guessed:** direct inspection of a real spread_series file (PFG/STLD@1h, 25,782
+bars) showed `spread_kalman` variance of 0.000158 vs OLS's `spread` variance of 4.39 — a ~27,800x
+reduction, not the ~11x my 1000-bar synthetic test showed. Mechanism, confirmed via a matched-scale
+synthetic re-test: with a TRUE constant alpha, even over 25,000 bars the filter recovers it cleanly
+(residual variance ≈ true noise variance, no distortion) — so this isn't a filter bug. Real production
+pairs' recovered alpha genuinely DRIFTS substantially over a multi-year series (PFG/STLD: 9.19 → 2.73),
+almost certainly reflecting real, slow fundamental divergence between the two legs — the filter is
+correctly tracking it. The problem is downstream: `backtest.py`'s position sizing uses a FIXED
+`N_SHARES_PER_TRADE` regardless of hedge method, implicitly assuming comparable spread scale across
+methods. A genuinely ~166x tighter (std) spread means the same fixed share count captures a
+proportionally tiny gross P&L — while commission is a fixed per-share dollar cost, independent of
+spread scale, so it swamps the shrunk gross edge.
+
+**Three-way comparison run to separate "signal quality" from "scale/cost artifact" before deciding
+anything** (per Ross's explicit instruction — no change without discussion, revert if still worse):
+1. **Fixed-share, net PnL (original architecture):** Kalman mean Sharpe 2.35 vs OLS 12.28. Total
+   Kalman cost ($1,014.66) vs total Kalman gross PnL ($1,576.70) — 64% of gross eaten by commission.
+2. **Gross/cost-free basis** (from `trades_layer1.parquet`'s existing `pnl_gross` column, no rerun
+   needed): mean per-pair gross Sharpe Kalman 12.621 vs OLS 12.407 — looked COMPARABLE, initially
+   suggesting the signal itself might be fine and only the cost-scale mismatch was the issue.
+3. **Position-size normalized** (new `--storm-spread-scale-normalize` backtest.py flag: scales
+   `n_shares` by `ols_spread_std / method_spread_std` for non-OLS methods — economically, a tighter
+   spread needs a bigger position for comparable dollar exposure): Kalman mean Sharpe **6.08 vs OLS
+   31.96 — still much worse**, and several pairs now show large NEGATIVE absolute PnL once sized
+   fairly (CMS/DUK: -$11,836; EG/WRB: -$5,714) that the original fixed-share run's tiny position
+   sizes had been masking in both directions (small gains AND small losses).
+
+**Conclusion: Kalman's slope+intercept spread is genuinely worse as a trading signal, not merely
+penalized by a scale/cost artifact.** The gross-basis comparison (step 2) was misleading — averaging
+per-pair Sharpes computed on badly-mismatched position sizes doesn't reveal the true win-rate/timing
+quality gap; normalizing scale (step 3) exposes it clearly. The earlier spread-variance/ADF-stationarity
+finding that motivated promotion in the first place was real and correctly measured — it just doesn't
+translate into better trading outcomes, an important and non-obvious distinction between "statistically
+tighter residual" and "more profitable signal."
+
+**Reverted cleanly via git**: `git checkout ebc281fb -- analysis.py backtest.py
+debug/_verify_kalman_slope_intercept.py` (commit `ebc281fb` — the last commit before this session's
+Kalman work began) restored all three files to their exact pre-promotion state; re-verified
+`debug/_verify_kalman_slope_intercept.py` still passes against the restored production `kalman()`.
+`research/kalman_slope_intercept.py` (the original comparison-arm script) needed no changes — it
+already called production `kalman()` expecting the pre-promotion 2-tuple return, valid again
+automatically once reverted. Re-ran `analysis.py` once more (post-revert) to regenerate clean
+`spread_series_*.parquet` files without the now-removed `spread_kalman`/`hedge_intercept_kalman_t`
+columns, then `backtest.py`/`stats.py`/`wfa.py`/`report.py` to return the full pipeline to a clean,
+consistent state. The comparison run's output was preserved for reference at
+`output/backtest/{baseline,normalized}_{trades,summary,portfolio}_layer1*.parquet` rather than
+deleted — evidence for a negative result is still worth keeping.
+
+**Why this is recorded in this much detail:** per Ross's explicit request, CAMARF's records should
+capture what was TRIED and WHY IT DIDN'T WORK, not just the final kept/discarded state — a future
+session (or a future Ross) revisiting "should Kalman drive its own spread" should find this exact
+investigation here rather than re-deriving it from scratch, especially the non-obvious
+"statistically-tighter-residual ≠ more-profitable-signal" distinction and the position-sizing
+normalization methodology, both of which remain reusable even though this specific application didn't
+pan out. The position-sizing normalization arm (`--storm-spread-scale-normalize`) was reverted along
+with the rest of the Kalman work (it was purpose-built for this comparison and has no OLS-only use —
+with only one hedge method left, `ols_std/method_std` is always a no-op 1.0), but the concept —
+scale position size to target comparable dollar-risk across methods with different natural spread
+scales — is worth remembering if a future comparison arm hits the same mismatch.
+
+### Session 27 addendum — Data hygiene / bias literature review, holdout-exposure tracking
+
+Ross asked for a deep dive into data-hygiene and bias literature (general ML + finance/behavioral),
+a search for actionable GitHub guides, and a code review against the findings. Two research passes
+turned up: a "bias budget" concept (sum each known bias's estimated Sharpe-impact into one de-biased
+number — most actionable single idea found, from a "Taxonomy of Backtest Lies" writeup); confirmation
+that CAMARF already has solid infrastructure for two things the literature flagged as commonly
+missing — `deflated_sharpe.py`/`trial_registry.json` (real DSR correction, already correcting for 34
+tried configurations) and `research/corporate_actions_audit.py` — verified directly against the
+codebase before reporting anything as a gap, not just trusted from the research summary. Genuinely
+still-missing, confirmed by grep: fill-timing sensitivity (same-close vs. next-open execution as
+distinct scenarios — see below), a mechanical lookahead self-test (lag every feature by one bar,
+confirm performance degrades — not yet built), and holdout-exposure tracking (below).
+
+**Holdout-exposure tracking, added to `deflated_sharpe.py`.** `trial_registry.json` already
+distinguishes holdout (OOS) trials via the `_holdout` label suffix — collected for the DSR's
+`n_trials` correction but never surfaced as its own number. Real finding on first run: **27 separate
+trials have evaluated performance against the SAME OOS holdout window**, across 14 distinct labels
+(every STORM variant, sizing scheme, entry-z override, etc.). This is a related but distinct risk from
+what DSR corrects for (DSR: "best Sharpe among N variants tried"; this: "how many times has this
+SPECIFIC holdout slice been the judge" — the Gelman & Loken 2013 Garden-of-Forking-Paths risk applied
+to a long-running iterative project). Added a >20-exposure warning threshold (already tripped, at 27)
+and a new `_holdout_exposure` block in `output/stats/deflated_sharpe.json`. No corrective action taken
+yet (e.g. a fresh never-examined holdout slice) — this is a diagnostic surfacing a real number, not
+a fix; whether/how to act on it is Ross's call.
+
+**Fill-timing sensitivity, new `research/fill_timing_sensitivity.py`.** Tests the other genuinely
+missing item from the review: `backtest.py` currently fills at the SAME bar the entry/exit signal is
+observed on, which in live trading isn't realistic (you only know a bar's z-score after it closes).
+Reuses `BacktestEngine.run()` completely unchanged — no duplicated event-loop logic to risk diverging
+from production — by shifting only the DECISION columns (z_rolling, z_expanding, half_life_rolling,
+gap flags) forward one bar relative to the FILL column (spread stays in place), so bar i's decision
+reflects what was knowable as of bar i-1 while still filling at bar i's own price. Real result across
+all 18 confirmed 1h pairs: **the realistic lagged-fill variant is very slightly BETTER, not worse**
+(mean Sharpe 26.957 vs. 26.468 same-bar, total PnL $291,374 vs $287,435 — a -1.8% "degradation" i.e.
+an improvement). Trade counts are identical per pair (the lag doesn't change which bars cross entry/
+exit thresholds, only which bar's price fills them). Honest, reassuring negative result: CAMARF's
+same-bar fill convention is NOT inflating backtest performance the way a naive look-ahead concern
+would predict — if anything the realistic lag catches marginally better fills on average, plausibly
+because a spread that's just crossed a mean-reversion threshold tends to keep moving favorably for one
+more bar before reverting.
+
+**Jump-diffusion spread analysis, new `research/jump_diffusion_spread_analysis.py`.** Motivated by
+Akyildirim, Fabozzi, Goncu & Sensoy (2022) — one of the 5 papers surveyed this session — which proves
+statistical arbitrage exists under jump-diffusion with compound Poisson jumps, distinct from CAMARF's
+pure-continuous-diffusion OU spread model. Not a full re-derivation of the paper's barrier-based
+optimal-stopping theory; targets the concrete question of whether jump risk matters for CAMARF's own
+data. Method: bar-to-bar z_rolling deltas flagged as jumps when |delta| exceeds 4x a trailing local
+volatility estimate (Lee & Mykland 2008-style, simplified, no formal test statistic). Found and fixed
+a real bug along the way (not just reported around): the original `jump_timestamps` computation
+re-applied `real_mask` to an index that had already been filtered by it one step earlier (`df =
+df.loc[real_mask]`), a double-filter length mismatch that crashed outright on real data — fixed by
+deriving `timestamps` from a single combined `real_mask` + `finite_mask` alignment, verified the
+script runs clean afterward.
+
+Real result, verified via a completely independent fixed-threshold cross-check (not just trusted from
+one implementation): **only ~1-2% of bars are jump-flagged, but those bars account for ~72-76% of
+total z_rolling delta variance** (AMD/DD@1h: 76.2% via the rolling-threshold method, 71.8% via an
+independent fixed-threshold recomputation — same order of magnitude, confirms this isn't a rolling-
+window artifact). This is mathematically expected for fat-tailed data (a small number of large moves
+can dominate variance even at low frequency) and directly consistent with the already-established
+EVT/GPD finding (stats.py §3: 19/26 pairs fat-tailed, ξ>0.3) — not a new, independent surprise so much
+as the SAME underlying fat-tailedness property showing up through a different lens. The more
+actionable trade-outcome comparison (reusing real `trades_layer1.parquet` data, OLS method): 260
+trades entered within 3 hours of a detected jump vs. 261 calm-period trades — win rate 65.8% vs 63.6%,
+mean PnL $274.69 vs $304.69. Modest, not dramatic: jump-proximate entries are slightly less profitable
+on average but not meaningfully worse, a mild reassuring result rather than a red flag. Reported with
+appropriate humility: the 72-76% variance figure is sensitive to the specific threshold rule chosen
+(JUMP_THRESHOLD_SIGMA=4, JUMP_VOL_WINDOW=60) and a more rigorous estimator (e.g. realized bipower
+variation, Barndorff-Nielsen & Shephard 2004) would be needed to pin down the true jump/continuous
+split with less threshold-sensitivity — this script answers "does jump risk matter for CAMARF's
+actual trades" (mildly, not dramatically) rather than "what is the precise jump-diffusion parameter
+estimate," which was never the goal.
+
+**Graphify knowledge graph.** Ross installed the `graphify` CLI (`uv tool install graphifyy`) and its
+Claude Code integration (`graphify claude install` — writes a CLAUDE.md section + PreToolUse hook for
+Bash-search/Read/Glob). Built via `graphify update .`: 1,922 nodes, 3,530 edges, 137 communities across
+127 files, including Development.md's own session headers as graph nodes (parsed as markdown
+structure, not just code). Output at `graphify-out/` (graph.json, graph.html, GRAPH_REPORT.md). Sent
+`graph.html` to Ross for viewing; it initially rendered blank in the delivery pane because it loads
+vis-network from an external CDN (unpkg.com), which the pane's content-security-policy blocks — fixed
+by downloading the library directly and inlining it into a new self-contained `graph_standalone.html`
+(2.45MB, verified zero remaining external references) rather than relying on the CDN. This standalone
+version is what should be used going forward for anyone viewing the graph outside a normal browser
+context; `graphify-out/graph.html` (CDN-dependent) is fine when opened directly in a regular browser
+with internet access.
+
+### Session 27 addendum — Full backlog clear-out: 13 new modules, 2 real bugs found and fixed, 1 production-code addition
+
+Ross asked to build essentially the entire remaining v1.x backlog in one pass: the 6 optional
+statistical additions, the bias budget, both DISCUSS-tier portfolio-construction items (with explicit
+comparison-arm scope agreed via AskUserQuestion — build both variants of each rather than pick one
+upfront), the two remaining methodology gaps from the 5-paper survey, and options.py without paid
+data. All 13 items built, each with its own synthetic verification before trusting real data — this
+section is intentionally more compressed than the Kalman writeup above (13 items, many hours) but
+every real finding below was independently verified, not asserted.
+
+**Weak-exogeneity test** (`research/weak_exogeneity_test.py`, Johansen VECM `pvalues_alpha`, no
+hand-rolled restricted-VECM refit needed — statsmodels already reports it). **Found and fixed a real
+verdict-labeling bug during synthetic verification**: the statistics were correct (alpha estimates
+matched simulated ground truth exactly) but the "A_leads"/"B_leads" LABELS were swapped — a leg that
+does NOT respond to disequilibrium (weakly exogenous) is the one LEADING, not the one being labeled
+as adjusting; a synthetic test with known ground truth caught this before it reached real data. Real
+result across 20 confirmed pairs: 14/20 show symbol_a leading (weakly exogenous), 2 both_adjust, 2
+B_leads, 2 neither_adjusts — a consistent, non-random 70% skew worth further investigation (does
+`symbol_a` systematically correspond to the more liquid/larger-cap leg in how pairs get stored?).
+
+**Financial Turbulence Index** (`research/financial_turbulence_index.py`, Kritzman & Li 2010) —
+Mahalanobis-distance companion to the existing Absorption Ratio, reusing its universe/returns loading
+directly. Ledoit-Wolf shrinkage (already trusted elsewhere in this project) for a well-conditioned
+Sigma^-1 given N assets comparable to the estimation window length. Verified via an injected synthetic
+turbulent day (correctly flagged at the 99.3rd percentile) before trusting real data. Real result:
+15,381 days computed, 90th-percentile turbulence threshold=57.70.
+
+**CAViaR** (`research/caviar_dynamic_var.py`, Engle & Manganelli 2004, Symmetric Absolute Value spec)
+— dynamic VaR via quantile-regression recursion, fit by Nelder-Mead (the tick-loss objective is
+non-smooth). **Found and fixed two real bugs during verification, not one**: (1) scipy's Nelder-Mead
+needed `bounds` passed explicitly rather than relying on incomplete post-hoc clipping — the original
+version only clipped beta1, left beta2 free to go negative, and converged to a degenerate all-zero-
+dynamics fit with a 95% exceedance rate against a 5% target; (2) even after fixing the optimizer, the
+model still looked broken until realizing MY test's synthetic P&L was accidentally always-positive
+(mean 5, std 1 — essentially zero real loss tail to model), not a CAViaR problem at all — a properly
+mean-zero synthetic series fixed the test. Separately, cross-checked and corrected my OWN alpha
+convention against cvar.py's existing code (alpha=0.95, upper quantile of the loss distribution, not
+alpha=0.05 as I'd assumed) — a genuine "read the existing convention before assuming" catch. Verified
+cleanly afterward (VaR correctly widens 3x in a synthetic high-vol regime, exceedance rate hits target
+exactly). Real result: IS VaR ranges $354.64-$966.47 (vs. static $732.38); OOS holdout (70 days) is
+too short for reliable dynamics estimation and correctly degenerates to near-constant — reported
+honestly rather than forced.
+
+**Quantile regression forests** (`research/quantile_regression_forest.py`, Meinshausen 2006) —
+implemented the actual method directly on `RandomForestRegressor` (no `quantile-forest` package
+installed; the method is ~20 lines, not worth a new dependency) rather than mislabeling
+`GradientBoostingRegressor(loss="quantile")` as QRF, a real distinction some writeups blur. Verified
+against a synthetic heteroskedastic dataset (correctly recovers both the conditional median and the
+widening quantile spread at high-noise inputs). Predicts `z_future` (continuous) rather than ml.py's
+4-class label — a genuinely complementary question. Real result: only 13 real examples gathered — hit
+the identical insufficient-data wall ml.py's own Stage 1 classifier already documents, reported as the
+same honest null, not forced past it.
+
+**Graphical lasso** (`research/graphical_lasso_clusters.py`, Friedman/Hastie/Tibshirani 2008) — sparse
+precision matrix via `GraphicalLassoCV`, converted to partial correlations, clustered via
+rmt_feature_denoising.py's own `optimal_clustering` (reused, not reimplemented). Verified against a
+synthetic shared-common-factor case (A and C both driven by B: marginal correlation 0.88, partial
+correlation correctly ~0.00 once B is conditioned on, while the real A-B link survives at 0.71). Real
+result on actual data is an honest INCONCLUSIVE finding, not a clean positive: cross-validation
+selected essentially zero regularization (alpha≈0, 100% edge density — no genuine sparsity), and the
+resulting clustering is weak (silhouette=0.055) — 312 days vs. 22 pairs isn't enough data for
+graphical lasso's real value proposition to show up here. Reported as inconclusive rather than forcing
+a stronger fixed alpha to get a nicer-looking result (that would be exactly the kind of
+forking-paths behavior tonight's own bias-literature review flagged as a risk). Marginal-correlation
+clustering (from `portfolio_effective_bets.py`) used as the more reliable input for the downstream
+position-sizing comparison instead.
+
+**Multiscale entropy** (`research/multiscale_entropy.py`, Costa/Goldberger/Peng 2002) — Sample Entropy
+(Richman & Moorman 2000) implemented directly (no `antropy`/`nolds` installed) across 5 coarse-grained
+scales, a genuinely different lens from the existing single-scale Hurst gate. **An initial hypothesis
+about the expected OU-process pattern was wrong and corrected after actually running the synthetic
+check, not left as an unverified assumption**: entropy does NOT decline at coarser scales for a
+mean-reverting process — it RISES from a low, regular value at scale 1 toward the white-noise level by
+scale 5 (the expected signature of a "simple/regular" system, complex at only one scale, as opposed to
+a "healthy complex" system with stable entropy across scales). Real result: all 19 confirmed pairs show
+this exact signature consistently (mean SampEn 0.21 at scale 1 rising to 0.79 at scale 5) — mean-
+reversion concentrated at one characteristic time scale, not present as genuine multi-scale complexity,
+for every single pair, no exceptions.
+
+**Bias budget** (`research/bias_budget.py`) — deliberately does NOT invent a single de-biased Sharpe
+number via made-up haircuts (would fabricate false precision); aggregates CAMARF's own already-
+measured corrections (DSR, IS-OOS gap, permutation test, holdout-exposure count) into one ledger.
+Honest summary it produced: DSR says the OOS Sharpe is likely genuine after correcting for 34 tried
+configurations (DSR=1.0000, z=6.54), but the permutation test (a different, complementary check) does
+NOT reach significance (p=0.589) — both true simultaneously, neither dropped in favor of the other.
+IS-OOS gap is small (+3.0%), not evidence of dramatic overfitting. Holdout examined 27 times — flagged
+as HIGH exposure per the new >20 threshold this session added to deflated_sharpe.py.
+
+**Convex MV/Sharpe/Sortino portfolio construction** (`research/convex_portfolio_construction.py`) —
+scipy SLSQP direct ratio-maximization (Sharpe/Sortino aren't cleanly expressible as a QP without a
+target-return reformulation, and Sortino specifically needs the real return time series, not just
+Sigma, for its downside semi-deviation). Verified against a known analytic tangency-portfolio solution
+— caught my OWN test-design flaw along the way (first comparison used the TRUE population parameters
+instead of the sample the optimizer actually sees; fixed by comparing against the correct, sample-
+based analytic reference, which then matched almost exactly). Real result, all 4 variants (long-only-
+capped and negative-allowed, x Sharpe and Sortino objectives) compared against equal-weight: max-Sharpe
+improves modestly (+0.08 to +0.09 Sharpe over equal-weight), max-Sortino trades most of that Sharpe
+gain for a much larger Sortino improvement (+3.27), and negative weights barely beat long-only-capped
+in either objective (both hit the same 20% position cap) — long-only is sufficient here, negative
+weights aren't earning their added complexity.
+
+**Carver continuous forecast scaling** (`backtest.py`, new `--storm-continuous-forecast-carver`/
+`--storm-continuous-forecast-linear` flags — the one item this session that touches PRODUCTION code,
+not just `research/`, since it's a genuine backtest.py position-sizing variant like the existing STORM
+flags) — both variants compared fairly (same 12 OLS pairs, same 521 trades) against the existing
+binary in/out sizing: baseline Sharpe=5.40, Carver=5.32, linear=5.29, but linear captures notably more
+raw PnL ($216K vs. baseline's $151K). A genuine tradeoff, not a clean winner — continuous scaling
+trades some Sharpe for more absolute profit; reported as such rather than forcing a "keep" decision
+the evidence doesn't clearly support. Not made the default; available as an opt-in comparison flag.
+
+**Portfolio-wide position-sizing correction for correlated clusters**
+(`research/portfolio_position_sizing_correction.py`) — Equal Risk Contribution (Maillard/Roncalli/
+Teiletche 2010, via SLSQP minimizing risk-contribution variance) vs. simple inverse-cluster-size
+(using graphical_lasso_clusters.py's marginal-correlation clusters, since its own partial-correlation
+result was inconclusive — reusing the more reliable of its two outputs honestly, not silently
+upgrading a weak one). Verified ERC against two synthetic cases (symmetric uncorrelated -> equal
+weights; two correlated + one independent -> the independent asset correctly gets more weight) before
+trusting real data. Real result mirrors this project's own established HRP-vs-risk-parity precedent
+exactly: the SIMPLER inverse-cluster-size scheme wins on Sharpe (0.7216) over both equal-weight
+(0.7154) and the more sophisticated ERC (0.6933) — ERC also concentrates heavily into 1-2 low-variance
+pairs (up to 27% in one pair), a real cost of the more complex approach that the simple scheme avoids.
+
+**Network momentum** (`research/network_momentum.py`, Pu/Roberts/Dong/Zohren 2023) — did not attempt
+the paper's actual graph neural network (needs far more data/infrastructure than a research comparison
+arm); implemented the core testable claim directly (lead-lag cross-asset momentum spillover) instead.
+Real result, explicitly flagged as IN-SAMPLE (the lead-lag network weights are estimated on the same
+data used to evaluate the signal — a real limitation, not glossed over): network momentum shows a
+modest positive correlation with forward returns (+0.036) vs. single-asset momentum's slightly negative
+correlation (-0.010, consistent with the well-documented short-term REVERSAL effect at daily frequency,
+not momentum) — a genuine +0.046 incremental edge from the cross-asset signal specifically, though a
+walk-forward validation would be needed before treating this as real OOS evidence.
+
+**Short-term factor alpha** (`research/short_term_factor_alpha.py`, Blitz/Hanauer/Honarvar/Huisman/van
+Vliet 2023) — reversal (confirmed real in this exact universe by the network-momentum finding above)
++ day-of-week seasonality, no analyst-revision data available (same paid-data constraint as options.py
+below). Real result: reversal shows a small positive edge (corr=0.018), seasonality negligible
+(corr=0.004) — modest, honest findings consistent with the literature's own characterization of these
+as small-but-real effects needing efficient implementation to matter, not free lunches.
+
+**options.py, built without paid data** — confirmed directly (not assumed) that yfinance's live
+`option_chain()` DOES include real implied volatility, but only for the CURRENT moment, with no
+historical IV time series available for free (the original documented limitation is real and
+specific to historical backtesting, not a general gap). Uses realized volatility as an explicit,
+clearly-labeled IV proxy (documented variance-risk-premium bias: understates true historical option
+cost). Black-Scholes verified against known analytic reference values (ATM put matched to 4 decimal
+places) before trusting real trades. **Found and fixed a real, more interesting bug via the backtest
+result itself, not a unit test**: the first version always priced a protective PUT regardless of trade
+side, but `side="short"` means leg A is actually being SOLD (its real risk is leg A RISING, needing a
+CALL, not a put) — caught because the "hedged" max drawdown came back WORSE than unhedged, an
+impossible-looking result that correctly triggered suspicion of a wrong-direction bug. Fixed (added
+`black_scholes_call`, select by trade side) — but max drawdown STILL got worse after the fix (unhedged
+$2,106.82 vs. hedged $5,946.56), and this second result IS genuine, confirmed via the actual mechanism:
+only 29/521 trades (5.6%) had ANY option payoff (94.4% expired worthless) over a mean 4.8-day hold —
+total premium paid ($46,236) exceeded total payoff ($29,351). A naive per-trade, single-leg options
+overlay is a poor match for CAMARF's actual risk profile (drawdowns come from correlated multi-pair
+regime days, per tonight's earlier permutation-test/effective-bets findings — not idiosyncratic
+single-stock moves an OTM option protects against), so premium drag from mostly-worthless insurance
+outweighs the rare payoff. An honest negative result, not a reason to keep chasing a "better" number.
+
+**Noted for a future session (not built — Ross's own suggestion, explicitly "eventually"):** a
+dedicated synthesis comparing simple vs. complex methods across everything this project has tried,
+since tonight alone produced three separate instances of the SAME pattern (HRP loses to risk-parity,
+§7.2; the slope+intercept Kalman filter loses to origin-only in a real backtest, above; ERC loses to
+simple inverse-cluster-size, above) alongside at least one case where added complexity genuinely
+earned its keep (Meucci's eigenvalue-based effective-bets method caught real, clustered correlation
+concentration that Grinold-Kahn's simpler equicorrelation assumption structurally cannot see, §7.2).
+Worth a real accounting of when complexity pays for itself here and when it doesn't, rather than a
+general "simple is usually better" moral — the evidence so far is genuinely mixed, not one-sided.

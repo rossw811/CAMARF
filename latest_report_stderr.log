@@ -1,0 +1,42 @@
+2026-07-10 02:24:10  INFO      ======================================================================
+2026-07-10 02:24:10  INFO      CAMARF  —  report.py  —  LaTeX Report Generator
+2026-07-10 02:24:10  INFO      ======================================================================
+2026-07-10 02:24:10  INFO      Loaded: 20 pairs, 296 OOS trades, 1042 IS trades
+2026-07-10 02:24:10  INFO      Generating figures...
+2026-07-10 02:24:10  INFO        [fig] tier -> figures/tier_distribution.png
+2026-07-10 02:24:11  INFO        [fig] equity -> figures/equity_curve.png
+2026-07-10 02:24:11  INFO        [fig] evt -> figures/evt_tail_risk.png
+2026-07-10 02:24:11  INFO        [fig] slippage -> figures/slippage_sensitivity.png
+2026-07-10 02:24:13  INFO        [fig] dcc -> figures/dcc_rolling.png
+2026-07-10 02:24:16  INFO        [fig] mc -> figures/mc_distribution.png
+2026-07-10 02:24:16  INFO        [fig] mfe -> figures/mfe_mae.png
+2026-07-10 02:24:17  INFO        [fig] hedge -> figures/hedge_estimators.png
+2026-07-10 02:24:18  INFO        [fig] coint_frac_hist -> figures/coint_fraction_hist.png
+2026-07-10 02:24:18  INFO        [fig] half_life_tier -> figures/half_life_by_tier.png
+2026-07-10 02:24:19  INFO        [fig] hurst_scatter -> figures/hurst_scatter.png
+2026-07-10 02:24:19  INFO      Using categorical units to plot a list of strings that are all parsable as floats or dates. If these strings should be plotted as numbers, cast to the appropriate data type before plotting.
+2026-07-10 02:24:19  INFO      Using categorical units to plot a list of strings that are all parsable as floats or dates. If these strings should be plotted as numbers, cast to the appropriate data type before plotting.
+2026-07-10 02:24:19  INFO      Using categorical units to plot a list of strings that are all parsable as floats or dates. If these strings should be plotted as numbers, cast to the appropriate data type before plotting.
+2026-07-10 02:24:19  INFO      Using categorical units to plot a list of strings that are all parsable as floats or dates. If these strings should be plotted as numbers, cast to the appropriate data type before plotting.
+2026-07-10 02:24:19  INFO        [fig] tf_dist -> figures/timeframe_distribution.png
+2026-07-10 02:24:20  INFO        [fig] half_life_trend -> figures/half_life_trend.png
+2026-07-10 02:24:21  INFO        [fig] pair_sharpe_oos -> figures/per_pair_sharpe_oos.png
+2026-07-10 02:24:21  INFO        [fig] exit_reasons -> figures/exit_reasons.png
+2026-07-10 02:24:22  INFO        [fig] hold_duration -> figures/hold_duration.png
+2026-07-10 02:24:22  INFO        [fig] entry_z_pnl -> figures/entry_z_vs_pnl.png
+2026-07-10 02:24:23  INFO        [fig] pnl_by_pair -> figures/pnl_by_pair.png
+2026-07-10 02:24:24  INFO        [fig] variant_cmp -> figures/variant_comparison.png
+2026-07-10 02:24:24  INFO        [fig] win_rate_cmp -> figures/win_rate_is_vs_oos.png
+2026-07-10 02:24:27  INFO        [fig] all_hedge_est -> figures/all_hedge_estimators.png
+2026-07-10 02:24:28  INFO        [fig] evt_xi_scatter -> figures/evt_xi_scatter.png
+2026-07-10 02:24:28  INFO        [fig] coint_vs_sharpe -> figures/coint_vs_oos_sharpe.png
+2026-07-10 02:24:29  INFO        [fig] perm_dist -> figures/perm_distribution.png
+2026-07-10 02:24:30  INFO        [fig] mc_quality -> figures/mc_quality.png
+2026-07-10 02:24:32  INFO        [fig] dcc_heatmap -> figures/dcc_heatmap.png
+2026-07-10 02:24:32  INFO      Figures generated: 26/26
+2026-07-10 02:24:32  INFO      Building main.tex...
+2026-07-10 02:24:33  INFO      main.tex written: 26,983 chars
+2026-07-10 02:24:33  INFO      references.bib written
+2026-07-10 02:24:33  INFO      compile.bat written
+2026-07-10 02:24:33  INFO      Done in 0.4 min. Output: C:\Users\RossW\Projects\CAMARF\output\report
+2026-07-10 02:24:33  INFO      To compile: cd output/report && pdflatex main.tex && bibtex main && pdflatex main.tex x2

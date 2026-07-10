@@ -1,0 +1,28 @@
+2026-07-10 02:19:42  INFO      Survivorship exclusions loaded: 378 delist events
+2026-07-10 02:19:42  INFO      [3m] 1 confirmed pairs
+2026-07-10 02:19:42  INFO      [1h] 18 confirmed pairs
+2026-07-10 02:19:42  INFO        AXP/CRWD@1h[ols] 51 trades | WR=63% | SR=33.36 | PnL=10301.49
+2026-07-10 02:19:42  INFO        AXP/CRWD@1h[kalman] 51 trades | WR=63% | SR=33.29 | PnL=10281.90
+2026-07-10 02:19:42  INFO        AME/MAR@1h[ols] 60 trades | WR=48% | SR=13.21 | PnL=10063.88
+2026-07-10 02:19:42  INFO        AME/MAR@1h[kalman] 60 trades | WR=48% | SR=13.20 | PnL=10062.61
+2026-07-10 02:19:42  INFO        APP/CRWD@1h[ols] 44 trades | WR=68% | SR=30.11 | PnL=25082.23
+2026-07-10 02:19:42  INFO        APP/CRWD@1h[kalman] 44 trades | WR=70% | SR=30.23 | PnL=25177.78
+2026-07-10 02:19:42  INFO        AVGO/CRWD@1h[ols] 56 trades | WR=57% | SR=22.17 | PnL=19283.06
+2026-07-10 02:19:42  INFO        AVGO/CRWD@1h[kalman] 56 trades | WR=57% | SR=22.25 | PnL=19352.42
+2026-07-10 02:19:42  INFO        CMS/DUK@1h[ols] 47 trades | WR=62% | SR=31.17 | PnL=10820.09
+2026-07-10 02:19:42  INFO        CMS/DUK@1h[kalman] 47 trades | WR=64% | SR=31.22 | PnL=10840.25
+2026-07-10 02:19:42  INFO        TT/MLI@1h[ols] 47 trades | WR=68% | SR=21.51 | PnL=11009.21
+2026-07-10 02:19:42  INFO        TT/MLI@1h[kalman] 47 trades | WR=66% | SR=21.49 | PnL=11004.96
+2026-07-10 02:19:43  INFO        VRT/MTZ@1h[ols] 38 trades | WR=71% | SR=33.86 | PnL=19876.44
+2026-07-10 02:19:43  INFO        VRT/MTZ@1h[kalman] 38 trades | WR=76% | SR=33.97 | PnL=19930.57
+2026-07-10 02:19:43  INFO        WAB/MLI@1h[ols] 35 trades | WR=71% | SR=32.76 | PnL=8562.68
+2026-07-10 02:19:43  INFO        WAB/MLI@1h[kalman] 35 trades | WR=71% | SR=32.66 | PnL=8540.75
+2026-07-10 02:19:43  INFO        TMHC/WAL@1h[ols] 55 trades | WR=82% | SR=29.87 | PnL=15590.38
+2026-07-10 02:19:43  INFO        TMHC/WAL@1h[kalman] 55 trades | WR=84% | SR=29.88 | PnL=15593.35
+2026-07-10 02:19:43  INFO        UMBF/FHB@1h[ols] 41 trades | WR=54% | SR=25.10 | PnL=6671.98
+2026-07-10 02:19:43  INFO        UMBF/FHB@1h[kalman] 41 trades | WR=56% | SR=25.11 | PnL=6679.99
+2026-07-10 02:19:43  INFO        WAL/MC@1h[ols] 41 trades | WR=71% | SR=30.04 | PnL=10806.11
+2026-07-10 02:19:43  INFO        WAL/MC@1h[kalman] 41 trades | WR=71% | SR=30.09 | PnL=10825.75
+2026-07-10 02:19:43  INFO        ZION/FHB@1h[ols] 6 trades | WR=83% | SR=53.01 | PnL=2875.69
+2026-07-10 02:19:43  INFO        ZION/FHB@1h[kalman] 6 trades | WR=83% | SR=53.10 | PnL=2880.64
+2026-07-10 02:19:44  INFO      Run summary \u2192 latest_run_backtest.log

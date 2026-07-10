@@ -1063,6 +1063,29 @@ methods agree the 5-pair DD-hub cluster behaves like roughly 1.1–2.3 effective
 not 5** (BR_eff=2.35, Meucci ENB=1.14, Carver IDM=1.53) — a quantified answer to the concentration
 question this section could previously only describe qualitatively.
 
+**Portfolio-wide effective bets [DRAFTED — 2026-07-06]:** the same three methods were extended from
+the 5-pair DD-hub cluster to the full confirmed-pair portfolio (`research/portfolio_effective_bets.py`),
+using each pair's daily P&L (OLS hedge method, 0-filled on non-trading days) rather than z-score
+deltas — directly motivated by the permutation-test methodology fix (§6.6), which surfaced the same
+correlated-exit-timing mechanism at the whole-portfolio level. 21/26 confirmed pairs have recorded OLS
+trades (the 5 DD-hub pairs plus HAL/NOV have zero — a real, confirmed data gap, not a bug). Across
+those 21 pairs, average pairwise correlation is near zero (ρ̄=0.0039), so Grinold-Kahn's
+equicorrelation-based breadth finds almost no loss (BR_eff=19.5/21) — but **Meucci's eigenvalue-based
+ENB=9.78, under half the nominal count**, a material divergence between the two methods. This is not
+a contradiction: Grinold-Kahn assumes one uniform correlation across every pair, while Meucci's
+eigen-decomposition detects that the real correlation is *clustered* (a handful of specific pair-pairs
+— AVGO/CRWD↔CVX/OXY 0.31, CVX/OXY↔KVUE/KMB 0.30, AXP/CRWD↔ZION/FHB 0.29 — carry real correlation while
+most carry none), concentrating variance into fewer effective factors than the low average alone
+suggests. Carver IDM=4.41 (confirms IDM²=BR_eff exactly under equal weighting, as before). Important
+caveat: since DD-hub has zero trades, it is entirely absent from this 9.78 figure, and DD-hub's own
+separate analysis already found BR_eff=2.35 for just those 5 pairs — so this portfolio-wide number is
+a lower bound, not the complete picture; the true effective bet count is likely lower still. Three
+independent diagnostics now agree in direction: the permutation test (§6.6), the DD-hub cluster, and
+this portfolio-wide Meucci result all indicate CAMARF's nominal pair count overstates genuinely
+independent bets, concentrated in specific correlated clusters rather than spread evenly — a
+position-sizing follow-up (correlation-aware weight scaling) is the natural next step, not attempted
+here since this script is diagnostic only.
+
 **Recommended production configuration:** `--risk-parity` as primary flag (best Sharpe);
 `--neg-hedge` as secondary addition if universe expansion from negative-β pairs is desired.
 HRP was evaluated and is not recommended — it underperforms risk-parity on this pair set.
@@ -1674,6 +1697,99 @@ serial-correlation signature associated with stale/infrequent pricing in illiqui
 modest signature (0.711). Consistent with CAMARF trading liquid, actively-marked instruments
 rather than the illiquid, appraisal-priced assets this diagnostic is designed to catch.
 
+**Fill-timing sensitivity [DRAFTED — 2026-07-10]:** tests whether same-bar execution (the entry/exit
+signal and its fill both use bar i, unrealistic since a bar's z-score is only knowable after that bar
+closes) overstates backtest performance relative to a realistic one-bar execution lag. Reuses
+`BacktestEngine.run()` unchanged — the decision series (z_rolling and related columns) is shifted
+forward one bar relative to the fill series (spread stays in place) rather than duplicating any
+event-loop logic. Result across all 18 confirmed 1h pairs: the lagged variant performs marginally
+**better**, not worse (mean Sharpe 26.96 vs. 26.47 same-bar, total PnL $291,374 vs $287,435) — an
+honest, reassuring finding that CAMARF's same-bar convention is not inflating reported performance.
+
+**Jump-diffusion spread analysis (Akyildirim, Fabozzi, Goncu & Sensoy, 2022) [DRAFTED — 2026-07-10]:**
+checks whether CAMARF's continuous-diffusion OU spread model misses anything by ignoring jumps.
+Threshold-based jump detection (|Δz|> 4× trailing local volatility) finds only ~1-2% of bars flagged
+as jumps, but those bars account for ~72-76% of total delta variance (AMD/DD@1h: 76.2%, cross-checked
+via an independent fixed-threshold method at 71.8% — confirms this isn't a rolling-window artifact).
+Directly consistent with the already-established EVT/GPD fat-tail finding (§6.8: 19/26 pairs
+fat-tailed) rather than an independent surprise. The more decision-relevant check — real trade
+outcomes near detected jumps vs. calm periods, from actual `trades_layer1.parquet` data — shows a
+modest, not dramatic, difference: 65.8% win rate / $274.69 mean PnL near jumps vs. 63.6% / $304.69
+calm. Jump risk doesn't appear to meaningfully hurt CAMARF's actual trading outcomes.
+
+### 7.14 Backlog Clear-Out — 13 Additional Diagnostics and Comparison Arms [DRAFTED — 2026-07-10]
+
+A full pass through the remaining v1.x backlog. Full verification detail and bugs found/fixed along
+the way are in Development.md; headline results only here.
+
+**Weak exogeneity** (Johansen VECM, `pvalues_alpha`): 14/20 confirmed pairs show `symbol_a` leading
+(weakly exogenous — doesn't respond to disequilibrium, `symbol_b` does the adjusting), 2 bidirectional,
+2 `symbol_b`-leads, 2 neither adjusts — a consistent, non-random 70% skew.
+
+**Financial Turbulence Index** (Kritzman & Li 2010, Mahalanobis distance, Ledoit-Wolf-shrunk
+covariance): 15,381 days computed across the confirmed-pair universe; 90th-percentile threshold=57.70,
+a companion systemic-risk lens to the existing Absorption Ratio.
+
+**CAViaR** (Engle & Manganelli 2004, Symmetric Absolute Value): dynamic VaR ranges $354.64-$966.47
+in-sample (vs. static historical VaR of $732.38) — real time-varying risk that a constant VaR misses;
+the 70-day OOS holdout is too short for reliable persistence-parameter estimation (correctly degenerate,
+not forced).
+
+**Quantile regression forests** (Meinshausen 2006, predicting continuous `z_future` rather than ml.py's
+4-class label): hits the identical insufficient-training-data wall ml.py's own Stage 1 already
+documents (13 real examples) — same honest null, not a new problem.
+
+**Graphical lasso** (Friedman/Hastie/Tibshirani 2008): inconclusive at current sample size (312 days,
+22 pairs) — cross-validation selected essentially zero regularization, weak resulting clustering
+(silhouette=0.055). An honest negative result, not forced toward a nicer-looking one.
+
+**Multiscale entropy** (Costa/Goldberger/Peng 2002): all 19 confirmed pairs show a consistent "simple/
+regular" signature — low entropy (0.21) at the finest scale rising toward the white-noise level (0.79)
+by scale 5 — mean-reversion concentrated at one characteristic time scale, not present as genuine
+multi-scale complexity, for every single pair.
+
+**Bias budget**: aggregates, rather than invents, a single de-biased number. DSR says the OOS Sharpe is
+likely genuine after correcting for 34 tried configurations (DSR=1.0000, z=6.54); the permutation test
+(§6.6) does not reach significance (p=0.589) — both true simultaneously. IS-OOS gap is small (+3.0%).
+Holdout examined 27 times across 14 configs — flagged high per a new >20-exposure threshold.
+
+**Convex portfolio construction** (max Sharpe / max Sortino, long-only-capped / negative-weights-
+allowed, scipy SLSQP): max-Sharpe improves modestly over equal-weight (+0.08 to +0.09), max-Sortino
+trades most of that gain for a much larger Sortino improvement (+3.27); negative weights barely beat
+long-only-capped in either objective (both hit the same 20% cap) — long-only is sufficient here.
+
+**Carver continuous forecast scaling** (new `backtest.py` `--storm-continuous-forecast-{carver,linear}`
+flags — the one comparison arm this pass added to production code, not just `research/`): both variants
+underperform the existing binary sizing on Sharpe (baseline 5.40 vs. Carver 5.32 vs. linear 5.29), but
+the linear variant captures notably more raw PnL ($216K vs. baseline's $151K) — a genuine tradeoff, not
+a clean win; not made the default.
+
+**Correlated-cluster position sizing** (Equal Risk Contribution vs. simple inverse-cluster-size): mirrors
+this project's own HRP-vs-risk-parity precedent (§7.2) exactly — the simpler inverse-cluster-size scheme
+wins on Sharpe (0.7216) over both equal-weight (0.7154) and ERC (0.6933), and ERC concentrates up to 27%
+into a single low-variance pair, a real cost the simple scheme avoids.
+
+**Network momentum** (Pu, Roberts, Dong & Zohren 2023): a simplified lead-lag spillover test (not the
+paper's full graph neural network) shows a modest positive in-sample correlation with forward returns
+(+0.036) vs. single-asset momentum's slightly negative correlation (-0.010, a short-term reversal
+effect, not momentum, at daily frequency) — a genuine +0.046 incremental edge from the cross-asset
+signal specifically, though explicitly in-sample and not yet walk-forward validated.
+
+**Short-term factor alpha** (Blitz, Hanauer, Honarvar, Huisman & van Vliet 2023): reversal shows a small
+positive edge (corr=0.018), day-of-week seasonality is negligible (corr=0.004) — modest, honest findings
+consistent with the literature's own characterization, no analyst-revision data available (paid-data
+constraint, same as options.py below).
+
+**options.py, built without paid data**: realized volatility used as an explicit, clearly-labeled IV
+proxy (yfinance's free tier has real implied vol only for the current moment, no historical time
+series — confirmed directly, a genuine data-source limitation). Black-Scholes verified against known
+analytic values. A naive per-trade protective put/call overlay (correctly matched to trade direction)
+INCREASES max drawdown relative to unhedged (\$5,946.56 vs. \$2,106.82) — confirmed as a genuine result,
+not a bug: only 5.6% of trades had any option payoff over a mean 4.8-day hold, and total premium paid
+exceeded total payoff. A naive single-leg overlay doesn't target CAMARF's actual drawdown driver
+(correlated multi-pair regime days, per §6.6/§7.2's own findings), so premium drag outweighs the rare
+payoff — an honest negative result on whether options overlays help this specific strategy.
+
 ## 8. Bias Documentation [OUTLINED, one bias drafted in detail]
 
 Pull directly from `BiasAuditLog` (`output/results/bias_audit.json`,
@@ -2147,3 +2263,44 @@ detail not yet confirmed; do not cite numbers from these until verified.
     Monte Carlo simulation rather than the original closed form — see
     Development.md Session 27 for why) in `research/bertram_ou_thresholds.py`
     and `research/return_smoothing_audit.py` respectively.
+25. **[TBD]** Kritzman, M., & Li, Y. (2010). Skulls, financial turbulence,
+    and risk management. *Financial Analysts Journal*, 66(5), 30-41.
+    Implemented in `research/financial_turbulence_index.py` (§7.14),
+    companion to the existing Absorption Ratio diagnostic (Kritzman, Li,
+    Page & Rigobon 2011, same author group, §7.2).
+26. **[TBD]** Engle, R. F., & Manganelli, S. (2004). CAViaR: Conditional
+    autoregressive value at risk by regression quantiles. *Journal of
+    Business & Economic Statistics*, 22(4), 367-381. Implemented
+    (Symmetric Absolute Value specification) in `research/caviar_dynamic_var.py`
+    (§7.14).
+27. **[TBD]** Meinshausen, N. (2006). Quantile regression forests. *Journal
+    of Machine Learning Research*, 7, 983-999. Implemented directly on
+    `sklearn.ensemble.RandomForestRegressor` (no `quantile-forest` package
+    installed) in `research/quantile_regression_forest.py` (§7.14).
+28. **[TBD]** Friedman, J., Hastie, T., & Tibshirani, R. (2008). Sparse
+    inverse covariance estimation with the graphical lasso. *Biostatistics*,
+    9(3), 432-441. Implemented via `sklearn.covariance.GraphicalLassoCV`
+    in `research/graphical_lasso_clusters.py` (§7.14) — result inconclusive
+    at current sample size, reported honestly as such.
+29. **[TBD]** Costa, M., Goldberger, A. L., & Peng, C.-K. (2002). Multiscale
+    entropy analysis of complex physiologic time series. *Physical Review
+    Letters*, 89(6), 068102. Sample Entropy (Richman, J. S., & Moorman, J. R.
+    (2000). Physiological time-series analysis using approximate entropy
+    and sample entropy. *American Journal of Physiology*, 278(6),
+    H2039-H2049) implemented directly, no `antropy`/`nolds` package
+    installed. In `research/multiscale_entropy.py` (§7.14).
+30. **[TBD]** Maillard, S., Roncalli, T., & Teiletche, J. (2010). The
+    properties of equally weighted risk contribution portfolios. *Journal
+    of Portfolio Management*, 36(4), 60-70. Implemented (Equal Risk
+    Contribution via SLSQP) in `research/portfolio_position_sizing_correction.py`
+    (§7.14) — compared against simple inverse-cluster-size, which won.
+31. **[TBD]** Pu, Y., Roberts, S., Dong, X., & Zohren, S. (2023). Network
+    momentum across asset classes. arXiv:2308.11294. A simplified lead-lag
+    spillover test (not the paper's full graph neural network) implemented
+    in `research/network_momentum.py` (§7.14) — result explicitly flagged
+    as in-sample, not walk-forward validated.
+32. **[TBD]** Blitz, D., Hanauer, M. X., Honarvar, I., Huisman, R., & van
+    Vliet, P. (2023). Beyond Fama-French factors: Alpha from short-term
+    signals. *Financial Analysts Journal*, 79(4), 74-95. Reversal +
+    day-of-week seasonality (no analyst-revision data available — paid-data
+    constraint) implemented in `research/short_term_factor_alpha.py` (§7.14).

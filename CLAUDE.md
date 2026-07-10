@@ -103,6 +103,20 @@ statistically significant rates using multiclass ML.
    repository's cached data could re-fetch equivalent data and verify the
    claim independently.
 
+8. **Document what was tried, not just what was kept (added 2026-07-10).**
+   When an approach is built, verified, and then reverted or discarded,
+   write up the FULL attempt in Development.md — what was built, how it was
+   verified, what the real (not hypothesized) failure mode was, and why it
+   was reverted — not just a one-line "tried X, didn't work." A negative
+   result with a well-understood mechanism is exactly as valuable as a
+   positive one, and cheap to re-derive wrongly if a future session doesn't
+   know it was already tried. See the Kalman slope+intercept promotion
+   entry (Session 27 addendum, 2026-07-10) as the template: what was built,
+   the verification chain (synthetic → full pipeline → 3-way comparison),
+   the actual root-caused mechanism (not a guess), and why it was reverted.
+   This applies to reverted code changes, abandoned research directions,
+   and rejected hypotheses alike — not just production changes.
+
 ---
 
 ## Data Test Range & Reproducibility
@@ -358,7 +372,17 @@ This is as important as the technical rules above.
 
 ## Current State (update this section each session)
 
-See `DEVELOPMENT.md` Sessions 10–22 for full detail. Headline items:
+See `DEVELOPMENT.md` Session 27 (2026-07-05 through 2026-07-10) for full detail — the most recent,
+much larger session (SPY/VOO exclusion committed, permutation-test bug fixed, Kalman slope+intercept
+promoted to production then reverted after a rigorous 3-way comparison, IBKR breaker re-investigated
+(still unresolved), portfolio-wide effective-bets/position-sizing work, and a full v1.x backlog
+clear-out — 13 new comparison-arm modules, `options.py` finally built without paid data). **v1 is
+considered functionally complete** as of this session; remaining backlog items are all either
+optional extensions, environment-limited (IBKR, ML training data volume), or explicitly deferred
+pending Ross's direction — none are gaps in v1's own claims. See `DEVELOPMENT.md` Sessions 10–22 for
+earlier detail. Headline items from Session 22 (still the last FULL numeric pipeline snapshot with
+inline Sharpe figures below; Session 27's numbers are in Development.md, not yet copied into this
+condensed summary):
 
 - **Session 22 (2026-06-30)**: Full architecture audit + fixes + full pipeline rerun. **COMPLETE.**
   - Architecture: F01 (ibkr_supplement_reader.py), F02 (IBKR config mutation removed),
@@ -377,10 +401,10 @@ See `DEVELOPMENT.md` Sessions 10–22 for full detail. Headline items:
 - **Always run scripts via
   `C:\Users\RossW\anaconda3\envs\trading\python.exe`**, not bare
   `python` (see Known-Resolved Issues).
-- **Next priorities**:
-  - **SPY/VOO exclusion**: Remove trivial pair from confirmed_pairs_manifest.json next session
-  - **STORM literature survey**: Raise monthly spend limit at claude.ai/settings/usage; run with
-    `--depth standard` + Sonnet 4.6 (session 23)
+- **Next priorities** (stale as of Session 27 — SPY/VOO exclusion done, STORM survey done; see
+  Development.md Session 27 for the actual current backlog, which is now mostly optional extensions):
+  - ~~SPY/VOO exclusion~~ — done, Session 27 (`CrossAssetTagger._is_index_tracking_pair`)
+  - ~~STORM literature survey~~ — done, Session 23
   - **ML gate**: ~2 weeks from 2026-06-30 for training data accumulation (23-pair set clock reset)
   - **New modules** (planned): `corporate_actions.py`, `coint_frac_window_grid.py`,
     `cross_session_leadlag.py`, universe expansion (NASDAQ, Russell, crypto)
@@ -426,3 +450,13 @@ this name; it's referenced by exact path dozens of times in DEVELOPMENT.md.
   not just at project completion.
 - `latest_run_data.log` / `latest_run_analysis.log` — auto-generated run
   summaries, written after every run, read these first when diagnosing
+
+## graphify
+
+This project has a knowledge graph at graphify-out/ with god nodes, community structure, and cross-file relationships.
+
+Rules:
+- For codebase questions, first run `graphify query "<question>"` when graphify-out/graph.json exists. Use `graphify path "<A>" "<B>"` for relationships and `graphify explain "<concept>"` for focused concepts. These return a scoped subgraph, usually much smaller than GRAPH_REPORT.md or raw grep output.
+- If graphify-out/wiki/index.md exists, use it for broad navigation instead of raw source browsing.
+- Read graphify-out/GRAPH_REPORT.md only for broad architecture review or when query/path/explain do not surface enough context.
+- After modifying code, run `graphify update .` to keep the graph current (AST-only, no API cost).

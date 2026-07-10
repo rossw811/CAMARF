@@ -1,0 +1,7 @@
+10:25:02 INFO  === options.py: protective-put overlay, realized-vol IV proxy ===
+10:25:15 INFO  n_trades_with_overlay=521  mean_hedge_cost=$88.74  mean_hedge_payoff=$56.34
+10:25:15 INFO  Unhedged: total_pnl=$150943.24  max_drawdown=$2106.82
+10:25:15 INFO  Hedged (protective put/call by trade side, 5% OTM, realized-vol proxy): total_pnl=$134058.81  max_drawdown=$5946.56
+10:25:15 INFO  Cost of hedging: $46235.88 total premium paid, for a max-drawdown reduction of $-3839.75
+10:25:15 INFO  REMINDER: premiums are priced off REALIZED vol as an IV proxy, which the variance risk premium means UNDERSTATES true historical option cost — treat this as an optimistic/lower-bound hedging-cost estimate, not a precise reconstruction.
+10:25:15 INFO  Saved -> output/stats/options_overlay.parquet

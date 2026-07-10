@@ -1,0 +1,120 @@
+2026-07-05 22:22:44  INFO      ============================================================
+2026-07-05 22:22:44  INFO      CAMARF  —  data.py  —  Universe Build
+2026-07-05 22:22:44  INFO      ============================================================
+2026-07-05 22:26:40  INFO      Resuming — 1357 assets already complete (config hash 0c0e67a6b00ff0bb)
+2026-07-05 22:26:40  INFO      Building asset universe...
+2026-07-05 22:26:41  INFO      S&P 500: 503 tickers from cache (20.0h old)
+2026-07-05 22:26:41  INFO        sp400: 400 tickers from cache (20.0h old)
+2026-07-05 22:26:41  INFO        S&P MidCap 400: fetched 400 tickers (net new after S&P 500 overlap removed by dedup)
+2026-07-05 22:26:41  INFO        sp600: 603 tickers from cache (20.0h old)
+2026-07-05 22:26:41  INFO        S&P SmallCap 600: fetched 603 tickers (net new after dedup)
+2026-07-05 22:26:41  INFO        S&P 1500 total equities in universe: 1503
+2026-07-05 22:26:41  INFO        International equities + ADRs + FX spots added: 64 symbols
+2026-07-05 22:26:41  INFO        Total universe: 1611 assets
+2026-07-05 22:26:41  INFO      Exclusion list: skipping 3 assets ['BNY', 'FDXF', 'VLTO']
+2026-07-05 22:26:41  INFO      Universe candidates: 1608 assets
+2026-07-05 22:26:41  INFO      Phase 1 (yfinance daily): 1514 equities + 45 intl equities + 5 crypto + 15 forex/FX + 15 ETFs
+2026-07-05 22:26:48  INFO        Fetching fresh daily data for 2 assets...
+2026-07-05 22:26:48  INFO      yfinance: downloading 2 assets in 1 chunks of 50
+2026-07-05 22:26:48  INFO        Chunk 1/1: HONA \u2192 VGNT (2 tickers)
+2026-07-05 22:26:48  INFO        Retrying 2 failed tickers individually
+2026-07-05 22:26:49  INFO        Incremental refresh for 1592 stale daily assets...
+2026-07-05 22:26:49  INFO      yfinance: downloading 1592 assets in 32 chunks of 50
+2026-07-05 22:26:49  INFO        Chunk 1/32: MMM \u2192 ATO (50 tickers)
+2026-07-05 22:26:52  INFO        Chunk 2/32: ADSK \u2192 CVX (50 tickers)
+2026-07-05 22:26:56  INFO        Chunk 3/32: CMG \u2192 DG (50 tickers)
+2026-07-05 22:26:59  INFO        Chunk 4/32: DLTR \u2192 FLEX (50 tickers)
+2026-07-05 22:27:03  INFO        Chunk 5/32: F \u2192 INTC (50 tickers)
+2026-07-05 22:27:06  INFO        Chunk 6/32: IBKR \u2192 MRVL (50 tickers)
+2026-07-05 22:27:10  INFO        Chunk 7/32: MAS \u2192 OKE (50 tickers)
+2026-07-05 22:27:14  INFO        Chunk 8/32: ORCL \u2192 SPGI (50 tickers)
+2026-07-05 22:27:17  INFO        Chunk 9/32: CRM \u2192 TYL (50 tickers)
+2026-07-05 22:27:21  INFO        Chunk 10/32: TSN \u2192 BTC (50 tickers)
+2026-07-05 22:27:24  INFO        Chunk 11/32: ETH \u2192 ANF (50 tickers)
+2026-07-05 22:27:27  INFO        Chunk 12/32: APG \u2192 CHDN (50 tickers)
+2026-07-05 22:27:30  INFO        Chunk 13/32: CHE \u2192 ENTG (50 tickers)
+2026-07-05 22:27:33  INFO        Chunk 14/32: EPR \u2192 HL (50 tickers)
+2026-07-05 22:27:36  INFO        Chunk 15/32: HLI \u2192 MMS (50 tickers)
+2026-07-05 22:27:40  INFO        Chunk 16/32: MOG-A \u2192 PBF (50 tickers)
+2026-07-05 22:27:43  INFO        Chunk 17/32: PCTY \u2192 SIRI (50 tickers)
+2026-07-05 22:27:46  INFO        Chunk 18/32: SITM \u2192 VIAV (50 tickers)
+2026-07-05 22:27:49  INFO        Chunk 19/32: VICR \u2192 AEO (50 tickers)
+2026-07-05 22:27:52  INFO        Chunk 20/32: AESI \u2192 BCPC (50 tickers)
+2026-07-05 22:27:55  INFO        Chunk 21/32: BFAM \u2192 COHU (50 tickers)
+2026-07-05 22:27:58  INFO        Chunk 22/32: COLL \u2192 ECG (50 tickers)
+2026-07-05 22:28:01  INFO        Chunk 23/32: ECPG \u2192 GBX (50 tickers)
+2026-07-05 22:28:03  INFO        Chunk 24/32: GEO \u2192 INSW (50 tickers)
+2026-07-05 22:28:06  INFO        Chunk 25/32: INVA \u2192 LW (50 tickers)
+2026-07-05 22:28:10  INFO        Chunk 26/32: LXP \u2192 NGVT (50 tickers)
+2026-07-05 22:28:13  INFO        Chunk 27/32: NHC \u2192 PLXS (50 tickers)
+2026-07-05 22:28:16  INFO        Chunk 28/32: PMT \u2192 SAFT (50 tickers)
+2026-07-05 22:28:19  INFO        Chunk 29/32: SAH \u2192 TGTX (50 tickers)
+2026-07-05 22:28:22  INFO        Chunk 30/32: THRM \u2192 VYX (50 tickers)
+2026-07-05 22:28:25  INFO        Chunk 31/32: WABC \u2192 6758.T (50 tickers)
+2026-07-05 22:28:28  INFO        Chunk 32/32: 9984.T \u2192 AUDUSD=X (42 tickers)
+2026-07-05 22:29:34  INFO        Incremental refresh: 1592/1592 updated
+2026-07-05 22:30:13  INFO        152 equities + 10 forex need IBKR intraday
+2026-07-05 22:30:13  INFO        Phase 2A: yfinance intraday sweep (primary pipeline)
+2026-07-05 22:30:13  INFO          [1h] 9 assets to fetch
+2026-07-05 22:30:16  ERROR     $CWEN-A: possibly delisted; no price data found  (period=730d) (Yahoo error = "No data found, symbol may be delisted")
+2026-07-05 22:30:16  WARNING   yfinance CWEN-A 1h [period=730d]: returned EMPTY (no exception) — ticker=CWEN-A, interval=1h, rows_returned=0
+2026-07-05 22:30:16  ERROR     $CWEN-A: possibly delisted; no price data found  (1h 2024-07-06 01:30:21-04:00 -> 2026-07-06 01:30:16-04:00) (Yahoo error = "No data found, symbol may be delisted")
+2026-07-05 22:30:16  WARNING   yfinance CWEN-A 1h [period=max]: returned EMPTY (no exception) — ticker=CWEN-A, interval=1h, rows_returned=0
+2026-07-05 22:30:18  INFO          [1h] complete: 0/9 saved | fail_fetch=9 fail_snap=0 fail_cutoff=0
+2026-07-05 22:30:18  WARNING       [1h] first failure: fetch:ECHO
+2026-07-05 22:30:19  INFO          [30m] 6 assets to fetch
+2026-07-05 22:30:20  ERROR     $CWEN-A: possibly delisted; no price data found  (period=60d) (Yahoo error = "No data found, symbol may be delisted")
+2026-07-05 22:30:20  WARNING   yfinance CWEN-A 30m [period=60d]: returned EMPTY (no exception) — ticker=CWEN-A, interval=30m, rows_returned=0
+2026-07-05 22:30:21  ERROR     $CWEN-A: possibly delisted; no price data found  (15m 2026-05-07 01:30:25-04:00 -> 2026-07-06 01:30:20-04:00) (Yahoo error = "No data found, symbol may be delisted")
+2026-07-05 22:30:21  WARNING   yfinance CWEN-A 30m [period=max]: returned EMPTY (no exception) — ticker=CWEN-A, interval=30m, rows_returned=0
+2026-07-05 22:30:22  INFO          [30m] complete: 0/6 saved | fail_fetch=6 fail_snap=0 fail_cutoff=0
+2026-07-05 22:30:22  WARNING       [30m] first failure: fetch:ECHO
+2026-07-05 22:30:22  INFO          [15m] 6 assets to fetch
+2026-07-05 22:30:23  ERROR     $CWEN-A: possibly delisted; no price data found  (period=60d) (Yahoo error = "No data found, symbol may be delisted")
+2026-07-05 22:30:23  WARNING   yfinance CWEN-A 15m [period=60d]: returned EMPTY (no exception) — ticker=CWEN-A, interval=15m, rows_returned=0
+2026-07-05 22:30:24  ERROR     $CWEN-A: possibly delisted; no price data found  (15m 2026-05-07 01:30:28-04:00 -> 2026-07-06 01:30:23-04:00) (Yahoo error = "No data found, symbol may be delisted")
+2026-07-05 22:30:24  WARNING   yfinance CWEN-A 15m [period=max]: returned EMPTY (no exception) — ticker=CWEN-A, interval=15m, rows_returned=0
+2026-07-05 22:30:24  INFO          [15m] complete: 0/6 saved | fail_fetch=6 fail_snap=0 fail_cutoff=0
+2026-07-05 22:30:24  WARNING       [15m] first failure: fetch:ECHO
+2026-07-05 22:30:25  INFO          [5m] 5 assets to fetch
+2026-07-05 22:30:26  ERROR     $CWEN-A: possibly delisted; no price data found  (period=60d) (Yahoo error = "No data found, symbol may be delisted")
+2026-07-05 22:30:26  WARNING   yfinance CWEN-A 5m [period=60d]: returned EMPTY (no exception) — ticker=CWEN-A, interval=5m, rows_returned=0
+2026-07-05 22:30:27  ERROR     $CWEN-A: possibly delisted; no price data found  (5m 2026-05-07 01:30:31-04:00 -> 2026-07-06 01:30:26-04:00) (Yahoo error = "No data found, symbol may be delisted")
+2026-07-05 22:30:27  WARNING   yfinance CWEN-A 5m [period=max]: returned EMPTY (no exception) — ticker=CWEN-A, interval=5m, rows_returned=0
+2026-07-05 22:30:28  INFO          [5m] complete: 0/5 saved | fail_fetch=5 fail_snap=0 fail_cutoff=0
+2026-07-05 22:30:28  WARNING       [5m] first failure: fetch:ECHO
+2026-07-05 22:30:28  INFO          [2m] 27 assets to fetch
+2026-07-05 22:30:32  ERROR     $CWEN-A: possibly delisted; no price data found  (period=55d) (Yahoo error = "No data found, symbol may be delisted")
+2026-07-05 22:30:32  WARNING   yfinance CWEN-A 2m [period=55d]: returned EMPTY (no exception) — ticker=CWEN-A, interval=2m, rows_returned=0
+2026-07-05 22:30:32  ERROR     $CWEN-A: possibly delisted; no price data found  (2m 2026-05-07 01:30:37-04:00 -> 2026-07-06 01:30:32-04:00) (Yahoo error = "No data found, symbol may be delisted")
+2026-07-05 22:30:32  WARNING   yfinance CWEN-A 2m [period=max]: returned EMPTY (no exception) — ticker=CWEN-A, interval=2m, rows_returned=0
+2026-07-05 22:30:42  INFO          [2m] complete: 0/27 saved | fail_fetch=27 fail_snap=0 fail_cutoff=0
+2026-07-05 22:30:42  WARNING       [2m] first failure: fetch:ECHO
+2026-07-05 22:30:43  INFO          [1m] 126 assets to fetch
+2026-07-05 22:30:59  ERROR     $CWEN-A: possibly delisted; no price data found  (period=5d) (Yahoo error = "No data found, symbol may be delisted")
+2026-07-05 22:30:59  WARNING   yfinance CWEN-A 1m [period=5d]: returned EMPTY (no exception) — ticker=CWEN-A, interval=1m, rows_returned=0
+2026-07-05 22:30:59  ERROR     $CWEN-A: possibly delisted; no price data found  (1m 2026-06-28 01:31:04-04:00 -> 2026-07-06 01:30:59-04:00) (Yahoo error = "No data found, symbol may be delisted")
+2026-07-05 22:30:59  WARNING   yfinance CWEN-A 1m [period=max]: returned EMPTY (no exception) — ticker=CWEN-A, interval=1m, rows_returned=0
+2026-07-05 22:31:02  WARNING       [1m] 50/50 failed (100%) early on — if this persists, check the WARNING-level yfinance exception logged above for the actual error (not assumed to be a rate limit; could be network or API change).
+2026-07-05 22:31:32  INFO          [1m] complete: 0/126 saved | fail_fetch=126 fail_snap=0 fail_cutoff=0
+2026-07-05 22:31:32  WARNING       [1m] first failure: fetch:ERIE
+2026-07-05 22:31:32  INFO          [3m] 45 assets to fetch
+2026-07-05 22:31:36  ERROR     $CWEN-A: possibly delisted; no price data found  (period=5d) (Yahoo error = "No data found, symbol may be delisted")
+2026-07-05 22:31:36  WARNING   yfinance CWEN-A 3m [period=5d]: returned EMPTY (no exception) — ticker=CWEN-A, interval=1m, rows_returned=0
+2026-07-05 22:31:37  ERROR     $CWEN-A: possibly delisted; no price data found  (1m 2026-06-28 01:31:41-04:00 -> 2026-07-06 01:31:36-04:00) (Yahoo error = "No data found, symbol may be delisted")
+2026-07-05 22:31:37  WARNING   yfinance CWEN-A 3m [period=max]: returned EMPTY (no exception) — ticker=CWEN-A, interval=1m, rows_returned=0
+2026-07-05 22:31:51  INFO          [3m] complete: 0/45 saved | fail_fetch=45 fail_snap=0 fail_cutoff=0
+2026-07-05 22:31:51  WARNING       [3m] first failure: fetch:ADAM
+2026-07-05 22:32:22  INFO          [4h] derived: 1526 saved | 8 no 1h source | 0 resample failed | 0 wrong frequency after resample
+2026-07-05 22:32:22  INFO        Phase 2A complete. Run data_ibkr.py for deep IBKR history on confirmed pairs.
+2026-07-05 22:35:09  INFO      Universe complete: 1592 assets passed, 2 excluded
+2026-07-05 22:35:09  INFO      Data keys: 19986 symbol-timeframe combinations (16870 loaded from cache)
+2026-07-05 22:35:09  INFO      Run summary \u2192 C:\Users\RossW\Projects\CAMARF\latest_run_data.log
+2026-07-05 22:35:09  INFO      
+Final universe: 1592 assets
+2026-07-05 22:35:09  INFO      Excluded:       2 assets
+2026-07-05 22:35:09  INFO      Data keys:      19986 symbol-timeframe combinations
+2026-07-05 22:35:09  INFO      
+Exclusion summary (first 20):
+2026-07-05 22:35:09  INFO        HONA         (equity    )  \u2192  no_daily_data_yfinance
+2026-07-05 22:35:09  INFO        VGNT         (equity    )  \u2192  no_daily_data_yfinance

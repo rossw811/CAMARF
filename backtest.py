@@ -504,6 +504,24 @@ class BacktestEngine:
             return []
         _coint_frac_sizing = self.storm_flags.get("coint_frac_sizing", False)
 
+        # STORM: continuous forecast scaling (Carver, "Systematic Trading")
+        # — added 2026-07-10, two variants compared per Ross's request rather
+        # than picked upfront. Both scale position size continuously with
+        # entry-z magnitude instead of the binary in/out at a fixed threshold
+        # every other variant uses; only ONE should be set per run (carver
+        # takes priority if both are, documented not enforced).
+        _cf_carver = self.storm_flags.get("continuous_forecast_carver", False)
+        _cf_linear = self.storm_flags.get("continuous_forecast_linear", False)
+        _cf_scale_factor = 1.0
+        if _cf_carver:
+            # Carver's own convention: scale so the historical average |forecast|
+            # (here, |z| among bars that would trigger an entry) equals 10, then
+            # cap the scaled forecast at +-20 (2x average) before applying it as
+            # a position-size multiplier relative to N_SHARES_PER_TRADE.
+            _entry_z_pop = np.abs(z_arr[np.abs(z_arr) >= self.cfg.ENTRY_ZSCORE])
+            _avg_abs_entry_z = float(np.mean(_entry_z_pop)) if len(_entry_z_pop) > 0 else self.cfg.ENTRY_ZSCORE
+            _cf_scale_factor = 10.0 / _avg_abs_entry_z if _avg_abs_entry_z > 0 else 1.0
+
         # Point-in-time causal hedge ratio series (added to spread_series by
         # analysis.py after the lookahead-bias fix). Falls back to scalar when
         # the column is absent (pre-fix spread_series files).
@@ -611,6 +629,21 @@ class BacktestEngine:
                 # STORM: coint_frac_sizing — scale shares by rolling confirmation fraction
                 if _coint_frac_sizing:
                     n_shares = max(1, int(n_shares * _coint_frac))
+
+                # STORM: continuous forecast scaling — replaces the binary
+                # in/out sizing above with a scale continuous in |z| at entry.
+                if _cf_carver:
+                    scaled_forecast = np.clip(abs(z) * _cf_scale_factor, -20.0, 20.0)
+                    n_shares = max(1, int(self.cfg.N_SHARES_PER_TRADE * (scaled_forecast / 10.0)
+                                          * size_mult * hub_w * rp_w))
+                elif _cf_linear:
+                    # Simpler convention: scale directly off CAMARF's own entry
+                    # threshold rather than Carver's separate forecast-unit
+                    # scale, capped at 2x baseline (matches Carver's own 2x-
+                    # average cap for a fair, like-for-like comparison).
+                    linear_mult = min(abs(z) / self.cfg.ENTRY_ZSCORE, 2.0)
+                    n_shares = max(1, int(self.cfg.N_SHARES_PER_TRADE * linear_mult
+                                          * size_mult * hub_w * rp_w))
 
                 # STORM: mm_exec — use MM hedge ratio for position sizing if available
                 if _mm_exec and _beta_mm is not None and np.isfinite(_beta_mm) and _beta_mm > 0:
@@ -1293,6 +1326,13 @@ def main() -> None:
                    help="STORM: replace the flat-bps slippage model with a concave "
                         "square-root market-impact model (Kyle/Obizhaeva), scaled by "
                         "each leg's order size relative to its own ADV.")
+    p.add_argument("--storm-continuous-forecast-carver", action="store_true",
+                   help="STORM: continuous position-size scaling by entry-z magnitude, Carver's "
+                        "own convention (avg |forecast|=10, capped at +-20). Do not combine with "
+                        "--storm-continuous-forecast-linear.")
+    p.add_argument("--storm-continuous-forecast-linear", action="store_true",
+                   help="STORM: continuous position-size scaling by entry-z magnitude, simpler "
+                        "convention scaled directly off ENTRY_ZSCORE, capped at 2x baseline.")
     p.add_argument("--storm-all", action="store_true",
                    help="STORM: enable all 4 experimental variants simultaneously.")
     p.add_argument("--entry-z", type=float, default=None,
@@ -1353,6 +1393,10 @@ def main() -> None:
         # 2026-06-30, not part of the original "4 experimental variants" set
         # --storm-all's docstring/help text refers to.
         "sqrt_impact":             getattr(args, "storm_sqrt_impact", False),
+        # Also not folded into --storm-all: comparison arm added 2026-07-10 —
+        # see run()'s docstring note above the n_shares continuous-forecast block.
+        "continuous_forecast_carver":  getattr(args, "storm_continuous_forecast_carver", False),
+        "continuous_forecast_linear":  getattr(args, "storm_continuous_forecast_linear", False),
     }
     mm_hedge_map = load_mm_hedge_map() if storm_flags.get("mm_exec") else {}
 

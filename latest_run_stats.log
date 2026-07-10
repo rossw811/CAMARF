@@ -1,20 +1,20 @@
 === CAMARF stats.py ===
-date:        2026-07-01 10:28
+date:        2026-07-10 02:21
 runtime_min: 1.2
 
-Input: 23 confirmed pairs
-Trades: IS=1028 OOS=296 neghedge=304
-[S1 Cointegration tiers] gold=13 silver=9 bronze=0 no_spread=1 conflict=9
-[S2 Hedge ratios] robust=1/23 (spread_bps < 500) conflicts=0
-[S3 EVT/GPD] fat_tail_pairs=16/23 (xi > 0.30)
-[S4 DCC-GARCH] 45 pair-pairs; peak_rho>0.70: 3 (correlated-loss risk)
-[S5 Phase 1] best_fit_dist=garch11_normal_resid (AIC), n_trades=1324
-[S5 Phase 2] regime_bootstrap: 1 groups, iid_median_sharpe=9.45
+Input: 20 confirmed pairs
+Trades: IS=1042 OOS=296 neghedge=304
+[S1 Cointegration tiers] gold=8 silver=11 bronze=0 no_spread=1 conflict=11
+[S2 Hedge ratios] robust=0/20 (spread_bps < 500) conflicts=0
+[S3 EVT/GPD] fat_tail_pairs=16/20 (xi > 0.30)
+[S4 DCC-GARCH] 45 pair-pairs; peak_rho>0.70: 0 (correlated-loss risk)
+[S5 Phase 1] best_fit_dist=garch11_normal_resid (AIC), n_trades=1338
+[S5 Phase 2] regime_bootstrap: 1 groups, iid_median_sharpe=9.20
 [S5 Phase 3] slippage tested at [0, 2, 5, 10, 20] bps/side
-[S5 Phase 4] efficiency=0.263 bliss=10.509 win_rate=0.858
-[S6 Permutation] backtest_equity_sharpe=5.2443 closed_trade_sharpe=10.2357 p_value=0.9040 significant=False n_perms=1000
-[S6 Permutation] backtest_equity_sharpe=5.2935 closed_trade_sharpe=11.6408 p_value=0.9810 significant=False n_perms=1000
-[S7 HL stationarity] stationary=20/23 (ZA p<0.10)
+[S5 Phase 4] efficiency=-1.534 bliss=12.336 win_rate=0.881
+[S6 Permutation] backtest_equity_sharpe=5.2443 closed_trade_sharpe=10.2357 p_value=0.5890 significant=False n_perms=1000
+[S6 Permutation] backtest_equity_sharpe=5.4048 closed_trade_sharpe=12.4374 p_value=0.5260 significant=False n_perms=1000
+[S7 HL stationarity] stationary=18/20 (ZA p<0.10)
 
 runtime_min: 1.2
 

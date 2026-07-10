@@ -1,62 +1,62 @@
-10:32:06 INFO  sensitivity.py — parameter stability grid
-10:32:06 INFO  ============================================================
-10:32:06 INFO  
+23:43:14 INFO  sensitivity.py — parameter stability grid
+23:43:14 INFO  ============================================================
+23:43:14 INFO  
 --- Timeframe: 1h ---
-10:32:07 INFO    Loaded 17 pairs, 17 spread files
-10:32:07 INFO    Running 2D entry_z x exit_z grid (max_hl=50, ADV=$0M)...
-10:32:08 INFO      entry_z=1.50 exit_z=0.00  => Sharpe=10.068  n=241
-10:32:08 INFO      entry_z=1.50 exit_z=0.25  => Sharpe=8.458  n=242
-10:32:08 INFO      entry_z=1.50 exit_z=0.50  => Sharpe=7.357  n=242
-10:32:08 INFO      entry_z=1.50 exit_z=0.75  => Sharpe=7.536  n=243
-10:32:09 INFO      entry_z=2.00 exit_z=0.00  => Sharpe=9.178  n=187
-10:32:09 INFO      entry_z=2.00 exit_z=0.25  => Sharpe=8.207  n=187
-10:32:09 INFO      entry_z=2.00 exit_z=0.50  => Sharpe=7.387  n=187
-10:32:09 INFO      entry_z=2.00 exit_z=0.75  => Sharpe=8.000  n=187
-10:32:10 INFO      entry_z=2.50 exit_z=0.00  => Sharpe=10.590  n=153
-10:32:10 INFO      entry_z=2.50 exit_z=0.25  => Sharpe=9.263  n=153
-10:32:11 INFO      entry_z=2.50 exit_z=0.50  => Sharpe=8.541  n=153
-10:32:11 INFO      entry_z=2.50 exit_z=0.75  => Sharpe=9.714  n=153
-10:32:11 INFO      entry_z=3.00 exit_z=0.00  => Sharpe=9.800  n=125
-10:32:12 INFO      entry_z=3.00 exit_z=0.25  => Sharpe=8.666  n=125
-10:32:12 INFO      entry_z=3.00 exit_z=0.50  => Sharpe=7.935  n=125
-10:32:13 INFO      entry_z=3.00 exit_z=0.75  => Sharpe=8.977  n=125
-10:32:13 INFO    Running 1D max_hl sweep...
-10:32:13 INFO      max_hl=20  => Sharpe=12.423  n=16
-10:32:13 INFO      max_hl=35  => Sharpe=7.387  n=187
-10:32:13 INFO      max_hl=50  => Sharpe=7.387  n=187
-10:32:14 INFO      max_hl=75  => Sharpe=7.387  n=187
-10:32:14 INFO    Running 1D ADV sweep...
-10:32:14 INFO      ADV>=$0M  n_pairs=17  => Sharpe=7.387  n=187
-10:32:15 INFO      ADV>=$10M  n_pairs=17  => Sharpe=7.387  n=187
-10:32:15 INFO      ADV>=$25M  n_pairs=16  => Sharpe=7.412  n=174
-10:32:15 INFO      ADV>=$50M  n_pairs=12  => Sharpe=6.600  n=132
-10:32:15 INFO      ADV>=$100M  n_pairs=6  => Sharpe=6.196  n=64
-10:32:15 INFO  Saved => C:\Users\RossW\Projects\CAMARF\output\sensitivity\sensitivity_grid.parquet (25 rows)
-10:32:15 INFO  
+23:43:14 INFO    Loaded 23 pairs, 23 spread files
+23:43:14 INFO    Running 2D entry_z x exit_z grid (max_hl=50, ADV=$0M)...
+23:43:15 INFO      entry_z=1.50 exit_z=0.00  => Sharpe=10.982  n=327
+23:43:16 INFO      entry_z=1.50 exit_z=0.25  => Sharpe=9.928  n=329
+23:43:16 INFO      entry_z=1.50 exit_z=0.50  => Sharpe=8.770  n=330
+23:43:16 INFO      entry_z=1.50 exit_z=0.75  => Sharpe=8.921  n=332
+23:43:16 INFO      entry_z=2.00 exit_z=0.00  => Sharpe=10.616  n=242
+23:43:16 INFO      entry_z=2.00 exit_z=0.25  => Sharpe=10.103  n=242
+23:43:17 INFO      entry_z=2.00 exit_z=0.50  => Sharpe=8.998  n=242
+23:43:17 INFO      entry_z=2.00 exit_z=0.75  => Sharpe=9.376  n=242
+23:43:17 INFO      entry_z=2.50 exit_z=0.00  => Sharpe=11.414  n=184
+23:43:17 INFO      entry_z=2.50 exit_z=0.25  => Sharpe=10.477  n=184
+23:43:18 INFO      entry_z=2.50 exit_z=0.50  => Sharpe=9.679  n=184
+23:43:18 INFO      entry_z=2.50 exit_z=0.75  => Sharpe=10.532  n=184
+23:43:18 INFO      entry_z=3.00 exit_z=0.00  => Sharpe=11.432  n=149
+23:43:18 INFO      entry_z=3.00 exit_z=0.25  => Sharpe=10.198  n=149
+23:43:18 INFO      entry_z=3.00 exit_z=0.50  => Sharpe=8.931  n=149
+23:43:19 INFO      entry_z=3.00 exit_z=0.75  => Sharpe=9.643  n=149
+23:43:19 INFO    Running 1D max_hl sweep...
+23:43:19 INFO      max_hl=20  => Sharpe=nan  n=0
+23:43:19 INFO      max_hl=35  => Sharpe=8.998  n=242
+23:43:19 INFO      max_hl=50  => Sharpe=8.998  n=242
+23:43:19 INFO      max_hl=75  => Sharpe=8.998  n=242
+23:43:19 INFO    Running 1D ADV sweep...
+23:43:19 INFO      ADV>=$0M  n_pairs=23  => Sharpe=8.998  n=242
+23:43:20 INFO      ADV>=$10M  n_pairs=23  => Sharpe=8.998  n=242
+23:43:20 INFO      ADV>=$25M  n_pairs=19  => Sharpe=9.273  n=209
+23:43:20 INFO      ADV>=$50M  n_pairs=15  => Sharpe=8.736  n=154
+23:43:20 INFO      ADV>=$100M  n_pairs=10  => Sharpe=8.595  n=100
+23:43:20 INFO  Saved => C:\Users\RossW\Projects\CAMARF\output\sensitivity\sensitivity_grid.parquet (25 rows)
+23:43:20 INFO  
 === 2D entry_z x exit_z SHARPE HEAT MAP ===
-10:32:15 INFO  
-exit_z     0.00   0.25   0.50   0.75
-entry_z                             
-1.5      10.068  8.458  7.357  7.536
-2.0       9.178  8.207  7.387  8.000
-2.5      10.590  9.263  8.541  9.714
-3.0       9.800  8.666  7.935  8.977
-10:32:15 INFO  
+23:43:20 INFO  
+exit_z     0.00    0.25   0.50    0.75
+entry_z                               
+1.5      10.982   9.928  8.770   8.921
+2.0      10.616  10.103  8.998   9.376
+2.5      11.414  10.477  9.679  10.532
+3.0      11.432  10.198  8.931   9.643
+23:43:20 INFO  
 === 1D max_hl sweep ===
-10:32:15 INFO  
+23:43:20 INFO  
  max_hl  sharpe  n_trades  n_pairs
-     20  12.423        16        1
-     35   7.387       187       17
-     50   7.387       187       17
-     75   7.387       187       17
-10:32:15 INFO  
+     20     NaN         0        0
+     35   8.998       242       23
+     50   8.998       242       23
+     75   8.998       242       23
+23:43:20 INFO  
 === 1D ADV sweep ===
-10:32:15 INFO  
+23:43:20 INFO  
  adv_m  sharpe  n_trades  n_pairs
-   0.0   7.387       187       17
-  10.0   7.387       187       17
-  25.0   7.412       174       16
-  50.0   6.600       132       12
- 100.0   6.196        64        6
-10:32:15 INFO  ============================================================
-10:32:15 INFO  sensitivity.py complete (0.2 min)
+   0.0   8.998       242       23
+  10.0   8.998       242       23
+  25.0   9.273       209       19
+  50.0   8.736       154       15
+ 100.0   8.595       100       10
+23:43:20 INFO  ============================================================
+23:43:20 INFO  sensitivity.py complete (0.1 min)
