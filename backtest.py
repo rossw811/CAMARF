@@ -373,6 +373,7 @@ class BacktestEngine:
         storm_flags: Optional[Dict[str, bool]] = None,
         mm_hedge_map: Optional[Dict[str, float]] = None,
         adv_shares_map: Optional[Dict[str, float]] = None,
+        earnings_cal: Optional["EarningsCalendar"] = None,
     ):
         self.cfg = cfg
         self.regime_cond = regime_cond
@@ -397,6 +398,9 @@ class BacktestEngine:
         # adv_shares_map: {symbol -> avg daily share volume}, used only when
         # storm_flags["sqrt_impact"] is set — see _compute_cost_sqrt_impact.
         self.adv_shares_map = adv_shares_map or {}
+        # earnings_cal: EarningsCalendar, used only when
+        # storm_flags["earnings_blackout"] is set — see earnings.py.
+        self.earnings_cal = earnings_cal
 
     def run(
         self,
@@ -493,6 +497,12 @@ class BacktestEngine:
         _session_edge_postopen = self.storm_flags.get("session_edge_postopen", False)
         _is_intraday = any(c in tf for c in ["m", "h"]) and "D" not in tf and "W" not in tf
 
+        # STORM: earnings_blackout — skip entries within +-3 days of either leg's
+        # earnings date (Development.md "Planned: Earnings Blackout as STORM
+        # Variant"). Blackout window fixed at 3 days per the original spec.
+        _earnings_blackout = self.storm_flags.get("earnings_blackout", False)
+        _EARNINGS_BLACKOUT_DAYS = 3
+
         # STORM: coint_frac — read fraction; apply threshold gate or continuous sizing
         _coint_frac = float(pair_row.get("coint_fraction_rolling", 1.0))
         if not np.isfinite(_coint_frac) or _coint_frac <= 0:
@@ -578,6 +588,11 @@ class BacktestEngine:
                     _hr, _mn = getattr(ts, "hour", -1), getattr(ts, "minute", 0)
                     if (_hr == 9 and _mn >= 30) or _hr >= 15:
                         continue
+                # STORM: earnings_blackout — skip entries near either leg's earnings date
+                if _earnings_blackout and self.earnings_cal is not None:
+                    if (self.earnings_cal.near_earnings(sym_a, ts, _EARNINGS_BLACKOUT_DAYS)
+                            or self.earnings_cal.near_earnings(sym_b, ts, _EARNINGS_BLACKOUT_DAYS)):
+                        continue
 
                 if abs(z) < self.cfg.ENTRY_ZSCORE:
                     continue
@@ -632,6 +647,14 @@ class BacktestEngine:
 
                 # STORM: continuous forecast scaling — replaces the binary
                 # in/out sizing above with a scale continuous in |z| at entry.
+                # ARCHITECTURE NOTE (2026-07-10 sweep): both branches below
+                # RECOMPUTE n_shares from N_SHARES_PER_TRADE rather than scaling
+                # the current n_shares value — if coint_frac_sizing is ALSO set,
+                # its multiplication above is silently discarded, not composed.
+                # Never tested/decided whether these should compose (multiply)
+                # or remain mutually exclusive like carver/linear above — flagged
+                # for Ross, not changed unilaterally. Only combine coint_frac_sizing
+                # with continuous_forecast_carver/linear if you intend this override.
                 if _cf_carver:
                     scaled_forecast = np.clip(abs(z) * _cf_scale_factor, -20.0, 20.0)
                     n_shares = max(1, int(self.cfg.N_SHARES_PER_TRADE * (scaled_forecast / 10.0)
@@ -1333,6 +1356,9 @@ def main() -> None:
     p.add_argument("--storm-continuous-forecast-linear", action="store_true",
                    help="STORM: continuous position-size scaling by entry-z magnitude, simpler "
                         "convention scaled directly off ENTRY_ZSCORE, capped at 2x baseline.")
+    p.add_argument("--storm-earnings-blackout", action="store_true",
+                   help="STORM: skip entries within +-3 days of either leg's earnings date "
+                        "(earnings.py, yfinance earnings_dates).")
     p.add_argument("--storm-all", action="store_true",
                    help="STORM: enable all 4 experimental variants simultaneously.")
     p.add_argument("--entry-z", type=float, default=None,
@@ -1397,8 +1423,28 @@ def main() -> None:
         # see run()'s docstring note above the n_shares continuous-forecast block.
         "continuous_forecast_carver":  getattr(args, "storm_continuous_forecast_carver", False),
         "continuous_forecast_linear":  getattr(args, "storm_continuous_forecast_linear", False),
+        # Also not folded into --storm-all: comparison arm added 2026-07-11.
+        "earnings_blackout":       getattr(args, "storm_earnings_blackout", False),
     }
     mm_hedge_map = load_mm_hedge_map() if storm_flags.get("mm_exec") else {}
+
+    earnings_cal = None
+    if storm_flags.get("earnings_blackout"):
+        from earnings import EarningsCalendar
+        _earn_symbols = set()
+        if _pairs_override_df is not None:
+            _earn_symbols.update(_pairs_override_df["symbol_a"])
+            _earn_symbols.update(_pairs_override_df["symbol_b"])
+        else:
+            for tf_dir, tf_label in _TF_DIRS:
+                if args.tf and tf_label != args.tf:
+                    continue
+                _p = f"output/results/{tf_dir}/pairs.parquet"
+                if os.path.exists(_p):
+                    _df = pd.read_parquet(_p, columns=["symbol_a", "symbol_b"])
+                    _earn_symbols.update(_df["symbol_a"])
+                    _earn_symbols.update(_df["symbol_b"])
+        earnings_cal = EarningsCalendar.load_or_build(sorted(_earn_symbols))
 
     # ADV shares map for sqrt_impact: collect every symbol across every TF's
     # pairs (or the override file) that will actually be processed, so ADV
@@ -1438,6 +1484,7 @@ def main() -> None:
         storm_flags=storm_flags,
         mm_hedge_map=mm_hedge_map,
         adv_shares_map=adv_shares_map,
+        earnings_cal=earnings_cal,
     )
 
     hedge_methods = (["ols", "kalman"] if args.hedge == "both"

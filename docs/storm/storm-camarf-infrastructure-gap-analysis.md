@@ -1,5 +1,14 @@
 # CAMARF vs. Institutional-Grade Quant Infrastructure — STORM-Grounded Gap Analysis
 
+**Staleness note (2026-07-11):** this snapshot is from 2026-07-01. Substantial work has landed since
+— Session 27's 13-module backlog clear-out, the permutation-test methodology fix, and Session 28's
+own sweep (price-degeneracy root cause + predictive gate, PairCharacteristicsAnalyzer, regime-
+conditional gate, earnings-blackout STORM variant, correlation-aware position sizing, exchange-aware
+intraday session handling) — likely upgrading several ratings below from `Missing`/`Partial`. Not
+re-audited row-by-row in this pass (a full re-validation is its own multi-hour task, matching this
+same document's own 2026-07-01 self-correction note below about not skipping that step) — read the
+ratings below as accurate as of 2026-07-01, not as this project's current state.
+
 **Method:** 6 parallel STORM research interviews (Basic fact writer, Practitioner,
 Academic, Skeptic, Economist/Incentives, Historian), 3 rounds each, ~45 unique
 grounded sources, run 2026-07-01. Used here as an external yardstick — not

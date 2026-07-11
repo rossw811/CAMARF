@@ -1,5 +1,19 @@
 # backtest.py Discussion — Questions for Ross (2026-06-27)
 
+**SUPERSEDED (2026-07-11) — kept as historical record, not a current reference.**
+`backtest.py` has since been fully built, run in production across dozens of sessions, and extended
+far beyond this document's original scope (Layer 1 event-driven baseline, multiple hedge methods,
+10+ STORM variants including risk-parity/HRP/mm_exec/session_edge/coint_frac_sizing/garch_stop/
+continuous-forecast-scaling/earnings-blackout, a full statistical validation stack, walk-forward
+analysis). Every question below was eventually answered by the actual implementation, not
+necessarily by the recommendation drafted here — where they diverge, the code and `PAPER.md`/
+`Development.md` are authoritative, not this pre-read. Kept for "why is it built this way" archaeology
+(matching this project's own document-what-was-discussed discipline), not as current design guidance.
+For the CURRENT pattern for adding a new backtest.py variant, see `CONTRIBUTING.md`'s "STORM variant"
+section.
+
+---
+
 Read before our session. My answers / recommendations are included so we
 can agree or redirect quickly rather than starting cold.
 

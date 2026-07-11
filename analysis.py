@@ -212,6 +212,22 @@ class PairResult:
     # degeneracy actually matters for live strategy outcomes.
     thin_info_content: bool = False
 
+    # Predicted (not observed) price-degeneracy risk (added 2026-07-11,
+    # Ross's explicit "Option A" decision: prioritization/visibility only —
+    # NEVER used for exclusion. thin_info_content above, derived from
+    # actually-observed distinct-close-price counts, remains the sole
+    # authoritative exclusion signal; this field exists so a thin-data
+    # candidate can be flagged for extra scrutiny BEFORE intraday data has
+    # even been fetched for it, from cheap metadata (market cap, sector)
+    # alone. See _predict_degeneracy_risk's docstring for the exact
+    # validated thresholds this reuses (research/price_degeneracy_root_
+    # cause.py, 2026-07-11: market-cap quintile is the dominant, near-
+    # monotonic driver; REIT/Financial Services/Utilities sector is a
+    # second, cap-independent factor). None = no market cap/sector
+    # metadata available to predict from (not the same as "predicted low
+    # risk" — a missing-data case, not a positive result).
+    predicted_degeneracy_risk: Optional[str] = None  # "high" | "medium" | "low" | None
+
     # EG circular-shift permutation robustness flag (added 2026-06-27):
     # True = pair survived research/eg_permutation_check.py's null (real
     # EG p-value is distinguishable from the null of its own autocorrelation
@@ -4922,6 +4938,53 @@ class AnalysisPipeline:
         return pair_result, per_bar
 
     @staticmethod
+    def _predict_degeneracy_risk(market_cap: float, sector: Optional[str]) -> Optional[str]:
+        """
+        Pure function — predicted (not observed) price-degeneracy risk from
+        cheap metadata alone (market cap, sector), available before any
+        intraday data is ever fetched for a symbol. Thresholds are the
+        ACTUAL validated quintile boundaries from research/price_degeneracy_
+        root_cause.py (2026-07-11, n=1,353 symbols with valid metadata),
+        not round numbers chosen for convenience:
+
+          market_cap < $3.28B (the empirical Q1/Q2 boundary): 88.5%
+            observed-flagged rate in this band — HIGH.
+          $3.28B <= market_cap < $6.43B (Q2): 53.7% observed-flagged,
+            regardless of sector — MEDIUM.
+          $6.43B <= market_cap < $13.0B (Q3) AND sector in
+            {Real Estate, Financial Services, Utilities}: 38.6% observed-
+            flagged at this cap level for these sectors specifically (vs.
+            8.1% for every other sector at the same cap level, the
+            cap-controlled result that established sector as a genuinely
+            independent factor, not a cap proxy) — MEDIUM.
+          Everything else: LOW (Q3 non-target-sector ~8%, Q4 2.6%, Q5 0.0%).
+
+        Returns None (not "low") when market_cap itself is missing/NaN —
+        a missing-data case must never silently read as a positive
+        low-risk result.
+
+        Per Ross's explicit "Option A" decision (2026-07-11): this is a
+        PRIORITIZATION/VISIBILITY signal only. It must never be used to
+        exclude a candidate — only the OBSERVED thin_info_content flag
+        (actual distinct-close-price count, once intraday data exists) is
+        authoritative for exclusion. Excluding on a population-level
+        statistical pattern alone, before ever observing the symbol's own
+        real intraday data, would risk silently shrinking the universe
+        based on a correlation, not a certainty — exactly what this
+        project's bias-documentation discipline exists to prevent.
+        """
+        if market_cap is None or not np.isfinite(market_cap):
+            return None
+        _REIT_FIN_UTIL_SECTORS = {"Real Estate", "Financial Services", "Utilities"}
+        if market_cap < 3.28e9:
+            return "high"
+        if market_cap < 6.43e9:
+            return "medium"
+        if market_cap < 13.0e9 and sector in _REIT_FIN_UTIL_SECTORS:
+            return "medium"
+        return "low"
+
+    @staticmethod
     def _apply_research_screen_flags(
         pair_results: List["PairResult"],
         tf_label: str,
@@ -4935,6 +4998,11 @@ class AnalysisPipeline:
         Flags applied:
           thin_info_content — one/both legs in the BUG-D49 price-degeneracy
             screen (genuinely_liquid=True but implausibly few distinct prices).
+            OBSERVED, authoritative for exclusion (Step 6d).
+          predicted_degeneracy_risk — cheap-metadata (market cap, sector)
+            PREDICTION of the same pattern, added 2026-07-11. Visibility/
+            prioritization only, per Ross's explicit "Option A" — NEVER
+            used for exclusion; see _predict_degeneracy_risk's docstring.
           permutation_robust — EG circular-shift null result from
             eg_permutation_check.py; None if the pair hasn't been checked.
 
@@ -4958,6 +5026,29 @@ class AnalysisPipeline:
             except Exception:
                 pass
 
+        # --- predicted_degeneracy_risk (2026-07-11, visibility-only) ---
+        # Reuses whatever metadata investigate_price_degeneracy_cause.py has
+        # already fetched — never fetches itself (this method's own
+        # never-fetches contract, unchanged).
+        risk_lookup: Dict[str, Optional[str]] = {}
+        meta_path = os.path.join(research_dir, "price_degeneracy_with_metadata.parquet")
+        if os.path.exists(meta_path):
+            try:
+                meta_df = pd.read_parquet(meta_path)
+                for _, row in meta_df.iterrows():
+                    risk_lookup[row["symbol"]] = AnalysisPipeline._predict_degeneracy_risk(
+                        row.get("market_cap"), row.get("sector")
+                    )
+            except Exception:
+                pass
+
+        def _worse_risk(r1: Optional[str], r2: Optional[str]) -> Optional[str]:
+            order = {"high": 2, "medium": 1, "low": 0}
+            candidates = [r for r in (r1, r2) if r is not None]
+            if not candidates:
+                return None
+            return max(candidates, key=lambda r: order[r])
+
         # --- permutation_robust ---
         perm_lookup: Dict[Tuple[str, str], bool] = {}
         perm_path = os.path.join(research_dir, "eg_permutation_check.parquet")
@@ -4977,9 +5068,12 @@ class AnalysisPipeline:
                 degenerate_syms
                 and (pr.symbol_a in degenerate_syms or pr.symbol_b in degenerate_syms)
             )
+            risk = _worse_risk(risk_lookup.get(pr.symbol_a), risk_lookup.get(pr.symbol_b))
             perm = perm_lookup.get((pr.symbol_a, pr.symbol_b), None)
-            if thin != pr.thin_info_content or perm != pr.permutation_robust:
-                pr = _dc.replace(pr, thin_info_content=thin, permutation_robust=perm)
+            if (thin != pr.thin_info_content or perm != pr.permutation_robust
+                    or risk != pr.predicted_degeneracy_risk):
+                pr = _dc.replace(pr, thin_info_content=thin, permutation_robust=perm,
+                                  predicted_degeneracy_risk=risk)
             updated.append(pr)
         return updated
 

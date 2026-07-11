@@ -59,7 +59,6 @@ Output:
   output/research/decoupling_analysis.parquet — per-event classification + stats
   latest_run_decoupling_analysis.log
 """
-import glob
 import logging
 import os
 import sys
@@ -71,6 +70,9 @@ import pandas as pd
 from scipy import stats as sp_stats
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+from aligned_pair_loader import TF_DIRS as _TF_DIRS, resolve_tf_results_dir as _resolve_tf_results_dir
 
 _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _RESULTS_DIR = os.path.join(_ROOT, "output", "results")
@@ -178,11 +180,17 @@ def classify_decoupling_event(
     return result
 
 
-def _load_spread_array(tf_dir: str, sym_a: str, sym_b: str) -> Optional[pd.DataFrame]:
-    path = os.path.join(_RESULTS_DIR, tf_dir, f"spread_series_{sym_a}_{sym_b}.parquet")
+def _load_spread_array(results_dir: str, sym_a: str, sym_b: str) -> Optional[pd.DataFrame]:
+    path = os.path.join(results_dir, f"spread_series_{sym_a}_{sym_b}.parquet")
     if not os.path.exists(path):
         return None
-    return pd.read_parquet(path)
+    df = pd.read_parquet(path)
+    # spread_series_*.parquet is persisted on the full calendar-padded grid —
+    # DATA_GAP bars are forward-filled, not NaN, so they must be excluded by
+    # gap_flag before any computation (same convention as threshold_cointegration.py/
+    # variance_ratio_test.py; BUG-D54, found in this session's data-hygiene sweep).
+    real_mask = (df["gap_flag_a"] != 4) & (df["gap_flag_b"] != 4)
+    return df.loc[real_mask]
 
 
 def main():
@@ -193,8 +201,14 @@ def main():
              "events are rare and CAMARF's per-pair history is short.")
 
     rows = []
-    for cand_path in sorted(glob.glob(os.path.join(_RESULTS_DIR, "*", "all_candidates.parquet"))):
-        tf_dir = os.path.basename(os.path.dirname(cand_path))
+    for tf_dir in _TF_DIRS:
+        results_dir, is_stale = _resolve_tf_results_dir(tf_dir)
+        cand_path = os.path.join(results_dir, "all_candidates.parquet")
+        if not os.path.exists(cand_path):
+            continue
+        if is_stale:
+            log.info("NOTE %s: no live output/results/%s, using archived %s instead",
+                      tf_dir, tf_dir, results_dir)
         candidates = pd.read_parquet(cand_path)
         with_break = candidates[candidates["zivot_andrews_break"].notna()]
         log.info("[%s] %d/%d candidates have a detected Zivot-Andrews break",
@@ -202,7 +216,7 @@ def main():
 
         for _, row in with_break.iterrows():
             sym_a, sym_b = row["symbol_a"], row["symbol_b"]
-            spread_df = _load_spread_array(tf_dir, sym_a, sym_b)
+            spread_df = _load_spread_array(results_dir, sym_a, sym_b)
             if spread_df is None or "spread" not in spread_df.columns:
                 continue
             break_date = pd.Timestamp(row["zivot_andrews_break"])

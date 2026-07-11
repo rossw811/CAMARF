@@ -1,0 +1,32 @@
+00:08:33 INFO  === bounded_lookback_primary_screen.py: bounded-recent-lookback EG/KPSS/PO as primary screen, vs. full-sample ===
+00:08:35 INFO  KVUE/KMB@3m: full=gold (p=0.0009, 0.1y)  5y=gold (p=0.0009)  10y=gold (p=0.0009)  [5y window is a no-op, full history < 5y]
+00:08:36 INFO  AMD/DD@1h: full=silver (p=0.0001, 3.0y)  5y=silver (p=0.0001)  10y=silver (p=0.0001)  [5y window is a no-op, full history < 5y]
+00:08:37 INFO  AXP/CRWD@1h: full=silver (p=0.0001, 3.0y)  5y=silver (p=0.0001)  10y=silver (p=0.0001)  [5y window is a no-op, full history < 5y]
+00:08:37 INFO  AME/DD@1h: full=silver (p=0.0000, 3.0y)  5y=silver (p=0.0000)  10y=silver (p=0.0000)  [5y window is a no-op, full history < 5y]
+00:08:38 INFO  AME/MAR@1h: full=silver (p=0.0000, 3.0y)  5y=silver (p=0.0000)  10y=silver (p=0.0000)  [5y window is a no-op, full history < 5y]
+00:08:38 INFO  AMAT/DD@1h: full=silver (p=0.0000, 3.0y)  5y=silver (p=0.0000)  10y=silver (p=0.0000)  [5y window is a no-op, full history < 5y]
+00:08:39 INFO  APP/CRWD@1h: full=silver (p=0.0003, 3.0y)  5y=silver (p=0.0003)  10y=silver (p=0.0003)  [5y window is a no-op, full history < 5y]
+00:08:40 INFO  AVGO/CRWD@1h: full=silver (p=0.0000, 3.0y)  5y=silver (p=0.0000)  10y=silver (p=0.0000)  [5y window is a no-op, full history < 5y]
+00:08:40 INFO  CAT/DD@1h: full=silver (p=0.0000, 3.0y)  5y=silver (p=0.0000)  10y=silver (p=0.0000)  [5y window is a no-op, full history < 5y]
+00:08:41 INFO  CMS/DUK@1h: full=gold (p=0.0001, 3.0y)  5y=gold (p=0.0001)  10y=gold (p=0.0001)  [5y window is a no-op, full history < 5y]
+00:08:42 INFO  DE/DD@1h: full=silver (p=0.0005, 3.0y)  5y=silver (p=0.0005)  10y=silver (p=0.0005)  [5y window is a no-op, full history < 5y]
+00:08:42 INFO  DAL/DD@1h: full=silver (p=0.0000, 3.0y)  5y=silver (p=0.0000)  10y=silver (p=0.0000)  [5y window is a no-op, full history < 5y]
+00:08:43 INFO  TT/MLI@1h: full=silver (p=0.0000, 3.0y)  5y=silver (p=0.0000)  10y=silver (p=0.0000)  [5y window is a no-op, full history < 5y]
+00:08:44 INFO  VRT/MTZ@1h: full=silver (p=0.0000, 3.0y)  5y=silver (p=0.0000)  10y=silver (p=0.0000)  [5y window is a no-op, full history < 5y]
+00:08:44 INFO  WAB/MLI@1h: full=silver (p=0.0000, 3.0y)  5y=silver (p=0.0000)  10y=silver (p=0.0000)  [5y window is a no-op, full history < 5y]
+00:08:45 INFO  TMHC/WAL@1h: full=silver (p=0.0004, 3.0y)  5y=silver (p=0.0004)  10y=silver (p=0.0004)  [5y window is a no-op, full history < 5y]
+00:08:46 INFO  UMBF/FHB@1h: full=silver (p=0.0003, 3.0y)  5y=silver (p=0.0003)  10y=silver (p=0.0003)  [5y window is a no-op, full history < 5y]
+00:08:46 INFO  WAL/MC@1h: full=silver (p=0.0004, 3.0y)  5y=silver (p=0.0004)  10y=silver (p=0.0004)  [5y window is a no-op, full history < 5y]
+00:08:47 INFO  ZION/FHB@1h: full=silver (p=0.0002, 3.0y)  5y=silver (p=0.0002)  10y=silver (p=0.0002)  [5y window is a no-op, full history < 5y]
+00:08:47 INFO  7267.T/8058.T@1M: full=gold (p=0.0001, 26.4y)  5y=silver (p=0.1943)  10y=gold (p=0.0218)
+00:08:47 INFO  
+--- Summary across 20 confirmed pairs ---
+00:08:47 INFO    Pairs with real (non-no-op) 5y window:  1
+00:08:47 INFO    Pairs with real (non-no-op) 10y window: 1
+00:08:47 INFO    Pairs downgraded to bronze/fail under 5y-as-primary:  0/1
+00:08:47 INFO    Pairs downgraded to bronze/fail under 10y-as-primary: 0/1
+00:08:47 INFO  
+Honest scope note: this re-screens the ALREADY-confirmed set on a bounded window; it does not rediscover candidates from scratch under a bounded-lookback-primary regime, which would require re-running the full CointScanner pipeline on truncated data.
+00:08:47 INFO  Saved -> C:\Users\RossW\Projects\CAMARF\output\research\bounded_lookback_primary_screen.parquet
+00:08:47 INFO  ============================================================
+00:08:47 INFO  bounded_lookback_primary_screen.py complete (0.2 min)

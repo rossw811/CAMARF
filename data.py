@@ -1122,6 +1122,34 @@ class DataAligner:
 _SESSION_OPEN_MIN = 9 * 60 + 30  # 9:30 AM ET
 _SESSION_CLOSE_MIN = 16 * 60  # 4:00 PM ET
 
+# Exchange-aware intraday session handling (Development.md, Session ~6-7 plan,
+# built Session 28): international tickers with a native exchange suffix
+# (.L, .T, .HK) trade in their own local session, not NYSE's 9:30-16:00 ET —
+# under the NYSE-only session check above, EVERY bar for these symbols falls
+# outside the ET window and is silently dropped, so only daily data has ever
+# been captured for these tickers. Own local tz + session hours per exchange
+# (minutes since local midnight); DST is handled by pandas' own tz-aware
+# arithmetic (localizing then converting), not hand-computed offsets.
+_EXCHANGE_SUFFIX_MAP = {".L": "XLON", ".T": "JPX", ".HK": "XHKG"}
+_EXCHANGE_SESSION = {
+    # exchange: (IANA tz, local session open min, local session close min)
+    "XLON": ("Europe/London", 8 * 60, 16 * 60 + 30),
+    "JPX": ("Asia/Tokyo", 9 * 60, 15 * 60 + 30),
+    "XHKG": ("Asia/Hong_Kong", 9 * 60 + 30, 16 * 60),
+}
+
+
+def _symbol_exchange(symbol: Optional[str]) -> Optional[str]:
+    """Return the exchange code (XLON/JPX/XHKG) for a suffixed ticker, or
+    None for anything else (including plain US tickers — the default,
+    unaffected path)."""
+    if not symbol:
+        return None
+    for suffix, exchange in _EXCHANGE_SUFFIX_MAP.items():
+        if symbol.endswith(suffix):
+            return exchange
+    return None
+
 # TF → bar duration in minutes
 _TF_MINUTES: Dict[str, int] = {
     "1m": 1,
@@ -1199,6 +1227,7 @@ def snap_timestamps(
     df: pd.DataFrame,
     tf_label: str,
     source: str = "ibkr",
+    symbol: Optional[str] = None,
 ) -> pd.DataFrame:
     """
     Normalize bar timestamps to open-of-bar convention, Eastern time,
@@ -1215,13 +1244,37 @@ def snap_timestamps(
     on a valid boundary (they're off-session bars).
 
     For daily+ TFs: only normalize timezone (no bar-open snapping needed).
+
+    `symbol`: optional, used only to detect an exchange-suffixed
+    international ticker (.L/.T/.HK — see _EXCHANGE_SUFFIX_MAP). When
+    given and recognized, session-membership is checked in THAT
+    exchange's own local session hours (its own tz, not ET) — otherwise
+    every bar for e.g. an LSE-listed stock falls outside the hardcoded
+    NYSE 9:30-16:00 ET window and is silently dropped (confirmed 2026-06-29,
+    Development.md). The final output index is still ET-naive regardless
+    (unchanged downstream contract — cross-exchange pairs need a common
+    index), only the SESSION CHECK itself uses the symbol's own exchange.
+    Omitting `symbol` (the default) is byte-identical to the pre-existing
+    NYSE-only behavior — zero change for the 1500+ existing US-listed
+    symbols already flowing through this function.
     """
     if df is None or df.empty:
         return df
 
     df = df.copy()
+    exchange = _symbol_exchange(symbol)
 
-    # Step 1: normalize to tz-naive Eastern time
+    # Step 1: normalize to tz-naive Eastern time. For an exchange-matched
+    # symbol, first capture the SAME instants in that exchange's own local
+    # tz (for the session check below) before collapsing to ET-naive.
+    local_tz_index = None
+    if exchange is not None and hasattr(df.index, "tz") and df.index.tz is not None:
+        exch_tz, _, _ = _EXCHANGE_SESSION[exchange]
+        try:
+            local_tz_index = df.index.tz_convert(exch_tz)
+        except Exception:
+            local_tz_index = None  # fall back to NYSE-session behavior below
+
     if hasattr(df.index, "tz") and df.index.tz is not None:
         try:
             df.index = df.index.tz_convert("America/New_York").tz_localize(None)
@@ -1232,6 +1285,39 @@ def snap_timestamps(
         return df  # daily+ TFs: timezone normalize is sufficient
 
     bar_mins = _TF_MINUTES[tf_label]
+
+    if local_tz_index is not None:
+        # Exchange-aware path: session membership decided in local time,
+        # bar-open snapping still expressed relative to that local session
+        # (bars per day = same count either way), final index stays ET.
+        _, sess_open_min, sess_close_min = _EXCHANGE_SESSION[exchange]
+        local_naive = local_tz_index.tz_localize(None)
+
+        def _snap_exchange(i: int) -> Optional[pd.Timestamp]:
+            local_ts = local_naive[i]
+            day_open = local_ts.normalize() + pd.Timedelta(minutes=sess_open_min)
+            day_close = local_ts.normalize() + pd.Timedelta(minutes=sess_close_min)
+            if local_ts < day_open or local_ts >= day_close:
+                return None  # outside this exchange's own session — drop
+            mins_since_open = (local_ts - day_open).total_seconds() / 60
+            nearest_bar = round(mins_since_open / bar_mins) * bar_mins
+            n_bars_in_session = (sess_close_min - sess_open_min) // bar_mins
+            nearest_bar = min(nearest_bar, (n_bars_in_session - 1) * bar_mins)
+            snapped_local = day_open + pd.Timedelta(minutes=nearest_bar)
+            # Return the ET-naive timestamp at the SAME offset-into-session
+            # as the snapped local time, keeping the ET output index the
+            # function's stated contract — anchor to this row's own
+            # already-converted ET timestamp, offset by the snap delta.
+            delta = snapped_local - local_ts
+            return df.index[i] + delta
+
+        new_idx = [_snap_exchange(i) for i in range(len(df))]
+        valid = [t is not None for t in new_idx]
+        df = df[valid].copy()
+        df.index = pd.DatetimeIndex([t for t in new_idx if t is not None])
+        df = df[~df.index.duplicated(keep="last")]
+        df.sort_index(inplace=True)
+        return df
 
     # Step 2: snap each timestamp to the nearest session bar open
     def _snap(ts: pd.Timestamp) -> Optional[pd.Timestamp]:
@@ -3675,7 +3761,7 @@ class UniverseBuilder:
                                 (_sym, _cls)
                             )
                             continue
-                        _df2 = snap_timestamps(_df, _tf, "yfinance")
+                        _df2 = snap_timestamps(_df, _tf, "yfinance", symbol=_sym)
                         if _df2 is None or _df2.empty:
                             _fail_snap += 1
                             if _first_fail is None:
@@ -3996,7 +4082,7 @@ class UniverseBuilder:
                                     )
                                     if yf_df is not None and not yf_df.empty:
                                         yf_df = snap_timestamps(
-                                            yf_df, tf_label, source="yfinance"
+                                            yf_df, tf_label, source="yfinance", symbol=sym
                                         )
                                         yf_df = truncate_to_cutoff(yf_df, _dead_cutoff)
                                     if yf_df is not None and not yf_df.empty:
@@ -4101,7 +4187,7 @@ class UniverseBuilder:
                                 _rolling.append(True)
 
                             if df is not None:
-                                df = snap_timestamps(df, tf_label)
+                                df = snap_timestamps(df, tf_label, symbol=symbol)
                                 df = truncate_to_cutoff(df, _canonical_cutoff)
                             if df is not None and not df.empty:
                                 DataStore.append(symbol, tf_label, df)
@@ -4133,7 +4219,7 @@ class UniverseBuilder:
                                 )
                                 if yf_df is not None and not yf_df.empty:
                                     yf_df = snap_timestamps(
-                                        yf_df, tf_label, source="yfinance"
+                                        yf_df, tf_label, source="yfinance", symbol=sym
                                     )
                                     yf_df = truncate_to_cutoff(yf_df, _canonical_cutoff)
                                 if yf_df is not None and not yf_df.empty:
@@ -4177,7 +4263,7 @@ class UniverseBuilder:
                         for tf_f, sym_f, cls_f in _all_dual:
                             r = YFinanceFeed.get_intraday_fallback(sym_f, cls_f, tf_f)
                             if r is not None and not r.empty:
-                                r = snap_timestamps(r, tf_f, "yfinance")
+                                r = snap_timestamps(r, tf_f, "yfinance", symbol=sym_f)
                                 r = truncate_to_cutoff(
                                     r, compute_canonical_cutoff(tf_f)
                                 )

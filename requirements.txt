@@ -1,13 +1,21 @@
 # CAMARF — Python dependencies
 #
-# Generated 2026-06-21 from the actual installed "trading" conda environment
-# (verified via direct `import X; print(X.__version__)` calls, not assumed —
-# see CLAUDE.md's "always verify" rule). Install into the "trading" conda
-# environment specifically; this project has never used a different one
-# (see DEVELOPMENT.md "Dependencies").
+# Originally generated 2026-06-21, RE-VERIFIED 2026-07-11 (Session 28) against
+# the actual installed "trading" conda environment (verified via direct
+# `import X; print(X.__version__)` calls, not assumed — see CLAUDE.md's
+# "always verify" rule). Install into the "trading" conda environment
+# specifically; this project has never used a different one (see
+# DEVELOPMENT.md "Dependencies").
 #
 #   conda activate trading
 #   pip install -r requirements.txt
+#
+# Real drift found and corrected 2026-07-11: pandas was pinned 2.3.2 but the
+# actual, extensively-exercised environment runs 3.0.3 (a major version) —
+# a genuine reproducibility gap, not a rounding difference; scipy 1.16.2 pin
+# vs. actual 1.17.1; statsmodels had no version pin at all. All three fixed
+# below to match what has actually been running, not re-pinned to older
+# versions never actually tested against this session's code.
 
 # --- data.py ---
 yfinance==0.2.66
@@ -18,21 +26,22 @@ requests
 pyarrow==24.0.0
 
 # --- analysis.py ---
-statsmodels
+statsmodels==0.14.6
 scikit-learn==1.9.0
 hmmlearn==0.3.3
 
 # --- core (shared) ---
-pandas==2.3.2
+pandas==3.0.3
 numpy==2.4.6
-scipy==1.16.2
+scipy==1.17.1
 
 # --- macro.py ---
 # No new dependency: fetches FRED's public keyless CSV endpoint using
 # `requests` (already listed above) — deliberately chosen over fredapi to
 # avoid introducing API-key/secrets management into this project.
 
-# --- ml.py (planned, not yet built) ---
+# --- ml.py (Stage 1 built and running since Session ~9; Stage 2 + SHAP still
+# pending — Stage 1 only needs xgboost, not the other three below) ---
 xgboost==3.1.0
 lightgbm==4.6.0
 shap==0.49.1

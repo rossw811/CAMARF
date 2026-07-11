@@ -92,10 +92,13 @@ earlier point in time, would have discovered and traded them. Position-sizing va
 risk-parity improves OOS Sharpe to 5.87 (+0.63 vs baseline); a Hierarchical Risk Parity variant
 using the true cross-pair covariance matrix underperforms risk-parity (5.38 vs 5.87), an honest
 negative result for the more sophisticated approach;
-entry z=1.5 improves IS Sharpe to 5.93 (360 OOS trades). Individual-trade permutation tests
-(IS p = 0.981; OOS p = 0.904) show the per-trade return distribution is not distinguishable
-from random; the equity-curve Sharpe reflects timing advantages not captured by per-trade
-shuffling. A Gatev GGR (2006) distance-method baseline on the same universe achieves OOS
+entry z=1.5 improves IS Sharpe to 5.93 (360 OOS trades). A portfolio-level circular block
+bootstrap over daily P&L (day-level blocks, preserving real cross-pair same-day exit
+correlation — see §6.6 for why a naive trade-level shuffle inflates the null by destroying
+this correlation) gives IS p=0.542, OOS p=0.589: not significant at conventional levels,
+read as the ~70-90 day OOS holdout not yet being long enough to separate the realized path
+from resampling noise, not as an absence of edge (per-pair Sharpes and 60-84% win rates argue
+separately for real per-pair skill). A Gatev GGR (2006) distance-method baseline on the same universe achieves OOS
 Sharpe −0.208, confirming a 5.5+ Sharpe-point advantage for cointegration-based selection.
 We additionally document a generalizable data-hygiene failure mode (calendar-padding
 artifacts in rolling-window statistics on intraday data) likely present, unflagged, in other
@@ -687,37 +690,71 @@ pairs: **10 of 12 (83%) have both legs flagged.**
 session)**: tested exchange tier, float ratio, sector, and market
 capitalization directly against metadata for all 1,354 symbols.
 Exchange tier explains nothing (NYSE is 64.0% of both groups,
-identically). Float ratio is weak (0.955 vs 0.988). Sector shows a
-real but likely secondary skew (Financial Services/Real Estate
-over-represented, Technology/Industrials under-represented — plausibly
-downstream of market cap rather than independent). **Market
-capitalization is the dominant, statistically overwhelming
-explanation**: flagged median $3.0B vs. clean median $17.3B, almost 6x
-smaller (Mann-Whitney U test p = 1.82e-145; correlation between
+identically). **Market capitalization is the dominant, statistically
+overwhelming explanation**: flagged median $3.0B vs. clean median $17.3B,
+almost 6x smaller (Mann-Whitney U test p = 1.82e-145; correlation between
 log(market cap) and flagged status = -0.629). Mechanism: smaller-cap
 names can clear a *dollar-volume* liquidity floor via a handful of
 larger, sporadic trades without trading *frequently* at the tick level
 the way mega-caps do via continuous small-lot order flow — trade size
 and trade frequency are different dimensions of liquidity, and
-screening on dollar volume alone conflates them.
+screening on dollar volume alone conflates them. The relationship is
+close to a clean dose-response, not just a mean shift: flagged rate by
+market-cap quintile is 88.5% (smallest) → 53.7% → 16.0% → 2.6% → 0.0%
+(largest), strictly monotonic decreasing (`price_degeneracy_root_cause.py`,
+2026-07-11, re-derived independently from the same underlying metadata
+and matching the original p-value closely: p=3.65e-145).
 
-**This is now a real, well-characterized, citable finding, not an
-unexplained anomaly** — a third distinct mechanism alongside the
-Strictness Paradox (§4.2, full-sample test power borrowed from a dead
-regime) and the calendar-padding artifact (§4.5, an exact derivable
-arithmetic artifact): daily dollar-volume liquidity screening silently
-admits ~32% of a nominally-liquid universe into intraday cointegration
-testing on trade-frequency-starved data. Whether this becomes a formal
-third pillar in this paper's structure is still Ross's call — he was
-explicitly unsure when asked (2026-06-23) — but the open question has
-shifted from "is there even a real phenomenon" (yes, conclusively) to
-"how to frame it." A candidate fix (a price-density screen,
-`price_density_screen.py`) was built and shown to keep 2/12 and exclude
-10/12 of the current 1m pairs if adopted — kept as a comparison arm,
-not wired into the real pipeline, per Ross's explicit instruction:
-these are ranking/selection decisions that should be evaluated against
-actual backtest performance once that exists, not decided on
-intermediate statistical grounds alone.
+**Sector is a second, genuinely INDEPENDENT factor, not merely a proxy
+for smaller average cap — resolved 2026-07-11, correcting the original
+session's more tentative "plausibly downstream of market cap" framing.**
+The original characterization could not distinguish "sector predicts
+degeneracy" from "sector correlates with cap, and cap predicts
+degeneracy" without controlling for cap directly. Doing so (comparing
+flagged rate only WITHIN the middle market-cap quintile, where cap
+itself cannot be doing the work): REIT/Financial Services/Utilities
+sectors flag at 38.6% vs. 8.1% for every other sector at the identical
+cap level (one-sided Mann-Whitney p≈0.0000 testing the direction the
+uncontrolled breakdown suggested). Plausible mechanism, stated as the
+most likely explanation given the pattern rather than independently
+proven via a third data source (e.g. quoted bid-ask spread or
+market-maker count, not available this session): these sectors are
+historically income/institutional-ownership-heavy with less
+day-trading/momentum interest, so daily dollar volume (adequate
+block/institutional trading) can look healthy while genuine continuous
+intraday price discovery is much thinner.
+
+**This is now a real, well-characterized, citable finding with two
+identified factors (market cap dominant, sector independent and
+secondary), not an unexplained anomaly — CONFIRMED AS THIS PAPER'S THIRD
+PILLAR (Ross, 2026-07-11)**, alongside the Strictness Paradox (§4.2,
+full-sample test power borrowed from a dead regime) and the pair-selection
+lookahead finding (§7.3.1, the causal re-discovery process finding zero
+overlap with the confirmed set): daily dollar-volume liquidity screening
+silently admits ~32% of a nominally-liquid universe into intraday
+cointegration testing on trade-frequency-starved data — a third distinct
+way a naive, standard-practice assumption (here: that adequate daily
+dollar volume implies adequate intraday price discovery) turns out to be
+systematically wrong, discovered and explained with the same
+verify-before-trusting rigor as the other two pillars. (Status history:
+open as of 2026-06-23, when Ross was explicitly unsure; the
+sector-independence result on 2026-07-11 strengthened the finding's
+explanatory completeness immediately before this was confirmed.)
+
+**Implementation, decided the same day (Ross, "Option A"):** a predictive
+market-cap+sector gate (`AnalysisPipeline._predict_degeneracy_risk`,
+`analysis.py`) is now live in the pipeline as a NEW `predicted_
+degeneracy_risk` field on every pair — visibility/prioritization only,
+computed from cheap metadata before any intraday fetch. It is explicitly
+NOT used for exclusion: the existing OBSERVED `thin_info_content` flag
+(actual distinct-close-price count, once intraday data exists) remains
+the sole authoritative exclusion signal, deliberately, to avoid silently
+shrinking the universe on a population-level statistical pattern rather
+than a per-symbol certainty. A separate candidate fix explored earlier
+(a price-density screen, `price_density_screen.py`) was built and shown
+to keep 2/12 and exclude 10/12 of the current 1m pairs if adopted as an
+exclusion rule — kept as a comparison arm, not adopted, consistent with
+the same Option-A philosophy of not excluding on a predictive signal alone.
 
 ## 6. Statistical Validation [DRAFTED — stats.py complete, 2026-06-30]
 
@@ -1089,6 +1126,17 @@ here since this script is diagnostic only.
 **Recommended production configuration:** `--risk-parity` as primary flag (best Sharpe);
 `--neg-hedge` as secondary addition if universe expansion from negative-β pairs is desired.
 HRP was evaluated and is not recommended — it underperforms risk-parity on this pair set.
+
+**A cross-method pattern worth naming briefly here** (full development in `FINDINGS.md` §1, not
+reproduced in full in the main text to keep this paper focused on its central claims): five
+independent comparisons across this project — HRP vs. risk-parity (above), Kalman
+slope+intercept vs. origin-only, Equal Risk Contribution vs. inverse-cluster-size, eigenvalue-
+penalized vs. inverse-cluster-size position weighting, and Meucci's eigenvalue-based effective
+bets vs. Grinold-Kahn breadth (§7.2 above) — each pit a more sophisticated method against a
+simpler alternative on the same real data. Four lose, one wins decisively, and the one win is
+explained by a specific mechanism (the simpler method's assumption is actively wrong for this
+portfolio, not merely less refined) rather than by "simplicity" in the abstract. See
+`FINDINGS.md` §1 for the full five-way writeup with exact numbers and mechanisms.
 
 ### 7.3 Walk-Forward Analysis — Semi-WFA Robustness Check [DRAFTED — 2026-06-29]
 
@@ -1790,6 +1838,36 @@ exceeded total payoff. A naive single-leg overlay doesn't target CAMARF's actual
 (correlated multi-pair regime days, per §6.6/§7.2's own findings), so premium drag outweighs the rare
 payoff — an honest negative result on whether options overlays help this specific strategy.
 
+### 7.15 Robustness and Comparison Arms — Session 28 [DRAFTED — 2026-07-11]
+
+A verification sweep (data hygiene, architecture, full pipeline rerun, documentation alignment)
+plus a further round of comparison-arm building produced several more real, verified results
+that don't individually warrant main-text space but are part of the honest record. Full
+writeups in `FINDINGS.md`; summarized here:
+
+- **Bounded-recent-lookback as primary screen** — a live instance of this paper's own
+  Strictness Paradox mechanism on a currently-confirmed pair (7267.T/8058.T@1M: full-sample
+  EG p=0.0001 vs. 5-year-bounded p=0.19), found systematically rather than hand-picked.
+  `FINDINGS.md` §2.
+- **PairCharacteristicsAnalyzer** (per-pair decision trees + archetype clustering) — built with
+  the full min-N/permutation/holdout discipline; honest small-n result (6/24 pairs show a
+  holdout-confirmed characteristic), exploratory only. `FINDINGS.md` §3.
+- **Regime-conditional entry gate** — surfaced that macro/VIX regime conditioning is a schema
+  field in `backtest.py`, not currently populated; the populated half of the comparison (trending
+  + widening entries) shows real, directionally-consistent underperformance. `FINDINGS.md` §4.
+- **Earnings blackout STORM variant** — a genuine tradeoff, not a clean win: -16.3% trade
+  count, slightly worse Sharpe (5.30 vs. 5.40), but 48% lower max drawdown. `FINDINGS.md` §5.
+- **ML Stage 2 (macro-context ablation)** — built and run; correctly blocked by the same
+  data-volume gate as Stage 1. `FINDINGS.md` §6.
+- **Price-degeneracy screen refresh** — confirmed the original ~32%/1m finding is durable
+  (fresh run: 31.4%), extended for the first time to 2m (23.5%) and 3m (23.4%). The
+  sector-independence root-cause result (§5 above) was built directly on this refreshed data.
+  `FINDINGS.md` §7.
+
+Per this project's own bias-transparency discipline, the full count of comparison arms run this
+session — including ones that did not individually survive into this paper's main text — is
+recorded in `FINDINGS.md`'s closing section, not just the ones that showed something.
+
 ## 8. Bias Documentation [OUTLINED, one bias drafted in detail]
 
 Pull directly from `BiasAuditLog` (`output/results/bias_audit.json`,
@@ -1838,14 +1916,22 @@ computed number conditional on the pair set already being known, and is
 not evidence that a live, causally-run version of this pipeline would
 have discovered and traded it.
 
-## 9. AI-Tool Disclosure [OUTLINED, three concrete examples drafted]
+## 9. AI-Tool Disclosure [DRAFTED — examples, limitations, and appropriate-use guidance]
 
 This project used Claude Code (Anthropic) as an implementation/research
-partner throughout. The disclosure's value, beyond compliance, is as
-falsifiable evidence of a specific research skill — catching incorrect
-output (the AI's own or a summary of it) by checking it against raw
-evidence rather than trusting the written record. Three concrete,
-real examples, kept specific rather than genericized:
+partner throughout — every script in `research/`, every production-code
+change, and the great majority of this document's own prose were drafted
+with AI assistance, under Ross's direction and review. The disclosure's
+value, beyond compliance, is as falsifiable evidence of a specific
+research skill this project depends on structurally: catching incorrect
+output (the AI's own, or a summary of someone else's) by checking it
+against raw evidence rather than trusting the written record. Five
+concrete, real examples, kept specific rather than genericized — the
+first three from earlier sessions, the last two from the same session
+(2026-07-11) that produced this paper's third pillar, chosen because they
+illustrate two DIFFERENT failure classes (a claim that misled a human
+decision, and a limitation surfaced by the project's own verification
+discipline rather than by luck):
 
 1. **A prior session's "fixed" claim was false, caught by re-testing
    live code.** An earlier session's write-up stated two bugs (BUG-D31,
@@ -1864,18 +1950,155 @@ real examples, kept specific rather than genericized:
    literal, unsummarized raw text instead of continuing to reason from
    the summary — the contradiction was visible immediately once the raw
    output was in hand.
-3. **This project's own most recent session**: a debug script written to
-   verify a bug fix (`debug/_verify_save_tf_results_return.py`)
-   inadvertently wrote 6 fake placeholder symbols into a shared,
-   production artifact (`confirmed_pairs_manifest.json`) as a side
-   effect of exercising the code path under test. Caught before the
-   manifest was used for a real downstream fetch, by inspecting the
-   manifest's actual contents rather than assuming the test's own
-   cleanup step (which only removed its own throwaway output directory)
-   had been sufficient. The fix script was itself corrected to back up
-   and restore shared state around itself, the same discipline now
-   documented as a standing convention for any future debug script that
-   touches shared project artifacts.
+3. **An earlier session**: a debug script written to verify a bug fix
+   (`debug/_verify_save_tf_results_return.py`) inadvertently wrote 6 fake
+   placeholder symbols into a shared, production artifact
+   (`confirmed_pairs_manifest.json`) as a side effect of exercising the
+   code path under test. Caught before the manifest was used for a real
+   downstream fetch, by inspecting the manifest's actual contents rather
+   than assuming the test's own cleanup step (which only removed its own
+   throwaway output directory) had been sufficient. The fix script was
+   itself corrected to back up and restore shared state around itself,
+   the same discipline now documented as a standing convention for any
+   future debug script that touches shared project artifacts.
+4. **A false claim that misled a human decision, not just a computation
+   (2026-07-11).** Asked to scope a research backlog item ("ML ensemble /
+   multi-system discovery architecture"), a case-sensitive text search
+   for the item's own name missed the actual section header
+   (`## Planned Enhancement: ML Ensemble / Multi-System Discovery
+   Architecture`) elsewhere in the project's session log, and reported to
+   Ross that the item had "no surviving spec anywhere." Ross made a real
+   decision on this basis (agreeing to drop the item). The error was
+   caught minutes later while reading the same document for unrelated
+   context, and reported to Ross immediately rather than silently
+   corrected — he then re-made the decision (to build it) with accurate
+   information. **This is the more serious failure class of the two
+   illustrated here**: not an internal computation an automated test can
+   catch, but a confidently-stated negative ("X does not exist") that
+   directly steered a human's choice before being caught by chance rather
+   than by a structural safeguard. The project's mitigation going forward
+   is procedural, not technical: negative claims ("no spec exists," "this
+   was never built," "nothing references X") are treated as themselves
+   requiring the same skepticism as any other AI output, precisely
+   because there is no automated verification step equivalent to a
+   synthetic test for "did I search correctly."
+5. **A limitation surfaced by the verification process itself, not by
+   real-data testing (2026-07-11)** — the more reassuring failure mode,
+   included for contrast with #4. While building a new position-sizing
+   comparison arm (eigenvalue-weighted portfolio weighting,
+   `research/eigenvalue_weighted_position_sizing.py`), the REQUIRED
+   synthetic verification test (not real data) revealed that the method's
+   design was unstable under eigenvalue degeneracy — an unanticipated
+   failure mode discovered because the verify-before-trusting discipline
+   was followed as a matter of course, not because the failure mode was
+   specifically anticipated going in. The design was corrected (a
+   Marchenko-Pastur-adaptive eigenvector count replacing a fixed one)
+   before the method ever touched real data. Contrast with #4: here, the
+   project's own standing methodology (write a synthetic test before
+   trusting a new statistical method on real data) is what surfaced the
+   problem; in #4, no equivalent structural safeguard existed for
+   "verify a negative claim about the existing document," which is
+   exactly why #4's mitigation above is procedural rather than a specific
+   test that could be written once and reused.
+
+### Limitations, stated directly
+
+- **AI output is not privileged relative to any other unverified claim.**
+  Every quantitative result in this paper traces to a specific script and
+  a specific run date specifically because AI-generated numbers,
+  reasoning, and summaries have been directly observed (examples #1-4
+  above) to be confidently wrong. The project's verification discipline
+  (synthetic tests before real data, independent re-derivation of
+  suspicious numbers, raw evidence over summaries) is the actual
+  safeguard — not any claimed property of the AI tool itself.
+- **Negative claims ("X was never built," "no reference to Y exists")
+  are the least reliable category**, per example #4 — a search tool
+  missing something produces silence, not an error, so there is no
+  natural signal that a negative claim needs re-checking the way a
+  crashing test signals a positive claim needs fixing.
+- **Long, autonomous sessions accumulate work faster than a human
+  collaborator can review it line-by-line.** This paper's own §7.15 and
+  `FINDINGS.md` were produced substantially faster than Ross could
+  independently re-derive or exhaustively audit each number in real
+  time; the practical safeguard used throughout was structural (every
+  claim ties to a script + synthetic test + run date, so it CAN be
+  independently re-verified later) rather than exhaustive real-time
+  human review of every intermediate step — a real, honestly-stated
+  tradeoff of working this way, not a claim that every number here has
+  already been independently re-derived by a human.
+- **AI-drafted prose can sound confident regardless of underlying
+  certainty.** Where this paper hedges ("plausible mechanism, not
+  independently proven," "honest scope note," "small-n, not yet
+  generalizable"), that hedging reflects a deliberate editorial
+  standard applied throughout — not a natural byproduct of how the
+  drafting tool works, which would default to confident-sounding prose
+  regardless of whether the underlying evidence actually supports it.
+
+### How AI can be used here — and where it should not be
+
+**Appropriate, demonstrated uses in this project**: implementation
+acceleration for well-specified, independently-verifiable statistical
+and computational tasks (always paired with a synthetic ground-truth
+test before trusting real-data output, per this project's standing
+discipline); first-pass codebase/documentation search, with the explicit
+caveat (example #4) that a negative result from that search is not
+reliable evidence of absence without a second check; maintaining a level
+of contemporaneous, detailed session documentation (this project's
+`Development.md`, now exceeding 10,000 lines across 28 sessions) that
+would be impractical to sustain by hand at the same level of detail over
+the same timespan.
+
+**Not appropriate, and not how this project used it**: autonomous
+methodology or scope decisions. Every new statistical technique, every
+production-code change, and every structural decision about this
+paper's own framing (including, concretely, the "Option A" predictive-
+gate design in §5 and the decision to make price-degeneracy this paper's
+third pillar) was made by Ross, with AI in an implementation and
+research-support role — a standing project rule (`CLAUDE.md`'s working-
+style section), not merely this paper's retrospective description of
+what happened. This distinction — AI accelerates execution of a
+directed research program, it does not direct the program — is the
+actual position this disclosure is making, not a compliance formality.
+
+### Tool and orchestration transparency
+
+Stated explicitly, not left implicit: this project's AI-assisted sessions used Claude Code
+(Anthropic) with standard, single-agent tool use — file read/write/edit, shell command execution,
+codebase search, and (for genuine open questions, e.g. the market-cap+sector gate's exact
+implementation mechanism in §5, or whether price-degeneracy should be this paper's third pillar)
+direct clarifying questions posed back to Ross rather than an autonomous default choice. **No
+multi-agent orchestration, parallel subagent dispatch, or autonomous background-task delegation was
+used for any statistical result, comparison arm, or claim in this paper** — every script, every
+number, and every verification test was produced by the same single, continuous, sequentially-
+directed session that a reader could in principle audit turn-by-turn, not by independent parallel
+agents whose individual outputs would then need to be reconciled or cross-checked against each
+other. One exploratory attempt to use `graphify` (a codebase-to-knowledge-graph tool) for
+architecture navigation was made and is disclosed as attempted-but-not-relied-upon: it hit an
+internal safety guard partway through (refusing to overwrite a richer existing graph with a
+shallower re-extraction) and was abandoned in favor of direct source reading for the remainder of
+that session — no finding in this paper depends on graphify's output. No web search, no external
+API beyond this project's own established data sources (below), and no third-party AI tool beyond
+Claude Code itself contributed to any result reported here.
+
+### Data acquisition transparency
+
+Every empirical claim in this paper traces to real, named, reproducible data sources — never
+simulated or fabricated data presented as real. The boundary is kept explicit throughout this
+project's own code and documentation: synthetic data is generated ONLY inside `debug/_verify_*.py`
+files, exclusively to test a method against a KNOWN ground truth before it is trusted on real data
+(the verification discipline cited throughout this paper and `FINDINGS.md`) — synthetic results are
+never themselves reported as findings. Real data sources, each already documented in detail in
+`CLAUDE.md`'s "Data Test Range & Reproducibility" section and `README.md`'s "Reproducibility"
+section (repeated here for this section's own completeness, not as a new claim): **yfinance**
+(primary equity/ETF/crypto/forex price data, keyless, no paid subscription), **IBKR/Interactive
+Brokers** (supplemental deep-history intraday data for confirmed pairs only, via a live account
+connection, run manually and separately from the main pipeline), **FRED** (Federal Reserve Economic
+Data, public keyless CSV endpoints, for macro regime series), and **CFTC** (Commitment of Traders
+public reporting API, for positioning data). No paid data vendor, no scraped-without-permission
+source, and no data source without a publicly verifiable origin was used anywhere in this project.
+Universe construction (which symbols are even candidates) is documented separately and in full in
+`Development.md`'s universe-growth history — itself written specifically so an independent party
+could reconstruct an equivalent universe without access to this repository's own cached data.
 
 **[TODO before finalizing]**: verify each target program's
 (Baruch/Berkeley/Columbia) specific required AI-disclosure format and

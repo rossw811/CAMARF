@@ -406,8 +406,10 @@ condensed summary):
   - ~~SPY/VOO exclusion~~ — done, Session 27 (`CrossAssetTagger._is_index_tracking_pair`)
   - ~~STORM literature survey~~ — done, Session 23
   - **ML gate**: ~2 weeks from 2026-06-30 for training data accumulation (23-pair set clock reset)
-  - **New modules** (planned): `corporate_actions.py`, `coint_frac_window_grid.py`,
-    `cross_session_leadlag.py`, universe expansion (NASDAQ, Russell, crypto)
+  - ~~`corporate_actions.py`~~ — done, Session 27 (`research/corporate_actions_audit.py`,
+    confirmed built and run; this line was stale as of Session 28's doc-alignment sweep)
+  - **New modules** (still planned): `coint_frac_window_grid.py`, `cross_session_leadlag.py`,
+    universe expansion (NASDAQ, Russell, crypto)
   - **Known issue**: entry z=2.5 is optimal in sensitivity grid (10.59 vs 9.18 for z=2.0);
     evaluate promoting to production default once 6+ months OOS history available
 
@@ -424,6 +426,8 @@ condensed summary):
 - `ml.py` — spread-resolution meta-labeler (Stage 1; Stage 2 + SHAP pending)
 - `backtest.py` — event-driven backtest engine (Layer 1 baseline + Layer 2 stub)
 - `macro.py` — FRED macro regime context
+- `earnings.py` — earnings-date fetch/cache (`EarningsCalendar`), used by `backtest.py
+  --storm-earnings-blackout`
 - `config.py` — all configuration parameters
 - `seed_sp_caches.py` — standalone S&P 400/600 cache seeder with retry logic
 
@@ -447,7 +451,13 @@ this name; it's referenced by exact path dozens of times in DEVELOPMENT.md.
 - `PAPER.md` — living draft of the actual paper/thesis, started Session 10
   (2026-06-23). Sections marked [DRAFTED]/[OUTLINED]/[TBD] — update
   alongside DEVELOPMENT.md whenever a session produces a citable finding,
-  not just at project completion.
+  not just at project completion. Kept deliberately tight around the
+  paper's headline pillars — not every verified finding lives here.
+- `FINDINGS.md` — full-depth writeups of verified comparison arms and
+  robustness checks that PAPER.md's §7.15 summarizes and points to, but
+  doesn't reproduce in full (added 2026-07-11, to keep PAPER.md focused).
+  Same verification standard as PAPER.md; organized by relevance to the
+  paper's central claims, not by confidence or quality.
 - `latest_run_data.log` / `latest_run_analysis.log` — auto-generated run
   summaries, written after every run, read these first when diagnosing
 
