@@ -4,13 +4,23 @@ __pycache__/
 # Large generated data/output — regenerate via the pipeline (see README.md
 # "Reproducibility" / CLAUDE.md "Data Test Range & Reproducibility") rather
 # than tracking multi-GB binary parquet in git history. latest_run_*.log
-# summaries at repo root are small, curated, and intentionally still tracked.
-output/cache/
-output/backtest/
-output/stats/
-output/research/
-output/sensitivity/
-output/results/
-output/report/
-output/reports/
-_*.log
+# summaries at repo root are small, curated, and intentionally still tracked
+# (the pattern below matches the raw stdout/stderr dumps, NOT that file).
+output/
+
+# graphify-out/: the interactive chart + report ARE tracked (graph.html,
+# graph_standalone.html, graph.json, GRAPH_REPORT.md, manifest.json) so the
+# knowledge graph is browsable on GitHub without regenerating it locally.
+# Only the regenerable AST/semantic cache and machine-local scratch state
+# (e.g. .graphify_python, a literal local filesystem path) are ignored.
+graphify-out/cache/
+graphify-out/.graphify_*
+
+# Fixed 2026-07-11: the old pattern here was `_*.log`, which matches ZERO
+# real filenames in this repo (every log is named latest_*.log, not
+# _*.log) — a real bug that let 20 raw stdout/stderr dumps get tracked by
+# accident. This pattern actually matches them, while NOT matching the
+# intentionally-tracked latest_run_*.log summaries (those don't end in
+# _stdout.log/_stderr.log).
+latest_*_stdout.log
+latest_*_stderr.log

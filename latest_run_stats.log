@@ -1,12 +1,12 @@
 === CAMARF stats.py ===
-date:        2026-07-10 02:21
+date:        2026-07-10 23:39
 runtime_min: 1.2
 
 Input: 20 confirmed pairs
 Trades: IS=1042 OOS=296 neghedge=304
-[S1 Cointegration tiers] gold=8 silver=11 bronze=0 no_spread=1 conflict=11
+[S1 Cointegration tiers] gold=10 silver=9 bronze=0 no_spread=1 conflict=9
 [S2 Hedge ratios] robust=0/20 (spread_bps < 500) conflicts=0
-[S3 EVT/GPD] fat_tail_pairs=16/20 (xi > 0.30)
+[S3 EVT/GPD] fat_tail_pairs=12/20 (xi > 0.30)
 [S4 DCC-GARCH] 45 pair-pairs; peak_rho>0.70: 0 (correlated-loss risk)
 [S5 Phase 1] best_fit_dist=garch11_normal_resid (AIC), n_trades=1338
 [S5 Phase 2] regime_bootstrap: 1 groups, iid_median_sharpe=9.20

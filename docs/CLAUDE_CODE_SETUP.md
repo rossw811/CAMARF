@@ -76,13 +76,13 @@ connect your Claude Pro/Max account, or provide an API key.
 ## 4. Project Setup
 
 ```powershell
-cd C:\Users\RossW\OneDrive\Documents\CAMARF
+cd C:\Users\RossW\Projects\CAMARF
 claude
 ```
 
 Claude Code reads `CLAUDE.md` automatically from the project root at the
 start of every session — this is already drafted and should be saved at
-`C:\Users\RossW\OneDrive\Documents\CAMARF\CLAUDE.md`.
+`C:\Users\RossW\Projects\CAMARF\CLAUDE.md`.
 
 **Important — initialize git if you haven't already**, both for Claude Code's
 diff/commit features and as a safety net (see Section 7):
@@ -134,6 +134,15 @@ to make the new skills available in the current session.
 documentation lookup tool; once installed it's available automatically,
 invoked either by you explicitly or by Claude recognizing it's relevant
 (e.g. "check context7 for current yfinance docs").
+
+**`graphify`** (added since this guide was first written — now an
+established, actively-used tool, not optional) — turns the codebase into
+a queryable knowledge graph (`graphify-out/graph.json`), used for
+architecture questions and cross-file relationship queries. Install via
+`uv tool install graphifyy` (needs `uv`: `pip install uv` first if not
+already present), then `graphify claude install` from the project root to
+wire the CLAUDE.md section + PreToolUse hook. See the `## graphify`
+section in `CLAUDE.md` for the query/path/explain usage convention.
 
 ### Explicitly do NOT install
 

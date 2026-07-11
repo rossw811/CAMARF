@@ -159,6 +159,12 @@ def _load_spread_series(symbol_a: str, symbol_b: str, tf_label: str) -> Optional
     for path in candidates:
         try:
             df = pd.read_parquet(path)
+            # spread_series_*.parquet is on the full calendar-padded grid — DATA_GAP
+            # bars are forward-filled, not NaN, so .dropna() alone does not remove
+            # them (BUG-D54, found in this session's data-hygiene sweep; same class
+            # already fixed in threshold_cointegration.py/variance_ratio_test.py).
+            if "gap_flag_a" in df.columns and "gap_flag_b" in df.columns:
+                df = df.loc[(df["gap_flag_a"] != 4) & (df["gap_flag_b"] != 4)]
             spread = df["spread"].dropna()
             if len(spread) >= 20:
                 return spread
@@ -181,6 +187,11 @@ def _load_spread_df(symbol_a: str, symbol_b: str, tf_label: str) -> Optional[pd.
     for path in candidates:
         try:
             df = pd.read_parquet(path)
+            # Same DATA_GAP calendar-padding exclusion as _load_spread_series above
+            # (BUG-D54) — half_life_rolling is a rolling stat and gets distorted by
+            # frozen forward-filled padding just like the spread column would.
+            if "gap_flag_a" in df.columns and "gap_flag_b" in df.columns:
+                df = df.loc[(df["gap_flag_a"] != 4) & (df["gap_flag_b"] != 4)]
             if len(df) >= 20:
                 return df
         except Exception:

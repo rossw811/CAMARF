@@ -218,12 +218,30 @@ excludes, via `backtest.py --pairs-override`) and `era_decay_replication.py` (Do
 **`debug/`** — ad-hoc scratch utilities plus `_verify_*.py` synthetic proofs cited
 throughout `Development.md`.
 
-- `CLAUDE.md` — fast-orientation project context (architecture rules, working style,
-  data test range)
-- `DEVELOPMENT.md` — canonical project memory: full bug registry, session-by-session log
-- `PAPER.md` — living draft of the actual paper/thesis
-- `CONTRIBUTING.md` — how to run, modify, and validate this project
 - `latest_run_*.log` — auto-generated structured run summaries, one per script
+
+---
+
+## Documentation Map — which file to read for what
+
+This project keeps several documents with deliberately different jobs. Reading the wrong
+one for what you're trying to do is the most common way to end up with a stale or
+misleadingly-narrow picture — use this table to pick the right one first:
+
+| Document | Read this when you want... | Kept current how |
+|---|---|---|
+| **`README.md`** (this file) | A first-pass overview: what the project is, the headline finding, how to run the pipeline. Not the source of truth for exact current numbers — those drift between pipeline runs faster than this file gets touched. | Spot-checked each session, not rewritten each run |
+| **`CLAUDE.md`** | Fast orientation for picking the project back up: non-negotiable architecture rules, known-resolved issues (don't re-suggest these), working-style conventions, and a condensed "Current State" pointer to the latest full session in `Development.md`. The file every session should read FIRST. | Updated every session |
+| **`PAPER.md`** | The actual paper draft — the three headline pillars (Strictness Paradox, pair-selection lookahead, price-degeneracy), the full methodology, and a tight "Robustness and Comparison Arms" section (§7.15) that summarizes and points to `FINDINGS.md` for depth. Kept deliberately focused — not every verified finding this project has produced lives here, by design. | Updated when a finding is verified and belongs in the core narrative |
+| **`FINDINGS.md`** | Full-depth writeups of every OTHER verified, honest finding — comparison arms, robustness checks, negative results — that isn't load-bearing for `PAPER.md`'s central claims but is still real, checked work worth citing. Nothing here is hidden; it's organized by relevance to the thesis, not by confidence or quality. | Updated alongside `PAPER.md` §7.15 |
+| **`Development.md`** | The canonical, full project memory — every session's log, the complete `BUG-D` registry, design rationale, and the honest record of what was tried and reverted (not just what was kept). The place to look if you need to know *why* something is built the way it is, or whether an idea was already tried and abandoned. | Append-only, every session |
+| **`HANDOFF.md`** | A point-in-time directive written at the end of a specific session, addressed to whichever session picks the project up next — a punch list of what to verify, not a reference document. Expect it to describe a specific past moment, not the current state. | Written once per handoff, not maintained afterward |
+| **`CONTRIBUTING.md`** | How to actually run, modify, and validate the codebase — environment setup, the pipeline command sequence, the "STORM variant" pattern for adding a new backtest comparison arm, where bias documentation and synthetic verification tests live. | Updated when the development workflow itself changes |
+
+If you're only reading one file to get oriented: `CLAUDE.md`. If you're trying to understand
+a specific number in `PAPER.md`: `reproduce.py --list` maps it to the script that generated
+it; if that number isn't in `PAPER.md` at all, check `FINDINGS.md` before assuming it doesn't
+exist.
 
 ---
 
