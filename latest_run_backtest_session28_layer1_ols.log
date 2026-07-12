@@ -1,0 +1,73 @@
+2026-07-11 23:35:41  INFO      Survivorship exclusions loaded: 378 delist events
+2026-07-11 23:35:41  INFO      [3m] 1 confirmed pairs
+2026-07-11 23:35:41  INFO      [1h] 24 confirmed pairs
+2026-07-11 23:35:41  INFO        LNT/VTR@1h[ols] 57 trades | WR=60% | SR=23.87 | PnL=12242.79
+2026-07-11 23:35:41  INFO        LNT/WELL@1h[ols] 40 trades | WR=78% | SR=38.92 | PnL=14823.49
+2026-07-11 23:35:41  INFO        AXP/CRWD@1h[ols] 51 trades | WR=65% | SR=33.32 | PnL=10298.28
+2026-07-11 23:35:41  INFO        AME/MAR@1h[ols] 61 trades | WR=48% | SR=13.51 | PnL=10562.20
+2026-07-11 23:35:41  INFO        APP/CRWD@1h[ols] 44 trades | WR=68% | SR=30.11 | PnL=25082.29
+2026-07-11 23:35:41  INFO        AVGO/CRWD@1h[ols] 56 trades | WR=57% | SR=22.22 | PnL=19356.97
+2026-07-11 23:35:41  INFO        CMS/DUK@1h[ols] 47 trades | WR=64% | SR=31.63 | PnL=10923.77
+2026-07-11 23:35:41  INFO        FIX/MLI@1h[ols] 43 trades | WR=67% | SR=24.52 | PnL=19593.13
+2026-07-11 23:35:41  INFO        EME/MLI@1h[ols] 43 trades | WR=60% | SR=21.39 | PnL=11940.54
+2026-07-11 23:35:41  INFO        GS/MLI@1h[ols] 40 trades | WR=50% | SR=24.53 | PnL=8132.06
+2026-07-11 23:35:42  INFO        MET/TMHC@1h[ols] 52 trades | WR=65% | SR=7.17 | PnL=13232.20
+2026-07-11 23:35:42  INFO        PFG/STLD@1h[ols] 38 trades | WR=66% | SR=34.62 | PnL=9981.90
+2026-07-11 23:35:42  INFO        VRT/MTZ@1h[ols] 38 trades | WR=71% | SR=33.92 | PnL=19905.95
+2026-07-11 23:35:42  INFO        QQQ/MLI@1h[ols] 39 trades | WR=72% | SR=29.19 | PnL=5221.97
+2026-07-11 23:35:42  INFO        MTSI/WCC@1h[ols] 48 trades | WR=56% | SR=24.57 | PnL=15431.28
+2026-07-11 23:35:42  INFO        UMBF/FHB@1h[ols] 40 trades | WR=52% | SR=22.25 | PnL=5882.88
+2026-07-11 23:35:42  INFO      Run summary \u2192 latest_run_backtest.log
+
+======================================================================
+  BACKTEST SUMMARY — LAYER1
+======================================================================
+  Pairs tested: 16
+  Total trades: 737
+  Total net P&L (spread units): 212611.70
+
+  By timeframe (mean):
+    n_trades  win_rate   sharpe    total_pnl
+tf                                          
+1h   46.0625  0.624513  25.9844  13288.23125
+
+  OLS vs Kalman:
+              n_trades  win_rate   sharpe    total_pnl
+hedge_method                                          
+ols            46.0625  0.624513  25.9844  13288.23125
+
+  Top 10 pairs by net P&L:
+tf symbol_a symbol_b hedge_method  n_trades  win_rate  sharpe  total_pnl
+1h      APP     CRWD          ols        44    0.6818 30.1092   25082.29
+1h      VRT      MTZ          ols        38    0.7105 33.9162   19905.95
+1h      FIX      MLI          ols        43    0.6744 24.5250   19593.13
+1h     AVGO     CRWD          ols        56    0.5714 22.2243   19356.97
+1h     MTSI      WCC          ols        48    0.5625 24.5655   15431.28
+1h      LNT     WELL          ols        40    0.7750 38.9227   14823.49
+1h      MET     TMHC          ols        52    0.6538  7.1726   13232.20
+1h      LNT      VTR          ols        57    0.5965 23.8725   12242.79
+1h      EME      MLI          ols        43    0.6047 21.3929   11940.54
+1h      CMS      DUK          ols        47    0.6383 31.6325   10923.77
+
+  Bottom 5 pairs by net P&L:
+tf symbol_a symbol_b hedge_method  n_trades  total_pnl
+1h      QQQ      MLI          ols        39    5221.97
+1h     UMBF      FHB          ols        40    5882.88
+1h       GS      MLI          ols        40    8132.06
+1h      PFG     STLD          ols        38    9981.90
+1h      AXP     CRWD          ols        51   10298.28
+
+  Portfolio-level stats:
+    n_pairs: 16
+    n_trades_total: 737
+    total_pnl_portfolio: 212611.71
+    sharpe_portfolio: 5.0435
+    max_drawdown_portfolio: 7684.97
+    max_concentration_pair: APP/CRWD@1h
+    max_concentration_pct: 0.118
+
+  Bias notes (episodic survivorship + hedge lookahead — see docstring):
+    Full-series run = IN-SAMPLE. Layer 2 holdout run = OOS.
+======================================================================
+
+EXIT:0

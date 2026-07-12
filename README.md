@@ -49,44 +49,48 @@ See `PAPER.md` for the full argument, literature review, and empirical results.
 
 ---
 
-## Current Results (Session 22, full pipeline run 2026-06-30)
+## Current Results (Session 28, full pipeline rerun + 3 bug fixes, 2026-07-12)
 
-**Confirmed pairs: 23** across 5 timeframes — 17 @1h (including a 5-pair DD-hub
-cluster), 2 @3m, 1 @30m, 2 @4h, 1 international (7267.T/8058.T).
+**Confirmed pairs: 26** — 24 @1h (incl. 12 cross-asset), 1 @3m, 1 @1M (international,
+7267.T/8058.T). The 30m/4h pairs present in the prior Session 22 snapshot are not in this
+session's fresh confirmed set — a genuine change in what the current screen finds as data has
+grown, not a bug.
 
 | Metric | In-Sample | Out-of-Sample (20% holdout) |
 |---|---|---|
-| Portfolio Sharpe | **5.2935** | **5.2443** |
-| Trades | 1,028 | 296 |
-| Total P&L | $264,926 | $73,596 |
+| Portfolio Sharpe | **5.8044** | **5.2155** |
+| Trades | 2,168 | 449 |
 
-IS→OOS degradation is **0.9%** — far below typical stat-arb decay (Do & Faff 2010
-document ~70%+ decay for the classical GGR distance method over multi-decade samples).
+IS→OOS degradation is **10.2%** — up from the previously-reported 0.9% figure, reported honestly
+rather than glossed over. This session found and fixed two real bugs affecting these numbers:
+**BUG-D58** (a survivorship-exclusion false positive was silently zeroing out 7/24 confirmed
+pairs — DD/NOV/FHN were flagged as "delisted" based on being demoted out of the S&P 500 index at
+some point, not on actually ceasing to trade) and **BUG-D59** (the cointegration-vs-distance
+portfolio comparison below was an unweighted mean of noisy per-pair Sharpes, not a real pooled
+portfolio statistic). Full write-ups in `Development.md` and `BUG_LOG.md`.
 
-- **Best position-sizing variant:** inverse-volatility risk-parity, OOS Sharpe **5.8689**
-- **Walk-forward robustness:** baseline expanding/rolling Sharpe 3.13/3.27; best variant
-  (mm_exec, MM-robust hedge ratio) 3.82/3.96
-- **Distance-method baseline comparison (Gatev, Goetzmann & Rouwenhorst 2006):**
-  CAMARF's cointegration-based selection achieves mean per-pair Sharpe **11.741** vs.
-  GGR's distance method at **−0.208** on the same universe and window
-- **Statistical validation stack:** EG+KPSS+Phillips-Ouliaris confirmatory tiers (13
-  gold / 9 silver of 22 testable pairs), EVT/GPD tail risk (16/23 pairs fat-tailed),
-  DCC-GARCH concentration monitoring, portfolio-level permutation tests (reported
-  honestly — not significant at conventional levels; see PAPER.md §6.6 for why)
-- **Deflated Sharpe Ratio** (correcting for 14 backtest variants tried, non-normal
-  daily P&L, small sample size): IS z=11.02, OOS z=6.48 — decisively clears the
-  "no genuine skill" null even after this correction
-- **Filter-ablation:** the coint_frac threshold filter's 297 excluded @1h candidates
-  would have produced OOS Sharpe 3.67 on their own — lower than the confirmed set's
-  5.24, so the filter is net-positive, though the excluded set isn't worthless either
-- **Absorption Ratio** (Kritzman, Li, Page & Rigobon 2011, rolling systemic-risk
-  measure): mean 0.427, range 0.205–0.847 across the confirmed-pair universe
-- **HRP vs. risk-parity:** Hierarchical Risk Parity (true cross-pair covariance)
-  OOS Sharpe 5.3752 — better than baseline but below risk-parity's simpler
-  per-pair-volatility approach for this pair set
-- **Square-root market impact** (vs. flat-bps slippage): OOS Sharpe 5.2591 —
-  slightly better than baseline, consistent with position sizes being small
-  relative to these liquid names' ADV
+- **Distance-method baseline comparison (Gatev, Goetzmann & Rouwenhorst 2006), BUG-D59 fix
+  applied:** cointegration-based selection's correctly-pooled portfolio Sharpe is **8.542** vs.
+  GGR's distance method at **7.865** on the same universe and window — a real but far more modest
+  ~0.7 Sharpe-point advantage. The previously-reported "11.741 vs. −0.208" comparison was a
+  measurement artifact (see `Development.md`, 2026-07-12) — the magnitude of this shift is still
+  being investigated, not yet fully explained.
+- **Statistical validation stack:** EG+KPSS+Phillips-Ouliaris confirmatory tiers (17
+  gold / 8 silver of 25 testable pairs, unchanged by this session's fixes), EVT/GPD tail risk
+  (17/26 pairs fat-tailed, up from 16/26 — several previously-truncated pairs now have real
+  P&L-based tail estimates), DCC-GARCH concentration monitoring, portfolio-level permutation
+  tests (IS p=0.546, OOS p=0.559 — not significant at conventional levels; see PAPER.md §6.6)
+- **Deflated Sharpe Ratio** (correcting for 49 backtest variants tried, non-normal daily P&L,
+  small sample size): **IS z=9.53, OOS z=2.91** — strengthened, not weakened, by the BUG-D58 fix
+  (more real trade data gives a cleaner signal). 29 evaluations have now examined the same OOS
+  holdout window — reserving a genuinely fresh holdout slice is an agreed next step, not yet
+  implemented (see `Development.md`'s Garden-of-Forking-Paths caveat).
+- **Not yet re-verified against this session's fixes** (flagged explicitly rather than silently
+  left stale): best position-sizing variant (risk-parity, previously 5.8689), walk-forward
+  robustness range (previously 3.13/3.27 baseline — note `wfa.py` doesn't apply survivorship
+  truncation so is unaffected by BUG-D58, but hasn't been rechecked against this exact write-up),
+  filter-ablation, Absorption Ratio, HRP comparison, square-root market impact. These all need a
+  dedicated re-run pass before being restated as current.
 
 Numbers update as the pipeline reruns; `PAPER.md` and `Development.md` are the sources
 of truth, not this file.

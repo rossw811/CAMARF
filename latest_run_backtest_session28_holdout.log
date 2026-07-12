@@ -1,0 +1,91 @@
+2026-07-11 23:34:39  INFO      Survivorship exclusions loaded: 378 delist events
+2026-07-11 23:34:40  INFO      [3m] 1 confirmed pairs
+2026-07-11 23:34:40  INFO      [1h] 24 confirmed pairs
+2026-07-11 23:34:40  INFO        LNT/VTR@1h[ols] 13 trades | WR=62% | SR=32.44 | PnL=4012.89
+2026-07-11 23:34:40  INFO        LNT/VTR@1h[kalman] 13 trades | WR=62% | SR=32.50 | PnL=4018.88
+2026-07-11 23:34:40  INFO        LNT/WELL@1h[ols] 6 trades | WR=100% | SR=319.00 | PnL=2973.86
+2026-07-11 23:34:40  INFO        LNT/WELL@1h[kalman] 6 trades | WR=100% | SR=319.47 | PnL=2975.28
+2026-07-11 23:34:40  INFO        AXP/CRWD@1h[ols] 17 trades | WR=53% | SR=27.71 | PnL=2767.02
+2026-07-11 23:34:40  INFO        AXP/CRWD@1h[kalman] 17 trades | WR=53% | SR=27.62 | PnL=2757.86
+2026-07-11 23:34:40  INFO        AME/MAR@1h[ols] 12 trades | WR=58% | SR=22.25 | PnL=2565.98
+2026-07-11 23:34:40  INFO        AME/MAR@1h[kalman] 12 trades | WR=58% | SR=22.23 | PnL=2564.29
+2026-07-11 23:34:40  INFO        APP/CRWD@1h[ols] 5 trades | WR=100% | SR=64.78 | PnL=3975.96
+2026-07-11 23:34:40  INFO        APP/CRWD@1h[kalman] 5 trades | WR=100% | SR=64.82 | PnL=3979.87
+2026-07-11 23:34:40  INFO        AVGO/CRWD@1h[ols] 6 trades | WR=100% | SR=108.14 | PnL=6026.49
+2026-07-11 23:34:40  INFO        AVGO/CRWD@1h[kalman] 6 trades | WR=100% | SR=108.07 | PnL=6030.11
+2026-07-11 23:34:40  INFO        CMS/DUK@1h[ols] 10 trades | WR=70% | SR=46.49 | PnL=2723.02
+2026-07-11 23:34:40  INFO        CMS/DUK@1h[kalman] 10 trades | WR=70% | SR=46.48 | PnL=2724.20
+2026-07-11 23:34:40  INFO        FIX/MLI@1h[ols] 2 trades | WR=100% | SR=232.49 | PnL=2083.69
+2026-07-11 23:34:40  INFO        FIX/MLI@1h[kalman] 2 trades | WR=100% | SR=233.71 | PnL=2085.23
+2026-07-11 23:34:40  INFO        EME/MLI@1h[ols] 7 trades | WR=57% | SR=39.89 | PnL=2600.64
+2026-07-11 23:34:40  INFO        EME/MLI@1h[kalman] 7 trades | WR=57% | SR=40.06 | PnL=2609.16
+2026-07-11 23:34:40  INFO        EG/WRB@1h[kalman] 5 trades | WR=100% | SR=84.64 | PnL=2740.44
+2026-07-11 23:34:40  INFO        GS/MLI@1h[ols] 8 trades | WR=62% | SR=31.42 | PnL=2836.83
+2026-07-11 23:34:40  INFO        GS/MLI@1h[kalman] 8 trades | WR=62% | SR=31.45 | PnL=2839.08
+2026-07-11 23:34:40  INFO        MET/TMHC@1h[ols] 20 trades | WR=60% | SR=5.00 | PnL=5645.48
+2026-07-11 23:34:40  INFO        MET/TMHC@1h[kalman] 20 trades | WR=65% | SR=5.12 | PnL=5783.48
+2026-07-11 23:34:40  INFO        PFG/STLD@1h[ols] 9 trades | WR=78% | SR=32.95 | PnL=2398.07
+2026-07-11 23:34:40  INFO        PFG/STLD@1h[kalman] 9 trades | WR=78% | SR=32.95 | PnL=2397.75
+2026-07-11 23:34:40  INFO        VRT/MTZ@1h[ols] 11 trades | WR=64% | SR=27.73 | PnL=4496.73
+2026-07-11 23:34:40  INFO        VRT/MTZ@1h[kalman] 11 trades | WR=73% | SR=27.92 | PnL=4523.70
+2026-07-11 23:34:40  INFO        QQQ/MLI@1h[ols] 7 trades | WR=100% | SR=88.91 | PnL=2342.07
+2026-07-11 23:34:40  INFO        QQQ/MLI@1h[kalman] 7 trades | WR=100% | SR=88.79 | PnL=2336.10
+2026-07-11 23:34:40  INFO        MTSI/WCC@1h[ols] 13 trades | WR=31% | SR=19.23 | PnL=4028.27
+2026-07-11 23:34:40  INFO        MTSI/WCC@1h[kalman] 13 trades | WR=38% | SR=19.39 | PnL=4061.58
+2026-07-11 23:34:40  INFO        UMBF/FHB@1h[ols] 11 trades | WR=18% | SR=13.56 | PnL=700.25
+2026-07-11 23:34:40  INFO        UMBF/FHB@1h[kalman] 11 trades | WR=27% | SR=13.68 | PnL=705.53
+2026-07-11 23:34:40  INFO      Run summary \u2192 latest_run_backtest.log
+
+======================================================================
+  BACKTEST SUMMARY — LAYER1_HOLDOUT
+======================================================================
+  Pairs tested: 33
+  Total trades: 319
+  Total net P&L (spread units): 107309.79
+
+  By timeframe (mean):
+    n_trades  win_rate     sharpe    total_pnl
+tf                                            
+1h  9.666667  0.714094  70.027227  3251.811818
+
+  OLS vs Kalman:
+              n_trades  win_rate     sharpe    total_pnl
+hedge_method                                            
+kalman        9.529412  0.731582  70.523765  3243.090588
+ols           9.812500  0.695512  69.499656  3261.078125
+
+  Top 10 pairs by net P&L:
+tf symbol_a symbol_b hedge_method  n_trades  win_rate   sharpe  total_pnl
+1h     AVGO     CRWD       kalman         6    1.0000 108.0700    6030.11
+1h     AVGO     CRWD          ols         6    1.0000 108.1376    6026.49
+1h      MET     TMHC       kalman        20    0.6500   5.1217    5783.48
+1h      MET     TMHC          ols        20    0.6000   4.9996    5645.48
+1h      VRT      MTZ       kalman        11    0.7273  27.9189    4523.70
+1h      VRT      MTZ          ols        11    0.6364  27.7270    4496.73
+1h     MTSI      WCC       kalman        13    0.3846  19.3919    4061.58
+1h     MTSI      WCC          ols        13    0.3077  19.2309    4028.27
+1h      LNT      VTR       kalman        13    0.6154  32.4972    4018.88
+1h      LNT      VTR          ols        13    0.6154  32.4435    4012.89
+
+  Bottom 5 pairs by net P&L:
+tf symbol_a symbol_b hedge_method  n_trades  total_pnl
+1h     UMBF      FHB          ols        11     700.25
+1h     UMBF      FHB       kalman        11     705.53
+1h      FIX      MLI          ols         2    2083.69
+1h      FIX      MLI       kalman         2    2085.23
+1h      QQQ      MLI       kalman         7    2336.10
+
+  Portfolio-level stats:
+    n_pairs: 17
+    n_trades_total: 319
+    total_pnl_portfolio: 107309.8
+    sharpe_portfolio: 4.3877
+    max_drawdown_portfolio: 15312.9
+    max_concentration_pair: AVGO/CRWD@1h
+    max_concentration_pct: 0.1124
+
+  Bias notes (episodic survivorship + hedge lookahead — see docstring):
+    Full-series run = IN-SAMPLE. Layer 2 holdout run = OOS.
+======================================================================
+
+EXIT:0

@@ -448,6 +448,9 @@ themselves.
 this name; it's referenced by exact path dozens of times in DEVELOPMENT.md.
 
 - `DEVELOPMENT.md` — canonical project memory, full bug registry, session logs
+- `BUG_LOG.md` — one-line-per-entry index into DEVELOPMENT.md's bug registry (added 2026-07-11),
+  for finding a specific BUG-D/BUG-A number without reading the full narrative. Pure index — every
+  entry's actual write-up still lives only in DEVELOPMENT.md.
 - `PAPER.md` — living draft of the actual paper/thesis, started Session 10
   (2026-06-23). Sections marked [DRAFTED]/[OUTLINED]/[TBD] — update
   alongside DEVELOPMENT.md whenever a session produces a citable finding,

@@ -73,36 +73,41 @@ Borderline cases are corroborated against the heavier structural-break
 apparatus (Zivot-Andrews, CUSUM) via a documented secondary-evidence
 override, illustrated on a real case where it overturns the primary
 filter's decision. An event-driven pairs-trading strategy implementing the screened pair set achieves
-an OOS portfolio Sharpe of 5.2443 (296 trades, chronological 20% holdout) across 23
-confirmed pairs (17 @1h, 2 @3m, 1 @30m, 2 @4h, 1 @1M), with IS Sharpe 5.2935 (1028 trades)
-and IS/OOS degradation of 0.9% — far below typical stat-arb decay rates. Walk-forward
-Sharpe ranges 3.1–4.0 across two WFA structures (expanding and rolling, 6 strategy variants),
-confirming that the OU spread parameters generalize out of sample once a pair set is fixed.
-The Deflated Sharpe Ratio, correcting for the 14 backtest configurations tried against this
-universe, remains highly significant (IS z=11.02, OOS z=6.48) — the headline Sharpe is not an
-artifact of variant search. We separately, and directly, test the pair-*discovery* step itself
-for lookahead: a genuinely causal, point-in-time re-screening process, run at 3 independent
-historical checkpoints using only training-window data, finds a completely different pair set
-at every checkpoint than the full-history screen finds (zero overlap with the known confirmed
-set), and those independently-discovered pairs, properly backtested, lose money in every fold
-(Sharpe −1.04 to −0.72). This is strong, directly-quantified evidence of pair-selection
-lookahead in the full-history screening step: the reported 5.24 OOS Sharpe is conditional on
-already knowing which 23 pairs to trade, not a claim that this pipeline, run causally from an
-earlier point in time, would have discovered and traded them. Position-sizing variants:
-risk-parity improves OOS Sharpe to 5.87 (+0.63 vs baseline); a Hierarchical Risk Parity variant
-using the true cross-pair covariance matrix underperforms risk-parity (5.38 vs 5.87), an honest
-negative result for the more sophisticated approach;
-entry z=1.5 improves IS Sharpe to 5.93 (360 OOS trades). A portfolio-level circular block
-bootstrap over daily P&L (day-level blocks, preserving real cross-pair same-day exit
-correlation — see §6.6 for why a naive trade-level shuffle inflates the null by destroying
-this correlation) gives IS p=0.542, OOS p=0.589: not significant at conventional levels,
-read as the ~70-90 day OOS holdout not yet being long enough to separate the realized path
-from resampling noise, not as an absence of edge (per-pair Sharpes and 60-84% win rates argue
-separately for real per-pair skill). A Gatev GGR (2006) distance-method baseline on the same universe achieves OOS
-Sharpe −0.208, confirming a 5.5+ Sharpe-point advantage for cointegration-based selection.
-We additionally document a generalizable data-hygiene failure mode (calendar-padding
-artifacts in rolling-window statistics on intraday data) likely present, unflagged, in other
-published intraday pairs-trading work using fixed-window rolling z-scores on calendar-padded
+an OOS portfolio Sharpe of **5.2155** (449 trades, chronological 20% holdout) across **26**
+confirmed pairs (24 @1h incl. 12 cross-asset, 1 @3m, 1 @1M — this session's fresh confirmed-pair
+set no longer includes 30m/4h pairs the way the prior Session 22 snapshot did; genuine change in
+what the current screen finds, not a bug), with IS Sharpe **5.8044** (2168 trades) and IS/OOS
+degradation of **10.2%** — a real, honestly-reported increase from the prior 0.9% figure, not
+glossed over (see Development.md, 2026-07-12, for the full reconciliation: these figures reflect a
+full pipeline rerun plus two real bugs found and fixed this session — BUG-D58, a survivorship-
+exclusion false positive that had been silently zeroing out 7/24 confirmed pairs, and BUG-D59, a
+portfolio-Sharpe-aggregation bug in the cointegration-vs-distance comparison below). The Deflated
+Sharpe Ratio, correcting for **49** backtest configurations tried against this universe as of this
+session's final rerun (2026-07-12), remains significant and, notably, STRENGTHENED after the
+BUG-D58 fix rather than weakened (**IS z=9.53**, DSR=1.0000; **OOS z=2.91**, DSR=0.9982) — more
+real trade data from the fixed pair set gives a cleaner signal. **29** evaluations have now
+examined the same OOS holdout window (Garden-of-Forking-Paths caveat, Development.md); reserving a
+genuinely fresh holdout slice before further variant testing is a live, agreed next step, not yet
+implemented. A portfolio-level circular block bootstrap over daily P&L gives **IS p=0.546, OOS
+p=0.559** (this session's fresh numbers) — not significant at conventional levels, consistent with
+this paper's existing framing (§6.6) that the OOS holdout is not yet long enough to separate the
+realized path from resampling noise, not an absence of edge. **[Not yet reconciled to this
+session's fixes — flagged explicitly, not silently left stale]**: the walk-forward Sharpe range
+(3.1–4.0, `wfa.py` was re-run this session and is UNCHANGED by BUG-D58 since it never applied
+survivorship truncation — this figure IS current), the pair-discovery-lookahead finding, and the
+position-sizing/entry-z variant figures (risk-parity 5.87, HRP 5.38, entry_z=1.5 5.93) have not
+been re-verified against the fixed 26-pair set as of this write-up. **The GGR distance-method
+comparison below requires a discussion before being restated as a finding, not a routine number
+update**: this session's fresh, BUG-D59-fixed run found the cointegration-vs-distance comparison
+shifted dramatically — cointegration's correctly-pooled portfolio Sharpe is now 8.542 and the
+distance method's own Sharpe is 7.865 (both real, freshly re-verified, apples-to-apples pooled
+figures), a ~0.7 Sharpe-point advantage for cointegration, not the −0.208 vs. ~5.3 relationship
+(a 5.5+ point advantage) this paragraph previously stated. The magnitude of this shift needs
+investigation before being cited as this paper's finding — likely reflects a fresher/different
+backtest window for the distance-method side as much as the cointegration-side aggregation fix,
+not yet isolated. We additionally document a generalizable data-hygiene failure mode (calendar-
+padding artifacts in rolling-window statistics on intraday data) likely present, unflagged, in
+other published intraday pairs-trading work using fixed-window rolling z-scores on calendar-padded
 series.
 
 ---
@@ -2001,6 +2006,109 @@ discipline rather than by luck):
    exactly why #4's mitigation above is procedural rather than a specific
    test that could be written once and reused.
 
+### Structured disclosure — AID Framework role taxonomy
+
+The narrative disclosure above (and the detailed subsections following it) is this paper's primary
+account of how AI was used. This subsection restates that same information in a structured,
+standards-aligned form, following the **Artificial Intelligence Disclosure (AID) Framework** (Weaver,
+K.D., "The Artificial Intelligence Disclosure (AID) Framework: An Introduction," *College & Research
+Libraries News* 85(10), 407-411, 2024; arXiv:2408.01904) — explicitly modeled on the CRediT
+Contributor Roles Taxonomy already standard for disclosing human co-author contributions, extended by
+Weaver to AI. AID defines 14 disclosure categories; the framework's own convention is to omit
+headings where AI was not used, but this paper states every category explicitly, including "not
+used" ones — several of CAMARF's own non-negotiable architecture rules (data.py fetches, AI never
+does; every methodology/framing decision is Ross's, not AI's) are exactly the kind of boundary a
+reader should not have to infer from silence.
+
+**AI Tool(s)**: Claude Code (Anthropic). Model versions varied across this project's ~28 sessions
+(June-July 2026) as Anthropic released newer models during the project's lifetime — no single fixed
+version was used throughout; this session ran on Claude Sonnet 5. No third-party AI tool contributed
+to any result in this paper.
+
+**Conceptualization**: Not AI-led. The research thesis, the decision to pursue cross-asset
+co-movement arbitrage, and every subsequent framing decision (including this paper's three pillars)
+originated with and were decided by Ross. AI participated as a discussion partner when new
+directions were considered (e.g. the pivot/expansion discussion behind §7.15's comparison arms), but
+per `CLAUDE.md`'s working-style rule, proposed a menu of options for Ross to choose from — it did not
+independently originate or select the research direction.
+
+**Methodology**: Mixed. AI implemented every statistical method described in §4 and §6-§7 in code,
+but did not choose which methods to use — each new technique (e.g. the Lo (2002) Sharpe-
+autocorrelation correction, §7's STORM variants, the eigenvalue-weighted position-sizing method) was
+proposed, discussed, and approved by Ross before implementation began, per this project's standing
+"new methodology goes through Ross first" rule.
+
+**Information Collection**: AI-assisted, tool-based. This section's own content — the survey of
+current AI-disclosure norms and the AID Framework itself — was gathered via Claude Code's web search
+tool this session (2026-07-11) and is the clearest example of this category in the project. General
+literature-review source gathering for §2 followed the same AI-research/human-direction pattern
+described throughout this section.
+
+**Data Collection Method**: Not AI. Architecture Rule #1 (`CLAUDE.md`) is explicit and enforced:
+`data.py` (the sole fetch path) must never be invoked by `analysis.py` or any downstream script, and
+in practice every real data-fetching run (yfinance, and the separate manually-run IBKR supplemental
+script) was executed by Ross directly or by AI running the exact, unmodified fetch script under
+Ross's direction — AI never designed a data-collection method, selected a data source, or fetched
+data through any channel other than this project's existing, human-approved scripts.
+
+**Execution**: AI-heavy, with a real operational boundary worth disclosing concretely rather than
+abstractly. AI executed the large majority of this project's script runs (analysis, backtest,
+verification, comparison-arm scripts) via a tool-tracked command mechanism. That mechanism has a
+real, unresolved reliability limit: multi-hour pipeline runs (`analysis.py`) have been killed
+mid-run by what appears to be an internal timeout on the tracking tool itself, inconsistently (once
+at ~6 minutes, once at ~25-30 minutes, cause not fully diagnosed as of this writing). When an
+alternative execution path (a detached OS process outside the tool's own tracking) was attempted to
+work around this, an internal safety mechanism blocked it and required Ross's direct authorization
+before proceeding — and even then, a later attempt was blocked again pending genuine, unambiguous
+user consent, which the safety mechanism judged the available signal insufficient to establish. In
+practice, at various points this session, Ross ran the affected script directly in his own terminal
+rather than through AI-mediated execution. This is disclosed because it is a real, concrete
+illustration of an execution-layer boundary this project actually hit, not a hypothetical one.
+
+**Data Curation**: AI-assisted. AI reorganized and indexed existing project documentation (e.g.
+`BUG_LOG.md`, built 2026-07-11 as a pure index into `Development.md`'s bug registry, deliberately
+choosing a non-destructive index over a lossy content split — see `Development.md`'s write-up of
+that decision) and performed accuracy audits correcting stale documentation against live code state.
+It did not curate the underlying research data itself beyond what "Data Collection Method" above
+already covers.
+
+**Data Analysis**: AI-heavy, always paired with this project's verify-before-trusting discipline —
+every new analytical method was tested against a synthetic ground-truth case (`debug/_verify_*.py`)
+before being trusted on real data, a standing project rule cited throughout this paper and
+`FINDINGS.md`.
+
+**Privacy and Security**: No personal data of any kind is used anywhere in this project — all data
+sources (§9's Data acquisition transparency, below) are public market/macro data, not personal or
+private information, so this category carries a different risk profile than in human-subjects
+research. The relevant real risk this project's own AI-ethics research (this session) surfaced is
+different: AI-assisted code commits carry an elevated credential/secret-leak rate industry-wide (an
+April 2026 ACM Technology Policy Council TechBrief on AI-assisted software development found roughly
+double the baseline GitHub secret-leak rate in AI-assisted commits). This project's mitigation is the
+same one ACM's brief recommends — AI-generated code is treated as a starting point requiring human
+review, not an autonomous production path — consistent with, not separate from, this paper's broader
+verify-before-trusting discipline.
+
+**Interpretation**: Mixed. AI drafted interpretive analysis of statistical results (e.g. explaining
+what a given Sharpe correction or degeneracy finding implies), but final interpretive judgment calls
+— what a result means for this paper's thesis, and whether a finding is strong enough to report as a
+pillar rather than a footnote — were Ross's, per the same boundary described under Conceptualization.
+
+**Visualization**: AI implemented the code that generates this project's 26 report figures
+(`report.py`), but which figures to generate and how to read them was directed by Ross, not chosen
+autonomously by AI.
+
+**Writing — Review & Editing**: AI drafted the large majority of this document's prose, under Ross's
+direction and review — stated plainly in this section's opening paragraph, restated here for the
+structured record.
+
+**Writing — Translation**: Not applicable. No translation was performed anywhere in this project.
+
+**Project Administration**: AI-assisted, session-scoped only. AI used a structured task-tracking
+tool to plan and sequence work within individual sessions (visible, e.g., in this session's ~30-item
+task list spanning documentation fixes, comparison-arm builds, and bug fixes). This does not extend
+to the project's strategic roadmap or priorities, which are set by Ross (`CLAUDE.md`'s "Next
+priorities" section, updated by Ross's direction each session).
+
 ### Limitations, stated directly
 
 - **AI output is not privileged relative to any other unverified claim.**
@@ -2076,9 +2184,16 @@ other. One exploratory attempt to use `graphify` (a codebase-to-knowledge-graph 
 architecture navigation was made and is disclosed as attempted-but-not-relied-upon: it hit an
 internal safety guard partway through (refusing to overwrite a richer existing graph with a
 shallower re-extraction) and was abandoned in favor of direct source reading for the remainder of
-that session — no finding in this paper depends on graphify's output. No web search, no external
-API beyond this project's own established data sources (below), and no third-party AI tool beyond
-Claude Code itself contributed to any result reported here.
+that session — no finding in this paper depends on graphify's output. **Web search usage, stated
+precisely rather than as a blanket "never used" (corrected 2026-07-11 — an earlier draft of this
+claim was broader than actually true, caught while writing this section's own AID-taxonomy
+disclosure, which itself required web search to research):** Claude Code's web search tool was used
+exactly once in this project's history, on 2026-07-11, exclusively to research current AI-disclosure
+norms and frameworks (including the AID Framework this section cites) in order to write this
+section — never to source, corroborate, or inform any statistical result, comparison arm, market-data
+claim, or literature-review citation elsewhere in this paper. No other external API beyond this
+project's own established data sources (below), and no third-party AI tool beyond Claude Code
+itself, contributed to any result reported here.
 
 ### Data acquisition transparency
 

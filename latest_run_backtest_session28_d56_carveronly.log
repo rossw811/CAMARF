@@ -1,0 +1,73 @@
+2026-07-11 23:34:59  INFO      Survivorship exclusions loaded: 378 delist events
+2026-07-11 23:34:59  INFO      [3m] 1 confirmed pairs
+2026-07-11 23:34:59  INFO      [1h] 24 confirmed pairs
+2026-07-11 23:34:59  INFO        LNT/VTR@1h[ols] 57 trades | WR=60% | SR=23.20 | PnL=13813.02
+2026-07-11 23:35:00  INFO        LNT/WELL@1h[ols] 40 trades | WR=78% | SR=34.74 | PnL=15593.54
+2026-07-11 23:35:00  INFO        AXP/CRWD@1h[ols] 51 trades | WR=65% | SR=30.58 | PnL=10671.14
+2026-07-11 23:35:00  INFO        AME/MAR@1h[ols] 61 trades | WR=48% | SR=14.50 | PnL=11980.73
+2026-07-11 23:35:00  INFO        APP/CRWD@1h[ols] 44 trades | WR=68% | SR=28.23 | PnL=25876.06
+2026-07-11 23:35:00  INFO        AVGO/CRWD@1h[ols] 56 trades | WR=57% | SR=21.30 | PnL=20783.26
+2026-07-11 23:35:00  INFO        CMS/DUK@1h[ols] 47 trades | WR=64% | SR=28.73 | PnL=10680.35
+2026-07-11 23:35:00  INFO        FIX/MLI@1h[ols] 43 trades | WR=67% | SR=24.34 | PnL=22360.32
+2026-07-11 23:35:00  INFO        EME/MLI@1h[ols] 43 trades | WR=60% | SR=21.65 | PnL=12934.59
+2026-07-11 23:35:00  INFO        GS/MLI@1h[ols] 40 trades | WR=50% | SR=21.79 | PnL=8249.27
+2026-07-11 23:35:00  INFO        MET/TMHC@1h[ols] 52 trades | WR=65% | SR=9.04 | PnL=16802.17
+2026-07-11 23:35:00  INFO        PFG/STLD@1h[ols] 38 trades | WR=66% | SR=33.19 | PnL=10725.03
+2026-07-11 23:35:00  INFO        VRT/MTZ@1h[ols] 38 trades | WR=71% | SR=31.34 | PnL=20375.68
+2026-07-11 23:35:00  INFO        QQQ/MLI@1h[ols] 39 trades | WR=72% | SR=27.38 | PnL=4874.81
+2026-07-11 23:35:00  INFO        MTSI/WCC@1h[ols] 48 trades | WR=56% | SR=21.32 | PnL=15066.75
+2026-07-11 23:35:00  INFO        UMBF/FHB@1h[ols] 40 trades | WR=52% | SR=20.88 | PnL=6547.87
+2026-07-11 23:35:00  INFO      Run summary \u2192 latest_run_backtest.log
+
+======================================================================
+  BACKTEST SUMMARY — LAYER1_STORM
+======================================================================
+  Pairs tested: 16
+  Total trades: 737
+  Total net P&L (spread units): 227334.59
+
+  By timeframe (mean):
+    n_trades  win_rate    sharpe     total_pnl
+tf                                            
+1h   46.0625  0.624513  24.51345  14208.411875
+
+  OLS vs Kalman:
+              n_trades  win_rate    sharpe     total_pnl
+hedge_method                                            
+ols            46.0625  0.624513  24.51345  14208.411875
+
+  Top 10 pairs by net P&L:
+tf symbol_a symbol_b hedge_method  n_trades  win_rate  sharpe  total_pnl
+1h      APP     CRWD          ols        44    0.6818 28.2338   25876.06
+1h      FIX      MLI          ols        43    0.6744 24.3438   22360.32
+1h     AVGO     CRWD          ols        56    0.5714 21.2974   20783.26
+1h      VRT      MTZ          ols        38    0.7105 31.3400   20375.68
+1h      MET     TMHC          ols        52    0.6538  9.0374   16802.17
+1h      LNT     WELL          ols        40    0.7750 34.7445   15593.54
+1h     MTSI      WCC          ols        48    0.5625 21.3203   15066.75
+1h      LNT      VTR          ols        57    0.5965 23.1997   13813.02
+1h      EME      MLI          ols        43    0.6047 21.6537   12934.59
+1h      AME      MAR          ols        61    0.4754 14.5021   11980.73
+
+  Bottom 5 pairs by net P&L:
+tf symbol_a symbol_b hedge_method  n_trades  total_pnl
+1h      QQQ      MLI          ols        39    4874.81
+1h     UMBF      FHB          ols        40    6547.87
+1h       GS      MLI          ols        40    8249.27
+1h      AXP     CRWD          ols        51   10671.14
+1h      CMS      DUK          ols        47   10680.35
+
+  Portfolio-level stats:
+    n_pairs: 16
+    n_trades_total: 737
+    total_pnl_portfolio: 227334.61
+    sharpe_portfolio: 5.0619
+    max_drawdown_portfolio: 6721.74
+    max_concentration_pair: APP/CRWD@1h
+    max_concentration_pct: 0.1138
+
+  Bias notes (episodic survivorship + hedge lookahead — see docstring):
+    Full-series run = IN-SAMPLE. Layer 2 holdout run = OOS.
+======================================================================
+
+EXIT:0

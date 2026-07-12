@@ -1,0 +1,77 @@
+2026-07-11 23:35:29  INFO      RegimeConditioner: loaded HMM states (10199 rows)
+2026-07-11 23:35:36  INFO      Run summary \u2192 C:\Users\RossW\Projects\CAMARF\latest_run_macro.log
+2026-07-11 23:35:36  INFO      RegimeConditioner: loaded macro data (10208 rows, cols=['t10y2y', 'hy_oas_spread_pct', 'vix_close', 'vix_3m', 'wti_crude', 'baa10y_spread_pct'])
+2026-07-11 23:35:36  WARNING   MLConditioner: no model at output/ml/model_stage1.pkl — ML gate disabled
+2026-07-11 23:35:36  INFO      Survivorship exclusions loaded: 378 delist events
+2026-07-11 23:35:36  INFO      [3m] 1 confirmed pairs
+2026-07-11 23:35:36  INFO      [1h] 24 confirmed pairs
+2026-07-11 23:35:36  INFO        LNT/VTR@1h[ols] 57 trades | WR=60% | SR=23.37 | PnL=14445.82
+2026-07-11 23:35:36  INFO        LNT/WELL@1h[ols] 40 trades | WR=78% | SR=37.32 | PnL=17566.78
+2026-07-11 23:35:36  INFO        AXP/CRWD@1h[ols] 51 trades | WR=65% | SR=32.20 | PnL=12458.71
+2026-07-11 23:35:36  INFO        AME/MAR@1h[ols] 61 trades | WR=48% | SR=13.93 | PnL=13361.66
+2026-07-11 23:35:37  INFO        APP/CRWD@1h[ols] 44 trades | WR=68% | SR=31.60 | PnL=29160.00
+2026-07-11 23:35:37  INFO        AVGO/CRWD@1h[ols] 56 trades | WR=57% | SR=20.54 | PnL=21810.45
+2026-07-11 23:35:37  INFO        CMS/DUK@1h[ols] 47 trades | WR=64% | SR=29.63 | PnL=13111.30
+2026-07-11 23:35:37  INFO        FIX/MLI@1h[ols] 43 trades | WR=67% | SR=26.56 | PnL=22061.69
+2026-07-11 23:35:37  INFO        EME/MLI@1h[ols] 43 trades | WR=60% | SR=21.45 | PnL=13812.24
+2026-07-11 23:35:38  INFO        GS/MLI@1h[ols] 40 trades | WR=50% | SR=22.65 | PnL=9981.60
+2026-07-11 23:35:38  INFO        MET/TMHC@1h[ols] 52 trades | WR=65% | SR=8.11 | PnL=15126.01
+2026-07-11 23:35:38  INFO        PFG/STLD@1h[ols] 38 trades | WR=66% | SR=31.99 | PnL=12510.19
+2026-07-11 23:35:38  INFO        VRT/MTZ@1h[ols] 38 trades | WR=71% | SR=33.36 | PnL=21913.67
+2026-07-11 23:35:38  INFO        QQQ/MLI@1h[ols] 39 trades | WR=72% | SR=30.60 | PnL=6262.55
+2026-07-11 23:35:38  INFO        MTSI/WCC@1h[ols] 48 trades | WR=56% | SR=23.93 | PnL=18052.38
+2026-07-11 23:35:39  INFO        UMBF/FHB@1h[ols] 40 trades | WR=52% | SR=20.87 | PnL=6720.99
+2026-07-11 23:35:39  INFO      Run summary \u2192 latest_run_backtest.log
+
+======================================================================
+  BACKTEST SUMMARY — LAYER2
+======================================================================
+  Pairs tested: 16
+  Total trades: 737
+  Total net P&L (spread units): 248356.04
+
+  By timeframe (mean):
+    n_trades  win_rate    sharpe   total_pnl
+tf                                          
+1h   46.0625  0.624513  25.50735  15522.2525
+
+  OLS vs Kalman:
+              n_trades  win_rate    sharpe   total_pnl
+hedge_method                                          
+ols            46.0625  0.624513  25.50735  15522.2525
+
+  Top 10 pairs by net P&L:
+tf symbol_a symbol_b hedge_method  n_trades  win_rate  sharpe  total_pnl
+1h      APP     CRWD          ols        44    0.6818 31.5954   29160.00
+1h      FIX      MLI          ols        43    0.6744 26.5599   22061.69
+1h      VRT      MTZ          ols        38    0.7105 33.3629   21913.67
+1h     AVGO     CRWD          ols        56    0.5714 20.5379   21810.45
+1h     MTSI      WCC          ols        48    0.5625 23.9310   18052.38
+1h      LNT     WELL          ols        40    0.7750 37.3201   17566.78
+1h      MET     TMHC          ols        52    0.6538  8.1148   15126.01
+1h      LNT      VTR          ols        57    0.5965 23.3690   14445.82
+1h      EME      MLI          ols        43    0.6047 21.4539   13812.24
+1h      AME      MAR          ols        61    0.4754 13.9305   13361.66
+
+  Bottom 5 pairs by net P&L:
+tf symbol_a symbol_b hedge_method  n_trades  total_pnl
+1h      QQQ      MLI          ols        39    6262.55
+1h     UMBF      FHB          ols        40    6720.99
+1h       GS      MLI          ols        40    9981.60
+1h      AXP     CRWD          ols        51   12458.71
+1h      PFG     STLD          ols        38   12510.19
+
+  Portfolio-level stats:
+    n_pairs: 16
+    n_trades_total: 737
+    total_pnl_portfolio: 248356.05
+    sharpe_portfolio: 5.3156
+    max_drawdown_portfolio: 7684.97
+    max_concentration_pair: APP/CRWD@1h
+    max_concentration_pct: 0.1174
+
+  Bias notes (episodic survivorship + hedge lookahead — see docstring):
+    Full-series run = IN-SAMPLE. Layer 2 holdout run = OOS.
+======================================================================
+
+EXIT:0

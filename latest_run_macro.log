@@ -1,21 +1,21 @@
 === CAMARF macro.py ===
-date:        2026-07-11 00:44
-runtime_min: 0.0
+date:        2026-07-11 23:35
+runtime_min: 0.1
 
 === series ===
-  T10Y2Y         rows=13074  source=cache
-  BAMLH0A0HYM2   rows=795    source=cache
-  VIXCLS         rows=9528   source=cache
-  VXVCLS         rows=4853   source=cache
-  DCOILWTICO     rows=10568  source=cache
-  BAA10Y         rows=10571  source=cache
-  DTWEXBGS       rows=5349   source=cache
-  DFII10         rows=6136   source=cache
-  T10YIE         rows=6137   source=cache
-  FEDFUNDS       rows=864    source=cache
-  CPIAUCSL       rows=953    source=cache
-  USREC          rows=2059   source=cache
-  UNRATE         rows=942    source=cache
+  T10Y2Y         rows=13074  source=fred
+  BAMLH0A0HYM2   rows=795    source=fred
+  VIXCLS         rows=9528   source=fred
+  VXVCLS         rows=4853   source=fred
+  DCOILWTICO     rows=10568  source=fred
+  BAA10Y         rows=10571  source=fred
+  DTWEXBGS       rows=5349   source=fred
+  DFII10         rows=6136   source=fred
+  T10YIE         rows=6137   source=fred
+  FEDFUNDS       rows=864    source=fred
+  CPIAUCSL       rows=953    source=fred
+  USREC          rows=2059   source=fred
+  UNRATE         rows=942    source=fred
   cot_es         rows=1499   source=cache
   cot_nq         rows=231    source=cache
 

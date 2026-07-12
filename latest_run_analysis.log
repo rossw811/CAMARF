@@ -1,46 +1,52 @@
 === CAMARF analysis.py ===
-date:        2026-07-10 02:18
-runtime_min: 61.2
-universe:    1594 assets  19908 symbol-TF keys
+date:        2026-07-11 14:15
+runtime_min: 301.7
+universe:    1593 assets  20007 symbol-TF keys
 
 === results_by_tf ===
 tf    pairs cross trios regimes
 1m    0     0     0     0
 2m    0     0     0     0
-3m    1     0     6     7
-5m    0     0     0     0
+3m    1     0     0     2
+5m    0     0     1     3
 15m   0     0     0     0
 30m   0     0     0     0
-1h    18    3     491   2
+1h    24    12    496   3
 4h    0     0     3     8
 1D    0     0     0     2
 7D    0     0     0     4
 1M    1     0     0     2
 3M    0     0     0     0
 6M    0     0     0     0
-TOTAL  23          500   25
-bias_audit_entries: 69
+TOTAL  38          500   24
+bias_audit_entries: 73
 
 === confirmed_pairs ===
-3m     KVUE     KMB      hl=3.3  H=0.456  tier=gold  coint_frac=0.99
-1h     AMD      DD       hl=24.3  H=0.505  tier=silver  coint_frac=0.04
-1h     AXP      CRWD     hl=24.5  H=0.496  tier=silver  coint_frac=0.01
-1h     AME      DD       hl=20.5  H=0.526  tier=silver  coint_frac=0.07
-1h     AME      MAR      hl=28.2  H=0.555  tier=silver  coint_frac=0.09
-1h     AMAT     DD       hl=30.0  H=0.527  tier=silver  coint_frac=0.04
-1h     APP      CRWD     hl=28.6  H=0.515  tier=silver  coint_frac=0.09
+3m     KVUE     KMB      hl=3.4  H=0.430  tier=silver  coint_frac=0.98
+1h     LNT      VTR      hl=19.9  H=0.511  tier=silver  coint_frac=0.10
+1h     LNT      WELL     hl=28.1  H=0.540  tier=silver  coint_frac=0.04
+1h     AXP      CRWD     hl=24.4  H=0.496  tier=silver  coint_frac=0.01
+1h     AME      DD       hl=20.1  H=0.526  tier=silver  coint_frac=0.09
+1h     AME      MAR      hl=28.3  H=0.554  tier=silver  coint_frac=0.09
+1h     AMAT     DD       hl=30.0  H=0.526  tier=silver  coint_frac=0.04
+1h     APP      CRWD     hl=28.4  H=0.516  tier=silver  coint_frac=0.09
 1h     AVGO     CRWD     hl=27.6  H=0.554  tier=silver  coint_frac=0.06
-1h     CAT      DD       hl=20.3  H=0.534  tier=silver  coint_frac=0.07
-1h     CMS      DUK      hl=24.6  H=0.519  tier=silver  coint_frac=0.06
+1h     CAT      DD       hl=20.6  H=0.538  tier=silver  coint_frac=0.07
+1h     CMS      DUK      hl=24.5  H=0.517  tier=silver  coint_frac=0.07
+1h     FIX      MLI      hl=25.1  H=0.523  tier=silver  coint_frac=0.06
 1h     DE       DD       hl=24.8  H=0.512  tier=silver  coint_frac=0.11
-1h     DAL      DD       hl=30.8  H=0.540  tier=silver  coint_frac=0.03
-1h     TT       MLI      hl=28.5  H=0.545  tier=silver  coint_frac=0.07
-1h     VRT      MTZ      hl=27.6  H=0.538  tier=silver  coint_frac=0.08
-1h     WAB      MLI      hl=30.0  H=0.517  tier=silver  coint_frac=0.11
-1h     TMHC     WAL      hl=20.5  H=0.532  tier=silver  coint_frac=0.14
-1h     UMBF     FHB      hl=26.6  H=0.539  tier=silver  coint_frac=0.18
-1h     WAL      MC       hl=22.6  H=0.500  tier=silver  coint_frac=0.06
-1h     ZION     FHB      hl=25.7  H=0.520  tier=silver  coint_frac=0.16
+1h     DAL      DD       hl=30.8  H=0.539  tier=silver  coint_frac=0.03
+1h     EME      MLI      hl=28.6  H=0.554  tier=silver  coint_frac=0.06
+1h     EG       WRB      hl=28.8  H=0.533  tier=silver  coint_frac=0.04
+1h     GS       MLI      hl=25.6  H=0.503  tier=silver  coint_frac=0.07
+1h     HAL      NOV      hl=28.7  H=0.544  tier=silver  coint_frac=0.07
+1h     MET      TMHC     hl=23.8  H=0.525  tier=silver  coint_frac=0.06
+1h     PFG      STLD     hl=23.9  H=0.503  tier=silver  coint_frac=0.11
+1h     VRT      MTZ      hl=27.6  H=0.532  tier=silver  coint_frac=0.07
+1h     QQQ      MLI      hl=22.6  H=0.512  tier=silver  coint_frac=0.09
+1h     FHN      MLI      hl=26.0  H=0.527  tier=silver  coint_frac=0.07
+1h     MTSI     WCC      hl=34.1  H=0.568  tier=silver  coint_frac=0.06
+1h     UMBF     FHB      hl=27.5  H=0.540  tier=silver  coint_frac=0.16
 1M     7267.T   8058.T   hl=207.0  H=0.789  tier=silver  coint_frac=0.75
 
 === errors_and_skipped ===

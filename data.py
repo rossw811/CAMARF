@@ -1267,19 +1267,47 @@ def snap_timestamps(
     # Step 1: normalize to tz-naive Eastern time. For an exchange-matched
     # symbol, first capture the SAME instants in that exchange's own local
     # tz (for the session check below) before collapsing to ET-naive.
+    #
+    # BUG-D57 fix (2026-07-12): the branch below used to require df.index.tz
+    # to be non-None to ever activate -- but in this project's REAL data
+    # flow, snap_timestamps() is always called AFTER DataCleaner._standardize()
+    # (data.py), which does `df.index.tz_localize(None)` -- this STRIPS the tz
+    # WITHOUT shifting the wall-clock values, so by the time real data reaches
+    # here the index is already naive. Confirmed directly against a live
+    # yfinance fetch (debug/_verify_exchange_aware_live_fetch.py): raw
+    # yf.Ticker("VOD.L").history() returns a genuinely tz-aware Europe/London
+    # index (08:00, 09:00... LSE session hours), and after _standardize() the
+    # SAME wall-clock numbers survive, just tz-naive -- meaning a naive index
+    # for a recognized exchange-suffixed symbol already IS that exchange's
+    # local time, not ET. The tz-aware branch is kept unchanged for any other
+    # caller that might genuinely pass tz-aware data; the naive branch is new.
     local_tz_index = None
-    if exchange is not None and hasattr(df.index, "tz") and df.index.tz is not None:
+    if exchange is not None:
         exch_tz, _, _ = _EXCHANGE_SESSION[exchange]
-        try:
-            local_tz_index = df.index.tz_convert(exch_tz)
-        except Exception:
-            local_tz_index = None  # fall back to NYSE-session behavior below
+        if hasattr(df.index, "tz") and df.index.tz is not None:
+            try:
+                local_tz_index = df.index.tz_convert(exch_tz)
+            except Exception:
+                local_tz_index = None  # fall back to NYSE-session behavior below
+        else:
+            try:
+                local_tz_index = df.index.tz_localize(exch_tz, ambiguous="NaT", nonexistent="NaT")
+            except Exception:
+                local_tz_index = None  # fall back to NYSE-session behavior below
 
     if hasattr(df.index, "tz") and df.index.tz is not None:
         try:
             df.index = df.index.tz_convert("America/New_York").tz_localize(None)
         except Exception:
             df.index = df.index.tz_localize(None)
+    elif local_tz_index is not None:
+        # Naive input we just determined IS local exchange time (above) -- convert it to the
+        # ET-naive output contract via that localized index, rather than leaving the original
+        # (wrong-timezone-implied) naive values in place.
+        try:
+            df.index = local_tz_index.tz_convert("America/New_York").tz_localize(None)
+        except Exception:
+            pass  # leave df.index as-is; downstream NYSE-session snap will just drop these bars
 
     if tf_label not in _TF_MINUTES:
         return df  # daily+ TFs: timezone normalize is sufficient

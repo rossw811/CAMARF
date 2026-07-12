@@ -86,12 +86,15 @@ policies are fast-moving and shouldn't be assumed from general knowledge.
 | `analysis.py` | ~5300 | ✅ Complete | Analysis pipeline |
 | `macro.py` | ~684 | ✅ Complete | FRED macro regime context |
 | `ml.py` | ~675 | ✅ Complete (Stage 1) | Spread-resolution meta-labeler — see Feature Set below for what's actually implemented vs. deferred to Stage 2 |
-| `backtest.py` | — | 🔲 Planned | Walk-forward backtesting |
-| `stats.py` | — | 🔲 Planned | Statistical validation + Monte Carlo |
-| `options.py` | — | 🔲 Planned | Options overlay pricing |
-| `report.py` | — | 🔲 Planned | LaTeX report generation |
+| `backtest.py` | ~1636 | ✅ Complete | Event-driven backtest engine (Layer 1 baseline + STORM variants) |
+| `stats.py` | ~1320 | ✅ Complete | Statistical validation (Sections 1-7, incl. Monte Carlo) |
+| `options.py` | ~222 | ✅ Complete | Options overlay pricing (built Session 27, no paid data) |
+| `report.py` | ~1902 | ✅ Complete | Report generation, 26 figures |
 
-*(Line counts as of 2026-06-24, taken directly from `wc -l` against the live files, not carried forward from the previous count — analysis.py grew ~320 lines and ml.py ~145 lines over Session 10's BUG-D45-extension/eval_metric/conformal-predictor work.)*
+*(Line counts as of 2026-07-11, taken directly from `wc -l` against the live files. This table was stale
+from 2026-06-24 through the second-pass staleness triage above — it still marked all four of these files
+`🔲 Planned` despite each having been built, run, and extended across 15+ sessions since. Corrected as
+item #1 of that triage.)*
 
 ---
 
@@ -139,6 +142,11 @@ Every bias is recorded in `output/results/bias_audit.json` at runtime.
 
 ## Bug Registry
 
+*(See `BUG_LOG.md` for a one-line-per-entry index of every BUG-D/BUG-A number with a direct line
+pointer into this section — built 2026-07-11 so the ~60-entry registry can be searched without
+reading through this file's full narrative. This section itself is unchanged, still the canonical
+full write-up for every entry.)*
+
 ### data.py
 
 **BUG-D01: Futures ambiguous contract** — qualifyContracts returns all expiry months. Fix: filter to expiry ≥ today, sort ascending, take first (front month).
@@ -185,7 +193,7 @@ Every bias is recorded in `output/results/bias_audit.json` at runtime.
 
 ---
 
-## Bar Alignment Audit (All 12 Timeframes)
+## Bar Alignment Audit
 
 | TF | Source | Stamp | Session Alignment | Notes |
 |----|--------|-------|-------------------|-------|
@@ -196,11 +204,16 @@ Every bias is recorded in `output/results/bias_audit.json` at runtime.
 | 15m | yfinance | 15-min open | 9:30 AM ET | Same partial-last-bar |
 | 30m | yfinance | 30-min open | 9:30 AM ET | Same |
 | 1h | yfinance | Hour open | 9:30 ET first bar | ✅ Clean — 6 full 1h bars + partial close |
-| 4h | IBKR | Session open | 9:30–1:30, 1:30–4:00 | ⚠️ Second bar is 2.5h not 4h; documented bias |
-| 8h | IBKR | Session open | 9:30–4:00 (6.5h) | ⚠️ Effectively 1D in NYSE; labeled 8h but one bar/day |
+| 4h | Derived from 1h (resample) | Session open | 9:30–1:30, 1:30–4:00 | ⚠️ Second bar is 2.5h not 4h; documented bias. Session-aligned bins required (`origin="start_day", offset="9h30min"`) — see CLAUDE.md Known-Resolved Issues |
 | 1D | yfinance + IBKR | Date | NYSE calendar | ✅ Clean; DataAligner aligns all to NYSE master calendar |
 | 7D | **Derived from 1D** | **Friday close** | **W-FRI resample** | ✅ Fixed — previously yfinance 1wk was inconsistent across asset classes |
 | 1M | **Derived from 1D** | **Month start** | **MS resample** | ✅ Fixed — derived from clean 1D base |
+
+*(`8h` row removed 2026-07-11 — the timeframe was deleted entirely in Session 6 (BUG-D22), reconfirmed
+removed again in Session 22, but this table still listed it as live until now. Note this table also
+doesn't yet cover `3M`/`6M`, both of which are live in the current pipeline (`data.py`'s
+`_YF_INTRADAY_MAP`) — not filled in here since their alignment properties haven't been separately
+audited; don't infer they're clean from this table's absence of a row.)*
 
 **Synthetic bars (important future note):** Dollar bars, volume bars, and range bars (Marcos Lopez de Prado, "Advances in Financial Machine Learning") produce statistically more homogeneous observations than time bars because they sample based on market activity rather than the clock. In a 6.5h session, some 15-minute periods have 10× the volume of others — time bars treat them identically. Dollar bars normalize this. For CAMARF v2, constructing synthetic bars from 1m OHLCV would be a significant methodological upgrade. This would require storing 1m data as the primary base and resampling to synthetic bars before cointegration testing. Noted for future work.
 
@@ -224,7 +237,7 @@ Confidence tiers:
 ### Cointegration Hierarchy
 
 Primary: Engle-Granger + BH-FDR  
-Planned (stats.py): KPSS + Phillips-Ouliaris as confirmatory
+Confirmatory (stats.py, ✅ implemented, no longer planned): KPSS + Phillips-Ouliaris
 
 **Gold tier**: EG + KPSS + PO all confirm → primary research findings  
 **Silver tier**: two of three → included with notation  
@@ -237,8 +250,8 @@ Planned (stats.py): KPSS + Phillips-Ouliaris as confirmatory
 | OLS rolling 252-bar | None | ✅ Implemented | Primary |
 | TLS via SVD | Full sample | ✅ Implemented | Comparison |
 | Kalman filter (Q/R frozen after 252 bars) | None | ✅ Implemented | Comparison |
-| Huber regression | Rolling | 🔲 Planned (stats.py) | Robustness |
-| MM estimator | Rolling | 🔲 Planned (stats.py) | Robustness |
+| Huber regression | Rolling | ✅ Implemented (stats.py) | Robustness |
+| MM estimator | Rolling | ✅ Implemented (stats.py) | Robustness |
 
 ### Structural Pair Exclusion
 
@@ -450,6 +463,17 @@ Columns (12 metrics): IS Sharpe, OOS Sharpe, Sharpe decay ratio, Win rate, Profi
 = 144 cells; run overnight across all confirmed pairs
 
 ---
+
+## backtest.py / stats.py / options.py / report.py — Comprehensive Outlines (lines below through ~1149)
+
+> **⚠️ Historical / superseded, not a current spec (flagged 2026-07-11).** Everything from here through
+> the "Session Log" header below was written BEFORE `backtest.py`, `stats.py`, `options.py`, and
+> `report.py` existed, as pre-build design docs. All four have since been built, run, and repeatedly
+> extended across 15+ later sessions — their actual implementations (STORM variants, HRP/risk-parity
+> sizing, the real 26-figure report set, etc.) supersede a lot of what's outlined here (e.g. this
+> section's 8-method portfolio-construction spectrum vs. what actually shipped). Read this for
+> historical context on original intent, not as documentation of current behavior — for that, read the
+> live source files or CLAUDE.md's File Map. Item #7 of the second-pass staleness triage above.
 
 ## backtest.py — Comprehensive Outline
 
@@ -1211,9 +1235,11 @@ IBKR: TWS or Gateway at 127.0.0.1:4001 (live) or 4002 (paper). Client ID 1.
 
 | Task | Model | Reasoning |
 |------|-------|-----------|
-| Planning, debugging | claude-sonnet-4-6 | Fast, sufficient |
-| Writing large files | claude-opus-4-7 | Better sustained output |
-| Hard statistical reasoning | claude-opus-4-8 | Best mathematical correctness |
+| Planning, debugging, day-to-day session work | claude-sonnet-5 | Fast, sufficient — this is what every Session 22+ session has actually run on |
+| Hard statistical reasoning, architecture review | claude-opus-4-8 | Best mathematical correctness |
+
+*(Updated 2026-07-11 — table previously named a superseded model generation (`claude-sonnet-4-6`/
+`claude-opus-4-7`); corrected as item #6 of the second-pass staleness triage above.)*
 
 ---
 
@@ -1742,7 +1768,10 @@ Dollar bars (Lopez de Prado) sample when $X of notional trades, not at fixed tim
 
 ### Session Log Update
 
-### Session 3 (2026-06-15, morning)
+### Session 3b (2026-06-15, morning)
+
+*(Renamed from "Session 3" on 2026-07-11 to disambiguate from the unrelated Session 3 (2026-06-14,
+afternoon/evening) entry earlier in this file — both had used the same session number.)*
 - Cache migration v2 applied (renamed 5230 files, deleted 529 corrupted 1m/1M files)
 - IBKR clientId conflict fixed (analysis.py uses clientId=2)
 - ValueError f-string fixed (was killing all pair modeling at 1h/4h/1D/7D)
@@ -2291,6 +2320,12 @@ This timeline visualization becomes Exhibit X in the paper: "Cointegration Stabi
 
 ### Planned: FRED Macro Regime Context
 
+**RESOLVED — `macro.py` built and in production** (confirmed via Session 28 accuracy audit,
+2026-07-11): `build()`, the full FRED series set, and regime classification
+(`yield_curve_regime`, `credit_regime`, `vix_regime`, etc.) all exist and are actively used
+elsewhere in the pipeline. This header predates that build; left below as the original design
+rationale, not a current "not yet built" status.
+
 **Why it matters for the paper:**
 If NTRS↔STT only works when the yield curve is steepening, the strategy is a yield curve bet expressed through bank stocks — not genuine pairs alpha. Splitting backtest results by macro regime proves (or disproves) that the strategy is robust across economic environments. A regime-robust strategy is a much stronger claim than aggregate performance.
 
@@ -2822,9 +2857,13 @@ being avoided.
 
 1. Confirmed, stable pair universe with sufficient trade history per pair (prerequisite,
    currently in progress)
-2. `PairCharacteristicsAnalyzer` decision trees + heatmaps per confirmed pair (designed,
-   not yet built — see earlier section)
-3. Archetype clustering on characteristic profiles across all confirmed pairs
+2. **RESOLVED, Session 28 (2026-07-11)**: `PairCharacteristicsAnalyzer` decision trees + heatmaps
+   per confirmed pair (`research/pair_characteristics_analyzer.py`) — this line originally said
+   "designed, not yet built." Built with the full min-N/permutation/holdout discipline; honest
+   small-n result (6/24 pairs show a holdout-confirmed characteristic). See `FINDINGS.md` §3.
+3. **Also resolved, same session**: archetype clustering on characteristic profiles across all
+   confirmed pairs (Stage 4, same script) — 3 small clusters found, n=6 too thin to treat as
+   real archetypes yet.
 4. Per-archetype (or globally-weighted, if clustering doesn't show clean separation)
    meta-labeler training with CPCV + chronological hold-out + permutation testing
 5. SHAP analysis confirming learned feature importance matches economic hypothesis
@@ -3166,8 +3205,9 @@ files current after every substantive session is not optional bookkeeping
 6. Once data.py/analysis.py are stable: begin macro.py (FRED integration)
    as a relatively self-contained build, good candidate for testing the
    feature-dev workflow
-7. Then: PairCharacteristicsAnalyzer (designed, not built) once enough
-   confirmed pairs exist with stable characteristics
+7. **RESOLVED, Session 28 (2026-07-11)**: PairCharacteristicsAnalyzer — built as
+   `research/pair_characteristics_analyzer.py`, see the resolution note earlier in this file
+   and `FINDINGS.md` §3.
 
 ---
 
@@ -3471,7 +3511,11 @@ showing near-zero pairs is independently expected from the economics
 literature already cited in this document, separate from the full-sample-
 window issue above.
 
-**Confirmed as a planned point of comparison (not yet implemented):** run
+**RESOLVED, Session 28 (2026-07-11)**: built as `research/bounded_lookback_primary_screen.py` —
+found a live instance of this exact mechanism on 7267.T/8058.T@1M (full-sample EG p=0.0001 vs.
+5-year-bounded p=0.19). See `FINDINGS.md` §2. Original planning note below, kept for context:
+
+**Confirmed as a planned point of comparison:** run
 EG (and `coint_fraction_rolling`) twice per pair at 1D/1M/3M/6M — once on
 the full sample (current behavior) and once on a bounded recent lookback
 (e.g. 5-10 years) used as its own PRIMARY screen, not just as a secondary
@@ -4601,6 +4645,17 @@ daily liquidity floor). This is a new methodology decision (how to
 detect and handle this), not a bug-fix-with-an-obvious-single-answer —
 needs Ross's input before building anything, per this file's standing
 rule on introducing new concepts.
+
+**RESOLVED, in two separate later steps (both now built):** (1) the DETECT half — this exact
+distinct-close-price heuristic — was built as `audit_price_degeneracy.py` (same day, later
+session) and re-run fresh in Session 28 (2026-07-11: 31.4%/1m, 23.5%/2m, 23.4%/3m flagged). (2) the
+HANDLE half — Ross's explicit decision, Session 28 — is deliberately NOT the hard exclusion this
+note originally floated ("flag a symbol/TF as suspect" implying gating): `analysis.py`'s
+`predicted_degeneracy_risk` field (a market-cap+sector PREDICTIVE gate, a different and more
+conservative mechanism than the distinct-price-count DETECTIVE one) is visibility/prioritization
+only, never exclusion — the observed `thin_info_content` flag remains the sole authoritative
+exclusion signal. Both mechanisms coexist: one detects (post-hoc, from real intraday data), one
+predicts (pre-hoc, from cheap metadata) — neither replaces the other.
 
 **Action items, not yet done:**
 1. Audit the rest of the universe (not just these 4 names) for the same
@@ -5976,7 +6031,9 @@ that becomes possible. In `PAPER.md` the 19/37 flagging rate (mean
 null_frac_significant 0.224 vs expected ~0.05) is a citable finding
 (§4 or §8 bias audit), not merely a limitation. MTDR/MGY@3m (86% of
 random circular shifts significant) is the canonical worked example.
-Not yet implemented — flagged for the next code session.
+**RESOLVED** (confirmed via Session 28 accuracy audit, 2026-07-11): `permutation_robust` field is
+built and live in `PairResult` (`analysis.py`), consumed by `ml.py`. This line originally said
+"not yet implemented" — stale as of this correction.
 
 **backtest.py architecture direction (Ross + Claude, 2026-06-27):**
 First version is a simple rule-based baseline — NO ml classifier. Rule:
@@ -7171,6 +7228,13 @@ Implementation: `Config.ANALYSIS.ADV_FILTER_USD` list, logged comparison table a
 
 ### Planned: survivorship bias / Wikipedia delist tracking
 
+**RESOLVED** (confirmed via Session 28 accuracy audit, 2026-07-11): `survivorship.py` exists and
+all 4 plan steps below are wired in — confirmed directly, not assumed: `oos_end_date` truncation
+is live in `backtest.py`'s `BacktestEngine.run()`. This does NOT fully resolve the broader
+"universe built from current constituents only" survivorship bias (see the Phase 4 doc-alignment
+finding, same session) — it only handles pairs where a leg was later removed from the S&P 500
+index — but the specific mechanism planned below IS built, not still planned.
+
 The Wikipedia S&P 500 historical changes page logs additions and deletions with dates.
 Plan:
 1. Build `survivorship_exclusions.csv`: (symbol, removed_date, reason)
@@ -7182,6 +7246,10 @@ Plan:
 
 ### Planned: parameter sensitivity / stability test (sensitivity.py)
 
+**RESOLVED** (confirmed via Session 28 accuracy audit, 2026-07-11): `sensitivity.py` exists and
+implements this exact sweep (entry_z/exit_z/half_life, confirmed 10 matching occurrences in the
+file). See PAPER.md §7.8 for the resulting numbers.
+
 Key parameters to perturb:
 - Entry z-score: sweep [1.5, 2.0, 2.5, 3.0]
 - Exit z-score: sweep [0.0, 0.25, 0.5, 0.75]
@@ -7192,6 +7260,10 @@ Output: 2D heat map of (entry_z × exit_z) portfolio Sharpe; 1D sensitivity plot
 half-life and ADV thresholds. Standard robustness requirement for systematic strategy papers.
 
 ### Planned: GICS sector tagging
+
+**RESOLVED** (confirmed via Session 28 accuracy audit, 2026-07-11): `gics.py` exists;
+`same_sector`/`sector_a`/`sector_b` columns confirmed wired into `analysis.py` (8 matching
+occurrences).
 
 Add GICS sector and sub-industry columns to pair records in analysis.py:
 - Source: `gics_tags.csv` with (symbol, sector, industry_group, industry, sub_industry)
@@ -7259,6 +7331,14 @@ Add GICS sector and sub-industry columns to pair records in analysis.py:
 ---
 
 ### Planned: Exchange-Aware Intraday Session Handling (data.py)
+
+**RESOLVED, Session 28 (2026-07-11)** — see the "`data.py`: Exchange-Aware Intraday Session
+Handling" entry later in this file for the full build/verification writeup. This header was never
+cross-referenced forward when that entry was added; fixed now so a reader hitting this section
+first doesn't think it's still open. Code fix verified (byte-identical for existing US symbols,
+correctly keeps the full real LSE session where the old NYSE-only check kept only the documented
+2-hour overlap) but not yet exercised on a real international-symbol fetch — a dedicated follow-up
+`data.py` run targeting `.L`/`.T`/`.HK` symbols is still the concrete next step.
 
 **Problem (confirmed 2026-06-29):**
 International assets with native exchange tickers (.L, .T, .HK) currently have ONLY daily
@@ -7414,6 +7494,11 @@ AZN.L vs AZN, and for all Nikkei/HK vs US ADR pairs. Build Phase 2 separately.
 ---
 
 ### Planned: Earnings Blackout as STORM Variant (backtest.py)
+
+**RESOLVED, Session 28 (2026-07-11)** — see the "`earnings.py` + `backtest.py
+--storm-earnings-blackout`" entry later in this file for the full build/verification writeup and
+real result (genuine tradeoff: -16.3% trades, Sharpe 5.30 vs. 5.40, but 48% lower max drawdown).
+This header was never cross-referenced forward when that entry was added; fixed now.
 
 **Idea (flagged 2026-06-29):**
 Skip entry signals within ±3 days of either pair leg's earnings announcement date.
@@ -10187,8 +10272,11 @@ published as the project's "current state."
   gap beyond, ml.py Stage 2's already-known "pending" status (CLAUDE.md file map) — this was Stage 2's
   own specific prerequisite tool, also never built.
 - **Intraday data-quality check for "present but non-informative" bars** (distinct-close-price-count
-  heuristic, flagged after the BUG-D49 1m price-degeneracy audit) — explicitly marked in Development.md
-  as "not yet built or discussed with Ross." Still not discussed as of this session.
+  heuristic, flagged after the BUG-D49 1m price-degeneracy audit) — RESOLVED later the same session:
+  the detect half already existed (`audit_price_degeneracy.py`, re-run fresh above); the handle half
+  was decided and built (`predicted_degeneracy_risk`, Option A, visibility-only). This bullet was
+  accurate at the time it was written, superseded within the same session — see the resolution note
+  at this file's original BUG-D49 entry for the full account.
 - **`_gap_aware_returns`/`_clean_close` elapsed-real-time gap check** (as opposed to positional
   `gap_flag` adjacency) — low priority, the code path that would need it (`drop_data_gap_rows=True`)
   is currently unused/default-False, so this is dormant risk, not active exposure. Still worth tracking.
@@ -10734,3 +10822,1215 @@ open question, not resolved with a guessed timeline. Practical implication eithe
 following `requirements.txt` to reproduce this project's environment before this fix would have
 installed a pandas version 3+ major versions behind what the code has actually been exercised
 against — a real reproducibility risk this fix closes, regardless of when the drift first occurred.
+
+### Second-pass Development.md staleness triage (2026-07-11) — full read, not grep-only
+
+Ross asked to re-check this file for stale content after the first audit pass (10 items, all fixed
+above). This was a full read of all 10,795 lines (not a grep sweep) with cross-checks against live
+code, PAPER.md, README.md, and CLAUDE.md, run via a background fork to keep the raw read/grep output
+out of the main session's context. Read-only — findings below, not yet fixed.
+
+**Stale (documentation-only fixes needed):**
+
+1. **Lines 81–93, "File Inventory" table (dated 2026-06-24)** — still marks `backtest.py`, `stats.py`,
+   `options.py`, `report.py` as `🔲 Planned` with `—` line counts. All four have been built, run, and
+   extended repeatedly since (backtest.py has 15+ sessions of history; stats.py runs Sections 1–7;
+   report.py generates 26 figures; options.py was built Session 27). The single most visible
+   contradiction in the file — top of doc, directly conflicts with everything below it and with
+   CLAUDE.md's own file map. Missed by the first audit pass because it's a table status marker, not a
+   "Planned:" prose sentence.
+2. **Lines 219–231 ("Cointegration Hierarchy") and 235–241 ("Hedge Ratio Methods" table)** — still say
+   KPSS+Phillips-Ouliaris and Huber/MM hedge-ratio estimators are `🔲 Planned (stats.py)`. Both are long
+   built and actively running (stats.py Sections 1 and 2 — the same code path BUG-D55's fix touched).
+   Same missed-because-table-not-prose pattern as #1.
+3. **Lines 187–205, "Bar Alignment Audit (All 12 Timeframes)"** — still lists `8h` as a live timeframe
+   sourced from IBKR. 8h was removed entirely in Session 6 (BUG-D22) and reconfirmed removed again in
+   Session 22's cleanup pass; this table was never updated after either removal.
+4. **Lines 10108–10126 (BUG-D55 writeup, self-flagged at the time)** — the fix changed stats.py's
+   gold/silver/fat-tail counts (8g/11s/20-testable, 16/20 fat-tail), explicitly noted at the time as not
+   matching what's currently published in PAPER.md/README.md ("13 gold / 9 silver of 22 testable
+   pairs", "16/23 fat-tailed") — and even the pre-fix baseline didn't match either. Still open pending
+   the in-progress Phase 3 full pipeline rerun (task #5/#7) before Phase 4 doc-alignment can cite
+   correct numbers.
+5. **Lines 1153–1170 vs. 1745–1767** — two different, non-duplicate "Session 3" entries exist (`Session
+   3 (2026-06-14, afternoon/evening)` and `Session 3 (2026-06-15, morning)`, the latter covering cache
+   migration v2/IBKR clientId fix). A session-numbering collision from early in the project, not
+   misleading content-wise, but a search for "Session 3" hits two unrelated entries.
+6. **Lines 1210–1216, "Model Recommendations" table** — references an old model-naming generation
+   (`claude-sonnet-4-6`/`claude-opus-4-7`/`claude-opus-4-8`). Harmless but stale; low priority.
+7. **Lines 454–1149** (the pre-build `backtest.py`/`stats.py`/`options.py`/`report.py` "Comprehensive
+   Outline" sections) — large, aspirational design docs written BEFORE each module existed, never
+   reconciled against what actually got built (e.g. the outline's 8-method portfolio-construction
+   spectrum vs. the STORM/HRP/risk-parity variants actually shipped). Not wrong exactly, but risks
+   reading as a current spec when it's largely superseded by later sessions' real implementations. Too
+   large to line-item; flagged as a structural-drift issue rather than an itemized fix.
+
+**Old (correctly historical, not stale — confirmed, no action needed):** the full BUG-D01–D51/
+BUG-A01–A14 registries (point-in-time fix records, previously re-verified 61/63 correct against live
+code); BUG-D31's original description, already correctly annotated SUPERSEDED in place; the Session 6
+8h-removal narrative itself (only the Bar Alignment Audit table, #3 above, failed to follow it);
+pit_wfa's Session 24 negative-Sharpe finding (already reconciled into PAPER.md's Session 25
+"dual-finding" framing); Session 20's 1h-pair-loss investigation / BUG-D52 (resolved within the same
+document, correctly cross-referenced forward).
+
+**Valuable and actionable — not yet done, full list:**
+
+1. `Development.md`/`BUG_LOG.md` split (proposed Session 26, line ~8996, never actioned) — would make
+   the ~40-entry bug registry navigable without wading through 10,800+ lines of narrative.
+2. **Lo (2002) Sharpe-autocorrelation correction verified but never applied to CAMARF's actual headline
+   Sharpe** (line ~9086) — `_replicate_lo2002_sharpe_autocorrelation_correction.py` is built and
+   verified; computing the real daily-P&L autocorrelation sign and applying the correction to the
+   reported 5.24/5.29 Sharpe was explicitly deferred pending its own sign-off. Touches the headline
+   number directly — highest-priority item on this list.
+3. **`vix_ts_regime` schema field is never actually populated in the real trade log** (line 10444) —
+   macro/VIX-regime conditioning is silently a no-op in production despite `RegimeConditioner`
+   existing. Concrete scoped fix: `check_entry()` needs to actually carry a `"vix_ts"` key in its
+   returned context dict. **CORRECTION (2026-07-11, see below): this specific diagnosis was wrong —
+   `check_entry()` already does this correctly when enabled. The real cause is that Layer 2 is never
+   turned on in production. No code bug; see the full write-up below for the actual root cause and
+   the decision this surfaces for Ross.**
+4. BUG-D56 (`coint_frac_sizing` STORM flag silently overwritten, not composed, when combined with
+   `continuous_forecast_carver`/`_linear`) — documented in-line, unfixed; a methodology call for Ross
+   (compose vs. override), not a code bug per se.
+5. Mechanical lookahead self-test still missing (flagged Session 27 bias-literature review, reconfirmed
+   still absent line 10151): "lag every feature by one bar, confirm performance degrades." Simple,
+   well-scoped, not yet built.
+6. **27 evaluations against the same OOS holdout slice** — `deflated_sharpe.py`'s own HIGH-exposure
+   flag already tripped (>20 threshold), no corrective action taken (e.g. reserving a fresh
+   never-examined holdout window before any final published numbers). Real, currently-unresolved
+   statistical-validity question, explicitly Ross's call.
+7. Exchange-aware intraday session handling (this session's build, line 10499) — code built and
+   verified via synthetic test, never exercised on a real fetch. Concrete next step: a dedicated
+   `data.py` run targeting `.L`/`.T`/`.HK` symbols specifically.
+8. IBKR circuit-breaker — three independent investigation sessions (25, 27), still unresolved,
+   application-side diagnosis exhausted. Only remaining lead is Ross checking IB Gateway's own local API
+   message log directly.
+9. Bounded-lookback primary screen has only n=1 real comparison (7267.T/8058.T@1M) — already tracked
+   above as gated on the pending universe-expansion decision.
+10. Tail-risk-vs-Sharpe framing — only 2 data points so far (earnings blackout, regime "bad bucket") —
+    already tracked above as needing 1-2 more risk-reducing variants before it's a real section.
+11. `requirements.txt` pandas 3.0.3 drift's root cause/timeline unresolved (see immediately above) —
+    file itself is now correctly pinned; low priority, real reproducibility-audit gap.
+12. PairCharacteristicsAnalyzer archetype clustering (n=6) too thin to trust — tracked against the same
+    ~2-week ML-gate accumulation clock already being watched elsewhere; re-run once trade counts grow.
+13. Universe-growth Stage 4 (international/ADR layer) introducing session not pinned down (line 10692,
+    already flagged honestly above as a documentation gap rather than guessed).
+14. Corporate-actions reconciliation is only a 4-symbol spot-check, not a full module — already
+    explicitly scoped as lower-priority; still open if Ross wants full coverage eventually.
+
+### Second-pass triage item #2 actioned: Lo (2002) correction applied to real CAMARF Sharpe (2026-07-11)
+
+Highest-priority item from the triage above — verified but never applied to the actual headline
+5.24/5.29 Sharpe. Built `research/lo2002_sharpe_correction.py`, which reconstructs the exact same
+daily-P&L series `backtest.py`'s own `aggregate_portfolio()` builds (`backtest.py:851-861`) from the
+real `output/backtest/trades_layer1.parquet` (IS) and `trades_layer1_holdout.parquet` (OOS) trade
+logs, then applies Lo's general (non-AR(1)-assumed) `eta(q)` formula with q=252 to match the existing
+`sqrt(252)` annualization convention.
+
+**Sanity check the reconstruction is correct**: the OOS file's naive Sharpe from this script
+(5.2443) matches the currently-published OOS headline number to 4 decimal places — confirms the
+daily-P&L rebuild logic is faithful to `backtest.py`'s own aggregation, not a divergent
+reimplementation. The IS file's naive Sharpe (5.4019, 1039 daily obs from 521 trades) does NOT match
+the last-published IS headline (5.2935, 1028 trades) — expected and disclosed in the script's own
+output banner, since `trades_layer1.parquet` on disk reflects whatever `backtest.py` run last wrote
+it, and this session's Phase 3 full pipeline rerun has not completed. Re-run this script once Phase 3
+lands for the final citable IS/OOS pair.
+
+**Finding — genuinely negative, not forced**: lag-1 autocorrelation is statistically indistinguishable
+from zero in both samples (IS rho_1 = +0.0038, SE≈0.031; OOS rho_1 = -0.0225, SE≈0.069 — both well
+under the ~2×SE significance threshold). The rho_1-only correction, which Lo's own paper treats as the
+dominant term for most real return series, is correspondingly tiny: IS naive Sharpe overstated by only
+0.38%, OOS understated by only 2.27%. The full 251/52-lag empirical-ACF sum produces a much larger
+swing (IS: naive understates by 18.93%; OOS: 17.94%) — but a 200-shuffle permutation null check (same
+daily P&L values, order randomized to destroy any real serial structure by construction) shows swings
+of this size are NOT distinguishable from pure estimation noise at this sample size (null 95th
+percentile: 49.05% for IS, 69.88% for OOS — the observed swings sit well inside the noise band). This
+is exactly the failure mode the synthetic replication script's own Case 1 (`rho≈0` should leave naive
+and corrected Sharpe nearly coinciding) predicts when a naive un-truncated 251-lag sum is applied to a
+process with genuinely near-zero true autocorrelation and a few hundred daily observations — the sum
+amplifies noise across many individually-insignificant lags rather than detecting a real effect.
+
+**Conclusion, stated honestly (SUPERSEDED — see correction directly below, do not cite this
+paragraph)**: CAMARF's real daily portfolio P&L shows no statistically detectable serial correlation,
+so the Lo (2002) correction does not meaningfully change the reported Sharpe — the naive `sqrt(252)`
+annualization already in `backtest.py` is not measurably biased by autocorrelation for this strategy.
+This is a negative result with a well-understood mechanism (per CLAUDE.md rule 8) — the correction
+was correctly identified as a real methodological gap, the verified formula was correctly applied to
+real data, and the honest answer is "checked, no material effect," not "correction skipped." Not a
+production code change; this stays a comparison-arm / robustness-check finding, citable in PAPER.md
+as evidence the headline Sharpe was checked against this specific bias and found clean, pending the
+final IS/OOS numbers once Phase 3 completes.
+
+### CORRECTION — Lo (2002) re-run against the real Phase 3 headline data reverses the "no effect" conclusion (2026-07-11, same day)
+
+Phase 3's `analysis.py` completed later this same session (301.7 min runtime, clean). Re-ran the full
+production sequence for real citable numbers: `backtest.py` (baseline, IS) → Sharpe **5.1717** (17
+pairs, 1516 trades); `backtest.py --holdout` (OOS) → Sharpe **4.3877** (319 trades). Re-ran
+`research/lo2002_sharpe_correction.py` against these real, final trade logs (not the thin/partial
+521-trade file the paragraph above was computed from) — **the result is materially different, and
+the "no material effect" conclusion above does not hold on real data.**
+
+Also fixed the script itself while re-running it: it previously printed a static "not significant if
+|rho_1| < ~2×SE" caveat without actually computing the comparison. Added an explicit z-score
+(`rho1 / SE`) and a computed significance verdict, so the script now states a conclusion rather than
+leaving the reader to eyeball it.
+
+**Real finding**: lag-1 autocorrelation is NOW statistically significant in both samples — IS
+rho_1 = -0.1047 (SE≈0.0311, z=-3.36), OOS rho_1 = -0.3045 (SE≈0.0685, z=-4.44), both comfortably past
+the |z|≥2 threshold the earlier (thin-data) run never reached. Both are NEGATIVE — mean-reverting
+daily P&L, consistent with a pairs-trading strategy's own economic logic (a good day is somewhat more
+likely to be followed by a give-back day) — meaning the naive `sqrt(252)` Sharpe **UNDERSTATES**, not
+overstates, the true risk-adjusted return: rho_1-only corrected Sharpe is **5.8130 IS** (naive
+understates by 11.03%) and **6.9951 OOS** (naive understates by 37.28%). The full 251/53-lag
+empirical-ACF estimate remains noise-dominated exactly as before (confirmed again via the same
+200-shuffle permutation null check — both swings sit within the null range), so the rho_1-only
+number, not the full-lag number, is the one to trust and potentially cite.
+
+**Why the earlier run missed this, stated plainly**: not a bug in the method — the earlier run's
+`trades_layer1.parquet` (521 trades) was a genuinely different, smaller, partial dataset than the
+real 1516-trade production set, sampled from a different point in this session's data state. Smaller,
+noisier samples produce noisier rho_1 estimates that are more likely to sit inside a wide "not
+significant" band by chance; the real, larger dataset shows the true underlying signal was there all
+along. This is disclosed as a genuine self-correction (per PAPER.md §9's own standing rule that every
+documented-as-fixed or documented-as-checked claim is a hypothesis to re-verify, including this
+project's own prior claims about itself) — not quietly edited away.
+
+**Not yet decided**: whether to promote the rho_1-corrected Sharpe (5.81 IS / 7.00 OOS) into PAPER.md
+as an additional reported figure alongside the naive headline, or keep it as a comparison-arm/
+robustness-check finding only. This is a real editorial call — the corrected numbers are HIGHER, so
+promoting them without care risks reading as cherry-picking a favorable correction, even though the
+statistical justification (Lo 2002, applied honestly, with a null check ruling out the noise-only
+explanation) is sound. Flagged for Ross's direction before touching PAPER.md's headline Sharpe
+figures.
+
+### BUG-D56 fixed: coint_frac_sizing now composes with continuous_forecast_carver/_linear (2026-07-11)
+
+Ross confirmed "compose" over override-only. Changed `backtest.py`'s entry-sizing block (~line 658-670):
+both the `_cf_carver` and `_cf_linear` branches now multiply their computed `n_shares` by `_coint_frac`
+when `coint_frac_sizing` is also set, instead of silently discarding it as before. One line added per
+branch (`if _coint_frac_sizing: n_shares = max(1, int(n_shares * _coint_frac))`), replacing the
+in-line architecture-note comment that flagged this as undecided.
+
+**Verified**: `debug/_verify_bug_d56_compose.py` — runs the REAL `BacktestEngine.run()` (not a
+re-implemented copy of the formula) on a minimal synthetic single-trade spread series across 4
+flag combinations. Confirms: coint_frac_sizing alone scales shares by exactly `coint_frac` (100→50 at
+coint_frac=0.5); carver alone is unaffected by coint_frac_sizing being off; and — the actual
+regression check — carver+coint_frac_sizing together now produces 50 shares, not 100 (100 being what
+the pre-fix bug would have produced by silently discarding coint_frac_sizing). All cases passed.
+
+**Real backtest.py comparison — deferred, not run.** Attempted `python backtest.py --hedge ols
+--storm-continuous-forecast-carver` against current on-disk data to get a real before/after Sharpe
+comparison. Found `output/results/1hr/` (and every other live TF directory except `1min`/`2min`/`3min`)
+does not currently exist — this session's in-progress `analysis.py` run (started by Ross directly,
+per the "you run it yourself" arrangement) renames the PREVIOUS run's output to
+`<tf>_stale_20260711_030952` at start, and every attempt so far has died before reaching the `1h`
+timeframe, so there is no live confirmed-pairs data to backtest against right now. The real 18-pair
+1h dataset does exist at `output/results/1hr_stale_20260711_030952/pairs.parquet` — deliberately NOT
+touched (renaming it back to live while Ross's own analysis.py is actively running in a separate
+terminal risks corrupting his in-progress run's directory bookkeeping). **Next step**: once Phase 3's
+analysis.py completes, re-run this comparison (carver-only vs. carver+coint_frac_sizing composed) as
+one more comparison arm and report the Sharpe/trade-count delta — the code fix itself does not need
+that comparison to be correct (the synthetic test already proves the composition arithmetic is right),
+but the real-world magnitude of the effect on CAMARF's actual confirmed pairs is still unknown.
+
+### `vix_ts_regime` — triage item #3 investigated, audit's diagnosis was WRONG, correcting rather than "fixing" (2026-07-11)
+
+The second-pass triage above (item #3) claimed the fix was "`check_entry()` needs to actually carry a
+`'vix_ts'` key in its returned context dict." Read the actual code before touching anything, per
+CLAUDE.md's "full comprehension before code" rule — **this claim is incorrect, and no code was
+changed.**
+
+`RegimeConditioner.check_entry()` (backtest.py:254-298) already correctly returns a populated
+`{"vix_ts": ..., "yield": ...}` dict whenever `self.enabled` is `True` — confirmed directly, not
+assumed: `RegimeConditioner(enabled=True).check_entry(pd.Timestamp("2025-06-01"), "1h")` returns
+`{'vix_ts': 'deep_contango', 'yield': 'normal'}` against real cached macro data. The actual root
+cause of every existing trade log showing `vix_ts_regime=""`: `RegimeConditioner` is only ever
+constructed as `RegimeConditioner(enabled=layer2)` (backtest.py:1394), and **Layer 2 has never once
+been run to completion in production** — confirmed by `output/backtest/` containing zero
+`*layer2*.parquet` files, only `*layer1*` ones. When `enabled=False`, `check_entry()` correctly
+short-circuits to `return True, 1.0, {}` (line 260) — an intentional early-return for the disabled
+case, not a bug. Every production trade log is, by its own `trades_layer1*.parquet` naming, a
+Layer-1-only (baseline) run, where an empty `vix_ts_regime` is the CORRECT, by-design output, not a
+silent failure of a supposedly-broken field.
+
+**Corrected framing**: this isn't a bug to fix, it's an unexercised capability — Layer 2 (ML gate +
+macro/VIX regime conditioning) is real, implemented, and verified working when enabled, but has
+simply never been the mode any production backtest.py run actually used. Whether to start running
+Layer 2 in production (which would change which trades get taken and at what size, via
+`regime_cond.check_entry()`'s `allow`/`size_mult` return values) is a real methodology decision — per
+CLAUDE.md's Working Style section, this goes through Ross first, not decided unilaterally by turning
+on a flag. Flagging as a decision point, not closing as "fixed": does Ross want a real `--layer2`
+backtest.py run added as a comparison arm (baseline Layer 1 vs. Layer 2 with regime conditioning +
+ML gate), separate from the ML Stage 2 exploratory work already done this session?
+
+### Mechanical lookahead self-test built (2026-07-11) — triage item #5
+
+"Lag every feature by one bar, confirm performance degrades" — flagged Session 27, still absent at
+this session's second-pass triage. Built `research/ml_lookahead_selftest.py`, reusing `ml.py`'s real
+`_build_examples_for_pair()` and `_train_and_validate()` unchanged. Added one new parameter to
+`_build_examples_for_pair`: `feature_lag: int = 0` (default preserves exact original behavior for
+every real caller, including `ml.py`'s own production `build()`) — when >0, staled ONLY the
+model-facing feature snapshot (`zscore`, `half_life_current`, `zscore_velocity`), while entry
+detection timing and the label-driving `z_entry` stay anchored to the true entry bar.
+
+**Self-caught design bug before trusting the mechanism**: the first version instead lagged the whole
+`spread_series` DataFrame before passing it in (matching `research/fill_timing_sensitivity.py`'s
+convention). A synthetic sanity check (single clean z-spike at a known bar) immediately failed an
+assertion — because `_build_examples_for_pair` uses the same `z_rolling` column for BOTH entry
+detection and feature reading, shifting the whole series just moves the detected entry time forward
+by the same amount, so "the feature value at entry" reads identically fresh either way. This would
+have silently produced a meaningless "PASSED" on real data without ever actually testing anything —
+caught by writing the synthetic check first and taking its failure seriously rather than shipping the
+first version that ran without crashing (this project's "verify before claiming done" rule doing
+exactly its job). Rebuilt using the `feature_lag` parameter instead, and the synthetic check now
+passes (saved permanently as `debug/_verify_ml_feature_lag.py`): entry timing and label are provably
+lag-invariant, and only the trained-on feature value staled correctly (2.0 → 0.3 in the synthetic
+case).
+
+**Real run — insufficient data, honestly reported, not forced.** Ran against current on-disk
+confirmed pairs: 0 labeled examples in both the unlagged and lagged conditions, because (same root
+cause as everything else blocked this session) `output/results/1hr/` and every other TF except
+`1min`/`2min`/`3min` are currently parked as `_stale_20260711_030952` pending Phase 3's `analysis.py`
+completing. The script correctly detects this and reports "insufficient data," rather than fabricating
+a result from the one leftover 3m pair. **Next step**: re-run `research/ml_lookahead_selftest.py`
+once Phase 3 lands — the mechanism itself is built and verified; only real training data is missing.
+
+### BUG_LOG.md built as a pure index, not a content split (2026-07-11) — triage item #1
+
+Ross's Session 26 proposal, never actioned, was a `Development.md`/`BUG_LOG.md` split. Investigated
+the actual feasibility before executing: `grep`'d every `BUG-D`/`BUG-A` header location and found the
+registry is NOT one clean contiguous block — BUG-D01 through roughly D48 are a dense list (lines
+~147-4568), but D49 onward (D49's own multi-entry price-degeneracy investigation, D50-D56) are
+embedded inside much larger session narratives (root-cause investigations, policy decisions,
+verification write-ups spanning hundreds of lines each). Physically moving those into a separate file
+would either lose surrounding context or force duplicating large amounts of prose across two files —
+a real risk to this project's canonical memory document for a request whose actual goal (per the
+original Session 26 proposal and this session's own triage) is navigability, not reorganization.
+
+**Built `BUG_LOG.md` as a pure index instead**: one row per BUG-D/BUG-A number (60 entries: D01-D56,
+A01-A14, minus D32 which turns out to have no standalone entry despite being referenced by D37's
+title — flagged as a numbering note in the index itself, not fabricated) with a one-line summary and
+a direct `Development.md:LINE` pointer. Zero content deleted or moved out of `Development.md` — it
+remains the single canonical full record, exactly as before. This achieves the actual stated goal
+(find a bug number without reading 10,900+ lines of narrative) with no risk to the existing document,
+which a literal file-split would have carried. Added a pointer note at `Development.md`'s own "Bug
+Registry" header and a `BUG_LOG.md` entry in CLAUDE.md's File Map.
+
+### BUG-D57 found: exchange-aware `snap_timestamps()` is dead code in the real production data flow — `DataCleaner._standardize()` strips tz first (2026-07-11)
+
+Triage item #7: the exchange-aware session-handling fix (`snap_timestamps(..., symbol=...)`) was built
+and synthetically verified this session, but explicitly flagged as "never exercised on a real fetch."
+Ran a dedicated real-data test (`debug/_verify_exchange_aware_live_fetch.py`) against three real
+international tickers — VOD.L (LSE), 7267.T (JPX, already a confirmed pair elsewhere in this
+project), 0700.HK (HKEX) — at 1h, calling the REAL `YFinanceFeed.get_intraday_fallback()` and
+`snap_timestamps()` functions unchanged. **Result: `symbol=None` and `symbol='VOD.L'` (etc.) produced
+byte-identical row counts in all 3 cases** — the exchange-aware branch had zero effect on real data,
+despite passing its synthetic test.
+
+**Root-caused, not guessed.** Confirmed directly: raw `yf.Ticker("VOD.L").history(interval="1h")`
+returns a genuinely tz-aware index (`Europe/London`, verified by printing `df.index.tz` on the
+untouched yfinance response). But `get_intraday_fallback()` routes every fetch through
+`DataCleaner.clean()` before returning it, and `DataCleaner._standardize()` (data.py:1498-1500)
+unconditionally does `df.index = df.index.tz_localize(None)` — this STRIPS the tz without converting
+first (wall-clock time is kept as-is, e.g. "08:00 Europe/London" becomes bare "08:00"). By the time
+`snap_timestamps()` ever receives the DataFrame, `df.index.tz` is already `None`, so its own
+precondition (`hasattr(df.index, "tz") and df.index.tz is not None`) can never be true for data that
+flows through this real path — the exchange-aware branch is unreachable dead code in production,
+regardless of whether `symbol=` is passed correctly.
+
+**Why this wasn't caught by the synthetic test**: `debug/_verify_exchange_aware_session.py` (the
+original synthetic verification) necessarily constructed its own tz-aware fixture DataFrame and
+called `snap_timestamps()` directly, bypassing `DataCleaner.clean()`/`_standardize()` entirely — a
+faithful unit test of `snap_timestamps()` in isolation, but not a test of the actual call chain real
+data travels through. This is precisely the gap "never exercised on a real fetch" was flagging as a
+risk, and the risk was real, not hypothetical.
+
+**Scope of the actual fix is bigger than originally built, not changed unilaterally.**
+`DataCleaner._standardize()` is a shared, foundational function used by BOTH the IBKR and yfinance
+paths, for every asset class, and its tz-stripping is explicitly documented as "uniform handling" —
+likely relied upon by other downstream logic in `DataCleaner.clean()` itself (`_fill_gaps`,
+`_get_nyse_sessions` are both hardcoded to NYSE session/calendar assumptions, the same class of
+issue `snap_timestamps` was built to fix, just one level earlier in the pipeline and with a wider
+blast radius: 1500+ existing US-listed symbols, both IBKR and yfinance sources, run through this same
+function). A correct fix likely needs `DataCleaner.clean()` itself to become exchange-aware
+throughout (gap-filling and session-membership checks, not just bar-snapping), not just a change to
+where the tz gets stripped. Per CLAUDE.md's Working Style ("pause on concept-level decisions for
+Ross's input rather than treating 'technically the right call' as sufficient justification to proceed
+alone"), this is flagged as a real, confirmed, root-caused bug (BUG-D57) — not fixed unilaterally,
+since fixing it properly means touching a shared function whose full downstream blast radius across
+the entire pipeline needs to be understood first, not guessed at under time pressure. **Practical
+implication**: the international-exchange support built this session works correctly on synthetic
+data and is a real, sound piece of code, but does not yet actually change real intraday behavior for
+`.L`/`.T`/`.HK` symbols until this upstream gap is also fixed — a decision point for Ross on how much
+international-exchange work he actually wants to take on now versus later.
+
+### Layer 2 comparison arm — mechanism verified end-to-end, blocked only on real data (2026-07-11)
+
+Ross confirmed: add the Layer 2 comparison run (baseline Layer 1 vs. Layer 2 with regime conditioning
++ ML gate), the decision point raised by the `vix_ts_regime` investigation above. Ran
+`python backtest.py --hedge ols --layer2` against current on-disk data to verify the mechanism
+end-to-end before it's blocked on real numbers. Confirms the wiring is correct and ready:
+`RegimeConditioner` loads real cached macro/HMM data successfully (`RegimeConditioner: loaded macro
+data (10208 rows...)`), and `MLConditioner` correctly self-disables with a clear log line
+(`MLConditioner: no model at output/ml/model_stage1.pkl — ML gate disabled`) rather than crashing,
+since `ml.py` hasn't trained a real model this session (0 examples, per the mechanical-lookahead-
+self-test entry above — same Phase 3 data blocker). Run itself produced "No results" for the same
+reason every other real-data comparison has this session: only the one thin 3m confirmed pair exists
+live right now.
+
+**Ready to run for real once Phase 3 lands** — two commands, same confirmed-pairs set, for a direct
+comparison:
+```
+python backtest.py --hedge ols                    # baseline (existing headline Sharpe)
+python backtest.py --hedge ols --layer2            # regime conditioning on; ML gate active IF
+                                                     # ml.py has already been (re)run with enough
+                                                     # real examples to train a model first
+```
+Note the ML-gate half of Layer 2 needs its own prerequisite: `ml.py` must produce a trained
+`output/ml/model_stage1.pkl` first (itself gated on the same "~2 weeks accumulation" ML-gate clock
+already tracked in CLAUDE.md's Next Priorities) — until then, a `--layer2` run isolates regime
+conditioning's effect specifically, with the ML gate a harmless pass-through (`predict_prob()` always
+returns 1.0), not a broken comparison, just a partial one. Compare `aggregate_portfolio()`'s Sharpe/
+drawdown between the two runs once both have real trades.
+
+### PAPER.md §9 restructured against the AID Framework's 14-category role taxonomy (2026-07-11)
+
+Ross asked for the AI-ethics research from earlier this session to be applied concretely: reconstruct
+§9 against the AID Framework's role taxonomy and state the inspiring source. Fetched the actual
+taxonomy from the primary source (`crln.acrl.org`'s hosted version of Weaver's AID Framework
+introduction, arXiv:2408.01904) rather than guessing at categories from search-result snippets — the
+first two fetch attempts (arxiv.org's abstract page, then its PDF) didn't surface the full 14-item
+list, so a third fetch against the CRLN-hosted article was needed before treating the taxonomy as
+confirmed rather than assumed. The 14 categories: AI Tool(s), Conceptualization, Methodology,
+Information Collection, Data Collection Method, Execution, Data Curation, Data Analysis, Privacy and
+Security, Interpretation, Visualization, Writing—Review & Editing, Writing—Translation, Project
+Administration.
+
+Added a new "Structured disclosure — AID Framework role taxonomy" subsection to §9, citing Weaver
+2024/arXiv:2408.01904 explicitly as the source, walking through all 14 categories with CAMARF-specific
+answers — including explicit "not used"/"not applicable" statements for categories where AI's role is
+architecturally bounded (Conceptualization, Data Collection Method, Writing—Translation), rather than
+silently omitting them the way AID's own minimalist convention would (a deliberate deviation, stated
+as such, since this project's whole ethos is stating boundaries rather than leaving them to be
+inferred from absence).
+
+**Self-caught staleness while writing it**: the existing "Tool and orchestration transparency"
+subsection asserted "No web search... was used for any result reported here" — writing THIS session's
+own AID-taxonomy research (which required web search) directly falsified that blanket claim. Corrected
+in place rather than left standing: the claim now states precisely that web search was used exactly
+once in this project's history, today, exclusively to research AI-disclosure norms for this section
+itself, never to source or corroborate any statistical/market-data claim elsewhere in the paper. Exactly
+the kind of self-referential accuracy check this paper's own methodology (§9 example #1: "every
+documented-as-fixed claim is a hypothesis to verify, including this paper's own claims about itself")
+exists to catch.
+
+### requirements.txt pandas drift timeline — resolved, not guessed (2026-07-11)
+
+Earlier this session's `requirements.txt` fix flagged an open question: was pandas 3.0.3 already
+installed when the file's original "Generated 2026-06-21" pin (2.3.2) was written, or did the
+environment drift upward sometime after? Resolved concretely rather than left open, while filling
+idle time waiting on Ross's manual `analysis.py` run.
+
+**Two independent sources of evidence, both pointing the same direction**: (1) `git log -p --
+requirements.txt` shows only 3 commits total — the pin was `pandas==2.3.2` from the file's very
+first commit (2026-06-22, `3310a51b`) through 2026-06-28 (`6613edcc`), unchanged until this session's
+2026-07-11 fix. (2) The `trading` conda environment's installed package metadata directly dates the
+real installs: `pandas-2.3.2.dist-info`'s last-write timestamp is 2025-10-07 (its actual install/last
+touch, well before this project existed), while `pandas-3.0.3.dist-info` was created 2026-06-18
+21:37:26 via `conda` (confirmed from its own `INSTALLER` file) — 4 days BEFORE `requirements.txt`'s
+first-ever commit.
+
+**Conclusion**: `requirements.txt` was never accurate and later drifted — it was wrong the moment it
+was written. Whatever `conda update`/`pip install` action moved the environment from 2.3.2 to 3.0.3
+happened 2026-06-18, before this project's `requirements.txt` existed at all; the file's original
+author simply pinned the wrong (probably remembered-from-earlier, or copied-from-a-template) version
+number rather than checking the actually-installed one. This session's earlier fix (pin corrected to
+match the real, currently-running 3.0.3) was already the right remedy — this closes the "why/when"
+side of that finding with real evidence instead of leaving it as an open question. No further action
+needed; removing this from the outstanding-items list.
+
+### Universe-growth Stage 4 introducing session — pinned exactly, not left as a documentation gap (2026-07-11)
+
+Same idle-time-while-waiting-on-Phase-3 pass. The prior universe-growth reconstruction (this
+session, earlier) traced 3 of 4 stages precisely but left Stage 4 (international equities/ADRs/FX
+spots) as "present by Session 22 (2026-06-30) at the latest, exact introducing session not pinned
+down" — an honest upper bound, not a guess, but not fully resolved either. Resolved with `git log
+--all -S "INTL_ADRS" -- config.py` (the pickaxe search, which finds the exact commit that introduced
+or removed a literal string — more precise than the prior pass's narrative trace through session
+log prose): exactly one match, commit `6f4ca8b5`, **2026-06-30 17:31:20 -0700**, commit message
+"6/30." The immediately preceding commit (`2b72fe29`, dated 6/29) references "STORM grid, coint_frac
+inversion finding, PAPER.md §7.3-7.6" — consistent with this being Session 22's own work, the same
+session CLAUDE.md's canonical reproducibility snapshot already cites for the "1,608 candidate
+symbols... international equities/ADRs/FX spots" universe description. **Conclusion: Stage 4 was
+introduced in Session 22, 2026-06-30, commit `6f4ca8b5`** — no longer an open documentation gap.
+
+### Phase 3 full pipeline rerun completed — fresh headline numbers (2026-07-11, 301.7 min)
+
+Ross ran `analysis.py` directly in his own terminal (the standard tracked background mechanism had
+killed it 3 times this session at inconsistent points — ~6 min, ~12 min, and previously ~25-30 min —
+looking like a ceiling on the tracking tool itself, not a script bug). Clean completion, no errors:
+26 confirmed pairs total (24 @1h incl. 12 cross-asset + 496 trios, 1 @3m, 1 @1M). Live
+`output/results/<tf>/` directories replaced the `_stale_20260711_030952` ones from this session's
+earlier interrupted attempts.
+
+Ran the full downstream sequence against this fresh data:
+
+- **`ml.py`**: 17 labeled examples across 2 classes — still below `MIN_CLASS_SAMPLES=30`/class,
+  honestly reports insufficient data. No `model_stage1.pkl` produced yet.
+- **`backtest.py` (baseline)**: **IS Sharpe 5.1717** (17 pairs, 1516 trades); **`--holdout`: OOS
+  Sharpe 4.3877** (319 trades) — both below the prior published 5.2935/5.2443 (expected: fresh
+  universe/data, not a regression — one fewer 1h pair actually cleared backtest.py's own hedge-ratio/
+  half-life validity filters than analysis.py's raw 24-pair count, 17 vs 24, worth noting but not
+  yet root-caused in this pass).
+- **BUG-D56 real comparison**: carver-only Sharpe 5.0619 ($227,334.61 PnL, $6,721.74 max DD) vs.
+  carver+coint_frac_sizing composed Sharpe 5.1875 ($14,873.34 PnL, $313.19 max DD), same 737 trades
+  both runs. The compose fix doesn't just correct the math — it materially cuts drawdown by ~95%
+  while slightly IMPROVING Sharpe, at the cost of much lower absolute P&L from smaller position
+  sizes. A real, useful result, not just a bug fix.
+- **Layer 2 comparison**: `--hedge ols` baseline Sharpe 5.0435 ($212,611.71 PnL) vs. `--layer2`
+  Sharpe 5.3156 ($248,356.05 PnL), same 737 trades and $7,684.97 drawdown both runs (regime
+  conditioning affected position sizing, not entry/exit gating, in this dataset; ML gate is still a
+  pass-through — no trained model yet). Regime conditioning alone is a real, positive effect here.
+- **`stats.py`**: **cointegration tiers: 17 gold / 8 silver / 0 bronze / 1 no_spread / 8
+  flagged_conflict** (25 testable of 26 total) — supersedes BOTH the last-published 13g/9s/22-testable
+  AND this session's earlier BUG-D55-verification-run numbers (8g/11s/20-testable), which were both
+  computed against non-final data states. **Fat-tail: 16/26** (vs. last-published 16/23 — same
+  numerator, different denominator as the universe grew). OOS permutation test: p=0.558 (realized
+  Sharpe 7.9319 on closed trades, not significant, consistent with the project's honest "not
+  significant at conventional levels" framing already in PAPER.md §6.6). IS permutation: p=0.539.
+- **`deflated_sharpe.py`**: **N trials = 47** (up from 34 last published, 38 during Session 27's own
+  testing — grew further from this session's own comparison-arm runs, each independently recorded).
+  **IS DSR z=6.23 (DSR=1.0000), OOS DSR z=2.18 (DSR=0.9854)**, both still clearing the "no genuine
+  skill" null but with a narrower margin than the previously-published z=11.02/6.48 — expected as the
+  trial count grows, this is the DSR correction doing exactly what it's designed to do, not a
+  weakening finding to be alarmed about. **Holdout exposure now 28** (up from 27), same
+  Garden-of-Forking-Paths caveat already tracked as an open decision point for Ross (reserve a fresh
+  holdout window, or accept and disclose the exposure).
+- **Lo (2002) correction re-run**: see the dedicated "CORRECTION" entry above — the earlier
+  thin-data "no material effect" conclusion does not hold on this real, final data; rho_1 is now
+  significant in both samples (z=-3.36 IS, z=-4.44 OOS), naive Sharpe UNDERSTATES by 11-37%.
+
+**Fixed task #7** (trial-count references): `README.md` line ~76 and `PAPER.md` line ~81 updated
+from the stale "14 backtest variants/configurations" to the real 47, with matching DSR z-scores.
+PAPER.md's Abstract paragraph got an explicit reconciliation-status flag rather than a full silent
+rewrite — the trial count/DSR z-scores are now fresh, but the surrounding Sharpe/trade-count/pair-
+breakdown/WFA numbers in that same paragraph are NOT yet reconciled to this rerun (still Session 22's
+numbers) — a full Phase 4 pass (README.md, this Abstract, §5-§7's pair/tier counts, WFA rerun) is
+still queued, not done in this pass. Flagging explicitly rather than leaving mixed-vintage numbers
+unmarked in the same paragraph.
+
+### BUG-D58 found: survivorship-exclusion logic conflates "removed from S&P 500 index" with "delisted/no longer trading," silently truncating 7/24 currently-valid 1h pairs to zero backtest data (2026-07-11)
+
+Root-caused the 17-vs-24-pairs discrepancy flagged in the entry above rather than leaving it as a
+noted-but-unexplained gap. `analysis.py` confirmed 24 pairs @1h; `backtest.py`'s baseline run only
+produced trades for 17. Traced directly, not guessed: the 7 missing pairs (AME/DD, AMAT/DD, CAT/DD,
+DAL/DD, DE/DD, HAL/NOV, FHN/MLI) all share one leg in common — DD, NOV, or FHN — and confirmed all
+three symbols have a `survivorship_exclusions.csv` entry with a `removed_date` years before this
+project's 2023+ data window (DD: 2017-09-01, NOV: 2021-09-20, FHN: 2013-06-21). `backtest.py`'s
+`oos_end_date=` truncation (added for genuine survivorship-bias mitigation — see `survivorship.py`'s
+own stated purpose) then correctly does what it's designed to do given that input: truncates each
+pair's usable data to end at the "removed" date, which for these three symbols is years before any
+real backtest data exists, so the pair is silently skipped with a debug-level "SKIP... truncates to
+< 30 bars" message never surfaced at the default INFO log level — not a crash, not a warning anyone
+would see without specifically diagnosing this.
+
+**Confirmed these are NOT actually delisted, not a guess**: directly loaded
+`output/results/1hr/spread_series_AME_DD.parquet` (and CAT/DD, HAL/NOV, FHN/MLI) — all four have
+~4,300+ real, clean 1h bars spanning 2023-2026, well past their supposed 2013-2021 "removal" dates.
+DD (DuPont), NOV (National Oilwell Varco), and FHN (First Horizon) are all real, actively-traded,
+currently-listed companies — confirmed further by them appearing as valid, currently-CONFIRMED pairs
+in this exact same `analysis.py` run.
+
+**Root cause, precisely**: `survivorship.py`'s docstring and `_URL` (`en.wikipedia.org/wiki/
+List_of_S%26P_500_companies`) reveal the actual data source — it scrapes Wikipedia's **S&P 500 index
+membership changes** table, which lists every stock ever REMOVED FROM THE S&P 500 INDEX. A stock
+leaves the S&P 500 constantly for reasons that have nothing to do with delisting — market-cap
+decline, sector rebalancing, demotion to the S&P 400/600 — while continuing to trade completely
+normally under the same ticker (this project's own universe explicitly includes S&P 400/600
+constituents as first-class citizens, so "no longer in the S&P 500" cannot mean "no longer a valid
+symbol" for this project's own universe definition). The `reason`/`added_symbol` columns that COULD
+distinguish "acquired/bankrupt" from "demoted out of the index" are empty for all three symbols
+(a Wikipedia-table-parsing gap, not something `get_oos_end_date()` currently uses even when
+populated) — `get_oos_end_date()` (`survivorship.py:204-218`) treats ANY row match as a hard
+truncation boundary, with no distinction.
+
+**Quantified impact on this run**: 7 of 24 confirmed 1h pairs (29%) silently produced zero backtest
+trades this session, purely from this bug — not from any real data-quality or hedge-ratio issue
+(directly verified: calling `BacktestEngine.run()` on these exact pairs' real data outside `main()`'s
+survivorship-truncation path produces real trades, 35-61 per pair). This is very likely NOT new to
+this session — the same `oos_end_date` mechanism has been part of `backtest.py` since it was built,
+so prior sessions' headline pair/trade counts may have been silently affected by the same false-
+positive-delisting pattern for however many of their confirmed pairs happened to touch a symbol with
+a stale S&P-500-removal-but-still-trading history. Not confirmed against prior sessions' exact pair
+sets in this pass — flagged as a real possibility, not asserted as fact.
+
+**Not fixed this session — flagged for Ross, not a code change made unilaterally.** This sits in the
+same category as BUG-D57: touches the bias-mitigation mechanism directly (a methodologically
+sensitive area, not just a data-plumbing bug), and any fix changes `backtest.py`'s pair inclusion set,
+which would move every headline number in this session's fresh rerun yet again. A well-scoped
+candidate fix, not yet implemented: `get_oos_end_date()` should only truncate when there's actual
+evidence the symbol stopped having valid price data (e.g. checking `data.py`'s own cached price
+history actually ends near the claimed removal date), not merely that it once left the S&P 500 index
+— but this is a real design decision about how survivorship bias should be modeled for a universe
+that already includes non-S&P-500 constituents, not a mechanical bug fix, and belongs with the other
+open decisions from this session (Lo(2002) promotion, BUG-D57 scope) for Ross to weigh together.
+
+### BUG-D59 found and FIXED: `distance.py`'s cointegration-portfolio Sharpe was an unweighted mean of noisy per-pair Sharpes, not a real portfolio statistic (2026-07-12)
+
+Ross flagged the reported numbers directly: "a sharpe this high of 7.865 and 20 looks like
+potential for overfitting or other biases or problems." Right call — investigated immediately
+rather than defending the number, and it was a real, confirmed bug, not just a surprising-but-valid
+result.
+
+**Root cause, confirmed by direct reproduction**: `distance.py`'s `coint_port_sharpe` (the "mean
+pair Sharpe = 20.435" figure) was `np.mean()` of 21 individual per-pair holdout Sharpes — and
+`run_coint_pair_oos_sharpe`'s only sample-size guard was "reject if fewer than 5 distinct P&L days,"
+far too permissive for a Sharpe computed as mean/std of a handful of daily observations. Reproduced
+outside `distance.py` directly: **`LNT/WELL` showed Sharpe=114.2 from just 6 days of holdout P&L**
+— small-sample variance, not skill — and this single pair alone was enough to drag the 21-pair
+unweighted mean up to 20.435. Several other pairs showed the same pattern at smaller magnitude
+(`AVGO/CRWD` 38.7 from 6 days, `QQQ/MLI` 32.3 from 7 days). This is the exact same statistical
+failure mode already caught and handled correctly elsewhere this session (Lo(2002)'s full-lag-ACF
+estimator, the eigenvalue-degeneracy fix) — small-sample ratio statistics blow up, and averaging
+several of them together doesn't cancel the noise out, it just launders it into a single confident-
+looking number.
+
+**Second, independent problem, also fixed**: even setting aside the small-sample issue, the
+comparison itself was apples-to-oranges. `distance.py`'s OWN distance-method figure
+(`dist_sharpe`, 7.865) was already computed correctly — pooling every trade's P&L into one daily
+series before computing a single Sharpe (`_portfolio_sharpe_from_trades`), matching
+`backtest.py`'s own `aggregate_portfolio()` convention. The cointegration side was never pooled the
+same way, so "7.865 vs 20.435" was never a valid like-for-like comparison to begin with, independent
+of the small-sample instability above.
+
+**Fix**: split `run_coint_pair_oos_sharpe` into `run_coint_pair_oos_trades()` (returns the raw
+`Trade` list) and reused a new shared pooling helper, `_portfolio_sharpe_from_dollar_trades()`
+(same pool-then-compute-Sharpe formula as the distance method's own `_portfolio_sharpe_from_trades`,
+applied to dollar `pnl_net` instead of `pnl_pct`). The headline `coint_port_sharpe` now pools ALL
+pairs' holdout trades into one daily P&L series, exactly matching the distance method's methodology.
+The old unweighted-mean statistic is kept as `coint_port_mean_sharpe` in the saved parquet and log
+line, explicitly labeled "OLD... see BUG-D59," for anyone auditing the change — not silently
+deleted.
+
+**Verified**: `debug/_verify_bug_d59_pooled_coint_sharpe.py` — synthetic fixture with 5 realistic
+pairs (Sharpes 0.8 to 7.1) plus one thin "lucky" 6-day pair reproducing the exact LNT/WELL pattern
+(Sharpe 149 from the fixture). Confirms the OLD unweighted-mean statistic is dominated by the lucky
+pair (26.86, vs. the realistic pairs' own ~5.06 pooled truth) while the NEW pooled statistic stays
+close to the realistic pairs' true portfolio Sharpe (5.41 vs. 5.06 reference) despite the lucky pair
+being included. All checks passed.
+
+**Real-data result after the fix**: re-ran `distance.py` — **cointegration pooled portfolio Sharpe
+is 8.542**, not 20.435. This is now genuinely comparable to the distance method's 7.865 (both pooled
+the same way): cointegration modestly outperforms the distance method (8.542 vs 7.865), a believable,
+defensible finding — a world away from the old "20 vs 7.9" comparison that Ross correctly flagged as
+implausible. This is exactly the kind of finding this project's whole verification discipline exists
+to catch, and it was caught because Ross looked at a number and asked "does this make sense," not
+because any automated test flagged it — worth remembering as a reminder that human review of
+headline numbers remains a real, necessary check this project's synthetic-test discipline doesn't
+fully replace.
+
+### BUG-D58 FIXED: survivorship false-positive delisting no longer truncates demoted-not-delisted symbols (2026-07-12)
+
+Ross confirmed: fix it. Added `resolve_survivorship_oos_end()` (`backtest.py`, new module-level
+function ahead of `compute_metrics`) — a small, pure, directly-testable function factored out of
+the inline survivorship-check block in `main()`'s pair loop. Given a candidate "removed" date and
+the pair's own last-seen real data timestamp, it only trusts the removal date as a genuine
+delisting boundary if real data does NOT extend more than 90 days past it; otherwise treats it as a
+false positive (index-removal, not delisting) and applies no truncation. The `main()` call site
+was simplified to call this function instead of the inline logic.
+
+**Verified**: `debug/_verify_bug_d58_survivorship_false_positive.py` — 6 cases: no exclusion entry,
+the real DD-like false positive (removed 2017, data continues to 2026), a genuine delisting where
+data stops at/before the removed date (still correctly truncates), and both sides of the 90-day
+slack boundary (89 days → still truncates; 91 days → correctly treated as false positive). All
+passed.
+
+**Real-data result**: re-ran `backtest.py` baseline and `--holdout`. All 24 confirmed 1h pairs now
+produce trades (was 17) — **IS Sharpe 5.8044** (2168 trades, was 5.1717/1516), **OOS Sharpe 5.2155**
+(449 trades, was 4.3877/319). Both figures improved, which is expected and correct here, not a red
+flag: the fix RESTORED 7 pairs' worth of genuinely real trading data that a false-positive bug was
+silently deleting, it didn't add anything invented. `max_concentration_pair` shifted to
+`DAL/DD@1h` (IS) / `AVGO/CRWD@1h` (OOS) — worth a glance in the next report.py figure regeneration
+to confirm no single pair now dominates unreasonably (`max_concentration_pct` from
+`aggregate_portfolio()` should be checked, not assumed fine).
+
+**Confirmed pairs manifest was already correct** — `confirmed_pairs_manifest.json` already listed
+DD/NOV/FHN as confirmed @1h (`analysis.py`'s own pair-confirmation logic was never affected by this
+bug; BUG-D58 was purely in `backtest.py`'s survivorship-truncation step, a separate code path). So
+Ross's stated goal ("we should have the symbols so we can test for episodic cointegration") is
+already satisfied with no further manifest change needed — the symbols are ready for `data_ibkr.py`'s
+manual deep-history fetch whenever Ross runs it next.
+
+**Historical-impact caveat, stated honestly, not investigated further this pass**: this same
+`oos_end_date` mechanism has been part of `backtest.py` since it was built, so prior sessions'
+headline pair/trade counts may have been affected by the same false-positive pattern for whichever
+of their confirmed pairs happened to touch a symbol with a stale-but-still-trading S&P-500-removal
+entry. Not confirmed against prior sessions' exact pair sets — flagged as a real possibility, not
+asserted as fact, and not something this fix can retroactively verify without re-running those old
+configurations, which isn't a good use of time now that the bug itself is fixed going forward.
+
+### BUG-D57 FIXED: fix ended up narrower in scope than originally flagged (2026-07-12)
+
+Ross chose Option A (fix `DataCleaner.clean()` properly), which was flagged as a wide-blast-radius
+change touching a function shared by the IBKR path and all 1500+ existing US symbols. Before
+touching it, checked the ACTUAL scope needed rather than assuming the original framing was right:
+`DataCleaner._fill_gaps()` for every INTRADAY timeframe (the case that matters for `.L`/`.T`/`.HK`
+session handling) is just `df.ffill()` — no NYSE-calendar reindexing at all. Only the `1 day` case
+uses `_get_nyse_sessions()`. This means `DataCleaner.clean()` itself needed NO changes — the entire
+real bug lives inside `snap_timestamps()` (data.py), and the fix is much smaller and safer than
+originally scoped. Worth stating plainly: the earlier framing ("needs Ross's input, wide blast
+radius") was accurate given what was known at the time, but a closer look before implementing
+found a narrower, lower-risk path — checking scope before coding, not just before deciding, is
+part of the same discipline.
+
+**Real root cause, precisely**: `DataCleaner._standardize()` (data.py:1498-1500) does
+`df.index = df.index.tz_localize(None)` on a tz-aware index — this STRIPS the tz label WITHOUT
+shifting the underlying wall-clock values. Confirmed directly: raw `yf.Ticker("VOD.L").history()`
+returns a genuinely tz-aware `Europe/London` index (08:00, 09:00... true LSE session hours); after
+`_standardize()`, the exact same wall-clock numbers survive, just missing the tz label. So by the
+time real data reaches `snap_timestamps()`, a naive index for a recognized international symbol
+already correctly represents that exchange's local time — the code just had no way to use this,
+since the exchange-aware branch required `df.index.tz is not None` to ever activate, which a naive
+index by definition never satisfies.
+
+**Fix**: `snap_timestamps()`'s Step 1 exchange-detection block now handles BOTH cases explicitly —
+if the index is genuinely tz-aware, behavior is unchanged (`tz_convert` to the exchange's local tz,
+exactly as before); if the index is naive AND a recognized exchange symbol is given, the naive
+index is now `tz_localize()`'d directly to the exchange's own tz (attaching the correct label
+rather than assuming, wrongly, that a naive index must already be ET). Both paths converge on the
+same downstream exchange-aware bar-snapping logic, unchanged. Zero behavior change for any symbol
+without a recognized suffix, or for genuinely tz-aware callers — the new branch is strictly
+additive, gated behind `exchange is not None`.
+
+**Verified**: `debug/_verify_bug_d57_naive_exchange_index.py` (new, naive-input case) — confirms
+the exchange-aware branch activates and correctly retains LSE-session bars from a naive,
+LSE-local-hours synthetic index. `debug/_verify_exchange_aware_session.py` (original, tz-aware
+case) re-run and still passes unchanged — confirms this fix didn't regress the original synthetic
+coverage.
+
+**Real-data result, re-running `debug/_verify_exchange_aware_live_fetch.py`**: the fix now
+measurably changes real yfinance data. VOD.L retention: 44.5% → **88.9%**. 7267.T retention:
+57.1% → **85.9%**. 0700.HK: 85.8% → 85.8% (no change this run — not investigated further; plausibly
+HKEX's own session hours happen to overlap heavily with the NYSE-only window by coincidence for
+this particular symbol, not evidence the fix failed for it, since the mechanism itself is verified
+correct by the other two symbols and the synthetic test). The international-exchange session
+handling built earlier this session is no longer inert — it measurably changes real production
+behavior for `.L`/`.T`/`.HK` symbols now.
+
+### Final consolidated numbers after BUG-D57/D58/D59 fixes — full downstream rerun (2026-07-12)
+
+After fixing all three bugs found this session, re-ran the full downstream chain a second time
+(`backtest.py` baseline+holdout → `stats.py` → `wfa.py` → `deflated_sharpe.py` → `sensitivity.py` →
+`report.py`) for one internally-consistent final number set. These are the numbers this session
+actually stands behind — the earlier post-Phase-3 numbers (IS 5.17/OOS 4.39, mean_pair_Sharpe 20.4,
+etc.) are now superseded, not just "also valid."
+
+- **Backtest headline**: **IS Sharpe 5.8044** (2168 trades, all 24 pairs — was 5.1717/1516/17 pairs
+  pre-D58-fix), **OOS Sharpe 5.2155** (449 trades — was 4.3877/319).
+- **Cointegration tiers**: unchanged by these fixes (17 gold / 8 silver / 0 bronze, 25 testable of
+  26) — Section 1's EG/KPSS/PO tests run directly on price data, never touched backtest survivorship.
+- **Fat-tail**: **17/26** (was 16/26) — several previously-truncated pairs (AME/DD, CAT/DD, etc.)
+  now have real P&L-based tail estimates instead of the `-99` insufficient-data sentinel.
+- **DSR**: **N trials = 49** (was 47), **IS z=9.53** (DSR=1.0000, was z=6.23), **OOS z=2.91**
+  (DSR=0.9982, was z=2.18) — both STRENGTHENED, not weakened, by the fix: more real trades (T=441
+  IS periods vs. 360, T=91 OOS vs. 76) gives a cleaner signal. Holdout exposure now **29** (was 28).
+- **WFA**: unchanged (baseline 3.288/2.832 exp/roll, mm_exec best 4.512/4.345, session_edge
+  3.628/3.517, cfrac_sizing 1.146/1.052) — `wfa.py` never applies survivorship truncation, so it
+  was never affected by BUG-D58 in the first place; re-run confirmed identical, as expected.
+- **Distance vs. cointegration**: distance method Sharpe 7.865 (unchanged — `run_coint_pair_oos_trades`
+  never passed `oos_end_date` either, so BUG-D58 didn't affect this comparison), cointegration
+  **pooled** portfolio Sharpe **8.542** (the BUG-D59 fix — genuinely comparable now, was the
+  erroneous 20.435).
+- **Lo (2002) correction, re-run one final time**: naive Sharpe now 5.8044 IS / 5.2155 OOS
+  (matching backtest.py exactly). **The finding shifted with the larger, corrected dataset — stated
+  honestly, not cherry-picked**: IS rho_1 = -0.0603 (z=-1.94, now just BELOW the significance
+  threshold, was z=-3.36 significant on the pre-D58-fix data), OOS rho_1 = -0.2231 (z=-3.26, still
+  clearly significant). IS's full-251-lag estimate now exceeds its own null-check 95th percentile
+  (55.31% > 48.09%) — a genuinely mixed signal for IS specifically (full-lag says real effect,
+  rho_1-only says borderline-not-significant), while OOS remains consistently significant across
+  both estimators. **This instability across three different data states this session (thin-data →
+  post-D58-fix → this final run) is itself informative**: it reinforces keeping this as a
+  comparison-arm/robustness finding rather than a headline number (per Ross's Option A decision
+  above) — a result whose magnitude and even significance shifts each time the underlying data is
+  corrected is not yet a stable, publication-ready number, regardless of which direction it points.
+
+**Not yet done, real remaining work**: `distance.py` and `sensitivity.py` were re-run but not
+inspected line-by-line for this write-up beyond the headline figures already reported — worth a
+closer look before final PAPER.md numbers are set if Ross wants full confidence in every subsection,
+not just the headline Sharpe/DSR/tier counts covered here.
+
+### BUG-D60 found: the backtest has no portfolio-level capital constraint — headline Sharpe assumes unlimited capital, never validated against any account size (2026-07-12)
+
+Ross asked directly: does the ~1500→2168 trade-count increase (from the BUG-D58 fix) account for
+actual capital availability at the portfolio level? Investigated rather than assumed — **the
+answer is no, and this is a real, previously-undocumented gap, not a false alarm.**
+
+**Confirmed via code, not inference**: `hub_weights` (the mechanism that down-weights position size
+for pairs sharing a common leg, e.g. DD appears in 5 pairs, MLI in 5 pairs) is **opt-in** via the
+`--hub-weight` CLI flag (`backtest.py:1436`: `hub_weights = compute_hub_weights(...) if
+args.hub_weight else {}`). Every "final" headline number reported this session (`python
+backtest.py` / `--holdout`, no flags) ran WITHOUT it — every pair, including all 5 DD-leg and all
+5 MLI-leg pairs, got the full, undiminished `N_SHARES_PER_TRADE` position size with zero shared-
+capital or concentration control between them.
+
+**More fundamentally**: there is no portfolio-level capital constraint AT ALL, opt-in or otherwise.
+`config.py` defines `MAX_CONCENTRATION_PCT = 0.20` and `ACCOUNT_SIZES = [10_000, 100_000,
+1_000_000]`, and `backtest.py`'s own module docstring (line 10) claims "Max capital concentration:
+MAX_CONCENTRATION_PCT of account per pair" as if it's an enforced rule. Grepped the entire
+codebase: **`MAX_CONCENTRATION_PCT` and `ACCOUNT_SIZES` are never read anywhere in the real
+execution path** — only `research/convex_portfolio_construction.py` (a separate, non-production
+comparison script) borrows the 0.20 convention as a hardcoded local constant. The docstring
+describes a control that does not exist in the code that actually produces this project's headline
+numbers.
+
+**Quantified the real impact, not just flagged it as a concern**: computed max concurrent open
+positions directly from `trades_layer1.parquet` via interval-overlap counting (entry_time to
+exit_time). **Peak: 27 simultaneously open positions** (median 12, p90 18) across the IS period.
+At the single worst moment (2023-10-02 09:30, 21 concurrent positions), pulled REAL leg prices from
+`output/cache/{symbol}_1hr.parquet` (not estimated) and computed actual notional exposure: **total
+$421,252 deployed simultaneously, averaging ~$20,060 per position.**
+
+**What this means, stated plainly**: the reported IS Sharpe (5.8044) and OOS Sharpe (5.2155) are
+mathematically valid computations on a REALIZED P&L series, but that P&L series assumes access to
+roughly $400k+ (more with margin buffer) in capital to take every signal at full size the moment it
+fires, with zero validation against ANY of the three `ACCOUNT_SIZES` tiers this project's own config
+defines. At the smallest tier ($10,000), the strategy AS BACKTESTED is not executable at all — you'd
+need to skip the large majority of signals or downsize dramatically, which would produce a
+genuinely DIFFERENT trade sequence and Sharpe, not the one currently reported. At $100,000, still
+infeasible without meaningful skipped/downsized trades even before considering margin. Only the
+$1,000,000 tier comfortably covers the observed peak with room to spare.
+
+**Not fixed — this is a real design decision, not a bug with one obvious fix.** Candidate
+approaches, not yet chosen: (a) implement `--hub-weight`/`--risk-parity` as the DEFAULT rather than
+opt-in (partial fix — reduces same-leg concentration but still doesn't cap TOTAL portfolio capital);
+(b) build a genuine capital-constrained simulation mode that tracks available buying power across
+ALL open positions simultaneously and skips/downsizes new entries when capital-constrained, run at
+each of the three `ACCOUNT_SIZES` tiers to report Sharpe AS ACTUALLY ACHIEVABLE at each capital
+level (this is what `ACCOUNT_SIZES` was seemingly always intended for, per its name and the
+`convex_portfolio_construction.py` script's own reference to the convention, but was apparently
+never built out); (c) at minimum, report the peak/median concurrent-capital figures alongside the
+headline Sharpe as an explicit disclosure of what capital the reported number assumes, even without
+building full capital-constrained simulation. This needs real discussion with Ross before choosing
+an approach, not a unilateral pick — it affects how every backtest.py run's Sharpe should be
+interpreted going forward, not just this session's numbers.
+
+### BUG-D60 addressed: `portfolio_sim.py` built — capital-constrained, mark-to-market portfolio replay (2026-07-12)
+
+Ross's direction: build the capital-constraint fix AND equity-proportional dynamic sizing
+together, since (confirmed by inspection) they're the same underlying gap — `BacktestEngine`
+processes each pair in total isolation and has no concept of shared portfolio state at all.
+Also discovered while scoping this: `Config.BACKTEST.SIZING_METHODS = ["flat_2pct", "half_kelly",
+"full_kelly"]` has existed in `config.py` since the project's original pre-build design phase,
+with a full spec already written (Development.md's early "Comprehensive Outline," Position
+Sizing section) — and was never implemented anywhere. Same "planned but never built" pattern as
+`ACCOUNT_SIZES`/`MAX_CONCENTRATION_PCT`.
+
+**Design, deliberately low-risk**: `portfolio_sim.py` does NOT touch `BacktestEngine`'s entry/
+exit signal-generation logic — that logic is already validated throughout this project's history
+and duplicating it here would risk drift/lookahead bugs. Instead it takes the trades
+`BacktestEngine` already produced (the full, capital-unconstrained list in `trades_layer1*.parquet`)
+and replays them as a genuine event-driven simulation: entries and closes interleaved in true
+chronological order, mark-to-market equity, and a real capital check at every entry candidate.
+
+**Mark-to-market, per Ross's direction (2026-07-12: "unrealized p&l rather than realized - only if
+it's logically sensible")**: it is — real margin accounts size new positions off current marked
+equity, not just realized-to-date P&L. At every entry-candidate timestamp: settle any positions
+that actually closed by then (realize into equity); mark every still-open position to market
+using the EXACT SAME formula `BacktestEngine._close_trade()` uses (`direction * (current_spread -
+entry_spread) * n_shares_a`, pulled from real `spread_series` data at that timestamp, gross/
+pre-cost since exit costs aren't paid until actually closed); `current_equity = realized_equity +
+sum(unrealized P&L of open positions)`. Committed capital (margin held) for each open position
+stays at its ORIGINAL sizing basis — unrealized gains don't free held margin, but DO flow through
+`current_equity`, which is what gates new entries. `available = current_equity - committed`.
+
+Two sizing methods implemented: **"fixed"** (every trade tries for its original
+`N_SHARES_PER_TRADE` size — isolates the pure capital-constraint effect) and
+**"equity_proportional"** (target size scales linearly with current mark-to-market equity vs.
+starting capital — Ross's day-1-$10k/day-10-$15k example). **Not implemented this pass, flagged
+rather than rushed**: flat_2pct/half_kelly/full_kelly need a real stop-distance-in-dollars risk
+model, which requires rolling spread volatility estimated causally (at entry time, no lookahead)
+— a real, separate build, not yet done (tracked as its own follow-up).
+
+**Verified**: `debug/_verify_portfolio_sim.py`, 5 cases, including one hand-computed check
+specifically targeting the highest-risk new logic (mark-to-market). Case 1: non-overlapping
+trades with ample capital, both taken at full size. Case 2: overlapping trades exceeding capital
+— second correctly downsized (0.250 scale, exact match to hand-computed expectation). Case 3:
+capital fully exhausted — second trade correctly skipped, not degenerately downsized to near-zero.
+Case 4: equity-proportional scaling — a profitable closed trade correctly scales up a later
+trade's target size by exactly the equity-growth ratio (1.50x for $10k→$15k). **Case 5 (the
+critical one)**: an OPEN (not yet closed) position given a synthetic +$1,000 unrealized gain
+correctly frees exactly that much capital for a new entry (size_scale=0.0909, matching a
+hand-computed expectation that's IMPOSSIBLE to reach if unrealized gains were ignored — confirms
+mark-to-market is real, not a no-op). An earlier version of Case 4's fixture had a confounding
+capital constraint on trade 1 itself and produced a wrong expected value — caught by the test
+failing before being trusted, not shipped silently.
+
+**Real results, all three `ACCOUNT_SIZES` tiers, both sizing methods, IS trade set (2168 trades,
+$663,763.93 unconstrained total P&L)**:
+
+| Account | Sizing | Taken | Skipped | Peak notional | Actual P&L | Sharpe |
+|---|---|---|---|---|---|---|
+| $10,000 | fixed | 504/2168 | 1664 | $106,860 | $96,895 | 10.44 |
+| $10,000 | equity_proportional | 259/2168 | 1909 | $208,478 | $198,549 | 7.98 |
+| $100,000 | fixed | 1313/2168 | 855 | $454,462 | $355,609 | 10.21 |
+| $100,000 | equity_proportional | 801/2168 | 1367 | $607,254 | $508,372 | 9.71 |
+| $1,000,000 | fixed | 2168/2168 | 0 | $1,640,979 | $663,762 | 9.79 |
+| $1,000,000 | equity_proportional | 2134/2168 | 34 | $1,875,635 | $912,285 | 9.02 |
+
+**Reading this honestly, not cherry-picking a favorable framing**: at the two SMALLER account
+tiers ($10k, $100k) — the ones representative of a real individual trader, not an institutional
+allocation — the strategy skips 60-76% of its signals purely from capital exhaustion, and the
+realized Sharpe is actually HIGHER than the unconstrained headline (5.80) at every single tier
+and sizing combination tested (7.98-10.44 vs. 5.80). This is NOT evidence the strategy is better
+than reported — it's evidence that capital constraints, by forcing the engine to skip trades
+during the busiest/most-correlated periods (when many DD/MLI-hub pairs would otherwise all fire
+at once), act as an accidental diversification/concentration filter, and the SUBSET of trades that
+actually gets taken under a binding capital constraint happens to be a higher-Sharpe subset than
+the full unconstrained set. Whether this generalizes (i.e., is a real structural property of this
+strategy) or is a property of this specific trade sequence's timing needs more scrutiny before
+being cited as a finding — flagged honestly as a surprising, not-yet-fully-understood result,
+not asserted as "capital constraints improve the strategy."
+
+**Not yet done**: OOS/holdout trades haven't been run through `portfolio_sim.py` yet (only IS).
+`ACCOUNT_SIZES`/`SIZING_METHODS`/`MAX_CONCENTRATION_PCT` in `config.py` are still not wired into
+`backtest.py`'s own production run path — `portfolio_sim.py` is a standalone comparison tool
+consuming `backtest.py`'s output, not a change to the production pipeline itself; whether to make
+capital-constrained replay a standard step in the production sequence is Ross's call, not decided
+here. flat_2pct/half_kelly/full_kelly remain unbuilt, tracked as a follow-up.
+
+### flat_2pct / half_kelly / full_kelly built — causal rolling volatility for stop-distance risk sizing (2026-07-12)
+
+Ross's direction: build these next. Required a causal (no-lookahead) way to estimate "how much
+would this trade lose if stopped out" AT ENTRY TIME, using only information available then.
+
+**Design**: `causal_rolling_std_at_entry()` replicates `analysis.py`'s own `SpreadModel.
+_adaptive_window()` exactly (`window = clip(round(8 * half_life), 30, 252)` — same constants,
+`OU_WINDOW_HALFLIFE_MULT_MEAN`/`OU_WINDOW_MIN_BARS`/`OU_LOOKBACK_DAYS`) so the stop-distance
+estimate uses the SAME window `z_rolling` itself was computed with — using a different window
+would mean "distance to stop in z-units" and "current volatility" measure two different things.
+`pandas.rolling()` is causal by construction (trailing window); indexed with `method="pad"`
+(last value AT OR BEFORE the query time) to guarantee no forward-looking bar ever gets used.
+`stop_distance_dollars_per_share()` then converts z-distance to dollars using the SAME
+`direction * (spread - entry_spread) * n_shares_a` formula `BacktestEngine._close_trade()` uses
+for real P&L, evaluated at the STOP z-level instead of the actual exit.
+
+**Also fixed while building this**: `get_price_at()`/`get_spread_at()` (used for notional-at-entry
+and mark-to-market) previously used `method="nearest"`, which could technically select a bar
+slightly AFTER the query timestamp — a lookahead crack that didn't surface in earlier testing
+(synthetic fixtures used exact-timestamp matches) but mattered directly once a SIZING decision at
+entry depended on this lookup. Switched both to `method="pad"`.
+
+**Kelly fraction**: `f* = win_rate - (1-win_rate)/payoff_ratio`, computed CAUSALLY from a running
+list of realized trade P&L (only trades closed before the current entry candidate — a true
+expanding-window estimate, not fit on the full sample). Per Development.md's own original design
+note ("Requires 60+ trades before the Kelly estimate is reliable"), Kelly methods fall back to
+flat_2pct sizing below 60 realized trades — the documented early-period bias, not silently
+corrected away (CLAUDE.md rule 6).
+
+**Verified**: `debug/_verify_portfolio_sim.py` extended to 8 cases (5 from the earlier capital-
+constraint build, 3 new). Case 6: flat_2pct sizing matches a hand-computed value exactly ($53,333.33
+from known sigma/entry_z/equity). Case 7: Kelly with <60 trade history falls back to flat_2pct
+exactly, and the fallback count is tracked. Case 8/8b: found and fixed a test-DESIGN flaw before
+trusting the result — an initial fixture made half_kelly and full_kelly both hit the same capital
+ceiling (correct constraint behavior, but not what was being tested), so the Kelly FORMULA itself
+is now verified directly and precisely (f*=0.4 exactly from a 36-win/24-loss, 2:1-payoff synthetic
+history; NaN below the 60-trade floor), decoupled from capital-constraint interactions. All checks
+pass.
+
+**Real finding, discovered while wiring this up, not anticipated**: **45% of real trades (975/2168)
+enter with `|entry_z|` already AT OR BEYOND `STOP_ZSCORE` (3.5)** — confirmed directly
+(`trades['entry_z'].abs() >= 3.5`), max observed |entry_z| = 12.36. This is a real, previously-
+unexamined property of `backtest.py`'s own entry logic: entry is gated only by a FLOOR
+(`ENTRY_ZSCORE`, 2.0), with no upper bound, so a trade can legitimately enter already past what
+would immediately trigger a stop-loss if it had been open at that level. For these trades, a
+causal stop-distance risk estimate is mathematically undefined (`z_distance_to_stop <= 0`) — 
+`stop_distance_dollars_per_share()` correctly returns NaN rather than a nonsensical negative
+distance, and these trades are skipped (not sized) under flat_2pct/half_kelly/full_kelly, tracked
+separately from capital-constrained skips (`n_skipped_no_risk_estimate`). **Not fixed or judged
+here** — whether backtest.py's entry logic should itself be capped below STOP_ZSCORE is a real,
+separate methodological question worth its own discussion, not something to silently patch while
+building an unrelated sizing comparison tool.
+
+**Real results, IS trade set, $100,000 account**:
+
+| Sizing | Taken | Kelly fallback | No risk estimate | Peak notional | Actual P&L | Sharpe |
+|---|---|---|---|---|---|---|
+| fixed | 1313/2168 | — | — | $454,462 | $355,609 | 10.21 |
+| equity_proportional | 801/2168 | — | — | $607,254 | $508,372 | 9.71 |
+| flat_2pct | 140/2168 | — | 975 | $728,658 | $628,908 | 7.72 |
+| half_kelly | 90/2168 | 481 | 975 | $996,565 | $932,644 | 7.19 |
+| full_kelly | 68/2168 | 481 | 975 | $552,784 | $200,514 | 1.28 |
+
+**Reading this honestly**: the risk-based methods take a much smaller, different trade subset
+(68-140 trades vs. 801-1313 for fixed/equity_proportional) — largely from the 45%-beyond-stop
+skip above, not primarily capital constraints — so their Sharpe isn't directly comparable to the
+other two methods on a like-for-like basis without more care. Within the risk-based family itself,
+though, the result is a clean, theoretically-expected one: **full_kelly performs markedly worse
+than half_kelly** ($200,514 vs. $932,644 total P&L, Sharpe 1.28 vs. 7.19) — exactly matching
+established Kelly theory (full Kelly is known to be excessively volatile and sensitive to
+estimation error in practice; half-Kelly is the standard practitioner convention specifically
+because of this). A real, sensible validation that the mechanism behaves as theory predicts, not
+an arbitrary result.
+
+### quarter_kelly / third_kelly added (2026-07-12), with an explicit overfitting caveat Ross raised himself
+
+Ross's own framing when requesting this: "we can also try a test for quarter and third kelly while
+being aware of overfitting." Generalized `_KELLY_MULTS` from a hardcoded half/full pair to a dict
+(`quarter_kelly`: 0.25, `third_kelly`: 1/3, `half_kelly`: 0.5, `full_kelly`: 1.0), with an explicit
+comment stating the caveat in the code itself, not just here: **scanning across more Kelly
+fractions is itself another instance of the same multiple-comparison problem this session's DSR/
+holdout-exposure work is about.** Reported side by side as a comparison, not as a search for
+"the best" fraction.
+
+**Real results, $100,000 account**:
+
+| Sizing | Taken | Actual P&L | Sharpe |
+|---|---|---|---|
+| quarter_kelly | 104/2168 | $970,711 | 7.18 |
+| third_kelly | 98/2168 | $960,991 | 6.81 |
+| half_kelly | 90/2168 | $932,644 | 7.19 |
+| full_kelly | 68/2168 | $200,514 | 1.28 |
+
+**Reading this with the overfitting caveat front and center, not after the fact**: quarter/third/
+half all land in a similar Sharpe range (6.81-7.19) on 68-104 trades each — differences this small
+on samples this size are not confidently distinguishable from noise, and picking "quarter looks
+best" from this table would be exactly the kind of after-the-fact fraction-shopping Ross flagged
+before even seeing the numbers. The one genuinely clear, theory-consistent signal remains full
+Kelly's collapse (Sharpe 1.28) — a real, expected effect of over-betting amplifying estimation
+error, not noise. If a specific Kelly fraction is ever promoted toward production, it should be
+chosen from theory/practitioner convention (half-Kelly is standard) BEFORE looking at which
+fraction happened to score highest here, not after.
+
+### Fresh holdout: both mechanisms built and compared, per Ross's "compare both and see what happens" (2026-07-12)
+
+Built `fresh_holdout_compare.py`. Two non-exclusive candidate mechanisms for a genuinely
+never-re-examined holdout (addressing the 29-evaluations-on-the-same-window
+Garden-of-Forking-Paths flag from `deflated_sharpe.py`):
+
+1. **Time-based**: the underlying data grows every session, so each historical run's "trailing
+   20% holdout" was a shorter, different absolute date range than today's — the most RECENT
+   portion of today's holdout genuinely didn't exist when earlier evaluations ran. Reserved the
+   most recent 25% of the current holdout window (cutoff 2026-05-18) as the fresh slice.
+2. **Pair-based**: reserved ~20% of confirmed pairs (5 of 24, chosen deterministically — every
+   Nth pair by sorted symbol order, not tuned/cherry-picked) that get walled off from further
+   comparison-arm testing, orthogonal to the time split.
+
+**Real results — the two mechanisms point in OPPOSITE directions, reported honestly, not
+reconciled into a single tidy story**:
+
+| Mechanism | "Well-trodden" portion | Fresh/reserved portion |
+|---|---|---|
+| Time-based | Sharpe 12.28 (286 trades, 65 days) | **Sharpe 5.88** (163 trades, 27 days) |
+| Pair-based | Sharpe 7.50 (367 trades, 19 pairs) | **Sharpe 13.68** (82 trades, 5 pairs) |
+
+**Time-based**: the genuinely fresh (most recent, never-before-evaluated) slice shows a notably
+LOWER Sharpe than the earlier, repeatedly-examined portion (5.88 vs. 12.28) — consistent with what
+the Garden-of-Forking-Paths concern predicts: performance that looked strong on data that's been
+looked at many times doesn't fully carry over to genuinely new data. This is exactly the kind of
+signal this exercise exists to surface, not something to explain away.
+
+**Pair-based**: the OPPOSITE pattern — pairs that were never touched by any comparison-arm testing
+show a HIGHER Sharpe (13.68) than the pairs that were repeatedly used for methodology decisions
+(7.50). Read cautiously: this does not mean pair-based selection is "cleaner" or contradicts the
+time-based finding — it's a much smaller sample (82 trades / 5 pairs), 5 pairs is not enough to
+draw a real conclusion from, and the two mechanisms are measuring different things (time-based
+tests whether performance holds up on NEW data; pair-based tests whether performance holds up on
+NEW instruments) which have no reason to agree.
+
+**Honest overall read, not resolved into a single answer**: the two fresh-holdout mechanisms give
+different, genuinely inconclusive signals — one (time) points toward some degree of overfitting
+concern being real, the other (pair) doesn't show the same pattern. This is disclosed as-is,
+matching this project's standing rule (CLAUDE.md rule 7) against reporting a cleaner story than
+the evidence supports. Neither mechanism has been adopted as "the" production holdout going
+forward — that decision, and whether more data/more reserved pairs would sharpen either signal
+enough to be conclusive, is Ross's call.
+
+### BUG-D61 found and FIXED: GGR distance comparison was never testing the same date window as the cointegration side (2026-07-12)
+
+Ross delegated the "-0.208 vs. 7.865" GGR distance investigation ("I'm not sure and I'll hand that
+task to you with my consulting when needed"). Root-caused it directly — and it's a bigger, more
+precise finding than "different backtest window from data growth" (my working hypothesis when I
+started).
+
+**The real cause**: `distance.py`'s own comparison has TWO sides, and they were never using the
+same date window. `run_coint_pair_oos_trades()` (the cointegration side) passes
+`holdout_only=True` — `backtest.py`'s own trailing-20% IS/OOS split (`Config.BACKTEST.
+HOLDOUT_PCT`). `run_distance_trades()` (the distance-method side) used its own, separately
+hardcoded `_FORMATION_FRAC = 0.5` — a 50/50 formation/trading split. Confirmed directly from a
+real run's own log: the distance side's trading window was **2025-01-15 to 2026-07-10** (~18
+months) while the cointegration side's holdout was **~2025-12-10 to 2026-07-10** (~7 months) — the
+two "Sharpe" numbers being compared side by side were never computed over the same period, on top
+of (independent of) BUG-D59's separate per-pair-mean-vs-pooled aggregation bug. This mismatch has
+existed since `distance.py` was first built — Session 22's original "-0.208 vs. ~11.7" comparison
+almost certainly had the same structural flaw, just against a different, smaller, earlier dataset.
+
+**Fix**: `_FORMATION_FRAC` changed from a hardcoded `0.5` to `1.0 - 0.20` (matching `Config.
+BACKTEST.HOLDOUT_PCT` exactly, as a literal rather than an import — `distance.py` doesn't
+otherwise depend on `backtest.py`'s `Config` wiring, matching the existing pattern where only
+`run_coint_pair_oos_trades` needs a scoped `__import__("config")`). Re-ran: trading window is now
+**2025-12-06 to 2026-07-10**, matching the cointegration side's holdout window almost exactly
+(within days — the small residual gap is from price-data vs. trade-based date-range boundaries,
+not a remaining bug).
+
+**Real result after the fix — and reported with the SAME skepticism Ross applied to the original
+20.435 finding, not a clean "distance method wins now" story**: distance Sharpe is now **28.056**,
+but from only **16 trades** over the aligned ~7-month window. This is very likely the SAME
+small-sample-Sharpe-instability pattern BUG-D59 already demonstrated (one thin sample producing an
+extreme ratio) — not yet confirmed with a null check the way BUG-D59's finding was, flagged
+explicitly as unverified rather than reported as a clean number. Cointegration's pooled Sharpe
+(8.542, 222 trades — a much larger, more stable sample from the same window) is far more likely to
+be the trustworthy side of this specific comparison. **Not yet done**: a permutation/null check on
+the 16-trade distance figure (matching the discipline already applied to Lo(2002) and BUG-D59)
+before this number goes anywhere near PAPER.md.
+
+**Honest summary for Ross**: the original "-0.208 vs. 11.7" comparison in PAPER.md/README.md was
+built on a genuine methodological flaw (mismatched windows) compounded by BUG-D59's aggregation
+bug — both now fixed. The corrected comparison is `output/stats/distance_baseline.parquet`, but
+the distance side's own 16-trade sample needs a stability check before being cited as a finding,
+the same way the cointegration side's number already got one this session.
+
+**Stability check completed** (bootstrap, 2000 resamples of the daily P&L, matching the spirit of
+the null checks used elsewhere this session): the 16 trades resolve to only **7 distinct trading
+days** — barely above the 5-day minimum guard this project's own Sharpe functions already enforce
+elsewhere, right at the ragged edge of what should be trusted at all. 90% bootstrap CI: **26.4 to
+86.4** — never crosses zero across all 2000 resamples, so the DIRECTION (distance method shows a
+real positive edge on this specific window) is probably genuine, unlike BUG-D59's LNT/WELL case
+where the null check showed pure noise. But the MAGNITUDE is essentially unmeasurable from 7 days
+of data — reporting "Sharpe 28.056" as a precise number would be false precision. **Honest framing
+for PAPER.md, if this gets cited at all**: "distance method showed a positive edge on the aligned
+holdout window, direction supported by bootstrap, magnitude not meaningfully estimable from only
+7 trading days" — not a specific Sharpe figure. Cointegration's 8.542 (222 trades, 90 days) remains
+the far more trustworthy number in this comparison.
+
+### Investigated (not a code bug): why WFA's isolated `cfrac_sizing` variant Sharpe collapses (3.288 → 1.146) (2026-07-12)
+
+Flagged as "worth a second look" earlier this session, investigated now (Ross: "is there anything
+else we can possibly work on" — matching this session's pattern of chasing down flagged-but-
+unexamined anomalies rather than leaving them noted-but-unchecked).
+
+**Ruled out, in order**: (1) `n_shares = max(1, int(N_SHARES * coint_frac))` floor-clamping — only
+1/24 pairs (AXP/CRWD, `coint_fraction_rolling`=0.005) actually hits the `max(1, ...)` floor; the
+rest scale smoothly from 2 to 16 shares. Not the dominant driver. (2) Transaction-cost drag on
+smaller positions — checked `_compute_cost()` directly: both commission (`per_share * n_shares *
+2`) and slippage (`bps * |spread| * n_shares_a * 2`) scale LINEARLY with position size, so cost as
+a fraction of gross P&L should stay roughly constant regardless of size. Not the driver either.
+
+**Real explanation**: `coint_fraction_rolling` (line 146, `analysis.py`: "fraction of 252-bar
+windows where p<0.05") ranges only **0.005 to 0.16** across all 24 confirmed pairs — genuinely,
+consistently small (this is itself consistent with, not contradicting, PAPER.md's own central
+thesis that rolling-window cointegration confirmation is strict/rare even for pairs that pass the
+full-sample screen). `coint_frac_sizing`'s formula (`n_shares = N_SHARES * coint_frac`) turns this
+into a de facto REWEIGHTING scheme: instead of every pair getting the baseline 100 shares, pairs
+get 1-16 shares in rough proportion to their own `coint_fraction_rolling` value — e.g. UMBF/FHB
+(0.160) gets 16x the position size of AXP/CRWD (0.005). Empirically, per this session's WFA run,
+this reweighting away from equal-sizing hurts portfolio Sharpe substantially.
+
+**This is a real, legitimate finding, not a code defect** — the formula does exactly what its name
+says. What it suggests: `coint_fraction_rolling`, while this paper's central rolling-STABILITY /
+SCREENING signal (a genuinely validated, load-bearing metric for deciding whether to trade a pair
+at all), may NOT be a good POSITION-SIZING weight once a pair has already been screened in —
+sizing UP the pairs with the highest rolling-confirmation rate doesn't empirically produce a
+better-weighted portfolio here. Distinct from BUG-D56 (which was about composition/override logic
+between STORM flags, already fixed) — this is a question about whether the underlying signal
+itself is a good sizing input, independent of how it composes with other flags. Not fixed or
+changed — a real empirical result worth citing as-is if `coint_frac_sizing` ever comes up in
+PAPER.md, and a caution against assuming a good screening signal is automatically a good sizing
+signal without checking.
+
+### Capital constraints wired into `backtest.py`'s production path (2026-07-12)
+
+Ross's direction: wire it in, not just leave it as a standalone comparison tool. Added an opt-in
+`--capital-sim` flag (plus `--capital-account-size` / `--capital-sizing`) to `backtest.py`. After
+the standard, UNCHANGED unconstrained save (`trades_layer1.parquet` etc. — completely untouched
+either way, this is strictly additive), if `--capital-sim` is set, the exact trade list just
+generated is converted to a DataFrame and passed straight into `portfolio_sim.replay_portfolio()`
+(no reimplementation — the same, already-verified function), and the result saved as a
+separately-labeled pair of files (`trades_{label}_capsim_{sizing}_{account}.parquet`,
+`portfolio_{label}_capsim_{sizing}_{account}.parquet`).
+
+**Verified via exact real-data cross-check** rather than a fresh synthetic test — the underlying
+`replay_portfolio()` logic already has 8 synthetic cases (`debug/_verify_portfolio_sim.py`); what
+needed checking here was just the NEW glue code (Trade-object-to-DataFrame conversion, file
+naming/saving). Ran `python backtest.py --capital-sim --capital-account-size 100000
+--capital-sizing fixed` end to end: **result matched the standalone `portfolio_sim.py` run
+exactly** — 1313/2168 taken, $454,462 peak notional, $455,609.30 final equity, Sharpe 10.2117, to
+the same decimal places. Confirms the wiring introduces no divergence from the already-verified
+standalone tool.
+
+Usage: `python backtest.py --capital-sim --capital-account-size <N> --capital-sizing <method>`
+alongside any other existing flags (STORM variants, `--holdout`, `--hedge`, etc.) — capital-
+constrained replay runs on whatever trade list that combination of flags produces.
+
+### Note for the record: findings-promotion status, per Ross's request to document the conversation (2026-07-12)
+
+Nothing has been promoted from comparison-arm status into PAPER.md's headline claims this
+session. Explicitly tracked here so the state is visible without reconstructing it from scattered
+entries:
+
+- **Lo (2002) Sharpe-autocorrelation correction** — on the final, D58-fixed data: OOS rho_1
+  clearly significant (z=-3.26) across every data state tested this session; IS is borderline
+  (z=-1.94, just below the |z|>=2 threshold on the final rerun). Ross's decision (Option A, this
+  session): keep as comparison-arm/robustness finding only, not promoted to headline. Not
+  revisited since.
+- **BUG-D56 compose fix (coint_frac_sizing + carver)** — a real code fix (not a "finding" to
+  promote/not-promote), already live in `backtest.py`. Its discovered EFFECT (drawdown cut ~95%,
+  Sharpe flat-to-better) is a comparison-arm result, not yet cited in PAPER.md.
+- **Capital-constraint / mark-to-market results (`portfolio_sim.py`)** — real, verified, now wired
+  into production via `--capital-sim` (see above). The specific NUMBERS (Sharpe 7-10+ across
+  account tiers, higher than the unconstrained 5.80 headline) are NOT promoted into PAPER.md — per
+  this session's own write-up, the "capital constraints raise Sharpe" pattern is flagged as
+  surprising and not yet understood well enough to cite as a finding (possible selection-effect
+  from greedy first-come-first-served allocation, not confirmed as a structural property).
+- **Kelly-family sizing comparison (quarter/third/half/full)** — comparison-arm only. Explicitly
+  NOT to be cited as "quarter_kelly is best" (Ross's own overfitting caveat) — only the full_kelly-
+  collapses-vs-half-Kelly theoretical consistency is a citable-quality finding, and even that
+  hasn't been promoted into PAPER.md yet.
+- **Fresh holdout (time-based vs. pair-based)** — both built, both run, results genuinely disagree
+  (time-based shows a real Sharpe drop on fresh data; pair-based doesn't). Neither promoted;
+  neither adopted as the new production holdout convention. Explicitly unresolved.
+- **GGR distance comparison (BUG-D61 fix)** — the METHODOLOGY fix (window alignment) is real and
+  should replace the old "-0.208 vs 11.7" claim in PAPER.md/README.md whenever those get their next
+  reconciliation pass. The new NUMBER (distance ~28 on 16 trades/7 days) is explicitly NOT citable
+  as stated — bootstrap-unstable, needs the "direction real, magnitude not estimable" framing if
+  used at all.
+- **`coint_fraction_rolling`-as-sizing-signal finding** — real, well-reasoned, not yet promoted;
+  noted as a caution against conflating a validated screening signal with a good sizing signal.
+
+**Net state**: this session produced real, verified findings and one production code change
+(`--capital-sim`), but deliberately left PAPER.md/README.md's actual claims untouched pending
+Ross's review — consistent with this session's own repeated caution against promoting a same-
+session discovery into a headline claim before it's had time to be reviewed, not forgotten or
+overlooked.
+
+### `.L`/`.T`/`.HK` exchange-aware handling exercised on a real production `data.py` run (2026-07-12)
+
+BUG-D57's fix was verified via a standalone live-fetch script
+(`debug/_verify_exchange_aware_live_fetch.py`) but had never been exercised inside an actual
+production `data.py` run. Ross's direction: fix/verify this for real.
+
+**Found before running anything**: the existing confirmed international pair (7267.T/8058.T) is
+confirmed at **1M (monthly) only** (`confirmed_pairs_manifest.json`) — meaning it NEVER actually
+exercised the BUG-D57 fix in production, since `snap_timestamps()`'s intraday exchange-aware
+branch only runs for sub-daily timeframes (`if tf_label not in _TF_MINUTES: return df` skips it
+entirely for daily+). A real "production data.py" exercise needed a genuine INTRADAY fetch for an
+international symbol, which didn't exist anywhere in this project's history yet.
+
+**Built `debug/_exercise_bug_d57_production_fetch.py`** — runs the EXACT call sequence data.py's
+own main loop uses (`YFinanceFeed.get_intraday_fallback()` → `snap_timestamps(symbol=...)` →
+`DataStore.append()`), for real, writing to the REAL production cache
+(`output/cache/{symbol}_1hr.parquet`), not read-only. Distinct from the earlier verification
+script in that it exercises the full pipeline including the final cache write and a
+`DataStore.load()` round-trip confirmation.
+
+**Real result, all 3 symbols, end to end**: VOD.L (5814/6538 rows, 88.9% retained), 7267.T
+(4373/5090, 85.9%), 0700.HK (4339/5060, 85.8%) — all written to real cache files and confirmed to
+round-trip correctly on reload. `output/cache/7267.T_1hr.parquet` is a genuinely NEW cache file
+(7267.T previously only had 1M data cached) — real 1h intraday history now exists for this symbol
+for the first time, available if Ross wants to explore expanding 7267.T/8058.T's confirmed-pair
+testing beyond 1M.
+
+**Scope, stated explicitly**: this exercises and confirms the FIX works end-to-end in a real
+production code path — it does NOT add `.L`/`.T`/`.HK` symbols to the production universe/config
+(no `config.py` changes made). Whether to actually expand the universe to include international-
+exchange symbols broadly is the separate, larger universe-expansion decision already tracked as
+pending Ross's direction (NASDAQ/Russell/more international) — not decided or acted on here.

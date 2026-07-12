@@ -171,12 +171,25 @@ def _discover_confirmed_pairs() -> List[Tuple[str, str, str]]:
 
 
 def _build_examples_for_pair(
-    symbol_a: str, symbol_b: str, tf_label: str, pair_row: pd.Series, summary: "MLRunSummary"
+    symbol_a: str, symbol_b: str, tf_label: str, pair_row: pd.Series, summary: "MLRunSummary",
+    series: Optional[pd.DataFrame] = None, feature_lag: int = 0,
 ) -> List[EntryEvent]:
-    series_path = os.path.join(
-        _RESULTS_DIR, _tf_dirname(tf_label), f"spread_series_{symbol_a}_{symbol_b}.parquet"
-    )
-    series = pd.read_parquet(series_path)
+    """
+    feature_lag: bars to shift the FEATURE snapshot (zscore/half_life_current/
+    zscore_velocity — the _FEATURE_COLS actually fed to the model) back from
+    the true entry bar. Default 0 preserves exact original behavior for every
+    real caller. Entry-event detection, the label's z_entry (via
+    _classify_outcome), and the outcome horizon all stay anchored to the TRUE
+    entry bar regardless of feature_lag — only what the MODEL sees at
+    "decision time" gets staled. Used by
+    research/ml_lookahead_selftest.py's mechanical lookahead self-test; not
+    used by ml.py's own production build().
+    """
+    if series is None:
+        series_path = os.path.join(
+            _RESULTS_DIR, _tf_dirname(tf_label), f"spread_series_{symbol_a}_{symbol_b}.parquet"
+        )
+        series = pd.read_parquet(series_path)
     # Deliberately the training-only threshold, not the live OU_ZSCORE_ENTRY
     # (2.0) — see Config.ML.TRAINING_ENTRY_THRESHOLD's comment.
     entry_threshold = Config.ML.TRAINING_ENTRY_THRESHOLD
@@ -213,7 +226,8 @@ def _build_examples_for_pair(
     n_future_not_clean = 0
     for t in entries:
         pos = series.index.get_loc(t)
-        z_entry = float(series["z_rolling"].iloc[pos])
+        feat_pos = max(0, pos - feature_lag)  # == pos when feature_lag=0 (all real callers)
+        z_entry = float(series["z_rolling"].iloc[pos])  # true entry z -- drives the label, never staled
         hl = series["half_life_rolling"].iloc[pos]
         if not np.isfinite(hl) or hl <= 0:
             hl = half_life_fallback
@@ -231,8 +245,18 @@ def _build_examples_for_pair(
         z_future = float(series["z_rolling"].iloc[future_pos])
         if not np.isfinite(z_future):
             continue
+
+        # FEATURE snapshot (what the model actually trains on) -- sourced from
+        # feat_pos, which is staled by feature_lag bars relative to the true
+        # entry bar. hl_feat falls back to the (unstaled) horizon-defining hl
+        # if the staled bar itself has no usable half-life, so the horizon
+        # computed above never changes with feature_lag.
+        z_feat = float(series["z_rolling"].iloc[feat_pos])
+        hl_feat = series["half_life_rolling"].iloc[feat_pos]
+        if not np.isfinite(hl_feat) or hl_feat <= 0:
+            hl_feat = hl
         zvel = float(
-            series["z_rolling"].iloc[pos] - series["z_rolling"].iloc[max(0, pos - 5)]
+            series["z_rolling"].iloc[feat_pos] - series["z_rolling"].iloc[max(0, feat_pos - 5)]
         )
         events.append(
             EntryEvent(
@@ -244,9 +268,9 @@ def _build_examples_for_pair(
                 z_entry=z_entry,
                 z_future=z_future,
                 label=_classify_outcome(z_entry, z_future),
-                zscore=z_entry,
+                zscore=z_feat,
                 zscore_velocity=zvel,
-                half_life_current=float(hl),
+                half_life_current=float(hl_feat),
                 hurst_exponent=(
                     float(pair_row["hurst_rs"])
                     if np.isfinite(pair_row.get("hurst_rs", np.nan))

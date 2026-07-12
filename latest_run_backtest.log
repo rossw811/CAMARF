@@ -1,10 +1,10 @@
 backtest.py run: layer1
 layer2_enabled: False
-n_pairs_run: 12
-n_trades_total: 521
-total_net_pnl: 150943.24
-mean_sharpe: 29.6799
-mean_win_rate: 0.6652
-portfolio_sharpe: 5.4019
-max_concentration_pct: 0.1662
+n_pairs_run: 24
+n_trades_total: 2168
+total_net_pnl: 663763.95
+mean_sharpe: 25.8576
+mean_win_rate: 0.6360
+portfolio_sharpe: 5.8044
+max_concentration_pct: 0.0759
 outputs: output/backtest/trades_layer1.parquet, summary_layer1.parquet, portfolio_layer1.parquet
