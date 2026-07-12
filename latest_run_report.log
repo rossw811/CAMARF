@@ -1,8 +1,8 @@
 === CAMARF report.py ===
-date:        2026-07-10 02:24
-runtime_min: 0.4
+date:        2026-07-12 00:42
+runtime_min: 0.3
 
-Loaded: 20 pairs, 296 OOS trades, 1042 IS trades
+Loaded: 26 pairs, 449 OOS trades, 2168 IS trades
   [fig] tier -> figures/tier_distribution.png
   [fig] equity -> figures/equity_curve.png
   [fig] evt -> figures/evt_tail_risk.png
@@ -30,7 +30,7 @@ Loaded: 20 pairs, 296 OOS trades, 1042 IS trades
   [fig] mc_quality -> figures/mc_quality.png
   [fig] dcc_heatmap -> figures/dcc_heatmap.png
 Figures generated: 26/26
-main.tex written: 26,983 chars
+main.tex written: 27,673 chars
 references.bib written
 compile.bat written
 

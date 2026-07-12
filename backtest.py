@@ -647,18 +647,17 @@ class BacktestEngine:
 
                 # STORM: continuous forecast scaling — replaces the binary
                 # in/out sizing above with a scale continuous in |z| at entry.
-                # ARCHITECTURE NOTE (2026-07-10 sweep): both branches below
-                # RECOMPUTE n_shares from N_SHARES_PER_TRADE rather than scaling
-                # the current n_shares value — if coint_frac_sizing is ALSO set,
-                # its multiplication above is silently discarded, not composed.
-                # Never tested/decided whether these should compose (multiply)
-                # or remain mutually exclusive like carver/linear above — flagged
-                # for Ross, not changed unilaterally. Only combine coint_frac_sizing
-                # with continuous_forecast_carver/linear if you intend this override.
+                # BUG-D56 fix (2026-07-11): both branches below RECOMPUTE n_shares
+                # from N_SHARES_PER_TRADE, so if coint_frac_sizing is ALSO set,
+                # its multiplier is now explicitly composed (multiplied in) here
+                # rather than silently discarded as before — Ross confirmed
+                # compose over override-only.
                 if _cf_carver:
                     scaled_forecast = np.clip(abs(z) * _cf_scale_factor, -20.0, 20.0)
                     n_shares = max(1, int(self.cfg.N_SHARES_PER_TRADE * (scaled_forecast / 10.0)
                                           * size_mult * hub_w * rp_w))
+                    if _coint_frac_sizing:
+                        n_shares = max(1, int(n_shares * _coint_frac))
                 elif _cf_linear:
                     # Simpler convention: scale directly off CAMARF's own entry
                     # threshold rather than Carver's separate forecast-unit
@@ -667,6 +666,8 @@ class BacktestEngine:
                     linear_mult = min(abs(z) / self.cfg.ENTRY_ZSCORE, 2.0)
                     n_shares = max(1, int(self.cfg.N_SHARES_PER_TRADE * linear_mult
                                           * size_mult * hub_w * rp_w))
+                    if _coint_frac_sizing:
+                        n_shares = max(1, int(n_shares * _coint_frac))
 
                 # STORM: mm_exec — use MM hedge ratio for position sizing if available
                 if _mm_exec and _beta_mm is not None and np.isfinite(_beta_mm) and _beta_mm > 0:
@@ -771,6 +772,39 @@ class BacktestEngine:
         trade.mfe = round(mfe * n, 4)
         _key = f"{trade.symbol_a}/{trade.symbol_b}"
         self._pair_pnl[_key] = self._pair_pnl.get(_key, 0.0) + trade.pnl_net
+
+
+# ---------------------------------------------------------------------------
+# Survivorship boundary resolution (BUG-D58 fix, 2026-07-12)
+# ---------------------------------------------------------------------------
+def resolve_survivorship_oos_end(
+    candidate_oos_end: Optional[pd.Timestamp],
+    data_last_seen: Optional[pd.Timestamp],
+    slack_days: int = 90,
+) -> Optional[pd.Timestamp]:
+    """
+    Decide whether a survivorship-exclusion "removed" date should actually truncate a pair's
+    OOS window, or whether it's a false positive (symbol demoted out of the S&P 500 index but
+    still trading normally, not delisted -- see BUG-D58).
+
+    candidate_oos_end: earliest survivorship "removed_date" among the pair's two symbols, or
+                        None if neither symbol has any exclusion entry.
+    data_last_seen: the LAST timestamp this pair's own spread_series data actually has, i.e.
+                     proof the symbol was still producing real price data at that point.
+    slack_days: how far past candidate_oos_end real data must extend before treating the
+                "removed" date as a false positive rather than a real delisting boundary.
+                90 days gives room for index-removal/actual-delisting timing not lining up
+                exactly, while still catching genuine delistings (data stopping AT the removal).
+
+    Returns None (no truncation) if candidate_oos_end is None, or if real data extends more
+    than slack_days past it (false positive). Returns candidate_oos_end unchanged otherwise
+    (real, trusted delisting boundary).
+    """
+    if candidate_oos_end is None:
+        return None
+    if data_last_seen is not None and data_last_seen > candidate_oos_end + pd.Timedelta(days=slack_days):
+        return None
+    return candidate_oos_end
 
 
 # ---------------------------------------------------------------------------
@@ -1369,6 +1403,20 @@ def main() -> None:
                         "to backtest instead of output/results/{tf_dir}/pairs.parquet — "
                         "enables counterfactual runs on a specific pair subset (e.g. the "
                         "pairs excluded by one filter stage, per research/filter_ablation.py).")
+    p.add_argument("--capital-sim", action="store_true",
+                   help="BUG-D60 (2026-07-12): also run this backtest's trade list through "
+                        "portfolio_sim.py's capital-constrained, mark-to-market replay, and save "
+                        "the result as an ADDITIONAL, separately-labeled output alongside the "
+                        "existing unconstrained one. Opt-in — the primary trades_*/portfolio_*.parquet "
+                        "outputs and headline Sharpe are completely unaffected either way.")
+    p.add_argument("--capital-account-size", type=float, default=100_000,
+                   help="Starting capital for --capital-sim (default: $100,000).")
+    p.add_argument("--capital-sizing", default="fixed",
+                   choices=["fixed", "equity_proportional", "flat_2pct", "quarter_kelly",
+                            "third_kelly", "half_kelly", "full_kelly"],
+                   help="Sizing method for --capital-sim (default: fixed, matching this run's "
+                        "own N_SHARES_PER_TRADE convention -- isolates the pure capital-"
+                        "constraint effect from any sizing-method change).")
     args = p.parse_args()
 
     _pairs_override_df: Optional[pd.DataFrame] = None
@@ -1570,15 +1618,31 @@ def main() -> None:
                 log.debug("SKIP %s/%s@%s: no spread series", sym_a, sym_b, tf_label)
                 continue
 
-            # Survivorship boundary: use earliest delist date of either symbol
+            # Survivorship boundary: use earliest delist date of either symbol.
+            # BUG-D58 fix (2026-07-12): survivorship_exclusions.csv is scraped from Wikipedia's
+            # S&P 500 INDEX MEMBERSHIP CHANGES table, which lists every symbol ever REMOVED FROM
+            # THE INDEX for reasons unrelated to delisting (market-cap decline, demotion to the
+            # S&P 400/600), while it keeps trading normally under the same ticker. Confirmed
+            # directly this session: DD, NOV, and FHN all show a "removed" date years before this
+            # project's 2023+ data window, yet all three have real, continuous spread_series data
+            # through that entire window — demoted, not delisted. This was silently zeroing out
+            # 7/24 confirmed 1h pairs. See resolve_survivorship_oos_end()'s docstring for the fix.
             _oos_end = None
             if len(_survivorship) > 0:
                 from survivorship import get_oos_end_date as _get_oos_end
                 d_a = _get_oos_end(sym_a, _survivorship)
                 d_b = _get_oos_end(sym_b, _survivorship)
                 if d_a is not None or d_b is not None:
-                    candidates = [d for d in [d_a, d_b] if d is not None]
-                    _oos_end = min(candidates)
+                    _candidate_oos_end = min(d for d in [d_a, d_b] if d is not None)
+                    _oos_end = resolve_survivorship_oos_end(_candidate_oos_end, spread_df.index.max())
+                    if _oos_end is None:
+                        log.debug(
+                            "%s/%s@%s: survivorship 'removed' date %s predates real data through "
+                            "%s -- treating as false-positive (index removal, not delisting), "
+                            "NOT truncating",
+                            sym_a, sym_b, tf_label, _candidate_oos_end.date(),
+                            spread_df.index.max().date(),
+                        )
 
             for hm in hedge_methods:
                 trades = engine.run(row, spread_df, hm, holdout_only=args.holdout,
@@ -1600,6 +1664,44 @@ def main() -> None:
     portfolio_stats = aggregate_portfolio(all_trades, all_metrics)
     _save_results(all_trades, all_metrics, portfolio_stats, label=label)
     _print_summary(all_metrics, portfolio_stats, label=label)
+
+    # BUG-D60 (2026-07-12): optional capital-constrained, mark-to-market replay of this exact
+    # trade list, via portfolio_sim.py. Strictly additive -- runs AFTER the standard unconstrained
+    # save above, writes its own separately-labeled output, never modifies trades_*/portfolio_*.
+    if args.capital_sim and all_trades:
+        import portfolio_sim
+        trades_for_sim = pd.DataFrame([{
+            "symbol_a": t.symbol_a, "symbol_b": t.symbol_b, "tf": t.tf,
+            "entry_time": t.entry_time, "exit_time": t.exit_time,
+            "entry_spread": t.entry_spread, "entry_z": t.entry_z, "side": t.side,
+            "half_life_at_entry": t.half_life_at_entry,
+            "n_shares_a": t.n_shares_a, "n_shares_b": t.n_shares_b, "pnl_net": t.pnl_net,
+        } for t in all_trades])
+        log.info("--capital-sim: replaying %d trades, account=$%.0f, sizing=%s",
+                  len(trades_for_sim), args.capital_account_size, args.capital_sizing)
+        sim_result = portfolio_sim.replay_portfolio(
+            trades_for_sim, args.capital_account_size, args.capital_sizing
+        )
+        sim_sharpe = portfolio_sim.portfolio_sharpe_from_replay(sim_result)
+        log.info("  [capital_sim] taken=%d/%d skipped=%d peak_notional=$%.0f "
+                  "final_equity=$%.2f sharpe=%.4f",
+                  sim_result["n_taken"], len(trades_for_sim), sim_result["skipped_count"],
+                  sim_result["peak_concurrent_notional"], sim_result["final_equity"], sim_sharpe)
+        sim_label = f"{label}_capsim_{args.capital_sizing}_{int(args.capital_account_size)}"
+        sim_result["taken"].to_parquet(
+            os.path.join(_OUT_DIR, f"trades_{sim_label}.parquet"), index=False
+        )
+        pd.DataFrame([{
+            "sharpe_portfolio": sim_sharpe, "n_taken": sim_result["n_taken"],
+            "n_total": len(trades_for_sim), "skipped_count": sim_result["skipped_count"],
+            "peak_concurrent_notional": sim_result["peak_concurrent_notional"],
+            "peak_mtm_equity": sim_result["peak_mtm_equity"],
+            "trough_mtm_equity": sim_result["trough_mtm_equity"],
+            "final_equity": sim_result["final_equity"],
+            "starting_capital": args.capital_account_size, "sizing_method": args.capital_sizing,
+        }]).to_parquet(os.path.join(_OUT_DIR, f"portfolio_{sim_label}.parquet"), index=False)
+        log.info("  [capital_sim] saved -> trades_%s.parquet, portfolio_%s.parquet",
+                  sim_label, sim_label)
 
     # Write run log (same pattern as data.py / analysis.py)
     with open(_LOG_PATH, "w") as f:

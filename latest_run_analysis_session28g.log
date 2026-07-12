@@ -1,0 +1,35 @@
+2026-07-11 07:04:31  INFO      ======================================================================
+2026-07-11 07:04:31  INFO      CAMARF  —  analysis.py  —  Cross-Asset Co-Movement Analysis
+2026-07-11 07:04:31  INFO      ======================================================================
+2026-07-11 07:12:36  INFO      Resuming — 1357 assets already complete (config hash 0c0e67a6b00ff0bb)
+2026-07-11 07:12:36  INFO      Building asset universe...
+2026-07-11 07:12:36  INFO      S&P 500: 503 tickers from cache (4.1h old)
+2026-07-11 07:12:36  INFO        sp400: 400 tickers from cache (4.1h old)
+2026-07-11 07:12:36  INFO        S&P MidCap 400: fetched 400 tickers (net new after S&P 500 overlap removed by dedup)
+2026-07-11 07:12:36  INFO        sp600: 603 tickers from cache (4.1h old)
+2026-07-11 07:12:36  INFO        S&P SmallCap 600: fetched 603 tickers (net new after dedup)
+2026-07-11 07:12:36  INFO        S&P 1500 total equities in universe: 1506
+2026-07-11 07:12:36  INFO        International equities + ADRs + FX spots added: 64 symbols
+2026-07-11 07:12:36  INFO        Total universe: 1614 assets
+2026-07-11 07:12:36  INFO      Exclusion list: skipping 3 assets ['BNY', 'FDXF', 'VLTO']
+2026-07-11 07:12:36  INFO      Universe candidates: 1611 assets
+2026-07-11 07:12:36  INFO      Phase 1 (yfinance daily): 1517 equities + 45 intl equities + 5 crypto + 15 forex/FX + 15 ETFs
+2026-07-11 07:12:51  INFO        Read-only mode (fetch=False): skipping yfinance fetch for 4 uncached + 1581 stale daily assets — using cache as-is
+2026-07-11 07:12:51  INFO        All daily data cached and current — skipping yfinance download
+2026-07-11 07:13:17  INFO        229 equities + 10 forex need IBKR intraday
+2026-07-11 07:13:17  INFO        Read-only mode (fetch=False): 253 assets need intraday data but fetching is disabled — using cache as-is (expected for analysis.py; run data.py to backfill)
+2026-07-11 07:15:39  INFO      Universe complete: 1593 assets passed, 0 excluded
+2026-07-11 07:15:39  INFO      Data keys: 20007 symbol-timeframe combinations (18415 loaded from cache)
+2026-07-11 07:15:39  INFO      Run summary \u2192 C:\Users\RossW\Projects\CAMARF\latest_run_data.log
+2026-07-11 07:15:39  INFO      Universe loaded: 1593 assets, 20007 symbol-TF combinations
+2026-07-11 07:15:39  INFO      ======================================================================
+2026-07-11 07:15:39  INFO      CAMARF — analysis.py — Pipeline start
+2026-07-11 07:15:39  INFO      ======================================================================
+2026-07-11 07:15:39  INFO        Universe: 1593 assets, 20007 symbol-TF combinations
+2026-07-11 07:15:39  INFO      Script hash unchanged (a337730c8294598b) — reusing prior results
+2026-07-11 07:15:39  INFO        Timeframes: ['1m', '2m', '3m', '5m', '15m', '30m', '1h', '4h', '1D', '7D', '1M', '3M', '6M']
+2026-07-11 07:15:39  INFO      ----------------------------------------------------------------------
+2026-07-11 07:15:39  INFO        Timeframe: 1m
+2026-07-11 07:15:39  INFO      ----------------------------------------------------------------------
+2026-07-11 07:15:41  INFO        [1m] 1428 assets have data for this TF
+2026-07-11 07:16:18  INFO        [1m] aligned: 1428 assets

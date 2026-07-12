@@ -47,8 +47,20 @@ _TF_DIRS = [
     ("1hr", "1h"),
 ]
 
-# Fraction of the price series used as "formation" vs "trading"
-_FORMATION_FRAC = 0.5
+# Fraction of the price series used as "formation" vs "trading".
+# BUG-D61 fix (2026-07-12): this was hardcoded to 0.5 (a 50/50 split), while the cointegration
+# side of this same comparison (run_coint_pair_oos_trades, below) uses
+# holdout_only=True -- backtest.py's own 80/20 IS/OOS split (Config.BACKTEST.HOLDOUT_PCT).
+# The two sides of the comparison were therefore NEVER testing the same date window (confirmed
+# directly: a 2026-07-12 run showed the distance side trading over 2025-01-15 to 2026-07-10 --
+# ~18 months -- while the cointegration side's holdout is ~7 months, Dec 2025 to Jul 2026). This
+# is very likely the primary driver of PAPER.md's old "-0.208 vs. ~11.7" GGR distance comparison
+# looking implausible (Ross flagged this directly), independent of BUG-D59's separate
+# aggregation fix. Aligned to the SAME convention so both sides genuinely trade the same window.
+_FORMATION_FRAC = 1.0 - 0.20  # matches Config.BACKTEST.HOLDOUT_PCT (kept as a literal here,
+                               # not imported, since distance.py doesn't otherwise depend on
+                               # backtest.py's Config wiring -- see run_coint_pair_oos_trades'
+                               # own __import__("config") pattern for the one place it does)
 # Top-K pairs by SSD to select
 _TOP_K = 20
 # Entry z-score for distance strategy
@@ -254,14 +266,18 @@ def run_distance_trades(
 # =============================================================================
 
 
-def run_coint_pair_oos_sharpe(pair_row: pd.Series, tf_dir: str) -> float:
-    """Run confirmed coint pair through BacktestEngine (holdout, no STORM/ML) and return Sharpe."""
+def run_coint_pair_oos_trades(pair_row: pd.Series, tf_dir: str) -> list:
+    """Run confirmed coint pair through BacktestEngine (holdout, no STORM/ML) and return the
+    raw Trade list. Split out from the old run_coint_pair_oos_sharpe (BUG-D59 fix, 2026-07-12)
+    so trades can be POOLED across all pairs into one daily P&L series before computing a
+    single portfolio Sharpe -- averaging small-sample PER-PAIR Sharpes (the old approach) lets
+    one thinly-traded pair with a lucky few days dominate the mean; see Development.md."""
     spread_path = os.path.join(
         _RESULTS_DIR, tf_dir,
         f"spread_series_{pair_row['symbol_a']}_{pair_row['symbol_b']}.parquet"
     )
     if not os.path.exists(spread_path):
-        return float("nan")
+        return []
 
     spread_df = pd.read_parquet(spread_path)
     engine = BacktestEngine(
@@ -271,21 +287,27 @@ def run_coint_pair_oos_sharpe(pair_row: pd.Series, tf_dir: str) -> float:
         storm_flags={},
         mm_hedge_map={},
     )
-    trades = engine.run(pair_row, spread_df, hedge_method="ols", holdout_only=True)
+    return engine.run(pair_row, spread_df, hedge_method="ols", holdout_only=True)
+
+
+def _portfolio_sharpe_from_dollar_trades(trades: list) -> float:
+    """Pools raw Trade objects' pnl_net (dollars) across ALL pairs into one daily P&L series
+    before computing Sharpe -- the same pooled-not-averaged methodology
+    _portfolio_sharpe_from_trades (below) already uses for the distance method, and
+    backtest.py's aggregate_portfolio() uses for the project's own headline Sharpe. Added for
+    the BUG-D59 fix so the cointegration-vs-distance comparison is apples-to-apples (both
+    pooled), not a per-pair mean vs. a pooled portfolio Sharpe."""
     if not trades:
         return float("nan")
-
-    pnl = np.array([t.pnl_net for t in trades])
     exit_times = [t.exit_time for t in trades if t.exit_time is not None]
+    pnl = [t.pnl_net for t in trades if t.exit_time is not None]
     if not exit_times:
         return float("nan")
-
     df = pd.DataFrame({"exit_time": exit_times, "pnl_net": pnl})
     df["date"] = pd.to_datetime(df["exit_time"]).dt.date
     daily = df.groupby("date")["pnl_net"].sum()
     if len(daily) < 5 or daily.std() == 0:
         return float("nan")
-
     return float(daily.mean() / daily.std() * np.sqrt(252))
 
 
@@ -397,14 +419,30 @@ def main():
         # Step 3: Run cointegration pairs through BacktestEngine
         log.info("  Running cointegration OOS via BacktestEngine...")
         coint_sharpes = []
+        coint_all_trades: List = []
         for _, row in tf_pairs.iterrows():
-            sh = run_coint_pair_oos_sharpe(row, tf_dir)
-            coint_sharpes.append(sh)
+            trades = run_coint_pair_oos_trades(row, tf_dir)
+            coint_all_trades.extend(trades)
+            # Same pooling formula applied to just this one pair's trades == the old
+            # per-pair Sharpe (kept for the saved parquet's per-pair transparency column).
+            coint_sharpes.append(_portfolio_sharpe_from_dollar_trades(trades))
         valid_sharpes = [s for s in coint_sharpes if np.isfinite(s)]
-        coint_port_sharpe = float(np.mean(valid_sharpes)) if valid_sharpes else float("nan")
+        # BUG-D59 fix (2026-07-12): the OLD headline stat here was mean(per-pair Sharpe) --
+        # unreliable on small per-pair holdout samples (one thinly-traded pair with a lucky
+        # few days could show a Sharpe in the hundreds and dominate the mean; confirmed
+        # directly this session: LNT/WELL showed Sharpe=114 from just 6 days of P&L). The
+        # CORRECT, apples-to-apples-with-the-distance-method figure pools every pair's trades
+        # into one daily P&L series first, matching _portfolio_sharpe_from_trades's own
+        # methodology and backtest.py's aggregate_portfolio(). Both stats are kept and logged
+        # -- the pooled one is now what SUMMARY/the saved parquet call the headline.
+        coint_port_mean_sharpe = float(np.mean(valid_sharpes)) if valid_sharpes else float("nan")
+        coint_port_sharpe = _portfolio_sharpe_from_dollar_trades(coint_all_trades)
         log.info(
-            "  Coint portfolio: mean_pair_Sharpe=%.3f  n_pairs=%d/%d with valid Sharpe",
-            coint_port_sharpe, len(valid_sharpes), len(coint_sharpes),
+            "  Coint portfolio: pooled_portfolio_Sharpe=%.3f  (OLD unweighted mean_pair_Sharpe=%.3f, "
+            "kept for reference only -- see BUG-D59)  n_pairs=%d/%d with valid per-pair Sharpe  "
+            "n_trades_pooled=%d",
+            coint_port_sharpe, coint_port_mean_sharpe, len(valid_sharpes), len(coint_sharpes),
+            len(coint_all_trades),
         )
 
         # Per-pair results
@@ -420,7 +458,13 @@ def main():
                 "in_distance_top_k": in_dist,
                 "ssd": round(ssd_val, 4),
                 "distance_port_sharpe": round(dist_sharpe, 3),
-                "coint_port_mean_sharpe": round(coint_port_sharpe, 3),
+                # BUG-D59 (2026-07-12): coint_port_pooled_sharpe is the correct, apples-to-
+                # apples-with-distance_port_sharpe figure (both pooled daily P&L across all
+                # trades). coint_port_mean_sharpe is the OLD unweighted mean-of-per-pair-Sharpe
+                # figure, kept only for backward-compatible reference -- do not use it as the
+                # headline comparison number, it's unreliable on small per-pair samples.
+                "coint_port_pooled_sharpe": round(coint_port_sharpe, 3) if np.isfinite(coint_port_sharpe) else float("nan"),
+                "coint_port_mean_sharpe": round(coint_port_mean_sharpe, 3) if np.isfinite(coint_port_mean_sharpe) else float("nan"),
                 "n_dist_trades": n_dist,
                 "n_coint_pairs": len(tf_pairs),
             })
@@ -428,10 +472,11 @@ def main():
         log.info(
             "\n  === %s SUMMARY ===\n"
             "  Distance (top-%d by SSD):  Sharpe = %.3f  n_trades = %d\n"
-            "  Cointegration (%d pairs):  mean pair Sharpe = %.3f\n"
+            "  Cointegration (%d pairs):  POOLED portfolio Sharpe = %.3f  "
+            "(OLD unweighted mean-of-per-pair-Sharpe = %.3f, see BUG-D59)\n"
             "  Pairs in both selections: %d/%d",
             tf_label, top_k, dist_sharpe, n_dist,
-            len(tf_pairs), coint_port_sharpe,
+            len(tf_pairs), coint_port_sharpe, coint_port_mean_sharpe,
             len(overlap), len(confirmed_set),
         )
 

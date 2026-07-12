@@ -1,0 +1,31 @@
+Lo (2002) Sharpe-autocorrelation correction applied to CAMARF's real portfolio P&L
+==========================================================================================
+
+NOTE: trades_layer1.parquet on disk right now reflects whatever backtest.py run last
+wrote it -- this session's Phase 3 full pipeline rerun has not completed, so this IS-side
+number is NOT guaranteed to exactly match the last-published Session 22 headline (5.2935,
+1028 trades). The OOS/holdout file DOES match the currently-published 5.2443 exactly (296
+trades) as a sanity check that this script's daily-P&L reconstruction matches backtest.py's
+own aggregate_portfolio() logic. Re-run this script once Phase 3 completes for the final
+citable pair.
+
+=== IS (trades_layer1.parquet) (output/backtest/trades_layer1.parquet) ===
+  n daily-P&L observations: 1031  (max_lag used for full estimate: 251)
+  naive daily Sharpe (SR1): 0.3258
+  naive annualized Sharpe (SR1*sqrt(252)): 5.1717
+  lag-1 autocorrelation (rho_1): -0.1047  (SE~0.0311, z=-3.36 -- SIGNIFICANT at |z|>=2)
+  Lo-corrected (rho_1-only approx): 5.8130  (naive UNDERSTATES by 11.03%)
+  Lo-corrected (full empirical ACF, 251 lags): 7.8403  (naive UNDERSTATES by 34.04%)
+  Null check (200 shuffles, true rho=0 by construction, 0 dropped as non-finite eta): full-ACF swing under pure noise = 23.35% mean, 47.20% 95th pct
+  -> observed 34.04% swing is WITHIN the null noise range -- the full-ACF correction here is NOT distinguishable from estimation noise.
+
+=== OOS/holdout (trades_layer1_holdout.parquet) (output/backtest/trades_layer1_holdout.parquet) ===
+  n daily-P&L observations: 213  (max_lag used for full estimate: 53)
+  naive daily Sharpe (SR1): 0.2764
+  naive annualized Sharpe (SR1*sqrt(252)): 4.3877
+  lag-1 autocorrelation (rho_1): -0.3045  (SE~0.0685, z=-4.44 -- SIGNIFICANT at |z|>=2)
+  Lo-corrected (rho_1-only approx): 6.9951  (naive UNDERSTATES by 37.28%)
+  Lo-corrected (full empirical ACF, 53 lags): 6.0337  (naive UNDERSTATES by 27.28%)
+  Null check (200 shuffles, true rho=0 by construction, 17 dropped as non-finite eta): full-ACF swing under pure noise = 30.50% mean, 74.20% 95th pct
+  -> observed 27.28% swing is WITHIN the null noise range -- the full-ACF correction here is NOT distinguishable from estimation noise.
+
