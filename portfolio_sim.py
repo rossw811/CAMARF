@@ -389,17 +389,95 @@ def replay_portfolio(
 
 
 def portfolio_sharpe_from_replay(result: dict) -> float:
-    """Sharpe from the ACTUAL realized daily P&L this replay produced (pooled daily, matching
-    aggregate_portfolio()'s own convention)."""
+    """Sharpe from the ACTUAL realized daily P&L this replay produced, pooled daily using the
+    SAME convention as backtest.py's aggregate_portfolio() -- resample("1D").sum() on the P&L
+    series indexed by exit_time, which fills every calendar day between the first and last exit
+    with 0 P&L. This does NOT match a plain groupby(exit_date) over only the days that happen to
+    have a realized exit (BUG-D62, Development.md 2026-07-13): the groupby-only convention this
+    function originally used silently drops every zero-P&L calendar day, which understates N and
+    materially overstates Sharpe. Confirmed directly: computing the FULL unconstrained trade set's
+    Sharpe under groupby-only gives ~9.79, comparable to every "capital constraints raise Sharpe"
+    figure previously reported for this function -- i.e. the entire effect was this convention
+    mismatch, not a property of capital-constrained trading. Must match aggregate_portfolio() or
+    any comparison against the unconstrained headline Sharpe is not apples-to-apples."""
     taken = result["taken"]
     if len(taken) == 0:
         return float("nan")
-    df = taken.copy()
-    df["exit_date"] = pd.to_datetime(df["exit_time"]).dt.date
-    daily = df.groupby("exit_date")["actual_pnl"].sum()
+    exit_time = pd.to_datetime(taken["exit_time"])
+    s = pd.Series(taken["actual_pnl"].values, index=pd.DatetimeIndex(exit_time)).sort_index()
+    daily = s.resample("1D").sum()
     if len(daily) < 5 or daily.std() == 0:
         return float("nan")
     return float(daily.mean() / daily.std() * np.sqrt(252))
+
+
+def max_drawdown_pct(equity_curve_df: pd.DataFrame) -> float:
+    """Max drawdown as a fraction of the running peak equity (standard convention: (peak-trough)/
+    peak at the point of the deepest subsequent decline, not a single global min/max pair -- a
+    global-min-vs-global-max reading would understate a real drawdown that happened before the
+    series' eventual high). Computed from replay_portfolio()'s realized equity_curve (settled at
+    each trade's exit_time), matching the same realized-P&L basis portfolio_sharpe_from_replay()
+    and the Calmar/PDR functions below use -- not a continuous intra-trade MTM curve."""
+    eq = equity_curve_df.sort_values("time")["equity"].values
+    if len(eq) < 2:
+        return float("nan")
+    running_max = np.maximum.accumulate(eq)
+    dd_pct = np.where(running_max > 0, (running_max - eq) / running_max, 0.0)
+    return float(dd_pct.max())
+
+
+def profit_factor_from_replay(result: dict) -> float:
+    """Gross profit / |gross loss| on the ACTUAL (capital-scaled) realized P&L this replay
+    produced -- same basis as portfolio_sharpe_from_replay(), not the original unconstrained size."""
+    taken = result["taken"]
+    if len(taken) == 0:
+        return float("nan")
+    pnl = taken["actual_pnl"].to_numpy()
+    wins = pnl[pnl > 0].sum()
+    losses = pnl[pnl <= 0].sum()
+    return float(wins / abs(losses)) if losses != 0 else float("inf")
+
+
+def pdr_from_replay(result: dict) -> float:
+    """Profit-to-Drawdown Ratio = Profit Factor / Max Drawdown (%), per Ross's own framing
+    ("a ratio between profit factor and dd"), 2026-07-13/14. Unitless, larger is better; a high
+    profit factor with a small drawdown gives a large PDR, either a weak profit factor or a deep
+    drawdown shrinks it. Comparison-metric only -- not the same construction as backtest.py's
+    compute_metrics() 'calmar' field (total_pnl/max_dd in raw dollars, not this ratio)."""
+    pf = profit_factor_from_replay(result)
+    dd = max_drawdown_pct(result["equity_curve"])
+    if not np.isfinite(pf) or not np.isfinite(dd) or dd <= 0:
+        return float("nan")
+    return pf / dd
+
+
+def calmar_from_replay(result: dict) -> float:
+    """Standard Calmar Ratio = Annualized Return / Max Drawdown (%). Uses the SAME resample("1D")
+    daily-P&L annualization basis as portfolio_sharpe_from_replay()/aggregate_portfolio() (BUG-D62/
+    D64 convention), not backtest.py compute_metrics()'s non-standard total_pnl/max_dd 'calmar'
+    field, which is neither annualized nor drawdown-normalized the same way -- deliberately not
+    reusing that name's existing computation, this is the textbook definition."""
+    taken = result["taken"]
+    if len(taken) == 0:
+        return float("nan")
+    exit_time = pd.to_datetime(taken["exit_time"])
+    s = pd.Series(taken["actual_pnl"].to_numpy(), index=pd.DatetimeIndex(exit_time)).sort_index()
+    daily = s.resample("1D").sum()
+    if len(daily) < 5:
+        return float("nan")
+    starting_capital = result["starting_capital"]
+    if starting_capital <= 0:
+        return float("nan")
+    total_return = result["final_equity"] / starting_capital - 1.0
+    n_years = len(daily) / 252.0
+    if n_years <= 0:
+        return float("nan")
+    base = 1.0 + total_return
+    annualized_return = (base ** (1.0 / n_years) - 1.0) if base > 0 else float("nan")
+    dd = max_drawdown_pct(result["equity_curve"])
+    if not np.isfinite(annualized_return) or not np.isfinite(dd) or dd <= 0:
+        return float("nan")
+    return annualized_return / dd
 
 
 def main():

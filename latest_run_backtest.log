@@ -1,10 +1,10 @@
-backtest.py run: layer1
-layer2_enabled: False
+backtest.py run: layer2_holdout
+layer2_enabled: True
 n_pairs_run: 24
-n_trades_total: 2168
-total_net_pnl: 663763.95
-mean_sharpe: 25.8576
-mean_win_rate: 0.6360
-portfolio_sharpe: 5.8044
-max_concentration_pct: 0.0759
-outputs: output/backtest/trades_layer1.parquet, summary_layer1.parquet, portfolio_layer1.parquet
+n_trades_total: 449
+total_net_pnl: 141648.96
+mean_sharpe: 46.6709
+mean_win_rate: 0.7322
+portfolio_sharpe: 4.5131
+max_concentration_pct: 0.0997
+outputs: output/backtest/trades_layer2_holdout.parquet, summary_layer2_holdout.parquet, portfolio_layer2_holdout.parquet

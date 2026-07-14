@@ -410,6 +410,128 @@ class DataStore:
                 return label
         return f"unknown (~{median_gap_seconds:.0f}s)"
 
+    _SPLIT_GAP_TOLERANCE = 0.15  # matches this project's established single-bar anomaly threshold
+
+    @staticmethod
+    def _reconcile_split_adjustment(
+        symbol: str, existing: pd.DataFrame, new_df: pd.DataFrame
+    ) -> pd.DataFrame:
+        """
+        BUG-D65 (2026-07-13): append() used to concatenate freshly-fetched
+        bars (yfinance auto_adjust=True, adjusted as of THIS fetch) directly
+        onto previously-cached bars (adjusted as of an EARLIER fetch) with no
+        reconciliation. yfinance's auto_adjust is only internally consistent
+        WITHIN one fetch call — it does not retroactively re-adjust bars a
+        prior fetch already wrote to disk. If a split/reverse-split occurs
+        between two fetches of the same symbol/timeframe, the old cached
+        bars stay on the old adjustment basis while the new bars land on the
+        new one, producing a raw price discontinuity at the append seam.
+        Confirmed on DD: 1h/4h cache jumped ~2.4x at the 2023-07-26 seam
+        (matches DD's real recorded 2.390x split factor dated 2025-11-03 —
+        i.e. a split discovered by yfinance sometime after that fetch got
+        silently baked into only the newer portion of the cache), and
+        several short-window intraday caches (1m/2m/3m/5m/15m/30m) jumped
+        ~3x at their own last-refresh seam (matches DD's real 0.333...x
+        1-for-3 reverse split dated 2026-06-24). A fresh single yfinance
+        pull spanning the 2026-06-24 boundary is smooth (0 jumps >10%),
+        proving the discontinuity is an artifact of this append path, not
+        of Yahoo's underlying data.
+
+        Detects a large single-bar gap at the existing/new_df boundary, then
+        cross-validates it against the symbol's actual recorded split
+        history before rescaling — this avoids misreading a genuine large
+        overnight move (earnings crash, M&A) as an adjustment-basis change.
+        Rescales `existing` (not `new_df`) since new_df always reflects the
+        most current, correct adjustment basis.
+        """
+        if (
+            existing.empty
+            or new_df.empty
+            or "close" not in existing.columns
+            or "close" not in new_df.columns
+        ):
+            return existing
+
+        last_existing_close = existing["close"].iloc[-1]
+        first_new_close = new_df["close"].iloc[0]
+        if (
+            pd.isna(last_existing_close)
+            or pd.isna(first_new_close)
+            or last_existing_close == 0
+        ):
+            return existing
+
+        ratio = first_new_close / last_existing_close
+        if abs(ratio - 1.0) < DataStore._SPLIT_GAP_TOLERANCE:
+            return existing  # ordinary gap — nothing to reconcile
+
+        try:
+            import yfinance as yf
+
+            splits = yf.Ticker(symbol).splits
+        except Exception as e:
+            log.warning(
+                f"  {symbol}: {ratio:.3f}x price gap at cache append seam "
+                f"({existing.index[-1]} -> {new_df.index[0]}) but split "
+                f"history fetch failed ({e}) — leaving cache unadjusted, "
+                f"flag for manual review."
+            )
+            return existing
+
+        if splits is None or splits.empty:
+            return existing
+
+        # Note: bounded only below by existing's last bar, NOT above by
+        # new_df's first bar. `existing` can be a small stale fragment left
+        # over from a fetch that predates new_df's fetch by a long time (the
+        # real DD case: 12 stale 1h bars from 2023-07-24/25 sat untouched
+        # while the rest of the cache was later fully re-fetched and
+        # correctly re-adjusted for a split whose real ex-date, 2025-11-03,
+        # is more than 2 years after the seam it produced) — the split's
+        # own timestamp has no fixed relationship to where the stale
+        # fragment happens to end. Any split after existing's last bar is
+        # already reflected in new_df (freshly fetched "as of now"), so all
+        # of them are relevant regardless of how far ahead they are.
+        window_start = existing.index[-1]
+        splits_idx = splits.index
+        if splits_idx.tz is not None and window_start.tzinfo is None:
+            splits_idx = splits_idx.tz_localize(None)
+        relevant = splits[splits_idx > window_start]
+        if relevant.empty:
+            return existing  # no known split since existing's last bar — don't guess
+
+        # yfinance's recorded split factor is share-count-oriented (e.g. 2.0
+        # for a 2-for-1 forward split, 0.333... for a 1-for-3 reverse split)
+        # and empirically its sign convention relative to the PRICE-space
+        # ratio needed here isn't reliable to hardcode in one direction (a
+        # forward-split-shaped factor validated against DD's real 2023 gap
+        # only via direct multiplication, while a reverse-split-shaped
+        # factor validated only via its reciprocal — see BUG-D65 writeup).
+        # So: use the recorded split purely to VALIDATE that a real
+        # corporate action of roughly the right magnitude occurred in the
+        # gap window (checked in both orientations), then apply the
+        # empirically observed `ratio` itself as the rescale factor — by
+        # construction it is exactly what's needed to close the seam.
+        cum_factor = float(relevant.prod())
+        rel_err = min(
+            abs(cum_factor - ratio) / max(cum_factor, ratio),
+            abs(1.0 / cum_factor - ratio) / max(1.0 / cum_factor, ratio),
+        )
+        if rel_err > 0.10:
+            return existing  # gap magnitude doesn't match the recorded split — don't guess
+
+        existing = existing.copy()
+        price_cols = [c for c in ("open", "high", "low", "close") if c in existing.columns]
+        existing[price_cols] = existing[price_cols] * ratio
+        if "volume" in existing.columns:
+            existing["volume"] = existing["volume"] / ratio
+        log.info(
+            f"  {symbol}: reconciled append-seam split adjustment ({ratio:.6f}x, "
+            f"validated against recorded split factor {cum_factor:.6f}) — "
+            f"{len(existing)} cache rows up to {window_start} rescaled to match current basis."
+        )
+        return existing
+
     @staticmethod
     def append(
         symbol: str,
@@ -430,6 +552,7 @@ class DataStore:
         if existing is None or existing.empty:
             DataStore.save(symbol, tf_label, new_df)
             return new_df
+        existing = DataStore._reconcile_split_adjustment(symbol, existing, new_df)
         # Concatenate, drop exact index duplicates, sort chronologically
         combined = pd.concat([existing, new_df])
         combined = combined[~combined.index.duplicated(keep="last")]

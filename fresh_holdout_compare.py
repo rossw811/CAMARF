@@ -92,6 +92,29 @@ def pair_based_split(holdout: pd.DataFrame, reserve_fraction: float = _PAIR_RESE
     }
 
 
+def combined_split(holdout: pd.DataFrame, fresh_fraction: float = _TIME_FRESH_FRACTION,
+                    reserve_fraction: float = _PAIR_RESERVE_FRACTION) -> dict:
+    """Apply the pair-based and time-based cuts simultaneously, producing 4 quadrants.
+    reserved x fresh is the single cell no prior evaluation has touched by either axis."""
+    p = pair_based_split(holdout, reserve_fraction)
+    reserved_pairs = set(p["reserved_pairs"])
+    is_reserved = holdout.apply(lambda r: (r["symbol_a"], r["symbol_b"]) in reserved_pairs, axis=1)
+
+    start = holdout["entry_time"].min()
+    end = holdout["entry_time"].max()
+    cutoff = end - (end - start) * fresh_fraction
+    is_fresh = holdout["entry_time"] >= cutoff
+
+    quadrants = {
+        "dev_examined": holdout[~is_reserved & ~is_fresh],
+        "dev_fresh": holdout[~is_reserved & is_fresh],
+        "reserved_examined": holdout[is_reserved & ~is_fresh],
+        "reserved_fresh": holdout[is_reserved & is_fresh],
+    }
+    return {name: dict(zip(("sharpe", "n_trades", "n_days"), _pooled_sharpe(df)))
+            for name, df in quadrants.items()}
+
+
 def main():
     holdout = pd.read_parquet("output/backtest/trades_layer1_holdout.parquet")
     holdout["entry_time"] = pd.to_datetime(holdout["entry_time"])
@@ -121,6 +144,17 @@ def main():
               p["dev"]["sharpe"], p["dev"]["n_trades"], p["dev"]["n_days"])
     log.info("  RESERVED-pairs portion: Sharpe=%.4f  n_trades=%d  n_days=%d",
               p["reserved"]["sharpe"], p["reserved"]["n_trades"], p["reserved"]["n_days"])
+
+    log.info("=" * 70)
+    log.info("MECHANISM 3: COMBINED (both cuts simultaneously) -- PROPOSAL, not yet adopted")
+    log.info("=" * 70)
+    log.info("  NOTE: reserved_fresh is expected to be data-starved (reserved-pairs sample")
+    log.info("  is already thin at %d trades / %d pairs) -- flagged before running, not after.",
+              p["reserved"]["n_trades"], len(p["reserved_pairs"]))
+    c = combined_split(holdout)
+    for name in ("dev_examined", "dev_fresh", "reserved_examined", "reserved_fresh"):
+        q = c[name]
+        log.info("  %-18s Sharpe=%.4f  n_trades=%d  n_days=%d", name, q["sharpe"], q["n_trades"], q["n_days"])
 
 
 if __name__ == "__main__":

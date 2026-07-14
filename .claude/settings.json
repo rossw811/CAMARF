@@ -1,7 +1,13 @@
 {
   "permissions": {
     "allow": [
-      "Bash(git fsck *)"
+      "Bash(git fsck *)",
+      "Bash(\"C:\\Users\\RossW\\anaconda3\\envs\\trading\\python.exe\" *)",
+      "PowerShell(Get-Process *)",
+      "PowerShell(Get-Content *)",
+      "PowerShell(Get-Item *)",
+      "PowerShell(Get-ChildItem *)",
+      "PowerShell(Start-Process -FilePath \"C:\\Users\\RossW\\anaconda3\\envs\\trading\\python.exe\"*)"
     ]
   },
   "hooks": {
@@ -21,6 +27,15 @@
           {
             "type": "command",
             "command": "C:\\Users\\RossW\\.local\\bin\\graphify.EXE hook-guard read"
+          }
+        ]
+      },
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "C:\\Users\\RossW\\anaconda3\\envs\\trading\\python.exe C:\\Users\\RossW\\Projects\\CAMARF\\.claude\\hooks\\guard_manifest.py"
           }
         ]
       }

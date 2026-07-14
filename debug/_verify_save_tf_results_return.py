@@ -10,9 +10,19 @@ manifest, or spread_series — confirmed for real on the 07:51 run: 1h's
 PNC/ZION and SPY/VOO were both printed as confirmed but neither was ever
 persisted (no pairs.parquet, no manifest entry).
 
-Writes only to a throwaway output/results/__TEST_SAVE__/ directory, deleted
-at the end. Does not touch any real cache or results files — safe to run
-while data.py/analysis.py are active against the real output tree.
+Writes to a throwaway output/results/__TEST_SAVE__/ directory, deleted at the
+end. UPDATE 2026-07-13 (BUG-D63): this docstring previously claimed "does not
+touch any real cache or results files — safe to run" — that was WRONG. The
+manifest confirmed_pairs_manifest.json lives in the PARENT of out_dir, is
+never touched by the shutil.rmtree(out_dir) cleanup below, and this script's
+_save_tf_results() call used to hit the real production manifest with no
+override available at all. That's exactly how test-placeholder symbols
+(AAA/BBB/EEE/FFF/GGG/HHH below) ended up contaminating the real manifest.
+Fixed here by passing manifest_path_override (added to _save_tf_results this
+same session) pointing at a path INSIDE out_dir, so the existing rmtree
+cleanup actually removes it too. This script is now verified (see
+`_verify_manifest_untouched()` below) to leave the real production manifest
+byte-for-byte unchanged.
 """
 import os
 import sys
@@ -23,6 +33,22 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from analysis import AnalysisPipeline, PairResult, _output_dir
 
 _TF = "__TEST_SAVE__"
+
+_REAL_MANIFEST_PATH = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+    "output", "results", "confirmed_pairs_manifest.json",
+)
+
+
+def _real_manifest_snapshot():
+    """(exists, mtime_ns, content) of the REAL production manifest, or
+    (False, None, None) if it doesn't exist yet. Used to prove this test
+    doesn't touch it."""
+    if not os.path.exists(_REAL_MANIFEST_PATH):
+        return False, None, None
+    with open(_REAL_MANIFEST_PATH, "rb") as f:
+        content = f.read()
+    return True, os.path.getmtime(_REAL_MANIFEST_PATH), content
 
 
 def _make_pair(symbol_a, symbol_b, coint_frac, slope=-0.5, za=None, cusum=None):
@@ -54,12 +80,26 @@ def main():
     ]
     pairs_in = [c[1] for c in cases]
 
+    # Snapshot the REAL production manifest before touching anything, so we
+    # can prove afterward it was never written to (BUG-D63's actual fix).
+    real_before = _real_manifest_snapshot()
+
+    out_dir = _output_dir(_TF)
+    _test_manifest_path = os.path.join(out_dir, "confirmed_pairs_manifest.json")
+
     returned = AnalysisPipeline._save_tf_results(
-        _TF, pairs_in, [], [], [], {}, None
+        _TF, pairs_in, [], [], [], {}, None,
+        manifest_path_override=_test_manifest_path,
     )
     returned_keys = {(p.symbol_a, p.symbol_b) for p in returned}
 
-    out_dir = _output_dir(_TF)
+    # Decisive check: the test manifest (inside out_dir, cleaned up below)
+    # actually received the write, AND the real production manifest is
+    # byte-for-byte unchanged.
+    test_manifest_written = os.path.exists(_test_manifest_path)
+    real_after = _real_manifest_snapshot()
+    real_manifest_untouched = real_before == real_after
+
     on_disk_path = os.path.join(out_dir, "pairs.parquet")
     on_disk_keys = set()
     if os.path.exists(on_disk_path):
@@ -86,6 +126,19 @@ def main():
     print(f"\nreturned set == on-disk set: {consistent}")
     if not consistent:
         failures.append("return value diverges from persisted pairs.parquet")
+
+    # BUG-D63 decisive check: the manifest_path_override actually redirected
+    # the write, and the real production manifest was never touched.
+    print(f"test manifest written to override path: {test_manifest_written}")
+    print(f"real production manifest untouched: {real_manifest_untouched} "
+          f"(existed_before={real_before[0]}, existed_after={real_after[0]})")
+    if not test_manifest_written:
+        failures.append("manifest_path_override did not receive the write")
+    if not real_manifest_untouched:
+        failures.append(
+            "REAL production confirmed_pairs_manifest.json was modified — "
+            "BUG-D63 fix did not work"
+        )
 
     shutil.rmtree(out_dir, ignore_errors=True)
 

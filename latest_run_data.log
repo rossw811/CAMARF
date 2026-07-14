@@ -1,10 +1,10 @@
 === CAMARF data.py ===
-date:        2026-07-11 09:13
-runtime_min: 7.2
-config_hash: 0c0e67a6b00ff0bb
+date:        2026-07-13 22:03
+runtime_min: 6.1
+config_hash: 86ca897df0541bcf
 
 === universe ===
-candidates:  1611
+candidates:  1694
 resumed:     1357
 excluded:    0
 cache_contamination_cleared: 0

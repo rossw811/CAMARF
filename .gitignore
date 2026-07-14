@@ -24,3 +24,14 @@ graphify-out/.graphify_*
 # _stdout.log/_stderr.log).
 latest_*_stdout.log
 latest_*_stderr.log
+
+# Raw pipeline-runner console output at repo root — same "regenerate, don't
+# track" rationale as output/ above. Not a curated summary like
+# latest_run_*.log.
+pipeline_runner.log
+pipeline_runner_out.log
+
+# logs/archive/: ad-hoc raw run logs (underscore-prefixed, e.g.
+# _data_ibkr_run.log) that predate the 2026-07-11 latest_*_stdout/stderr.log
+# fix above and got tracked by the same bug — same rationale, untracked here.
+logs/archive/*.log

@@ -7,10 +7,16 @@ ever being added. Confirmed for real: D/NEE@1m, CRWD/DDOG@1m, and SPY/VOO's
 in the manifest despite being excluded by today's (correct) coint_frac
 filter — data_ibkr.py would have kept fetching deep history for them.
 
-Backs up and restores the REAL confirmed_pairs_manifest.json around the
-test (it mutates the real file in place — there's no override hook) and
-uses fake symbols/TFs that can't collide with real entries. Run this with
-no other process writing the manifest concurrently.
+UPDATE 2026-07-13 (BUG-D63): previously mutated the REAL manifest in place
+and restored it from a backup in a `finally` block, because
+_save_tf_results had no override hook at all. That per-script backup/
+restore pattern is exactly what didn't generalize when a DIFFERENT script
+(_verify_save_tf_results_return.py) touched the same function without it —
+this file's own approach was never wrong, it just couldn't be relied on to
+protect every future caller. Now uses manifest_path_override (added to
+_save_tf_results this same session) pointing at a throwaway fixture path
+instead — the real manifest is never opened, so there is nothing to back
+up or restore.
 """
 import os
 import sys
@@ -23,8 +29,10 @@ from analysis import AnalysisPipeline, PairResult, _output_dir
 
 _TF_X = "__TEST_MANIFEST_X__"
 _TF_Y = "__TEST_MANIFEST_Y__"
-_MANIFEST_PATH = "output/results/confirmed_pairs_manifest.json"
-_BACKUP_PATH = _MANIFEST_PATH + ".bak_verify"
+_MANIFEST_PATH = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+    "output", "results", "__TEST_MANIFEST_X__", "confirmed_pairs_manifest.json",
+)
 
 
 def _make_pair(symbol_a, symbol_b, tf_label):
@@ -46,21 +54,36 @@ def _make_pair(symbol_a, symbol_b, tf_label):
     )
 
 
+_REAL_MANIFEST_PATH = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+    "output", "results", "confirmed_pairs_manifest.json",
+)
+
+
 def _manifest():
     with open(_MANIFEST_PATH) as f:
         return json.load(f)
 
 
+def _real_manifest_snapshot():
+    if not os.path.exists(_REAL_MANIFEST_PATH):
+        return False, None
+    with open(_REAL_MANIFEST_PATH, "rb") as f:
+        return True, f.read()
+
+
 def main():
-    shutil.copy(_MANIFEST_PATH, _BACKUP_PATH)
+    real_before = _real_manifest_snapshot()
     failures = []
     try:
         # Round 1: TF_X confirms ZZZ1/ZZZ2, TF_Y confirms ZZZ2/ZZZ3.
         AnalysisPipeline._save_tf_results(
-            _TF_X, [_make_pair("ZZZ1", "ZZZ2", _TF_X)], [], [], [], {}, None
+            _TF_X, [_make_pair("ZZZ1", "ZZZ2", _TF_X)], [], [], [], {}, None,
+            manifest_path_override=_MANIFEST_PATH,
         )
         AnalysisPipeline._save_tf_results(
-            _TF_Y, [_make_pair("ZZZ2", "ZZZ3", _TF_Y)], [], [], [], {}, None
+            _TF_Y, [_make_pair("ZZZ2", "ZZZ3", _TF_Y)], [], [], [], {}, None,
+            manifest_path_override=_MANIFEST_PATH,
         )
         m = _manifest()
         check1 = (
@@ -76,7 +99,10 @@ def main():
         # Round 2: TF_X re-runs and finds NOTHING confirmed anymore (the
         # staleness scenario — e.g. coint_frac filter now excludes it).
         # TF_Y is untouched (simulates a scoped --timeframes run).
-        AnalysisPipeline._save_tf_results(_TF_X, [], [], [], [], {}, None)
+        AnalysisPipeline._save_tf_results(
+            _TF_X, [], [], [], [], {}, None,
+            manifest_path_override=_MANIFEST_PATH,
+        )
         m = _manifest()
         check2 = (
             "ZZZ1" not in m  # fully dropped — TF_X was its only TF
@@ -87,15 +113,22 @@ def main():
               f"ZZZ1={m.get('ZZZ1')}, ZZZ2={m.get('ZZZ2')}, ZZZ3={m.get('ZZZ3')}")
         if not check2:
             failures.append("round2")
+
+        real_after = _real_manifest_snapshot()
+        real_untouched = real_before == real_after
+        print(f"real production manifest untouched: {real_untouched}")
+        if not real_untouched:
+            failures.append(
+                "REAL production confirmed_pairs_manifest.json was modified"
+            )
     finally:
-        shutil.move(_BACKUP_PATH, _MANIFEST_PATH)
         for tf in (_TF_X, _TF_Y):
             shutil.rmtree(_output_dir(tf), ignore_errors=True)
 
     if failures:
         print(f"\nFAILED: {failures}")
         sys.exit(1)
-    print("\nAll cases match expected behavior. Real manifest restored from backup.")
+    print("\nAll cases match expected behavior. Real production manifest was never touched.")
 
 
 if __name__ == "__main__":

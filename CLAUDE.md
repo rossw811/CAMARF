@@ -341,10 +341,55 @@ This is as important as the technical rules above.
   doesn't add up logically.
 - **Don't curse, keep it direct and technical, no excessive hedging.**
   Ross wants production-ready answers, not a menu of possibilities.
+- **Research is decoupled from PAPER.md inclusion (added 2026-07-13,
+  after the first LLM-council review).** Keep researching everything —
+  new comparison arms, new diagnostics, new statistical checks are all
+  worth building and verifying. But every new finding writes to
+  `docs/FINDINGS.md` (or stays in Development.md if not yet at
+  write-up quality) BY DEFAULT. Promotion into PAPER.md's own headline
+  claims is a separate, deliberate decision, not automatic — the same
+  comparison-arm-before-production discipline this project already
+  applies to code now applies one level up: comparison-arm →
+  FINDINGS.md → PAPER.md, not comparison-arm → PAPER.md directly. This
+  exists specifically to resolve a real tension the council review
+  found: the research itself is valuable and shouldn't be throttled, but
+  PAPER.md's own length/legibility was independently flagged by multiple
+  reviewers as undermining its purpose as an MFE portfolio piece. The
+  strategy/research and the paper are explicitly allowed to diverge in
+  scope — the paper does not need to contain everything the research
+  produced.
+- **Refined 2026-07-13, same day**: this isn't strictly "one paper, one
+  dumping ground." Ross's own framing — multiple papers are fine; one
+  MAIN paper should carry the most novel and important findings; all
+  research is valuable and if a finding can be used in a genuinely
+  significant way, it should be, not held back reflexively; and
+  regardless of whether a given finding is "significant" enough for any
+  paper, keep diving into the actual questions a result raises — its
+  inferences, interactions, and the underlying market-structure/
+  dynamics mechanism behind it, not just the statistical result in
+  isolation. Concretely: don't be stingy about promoting a strong
+  finding into PAPER.md just because the default is FINDINGS.md: promote
+  it if it's genuinely novel/important. Don't assume a finding that
+  doesn't make the main paper is done being explored — a null/negative
+  or secondary result can still deserve real mechanism investigation
+  (this is what Phase 12's STORM research and Phase 15's market-
+  structure depth pass are for), and a strong-enough cluster of related
+  findings that doesn't fit the main paper's focus is a candidate for
+  its OWN paper, not a reason to suppress it.
 - **Use `latest_run_data.log` / `latest_run_analysis.log`** — these are
   structured, LLM-readable run summaries written automatically after every
   `data.py` / `analysis.py` run. Ask for these directly instead of raw
   console scrollback.
+- **Honesty over agreeableness — no fear in pushing back (added
+  2026-07-13).** Ross explicitly wants to be told when he's wrong, not
+  agreed with by default. If a direction he's proposing has a real problem
+  — a methodological flaw, a result that doesn't hold up, a plan that's
+  going to waste effort — say so plainly and explain why, the same way
+  this project's own §9 AI-disclosure standard already demands for
+  results ("AI output is not privileged relative to any other unverified
+  claim"). This applies to Ross's own proposals and decisions too, not
+  just to code or numbers. Silence or reflexive agreement when something
+  is actually wrong is a failure mode to avoid, not politeness.
 
 ---
 
@@ -362,11 +407,68 @@ This is as important as the technical rules above.
 - **`skill-creator`** — consider building a CAMARF-specific skill if
   recurring patterns emerge (e.g. "diagnose a data.py log" as a packaged
   skill).
+- **`verify-new-module` / `diagnose-run-log`** (built 2026-07-13) —
+  CAMARF-specific skills under `.claude/skills/`, packaging the
+  verify-before-trusting workflow and structured-log-diagnosis pattern
+  respectively. See each `SKILL.md` for the exact sequence.
+- **`council-*` subagents** (`.claude/agents/council-quant-pm.md`,
+  `council-academic-reviewer.md`, `council-code-quality.md`,
+  `council-process-meta.md`, `council-mfe-portfolio.md`, built
+  2026-07-13) — a 5-lens blind review panel. Run all 5 together at real
+  project milestones (not every session) — each is a fresh, non-fork
+  agent with zero visibility into the others' findings or into this
+  session's own running narration, by design. The first run
+  (2026-07-13) found 2 real bugs (a recurred manifest-contamination
+  incident, a README/PAPER.md p-value swap) and a converged, independent
+  finding across all 5 reviewers about the project's own scope/
+  convergence pattern — see Development.md for the full synthesis.
+- **`adversarial-reviewer` subagent** (`.claude/agents/
+  adversarial-reviewer.md`, built 2026-07-13) — general-purpose, for a
+  single targeted claim/change needing a skeptical second look, distinct
+  from the full `council-*` milestone review.
+- **`guard_manifest.py` hook** (`.claude/hooks/`, built 2026-07-13) —
+  PreToolUse hook blocking direct Write/Edit to
+  `confirmed_pairs_manifest.json`, motivated by BUG-D63 (this exact file
+  contaminated with test data twice). A backstop under the real
+  structural fix (an injectable manifest path for test code), not a
+  replacement for it.
 - **Explicitly NOT recommended: `ponytail`.** Its "write minimum code,
   avoid over-engineering" philosophy conflicts with this project's
   verify-everything, no-bandaid-fixes discipline. Don't install.
 - **draw.io** — noted for later, near v1 shipment, for architecture/
   pipeline diagrams. Not a current priority.
+
+**Full inventory of installed plugins/skills/MCP servers, with exact
+trigger prompts, lives in `docs/TOOLING_GUIDE.md` (added 2026-07-13) —
+read that file for the complete list.** Highest-value ones for this
+project's actual day-to-day work, so they don't get lost in the full
+inventory:
+- **`/code-review`** (installed 2026-07-13) — run after any nontrivial
+  code change to `data.py`/`analysis.py`/`backtest.py`/`ml.py` before
+  calling it done. Prompt: `/code-review` for the current diff, or
+  `/code-review ultra` for a deep multi-agent cloud review before a big
+  PAPER.md-facing milestone.
+- **`/storm` and `/storm:storm-brief`** (installed 2026-07-13) — already
+  in active use this session for market-structure/literature-convergence
+  research (Phase 12 of the current plan). Prompt:
+  `/storm <specific research question>` for a fully-sourced, cited
+  report; `/storm:storm-brief <question>` for a faster, uncited
+  multi-perspective think when speed matters more than citations.
+- **`claude-code-setup`'s automation-recommender** — run periodically
+  (e.g. once per major project phase) to check whether CAMARF is missing
+  a useful hook/skill/MCP server. Prompt: invoke the
+  `claude-automation-recommender` skill directly, or ask "what Claude
+  Code automations are we missing for this project."
+- **`obsidian`** — not yet used on CAMARF; Ross wants to use it at some
+  point. Relevant if/when session notes, the research backlog, or
+  literature findings move into an Obsidian vault rather than staying as
+  flat `.md` files in this repo — not a current need, noted for later.
+- **`superpowers`** (installed 2026-07-13, many sub-skills) — general
+  engineering-discipline skills (TDD, systematic debugging, brainstorming
+  before creative work, etc.). Overlaps with rules already established in
+  this file (verify-before-trusting, full comprehension before code) —
+  use where it adds a concrete checklist Claude wouldn't otherwise follow,
+  not reflexively on every task.
 
 ---
 
@@ -448,7 +550,7 @@ themselves.
 this name; it's referenced by exact path dozens of times in DEVELOPMENT.md.
 
 - `DEVELOPMENT.md` — canonical project memory, full bug registry, session logs
-- `BUG_LOG.md` — one-line-per-entry index into DEVELOPMENT.md's bug registry (added 2026-07-11),
+- `docs/BUG_LOG.md` — one-line-per-entry index into DEVELOPMENT.md's bug registry (added 2026-07-11),
   for finding a specific BUG-D/BUG-A number without reading the full narrative. Pure index — every
   entry's actual write-up still lives only in DEVELOPMENT.md.
 - `PAPER.md` — living draft of the actual paper/thesis, started Session 10
@@ -456,7 +558,7 @@ this name; it's referenced by exact path dozens of times in DEVELOPMENT.md.
   alongside DEVELOPMENT.md whenever a session produces a citable finding,
   not just at project completion. Kept deliberately tight around the
   paper's headline pillars — not every verified finding lives here.
-- `FINDINGS.md` — full-depth writeups of verified comparison arms and
+- `docs/FINDINGS.md` — full-depth writeups of verified comparison arms and
   robustness checks that PAPER.md's §7.15 summarizes and points to, but
   doesn't reproduce in full (added 2026-07-11, to keep PAPER.md focused).
   Same verification standard as PAPER.md; organized by relevance to the

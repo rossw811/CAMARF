@@ -81,7 +81,7 @@ Once built, add the variant to the comparison table in `PAPER.md` §7 with
 honest OOS numbers — don't cherry-pick only favorable variants into the
 paper. If the variant is a genuine, verified result but doesn't belong in
 `PAPER.md`'s tight core narrative (most won't — see `README.md`'s
-Documentation Map), it still belongs somewhere: add it to `FINDINGS.md`
+Documentation Map), it still belongs somewhere: add it to `docs/FINDINGS.md`
 and a one-line pointer in `PAPER.md` §7.15, not silently left undocumented.
 
 ---

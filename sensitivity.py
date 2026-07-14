@@ -126,16 +126,23 @@ def load_pairs_and_spreads(tf_dir: str, tf_label: str):
 
 
 def _portfolio_sharpe(trades: list) -> float:
-    """Daily-bucketed equity-curve Sharpe from BacktestEngine trade list."""
+    """Daily-bucketed equity-curve Sharpe from BacktestEngine trade list.
+
+    Uses resample("1D") (zero-filling every calendar day between first and last
+    exit), matching aggregate_portfolio()'s convention in backtest.py -- NOT
+    groupby(exit_date), which silently drops zero-P&L calendar days and
+    understates N (BUG-D62, portfolio_sim.py, 2026-07-13). This function had
+    the identical bug, found as a byproduct of task #20's risk-management
+    comparison-arm work, applying the same fix here.
+    """
     if not trades:
         return float("nan")
-    pnl = np.array([t.pnl_net for t in trades])
     exit_times = [t.exit_time for t in trades if t.exit_time is not None]
     if not exit_times:
         return float("nan")
-    df = pd.DataFrame({"exit_time": exit_times, "pnl_net": pnl})
-    df["date"] = pd.to_datetime(df["exit_time"]).dt.date
-    daily = df.groupby("date")["pnl_net"].sum()
+    pnl = [t.pnl_net for t in trades if t.exit_time is not None]
+    s = pd.Series(pnl, index=pd.DatetimeIndex(pd.to_datetime(exit_times))).sort_index()
+    daily = s.resample("1D").sum()
     if len(daily) < 5 or daily.std() == 0:
         return float("nan")
     return float(daily.mean() / daily.std() * np.sqrt(252))
