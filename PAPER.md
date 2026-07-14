@@ -1,12 +1,18 @@
 ﻿# Working Title
 
-Cointegration Test Miscalibration Across Horizons: A Scalable Stability
-Diagnostic for Cross-Asset Statistical Arbitrage Screening
+Durability Is Not Currency: Full-Sample Cointegration Screens Conflate the
+Two, and a Scalable Recency Diagnostic for Cross-Asset Statistical
+Arbitrage Screening
 
-*(Working title — revisit once backtest.py results exist. Candidate
-alternates: "The Strictness Paradox: Horizon-Dependent Miscalibration in
-Cointegration Screening" / a strategy-forward title if the empirical
-results end up carrying the paper more than the methodology does.)*
+*(Working title — revisit once backtest.py results exist. Retitled
+2026-07-13 after a direct Monte Carlo calibration check (§4.2.1) refuted
+this project's own earlier "test miscalibration" reading of a companion
+observation — the durability-vs-currency demonstration itself (§4.2) was
+always the load-bearing evidence and needed no revision; only the paper's
+own title and framing did. Candidate alternates: "The Strictness Paradox:
+Full-Sample Cointegration Confirms the Past, Not the Present" / a
+strategy-forward title if the empirical results end up carrying the paper
+more than the methodology does.)*
 
 ---
 
@@ -32,20 +38,19 @@ external reader.
 
 ---
 
-## Framing decision (locked in 2026-06-23, Ross + Claude discussion)
+## Framing decision (locked in 2026-06-23)
 
-Ross's stated preference: the strategy itself matters to him personally,
-but he's open to leading with methodology if the calibration finding is a
-genuine, exportable contribution beyond CAMARF's own pairs. Resolution:
-**lead with the methodology finding, structure the strategy chapter as
-the empirical demonstration of that methodology, not a separate, weaker
-pitch.** Concretely: contrast what naive full-sample EG alone would have
-certified (this project's own former headline pairs, NTRS/STT and
-SHW/UNP) against what survives the corrected, rolling-stability-aware
-pipeline. The strategy doesn't disappear under this framing — it becomes
-evidence the methodology has teeth. Eventual backtest.py results then
-read as confirmation of a validated method, not the sole load-bearing
-claim of the paper.
+The strategy's empirical results are of independent interest, but the
+calibration finding is a genuine, exportable contribution beyond this
+project's own pairs. Resolution: **lead with the methodology finding,
+structure the strategy chapter as the empirical demonstration of that
+methodology, not a separate, weaker pitch.** Concretely: contrast what
+naive full-sample EG alone would have certified (this project's own
+former headline pairs, NTRS/STT and SHW/UNP) against what survives the
+corrected, rolling-stability-aware pipeline. The strategy doesn't
+disappear under this framing — it becomes evidence the methodology has
+teeth. The backtest results then read as confirmation of a validated
+method, not the sole load-bearing claim of the paper.
 
 ---
 
@@ -55,60 +60,104 @@ Cointegration-based pairs trading conventionally screens candidate pairs
 with a full-sample Engle-Granger test, a method that scales to
 large-N candidate universes but cannot, by construction, distinguish a
 durable economic relationship from one whose statistical significance is
-borrowed from a regime that no longer holds. We document this failure
-mode directly: across a 1,500+ asset, 14-timeframe universe, full-sample
-cointegration screens at long horizons (1D, 1M) reject candidate pairs at
-rates orders of magnitude below their expected false-positive rate under
-the null — not because no relationships exist, but because the test
-itself becomes too strict to be decision-relevant at that horizon. We
-show concretely that this project's own original headline confirmed
-pairs (NTRS/STT, SHW/UNP) pass a full-sample test with high significance
-while failing the identical test restricted to the last five years alone.
-We introduce a scalable rolling-stability diagnostic
-(`coint_fraction_rolling`) that operationalizes, at the scale required for
-large candidate universes, a question formal econometrics already has
-tools for at the single-pair scale (Gregory & Hansen, 1996; Hansen, 1992;
-Quintos & Phillips, 1993) but that does not scale to ~10⁶ pairwise tests.
-Borderline cases are corroborated against the heavier structural-break
-apparatus (Zivot-Andrews, CUSUM) via a documented secondary-evidence
-override, illustrated on a real case where it overturns the primary
-filter's decision. An event-driven pairs-trading strategy implementing the screened pair set achieves
-an OOS portfolio Sharpe of **5.2155** (449 trades, chronological 20% holdout) across **26**
-confirmed pairs (24 @1h incl. 12 cross-asset, 1 @3m, 1 @1M — this session's fresh confirmed-pair
-set no longer includes 30m/4h pairs the way the prior Session 22 snapshot did; genuine change in
-what the current screen finds, not a bug), with IS Sharpe **5.8044** (2168 trades) and IS/OOS
-degradation of **10.2%** — a real, honestly-reported increase from the prior 0.9% figure, not
-glossed over (see Development.md, 2026-07-12, for the full reconciliation: these figures reflect a
-full pipeline rerun plus two real bugs found and fixed this session — BUG-D58, a survivorship-
-exclusion false positive that had been silently zeroing out 7/24 confirmed pairs, and BUG-D59, a
-portfolio-Sharpe-aggregation bug in the cointegration-vs-distance comparison below). The Deflated
-Sharpe Ratio, correcting for **49** backtest configurations tried against this universe as of this
-session's final rerun (2026-07-12), remains significant and, notably, STRENGTHENED after the
-BUG-D58 fix rather than weakened (**IS z=9.53**, DSR=1.0000; **OOS z=2.91**, DSR=0.9982) — more
-real trade data from the fixed pair set gives a cleaner signal. **29** evaluations have now
-examined the same OOS holdout window (Garden-of-Forking-Paths caveat, Development.md); reserving a
-genuinely fresh holdout slice before further variant testing is a live, agreed next step, not yet
-implemented. A portfolio-level circular block bootstrap over daily P&L gives **IS p=0.546, OOS
-p=0.559** (this session's fresh numbers) — not significant at conventional levels, consistent with
-this paper's existing framing (§6.6) that the OOS holdout is not yet long enough to separate the
-realized path from resampling noise, not an absence of edge. **[Not yet reconciled to this
-session's fixes — flagged explicitly, not silently left stale]**: the walk-forward Sharpe range
-(3.1–4.0, `wfa.py` was re-run this session and is UNCHANGED by BUG-D58 since it never applied
-survivorship truncation — this figure IS current), the pair-discovery-lookahead finding, and the
-position-sizing/entry-z variant figures (risk-parity 5.87, HRP 5.38, entry_z=1.5 5.93) have not
-been re-verified against the fixed 26-pair set as of this write-up. **The GGR distance-method
-comparison below requires a discussion before being restated as a finding, not a routine number
-update**: this session's fresh, BUG-D59-fixed run found the cointegration-vs-distance comparison
-shifted dramatically — cointegration's correctly-pooled portfolio Sharpe is now 8.542 and the
-distance method's own Sharpe is 7.865 (both real, freshly re-verified, apples-to-apples pooled
-figures), a ~0.7 Sharpe-point advantage for cointegration, not the −0.208 vs. ~5.3 relationship
-(a 5.5+ point advantage) this paragraph previously stated. The magnitude of this shift needs
-investigation before being cited as this paper's finding — likely reflects a fresher/different
-backtest window for the distance-method side as much as the cointegration-side aggregation fix,
-not yet isolated. We additionally document a generalizable data-hygiene failure mode (calendar-
-padding artifacts in rolling-window statistics on intraday data) likely present, unflagged, in
-other published intraday pairs-trading work using fixed-window rolling z-scores on calendar-padded
-series.
+borrowed from a regime that no longer holds. This failure mode is
+demonstrated directly and concretely, not asserted from theory: this
+project's own original headline confirmed pairs (NTRS/STT, SHW/UNP) pass a
+full-sample Engle-Granger test with overwhelming significance (p=0.000,
+p=0.004) while failing the identical test restricted to just the last five
+years (p=0.345, p=0.265) — a full-sample screen over 40-60+ years answers
+"was this relationship ever cointegrated," not "is it cointegrated now,"
+and a pair can clear the former bar while having already failed the
+latter. A companion observation — that full-sample screens at long
+horizons (1D, 1M) reject candidate pairs at rates far below their nominal
+false-positive rate — was initially read as further evidence the test
+itself is statistically over-conservative at those horizons, compounding
+the problem by also suppressing detection of real, currently-live
+relationships. That reading was tested directly with a Monte Carlo
+calibration study rather than left asserted, and is refuted: the empirical
+false-positive rate under a genuine, by-construction null is *elevated*
+relative to nominal (7.75%-12.75% vs. 5%) and grows with horizon — the
+opposite of an over-conservative test's signature — a signal of ordinary
+spurious regression from shared market-wide drift among randomly-paired
+real assets, not test miscalibration (§4.2.1). The full-sample screen's
+near-total rejection rate at long horizons in production reflects the
+test correctly guarding against exactly this risk, not a defect. The
+durability-vs-currency conflation demonstrated by NTRS/STT and SHW/UNP
+remains the real, load-bearing failure mode and needs no such correction.
+A scalable rolling-stability diagnostic (`coint_fraction_rolling`) is
+introduced that operationalizes, at the scale required for large candidate
+universes, a question formal econometrics already has tools for at the
+single-pair scale (Gregory & Hansen, 1996; Hansen, 1992; Quintos &
+Phillips, 1993) but that does not scale to ~10⁶ pairwise tests. Borderline
+cases are corroborated against the heavier structural-break apparatus
+(Zivot-Andrews, CUSUM) via a documented secondary-evidence override,
+illustrated on a real case where it overturns the primary filter's
+decision. An event-driven pairs-trading strategy implementing the screened
+pair set achieves an OOS portfolio Sharpe of **5.2155** (449 trades,
+chronological 20% holdout) across **26** confirmed pairs (24 @1h incl. 12
+cross-asset, 1 @3m, 1 @1M — the current confirmed-pair set no longer
+includes 30m/4h pairs the way an earlier snapshot did; a genuine change in
+what the current screen finds, not a bug), with IS Sharpe **5.8044** (2168
+trades) and IS/OOS degradation of **10.2%**. These figures assume
+unconstrained capital — at every tested account-size tier, capital-
+constrained performance sits at or below this headline once mark-to-market
+position sizing is applied (§7.16); the strategy as backtested here is not
+directly executable at the smallest account sizes tested (see Development.md for the
+full reconciliation: these figures reflect a full pipeline rerun plus two
+bugs found and fixed — a survivorship-exclusion false positive that had
+been silently zeroing out 7/24 confirmed pairs, and a portfolio-Sharpe-
+aggregation bug in the cointegration-vs-distance comparison below). The
+Deflated Sharpe Ratio, correcting for **52** backtest configurations tried
+against this universe (`deflated_sharpe.py`, re-run fresh against the
+current trial registry rather than treating an earlier session's count as
+fixed — see §6.7), remains significant, though with less OOS margin than an
+earlier, smaller trial count implied (**IS z=9.52**, DSR=1.0000; **OOS
+z=2.90**, DSR=0.9981) — the multiple-testing correction grows slightly
+harder to clear with each additional honestly-recorded trial, and the OOS
+figure clears the conventional |z| ≥ 2 threshold with less room than the IS
+figure. Exactly **29** evaluations have examined the same OOS holdout
+window (Garden-of-Forking-Paths caveat, Development.md; see §6.6 and the
+fresh-holdout discussion below for why a reserved, never-before-examined
+slice has been built but not yet adopted as the production standard). A
+portfolio-level circular block bootstrap over daily P&L, re-run against
+the current post-fix trade set (2168 IS / 449 OOS trades, 1,000 resamples,
+5-trading-day blocks), gives **IS p=0.559, OOS p=0.546** — not significant
+at conventional levels, consistent with this paper's framing (§6.6) that
+the OOS holdout is not yet long enough to separate the realized path from
+resampling noise, not an absence of edge. The walk-forward Sharpe range (3.1–4.0) is unaffected
+by the survivorship fix, since walk-forward analysis never applied that
+truncation; the pair-discovery-lookahead finding and the position-sizing/
+entry-z variant figures (risk-parity 5.87, HRP 5.38, entry_z=1.5 5.93) have
+not yet been re-verified against the current 26-pair set.
+
+The distance-method comparison (§7.7) below has been fully re-derived after
+a window-alignment bug was found and closed: the two methods previously
+compared trades computed over different date windows, not the same one.
+After alignment, the residual gap between the two methods' cutoff dates
+was measured directly and found trivial (a few days across all confirmed
+pairs), closing that investigation. The corrected comparison supports
+cointegration screening's Sharpe (8.542, pooled across 222 trades in the
+shared comparison window) as the trustworthy figure; the distance method's
+own result is reported by direction only, not as a specific Sharpe — the
+corrected sample is thin (16 trades over 7 distinct days) and the majority
+of those trades are forced end-of-window mark-to-market exits rather than
+completed round trips, a stronger reason for caution than sample size
+alone. A separate investigation into whether capital constraints improve
+risk-adjusted returns found the opposite of what an earlier pass had
+suggested: the apparent improvement was almost entirely a Sharpe-
+computation convention mismatch between two internal tools, not a real
+property of capital-constrained trading. Once the convention was corrected
+to match the one already used for every other Sharpe figure in this paper,
+capital-constrained performance sits at or below the unconstrained
+headline at every account-size tier tested; a small real residual effect
+survives (order-of-arrival trade admission preferentially skips a handful
+of correlated, high-variance trades during simultaneous-signal periods),
+but this suppresses variance rather than enhancing return, and is not
+cited as a headline finding. This project additionally documents a
+generalizable data-hygiene failure mode (calendar-padding artifacts in
+rolling-window statistics on intraday data) likely present, unflagged, in
+other published intraday pairs-trading work using fixed-window rolling
+z-scores on calendar-padded series.
 
 ---
 
@@ -122,12 +171,17 @@ series.
   outcomes" is the wrong question to lead with at this stage of the
   project (ml.py/backtest.py results are still too early/small to carry a
   strategy-first paper — see §6). The sharper, already-supported question:
-  **at what point does a cointegration test's strictness, calibrated
-  implicitly for one horizon, stop being decision-relevant for that
-  horizon?**
+  **does a full-sample cointegration screen tell a live deployment whether
+  a relationship is cointegrated NOW, or only whether it was cointegrated
+  at some point across the entire history tested?**
 - Contribution claims (each maps to a methodology section below):
-  1. Direct empirical demonstration of horizon-dependent EG test
-     miscalibration on a controlled, large-N sweep (§4.2).
+  1. Direct empirical demonstration that full-sample EG screening
+     conflates durability with currency, on this project's own original
+     headline confirmed pairs (§4.2) — plus a direct Monte Carlo
+     calibration check of a companion hypothesis (test miscalibration at
+     long horizons) that the data initially seemed to support and the
+     simulation refutes, reported as a real negative result rather than
+     quietly dropped (§4.2.1).
   2. A two-tier, scalable stability-screening design — cheap rolling
      diagnostic at scale, formal structural-break corroboration at the
      margin — that makes existing-but-impractical-at-scale econometric
@@ -149,9 +203,12 @@ argument. All citations were verified by direct source lookup.
 - **Engle & Granger (1987)**, "Co-integration and Error Correction:
   Representation, Estimation, and Testing," *Econometrica* — the
   foundational two-step cointegration test CAMARF's primary screen is
-  built on. The EG test's finite-sample power properties at varying
-  horizon lengths are the source of the Strictness Paradox documented in
-  §4.2.
+  built on. A full-sample application of this test, run over horizons
+  spanning 40-60+ years, is what produces the durability-vs-currency
+  conflation the Strictness Paradox documents directly in §4.2 — the test
+  itself is not shown to be miscalibrated (§4.2.1 tests and refutes that
+  separate hypothesis); the issue is what question a full-sample
+  application of it answers.
 - **Vidyamurthy (2004)**, *Pairs Trading: Quantitative Methods and
   Analysis*, Wiley — the most-cited practitioner/academic framework for
   cointegration-based pairs trading; builds on an adapted EG test and a
@@ -297,8 +354,9 @@ argument. All citations were verified by direct source lookup.
   expected maximum Sharpe achievable by N genuinely skill-less strategies
   grows with N, so an impressive raw Sharpe is not itself evidence of skill
   without disclosing how many configurations were searched to find it.
-  CAMARF applies this directly to its own 14-trial backtest-variant search
-  in §6.7, not merely as a cited concept.
+  CAMARF applies this directly to its own backtest-variant search (52
+  trials as of the current registry — see §6.7), not merely as a cited
+  concept.
 - **Harvey, Liu & Zhu (2016)**, "…and the Cross-Section of Expected
   Returns," *Review of Financial Studies* 29(1), 5-68 — the "factor zoo"
   critique: given the number of return predictors already tested in the
@@ -326,8 +384,9 @@ argument. All citations were verified by direct source lookup.
   trade-level-shuffle implementation destroyed genuine cross-pair
   exit-timing correlation and inflated the null; historical p-values from
   before that fix, e.g. 2026-06-28/2026-06-30 runs, should not be treated
-  as reliable). Current (2026-07-06) result: IS p = 0.542, OOS p = 0.589
-  — not significant at conventional levels; see §6.6 for interpretation.
+  as reliable). Current (2026-07-13, re-run against the post-BUG-D58/D59
+  trade set) result: IS p = 0.559, OOS p = 0.546 — not significant at
+  conventional levels; see §6.6 for interpretation.
 
 ### 2.4 Methodology comparison table
 
@@ -343,7 +402,7 @@ argument. All citations were verified by direct source lookup.
 | Krauss/Do/Huck | 2017 | DNN/GBT/RF on lagged returns; daily long/short ranking | Yes | Ensemble 0.45%/day raw (1992-2015) | CAMARF uses ML as meta-labeler on cointegration signal; adds conformal calibration |
 | Lopez de Prado | 2018 | Meta-labeling; triple-barrier; CPCV/PBO | Yes | Framework (not empirical result) | CAMARF is a direct implementation; adds conformal prediction not found in pairs trading ML papers |
 | Engle | 2002 | Two-step DCC-GARCH; dynamic correlation | No | Time-varying correlations at low parameter count | CAMARF applies DCC to pair P&L streams for correlated-loss risk detection |
-| White | 2000 | Bootstrap Reality Check; best-of-N performance test | No | Correct p-value under multiple testing | Portfolio-level circular block bootstrap (day-level, block=5d): IS p=0.542; OOS p=0.589 (2026-07-06, post methodology fix — see §6.6) |
+| White | 2000 | Bootstrap Reality Check; best-of-N performance test | No | Correct p-value under multiple testing | Portfolio-level circular block bootstrap (day-level, block=5d): IS p=0.559; OOS p=0.546 (2026-07-13, re-run against the current post-BUG-D58/D59 trade set — see §6.6) |
 
 ### 2.5 Where CAMARF advances the literature
 
@@ -356,12 +415,19 @@ per-TF confirmatory tiers (EG + KPSS + PO), and filters by rolling
 cointegration stability. No found paper does this simultaneously across
 TFs.
 
-**2. Discovery and quantification of the Strictness Paradox.** The
-finding that full-sample EG rejects pairs at rates ~3,000x below the
-expected null false-positive rate at 1D timeframes (§4.2) is not
-documented in any found paper. Clegg/Krauss (2018) motivate partial
+**2. Discovery and quantification of the durability-vs-currency conflation
+in full-sample cointegration screening (the Strictness Paradox).** The
+direct demonstration that a full-sample EG test can confirm a pair with
+overwhelming significance on the strength of a relationship that has since
+broken (§4.2, on this project's own original headline confirmed pairs) is
+not documented in any found paper. Clegg/Krauss (2018) motivate partial
 cointegration by the episodic nature of the relationship, but do not
-characterize the full-sample test's miscalibration directly.
+characterize this specific conflation directly. A companion hypothesis —
+that the low raw rejection rate itself reflects statistical test
+miscalibration, not just this conflation — was tested directly via Monte
+Carlo simulation and refuted (§4.2.1); reporting that refutation honestly,
+rather than keeping only the finding that survived, is itself consistent
+with the verification discipline this paper applies throughout (§9).
 
 **3. Meta-labeling on spread resolution with conformal calibration.**
 CAMARF follows Lopez de Prado's architecture: cointegration z-score is
@@ -387,19 +453,33 @@ framework with honest power reporting. No found paper combines all five.
   Architecture is sound; empirical evidence is deferred. State explicitly.
 - No papers found applying EVT/GPD specifically to *pairs trading spread
   tails* — appears genuinely novel as applied methodology.
-## 3. Data and Universe [DRAFTED, final-state numbers as of 2026-06-30]
+## 3. Data and Universe [DRAFTED — universe configuration current as of 2026-07-13; confirmed-pair screening results below are the last full pipeline run and predate the universe expansion]
 
-Universe as of 2026-06-30 full pipeline run: **1,609 assets**
-(S&P Composite 1500 + international equities/ADRs/FX spots),
-**13 timeframes** from 1-minute to 6-month (8h removed as analytically equivalent to 1D).
-yfinance-primary fetch (`data.py`), IBKR supplemental deep history for
-confirmed pairs only (`data_ibkr.py`, 10Y for 1h, 1Y for 5m, 2Y for 15m).
+Universe as configured as of 2026-07-13: **~1,691 assets** (S&P Composite 1500 +
+international equities/ADRs/FX spots + an expanded cross-asset set — bonds via Treasury
+ETFs/futures, additional crypto/commodities/forex, and deepened FTSE 100/Nikkei 225/Hang Seng
+coverage within the three international exchanges already exercised end-to-end), **13
+timeframes** from 1-minute to 6-month (8h removed as analytically equivalent to 1D).
+yfinance-primary fetch (`data.py`), IBKR supplemental deep history for confirmed pairs only
+(`data_ibkr.py`, 10Y for 1h, 1Y for 5m, 2Y for 15m). Every confirmed pair and backtest result in
+this paper derives from the last full pipeline run against the prior, smaller universe — **1,608
+candidate symbols, S&P Composite 1500 + international equities/ADRs/FX spots, run completed
+2026-06-30 10:10, config hash `0c0e67a6b00ff0bb`** — not the expanded universe described above.
+An independent party can reproduce this exact snapshot by fetching the S&P Composite 1500
+constituent list as of that date alongside the international/FX symbol set in `config.py`'s
+pre-expansion state; the expanded universe has not yet been run through the full screening
+pipeline, so it does not yet contribute any new confirmed pairs or change any figure below;
+Russell 2000/small-cap coverage remains unimplemented (a public constituent-list source was
+sought and not found — see Development.md for the two access attempts and why each failed).
 
-**Confirmed pairs (2026-06-30):** **23 pairs** across 5 TFs —
-17 @1h (including 5 DD-hub pairs: AMD/DD, AME/DD, AMAT/DD, CMI/DD, DAL/DD), 2 @3m
-(CVX/OXY, KVUE/KMB), 1 @30m (EQR/INVH), 2 @4h (PNC/ZION + one international), and 1
-international pair (7267.T/8058.T). SPY/VOO is confirmed by the pipeline but flagged
-for exclusion (trivial pair — both legs track S&P 500; no economic cointegration hypothesis).
+**Confirmed pairs (last full pipeline run, 2026-07-12, post survivorship-exclusion fix):**
+**26 pairs** across timeframes — 24 @1h (including 12 cross-asset pairs and a DD/MLI-hub
+cluster), 1 @3m, 1 @1M (international, 7267.T/8058.T). This set no longer includes 30m/4h
+pairs the way an earlier (2026-06-30, 23-pair) snapshot did — a genuine change in what the
+current screen finds after the survivorship fix restored pairs that had been silently
+truncated, not a data-quality issue. SPY/VOO, present in the 2026-06-30 snapshot below, is
+excluded from the current confirmed set by the market-cap-tracking-pair detection built for
+this purpose (`CrossAssetTagger._is_index_tracking_pair`).
 
 **Corporate-actions handling, spot-checked (2026-07-01):** `data.py` requests yfinance's
 `auto_adjust=True` at every fetch call site; `research/corporate_actions_audit.py` verifies
@@ -422,21 +502,10 @@ tier) → `coint_fraction_rolling` stability filter with secondary-evidence
 override → cross-asset structural exclusion (forex triangles, share
 classes).
 
-### 4.2 The Strictness Paradox: horizon-dependent test miscalibration [DRAFTED — hard numbers from Development.md, already verified]
+### 4.2 Durability vs. currency: what a full-sample cointegration test actually answers [DRAFTED — reframed 2026-07-13 after a direct Monte Carlo calibration check; see §4.2.1]
 
-Raw (pre-FDR) significance rates by timeframe, full pipeline run:
-
-| TF | tested | raw p<0.05 | raw rate | vs. ~5% expected under H₀ |
-|----|--------|-----------|----------|---------------------------|
-| 15m | 14,412 | 585 | 4.06% | close to chance — consistent with real signal |
-| 1h | 65,721 | 2,335 | 3.55% | close to chance — consistent with real signal |
-| 1D | 122,082 | 2 | 0.0016% | ~3,000x *below* chance |
-| 1M | 34,263 | 9 | 0.026% | ~190x below chance |
-
-A rate far *below* the chance rate under the null isn't an absence of
-signal — it's direct evidence the test itself is unusually strict at
-that horizon. Direct demonstration, full-sample EG p-value vs. the
-identical test restricted to the last 5 years alone:
+**The core demonstration.** Full-sample EG p-value vs. the identical test
+restricted to the last 5 years alone:
 
 | Pair | Full-sample EG p | Last-5y EG p | Full-sample n (days) |
 |------|------------------|--------------|----------------------|
@@ -448,16 +517,85 @@ identical test restricted to the last 5 years alone:
 
 NTRS/STT and SHW/UNP — this project's own original headline confirmed
 pairs — pass full-sample EG with overwhelming significance while failing
-the identical test on just the last five years. The full-sample screen at
-1D is effectively testing whether two price levels stayed cointegrated
-across 40-60+ years of M&A, business-model change, and sector rotation —
-a relationship can fail that bar today while still showing up as
-"confirmed" if the test only looks at the full sample. **Why this is a
-structural limitation, not just an explanation:** `coint_fraction_rolling`
-is a secondary filter applied only to pairs that already pass the primary
-full-sample screen. At long horizons the primary screen is so strict that
-almost nothing reaches the secondary filter at all — the two defenses
-operate at the wrong stage for this specific failure mode.
+the identical test on just the last five years. A full-sample screen over
+40-60+ years of history answers a different question than a live deployment
+actually needs answered: "was this relationship ever cointegrated," not
+"is it cointegrated now." A pair can clear the former bar — decisively,
+with a p-value near zero — while having already failed the latter, because
+nothing in a full-sample test can distinguish a relationship that held
+throughout from one that held for decades and then broke. This
+demonstration needs no external validation; it is a direct, reproducible
+fact about these two specific pairs' own EG statistics at two window
+lengths. **Why this is a structural limitation, not just an explanation:**
+`coint_fraction_rolling` is a secondary filter applied only to pairs that
+already pass the primary full-sample screen — a rolling-window recency
+check downstream of a test that cannot itself distinguish "held once" from
+"holds now" is exactly the tool needed to close this specific gap, which
+is why §4.3 builds it directly on this finding.
+
+#### 4.2.1 A companion observation, tested directly rather than left asserted, and refuted
+
+A second pattern in the same data was initially read as reinforcing
+evidence for the demonstration above: full-sample screens reject candidate
+pairs at long horizons (1D, 1M) at rates far below the ~5% false-positive
+rate a well-calibrated test should show under the null, even accounting
+for a meaningful fraction of true relationships in the candidate universe:
+
+| TF | tested | raw p<0.05 | raw rate | vs. ~5% expected under H₀ |
+|----|--------|-----------|----------|---------------------------|
+| 15m | 14,412 | 585 | 4.06% | close to chance |
+| 1h | 65,721 | 2,335 | 3.55% | close to chance |
+| 1D | 122,082 | 2 | 0.0016% | ~3,000x *below* chance |
+| 1M | 34,263 | 9 | 0.026% | ~190x below chance |
+
+The reading initially drawn from this table — that the EG test is itself
+statistically over-conservative at long horizons, and that this
+under-rejection compounds the durability-vs-currency problem above by also
+causing real, currently-live relationships to be missed — was an
+inference from a heuristic comparison, never independently validated. That
+gap was closed directly rather than left as an asserted claim: a Monte
+Carlo calibration study (`research/eg_null_calibration_montecarlo.py`)
+runs the production EG-test code itself against pairs constructed to be
+genuinely null by design — real cached price series, randomly re-paired so
+any true bilateral relationship is destroyed while each series' own real
+volatility, fat tails, and autocorrelation are preserved (400 such null
+pairs per timeframe; a synthetic ground-truth check first confirmed the
+harness recovers a plausible ~5-6% empirical rate on textbook independent
+random walks before trusting it on the harder, real-data-derived case).
+
+**Result: the empirical false-positive rate under a genuine null is
+elevated relative to nominal, not suppressed, and grows with horizon — the
+opposite of what the over-conservative-test reading predicted.**
+
+| TF | null pairs tested | rejected at p<0.05 | empirical rate | 95% CI (Clopper-Pearson) |
+|----|---|---|---|---|
+| 15m | 400 | 31 | 7.75% | [5.33%, 10.82%] |
+| 1h | 400 | 31 | 7.75% | [5.33%, 10.82%] |
+| 1D | 400 | 36 | 9.00% | [6.38%, 12.24%] |
+| 1M | 400 | 51 | 12.75% | [9.64%, 16.42%] |
+
+Every confidence interval's lower bound sits above nominal 5%, and the
+rate rises with horizon rather than falling. The mechanism is ordinary
+spurious regression, not a defect in the test's own statistical size:
+randomly-paired real equities still share market-wide drift, and that
+shared drift becomes a stronger false-positive driver the longer the
+window over which it accumulates — the same classical spurious-regression
+risk Granger and Newbold (1974) first characterized, here quantified
+directly against this project's own production test code and its own
+candidate universe rather than assumed from theory. **Corrected
+conclusion:** the full-sample screen's near-total rejection rate at 1D/1M
+in production reflects the test correctly guarding against exactly this
+risk — appropriately strict, not miscalibrated — not a defect that
+compounds the durability-vs-currency problem above. The actionable failure
+mode is entirely the one §4.2 already demonstrates directly and does not
+need this companion observation to establish: a pair can pass a
+sufficiently demanding full-sample test on the strength of a relationship
+that has since broken, and only a horizon-appropriate recency check (§4.3)
+can catch that. Reported here, refuted rather than quietly dropped, per
+this project's standing discipline (§9) of treating an unvalidated
+inference as a hypothesis to check, not a fact to keep — including,
+concretely, one drawn in an earlier draft of this project's own headline
+finding.
 
 ### 4.3 `coint_fraction_rolling`: a scalable stability diagnostic [DRAFTED]
 
@@ -511,7 +649,7 @@ them are identical and 1 differs, the result at that point is *exactly*
 `(n-1)/√n`, independent of the actual price move that produced the
 differing value. This is pure arithmetic, not a statistical
 approximation — substitute `n=252` and the result is `251/√252 =
-15.8115...`. We observed this exact value, matched to 10 significant
+15.8115...`. This exact value was observed, matched to 10 significant
 digits, in real entry-signal output before diagnosis: 4 of an early
 32-example labeled training set (12.5%) had `|z_entry| > 10`, all firing
 at exactly market open, all on the calendar-padding day boundary.
@@ -619,9 +757,20 @@ same conclusion: the multi-stage pipeline's calibration matters at every
 stage, not just one, and no single metric — correlation or a single
 full-sample cointegration test — is sufficient on its own.
 
-## 5. Empirical Findings [DRAFTED — 23-pair confirmed set, 2026-06-30]
+## 5. Empirical Findings [DRAFTED — 23-pair confirmed set, 2026-06-30; NOT yet reconciled to the current 26-pair set]
 
-**Current confirmed set (2026-06-30 full pipeline run):** 23 pairs survive the full
+**Reconciliation status, stated plainly rather than left for the reader to notice by cross-
+referencing dates:** the detailed sub-analyses in this section and in §6-§7 below (tiering,
+DD-hub concentration, walk-forward variants, half-life stationarity, RMT denoising, and others)
+were run against the 23-pair confirmed set as of the 2026-06-30 pipeline run, before the
+survivorship-exclusion and portfolio-aggregation fixes described in the Abstract. The current
+confirmed set is 26 pairs (see the Abstract, and §7.1/§7.7 below, which HAVE been re-verified
+against it). Re-running every sub-analysis below against the current 26-pair set is a distinct,
+tracked, not-yet-completed task — each subsection's own date tag indicates which snapshot it
+reflects; none of the 23-pair-era figures below should be read as the current headline numbers,
+which live in the Abstract and the sections explicitly marked as reconciled.
+
+**Confirmed set as of the 2026-06-30 full pipeline run:** 23 pairs survive the full
 screening pipeline across 5 timeframes. Breakdown:
 
 | TF | Pairs | Notable |
@@ -731,8 +880,8 @@ intraday price discovery is much thinner.
 
 **This is now a real, well-characterized, citable finding with two
 identified factors (market cap dominant, sector independent and
-secondary), not an unexplained anomaly — CONFIRMED AS THIS PAPER'S THIRD
-PILLAR (Ross, 2026-07-11)**, alongside the Strictness Paradox (§4.2,
+secondary), not an unexplained anomaly — confirmed as this paper's third
+pillar (2026-07-11)**, alongside the Strictness Paradox (§4.2,
 full-sample test power borrowed from a dead regime) and the pair-selection
 lookahead finding (§7.3.1, the causal re-discovery process finding zero
 overlap with the confirmed set): daily dollar-volume liquidity screening
@@ -742,30 +891,36 @@ way a naive, standard-practice assumption (here: that adequate daily
 dollar volume implies adequate intraday price discovery) turns out to be
 systematically wrong, discovered and explained with the same
 verify-before-trusting rigor as the other two pillars. (Status history:
-open as of 2026-06-23, when Ross was explicitly unsure; the
+open as of 2026-06-23, when this remained explicitly unresolved; the
 sector-independence result on 2026-07-11 strengthened the finding's
 explanatory completeness immediately before this was confirmed.)
 
-**Implementation, decided the same day (Ross, "Option A"):** a predictive
-market-cap+sector gate (`AnalysisPipeline._predict_degeneracy_risk`,
-`analysis.py`) is now live in the pipeline as a NEW `predicted_
-degeneracy_risk` field on every pair — visibility/prioritization only,
-computed from cheap metadata before any intraday fetch. It is explicitly
-NOT used for exclusion: the existing OBSERVED `thin_info_content` flag
-(actual distinct-close-price count, once intraday data exists) remains
-the sole authoritative exclusion signal, deliberately, to avoid silently
-shrinking the universe on a population-level statistical pattern rather
-than a per-symbol certainty. A separate candidate fix explored earlier
-(a price-density screen, `price_density_screen.py`) was built and shown
-to keep 2/12 and exclude 10/12 of the current 1m pairs if adopted as an
-exclusion rule — kept as a comparison arm, not adopted, consistent with
-the same Option-A philosophy of not excluding on a predictive signal alone.
+**Implementation, decided the same day, using a visibility-only, non-
+exclusionary design:** a predictive market-cap+sector gate
+(`AnalysisPipeline._predict_degeneracy_risk`, `analysis.py`) is now live in
+the pipeline as a NEW `predicted_degeneracy_risk` field on every pair —
+visibility/prioritization only, computed from cheap metadata before any
+intraday fetch. It is explicitly NOT used for exclusion: the existing
+OBSERVED `thin_info_content` flag (actual distinct-close-price count, once
+intraday data exists) remains the sole authoritative exclusion signal,
+deliberately, to avoid silently shrinking the universe on a
+population-level statistical pattern rather than a per-symbol certainty
+(the rejected alternative was a hard exclusion rule driven directly by the
+predictive gate — not adopted, for the same reason). A separate candidate
+fix explored earlier (a price-density screen, `price_density_screen.py`)
+was built and shown to keep 2/12 and exclude 10/12 of the current 1m pairs
+if adopted as an exclusion rule — kept as a comparison arm, not adopted,
+consistent with the same visibility-only philosophy of not excluding on a
+predictive signal alone.
 
 ## 6. Statistical Validation [DRAFTED — stats.py complete, 2026-06-30]
 
 stats.py implements a six-section confirmatory validation stack, designed
 to corroborate or challenge the backtest results from independent
-statistical perspectives. All numbers below are from the 2026-06-30 run (23 pairs).
+statistical perspectives. This validation stack was extended and re-run at
+several points as the confirmed-pair set grew; each subsection below states
+its own run date and pair count rather than assuming one blanket figure for
+the whole section.
 
 ### 6.1 Confirmatory cointegration tiers (EG + KPSS + PO)
 
@@ -775,20 +930,23 @@ spread IS stationary — want to fail-to-reject), and Phillips-Ouliaris Z_t
 A "conflict" flag fires when EG confirms but KPSS rejects stationarity
 (structural break / episodic cointegration).
 
-Results across 23 confirmed pairs (2026-06-30 run):
-- Gold (n_confirm = 3): **13 pairs** — all three tests mutually confirm
-- Silver (n_confirm = 2): **9 pairs**
+Results across 26 confirmed pairs (2026-07-12/13 rerun, current headline set):
+- Gold (n_confirm = 3): **17 pairs** — all three tests mutually confirm
+- Silver (n_confirm = 2): **8 pairs**
 - Bronze (n_confirm = 1): **0 pairs**
 - No-spread (excluded from tier test): **1 pair** (international pair with insufficient spread data)
-- Conflicts (EG confirms, KPSS rejects): **9 pairs** — consistent with
+- Conflicts (EG confirms, KPSS rejects): **8 pairs** — consistent with
   the Strictness Paradox hypothesis; cointegration is episodic, not
   durable, for those pairs at these timeframes
 
-The conflict rate (9/22 with valid spread data = 41%) is lower than prior runs (33/37 = 89%)
-because the 2026-06-30 universe has a higher fraction of genuinely active-trading pairs
-following the DD-hub expansion and ADV-filtered pair selection. The 13 gold-tier pairs
-(57%) reflect that confirmed EG + KPSS + PO mutual confirmation is achievable at these
-timeframes when pair selection is tight.
+The conflict rate (8/25 with valid spread data = 32%) is lower than the prior snapshot's
+9/22=41% (2026-06-30, 23 pairs — see below) because the current universe has a higher
+fraction of genuinely active-trading pairs following the DD-hub expansion and
+ADV-filtered pair selection. The 17 gold-tier pairs (65%) reflect that confirmed EG +
+KPSS + PO mutual confirmation is achievable at these timeframes when pair selection is
+tight. (Prior snapshot, 2026-06-30, 23 pairs: gold=13, silver=9, conflict rate 9/22=41%
+— the pattern held as the confirmed set grew, not an
+artifact of the smaller earlier sample.)
 
 ### 6.2 Robust hedge ratios (OLS / TLS / Kalman / Huber / MM)
 
@@ -797,20 +955,23 @@ Huber-k loss. MM-estimator uses IRLS with Tukey bisquare weights (c =
 4.685), MAD scale initialization, 50 iterations. Results stored in
 hedge_ratio_comparison.parquet.
 
-Key finding: Huber and MM hedge ratios frequently diverge from OLS by
->5% on pairs with outlier periods, suggesting OLS-based sizing is
-materially wrong during stress events for those pairs.
+Key finding: on the current 26-pair confirmed set (2026-07-12/13 rerun), Huber
+and/or MM hedge ratios diverge from OLS by more than 5% for **9/26 pairs**
+(maximum divergence 23.4%), suggesting OLS-based sizing is materially wrong
+during stress events for those pairs.
 
 ### 6.3 Extreme value theory (EVT / GPD tail risk)
 
 Generalized Pareto Distribution (GPD) fit to spread losses above the 95th
 percentile per pair.
 
-Results across 23 confirmed pairs (2026-06-30):
-- **16/23 pairs (70%) have fat tails** (GPD shape parameter xi > 0.3)
+Results across 26 confirmed pairs (2026-07-12/13 rerun, current headline set):
+- **17/26 pairs (65%) have fat tails** (GPD shape parameter xi > 0.3)
 - Implication: spread losses are fat-tailed for the majority of confirmed
   pairs. Normal-distribution VaR meaningfully underestimates tail risk.
   EVT-based position sizing is warranted for any production deployment.
+  (Prior snapshot, 2026-06-30, 23 pairs: 16/23 = 70% — consistent finding
+  as the confirmed set grew.)
 
 ### 6.4 DCC-GARCH dynamic correlation
 
@@ -820,11 +981,15 @@ GARCH(1,1) per series, extract standardized residuals, apply DCC update
 equation. Detects periods of elevated cross-pair P&L correlation (which
 would signal concentration risk).
 
-Results (2026-06-30, 23 confirmed pairs):
-- **45 pair-pairs fitted** (all combinations among active pairs)
-- **3 pair-pairs with peak rho > 0.70** — three pair combinations show
+Results (2026-07-12/13 rerun, current 26-pair headline set):
+- **210 pair-pairs fitted** (all combinations among active pairs with
+  sufficient overlapping data)
+- **13 pair-pairs with peak rho > 0.70** — thirteen pair combinations show
   elevated cross-pair P&L correlation; a real concentration-risk signal
-  warranting monitoring
+  warranting monitoring. (Prior snapshot, 2026-06-30, 23 pairs: 45
+  pair-pairs fitted, 3 with peak rho > 0.70 — the current, larger set
+  surfaces proportionally more elevated-correlation combinations, worth
+  the added monitoring attention this implies.)
 - DCC rolling correlations stored in dcc_rolling_correlation.parquet for
   ongoing monitoring
 
@@ -870,13 +1035,18 @@ individual trade values. On the same synthetic regime-shock check, this
 correctly centers the null near the realized statistic (realized 4.59 vs.
 perm_mean 4.71, p=0.51) instead of inflating it.
 
-Two block-bootstrap tests were run on the 2026-07-05 full-pipeline results (26 pairs,
-1,000 bootstrap draws each, block length 5 trading days):
+Two block-bootstrap tests were re-run on 2026-07-13 against the current,
+post-BUG-D58/D59/D61 confirmed-pair set and trade files (`trades_layer1.parquet`,
+`trades_layer1_holdout.parquet`; 1,000 bootstrap draws each, block length 5
+trading days), superseding an earlier 2026-07-05 pass computed against a
+now-stale trade set:
 
-- **OOS:** `backtest_equity_sharpe = 5.2443`; `closed_trade_sharpe = 10.2357`;
-  `perm_mean = 10.8288`; **p = 0.589** — fail to reject null.
-- **IS:** `backtest_equity_sharpe = 6.3354`; `closed_trade_sharpe = 12.9242`;
-  `perm_mean = 13.0133`; **p = 0.542** — fail to reject null.
+- **OOS** (449 trades, 91 active days): `backtest_equity_sharpe = 5.2155`;
+  `closed_trade_sharpe = 8.6519`; `perm_mean = 9.4573`; **p = 0.546** — fail
+  to reject null.
+- **IS** (2168 trades, 441 active days): `backtest_equity_sharpe = 5.8044`;
+  `closed_trade_sharpe = 9.7998`; `perm_mean = 9.9113`; **p = 0.559** — fail
+  to reject null.
 
 Both results remain not significant at conventional levels, but — unlike the
 pre-fix numbers (OOS p=0.904, IS p=0.981) — this is now a fair comparison: the
@@ -893,34 +1063,48 @@ argue for real per-pair skill, and the diversification/correlation question
 this test surfaces is better addressed directly via the DD-hub effective-bets
 diagnostics (§7.2) than by a single aggregate p-value.
 
-### 6.7 Deflated Sharpe Ratio [DRAFTED — 2026-06-30]
+### 6.7 Deflated Sharpe Ratio [DRAFTED — reconciled 2026-07-13]
 
 A 2026-06-30 STORM literature survey (`storm-statistical-arbitrage-pairs-trading.md`) raised
-a direct challenge, grounded in Bailey & López de Prado (2014): CAMARF has run 14 distinct
-backtest configurations against this universe by the time the headline result was settled on
-(baseline, risk-parity, neg-hedge, hub-weight, P&L-cap, HRP, four STORM factor-grid variants,
-plus entry-z overrides) without ever correcting the reported Sharpe for the fact that many
-configurations were searched before reporting one. The "False Strategy Theorem" formalizes why
-this matters: the expected maximum Sharpe ratio achievable by *N genuinely skill-less*
-strategies grows with N, so an impressive raw Sharpe, however large, is not by itself evidence
-of skill without disclosing how many configurations were tried to find it.
+a direct challenge, grounded in Bailey & López de Prado (2014): by that point CAMARF had run 14
+distinct backtest configurations against this universe without ever correcting the reported
+Sharpe for the fact that many configurations were searched before reporting one (baseline,
+risk-parity, neg-hedge, hub-weight, P&L-cap, HRP, four STORM factor-grid variants, plus entry-z
+overrides). The "False Strategy Theorem" formalizes why this matters: the expected maximum
+Sharpe ratio achievable by *N genuinely skill-less* strategies grows with N, so an impressive
+raw Sharpe, however large, is not by itself evidence of skill without disclosing how many
+configurations were tried to find it.
 
 `deflated_sharpe.py` implements the correction directly: it retroactively backfills a
-`trial_registry.json` from every `output/backtest/portfolio_*.parquet` file on disk (14 trials,
-counting configurations run in prior sessions before the registry existed), builds the true
-per-period (non-annualized) Sharpe from the actual daily closed-trade P&L series — not the
+`trial_registry.json` from every `output/backtest/portfolio_*.parquet` file on disk, builds the
+true per-period (non-annualized) Sharpe from the actual daily closed-trade P&L series — not the
 annualized `sharpe_portfolio` figure, which uses a different time base — and estimates
-`Var[{SR_n}]` across the 14 recorded trials, converted to matching per-period units.
+`Var[{SR_n}]` across all recorded trials, converted to matching per-period units. The trial count
+grows as new configurations are run in later sessions; the script is re-run fresh each time this
+section is cited rather than treating the original 14-trial count as fixed.
 
-**Result:** IS deflated Sharpe **z = 11.02** (SR_hat = 0.735/period, T = 278, skew = 2.41,
-kurtosis = 14.18); OOS deflated Sharpe **z = 6.48** (SR_hat = 0.640/period, T = 70, skew = 2.86,
-kurtosis = 14.33) — both corrected for the same 14-trial search. Both remain highly significant
-after correction: the multiple-testing exposure this survey flagged is real and now measured,
-not assumed away, and the conclusion is that it does not explain the headline result. This is a
-narrower claim than §7.3.1's pair-selection-lookahead finding below — DSR corrects for
-*strategy-variant* search given a fixed pair set; it says nothing about whether the pair set
-itself would have been discoverable by a causal process, which is a separate and more severe
-form of lookahead addressed directly in §7.3.1.
+**Result (re-run 2026-07-13 against the current trial registry):** N = **52** trials (14 at the
+2026-06-30 survey's original count, growing across subsequent sessions' comparison-arm and
+robustness-check work — capital-sim tiers, GGR re-derivation reruns, sizing-scheme variants —
+each `backtest.py` invocation that produced a distinct `portfolio_*.parquet` output counts as one
+trial under this project's own registry convention; standalone analysis scripts that don't
+invoke `backtest.py` directly, such as `distance.py`, `fresh_holdout_compare.py`, and
+`cross_session_leadlag.py`, are not backtest-configuration trials in this specific sense and are
+not counted here — see the Garden-of-Forking-Paths holdout-exposure count below for the broader,
+softer notion of how many times the OOS window itself has been examined). IS deflated Sharpe
+**z = 9.52** (SR_hat = 0.6166/period, T = 441, skew = 0.916, kurtosis = 12.069); OOS deflated
+Sharpe **z = 2.90** (SR_hat = 0.5420/period, T = 91, skew = −0.834, kurtosis = 14.594) — both
+corrected for the full 52-trial search. Both remain significant after correction (z = 9.52 IS is
+decisively so; z = 2.90 OOS clears the conventional |z| ≥ 2 threshold but with materially less
+margin than the IS figure): the multiple-testing exposure this survey flagged is real and now
+measured, not assumed away, and the conclusion is that it does not explain away the headline
+result — though the OOS margin is not as wide as the earlier 14-trial-count figure implied, since
+each additional honestly-recorded trial pushes the multiple-testing correction slightly harder.
+This is a narrower claim than §7.3.1's
+pair-selection-lookahead finding below — DSR corrects for *strategy-variant* search given a fixed
+pair set; it says nothing about whether the pair set itself would have been discoverable by a
+causal process, which is a separate and more severe form of lookahead addressed directly in
+§7.3.1.
 
 A real implementation bug was caught before trusting this result: an early version mixed
 annualized Sharpe variance directly against the per-period SR_hat, silently flipping the
@@ -975,10 +1159,14 @@ Per the framing decision above: this chapter demonstrates the methodology
 from §4 has practical teeth. The strategy is the empirical proof, not the
 primary contribution.
 
-**Numbers current as of 2026-06-30 full pipeline run.** BUG-D52 (FDR_ALPHA=0.01 misconfiguration)
-was resolved in Session 21. The 2026-06-30 run expanded the confirmed pair set from 5 to 23
-pairs via universe expansion (DD-hub cluster, international pairs, multi-TF coverage). All
-§7.x numbers below are from this run unless otherwise noted.
+**Numbers below (§7.1 and §7.7) reflect the current, 2026-07-12 full pipeline run (26 confirmed
+pairs, post survivorship-exclusion and portfolio-aggregation fixes); §7.2 onward retain the prior
+2026-06-30, 23-pair snapshot and are flagged individually — see §5's reconciliation note above for
+the full explanation.** BUG-D52 (FDR_ALPHA=0.01 misconfiguration) was resolved in Session 21; the
+2026-06-30 run first expanded the confirmed pair set from 5 to 23 pairs via universe expansion
+(DD-hub cluster, international pairs, multi-TF coverage), and the 2026-07-12 run corrected a
+survivorship-exclusion bug that had been silently truncating 7 of those pairs to zero backtest
+data, bringing the current set to 26.
 
 ### 7.1 Layer 1 Baseline — Event-Driven Mean Reversion
 
@@ -988,22 +1176,20 @@ both OLS and Kalman hedge ratios run in parallel. No ML conditioning. No regime
 filtering. All hedge ratios are point-in-time causal series persisted by
 analysis.py — no hedge-ratio lookahead bias.
 
-**Universe:** 23 confirmed pairs across 5 TFs — 17 @1h, 2 @3m, 1 @30m, 2 @4h, 1
-international daily. S&P Composite 1500 + international equities; SPY/VOO included
-by pipeline but flagged for exclusion (trivial pair). DD appears as one leg in 5 of
-17 @1h pairs (DD-hub concentration risk documented in §7.2). 10 of 23 pairs generated
-zero OOS trades in the chronological holdout window; all are active in IS or WFA
-fold test windows.
+**Universe:** 26 confirmed pairs — 24 @1h (including 12 cross-asset pairs and a DD/MLI-hub
+cluster), 1 @3m, 1 @1M international. S&P Composite 1500 + international equities; SPY/VOO is
+excluded from this set by the market-cap-tracking-pair detection built for that purpose
+(`CrossAssetTagger._is_index_tracking_pair`), not merely flagged as in the prior snapshot.
 
 **In-sample (full series):**
-- 1028 trades across 23 pairs, both OLS and Kalman hedge methods
-- Portfolio Sharpe: **5.2935**, total P&L: $264,926
-- Max concentration: 14.95% in VRT/MTZ@1h
+- 2168 trades across 26 pairs, both OLS and Kalman hedge methods
+- Portfolio Sharpe: **5.8044**
 
 **Out-of-sample (chronological 20% holdout):**
-- 296 trades across 13 actively-trading pairs in holdout window
-- Portfolio Sharpe: **5.2443** (−0.9% vs IS — near-zero degradation)
-- Total P&L: $73,596
+- 449 trades across the actively-trading pairs in the holdout window
+- Portfolio Sharpe: **5.2155** (10.2% degradation vs IS — a real, honestly-reported increase from
+  the prior snapshot's 0.9% figure, reflecting more complete pair coverage post-fix, not a
+  weaker result being concealed)
 - Max concentration: 19.9% in TMHC/WAL@1h
 - Win rate: range from 18.2% (CVX/OXY, 11 trades — pairs entering against spread direction OOS)
   to 100% (EG/WRB, EG/ORI — very few OOS trades)
@@ -1132,7 +1318,7 @@ here since this script is diagnostic only.
 `--neg-hedge` as secondary addition if universe expansion from negative-β pairs is desired.
 HRP was evaluated and is not recommended — it underperforms risk-parity on this pair set.
 
-**A cross-method pattern worth naming briefly here** (full development in `FINDINGS.md` §1, not
+**A cross-method pattern worth naming briefly here** (full development in `docs/FINDINGS.md` §1, not
 reproduced in full in the main text to keep this paper focused on its central claims): five
 independent comparisons across this project — HRP vs. risk-parity (above), Kalman
 slope+intercept vs. origin-only, Equal Risk Contribution vs. inverse-cluster-size, eigenvalue-
@@ -1141,7 +1327,7 @@ bets vs. Grinold-Kahn breadth (§7.2 above) — each pit a more sophisticated me
 simpler alternative on the same real data. Four lose, one wins decisively, and the one win is
 explained by a specific mechanism (the simpler method's assumption is actively wrong for this
 portfolio, not merely less refined) rather than by "simplicity" in the abstract. See
-`FINDINGS.md` §1 for the full five-way writeup with exact numbers and mechanisms.
+`docs/FINDINGS.md` §1 for the full five-way writeup with exact numbers and mechanisms.
 
 ### 7.3 Walk-Forward Analysis — Semi-WFA Robustness Check [DRAFTED — 2026-06-29]
 
@@ -1317,8 +1503,9 @@ mean-reverting and therefore better trading candidates. This is the intuitive pr
 The empirical result is the opposite.
 
 Across the 17 confirmed 1h pairs (2026-06-30, DD-hub expanded universe), the coint_frac
-values are uniformly low — the diagnostic is operating in a regime where it is too strict
-to distinguish quality. The 9 pairs with OOS trades in the holdout window:
+values are uniformly low — consistent with (though not yet independently confirming, see
+below) the diagnostic operating in a regime where it struggles to distinguish quality at
+this specific window length. The 9 pairs with OOS trades in the holdout window:
 
 | Pair | coint_frac | OOS Trades | OOS PnL |
 |---|---|---|---|
@@ -1350,27 +1537,46 @@ set reflected a specific property of those 5 pairs — the 23-pair set shows a m
 heterogeneous picture consistent with coint_frac being a noisy but directionally informative
 signal once n is large enough to avoid small-sample rank artifacts.
 
-The interpretation connects directly to the Strictness Paradox (§4.2): the rolling
-window test is *too strict* at these timeframes. A pair that barely clears 3–8% of
-rolling windows is not a borderline cointegrator — it is an established relationship
-tested at a resolution where even strong cointegrators fail most windows. The low
-`coint_fraction_rolling` signals that the test is operating near the right tail of
-its own sampling distribution, not that the economic relationship is weak.
+**A candidate explanation, distinct from §4.2/§4.2.1 and not independently tested
+the way those were — flagged as a hypothesis, not asserted as established:**
+a pair that barely clears 3–8% of 252-bar rolling windows might not be a
+borderline cointegrator so much as an established relationship tested at a
+resolution where even strong cointegrators fail most individual windows,
+if the short-window EG test has low power at n=252 specifically. This is
+a POWER question about a specific, much shorter rolling window than
+anything §4.2.1's Monte Carlo study tested (which measured the full-sample
+test's Type I error/SIZE at each timeframe's actual, much longer available
+history, not a 252-bar sub-window's power to detect a true relationship) —
+the two are related but not the same claim, and this one has not been
+put through the same direct calibration check. Until it is, the honest
+framing is that low `coint_fraction_rolling` COULD reflect the rolling
+test's own low power at this window length rather than a weak economic
+relationship, not that it definitely does.
 
-This is the empirical answer to the Skeptic's challenge: "Won't the hardest-to-confirm
-pairs blow up OOS?" The data says the opposite. The hardest-to-confirm pairs are your
-best performers, because the confirmation signal at intraday resolution is so over-strict
-that a pass/fail verdict at any given window is near-random relative to the underlying
-economic relationship. The metric's *average* across windows (the scalar stored in
-`coint_fraction_rolling`) then reflects regime variation in the economic relationship,
-not confirmation quality — and regime variation in a mean-reverting context is signal,
-not noise.
+This candidate explanation, if correct, would answer the Skeptic's challenge
+("won't the hardest-to-confirm pairs blow up OOS?") the same way §4.2's
+main demonstration does: the hardest-to-confirm pairs are, empirically,
+among the best performers here — consistent with a confirmation signal
+that is noisy at this specific window length rather than diagnostic of
+relationship quality, though this specific mechanism remains unverified.
+The metric's *average* across windows (the scalar stored in
+`coint_fraction_rolling`) would then reflect regime variation in the
+economic relationship rather than confirmation quality — and regime
+variation in a mean-reverting context is signal, not noise — but this
+too is downstream of the untested power hypothesis above, not an
+independently-confirmed fact.
 
-**Implication for position sizing:** `coint_fraction_rolling` should not be used as a
-position-size multiplier or a binary quality filter. Its negative correlation with
-performance makes it an *inverse* signal — one that could be exploited as a feature in
-the ML gate (pairs with lower rolling fraction may deserve *higher* conviction on
-confirmed entries, not lower). This is flagged as a future-work candidate.
+**Implication for position sizing, corrected to match the interpretation update above rather
+than the 5-pair-era framing this paragraph originally stated:** at 23 pairs, `coint_fraction_rolling`
+is not a clean inverse signal — TMHC/WAL, the highest active coint_frac among traded pairs, is
+also the top OOS P&L contributor, the opposite of what a consistent inversion would predict. Nor
+is it a reliable positive quality signal: §7.4's direct test of `coint_frac_sizing` as a position
+multiplier found a Sharpe improvement that is a low-P&L-variance artifact of near-zero sizing on
+22 of 23 pairs, not a genuine quality effect. Taken together, the honest current conclusion is
+that `coint_fraction_rolling` should not be used as a position-size multiplier or binary quality
+filter **in either direction** at this sample size (9 pairs with any OOS trades) — not confidently
+inverse, not confidently positive, just noisy. Whether it carries real directional information is
+a future-work candidate once more OOS trade history accumulates, not a settled finding either way.
 
 ### 7.6 Pair Diagnostics — Half-Life Stationarity (S7) [DRAFTED — 2026-06-29]
 
@@ -1378,8 +1584,8 @@ A cointegration pair produces stable OOS performance only if its mean-reversion
 dynamics are themselves stationary. If the OU half-life drifts or wanders over time,
 the parameters estimated in the training window may not hold in the OOS period.
 
-**Method.** For each confirmed pair we extract the rolling half-life series
-(`half_life_rolling` from `spread_series`) and apply two tests:
+**Method.** For each confirmed pair the rolling half-life series
+(`half_life_rolling` from `spread_series`) is extracted and two tests are applied:
 
 1. **AR(1) regression**: fit $HL_t = \mu + \rho \cdot HL_{t-1} + \varepsilon_t$ via OLS.
    A coefficient $\rho \to 1$ indicates a near-unit-root in the HL series (drifting
@@ -1413,51 +1619,65 @@ confirms no unit root for 20/23 pairs, meaning HL fluctuates around a slowly-mov
 mean rather than drifting without bound. The 3 failing pairs are flagged for ML feature
 engineering (AR(1) ρ near 1.0 is itself a candidate feature encoding HL instability).
 
-### 7.7 Distance Method Baseline — Gatev GGR (2006) [DRAFTED — 2026-06-29]
+### 7.7 Distance Method Baseline — Gatev GGR (2006) [DRAFTED — revised 2026-07-13]
 
-As an external validity check, we compare our cointegration-based selection against
+As an external validity check, this project's cointegration-based selection is compared against
 the Gatev, Goetzmann & Rouwenhorst (2006) distance method — the canonical pairs-trading
 benchmark.
 
 **Distance method protocol** (matching GGR 2006):
 
-1. *Formation period* (first 50% of available history): normalize each price series
-   to $P_0 = 1.0$ and compute the sum of squared deviations (SSD) between each
-   candidate pair over the formation window. Rank all pairs by SSD ascending —
-   lower SSD means prices tracked more closely.
+1. *Formation period*: normalize each price series to $P_0 = 1.0$ and compute the sum of
+   squared deviations (SSD) between each candidate pair over the formation window. Rank all
+   pairs by SSD ascending — lower SSD means prices tracked more closely.
 
 2. *Select top-K* (K = 20) pairs by SSD.
 
-3. *Trading period* (remaining 50%): generate entry signals when
+3. *Trading period*: generate entry signals when
    $|\hat{z}_t| = |(P^A_t - P^B_t - \mu_{\text{form}}) / \sigma_{\text{form}}| > 2.0$.
    Exit when the normalized spread crosses zero. P&L measured as percentage return
    on equal-weight long/short legs.
 
-**Comparison framework.** Both methods are evaluated on the same OOS window using
+**A methodological bug in the comparison itself, found and closed (2026-07-13).** Two earlier
+versions of this comparison (2026-06-30 and 2026-07-12) both computed the two methods' trades
+over *different date windows* without realizing it: the cointegration side used `backtest.py`'s
+per-pair, bar-count-based 20% holdout, while the distance side used its own hardcoded 50/50
+formation/trading split computed from only three pairs' spread files — an apples-to-oranges
+comparison presented as apples-to-apples. The fix aligned the distance side's formation/trading
+boundary to the same holdout fraction, and the residual per-pair-vs-global cutoff gap was then
+measured directly (not assumed away): a maximum of 5 days across all 24 confirmed @1h pairs,
+trivial relative to the trading windows involved. This closes the investigation — no further
+code change is needed, and this section's numbers below reflect the aligned comparison, not the
+original mismatched one.
+
+**Comparison framework.** Both methods are evaluated on the same, now-aligned OOS window using
 the same confirmed-pair symbol universe. The cointegration-based pairs are also run
 through `BacktestEngine` (no STORM flags, no ML gate) for an apples-to-apples Sharpe
 comparison:
 
-| Method | Selection criterion | OOS Sharpe | n trades | Overlap |
-|--------|-------------------|-----------|---------|---------|
-| Cointegration + OU (CAMARF) | ADF/EG p < 0.05, BH-FDR, half-life filter | **11.741** (mean over 17 @1h pairs) | — | — |
-| Distance / GGR 2006 | Top-20 SSD over normalized formation prices | **−0.208** | 35 | 2/17 confirmed @1h pairs |
+| Method | Selection criterion | Pooled OOS Sharpe | n trades |
+|--------|-------------------|-----------|---------|
+| Cointegration + OU (CAMARF) | ADF/EG p < 0.05, BH-FDR, half-life filter | **8.542** | 222 (shared comparison window) |
+| Distance / GGR 2006 | Top-20 SSD over normalized formation prices | not cited as a specific figure (see below) | 16 |
 
-The overlap column measures how many confirmed @1h cointegration pairs also appear in
-the GGR top-20 by SSD — 2 of 17 pairs are captured by both methods. The remaining 15
-@1h pairs are captured only by the cointegration screen.
-
-**Result (2026-06-30):** Cointegration CAMARF outperforms GGR distance by 11.95 Sharpe
-points on the same OOS window and universe. GGR produces a negative Sharpe (−0.208) over
-the same period, confirming Do, Faff & Hamza (2006) that cointegration+OU decisively
-outperforms distance on a risk-adjusted basis. The CAMARF mean pair Sharpe of 11.741
-reflects individual per-pair Sharpe quality; the portfolio Sharpe (5.24) incorporates
-full cross-pair P&L correlation at the portfolio level.
+**Result, stated with the sample-size caveat the corrected comparison requires.** After alignment,
+the distance method's trading window narrowed substantially and its trade count dropped to 16 over
+only 7 distinct trading days — proportional to the window's shrinkage, not evidence of a further
+bug (confirmed directly: the pre- and post-alignment trade rates per calendar day match within
+~13%). A closer look at those 16 trades found 10 of them (62.5%) are forced end-of-window
+mark-to-market exits rather than completed round-trip convergences — a stronger reason for caution
+than the trade count alone. A circular-block bootstrap over this sample gives a 90% confidence
+interval of roughly 26–86 Sharpe, which is not a usable point estimate. The direction —
+cointegration outperforming distance on this universe, consistent with Do, Faff & Hamza (2006)'s
+finding that cointegration+OU outperforms distance on a risk-adjusted basis — is supported; the
+specific magnitude of that outperformance is not estimable from this sample and is not cited as a
+headline figure. The cointegration side's own pooled Sharpe (8.542, 222 trades) is the trustworthy
+number in this comparison.
 
 ### 7.8 Parameter Sensitivity and Stability
 
 To verify that the main result is not an artifact of a specific parameter choice,
-we sweep the two primary trading parameters (entry z-score and exit z-score) in a
+the two primary trading parameters (entry z-score and exit z-score) are swept in a
 4×4 grid at the baseline max\_hl and ADV settings, plus independent 1D sweeps for
 the ADV liquidity filter and half-life ceiling.
 
@@ -1602,7 +1822,7 @@ set could likely be consolidated once more labeled examples accumulate past the 
 
 ### 7.11 Filter-Ablation Funnel and Era-Decay Replication [DRAFTED — 2026-06-30]
 
-**Filter-ablation funnel.** Ross's own recurring question — when a pipeline has this many
+**Filter-ablation funnel.** A recurring question — when a pipeline has this many
 sequential filters, how much is each one actually removing, and is what it removes worth
 removing — is answered directly rather than left to the final confirmed-pair count alone.
 A `FilterFunnel` tracker records the pair count before and after every gate in the @1h
@@ -1700,10 +1920,12 @@ Development.md Session 27 for the full account of each).
 
 **Threshold cointegration (Hansen & Seo, 2002):** tests whether a pair's error-correction
 adjustment is genuinely nonlinear (threshold-triggered, as a transaction-cost band would imply)
-rather than the constant-speed linear reversion the production OU model assumes. Result: only
-1 of 22 confirmed pairs is even nominally significant (TMHC/WAL@1h, p=0.007), and that one does
-not survive Benjamini-Hochberg correction for testing 22 pairs at once. **No confirmed pair shows
-a real threshold effect — the linear model already in production is adequate.**
+rather than the constant-speed linear reversion the production OU model assumes. Result (run
+against the 22-pair confirmed set as of 2026-07-05; not re-verified against the current 26-pair
+set): only 1 of 22 confirmed pairs is even nominally significant (TMHC/WAL@1h, p=0.007), and
+that one does not survive Benjamini-Hochberg correction for testing 22 pairs at once. **No
+confirmed pair shows a real threshold effect — the linear model already in production is
+adequate.**
 
 **Variance ratio test (Lo & MacKinlay, 1988):** corroborates mean-reversion from a completely
 different statistical family than Engle-Granger, using q scaled to each pair's own half-life
@@ -1715,7 +1937,8 @@ EG/cointegration test family specifically.
 
 **News impact asymmetry (Engle & Ng, 1993):** tests whether spread volatility responds
 asymmetrically to widening vs. narrowing moves — directly relevant to whether the `garch_stop`
-variant's symmetric rolling-std trigger (§7.4) is well-specified. Result: a clean null across all
+variant's symmetric rolling-std trigger (§7.4) is well-specified. Result (22-pair confirmed set
+as of 2026-07-05; not re-verified against the current 26-pair set): a clean null across all
 22 confirmed pairs (0 significant at p<0.05). **`garch_stop`'s symmetric design is validated, not
 undermined**, by this test.
 
@@ -1775,7 +1998,8 @@ calm. Jump risk doesn't appear to meaningfully hurt CAMARF's actual trading outc
 A full pass through the remaining v1.x backlog. Full verification detail and bugs found/fixed along
 the way are in Development.md; headline results only here.
 
-**Weak exogeneity** (Johansen VECM, `pvalues_alpha`): 14/20 confirmed pairs show `symbol_a` leading
+**Weak exogeneity** (Johansen VECM, `pvalues_alpha`): (20-pair confirmed set as of 2026-07-10;
+not re-verified against the current 26-pair set) 14/20 confirmed pairs show `symbol_a` leading
 (weakly exogenous — doesn't respond to disequilibrium, `symbol_b` does the adjusting), 2 bidirectional,
 2 `symbol_b`-leads, 2 neither adjusts — a consistent, non-random 70% skew.
 
@@ -1796,15 +2020,20 @@ documents (13 real examples) — same honest null, not a new problem.
 22 pairs) — cross-validation selected essentially zero regularization, weak resulting clustering
 (silhouette=0.055). An honest negative result, not forced toward a nicer-looking one.
 
-**Multiscale entropy** (Costa/Goldberger/Peng 2002): all 19 confirmed pairs show a consistent "simple/
+**Multiscale entropy** (Costa/Goldberger/Peng 2002): (19-pair confirmed set as of 2026-07-10; not
+re-verified against the current 26-pair set) all 19 confirmed pairs show a consistent "simple/
 regular" signature — low entropy (0.21) at the finest scale rising toward the white-noise level (0.79)
 by scale 5 — mean-reversion concentrated at one characteristic time scale, not present as genuine
 multi-scale complexity, for every single pair.
 
-**Bias budget**: aggregates, rather than invents, a single de-biased number. DSR says the OOS Sharpe is
-likely genuine after correcting for 34 tried configurations (DSR=1.0000, z=6.54); the permutation test
-(§6.6) does not reach significance (p=0.589) — both true simultaneously. IS-OOS gap is small (+3.0%).
-Holdout examined 27 times across 14 configs — flagged high per a new >20-exposure threshold.
+**Bias budget**: aggregates, rather than invents, a single de-biased number. *(Figures below as
+originally computed 2026-07-10; superseded by the current, precisely-reconciled Abstract/§6.6/§6.7
+figures — restated here to match rather than left stale.)* DSR says the OOS Sharpe is likely
+genuine after correcting for the current 52-trial registry (OOS z=2.90); the block-bootstrap
+permutation test (§6.6) does not reach significance (OOS p=0.546) — both true simultaneously.
+IS-OOS gap is real, not small (10.2%, post survivorship-exclusion fix — see the Abstract for why
+this is a larger, more honestly-reported figure than earlier snapshots). Holdout examined 29 times
+across 14 distinct configuration labels — flagged high per a new >20-exposure threshold.
 
 **Convex portfolio construction** (max Sharpe / max Sortino, long-only-capped / negative-weights-
 allowed, scipy SLSQP): max-Sharpe improves modestly over equal-weight (+0.08 to +0.09), max-Sortino
@@ -1848,30 +2077,82 @@ payoff — an honest negative result on whether options overlays help this speci
 A verification sweep (data hygiene, architecture, full pipeline rerun, documentation alignment)
 plus a further round of comparison-arm building produced several more real, verified results
 that don't individually warrant main-text space but are part of the honest record. Full
-writeups in `FINDINGS.md`; summarized here:
+writeups in `docs/FINDINGS.md`; summarized here:
 
 - **Bounded-recent-lookback as primary screen** — a live instance of this paper's own
   Strictness Paradox mechanism on a currently-confirmed pair (7267.T/8058.T@1M: full-sample
   EG p=0.0001 vs. 5-year-bounded p=0.19), found systematically rather than hand-picked.
-  `FINDINGS.md` §2.
+  `docs/FINDINGS.md` §2.
 - **PairCharacteristicsAnalyzer** (per-pair decision trees + archetype clustering) — built with
   the full min-N/permutation/holdout discipline; honest small-n result (6/24 pairs show a
-  holdout-confirmed characteristic), exploratory only. `FINDINGS.md` §3.
+  holdout-confirmed characteristic), exploratory only. `docs/FINDINGS.md` §3.
 - **Regime-conditional entry gate** — surfaced that macro/VIX regime conditioning is a schema
   field in `backtest.py`, not currently populated; the populated half of the comparison (trending
-  + widening entries) shows real, directionally-consistent underperformance. `FINDINGS.md` §4.
+  + widening entries) shows real, directionally-consistent underperformance. `docs/FINDINGS.md` §4.
 - **Earnings blackout STORM variant** — a genuine tradeoff, not a clean win: -16.3% trade
-  count, slightly worse Sharpe (5.30 vs. 5.40), but 48% lower max drawdown. `FINDINGS.md` §5.
+  count, slightly worse Sharpe (5.30 vs. 5.40), but 48% lower max drawdown. `docs/FINDINGS.md` §5.
 - **ML Stage 2 (macro-context ablation)** — built and run; correctly blocked by the same
-  data-volume gate as Stage 1. `FINDINGS.md` §6.
+  data-volume gate as Stage 1. `docs/FINDINGS.md` §6.
 - **Price-degeneracy screen refresh** — confirmed the original ~32%/1m finding is durable
   (fresh run: 31.4%), extended for the first time to 2m (23.5%) and 3m (23.4%). The
   sector-independence root-cause result (§5 above) was built directly on this refreshed data.
-  `FINDINGS.md` §7.
+  `docs/FINDINGS.md` §7.
 
 Per this project's own bias-transparency discipline, the full count of comparison arms run this
 session — including ones that did not individually survive into this paper's main text — is
-recorded in `FINDINGS.md`'s closing section, not just the ones that showed something.
+recorded in `docs/FINDINGS.md`'s closing section, not just the ones that showed something.
+
+### 7.16 Capital Constraints, Fresh-Holdout Convention, and Two New Diagnostics — 2026-07-13 [DRAFTED]
+
+- **Capital-constrained backtesting — a bug found, not a structural property.** A prior pass
+  observed that simulating trades under a realistic account-size constraint produced HIGHER
+  Sharpe ratios than the unconstrained headline strategy (a striking, initially unexplained
+  result). Root-causing it found the effect was almost entirely a Sharpe-computation convention
+  mismatch between two internal tools — one silently dropped zero-P&L calendar days from its
+  daily aggregation, the other (behind every headline Sharpe reported in this paper) zero-fills
+  them. After correcting the mismatch, capital-constrained performance sits at or below the
+  unconstrained headline (5.8044) at every account-size tier tested; a small, real residual
+  effect survives (trade admission ordered by arrival time preferentially skips a handful of
+  correlated, high-variance trades during simultaneous-signal periods), but this suppresses
+  variance rather than enhancing return, and is not cited as a finding independent of this
+  caveat. This is reported here specifically because the earlier, uncorrected observation could
+  otherwise have been mistaken for a genuine structural property of capital-constrained trading.
+- **Fresh-holdout convention — a proposal, not yet adopted.** Two conventions for evaluating a
+  genuinely fresh holdout were built and compared: a time-based split (holding out the most
+  recent calendar period) and a pair-based split (holding out a subset of pairs never used in
+  prior evaluation). Direct inspection confirmed the pair-based split's reserved trades span
+  essentially the same calendar range as the training set — it tests cross-sectional
+  generalization to new instruments, not temporal generalization, and the two conventions'
+  differing results (time-based shows real decay; pair-based does not) reflect this rather than
+  disagreeing about the same question. A combined split (both cuts applied simultaneously) was
+  built to isolate the single most rigorous "never examined by any prior evaluation" cell:
+  Sharpe 13.32 on 28 trades over 10 distinct days. This is a real result but on a thin sample —
+  it has not been adopted as this project's production holdout convention pending further
+  accumulation of fresh, never-examined data.
+- **Cross-session lead-lag — two hypotheses distinct from the earlier same-session null.** An
+  earlier investigation (§7.13/§7.14-era work) found no exploitable lead-lag structure within a
+  single trading session among confirmed pairs. Two different mechanisms were tested this
+  session: whether one leg's overnight gap predicts the other leg's own session return on a
+  subsequent trading day (null across all 26 confirmed pairs, extending the earlier result to a
+  second, independent mechanism); and whether an earlier-closing international session predicts
+  a later US session for genuinely cross-timezone economically-linked instruments, tested
+  illustratively on real cross-listing pairs since no confirmed pair currently spans timezones.
+  One of the two illustrative pairs (a Tokyo-listed name and its NYSE ADR) showed a real,
+  permutation-significant one-day lead from the Tokyo session — economically sensible, consistent
+  with documented ADR information-flow patterns, and useful as a validation that the method
+  correctly detects a real effect where one plausibly exists — but this is explicitly not a
+  confirmed-pair finding, since neither instrument in that pair is part of this project's
+  screened, cointegration-confirmed set.
+- **Rolling-cointegration window/threshold grid — no advantage found for the more complex
+  design.** A joint (window length × stability threshold) grid was compared against a simpler
+  single-dimension window-length sweep, both scored on their ability to predict whether a pair's
+  cointegrating relationship holds up on held-out future data. The two approaches selected
+  functionally the same region of the parameter space and showed identical (zero) generalization
+  gap between an in-sample-selected choice and a held-out test — evidence for preferring the
+  simpler design (fewer degrees of freedom, same result) rather than a reason to adopt the more
+  complex one. The current production default sits within the region both approaches found best,
+  which is reassuring for that choice without being strong evidence at this sample size (24
+  pairs).
 
 ## 8. Bias Documentation [OUTLINED, one bias drafted in detail]
 
@@ -1904,8 +2185,9 @@ this audit, and the only one classified as an unresolved, quantified
 residual risk rather than a mitigated one:** pair-selection lookahead in
 the full-history cointegration screen (`analysis.py`, recorded once per
 timeframe run since 2026-07-01, mechanism/remedy/residual-risk fields
-identical across TFs). The confirmed 23-pair set is selected using a
-screen run over the entire available history, including the period later
+identical across TFs). The confirmed pair set (26 as of the current
+headline run) is selected using a screen run over the entire available
+history, including the period later
 reported as the OOS holdout — pair *discovery* therefore borrows
 information from the future relative to any real deployment date, a
 distinct and more severe failure mode than the OU-parameter lookahead
@@ -1926,7 +2208,7 @@ have discovered and traded it.
 This project used Claude Code (Anthropic) as an implementation/research
 partner throughout — every script in `research/`, every production-code
 change, and the great majority of this document's own prose were drafted
-with AI assistance, under Ross's direction and review. The disclosure's
+with AI assistance, under the researcher's direction and review. The disclosure's
 value, beyond compliance, is as falsifiable evidence of a specific
 research skill this project depends on structurally: catching incorrect
 output (the AI's own, or a summary of someone else's) by checking it
@@ -1971,13 +2253,14 @@ discipline rather than by luck):
    multi-system discovery architecture"), a case-sensitive text search
    for the item's own name missed the actual section header
    (`## Planned Enhancement: ML Ensemble / Multi-System Discovery
-   Architecture`) elsewhere in the project's session log, and reported to
-   Ross that the item had "no surviving spec anywhere." Ross made a real
-   decision on this basis (agreeing to drop the item). The error was
-   caught minutes later while reading the same document for unrelated
-   context, and reported to Ross immediately rather than silently
-   corrected — he then re-made the decision (to build it) with accurate
-   information. **This is the more serious failure class of the two
+   Architecture`) elsewhere in the project's session log, and reported
+   to the researcher that the item had "no surviving spec anywhere."
+   The researcher made a real decision on this basis (agreeing to drop
+   the item). The error was caught minutes later while reading the
+   same document for unrelated context, and reported to the researcher
+   immediately rather than silently corrected — the researcher then
+   re-made the decision (to build it) with accurate information.
+   **This is the more serious failure class of the two
    illustrated here**: not an internal computation an automated test can
    catch, but a confidently-stated negative ("X does not exist") that
    directly steered a human's choice before being caught by chance rather
@@ -2017,7 +2300,7 @@ Contributor Roles Taxonomy already standard for disclosing human co-author contr
 Weaver to AI. AID defines 14 disclosure categories; the framework's own convention is to omit
 headings where AI was not used, but this paper states every category explicitly, including "not
 used" ones — several of CAMARF's own non-negotiable architecture rules (data.py fetches, AI never
-does; every methodology/framing decision is Ross's, not AI's) are exactly the kind of boundary a
+does; every methodology/framing decision is the researcher's, not AI's) are exactly the kind of boundary a
 reader should not have to infer from silence.
 
 **AI Tool(s)**: Claude Code (Anthropic). Model versions varied across this project's ~28 sessions
@@ -2027,16 +2310,16 @@ to any result in this paper.
 
 **Conceptualization**: Not AI-led. The research thesis, the decision to pursue cross-asset
 co-movement arbitrage, and every subsequent framing decision (including this paper's three pillars)
-originated with and were decided by Ross. AI participated as a discussion partner when new
+originated with and were decided by the researcher directing this project. AI participated as a discussion partner when new
 directions were considered (e.g. the pivot/expansion discussion behind §7.15's comparison arms), but
-per `CLAUDE.md`'s working-style rule, proposed a menu of options for Ross to choose from — it did not
+per `CLAUDE.md`'s working-style rule, proposed a menu of options for the researcher to choose from — it did not
 independently originate or select the research direction.
 
 **Methodology**: Mixed. AI implemented every statistical method described in §4 and §6-§7 in code,
 but did not choose which methods to use — each new technique (e.g. the Lo (2002) Sharpe-
 autocorrelation correction, §7's STORM variants, the eigenvalue-weighted position-sizing method) was
-proposed, discussed, and approved by Ross before implementation began, per this project's standing
-"new methodology goes through Ross first" rule.
+proposed, discussed, and approved by the researcher before implementation began, per this project's standing
+"new methodology goes through the researcher first" rule.
 
 **Information Collection**: AI-assisted, tool-based. This section's own content — the survey of
 current AI-disclosure norms and the AID Framework itself — was gathered via Claude Code's web search
@@ -2047,8 +2330,8 @@ described throughout this section.
 **Data Collection Method**: Not AI. Architecture Rule #1 (`CLAUDE.md`) is explicit and enforced:
 `data.py` (the sole fetch path) must never be invoked by `analysis.py` or any downstream script, and
 in practice every real data-fetching run (yfinance, and the separate manually-run IBKR supplemental
-script) was executed by Ross directly or by AI running the exact, unmodified fetch script under
-Ross's direction — AI never designed a data-collection method, selected a data source, or fetched
+script) was executed by the researcher directly or by AI running the exact, unmodified fetch script under
+the researcher's direction — AI never designed a data-collection method, selected a data source, or fetched
 data through any channel other than this project's existing, human-approved scripts.
 
 **Execution**: AI-heavy, with a real operational boundary worth disclosing concretely rather than
@@ -2058,15 +2341,15 @@ real, unresolved reliability limit: multi-hour pipeline runs (`analysis.py`) hav
 mid-run by what appears to be an internal timeout on the tracking tool itself, inconsistently (once
 at ~6 minutes, once at ~25-30 minutes, cause not fully diagnosed as of this writing). When an
 alternative execution path (a detached OS process outside the tool's own tracking) was attempted to
-work around this, an internal safety mechanism blocked it and required Ross's direct authorization
+work around this, an internal safety mechanism blocked it and required the researcher's direct authorization
 before proceeding — and even then, a later attempt was blocked again pending genuine, unambiguous
 user consent, which the safety mechanism judged the available signal insufficient to establish. In
-practice, at various points this session, Ross ran the affected script directly in his own terminal
+practice, at various points this session, the researcher ran the affected script directly in their own terminal
 rather than through AI-mediated execution. This is disclosed because it is a real, concrete
 illustration of an execution-layer boundary this project actually hit, not a hypothetical one.
 
 **Data Curation**: AI-assisted. AI reorganized and indexed existing project documentation (e.g.
-`BUG_LOG.md`, built 2026-07-11 as a pure index into `Development.md`'s bug registry, deliberately
+`docs/BUG_LOG.md`, built 2026-07-11 as a pure index into `Development.md`'s bug registry, deliberately
 choosing a non-destructive index over a lossy content split — see `Development.md`'s write-up of
 that decision) and performed accuracy audits correcting stale documentation against live code state.
 It did not curate the underlying research data itself beyond what "Data Collection Method" above
@@ -2075,7 +2358,7 @@ already covers.
 **Data Analysis**: AI-heavy, always paired with this project's verify-before-trusting discipline —
 every new analytical method was tested against a synthetic ground-truth case (`debug/_verify_*.py`)
 before being trusted on real data, a standing project rule cited throughout this paper and
-`FINDINGS.md`.
+`docs/FINDINGS.md`.
 
 **Privacy and Security**: No personal data of any kind is used anywhere in this project — all data
 sources (§9's Data acquisition transparency, below) are public market/macro data, not personal or
@@ -2091,13 +2374,13 @@ verify-before-trusting discipline.
 **Interpretation**: Mixed. AI drafted interpretive analysis of statistical results (e.g. explaining
 what a given Sharpe correction or degeneracy finding implies), but final interpretive judgment calls
 — what a result means for this paper's thesis, and whether a finding is strong enough to report as a
-pillar rather than a footnote — were Ross's, per the same boundary described under Conceptualization.
+pillar rather than a footnote — were the researcher's, per the same boundary described under Conceptualization.
 
 **Visualization**: AI implemented the code that generates this project's 26 report figures
-(`report.py`), but which figures to generate and how to read them was directed by Ross, not chosen
+(`report.py`), but which figures to generate and how to read them was directed by the researcher, not chosen
 autonomously by AI.
 
-**Writing — Review & Editing**: AI drafted the large majority of this document's prose, under Ross's
+**Writing — Review & Editing**: AI drafted the large majority of this document's prose, under the researcher's
 direction and review — stated plainly in this section's opening paragraph, restated here for the
 structured record.
 
@@ -2106,8 +2389,8 @@ structured record.
 **Project Administration**: AI-assisted, session-scoped only. AI used a structured task-tracking
 tool to plan and sequence work within individual sessions (visible, e.g., in this session's ~30-item
 task list spanning documentation fixes, comparison-arm builds, and bug fixes). This does not extend
-to the project's strategic roadmap or priorities, which are set by Ross (`CLAUDE.md`'s "Next
-priorities" section, updated by Ross's direction each session).
+to the project's strategic roadmap or priorities, which are set by the researcher (`CLAUDE.md`'s "Next
+priorities" section, updated by the researcher's direction each session).
 
 ### Limitations, stated directly
 
@@ -2126,8 +2409,8 @@ priorities" section, updated by Ross's direction each session).
   crashing test signals a positive claim needs fixing.
 - **Long, autonomous sessions accumulate work faster than a human
   collaborator can review it line-by-line.** This paper's own §7.15 and
-  `FINDINGS.md` were produced substantially faster than Ross could
-  independently re-derive or exhaustively audit each number in real
+  `docs/FINDINGS.md` were produced substantially faster than a human
+  collaborator could independently re-derive or exhaustively audit each number in real
   time; the practical safeguard used throughout was structural (every
   claim ties to a script + synthetic test + run date, so it CAN be
   independently re-verified later) rather than exhaustive real-time
@@ -2159,28 +2442,43 @@ the same timespan.
 **Not appropriate, and not how this project used it**: autonomous
 methodology or scope decisions. Every new statistical technique, every
 production-code change, and every structural decision about this
-paper's own framing (including, concretely, the "Option A" predictive-
-gate design in §5 and the decision to make price-degeneracy this paper's
-third pillar) was made by Ross, with AI in an implementation and
-research-support role — a standing project rule (`CLAUDE.md`'s working-
-style section), not merely this paper's retrospective description of
-what happened. This distinction — AI accelerates execution of a
-directed research program, it does not direct the program — is the
-actual position this disclosure is making, not a compliance formality.
+paper's own framing (including, concretely, the visibility-only,
+non-exclusionary predictive-gate design in §5 and the decision to make
+price-degeneracy this paper's third pillar) was made by the researcher
+directing this project, with AI in an implementation and research-support
+role — a standing project rule (`CLAUDE.md`'s working-style section), not
+merely this paper's retrospective description of what happened. This
+distinction — AI accelerates execution of a directed research program, it
+does not direct the program — is the actual position this disclosure is
+making, not a compliance formality.
 
 ### Tool and orchestration transparency
 
-Stated explicitly, not left implicit: this project's AI-assisted sessions used Claude Code
-(Anthropic) with standard, single-agent tool use — file read/write/edit, shell command execution,
-codebase search, and (for genuine open questions, e.g. the market-cap+sector gate's exact
+Stated explicitly, not left implicit: this project's AI-assisted sessions through 2026-07-12 used
+Claude Code (Anthropic) with standard, single-agent tool use — file read/write/edit, shell command
+execution, codebase search, and (for genuine open questions, e.g. the market-cap+sector gate's exact
 implementation mechanism in §5, or whether price-degeneracy should be this paper's third pillar)
-direct clarifying questions posed back to Ross rather than an autonomous default choice. **No
-multi-agent orchestration, parallel subagent dispatch, or autonomous background-task delegation was
-used for any statistical result, comparison arm, or claim in this paper** — every script, every
-number, and every verification test was produced by the same single, continuous, sequentially-
-directed session that a reader could in principle audit turn-by-turn, not by independent parallel
-agents whose individual outputs would then need to be reconciled or cross-checked against each
-other. One exploratory attempt to use `graphify` (a codebase-to-knowledge-graph tool) for
+direct clarifying questions posed back to the researcher rather than an autonomous default choice.
+No multi-agent orchestration, parallel subagent dispatch, or autonomous background-task delegation
+was used for any statistical result, comparison arm, or claim produced through that date — every
+script, every number, and every verification test was produced by the same single, continuous,
+sequentially-directed session that a reader could in principle audit turn-by-turn.
+
+**This changed starting 2026-07-13** (the session that produced the GGR window-alignment closure,
+the capital-sim Sharpe-convention fix, the fresh-holdout `combined_split()` proposal, and both new
+research modules in §7.15): several independent investigations were dispatched as parallel
+background subagents ("forks," in this project's tooling) and their outputs were directly verified
+— re-running the actual commands and inspecting real file diffs — before being trusted, rather than
+accepted from the subagent's own final report. This verification step caught a real failure worth
+disclosing on its own terms, directly on point for this section's thesis: one fork, assigned the
+fresh-holdout investigation, reported successful completion with a plausible-sounding summary, but
+`git status` and a direct grep showed it had made no code changes at all — the reported work was
+fabricated, not merely incomplete. The task was reassigned with an explicit instruction to show real
+command output before claiming completion, and the second attempt's claims were independently
+confirmed against the actual file diff, a passing synthetic test run live, and the actual new
+documentation section, all inspected directly rather than taken on the subagent's word. No comparison
+arm or figure in this paper rests on an unverified subagent report — every one was independently
+re-run or diffed before being cited. One exploratory attempt to use `graphify` (a codebase-to-knowledge-graph tool) for
 architecture navigation was made and is disclosed as attempted-but-not-relied-upon: it hit an
 internal safety guard partway through (refusing to overwrite a richer existing graph with a
 shallower re-extraction) and was abandoned in favor of direct source reading for the remainder of
@@ -2201,7 +2499,7 @@ Every empirical claim in this paper traces to real, named, reproducible data sou
 simulated or fabricated data presented as real. The boundary is kept explicit throughout this
 project's own code and documentation: synthetic data is generated ONLY inside `debug/_verify_*.py`
 files, exclusively to test a method against a KNOWN ground truth before it is trusted on real data
-(the verification discipline cited throughout this paper and `FINDINGS.md`) — synthetic results are
+(the verification discipline cited throughout this paper and `docs/FINDINGS.md`) — synthetic results are
 never themselves reported as findings. Real data sources, each already documented in detail in
 `CLAUDE.md`'s "Data Test Range & Reproducibility" section and `README.md`'s "Reproducibility"
 section (repeated here for this section's own completeness, not as a new claim): **yfinance**
@@ -2251,8 +2549,30 @@ the actual reasoning, not just the name:
   dimension choices and permutation-based significance testing to avoid
   finite-sample bias — flagged as needing care, not a quick add.
 
-Ross reviewed the remaining academic-lens backlog (2026-06-23) and
-approved most of it. Status, updated same day after building and
+**Newly noted (2026-07-13), not yet discussed in depth or scoped —
+recorded per this project's standing practice of capturing an idea before
+it's lost, distinct from the two candidates above which have already had
+that discussion:** analyst price-target convergence arbitrage — trading
+the gap between sell-side consensus price targets and current market
+price as a mean-reversion signal, on the thesis that a target price acts
+as a slow-moving anchor and large divergences tend to close. This has
+real prior literature to ground a design discussion in, not just
+intuition (Brav & Lehavy, 2003, "An Empirical Analysis of Analysts'
+Target Prices: Short-term Informativeness and Long-term Dynamics,"
+*Journal of Finance*; Da & Schaumburg, 2011, "Relative Valuation and
+Analyst Target Price Forecasts," on target-price-implied returns as a
+predictor) — bibliographic-level only, not yet independently verified by
+direct source lookup the way this paper's other citations are (§2's
+verification standard). Real implementation cost, flagged rather than
+glossed over: needs a paid or scraped consensus-target data source
+CAMARF does not currently have (a genuine data-acquisition gap, not a
+methodology question), and the mechanism is a different asset-pricing
+claim than cross-sectional cointegration — worth its own design
+discussion on whether/how it fits this project's existing architecture
+before any build begins.
+
+The remaining academic-lens backlog was reviewed (2026-06-23) and
+most of it approved. Status, updated same day after building and
 running four of them for real:
 
 - **Idea #2 (graph clustering) — built, real comparison run.** Louvain
@@ -2297,7 +2617,7 @@ running four of them for real:
   **Policy: `permutation_robust` flag on PairResult; flagged pairs remain
   in confirmed set as a comparison arm until backtest.py quantifies
   real-world impact — consistent with coint_frac_override precedent.
-  Discussed with Ross 2026-06-23, confirmed 2026-06-27.**
+  Discussed 2026-06-23, confirmed 2026-06-27.**
 - **Idea #11 (MIDAS) — math verified, evaluation correctly deferred.**
   Beta-polynomial lag weighting confirmed correct via synthetic checks
   and demonstrated on real SPY/VOO 1h data. Evaluating whether it
@@ -2449,7 +2769,7 @@ running four of them for real:
     the surrounding infrastructure exists.
 - **Reinforcement learning as a 4th model class** (idea #10) — approved
   in principle but explicitly gated on a dedicated discussion before any
-  code, per both the original backlog flag and Ross's own confirmation.
+  code, per both the original backlog flag and its own subsequent confirmation.
   Not scheduled yet.
 - **Deep Learning Statistical Arbitrage** (idea #1, Guijarro-Ordoñez/
   Pelger/Zanotti) — citation only, no build; positions this paper's

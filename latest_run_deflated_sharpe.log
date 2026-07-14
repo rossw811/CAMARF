@@ -1,10 +1,10 @@
-00:41:49 INFO  === deflated_sharpe.py: Deflated Sharpe Ratio (Bailey & Lopez de Prado 2014) ===
-00:41:49 INFO  Backfilled 0 historical trial(s) from output/backtest/portfolio_*.parquet not already in trial_registry.json
-00:41:49 INFO  N trials = 49, Var[Sharpe across trials] = 0.000759 (per-period/daily units, converted from annualized sharpe_portfolio via /sqrt(252))
-00:41:49 INFO  Holdout exposure: 29 trial(s) evaluated against the OOS holdout window across 14 distinct labels (layer1_holdout, layer1_holdout_ez15, layer1_holdout_hrp, layer1_holdout_hubw, layer1_holdout_neghedge)...
-00:41:49 WARNING  Holdout window has been examined 29 times — high Garden-of-Forking-Paths risk (Gelman & Loken 2013). The DSR above already corrects for 'best Sharpe among N variants,' but repeated looks at the SAME holdout data across sessions is a related, not-fully-overlapping risk: consider a fresh, never-examined holdout slice before treating any single variant's OOS number as final.
-00:41:49 INFO    [layer1] in-sample baseline: per-period SR_hat=0.6166 (T=441, skew=0.916, kurt=12.069) -> DSR = 1.0000 (z=9.53, P(true Sharpe > 0), corrected for 49 trials)
-00:41:49 INFO    [layer1_holdout] out-of-sample holdout baseline: per-period SR_hat=0.5420 (T=91, skew=-0.834, kurt=14.594) -> DSR = 0.9982 (z=2.91, P(true Sharpe > 0), corrected for 49 trials)
-00:41:49 INFO  Saved => C:\Users\RossW\Projects\CAMARF\output\stats\deflated_sharpe.json
-00:41:49 INFO  ============================================================
-00:41:49 INFO  deflated_sharpe.py complete (0.0 min)
+05:31:21 INFO  === deflated_sharpe.py: Deflated Sharpe Ratio (Bailey & Lopez de Prado 2014) ===
+05:31:21 INFO  Backfilled 1 historical trial(s) from output/backtest/portfolio_*.parquet not already in trial_registry.json
+05:31:21 INFO  N trials = 52, Var[Sharpe across trials] = 0.000765 (per-period/daily units, converted from annualized sharpe_portfolio via /sqrt(252))
+05:31:21 INFO  Holdout exposure: 29 trial(s) evaluated against the OOS holdout window across 14 distinct labels (layer1_holdout, layer1_holdout_ez15, layer1_holdout_hrp, layer1_holdout_hubw, layer1_holdout_neghedge)...
+05:31:21 WARNING  Holdout window has been examined 29 times — high Garden-of-Forking-Paths risk (Gelman & Loken 2013). The DSR above already corrects for 'best Sharpe among N variants,' but repeated looks at the SAME holdout data across sessions is a related, not-fully-overlapping risk: consider a fresh, never-examined holdout slice before treating any single variant's OOS number as final.
+05:31:21 INFO    [layer1] in-sample baseline: per-period SR_hat=0.6166 (T=441, skew=0.916, kurt=12.069) -> DSR = 1.0000 (z=9.52, P(true Sharpe > 0), corrected for 52 trials)
+05:31:21 INFO    [layer1_holdout] out-of-sample holdout baseline: per-period SR_hat=0.5420 (T=91, skew=-0.834, kurt=14.594) -> DSR = 0.9981 (z=2.90, P(true Sharpe > 0), corrected for 52 trials)
+05:31:21 INFO  Saved => C:\Users\RossW\Projects\CAMARF\output\stats\deflated_sharpe.json
+05:31:21 INFO  ============================================================
+05:31:21 INFO  deflated_sharpe.py complete (0.0 min)

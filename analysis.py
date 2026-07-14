@@ -5259,6 +5259,7 @@ class AnalysisPipeline:
         calibration: Dict[str, Any],
         per_bar_by_pair: Optional[Dict[Tuple[str, str], Dict[str, Any]]] = None,
         funnel: Optional["FilterFunnel"] = None,
+        manifest_path_override: Optional[str] = None,
     ) -> List[PairResult]:
         """
         Save all dataclass results to Parquet/JSON in output/results/{tf_label}/.
@@ -5275,6 +5276,17 @@ class AnalysisPipeline:
         printed as confirmed anyway. Confirmed via the real 07:51 run: log said
         34 total pairs, only 16 were ever actually persisted (matches ml.py's
         own independent "16 confirmed pairs with persisted spread series").
+
+        manifest_path_override (added 2026-07-13, BUG-D63): if given, this
+        exact path is written/read instead of the real production
+        confirmed_pairs_manifest.json. Every other call site omits this
+        (defaults to None) and is completely unaffected. Exists so
+        debug/_verify_*.py scripts exercising this function can point at a
+        throwaway test-fixture path instead of the real production manifest
+        — the real root-cause fix for BUG-D63's recurrence (the manifest path
+        previously had no override at all, which is exactly why the earlier
+        per-script backup/restore convention didn't generalize to a second
+        script touching this same function).
         """
         out_dir = _output_dir(tf_label)
 
@@ -5388,7 +5400,7 @@ class AnalysisPipeline:
         # that are no longer actually confirmed. A symbol whose tfs list
         # becomes empty after this TF's update is dropped from the manifest
         # entirely — it isn't confirmed on ANY timeframe anymore.
-        _manifest_path = os.path.join(
+        _manifest_path = manifest_path_override or os.path.join(
             os.path.dirname(out_dir), "confirmed_pairs_manifest.json"
         )
         try:

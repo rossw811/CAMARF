@@ -149,9 +149,21 @@ class UniverseConfig:
     # SP500_TICKERS populated at runtime
 
     # Crypto assets (IBKR supported)
-    CRYPTO: List[str] = ["BTC", "ETH", "LTC", "BCH", "XRP"]
+    # Expanded 2026-07-13 (Session 28 continuation) — original 5 were the
+    # only IBKR-supported crypto at the time this list was created; the
+    # +10 below are yfinance-fetchable (SYM-USD, see data.py) top-market-cap
+    # names beyond BTC/ETH by the same liquidity-tier logic already used for
+    # MIN_BARS_REQUIRED. Not IBKR-verified — these are yfinance-primary,
+    # supplemental-IBKR-if-ever-needed like everything else in data.py.
+    CRYPTO: List[str] = [
+        "BTC", "ETH", "LTC", "BCH", "XRP",
+        "SOL", "ADA", "DOGE", "DOT", "AVAX",
+        "LINK", "ATOM", "UNI", "XLM", "TRX",
+    ]
 
     # Forex pairs (IBKR format: base.quote)
+    # Expanded 2026-07-13 — broader G10/EM crosses beyond the original 10
+    # majors, same base.quote convention.
     FOREX: List[str] = [
         "EUR.USD",
         "GBP.USD",
@@ -163,9 +175,26 @@ class UniverseConfig:
         "EUR.GBP",
         "EUR.JPY",
         "GBP.JPY",
+        "USD.MXN",
+        "USD.ZAR",
+        "USD.SEK",
+        "USD.NOK",
+        "EUR.CHF",
+        "GBP.CHF",
+        "AUD.JPY",
+        "EUR.AUD",
+        "USD.CNH",
+        "USD.SGD",
     ]
 
     # Commodity futures (continuous contracts)
+    # Expanded 2026-07-13 — broader energy/metals/softs coverage beyond the
+    # original 8. Same "SYM=F" yfinance continuous-contract convention
+    # (data.py) as GC/SI/CL/etc. above; continuous-contract roll-convention
+    # data quality is a known, general uncertainty for ALL entries in this
+    # list (not specific to the new ones) — flagged here rather than assumed
+    # clean, consistent with this project's rule 7 (report known uncertainty,
+    # don't silently assume data quality).
     COMMODITIES: List[str] = [
         "GC",  # Gold
         "SI",  # Silver
@@ -175,9 +204,21 @@ class UniverseConfig:
         "ZW",  # Wheat
         "ZS",  # Soybeans
         "HG",  # Copper
+        "PL",  # Platinum
+        "PA",  # Palladium
+        "BZ",  # Brent Crude
+        "HO",  # Heating Oil
+        "RB",  # RBOB Gasoline
+        "KC",  # Coffee
+        "CT",  # Cotton
+        "SB",  # Sugar
+        "CC",  # Cocoa
+        "LE",  # Live Cattle
     ]
 
     # Equity index futures (continuous)
+    # Expanded 2026-07-13 — ZF/ZT round out the Treasury curve (ZN/ZB were
+    # already present); DX added for a broad-dollar cross-asset angle.
     FUTURES: List[str] = [
         "ES",  # S&P 500
         "NQ",  # Nasdaq 100
@@ -185,7 +226,16 @@ class UniverseConfig:
         "YM",  # Dow Jones
         "ZN",  # 10-Year T-Note
         "ZB",  # 30-Year T-Bond
-        # GC and CL excluded here — already in COMMODITIES list
+        "ZF",  # 5-Year T-Note
+        "ZT",  # 2-Year T-Note
+        "DX",  # US Dollar Index
+        # GC and CL excluded here — already in COMMODITIES list.
+        # VIX futures (VX) deliberately excluded — continuous-contract VX=F
+        # data quality on yfinance is uncertain (contango-heavy roll series);
+        # use the ^VIX index directly (add via a dedicated INDICES-style
+        # entry point, not this futures list) if volatility exposure is
+        # wanted, matching the existing ETF-proxy-over-uncertain-future
+        # pattern already used for GLD/SLV/USO below.
     ]
 
     # ETFs: included as individual assets for cross-instrument cointegration.
@@ -214,6 +264,16 @@ class UniverseConfig:
         "FXI",   # iShares China Large-Cap ETF (HK/China session)
         "EFA",   # iShares MSCI EAFE ETF (broad international)
         "EEM",   # iShares MSCI Emerging Markets ETF
+        # Bond ETFs — added 2026-07-13, same "liquid ETF proxy" convention
+        # as GLD/SLV/USO above (there GC/SI/CL futures already exist in
+        # COMMODITIES; here ZN/ZB/ZF/ZT futures already exist in FUTURES —
+        # these ETFs are the cross-instrument-cointegration counterpart).
+        "TLT",   # iShares 20+ Year Treasury Bond ETF (proxy for ZB)
+        "IEF",   # iShares 7-10 Year Treasury Bond ETF (proxy for ZN)
+        "SHY",   # iShares 1-3 Year Treasury Bond ETF (proxy for ZT)
+        "AGG",   # iShares Core U.S. Aggregate Bond ETF
+        "LQD",   # iShares iBoxx Investment Grade Corporate Bond ETF
+        "HYG",   # iShares iBoxx High Yield Corporate Bond ETF
     ]
 
     # -----------------------------------------------------------------------
@@ -247,6 +307,25 @@ class UniverseConfig:
         "RR.L",     # Rolls-Royce
         "BA.L",     # BAE Systems
         "STAN.L",   # Standard Chartered
+        # Deepened 2026-07-13 — next tier of FTSE 100 constituents by ADV,
+        # same exchange-aware handling (BUG-D57) already proven end-to-end
+        # for this suffix; no new exchange added, per Ross's direction to
+        # deepen existing coverage rather than add new international markets.
+        "III.L",    # 3i Group
+        "IMB.L",    # Imperial Brands
+        "ITRK.L",   # Intertek Group
+        "LSEG.L",   # London Stock Exchange Group
+        "MNG.L",    # M&G plc
+        "NXT.L",    # Next plc
+        "PSON.L",   # Pearson
+        "RKT.L",    # Reckitt Benckiser
+        "SGE.L",    # Sage Group
+        "SBRY.L",   # J Sainsbury
+        "SMDS.L",   # DS Smith
+        "SSE.L",    # SSE plc
+        "TSCO.L",   # Tesco
+        "UU.L",     # United Utilities
+        "WTB.L",    # Whitbread
     ]
 
     # Nikkei 225 — top constituents. Many have US ADRs for cross-listed pairs.
@@ -266,6 +345,23 @@ class UniverseConfig:
         "6954.T",   # Fanuc
         "2802.T",   # Ajinomoto
         "4519.T",   # Chugai Pharmaceutical
+        # Deepened 2026-07-13 — next tier of Nikkei 225 constituents by ADV,
+        # same .T handling already proven end-to-end (BUG-D57).
+        "8801.T",   # Mitsubishi Estate
+        "9433.T",   # KDDI
+        "6501.T",   # Hitachi
+        "6503.T",   # Mitsubishi Electric
+        "6752.T",   # Panasonic Holdings
+        "6098.T",   # Recruit Holdings
+        "4568.T",   # Daiichi Sankyo
+        "4502.T",   # Takeda Pharmaceutical
+        "8316.T",   # Sumitomo Mitsui Financial Group
+        "8411.T",   # Mizuho Financial Group
+        "9022.T",   # Central Japan Railway
+        "9020.T",   # East Japan Railway
+        "4901.T",   # Fujifilm Holdings
+        "6273.T",   # SMC Corporation
+        "7011.T",   # Mitsubishi Heavy Industries
     ]
 
     # Hang Seng — top constituents by market cap.
@@ -280,6 +376,22 @@ class UniverseConfig:
         "0388.HK",  # Hong Kong Exchanges and Clearing
         "0883.HK",  # CNOOC
         "1109.HK",  # China Resources Land
+        # Deepened 2026-07-13 — next tier of Hang Seng constituents by ADV,
+        # same .HK handling already proven end-to-end (BUG-D57).
+        "0016.HK",  # Sun Hung Kai Properties
+        "0027.HK",  # Galaxy Entertainment
+        "0175.HK",  # Geely Automobile
+        "0288.HK",  # WH Group
+        "0386.HK",  # Sinopec
+        "0669.HK",  # Techtronic Industries
+        "0688.HK",  # China Overseas Land & Investment
+        "0762.HK",  # China Unicom
+        "0857.HK",  # PetroChina
+        "0868.HK",  # Xinyi Glass
+        "1113.HK",  # CK Asset Holdings
+        "1211.HK",  # BYD Company
+        "1928.HK",  # Sands China
+        "2688.HK",  # ENN Energy Holdings
     ]
 
     # US-listed ADRs corresponding to international stocks above.

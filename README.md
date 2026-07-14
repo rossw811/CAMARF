@@ -16,9 +16,13 @@ rates using multiclass ML — and, more specifically, whether the standard way t
 field screens for that structure (a single full-sample cointegration test) is itself
 well-calibrated across time horizons.
 
-The universe spans ~1,609 assets (S&P Composite 1500 + international equities/ADRs/FX
-spots) across 13 timeframes, from 1-minute to 6-month bars. This project serves as a
-primary portfolio piece for quantitative finance program applications.
+The universe is configured for ~1,691 assets (S&P Composite 1500 + international
+equities/ADRs/FX spots + an expanded cross-asset set — bonds, additional crypto/
+commodities/forex, deepened international coverage) across 13 timeframes, from 1-minute
+to 6-month bars. The last full pipeline run (and every confirmed pair/backtest result
+below) used the prior, smaller ~1,609-asset universe — the expansion has not yet been run
+through the full screening pipeline. This project serves as a primary portfolio piece for
+quantitative finance program applications.
 
 ---
 
@@ -28,16 +32,24 @@ The project's central, citable contribution is not the trading strategy itself b
 diagnosis of a failure mode in the standard cointegration-screening methodology every
 prior pairs-trading paper relies on:
 
-Full-sample Engle-Granger cointegration tests at long horizons (1D, 1M) reject
-candidate pairs at rates **orders of magnitude below** their expected false-positive
-rate under the null — not because no relationships exist, but because the test itself
-becomes too strict to be decision-relevant at that horizon. Concretely: this project's
-own original headline confirmed pairs, **NTRS/STT** and **SHW/UNP**, pass a full-sample
-Engle-Granger test with p < 0.005 while *failing* the identical test restricted to just
-the last five years. A full-sample screen over 40–60 years of history is effectively
-testing whether two price levels stayed cointegrated across decades of M&A, sector
-rotation, and business-model change — a bar a genuinely tradable relationship can fail
-today while still reading "confirmed."
+This project's own original headline confirmed pairs, **NTRS/STT** and **SHW/UNP**,
+pass a full-sample Engle-Granger test with p < 0.005 while *failing* the identical test
+restricted to just the last five years. A full-sample screen over 40–60 years of history
+is effectively testing whether two price levels stayed cointegrated across decades of
+M&A, sector rotation, and business-model change — a bar a genuinely tradable relationship
+can fail today while still reading "confirmed." A companion observation — that full-sample
+screens at long horizons (1D, 1M) reject candidate pairs at rates far below their expected
+false-positive rate under the null — was initially read as evidence the EG test itself is
+statistically over-conservative at those horizons. That reading was tested directly via a
+Monte Carlo calibration study (`research/eg_null_calibration_montecarlo.py`) and **refuted**:
+the empirical false-positive rate under a genuinely null, by-construction pairing is
+*elevated*, not suppressed (7.75%–12.75% vs. nominal 5%), and grows with horizon — ordinary
+spurious regression from shared market-wide drift, not test miscalibration. The full-sample
+screen's near-total rejection rate at long horizons reflects the test correctly guarding
+against exactly this risk. The durability-vs-currency conflation demonstrated by NTRS/STT
+and SHW/UNP is the real, load-bearing failure mode and needed no such correction — reported
+here alongside the refuted companion hypothesis rather than silently dropping it, per this
+project's standing verify-before-trusting discipline.
 
 `coint_fraction_rolling` — a scalable rolling-window stability diagnostic — and a
 secondary-evidence override (corroborating borderline cases against Zivot-Andrews and
@@ -67,21 +79,24 @@ rather than glossed over. This session found and fixed two real bugs affecting t
 pairs — DD/NOV/FHN were flagged as "delisted" based on being demoted out of the S&P 500 index at
 some point, not on actually ceasing to trade) and **BUG-D59** (the cointegration-vs-distance
 portfolio comparison below was an unweighted mean of noisy per-pair Sharpes, not a real pooled
-portfolio statistic). Full write-ups in `Development.md` and `BUG_LOG.md`.
+portfolio statistic). Full write-ups in `Development.md` and `docs/BUG_LOG.md`.
 
-- **Distance-method baseline comparison (Gatev, Goetzmann & Rouwenhorst 2006), BUG-D59 fix
-  applied:** cointegration-based selection's correctly-pooled portfolio Sharpe is **8.542** vs.
-  GGR's distance method at **7.865** on the same universe and window — a real but far more modest
-  ~0.7 Sharpe-point advantage. The previously-reported "11.741 vs. −0.208" comparison was a
-  measurement artifact (see `Development.md`, 2026-07-12) — the magnitude of this shift is still
-  being investigated, not yet fully explained.
+- **Distance-method baseline comparison (Gatev, Goetzmann & Rouwenhorst 2006), fully resolved
+  2026-07-13 (BUG-D61):** the comparison had been computing the two methods' trades over different
+  date windows, not the same one — closed by aligning both to the same holdout convention and
+  measuring the residual per-pair cutoff gap directly (max 5 days across all 24 @1h pairs, trivial).
+  Cointegration-based selection's pooled portfolio Sharpe is **8.542** (222 trades, the trustworthy
+  figure). The distance method's own result is reported by direction only, not as a specific Sharpe
+  — the corrected sample is thin (16 trades/7 distinct days) and most of those trades are forced
+  end-of-window exits rather than completed round trips. The direction (cointegration outperforming
+  distance) is supported; no specific distance-method Sharpe is cited as a finding.
 - **Statistical validation stack:** EG+KPSS+Phillips-Ouliaris confirmatory tiers (17
   gold / 8 silver of 25 testable pairs, unchanged by this session's fixes), EVT/GPD tail risk
   (17/26 pairs fat-tailed, up from 16/26 — several previously-truncated pairs now have real
   P&L-based tail estimates), DCC-GARCH concentration monitoring, portfolio-level permutation
-  tests (IS p=0.546, OOS p=0.559 — not significant at conventional levels; see PAPER.md §6.6)
-- **Deflated Sharpe Ratio** (correcting for 49 backtest variants tried, non-normal daily P&L,
-  small sample size): **IS z=9.53, OOS z=2.91** — strengthened, not weakened, by the BUG-D58 fix
+  tests (IS p=0.559, OOS p=0.546 — not significant at conventional levels; see PAPER.md §6.6)
+- **Deflated Sharpe Ratio** (correcting for 52 backtest variants tried, non-normal daily P&L,
+  small sample size): **IS z=9.52, OOS z=2.90** — strengthened, not weakened, by the BUG-D58 fix
   (more real trade data gives a cleaner signal). 29 evaluations have now examined the same OOS
   holdout window — reserving a genuinely fresh holdout slice is an agreed next step, not yet
   implemented (see `Development.md`'s Garden-of-Forking-Paths caveat).
@@ -91,6 +106,18 @@ portfolio statistic). Full write-ups in `Development.md` and `BUG_LOG.md`.
   truncation so is unaffected by BUG-D58, but hasn't been rechecked against this exact write-up),
   filter-ablation, Absorption Ratio, HRP comparison, square-root market impact. These all need a
   dedicated re-run pass before being restated as current.
+- **Capital-constrained backtesting (`--capital-sim`):** an earlier pass observed capital
+  constraints apparently RAISING risk-adjusted returns above the unconstrained headline —
+  root-caused (2026-07-13, BUG-D62) to a Sharpe-computation convention mismatch between two
+  internal tools, not a real effect. After the fix, capital-constrained performance sits at or
+  below the 5.8044 headline at every account-size tier; a small real residual (order-of-arrival
+  trade admission suppressing variance during correlated signal storms) survives but is not cited
+  as an independent finding. See `PAPER.md` §7.16.
+- **Fresh-holdout convention, universe expansion, and two new research diagnostics** (cross-session
+  lead-lag, rolling-cointegration window/threshold grid) — see `PAPER.md` §7.16 and
+  `Development.md` for details. Russell 2000/small-cap universe coverage remains unimplemented: a
+  public constituent-list source was sought (iShares CSV, Wikipedia) and neither worked — documented
+  in `Development.md` rather than forced through with a fragile scraper.
 
 Numbers update as the pipeline reruns; `PAPER.md` and `Development.md` are the sources
 of truth, not this file.
@@ -129,7 +156,7 @@ of truth, not this file.
 Run in this order (each stage writes its own `latest_run_*.log`):
 
 ```bash
-python data.py                    # yfinance fetch, ~1,609 assets × 13 TFs, ~30-40 min
+python data.py                    # yfinance fetch, ~1,691 configured assets × 13 TFs, ~30-40 min
 python data_ibkr.py                # manual, separate: 10Y deep history for confirmed pairs only
 python analysis.py                 # correlation, EG+BH-FDR, hedge ratio, OU spread,
                                     #   eigenportfolio, coint_fraction_rolling + override
@@ -156,8 +183,9 @@ All scripts run via the project's pinned conda environment (`trading`) — see
 This run's exact data footprint (see `CLAUDE.md`'s "Data Test Range & Reproducibility"
 section for the canonical, kept-current version of this table):
 
-- **Universe snapshot:** 1,608 candidate symbols (S&P Composite 1500 + international),
-  full pipeline run **2026-06-30**, `data.py` completed in 5.6 minutes
+- **Universe snapshot:** last full pipeline run used 1,608 candidate symbols (S&P Composite
+  1500 + international), completed **2026-06-30** in 5.6 minutes. `config.py` now specifies
+  ~1,691 assets as of 2026-07-13 (see "Current Results" above) — not yet exercised by a full run.
 - **Per-timeframe fetch windows (yfinance):** 1m/3m → 5 calendar days (3m derived by
   resampling 1m — Yahoo's 1m hard limit is 8 days), 2m → 55 days, 5m/15m/30m → 60 days,
   1h/4h → 730 days (4h derived by resampling 1h with session-aligned bins), 1D/1M → full
@@ -212,12 +240,28 @@ to the exact script/flags that generated it.
   measure, reusing the eigenportfolio/PCA machinery already built for pair confirmation
 - `trial_registry.py` — shared append-only trial log `deflated_sharpe.py` reads from;
   every `backtest.py` run records its own Sharpe here automatically
+- `cvar.py` — historical CVaR/Expected Shortfall on portfolio-level daily P&L
+- `pit_wfa.py` — point-in-time, portfolio-wide walk-forward analysis
+- `portfolio_sim.py` — capital-constrained, mark-to-market portfolio replay; wired into
+  `backtest.py` via the opt-in `--capital-sim` flag
+- `fresh_holdout_compare.py` — compares candidate mechanisms for a genuinely fresh,
+  never-re-examined holdout slice (time-based, pair-based, and combined)
+- `survivorship.py` — S&P 500 historical constituent-change scraper
+- `gics.py` — GICS sector tag builder
+- `earnings.py` — earnings-date fetch/cache for `backtest.py --storm-earnings-blackout`
+- `options.py` — options-overlay comparison arm (not part of the core production pipeline)
+- `run_storm_grid.py` — full 2⁴ factorial grid over the STORM variant flags
+- `run_verify_suite.py` — runs every `debug/_verify_*.py` synthetic test, one pass/fail summary
 
 **`research/`** — standalone diagnostic/comparison scripts, not part of the production
 pipeline; each tests exactly one claim with its own synthetic verification under `debug/`.
 Includes `filter_ablation.py` (counterfactual backtest of pairs each pipeline filter
-excludes, via `backtest.py --pairs-override`) and `era_decay_replication.py` (Do & Faff
-2010-style era-split replication on CAMARF's own confirmed pairs).
+excludes, via `backtest.py --pairs-override`), `era_decay_replication.py` (Do & Faff
+2010-style era-split replication on CAMARF's own confirmed pairs),
+`coint_frac_window_grid.py` (window-length and joint window/threshold grid search over the
+rolling-stability diagnostic, with an out-of-sample overfitting guard), and
+`cross_session_leadlag.py` (overnight-gap and cross-timezone lead-lag, distinct from the
+already-tested and rejected same-session case).
 
 **`debug/`** — ad-hoc scratch utilities plus `_verify_*.py` synthetic proofs cited
 throughout `Development.md`.
@@ -236,15 +280,16 @@ misleadingly-narrow picture — use this table to pick the right one first:
 |---|---|---|
 | **`README.md`** (this file) | A first-pass overview: what the project is, the headline finding, how to run the pipeline. Not the source of truth for exact current numbers — those drift between pipeline runs faster than this file gets touched. | Spot-checked each session, not rewritten each run |
 | **`CLAUDE.md`** | Fast orientation for picking the project back up: non-negotiable architecture rules, known-resolved issues (don't re-suggest these), working-style conventions, and a condensed "Current State" pointer to the latest full session in `Development.md`. The file every session should read FIRST. | Updated every session |
-| **`PAPER.md`** | The actual paper draft — the three headline pillars (Strictness Paradox, pair-selection lookahead, price-degeneracy), the full methodology, and a tight "Robustness and Comparison Arms" section (§7.15) that summarizes and points to `FINDINGS.md` for depth. Kept deliberately focused — not every verified finding this project has produced lives here, by design. | Updated when a finding is verified and belongs in the core narrative |
-| **`FINDINGS.md`** | Full-depth writeups of every OTHER verified, honest finding — comparison arms, robustness checks, negative results — that isn't load-bearing for `PAPER.md`'s central claims but is still real, checked work worth citing. Nothing here is hidden; it's organized by relevance to the thesis, not by confidence or quality. | Updated alongside `PAPER.md` §7.15 |
+| **`PAPER.md`** | The actual paper draft — the three headline pillars (Strictness Paradox, pair-selection lookahead, price-degeneracy), the full methodology, and a tight "Robustness and Comparison Arms" section (§7.15) that summarizes and points to `docs/FINDINGS.md` for depth. Kept deliberately focused — not every verified finding this project has produced lives here, by design. | Updated when a finding is verified and belongs in the core narrative |
+| **`docs/FINDINGS.md`** | Full-depth writeups of every OTHER verified, honest finding — comparison arms, robustness checks, negative results — that isn't load-bearing for `PAPER.md`'s central claims but is still real, checked work worth citing. Nothing here is hidden; it's organized by relevance to the thesis, not by confidence or quality. | Updated alongside `PAPER.md` §7.15 |
 | **`Development.md`** | The canonical, full project memory — every session's log, the complete `BUG-D` registry, design rationale, and the honest record of what was tried and reverted (not just what was kept). The place to look if you need to know *why* something is built the way it is, or whether an idea was already tried and abandoned. | Append-only, every session |
-| **`HANDOFF.md`** | A point-in-time directive written at the end of a specific session, addressed to whichever session picks the project up next — a punch list of what to verify, not a reference document. Expect it to describe a specific past moment, not the current state. | Written once per handoff, not maintained afterward |
+| **`docs/BUG_LOG.md`** | A one-line-per-entry index into `Development.md`'s full bug registry — find a specific `BUG-D`/`BUG-A` number's summary and exact line pointer without reading the full narrative. Pure index; every write-up still lives only in `Development.md`. | Updated alongside each new bug entry |
+| **`docs/HANDOFF.md`** | A point-in-time directive written at the end of a specific session, addressed to whichever session picks the project up next — a punch list of what to verify, not a reference document. Expect it to describe a specific past moment, not the current state. | Written once per handoff, not maintained afterward |
 | **`CONTRIBUTING.md`** | How to actually run, modify, and validate the codebase — environment setup, the pipeline command sequence, the "STORM variant" pattern for adding a new backtest comparison arm, where bias documentation and synthetic verification tests live. | Updated when the development workflow itself changes |
 
 If you're only reading one file to get oriented: `CLAUDE.md`. If you're trying to understand
 a specific number in `PAPER.md`: `reproduce.py --list` maps it to the script that generated
-it; if that number isn't in `PAPER.md` at all, check `FINDINGS.md` before assuming it doesn't
+it; if that number isn't in `PAPER.md` at all, check `docs/FINDINGS.md` before assuming it doesn't
 exist.
 
 ---

@@ -279,7 +279,7 @@ _step(
 # 8. STORM variants -------------------------------------------------------
 _step(
     name="backtest_storm_sedge",
-    section="§7.4 STORM — session-edge (+0.13 Sharpe, §7.4 key finding)",
+    section="§7.4 STORM — session-edge (−0.04 Sharpe on the current 26-pair set; no longer a consistent win)",
     cmd=[PYTHON, "backtest.py", "--holdout", "--storm-session-edge"],
     outputs=["output/backtest/summary_layer1_holdout_storm_sedge.parquet"],
 )
@@ -320,7 +320,7 @@ _step(
 # 10. Distance baseline ---------------------------------------------------
 _step(
     name="distance",
-    section="§7.7 Gatev GGR distance baseline (Sharpe −6.33 vs 11.09 CAMARF)",
+    section="§7.7 Gatev GGR distance baseline (cointegration 8.542 pooled Sharpe; distance direction-only, not a cited figure)",
     cmd=[PYTHON, "distance.py"],
     outputs=[
         "output/stats/distance_baseline.parquet",
