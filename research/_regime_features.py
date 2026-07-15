@@ -26,6 +26,18 @@ infrastructure well beyond a comparison-arm script's scope:
   - Level 3 (macro): thin wrapper around macro.py's own regime
     classification (yield curve, credit, VIX, recession) — reused
     directly, not reimplemented.
+
+CAUTION for whoever wires up the rest of this module (Phase 10 bias sweep,
+2026-07-14): only spread_velocity() is currently imported by a live caller
+(regime_conditional_entry_gate.py) — vol_percentile/bb_width/atr_percentile/
+leg_directional_regime are dead code today, confirmed via grep, and none of
+them account for gap-masked or ragged-calendar input the way this project's
+established convention requires (compact via .dropna() before .rolling(),
+reindex back afterward — see big_move_lead_lag.py/hub_leg_stop_conditioning.py
+/short_term_factor_alpha.py for the pattern). Add that handling BEFORE wiring
+any of these into a live caller, not after — the gap-aware-rolling bug class
+has recurred independently multiple times this session precisely because it
+was added after the fact.
 """
 import os
 import sys

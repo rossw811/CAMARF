@@ -2401,6 +2401,30 @@ class ConIdCache:
             cls._dirty = True
 
 
+def _parse_duration_days(duration: str) -> Optional[float]:
+    """Parses an IBKR-style durationStr ('21 D', '2 Y', '6 M') into an
+    approximate day count, for get_bars_paginated's target-accumulation
+    check. Returns None for an unparseable string (pagination then runs
+    until max_chunks or an empty chunk, never silently miscounting)."""
+    parts = duration.strip().split()
+    if len(parts) != 2:
+        return None
+    try:
+        n = float(parts[0])
+    except ValueError:
+        return None
+    unit = parts[1].upper()
+    if unit.startswith("D"):
+        return n
+    if unit.startswith("W"):
+        return n * 7
+    if unit.startswith("M"):
+        return n * 30
+    if unit.startswith("Y"):
+        return n * 365
+    return None
+
+
 class IBKRFeed:
     """
     Pulls historical OHLCV bars from IBKR Gateway.
@@ -2802,12 +2826,22 @@ class IBKRFeed:
         tf_ibkr: str,
         tf_label: str,
         duration: str,
+        bypass_cache: bool = False,
     ) -> Optional[pd.DataFrame]:
         """
         Fetch historical bars for one symbol + timeframe from IBKR.
         Cache-first, rate-limited, with reconnect on disconnection.
+
+        bypass_cache: skips the cache-first shortcut below and always issues
+        a real reqHistoricalData call. Required by data_ibkr.py (BUG-D70,
+        2026-07-14) — its whole purpose is fetching genuinely independent
+        IBKR history, but the shortcut was silently returning the main
+        yfinance cache instead whenever it was fresh (effectively always,
+        since data.py runs ~daily), meaning data_ibkr.py never actually
+        queried IBKR. data.py's own normal pipeline callers leave this False
+        (unchanged behavior — don't hit IBKR if yfinance already succeeded).
         """
-        if DataStore.is_fresh(
+        if not bypass_cache and DataStore.is_fresh(
             symbol, tf_label, max_age_hours=DataStore.intraday_max_age_hours(tf_label)
         ):
             cached = DataStore.load(symbol, tf_label)
@@ -3044,6 +3078,119 @@ class IBKRFeed:
             log.warning(f"Dropped  {symbol} {tf_label}  →  {report.fail_reason}")
 
         return cleaned
+
+    def get_bars_paginated(
+        self,
+        symbol: str,
+        asset_class: str,
+        tf_ibkr: str,
+        target_duration: str = "2 Y",
+        chunk_duration: str = "2 Y",
+        max_chunks: int = 10,
+        request_timeout: int = 60,
+    ) -> Optional[pd.DataFrame]:
+        """
+        Chains multiple reqHistoricalData calls to accumulate more history
+        than a single request allows.
+
+        CORRECTED 2026-07-14 (task #71 re-investigation, isolated re-test):
+        the original "~21-30 day ceiling for 1h equity bars" finding (BUG-D70)
+        was itself an artifact of this function's own hardcoded
+        RequestTimeout=20 — every duration-sweep script this session that
+        found that ceiling (debug/_ibkr_depth_sweep.py, _check_ibkr_raw_depth.py,
+        _ibkr_depth_symbol_compare.py) also hardcoded RequestTimeout=20.
+        Direct isolated re-test for LNT/1h: the SAME "1 Y" request that timed
+        out at RequestTimeout=20 took 28.8s and succeeded cleanly at
+        RequestTimeout=25+. Pushed further with a 90-120s budget: 2 Y (8.9s),
+        3 Y (39.3s, back to 2023-07-17 — genuinely EARLIER than yfinance's own
+        2023-07-24 cache start) all succeed; 4 Y and 5 Y both fail at exactly
+        60.0s with a REAL IBKR-side error (code 162, "Historical Market Data
+        Service... query cancelled") — a genuine server-side data-volume
+        limit, not a client-side timeout artifact this time. Real ceiling for
+        LNT/1h: between 3 Y (works) and 4 Y (fails), not 21-30 days.
+        request_timeout defaults to 60s (was hardcoded 20) — matches the
+        real observed latency for large-but-valid requests with margin;
+        chunk_duration/target_duration default to "2 Y" (was "21 D"/"2 Y")
+        to actually exploit the real ceiling instead of the old artificial
+        one, needing far fewer round trips per symbol.
+
+        Deliberately does NOT reuse get_bars() — that function's cache-
+        first shortcut and 3-strikes/circuit-breaker logic are designed
+        for data.py's normal single-request pipeline, not a multi-request
+        pagination loop where an early empty chunk is the SUCCESS signal
+        (real historical boundary reached), not a failure to escalate.
+
+        Walks endDateTime backward in chunk_duration steps, concatenating
+        results, until: target_duration of history is accumulated, a
+        chunk returns empty/None (the real boundary — IBKR's own data
+        entitlement, not the per-request duration cap, has been hit; this
+        is informative, not an error), or max_chunks is reached (safety
+        backstop against a runaway loop on a symbol with a permissions
+        issue). Dedups on exact timestamp (keep last), same pattern as
+        DataStore.append()/merge_with_yfinance().
+        """
+        if not self.ensure_connected():
+            return None
+        contract = self._build_contract(symbol, asset_class)
+        if contract is None:
+            return None
+
+        target_days = _parse_duration_days(target_duration)
+        chunks: List[pd.DataFrame] = []
+        total_days = 0
+        end_dt = ""  # "" = now, for the first chunk
+        n_chunks_fetched = 0
+
+        for chunk_idx in range(max_chunks):
+            self._wait_rate_limit(tf_ibkr)
+            self._ib.RequestTimeout = request_timeout
+            try:
+                bars = self._ib.reqHistoricalData(
+                    contract,
+                    endDateTime=end_dt,
+                    durationStr=chunk_duration,
+                    barSizeSetting=tf_ibkr,
+                    whatToShow=IBKRFeed._what_to_show(asset_class, tf_ibkr),
+                    useRTH=False,
+                    formatDate=1,
+                    keepUpToDate=False,
+                )
+            except Exception as e:
+                log.debug(f"  get_bars_paginated {symbol} {tf_ibkr} chunk {chunk_idx}: {e}")
+                break
+
+            if not bars:
+                log.info(
+                    f"  {symbol} {tf_ibkr}: pagination stopped at chunk {chunk_idx} "
+                    f"(empty response — real historical boundary, not an error)"
+                )
+                break
+
+            df = ibi.util.df(bars)
+            chunks.append(df)
+            n_chunks_fetched += 1
+            total_days += _parse_duration_days(chunk_duration)
+
+            oldest_ts = df["date"].min()
+            end_dt = pd.Timestamp(oldest_ts).strftime("%Y%m%d %H:%M:%S")
+
+            if target_days is not None and total_days >= target_days:
+                log.info(
+                    f"  {symbol} {tf_ibkr}: pagination reached target ({total_days}+ days "
+                    f"across {n_chunks_fetched} chunks)"
+                )
+                break
+
+        if not chunks:
+            return None
+
+        combined = pd.concat(chunks).set_index("date")
+        combined = combined[~combined.index.duplicated(keep="last")].sort_index()
+        log.info(
+            f"  {symbol} {tf_ibkr}: paginated fetch complete — {len(combined)} bars from "
+            f"{n_chunks_fetched} chunks, {combined.index.min()} to {combined.index.max()}"
+        )
+        return combined
 
     # Intraday timeframes fetched from IBKR for all asset classes
     # Fetched natively from IBKR — each has unique depth that cannot be
@@ -3380,6 +3527,19 @@ class UniverseBuilder:
         "cache",
         "excluded_assets.json",
     )
+    # Minimum daily bars a now-failing symbol must already have cached to be
+    # classified as "likely delisted" rather than a generic persistent-fetch
+    # failure — distinguishes a genuinely-tracked asset that stopped updating
+    # (survivorship-relevant) from a symbol that never had real history to
+    # begin with (a format/config/ticker issue, not survivorship). 60 bars
+    # (~3 trading months) is enough to rule out "never really got going."
+    _DELISTING_MIN_PRIOR_BARS: int = 60
+    _DELISTED_REGISTRY: str = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)),
+        "output",
+        "cache",
+        "delisted_symbols.json",
+    )
 
     @staticmethod
     def _run_cache_migration() -> None:
@@ -3526,6 +3686,83 @@ class UniverseBuilder:
             log.info(f"Exclusion list: added {symbol} ({reason})")
         except Exception as e:
             log.debug(f"Exclusion persist failed for {symbol}: {e}")
+
+    @staticmethod
+    def flag_or_exclude(symbol: str, reason: str, run_failures: int = 0) -> bool:
+        """
+        Auto-exclusion entry point for symbols that fail to fetch, replacing
+        direct add_exclusion() calls for persistent-failure cases (task #68,
+        2026-07-14 — survivorship bias fix).
+
+        Distinguishes two cases the generic exclusion list previously
+        conflated: a symbol that already has substantial cached daily history
+        (was genuinely tracked, then stopped updating — most likely a real
+        delisting, corporate action, or exchange move) vs. a symbol with
+        little/no prior history (a format/config/ticker issue, never really
+        part of the universe). Only the former is survivorship-relevant.
+
+        Genuinely-tracked symbols get classified as "likely_delisted" in the
+        exclusion list AND recorded in a dedicated delisted_symbols.json
+        registry with their last-known-good date and bar count, so a
+        point-in-time/episodic backtest can explicitly find and use their
+        pre-delisting history rather than it silently aging out with no
+        record it ever existed. Cached parquet files are never touched by
+        exclusion (add_exclusion only ever writes to excluded_assets.json) —
+        this function only changes classification and adds discoverability.
+
+        Returns True if classified as likely_delisted, False if a plain
+        exclusion (unchanged prior behavior).
+        """
+        cached = DataStore.load(symbol, "1D")
+        n_bars = len(cached) if cached is not None else 0
+        if n_bars < UniverseBuilder._DELISTING_MIN_PRIOR_BARS:
+            UniverseBuilder.add_exclusion(symbol, reason)
+            return False
+
+        last_good_date = str(cached.index.max().date())
+        UniverseBuilder.add_exclusion(
+            symbol, f"likely_delisted (last data {last_good_date}, {n_bars} daily bars)"
+        )
+        try:
+            Config.ensure_dirs()
+            registry: Dict[str, Any] = {}
+            if os.path.exists(UniverseBuilder._DELISTED_REGISTRY):
+                with open(UniverseBuilder._DELISTED_REGISTRY) as f:
+                    registry = json.load(f)
+            registry[symbol] = {
+                "last_good_date": last_good_date,
+                "n_bars_1D": n_bars,
+                "run_failures_at_flag": run_failures,
+                "flagged_at": datetime.now().isoformat(timespec="seconds"),
+                "flag_reason": reason,
+            }
+            with open(UniverseBuilder._DELISTED_REGISTRY, "w") as f:
+                json.dump(registry, f, indent=2)
+            log.warning(
+                f"  {symbol}: flagged likely_delisted (last data {last_good_date}, "
+                f"{n_bars} daily bars retained) — see delisted_symbols.json"
+            )
+        except Exception as e:
+            log.debug(f"Delisted-registry persist failed for {symbol}: {e}")
+        return True
+
+    @staticmethod
+    def load_delisted_registry() -> Dict[str, Any]:
+        """
+        Read delisted_symbols.json — symbols flagged likely_delisted with
+        their last-known-good date and retained bar count, for downstream
+        point-in-time/episodic testing that wants to deliberately include
+        pre-delisting history (survivorship bias mitigation). Cached parquet
+        files for these symbols are untouched and loadable via DataStore.load()
+        exactly as before flagging.
+        """
+        if not os.path.exists(UniverseBuilder._DELISTED_REGISTRY):
+            return {}
+        try:
+            with open(UniverseBuilder._DELISTED_REGISTRY) as f:
+                return json.load(f)
+        except Exception:
+            return {}
 
     def build(
         self,
@@ -4436,14 +4673,16 @@ class UniverseBuilder:
                                     _sym_total
                                     >= UniverseBuilder._PERSISTENT_FAIL_THRESHOLD
                                 ):
-                                    UniverseBuilder.add_exclusion(
+                                    _was_delisted = UniverseBuilder.flag_or_exclude(
                                         sym_f,
                                         f"Auto-excluded: {_sym_total} run failures",
+                                        run_failures=_sym_total,
                                     )
-                                    log.warning(
-                                        f"  Auto-excluded {sym_f} after "
-                                        f"{_sym_total} persistent failures"
-                                    )
+                                    if not _was_delisted:
+                                        log.warning(
+                                            f"  Auto-excluded {sym_f} after "
+                                            f"{_sym_total} persistent failures"
+                                        )
                         try:
                             with open(_fail_path, "w") as _f:
                                 json.dump(_pfails, _f, indent=2)

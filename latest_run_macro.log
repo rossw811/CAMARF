@@ -1,22 +1,22 @@
 === CAMARF macro.py ===
-date:        2026-07-13 12:35
+date:        2026-07-14 21:28
 runtime_min: 0.0
 
 === series ===
   (none)
 
 === regime_distributions ===
-yield_curve: {'normal': 5950, 'steep': 2949, 'flat_inverted': 1224, nan: 86}
-credit: {nan: 9455, 'normal': 442, 'tight': 312}
-credit_proxy: {'normal': 4603, 'tight': 4241, 'wide': 1276, nan: 89}
-vix: {'normal': 4647, 'calm': 2948, 'elevated': 1247, nan: 1014, 'crisis': 353}
-vix_term_structure: {nan: 5530, 'deep_contango': 2749, 'contango': 1453, 'flat': 296, 'backwardation': 181}
-dollar: {nan: 5361, 'strong': 1906, 'neutral': 1760, 'weak': 1182}
-real_rate: {nan: 4585, 'low': 2029, 'normal': 1811, 'high': 1784}
-inflation_expectation: {nan: 4585, 'normal': 2280, 'high': 1746, 'low': 1598}
-recession: {'expansion': 9456, 'contraction': 753}
-recession_realtime: {'expansion': 8273, 'contraction_risk': 1741, nan: 195}
-cot_es: {'neutral': 5916, nan: 2960, 'crowded_short': 926, 'crowded_long': 407}
-cot_nq: {nan: 9100, 'neutral': 1065, 'crowded_long': 44}
+yield_curve: {'normal': 5951, 'steep': 2949, 'flat_inverted': 1224, nan: 86}
+credit: {nan: 9459, 'normal': 438, 'tight': 313}
+credit_proxy: {'normal': 4603, 'tight': 4242, 'wide': 1276, nan: 89}
+vix: {'normal': 4648, 'calm': 2948, 'elevated': 1247, nan: 1014, 'crisis': 353}
+vix_term_structure: {nan: 5530, 'deep_contango': 2750, 'contango': 1453, 'flat': 296, 'backwardation': 181}
+dollar: {nan: 5361, 'strong': 1906, 'neutral': 1761, 'weak': 1182}
+real_rate: {nan: 4585, 'low': 2029, 'normal': 1811, 'high': 1785}
+inflation_expectation: {nan: 4585, 'normal': 2280, 'high': 1746, 'low': 1599}
+recession: {'expansion': 9457, 'contraction': 753}
+recession_realtime: {'expansion': 8273, 'contraction_risk': 1741, nan: 196}
+cot_es: {'neutral': 5917, nan: 2960, 'crowded_short': 926, 'crowded_long': 407}
+cot_nq: {nan: 9100, 'neutral': 1066, 'crowded_long': 44}
 
 === end ===

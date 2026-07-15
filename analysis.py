@@ -5218,6 +5218,19 @@ class AnalysisPipeline:
                     f"coint_fraction_rolling_deep={p.coint_fraction_rolling_deep:.3f}"
                 )
 
+    # Minimum bar count before the secondary-evidence override is even
+    # ELIGIBLE to apply (BUG-D68, 2026-07-14 — see Development.md for the
+    # full root-cause chain). 3x the 252-bar rolling coint_fraction window:
+    # enough for coint_fraction_rolling itself to have produced several
+    # independent window snapshots (not just 1-2), and enough absolute
+    # sample size for Zivot-Andrews/CUSUM to have real power to detect a
+    # structural break if one exists. Below this, "no break detected" means
+    # "not enough data to detect one," not "genuinely stable" — a real,
+    # quantified failure mode (95.6% of pit_wfa.py's point-in-time confirmed
+    # pairs relied on this override with a median coint_fraction_rolling of
+    # only 0.129, far below the 0.40 primary threshold).
+    _MIN_BARS_FOR_SECONDARY_EVIDENCE = 3 * 252
+
     @staticmethod
     def passes_coint_frac_secondary_evidence(p: PairResult) -> bool:
         """
@@ -5240,7 +5253,21 @@ class AnalysisPipeline:
         parquet round-trip turns that None into float NaN — caught by
         debug/_verify_coint_frac_override.py running this same function
         against persisted data, not just live objects.
+
+        BUG-D68 fix (2026-07-14): the override is only ELIGIBLE with at
+        least _MIN_BARS_FOR_SECONDARY_EVIDENCE bars of history. With a short
+        window (e.g. an early point-in-time re-screen checkpoint), the
+        structural-break tests this override relies on have too little data
+        to have real power — "no break detected" then means "couldn't have
+        detected one," not "genuinely stable," and the override silently
+        rescues pairs that would fail the primary 0.40 threshold for a real
+        reason. Root-caused directly: pit_wfa.py's point-in-time confirmed
+        set was 95.6% (43/45) override-rescued at a median
+        coint_fraction_rolling of 0.129, far below 0.40.
         """
+        n_bars = getattr(p, "n_bars", 0)
+        if not np.isfinite(n_bars) or n_bars < AnalysisPipeline._MIN_BARS_FOR_SECONDARY_EVIDENCE:
+            return False  # not enough data for the break tests to have real power
         slope = getattr(p, "half_life_trend_slope", np.nan)
         if not np.isfinite(slope) or slope > 0:
             return False  # decaying or unknown — can't vouch for it

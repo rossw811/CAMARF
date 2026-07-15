@@ -51,7 +51,7 @@ def _real_manifest_snapshot():
     return True, os.path.getmtime(_REAL_MANIFEST_PATH), content
 
 
-def _make_pair(symbol_a, symbol_b, coint_frac, slope=-0.5, za=None, cusum=None):
+def _make_pair(symbol_a, symbol_b, coint_frac, slope=-0.5, za=None, cusum=None, n_bars=500):
     return PairResult(
         symbol_a=symbol_a, symbol_b=symbol_b,
         asset_class_a="equity", asset_class_b="equity",
@@ -65,7 +65,7 @@ def _make_pair(symbol_a, symbol_b, coint_frac, slope=-0.5, za=None, cusum=None):
         hurst_interpretation="mean_reverting",
         eigenport_pvalue=0.02, passes_eigenportfolio=True, n_factors_removed=1,
         confidence_tier="silver",
-        n_bars=500, n_overlap=500,
+        n_bars=n_bars, n_overlap=n_bars,
         source_a="yfinance", source_b="yfinance",
     )
 
@@ -75,7 +75,13 @@ def main():
         # (label, pair, expected_kept)
         ("clean pass (cf>=0.70)", _make_pair("AAA", "BBB", 0.95), True),
         ("clean fail, no override (cf<0.70, decaying slope)", _make_pair("CCC", "DDD", 0.30, slope=0.5), False),
-        ("override-kept (cf<0.70, improving slope, no breaks)", _make_pair("EEE", "FFF", 0.40, slope=-0.1, za=None, cusum=None), True),
+        # n_bars=800 (>_MIN_BARS_FOR_SECONDARY_EVIDENCE=756, BUG-D68) — the
+        # override this case tests only applies with enough training history
+        # for ZA/CUSUM to have real power; below that gate it's correctly
+        # denied regardless of slope/break signal, which is a DIFFERENT case
+        # (not this one's intent) and would need its own test if wanted.
+        ("override-kept (cf<0.70, improving slope, no breaks)",
+         _make_pair("EEE", "FFF", 0.40, slope=-0.1, za=None, cusum=None, n_bars=800), True),
         ("nan coint_frac, exempt by design", _make_pair("GGG", "HHH", float("nan")), True),
     ]
     pairs_in = [c[1] for c in cases]

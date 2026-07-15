@@ -14395,3 +14395,2168 @@ Sharpe.
 `research/pdr_calmar_comparison.py` (new), `output/research/pdr_calmar_comparison.parquet` (new).
 Comparison-arm/research-track only per standing policy — not wired into production. Candidate for
 `docs/FINDINGS.md` given the real ranking-divergence result.
+
+### BUG-D67: near_miss_lag_scan.py's 1M/3M output paths collide with 1m/3m on Windows (2026-07-14)
+
+Found while checking task #53's real progress, verified by content not filename. Windows
+filesystems are case-insensitive; `near_miss_lag_scan.py` writes output to
+`near_miss_lag_scan_{tf}.parquet` where `tf` includes both minute-labels ("1m", "3m") and
+month-labels ("1M", "3M") — on Windows these are the SAME path. `near_miss_lag_scan_1M.parquet`
+is confirmed to actually be the 1-minute result, not a real monthly one: its `n_at_best_lag` values
+(e.g. 1610 for one pair) are only plausible for 1-minute bars over a few trading days — 1610
+MONTHLY bars would be 134 years of history, which no symbol in this universe has. Same collision
+affects 3M/3m. `data.py`'s own cache file naming already avoids this exact class of collision via
+`_1mo`/`_3mo`/`_6mo` suffixes for monthly timeframes — `near_miss_lag_scan.py` just didn't follow
+that established convention. Real, if minor, consequence: the "1M"/"3M" timeframes were never
+actually computed despite a plausible-looking file existing at each name — a silent gap, not a
+crash, which is exactly the kind of failure mode that's easy to miss without checking file content.
+Fix (in progress, passed to the task #53 agent): rename the monthly-timeframe output paths to match
+the established `_1mo`/`_3mo`/`_6mo` convention, then genuinely re-run those two timeframes (1m/3m
+themselves, 10/13 other timeframes, are correct and don't need re-running). 6M was separately never
+started at all — unrelated to this bug, just not yet reached.
+
+### Task #53: fresh near_miss_lag_scan.py rerun — genuinely complete across all real timeframes, final consolidated result (2026-07-14)
+
+Supersedes the earlier interim entry (10/13 timeframes) — this is the real final state, and the
+last two timeframes were run and verified DIRECTLY by me rather than via the subagent, per Ross's
+explicit direction after the subagent hit a second rate-limit death: run scripts myself, analyze
+the output myself, don't route ongoing script-babysitting through an agent whose own reasoning
+turns are what consumes the shared rate-limit budget.
+
+**1mo**: ran to completion earlier (agent), independently re-verified directly — 162,562 near-miss
+pairs, 10 flagged (real lift ≥0.10), top hit 0669.HK/AMG (lift 0.188, n=264).
+
+**6M**: run directly by me just now (`python research/near_miss_lag_scan.py --tf 6M`), completed in
+seconds, real output: `build_returns_matrix returned no usable symbols (min_overlap not met)` —
+1,691 symbols have cached 6M data individually, but none of their pairwise overlaps clear the
+minimum-overlap threshold once aligned onto a shared calendar. A genuine, verified null result at
+this resolution, not a bug and not something to force through with a lower threshold — 6-month bars
+are coarse enough that very few pairs share the calendar-history depth needed for a stable estimate.
+No output file exists for 6M by design (nothing to write).
+
+**Full summary, all 12 real timeframes** (near-miss band 0.25≤|corr|<0.40, flagged = non-zero best
+lag with lift≥0.10), each row independently re-verified against its actual `.parquet` file just now,
+not accumulated from memory across the session:
+
+| TF | near-miss pairs | flagged |
+|---|---|---|
+| 1m | 3,511 | 169 |
+| 2m | 5,298 | 71 |
+| 3m | 9,188 | 667 |
+| 5m | 19,499 | 112 |
+| 15m | 65,401 | 10 |
+| 30m | 96,211 | 7 |
+| 1h | 324,863 | 1 |
+| 4h | 263,370 | 6 |
+| 1D | 479,347 | 0 |
+| 7D | 407,150 | 5 |
+| 1mo | 162,562 | 10 |
+| 3mo | 7 | 0 |
+| 6M | — | genuine null, no usable pairs |
+
+**Total 1,058 flagged pairs across the universe — this is a raw signal-probe count, NOT a
+significance-tested result, stated as plainly here as it already was in the module's own runtime
+"GATE RESULT" note.** The lag search is a best-of-21-lags scan, which inflates the apparent
+correlation for ANY pair, real or noise, purely by construction (more chances to find a locally
+high correlation by chance). None of these 1,058 have been through the permutation-corrected
+significance test (`lead_lag_permutation_check.py`'s machinery, already used and verified in
+`lag_aware_cointegration_discovery.py`) — that is the necessary next step before treating ANY of
+them as a real candidate pair, not this raw count. 3m's 667-flagged outlier (relative to every
+other TF's single/low-double-digit counts) is the single most important case to run through that
+correction first — it could be a real, TF-specific structural signal or a near-miss-band population
+artifact specific to 3-minute granularity, and this table alone cannot distinguish the two.
+
+**Files**: `output/research/near_miss_lag_scan_{tf}.parquet` for all 12 real timeframes (new/fresh
+for this session's universe, superseding the single stale pre-expansion 1h file from 2026-06-28).
+No cache files touched throughout (read-only on `output/cache/` per the task's explicit scope
+boundary). Natural next step, not done here: permutation-correct the 3m outlier and the top few
+flagged pairs from each other TF before any of this feeds task #54's cross-timeframe divergence
+study.
+
+### BUG-D68: pit_wfa.py's catastrophic point-in-time result root-caused to the coint_frac secondary-evidence override, not a fundamental absence of forward edge (2026-07-14)
+
+Ross: "I want to deal with that lookahead bias problem" — pit_wfa.py's existing, disclosed finding
+(PAPER.md §7.3.1) is that a genuinely causal, point-in-time pair re-screen at 3 historical
+checkpoints found ZERO overlap with the actual confirmed-pair set and negative OOS Sharpe (-1.04 to
+-0.72) in every fold. Investigated the mechanism directly rather than accepting "the strategy has no
+real forward edge" as the only possible explanation.
+
+**Root cause, found by reading `output/backtest/pit_wfa_pair_sets.parquet` directly.** Of the 45
+point-in-time confirmed pairs across all folds, **43 (95.6%) have `coint_fraction_rolling` below the
+production 0.40 threshold** — median 0.129, only 2 clear 0.40 on their own merit. Every one of these
+43 only got confirmed via `passes_coint_frac_secondary_evidence()`'s override (kept despite a low
+coint_frac if half-life isn't decaying and neither Zivot-Andrews nor CUSUM detects a structural
+break). The override's design assumption — "no break detected" means "genuinely stable" — breaks
+down with a short training window: Zivot-Andrews/CUSUM need real sample size to have power, so at an
+early point-in-time checkpoint "no break detected" more often means "not enough data to detect one,"
+not "stable." This is a mechanism-level, quantified explanation for the catastrophic result, not
+just "point-in-time selection failed" left unexplained.
+
+**Fix**: added `AnalysisPipeline._MIN_BARS_FOR_SECONDARY_EVIDENCE = 3 * 252` (756 bars — enough for
+`coint_fraction_rolling` itself to reflect several independent rolling-window snapshots, and enough
+absolute sample size for the break tests to have real power) and gated
+`passes_coint_frac_secondary_evidence()` on it: below this bar count, the override is not even
+eligible, regardless of how clean the break-test signals look. Verified: `debug/_verify_coint_frac_
+override.py` updated (the existing 3 real-pair cases now also pass `n_bars` — all comfortably above
+the new threshold in production 1h/1min data, so their expected outcome is unchanged) plus 4 new
+synthetic cases isolating the gate itself (clean signals below threshold correctly rejected; at
+exactly the threshold correctly accepted; well above correctly accepted; below threshold AND a real
+detected break correctly rejected for either reason). 8/8 pass.
+
+**Not yet done — the actual re-test, deliberately deferred to avoid stacking two heavy compute jobs
+tonight** (a `data.py` refetch for BUG-D65/D66's 7 affected symbols is running concurrently). Natural
+next step: re-run `pit_wfa.py`'s point-in-time screening with this fix in place and see whether the
+resulting (necessarily smaller, but no longer override-inflated) point-in-time pair set performs
+differently OOS. Two honest possible outcomes, stated before running it: if OOS Sharpe improves
+materially, the override was the dominant driver of the original catastrophic result — real, fixable
+methodology debt, not a fundamental absence of forward edge. If it's still deeply negative even with
+this fix, that's stronger evidence the underlying pair-selection strategy itself doesn't have a real
+causal edge, not just a broken guardrail — and that would need to be reported exactly that plainly
+per rule 7, not softened. Either result is genuinely informative; this is not being run to confirm a
+predetermined conclusion.
+
+### BUG-D69: pit_wfa.py's test-window backtest built pair_row from a train+test-recomputed pair_result, not the genuinely point-in-time one (2026-07-14)
+
+Ross: "we also need to make sure our cointegration values are rolling up to the point in time...
+where applicable" — investigated directly against pit_wfa.py's own docstring caveat ("scalar summary
+fields used for gating... computed on train+test combined, not train-only"), rather than assuming
+it either was or wasn't a real problem.
+
+**Traced precisely, not assumed.** `screen_universe_at_cutoff()` (the SELECTION step, and the one
+BUG-D68's fix targets) genuinely restricts to `[train_start, train_end]` only (verified directly at
+the truncation line) — the accept/reject decision, and the `coint_fraction_rolling` values persisted
+to `pit_wfa_pair_sets.parquet` and analyzed for BUG-D68, are real, train-only, point-in-time-correct.
+The docstring's caveat is about a SEPARATE, second computation: `backtest_pair_on_test_window()`
+rebuilds a `full_pair_result` from the FULL train+test window (necessary — the actual test-window
+trading legitimately needs test-period bars) via `_build_pair_result()`, which as a byproduct also
+recomputes `coint_fraction_rolling`/`half_life_trend_slope`/etc. on the combined window — and this
+recomputed, non-causal version was what got passed into `BacktestEngine` via `pair_row`, not the
+original causal one.
+
+**Currently inert, verified not just assumed**: checked `backtest.py`'s actual read sites
+(`_coint_frac`/`_ml_coint_frac`/`_ml_hl_slope`) — they only affect trade generation if
+`storm_flags["coint_frac_threshold"] > 0` or the ML/regime conditioners are enabled. `pit_wfa.py`'s
+`backtest_pair_on_test_window()` passes no `storm_flags` and explicitly constructs
+`RegimeConditioner(enabled=False)`/`MLConditioner(enabled=False)` — so today, this leak doesn't
+actually change any trade decision or the already-reported OOS Sharpe figures. Not corrected as "no
+real impact, leave it" — a fragile invariant (works today only because two specific flags are off)
+is not a guarantee, and a future caller reusing this function with STORM/ML/regime options enabled
+would silently reintroduce the exact lookahead BUG-D68 fixed at the selection stage, in a way that
+would be very easy to miss.
+
+**Fix**: `pair_row` now overrides `coint_fraction_rolling`/`half_life_trend_slope`/
+`mean_reversion_speed` with the ORIGINAL, already-correct train-only `pair_result`'s own values
+(the exact ones `screen_universe_at_cutoff()` used to make the real accept/reject decision) rather
+than the train+test recomputation — point-in-time-safe regardless of which downstream logic reads
+it, not just for the current disabled-conditioner configuration. Syntax-verified; the actual OOS
+figures are unaffected by this specific fix (confirmed inert above) — this closes a latent
+correctness gap, not a live one.
+
+**Broader principle, per Ross's explicit direction, not yet executed as a full sweep**: every
+statistical test in this codebase should be checked for genuine point-in-time/causal correctness,
+not just this one instance. `pit_wfa.py`'s own docstring already asserts this was "verified
+project-wide — no `center=True` anywhere" for per-bar trading series specifically (rolling hedge
+ratio, z-score, half-life) — that claim itself hasn't been re-verified this session, and the scope
+Ross is asking for is broader than just rolling-window centering (e.g., this exact BUG-D69 class —
+a scalar field correctly computed causally in one code path, then silently overwritten by a
+non-causal recomputation in a different code path reusing the same object — wouldn't be caught by a
+`center=True` grep at all). Folded into the next-session full-codebase sweep directive (see CLAUDE.md
+"Current State") rather than attempted piecemeal here.
+
+### Standing principle, precisely stated: "live-use ready," not just historically causal (2026-07-14)
+
+Ross's refinement, worth stating precisely rather than folding silently into the existing
+point-in-time language: a statistical test isn't done just because it avoids using future data in a
+BACKTEST — it should be structured so the SAME code, run TODAY against live data, produces an
+immediately actionable "as-of-now" reading, not only a retrospective historical measure that happens
+to not cheat. Concretely: every rolling/statistical test in this project should have (or be
+checkable against) a genuine "as-of-now" mode — the same computation CAMARF would actually run live,
+not a separate, backtest-only code path that's merely non-cheating in hindsight. This is a real,
+additional bar beyond "no lookahead in the backtest," and it's the standard the next-session
+full-sweep (CLAUDE.md "Current State") should apply, not just a `center=True`/lookahead grep.
+
+### Train-window/split-ratio sweep — scoped precisely, with overfitting discipline stated upfront (2026-07-14)
+
+Ross: test different training periods for the point-in-time re-screen, explicitly flagging
+overfitting risk, and specifically wants standard splits tested — 50/50, 60/40, 70/30, 80/20, 90/10.
+Folded into task #67 (already the queued pit_wfa.py re-run) rather than a separate task, since both
+need the same fixed (BUG-D68/D69) machinery and the same compute budget.
+
+**Two distinct dimensions, not to be conflated**: (1) **split RATIO** — what fraction of the total
+available 1h history is train vs. test (the 5 splits above); (2) **absolute window LENGTH** — a
+fixed training period (e.g. 1yr/2yr/3yr/4yr) independent of what fraction of total history that
+represents. These can point in different directions (a 50/50 split on 6 years of history gives a
+3-year train window; 50/50 on 2 years gives only 1) — both get tested, reported separately, not
+collapsed into one number.
+
+**Overfitting discipline, stated before any result exists, not fitted to whatever comes back**:
+(1) this sweep is itself 5+ additional trials in the DSR/GFP sense — flagged now, re-tallied if
+anything from it gets promoted toward a claim, same discipline already applied to the quarter/
+third-Kelly sweep. (2) The correct way to read the sweep is NOT "pick whichever split has the best
+OOS Sharpe" — that is textbook data-snooping, the exact failure mode DSR/GFP exists to catch. The
+trustworthy signal is a PATTERN that holds broadly across most/all splits (e.g. OOS performance
+improving smoothly and plateauing as training data grows) — a result that only appears at one
+specific split and nowhere nearby is itself evidence of fragility, not of that split being "the
+right one." (3) All splits get reported together in one table regardless of outcome — no silent
+pruning of the ones that don't look good.
+
+**Compute cost, stated honestly before committing to it**: each distinct train cutoff requires a
+full-universe point-in-time screening pass (~45-50 min per `pit_wfa.py`'s own docstring). 5 splits +
+however many absolute-window variants means several hours of sequential compute — deliberately
+sequenced AFTER the current `data.py` refetch (task #64) clears, not stacked concurrently with it,
+per tonight's established pattern of avoiding simultaneous heavy jobs. Not yet launched.
+
+### Full execution sequence for next session — explicitly deferred, not started tonight (2026-07-14)
+
+Ross laid out the complete remaining arc: build dedicated_pass.md's scoped modules into real files
+→ run code reviewers → full production pipeline + all 79 research scripts → a fresh connections
+round informed by real results → build what that surfaces → run/review/run those → a final
+documentation consistency pass. Explicit instruction: "it's a lot of things to do so i want all
+that noted for next session," not executed tonight. Full sequence, with pacing caveats (multi-
+session reality, continuous docs not deferred, incremental code review not just at the end, active
+monitoring given tonight's process-stability issues), written into CLAUDE.md's "Current State" —
+that file, not this entry, is the authoritative version to read at the start of next session.
+
+### Process note: found the real cause of several of tonight's "mysterious" data.py deaths — my own duplicate-launch bug, not the codebase (2026-07-14)
+
+The task #64 refetch crashed for real this time with an actual traceback (`OSError: Invalid column
+metadata (corrupt file?)` inside `DataStore.load()`), instead of the usual silent disappearance —
+finally something concrete to investigate rather than another unexplained death. Full corruption
+scan (30,361 cache files, full `pd.read_parquet()` read, not a column-limited one) found zero
+corrupted files — the crash wasn't a persistent bad file. Checked for live processes directly rather
+than assuming, and found the real cause: **two `data.py` processes were running simultaneously** —
+PID 9872 (launched ~10:27, believed dead after an unreliable `ps aux` check that returned nothing)
+and PID 9524 (launched ~10:37, on top of the first one that hadn't actually exited). Both were
+writing to the same cache files at once, which is exactly the transient race condition that would
+produce a mid-write read corruption. This is very likely the real explanation for several of
+tonight's other unexplained process deaths too, not just this one — `ps aux` under this environment
+has been unreliable at confirming a process is genuinely gone all session, and I relaunched based on
+that check more than once without a fully rigorous second verification.
+
+**Both processes stopped** (`Stop-Process -Force`), confirmed via `Get-Process` with explicit
+boolean checking rather than trusting `ps aux` again. Re-scanned all 30,361 cache files with both
+processes confirmed dead: still zero corruption — parquet writes held up fine under the race, no
+lasting data damage, just a transient read crash.
+
+**Practice change, going forward for the rest of this session and noted for next**: before any
+relaunch of a long-running script, verify via `Get-Process` (PowerShell) with explicit boolean
+handling, not `ps aux` alone, and not just "did the log stop updating" — confirmed twice this
+specific incident that `ps aux` reported no live process while a real one was still running.
+
+### MAJOR: task #64's clean rerun collapses 1h from 24 confirmed pairs to 0 — DD's contamination was almost certainly producing spurious EG significance, not genuine cointegration (2026-07-14)
+
+`analysis.py` completed cleanly on the fully-refetched universe (32.7 min, all 7 BUG-D65/D66-affected
+symbols' caches genuinely clean — verified directly, not assumed, earlier in this session's work).
+**1h confirmed pairs: 24 → 0.** This is too large a drop to be explained only by the 7 refetched
+symbols (they were legs in ~15 of the prior 24 pairs, not all of them) — investigated rather than
+assumed to be an expected/routine consequence of the refetch.
+
+**Filter funnel, checked directly**: `pearson_prefilter_pairs` 1,189,653 → 68,685 (normal magnitude).
+`eg_bh_fdr_pairs` 68,685 → **2** — this is the real collapse, and it happens BEFORE the
+coint_frac_threshold stage BUG-D68's fix touches, so BUG-D68/D69 are not the cause. Something
+upstream, at the raw EG+BH-FDR significance stage itself, changed dramatically.
+
+**Root cause, tested directly, not inferred**: ran a fresh EG cointegration test for AME/DD (a
+pair confirmed in the prior, contaminated-cache run) on the newly clean DD cache:
+`t=-2.6030, p=0.235604` — nowhere close to significant. This pair was confirmed before; it isn't
+now, on the exact same statistical test, with the only real change being DD's underlying price
+series no longer carrying its original append-seam discontinuity. **This is strong, direct evidence
+that DD's original cache contamination was producing spurious EG cointegration significance via the
+classic shared-discontinuity/trend mechanism (Granger & Newbold 1974; Phillips 1986 — exactly the
+spurious-regression mechanism PAPER.md's own §4.2 already discusses in a different context) — not
+that AME/DD reflects a genuine economic relationship that data cleaning happened to destroy.**
+
+**Real implications, stated plainly, not softened**: DD was found earlier this session
+(`trend_dominance_diagnostic.py`) to be a leg in 73.4% of the entire 1h candidate pool's confirmed-
+pair-adjacent structure. If DD's contamination was driving a meaningful fraction of that dominance
+via spurious significance rather than genuine relationships, this directly affects PAPER.md's
+headline pair-count and Sharpe claims, which were built on the confirmed-pair set that included these
+DD-hub pairs throughout this entire project's history — the contamination (BUG-D65) traces back to
+the project's original 2023-07-24 historical backfill, meaning it could have been present in EVERY
+prior confirmed-pair set this project has ever reported, not just recent runs.
+
+**Not yet fully characterized — flagged as the necessary next steps, not concluded here**:
+(1) check EVERY formerly-confirmed 1h pair involving the 7 affected symbols the same direct way
+AME/DD was checked, not just this one example; (2) check whether the OTHER ~9 formerly-confirmed 1h
+pairs that did NOT involve any of the 7 symbols (LNT/VTR, LNT/WELL, CMS/DUK, EG/WRB, HAL/NOV,
+MET/TMHC, PFG/STLD, UMBF/FHB) also failed to reconfirm, and if so, why — that would NOT be explained
+by DD's contamination and needs its own separate investigation; (3) determine what the 2 pairs that
+DID survive EG+BH-FDR in this clean run actually are, and whether they represent a small, genuine,
+"real" confirmed set going forward; (4) this is now the single most urgent open question for the
+project — PAPER.md's entire headline claims may need to be reconciled against a genuinely different,
+much smaller confirmed-pair set once this is fully understood, not a small revision.
+
+### Task #71 continued: the "24→0" collapse resolved — no truncation exists; the OLD 24-pair result was very likely built on widespread cache contamination, not the clean 2-pair result being wrong (2026-07-14)
+
+Ross asked directly: is the sparse 2-pair result correct, or is the methodology/measurement flawed?
+And separately instructed: "fix that truncation" (the apparent loss of historical depth — n_bars
+dropping from ~25,974 in the stale archived run to ~4,347-5,175 in the fresh run — for pairs that had
+nothing to do with the 7 BUG-D65/D66-refetched symbols, e.g. LNT/VTR, CMS/DUK, AME/MAR).
+
+**Investigated the mechanism directly rather than assuming either explanation:**
+
+1. Read `_enrich_with_deep_history()` (analysis.py:5081-5219, the IBKR deep-history merge) in full.
+   Confirmed it only ever sets `coint_fraction_rolling_deep` and `deep_history_used` on already-
+   `discovered_pairs` (i.e. pairs that already survived EG+BH-FDR+structural+coint_frac screening) —
+   it never touches `n_bars`, `coint_pvalue_raw`, or `coint_pvalue_adjusted`, and it runs AFTER the
+   first `pairs_df.to_parquet()` write, i.e. strictly after the confirmation decision, not feeding it.
+   Confirmed `n_bars = log_a.size` (analysis.py:4860) is computed directly from the main cache at
+   EG-test time, always — this has never been touched by the deep-history path. So the deep-merge
+   mechanism cannot explain the old run's `n_bars=25974`, ruling out the "self-reinforcing deep-
+   history power boost" hypothesis considered earlier.
+
+2. Checked whether any process was actively running or had recently rewritten these caches — no
+   python process currently running (`Get-Process` explicit boolean check); `latest_run_data.log`
+   still shows only the 13:09 run; `LNT_1hr.parquet`/`VTR_1hr.parquet` mtimes were ~09:59/10:12 local
+   — BEFORE the already-diagnosed duplicate-`data.py`-launch race (PID 9872/9524, ~10:27/10:37,
+   already directly verified above to have caused zero lasting corruption, all 30,361 files re-
+   scanned clean). The race is not the cause and doesn't even precede these mtimes.
+
+3. Read `DataStore.append()` (data.py:536-565) — genuinely additive: `pd.concat([existing, new_df])`,
+   dedup on exact index, sort, save. Not a destructive-overwrite path. Ruled out an append-logic bug
+   as the mechanism for any single-run truncation.
+
+4. **Decisive check**: sampled 15 random symbols' `_1hr.parquet` files across the ENTIRE universe
+   (not the 7 refetched symbols, not the 9 flagged non-DD pairs — a genuinely independent random
+   sample). 13/15 start exactly `2023-07-24 09:30:00` with `4446-4452` rows; one starts slightly
+   later (`ZTS`, a data-availability quirk) and one is a recent listing (`CALY`, `2026-01-16` start).
+   **This is universe-wide and uniform** — the signature of a real, legitimate, project-wide data
+   floor, not a bug isolated to any specific symbol set. Directly confirmed LNT/CMS/VTR/WELL/AME/MAR/
+   DUK all match this same uniform depth and start date, and checked all 7 for the exact BUG-D65-style
+   contamination signature (>15% single-bar jumps not landing on a session boundary) — **zero found
+   in any of them**, on the currently-live, clean cache.
+
+**Conclusion: there is no truncation to fix.** The current ~4,452-bar, 2023-07-24-anchored 1h cache
+depth is the correct, clean, verified state of the main cache, universe-wide. Telling Ross this
+directly rather than "fixing" something that isn't broken, per this project's honesty-over-
+agreeableness standing instruction — his own premise (framed as a question, not a certainty) was
+wrong on this specific point, and the right response is to say so with the evidence, not comply with
+the literal instruction anyway.
+
+**This resolves the "correct vs. methodology-flawed" question with a third, more precise answer**:
+neither. The EG+BH-FDR methodology itself is very likely functioning correctly on today's clean data.
+The OLD 24-pair, `n_bars=25974` result is the artifact that needs explaining — `25974` is ~5.8x
+today's verified-correct, universe-wide baseline of ~4,452, which is not plausible as genuine
+additional trading history (yfinance's real 1h retention, and this project's own verified fetch
+history, do not support a legitimate ~15-year-equivalent bar count). Direct, already-established
+evidence (AME/DD: EG p=0.235604 on the clean cache, vs. confirmed under the old, contaminated one) is
+a CONFIRMED case of exactly this: contamination producing spurious EG significance via the classic
+shared-discontinuity/spurious-regression mechanism (Granger & Newbold 1974; Phillips 1986). The most
+parsimonious explanation for the other 9 formerly-confirmed non-DD pairs (LNT/VTR, CMS/DUK, etc. —
+still individually significant at raw p<0.001 on today's CLEAN cache, confirmed earlier this session
+via production's own gap-aware methodology) is: their own signal is real, but the OLD run's overall
+68,685-candidate pool almost certainly contained many MORE contamination-inflated false positives
+(if this class of bug was as widespread as the anomalous n_bars figures suggest), which pulled the
+BH-FDR rank-based admission threshold looser; today's genuinely clean pool has far fewer artificially-
+extreme p-values overall, making the identical rank-based threshold much stricter — even for pairs
+whose own signal is real and unchanged. **Not yet directly proven** (the old, contaminated per-symbol
+caches for these 9 pairs were overwritten with no backup, so the contamination itself can't be
+directly re-examined the way DD's was) — this is the best-evidenced explanation given everything
+directly confirmed, not a certainty, and is reported to Ross as such rather than overstated.
+
+**Practical implication for PAPER.md, flagged for Ross's decision, not silently applied**: if this
+holds, today's clean-but-sparse 1h confirmed-pair set (however many pairs it ends up being) is the
+honest, non-contaminated baseline going forward — not something to be "fixed" back toward the old,
+richer-looking but very likely partly-spurious 24-pair figure. This has direct, major consequences for
+every PAPER.md headline number built on the old confirmed-pair set (pair count, IS/OOS Sharpe, DSR,
+every table in §5-§7) and is reported to Ross before any further reconciliation work, per this
+project's rule 8 and the standing "PAPER.md changes are draft-and-flag only" instruction.
+
+### BUG-D70 (new, major): `data_ibkr.py`'s deep-history fetch has never actually queried IBKR for symbols with a fresh main cache — `get_bars()`'s cache-first shortcut silently returns yfinance data relabeled as "IBKR deep history" (2026-07-14)
+
+Ross pushed back directly on two points after the above: (1) he believed `n_bars=25974` came from IBKR
+— re-verified via full git history (`git log --all -- analysis.py`, back to `3310a51b`, the original
+2026-06-21 commit that first wired up IBKR deep-history merging) — `_enrich_with_deep_history` has
+NEVER, in any committed version, set `n_bars`; only `coint_fraction_rolling_deep`/`deep_history_used`.
+Confirmed to Ross this specific number isn't IBKR-derived. (2) Ross's stronger point: a universe this
+large (1,661 assets, 68,685 EG-tested candidates at 1h) yielding ~0-2 significant pairs is implausible
+on priors — either the methodology is wrong, or there's a data-hygiene problem, and asked to pull real
+IBKR data for the "broken" symbols directly to test this.
+
+**Ran `data_ibkr.py --symbols <17 syms from the 9 non-DD formerly-confirmed pairs> --tfs 1h`** against
+the live IB Gateway (confirmed running, PID 15236). **Completed in under 6 seconds for 17 symbols** —
+immediately suspicious (Ross flagged this himself before I'd finished reporting back: "17/17 saved in
+6 seconds seems out of character for IBKR... maybe we have other data hygiene problems at 1h").
+Investigated directly rather than accepting the fast completion at face value:
+
+1. Computed EG p-values on the merged (main + "deep") series for all 9 pairs — all individually
+   significant (p = 0.00002 to 0.0005), but `deep_n` (the "IBKR" file's own row count) was ~identical
+   to `main_n` for every pair, and the merged series added ZERO net rows beyond main-cache-only. The
+   "deep" fetch appeared to contribute nothing.
+2. Checked the raw `{SYMBOL}_1hr_deep.parquet` files directly (not the analysis.py-side merge): start
+   date exactly `2023-07-24 09:30:00` — the SAME date, to the exact minute, as the main yfinance cache,
+   across every symbol checked (LNT, AME, HAL). Not plausible as an independent coincidence.
+3. Read `data_ibkr.py`'s `merge_with_yfinance()` (lines 130-166): `ibkr_hist = ibkr_deep[ibkr_deep.index
+   < yf_start]` — keeps only the portion of the "IBKR" response strictly older than yfinance's own
+   earliest bar. If IBKR's raw response never actually extended earlier than yfinance's own window,
+   this produces an empty `ibkr_hist`, and the "merged" output is silently 100% yfinance data.
+4. **Root cause, found by reading `IBKRFeed.get_bars()` (data.py:2798) directly**: the function's FIRST
+   check, before ever building a `reqHistoricalData` call, is a cache-first shortcut:
+   ```python
+   if DataStore.is_fresh(symbol, tf_label, max_age_hours=DataStore.intraday_max_age_hours(tf_label)):
+       cached = DataStore.load(symbol, tf_label)
+       if cached is not None:
+           return cached
+   ```
+   `intraday_max_age_hours("1hr")` = 20.0. `data_ibkr.py`'s deep-history pipeline calls this exact same
+   `get_bars()` (line 304) — the SAME function `data.py`'s own normal pipeline uses, where this
+   shortcut is correct (don't hit IBKR if yfinance already succeeded today). But `data_ibkr.py`'s whole
+   *purpose* is to bypass the main cache and pull genuinely independent, deeper IBKR history — and this
+   shared function silently defeats that intent whenever the main cache happens to be fresh, which,
+   given `data.py` runs ~daily, is effectively always.
+5. **Directly proved it**, not just inferred it: wrote `debug/_check_ibkr_raw_depth.py`, connected to
+   IB Gateway, called `get_bars()` for LNT/AME directly. Total session time: **205 milliseconds** for
+   both symbols combined — no `reqHistoricalData` round-trip occurred at all (IBKR logs would show a
+   pacing wait or request confirmation; none appeared). Returned row counts matched the main cache
+   exactly (LNT 4452, AME 5175) — proof this was the cache shortcut firing, not a real (even if
+   duration-capped) IBKR response.
+
+**This means `data_ibkr.py`'s deep-history/episodic-cointegration feature — a Rule-2-documented
+architectural pillar of this project — has very likely never delivered genuine independent IBKR history
+for any symbol whose yfinance cache was fresh at fetch time, which in normal operation is effectively
+every symbol, every time it's been run.** Every `deep_history_used=True` flag and every
+`coint_fraction_rolling_deep` value computed anywhere in this project's history may be spurious — the
+"deep" series and the primary series are very likely the same data, computed twice. This also means the
+`_MAX_DURATION["1 hour"] = "10 Y"` comment ("Empirical IBKR live-account limits... confirmed in
+data_ibkr.py") was never actually validated against a real request for these equity symbols — the
+supposed confirmation, if real, was likely done under conditions where the cache-first shortcut also
+fired, or on a different asset class (the class docstring: "Primary use: non-equity asset classes...
+Secondary use: equity 3m bars" — futures/forex genuinely may have deeper IBKR retention than small/mid-
+cap equities, but this specific "10 Y for 1h equities" claim has direct counter-evidence now).
+
+**Not yet fixed — flagged for Ross's decision on approach, not silently patched**, given this touches a
+documented architectural boundary (Rule 2: data.py/data_ibkr.py separation) and CLAUDE.md's "new
+methodology goes through Ross first" standing instruction. Candidate fix: `get_bars()` needs a parameter
+(e.g. `bypass_cache=True`) that `data_ibkr.py` always passes, so its calls always issue a real
+`reqHistoricalData` request regardless of main-cache freshness, while `data.py`'s own normal pipeline
+keeps the existing shortcut behavior unchanged. Once fixed, this whole investigation needs to be
+RE-RUN — every finding in this session's task #71 write-up (raw EG p-values, the "0-2 confirmed pairs"
+result) was computed on the SAME underlying yfinance-only data throughout, since the "deep" merge never
+contributed anything different. The 1h collapse's characterization (contamination in the old pool)
+still stands independent of this bug, but the "does more real history restore power" question is now
+genuinely OPEN again — it was never actually tested.
+
+**Fix implemented (Ross approved): added `bypass_cache: bool = False` to `IBKRFeed.get_bars()`**
+(data.py:2798). When True, skips the `DataStore.is_fresh()` cache-first shortcut entirely, forcing a
+real `reqHistoricalData` call. `data_ibkr.py`'s one call site (line 304) now passes `bypass_cache=True`.
+Every other `get_bars()` caller (all within `data.py`'s own normal pipeline, 5 call sites checked) omits
+the param, defaulting to `False` — unchanged behavior there, confirmed by reading each site before
+editing.
+
+**Verified the fix works — and immediately surfaced a second, larger problem it had been masking.**
+Direct test (`debug/_check_ibkr_raw_depth.py`, `bypass_cache=True`) for LNT: this time a REAL IBKR
+request fired (visible in logs, took the full retry/timeout cycle instead of returning instantly) but
+**failed on all 4 attempts** with an empty exception message in production's own logging. Investigated
+with a raw `reqHistoricalData` call + an `errorEvent` listener to get the real detail: no IBKR-side
+error code fired at all — the request simply **timed out** (`TimeoutError`), IBKR never responded.
+
+Swept `durationStr` directly against `barSizeSetting="1 hour"` for LNT to find the real threshold:
+
+| duration | result |
+|---|---|
+| 5 D | **works** — 71 bars, correct range |
+| 10 D | **works** — 140 bars |
+| 14 D | **works** — 194 bars |
+| 21 D | **works** — 271 bars |
+| 1 M | **times out** |
+| 6 M | times out |
+| 1 Y | times out |
+| 2 Y | times out |
+| 3 Y | times out |
+| 5 Y | times out |
+| 10 Y | times out |
+
+**The real, empirically-measured ceiling for this account's 1-hour equity historical-data requests is
+between 21 and 30 days — not the "10 Y" the `_MAX_DURATION` config claims and labels "confirmed."**
+Every duration from 1 month up times out identically, with no distinguishing IBKR error code, strongly
+suggesting an account/market-data-subscription-tier limit (common for paper-trading or non-full-
+entitlement accounts) rather than a per-request technical cap that scales with duration.
+
+**Consequence, reported to Ross rather than silently worked around**: the `bypass_cache` fix is correct
+and necessary, but not sufficient — even with it, `data_ibkr.py` cannot currently pull more than ~3
+weeks of 1-hour history per request from this IBKR account, which adds essentially nothing beyond the
+main cache's existing ~2.5-3 years. Getting genuinely deeper history would require either (a) a
+multi-request pagination loop (walk `endDateTime` backward in ~3-week chunks, accumulate over many
+sequential requests — a real engineering build, not a one-line fix, and still gated on whether this
+account's market-data entitlement actually HAS 10 years of hourly data for small/mid-cap equities like
+LNT to serve even if paginated for), or (b) a different IBKR account/subscription tier. Ross's original
+question — does deeper IBKR history restore BH-FDR significance for the 9 non-DD pairs — remains
+unanswered; it cannot be tested with the current account without further, more substantial work.
+`debug/_check_ibkr_raw_depth.py` is kept as the reusable diagnostic for this.
+
+### Pagination-build scope (task #72, not yet built — Ross asked to scope it, then continue down the backlog)
+
+Design for chaining multiple IBKR requests to accumulate more than the ~21-30 day single-request
+ceiling found above:
+
+- **New, additive method** — `IBKRFeed.get_bars_paginated(symbol, asset_class, tf_ibkr, tf_label,
+  target_duration, chunk_duration="21 D")`. Does NOT modify `get_bars()` further; `get_bars()` is used
+  by both `data.py`'s normal pipeline and (now) `data_ibkr.py`'s single-shot bypass path, and pagination
+  is specifically a deep-history-only need — keeping it as a separate method avoids touching the
+  already-verified normal-pipeline behavior.
+- **Loop mechanics**: start `endDateTime` at "now", issue a `reqHistoricalData` call for `chunk_duration`
+  (21 D, the confirmed-working ceiling), concatenate results, step `endDateTime` back by `chunk_duration`,
+  repeat. Stop on whichever comes first: `target_duration` reached, an empty/short response (signals the
+  real historical boundary — IBKR's own data entitlement, not the per-request cap, has been hit), or a
+  max-iteration safety cap (prevents a runaway loop against a symbol with a data-permission issue).
+- **Dedup**: chunk boundaries will produce overlapping/duplicate bars — reuse the same
+  `combined[~combined.index.duplicated(keep="last")]` pattern already established in
+  `DataStore.append()` and `merge_with_yfinance()`.
+- **Pacing**: must call `self._wait_rate_limit(tf_ibkr)` between EVERY chunk request, not just between
+  symbols — this is per-request IBKR pacing, and a paginated fetch turns 1 request into N.
+- **Cost, calculated directly**: to reach even 1 year of 1h history (~17x the 21-day working window)
+  needs ~17 sequential requests per symbol. At the existing `_intraday_delay = 12.0`s pacing, that's
+  ~3.4 minutes/symbol just for 1 year — reaching further back (multiple years, let alone the originally
+  assumed 10) costs proportionally more, and there's no guarantee IBKR's data warehouse actually holds
+  that much 1h history for smaller/mid-cap equities regardless of how many requests are chained (the
+  loop's empty-response stop condition would surface this directly — valuable information either way,
+  not just a risk).
+- **Scope discipline**: given the cost, this should stay within Rule 2's existing model — deep history
+  for CONFIRMED pairs only, run manually via `data_ibkr.py`, never the full universe. No change to that
+  boundary; this only fixes the per-request depth ceiling via chaining.
+- **Verification plan**: synthetic test mocking multiple chunk responses (verify correct concatenation,
+  dedup at boundaries, correct stop conditions — target reached / empty response / safety cap) in
+  `debug/_verify_ibkr_pagination.py`; then a real-data run against 1-2 symbols checking for boundary
+  artifacts (duplicate or missing bars at the seam between chunks) before trusting it at scale.
+- **Recommendation**: worth building — it directly serves the "episodic cointegration" capability Rule 2
+  has always described as the point of `data_ibkr.py`, which (per BUG-D70) has apparently never actually
+  worked. But it's a genuine feature build with real per-symbol cost, not a quick fix — scoped here per
+  Ross's request; not started, since he asked to scope-then-continue-down-the-backlog rather than build
+  immediately.
+
+### Task #68 — survivorship bias fix: distinct delisting classification + retained-history registry (2026-07-14)
+
+Ross's original request (this session, before the 1h-collapse investigation): flag symbols found newly
+unfetchable as a distinct category (not conflated with format/config fetch failures) and retain their
+pre-delisting cached history, usable in testing.
+
+**Investigated the existing mechanism first, rather than assuming nothing was there.** Found
+`UniverseBuilder` already has a persistent-failure auto-exclusion path (`_PERSISTENT_FAIL_THRESHOLD = 3`,
+data.py ~4535) that calls `add_exclusion()` after 3 full-run failures — but it uses one generic reason
+string ("Auto-excluded: N run failures") for every case, whether the symbol was a genuinely-tracked
+asset for years (a real delisting) or never had substantial history to begin with (a format/config/
+ticker issue — not survivorship-relevant). Also confirmed `add_exclusion()` only ever writes to
+`excluded_assets.json` — it never touches cached parquet files, so pre-exclusion history was ALREADY
+being retained on disk; the actual gap was classification and discoverability, not deletion.
+
+**Fix**: added `UniverseBuilder.flag_or_exclude(symbol, reason, run_failures)` (data.py, right after
+`add_exclusion()`), which checks `DataStore.load(symbol, "1D")`'s bar count before excluding. Below
+`_DELISTING_MIN_PRIOR_BARS = 60` (~3 trading months — enough to rule out "never really got going"),
+behavior is unchanged (plain exclusion). At or above it, the symbol is classified `likely_delisted` in
+`excluded_assets.json` AND recorded in a new `output/cache/delisted_symbols.json` registry with its
+`last_good_date`, `n_bars_1D`, and the run-failure count that triggered the flag. Added
+`load_delisted_registry()` as the read-side helper for a downstream point-in-time/episodic script.
+Wired into the one real call site (data.py ~4539, the dual-fail persistent-failure branch) — replaced
+the direct `add_exclusion()` call with `flag_or_exclude()`, preserving the existing log line for the
+plain-exclusion case.
+
+**Verified**: `debug/_verify_delisting_registry.py`, 5 synthetic cases (250/60/59/5/0 prior daily bars),
+redirecting `Config.DATA.CACHE_DIR` and both `UniverseBuilder` path constants into a temp directory so
+the real production exclusion/registry files are never touched by the test. Confirmed the exact boundary
+(59 bars → plain exclusion, 60 bars → likely_delisted) and correct `last_good_date`/`n_bars_1D` values
+in the registry entry. All 5 cases pass. Confirmed `data.py` still imports cleanly and the real
+`output/cache/delisted_symbols.json` doesn't exist yet (correct — no real run has triggered it since the
+fix landed).
+
+**Scope note, honestly stated**: this delivers the "flag as distinct category" and "retain history"
+halves of the request, plus a read-side helper. It does NOT yet wire the registry into a specific
+consumer (e.g. `pit_wfa.py`'s point-in-time universe construction actually including delisted symbols'
+pre-delisting history in a survivorship-bias-aware backtest) — that's the natural next step once a
+concrete consumer script needs it, not fabricated here as unnecessary scope creep on top of the
+requested fix.
+
+### Task #69 — earnings/big-move lead-lag investigation, three pieces (2026-07-14)
+
+Ross's direction, in order: build Piece A (earnings-proximity correlation with existing structural-
+break fields, low-risk diagnostic) and Piece B (earnings as a genuine lead-lag signal between legs,
+distinct from the existing `--storm-earnings-blackout` avoidance logic) in parallel; then, after seeing
+Piece B's design, extended it — "we could extend the earnings piece B to any big moves on asset A
+standardized by volatility... Piece C."
+
+**Piece A — `research/earnings_structural_break_correlation.py` — CONFIRMED, major finding.**
+Checks whether ZA/CUSUM structural-break dates (already-persisted `analysis.py` fields) land near
+either leg's earnings dates more than a randomized null (same pairs/symbols/date ranges, random
+anchor dates) would produce by chance. Aggregated 498 break events from every
+`output/results/*/all_candidates.parquet` on disk (306 distinct symbols), including the 2026-07-14
+stale/pre-BUG-D65-fix 1hr archive — flagged in the script's own docstring as a diagnostic use of the
+break-DATE distribution, not a production claim resting on those candidates' confirmations.
+
+Precision run (`n_null=1000`, 16m25s once earnings dates were cached for 284 symbols — most of the
+runtime was the yfinance fetch, now cached for 309 symbols):
+
+| window | observed rate | null mean | null p95 | empirical p |
+|---|---|---|---|---|
+| ±3 days | 58.0% (289/498) | 4.1% | 5.6% | 0.0000 |
+| ±5 days | 59.8% (298/498) | 6.1% | 7.8% | 0.0000 |
+| ±10 days | 65.5% (326/498) | 10.6% | 12.7% | 0.0000 |
+
+Every one of 1000 null draws fell below the observed rate at all three window sizes — not a marginal
+result. **Real implication, not yet acted on**: if the majority of detected structural breaks are
+earnings-driven rather than genuine permanent shifts in the cointegrating relationship, this bears
+directly on two other pieces of this project: BUG-D68's `passes_coint_frac_secondary_evidence()`
+override (which explicitly checks for the ABSENCE of a ZA break/CUSUM excursion as one eligibility
+condition — an earnings-driven, transient break could be wrongly treated the same as a genuine
+structural failure) and `decoupling_analysis.py`'s post-break classification (task #70, still pending —
+its CONTINUED_DIVERGENCE / REVERTED_TO_OLD_EQUILIBRIUM / NEW_EQUILIBRIUM_SHIFT categories may be
+dominated by earnings-noise cases rather than real regime shifts). Flagged here, not yet investigated
+further — a natural follow-up once task #70 is picked back up, since it now has a concrete, testable
+hypothesis to check against (do earnings-proximate breaks classify differently than non-earnings
+breaks?).
+
+Minor, non-blocking note: 7 broad-market ETFs (EEM/EFA/EWJ/IWM/QQQ/SPY/VOO) logged
+`"No earnings dates found, symbol may be delisted"` — expected, not a real error. ETFs are funds, not
+operating companies, and have no earnings dates; `earnings.py`'s fallback message (written for
+individual equities) is slightly misleading here but the actual behavior (`near_earnings()` correctly
+returns False for symbols with no known dates) is unaffected.
+
+**Piece B — `research/earnings_lead_lag.py` — built, running (9-pair batch), one early result in.**
+Pools gap-aware return bars from all of an announcer's earnings-window periods (±3 days, calendar-date
+based) into one sample, runs `lead_lag_scan.py`'s exact `lagged_corr_scan`/`best_lag` on the pooled
+sample, compares against a bootstrap null (same-count random-anchor windows). Documented limitations
+up front: yfinance's earnings depth is finite (confirmed 5-6+ years for some symbols, better than the
+originally-assumed "8 quarters"), event count per pair is modest (~4/year), and the bootstrap
+(resampling whole windows) is a coarser correction than a true circular-shift permutation null, which
+isn't well-defined for a discontiguous pooled sample. One result so far (LNT/VTR, both directions):
+`real_best_lag=0` (contemporaneous, not lagged) with `bootstrap_p_value` 0.9 and 0.9 — earnings-
+conditional correlation was actually WEAKER than the random-period baseline for this pair, the opposite
+of the hypothesis. One pair, not the full picture — full 9-pair × 2-direction batch running in
+background (PID 16496).
+
+**Piece C — `research/big_move_lead_lag.py` — built, bug found and fixed during verification, running.**
+Generalizes Piece B: instead of conditioning on earnings dates, conditions on ANY bar where
+`|return| > 2.0 * trailing_20-bar_std` — a causal (shifted, no self-reference) volatility-standardized
+big-move threshold, fixed upfront rather than tuned after seeing results (Garden-of-Forking-Paths
+discipline). Same `lagged_corr_scan`/bootstrap-null structure as Piece B for direct comparability.
+Explicitly reports whether any significant result has a NON-ZERO best_lag — lag=0 is indistinguishable
+from "these are cointegrated, they move together" (already known), so only a lagged, bootstrap-
+significant result would be genuinely new information, not the existing signal restated.
+
+**Bug found and fixed before trusting any result**: first smoke test on real data (LNT/VTR) found
+**zero** big-move events — wrong, ~5% of bars should exceed a 2σ threshold under any reasonable return
+distribution. Root cause: `aligned_pair_loader.load_aligned_pair` returns a dense calendar-grid-aligned
+series (26,067 rows for LNT/VTR at 1h) where only ~14% (3,705) are real trading bars, the rest NaN
+placeholders for non-trading time. A 20-bar rolling window computed directly on this dense grid almost
+never lands on 20 consecutive real values, so `trailing_vol` came back NaN everywhere, and every
+z-score comparison silently evaluated False. Fixed by computing the rolling stat on the compacted
+(`dropna()`'d) series first, then reindexing the boolean result back onto the dense index. Verified via
+`debug/_verify_big_move_lead_lag.py` (2 synthetic cases: 5 planted 10σ moves in a sparse dense-grid
+series, all 5 recovered; a regression check confirming the exact failure mode no longer reproduces) and
+confirmed directly on real data post-fix (217 events for LNT, 275 for VTR — previously 0). One smoke-
+test result in (LNT/VTR again): `real_best_lag=0` both directions, not significant (p=0.2, p=0.6) — same
+qualitative null as Piece B for this pair. Full 9-pair batch running in background (PID 12308).
+
+**Not yet done**: full Piece B/C results across all 9 pairs (both jobs still running), any cross-
+comparison between the three pieces' findings, and the task #70 follow-up Piece A's finding motivates.
+
+### Piece B — full 9-pair result: clean, consistent null (2026-07-14)
+
+`earnings_lead_lag_1h.parquet`, 18 announcer→other_leg tests (9 pairs × 2 directions): **0/18
+significant** (`bootstrap_p_value < 0.05`). Every single test shows `real_best_lag=0` — no case found a
+non-zero lag at all, let alone a significant one. Earnings-conditional |corr| was below or roughly equal
+to the random-period null mean in all 18 cases (bootstrap p ranging 0.45–0.98, nowhere near
+significance); CMS/DUK (the pair with the highest baseline correlation, ~0.73) was the closest at
+p=0.45, still not significant.
+
+Honest read: this is not an underpowered near-miss — the direction is consistently wrong (earnings
+windows show WEAKER lead-lag structure than random windows, not just non-significantly stronger) across
+every single test. For this specific 9-pair, 1h, ±3-day-window design, earnings proximity does not
+create or strengthen a lead-lag relationship between legs. A real negative result, documented per rule
+8 rather than only reporting positive findings. Whether this holds at other timeframes, window sizes, or
+pair sets is untested — this result is scoped to exactly what was run, not generalized further.
+
+### Task #73 — smoothing/standardization comparison: does noise reduction reveal hidden cointegration? Clean negative result (2026-07-14)
+
+Ross's question, directly connected to task #71's "is the sparse 1h result correct or is the
+measurement concept wrong" framing: does smoothing/denoising the price series before EG testing reveal
+real relationships that raw (noisy) prices obscure? Explicitly scoped as a comparison-arm test, not a
+production change.
+
+`research/smoothing_comparison.py`: EG p-value on raw gap-masked log price vs. three causal smoothing
+variants (EMA span=3, EMA span=10, rolling median window=5 — all strictly causal, no lookahead), on the
+9 known-good pairs (sanity check — smoothing shouldn't destroy known-real signal) plus 300 randomly
+sampled candidates from `near_miss_lag_scan_1h.parquet` (moderate raw correlation, 0.25–0.40 range — a
+plausible candidate pool, not full-universe, scope stated honestly in the script's own docstring).
+Critical design element: any pair where smoothing appears to CREATE new significance (raw p≥0.05 →
+smoothed p<0.05) gets a circular-shift permutation check on the smoothed series itself — smoothing can
+inflate EG significance purely by inducing serial correlation, without any real strengthening of the
+relationship (a known pitfall of testing cointegration on filtered data), so a naive "smoothed p<0.05"
+count would overstate the finding.
+
+**Result — 309 pairs tested:**
+
+| variant | pairs with p<0.05 |
+|---|---|
+| raw | 39 |
+| EMA(3) | 24 |
+| EMA(10) | 17 |
+| median(5) | 30 |
+
+Every smoothed variant found FEWER significant pairs than raw — the opposite of "smoothing reveals
+hidden signal." Only 2 of 309 pairs became newly significant under any smoothing variant; the
+permutation check caught one of those two as a smoothing-induced false positive (survives the naive
+smoothed p-value, fails the permutation-corrected one — exactly the artifact this check exists to
+catch). The remaining pair, GPC/ZION under median(5) smoothing, genuinely survives permutation
+correction (raw p=0.051, smoothed p=0.033, permutation p=0.02) — a real, if isolated, gain.
+
+**Honest read**: 1 genuinely-verified gain out of 309 tests is roughly what chance alone would produce
+at this scale (no multiple-testing correction was applied to the "search across 309 pairs" itself, so
+GPC/ZION shouldn't be treated as a confirmed finding without its own dedicated follow-up). The clear,
+consistent, and more informative result is the AGGREGATE one: smoothing does not reveal hidden
+cointegration signal in this sample, and heavier smoothing (EMA10) actively destroys more real
+significant relationships than it might reveal. This is real evidence against "noise is masking real
+cointegration at 1h" as an explanation for task #71's sparse confirmed-pair result — the sparsity looks
+more like genuine data behavior (or the BH-FDR/contamination dynamics already characterized) than a
+measurement-noise artifact fixable by denoising.
+
+### Task #43 — wavelet Hurst estimator, built, bug caught by its own verification, real finding (2026-07-14)
+
+`research/wavelet_hurst_comparison.py`: a Haar-wavelet-variance Hurst estimator alongside
+`analysis.py`'s existing `hurst_rs`/`hurst_dfa` (reused directly, not reimplemented, for a true
+apples-to-apples comparison). No new dependency (PyWavelets) — implemented directly with numpy given
+this project's documented environment/dependency pain (pyarrow version mismatches). Operates on spread
+INCREMENTS, matching R/S and DFA's convention (analysis.py's own docstring explains why: level
+autocorrelation from AR(1)/OU dynamics gives spuriously high H on levels).
+
+**Bug caught by its own synthetic verification before trusting any real-data result**: the first version
+used the textbook Abry-Veitch formula `H = (slope-1)/2`, assuming the standard DWT-on-levels
+construction — `debug/_verify_wavelet_hurst.py`'s first case (random-walk spread, H should be ~0.5)
+returned H=0.000. Root-caused: this script's block-mean-difference Haar transform, applied to
+INCREMENTS rather than levels, has a different variance-scaling relationship than the textbook
+construction. Re-derived directly from the same self-similarity property R/S and DFA already rest on
+(variance of an m-term partial sum scales as m^(2H)): for this construction, `H = slope/2 + 1`. Fixed
+and reverified — random walk now gives exactly H=0.500, strongly mean-reverting AR(1) gives H well below
+0.5, and H increases monotonically with persistence (phi 0.2→0.9) as expected. All 3 synthetic cases
+pass.
+
+**Real result, 9 known-good pairs**: wavelet H agrees much more closely with DFA (mean |divergence|
+0.021) than with R/S (0.095, ~4.5x larger). More notably: R/S shows H > 0.50 (technically failing the
+production ML gate, `hurst_rs < 0.50`) for 6 of these 9 pairs, while BOTH DFA and wavelet show H well
+below 0.45 for all 9 — DFA and wavelet agree these pairs are genuinely mean-reverting; R/S alone,
+production's PRIMARY gate metric, disagrees for most of them. None of the 9 pairs' R/S-DFA divergence
+exceeds the existing 0.10 "flag as uncertain" threshold, so this systematic-looking directional bias
+wouldn't currently trigger any warning in production.
+
+**Stated as suggestive, not confirmed**: 9 pairs is a small sample for concluding R/S has a systematic
+upward bias relative to DFA/wavelet — but two independent methods (DFA, now wavelet) agreeing with each
+other and disagreeing with R/S in the SAME direction, on every single pair tested, is a real signal worth
+a broader check, not noise. If this holds at a larger sample, it would mean the production ML gate
+(`hurst_rs < 0.50` as the primary criterion) may be excluding genuinely mean-reverting pairs that DFA/
+wavelet would correctly pass — a real, actionable finding for a future session, not yet acted on here
+(comparison-arm result, not a production change per this project's standing discipline).
+
+### Task #69 Piece C — full 9-pair result: strongly-powered null, same conclusion as Piece B (2026-07-14)
+
+`big_move_lead_lag_1h.parquet`, 18 mover→other_leg tests: **0/18 significant**, and — the more
+decisive detail — **every single test shows `real_best_lag=0`**. With far more events per pair than
+Piece B (200-275 vs. ~12 for earnings), the bootstrap null distributions are now very tight (e.g.
+CMS→DUK: real |corr|=0.746 vs. null mean=0.744, p95=0.757 — the real result sits almost exactly at the
+null's center, not near its tail). This is a well-powered negative result, not an underpowered one:
+with this much more data, if a genuine lagged propagation existed, this design had a real chance to find
+it, and found none.
+
+**Combined Piece B + Piece C conclusion**: across both the earnings-specific test (~12 events/pair) and
+the general volatility-standardized big-move test (~200+ events/pair), for all 9 known-good 1h pairs in
+both directions, there is no evidence of a lagged lead-lag relationship between legs — every single
+elevated correlation is well-explained by ordinary contemporaneous cointegration (lag=0), not a distinct,
+delayed, exploitable signal. The honest conclusion Ross asked for directly: earnings/big-move lead-lag,
+as scoped and tested here, is not a real, separate trading signal for this pair set — it's the same
+cointegration relationship already captured by the existing strategy, viewed through an event-conditional
+lens. Task #69 (all three pieces) is complete; the Piece A finding (structural breaks correlate with
+earnings, task #70's real open follow-up) remains the most actionable output of this investigation.
+
+### Task #61 — CAMARF-native relational regime indicator, built and validated (2026-07-14)
+
+Ross clarified scope: build #61 using its original task-list description (avg pairwise correlation
+across confirmed-pair legs) — NOT the `dedicated_pass.md`-redirected coint_frac-time-series version,
+which was explicitly reserved for next session along with the rest of that file's scoped program.
+
+`research/relational_regime_indicator.py`: rolling (causal, 60-bar trailing window) average pairwise
+correlation across the 17 unique legs of the 9 known-good pairs, at daily resolution. Checked first
+against `research/comomentum.py` (already built, already run) to avoid duplicating it — comomentum
+tracks correlation among SPREAD returns (an arbitrage-crowding signal, Lou & Polk 2022); this tracks
+correlation among the LEGS' own price returns (a general market-stress/regime signal) — related but
+genuinely distinct, worth building separately.
+
+**Self-correction, caught before finalizing**: an early draft of the docstring assumed the 2007/2008/2020
+sanity check dedicated_pass.md originally proposed would be impossible, generalizing from task #71's
+finding that the main 1h cache only reaches back to 2023-07-24. Running the script directly showed this
+generalization was wrong — the DAILY cache for these symbols reaches back to **1972-07-26** (several are
+long-listed utilities/industrials). The 1h depth finding is real and correctly scoped to 1h; it does not
+apply to daily data, and assuming it did without checking would have been exactly the kind of unverified
+cross-timeframe assumption this project's discipline exists to catch. Corrected in the script's own
+docstring rather than silently fixed.
+
+**Result — the sanity check passes cleanly**: the indicator's top-5%-elevated episodes land exactly on
+real financial crises, unprompted:
+
+| episode | peak avg pairwise corr |
+|---|---|
+| 2008-10-13 to 2009-05-19 | 0.661 (Global Financial Crisis) |
+| 2010-05-20 to 2010-10-13 | 0.727 (Flash Crash / European debt crisis onset) |
+| 2011-08-04 to 2012-02-21 | 0.800 (US credit downgrade / European debt crisis peak) |
+| 2020-03-06 to 2020-09-03 | 0.789 (COVID crash) |
+
+Baseline mean=0.212, std=0.186 — crisis-period peaks are 3-4 standard deviations above baseline, timed
+correctly against real historical events with no data leakage (purely a function of these 17 symbols'
+own correlation structure, no external labeling). This is a genuinely validated, working internal
+regime indicator, requiring no external data dependency (unlike `macro.py`'s FRED-based approach) —
+worth considering as a candidate regime-conditioning input alongside the existing HMM/GMM regime
+detection (task #37) in a future session, not acted on further here.
+
+### Task #58 — k-BAHC hierarchical-clustering covariance cleaning, built, honest negative result (2026-07-14)
+
+Ross confirmed: build using the task list's own description, not `dedicated_pass.md`'s elaboration
+(reserved for next session). Interpretation stated explicitly in the script's own docstring rather than
+assumed silently: "k-BAHC" implemented as k-cluster Bounded/Block Asset Hierarchical-Clustering
+covariance cleaning — distinct from HRP (`backtest.py`'s `compute_hrp_weights`, hierarchical clustering
+for portfolio WEIGHTING) and from Ledoit-Wolf shrinkage (already in production).
+
+`research/k_bahc_covariance_cleaning.py`: clusters the 17 legs via scipy hierarchical clustering
+(average linkage, 1-correlation distance — same convention HRP already uses), picks k by silhouette
+score on the SAME clustering (not tuned against the evaluation metric — that would be Garden-of-
+Forking-Paths on the metric itself), then shrinks cross-cluster correlations toward their global mean
+while preserving within-cluster correlations as observed. Evaluated the standard way covariance
+estimators are evaluated in the literature: rolling walk-forward global-minimum-variance portfolio, fit
+on a trailing window, realized variance measured on the following out-of-sample window — compared
+against raw sample covariance and Ledoit-Wolf (via `sklearn.covariance.ledoit_wolf`, the same reference
+implementation already used elsewhere in this project).
+
+**Result — 106 walk-forward windows, 2016-2026 daily data**: raw sample covariance had the LOWEST mean
+realized variance (1.27e-4) of all three estimators — both Ledoit-Wolf (1.33e-4) and k-BAHC (1.30e-4)
+underperformed it. k-BAHC beat raw in only 41/106 windows (38.7%) and beat Ledoit-Wolf in 43/106
+(40.6%) — neither cleaning method improved on the naive estimator for this universe.
+
+**Honest read, not a bug**: with only 17 assets and a 252-bar training window (~15:1 observations-to-
+assets ratio), the raw sample covariance is already reasonably well-estimated — shrinkage/clustering
+methods are most valuable in HIGH-dimensional settings (many assets, few observations relative to
+assets), which this small, hand-picked pair set does not resemble. This doesn't mean k-BAHC or Ledoit-
+Wolf are broken; it means this comparison arm's universe is too small for either to show its usual
+benefit, and a fair test would need the full multi-hundred-symbol candidate universe, not this 9-pair
+subset. Flagged as the natural scope extension for a future session, not built here.
+
+### Task #54 — cross-timeframe cointegration divergence study, real methodology bug caught mid-build, clean final result (2026-07-14)
+
+Motivated directly by task #71: does the 1h confirmed-pair collapse reflect something specific to 1h, or
+a general cross-timeframe pattern? `research/cross_timeframe_divergence.py`: EG p-value (production's
+own gap-aware methodology, reused directly) for the 9 known-good pairs, computed independently per
+timeframe.
+
+**Bug caught and fixed before trusting the result, not after**: the first version period-matched ALL 5
+tested timeframes (15min/30min/1h/4h/1day) to a single common start date via `max()` of each TF's own
+native cache start. This silently collapsed everything to a ~4-month window, because 15min/30min's own
+native cached depth only reaches back to 2026-03-24/25 (a genuine, structural difference — these TFs
+have much shorter native retention than 1h/4h, confirmed directly against `_YF_INTRADAY_MAP`'s per-TF
+fetch windows) while 1h/4h/1day share ~3+ years. The unmatched first run showed a striking
+"15min/30min weak, 1h/4h very strong, 1day weak again" pattern — investigated rather than reported at
+face value, and confirmed to be entirely a sample-period confound: restricting 1day to the SAME window
+as 1h flipped it from 2/9 to 9/9 significant. Fixed by running two separately period-matched groups
+instead of one, each matched to ITS OWN group's shared native depth.
+
+**Final result — deep-history group (1h/4h/1day, matched to 2023-07-24+, ~3yr shared window)**:
+**9/9 pairs significant at all three timeframes, perfectly consistent.** Cointegration for this pair set
+is genuinely NOT a granularity artifact — the same relationship is detectable at 6.5, 1.6, and 1
+bars/day when tested over the same underlying period. This is real, independent confirmation (via a
+completely different test design) that these 9 pairs' signal is robust, consistent with everything else
+found about them this session (raw EG significance, IBKR-confirmed depth, etc.).
+
+**Shallow-history group (15min/30min/1h, matched to 2026-03-25+, ~4mo shared window)**: 1hr itself drops
+to 1/9 significant in this short window — the SAME timeframe that was 9/9 significant over the full
+~3yr window. Not a contradiction: this isolates a pure SAMPLE-SIZE effect (EG test power depends on
+absolute observation count within the tested window, not just bar frequency) from the granularity
+question the deep-history group answers cleanly. Four months, even at high intraday frequency, isn't
+enough absolute history for this test to detect a real but slower-resolving relationship.
+
+**Net honest conclusion**: no evidence of a genuine cross-timeframe DIVERGENCE for this pair set once
+sample-period confounds are controlled — the 1h collapse characterized in task #71 is not explained by
+"1h itself is a bad timeframe for cointegration," since 1h shows the SAME strong signal as 4h/1day when
+given a comparable amount of history to work with.
+
+### Task #55 — mean-reversion vs breakout comparison arm, sign bug caught by an implausible result, real caveat on the final number (2026-07-14)
+
+`research/breakout_vs_reversion.py`: production's mean-reversion logic (enter |z|≥2.0, exit at z=0.0 —
+`config.py`'s own `ENTRY_ZSCORE`/`EXIT_ZSCORE`) vs. the opposite-philosophy breakout logic (enter WITH
+a z-score extreme, betting continuation, exit at a symmetric profit target or stop) on the same 9 pairs,
+same z-score construction, same entry threshold — isolating strategy LOGIC as the only difference.
+
+**Bug caught by an implausible result, not by code review**: the first real-data run showed mean-
+reversion at a **0.00 win rate across 665 trades** — impossible for pairs independently confirmed
+genuinely mean-reverting via raw EG significance (task #71), Hurst estimates well below 0.5 (task #43),
+and now cross-timeframe-consistent cointegration (task #54). Root cause: `pnl = direction * (entry_z -
+exit_z)` had the sign backwards; correct is `pnl = direction * (exit_z - entry_z)` (verified by hand:
+direction=-1 fading a +2.5 extreme down to exit_z=0.0 should profit +2.5, not -2.5). Fixed.
+
+**Post-fix result flips to 1.00 (100.000%) win rate across all 665 mean-reversion trades, 9/9 pairs** —
+itself suspiciously clean, checked rather than accepted at face value. Confirmed NOT a trivial instant-
+exit artifact (mean holding period 28-35 bars, well under the 100-bar cap, not 1-2 bars). But a real,
+significant caveat applies and is stated plainly: this script's spread uses a FULL-SAMPLE OLS hedge
+ratio (computed using the entire dataset, including bars AFTER any given trade) — genuine lookahead
+bias, explicitly out of scope for a script meant to isolate strategy logic, not replicate `backtest.py`'s
+full point-in-time-correct machinery. **The exact 100% figure should not be read as a tradeable result**
+— it reflects both this hand-picked, strongly-pre-verified 9-pair set AND the lookahead-inflated hedge
+ratio making the spread cleaner than a real point-in-time trader would see. Breakout, by contrast, wins
+only 6.3% of the time (1127 trades) with a strongly negative mean Sharpe-like ratio (-1.49) — consistent
+with trading a genuinely mean-reverting process the wrong direction.
+
+**Valid takeaway, distinct from the inflated absolute number**: the DIRECTIONAL result — mean-reversion
+decisively beats breakout on this pair set — is real and consistent with every other characterization of
+these 9 pairs this session. The magnitude (100% vs. real, tradeable performance once point-in-time hedge
+ratios, transaction costs, and a non-cherry-picked universe are used) is not established by this
+comparison arm and should not be cited as such.
+
+### Task #55 addendum — entry/exit combination sweep + codebase check for the "trades enter but never exit" failure mode (2026-07-14)
+
+Ross's direction: sweep the codebase for a previously-seen bug class (fake P&L from trades that enter
+but are never counted as exiting, which also breaks capital-constraint simulation since capital never
+frees up), and extend the entry/exit comparison to a full combination sweep the same way production
+already does (`config.py`'s `COARSE_ENTRY_ZSCORE`/`COARSE_EXIT_ZSCORE` grid).
+
+**Codebase check, not assumed clean**: `BacktestEngine.run()` (backtest.py:740-747) force-closes any
+position still open at the end of the series (`exit_reason="eod"`) — every entry is guaranteed a paired
+exit in production. `pit_wfa.py` reuses this exact engine (line 339) rather than reimplementing trade
+logic, so it inherits the same guarantee. `portfolio_sim.py` (the capital-constraint simulator BUG-D62
+already investigated in depth) only ever replays trades `BacktestEngine` has ALREADY fully closed — it
+never generates its own entries, so it structurally cannot exhibit this bug either. This session's own
+`research/breakout_vs_reversion.py` was extended with an explicit completeness guarantee (documented in
+both functions' docstrings): every entry exits via its threshold condition, the `MAX_HOLD_BARS` cap, or
+`min(j, n-1)` at the end of the series — never left open and silently uncounted. No live instance of the
+"enters but never exits" failure mode found in what was checked this pass — flagged as worth keeping in
+mind for the remaining backlog items, not exhaustively re-verified across every script in the repo.
+
+**Entry/exit combination sweep, `research/breakout_vs_reversion.py`**: added `run_combination_sweep()`,
+pooling trades across all 9 pairs per combination (not averaging per-pair Sharpe-likes, which would let
+a noisy low-trade-count pair dominate) — `ENTRY_GRID=[1.5,2.0,2.5,3.0]` matching `config.py`'s
+`COARSE_ENTRY_ZSCORE` exactly, `EXIT_GRID=[0.0,0.25,0.5,0.75]` matching `COARSE_EXIT_ZSCORE` exactly for
+mean-reversion, and an analogous `TARGET_DELTA_GRID=[0.5,1.0,1.5,2.0]` for breakout's continuation
+target (no direct production equivalent to reuse, since breakout has no "exit toward the mean" concept).
+
+**Result**: mean-reversion's best combination is entry=3.0, exit=0.0 (sharpe_like=4.906, 204 pooled
+trades, 100% win rate) — MORE extreme entries perform even better, consistent with waiting for a larger,
+more reliable divergence before committing capital on a genuinely strongly-mean-reverting series.
+Breakout's best combination across the ENTIRE 4x4 grid is still negative (sharpe_like=-0.627) — no
+parameter choice rescues it. This is now a robust finding across a full systematic sweep, not an
+artifact of the single entry=2.0/exit=0.0 pair originally tested — strengthens rather than changes the
+directional conclusion.
+
+### Task #56 — mixed-frequency cross-asset lead-lag, extends midas_feature.py, fourth convergent null (2026-07-14)
+
+`research/midas_cross_asset_lead_lag.py`: extends `midas_feature.py`'s existing MIDAS machinery
+(`beta_weights`/`midas_aggregate`, reused directly, not reimplemented) from its original single-pair
+SAME-asset-class construction demo (SPY/VOO, explicitly not a predictive test per that module's own
+docstring) to a genuine CROSS-ASSET predictive question on the 9 known-good pairs: does leg A's recent
+1h return history, MIDAS-aggregated with decay weighting, predict leg B's NEXT daily return — beyond a
+naive flat-average aggregation, and beyond B's own simple lagged-return baseline?
+
+Method: MIDAS-aggregate A's trailing 16 1h bars (strictly causal, no lookahead) into a feature at each
+of B's daily timestamps, correlate against B's next-day return, permutation-test (circular shift, same
+method as this session's other permutation checks, 500 draws) against all three variants
+(midas_decay, midas_flat, and b_own_lag_baseline as the same-frequency control).
+
+**Result — clean, complete null**: 0/9 pairs significant for ALL THREE variants (midas_decay,
+midas_flat, b_own_lag_baseline). No next-day predictive power detected anywhere — not from cross-asset
+MIDAS aggregation, not from the naive flat-average version, and not even from B's own simple lagged
+autocorrelation.
+
+**This is the fourth independent lead-lag test today converging on the same conclusion**: earnings-
+conditioned (task #69 Piece B), volatility-standardized big-move-conditioned (task #69 Piece C), and now
+cross-asset mixed-frequency MIDAS all show zero evidence of a genuine LAGGED relationship between these
+pairs' legs — every one of today's tests finds the SAME thing, contemporaneous cointegration with no
+detectable lead-lag structure, using four methodologically distinct approaches. This convergence across
+independent methods is itself a meaningful finding: it's not that any ONE test lacked power or was
+mis-specified — the absence of a lagged signal for this pair set appears robust to how the question is
+asked.
+
+### Task #59 — peer-correlation contamination cross-check, ensembled with task #51's existing scan (2026-07-14)
+
+Scoped with Ross 2026-07-13 as idea (1) of the relational-adaptation program: extend task #51's
+universe-wide contamination scan (`research/data_contamination_scan.py`, 261,797 total jump events,
+248,064 flagged `explained=False` — not matched to a known split or one of 3 hardcoded macro-crisis
+windows) with a SECOND, independent signal — do a sample of OTHER symbols also move on the same date —
+ensembled alongside the existing check, not replacing it.
+
+`research/peer_correlation_contamination_check.py`: for the top 200 unexplained events by magnitude,
+samples 15 random peer symbols at the same timeframe and checks their same-date returns. A jump is
+`likely_isolated_artifact` if fewer than ~20% of sampled peers also show an elevated move (0.05
+threshold, deliberately looser than the 0.15 contamination threshold — a real shared event doesn't need
+every peer to jump 15% too); otherwise `likely_real_shared_event`.
+
+**Result**: 52/200 (26%) isolated artifacts, 148/200 (74%) peer-corroborated real events. The top
+isolated candidates (CHRD 2020-11-20 at a 257x magnitude with only 1/15 peers elevated; TDS across three
+separate TF/date combinations in 2005 with 0-2/peers elevated; ULVR.L/BA.L 1996-97 events) are now a
+genuinely prioritized, much smaller list (52, not 248,064) worth real BUG-D65-style investigation.
+Equally informative: the MAJORITY (74%) of "unexplained" events are peer-corroborated, meaning task
+#51's hardcoded 3-window macro list (1987, 2008-2009, 2020) is necessarily incomplete — real, unlabeled
+historical market events (the 1997 Asian financial crisis shows up clearly in ULVR.L/BA.L's flagged
+dates) account for most of what looked like a huge "unexplained" backlog. This ensemble check
+substantially de-risks that backlog without claiming to resolve it: most of it is now understood as
+probably-real-and-unlabeled rather than probably-contaminated, and the genuinely suspicious cases are
+now a short, ranked list rather than an undifferentiated 248,064.
+
+### Task #60 — leg-level early-exit comparison arm, real risk/return tradeoff, not a clean win (2026-07-14)
+
+Scoped with Ross 2026-07-13 as idea (2), explicitly split into a broadly-testable claim (leg-level price
+action improving exit timing) and a thinner cross-asset lead-lag-exit claim gated behind task #53. Built
+ONLY the leg-level claim here — today independently ran FOUR separate lead-lag tests (task #69 Pieces
+B/C, task #56's MIDAS test), all converging on a clean null, making the cross-asset variant not worth
+building on top of a signal now rejected four separate ways this session.
+
+`research/leg_level_early_exit.py`: reuses `breakout_vs_reversion.py`'s spread/z construction and entry
+convention. Baseline exits at the pure z-crosses-zero condition. The leg-level variant exits at the
+EARLIER of the baseline condition or (once |z| is within 0.5 of the exit threshold) the first bar where
+either leg's own RSI confirms a reversal through 50 in the direction supporting convergence — guaranteed
+by construction to exit at or before the baseline, so this tests whether the improvement is MEANINGFUL,
+not whether it's structurally possible.
+
+**Result — a real, honest tradeoff, not a clean win**: leg-level confirmation cuts mean holding period
+~27% (31.5 -> 23.0 bars, with 53-69 of each pair's 70-88 trades exiting early) but captures somewhat
+LESS total profit per trade (mean total_pnl_z 207.8 -> 188.4; mean Sharpe-like 3.58 -> 3.23, ~9% lower)
+— exiting before the full reversion completes trades off some captured profit for reduced holding-period
+exposure. Whether this is favorable depends on what's being optimized: the per-trade Sharpe-like metric
+used here doesn't capture capital-efficiency gains from shorter holds (more trades per unit time, lower
+capital lock-up per position) — a genuinely different question this comparison arm doesn't answer, flagged
+rather than silently assumed either way.
+
+### Task #62 — hub-leg dynamic stop-loss conditioning, another gap-aware-rolling-window bug caught, honest thin-sample result (2026-07-14)
+
+Scoped with Ross 2026-07-13 as idea (4), explicitly the most speculative of the four and scoped last: a
+dynamic extension of the STATIC correlation-cluster exposure caps already built (task #20) — condition
+the stop-loss threshold for pairs sharing a "hub" leg on that leg's OWN current realized-volatility
+percentile, tighter when the hub is unusually volatile right now.
+
+`research/hub_leg_stop_conditioning.py`. Honest scope note stated up front in the script itself: this
+9-pair set has only ONE real hub (LNT, in both LNT/VTR and LNT/WELL) — a genuinely thin 2-pair test, not
+inflated into a broader claim.
+
+**Bug caught before trusting the first result, not after**: baseline and hub-conditioned variants came
+back IDENTICAL to the decimal (200.08 vs 200.08 total_pnl_z) — checked rather than accepted, since
+identical-to-the-decimal results across two supposedly-different strategies is itself a red flag.
+Root-caused: the SAME bug class already found and fixed in `big_move_lead_lag.py` earlier this session —
+`_gap_aware_returns` masks roughly 1-in-6 bars to NaN (gap-flag masking), so a naive
+`.rolling(20).std()` on the raw gap-aware series essentially never sees a NaN-free 20-bar window
+(pandas rolling defaults to `min_periods=window`, so any NaN inside the window kills that window's
+result) — the volatility-percentile series came back 0/4452 valid, meaning the `>= 0.80` conditioning
+check was always False and the "dynamic" stop was silently always just the baseline. Fixed with the
+same pattern: compute rolling stats on the `.dropna()`'d compacted series, then reindex back — verified
+directly (0/4452 valid before the fix, 4126/4392 valid after, with 905 bars genuinely crossing the 0.80
+threshold).
+
+**This is now the SECOND independent instance of this exact bug class found today** (big_move_lead_lag.py,
+now hub_leg_stop_conditioning.py) — worth treating as a real pattern to check for, not two unrelated
+one-offs: any script computing `.rolling(window).std()`/`.mean()` directly on a `_gap_aware_returns()`-
+sourced series, without first `.dropna()`-ing, is at risk of silently producing an all-or-mostly-NaN
+result. Flagged here for awareness in any future script touching gap-aware return series, not swept
+across the whole codebase in this pass (scope discipline — fixed where found, noted as a pattern, not
+force-generalized into an unrequested audit).
+
+**Post-fix result — real conditioning, honest thin-sample outcome**: the tighter stop now genuinely
+fires far more often (LNT/VTR: 8/83 -> 20/95 stopped out; LNT/WELL: 7/78 -> 17/87). Total P&L is
+essentially a wash-to-slightly-negative (200.08 -> 199.96; 198.52 -> 195.69) — on this small,
+strongly-reverting pair set, the tighter hub-conditioned stop mostly clips otherwise-good trades early
+rather than preventing genuine large losses, since these particular pairs rarely need the protection in
+the first place. Consistent with Ross's own "most speculative" framing for this idea — a real, honestly-
+reported near-null result on admittedly thin data (2 pairs, 1 hub), not evidence the underlying concept
+is wrong at a larger, richer hub structure (e.g., DD's historical 73.4%-of-candidate-pool hub
+prominence, before BUG-D65's contamination was found, would have been a much richer test bed — no
+longer available post-cleanup).
+
+### New: `debug/synthetic_diagnostics.py` — reusable synthetic-data test foundation, motivated directly by today's bug catalog (2026-07-14)
+
+Ross's direction: build a diagnosis/tester script for the whole pipeline and research scripts, feeding
+fake data to test every possible outcome and ensure correct results/methodology. Scoped honestly rather
+than claimed as complete: the full production pipeline plus 79+ research scripts is far more than one
+session can exhaustively cover. Built the REUSABLE FOUNDATION instead — a generator + checker library
+derived directly from the SPECIFIC bug classes found today, not a generic/hypothetical test suite.
+
+Every generator/checker traces to a REAL bug found this session:
+- `make_random_walk_series`/`make_mean_reverting_series` + `assert_recovers_known_hurst` — would have
+  caught `wavelet_hurst_comparison.py`'s formula bug (H=0.000 instead of ~0.5 on a random walk)
+  immediately, before ever touching real data.
+- `make_gap_scattered_series`/`make_dense_calendar_grid_series` + `assert_not_degenerate` — would have
+  caught the gap-aware-rolling-window bug found TWICE independently today (`big_move_lead_lag.py`,
+  `hub_leg_stop_conditioning.py`).
+- `make_z_score_series_with_known_trade` + `assert_known_trade_pnl_sign` — would have caught
+  `breakout_vs_reversion.py`'s P&L sign bug (0.00 win rate across 665 trades).
+- `assert_trades_have_valid_exits` — directly implements Ross's "sweep for entries without exits"
+  request (task #55 addendum) as a reusable, callable assertion, not just a one-off manual check.
+- `assert_no_lookahead_in_rolling` — a GENERIC causal-computation check (perturbs data after position
+  t, asserts fn's output at t is unchanged) not tied to any single bug found today, added because
+  lookahead is this project's single most-repeated bug class historically (BUG-D68/D69 this session
+  alone) and deserves a reusable, applicable-to-any-rolling-function check.
+
+**Self-tested before trusting**: every checker verified against both a deliberately-broken and a
+correct implementation of the pattern it targets — confirms the checker actually discriminates, not
+just that it runs without crashing. Caught one bug in the self-test ITSELF while building this (the
+first "broken" P&L stub was accidentally algebraically identical to the correct formula — `-(a-b) =
+b-a` — fixed to use the actual sign-flip pattern the real bug exhibited).
+
+**Verified against REAL functions, not just illustrative stubs**: `assert_recovers_known_hurst` run
+directly against the (now-fixed) real `wavelet_hurst()` from today's session — passes. Reproduced the
+exact degenerate pattern the real `hub_vol_percentile_series` bug exhibited (naive `.rolling(20).std()`
+on a gap-scattered series → 98% NaN) and confirmed `assert_not_degenerate` catches it, then confirmed
+the actual fix pattern (`.dropna()` first) produces a clean result — both checks against real code
+paths, not synthetic-only demonstration.
+
+**Honest scope statement**: this is a foundation other scripts/sessions can import and extend
+(`from debug.synthetic_diagnostics import ...`), not a claim that the whole pipeline now has test
+coverage. Natural next steps, not done here: wiring these checkers into new research scripts' own
+verification as a matter of course (the same way `debug/_verify_*.py` files already exist per-script),
+and extending the generator/checker set as new bug classes are found — this library should grow with
+the project's own bug history, the same way `docs/BUG_LOG.md` does.
+
+### `debug/synthetic_pair_factory.py` — parameterized PAIR factory + permutation sweep, two real bugs caught by its own self-test (2026-07-14)
+
+Ross expanded the diagnostic-framework request: not just the handful of bug-specific single-series
+generators above, but a factory producing different datasets and VARIATIONS/PERMUTATIONS across every
+factor the pipeline and research scripts test for. Built `make_synthetic_pair()` — a single richly-
+parameterized generator covering 8 independently-togglable factors, each mapped explicitly to the real
+pipeline/research mechanism it targets: cointegration + hedge ratio + mean-reversion speed (EG/
+HurstEstimator), lead-lag structure (lead_lag_scan.py and this session's earnings/big-move/MIDAS work),
+structural breaks with 3 break types (ZA/CUSUM, BUG-D68's gate, decoupling_analysis.py), gap patterns
+(data.py's GapFlag system), contamination seams (BUG-D65-style, data_contamination_scan.py), isolated
+jumps (peer_correlation_contamination_check.py, big_move_lead_lag.py), volatility regimes (constant/
+GARCH-like/regime-switch), and sample-size/noise controls. Plus a `sweep()` function for Cartesian-
+product parameter grids (capped and randomly sampled if too large, never silently truncated from the
+front).
+
+**Per Ross's explicit instruction to be "brutal and scrutinizing"** — applied the standard to the tester
+script's OWN construction, not just to what it tests. Wrote a self-test that runs each factor through
+its REAL target function (not a mock) and checks the recovered result matches the known ground truth.
+Found TWO real bugs this way, both in the lead-lag injection specifically:
+
+1. **First bug**: the lead-lag cross-contribution was accumulated (`np.cumsum`) directly onto the price
+   LEVEL rather than injected into the RETURN/innovation stream before any cumsum — this creates a
+   permanent drift/trend bias, not a genuine lagged-return correlation, and produced NO detectable
+   signal at all (`lagged_corr_scan` recovered `best_lag=0` for both injected true_lag=+5 and -5).
+   Fixed by restructuring the construction so the cross-leg contribution enters at the innovation level,
+   before any level is built via cumsum.
+2. **Second bug, found immediately after fixing the first**: still failed post-fix, because the
+   self-test's OWN test case used `cointegrated=False` but left `hedge_ratio` at its 1.0 default — and
+   `log_a = hedge_ratio*log_b + spread` means ANY nonzero hedge_ratio creates a direct, strong (O(1))
+   contemporaneous link between A and B REGARDLESS of the `cointegrated` flag (which only controls
+   whether the spread itself is stationary, not whether A tracks B's level at all). This stronger,
+   unrelated effect was drowning out the injected lag-5 signal in the correlation-magnitude comparison
+   `lagged_corr_scan`'s `best_lag()` performs. Fixed by setting `hedge_ratio=0.0` in the lead-lag test
+   case specifically — properly isolating the lead-lag factor from the cointegration factor so each is
+   tested on its own, not conflated with a second, competing effect.
+
+**Final result — all 6 tested factors verified correct**: cointegration (EG p=0.0000 when injected True,
+p=0.6413 when False), lead-lag (true_lag=5 → recovered exactly 5; true_lag=-5 → recovered exactly -5;
+true_lag=0 → recovered 0, all against the real `lead_lag_scan.lagged_corr_scan`/`best_lag`), structural
+break (pre-break EG p=0.0000 vs. diluted full-sample p=0.0067), gap injection (exact NaN count and
+position match), contamination seam (price ratio 2.053 vs. expected ~2.0), and isolated jumps (0.143
+return at the exact injected bar). Every factor is now independently verified injectable AND detectable
+by the actual production/research function it targets — a real, working foundation for the broader
+permutation-sweep testing Ross asked for, not just a first draft that happened to run without crashing.
+
+### Task #47 — market-open trade-timing cluster robustness check: reconciles the earlier instability finding with a MORE decision-relevant, MORE positive result (2026-07-14)
+
+Direct follow-up on `hmm_gmm_regime_trade_features.py`'s finding (Development.md, 2026-07-13): 2 of 3
+unsupervised methods found entries near market open (hour≈9.5) cluster with notably better realized
+performance, but the same investigation's expanding-window causal-stability check found the pattern
+"not stable" (oscillating trade-label agreement 43.1%/100.0%/50.2%/100.0% across checkpoints) — flagged
+as needing a real robustness check before being trusted, specifically via (1) holdout-set transfer or
+(2) bootstrap resampling.
+
+`research/regime_cluster_robustness_check.py`, reusing `hmm_gmm_regime_trade_features.py`'s exact
+functions (`build_trade_features`/`fit_gmm`/`performance_by_state`) for methodological consistency:
+
+1. **Holdout transfer**: fit GMM on IS trades only, identify the market-open cluster (state=1,
+   mean_hour=9.50, n=1,137, sharpe_like=9.978), then apply the ALREADY-FITTED scaler+GMM (not refit) to
+   genuinely unseen `trades_layer1_holdout.parquet` trades. 263 holdout trades land in the same cluster,
+   showing sharpe_like=**10.699** — matching or slightly exceeding the IS figure, not degrading.
+2. **Bootstrap resampling**: 200 resamples of the IS trade set, GMM refit fresh on each draw. The
+   market-open-like cluster was found in **200/200** draws and was the BEST-performing cluster in
+   **186/200 (93%)** of those.
+
+**This is a genuinely strong, positive robustness result — but it answers a DIFFERENT question than the
+earlier instability check, and both are correctly reported rather than treating the new result as simply
+overriding the old one.** The original expanding-window check tested whether INDIVIDUAL early trades'
+exact state LABELS stay fixed as more data accumulates during model refits — a fine-grained, per-trade
+stability question, and it genuinely is unstable on that axis. This check tests whether the
+AGGREGATE, CLUSTER-LEVEL finding (market-open trades as a group outperform) is robust to resampling and
+transfers to genuinely unseen data — the more decision-relevant question for whether this is a real
+signal worth acting on — and on that axis, the evidence is now strong: consistent across 200 independent
+refits, and holds (even improves) on data the model never saw. Both findings are true simultaneously and
+not contradictory: individual trades near the cluster boundary can flip labels between refits (real,
+disclosed instability) while the cluster's existence and superior aggregate performance remains a robust
+feature of the data (real, now-verified signal). Per this project's research/paper policy, goes to
+`docs/FINDINGS.md` as a strengthened but still-flagged lead, not directly promoted to PAPER.md without
+Ross's review — the underlying trades are from the pre-1h-collapse confirmed-pair set (task #71), so
+this finding's ultimate relevance to PAPER.md is also gated on that broader reconciliation.
+
+### Task #45 — archetype-conditional sizing, a real rule-parsing bug caught, thin and genuinely mixed final result (2026-07-14)
+
+Connects `pair_characteristics_analyzer.py`'s existing decision-tree output (`output/research/
+pair_characteristics.parquet`, 2026-07-11) to an actual sizing rule: scale position size by the current
+entry's matching leaf's train win rate relative to the pair's mean. Honest scope stated up front and in
+the script itself: `regime_sensitivity_score` (the signal that a pair is worth this treatment at all) is
+populated for only 2 of 61 rows (AXP/CRWD, TMHC/WAL) — the analyzer's own prior finding already
+disclosed this ("3 small clusters, n=6... too thin to treat as real archetypes yet"). This tests the
+sizing MECHANISM on the only 2 pairs with real archetype data, not a general claim.
+
+**Bug caught by an implausible result, not code review**: first run showed AXP/CRWD's mean size
+multiplier at EXACTLY 1.000 across all 69 trades — no conditioning at all — while TMHC/WAL showed 0.996,
+an odd asymmetry. Root cause: the leaf rule strings (self-generated by `pair_characteristics_analyzer.py`,
+e.g. `"entry_z_abs <= 3.550 AND entry_z_abs <= 2.278"`) use uppercase `AND`, which is a Python
+`SyntaxError` (needs lowercase `and`) — every COMPOUND rule silently failed to parse, caught by the
+caller's `except Exception: continue`, defaulting every trade to size_mult=1.0 with the conditioning
+never actually applying. TMHC/WAL's 0.996 (not exactly 1.000) was itself informative in retrospect: one
+of its 3 confirmed rules happened to be a single-condition rule with no `AND` at all
+(`"entry_z_abs > 3.700"`), so THAT one rule parsed fine while its compound siblings silently failed —
+the asymmetry between the two pairs' results was the tell that something was broken, not evidence of a
+real difference. Fixed by normalizing `AND`/`OR` to lowercase before `ast.parse`.
+
+**Post-fix result — real conditioning, genuinely mixed outcome**: AXP/CRWD's total P&L improves
+(197.22 → 238.41, mean size_mult=1.274) but Sharpe-like dips slightly (2.928 → 2.858); TMHC/WAL's total
+P&L and Sharpe-like both decline (216.94 → 203.06; 3.761 → 3.280, mean size_mult=0.930). Not a clean win
+for archetype-conditional sizing on either metric or either pair uniformly — one pair improves on one
+metric, the other pair gets worse on both. Given this is explicitly a 2-pair test on already-disclosed-
+thin archetype data, the honest conclusion is that the sizing MECHANISM now works correctly (verified,
+bug-fixed), but the underlying data doesn't yet support a real recommendation either way — matching this
+project's standing "too thin" characterization of the source archetype clusters, now empirically
+confirmed rather than just inferred from cluster count.
+
+### Task #48 — the two remaining risk-management arms task #20 deferred (2026-07-14)
+
+Task #20 explicitly deferred these two, needing "real backtest.py trading-loop changes not a config-
+patch." Built as standalone comparison-arm scripts (`research/vol_targeting_and_drawdown_derisking.py`)
+reusing this session's established spread/z simulation instead — no production code touched, consistent
+with every other comparison arm built today. Proactively checked `spread_vol`'s rolling computation for
+the gap-aware-NaN-rolling bug found twice already today before trusting any result (clean: 4391/4392
+valid) — the mask-then-index construction pattern already used elsewhere this session avoided it here.
+
+**Arm 1 — volatility-targeting sizing**: size inversely to the spread's own causal trailing volatility,
+targeting constant risk contribution per trade. **Clean, consistent negative result: Sharpe-like is
+WORSE for all 9 of 9 pairs** under vol-targeting vs. flat sizing (e.g. LNT/VTR 4.734→3.612, PFG/STLD
+4.023→2.882) — total P&L is mixed (5 pairs up, 4 down) but the Sharpe direction is unanimous. Consistent
+with this pair set's own volatility profile being fairly narrow (LNT/VTR's spread_vol ranged only
+~0.0021-0.0074, a ~3.5x span) — too little real volatility variation for targeting to add value, while
+the size adjustments themselves inject extra variance into the P&L distribution.
+
+**Arm 2 — drawdown-triggered de-risking (portfolio-level)**: pooled all 9 pairs' 665 trades into one
+true chronological event stream, tracked running equity, cut size 50% once trailing drawdown crossed
+10%. **The de-risking mechanism never triggered — 0/665 trades occurred during a de-risked period,
+portfolio max_drawdown=0.00 exactly, identical results to flat sizing.** Not a bug (verified: the
+underlying equity curve genuinely never dips below its running peak) — a real, disclosable limitation of
+testing risk-management features on this specific hand-picked, unusually strong 9-pair set: there is no
+real adverse period in this trade set for de-risking to demonstrate value against. This mirrors task
+#62's honest thin-sample conclusion — the MECHANISM is built and verified correct, but this particular
+test bed can't meaningfully evaluate it. A fair test of drawdown de-risking needs a broader, non-cherry-
+picked universe (or a deliberately harder period) where real drawdowns actually occur.
+
+### Task #70: decoupling_analysis.py's break clustering cross-checked against BUG-D65/D66 — no residual contamination found, but a new, unexplained pattern surfaced (2026-07-14)
+
+Motivation: decoupling_analysis.py's Zivot-Andrews breaks are overwhelmingly concentrated on DD-leg
+pairs (the earlier "24→0" investigation already found DD as a leg in 73.4% of the 1h candidate pool).
+Given DD was one of the 7 BUG-D65/D66-affected symbols whose 1h/4h caches carried a real append-seam
+contamination artifact until task #64's refetch (completed today, 10:00-10:22 for the 1h caches),
+task #70 asks directly: is this break-clustering a genuine market phenomenon, or a residual echo of
+that contamination the refetch didn't fully clean?
+
+Built `research/decoupling_contamination_crosscheck.py` (read-only diagnostic, no cache writes).
+Method: (1) partition the current, POST-REFETCH 1h `all_candidates.parquet` (144 zivot_andrews
+breaks, `output/results/1hr_stale_20260714_130954` — the last complete clean run at the time this
+executed; a heavier pipeline rerun was in flight concurrently, see below) by whether either leg is
+one of the 7 refetched symbols (DD, APP, CRWD, MLI, MTZ, VRT, WCC); (2) reuse
+`data_contamination_scan.py`'s `scan_series_for_jumps()` on each of the 7 symbols' CURRENT cache
+files to find every >5% single-bar move; (3) for each, check directly whether it lands in the exact,
+known original seam window (2023-07-24 to 2023-08-12, the same 15-day window BUG-D66 found shared
+across all 7 symbols) and whether it's independently explained by a cached earnings date.
+
+**Finding 1 — the break clustering is total, not just DD-dominant.** All 144 currently-detected 1h
+breaks involve one of the 7 refetched symbols (144/144, 0 exceptions); the 313 candidate pairs
+touching one of the 7 have a 46.0% break rate; the 40 candidate pairs touching NONE of the 7 have a
+**0.0%** break rate. This is a stronger and cleaner pattern than the original DD-only framing.
+
+**Finding 2 — no residual contamination signature.** Zero of 320 flagged >5% jump events (across all
+7 symbols' current caches) land in the original 2023-07-24/08-12 seam window. One event initially
+tripped a near-series-start heuristic (CRWD, 2023-08-31, +9.1%) but is outside the seam window by
+~3 weeks and matches a cached earnings date to within 1 day — a genuine early-series earnings move,
+not a seam artifact, once checked directly rather than trusted on the heuristic alone (the heuristic
+itself, reused from `data_contamination_scan.py`, is unreliable here: it also flags recent real jumps
+near the cache's TAIL as "edge-shaped," which is meaningless — every cache's tail sits near "now" by
+construction. Caught and excluded before it produced a false "still contaminated" conclusion).
+
+**Finding 3 — the DD break-cluster's largest driver is a real, dated, but earnings-UNEXPLAINED jump.**
+DD's biggest single-bar move in the current clean cache is +13.1% on 2024-01-24 09:30 (market open,
+`shape=mid_series`, `position_frac=0.15` — nowhere near either edge of the series). DD's cached
+earnings dates are 2024-02-06, 05-01, 07-31, 11-05 (2025-02-11, etc.) — none within 13 days of
+01-24. 5 of DD's other jumps DO land exactly on a cached earnings date (2024-02-06, 05-01, 07-31,
+11-05, 2025-02-11), consistent with task #69's Piece A finding (58-65% of breaks earnings-adjacent).
+The Dec2023-Feb2024 cluster of ~130 DD-leg break dates is temporally close to, but not exactly on,
+this 01-24 jump or the 02-06 earnings date — plausibly ZA's break-date estimate being pulled toward
+this general period by the combination of both events, though this specific mechanism (why ZA lands
+on e.g. 2023-12-29 for one pair and 2024-02-01 for another, both nowhere near the 01-24 jump itself)
+is not fully characterized and is reported as an open question, not resolved here.
+
+**Honest scope note**: this ran against the 13:09 archived snapshot because `output/results/1hr`'s
+live `all_candidates.parquet` was missing/implausibly small at execution time — the script fell back
+to the last confirmed-complete archive automatically (`find_candidates_path()`'s designed behavior).
+**Correction (2026-07-14, checked directly rather than left as an assumption)**: this was originally
+attributed to "PID 22300, a heavier pipeline job" — checked via `Get-CimInstance Win32_Process`'s
+actual command line and that attribution is wrong. PID 22300 is `research/lead_lag_permutation_check.py
+--tf 3m` (task #66), a read-only research script with no plausible path to `output/results/1hr`. The
+real explanation is most likely task #67's `pit_wfa.py` split-sweep run, independently confirmed
+active from 17:12 to 18:02 (overlapping this check) and known to do repeated point-in-time
+EG/candidate-pool screening passes — though its own logged outputs (`output/backtest/pit_wfa_*`) don't
+obviously touch `output/results/1hr` either, so this is the best-evidenced explanation, not a
+certainty. Either way, `output/results/1hr` is idle now (both task #66 and #67's split-sweep have
+since completed/moved on) — safe to re-run this cross-check against the live directory directly if a
+fresh confirmation is wanted, not gated on anything currently in flight.
+
+**Conclusion, stated plainly**: BUG-D65/D66's contamination is NOT the explanation for
+decoupling_analysis.py's break-clustering — the refetch is confirmed clean by direct inspection of
+every one of the 7 symbols' current caches, not just DD's. But the near-total concentration of
+structural breaks onto exactly these 7 (originally-flagged-for-an-unrelated-reason) symbols is a
+real, currently-unexplained pattern worth flagging: either these 7 stocks are genuinely and
+substantially more structurally unstable than the rest of the 1h universe over this window (plausible
+— sector/idiosyncratic volatility, real corporate actions for DD specifically), or there's a
+selection-effect connection between "the specific symbols BUG-D66's >15%-threshold scan flagged" and
+"symbols with elevated real structural-break rates" that hasn't been identified. Not concluded here;
+noted as a candidate follow-up if the pattern recurs once the in-flight pipeline rerun completes.
+
+Output: `output/research/decoupling_contamination_crosscheck.parquet` (320 jump events),
+`output/research/decoupling_contamination_crosscheck_breaks.parquet` (144 breaks, tagged),
+`latest_run_decoupling_contamination_crosscheck.log`.
+
+### Task #72: IBKR multi-request pagination built, synthetically verified, and live-confirmed against real IB Gateway (2026-07-14)
+
+Built to answer task #71's still-open question ("does deeper IBKR history restore EG significance for
+the 9 non-DD formerly-confirmed 1h pairs") — BUG-D70's fix (`bypass_cache=True`) made `data_ibkr.py`
+issue genuine `reqHistoricalData` calls instead of silently returning cached yfinance data relabeled
+as "IBKR deep history," but a single such call is capped at ~21-30 days for 1h equity bars on this
+account (empirically swept in task #71: 5D/10D/14D/21D work, 1M and beyond all time out identically).
+Getting real depth requires chaining multiple requests.
+
+Added `IBKRFeed.get_bars_paginated()` (data.py) — walks `endDateTime` backward in `chunk_duration`
+steps (default 21 D, the confirmed-working ceiling), concatenating and deduping on timestamp, until
+`target_duration` is accumulated, a chunk returns empty (the real historical boundary — informative,
+not an error), or `max_chunks` is hit (safety backstop). Deliberately does NOT reuse `get_bars()` —
+that function's cache-first shortcut and 3-strikes/circuit-breaker logic are designed for `data.py`'s
+single-request pipeline, not a pagination loop where an early empty chunk is the SUCCESS signal, not
+a failure to escalate. Added `_parse_duration_days()` helper (parses IBKR's `"21 D"`/`"2 Y"`-style
+duration strings into an approximate day count for the target-accumulation check).
+
+**Verification chain, in order:**
+1. `debug/_verify_ibkr_pagination.py` — 4 synthetic tests mocking `reqHistoricalData` (stop-at-target,
+   stop-at-empty-chunk, respect `max_chunks` safety cap, dedup overlapping timestamps). Caught two
+   real test-construction bugs before passing: mocks initially returned bare DataFrames instead of
+   the list-of-BarData the real API returns (production's `if not bars:` check needs a real list to
+   be well-defined — raised `ValueError: truth value of a DataFrame is ambiguous`); the dedup test's
+   `target_duration="1 D"` was satisfied after just 1 chunk, never exercising the deliberately-
+   overlapping 2nd chunk — fixed by using `target_duration="2 D"`. All 4/4 pass after fixes.
+2. Wired into `data_ibkr.py`'s one call site (line ~304): `get_bars(..., bypass_cache=True)` replaced
+   with `get_bars_paginated(..., target_duration=depth, chunk_duration="21 D")`. `tf_label` stays in
+   scope for the unchanged downstream `snap_timestamps`/`truncate_to_cutoff`/`merge_with_yfinance`/
+   `supplement_path` calls, which `get_bars_paginated` doesn't need internally — `data_ibkr.py` already
+   handles its own persistence separately from the main cache, architecturally correct for this split.
+3. **Live smoke test** (`debug/_live_test_ibkr_pagination.py`, real IB Gateway, LNT, `target_duration=
+   "60 D"`): 3 real chunks, 744 bars, 2026-04-16 to 2026-07-14 (89 real calendar days — target
+   satisfied with normal chunk-boundary overshoot), 0 duplicate timestamps. Confirms the pagination
+   logic works against the real API, not just mocks.
+4. **Live full-depth run** (`target_duration="2 Y"`, LNT): completed, 534s session time, 35 chunks,
+   **8,107 bars, 2023-09-26 09:00 to 2026-07-14 19:00 (1,022 real calendar days), 0 duplicate
+   timestamps.** Pagination itself is fully verified working end-to-end against the real API.
+
+**Task #71's depth question is now decisively answered — not "unanswerable" as previously stated:
+IBKR does not have deeper history than yfinance for these symbols on this account.** LNT's yfinance
+cache starts 2023-07-24 (confirmed directly). IBKR's paginated pull, even at full account-permitted
+depth (35 chunks, no early empty-chunk stop — it ran to the requested 2 Y target without hitting a
+real boundary early), only reaches back to **2023-09-26 — two months LATER than yfinance's own
+window, not earlier.** `data_ibkr.py`'s `merge_with_yfinance()` keeps only
+`ibkr_hist = ibkr_deep[ibkr_deep.index < yf_start]`; with IBKR's earliest bar dated *after* `yf_start`,
+this filter is empty by construction — the deep-history merge contributes exactly zero additional rows
+for LNT, confirming this account's 1h equity market-data entitlement genuinely does not extend beyond
+~2.8 years back from "now," independent of the pagination mechanism (which works correctly) or the
+BUG-D70 cache-shortcut bug (which is fixed). This is consistent with the account/subscription-tier
+theory floated when BUG-D70 was first found, now with a hard, dated, quantified boundary rather than
+an inference from timeout behavior alone.
+
+**Practical conclusion for task #71**: the "does more real history restore EG significance for the 9
+non-DD formerly-confirmed 1h pairs" question cannot be answered by pulling more IBKR history, because
+no more history exists to pull — on this account, at this timeframe. The 9 pairs' significance must be
+assessed on the existing ~3-year yfinance-only window as-is; task #71's earlier conclusion (their raw
+EG p-values are individually significant at p<0.001 on the current clean cache, most parsimoniously
+explained by a genuine signal combined with a looser BH-FDR admission threshold under the old,
+more-widely-contaminated candidate pool) stands as the working answer, not superseded by anything new
+here. **Scope caveat, stated plainly**: this was checked on ONE symbol (LNT) given the ~9-minute cost
+per full 2-year pull; the account-tier explanation is symbol-independent by mechanism (a data
+entitlement is account-wide, not per-symbol), so generalizing to the other 16 symbols is reasonable
+but not individually confirmed — a cheap follow-up (checking just the earliest-bar date each of the
+other 16 symbols' paginated pulls reaches, without needing the full 2 Y target every time) could
+close this gap if warranted later, not done here given the time cost and the account-tier mechanism's
+inherent symbol-independence.
+
+Output: `debug/_verify_ibkr_pagination.py`, `debug/_live_test_ibkr_pagination.py`; `get_bars_paginated()`
++ `_parse_duration_days()` in `data.py`; updated call site in `data_ibkr.py`.
+
+### CORRECTION to task #71/#72: the single-request duration "ceiling" is not a fixed account-level constant — it's session/time-varying, and the earlier "no deeper history exists" conclusion needs walking back (2026-07-14)
+
+Ross asked for a quick IBM per-timeframe depth sweep (`debug/_ibkr_depth_sweep.py`, escalating-duration
+ladder across all 11 IBKR bar sizes). Full results:
+
+| TF | max confirmed single-request duration | bars | earliest date reached |
+|---|---|---|---|
+| 1 min | 14 D | 13,439 | 2026-06-24 |
+| 2 mins | 10 D | 4,800 | 2026-06-30 |
+| 3 mins | 1 M | 6,400 | 2026-06-15 |
+| 5 mins | 5 D | 960 | 2026-07-08 |
+| 15 mins | 6 M | 7,759 | 2026-01-16 |
+| 30 mins | 1 Y | 7,780 | 2025-07-15 |
+| **1 hour** | **1 Y** | **3,906** | **2025-07-15** |
+| 4 hours | 5 Y | 5,188 | 2021-07-16 |
+| 1 day | 30 Y | 7,540 | 1996-07-22 |
+| 1W | 30 Y | 1,565 | 1996-07-26 |
+| 1M | 30 Y | 361 | 1996-07-31 |
+
+**This directly contradicts task #71's earlier LNT sweep**, which found 1h equity bars capped at 21-30
+days with EVERY duration from 1 month up timing out identically (Development.md, task "BUG-D70").
+IBM's 1h sweep succeeded cleanly all the way to 1 Y, only failing at 2 Y. Implausible versus the prior
+finding — investigated directly rather than written up as-is, per this project's standing discipline.
+
+**Direct follow-up test** (`debug/_ibkr_depth_symbol_compare.py`): single `1 hour`/`1 Y` requests for
+LNT, VTR, WELL, CMS, DUK, and IBM (same session) — **all six succeeded**, 2,889-3,906 bars each,
+reaching back to 2025-07-15. Not symbol-specific; LNT itself worked fine at 1 Y this time, directly
+contradicting its own earlier 21-30-day ceiling from task #71.
+
+**Then, immediately after, LNT alone at 1h/2Y/3Y/5Y/10Y all timed out** — consistent with *some*
+ceiling still existing today, just a much deeper one (~1 Y, not ~21-30 D) than task #71 found.
+**Then, moments after that (4 consecutive timeouts), a fresh `get_bars_paginated()` call for LNT
+starting at chunk_duration="1 Y" — the EXACT request that had just succeeded minutes earlier —
+returned nothing** (empty result, first chunk itself apparently failed).
+
+**Honest conclusion**: this account's single-request historical-data ceiling for intraday equity bars
+is **not a fixed, deterministic constant** — it varies within the same session, sometimes by a large
+margin (21 D vs. 1 Y for the same symbol, same bar size, within roughly an hour of each other), and can
+apparently degrade again immediately after a success. This looks like a soft, request-history/pacing-
+sensitive throttle (consistent with a paper-trading or non-full-entitlement account's rate-limiting
+behavior) rather than a hard, real data-availability boundary — which is a materially different
+explanation than task #71's "this account's market-data entitlement genuinely does not extend beyond
+~2.8 years" conclusion.
+
+**This means task #71's "closed, negative" status needs walking back, not silently left standing.**
+The finding that IBKR's paginated pull for LNT only reached back to 2023-09-26 (later than yfinance's
+own 2023-07-24 start) was real and directly observed, but it was measured under conditions now shown
+to be unstable/non-representative of this account's actual best-case capability — the same account
+just proved it can pull a full year of 1h LNT data in one request. **Genuinely deeper history may be
+retrievable; task #71's negative conclusion was measured under a degraded-throttle state, not
+necessarily the account's true ceiling.** Re-opening task #71/#72 rather than treating them as settled.
+
+**Not yet resolved — deliberately not chased further tonight**: characterizing the exact throttle
+trigger (request frequency? total daily volume? something else?) would need a much more careful,
+slower, monitored sweep, and pagination attempts that hit a bad window will simply need be retried
+later rather than treated as a final answer. Given two other heavy background jobs were running
+concurrently during this investigation (task #66's permutation check, task #67's window sweep) and
+both are IBKR-independent, no interference from THIS project's own code is suspected — but this
+wasn't ruled out via a fully isolated test (no other process paused/stopped during the depth sweep or
+the follow-up tests), so it's a live possible confound, not excluded. A future attempt at the deep-
+history pull should be tried again at a different time/session, ideally with no other concurrent IBKR
+traffic, before re-concluding either way.
+
+Output: `debug/_ibkr_depth_sweep.py`, `debug/_ibkr_depth_symbol_compare.py`.
+
+### Process incident: task #67's window-sweep run was killed by the harness's own background-task mechanism, not by anything in the codebase — lost ~57 min of real compute; fixed with per-fold checkpointing (2026-07-14)
+
+The `pit_wfa.py --variant window_sweep` run launched via the coding tool's own `run_in_background`
+Bash mechanism completed 3 of 4 folds cleanly and correctly — `window_180d` (5.5 min), `window_365d`
+(29.7 min), `window_545d` (21.4 min), all three **0 pairs point-in-time confirmed, 0 trades** — then
+was killed mid-screen on the 4th (`window_730d`, the deepest/longest fold) by the tool environment
+itself (task status reported "killed"/"was stopped", not a Python exception or an OOM). This matches
+CLAUDE.md's already-documented note from an earlier session ("`run_in_background`-launched jobs dying
+repeatedly, `Start-Process` being the working fix") — same failure class recurring, not a new one.
+
+**Real cost**: `pit_wfa.py`'s original `main()` only wrote output parquet files ONCE, after every
+fold in every variant finished. Since the process was killed before the loop completed, **all three
+already-correct fold results were lost — nothing was ever written to disk**, despite ~57 minutes of
+real, valid compute having already happened.
+
+**Fixed properly, not just relaunched blindly**: added a per-fold checkpoint inside `main()`'s loop —
+after every single fold, the accumulated results so far are written to the same final output paths
+(`pit_wfa_fold_comparison/portfolio/pair_sets.parquet`), overwriting each time. A future kill at any
+point now leaves the latest complete state on disk instead of nothing. Verified `pit_wfa.py` still
+imports cleanly after the change.
+
+**Relaunched via `Start-Process` (PowerShell, detached)** instead of the tool's `run_in_background`,
+per CLAUDE.md's own documented fix for this exact failure class — confirmed alive and screening
+`window_180d` fresh (PID 1860) within 15 seconds of launch. All 4 folds will re-run from scratch (the
+lost 3 folds' results, while numerically simple to state — three 0-pair/0-trade folds — weren't
+actually saved anywhere, so there's nothing to recover; re-running is the only option), but any future
+interruption will now only cost the compute since the LAST completed fold, not the entire run.
+
+**Practical note for future long (>10 min) background jobs in this project**: prefer `Start-Process`
+over the coding tool's own `run_in_background` for anything expected to run more than a few minutes,
+per this same lesson learned twice now. Separately, any future multi-hour script (`pit_wfa.py`-style
+sweeps, `data.py`/`analysis.py` full runs) should have this same per-checkpoint save pattern if it
+doesn't already — cheap to add, expensive to be missing when a run dies late.
+
+### Task #66 complete: 3m near-miss lag-scan pairs, permutation-corrected — 20/660 (3.0%) survive, no real signal, fifth independently convergent lead-lag-absence result (2026-07-14)
+
+`research/lead_lag_permutation_check.py --pairs-file output/research/near_miss_lag_scan_3m_flagged_only.parquet
+--tf 3m --n-perm 500` ran to completion (660 pairs tested; 7 of the original 667 near-miss candidates
+dropped as data-unavailable/errored, not silently — see script's own per-pair status logging).
+
+**Result: 20/660 (3.03%) remain significant on `corr_perm_pvalue < 0.05` after correction** — at or
+slightly BELOW the ~5% rate expected under pure chance from 660 independent tests. Inspected all 20
+directly rather than trusting the count alone: **19 of the 20 have a high `eg_perm_pvalue`** (the
+independent EG-cointegration permutation test on the same pair) — mostly >0.13, several >0.5-0.95 —
+meaning the correlation-based "significance" is NOT corroborated by the cointegration-based test for
+essentially any of them. Only one pair (AMRX/BOH, `eg_perm_pvalue=0.0086`) has both metrics agreeing,
+which is itself the expected rate of dual-agreement-by-chance across 660×2 ≈ 1,320 independent tests
+(~1 pair expected to clear both by luck alone) — not treated as a real finding.
+
+**One pattern worth naming, not treated as a discovery**: AZTA appears in 5 of the 20 "significant"
+pairs (AZTA/RNG, AZTA/KMPR, AZTA/VSTS, AZTA/HCI, AZTA/WKC) — a single idiosyncratic symbol clustering
+across multiple nominally-significant relationships, the same shape (though smaller scale, n=5 of 20
+vs. task #70's 144/144) as the DD/MLI dominance pattern already found and explained (genuine
+volatility/idiosyncrasy in one symbol driving many spuriously-flagged pairwise relationships, not a
+data bug) — plausible, not confirmed, and not chased further here given the small absolute count.
+
+**Conclusion: no real lead-lag signal survives permutation correction at 3m.** This is the fifth
+independently convergent null result on lead-lag (same-session scan, `big_move_lead_lag.py`,
+`hub_leg_stop_conditioning.py`, task #56's MIDAS cross-asset work, task #69's Pieces B/C, and now this
+one) — directly motivating the lead-lag literature survey Ross scoped into `dedicated_pass.md` this
+session (why does the literature find lead-lag at all, when CAMARF's every construction hasn't).
+
+Output: `output/research/lead_lag_permutation_check_3m.parquet`, `lead_lag_perm_3m_out.log`.
+
+### Task #67 complete: absolute train-window-length sweep finished — all 4 lengths agree with split_80_20, isolating the TEST WINDOW (not training data quantity) as the real driver of zero point-in-time-confirmed pairs (2026-07-14)
+
+All 4 folds completed cleanly this run (no further process deaths; checkpointing worked as designed
+— see the incident write-up above), total runtime 66.7 min:
+
+| fold | train window | n_pit_confirmed_pairs | n_trades |
+|---|---|---|---|
+| window_180d (6mo) | [2025-06-10, 2025-12-07] | 0 | 0 |
+| window_365d (1yr) | [2024-12-06, 2025-12-07] | 0 | 0 |
+| window_545d (1.5yr) | [2024-06-09, 2025-12-07] | 0 | 0 |
+| window_730d (2yr) | [2023-12-07, 2025-12-07] | 0 | 0 |
+
+**All 4 window lengths — 6 months through 2 years, essentially the entire pre-anchor history
+available — find exactly zero point-in-time confirmed pairs**, reported together per this project's
+overfitting discipline (no cherry-picking a "good" length; there isn't one here to cherry-pick).
+
+**The real, informative signal is in what all 4 have in common: every one is anchored at the same
+test window, [2025-12-07, 2026-07-14] (test_start/test_end = 0.80/1.00 of the full analysis window,
+fixed across all 4 by design so only train length varies).** This is the EXACT same test window as
+the earlier split-ratio sweep's `split_80_20` fold (train [2023-07-13, 2025-12-07], same test start)
+— which ALSO found 0 pairs, 0 trades. Combined with this run: **5 independent folds, spanning training
+windows from 180 days to the full ~2.4-year available history, all anchored at this one test period,
+all return zero.** Meanwhile every OTHER test-window anchor in the split-ratio sweep (50/50, 60/40,
+70/30, 90/10 — different test starts) found at least 1 confirmed pair:
+
+| variant/fold | test window | n_pairs | n_trades | Sharpe |
+|---|---|---|---|---|
+| split_50_50 | [~2025-01, 2026-07-14] | 2 | 57 | 0.82 |
+| split_60_40 | [~2025-04, 2026-07-14] | 3 | 27 | -0.30 |
+| split_70_30 | [~2025-08, 2026-07-14] | 1 | 10 | 0.80 |
+| **split_80_20 / all 4 window_sweep folds** | **[2025-12-07, 2026-07-14]** | **0** | **0** | **nan** |
+| split_90_10 | [~2026-03, 2026-07-14] | 1 | 1 | nan |
+
+**Honest interpretation, not overclaimed**: this is now strong, convergent evidence that the
+zero-pair result is a property of the [2025-12-07, 2026-07-14] TEST PERIOD itself (something about
+market conditions or the universe's cointegration structure in this specific ~7-month window makes
+point-in-time EG+BH-FDR screening fail to confirm anything against training data ending there),
+**not a training-data-quantity problem** — training length was swept from 180 days to the practical
+maximum and it made zero difference. This is a real, if narrow, finding: whatever is happening in
+this specific recent window is worth understanding on its own terms (a regime shift, a BH-FDR
+threshold effect from a shrunken/changed candidate pool, or something else) rather than assumed to be
+fixable by "just use more/less training data." Not chased further here — this is task #67's scoped
+deliverable (the split-ratio and window-length sweeps themselves); understanding WHY this specific
+window fails is a distinct follow-up question, not yet investigated.
+
+**Per this project's stated overfitting discipline** (Development.md, "Train-window/split-ratio sweep
+— scoped precisely"): this is exactly the kind of broad, cross-variant PATTERN the discipline says to
+trust — not a single favorable split, but a consistent behavior across 5 independent folds pointing at
+the same underlying cause. This sweep itself counts as additional DSR/GFP trials if anything from it
+is ever promoted toward a PAPER.md claim — flagged now, per the same standing rule already applied to
+prior sweeps.
+
+Output: `output/backtest/pit_wfa_{fold_comparison,portfolio,pair_sets}.parquet`,
+`latest_run_pit_wfa.log`; `build_window_sweep_specs()` + `WINDOW_SWEEP_DAYS`/`WINDOW_SWEEP_ANCHOR_PCT`
+in `pit_wfa.py`, synthetically verified in `debug/_verify_window_sweep_specs.py`.
+
+### Task #18 (Phase 9): full bug-sweep verification — ran the entire `run_verify_suite.py`, 2 real failures found and fixed, both stale-test-expectation issues (not code regressions) (2026-07-14)
+
+Ran every one of the 72 `debug/_verify_*.py` synthetic tests in one pass (`run_verify_suite.py`) —
+this project's existing CI-lite mechanism, directly covering the bulk of `docs/BUG_LOG.md`'s 82
+logged D/A entries (each with a dedicated verify script gets re-checked here in one shot; the handful
+of pre-2026-06-24 bugs without a script were not individually re-derived this pass, a real scope
+limit, not hidden). **First run: 70/72 passed, 2 FAILED.** Investigated both rather than assumed
+transient — both turned out to be real, but benign: a LATER fix in this same bug lineage correctly
+changed behavior in a way an EARLIER test's fixture never got updated for.
+
+**Failure 1 — `debug/_verify_save_tf_results_return.py`, "override-kept" case.** BUG-D68 (this
+session, `_MIN_BARS_FOR_SECONDARY_EVIDENCE = 756`) correctly gates the coint_frac secondary-evidence
+override behind a minimum bar count — but this test's synthetic "override-kept" fixture used
+`n_bars=500` (below the 756 gate), so the override is now correctly DENIED, which the test's stale
+`expected_kept=True` didn't account for. **Fixed**: parameterized `_make_pair()`'s `n_bars` (was
+hardcoded 500) and bumped this specific case to `n_bars=800` — clears the gate, restores the test's
+original intent (verify the override succeeds when genuinely justified). Re-run: 4/4 cases pass.
+
+**Failure 2 — `debug/_verify_trend_dominance_diagnostic.py`, Check 2.** This check's ground truth was
+DD showing a "dramatic, unambiguous outlier" EG-significance rate (>30%) against 150 real random
+partners — true when DD's cache carried BUG-D65's real contamination. Task #64 refetched DD's cache
+clean; DD's rate is now 1.33%, BELOW the ordinary ~5-10% baseline — the CORRECT, expected consequence
+of BUG-D65's fix (independent confirmation, from a third angle, that DD's contamination-era anomaly
+is really gone), not a regression. Attempted a synthetic replacement (inject a deterministic +50%
+log-level jump into a copy of WMT's real series) to keep testing the mechanism without depending on
+any real symbol's current contamination status — this did NOT reproduce an elevated rate either
+(3.33%, still below baseline), an implausible result investigated rather than accepted: a single
+deterministic level shift in an otherwise I(1) series is a different failure mode from BUG-D65's real
+mechanism (a structural break in a regression residual's mean typically REDUCES ADF/EG test power,
+biasing toward *not* detecting spurious cointegration — consistent with, not contradicting, what was
+measured). Faithfully reconstructing BUG-D65's actual mechanism synthetically would need real
+investigation, not a quick patch. **Fixed honestly, not force-passed**: Check 2 is explicitly RETIRED
+(prints "RETIRED", excluded from the pass/fail gate, full reasoning left in the script as a comment)
+rather than deleted or silently worked around — Checks 1/3/4 don't depend on any contamination ground
+truth and remain fully valid. Re-run: all checks reported, suite passes.
+
+**Final state: 72/72 pass.** Both fixes are test-fixture corrections tracking REAL, intentional
+production-code changes (BUG-D68's bar-count gate; BUG-D65's cache cleanup) — no new production bug
+found this pass. Written up per rule 8 regardless: a "test failure that turns out to be the test
+being stale, not the code being wrong" is exactly the kind of result this project's own verify-before-
+trusting discipline is designed to catch and explain, not just silently patch past.
+
+**Scope note**: this covers every bug with an existing `debug/_verify_*.py` script — the minority of
+older `docs/BUG_LOG.md` entries without one were not individually hand-re-derived this pass (a real,
+disclosed limit on Phase 9's coverage this round, not assumed complete).
+
+### Task #19 (Phase 10): bias and data-hygiene sweep — forked, 3 candidate findings, 1 fixed, 1 investigated and concluded NOT a bug, 1 dead-code flag added (2026-07-14)
+
+Forked a systematic grep-and-verify sweep across the codebase for calendar-padding contamination,
+look-ahead bias, survivorship-style silent exclusions, and the gap-aware-rolling bug class (already
+found and fixed independently 3 times this session). The fork returned 3 candidate findings — each
+was independently verified directly before acting on it, per this project's "AI output is not
+privileged relative to any other unverified claim" standard (§9), rather than trusted at face value.
+
+**Finding 1 — `research/follower_direction_validation.py:57`, INVESTIGATED AND CONCLUDED NOT A BUG.**
+The fork flagged `_log_returns()`'s `r.rolling(lag, min_periods=lag).sum()` (on `_gap_aware_returns()`
+output) as unnecessarily strict, reasoning that consecutive log-returns telescope to
+`log(P_t) - log(P_{t-lag})`, so only the two endpoint prices should need to be valid. Checked
+`_gap_aware_returns()` directly (data.py:818-859): every masked single-bar return corresponds to a
+REAL elapsed-time irregularity — either a genuine `DATA_GAP` (>5 consecutive missing bars) or a
+calendar gap >4x the median bar interval — not an arbitrary/spurious exclusion. If ANY bar inside a
+`lag`-bar window was masked, the window's true elapsed time genuinely does NOT correspond to `lag`
+clean, contiguous bars — rejecting that window is the intended, conservative behavior CLAUDE.md rule 3
+already mandates ("never silently forward-fill a DATA_GAP bar into a correlation or cointegration
+calculation"), not an overly-strict oversight. Using the naive endpoint-difference the fork suggested
+would silently accept returns spanning a real data hole — a regression relative to this project's own
+established gap-handling discipline. **No fix applied; this is correct current behavior**, and a good
+example of why a subagent finding needs direct verification, not automatic action.
+
+**Finding 2 — `research/short_term_factor_alpha.py:59`, REAL, FIXED.** `reversal_signal()`'s
+`.rolling(window=5).sum()` runs on `absorption_ratio.py`'s `_load_daily_log_returns()` output — an
+outer join across symbols with DIFFERENT trading calendars (foreign-listing holidays, etc.), NOT a
+GapFlag-masked series (no genuine-hole detection here, unlike Finding 1's case) — so an isolated
+one-day calendar mismatch for a single symbol nulled out that symbol's entire trailing 5-day window,
+even though its own 5 most recent TRADED days were perfectly fine. This is the SAME gap-aware-rolling
+bug class already fixed twice this session (`big_move_lead_lag.py`, `hub_leg_stop_conditioning.py`),
+now a third confirmed instance. **Fixed**: per-column `.dropna()` before `.rolling()`, reindexed back
+onto the full calendar — same established pattern. Verified via a new
+`debug/_verify_short_term_factor_alpha.py` (synthetic case: one isolated gap recovers 5 valid rows the
+naive version returned 0 for; a gap-free column's result is byte-identical to the naive version).
+Re-ran the real script: reversal-signal `n_obs` 298,600 → 324,418 (+8.6%, recovering real, previously
+wrongly-excluded observations — the gap between reversal's and seasonality's `n_obs`, which shouldn't
+exist since seasonality has no rolling-window exclusion at all, narrowed from 38,953 to 8,283).
+Correlation itself barely moved (0.0177 → 0.0232) — still a small, non-dramatic effect; the fix
+improves completeness, doesn't change the qualitative "weak reversal signal, not a strong tradeable
+factor" conclusion already on file.
+
+**Finding 3 — `research/_regime_features.py`, DEAD CODE, FLAGGED NOT FIXED.** `vol_percentile`,
+`bb_width`, `atr_percentile`, `leg_directional_regime` all lack gap-awareness, but grep-confirmed
+(not just trusted from the fork) that only `spread_velocity` is imported by any live caller
+(`regime_conditional_entry_gate.py`) — the other four are unwired dead code, not a current exploit
+path. Per "no speculative fixes for hypothetical future requirements," did not rewrite unused
+functions defensively. Instead added a clear caution to the module's own docstring: whoever wires any
+of these up next must add the same dropna-before-rolling handling first, not after — named explicitly
+because this exact bug class has now recurred independently 3+ times this session precisely from being
+added after the fact.
+
+**Coverage, stated honestly per the fork's own report (no silent caps)**: checked and found clean —
+`archetype_conditional_sizing.py`, `breakout_vs_reversion.py`, `hub_leg_stop_conditioning.py`,
+`vol_targeting_and_drawdown_derisking.py`, `leg_level_early_exit.py` (all already use the compact-
+before-rolling pattern correctly), and `analysis.py`'s ~15 `VolumeStructure`/`RegimeClassifier` rolling
+calls (traced to already-gap-safe input, though the existing in-code comment claiming this admits it
+isn't a verified line-by-line audit of every downstream sub-calculation). NOT covered this pass:
+`backtest.py`/`wfa.py`/`portfolio_sim.py`'s spread/z-score sourcing (plausibly safe by convention, not
+independently confirmed); the majority of `bare except Exception:` blocks outside analysis.py's 5
+(data.py/data_ibkr.py's were assumed covered by task #68's survivorship fix, not re-verified here); a
+line-by-line regression check against every item in CLAUDE.md's "Known-Resolved Issues" list (zero
+spot-checked this pass); dozens of `research/` scripts with no `.rolling(` call were left unopened.
+This was one time-bounded pass, not an exhaustive audit — a follow-up sweep covering these gaps is a
+reasonable next step if more assurance is wanted, not assumed unnecessary.
+
+Output: `research/short_term_factor_alpha.py` (fix), `debug/_verify_short_term_factor_alpha.py` (new),
+`research/_regime_features.py` (docstring caution added), `output/research/short_term_factor_alpha.parquet`
+(re-run with the fix).
+
+### MAJOR CORRECTION, task #71/#72: the entire session's "IBKR has no deeper history than yfinance" conclusion was built on a broken timeout, not a real data-availability boundary — real depth is ~10 Y for 1h equities (2016-07-25), not ~3 weeks (2026-07-14 isolated re-test)
+
+Ross explicitly authorized the isolated re-test he'd flagged as the necessary next step. Ran it with
+NO other processes running (`Get-Process` confirmed clean) to rule out the concurrent-traffic confound
+this session's earlier writeup left open.
+
+**Step 1 — reproduced the original finding, isolated**: LNT/1h single-request duration ladder with the
+SAME `RequestTimeout=20` every prior sweep script this session used (`debug/_ibkr_depth_sweep.py`,
+`_check_ibkr_raw_depth.py`, `_ibkr_depth_symbol_compare.py`) — 1 Y worked, 2 Y+ timed out. Identical to
+the non-isolated result. This ruled OUT concurrent-traffic contention as the explanation (a real
+possibility this was left open for), but did NOT explain the underlying mechanism yet.
+
+**Step 2 — found the real mechanism, timing the exact same request**: the identical "1 Y" LNT/1h
+request that timed out at `RequestTimeout=20` took **28.8s** and succeeded cleanly at
+`RequestTimeout=25+`. **Every single duration-ceiling finding this entire session — the original
+BUG-D70 "21-30 day ceiling," the IBM per-timeframe sweep, the multi-symbol comparison — used a
+hardcoded `RequestTimeout=20` in every one of those scripts.** This was never a real IBKR data-
+availability or account-entitlement boundary. It was a client-side timeout set too short for requests
+that take longer to transmit/process as the payload grows — a measurement artifact affecting every
+depth conclusion drawn this session, not a boundary in the account itself.
+
+**Step 3 — found the REAL boundary with a generous timeout**: LNT/1h with `RequestTimeout=90-120`:
+1 Y (28.8s), 2 Y (8.9s), **3 Y (39.3s, back to 2023-07-17 — already earlier than yfinance's own
+2023-07-24 cache start)** all succeed cleanly. 4 Y and 5 Y both fail at exactly 60.0s with a REAL
+IBKR-side error this time (code 162, "Historical Market Data Service... query cancelled") — a genuine
+server-side response-size/data-volume cap for a SINGLE request this large, not a client artifact.
+
+**Step 4 — the size cap doesn't limit CUMULATIVE depth, only per-request size**: fixed
+`get_bars_paginated()` (data.py) — `request_timeout` param added (default 60s, was hardcoded 20),
+`chunk_duration`/`target_duration` defaults changed from `"21 D"`/`"2 Y"` to `"2 Y"`/`"2 Y"` (matching
+the real, not the artifact, ceiling). Updated `data_ibkr.py`'s call site to match. Re-ran all 4
+synthetic tests (`debug/_verify_ibkr_pagination.py`) — still 4/4 pass (they pass explicit params, so
+the default change doesn't affect them). **Real paginated pull for LNT, 2 Y chunks, 60s timeout: 5
+chunks, 28,230 bars, 2016-07-25 to 2026-07-14, zero duplicates** — chaining 2 Y requests (each safely
+under the ~3-4 Y single-request size cap) reaches nearly 10 years of real history, vs. yfinance's
+own 4,452 bars from 2023-07-24. **This directly reverses task #71's prior "closed, negative"
+conclusion**: IBKR does NOT lack deeper history for this account — it has substantially MORE than
+yfinance (6.3x the bar count, ~7 years deeper), and the earlier belief that it didn't was a pure
+measurement artifact from an under-provisioned timeout, not a genuine account/entitlement limitation.
+
+**Consequence, not yet acted on — flagged for discussion per Ross's explicit instruction, not applied
+autonomously**: if this generalizes to the other 16 symbols from task #71's original 9 non-DD pairs
+(mechanism is a client-timeout/request-size issue, plausibly symbol-independent, but NOT yet confirmed
+on more than LNT), the entire `data_ibkr.py` deep-history pipeline can likely deliver real, substantially
+deeper history than previously believed for every confirmed pair — which could change episodic-
+cointegration test results, `coint_fraction_rolling_deep` values, and potentially which pairs pass
+screening, project-wide. This is exactly the kind of "new methodology / re-open a settled architectural
+question" decision CLAUDE.md's working-style section reserves for Ross, not something to run to
+completion and bake into PAPER.md autonomously overnight. **Recommended next step (not started)**:
+confirm the 3-4 Y ceiling and the fix generalizes across a handful of the other 16 symbols, THEN decide
+whether/how to re-run `data_ibkr.py` at scale for the full confirmed-pair set.
+
+Output: `data.py` (`get_bars_paginated()` timeout + default fix), `data_ibkr.py` (call site updated).
+
+### Phase 12, perspective 1/4 — STORM econometrician lens on the "Strictness Paradox" (2026-07-14)
+
+Ran sequentially (one STORM perspective at a time, per the plan's own instruction), grounded/sourced
+research on whether CAMARF's "EG test is over-conservative at long horizons" framing (currently in
+§4.2) is well-supported by the econometrics literature.
+
+**Core finding, stated as the econometrician would**: the literature strongly supports a real *power*
+problem with cointegration tests over short calendar SPANS (Hakkio & Rush 1991 — power is span-driven,
+not observation-count-driven; confirmed independently by Pierce & Snell's frequency-invariance result)
+— but that is a DISTINCT phenomenon from a *size* problem (the test under-rejecting a correctly-sized
+null), which is what CAMARF's "over-conservative" framing implies. No source found supports "EG is
+over-conservative" as a NAMED, generic literature finding — every relevant citation points to either
+span-driven power loss (real, but different mechanism) or EG's known power disadvantage vs. Johansen
+(a two-step-estimator artifact, not a horizon effect). MacKinnon's own response-surface work actually
+cuts the OTHER way: uncorrected finite-sample critical values are more extreme than asymptotic ones,
+biasing toward OVER-rejection in small samples if anything — the opposite direction from CAMARF's claim.
+
+**Real, actionable methodological vulnerability flagged**: CAMARF's own Monte Carlo (shuffling
+pairings between real series to build a null) could have residual common-factor contamination — Richards
+(1998) found major equity indices share ONE dominant common stochastic trend via Johansen tests, meaning
+randomly re-paired real equity series aren't necessarily independent even after the true pairing is
+destroyed. This needs an explicit answer (was market-beta demeaned before shuffling?) that only CAMARF's
+own methodology can settle — flagged as a genuine open question, not resolved by this research pass.
+
+**Practical implication for PAPER.md §4.2 (drafted, not applied — see `docs/PAPER_PENDING_CHANGES.md`)**:
+reframe the Monte Carlo finding as genuinely NOVEL evidence about whether MacKinnon-corrected critical
+values remain size-accurate under real, cross-sectionally-correlated, volatility-clustered financial
+data specifically — not as confirmation of an established literature finding, since no such generic
+finding exists. This is a real correction to the current framing, not just additional color.
+
+Full sourced packet (8 citations) in the agent transcript; summary above is what's actionable for
+PAPER.md.
+
+### Phase 12, perspective 2/4 — market-microstructure lens on the coint_frac rolling-window power hypothesis (2026-07-14)
+
+§7.5's untested hypothesis, reframed and researched precisely (not the vague original "DD-hub
+clustering" framing — DD's hub status turned out to be a now-fixed contamination artifact, see task
+#70/BUG-D65, so the sharper and still-live question is specifically: does the ROLLING 252-bar EG test
+have low power at that window length, explaining the uniformly-low coint_frac values across confirmed
+pairs?
+
+**Core finding**: the literature strongly supports the GENERAL shape of this hypothesis — cointegration
+test power is governed by calendar SPAN, not observation count (Hakkio & Rush 1991, Pierse & Snell,
+Otero & Smith, Shiller & Perron — four independent sources converging on the same point). 252 bars of
+1h data is ~10.5 trading days — orders of magnitude shorter than the multi-year spans this literature
+was calibrated against, so low power at n=252 specifically is econometrically plausible, not a stretch.
+
+**But a real complication for §7.5's specific causal story**: §7.5 speculates that a FAST-reverting
+(short half-life) pair might be HARDER to confirm in a short window than a slow-reverting one. Classical
+AR-root power theory says the OPPOSITE — power is low when the true AR root is close to unity (SLOW
+reversion) and RISES as the root moves further from unity (FASTER reversion easier to detect, not
+harder). This directly contradicts the specific mechanism §7.5 proposes, even though it doesn't
+contradict the general "short window = low power" framing. One partially-relevant counter-source
+(Krauss & Herrmann 2017, full text paywalled, findings from abstract only) found power "still
+acceptable" even at very short spans (n=510 minutes) absent large jumps — suggesting span alone doesn't
+guarantee low power; process realism interacts with it. No study was found that directly calibrates a
+ROLLING "fraction of windows passing p<0.05" diagnostic (CAMARF's exact construct) at a short window —
+this remains genuinely untested territory in the literature, matching CAMARF's own admission.
+
+**Practical implication for PAPER.md §7.5 (drafted, not applied — see `docs/PAPER_PENDING_CHANGES.md`)**:
+correct the specific "fast reversion → harder to detect" framing (classical theory says the opposite),
+while keeping the broader "short rolling window may have low power, window length may be span-mismatched"
+framing, which the literature supports. Also worth naming precisely: 252 bars was borrowed from the
+daily convention (~1 trading year) and applied unchanged to 1h data — a ~24x span mismatch relative to
+CAMARF's own full-sample daily tests, independent of anything the size-calibration Monte Carlo (§4.2.1)
+already addressed.
+
+Launching perspective 3/4 (systematic-fund-practitioner lens on risk-parity/capital-constraint
+findings) next, per the plan's sequential-not-parallel STORM instruction.
+
+### Phase 12, perspective 3/4 — systematic-fund-practitioner lens on risk-parity beating HRP (2026-07-14)
+
+CAMARF's own 6-variant sizing comparison found simple risk-parity beats Ledoit-Wolf-shrunk HRP on this
+project's confirmed-pair portfolio — previously unexplained beyond "this portfolio's structure."
+
+**Core finding: this is consistent with, not surprising relative to, the literature.** HRP's advantage
+over simple risk-based methods is CONDITIONAL, not universal, and the specific condition it needs is
+exactly what CAMARF's portfolio lacks: HRP's edge depends on a stable, well-estimated correlation
+structure for its clustering step to exploit, and that's worst-conditioned precisely under small-N,
+short-history covariance estimation (Jain & Jain 2019 — directly tested covariance quality as the
+moderating variable, found risk-parity-style inverse-vol weighting is the MOST robust method under
+crude covariance estimation, with HRP in between, LESS robust than simple risk-parity in that regime —
+the single citation that most precisely predicts CAMARF's own observed ranking). Separately, a Network
+Risk Parity study found HRP's documented Sharpe advantage is concentrated in the n≈20-50 constituent
+range — CAMARF's 2-30-pair portfolio (often nearer the low single digits per point-in-time snapshot,
+per this session's own pit_wfa checkpoint findings above) sits at or below the bottom edge of where HRP
+has been shown to earn its complexity, not comfortably inside it. Trucíos (2026) independently confirms
+the broader literature is "inconclusive" on hierarchical-clustering outperformance and flags sensitivity
+to covariance-estimation quality as the reason.
+
+**A second, compounding finding**: CAMARF's specific implementation combines Ledoit-Wolf shrinkage WITH
+HRP's clustering — but the literature on shrinkage applied to inverse-vol/risk-parity/HRP strategies
+specifically found no shrinkage estimator systematically improves any of the three, and can leave
+results WORSE than the plain sample covariance for these three methods (this specific sub-claim's
+source could not be independently re-confirmed/re-fetched during the research pass — flagged as
+directionally supportive, not a fully pinned citation, per this project's own citation-verification
+standard). If real, this means CAMARF's HRP variant stacked two ingredients (shrinkage + clustering)
+whose incremental value is itself contested, rather than a "free" robustness upgrade over simple RP.
+
+**Open question, not settled by this research**: no literature was found treating pairs-trading/stat-
+arb books (spread-as-asset framing) or shared-leg HUB concentration (the same underlying name appearing
+as a leg in multiple pairs) as a distinct structural risk category — both HRP and risk-parity literature
+frame concentration purely via return correlation, which captures hub-driven correlation but not the
+distinct "one earnings shock hits several positions through a structural channel" risk directly. This
+remains a genuine gap, not resolved here.
+
+**Practical implication for PAPER.md §7.2 (drafted, not applied — see `docs/PAPER_PENDING_CHANGES.md`)**:
+add this literature-grounded explanation for why risk-parity beats HRP on this specific portfolio
+(small N below HRP's documented sweet spot, short-history covariance estimation being HRP's known weak
+spot, shrinkage's own contested value for this class of strategy) — currently the paper reports the
+RESULT without a mechanism; this fills that gap honestly, including the open question about shared-leg
+concentration neither method explicitly models.
+
+Launching perspective 4/4 (the lens targeting the two currently-unresolved literature tensions this
+paper already flags: Do & Faff's crowding-vs-convergence-decay dispute; Hakkio-Rush's calendar-span/
+multi-timeframe multiple-testing compounding tension) next.
+
+### Phase 13, §7.3.1 complete: pit_wfa checkpoint sweep at the paper's originally-planned 3 fixed calendar checkpoints (2026-07-14)
+
+`pit_wfa.py --variant checkpoint_sweep` — the paper's most consequential deferred finding, using
+BUG-D68/D69's already-fixed lookahead machinery, at 3 explicit calendar checkpoints (not the split-ratio
+or window-length sweeps already done under task #67, which used fractional/relative anchors). Completed
+cleanly, 15.0 min total, checkpointed after each fold (no process death this run):
+
+| Checkpoint | Train window | Pairs confirmed | Pairs traded | Trades | Portfolio Sharpe |
+|---|---|---|---|---|---|
+| 2024-02-01 | [2023-07-13, 2024-01-31] (~7mo) | 30 | 27 | 1,234 | **-1.9037** |
+| 2025-01-01 | [2023-07-13, 2025-01-01] (~18mo) | 3 | 3 | 79 | +0.4241 |
+| 2025-08-01 | [2023-07-13, 2025-08-01] (~25mo) | 1 | 1 | 11 | +1.0050 |
+
+**Reported together, no cherry-picking, per this project's overfitting discipline.** Two real patterns,
+both worth stating plainly:
+
+1. **Confirmed-pair count collapses hard as training history accumulates (30 → 3 → 1)** — consistent
+   with the already-established mechanism from this session's task #71 investigation: more/cleaner
+   training data makes BH-FDR's admission threshold stricter, not looser, as the candidate pool's own
+   p-value distribution tightens. Not a new finding, but a third independent confirmation of the same
+   pattern at fixed calendar checkpoints rather than fractional splits.
+
+2. **The most statistically meaningful result here — by far the largest trade count (1,234) — is
+   checkpoint 1's -1.9037 Sharpe.** This is the checkpoint that most closely resembles what a real,
+   newly-launched live system would have seen in early 2024: only ~7 months of training history
+   available, the point-in-time-confirmed 30-pair set would have gone on to LOSE significantly over the
+   following ~2.5 years live. Checkpoints 2 and 3's positive Sharpes (0.42, 1.01) rest on only 79 and 11
+   trades respectively — real numbers, but far too thin to treat as a robust improving trend rather than
+   noise on a shrinking sample. **Honest headline conclusion**: this project's own point-in-time
+   methodology, if it had actually been deployed live starting from a realistic ~7-month initial
+   training window, would have produced a materially unprofitable early period — a genuine, sobering
+   caveat for any claim about this system's live-deployment readiness, not explainable away by "not
+   enough training data yet" without also admitting that's exactly the condition any new live system
+   starts in.
+
+**Practical implication for PAPER.md §7.3.1 (drafted, not applied — see `docs/PAPER_PENDING_CHANGES.md`)**:
+this needs to replace whatever placeholder/deferred language currently exists there with this real,
+3-checkpoint table and both findings above, including the sobering early-period result — not just the
+mechanism mentioned in finding 1.
+
+Output: `output/backtest/pit_wfa_{fold_comparison,portfolio,pair_sets}.parquet`,
+`latest_run_pit_wfa.log`; `build_checkpoint_specs()` + `CHECKPOINT_DATES` in `pit_wfa.py`.
+
+### Phase 12, perspective 4/4 (FINAL) — Do & Faff crowding-vs-decay and multi-timeframe FDR tensions (2026-07-14)
+
+**Tension 1 (Do & Faff crowding vs. structural decay)**: genuinely unresolved in the literature, not a
+gap in CAMARF's own reading. Do & Faff's own paper actually leans structural/risk-based (fundamental
+risk, noise-trader risk, synchronization risk driving non-convergence), not explicitly crowding —
+CAMARF's framing of this as a live dispute is accurate. The broader anomaly-decay literature (McLean &
+Pontiff 2016: 97 anomalies, returns 26% lower OOS / 58% lower post-publication) provides real crowding
+evidence, and Khandani & Lo (2007) show stat-arb strategies become highly correlated during forced-
+deleveraging events — but no study directly decomposes crowding vs. structural decay for pairs trading
+specifically using capital-flow data. One source states plainly this decomposition "is not quantifiable
+from public data" even in recent commentary. **CAMARF should keep stating this as a genuine open
+dispute, not attempt to resolve it — the literature hasn't.**
+
+**Tension 2 (multi-timeframe FDR/power compounding)**: mostly unexplored territory, confirming CAMARF's
+own concern is real and unaddressed rather than already-answered. Otero & Smith (2000) and Haug (2002)
+both independently reconfirm Hakkio & Rush's span-not-frequency result using Monte Carlo across
+different test frameworks — CAMARF's 1m/2m/3m scans (many bars, short calendar span) are genuinely
+underpowered relative to 1D/1M scans, a real, literature-supported design property, not a guess. No
+paper addresses correcting BH-FDR for CORRELATED discoveries across simultaneously-scanned timeframes
+of the SAME underlying relationship specifically — this is genuinely novel methodological territory.
+One partial mitigant found: Benjamini & Yekutieli (2001) proved BH-FDR remains formally valid under
+positive regression dependence (PRDS), a condition plausibly met here (a real cointegrated pair's test
+statistics across correlated timeframes should be positively correlated, not arbitrary) — so the
+multi-timeframe redundancy may not actually break FDR's formal validity, even though it's not designed
+for this exact case. The closest applicable template for treating correlated trials is Harvey & Liu
+(2015)'s effective-independent-trials Sharpe-haircut methodology (from the backtest-overfitting
+literature, not cointegration) — building a proper correction here would be genuinely new methodology,
+not applying an existing fix.
+
+**Practical implication for PAPER.md (drafted, not applied — see `docs/PAPER_PENDING_CHANGES.md`)**: both
+tensions should stay stated as open/unresolved, per this research — the honest move is confirming
+CAMARF is AT the edge of the literature on both questions, not behind it, and correctly declining to
+overclaim resolution either would license.
+
+**Phase 12 (STORM sequential multi-perspective research) is now COMPLETE — all 4 perspectives run,
+written up, PAPER.md implications drafted into `docs/PAPER_PENDING_CHANGES.md`.**
+
+---
+
+### Real blocker found starting Phase 13's remaining items: "the final confirmed-pair set" does not currently exist in a resolved, trustworthy state — analysis.py rerun launched to resolve it (2026-07-14)
+
+Attempting to launch Phase 13's next item (§7.2 concentration-risk/sizing-variant rerun, needs a real
+confirmed-pair set as input) surfaced a genuine blocker, investigated directly rather than worked around:
+
+- `output/results/confirmed_pairs_manifest.json` (the symbol-tracking manifest) currently has only 8
+  entries across 1min/2min/3min/30m/1M — clearly a partial, in-progress rebuild, not a complete picture.
+- The only substantial 1h pairs.parquet available is `output/results/1hr_stale_20260714_130954/`
+  (24 pairs) — but its own file mtime (05:59:29) predates the 7-symbol DD/APP/CRWD/etc. refetch
+  (10:00-10:22 this morning, per task #64/#70's established timeline). This means it very likely
+  reflects the OLD, still-contaminated candidate pool, not a genuinely clean rerun — directly
+  contradicting the earlier "24 → 0/2 pairs" collapse Development.md already documented (task #71) when
+  analysis.py was run AFTER the refetch. Task #70's own cross-check verified the CURRENT CACHE FILES are
+  clean, but that doesn't establish this specific archived pairs.parquet was computed from them.
+- No python process is currently running that could produce a fresh 1h result (confirmed via
+  `Get-CimInstance Win32_Process` — zero python processes active at the moment this was checked).
+
+**This is exactly the gating dependency dedicated_pass.md's own "Task #46 (CAPSTONE)" note already
+flagged**: task #71's confirmed-pair-set reconciliation needs to happen before a capstone-style rerun,
+"otherwise the capstone would need to be re-run again the moment that decision lands, wasted duplicate
+work." Rather than either (a) guessing which pair set is "final" and re-running everything against
+possibly-stale data, or (b) blocking entirely and reporting no further progress, **launched a fresh
+`analysis.py --timeframes 1h --workers 12` run** (`Start-Process`, PID 2568) — this directly answers
+the open question with real, current data rather than deferring it further, and doubles as the
+foundational step Phase 18's own "final production pipeline rerun" would need anyway. Once this
+completes, its output becomes the definitive "final confirmed-pair set" for all of Phase 13's remaining
+confirmed-pair-set-dependent items (§7.2, §7.4, §7.5, §7.6, §7.8, §7.9, §7.11, §7.12), sequenced after
+this single rerun rather than each guessing independently.
+
+**Not resolved yet — this rerun's real output is the next milestone to check.** Given the earlier
+"24 → 0/2" collapse, this fresh run may again produce a very thin confirmed set — reported honestly
+whichever way it comes out, not adjusted to look more substantial. If the set really is this thin, that
+itself is the honest state Phase 13's remaining items need to be built against, not a reason to fall
+back to stale numbers.
+
+### Two new comparison arms built for §7.3.1's checkpoint result — Ross's direct request after reviewing the pit_wfa numbers (2026-07-14)
+
+Ross saw the checkpoint sweep result (30 pairs/-1.9037 Sharpe at the earliest, most-trades checkpoint)
+and asked directly what could improve it, then asked to build both ideas discussed as comparison arms
+right now, for direct comparison against the existing checkpoint_sweep baseline — not as a production
+change, matching this project's comparison-arm-first discipline.
+
+**Idea 1 — persistence filter (`--variant persistence_sweep`)**: tests whether requiring a pair to be
+confirmed at TWO independent point-in-time screens (not just one snapshot) before it's tradeable would
+have avoided the bad early-checkpoint pairs. New `run_persistence_fold()` in `pit_wfa.py`: for each
+checkpoint, screens BOTH at (checkpoint - 90 days) and at the checkpoint itself, keeps only the
+INTERSECTION (pairs confirmed at both cutoffs, keyed on symbol_a/symbol_b — NOT requiring the two
+screens' scalar fields to match, since they're fit on different windows and will differ), trades only
+the surviving intersection using the checkpoint's own (more current) `PairResult` for actual trading —
+the earlier screen is a filter, not a data source for the trade itself. `PERSISTENCE_LOOKBACK_DAYS = 90`.
+
+**Idea 2 — minimum-training-history gate (`--variant min_history_sweep`)**: tests a "wait for a full
+year before going live" policy directly — a single new checkpoint at 2024-07-13 (exactly 12 months
+after the analysis window's start, 2023-07-13), same test-window convention (trade forward to now) as
+the original checkpoint sweep, for a clean apples-to-apples comparison against `checkpoint_2024-02-01`
+specifically (the ~7-month-history checkpoint that produced -1.9037 Sharpe).
+
+**Verified before trusting**: `debug/_verify_persistence_filter.py` — mocks `screen_universe_at_cutoff`
+to return two controlled, partially-overlapping pair lists (3 pairs each, 2 in common), confirms the
+intersection logic keeps exactly the 2 common pairs, confirms the earlier-cutoff call actually uses
+`train_end - 90 days` (not some other date), and confirms `n_pre_filter_pairs`/`n_pit_confirmed_pairs`
+report the pre- and post-filter counts correctly. PASS.
+
+**Not yet run live** — sequenced to launch after the in-flight `analysis.py --timeframes 1h` run
+(resolving the confirmed-pair-set blocker above) completes, to avoid stacking two 12-worker CPU-heavy
+jobs simultaneously (this session already measured real mutual slowdown from exactly that pattern).
+Both variants will run against the SAME universe/analysis window `screen_universe_at_cutoff` already
+uses, so no additional blocker beyond normal sequencing.
+
+Output: `pit_wfa.py` (`run_persistence_fold()`, `PERSISTENCE_LOOKBACK_DAYS`,
+`MIN_HISTORY_CHECKPOINT_DATES`, new `--variant` choices), `debug/_verify_persistence_filter.py` (new).
+
+### Confirmed-pair-set blocker RESOLVED — the definitive answer is 0 confirmed 1h pairs on current, clean data (2026-07-14)
+
+`analysis.py --timeframes 1h` completed cleanly, 7.4 min, no errors. **Result: 0 confirmed 1h pairs.**
+Filter funnel, direct from the log:
+
+| stage | n_before | n_after | n_removed |
+|---|---|---|---|
+| pearson_prefilter_pairs | 1,189,653 | 68,685 | 1,120,968 |
+| eg_bh_fdr_pairs | 68,685 | 2 | 68,683 |
+| price_degeneracy_pairs | 2 | 2 | 0 |
+| structural_exclusion_pairs | 2 | 1 | 1 (1 structural pair excluded — triangular-arb/share-class/index-tracking) |
+| coint_frac_threshold_pairs | 1 | 0 | 1 (failed the 0.70 threshold, no clean secondary-evidence override) |
+
+**This is the definitive, current, clean-data answer — not an artifact of stale/contaminated input,
+not a fluke.** It directly confirms and finalizes task #71's earlier "24 → 0/2" collapse finding: the
+project's long-standing headline 1h confirmed-pair set (23-26 pairs, reported throughout the current
+PAPER.md) does not exist on today's clean, current data. Two raw EG survivors existed; neither
+survived the full funnel.
+
+**Consequence for Phase 13, stated plainly**: every remaining confirmed-pair-set-dependent item (§7.2
+concentration risk, §7.4 STORM factor grid, §7.5 coint_frac inversion, §7.6 half-life stationarity,
+§7.8 parameter sensitivity, §7.9 risk-parity/entry-z, §7.11 filter-ablation/era-decay, §7.12 crisis
+stress test) **cannot be meaningfully re-run against "the final confirmed 1h pair set" because there
+is no substantial confirmed 1h pair set on current data — it's empty.** This is not something to push
+through with a fabricated or reduced-significance version; it is itself the headline finding this
+entire capstone-style rerun was meant to check for. This is precisely the reconciliation dependency
+`dedicated_pass.md`'s "Task #46 (CAPSTONE)" note already flagged in advance: PAPER.md's entire
+headline claim set was built on a pair set that no longer reproduces on clean data, and the real
+decision — does PAPER.md move to reporting this honestly as a null/negative result, does the strategy
+get re-scoped to other timeframes where confirmed pairs DO still exist (2m/3m/1M each still show 1
+pair per the earlier near-empty manifest check), or something else — is Ross's to make, not mine to
+guess at and build eight more sections around an assumption.
+
+**Not blocking further progress, redirected instead**: Phase 13's remaining 1h-dependent items are
+PAUSED, flagged for Ross's decision, not silently worked around. Continuing with: (1) the two pit_wfa
+comparison arms Ross explicitly requested (persistence_sweep, min_history_sweep — both already built
+and verified, launching now that analysis.py's CPU load has cleared), (2) Phase 13 items that don't
+depend on the 1h confirmed set, and (3) Phases 15-18's non-pair-set-dependent work, so real progress
+continues without needing Ross's input on this specific question first.
+
+**This must be surfaced prominently, not buried** — it is the single most consequential finding of
+this entire overnight session, more significant than any individual bug fix, and needs Ross's direct
+attention and decision before PAPER.md's numeric sections can be meaningfully finalized.
+
+### Comparison arm 1 complete: persistence filter (`--variant persistence_sweep`) — decisive, honest result (2026-07-14)
+
+32.1 min total. Full 3-checkpoint result, reported together, no cherry-picking:
+
+| Checkpoint | Pre-filter pairs (full cutoff) | Persistence-filtered pairs | Trades | Portfolio Sharpe |
+|---|---|---|---|---|
+| 2024-02-01 | 30 | **0** | 0 | n/a (no trades) |
+| 2025-01-01 | 3 | **0** | 0 | n/a (no trades) |
+| 2025-08-01 | 1 | 1 | 11 | 1.0050 (unchanged from baseline) |
+
+**Direct answer to Ross's original question**: the persistence filter WOULD have avoided
+checkpoint 1's disastrous -1.9037 Sharpe (1,234 trades) — completely, by eliminating all 30 of its
+pairs (0/30 survived being re-confirmed 90 days later). But it comes at a real cost, reported honestly
+rather than only the upside: it ALSO eliminates checkpoint 2's modest +0.4241 Sharpe (0/3 survived),
+turning a small win into no trades either. Checkpoint 3 is unaffected (its 1 pair happened to already
+be persistent). **Net effect: a persistence filter of this design would have meant zero trades for the
+first ~18 months of a live deployment** (both the disastrous AND the profitable early periods get
+filtered out indiscriminately), only beginning to trade around the ~25-month mark. This is a genuine,
+substantive tradeoff, not a clean win: the filter successfully avoids catastrophic loss, but at the
+cost of also avoiding the one early period that would have made money, and of a long initial period
+with no activity at all — which is itself a real cost for a live strategy (opportunity cost, and no
+early track record to build confidence or raise capital against).
+
+**Mechanistic confirmation of the checkpoint_sweep's own earlier finding**: 0/30 and 0/3 survival is
+an even starker way of stating what task #71's investigation already established — the point-in-time
+BH-FDR screen is extremely unstable run-to-run at this timeframe; literally none of the pairs
+confirmed at ANY of the first two checkpoints were also confirmed just 90 days earlier. This is
+independent, converging evidence (a different test, same underlying instability) alongside tonight's
+0-confirmed-pairs full-history finding — both point at the same root cause: this screening
+methodology's admission set at 1h is not currently stable enough to trust a single point-in-time
+snapshot, whether that snapshot is "the full historical screen" (0 pairs, as found tonight) or "a
+90-day-separated pair of screens" (0 overlap, as found here).
+
+Output: `output/backtest/pit_wfa_{fold_comparison,portfolio,pair_sets}.parquet` (persistence_sweep
+rows), `latest_run_pit_wfa.log`, `pit_wfa_persistence_out.log`/`_err.log`.
+
+### Comparison arm 2 complete: minimum-training-history gate (`--variant min_history_sweep`) — real, mixed result (2026-07-14)
+
+1.9 min. Single checkpoint (2024-07-13, 12 months of training, vs. checkpoint 1's ~7 months):
+
+| Checkpoint | Train history | Pairs confirmed | Trades | Portfolio Sharpe |
+|---|---|---|---|---|
+| 2024-02-01 (baseline) | ~7 months | 30 | 1,234 | -1.9037 |
+| 2024-07-13 (min-history) | 12 months | 1 (AMG/COF) | 31 | **-0.2594** |
+
+**Direct answer**: waiting for a full year of training history before going live substantially reduces
+both the SEVERITY of the early loss (-0.26 vs -1.90 Sharpe — still negative, not fixed) and the trade
+volume (31 vs 1,234 — a 97.5% reduction, since only 1 pair clears the stricter, more-trained screen
+instead of 30). **Honest conclusion, not oversold**: this idea helps, meaningfully, but does not solve
+the problem — the 12-month checkpoint is still net-negative, just far less catastrophically so. Whether
+a real deployment would consider -0.26 Sharpe on 31 trades an acceptable "wait it out" cost, versus
+the persistence filter's alternative of zero trades for the same period, is a real tradeoff for Ross to
+weigh, not something this comparison resolves on its own.
+
+**Both ideas compared, side by side, for Ross's direct request**:
+
+| Approach | What happens to checkpoint 1's -1.9037/1,234-trade result |
+|---|---|
+| Baseline (no change) | -1.9037 Sharpe, 1,234 trades — the disastrous result as originally found |
+| Persistence filter (90-day) | 0 trades — filtered out entirely (but also zeroes out checkpoint 2's +0.42 win) |
+| Minimum 12mo history | -0.2594 Sharpe, 31 trades — much less bad, still negative, far less volume |
+
+Neither idea "solves" the early-period problem outright; both are real, quantified partial mitigations
+with honest tradeoffs (persistence trades away all early activity including the one profitable window;
+minimum-history trades away most volume for a smaller, still-negative loss). Both are genuine
+improvements over doing nothing, in different ways — a combined approach (both filters together) was
+not tested here, a natural next comparison if Ross wants it.
+
+Output: `output/backtest/pit_wfa_{fold_comparison,portfolio,pair_sets}.parquet` (min_history_sweep
+row), `pit_wfa_minhistory_out.log`/`_err.log`.
+
+### The confirmed-pair collapse is project-wide, not 1h-specific — checked directly across every currently-live timeframe result (2026-07-14)
+
+Before closing out tonight's confirmed-pair-set investigation, checked every OTHER timeframe with a
+currently-LIVE (non-archived/non-stale) `pairs.parquet` — these are the ones a background process
+freshly computed earlier tonight (20:11-20:42), giving a real, current picture beyond just 1h:
+
+| Timeframe | Confirmed pairs (current, live) | Pair(s) |
+|---|---|---|
+| 1min | 1 | IVT/WSBC |
+| 2min | 1 | KVUE/KMB |
+| 3min | 1 | KVUE/KMB |
+| 1mo | 1 | 7267.T/8058.T |
+| **1h** | **0** | — |
+
+**5min, 15min, 30min, 4h, 1D, 7day, 3mo, 6mo have NOT been freshly rerun tonight** — only stale
+archives exist for those, not checked as part of this investigation (a real, disclosed scope limit,
+not assumed clean or assumed collapsed either way).
+
+**This confirms the collapse is not an 1h-specific anomaly — every timeframe checked tonight shows at
+most 1 confirmed pair on current, clean data**, several orders of magnitude below the historical
+23-26-pair @1h headline (and below what PAPER.md reports at other timeframes too). This is important
+additional context for Ross's reconciliation decision: this is not a "just avoid 1h, use another
+timeframe" situation — the same collapse pattern appears everywhere checked. Genuinely unknown whether
+the other 8 unchecked timeframes would show the same pattern or something different; a full re-run
+across all 14 timeframes (part of Phase 18's already-planned final pipeline pass) would settle this
+definitively but was not run tonight given the time already invested and this being fundamentally the
+same question already answered decisively at 1h.
+
+**This is the fullest, most honest picture available tonight of the state PAPER.md's numeric claims
+are actually built on. Recommended for Ross's first read tomorrow, before anything else in this
+session's output.**
