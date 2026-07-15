@@ -447,3 +447,173 @@ extension once built: repeat for SECTOR exposure (not just market beta) as a sec
 to separate "these two co-move because of the whole market" from "these two co-move because they're
 in the same sector" from "these two co-move for a genuine idiosyncratic reason" — three distinct,
 increasingly specific explanations for the same raw correlation number.
+
+## 10. Cross-script connections — reading all 79 research/ scripts systematically (2026-07-14)
+
+Ross asked whether there are connections across the research/ scripts, or philosophies from
+different scripts that could be mixed. Read every script's actual docstring (not from memory —
+79 scripts, more than had been tracked) rather than guessing at what's already built. Two findings
+are urgent/duplication-relevant and need action before other queued work proceeds; the rest are
+genuine new syntheses, not yet built.
+
+### 10.1 Urgent: decoupling_analysis.py's 142 structural breaks may be partly a data artifact
+
+`decoupling_analysis.py` found 142 Zivot-Andrews structural breaks across confirmed pairs (0%
+revert to the old equilibrium, 50% keep diverging with no exit timing, 15.5% settle into a new
+stable relationship). A structural-break test cannot distinguish a genuine regime shift from an
+artificial discontinuity caused by a bad cache append seam — and DD is both the hub of extreme
+concentration in this portfolio AND the symbol with the real cache contamination found and fixed
+this session (BUG-D65/D66, 7 symbols total: DD/APP/CRWD/MLI/MTZ/VRT/WCC). Some fraction of those
+142 "breaks" could be data artifacts already fixed elsewhere this session, not real structural
+change — meaning `decoupling_analysis.py`'s own findings (and everything built on top of it,
+`decoupling_requalification.py`/`decoupling_backtest.py`) could be partly contaminated. Direct
+re-check needed once task #64's refetch lands: do any of the 142 flagged breaks fall on the 7
+now-fixed symbols, at dates matching the contamination window (2023-07-26 to 2023-08-10)?
+
+### 10.2 Duplication risk — two already-queued items would reinvent what exists
+
+- **`copula_pairs.py` already exists and does real copula-fitting work** (Gaussian vs. Clayton vs.
+  rotated/survival Clayton, out-of-sample fit comparison), deliberately scoped to one pair
+  (CCL/NCLH @3m, the pair `tail_dependence.py` flagged with real asymmetry). Its own docstring
+  explicitly names universe-wide extension as "an appropriately-scoped next step if this comparison
+  says it's worth pursuing further, same staged-build discipline already used for MIDAS." §6.1
+  (copula-based correlation screening) is not new territory — it's this already-anticipated next
+  step, and should reuse `copula_pairs.py`'s fitting machinery (including the Kendall's-tau
+  invariance check already verified in `debug/_verify_copula_pairs.py`) rather than reimplement it.
+- **`comomentum.py`** (Lou & Polk 2022 crowding-via-correlation signal) and
+  **`financial_turbulence_index.py`** (Kritzman & Li 2010 absorption-ratio-style systemic risk)
+  already build stress/regime-type signals from the confirmed-pair portfolio. Task #61 (CAMARF-
+  native relational regime indicator) must compare against and potentially combine with these before
+  building anything that risks reinventing what's already there.
+
+### 10.3 Genuine new syntheses — not built, real connections between existing pieces
+
+1. **`graphical_lasso_clusters.py` → `graph_clustering.py`**: graphical lasso produces a sparse
+   PARTIAL-correlation network (removes shared-factor confounding raw correlation can't
+   distinguish — if A and C are both driven by shared factor B, they show correlated even with zero
+   real A-C link); community detection currently clusters on raw correlation. Feeding the cleaned
+   network into the clustering step is a cheap, well-motivated upgrade, not yet done.
+2. **`bertram_ou_thresholds.py` × `threshold_cointegration.py`**: Bertram's closed-form optimal
+   entry/exit z-thresholds assume constant-speed OU reversion; threshold_cointegration tests whether
+   reversion speed is actually regime-dependent (nonlinear, switching), directly violating that
+   assumption. For any pair where the second finds real regime-switching, Bertram's single
+   "optimal" threshold is provably wrong for that pair — a regime-conditional Bertram threshold
+   (different optimal z per regime) is a concrete, buildable synthesis of two existing, unconnected
+   pieces.
+3. **Predictability-method consensus**: Hurst (production), Sample Entropy
+   (`sample_entropy_spreads.py`), Multiscale Entropy (`multiscale_entropy.py`), and the
+   Variance-Ratio test (`variance_ratio_test.py`) all measure mean-reversion strength from different
+   mathematical families, never cross-validated against each other on the same pairs. The
+   interesting cases are DISAGREEMENTS, not agreement — a pair 3-of-4 methods call reverting but one
+   flags as complex/random is a real signal the others may be missing, not noise to average away.
+4. **Three-way covariance-cleaning bake-off**: RMT/Marchenko-Pastur
+   (`eigenvalue_weighted_position_sizing.py`/`rmt_feature_denoising.py`), hierarchical clustering
+   (k-BAHC, task #58), and sparse partial correlation (`graphical_lasso_clusters.py`) are three
+   distinct philosophies for cleaning noisy correlation structure, each applied to a different
+   downstream problem so far, never compared feeding the SAME portfolio-construction problem
+   (`convex_portfolio_construction.py`'s Markowitz optimizer is the natural common target).
+5. **`filter_ablation.py` applied to BUG-D68's fix**: filter_ablation's whole methodology answers
+   "does this filter discard good pairs" — the opposite failure mode from what BUG-D68 found (the
+   coint_frac secondary-evidence override was too LENIENT, not too strict). Running
+   filter_ablation's counterfactual machinery on the before/after of the window-length gate gives a
+   per-pair picture of what changed, more granular than task #67's aggregate OOS Sharpe comparison.
+6. **`weak_exogeneity_test.py` × lead-lag work**: weak exogeneity asks which leg does the
+   error-correction adjusting (VECM-based); lead-lag asks which leg's price moves first
+   (correlation-timing-based) — related but distinct notions of "which leg leads." Lead-lag found
+   broadly null; cross-checking against weak_exogeneity_test's findings (if it found real asymmetric
+   adjustment for specific pairs) would be a genuine convergent-or-divergent-evidence check, not
+   redundant with the already-completed lag-sweep validation.
+7. **`caviar_dynamic_var.py` + `financial_turbulence_index.py` + `comomentum.py`**: three
+   independent time-varying risk/stress detectors (dynamic VaR via quantile regression,
+   absorption-ratio systemic risk, correlation-based crowding), never combined into one composite
+   indicator. Directly relevant to task #61 — the native regime indicator should consider combining
+   these three rather than building a fourth, independent one from scratch.
+
+Not yet built or executed — this is the connections map, queued behind the current backlog. When
+task #61 and the k-BAHC/copula work (task #58, §6.1) actually get built, they should be built with
+10.2's duplication-avoidance in mind from the start, not discovered after the fact.
+
+### 10.4 WIP-scripts specifically (Ross's follow-up: include the ones that are WIP, not just finished)
+
+- **`midas_feature.py` ↔ task #56, real and updated.** Explicitly WIP by its own docstring — the
+  beta-polynomial MIDAS lag-weighting machinery (`beta_weights()`) is built and verified, but scoped
+  narrow (same-pair, fast-TF-informs-slow-TF-entry-model only) and honestly limited by too few
+  labeled slow-TF entry events for a real train/test split at the time it was built. Task #56 (Ross's
+  cross-asset-timeframe lead-lag idea) is the natural extension — cross-asset instead of same-pair —
+  and should reuse `beta_weights()` rather than reimplement MIDAS. Worth checking whether the
+  original data-sufficiency blocker has eased since the universe expansion. Task #56 updated.
+- **`regime_conditional_entry_gate.py` ↔ `hmm_regime_detection.py`/`hmm_gmm_regime_trade_features.py`,
+  real, confirmed by content.** The entry gate's own docstring explicitly names what it deliberately
+  is NOT: "the original spec's full HMM-discovered-state design," using rule-based bucketing instead.
+  The HMM regime work already built later in the session provides real, working machinery for
+  exactly that originally-deferred "full" version — connecting them fulfills a gap the entry gate's
+  own docstring names, rather than requiring a from-scratch build.
+- **`decoupling_backtest.py` checked, NOT actually WIP — already complete with a real, correctly-
+  concluded negative result** (Ross, 2026-07-01: keep the whole decoupling line research-only, only
+  1 of 5 re-qualified pairs was profitable IS-only). Worth noting as a side-connection though: all 5
+  re-qualified pairs share DD as a leg — different break dates (2024) than BUG-D65/D66's contamination
+  window (2023-07/08), so not the same artifact, but another data point in the broader "DD is central
+  to nearly everything flagged in this portfolio" pattern already seen in `trend_dominance_diagnostic.py`
+  and BUG-D66.
+- **Honest correction, found while verifying task #64's refetch, not assumed clean**: the 7
+  BUG-D65/D66-affected symbols' refetched 1hr caches now start 2023-08-15 — AFTER the original
+  2023-07-26/08-10 contamination window entirely. This means that specific contamination is moot
+  because the window aged out of yfinance's rolling 730-day lookback as real time passed, NOT because
+  `_reconcile_split_adjustment()` actively fixed it on this refetch. The fix's real test — correctly
+  reconciling a FUTURE split when the next incremental append happens — hasn't occurred yet and can't
+  be directly verified today. Spot-checked the new jumps that DID appear (APP has 9, others 1-2 each)
+  by exact timestamp: every one lands precisely at a daily close-to-next-open boundary (14:30→09:30),
+  the signature of a real overnight earnings/news gap, not an append-seam artifact (which would land
+  at an arbitrary mid-history point) — genuinely clean, not residual contamination.
+
+### Task #46 (CAPSTONE) — noted here for next session's dedicated_pass execution (2026-07-14)
+
+Ross's direction: fold task #46 (full production pipeline rerun — `data.py`→`analysis.py`→
+`backtest.py` all variants→`stats.py`→`wfa.py`→`distance.py`→`sensitivity.py`→`deflated_sharpe.py`→
+`report.py`, plus all 79+ research scripts, full doc sweep) into this file's scope rather than treating
+it as a separate standing item. Real prerequisite, not yet resolved: task #71's 1h confirmed-pair-set
+collapse needs Ross's reconciliation decision (does PAPER.md move to the honest, much smaller confirmed
+set, or does something else change first) BEFORE a capstone full-pipeline run — otherwise the capstone
+would need to be re-run again the moment that decision lands, wasted duplicate work. Sequence this file's
+own scoped research build-out (relational sweep, volatility standardization, and everything else already
+queued here) either before or in parallel with #46, not gated by it, since none of that research depends
+on which confirmed-pair set ultimately reconciles into PAPER.md.
+
+### Lead-lag literature survey — added 2026-07-14, Ross's direction
+
+Every CAMARF-native lead-lag attempt to date has converged on the same null result, independently,
+across multiple distinct constructions: same-session lead-lag scan (lag-0 dominant), the near-miss
+lag-scan's flagged outliers (task #66, actively being permutation-corrected this session — every
+result so far fails permutation testing), `big_move_lead_lag.py`, `hub_leg_stop_conditioning.py`,
+task #56's mixed-frequency/MIDAS cross-asset lead-lag, and task #69's Pieces B/C — four-plus
+independently convergent absence-of-signal results (see task #52's "lead-lag search methodology
+validated clean — no implementation bug, prior null results trustworthy" entry; this isn't a
+methodology bug, the searches are correctly implemented and finding nothing).
+
+Ross wants this file to scope a literature survey BEFORE any further CAMARF-native lead-lag
+construction is attempted: **how does the published literature actually find/construct tradeable
+lead-lag relationships, when they claim to find one at all?** Concretely, before executing:
+- What data granularity, universe scope, and statistical test do successful published lead-lag
+  findings actually use (e.g. Hou (2007) "Industry Information Diffusion," Chordia/Swaminathan
+  liquidity-based lead-lag, statistical-arbitrage-specific lead-lag work) — is CAMARF's own
+  granularity/universe/test choice actually comparable, or is there a structural mismatch (e.g. the
+  literature's positive results cluster at daily/weekly granularity or on very specific
+  economically-linked pairs — supply chain, index-membership, ownership-linkage — rather than a
+  broad statistical scan across an equity universe the way CAMARF's scans are constructed)?
+- Is CAMARF's own null result actually CONSISTENT with a realistic reading of the literature (i.e.
+  lead-lag effects, where they exist, are known to be small, decayed by modern liquidity/algo
+  trading, and/or require economically-motivated pair selection rather than a blind statistical
+  scan) — if so, this is worth stating explicitly in PAPER.md/Development.md as a literature-grounded
+  explanation for the null, not just "we tried and found nothing."
+- Does the literature suggest a DIFFERENT construction CAMARF hasn't tried yet (e.g. order-flow /
+  microstructure-based lead-lag rather than price-based; economically-motivated pair pre-selection
+  rather than blind universe scanning; a different test statistic than correlation-at-lag or
+  Granger-style EG lag structure)?
+
+Scope this as a `/storm` or `/storm:storm-brief` literature pass (this project's existing convention
+for exactly this kind of sourced survey — see task #69/Phase 12's STORM usage) rather than a code-build
+task; the deliverable is a written synthesis (Development.md and/or `docs/FINDINGS.md`) comparing
+CAMARF's own null results against what the literature actually claims and how it got there, BEFORE
+deciding whether any further lead-lag construction work is worth attempting at all. Do not build a new
+lead-lag comparison arm on spec ahead of this survey — the survey is what should decide whether one is
+still worth building.

@@ -92,6 +92,88 @@ FOLD_ROLLING = [
     (0.50, 0.70, 0.70, 1.00, "fold2_roll"),
 ]
 
+# Train/test split-ratio sweep (task #67, 2026-07-14) — each entry is a
+# single contiguous train-then-test split (no fold-to-fold structure, no
+# gap between train_end and test_start) at a fixed fraction of the
+# analysis window. Scoped by Ross earlier this session ("test different
+# training window periods... 50/50, 60/40, 70/30, 80/20, 90/10... with
+# explicit overfitting discipline"). wfa_variant is a pass-through label
+# only (see run_fold — it's never branched on internally), so reusing this
+# mechanism for a plain split sweep is safe.
+FOLD_SPLIT_SWEEP = [
+    (0.00, 0.50, 0.50, 1.00, "split_50_50"),
+    (0.00, 0.60, 0.60, 1.00, "split_60_40"),
+    (0.00, 0.70, 0.70, 1.00, "split_70_30"),
+    (0.00, 0.80, 0.80, 1.00, "split_80_20"),
+    (0.00, 0.90, 0.90, 1.00, "split_90_10"),
+]
+
+# Absolute train-window-LENGTH sweep (task #67, 2026-07-14) — the second,
+# distinct dimension from FOLD_SPLIT_SWEEP's split RATIO (see Development.md,
+# "Two distinct dimensions, not to be conflated"). Fixed calendar train
+# durations (not fractions of total history), all anchored at the SAME
+# test_start/test_end (0.80/1.00 — matching split_80_20's anchor point, for
+# direct comparability) so only train LENGTH varies between variants, not
+# test-window placement. Window days are converted to fractions of the
+# universe's actual [start, end] span at runtime (build_window_sweep_specs),
+# since the real span isn't known until the universe is loaded.
+WINDOW_SWEEP_DAYS = [180, 365, 545, 730]  # 6mo / 1yr / 1.5yr / 2yr
+WINDOW_SWEEP_ANCHOR_PCT = 0.80
+
+
+def build_window_sweep_specs(
+    start: pd.Timestamp, end: pd.Timestamp,
+    window_days_list=WINDOW_SWEEP_DAYS, anchor_pct: float = WINDOW_SWEEP_ANCHOR_PCT,
+):
+    """Converts absolute train-window day counts into (train_start_pct,
+    train_end_pct, test_start_pct, test_end_pct, label) fold specs anchored
+    at a fixed test_start/test_end, for direct use with compute_fold_dates.
+    A window longer than the available pre-anchor history is clipped to
+    train_start_pct=0.0 (uses everything available) rather than silently
+    dropped — logged by the caller, not hidden."""
+    total_days = (end - start).days
+    specs = []
+    for wd in window_days_list:
+        train_start_pct = max(0.0, anchor_pct - wd / total_days)
+        specs.append((train_start_pct, anchor_pct, anchor_pct, 1.0, f"window_{wd}d"))
+    return specs
+
+
+# Fixed-calendar-checkpoint variant (Phase 13/§7.3.1, 2026-07-14) — the
+# paper's original "point-in-time screening at 3 checkpoints" plan, distinct
+# from both FOLD_SPLIT_SWEEP (fractional split ratios) and the window-length
+# sweep (fixed train duration, single fixed anchor): here each checkpoint is
+# an EXPLICIT CALENDAR DATE used as train_end/test_start, test_end always
+# the full available window's end ("trade forward from cutoff to now").
+CHECKPOINT_DATES = ["2024-02-01", "2025-01-01", "2025-08-01"]
+
+# Minimum-training-history comparison arm (2026-07-14, Ross's request) — the
+# checkpoint_sweep's worst result (2024-02-01, -1.9037 Sharpe) had only ~7mo
+# of training history, the shortest of the 3. This tests a "wait for a full
+# year before going live" policy directly: same test window (trade forward
+# to now), just a later, more-trained first checkpoint, for a clean apples-
+# to-apples read against checkpoint_2024-02-01 specifically.
+MIN_HISTORY_CHECKPOINT_DATES = ["2024-07-13"]  # exactly 12mo after analysis start (2023-07-13)
+
+
+def build_checkpoint_specs(start: pd.Timestamp, end: pd.Timestamp, checkpoint_dates=CHECKPOINT_DATES):
+    """Converts explicit calendar checkpoint dates into (train_start_pct=0.0,
+    train_end_pct, test_start_pct, test_end_pct=1.0, label) fold specs for
+    compute_fold_dates. A checkpoint outside [start, end] is skipped (logged
+    by the caller), not silently clamped — an out-of-range checkpoint is a
+    real scoping problem worth surfacing, not papering over."""
+    total_days = (end - start).days
+    specs = []
+    for cp in checkpoint_dates:
+        cp_ts = pd.Timestamp(cp)
+        if cp_ts <= start or cp_ts >= end:
+            specs.append(None)
+            continue
+        pct = (cp_ts - start).days / total_days
+        specs.append((0.0, pct, pct, 1.0, f"checkpoint_{cp}"))
+    return specs
+
+
 log = logging.getLogger("pit_wfa")
 
 
@@ -297,7 +379,29 @@ def backtest_pair_on_test_window(
     if len(test_slice) < 30:
         return [], {}
 
-    pair_row = pd.Series({**vars(full_pair_result), "tf_label": _TF_LABEL})
+    # BUG-D69 (2026-07-14): full_pair_result's scalar summary fields
+    # (coint_fraction_rolling, half_life_trend_slope, etc.) were computed
+    # above on the FULL train+test window, purely as a byproduct of
+    # rebuilding the per-bar trading series for the test-window backtest —
+    # they are NOT point-in-time. Currently inert for THIS specific call
+    # (no storm_flags passed, regime_cond/ml_cond both disabled below, so
+    # nothing reads these fields for a gating/sizing decision) but that is
+    # a fragile invariant, not a real guarantee — a future caller reusing
+    # this function with STORM flags or the conditioners enabled would
+    # silently reintroduce the same lookahead BUG-D68 fixed at the
+    # selection stage. Override with the ORIGINAL, genuinely train-only
+    # pair_result's own scalar fields (already correct — this is exactly
+    # what screen_universe_at_cutoff() used to make the accept/reject
+    # decision) so pair_row is point-in-time-safe regardless of which
+    # downstream logic reads it, not just for today's disabled-conditioner
+    # configuration.
+    pair_row = pd.Series({
+        **vars(full_pair_result),
+        "coint_fraction_rolling": getattr(pair_result, "coint_fraction_rolling", np.nan),
+        "half_life_trend_slope": getattr(pair_result, "half_life_trend_slope", np.nan),
+        "mean_reversion_speed": getattr(pair_result, "mean_reversion_speed", np.nan),
+        "tf_label": _TF_LABEL,
+    })
     engine = BacktestEngine(
         cfg=Config.BACKTEST, regime_cond=RegimeConditioner(enabled=False),
         ml_cond=MLConditioner(enabled=False),
@@ -353,11 +457,86 @@ def run_fold(
     return all_metrics, portfolio_stats, pair_set_rows
 
 
+# Persistence-filter comparison arm (2026-07-14, Ross's request after seeing
+# the checkpoint_sweep result) — tests whether requiring a pair to survive
+# TWO independent point-in-time screens (not just one snapshot) before it's
+# tradeable would have avoided checkpoint 1's -1.9037 Sharpe. A pair must be
+# confirmed at BOTH (checkpoint - lookback) and checkpoint itself; only the
+# intersection is traded, using the checkpoint's own (more current) pair_result
+# for actual trading — the earlier screen is a filter, not a data source.
+PERSISTENCE_LOOKBACK_DAYS = 90
+
+
+def run_persistence_fold(
+    universe: Dict[str, pd.DataFrame], fold_dates: Dict, wfa_variant: str, n_workers: int,
+    lookback_days: int = PERSISTENCE_LOOKBACK_DAYS,
+) -> Tuple[List[Dict], Dict, List[Dict]]:
+    label = fold_dates["label"]
+    earlier_cutoff = fold_dates["train_end"] - pd.Timedelta(days=lookback_days)
+
+    log.info("[%s/%s] screening EARLIER cutoff [%s, %s] (persistence pre-check)...",
+              wfa_variant, label, fold_dates["train_start"].date(), earlier_cutoff.date())
+    t0 = time.time()
+    confirmed_earlier = screen_universe_at_cutoff(
+        universe, fold_dates["train_start"], earlier_cutoff, n_workers
+    )
+    earlier_keys = {(p.symbol_a, p.symbol_b) for p in confirmed_earlier}
+    log.info("[%s/%s] %d pairs confirmed at earlier cutoff (%.1f min)",
+              wfa_variant, label, len(confirmed_earlier), (time.time() - t0) / 60)
+
+    log.info("[%s/%s] screening train window [%s, %s] (point-in-time)...",
+              wfa_variant, label, fold_dates["train_start"].date(), fold_dates["train_end"].date())
+    t0 = time.time()
+    confirmed_now = screen_universe_at_cutoff(
+        universe, fold_dates["train_start"], fold_dates["train_end"], n_workers
+    )
+    log.info("[%s/%s] %d pairs point-in-time confirmed at full cutoff (%.1f min)",
+              wfa_variant, label, len(confirmed_now), (time.time() - t0) / 60)
+
+    persistent = [p for p in confirmed_now if (p.symbol_a, p.symbol_b) in earlier_keys]
+    log.info("[%s/%s] %d/%d pairs survive the persistence filter (confirmed at both cutoffs)",
+              wfa_variant, label, len(persistent), len(confirmed_now))
+
+    pair_set_rows = [
+        {"wfa_variant": wfa_variant, "fold": label, "symbol_a": p.symbol_a, "symbol_b": p.symbol_b,
+         "coint_fraction_rolling": p.coint_fraction_rolling, "half_life_rolling": p.half_life_rolling}
+        for p in persistent
+    ]
+
+    all_trades, all_metrics = [], []
+    for p in persistent:
+        trades, metrics = backtest_pair_on_test_window(
+            p, universe, fold_dates["train_start"], fold_dates["test_start"], fold_dates["test_end"]
+        )
+        if trades:
+            all_trades.extend(trades)
+            if metrics:
+                all_metrics.append(metrics)
+
+    portfolio_stats = aggregate_portfolio(all_trades, all_metrics)
+    portfolio_stats.update({
+        "wfa_variant": wfa_variant, "fold": label,
+        "n_pit_confirmed_pairs": len(persistent),
+        "n_pairs_with_trades": len(all_metrics),
+        "n_pre_filter_pairs": len(confirmed_now),
+    })
+    log.info("[%s/%s] backtest: %d pairs traded, %d trades, portfolio Sharpe=%.4f",
+              wfa_variant, label, len(all_metrics), len(all_trades),
+              portfolio_stats.get("sharpe_portfolio", float("nan")))
+
+    return all_metrics, portfolio_stats, pair_set_rows
+
+
 def main():
     import argparse
     parser = argparse.ArgumentParser(description="Point-in-time portfolio-wide WFA (1h)")
     parser.add_argument("--workers", type=int, default=12)
-    parser.add_argument("--variant", choices=["expanding", "rolling", "both"], default="both")
+    parser.add_argument(
+        "--variant",
+        choices=["expanding", "rolling", "both", "split_sweep", "window_sweep", "checkpoint_sweep",
+                 "persistence_sweep", "min_history_sweep"],
+        default="both",
+    )
     args = parser.parse_args()
 
     _setup_logging()
@@ -376,17 +555,76 @@ def main():
         variants.append(("expanding", FOLD_EXPANDING))
     if args.variant in ("rolling", "both"):
         variants.append(("rolling", FOLD_ROLLING))
+    if args.variant == "split_sweep":
+        variants.append(("split_sweep", FOLD_SPLIT_SWEEP))
+    if args.variant == "window_sweep":
+        window_specs = build_window_sweep_specs(start, end)
+        for (ts_pct, te_pct, _, _, label), wd in zip(window_specs, WINDOW_SWEEP_DAYS):
+            if wd / (end - start).days > WINDOW_SWEEP_ANCHOR_PCT:
+                log.warning(
+                    "[%s] requested %dd train window exceeds available pre-anchor history — "
+                    "clipped to train_start_pct=%.3f (uses everything available before the anchor)",
+                    label, wd, ts_pct,
+                )
+        variants.append(("window_sweep", window_specs))
+    if args.variant == "checkpoint_sweep":
+        checkpoint_specs = build_checkpoint_specs(start, end)
+        valid_specs = []
+        for spec, cp in zip(checkpoint_specs, CHECKPOINT_DATES):
+            if spec is None:
+                log.warning("[checkpoint_%s] outside analysis window [%s, %s] — skipped",
+                            cp, start.date(), end.date())
+            else:
+                valid_specs.append(spec)
+        variants.append(("checkpoint_sweep", valid_specs))
+    if args.variant == "persistence_sweep":
+        checkpoint_specs = build_checkpoint_specs(start, end)
+        valid_specs = []
+        for spec, cp in zip(checkpoint_specs, CHECKPOINT_DATES):
+            if spec is None:
+                log.warning("[checkpoint_%s] outside analysis window [%s, %s] — skipped",
+                            cp, start.date(), end.date())
+            else:
+                valid_specs.append(spec)
+        variants.append(("persistence_sweep", valid_specs))
+    if args.variant == "min_history_sweep":
+        checkpoint_specs = build_checkpoint_specs(start, end, checkpoint_dates=MIN_HISTORY_CHECKPOINT_DATES)
+        valid_specs = [s for s in checkpoint_specs if s is not None]
+        variants.append(("min_history_sweep", valid_specs))
+
+    os.makedirs(_OUT_DIR, exist_ok=True)
 
     fold_metric_rows, portfolio_rows, pair_set_rows = [], [], []
     for wfa_variant, fold_specs in variants:
         for fold_spec in fold_specs:
             fold_dates = compute_fold_dates(start, end, fold_spec)
-            metrics, portfolio_stats, pair_sets = run_fold(universe, fold_dates, wfa_variant, args.workers)
+            runner = run_persistence_fold if wfa_variant == "persistence_sweep" else run_fold
+            metrics, portfolio_stats, pair_sets = runner(universe, fold_dates, wfa_variant, args.workers)
             fold_metric_rows.extend(metrics)
             portfolio_rows.append(portfolio_stats)
             pair_set_rows.extend(pair_sets)
 
-    os.makedirs(_OUT_DIR, exist_ok=True)
+            # Checkpoint after every fold (2026-07-14) — a multi-hour sweep
+            # previously lost ALL folds' results to a mid-run process kill
+            # because output only got written once, after every fold
+            # finished. Overwrites the same final output paths each time, so
+            # a killed run always leaves the latest complete state on disk
+            # instead of nothing.
+            if fold_metric_rows:
+                pd.DataFrame(fold_metric_rows).to_parquet(
+                    os.path.join(_OUT_DIR, "pit_wfa_fold_comparison.parquet"), index=False
+                )
+            if portfolio_rows:
+                pd.DataFrame(portfolio_rows).to_parquet(
+                    os.path.join(_OUT_DIR, "pit_wfa_portfolio.parquet"), index=False
+                )
+            if pair_set_rows:
+                pd.DataFrame(pair_set_rows).to_parquet(
+                    os.path.join(_OUT_DIR, "pit_wfa_pair_sets.parquet"), index=False
+                )
+            log.info("[%s/%s] checkpoint saved (%d folds completed so far)",
+                      wfa_variant, fold_dates["label"], len(portfolio_rows))
+
     if fold_metric_rows:
         pd.DataFrame(fold_metric_rows).to_parquet(
             os.path.join(_OUT_DIR, "pit_wfa_fold_comparison.parquet"), index=False

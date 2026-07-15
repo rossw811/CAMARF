@@ -218,7 +218,23 @@ def main():
 
     out_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "output", "research")
     os.makedirs(out_dir, exist_ok=True)
-    out_path = os.path.join(out_dir, f"near_miss_lag_scan_{args.tf}.parquet")
+    # Collision-safe suffix for ONLY the TFs that actually collide on Windows'
+    # case-insensitive filesystem (BUG found 2026-07-14): "1M"/"1m" and "3M"/"3m"
+    # differ only in case. Confirmed directly: near_miss_lag_scan_1M.parquet and
+    # _1m.parquet were byte-identical (df.equals()==True) before this fix -- the
+    # "1M" run had been silently overwriting/reading the 1m-minute result, never a
+    # real monthly one. Mirrors data.py's own comment on the identical issue
+    # ("On Windows '1M' == '1m' -- both point to the same physical file").
+    # Deliberately narrow: only remap the colliding labels via _TF_LABEL_TO_SAFE
+    # (1M->1mo, 3M->3mo, 6M->6mo for naming consistency across the "months" group)
+    # -- the other 10 TFs (1m/2m/3m/5m/15m/30m/1h/4h/1D/7D) do NOT collide under
+    # their raw labels and already have real, correct output files on disk under
+    # the raw-label convention; blanket-remapping every TF here would silently
+    # change their future output filename too (e.g. 1h -> "1hr"), breaking
+    # consistency with what's already completed rather than fixing anything.
+    _COLLIDING_TFS = {"1M", "3M", "6M"}
+    safe = _TF_LABEL_TO_SAFE[args.tf] if args.tf in _COLLIDING_TFS else args.tf
+    out_path = os.path.join(out_dir, f"near_miss_lag_scan_{safe}.parquet")
     result_df.to_parquet(out_path)
     print(f"\nFull results written to {out_path}")
 

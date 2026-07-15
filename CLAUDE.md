@@ -474,6 +474,81 @@ inventory:
 
 ## Current State (update this section each session)
 
+### START HERE — Ross's explicit directive for the start of the NEXT session (added 2026-07-14)
+
+Before picking up any other backlog item, run a full-codebase sweep for bugs, inconsistencies,
+flaws, errors, edge cases, and oversights — "everything and anything possible" — logically
+reasoning through every script and how it connects to the rest of the pipeline, not just checking
+files in isolation. Ross's own framing: deploy code-reviewer, feature-dev, the improve plugin,
+context7, "or all of them," across the entire codebase, every script total. Do a full bias sweep
+alongside it (tasks #18/#19 already existed for this — this directive expands their scope, doesn't
+replace them). Specific things this sweep must cover, not just generically imply:
+
+1. **Point-in-time/causal correctness for every statistical test, done/doing/future** — not just a
+   `center=True` grep (that only catches one failure shape). Session 28 found a real instance
+   (BUG-D69) where a scalar field was computed correctly-causally in one code path, then silently
+   overwritten by a non-causal recomputation in a different code path reusing the same object —
+   this class of bug needs its own explicit check, not just a rolling-window-parameter grep.
+2. **Cross-script bug-fix propagation** — Session 28 found the SAME bug class recurring independently
+   at least twice (BUG-D62→D64, a Sharpe-pooling-convention bug; BUG-D65→D66, an append-seam
+   contamination bug across 7 symbols instead of 1). Every bug fixed this session or logged in
+   `docs/BUG_LOG.md` needs an explicit check: does this same bug CLASS exist anywhere else in the
+   codebase, not just at the one instance that got fixed.
+3. Survivorship bias (task, scoped Session 28 — see the relevant Development.md entry): symbols
+   `data.py` finds newly unfetchable need to be flagged as a distinct category (not conflated with
+   format/config fetch failures) and their pre-delisting cached history retained and usable in
+   testing, not silently aged out.
+4. `pit_wfa.py`'s lookahead-bias fix (BUG-D68/D69, task #67) needs its actual re-run once resources
+   allow — deferred, not forgotten.
+
+### The full execution sequence Ross wants next session (added 2026-07-14, explicitly deferred from Session 28 — "it's a lot of things to do so i want all that noted for next session")
+
+In order, not to be compressed into one sitting — this is genuinely multi-session work, said plainly
+rather than implied to fit in one session and coming up short:
+
+1. **Files updated, dedicated_pass.md's scoped ideas turned into real files** — build the actual
+   `research/*.py` modules `dedicated_pass.md` currently only scopes (k-BAHC, copula-correlation
+   extension of `copula_pairs.py`, wavelet-scale cointegration, beta-neutral lag structure, the
+   relational-adaptation ideas #59-62, etc.) — "dedicated pass files created" means instantiated,
+   not just documented.
+2. **Code reviewers run** — code-reviewer/feature-dev/improve/context7 (Ross's own list, "or all of
+   them") across the codebase, INCLUDING each newly-built module as it lands, not only once at the
+   end — catching a bug in one module before three others build on it is cheaper than catching it
+   after a full run already used it.
+3. **Full run of the scripts including the full production pipeline** — task #46 (already scoped as
+   the CAPSTONE task): `data.py`→`analysis.py`→`backtest.py`(all variants)→`stats.py`→`wfa.py`→
+   `distance.py`→`sensitivity.py`→`deflated_sharpe.py`→`report.py`, plus every one of the 79
+   research scripts. Realistically several hours on its own. Given this session's demonstrated
+   process-stability issues (`run_in_background`-launched jobs dying repeatedly, `Start-Process`
+   being the working fix — see Development.md's process notes), this needs active monitoring and
+   relaunching as things die, not a fire-and-forget single command.
+4. **A round of connections** — once real, current results exist from step 3, repeat the
+   cross-script connections pass (`dedicated_pass.md` §10 is the first one, done Session 28 against
+   pre-full-run state) informed by fresh output, not stale assumptions.
+5. **Buildings** — build whatever step 4's fresh connections round surfaces.
+6. **A run of those, a review of those, another run of those** — build → run once (unreviewed,
+   research code, "does it run and produce sane output" is often the fastest first bug-detector) →
+   code-review → run again incorporating fixes.
+7. **Updates made to all documentation** — treat this as the final CONSISTENCY/POLISH pass (make
+   sure everything agrees, nothing's stale), not the first time anything gets written. Development.md/
+   `docs/FINDINGS.md`/`docs/BUG_LOG.md` should already be current throughout steps 1-6 (continuous,
+   same discipline as every prior session) — deferring documentation entirely to one giant end step
+   is a real risk given how many times a process died mid-task this session; current docs mean
+   nothing real gets lost if something crashes partway through.
+
+### Session 28 (2026-07-13 through 2026-07-14) — see Development.md for full detail
+
+Very large overnight/autonomous session. Headline items: BUG-D65 through D69 found and fixed
+(split-adjustment cache contamination across 7 symbols, a Windows filesystem case-collision in
+near-miss scan output paths, the root cause of `pit_wfa.py`'s catastrophic point-in-time lookahead
+result, and a related latent lookahead in its test-window backtest); PDR + Calmar Ratio built with a
+real finding that the sizing-method ranking isn't metric-invariant; lead-lag search methodology
+validated clean (no implementation bug, prior null results trustworthy); `analysis.py` completed a
+full rerun against the expanded 1,661-asset universe; `dedicated_pass.md` holds a large scoped
+research program (k-BAHC, copula-based correlation, wavelet-scale cointegration, beta-neutral lag
+structure, and more) not yet executed. See `docs/BUG_LOG.md` for the full D65-D69 index and
+Development.md for complete write-ups of each.
+
 See `DEVELOPMENT.md` Session 27 (2026-07-05 through 2026-07-10) for full detail — the most recent,
 much larger session (SPY/VOO exclusion committed, permutation-test bug fixed, Kalman slope+intercept
 promoted to production then reverted after a rigorous 3-way comparison, IBKR breaker re-investigated

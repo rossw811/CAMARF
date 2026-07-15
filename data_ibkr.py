@@ -301,7 +301,19 @@ class IBKRSupplementPipeline:
                     break
 
                 try:
-                    df = self._ibkr.get_bars(sym, "equity", bar_size, tf_label, depth)
+                    # get_bars_paginated (BUG-D70/task #72, 2026-07-14;
+                    # ceiling corrected 2026-07-14 isolated re-test — the
+                    # earlier "~21-30 day ceiling" was itself a timeout-
+                    # budget artifact, real ceiling for 1h equities is
+                    # between 3-4 Y; see data.py's updated docstring).
+                    # Not the single-shot get_bars(bypass_cache=True) this
+                    # used before: a single request beyond the real ceiling
+                    # times out, so chaining chunks is still needed to reach
+                    # `depth` of history when depth exceeds ~3 Y — just far
+                    # fewer, larger chunks than originally thought necessary.
+                    df = self._ibkr.get_bars_paginated(
+                        sym, "equity", bar_size, target_duration=depth, chunk_duration="2 Y"
+                    )
                 except Exception as e:
                     log.debug(f"  {sym} {tf_label}: exception — {e}")
                     df = None

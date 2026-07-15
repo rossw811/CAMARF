@@ -56,7 +56,20 @@ def zscore(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def reversal_signal(returns_df: pd.DataFrame, window: int = _REVERSAL_WINDOW) -> pd.DataFrame:
-    trailing_cumret = returns_df.rolling(window).sum()
+    # Per-column dropna before rolling, then reindex back onto the full
+    # (dense, outer-joined) calendar — same gap-aware-rolling fix already
+    # applied to big_move_lead_lag.py/hub_leg_stop_conditioning.py this
+    # session. returns_df is outer-joined across symbols with different
+    # trading calendars (foreign-listing holidays, etc.); a naive
+    # .rolling(window).sum() on the raw (ragged) column requires every one
+    # of the `window` CALENDAR rows to be non-NaN, so one isolated holiday
+    # for a given symbol nulls out its whole trailing-window return even
+    # though that symbol's own `window` most recent TRADED days are fine.
+    trailing_cumret = pd.DataFrame(
+        {col: s.dropna().rolling(window).sum().reindex(returns_df.index)
+         for col, s in returns_df.items()},
+        index=returns_df.index,
+    )
     return -zscore(trailing_cumret)  # negative: high past return -> low predicted future return
 
 
