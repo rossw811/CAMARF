@@ -35,3 +35,19 @@ pipeline_runner_out.log
 # _data_ibkr_run.log) that predate the 2026-07-11 latest_*_stdout/stderr.log
 # fix above and got tracked by the same bug — same rationale, untracked here.
 logs/archive/*.log
+
+# Added 2026-07-15: the project's own scratch-log convention has since
+# drifted to `{task}_out.log`/`{task}_err.log` (PowerShell Start-Process
+# -RedirectStandardOutput/-RedirectStandardError naming, used throughout the
+# 7/14-7/15 overnight session for pit_wfa.py/analysis.py background runs) —
+# the *_stdout.log/*_stderr.log pattern above doesn't match this suffix at
+# all, so ~30 of these accumulated as untracked cruft requiring manual
+# exclusion from every commit this session. Matches at the repo root only
+# (doesn't touch anything under output/, already ignored above, or the
+# small number of pre-existing tracked exceptions like
+# analysis_overnight_err.log/latest_run_data_err.log — gitignore patterns
+# never retroactively untrack already-committed files).
+/*_out.log
+/*_err.log
+/*_out[0-9].log
+/*_err[0-9].log
