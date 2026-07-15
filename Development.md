@@ -16649,3 +16649,24 @@ would resolve further.
 
 Output: `latest_run_analysis.log`; `output/results/{5min,15min,30min,4h,1D}/pairs.parquet` (each empty);
 `analysis_remaining_tfs_out.log`/`_err.log`.
+
+### Small repo-hygiene fix while holding at the checkpoint: `.gitignore` didn't catch tonight's own scratch-log naming convention (2026-07-15, task #10)
+
+Noticed while committing tonight's diagnostic work: `.gitignore`'s existing stdout/stderr-dump
+exclusion (`latest_*_stdout.log`/`latest_*_stderr.log`, fixed 2026-07-11) doesn't match the naming
+convention this session actually used for every `Start-Process`-launched background job tonight
+(`{task}_out.log`/`{task}_err.log`, PowerShell's own `-RedirectStandardOutput`/`-RedirectStandardError`
+naming) — required manually excluding ~30 files from every commit rather than a clean `git add`.
+
+**Fixed**: added `/*_out.log`, `/*_err.log`, and the numbered-retry variants `/*_out[0-9].log`/
+`/*_err[0-9].log` (covers files like `pit_wfa_window_sweep_err2.log`, from tonight's relaunch after
+the earlier process-death incident). Verified precisely, not just by eyeballing the pattern: confirmed
+via `git check-ignore -v` that both pre-existing tracked exceptions (`analysis_overnight_err.log`,
+`latest_run_data_err.log`) and the curated `latest_run_*.log` summaries remain unaffected (gitignore
+never retroactively untracks committed files, and neither matched the new pattern in the first place),
+while the actual scratch files (`pit_wfa_checkpoint_sweep_out.log`, etc.) are now correctly caught.
+Untracked count dropped from 31 to 5 remaining (a handful of pre-compaction, inconsistently-named
+one-off scratch files not worth a bespoke pattern — left alone rather than guessed at).
+
+This is task #10 (repo restructure)'s exact "fix .gitignore/tracking" item, already flagged in the
+plan's Phase 5 — small, low-risk, done opportunistically while otherwise idle waiting on Ross.
