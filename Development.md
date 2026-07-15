@@ -16608,3 +16608,44 @@ The single most important thing for Ross to do first: read this entry and the "C
 blocker RESOLVED" entry above it, and decide how PAPER.md should handle the fact that its headline
 confirmed-pair set does not currently reproduce on clean data — every remaining phase of this plan
 depends on that decision.
+
+### Complete, definitive picture across ALL 14 CAMARF timeframes — confirmed-pair collapse is not uniform, but is total across the entire historically-productive middle of the spectrum (2026-07-15)
+
+Ran `analysis.py --timeframes 5min 15min 30min 4h 1D 7day 3mo 6mo` (the 8 timeframes not yet covered
+by tonight's earlier checks) — clean completion, 11.9 min, no errors. Combined with everything already
+checked, this is now the COMPLETE, current, clean-data picture across every CAMARF timeframe:
+
+| Timeframe | Confirmed pairs | Note |
+|---|---|---|
+| 1min | 1 | IVT/WSBC |
+| 2min | 1 | KVUE/KMB |
+| 3min | 1 | KVUE/KMB |
+| 5min | **0** | screened, none survived |
+| 15min | **0** | screened, none survived |
+| 30min | **0** | screened, none survived |
+| **1h** | **0** | screened, none survived (tonight's original finding) |
+| 4h | **0** | screened, none survived |
+| 1D | **0** | screened, none survived |
+| 7day | — | **SKIPPED — 0 assets have cached data for this TF** (a data-availability gap, not a screening result) |
+| 1mo | 1 | 7267.T/8058.T |
+| 3mo | — | **SKIPPED — 0 assets have cached data for this TF** |
+| 6mo | — | **SKIPPED — 0 assets have cached data for this TF** |
+
+**Honest, complete conclusion**: the collapse is NOT uniform across every timeframe — it is total and
+complete across the entire historically-productive MIDDLE of the spectrum (5min through 1D, six
+consecutive timeframes, zero pairs each), while a single pair survives at each extreme (the very
+shortest granularities, 1min-3min, and the very longest with real data, 1mo). This is a materially
+different, more precise picture than "everything is broken" — it specifically implicates the 5min-1D
+range, which is also where the overwhelming majority of PAPER.md's historical headline pairs lived
+(17 of 23 confirmed pairs were 1h specifically, per this project's own file-map notes). 7day/3mo/6mo
+cannot be assessed at all — not a screening failure, a genuine missing-data gap (0 cached assets),
+worth investigating separately if those timeframes matter to any future direction, but out of scope
+for tonight's diagnostic.
+
+**No further work planned on this specific question tonight** — this is the complete, definitive
+answer the earlier entries flagged as still-open. Nothing further to investigate here without new
+direction; the decision on how PAPER.md handles this is Ross's, not something more diagnostic runs
+would resolve further.
+
+Output: `latest_run_analysis.log`; `output/results/{5min,15min,30min,4h,1D}/pairs.parquet` (each empty);
+`analysis_remaining_tfs_out.log`/`_err.log`.
