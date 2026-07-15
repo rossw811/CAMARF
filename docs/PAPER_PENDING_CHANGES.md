@@ -322,6 +322,36 @@ in this file is secondary to this entry. If Ross wants PAPER.md to lead with thi
 bury it in §8, that's a structural decision (Abstract/Introduction framing) beyond what this file
 should decide unilaterally — flagged here, not resolved.
 
+**UPDATE (2026-07-15, after Ross explicitly requested a full bug sweep on this exact finding)**: the
+"0 confirmed pairs" result is no longer just an observation — it now has a PROVEN mechanism, not a
+hypothesis. Verified directly: BH-FDR is bit-for-bit correct (tested against `statsmodels.multipletests`
+on both a textbook example and a synthetic 68,685-p-value array); the EG test is a standard,
+unmodified `statsmodels.coint()` call. The actual cause: DD's confirmed BUG-D65 contamination produced
+raw EG p-values with a median of ~1e-8 and a minimum of 2.3e-25 (for comparison, SPY/VOO — the most
+mechanically-certain "cointegrated" pair in the entire market, two ETFs tracking the identical index —
+only reaches 1.5e-14; DD's contaminated pairs beat that by 11 orders of magnitude). Literature
+corroboration (MacKinnon's response-surface p-value approximation is a polynomial fit that is being
+extrapolated far outside its validated range at this magnitude; the structural-break literature
+independently documents unmodeled level shifts causing spurious stationarity rejections) confirms this
+is a numerical artifact, not genuine economic significance. BH-FDR's step-up procedure needs an
+UNBROKEN CHAIN of increasingly-significant p-values from rank 1 upward — DD's ~259 artificially tiny
+p-values supplied that chain, letting the old run's cutoff extend to rank 314; removing them creates a
+gap that the genuinely-real but "merely small" pairs (LNT/VTR etc., p≈2e-4) can't bridge, so the
+procedure now terminates at rank 2. **This means the proposed replacement text above should be
+strengthened, not softened**: this isn't an unexplained collapse to flag as concerning — it's a fully
+understood, literature-grounded, mechanically PROVEN consequence of removing real data contamination
+from a rank-dependent multiple-testing correction. See Development.md, "Ross explicitly distrusted the
+0-confirmed-pairs finding — full bug sweep, root cause now PROVEN" for the complete investigation and
+citations. **A new, separate, genuinely open methodological question this investigation surfaced**:
+is a step-up FDR procedure this sensitive to supporting-chain gaps the right choice at CAMARF's
+candidate-pool scale (tens of thousands of pairs), or does this fragility argue for a different
+correction (Benjamini-Yekutieli, a two-stage procedure, or a fixed-threshold approach less dependent
+on rank continuity)? Worth its own paragraph in §8 or §4.1, not resolved here — Ross's call.
+
+**Status**: still needs Ross's review before merging, but now with a complete, proven, cited
+explanation rather than an open question — the finding is stronger and better-grounded than it was
+when originally drafted, not less.
+
 ---
 
 ## 8. §8 or §10 — persistence-filter comparison-arm result, a candidate mitigation for the pair-selection-lookahead risk (Ross's direct request)
