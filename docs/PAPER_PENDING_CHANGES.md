@@ -352,6 +352,32 @@ on rank continuity)? Worth its own paragraph in §8 or §4.1, not resolved here 
 explanation rather than an open question — the finding is stronger and better-grounded than it was
 when originally drafted, not less.
 
+**UPDATE (2026-07-20, the "genuinely open methodological question" above is now closed)**: built and
+ran a 4-method FDR comparison (step-up BH, Benjamini-Yekutieli, two-stage TSBH, fixed Bonferroni) on
+the full current 1h universe's real raw EG p-values (m=36,753), plus two further recovery attempts —
+an independent Johansen+KPSS confirmatory check, and a same-GICS-sector-restricted rescan reusing the
+same raw p-values under a smaller m. **None of the 4 correction methods — including Bonferroni, which
+has no rank-chain dependency at all — recovers any of the 8 previously-flagged real-but-moderate pairs
+(LNT/VTR, LNT/WELL, CMS/DUK, EG/WRB, HAL/NOV, MET/TMHC, PFG/STLD, UMBF/FHB).** This settles the question
+definitively: the exclusion is not a BH-specific rank-chain artifact — a chain-independent method draws
+the identical line. The real cause is scale: m≈36,753 simultaneous tests is a genuinely severe
+multiple-testing burden, and these pairs' raw p-values (best case 5.3e-5) are 40-400× too large for any
+defensible correction at this m. The sector-restricted rescan (shrinks m to 13,799, a legitimate,
+literature-standard convention per Gatev/Goetzmann/Rouwenhorst 2006) narrows m nowhere near enough
+(~2.7× vs. the ~26-100× these p-values would need) and cannot even test 4 of the 8 pairs since they are
+cross-sector by construction. The confirmatory check does add one genuinely new, worth-keeping finding
+though: Johansen (a fully independent test family, VECM-rank-based rather than EG's OLS-residual-ADF)
+corroborates a cointegrating relationship in all 8/8 target pairs and correctly finds nothing in 4/4
+known-null negative controls — real evidence these pairs are not pure noise, just evidence that does
+not survive multiple-testing correction at this candidate-pool scale. **Recommend §8's proposed
+replacement text above stand as-is** — the correction-method and universe-restriction questions this
+entry raised are now closed with a definitive negative, not an open item requiring further hedging
+language. See Development.md, "Both remaining 'recover the pairs, scientifically' avenues built and
+run — honest, converged negative result" (2026-07-20) for the complete methodology and numbers.
+
+**Status**: still needs Ross's review before merging into PAPER.md itself; the underlying investigation
+is now fully closed out, not pending further diagnostic work.
+
 ---
 
 ## 8. §8 or §10 — persistence-filter comparison-arm result, a candidate mitigation for the pair-selection-lookahead risk (Ross's direct request)

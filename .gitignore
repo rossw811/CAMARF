@@ -16,38 +16,32 @@ output/
 graphify-out/cache/
 graphify-out/.graphify_*
 
-# Fixed 2026-07-11: the old pattern here was `_*.log`, which matches ZERO
-# real filenames in this repo (every log is named latest_*.log, not
-# _*.log) — a real bug that let 20 raw stdout/stderr dumps get tracked by
-# accident. This pattern actually matches them, while NOT matching the
-# intentionally-tracked latest_run_*.log summaries (those don't end in
-# _stdout.log/_stderr.log).
-latest_*_stdout.log
-latest_*_stderr.log
-
-# Raw pipeline-runner console output at repo root — same "regenerate, don't
-# track" rationale as output/ above. Not a curated summary like
-# latest_run_*.log.
-pipeline_runner.log
-pipeline_runner_out.log
-
 # logs/archive/: ad-hoc raw run logs (underscore-prefixed, e.g.
-# _data_ibkr_run.log) that predate the 2026-07-11 latest_*_stdout/stderr.log
-# fix above and got tracked by the same bug — same rationale, untracked here.
+# _data_ibkr_run.log) that predate the fixes below and got tracked by the
+# same bug class — same rationale, untracked here.
 logs/archive/*.log
 
-# Added 2026-07-15: the project's own scratch-log convention has since
-# drifted to `{task}_out.log`/`{task}_err.log` (PowerShell Start-Process
-# -RedirectStandardOutput/-RedirectStandardError naming, used throughout the
-# 7/14-7/15 overnight session for pit_wfa.py/analysis.py background runs) —
-# the *_stdout.log/*_stderr.log pattern above doesn't match this suffix at
-# all, so ~30 of these accumulated as untracked cruft requiring manual
-# exclusion from every commit this session. Matches at the repo root only
-# (doesn't touch anything under output/, already ignored above, or the
-# small number of pre-existing tracked exceptions like
-# analysis_overnight_err.log/latest_run_data_err.log — gitignore patterns
-# never retroactively untrack already-committed files).
-/*_out.log
-/*_err.log
-/*_out[0-9].log
-/*_err[0-9].log
+# Root-level *.log handling — rewritten 2026-07-20 as a robust allow-list
+# after the same bug class recurred 3 times (2026-07-11, 2026-07-15,
+# 2026-07-20): every prior fix here was a one-off pattern for that
+# session's specific ad-hoc scratch-log naming convention (`*_stdout.log`,
+# `*_out.log`, `*_out[0-9].log`, ...), and every session invents a
+# slightly different convention (e.g. 2026-07-20's `near_miss_1M_fixed.log`,
+# `analysis_bugd65_rerun.log` — no _out/_err suffix at all) that slips
+# through. Now: ignore ALL *.log at repo root by default, explicitly
+# un-ignore the curated latest_run_*.log summaries and the small number of
+# pre-existing tracked exceptions, then re-ignore the specific stdout/
+# stderr-dump sub-pattern that would otherwise be caught by the
+# latest_run_*.log allow-list. Order matters in gitignore — last matching
+# rule wins, so the re-ignore below MUST come after the allow-list above
+# it. New scratch logs of ANY future naming convention are ignored by
+# default now instead of requiring a new pattern each time. Does not touch
+# output/ (already ignored above) or logs/archive/ (already ignored above).
+/*.log
+!/latest_run_*.log
+!/analysis_overnight.log
+!/analysis_overnight_err.log
+!/latest_run_data_err.log
+!/near_miss_remaining.log
+latest_*_stdout.log
+latest_*_stderr.log
