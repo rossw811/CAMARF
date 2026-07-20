@@ -16810,3 +16810,154 @@ rank-dependent multiple-testing correction — not a new bug, and not an artifac
 diagnostic work. The one genuinely open item is whether BH-FDR's specific sensitivity to this kind of
 gap is the right correction to use going forward at CAMARF's candidate-pool scale — a real
 methodological question for Ross's judgment, not something more diagnostic code can resolve.
+
+## 4-method FDR comparison — the "which correction is right" question is now settled too (2026-07-20)
+
+Ross's direct follow-up to the bug sweep above: "i want to compare a step up procedure, benjamin's
+yekutieli, two stage, and fixed threshold... try everything we can true to the scientific method...
+for recovering those pairs." Built `research/fdr_method_comparison.py`, verified against
+`debug/_verify_fdr_method_comparison.py` (all 4 methods match `statsmodels.multitest()` reference
+implementations bit-for-bit on the textbook 15-value case; BY ⊆ BH and Bonferroni ⊆ BH subset
+relationships hold on a constructed 200-value array), then run once for real on the full current 1h
+universe — not a sample, reusing production `UniverseFilter`/`_eg_worker`/
+`CointScanner._build_log_price_map` directly.
+
+**Methods**: step-up BH (production's own `_benjamini_hochberg`), Benjamini-Yekutieli (arbitrary-
+dependence-safe), two-stage TSBH (`statsmodels` `fdr_tsbh`), fixed Bonferroni (`statsmodels`
+`bonferroni` — the one method with NO rank-chain dependency, included specifically to test whether
+the chain-sensitivity mechanism from the prior bug sweep is what's excluding the known-real pairs).
+
+**Result (m=36,753 EG-tested candidates out of 68,685 Pearson-prefiltered, α=0.05)**:
+survivor counts — step_up_bh=3, benjamini_yekutieli=1, two_stage_tsbh=3, fixed_bonferroni=3. The 3
+non-BY survivors are identical across methods: SPY/VOO (p=1.39e-14 — a known index-tracking artifact,
+excluded downstream by `CrossAssetTagger._is_index_tracking_pair` regardless of surviving FDR, not a
+new economically meaningful pair), FELE/MAS (p=5.93e-7), PNC/ZION (p=1.16e-6). BY kept only SPY/VOO.
+
+**None of the 8 previously-flagged non-DD pairs (LNT/VTR, LNT/WELL, CMS/DUK, EG/WRB, HAL/NOV,
+MET/TMHC, PFG/STLD, UMBF/FHB) survive under ANY of the 4 methods** — including fixed Bonferroni, which
+has no rank chain to be sensitive to. Bonferroni's cutoff at this scale is α/m = 0.05/36,753 =
+1.36e-6; the best-placed of the 8 (LNT/WELL, raw p=5.32e-5) is ~40× too large, and the rest are
+100-400× too large. This directly answers the open question from the prior bug-sweep entry: the
+exclusion of these 8 pairs is **not** an artifact of BH's specific rank-chain mechanics — a method
+with zero chain dependency draws the exact same line. The real cause is scale: m≈36,753 simultaneous
+tests is a genuinely brutal multiple-testing burden, and p<0.001-looking individual pairs are nowhere
+near strict enough to survive any defensible correction at this m, chain-dependent or not.
+
+This closes the "which correction method is right" question raised in `docs/PAPER_PENDING_CHANGES.md`
+entry #7 — switching correction methods does not recover the confirmed-pair set; the 2-3-pair result
+(net of the SPY/VOO artifact) is not a BH-specific quirk. Two legitimate remaining avenues flagged to
+Ross but not yet built (both require his sign-off since they're new methodology, not code fixes):
+(1) an independent confirmatory test (Phillips-Ouliaris/KPSS) on the 8 candidate pairs, and (2) a
+pre-registered, economically-motivated universe restriction (e.g. sector co-membership) to legitimately
+shrink m before correction — NOT a post-hoc restriction chosen to rescue specific pairs, which would
+violate rule 7's honesty standard.
+
+Raw output: `output/research/fdr_method_comparison_{raw,summary,known_pairs}.parquet`,
+`latest_run_fdr_method_comparison.log`.
+
+## Both remaining "recover the pairs, scientifically" avenues built and run — honest, converged negative result (2026-07-20)
+
+Ross: "let's build those tests" (the two avenues flagged above). Built and ran both; neither recovers
+the 8 known non-DD pairs (LNT/VTR, LNT/WELL, CMS/DUK, EG/WRB, HAL/NOV, MET/TMHC, PFG/STLD, UMBF/FHB),
+but the FIRST test produces a genuinely interesting, nuanced positive finding about signal quality that
+is worth carrying forward even though it does not change the confirmed-pair set.
+
+### 1. Independent confirmatory test: Johansen + KPSS (`research/confirmatory_cointegration_check.py`)
+
+Design note: Phillips-Ouliaris was the originally-floated second test family, but statsmodels has no
+native implementation and hand-rolling a PO test statistic without an independent reference to verify
+it against would violate this project's verify-before-trusting standard. Substituted **Johansen's
+test** (`statsmodels.tsa.vector_ar.vecm.coint_johansen` — VECM-rank-based, fundamentally different
+estimation approach from EG's OLS-residual-then-ADF, no asymmetric dependent-variable choice) and
+**KPSS** (`statsmodels.tsa.stattools.kpss`, run on the EG regression's own OLS residuals — KPSS's null
+is stationarity, the OPPOSITE of ADF's null of a unit root, making agreement between the two a much
+stronger signal than either alone — this ADF+KPSS pairing is the textbook confirmatory combination in
+the cointegration literature). Both already available and well-tested in statsmodels; no new test
+statistic needed separate verification from scratch.
+
+Verified first (`debug/_verify_confirmatory_cointegration_check.py`): a synthetic cointegrated pair
+(shared random-walk common factor + independent stationary noise per leg) correctly gets
+Johansen-rejects-no-cointegration=True and KPSS-fails-to-reject-stationarity=True; a synthetic pair of
+two fully independent random walks (textbook spurious regression) correctly gets both False. PASSED.
+
+Run on the real 8 target pairs plus 3 positive controls (SPY/VOO, FELE/MAS, PNC/ZION — already cleared
+the full 4-method FDR correction, included as a harness sanity check) plus 4 negative controls pulled
+directly from the same production EG run (MU/ORCL, CAT/HLI, AMG/BX, ATI/PNR — raw p-value exactly 1.0):
+
+- **Negative controls: 0/4 corroborated by either test** — Johansen correctly finds no cointegrating
+  relationship in any of the 4 decisively-non-cointegrated pairs. Harness discriminates correctly, not
+  a rubber stamp.
+- **Positive controls: Johansen agrees on 3/3; KPSS agrees on 2/3** (FELE/MAS fails KPSS despite
+  clearing full FDR correction).
+- **Target pairs: Johansen rejects "no cointegration" at 95% for ALL 8/8** — a genuinely independent
+  test family, using a different estimation approach entirely, finds evidence of a cointegrating
+  relationship in every one of these pairs, not just EG. **KPSS agrees on only 3/8** (LNT/WELL,
+  CMS/DUK, HAL/NOV) — the OLS-residual-stationarity signal is materially weaker/more ambiguous for
+  the other 5 (LNT/VTR, EG/WRB, MET/TMHC, PFG/STLD, UMBF/FHB).
+
+**Honest interpretation, not spun either direction**: this is real, meaningful supplementary evidence
+that these 8 pairs' individual EG signals are NOT pure statistical noise — an independent test family
+with a different estimation mechanism corroborates a cointegrating relationship in all 8, and
+correctly finds nothing in 4 known-null pairs run through the identical harness. But it does **not**
+resolve the multiple-testing problem, and per this project's own §4.1 confirmatory-tier design, this
+was never intended to bypass FDR — it is Johansen finding what EG already found (an individually
+significant relationship), not new statistical power against a correction. The pairs still do not
+survive any of the 4 corrections at m~36,753. KPSS's weaker agreement (3/8, and only 2/3 even on
+already-FDR-confirmed positive controls) is disclosed honestly as a real limitation of this
+corroboration, not smoothed over — statsmodels' KPSS p-value is also table-interpolated and clipped to
+[0.01, 0.10] (same caveat class as MacKinnon's EG response-surface p-values elsewhere in this project),
+so KPSS's granularity here is coarse.
+
+### 2. Sector-restricted FDR rescan (`research/sector_restricted_fdr_rescan.py`)
+
+Restricts the candidate universe to same-GICS-sector pairs only (Gatev, Goetzmann & Rouwenhorst 2006's
+original distance-method convention — a real, literature-standard practice independent of this
+session's findings, not invented to rescue specific pairs). Reused `gics.py`'s already-built
+`output/cache/gics_tags.csv` (1,503 S&P symbols) and, critically, reused the EXACT SAME raw EG
+p-values already computed by `research/fdr_method_comparison.py`'s full-universe run — no re-scan, just
+re-correction under a smaller, restricted m.
+
+**Pre-registration honesty disclosure** (stated plainly, per rule 7): the "same-sector" rule itself is
+an independently standard convention not chosen because of these specific pairs. But before writing
+this script, the sector tags for all 8 target pairs plus the 2 new FDR survivors had already been
+checked (4 of 8 targets — CMS/DUK, EG/WRB, HAL/NOV, UMBF/FHB — plus both new survivors, FELE/MAS and
+PNC/ZION, are same-sector). A genuinely blind pre-registration would have picked the rule before ever
+looking at which pairs it would keep. That did not happen here, and is disclosed rather than presented
+as a clean natural experiment.
+
+Verified first (`debug/_verify_sector_restricted_fdr_rescan.py`): `restrict_to_same_sector()` correctly
+keeps only rows where both symbols have a KNOWN, MATCHING sector tag (drops cross-sector pairs and
+pairs with any missing tag — confirmed a missing-tag pair is not silently treated as "same sector");
+and a constructed case confirms the exact mechanism this rescan tests for — a p-value that fails fixed
+Bonferroni at m=1,000 can newly pass at a restricted m=20 — actually holds. PASSED.
+
+**Real result**: same-sector restriction shrinks m from 36,753 to 13,799 (~2.7×) — Financials (3,774),
+Industrials (2,787), Information Technology (2,162) are the largest same-sector candidate pools.
+Survivor counts at this restricted m: step_up_bh=2, benjamini_yekutieli=0, two_stage_tsbh=2,
+fixed_bonferroni=2 (same 2 pairs as the full-universe run, net of SPY/VOO which has no GICS tag as an
+ETF and drops out of this restricted analysis entirely — FELE/MAS and PNC/ZION).
+
+**None of the 4 testable target pairs (CMS/DUK, EG/WRB, HAL/NOV, UMBF/FHB) survive under ANY of the 4
+methods even at the restricted m.** The other 4 target pairs (LNT/VTR, LNT/WELL, MET/TMHC, PFG/STLD)
+are cross-sector and structurally excluded by the rule itself — not a correction-method outcome, the
+rule cannot even test them. The restricted Bonferroni cutoff (0.05/13,799 ≈ 3.62e-6) is still ~26× too
+strict for the best-placed testable pair (CMS/DUK, raw p=9.4e-5). A ~2.7× reduction in m is nowhere
+near the ~26-100× reduction these p-values would need to pass even the least conservative method.
+
+### Bottom line across both
+
+Both avenues were built, verified, and run honestly, and neither recovers the confirmed-pair set — but
+they answer different questions and both answers are worth keeping. The confirmatory check provides
+real, disclosed evidence these 8 pairs are more likely genuine relationships than noise (Johansen
+agrees on all 8, discriminates correctly against known nulls) — a finding for `docs/FINDINGS.md`/
+discussion, not a route to production confirmation. The sector rescan shows that even a legitimate,
+literature-standard, pre-registered-in-spirit (if not in strict blind-timing practice, disclosed above)
+restriction narrows m far too little to matter at this specific p-value/m combination. Taken together:
+recovering these pairs is not a matter of *which* correction or *which* principled candidate-pool
+restriction is used — it would require either materially more data to sharpen the raw p-values
+themselves, or a deliberate policy decision to accept them into an explicitly lower-confidence tier
+(a choice for Ross, not something further diagnostic code can resolve).
+
+Raw output: `output/research/confirmatory_cointegration_check.parquet`,
+`output/research/sector_restricted_fdr_rescan_{raw,summary}.parquet`,
+`latest_run_confirmatory_cointegration_check.log`, `latest_run_sector_restricted_fdr_rescan.log`.
