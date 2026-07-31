@@ -105,7 +105,7 @@ def main():
         lp_b = log_prices.get(p["symbol_b"])
         if lp_a is None or lp_b is None:
             continue
-        tasks.append((p["symbol_a"], p["symbol_b"], lp_a, lp_b, Config.ANALYSIS.EG_MAX_LAG))
+        tasks.append((p["symbol_a"], p["symbol_b"], lp_a, lp_b, Config.ANALYSIS.EG_MAX_LAG, TF_LABEL))
         meta.append(p)
 
     from concurrent.futures import ProcessPoolExecutor

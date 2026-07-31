@@ -45,6 +45,8 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(
 
 from aligned_pair_loader import load_aligned_pair
 from lead_lag_scan import _gap_masked_log_price
+from spread_construction import full_sample_ols_spread
+from config import Config
 
 _DEFAULT_PAIRS = [
     ("LNT", "VTR"), ("LNT", "WELL"), ("AME", "MAR"), ("CMS", "DUK"),
@@ -52,50 +54,54 @@ _DEFAULT_PAIRS = [
     ("UMBF", "FHB"),
 ]
 
-ENTRY_Z = 2.0
-EXIT_Z = 0.0
-MAX_HOLD_BARS = 100
+ENTRY_Z = Config.RESEARCH.ENTRY_Z
+EXIT_Z = Config.RESEARCH.EXIT_Z
+MAX_HOLD_BARS = Config.RESEARCH.MAX_HOLD_BARS
 VOL_WINDOW = 60
 DRAWDOWN_THRESHOLD = 0.10  # 10% trailing-equity drawdown triggers de-risking
 DERISK_SIZE_MULT = 0.5
 
 
 def build_spread_z(symbol_a, symbol_b, tf_label, z_window=60):
-    df_a, df_b = load_aligned_pair(symbol_a, symbol_b, tf_label)
-    if df_a is None or df_b is None or df_a.empty or df_b.empty:
+    # Full-sample static OLS hedge ratio -- consolidated 2026-07-20 into
+    # spread_construction.py (was independently copy-pasted here; see that
+    # module's docstring for the non-causal/lookahead disclosure this
+    # function must keep making to its own callers).
+    result = full_sample_ols_spread(symbol_a, symbol_b, tf_label)
+    if result is None:
         return None
-    log_a = pd.Series(_gap_masked_log_price(df_a), index=df_a.index)
-    log_b = pd.Series(_gap_masked_log_price(df_b), index=df_b.index)
-    common_idx = log_a.index.intersection(log_b.index)
-    log_a, log_b = log_a.reindex(common_idx), log_b.reindex(common_idx)
-    mask = log_a.notna() & log_b.notna()
-    la, lb = log_a[mask], log_b[mask]
-    if len(la) < 100:
-        return None
-    beta = np.dot(lb - lb.mean(), la - la.mean()) / np.dot(lb - lb.mean(), lb - lb.mean())
-    alpha = la.mean() - beta * lb.mean()
-    spread = la - (alpha + beta * lb)
+    la, lb, beta, alpha, spread = result
     z = (spread - spread.rolling(z_window).mean()) / spread.rolling(z_window).std()
     spread_vol = spread.diff().rolling(VOL_WINDOW).std()  # causal, trailing only
     return z.dropna(), spread_vol.reindex(z.dropna().index)
 
 
-def simulate_trades(z: pd.Series, spread_vol: pd.Series = None, target_vol: float = None):
+def simulate_trades(z: pd.Series, spread_vol: pd.Series = None, target_vol: pd.Series = None):
     """Every entry exits via EXIT_Z, MAX_HOLD_BARS, or end-of-series —
     same completeness guarantee established earlier this session. If
-    spread_vol+target_vol given, size_mult = target_vol / current_vol
-    (capped [0.2, 3.0] to avoid degenerate sizes at near-zero vol)."""
+    spread_vol+target_vol given, size_mult = target_vol[i] / current_vol[i]
+    (capped [0.2, 3.0] to avoid degenerate sizes at near-zero vol).
+
+    `target_vol` is a per-bar Series (an EXPANDING/causal median of
+    spread_vol up to and including bar i), not a scalar (Tier 3.5 fix,
+    Grand Sweep 2026-07-20: a full-history scalar median means an early
+    trade's size depends on a target informed by years-later data —
+    a second, distinct lookahead beyond the shared full-sample hedge-ratio
+    helper this file already migrated onto spread_construction.py)."""
     trades = []
     i, n, vals = 0, len(z), z.values
     idx = z.index
     vol_vals = spread_vol.values if spread_vol is not None else None
+    target_vol_vals = target_vol.reindex(z.index).values if target_vol is not None else None
     while i < n:
         if abs(vals[i]) >= ENTRY_Z:
             direction = -1 if vals[i] > 0 else 1
             entry_val = vals[i]
             size_mult = 1.0
-            if vol_vals is not None and target_vol is not None and not np.isnan(vol_vals[i]) and vol_vals[i] > 1e-9:
-                size_mult = float(np.clip(target_vol / vol_vals[i], 0.2, 3.0))
+            tv = target_vol_vals[i] if target_vol_vals is not None else None
+            if (vol_vals is not None and tv is not None and np.isfinite(tv)
+                    and not np.isnan(vol_vals[i]) and vol_vals[i] > 1e-9):
+                size_mult = float(np.clip(tv / vol_vals[i], 0.2, 3.0))
             j = i + 1
             while j < n and j - i < MAX_HOLD_BARS:
                 if (direction == -1 and vals[j] <= EXIT_Z) or (direction == 1 and vals[j] >= -EXIT_Z):
@@ -119,7 +125,11 @@ def run_vol_targeting(tf_label):
         if result is None:
             continue
         z, spread_vol = result
-        target_vol = float(spread_vol.median())
+        # Expanding (causal) median, min_periods=VOL_WINDOW so an early
+        # trade's target isn't set from a single noisy vol reading -- see
+        # simulate_trades' docstring for why this must not be a full-
+        # history scalar (Tier 3.5 fix, Grand Sweep 2026-07-20).
+        target_vol = spread_vol.expanding(min_periods=VOL_WINDOW).median()
         trades = simulate_trades(z, spread_vol, target_vol)
         if not trades:
             continue

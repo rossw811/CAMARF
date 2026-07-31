@@ -44,7 +44,7 @@ import pandas as pd
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "research"))
 
-from data import DataStore
+from data import DataStore, DataAligner, GapFlag
 from data_contamination_scan import list_price_cache_files
 
 PEER_JUMP_THRESHOLD = 0.05  # a peer "moving too" bar — much lower than the
@@ -57,6 +57,18 @@ def _same_date_return(symbol, tf, date, cache_index=None):
     df = DataStore.load(symbol, tf)
     if df is None or df.empty:
         return None
+    # Tier 2.12 fix (Grand Sweep 2026-07-20): raw DataStore.load() output
+    # has no gap_flag column (only DataAligner adds one) -- the prior
+    # version had no way to tell a genuine prior close from a stale,
+    # forward-filled DATA_GAP anchor, which is exactly the population this
+    # script exists to scrutinize (symbols already flagged as data-quality-
+    # suspect by data_contamination_scan.py). Run through DataAligner
+    # (single-symbol) so gap_flag is available, and skip both the same-day
+    # bar and its prior anchor if either is DATA_GAP-flagged.
+    aligned = DataAligner.align_universe({f"{symbol}_{tf}": df}, tf)
+    df = aligned.get(symbol)
+    if df is None or df.empty or "gap_flag" not in df.columns:
+        return None
     idx = df.index
     # Match to the nearest bar on the same calendar date (jump dates come
     # from the source scan's own per-bar timestamps, which may not align
@@ -64,10 +76,13 @@ def _same_date_return(symbol, tf, date, cache_index=None):
     same_day = df[idx.normalize() == pd.Timestamp(date).normalize()]
     if same_day.empty:
         return None
-    closes = same_day["close"].astype(float)
+    same_day_clean = same_day[same_day["gap_flag"] != GapFlag.DATA_GAP]
+    if same_day_clean.empty:
+        return None
+    closes = same_day_clean["close"].astype(float)
     if len(closes) < 1:
         return None
-    prior = df[idx < same_day.index.min()]
+    prior = df[(idx < same_day_clean.index.min()) & (df["gap_flag"] != GapFlag.DATA_GAP)]
     if prior.empty:
         return None
     prev_close = float(prior["close"].iloc[-1])

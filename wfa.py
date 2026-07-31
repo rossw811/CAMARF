@@ -45,6 +45,8 @@ import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+from config import Config
+
 warnings.filterwarnings("ignore")
 logging.basicConfig(
     level=logging.INFO,
@@ -69,15 +71,22 @@ FOLD_ROLLING = [
     (0.50, 0.70, 0.70, 1.00, "fold2_roll"),
 ]
 
-# Backtest parameters (matched to Config.BACKTEST defaults)
-ENTRY_ZSCORE    = 2.0
-EXIT_ZSCORE     = 0.5
-STOP_ZSCORE     = 3.5
-MIN_HALF_LIFE   = 2
-N_SHARES        = 100
-COMMISSION      = 0.005   # $ per share
-SLIPPAGE_BPS    = 2.0     # bps per side
-MAX_HOLD_MULT   = 3.0
+# Backtest parameters — sourced directly from Config.BACKTEST, not duplicated.
+# Previously hardcoded here with a comment claiming they matched Config.BACKTEST,
+# but had silently drifted (EXIT_ZSCORE 0.5 vs. 0.0, SLIPPAGE_BPS 2.0 vs. 5,
+# MAX_HOLD_MULT 3.0 vs. MAX_HOLD_MULTIPLIER's 2.0) — found 2026-07-20 Grand
+# Sweep. Importing directly prevents this recurring; any config.py change now
+# automatically propagates here instead of needing a manual second edit.
+ENTRY_ZSCORE    = Config.BACKTEST.ENTRY_ZSCORE
+EXIT_ZSCORE     = Config.BACKTEST.EXIT_ZSCORE
+STOP_ZSCORE     = Config.BACKTEST.STOP_ZSCORE
+MIN_HALF_LIFE   = 2  # a numerical clip floor (np.clip(half_life, MIN_HALF_LIFE, 1000.0)),
+                     # NOT the same parameter as Config.BACKTEST.MIN_HALF_LIFE_BARS (an
+                     # entry-filter threshold) -- distinct by design, left as a local constant
+N_SHARES        = Config.BACKTEST.N_SHARES_PER_TRADE
+COMMISSION      = Config.BACKTEST.COMMISSION_PER_SHARE
+SLIPPAGE_BPS    = Config.BACKTEST.SLIPPAGE_BPS
+MAX_HOLD_MULT   = Config.BACKTEST.MAX_HOLD_MULTIPLIER
 
 # TF dirs mapping (tf_label → (tf_dir, bars_per_year))
 _TF_MAP = {

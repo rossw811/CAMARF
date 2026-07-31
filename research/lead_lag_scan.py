@@ -53,12 +53,15 @@ Usage:
     python research/lead_lag_scan.py --max-lag 15 --min-lift 0.05
 """
 import argparse
+import logging
 import os
 import sys
 
 import numpy as np
 import pandas as pd
 from statsmodels.tsa.stattools import coint
+
+log = logging.getLogger("lead_lag_scan")
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -96,7 +99,15 @@ def _eg_pvalue(a, b, max_eg_lag):
     try:
         _, pval, _ = coint(a_, b_, trend="c", maxlag=max_eg_lag, autolag="aic")
         return float(pval), a_.size
-    except Exception:
+    except Exception as e:
+        # Tier 6 fix (Grand Sweep 2026-07-20): previously swallowed silently
+        # (bare except, no logging) -- shared by 7 consumer files, so an EG
+        # failure anywhere in the pipeline was invisible. Logged at DEBUG
+        # (not WARNING) since this is called in tight loops across large
+        # candidate sets and an occasional EG numerical failure on a thin/
+        # degenerate series is expected, not exceptional -- but it must be
+        # discoverable, not silent.
+        log.debug("EG coint() failed on a %d-obs series: %s", a_.size, e)
         return None, a_.size
 
 
@@ -142,8 +153,9 @@ def best_lag(scan):
 
 def main():
     p = argparse.ArgumentParser(description="Lead-lag scan on confirmed pairs (2026-06-24)")
-    p.add_argument("--max-lag", type=int, default=10,
-                    help="Max bars to search in each direction (fixed bar count, not TF-scaled)")
+    p.add_argument("--max-lag", type=int, default=Config.RESEARCH.LEAD_LAG_MAX_LAG,
+                    help="Max bars to search in each direction (fixed bar count, not TF-scaled). "
+                         "Default sourced from Config.RESEARCH.LEAD_LAG_MAX_LAG (2026-07-20).")
     p.add_argument("--min-lift", type=float, default=0.05,
                     help="Minimum |corr(k*)| - |corr(0)| to flag a pair as lag-lift-worthy "
                          "and trigger the EG confirm stage")

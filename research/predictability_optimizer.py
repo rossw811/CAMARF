@@ -57,7 +57,7 @@ import scipy.linalg
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from aligned_pair_loader import load_aligned_pair
-from data import _clean_close
+from data import _clean_close, valid_lag1_mask
 
 _TF_DIRS = [
     "1min", "2min", "3min", "5min", "15min", "30min", "1hr", "4hr",
@@ -71,11 +71,29 @@ _DIR_TO_LABEL = {
 _MIN_FOLDS = 3
 
 
-def predictability_ratio(X: np.ndarray, w: np.ndarray) -> float:
-    """w'Aw / w'Bw for a given weight vector — lower = more predictable/
-    mean-reverting. X: (T, n) DEMEANED log-price matrix."""
-    B = np.cov(X.T, ddof=1)
+def _lag1_pairs(X: np.ndarray, valid_lag1: np.ndarray = None):
+    """Returns (dX1, dX0), the lag-1 pairs X[1:]/X[:-1] with any transition
+    spanning an anomalous real-time gap excluded (Tier 2.7/2.8 fix, Grand
+    Sweep 2026-07-20). Without `valid_lag1`, a joined level series that was
+    dropna()'d after gap-masking silently treats the two rows straddling a
+    dropped multi-day gap as one ordinary bar apart -- this lag-1 cross-
+    covariance/predictability-ratio calculation depends specifically on
+    "lag 1" meaning a fixed real elapsed time, so that silent conflation is
+    a genuine contamination, not a cosmetic one (see refined risk
+    classification, docs/GRAND_SWEEP_BUG_AUDIT_2026-07-20.md)."""
     dX1, dX0 = X[1:], X[:-1]
+    if valid_lag1 is not None:
+        dX1, dX0 = dX1[valid_lag1], dX0[valid_lag1]
+    return dX1, dX0
+
+
+def predictability_ratio(X: np.ndarray, w: np.ndarray, valid_lag1: np.ndarray = None) -> float:
+    """w'Aw / w'Bw for a given weight vector — lower = more predictable/
+    mean-reverting. X: (T, n) DEMEANED log-price matrix. `valid_lag1`:
+    optional boolean mask (length T-1) from data.valid_lag1_mask excluding
+    gap-spanning lag-1 transitions."""
+    B = np.cov(X.T, ddof=1)
+    dX1, dX0 = _lag1_pairs(X, valid_lag1)
     gamma1 = (dX1.T @ dX0) / (len(dX0) - 1)
     A = (gamma1 + gamma1.T) / 2
     num = float(w @ A @ w)
@@ -83,13 +101,13 @@ def predictability_ratio(X: np.ndarray, w: np.ndarray) -> float:
     return num / den if den > 0 else np.nan
 
 
-def predictability_weights(X: np.ndarray) -> np.ndarray:
+def predictability_weights(X: np.ndarray, valid_lag1: np.ndarray = None) -> np.ndarray:
     """Closed-form generalized-eigenvalue solution (exact for n=2; see
     module docstring for why CCP isn't needed at this basket size).
     X: (T, n) DEMEANED log-price matrix. Returns w normalized so
-    w'Bw = 1."""
+    w'Bw = 1. `valid_lag1`: see predictability_ratio."""
     B = np.cov(X.T, ddof=1)
-    dX1, dX0 = X[1:], X[:-1]
+    dX1, dX0 = _lag1_pairs(X, valid_lag1)
     gamma1 = (dX1.T @ dX0) / (len(dX0) - 1)
     A = (gamma1 + gamma1.T) / 2
     eigvals, eigvecs = scipy.linalg.eigh(A, B)
@@ -140,6 +158,10 @@ def run_comparison(sym_a, sym_b, tf_label, n_folds=4):
         return {"status": "skipped_insufficient_history", "n_obs": len(joined)}
 
     X = joined.values
+    # Length T-1 -- transition i is joined.index[i] -> joined.index[i+1].
+    # See _lag1_pairs' docstring for why this must be computed on the
+    # already-dropna'd joined series, not before it (Tier 2.7/2.8 fix).
+    full_valid_lag1 = valid_lag1_mask(joined.index)
     fold_results = []
     n_ill_conditioned = 0
     for train_end, test_start, test_end in _expanding_folds(len(X), n_folds):
@@ -148,9 +170,11 @@ def run_comparison(sym_a, sym_b, tf_label, n_folds=4):
         train_mean = X_train.mean(axis=0)
         X_train_c = X_train - train_mean
         X_test_c = X_test - train_mean  # center on TRAIN mean — no test leakage
+        valid_train = full_valid_lag1[:train_end - 1]
+        valid_test = full_valid_lag1[test_start:test_end - 1]
 
         try:
-            w_pred = predictability_weights(X_train_c)
+            w_pred = predictability_weights(X_train_c, valid_train)
         except np.linalg.LinAlgError:
             # Near-singular in-sample covariance — most likely a leg with
             # near-zero variance over this specific fold window (e.g. the
@@ -161,10 +185,10 @@ def run_comparison(sym_a, sym_b, tf_label, n_folds=4):
             continue
         w_ols = ols_weights(X_train_c)
 
-        in_sample_pred = predictability_ratio(X_train_c, w_pred)
-        in_sample_ols = predictability_ratio(X_train_c, w_ols)
-        out_sample_pred = predictability_ratio(X_test_c, w_pred)
-        out_sample_ols = predictability_ratio(X_test_c, w_ols)
+        in_sample_pred = predictability_ratio(X_train_c, w_pred, valid_train)
+        in_sample_ols = predictability_ratio(X_train_c, w_ols, valid_train)
+        out_sample_pred = predictability_ratio(X_test_c, w_pred, valid_test)
+        out_sample_ols = predictability_ratio(X_test_c, w_ols, valid_test)
 
         fold_results.append({
             "n_train": len(X_train), "n_test": len(X_test),

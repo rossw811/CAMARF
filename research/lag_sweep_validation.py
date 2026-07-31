@@ -50,7 +50,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from aligned_pair_loader import load_aligned_pair
 from analysis import Config
-from data import _gap_aware_returns
+from data import DataStore, _gap_aware_returns
 from lead_lag_scan import _eg_pvalue, _gap_masked_log_price, lagged_corr_scan
 
 _MIN_EG_N = 60
@@ -202,11 +202,12 @@ def main():
 
     out_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "output", "research")
     os.makedirs(out_dir, exist_ok=True)
+    safe_tf = DataStore._TF_SAFE.get(args.tf, args.tf.lower())
     if not confirmed_df.empty:
-        confirmed_df.to_parquet(os.path.join(out_dir, f"lag_sweep_validation_confirmed_{args.tf}.parquet"))
+        confirmed_df.to_parquet(os.path.join(out_dir, f"lag_sweep_validation_confirmed_{safe_tf}.parquet"))
     if not comparison_df.empty:
-        comparison_df.to_parquet(os.path.join(out_dir, f"lag_sweep_validation_comparison_{args.tf}.parquet"))
-    print(f"\nFull results written to {out_dir}/lag_sweep_validation_{{confirmed,comparison}}_{args.tf}.parquet")
+        comparison_df.to_parquet(os.path.join(out_dir, f"lag_sweep_validation_comparison_{safe_tf}.parquet"))
+    print(f"\nFull results written to {out_dir}/lag_sweep_validation_{{confirmed,comparison}}_{safe_tf}.parquet")
 
 
 if __name__ == "__main__":

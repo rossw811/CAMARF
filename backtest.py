@@ -7,7 +7,17 @@ Layer 1: Event-driven baseline (pure mean-reversion signal, no ML conditioning).
     OR hold bars >= MAX_HOLD_MULTIPLIER × half_life_at_entry,
     OR rolling correlation drops below CORR_EXIT_THRESHOLD (structural breakdown)
   - Fixed N_SHARES_PER_TRADE leg-A shares, N × hedge_ratio leg-B shares
-  - Max capital concentration: MAX_CONCENTRATION_PCT of account per pair
+  - NOTE (Tier 6 doc-drift fix, Grand Sweep 2026-07-20): a capital-
+    concentration cap via Config.BACKTEST.MAX_CONCENTRATION_PCT was
+    previously documented here as an active Layer 1 behavior. Confirmed
+    directly: this field is never actually read anywhere in this file (or
+    anywhere else) — no such cap is currently enforced by Layer 1's
+    position sizing. research/convex_portfolio_construction.py hardcodes
+    its own comparable 0.20 cap as a comment-only "matches backtest.py's
+    convention" reference, not by reading this field either. See BUG-D60
+    (docs/BUG_LOG.md) for the related capital-constraint gap this
+    connects to; `portfolio_sim.py` is the actual capital-constrained
+    comparison arm built in response.
 
 Layer 2: ML-conditioned + regime-conditioned (disabled, LAYER2_ENABLED = False).
   - Regime hard filter: reject entries in unfavorable VIX term structure / yield curve
@@ -408,6 +418,7 @@ class BacktestEngine:
         spread_df: pd.DataFrame,
         hedge_method: str,
         holdout_only: bool = False,
+        is_only: bool = False,
         oos_end_date: Optional[pd.Timestamp] = None,
     ) -> List[Trade]:
         """
@@ -420,10 +431,21 @@ class BacktestEngine:
         spread_df : spread_series_{A}_{B}.parquet
         hedge_method : "ols" | "kalman"
         holdout_only : if True, run only on the last HOLDOUT_PCT of bars
+        is_only : if True, run only on the complementary first (1 - HOLDOUT_PCT)
+                  of bars -- the exact chronological inverse of holdout_only,
+                  using the identical cutoff computation. Added 2026-07-20
+                  Grand Sweep (BUG-D76) so a genuinely non-overlapping IS-only
+                  trades set can be generated for sizing-weight fitting,
+                  instead of the previously-used full-series (0-100%) trades
+                  file, which necessarily overlapped whatever window
+                  holdout_only later evaluates as "OOS." Mutually exclusive
+                  with holdout_only.
         oos_end_date : survivorship boundary — truncate OOS window at this date.
                        Pairs involving delisted stocks use this to avoid
                        look-ahead bias. None = no truncation.
         """
+        if holdout_only and is_only:
+            raise ValueError("holdout_only and is_only are mutually exclusive")
         sym_a = pair_row["symbol_a"]
         sym_b = pair_row["symbol_b"]
         tf = pair_row["tf_label"]
@@ -440,9 +462,21 @@ class BacktestEngine:
 
         hurst = float(pair_row.get("hurst_rs", np.nan))
 
-        # Drop rows with NaN z_rolling or z_rolling == 0 (warm-up period)
+        # Drop rows with NaN z_rolling (warm-up period, before
+        # SpreadModel.rolling_zscore's min_periods bars accumulate).
+        #
+        # Tier 6 fix (Grand Sweep 2026-07-20): a `df["z_rolling"] != 0.0`
+        # filter previously ran after this dropna, under the (incorrect)
+        # assumption that warm-up bars are filled with 0.0 rather than NaN.
+        # Confirmed directly: rolling_zscore's warm-up bars are genuine NaN
+        # (pandas rolling with min_periods), already fully excluded by the
+        # dropna() above -- the != 0.0 filter's only real-world effect was
+        # to ALSO drop genuine mid-series exact-zero z-crossings (the
+        # spread crossing precisely through its own rolling mean), which
+        # could delay a signal exit by one bar whenever EXIT_ZSCORE is 0.0.
+        # Removed as dead weight with a harmful side effect, not a
+        # necessary filter.
         df = spread_df.dropna(subset=["z_rolling", "spread"]).copy()
-        df = df[df["z_rolling"] != 0.0]
         if len(df) < 60:
             return []
 
@@ -450,6 +484,9 @@ class BacktestEngine:
         if holdout_only:
             cutoff = int(len(df) * (1 - self.cfg.HOLDOUT_PCT))
             df = df.iloc[cutoff:]
+        elif is_only:
+            cutoff = int(len(df) * (1 - self.cfg.HOLDOUT_PCT))
+            df = df.iloc[:cutoff]
         if len(df) < 30:
             return []
 
@@ -522,15 +559,32 @@ class BacktestEngine:
         # takes priority if both are, documented not enforced).
         _cf_carver = self.storm_flags.get("continuous_forecast_carver", False)
         _cf_linear = self.storm_flags.get("continuous_forecast_linear", False)
-        _cf_scale_factor = 1.0
+        _cf_scale_factor_arr = None
         if _cf_carver:
             # Carver's own convention: scale so the historical average |forecast|
             # (here, |z| among bars that would trigger an entry) equals 10, then
             # cap the scaled forecast at +-20 (2x average) before applying it as
             # a position-size multiplier relative to N_SHARES_PER_TRADE.
-            _entry_z_pop = np.abs(z_arr[np.abs(z_arr) >= self.cfg.ENTRY_ZSCORE])
-            _avg_abs_entry_z = float(np.mean(_entry_z_pop)) if len(_entry_z_pop) > 0 else self.cfg.ENTRY_ZSCORE
-            _cf_scale_factor = 10.0 / _avg_abs_entry_z if _avg_abs_entry_z > 0 else 1.0
+            #
+            # Tier 3.6 fix (Grand Sweep 2026-07-20): previously computed ONCE
+            # from the ENTIRE df passed to run() (a full-sample average,
+            # applied as a constant multiplier throughout) -- bar 1's scale
+            # factor was informed by every future entry-z observation in the
+            # whole backtest. Fixed to an EXPANDING (causal) per-bar average:
+            # bar i's scale factor uses only entry-z observations at or before
+            # bar i, mirroring the causal pattern _garch_stop's rolling_z_std
+            # already establishes a few lines above.
+            _entry_mask = np.abs(z_arr) >= self.cfg.ENTRY_ZSCORE
+            _abs_z_at_entries = np.where(_entry_mask, np.abs(z_arr), 0.0)
+            _cum_sum = np.cumsum(_abs_z_at_entries)
+            _cum_count = np.cumsum(_entry_mask.astype(float))
+            with np.errstate(invalid="ignore", divide="ignore"):
+                _expanding_avg_abs_entry_z = np.where(
+                    _cum_count > 0, _cum_sum / np.maximum(_cum_count, 1.0), self.cfg.ENTRY_ZSCORE
+                )
+            _cf_scale_factor_arr = 10.0 / np.where(
+                _expanding_avg_abs_entry_z > 0, _expanding_avg_abs_entry_z, 1.0
+            )
 
         # Point-in-time causal hedge ratio series (added to spread_series by
         # analysis.py after the lookahead-bias fix). Falls back to scalar when
@@ -543,10 +597,15 @@ class BacktestEngine:
         _ml_coint_frac = float(pair_row.get("coint_fraction_rolling", np.nan))
         _ml_hl_slope = float(pair_row.get("half_life_trend_slope", np.nan))
         _ml_mean_rev = float(pair_row.get("mean_reversion_speed", np.nan))
-        _ml_hedge_drift = np.nan
-        if (np.isfinite(hedge_scalar_ols) and hedge_scalar_ols != 0
-                and np.isfinite(hedge_scalar_kalman)):
-            _ml_hedge_drift = abs(hedge_scalar_ols - hedge_scalar_kalman) / abs(hedge_scalar_ols)
+        # Point-in-time hedge_ratio_ols_t/kalman_t series (same fix as ml.py's
+        # own hedge_ratio_drift, 2026-07-20 Grand Sweep) -- NOT the static
+        # full-sample hedge_scalar_ols/hedge_scalar_kalman, which would give
+        # every bar the SAME drift value computed with full-sample knowledge,
+        # including bars before the "future" data that scalar embeds.
+        _ml_hedge_drift_has_pit = "hedge_ratio_ols_t" in df.columns and "hedge_ratio_kalman_t" in df.columns
+        if _ml_hedge_drift_has_pit:
+            _ols_t_arr = df["hedge_ratio_ols_t"].values
+            _kal_t_arr = df["hedge_ratio_kalman_t"].values
 
         # Rolling correlation for structural breakdown exit
         _default_flags = pd.Series(0, index=df.index)
@@ -616,6 +675,18 @@ class BacktestEngine:
                 if not allow:
                     continue
 
+                # Point-in-time hedge_ratio_drift at this bar (same fix as hedge_pit
+                # above and as ml.py's own hedge_ratio_drift, 2026-07-20 Grand Sweep)
+                # -- NOT the static full-sample scalar drift, which would give every
+                # bar the same value computed with full-sample knowledge.
+                hedge_drift_at_bar = np.nan
+                if _ml_hedge_drift_has_pit:
+                    _ols_t_i, _kal_t_i = _ols_t_arr[i], _kal_t_arr[i]
+                    if np.isfinite(_ols_t_i) and _ols_t_i != 0 and np.isfinite(_kal_t_i):
+                        hedge_drift_at_bar = abs(_ols_t_i - _kal_t_i) / abs(_ols_t_i)
+                elif np.isfinite(hedge_scalar_ols) and hedge_scalar_ols != 0 and np.isfinite(hedge_scalar_kalman):
+                    hedge_drift_at_bar = abs(hedge_scalar_ols - hedge_scalar_kalman) / abs(hedge_scalar_ols)
+
                 # Layer 2: ML gate — feature names must match ml.py's _FEATURE_COLS exactly
                 ml_features = {
                     "zscore": abs(z),
@@ -625,7 +696,7 @@ class BacktestEngine:
                     "coint_fraction_rolling": _ml_coint_frac,
                     "half_life_trend_slope": _ml_hl_slope,
                     "mean_reversion_speed": _ml_mean_rev,
-                    "hedge_ratio_drift": _ml_hedge_drift,
+                    "hedge_ratio_drift": hedge_drift_at_bar,
                 }
                 ml_prob = self.ml_cond.predict_prob(ml_features)
                 if self.layer2 and ml_prob < self.cfg.ML_GO_THRESHOLD:
@@ -653,7 +724,7 @@ class BacktestEngine:
                 # rather than silently discarded as before — Ross confirmed
                 # compose over override-only.
                 if _cf_carver:
-                    scaled_forecast = np.clip(abs(z) * _cf_scale_factor, -20.0, 20.0)
+                    scaled_forecast = np.clip(abs(z) * _cf_scale_factor_arr[i], -20.0, 20.0)
                     n_shares = max(1, int(self.cfg.N_SHARES_PER_TRADE * (scaled_forecast / 10.0)
                                           * size_mult * hub_w * rp_w))
                     if _coint_frac_sizing:
@@ -1082,6 +1153,7 @@ def compute_hub_weights(tf_dirs: List[Tuple[str, str]], tf_filter: Optional[str]
 
 def compute_risk_parity_weights(
     is_trades_path: str = "output/backtest/trades_layer1.parquet",
+    trades_df: Optional[pd.DataFrame] = None,
 ) -> Dict[str, float]:
     """
     Inverse-volatility N_SHARES multipliers from IS trade P&L std.
@@ -1089,11 +1161,24 @@ def compute_risk_parity_weights(
     multiplier = global_mean_std / pair_pnl_std, clipped to [0.1, 5.0].
     High-variance pairs (DD/JHG) get fewer shares; quiet pairs get more.
     Grouped by (symbol_a, symbol_b) — TF and hedge_method averaged out.
+
+    trades_df: if provided, used directly instead of reading is_trades_path
+    from disk — added 2026-07-20 (BUG-D76) so a genuinely non-overlapping
+    IS-only trades set (generated in-memory via BacktestEngine.run(is_only=True))
+    can be used for weight-fitting without a file round-trip, instead of the
+    full-series file, which necessarily overlapped whatever window a
+    --holdout run evaluates as OOS.
     """
-    if not os.path.exists(is_trades_path):
-        log.warning("Risk parity: IS trades not found at %s — flat sizing", is_trades_path)
+    if trades_df is not None:
+        trades = trades_df
+    else:
+        if not os.path.exists(is_trades_path):
+            log.warning("Risk parity: IS trades not found at %s — flat sizing", is_trades_path)
+            return {}
+        trades = pd.read_parquet(is_trades_path)
+    if trades.empty:
+        log.warning("Risk parity: no IS trades available — flat sizing")
         return {}
-    trades = pd.read_parquet(is_trades_path)
     grp = trades.groupby(["symbol_a", "symbol_b"])["pnl_net"].std()
     valid = grp[grp > 0].dropna()
     if valid.empty:
@@ -1165,6 +1250,7 @@ def _hrp_recursive_bisection(cov: np.ndarray, sort_ix: List[int]) -> pd.Series:
 def compute_hrp_weights(
     is_trades_path: str = "output/backtest/trades_layer1.parquet",
     shrinkage: str = "none",
+    trades_df: Optional[pd.DataFrame] = None,
 ) -> Dict[str, float]:
     """
     Hierarchical Risk Parity (Lopez de Prado, 2016) N_SHARES multipliers,
@@ -1204,12 +1290,18 @@ def compute_hrp_weights(
     # keeping this import scoped to where it's actually used matches how
     # distance.py/research scripts import backtest.py's own engine pieces).
 
-    if not os.path.exists(is_trades_path):
-        log.warning("HRP: IS trades not found at %s — flat sizing", is_trades_path)
-        return {}
-    trades = pd.read_parquet(is_trades_path)
+    # trades_df: see compute_risk_parity_weights' docstring (BUG-D76) — same
+    # in-memory IS-only override, avoiding a file round-trip and the
+    # full-series-file overlap circularity.
+    if trades_df is not None:
+        trades = trades_df
+    else:
+        if not os.path.exists(is_trades_path):
+            log.warning("HRP: IS trades not found at %s — flat sizing", is_trades_path)
+            return {}
+        trades = pd.read_parquet(is_trades_path)
     if trades.empty:
-        log.warning("HRP: IS trades file is empty — flat sizing")
+        log.warning("HRP: IS trades are empty — flat sizing")
         return {}
     trades = trades.copy()
     trades["exit_date"] = pd.to_datetime(trades["exit_time"]).dt.date
@@ -1314,6 +1406,7 @@ def compute_hrp_weights(
 
 def compute_pnl_cap_thresholds(
     is_trades_path: str = "output/backtest/trades_layer1.parquet",
+    trades_df: Optional[pd.DataFrame] = None,
 ) -> Dict[str, float]:
     """
     Per-pair P&L caps from IS total pair P&L.
@@ -1321,11 +1414,20 @@ def compute_pnl_cap_thresholds(
     Cap = IS mean pair P&L across all profitable pairs. Once a pair's cumulative
     OOS P&L hits this level, no new entries are taken. Prevents DD/JHG-style
     34.8% OOS concentration from a single pair running unconstrained.
+
+    trades_df: see compute_risk_parity_weights' docstring (BUG-D76) — same
+    in-memory IS-only override.
     """
-    if not os.path.exists(is_trades_path):
-        log.warning("P&L cap: IS trades not found at %s — cap disabled", is_trades_path)
+    if trades_df is not None:
+        trades = trades_df
+    else:
+        if not os.path.exists(is_trades_path):
+            log.warning("P&L cap: IS trades not found at %s — cap disabled", is_trades_path)
+            return {}
+        trades = pd.read_parquet(is_trades_path)
+    if trades.empty:
+        log.warning("P&L cap: no IS trades available — cap disabled")
         return {}
-    trades = pd.read_parquet(is_trades_path)
     pair_totals = trades.groupby(["symbol_a", "symbol_b"])["pnl_net"].sum()
     profitable = pair_totals[pair_totals > 0]
     if profitable.empty:
@@ -1336,6 +1438,121 @@ def compute_pnl_cap_thresholds(
     log.info("P&L cap: IS mean profitable-pair P&L = %.2f → cap on %d pairs",
              cap_threshold, len(thresholds))
     return thresholds
+
+
+# ---------------------------------------------------------------------------
+# Per-pair/per-timeframe run loop, extracted from main() (BUG-D76, 2026-07-20)
+# ---------------------------------------------------------------------------
+def _run_all_pairs(
+    engine: "BacktestEngine",
+    hedge_methods: List[str],
+    args,
+    _pairs_override_df: Optional[pd.DataFrame],
+    _survivorship: pd.DataFrame,
+    holdout_only: bool,
+    is_only: bool = False,
+    log_pairs: bool = True,
+) -> Tuple[List[Trade], List[Dict]]:
+    """
+    Run the full per-pair, per-timeframe backtest loop once, with the given
+    engine and holdout/is_only mode.
+
+    Extracted from main() (BUG-D76, 2026-07-20 Grand Sweep) so it can be
+    called twice: once with is_only=True on a flat-sizing "fitting" engine to
+    generate a genuinely non-overlapping IS-only trades set for sizing-weight
+    fitting (risk-parity/HRP/P&L cap), then again with the real holdout_only
+    mode and the correctly-fitted production engine for the actual evaluation
+    run. Previously, sizing weights were always fit on the full-series
+    trades_layer1.parquet, which necessarily overlapped whatever window
+    --holdout evaluates as OOS.
+    """
+    all_trades: List[Trade] = []
+    all_metrics: List[Dict] = []
+
+    for tf_dir, tf_label in _TF_DIRS:
+        if args.tf and tf_label != args.tf:
+            continue
+        if _pairs_override_df is not None:
+            # Counterfactual mode: backtest only the pairs listed in the override
+            # file for this TF. Keeps every column the override file provides
+            # (not just symbol_a/symbol_b) — engine.run() reads scalar fallback
+            # fields directly off the pair row (hedge_ratio_ols, coint_fraction_
+            # rolling, etc., used as hard gates — e.g. a missing/NaN hedge ratio
+            # causes the pair to be silently skipped with 0 trades). The override
+            # file is therefore expected to carry the same schema as
+            # output/results/{tf_dir}/pairs.parquet or all_candidates.parquet
+            # (research/filter_ablation.py builds it from the latter), not a
+            # bare symbol list.
+            pairs = _pairs_override_df.loc[
+                _pairs_override_df["tf_label"] == tf_label
+            ].reset_index(drop=True)
+            if pairs.empty:
+                continue
+            if log_pairs:
+                log.info("[%s] %d pairs from --pairs-override", tf_label, len(pairs))
+        else:
+            pairs_path = f"output/results/{tf_dir}/pairs.parquet"
+            if not os.path.exists(pairs_path):
+                continue
+            pairs = pd.read_parquet(pairs_path)
+            # Ensure tf_label column exists
+            if "tf_label" not in pairs.columns:
+                pairs["tf_label"] = tf_label
+            if log_pairs:
+                log.info("[%s] %d confirmed pairs", tf_label, len(pairs))
+
+        for _, row in pairs.iterrows():
+            sym_a, sym_b = row["symbol_a"], row["symbol_b"]
+            spread_df = _load_spread(tf_dir, sym_a, sym_b)
+            if spread_df is None:
+                log.debug("SKIP %s/%s@%s: no spread series", sym_a, sym_b, tf_label)
+                continue
+
+            # Survivorship boundary: use earliest delist date of either symbol.
+            # BUG-D58 fix (2026-07-12): survivorship_exclusions.csv is scraped from Wikipedia's
+            # S&P 500 INDEX MEMBERSHIP CHANGES table, which lists every symbol ever REMOVED FROM
+            # THE INDEX for reasons unrelated to delisting (market-cap decline, demotion to the
+            # S&P 400/600), while it keeps trading normally under the same ticker. Confirmed
+            # directly this session: DD, NOV, and FHN all show a "removed" date years before this
+            # project's 2023+ data window, yet all three have real, continuous spread_series data
+            # through that entire window — demoted, not delisted. This was silently zeroing out
+            # 7/24 confirmed 1h pairs. See resolve_survivorship_oos_end()'s docstring for the fix.
+            _oos_end = None
+            if len(_survivorship) > 0:
+                from survivorship import get_oos_end_date as _get_oos_end
+                d_a = _get_oos_end(sym_a, _survivorship)
+                d_b = _get_oos_end(sym_b, _survivorship)
+                if d_a is not None or d_b is not None:
+                    _candidate_oos_end = min(d for d in [d_a, d_b] if d is not None)
+                    _oos_end = resolve_survivorship_oos_end(_candidate_oos_end, spread_df.index.max())
+                    if _oos_end is None:
+                        log.debug(
+                            "%s/%s@%s: survivorship 'removed' date %s predates real data through "
+                            "%s -- treating as false-positive (index removal, not delisting), "
+                            "NOT truncating",
+                            sym_a, sym_b, tf_label, _candidate_oos_end.date(),
+                            spread_df.index.max().date(),
+                        )
+
+            for hm in hedge_methods:
+                trades = engine.run(row, spread_df, hm, holdout_only=holdout_only,
+                                    is_only=is_only, oos_end_date=_oos_end)
+                if not trades:
+                    continue
+                all_trades.extend(trades)
+                metrics = compute_metrics(trades, tf_label, sym_a, sym_b, hm)
+                if metrics:
+                    all_metrics.append(metrics)
+                    if log_pairs:
+                        n_trades = metrics["n_trades"]
+                        wr = metrics["win_rate"]
+                        sr = metrics["sharpe"]
+                        pnl = metrics["total_pnl"]
+                        log.info("  %s/%s@%s[%s] %d trades | WR=%.0f%% | SR=%.2f | PnL=%.2f",
+                                 sym_a, sym_b, tf_label, hm, n_trades, wr * 100,
+                                 sr if np.isfinite(sr) else float("nan"), pnl)
+
+    return all_trades, all_metrics
 
 
 # ---------------------------------------------------------------------------
@@ -1447,13 +1664,90 @@ def main() -> None:
             "an alternative N_SHARES multiplier for the same sizing decision; "
             "applying both would multiply two different portfolio theories together."
         )
+
+    # hedge_methods, label, and survivorship exclusions -- moved here (were
+    # previously computed AFTER the engine/weights below) so the IS-only
+    # weight-fitting pass introduced by BUG-D76 (2026-07-20) has everything
+    # it needs before engine construction.
+    hedge_methods = (["ols", "kalman"] if args.hedge == "both"
+                     else [args.hedge])
+    label = "layer2" if layer2 else "layer1"
+    if args.holdout:
+        label += "_holdout"
+    if args.neg_hedge:
+        label += "_neghedge"
+    if args.hub_weight:
+        label += "_hubw"
+    if args.risk_parity:
+        label += "_riskparity"
+    if args.hrp_weight:
+        label += "_hrp"
+    if args.pnl_cap:
+        label += "_pnlcap"
+    if args.entry_z is not None:
+        label += f"_ez{str(args.entry_z).replace('.', '')}"
+    # (STORM-flag suffixes, then _pairsoverride, appended to `label` further
+    # below once storm_flags exists -- preserves the exact original suffix
+    # order: .../ez.../storm.../pairsoverride)
+
+    # Load survivorship exclusions for OOS-end-date truncation
+    _surv_path = os.path.join(os.path.dirname(__file__), "output", "cache", "survivorship_exclusions.csv")
+    _survivorship: pd.DataFrame = pd.DataFrame()
+    if os.path.exists(_surv_path):
+        try:
+            from survivorship import load_exclusions as _load_surv, get_oos_end_date as _get_oos_end
+            _survivorship = _load_surv(_surv_path)
+            log.info("Survivorship exclusions loaded: %d delist events", len(_survivorship))
+        except Exception as _e:
+            log.warning("Could not load survivorship exclusions: %s", _e)
+
     hub_weights = compute_hub_weights(_TF_DIRS, args.tf) if args.hub_weight else {}
-    risk_parity_weights = (
-        compute_hrp_weights() if args.hrp_weight
-        else compute_risk_parity_weights() if args.risk_parity
-        else {}
-    )
-    pnl_cap_by_pair = compute_pnl_cap_thresholds() if args.pnl_cap else {}
+
+    # Sizing-weight fitting (risk-parity / HRP / P&L cap). BUG-D76 (2026-07-20
+    # Grand Sweep): these previously always fit on the full-series
+    # trades_layer1.parquet, which necessarily OVERLAPS whatever window
+    # --holdout evaluates as OOS -- real in-sample circularity for the
+    # "recommended production" risk-parity result. When --holdout is combined
+    # with a sizing flag, run a preliminary, flat-sizing IS-only pass first
+    # (BacktestEngine.run(is_only=True), the exact chronological complement of
+    # the holdout window) and fit weights on THAT instead.
+    _needs_is_only_fit = bool(args.holdout) and (args.risk_parity or args.hrp_weight or args.pnl_cap)
+    if _needs_is_only_fit:
+        log.info(
+            "Fitting sizing weights on a genuinely non-overlapping IS-only pass "
+            "(BUG-D76 fix) -- NOT the full-series trades_layer1.parquet, which "
+            "would overlap the OOS window --holdout evaluates."
+        )
+        _fitting_engine = BacktestEngine(
+            cfg=Config.BACKTEST, regime_cond=RegimeConditioner(enabled=False),
+            ml_cond=MLConditioner(enabled=False), layer2_enabled=False,
+            allow_negative_hedge=args.neg_hedge,
+            hub_weights={}, risk_parity_weights={}, pnl_cap_by_pair={},
+            storm_flags={}, mm_hedge_map={}, adv_shares_map={}, earnings_cal=None,
+        )
+        _is_only_trades, _ = _run_all_pairs(
+            _fitting_engine, hedge_methods, args, _pairs_override_df, _survivorship,
+            holdout_only=False, is_only=True, log_pairs=False,
+        )
+        _is_only_df = (
+            pd.DataFrame([asdict(t) for t in _is_only_trades]) if _is_only_trades else pd.DataFrame()
+        )
+        log.info("IS-only fitting pass: %d trades across %d pairs",
+                  len(_is_only_df),
+                  _is_only_df[["symbol_a", "symbol_b"]].drop_duplicates().shape[0] if len(_is_only_df) else 0)
+        risk_parity_weights = (
+            compute_hrp_weights(trades_df=_is_only_df) if args.hrp_weight
+            else compute_risk_parity_weights(trades_df=_is_only_df) if args.risk_parity
+            else {}
+        )
+        pnl_cap_by_pair = compute_pnl_cap_thresholds(trades_df=_is_only_df) if args.pnl_cap else {}
+    else:
+        risk_parity_weights = (
+            compute_hrp_weights() if args.hrp_weight
+            else compute_risk_parity_weights() if args.risk_parity
+            else {}
+        )
+        pnl_cap_by_pair = compute_pnl_cap_thresholds() if args.pnl_cap else {}
 
     # STORM flags
     _storm_all = getattr(args, "storm_all", False)
@@ -1474,6 +1768,21 @@ def main() -> None:
         # Also not folded into --storm-all: comparison arm added 2026-07-11.
         "earnings_blackout":       getattr(args, "storm_earnings_blackout", False),
     }
+    # STORM-flag suffixes on `label` (the rest of label was built above, before
+    # storm_flags existed).
+    if _storm_all:
+        label += "_stormall"
+    elif any(storm_flags.values()):
+        sfx = "_storm"
+        if storm_flags.get("coint_frac_sizing"):     sfx += "_cfrac"
+        if storm_flags.get("garch_stop"):            sfx += "_gstop"
+        if storm_flags.get("session_edge"):          sfx += "_sedge"
+        if storm_flags.get("session_edge_postopen"): sfx += "_sedge_post"
+        if storm_flags.get("mm_exec"):               sfx += "_mmexec"
+        if storm_flags.get("sqrt_impact"):           sfx += "_sqrtimpact"
+        label += sfx
+    if args.pairs_override:
+        label += "_pairsoverride"
     mm_hedge_map = load_mm_hedge_map() if storm_flags.get("mm_exec") else {}
 
     earnings_cal = None
@@ -1535,131 +1844,11 @@ def main() -> None:
         earnings_cal=earnings_cal,
     )
 
-    hedge_methods = (["ols", "kalman"] if args.hedge == "both"
-                     else [args.hedge])
-    label = "layer2" if layer2 else "layer1"
-    if args.holdout:
-        label += "_holdout"
-    if args.neg_hedge:
-        label += "_neghedge"
-    if args.hub_weight:
-        label += "_hubw"
-    if args.risk_parity:
-        label += "_riskparity"
-    if args.hrp_weight:
-        label += "_hrp"
-    if args.pnl_cap:
-        label += "_pnlcap"
-    if args.entry_z is not None:
-        label += f"_ez{str(args.entry_z).replace('.', '')}"
-    if _storm_all:
-        label += "_stormall"
-    elif any(storm_flags.values()):
-        sfx = "_storm"
-        if storm_flags.get("coint_frac_sizing"):     sfx += "_cfrac"
-        if storm_flags.get("garch_stop"):            sfx += "_gstop"
-        if storm_flags.get("session_edge"):          sfx += "_sedge"
-        if storm_flags.get("session_edge_postopen"): sfx += "_sedge_post"
-        if storm_flags.get("mm_exec"):               sfx += "_mmexec"
-        if storm_flags.get("sqrt_impact"):           sfx += "_sqrtimpact"
-        label += sfx
-    if args.pairs_override:
-        label += "_pairsoverride"
-
-    # Load survivorship exclusions for OOS-end-date truncation
-    _surv_path = os.path.join(os.path.dirname(__file__), "output", "cache", "survivorship_exclusions.csv")
-    _survivorship: pd.DataFrame = pd.DataFrame()
-    if os.path.exists(_surv_path):
-        try:
-            from survivorship import load_exclusions as _load_surv, get_oos_end_date as _get_oos_end
-            _survivorship = _load_surv(_surv_path)
-            log.info("Survivorship exclusions loaded: %d delist events", len(_survivorship))
-        except Exception as _e:
-            log.warning("Could not load survivorship exclusions: %s", _e)
-
     # Run over confirmed pairs
-    all_trades: List[Trade] = []
-    all_metrics: List[Dict] = []
-
-    for tf_dir, tf_label in _TF_DIRS:
-        if args.tf and tf_label != args.tf:
-            continue
-        if _pairs_override_df is not None:
-            # Counterfactual mode: backtest only the pairs listed in the override
-            # file for this TF. Keeps every column the override file provides
-            # (not just symbol_a/symbol_b) — engine.run() reads scalar fallback
-            # fields directly off the pair row (hedge_ratio_ols, coint_fraction_
-            # rolling, etc., used as hard gates — e.g. a missing/NaN hedge ratio
-            # causes the pair to be silently skipped with 0 trades). The override
-            # file is therefore expected to carry the same schema as
-            # output/results/{tf_dir}/pairs.parquet or all_candidates.parquet
-            # (research/filter_ablation.py builds it from the latter), not a
-            # bare symbol list.
-            pairs = _pairs_override_df.loc[
-                _pairs_override_df["tf_label"] == tf_label
-            ].reset_index(drop=True)
-            if pairs.empty:
-                continue
-            log.info("[%s] %d pairs from --pairs-override", tf_label, len(pairs))
-        else:
-            pairs_path = f"output/results/{tf_dir}/pairs.parquet"
-            if not os.path.exists(pairs_path):
-                continue
-            pairs = pd.read_parquet(pairs_path)
-            # Ensure tf_label column exists
-            if "tf_label" not in pairs.columns:
-                pairs["tf_label"] = tf_label
-            log.info("[%s] %d confirmed pairs", tf_label, len(pairs))
-
-        for _, row in pairs.iterrows():
-            sym_a, sym_b = row["symbol_a"], row["symbol_b"]
-            spread_df = _load_spread(tf_dir, sym_a, sym_b)
-            if spread_df is None:
-                log.debug("SKIP %s/%s@%s: no spread series", sym_a, sym_b, tf_label)
-                continue
-
-            # Survivorship boundary: use earliest delist date of either symbol.
-            # BUG-D58 fix (2026-07-12): survivorship_exclusions.csv is scraped from Wikipedia's
-            # S&P 500 INDEX MEMBERSHIP CHANGES table, which lists every symbol ever REMOVED FROM
-            # THE INDEX for reasons unrelated to delisting (market-cap decline, demotion to the
-            # S&P 400/600), while it keeps trading normally under the same ticker. Confirmed
-            # directly this session: DD, NOV, and FHN all show a "removed" date years before this
-            # project's 2023+ data window, yet all three have real, continuous spread_series data
-            # through that entire window — demoted, not delisted. This was silently zeroing out
-            # 7/24 confirmed 1h pairs. See resolve_survivorship_oos_end()'s docstring for the fix.
-            _oos_end = None
-            if len(_survivorship) > 0:
-                from survivorship import get_oos_end_date as _get_oos_end
-                d_a = _get_oos_end(sym_a, _survivorship)
-                d_b = _get_oos_end(sym_b, _survivorship)
-                if d_a is not None or d_b is not None:
-                    _candidate_oos_end = min(d for d in [d_a, d_b] if d is not None)
-                    _oos_end = resolve_survivorship_oos_end(_candidate_oos_end, spread_df.index.max())
-                    if _oos_end is None:
-                        log.debug(
-                            "%s/%s@%s: survivorship 'removed' date %s predates real data through "
-                            "%s -- treating as false-positive (index removal, not delisting), "
-                            "NOT truncating",
-                            sym_a, sym_b, tf_label, _candidate_oos_end.date(),
-                            spread_df.index.max().date(),
-                        )
-
-            for hm in hedge_methods:
-                trades = engine.run(row, spread_df, hm, holdout_only=args.holdout,
-                                    oos_end_date=_oos_end)
-                if not trades:
-                    continue
-                all_trades.extend(trades)
-                metrics = compute_metrics(trades, tf_label, sym_a, sym_b, hm)
-                if metrics:
-                    all_metrics.append(metrics)
-                    n_trades = metrics["n_trades"]
-                    wr = metrics["win_rate"]
-                    sr = metrics["sharpe"]
-                    pnl = metrics["total_pnl"]
-                    log.info("  %s/%s@%s[%s] %d trades | WR=%.0f%% | SR=%.2f | PnL=%.2f",
-                             sym_a, sym_b, tf_label, hm, n_trades, wr * 100,
-                             sr if np.isfinite(sr) else float("nan"), pnl)
+    all_trades, all_metrics = _run_all_pairs(
+        engine, hedge_methods, args, _pairs_override_df, _survivorship,
+        holdout_only=args.holdout, is_only=False,
+    )
 
     portfolio_stats = aggregate_portfolio(all_trades, all_metrics)
     _save_results(all_trades, all_metrics, portfolio_stats, label=label)

@@ -1,0 +1,33 @@
+16:46:44 INFO  === descriptive_check_concordance.py: do Hurst/half-life/ADF/permutation actually predict coint_fraction_rolling (production's own stability gate)? ===
+16:46:44 INFO  Loaded 20 (pair, tf) rows across all 12 timeframes' all_candidates.parquet (BUG-D95 fix makes this the full EG+FDR+price-degeneracy survivor population, not just the 2 final confirmed pairs)
+16:46:58 INFO    PNC/ZION@1h: coint_frac=0.183 hurst_rs=0.541 half_life=30.52774302973308 adf_pval=3.3950367547663566e-14 perm_pvalue=0.014925373134328358 (computed)
+16:47:10 INFO    SPY/VOO@1h: coint_frac=0.431 hurst_rs=0.563 half_life=14.362363373778884 adf_pval=1.1212885084491921e-15 perm_pvalue=0.009950248756218905 (computed)
+16:47:37 INFO    SPY/VOO@1m: coint_frac=1.000 hurst_rs=0.555 half_life=29.790745815879223 adf_pval=0.004228981474268503 perm_pvalue=1.0 (computed)
+16:47:44 INFO    IVT/WSBC@1m: coint_frac=0.696 hurst_rs=0.538 half_life=13.766336648256722 adf_pval=0.2741898625699834 perm_pvalue=0.01990049751243781 (computed)
+16:47:47 INFO    7267.T/8058.T@1M: coint_frac=0.750 hurst_rs=0.789 half_life=207.0348165503764 adf_pval=0.21101706006062648 perm_pvalue=0.01990049751243781 (computed)
+16:48:13 INFO    KVUE/KMB@2m: coint_frac=0.877 hurst_rs=0.491 half_life=18.90693077063179 adf_pval=4.08447722647827e-06 perm_pvalue=0.01990049751243781 (computed)
+16:48:38 INFO    IWM/AAL@2m: coint_frac=0.145 hurst_rs=0.477 half_life=12.635914628643732 adf_pval=5.873543722404537e-08 perm_pvalue=0.03980099502487562 (computed)
+16:48:47 INFO    KVUE/KMB@3m: coint_frac=0.979 hurst_rs=0.428 half_life=nan adf_pval=4.2518822233423725e-15 perm_pvalue=0.014925373134328358 (computed)
+16:48:57 INFO    IWM/AAL@3m: coint_frac=0.196 hurst_rs=0.501 half_life=nan adf_pval=3.917995136484786e-07 perm_pvalue=0.07960199004975124 (computed)
+16:49:07 INFO    SPY/VOO@4h: coint_frac=0.347 hurst_rs=0.742 half_life=43.43142736584297 adf_pval=1.1204882943984597e-09 perm_pvalue=0.009950248756218905 (computed)
+16:49:22 INFO    ETR/EXC@5m: coint_frac=0.155 hurst_rs=0.465 half_life=36.43830959668683 adf_pval=1.1573122129705018e-15 perm_pvalue=0.1890547263681592 (computed)
+16:49:37 INFO    ETR/PPL@5m: coint_frac=0.145 hurst_rs=0.446 half_life=38.96145698574091 adf_pval=1.7088861412840865e-12 perm_pvalue=0.23383084577114427 (computed)
+16:49:52 INFO    ETR/PEG@5m: coint_frac=0.283 hurst_rs=0.464 half_life=24.62766436004509 adf_pval=5.400753124342047e-11 perm_pvalue=0.03482587064676617 (computed)
+16:50:07 INFO    ETR/SRE@5m: coint_frac=0.233 hurst_rs=0.452 half_life=28.50418572796307 adf_pval=1.0395468408858308e-11 perm_pvalue=0.12935323383084577 (computed)
+16:50:23 INFO    ETR/SO@5m: coint_frac=0.194 hurst_rs=0.419 half_life=nan adf_pval=4.6557769632284903e-10 perm_pvalue=0.024875621890547265 (computed)
+16:50:38 INFO    ETR/WEC@5m: coint_frac=0.247 hurst_rs=0.459 half_life=14.428682444870015 adf_pval=1.240482709845935e-12 perm_pvalue=0.029850746268656716 (computed)
+16:50:53 INFO    ETR/XEL@5m: coint_frac=0.191 hurst_rs=0.436 half_life=22.58457735144299 adf_pval=5.863858979829267e-10 perm_pvalue=0.03980099502487562 (computed)
+16:51:09 INFO    FITB/PNC@5m: coint_frac=0.127 hurst_rs=0.425 half_life=20.90452837377318 adf_pval=8.105622038391234e-13 perm_pvalue=0.01990049751243781 (computed)
+16:51:13 INFO    AXTA/ENVA@7D: coint_frac=0.118 hurst_rs=0.735 half_life=70.88633295432429 adf_pval=0.7190546195123997 perm_pvalue=0.20398009950248755 (computed)
+16:51:19 INFO    7267.T/8058.T@7D: coint_frac=0.259 hurst_rs=0.786 half_life=129.85603215292173 adf_pval=0.30982314193627647 perm_pvalue=0.01990049751243781 (computed)
+16:51:19 INFO  
+16:51:19 INFO  === Concordance (Spearman rank correlation vs. coint_fraction_rolling, n=20) ===
+16:51:19 INFO  HONEST SCOPE: n=20 is thin -- point estimates only, no significance claims implied.
+16:51:19 INFO    hurst_rs              : n=20  spearman_rho=0.313  p=0.179
+16:51:19 INFO    hurst_dfa             : n=20  spearman_rho=0.017  p=0.945
+16:51:19 INFO    half_life_rolling     : n=17  spearman_rho=-0.088  p=0.736
+16:51:19 INFO    adf_pval              : n=20  spearman_rho=0.170  p=0.474
+16:51:19 INFO    permutation_pvalue    : n=20  spearman_rho=-0.392  p=0.087
+16:51:19 INFO  Saved -> output/research/descriptive_check_concordance.parquet
+16:51:19 INFO  ============================================================
+16:51:19 INFO  descriptive_check_concordance.py complete (4.6 min)

@@ -147,7 +147,8 @@ def main():
 
     out_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "output", "research")
     os.makedirs(out_dir, exist_ok=True)
-    out_path = os.path.join(out_dir, f"relational_regime_indicator_{args.tf}.parquet")
+    safe_tf = DataStore._TF_SAFE.get(args.tf, args.tf.lower())
+    out_path = os.path.join(out_dir, f"relational_regime_indicator_{safe_tf}.parquet")
     index_series.to_frame("avg_pairwise_corr").to_parquet(out_path)
     print(f"\nFull time series written to {out_path}")
 

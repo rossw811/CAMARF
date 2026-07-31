@@ -65,6 +65,7 @@ from scipy import stats
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from trial_registry import load_trials, record_trial, _REGISTRY_PATH
+import portfolio_math
 
 _ROOT = os.path.dirname(os.path.abspath(__file__))
 _BACKTEST_DIR = os.path.join(_ROOT, "output", "backtest")
@@ -193,16 +194,16 @@ def _backfill_trial_registry() -> int:
 
 def _daily_pnl_stats(trades_path: str) -> Optional[Tuple[float, int, float, float]]:
     """Returns (sr_hat, t_obs, skew, kurtosis) for the per-period (daily)
-    closed-trade P&L series — same grouping stats.py's permutation test
-    uses (group pnl_net by exit date)."""
+    closed-trade P&L series, zero-filled via portfolio_math.daily_pnl_from_trades()
+    (matches stats.py's permutation test and backtest.py's aggregate_portfolio()
+    convention — NOT a plain groupby(exit_date), which silently drops zero-P&L
+    calendar days; see BUG-D62/D64 and the 2026-07-20 Grand Sweep recurrence)."""
     if not os.path.exists(trades_path):
         return None
     trades = pd.read_parquet(trades_path)
     if trades.empty or "pnl_net" not in trades.columns:
         return None
-    tr = trades.copy()
-    tr["exit_date"] = pd.to_datetime(tr["exit_time"]).dt.date
-    daily = tr.groupby("exit_date")["pnl_net"].sum()
+    daily = portfolio_math.daily_pnl_from_trades(trades)
     vals = daily.values.astype(float)
     if len(vals) < 3 or np.std(vals, ddof=1) == 0:
         return None

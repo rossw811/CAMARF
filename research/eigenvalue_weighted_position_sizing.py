@@ -51,6 +51,10 @@ from portfolio_effective_bets import build_daily_pnl_panel, _load_trades
 from portfolio_position_sizing_correction import (
     erc_weights, inverse_cluster_size_weights, portfolio_sharpe,
 )
+from comparison_arm_scaffold import walk_forward_windows
+
+_TRAIN_WINDOW = 252  # matches k_bahc_covariance_cleaning.py's own convention
+_TEST_WINDOW = 21
 
 def marchenko_pastur_upper_bound(n_assets: int, n_obs: int) -> float:
     """Closed-form MP upper bound for a correlation matrix's noise-band
@@ -121,6 +125,30 @@ def eigenvalue_penalized_weights(corr: np.ndarray, top_k: int = None,
     return raw_w / raw_w.sum()
 
 
+def _fit_schemes(train_panel: pd.DataFrame, cluster_labels: np.ndarray = None) -> dict:
+    """Fits ALL weighting schemes from a TRAIN-window panel only (Tier 3.3
+    retrofit, Grand Sweep 2026-07-20). MP-adaptive top_k is recomputed per
+    window from THAT window's own (n_pairs, n_obs) — using the full
+    panel's n_obs here would itself be a small lookahead into how much
+    data the eventual full run has. `cluster_labels` is a static,
+    externally-supplied per-pair assignment, not re-fit per window (see
+    portfolio_position_sizing_correction._fit_schemes' docstring)."""
+    n_pairs = train_panel.shape[1]
+    n_obs = len(train_panel)
+    corr = train_panel.corr().to_numpy()
+    corr = np.nan_to_num(corr, nan=0.0)
+    np.fill_diagonal(corr, 1.0)
+
+    schemes = {"equal_weight": np.full(n_pairs, 1.0 / n_pairs)}
+    schemes["erc"] = erc_weights(np.cov(train_panel.to_numpy().T))
+    if cluster_labels is not None:
+        schemes["inverse_cluster_size"] = inverse_cluster_size_weights(cluster_labels)
+    schemes["eigenvalue_penalized_mp_adaptive"] = eigenvalue_penalized_weights(corr, n_obs=n_obs)
+    for k in (2, 3, 5):
+        schemes[f"eigenvalue_penalized_k{k}"] = eigenvalue_penalized_weights(corr, top_k=k)
+    return schemes
+
+
 def main():
     trades_is = _load_trades("layer1")
     trades_oos = _load_trades("layer1_holdout")
@@ -137,56 +165,63 @@ def main():
     if n_pairs < 4:
         print("Fewer than 4 pairs — skipping.")
         return
-    returns = panel.to_numpy()
-    cov = np.cov(returns.T)
-    corr = panel.corr().to_numpy()
-    corr = np.nan_to_num(corr, nan=0.0)
-    np.fill_diagonal(corr, 1.0)
     pair_names = list(panel.columns)
     print(f"Loaded daily P&L panel: {len(panel)} days x {n_pairs} pairs\n")
 
-    schemes = {"equal_weight": np.full(n_pairs, 1.0 / n_pairs)}
-    schemes["erc"] = erc_weights(cov)
-
+    cluster_labels = None
     cluster_path = "output/research/graphical_lasso_clusters.parquet"
     if os.path.exists(cluster_path):
         cluster_df = pd.read_parquet(cluster_path).set_index("pair").reindex(pair_names)
         if not cluster_df["cluster_marginal"].isna().any():
-            schemes["inverse_cluster_size"] = inverse_cluster_size_weights(
-                cluster_df["cluster_marginal"].to_numpy()
-            )
+            cluster_labels = cluster_df["cluster_marginal"].to_numpy()
 
-    n_obs = len(panel)
-    mp_bound = marchenko_pastur_upper_bound(n_pairs, n_obs)
-    k_signal = int(np.sum(np.linalg.eigvalsh(corr)[::-1] > mp_bound))
-    print(f"Marchenko-Pastur upper bound (n={n_pairs}, T={n_obs}): {mp_bound:.3f} — "
-          f"{k_signal} eigenvalue(s) clear the noise band")
-    schemes["eigenvalue_penalized_mp_adaptive"] = eigenvalue_penalized_weights(corr, n_obs=n_obs)
-    # Fixed top_k variants kept as a sensitivity check alongside the adaptive default.
-    for k in (2, 3, 5):
-        schemes[f"eigenvalue_penalized_k{k}"] = eigenvalue_penalized_weights(corr, top_k=k)
+    # Tier 3.3 retrofit (Grand Sweep 2026-07-20): previously fit every
+    # scheme (including the MP-adaptive eigenvalue penalization) from the
+    # FULL panel and scored Sharpe on that SAME full panel. Now genuine
+    # walk-forward — see portfolio_position_sizing_correction.py's
+    # identical retrofit for the full rationale.
+    if len(panel) < _TRAIN_WINDOW + _TEST_WINDOW:
+        print(f"\nInsufficient daily history ({len(panel)} days) for a genuine walk-forward "
+              f"split (need >= {_TRAIN_WINDOW + _TEST_WINDOW}) -- falling back to an EXPLICITLY "
+              f"IN-SAMPLE-ONLY comparison. This number is NOT a valid out-of-sample result.")
+        schemes = _fit_schemes(panel, cluster_labels)
+        returns = panel.to_numpy()
+        for name, w in schemes.items():
+            print(f"[{name}] IN-SAMPLE Sharpe={portfolio_sharpe(w, returns):.4f}")
+        return
 
-    print("=== Scheme comparison ===")
-    results = {}
-    for name, w in schemes.items():
-        sharpe = portfolio_sharpe(w, returns)
-        max_w = float(np.max(w))
-        port_var = w @ corr @ w
-        idm = float(1.0 / np.sqrt(port_var)) if port_var > 0 else np.nan
-        results[name] = sharpe
-        print(f"[{name}] Sharpe={sharpe:.4f}  max_weight={max_w:.3f}  "
-              f"portfolio_variance(w'Rw)={port_var:.4f}  Carver_IDM={idm:.3f}")
+    scheme_names = list(_fit_schemes(panel.iloc[:_TRAIN_WINDOW], cluster_labels).keys())
+    oos_sharpes = {name: [] for name in scheme_names}
+    n_windows = 0
+    for train_df, test_df in walk_forward_windows(panel, _TRAIN_WINDOW, _TEST_WINDOW):
+        schemes = _fit_schemes(train_df, cluster_labels)
+        test_returns = test_df.to_numpy()
+        for name, w in schemes.items():
+            oos_sharpes[name].append(portfolio_sharpe(w, test_returns))
+        n_windows += 1
 
-    best = max(results, key=lambda k: results[k] if np.isfinite(results[k]) else -np.inf)
-    print(f"\nBest Sharpe achieved by: {best} ({results[best]:.4f})")
-    if "inverse_cluster_size" in results:
+    print(f"=== Walk-forward OOS comparison across {n_windows} non-overlapping "
+          f"train={_TRAIN_WINDOW}/test={_TEST_WINDOW}-day windows ===")
+    mean_oos = {}
+    for name, scores in oos_sharpes.items():
+        finite = [s for s in scores if np.isfinite(s)]
+        mean_oos[name] = float(np.mean(finite)) if finite else np.nan
+        print(f"[{name}] mean OOS Sharpe={mean_oos[name]:.4f} across {len(finite)}/{n_windows} valid windows")
+
+    best = max(mean_oos, key=lambda k: mean_oos[k] if np.isfinite(mean_oos[k]) else -np.inf)
+    print(f"\nBest mean OOS Sharpe achieved by: {best} ({mean_oos[best]:.4f})")
+    if "inverse_cluster_size" in mean_oos:
         print(f"Comparison vs. the previously-established winner (inverse_cluster_size, "
-              f"Sharpe={results['inverse_cluster_size']:.4f}): "
-              f"eigenvalue_penalized_k3={results.get('eigenvalue_penalized_k3', float('nan')):.4f}")
+              f"mean OOS Sharpe={mean_oos['inverse_cluster_size']:.4f}): "
+              f"eigenvalue_penalized_k3={mean_oos.get('eigenvalue_penalized_k3', float('nan')):.4f}")
 
-    comp_df = pd.DataFrame({"pair": pair_names, **{f"w_{k}": v for k, v in schemes.items()}})
+    out_rows = [
+        {"scheme": name, "window": i, "oos_sharpe": s}
+        for name, scores in oos_sharpes.items()
+        for i, s in enumerate(scores)
+    ]
     os.makedirs("output/research", exist_ok=True)
-    comp_df.to_parquet("output/research/eigenvalue_weighted_position_sizing.parquet")
+    pd.DataFrame(out_rows).to_parquet("output/research/eigenvalue_weighted_position_sizing.parquet")
     print("\nWrote output/research/eigenvalue_weighted_position_sizing.parquet")
 
 

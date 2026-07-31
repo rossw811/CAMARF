@@ -45,6 +45,7 @@ import sys
 
 import numpy as np
 import pandas as pd
+from statsmodels.stats.multitest import multipletests
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "research"))
@@ -108,28 +109,11 @@ def _pair_date_range(symbol_a, symbol_b):
     return start, end
 
 
-def run(windows, n_null, seed):
-    rng = np.random.default_rng(seed)
-
-    raw = _load_all_candidates()
-    if raw.empty:
-        print("No all_candidates.parquet files found — nothing to analyze.")
-        return
-    events = _break_events(raw)
-    if events.empty:
-        print("No non-null break dates found in any all_candidates.parquet.")
-        return
-    print(f"Loaded {len(events)} break events from {raw['_source_file'].nunique()} "
-          f"result files ({events['symbol_a'].nunique() + events['symbol_b'].nunique()} "
-          f"distinct symbols involved).")
-
-    all_symbols = sorted(set(events["symbol_a"]) | set(events["symbol_b"]))
-    cal = EarningsCalendar.load_or_build(all_symbols)
-
-    pair_ranges = {}
-    for sym_a, sym_b in events[["symbol_a", "symbol_b"]].drop_duplicates().itertuples(index=False):
-        pair_ranges[(sym_a, sym_b)] = _pair_date_range(sym_a, sym_b)
-
+def _run_windows(events, pair_ranges, cal, windows, n_null, rng, label):
+    """Core per-window permutation test, factored out (Tier 4.2 fix, Grand
+    Sweep 2026-07-20) so it can be run twice: once on the full event set,
+    once with the dominant hub symbol's pairs excluded (see run()'s
+    docstring note on why)."""
     results = []
     for w in windows:
         n_near = 0
@@ -169,16 +153,83 @@ def run(windows, n_null, seed):
         null_rates = np.array(null_rates)
         p_value = float(np.mean(null_rates >= observed_rate))
         results.append({
-            "window_days": w, "n_events": n_valid, "n_near_earnings": n_near,
+            "subset": label, "window_days": w, "n_events": n_valid, "n_near_earnings": n_near,
             "observed_rate": observed_rate, "null_mean_rate": float(null_rates.mean()),
             "null_p95_rate": float(np.percentile(null_rates, 95)),
             "empirical_p_value": p_value,
         })
-        print(f"window=±{w}d: observed={observed_rate:.3f} ({n_near}/{n_valid}) "
+        print(f"[{label}] window=±{w}d: observed={observed_rate:.3f} ({n_near}/{n_valid}) "
               f"vs null_mean={null_rates.mean():.3f} (p95={np.percentile(null_rates, 95):.3f}) "
               f"-> empirical p={p_value:.4f}")
 
-    out_df = pd.DataFrame(results)
+    if results:
+        res_df = pd.DataFrame(results)
+        # Tier 4.2 fix (part 1): 3 window sizes were previously tested with
+        # no multiple-comparisons correction across them.
+        reject, p_adj, _, _ = multipletests(res_df["empirical_p_value"].values, method="fdr_bh")
+        res_df["empirical_p_bh_adjusted"] = p_adj
+        res_df["significant_bh"] = reject
+        results = res_df.to_dict("records")
+    return results
+
+
+def run(windows, n_null, seed):
+    """
+    Tier 4.2 fix (Grand Sweep 2026-07-20): the original single-pass version
+    pooled break events across pairs as if independent Bernoulli trials,
+    but many pairs share a common leg (DD alone is 73.4% of the 1h
+    candidate pool per trend_dominance_diagnostic.py) — a symbol-specific
+    quirk in ONE hub leg's own earnings-timing behavior could masquerade
+    as a broad, multi-symbol phenomenon. The permutation null already uses
+    the SAME pair/event structure as the observed data (so the p-value
+    comparison itself is not invalidated by hub concentration), but the
+    finding's INTERPRETABILITY as "broad" evidence is. Fixed by running
+    the identical analysis twice: once on the FULL event set (as before),
+    once with every pair involving the single most common leg symbol
+    excluded — if the finding survives hub exclusion, it is not just a
+    DD-specific (or whichever symbol is dominant) artifact. Also applies
+    BH-FDR correction across the (3, by default) window-size p-values,
+    previously untested for multiple comparisons.
+    """
+    rng = np.random.default_rng(seed)
+
+    raw = _load_all_candidates()
+    if raw.empty:
+        print("No all_candidates.parquet files found — nothing to analyze.")
+        return
+    events = _break_events(raw)
+    if events.empty:
+        print("No non-null break dates found in any all_candidates.parquet.")
+        return
+    print(f"Loaded {len(events)} break events from {raw['_source_file'].nunique()} "
+          f"result files ({events['symbol_a'].nunique() + events['symbol_b'].nunique()} "
+          f"distinct symbols involved).")
+
+    all_symbols = sorted(set(events["symbol_a"]) | set(events["symbol_b"]))
+    cal = EarningsCalendar.load_or_build(all_symbols)
+
+    pair_ranges = {}
+    for sym_a, sym_b in events[["symbol_a", "symbol_b"]].drop_duplicates().itertuples(index=False):
+        pair_ranges[(sym_a, sym_b)] = _pair_date_range(sym_a, sym_b)
+
+    leg_counts = pd.concat([events["symbol_a"], events["symbol_b"]]).value_counts()
+    hub_symbol = leg_counts.index[0]
+    hub_frac = leg_counts.iloc[0] / len(events)
+    print(f"Dominant hub leg: {hub_symbol} appears in {leg_counts.iloc[0]}/{len(events)} "
+          f"events ({hub_frac:.1%}).")
+
+    all_results = _run_windows(events, pair_ranges, cal, windows, n_null, rng, "full_sample")
+
+    non_hub_events = events[(events["symbol_a"] != hub_symbol) & (events["symbol_b"] != hub_symbol)]
+    print(f"\n=== Hub-exclusion robustness check: excluding all {hub_symbol}-involving pairs "
+          f"({len(events) - len(non_hub_events)}/{len(events)} events removed) ===")
+    if non_hub_events.empty:
+        print(f"No events remain after excluding {hub_symbol} — cannot run the exclusion check.")
+    else:
+        all_results += _run_windows(non_hub_events, pair_ranges, cal, windows, n_null, rng,
+                                     f"excl_{hub_symbol}")
+
+    out_df = pd.DataFrame(all_results)
     out_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "output", "research")
     os.makedirs(out_dir, exist_ok=True)
     out_path = os.path.join(out_dir, "earnings_structural_break_correlation.parquet")
@@ -187,7 +238,10 @@ def run(windows, n_null, seed):
     print("\nInterpretation: empirical_p_value is the fraction of null draws (random dates, "
           "same pairs/symbols/date ranges) whose near-earnings rate was AT LEAST as high as the "
           "real breaks' rate. A small p-value means structural breaks land near earnings more "
-          "often than chance alone would produce for these symbols.")
+          "often than chance alone would produce for these symbols. empirical_p_bh_adjusted "
+          "corrects for testing multiple window sizes. Compare the 'full_sample' subset against "
+          f"'excl_{hub_symbol}' to check whether any significant finding survives removing the "
+          "dominant hub leg, rather than being that one symbol's own idiosyncratic behavior.")
 
 
 def main():

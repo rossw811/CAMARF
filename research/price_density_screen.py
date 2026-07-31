@@ -65,8 +65,7 @@ def main():
     suffix = f"_{safe_tf}"
     cached = [c[: -len(suffix)] for c in DataStore.list_cached() if c.endswith(suffix)]
 
-    safe_path_dir = {"1m": "1min", "3m": "3min", "15m": "15min", "1h": "1hr", "4h": "4hr"}.get(tf_label, f"{tf_label}")
-    pairs_path = f"output/results/{safe_path_dir}/pairs.parquet"
+    pairs_path = f"output/results/{safe_tf}/pairs.parquet"
     if not os.path.exists(pairs_path):
         print(f"No confirmed pairs file at {pairs_path} — nothing to compare.")
         return
@@ -100,7 +99,7 @@ def main():
 
     out_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "output", "research")
     os.makedirs(out_dir, exist_ok=True)
-    out_path = os.path.join(out_dir, f"price_density_screen_effect_{tf_label}.csv")
+    out_path = os.path.join(out_dir, f"price_density_screen_effect_{safe_tf}.csv")
     pd.DataFrame(
         [{"symbol_a": a, "symbol_b": b, "survives": True} for a, b in survives]
         + [{"symbol_a": a, "symbol_b": b, "survives": False} for a, b, *_ in excluded]

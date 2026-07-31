@@ -1,63 +1,27 @@
 === CAMARF ml.py ===
-date:        2026-07-11 23:34
-runtime_min: 0.0
+date:        2026-07-22 08:41
+runtime_min: 0.1
 
 === pairs ===
-  LNT/VTR@1h               entry_events=6     labeled=4     censored=0     no_half_life=0     future_not_clean=2 perm_robust=True
-  LNT/WELL@1h              entry_events=5     labeled=0     censored=0     no_half_life=0     future_not_clean=5
-  AXP/CRWD@1h              entry_events=8     labeled=1     censored=0     no_half_life=0     future_not_clean=7
-  AME/DD@1h                entry_events=11    labeled=2     censored=0     no_half_life=0     future_not_clean=9 perm_robust=True
-  AME/MAR@1h               entry_events=4     labeled=0     censored=0     no_half_life=0     future_not_clean=4
-  AMAT/DD@1h               entry_events=3     labeled=0     censored=0     no_half_life=0     future_not_clean=3 perm_robust=True
-  APP/CRWD@1h              entry_events=5     labeled=0     censored=0     no_half_life=0     future_not_clean=5
-  AVGO/CRWD@1h             entry_events=6     labeled=1     censored=0     no_half_life=0     future_not_clean=5
-  CAT/DD@1h                entry_events=5     labeled=0     censored=0     no_half_life=0     future_not_clean=5 perm_robust=True
-  CMS/DUK@1h               entry_events=5     labeled=2     censored=0     no_half_life=0     future_not_clean=3 perm_robust=True
-  FIX/MLI@1h               entry_events=2     labeled=0     censored=0     no_half_life=0     future_not_clean=2
-  DE/DD@1h                 entry_events=4     labeled=1     censored=0     no_half_life=0     future_not_clean=3 perm_robust=True
-  DAL/DD@1h                entry_events=7     labeled=0     censored=0     no_half_life=0     future_not_clean=7 perm_robust=True
-  EME/MLI@1h               entry_events=5     labeled=0     censored=0     no_half_life=0     future_not_clean=5
-  EG/WRB@1h                entry_events=4     labeled=0     censored=0     no_half_life=0     future_not_clean=4 perm_robust=False
-  GS/MLI@1h                entry_events=4     labeled=0     censored=0     no_half_life=0     future_not_clean=4
-  HAL/NOV@1h               entry_events=5     labeled=1     censored=0     no_half_life=0     future_not_clean=4 perm_robust=True
-  MET/TMHC@1h              entry_events=6     labeled=0     censored=0     no_half_life=0     future_not_clean=6 perm_robust=True
-  PFG/STLD@1h              entry_events=5     labeled=0     censored=0     no_half_life=0     future_not_clean=5 perm_robust=True
-  VRT/MTZ@1h               entry_events=7     labeled=1     censored=0     no_half_life=0     future_not_clean=6 perm_robust=True
-  QQQ/MLI@1h               entry_events=5     labeled=1     censored=0     no_half_life=0     future_not_clean=4
-  FHN/MLI@1h               entry_events=7     labeled=3     censored=0     no_half_life=0     future_not_clean=4
-  MTSI/WCC@1h              entry_events=3     labeled=0     censored=0     no_half_life=0     future_not_clean=3 perm_robust=True
-  UMBF/FHB@1h              entry_events=3     labeled=0     censored=0     no_half_life=0     future_not_clean=3 perm_robust=True
   7267.T/8058.T@1M         entry_events=3     labeled=0     censored=3     no_half_life=0     future_not_clean=0
-  KVUE/KMB@3m              entry_events=76    labeled=0     censored=0     no_half_life=76    future_not_clean=0 perm_robust=True
+  KVUE/KMB@2m              entry_events=40    labeled=24    censored=0     no_half_life=0     future_not_clean=16
+  KVUE/KMB@3m              entry_events=102   labeled=0     censored=0     no_half_life=102   future_not_clean=0 perm_robust=True
 
 === label_distribution (label_scheme=binary, this is what training/the MIN_CLASS_SAMPLES gate sees) ===
-  not_converged: 14
-  converged: 3
+  not_converged: 22
+  converged: 2
 
 === granular_label_distribution (always the full 4-class outcome, regardless of label_scheme) ===
-  diverge_further: 9
-  no_move: 5
+  no_move: 12
+  diverge_further: 10
   weak_converge: 2
-  strong_converge: 1
 
 === notes ===
-  Insufficient data to train: 17 total examples across 2 classes (label_scheme=binary, min class count=3, need >=30/class per Config.ML.MIN_CLASS_SAMPLES). This is the expected, honest result tonight — most confirmed pairs are on intraday TFs whose history just started accumulating (see DEVELOPMENT.md's data.py append-switch, 2026-06-21). Re-run as more history accumulates.
+  Trained: n_train=14 n_test=6 test_accuracy=83.33%
+  Conformal: n_cal=4 avg_set_size=1.50 empirical_coverage=83.33%
+  Model persisted → C:\Users\RossW\Projects\CAMARF\output\ml\model_stage1.pkl
 
 === pairs_skipped ===
-  LNT/WELL@1h: zero labeled entry events
-  AME/MAR@1h: zero labeled entry events
-  AMAT/DD@1h: zero labeled entry events
-  APP/CRWD@1h: zero labeled entry events
-  CAT/DD@1h: zero labeled entry events
-  FIX/MLI@1h: zero labeled entry events
-  DAL/DD@1h: zero labeled entry events
-  EME/MLI@1h: zero labeled entry events
-  EG/WRB@1h: zero labeled entry events
-  GS/MLI@1h: zero labeled entry events
-  MET/TMHC@1h: zero labeled entry events
-  PFG/STLD@1h: zero labeled entry events
-  MTSI/WCC@1h: zero labeled entry events
-  UMBF/FHB@1h: zero labeled entry events
   7267.T/8058.T@1M: zero labeled entry events
   KVUE/KMB@3m: zero labeled entry events
 

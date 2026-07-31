@@ -617,3 +617,384 @@ CAMARF's own null results against what the literature actually claims and how it
 deciding whether any further lead-lag construction work is worth attempting at all. Do not build a new
 lead-lag comparison arm on spec ahead of this survey — the survey is what should decide whether one is
 still worth building.
+
+## 11. Grand Sweep — verification, literature, new methods, and an extensibility scaffold (2026-07-20)
+
+Grew out of Ross's own directive after the pair-set collapse (§0 context: only ~2-3 pairs survive
+anywhere in the current universe — FELE/MAS, PNC/ZION, plus SPY/VOO as an excluded index-tracking
+artifact — after the split-adjustment contamination fix and four independent FDR-recovery attempts
+all failed). Ross's explicit direction on that finding: **explore working with the 2-3 survivors**,
+not pivot PAPER.md to headline the collapse itself. On top of that, a large cross-domain brain-dump
+of everything to investigate next, captured here in full per this project's standing rule (capture
+first, execute later, don't lose anything to chat). Same standing rules as the rest of this document
+apply throughout: hypothesis before testing, comparison-arm-first, synthetic verification before real
+data, one agent/fork at a time, every result (positive or negative) written up.
+
+### 11.1 Claim re-verification sweep
+
+Generalizes Phase 9 of `~/.claude/plans/read-development-and-paper-mossy-boot.md` (bug-registry
+re-verification) from "bugs" to **every claim/finding** in Development.md, `docs/FINDINGS.md`,
+`research/*.py`'s own docstring claims, and PAPER.md. For each headline claim: re-derive it directly
+against current code/data (not the write-up), explicitly flag anything that rests on the
+now-superseded 26-pair set, and report a real pass/fail table — not assumed clean. This is the
+highest-priority item: it's the direct operational form of "explore working with 2-3 survivors,"
+since nothing else in this sweep should be trusted or built on top of a stale pair-set assumption.
+Reuses the exact verify-before-trusting discipline (synthetic → real → honest conclusion) already
+standard for every other result in this project.
+
+### 11.2 Filter/test relevance sweep — "which tests actually matter"
+
+Ross's own instinct, named "exogeneity" (close but not exact — see below). `filter_ablation.py`
+already answers "does removing this filter discard good pairs" for a subset of the pipeline;
+`weak_exogeneity_test.py` (§10.3 item 6 above) already answers a related but distinct econometric
+question (which leg does the error-correction adjusting). Extend `filter_ablation.py`'s counterfactual
+methodology to **every** filter in the pipeline — EG cointegration, FDR correction, DSR, permutation
+test, Johansen, KPSS, Hurst, half-life, `coint_frac_rolling` stability — not just the subset it covers
+today. Output: one table, one filter per row, showing whether each is actually load-bearing against
+the current 2-3-pair reality, or redundant/non-binding.
+
+**DONE (2026-07-21)**: full sweep run; consolidated table + BUG-D95 (a real persistence gap the sweep
+found and fixed) in Development.md, "Filter-relevance sweep" / "BUG-D95 fixed". Headline: 1h's collapse
+to zero confirmed pairs is NOT a filter-tuning artifact — the two EG-significant candidates there
+(PNC/ZION, SPY/VOO) are correctly excluded for real, independently-corroborated reasons.
+
+**Pearson pre-filter threshold sensitivity — DONE (2026-07-21)**: loosening the threshold from 0.40 to
+0.35/0.30 does NOT recover more confirmed pairs (FDR-confirmed count: 3 at 0.40, 3 at 0.35, 2 at 0.30 —
+if anything, trending down as candidate count/multiple-testing burden grows). Clean, informative,
+non-manufactured null on the sensitivity question itself. **Surfaced a discrepancy, since root-caused
+(see below)**: this script's own recomputation found FELE/MAS FDR-confirmed at threshold 0.40 (p=4.5e-7)
+— matching the EARLIER `fdr_method_comparison.py` finding (2026-07-20, p=5.93e-7 under production's own
+step-up BH) — but FELE/MAS does NOT appear in TODAY's actual fresh production `analysis.py` run's own
+`all_candidates.parquet` at all.
+
+**FELE/MAS discrepancy — RESOLVED (2026-07-21)**. Ruled out, directly: FDR-m mismatch, frequency-
+validation/`exclusion_set` exclusion, and a computational artifact in the correlation value itself
+(0.420184, confirmed identical across three independent computation paths). Built the actual production
+universe path directly (`debug/_check_fele_mas_production_path.py`) and confirmed FELE/MAS both survive
+the real 1542-symbol aligned 1h universe and appear in the real `UniverseFilter.candidate_pairs()` at
+threshold 0.40 (real candidate pool: 67,525 pairs, ~2x the narrower research script's). **Actual root
+cause, confirmed via `debug/_check_fele_mas_full_eg_fdr.py`'s real 67,525-candidate EG+FDR run plus a
+controlled same-data both-directions test**: NOT an FDR-rank/pool-size effect as hypothesized — the
+run's own FELE/MAS p-value came back completely different (8.96e-4, not 4.52e-7) because `symbol_a`/
+`symbol_b` were REVERSED relative to the narrower script's run. Engle-Granger's `coint(a, b)` test (ADF
+on the OLS residual of `a` regressed on `b`) is well-known to be direction-asymmetric — confirmed
+directly on the identical 4465-bar overlap: regressing FELE-on-MAS gives p=4.52e-7 (bit-for-bit
+reproducing the earlier figure), regressing MAS-on-FELE gives p=8.96e-4 (bit-for-bit reproducing this
+run's figure). Which direction gets tested for any given pair is set by `UniverseFilter.candidate_pairs()`'s
+iteration order over that specific run's own symbol list — an accident of universe composition, not a
+controlled choice. **Not a code bug** (`_eg_worker` correctly implements standard EG both times) but a
+genuine, previously-undocumented methodological gap: production's confirmed-pair determination for a
+borderline pair is effectively non-deterministic across runs with different universe orderings. Flagged
+to Ross as a methodology decision (test both directions/take the better p-value, require both to pass,
+or switch to direction-invariant Johansen for confirmation) — not silently changed. Full write-up:
+Development.md, "FELE/MAS root cause — RESOLVED: Engle-Granger regression-direction asymmetry, not a bug,
+not an FDR-pool-size effect".
+
+**Methodology decision made and implemented (2026-07-22)**: Ross chose "test both directions." `CointScanner.
+scan()` now runs EG in both directions per candidate pair and combines via `max()` (conservative — requires
+both directions significant, not just the better one; avoids the implicit multiple-comparison inflation
+`min()`/either-direction would introduce). Both raw directional p-values kept as new `PairResult` fields
+(`coint_pvalue_raw_ab`/`_ba`) for transparency. Verified end-to-end on real FELE/MAS@1h data — reproduces
+both known p-values bit-for-bit, confirms the max-combination, handles a degenerate-overlap case cleanly.
+Doubles the EG stage's wall-clock cost; this is now the third reason (with BUG-D96) the pending full
+pipeline rerun needs to happen. Full write-up: Development.md, "Production methodology change (2026-07-22):
+EG now tests BOTH regression directions".
+
+**`research/descriptive_check_concordance.py` — DONE (2026-07-21)**: n=20 (pair, TF) rows across all 12
+timeframes' `all_candidates.parquet` (BUG-D95's fix is what makes this population visible at all).
+Spearman rank correlation of each descriptive check against `coint_fraction_rolling`: hurst_rs rho=0.313
+p=0.179, hurst_dfa rho=0.017 p=0.945, half_life_rolling rho=-0.088 p=0.736 (n=17), adf_pval rho=0.170
+p=0.474, permutation_pvalue rho=-0.392 p=0.087 (right-signed, closest to significance, still short of it
+at this thin sample). Honest null at n=20 — none reach significance; directly operationalizes the
+filter-relevance sweep's conclusion that these checks are genuinely descriptive, not gating, and shows
+that's true even as pure predictors. Full write-up: Development.md, "`research/descriptive_check_
+concordance.py` — results (n=20, thin sample, honestly reported)".
+
+**Episodic deep-history coverage gap — FIXED (2026-07-21)**: Ross asked directly whether episodic
+cointegration/correlation testing is happening. Answer: the short-window `coint_fraction_rolling` defense
+is active, but the separate 10-year IBKR deep-history re-test (`coint_fraction_rolling_deep`) had ZERO
+coverage for the live confirmed set, because `data_ibkr.py` only fetches IBKR's native bar sizes and
+today's entire confirmed set (KVUE/KMB@2m/3m, 7267.T/8058.T@1M) sits on DERIVED timeframes. Fixed:
+`ibkr_supplement_reader.py`'s `load_supplement()` now resamples the native base TF's own deep parquet
+(2m/3m from 1m, 7D/1M from 1D) on the fly when no literal derived-TF file exists, mirroring `data.py`'s
+own resample rules exactly. Verified synthetically (`debug/_verify_ibkr_supplement_derived_tf.py`, all
+pass) then end-to-end on real cached data via the actual production method (`AnalysisPipeline.
+_enrich_with_deep_history`). **Real finding this immediately surfaced**: KVUE/KMB's deep fraction matches
+its short-window value closely at both 2m (0.880 vs 0.877) and 3m (0.979 vs 0.979) — reassuring. **7267.T/
+8058.T diverges sharply**: 0.316 deep (26-year history, 2000-2026) vs. 0.750 short-window — the
+relationship has been unstable across most of its full history despite looking stable recently. Not a
+reason to un-confirm the pair (short window remains the primary decision input, by design), but a real,
+disclosable episodic-survivorship-risk finding for that specific pair. Full write-up: Development.md,
+"`ibkr_supplement_reader.py` — added derived-TF fallback".
+
+**Price-degeneracy scan — DONE (2026-07-21)**, resuming the deferred item. Found the filter had ZERO
+coverage for 7 of 12 TFs (1h, 4h, 1D, 7D, 1M, 3M, 6M) — `audit_price_degeneracy.py` had simply never
+been run for them, including 1h and 1M, where today's actual EG-significant/confirmed pairs live. Ran it
+for all 7: found exactly one new degenerate symbol (BFS@1h); 4h/1D/7D/1M/3M/6M all clean — consistent
+with the phenomenon being intraday-specific. **BUG-D97 found and fixed mid-task**: the audit script's own
+output-filename convention didn't match what `analysis.py`'s reader expects (silently broke the
+audit-to-production handoff), and the first fix attempt caused a REAL Windows filename collision
+("1m"/"1M", "3m"/"3M" are the same path case-insensitively) that silently corrupted the existing 1m/3m
+audit data — caught by inspecting file contents, fully restored, correctly fixed by aligning both reader
+and writer on `DataStore._TF_SAFE`'s mapping. Verified end-to-end against the real production method with
+real data. **Answer to the original question**: 3 pairs removed by this filter across all 12 TFs (2 at 1m,
+1 at 5m), out of 23 that ever reached the stage — all were EG+FDR-significant by construction (the filter
+runs post-EG+FDR) before being correctly excluded for genuinely degenerate price data; the newly-covered
+7 TFs found nothing that changes today's actual confirmed set. Full write-up: Development.md, "Price-
+degeneracy scan" and "BUG-D97".
+
+The deeper price-degeneracy scan (quantifying how many candidates the price-degeneracy filter excludes
+across all 12 TFs, and whether any excluded candidate would otherwise have been EG-significant) was NOT
+completed — still open, not yet started.
+
+**BUG-D96 found while chasing FELE/MAS (2026-07-21, production code, FIXED)**: `analysis.py:1166`/`:4430`
+referenced `Config.ANALYSIS.MIN_OVERLAP_BY_TF`/`Config.ANALYSIS.ADV_FILTER_USD` — both attributes actually
+live on `Config.STATS` (stale post-refactor reference; `AnalysisConfig` has neither). Both silently fell
+back to `getattr(..., default)` instead of erroring: the $25M ADV liquidity filter has been a complete
+no-op in every production run to date, and every TF used a flat 252-bar overlap floor instead of the
+calibrated per-TF table. Fixed both to `Config.STATS`, verified directly, grepped the whole codebase for
+the same pattern across all 12 `StatsConfig` attributes (no other occurrences). Consequential — changes
+every production confirmed-pair/Sharpe figure going forward — flagged to Ross, full rerun not yet
+triggered pending sign-off given the scope. Full write-up: Development.md, "BUG-D96: analysis.py —
+Config.ANALYSIS/Config.STATS stale reference".
+
+**Strategy-variation comparison arm, built 2026-07-21** (Ross's direct request mid-session: "should we try a
+strategy variations where we don't use any stat arb and use just the entry, exit, and risk management
+criteria... breakout, DCA, and mean reversion vs with the stat arb", DCA specified as trend-following-exit).
+New: `research/strategy_variation_comparison.py` + `debug/_verify_strategy_variation_comparison.py`. Placebo/
+confound test: does the SAME entry/exit/risk engine produce comparable Sharpe on single assets (no
+cointegrated-spread structure) vs. the real stat-arb arm, on the SAME 20 (pair, TF) rows/legs already used by
+the concordance test. Bug found and fixed during verification (not after): `DataAligner`'s "1h"-etc. aligned
+grid is dense with ~83% `DATA_GAP` padding rows (confirmed genuine production behavior, matches production's
+own persisted `n_bars`), so NaN-masking alone starved every rolling-window signal — fixed by dropping gap rows
+before computing signals, all synthetic checks re-verified passing. **Real-data result: clean and reassuring
+for the project's own thesis** — `mean_reversion` (single-asset, same risk rule as stat-arb) is negative at
+EVERY timeframe; `breakout` negative at all but 2; `dca_trend` positive at the 4 slower TFs but always smaller
+than stat-arb's own Sharpe there, and strongly negative at every faster intraday TF; `stat_arb` itself positive
+and large everywhere except 7D. Applying the same engine without the cointegration structure does NOT replicate
+the edge — evidence AGAINST the "it's just generic risk-engine mechanics" confound. Honest caveats: n=20/thin,
+names biased toward already-cointegrated pairs, strategy params not tuned, some Sharpe magnitudes inflated by
+high-frequency annualization (sign/ordering is the real signal, not literal magnitude). Full write-up:
+Development.md, "`research/strategy_variation_comparison.py` — new comparison arm".
+
+**k-BAHC (task #58), started 2026-07-21** — per Ross's direction ("aim them toward building new
+application work... start work on k-bahc"), repurposed `k_bahc_covariance_cleaning.py` (previously only
+a covariance-ESTIMATOR-quality comparison, not a candidate-discovery tool) toward exactly this
+question: does denoising the full-universe correlation matrix surface candidate pairs the raw Pearson
+pre-filter's noise buries? New script: `research/k_bahc_candidate_discovery.py`; synthetic mechanism
+verification: `debug/_verify_k_bahc_candidate_discovery.py`. **Real finding (1h, 1567 assets)**: k-BAHC's
+own silhouette-optimal clustering picks just k=2 broad clusters even when allowed up to k=40 — at that
+coarseness, the cleaning mechanism (which only ever touches CROSS-cluster entries, replacing them all
+with a single shared mean) is essentially inert: 0 new candidates surfaced, 0 removed, real 1h data.
+Confirmed via synthetic ground truth first that this is mechanistically correct behavior (cleaning is
+provably an all-or-nothing mechanism gated on whether the mean cross-cluster correlation itself clears
+threshold — it cannot rescue individual noisy pairs), not a bug. Full write-up: Development.md, search
+"k_bahc_candidate_discovery" or "k-BAHC".
+
+**Both flagged follow-ups run (2026-07-21)**: `clean_correlation_matrix()` gained a `force_k` param
+(bypasses silhouette entirely); `k_bahc_candidate_discovery.py` gained `--force-k`/`--sector` flags.
+Forced k=20 on the full 1567-asset universe: still 0 new candidates. Sector-restricted to Financials
+(257 symbols, the largest sector): silhouette STILL picked k=2 within that smaller population, still 0
+new candidates. The negative result is now robust across three independent variants (whole-universe
+silhouette-k=2, whole-universe forced-k=20, sector-restricted silhouette-k=2) — this strengthens the
+finding from "a property of silhouette's choice" to "a property of the data's own correlation
+structure." k-BAHC-style denoising is not a useful candidate-discovery lens at CAMARF's current scale,
+full stop, not just under one clustering choice.
+
+**Copula/tail-dependence universe-wide screen, built and run 2026-07-21** — new script
+`research/tail_dependence_universe_screen.py` (+ `debug/_verify_tail_dependence_universe_screen.py`),
+repurposing `research/tail_dependence.py`'s existing chi-estimator (previously only ever applied to the
+tiny confirmed-pair population) as a discovery screen over the near-miss band (same architecture as
+`near_miss_lag_scan.py`). **Real finding (1h)**: of 320,070 near-miss pairs, 870 distinct pairs showed
+statistically significant tail dependence after Benjamini-Yekutieli correction — a substantial number,
+NOT a clean null like k-BAHC's. Important caveat, checked directly: those 870 pairs involve only 181
+distinct symbols (hub concentration, same class as BUG-D91's DD-hub effective-N inflation), so 870 is
+not really 870 independent discoveries. The clean, robust, actionable result: ALL 545 of those pairs
+that produced a usable EG result were run through the real production EG+BH-FDR cointegration test —
+**zero passed**. Elevated tail co-movement in this universe does not translate into a stable, tradeable
+cointegrated relationship under this project's existing methodology. Full write-up: Development.md,
+search "tail_dependence_universe_screen" or "Copula/tail-dependence universe-wide screen".
+
+Next in Ross's stated order: wavelet-scale cointegration / DCC-GARCH dynamic correlation — not yet
+started.
+
+### 11.3 Monte Carlo generalization
+
+Phase 6 of the big plan already scopes a real-data-derived Monte Carlo null (randomly-shuffled
+symbol pairing, which destroys any true economic relationship while preserving each individual
+series' own real marginal statistics — volatility clustering, fat tails, autocorrelation) for the EG
+test specifically. Generalize the same construction to DSR, permutation-test thresholds, and FDR
+cutoffs. Build the null-generation harness once, shared across all four checks, rather than
+reimplementing per-statistic. Synthetic ground-truth check first (recovers nominal Type-I error on a
+textbook independent-random-walk case) before trusting it on the harder real-data-derived null, same
+as Phase 6's own design.
+
+### 11.4 Literature-to-CAMARF mapping
+
+Five sources, each given a stated relevance verdict against CAMARF specifically — not a generic book
+report:
+
+- **David Aronson** (*Evidence-Based Technical Analysis*) — highest direct relevance. His whole
+  thesis is statistically rigorous testing of trading rules against data-mining bias, which is
+  exactly CAMARF's own FDR/DSR/permutation-test spine. Action: an explicit audit of whether CAMARF's
+  methodology actually satisfies Aronson's own prescriptions, not a summary of the book. Do this one
+  first among the five.
+- **Larry Harris** (*Trading and Exchanges*) — market microstructure. Deepens the already-partially-
+  built execution-realism work (`session_edge_postopen`, `mm_exec`, ADV liquidity caps) with real
+  microstructure grounding (order types, adverse selection, transaction-cost mechanics).
+- **Paul Wilmott** — quant-finance model-risk skepticism. Pairs with Aronson as a "where could we be
+  fooling ourselves" lens applied across the whole pipeline, not a technique source per se.
+- **John C. Hull** — derivatives/Greeks/VaR toolkit. Moderate relevance; CAMARF is stat-arb, not
+  options, but connects to the already-built `options.py` and could inform a Greeks-style risk-metric
+  overlay if one is ever wanted.
+- **Gregory Zuckerman** (*The Man Who Solved the Market*) — narrative account of Renaissance
+  Technologies. Framing/motivation value for the "novel subfield" ambition (§11.12); not a source of
+  new testable techniques.
+- **"Janus"** — unresolved as of this writing. Ross saw the term online, could only describe it as
+  "saw it online called Janus" — not enough to identify the concept with confidence (candidates
+  considered and rejected without confirmation: a two-faced-god metaphor for regime-dependent
+  factors, DeepSeek's "Janus"/"JanusFlow" multimodal model, other unrelated same-named projects).
+  **Do not build or discuss further against this label until it's identified** — scope a short
+  `/storm:storm-brief` or WebSearch pass to pin it down first.
+
+### 11.5 Foundational-stats integration
+
+Expected value, conditional probability, the law of large numbers, the central limit theorem, and
+variance/covariance/correlation are already implicit throughout CAMARF (correlation is the
+methodology's entire backbone; CLT underlies the z-score-threshold and Sharpe-significance normal-
+approximation assumptions everywhere). Action: an explicit methodology write-up (candidate home:
+PAPER.md §4, or a new pedagogical appendix) that grounds every technique already in use back to these
+first principles — valuable for the MFE-portfolio audience, and likely to surface unstated
+distributional assumptions for §11.1's re-verification sweep to actually check rather than assume.
+
+**Bayes' theorem is the one genuinely new item here** — not used anywhere in CAMARF today. Concrete
+candidate: a Bayesian posterior-updating framework for pair-confirmation confidence, updated as more
+OOS data accumulates (prior from the EG/FDR screen, likelihood from realized OOS trade outcomes,
+posterior as a continuously-updated confidence score instead of a static pass/fail label). **Flagged
+explicitly as new methodology requiring Ross's sign-off before being built**, per CLAUDE.md's working-
+style rule — not bundled into the "already implicit, just document it" group above.
+
+### 11.6 report.py: benchmark and factor-decomposition graphs
+
+Confirmed via direct code read (`report.py`, 2026-07-20): no existing figure benchmarks the strategy
+against SPY buy-and-hold, and no figure decomposes P&L into alpha vs. beta exposure. The existing
+`fig_hedge_estimators`/`fig_all_hedge_estimators` compare hedge-ratio *beta estimation methods*
+(OLS/TLS/Kalman/Huber/MM) for pair construction — a genuinely different thing from a portfolio-level
+market-beta/alpha decomposition. Concrete, well-scoped, moderate lift:
+
+1. SPY buy-and-hold equity curve plotted alongside the strategy's own IS/OOS equity curve (reuses
+   `fig_equity_curve`'s existing curve-construction pattern).
+2. Portfolio-return-vs-SPY regression (rolling or point-in-time) producing alpha/beta.
+3. A P&L decomposition graph: how much of total realized P&L traces to beta exposure vs. idiosyncratic
+   alpha, given (2)'s regression.
+
+### 11.7 ML model comparison arm — DONE (2026-07-22)
+
+Confirmed via direct code read (`ml.py`, 2026-07-20): Stage 1 already uses `xgb.XGBClassifier` as its
+primary model. Built `research/ml_model_comparison.py`: LightGBM, Ridge/Lasso-equivalent logistic
+regression, Random Forest, on the identical feature set/labels/chronological split XGBoost uses,
+reusing `ml.build()`/`ml._train_and_validate()` directly. Comparison arm only — production's XGBoost
+model stays the sole one `MLConditioner` reads. Verified synthetically first (4 checks, all pass).
+**Honest, decisive null on real data**: at 24 total labeled examples (22 vs 2 class split), a 6-example
+test fold happened to be ALL majority-class, so the trivial "always guess majority" baseline scored
+100% — every one of the 5 models tested, including production's own XGBoost (83.3%), scored BELOW that
+baseline. Not evidence any model is bad; direct, quantified evidence no meaningful comparison is
+possible yet. Full write-up: Development.md, "`research/ml_model_comparison.py` — new comparison arm".
+
+### 11.8 Deep learning (LSTM/Attention) — architecture built, deliberately not trained (2026-07-22)
+
+Per Ross's explicit instruction: "add the architecture for LSTM/attention but don't use it in actual
+backtesting." Built `research/lstm_attention_architecture.py` — a small LSTM and a minimal
+single-head-attention `tf.keras` architecture, both taking windowed per-bar features and outputting the
+same label vocabulary `ml.py` uses. Verified purely synthetically (compiles, valid probability outputs,
+handles non-default shapes, AND a static source-grep guard confirms neither `ml.py` nor `backtest.py`
+imports it anywhere). **Not trained on real data, on purpose** — 11.7's own result just quantified
+exactly why: 24 total examples is already too thin for simple models to beat a trivial baseline; a
+sequence model needing lookback windows would have even fewer usable examples and more parameters —
+training now would produce a meaningless number dressed as a result, not a cautious one. **Unblocking
+condition unchanged**: revisit once the confirmed-pair set (or an adjacent, appropriately-scoped
+dataset) is large enough for a train/test split to have a realistic chance of generalizing. Full
+write-up: Development.md, "`research/lstm_attention_architecture.py` — architecture built, deliberately
+NOT trained".
+
+### 11.9 Agent-orchestration structure — CLOSED (2026-07-22): staying sequential, "for convenience"
+
+Ross's answer: keep one-dispatch-at-a-time, rationale stated as "convenience" — the original choice was
+about coordination simplicity, not a deeper technical constraint. No change made; `Workflow`'s
+DAG-style parallel dispatch is not being adopted for this project's research dispatch pattern. Revisit
+only if Ross explicitly reopens this.
+
+### 11.10 Hermes (Nous Research) integration — parked
+
+Confirmed with Ross: refers to Nous Research's Hermes open-weight LLM family, not a specific existing
+CAMARF-adjacent tool. No specific task-gap has been identified yet that Claude Code's own
+orchestration doesn't already cover. **Unblocking condition**: a concrete task is named that Hermes
+would do differently or better (e.g. cost/rate-limit-driven batch classification, a local/self-hosted
+alternative for a specific sub-task) — until then this stays an open idea with no active work, not a
+build item.
+
+### 11.11 "Measure everything" — scope-creep guardrail
+
+Ross's ask: use all the concepts above (correlation, cointegration, tail dependence, copulas, Bayes,
+etc.) to measure "literally all of it" — price, beta, alpha, Greeks, and every other metric, against
+every factor. Flagged directly as a real risk: this cuts against this project's own standing rule,
+restated at the top of this very file — **"hypothesis stated before testing, not fished for after."**
+Action: treat this list as a **menu**, not a mandate — every specific factor×concept combination
+pulled from it gets its own stated hypothesis before anything is built, exactly like every other
+comparison arm in this document. No blanket sweep across "everything" without a stated question each
+piece is actually answering.
+
+**Scoped menu, agreed with Ross (2026-07-22)**, prioritized, each with its own stated hypothesis —
+build in this order, not all at once:
+
+1. **Beta/alpha decomposition vs. SPY (§11.6)** — "the pairs' realized P&L is dominated by idiosyncratic
+   convergence, not undiversified market-beta exposure." Already scoped, concrete, lowest risk.
+2. **Wavelet-scale cointegration (§6.5)** — "a relationship absent at the native bar frequency may exist
+   at a coarser wavelet scale, recovering pairs the flat EG test misses." Next in the previously stated
+   build order.
+3. **DCC-GARCH dynamic correlation** — "static full-sample Pearson (today's pre-filter) both over- and
+   under-admits pairs whose true co-movement is regime-dependent; conditional correlation would catch
+   that."
+4. **Regime-conditioned re-measurement** — reuse the existing `RegimeClassifier` labels to re-run
+   correlation/cointegration/tail-dependence WITHIN each regime. "Co-movement strength itself shifts
+   across vol/trend regimes in a way the unconditional screen hides."
+5. **Volume/liquidity co-movement** — `VolumeStructure` features already computed but never
+   cross-tested against each other. "Volume series co-move independently of price, revealing
+   relationships price-only correlation misses." Speculative, lowest priority of the five comparison
+   arms.
+6. **Foundational-stats write-up (§11.5)** — documentation, not new code; grounds everything above.
+
+**Greeks — resolved (2026-07-22)**: Ross chose to extend `options.py` (built Session 27) as an
+options-based tail-risk overlay — does a protective-put-style hedge on a confirmed pair's legs
+measurably reduce drawdown/tail risk, using the Greeks that framing actually requires (delta for hedge
+sizing, theta/vega for cost). This is a genuinely new research thread with its own design questions
+(which pairs, which option structure, cost model), not a quick addition to the menu above — scope it as
+its own dedicated pass once item 1-2 above land, not bundled in.
+
+### 11.12 Novel-subfield ambition — a lens, not a separate work item
+
+Ross's longer-term ambition: eventually have a coherent, named research subfield of his own, the way
+behavioral finance or quantum computing are fields. Not a standalone build — a prioritization lens for
+§11.1-§11.11: if the filter-relevance sweep (§11.2), the Bayesian pair-confirmation framework (§11.5),
+and the copula/tail-dependence portfolio-risk lens (§6.7 above) end up combining into one coherent,
+differentiated methodology rather than staying a grab-bag of disconnected comparison arms, that
+convergence — not any single piece alone — is the actual candidate seed. Revisit this framing once
+§11.1-§11.4 have real results in hand, not before.
+
+### Sequencing (per the approved plan at `~/.claude/plans/replicated-plotting-mountain.md`)
+
+1. This §11 write-up (done).
+2. Identify "Janus" (§11.4) — short research pass, resolves the one open item that could otherwise
+   block nothing else if left alone, but shouldn't be silently dropped either.
+3. §11.1 claim re-verification sweep — nothing else here should be trusted or built on a stale
+   pair-set assumption.
+4. §11.2 filter relevance sweep and §11.3 Monte Carlo generalization — both reuse existing machinery,
+   both directly inform which of the 2-3 survivors are actually defensible.
+5. Discuss the tension items explicitly with Ross (§11.8, §11.9, §11.11) before §11.5's Bayes
+   framework, §11.7's ML comparison, or §11.8 itself is built.
+6. §11.6 (report.py graphs) and §11.7 (ML comparison arm) — concrete, well-scoped, can proceed once
+   3-5 are done.
+7. §11.4's literature audits (Aronson first) — can run in parallel with 4-6.
+8. Development.md gets a real-time entry as each sub-item lands, not deferred to one giant write-up.
+
+Explicitly multi-session work, stated plainly rather than implied to fit in one sitting.

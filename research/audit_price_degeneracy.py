@@ -134,11 +134,25 @@ def main():
           f"the more mundane, expected explanation (genuinely illiquid stock), "
           f"not the BUG-D49 anomaly (liquid daily, degenerate intraday).")
 
+    # Output filenames use safe_tf (DataStore._TF_SAFE's mapping, e.g.
+    # "1hr"/"1mo"), matching analysis.py's _apply_research_screen_flags()
+    # reader exactly (fixed there in lockstep 2026-07-21 to use the same
+    # mapping instead of the raw tf_label). Using the raw tf_label directly
+    # (tried first, reverted) causes a REAL, verified Windows filename
+    # collision: "1m" and "1M" (and "3m"/"3M") are the same path on a
+    # case-insensitive filesystem. Confirmed the hard way — running this
+    # script for "1M" for the first time silently overwrote the existing,
+    # correct "1m" audit/flagged files (caught by inspecting file contents:
+    # the "1m" audit file showed ~300-row monthly bar counts, not the
+    # thousands of bars a real 1-minute audit produces), and "3M" did the
+    # same to "3m". Both sides (this writer, analysis.py's reader) must
+    # agree on the SAME safe-name mapping — this is the correct, permanent
+    # fix, not the raw-label version tried first.
     out_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "output", "research")
     os.makedirs(out_dir, exist_ok=True)
-    out_path = os.path.join(out_dir, f"price_degeneracy_audit_{args.tf}.parquet")
+    out_path = os.path.join(out_dir, f"price_degeneracy_audit_{safe_tf}.parquet")
     df.to_parquet(out_path)
-    flagged_path = os.path.join(out_dir, f"price_degeneracy_flagged_{args.tf}.parquet")
+    flagged_path = os.path.join(out_dir, f"price_degeneracy_flagged_{safe_tf}.parquet")
     flagged.to_parquet(flagged_path)
     print(f"\nFull audit: {out_path}")
     print(f"Flagged (liquid-but-degenerate) subset: {flagged_path}")

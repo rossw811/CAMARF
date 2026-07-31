@@ -64,8 +64,17 @@ def lead_lag_network(returns_df: pd.DataFrame, window: int = _CALIBRATION_WINDOW
     over the full available history (a stable, in-sample network structure —
     used only to WEIGHT the cross-asset signal, evaluated out of the window
     it's estimated from is not attempted here; this is a signal-existence
-    test, not a walk-forward backtest)."""
-    values = returns_df.fillna(0.0).to_numpy()
+    test, not a walk-forward backtest).
+
+    NOTE (Tier 2.10 fix, Grand Sweep 2026-07-20): previously fillna(0.0)'d
+    the whole returns panel before computing any correlation, fabricating
+    a "0% return" for genuinely missing days (thin/newer symbols with less
+    history than others in the panel). A real non-zero return elsewhere in
+    the panel paired against a fabricated 0.0 distorts the lag-1 cross-
+    correlation, especially for thinner symbols. Fixed via pairwise-
+    complete correlation (NaN preserved, only mutually-finite days used per
+    pair)."""
+    values = returns_df.to_numpy()
     n_assets = values.shape[1]
     lead = values[:-1]   # returns at t
     lag = values[1:]     # returns at t+1
@@ -74,37 +83,57 @@ def lead_lag_network(returns_df: pd.DataFrame, window: int = _CALIBRATION_WINDOW
         for j in range(n_assets):
             if i == j:
                 continue
-            if np.std(lead[:, i]) == 0 or np.std(lag[:, j]) == 0:
+            xi, yj = lead[:, i], lag[:, j]
+            valid = np.isfinite(xi) & np.isfinite(yj)
+            if valid.sum() < 30 or np.std(xi[valid]) == 0 or np.std(yj[valid]) == 0:
                 continue
-            W[i, j] = np.corrcoef(lead[:, i], lag[:, j])[0, 1]
+            W[i, j] = np.corrcoef(xi[valid], yj[valid])[0, 1]
     return W
 
 
 def network_momentum_signal(returns_df: pd.DataFrame, W: np.ndarray) -> pd.DataFrame:
     """Signal_j[t+1] = weighted avg of OTHER assets' return_i[t], weighted by
-    max(W[i,j], 0) (only positive spillover edges contribute)."""
-    values = returns_df.fillna(0.0).to_numpy()
+    max(W[i,j], 0) (only positive spillover edges contribute).
+
+    Tier 2.10 fix: a source asset with a genuinely missing return at t is
+    excluded from BOTH the weighted sum and its own weight's contribution
+    to the normalizing row_sum (rather than being fillna(0.0)'d in, which
+    would silently treat "no data" as "predicted zero move" and dilute the
+    signal). Signal is NaN wherever no valid-weighted source exists."""
+    values = returns_df.to_numpy()
     W_pos = np.maximum(W, 0.0)
-    row_sums = W_pos.sum(axis=0)  # sum over i (source) for each target j
-    signal = np.zeros_like(values)
+    n_assets = values.shape[1]
+    signal = np.full_like(values, np.nan)
     for t in range(len(values) - 1):
-        for j in range(values.shape[1]):
-            if row_sums[j] > 0:
-                signal[t + 1, j] = np.dot(W_pos[:, j], values[t]) / row_sums[j]
+        row = values[t]
+        valid_src = np.isfinite(row)
+        masked_row = np.where(valid_src, row, 0.0)
+        for j in range(n_assets):
+            weights = W_pos[:, j] * valid_src
+            wsum = weights.sum()
+            if wsum > 0:
+                signal[t + 1, j] = np.dot(weights, masked_row) / wsum
     return pd.DataFrame(signal, index=returns_df.index, columns=returns_df.columns)
 
 
 def single_asset_momentum_signal(returns_df: pd.DataFrame) -> pd.DataFrame:
-    """Naive baseline: today's signal = yesterday's own return."""
-    return returns_df.shift(1).fillna(0.0)
+    """Naive baseline: today's signal = yesterday's own return. NaN where
+    yesterday's return is genuinely missing (Tier 2.10 fix: previously
+    fillna(0.0)'d, fabricating a "predicted zero move" on days with no
+    real data)."""
+    return returns_df.shift(1)
 
 
 def evaluate_signal(signal: pd.DataFrame, returns_df: pd.DataFrame) -> dict:
     """Pooled correlation between signal[t] and realized return[t] across
-    all assets and all valid days — a signal-existence check, not a backtest."""
+    all assets and all valid days — a signal-existence check, not a
+    backtest. Tier 2.10 fix: no longer fillna(0.0)'s the realized-return
+    leg -- both sides now keep NaN for genuinely missing data, and the
+    `np.isfinite` mask (no longer needing a `sig_flat != 0` heuristic to
+    filter out fabricated zeros) excludes them naturally."""
     sig_flat = signal.to_numpy().flatten()
-    ret_flat = returns_df.fillna(0.0).to_numpy().flatten()
-    valid = np.isfinite(sig_flat) & np.isfinite(ret_flat) & (sig_flat != 0)
+    ret_flat = returns_df.to_numpy().flatten()
+    valid = np.isfinite(sig_flat) & np.isfinite(ret_flat)
     if valid.sum() < 100:
         return {"corr": np.nan, "n_obs": int(valid.sum())}
     corr = float(np.corrcoef(sig_flat[valid], ret_flat[valid])[0, 1])

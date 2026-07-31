@@ -1,0 +1,21 @@
+08:41:35 INFO  === ml_model_comparison.py: LightGBM/Ridge/Lasso/RandomForest vs. ml.py's XGBoost, COMPARISON ARM ONLY (nothing here feeds backtest.py's MLConditioner) ===
+08:41:39 INFO  Loaded 24 labeled entry events (ml.build(min_class_samples=0), same data ml.py's own XGBoost trains on)
+08:41:39 INFO  Label distribution: {'not_converged': 22, 'converged': 2}
+08:41:39 WARNING  HONEST FLAG: minority class has only 2 examples. Any model's accuracy below is not a meaningful skill signal at this sample size -- reported alongside the majority-class baseline for exactly this reason, not instead of stating this plainly.
+08:41:39 INFO  Chronological split: n_train=14 n_val=4 n_test=6
+08:41:39 INFO  Majority-class baseline accuracy on test fold: 100.00% (the floor any real model must clear)
+08:41:40 INFO    xgboost (production): test_accuracy=83.33%
+08:41:40 INFO    lightgbm: test_accuracy=0.00%
+08:41:40 INFO    ridge_logistic (l2): test_accuracy=66.67%
+08:41:40 INFO    lasso_logistic (l1): test_accuracy=50.00%
+08:41:41 INFO    random_forest: test_accuracy=50.00%
+08:41:41 INFO  
+08:41:41 INFO  === Summary (test_accuracy - majority_baseline; positive = beats the naive floor) ===
+08:41:41 INFO    xgboost (production)  : -16.7% vs. baseline
+08:41:41 INFO    lightgbm              : -100.0% vs. baseline
+08:41:41 INFO    ridge_logistic (l2)   : -33.3% vs. baseline
+08:41:41 INFO    lasso_logistic (l1)   : -50.0% vs. baseline
+08:41:41 INFO    random_forest         : -50.0% vs. baseline
+08:41:41 INFO  Saved -> output/research/ml_model_comparison.parquet
+08:41:41 INFO  ============================================================
+08:41:41 INFO  ml_model_comparison.py complete (0.1 min)

@@ -54,7 +54,16 @@ def run_adf_test(spread: np.ndarray) -> dict:
     stationary = cointegration-consistent, matching PO's convention)."""
     spread = np.asarray(spread, dtype=float)
     spread = spread[np.isfinite(spread)]
-    result = {"adf_stat": np.nan, "adf_pval": np.nan, "adf_confirms": False, "n_obs": int(spread.size)}
+    # Tier 6 fix (Grand Sweep 2026-07-20): `status` now explicitly
+    # distinguishes "insufficient_data" (< 20 clean bars, never even
+    # attempted), "error" (adfuller raised), and "ok" (ran successfully,
+    # adf_pval is a real, possibly-non-significant number) -- previously
+    # the exception text was captured into a dict key ("error") that
+    # main() never actually included in the saved row, so all three cases
+    # collapsed into an indistinguishable NaN adf_pval in the output
+    # parquet.
+    result = {"adf_stat": np.nan, "adf_pval": np.nan, "adf_confirms": False,
+              "n_obs": int(spread.size), "status": "insufficient_data"}
     if spread.size < 20:
         return result
     try:
@@ -62,8 +71,9 @@ def run_adf_test(spread: np.ndarray) -> dict:
         result["adf_stat"] = float(stat)
         result["adf_pval"] = float(pval)
         result["adf_confirms"] = bool(pval < _ADF_ALPHA)
+        result["status"] = "ok"
     except Exception as e:
-        result["error"] = str(e)
+        result["status"] = f"error: {e}"
     return result
 
 
@@ -121,7 +131,7 @@ def main():
             rows.append({
                 "symbol_a": sym_a, "symbol_b": sym_b, "tf_label": tf_label,
                 "eg_ok": eg_ok, "kpss_ok": kpss_ok, "po_ok": po_ok, "adf_ok": adf_ok,
-                "adf_pval": adf["adf_pval"], "po_pval": kp["po_pval"],
+                "adf_pval": adf["adf_pval"], "adf_status": adf["status"], "po_pval": kp["po_pval"],
                 "n_confirm_existing": n_confirm_existing, "tier_existing": tier_existing,
                 "n_confirm_with_adf": n_confirm_with_adf, "tier_with_adf": tier_with_adf,
                 "adf_po_agree": adf_ok == po_ok,

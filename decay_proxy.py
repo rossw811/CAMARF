@@ -28,6 +28,22 @@ not a decision rule.
 Output:
   output/stats/decay_proxy.parquet — per-pair z-score + flag
   latest_run_decay_proxy.log
+
+Known statistical limitation, disclosed rather than silently fixed (Tier 4.2, Grand Sweep
+2026-07-20): `historical_sharpes` is built from windows overlapping 80% (WINDOW_SIZE=15,
+STEP=3 -> 12/15 trades shared between consecutive windows). `np.std(historical_sharpes, ddof=1)`
+is computed as if these were independent draws; they are not, and this makes the z-score more
+"trigger-happy" than a naive Z_THRESHOLD=-2.0 interpretation implies (see `n_effective_windows`
+below for the honest, non-overlapping-equivalent sample size). A fully non-overlapping redesign
+(step=window_size) was considered and rejected: at CAMARF's actual thin trade counts
+(MIN_TRADES=40), non-overlapping windows would leave ~1-2 historical windows per pair, failing
+the `len(historical_sharpes) < 3` floor almost every time -- making the diagnostic unusable in
+practice rather than merely conservative. No verified correction factor for the resulting
+autocorrelation-induced variance understatement has been derived here; per this project's rule 7
+(report the honest number, don't engineer around it), this is disclosed as a limitation, not
+silently patched with an unverified formula. Read `flagged=True` results with this in mind --
+already true per the existing "review flag, not an exclusion decision" framing, now with the
+specific mechanism named.
 """
 import logging
 import os
@@ -105,9 +121,16 @@ def compute_pair_decay_zscore(
         return None
 
     z_score = (recent_sharpe - hist_mean) / hist_std
+    # Honest effective-sample-size diagnostic (Tier 4.2 fix, Grand Sweep
+    # 2026-07-20) -- the non-overlapping-equivalent window count, so a
+    # reader can judge how much the 80%-overlap inflates n_historical_windows
+    # beyond the number of genuinely independent observations backing
+    # historical_std_sharpe. See module docstring for the full disclosure.
+    n_effective_windows = max(1, len(historical) // window_size)
     return {
         "n_trades": n,
         "n_historical_windows": len(historical_sharpes),
+        "n_effective_windows": n_effective_windows,
         "recent_sharpe": recent_sharpe,
         "historical_mean_sharpe": hist_mean,
         "historical_std_sharpe": hist_std,
@@ -139,9 +162,11 @@ def main():
         result["pair_key"] = pair_key
         rows.append(result)
         flag_str = " ** FLAGGED **" if result["flagged"] else ""
-        log.info("  %-20s recent_sharpe=%.3f hist_mean=%.3f hist_std=%.3f z=%.2f%s",
+        log.info("  %-20s recent_sharpe=%.3f hist_mean=%.3f hist_std=%.3f z=%.2f "
+                  "(n_historical_windows=%d, n_effective_independent~=%d)%s",
                   pair_key, result["recent_sharpe"], result["historical_mean_sharpe"],
-                  result["historical_std_sharpe"], result["z_score"], flag_str)
+                  result["historical_std_sharpe"], result["z_score"],
+                  result["n_historical_windows"], result["n_effective_windows"], flag_str)
 
     if not rows:
         log.warning("No pairs had enough trades to compute a decay z-score.")

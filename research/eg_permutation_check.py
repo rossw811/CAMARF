@@ -90,16 +90,38 @@ def _eg_pvalue(a, b, max_lag):
 
 
 def _circular_shift_null(a, b, max_lag, n_perm, rng):
-    """Shift b by a random amount (wrap-around), preserving b's own
-    autocorrelation structure while breaking temporal alignment with a."""
-    n = len(b)
+    """Shift b by a random amount (wrap-around) WITHIN the fixed real-data
+    overlap mask, preserving b's own autocorrelation structure (within that
+    overlap) while breaking temporal alignment with a.
+
+    Tier 4.2 fix (Grand Sweep 2026-07-20): the prior version called
+    np.roll() on the RAW (still NaN-containing) b array, then re-masked
+    inside _eg_pvalue(a, b_shifted, ...). Rolling a NaN-containing array
+    moves the NaN positions themselves along with the roll, so EVERY
+    permutation draw's isfinite mask (isfinite(a) & isfinite(b_shifted))
+    differs from every other draw's, and from the real-data test's ONE
+    FIXED mask (isfinite(a) & isfinite(b), unshifted) -- confounding the
+    null distribution with sample-size/power variation the real-data test
+    never experiences. Fixed by computing the fixed overlap mask ONCE,
+    compacting both series to it, and rolling only the ALREADY-compacted
+    (fully finite) b array -- every draw, and the real-data test, now
+    share the exact same N and the exact same set of (a,b) positions,
+    isolating the temporal-alignment-breaking effect this permutation is
+    meant to test."""
+    fixed_mask = np.isfinite(a) & np.isfinite(b)
+    a_fixed, b_fixed = a[fixed_mask], b[fixed_mask]
+    n = len(b_fixed)
+    if n < 60:
+        return np.array([])
     null_pvals = []
     for _ in range(n_perm):
         shift = rng.integers(1, n)  # never shift==0 (that's the real data)
-        b_shifted = np.roll(b, shift)
-        p = _eg_pvalue(a, b_shifted, max_lag)
-        if p is not None:
-            null_pvals.append(p)
+        b_shifted = np.roll(b_fixed, shift)
+        try:
+            _, pval, _ = coint(a_fixed, b_shifted, trend="c", maxlag=max_lag, autolag="aic")
+            null_pvals.append(float(pval))
+        except Exception:
+            continue
     return np.array(null_pvals)
 
 

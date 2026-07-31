@@ -47,9 +47,6 @@ import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from aligned_pair_loader import load_aligned_pair
-from data import _clean_close
-
 _OUT_INDEX = "output/research/comomentum_index.parquet"
 _OUT_CORR = "output/research/comomentum_pairwise.parquet"
 
@@ -61,18 +58,27 @@ _MIN_PAIRS = 3      # minimum pairs to compute a meaningful comomentum index
 _CROWD_QUANTILE = 0.75  # comomentum above this = "elevated crowding"
 
 
-def _spread_returns(sym_a, sym_b, hedge, tf):
-    """Load aligned pair, compute spread, return spread return series."""
-    df_a, df_b = load_aligned_pair(sym_a, sym_b, tf)
-    if df_a is None or df_b is None:
+def _spread_returns(sym_a, sym_b, tf_dir):
+    """Load the point-in-time spread analysis.py already persisted for this
+    pair (spread_series_{a}_{b}.parquet's "spread" column) and return its
+    diff. Previously reconstructed the spread here from raw close prices
+    using pairs.parquet's static full-sample hedge_ratio_ols scalar — the
+    same lookahead-bias defect class as BUG-D74 (ml.py's hedge_ratio_drift):
+    every historical bar's spread, including early-history ones, was built
+    with knowledge of the pair's ENTIRE hedge-ratio history. analysis.py's
+    own "spread" column already applies the ROLLING (point-in-time) hedge
+    ratio bar-by-bar (SpreadModel.compute_spread, analysis.py ~line 2180),
+    falling back to the static scalar only for early warmup bars where no
+    rolling estimate yet exists — using it directly fixes this without
+    needing to re-derive point-in-time hedge ratios here. Found 2026-07-20
+    Grand Sweep (Tier 2.2)."""
+    series_path = os.path.join("output", "results", tf_dir, f"spread_series_{sym_a}_{sym_b}.parquet")
+    if not os.path.exists(series_path):
         return None
-    close_a = pd.Series(_clean_close(df_a), index=df_a.index, name="a")
-    close_b = pd.Series(_clean_close(df_b), index=df_b.index, name="b")
-    combined = pd.concat([close_a, close_b], axis=1).dropna()
-    if len(combined) < 120:
+    series = pd.read_parquet(series_path)
+    if "spread" not in series.columns or len(series) < 120:
         return None
-    spread = combined["a"] - hedge * combined["b"]
-    spread_ret = spread.diff()
+    spread_ret = series["spread"].diff()
     spread_ret = spread_ret[np.isfinite(spread_ret)]
     return spread_ret
 
@@ -90,11 +96,8 @@ def main():
     spread_rets = {}
     for _, row in pairs.iterrows():
         sym_a, sym_b = row["symbol_a"], row["symbol_b"]
-        hedge = float(row.get("hedge_ratio_ols", np.nan))
-        if not np.isfinite(hedge):
-            continue
         key = f"{sym_a}/{sym_b}"
-        sr = _spread_returns(sym_a, sym_b, hedge, _FOCUS_TF)
+        sr = _spread_returns(sym_a, sym_b, _FOCUS_TF_DIR)
         if sr is not None and len(sr) > _ROLL_WINDOW * 2:
             spread_rets[key] = sr
             print(f"  {key}: {len(sr)} bars")

@@ -815,6 +815,143 @@ def _is_crypto(symbol: str) -> bool:
     return any(symbol.upper().endswith(s) for s in _CRYPTO_SUFFIXES)
 
 
+# ---------------------------------------------------------------------------
+# Genuine-vs-routine DATA_GAP classification (2026-07-20 Grand Sweep, BUG-D77)
+# ---------------------------------------------------------------------------
+#
+# GapFlag.DATA_GAP conflates two genuinely different things under one code:
+# (a) a routine overnight/weekend/holiday market closure -- align_intraday()
+#     reindexes onto a dense CALENDAR-time grid, so every closed-market hour
+#     becomes a "missing" bar, and any run >_MAX_FILL_BARS gets DATA_GAP
+#     regardless of cause; and (b) a rare, genuine multi-trading-day provider
+#     outage. Bridging (a) is correct and standard practice for a level-based
+#     cointegration test (no price discovery happens while markets are shut);
+#     bridging (b) produces the exact spurious-jump artifact
+#     _build_log_price_map's docstring warns about. Confirmed directly
+#     2026-07-20: real DATA_GAP run lengths for 19 relevant symbols at 1h
+#     ranged 17-93 bars (routine closures only; max = a long holiday
+#     weekend) -- an earlier attempt to simply "never span any DATA_GAP run"
+#     was reverted after it collapsed every pair's usable history to ~1
+#     trading day, since routine closures ARE DATA_GAP-flagged under this
+#     scheme. The fix is a per-timeframe LENGTH threshold, not a blanket rule.
+
+# CAMARF tf_label -> minutes per native bar. None for timeframes where the
+# "routine closure" concept doesn't apply (already daily-or-coarser bars).
+_TF_LABEL_MINUTES = {
+    "1m": 1, "2m": 2, "3m": 3, "5m": 5, "15m": 15, "30m": 30,
+    "1h": 60, "4h": 240,
+}
+
+# Longest plausible ROUTINE market closure (a long holiday weekend) for any
+# NYSE-listed equity/ETF, in hours. A DATA_GAP run longer than this, at a
+# given intraday timeframe, is treated as a genuine anomalous provider
+# outage. Calibrated 2026-07-20: real DATA_GAP runs measured across 19
+# symbols at 1h ranged 17-93 hours; 120 (5 calendar days) leaves real
+# headroom above the observed max (93) without being so loose it would
+# swallow a genuine multi-day outage.
+ROUTINE_CLOSURE_CEILING_HOURS = 120.0
+
+
+def is_genuine_data_gap(run_length_bars: int, tf_label: str) -> bool:
+    """
+    True if a GapFlag.DATA_GAP run of this length, at this timeframe,
+    represents a genuine anomalous provider outage rather than a routine
+    overnight/weekend/holiday market closure (which is safe to bridge for a
+    level-based cointegration/ADF-style test). False — treated as routine,
+    not guessed at — for daily-or-coarser timeframes (1D/7D/1M/3M/6M),
+    where align_daily's own calendar handling doesn't produce this dense
+    24/7-grid artifact in the first place.
+    """
+    bar_minutes = _TF_LABEL_MINUTES.get(tf_label)
+    if not bar_minutes:
+        return False
+    ceiling_bars = (ROUTINE_CLOSURE_CEILING_HOURS * 60.0) / bar_minutes
+    return run_length_bars > ceiling_bars
+
+
+def longest_gap_respecting_segment(mask: np.ndarray, tf_label: str) -> np.ndarray:
+    """
+    Returns a boolean array the same length as `mask` (a positional
+    isfinite-style validity mask), True only for positions to KEEP for a
+    level-based test that can safely bridge routine closures but must never
+    span a genuine data gap.
+
+    Splits `mask`'s False-runs into "routine" (bridged — not a segment
+    boundary) vs. "genuine" (a hard segment boundary, per
+    is_genuine_data_gap()), then returns only the True positions within the
+    LONGEST resulting segment. This is the fix for the naive
+    `arr[isfinite(a) & isfinite(b)]` fancy-index drop, which silently
+    concatenates every valid position regardless of gap length or cause.
+    """
+    n = mask.size
+    if n == 0:
+        return mask.copy()
+    segments = []
+    seg_start = 0
+    i = 0
+    while i < n:
+        if not mask[i]:
+            run_start = i
+            while i < n and not mask[i]:
+                i += 1
+            run_len = i - run_start
+            if is_genuine_data_gap(run_len, tf_label):
+                if run_start > seg_start:
+                    segments.append((seg_start, run_start))
+                seg_start = i
+        else:
+            i += 1
+    if seg_start < n:
+        segments.append((seg_start, n))
+
+    if not segments:
+        return np.zeros(n, dtype=bool)
+
+    best_start, best_end, best_count = 0, 0, -1
+    for start, end in segments:
+        count = int(np.sum(mask[start:end]))
+        if count > best_count:
+            best_start, best_end, best_count = start, end, count
+
+    out = np.zeros(n, dtype=bool)
+    out[best_start:best_end] = mask[best_start:best_end]
+    return out
+
+
+def valid_lag1_mask(index: "pd.DatetimeIndex", max_gap_multiple: float = 4.0) -> "np.ndarray":
+    """
+    Boolean mask, length len(index)-1, True for each i where the transition
+    index[i] -> index[i+1] does NOT span an anomalously large real-time gap
+    (elapsed time > max_gap_multiple * the series' own median step) -- i.e.
+    safe to treat as "1 lag" for a lag-sensitive calculation (lag-1
+    cross-covariance, autocorrelation, jump detection, variance-ratio,
+    etc.). Works directly on an ALREADY-COMPACTED/dropna'd DatetimeIndex
+    with no gap_flag column required -- purely an elapsed-time check, the
+    same mechanism _gap_aware_returns already uses as its own secondary
+    safety net (see its docstring: "Any return spanning > 4x the median
+    bar interval is masked"). Generalizes that check for HIGH-concern
+    mechanism callers (predictability_optimizer.py, ccp_variants.py, and
+    similar lag-1-cross-covariance/level-based scripts, Tier 2.7/2.8,
+    Grand Sweep 2026-07-20) that dropna() a joined level series BEFORE
+    computing a positional X[1:] vs X[:-1] lag relationship, which would
+    otherwise silently treat two rows spanning a dropped multi-day gap as
+    one ordinary bar apart.
+
+    Returns an empty array if fewer than 2 rows (nothing to check).
+    """
+    import numpy as np
+
+    n = len(index)
+    if n < 2:
+        return np.zeros(0, dtype=bool)
+    diffs = index.to_series().diff().dt.total_seconds().values[1:]
+    finite = diffs[np.isfinite(diffs) & (diffs > 0)]
+    if len(finite) == 0:
+        return np.ones(len(diffs), dtype=bool)
+    median_step = np.median(finite)
+    return diffs <= median_step * max_gap_multiple
+
+
 def _gap_aware_returns(
     df: "pd.DataFrame",
     exclude_flags: tuple = (GapFlag.DATA_GAP,),

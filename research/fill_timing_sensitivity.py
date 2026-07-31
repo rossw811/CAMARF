@@ -43,6 +43,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from backtest import BacktestEngine, RegimeConditioner, MLConditioner, compute_metrics
 from config import Config
+from portfolio_math import sharpe_from_trades
 
 _TF_DIR, _TF_LABEL = "1hr", "1h"
 
@@ -78,6 +79,8 @@ def main():
     )
 
     rows = []
+    all_trades_same_bar = []
+    all_trades_lagged = []
     for _, row in pairs.iterrows():
         sym_a, sym_b = row["symbol_a"], row["symbol_b"]
         series_path = f"output/results/{_TF_DIR}/spread_series_{sym_a}_{sym_b}.parquet"
@@ -87,6 +90,8 @@ def main():
 
         trades_same_bar = engine.run(row, spread_df, "ols")
         trades_lagged = engine.run(row, build_lagged_spread_df(spread_df), "ols")
+        all_trades_same_bar.extend(trades_same_bar)
+        all_trades_lagged.extend(trades_lagged)
 
         m_same = compute_metrics(trades_same_bar, _TF_LABEL, sym_a, sym_b, "ols") if trades_same_bar else {}
         m_lag = compute_metrics(trades_lagged, _TF_LABEL, sym_a, sym_b, "ols") if trades_lagged else {}
@@ -110,17 +115,37 @@ def main():
         return
 
     df = pd.DataFrame(rows)
-    valid = df.dropna(subset=["sharpe_same_bar", "sharpe_lagged"])
-    print(f"\n=== Summary ({len(valid)}/{len(df)} pairs with valid Sharpe both ways) ===")
-    print(f"Mean Sharpe same-bar: {valid['sharpe_same_bar'].mean():.3f}")
-    print(f"Mean Sharpe lagged:   {valid['sharpe_lagged'].mean():.3f}")
+
+    # Tier 4.1 fix (BUG-D59-class, Grand Sweep 2026-07-20): the headline
+    # "% Sharpe degradation" claim previously came from an UNWEIGHTED MEAN
+    # of each pair's OWN Sharpe ratio -- not the pooled portfolio Sharpe a
+    # real trading account would realize. Now pools every pair's trades
+    # into one portfolio-level daily P&L series (portfolio_math.py's
+    # canonical zero-filled convention, matching aggregate_portfolio())
+    # before computing ONE Sharpe per variant. Per-pair Sharpes (below)
+    # remain informational only, not the headline comparison.
+    trades_same_bar_df = pd.DataFrame([{"exit_time": t.exit_time, "pnl_net": t.pnl_net} for t in all_trades_same_bar])
+    trades_lagged_df = pd.DataFrame([{"exit_time": t.exit_time, "pnl_net": t.pnl_net} for t in all_trades_lagged])
+    pooled_sharpe_same_bar = sharpe_from_trades(trades_same_bar_df)
+    pooled_sharpe_lagged = sharpe_from_trades(trades_lagged_df)
+
+    print(f"\n=== Summary ({len(df)} pairs) ===")
+    print(f"Pooled PORTFOLIO Sharpe same-bar: {pooled_sharpe_same_bar:.3f} "
+          f"({len(all_trades_same_bar)} total trades)")
+    print(f"Pooled PORTFOLIO Sharpe lagged:   {pooled_sharpe_lagged:.3f} "
+          f"({len(all_trades_lagged)} total trades)")
     print(f"Total PnL same-bar:   {df['pnl_same_bar'].sum():.2f}")
     print(f"Total PnL lagged:     {df['pnl_lagged'].sum():.2f}")
     pct_degradation = (
-        100 * (1 - valid['sharpe_lagged'].mean() / valid['sharpe_same_bar'].mean())
-        if valid['sharpe_same_bar'].mean() != 0 else float("nan")
+        100 * (1 - pooled_sharpe_lagged / pooled_sharpe_same_bar)
+        if np.isfinite(pooled_sharpe_same_bar) and pooled_sharpe_same_bar != 0 else float("nan")
     )
-    print(f"Sharpe degradation from a realistic 1-bar fill lag: {pct_degradation:.1f}%")
+    print(f"Portfolio Sharpe degradation from a realistic 1-bar fill lag: {pct_degradation:.1f}%")
+
+    valid = df.dropna(subset=["sharpe_same_bar", "sharpe_lagged"])
+    print(f"\n(Informational only, NOT the headline number: unweighted mean of per-pair Sharpes -- "
+          f"same-bar={valid['sharpe_same_bar'].mean():.3f}, lagged={valid['sharpe_lagged'].mean():.3f}, "
+          f"{len(valid)}/{len(df)} pairs with valid Sharpe both ways)")
 
     os.makedirs("output/research", exist_ok=True)
     df.to_parquet("output/research/fill_timing_sensitivity.parquet")

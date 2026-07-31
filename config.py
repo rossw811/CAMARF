@@ -608,6 +608,11 @@ class MLConfig:
 
 class BacktestConfig:
     # Account sizes to test
+    # DEAD (Tier 6 fix, Grand Sweep 2026-07-20): confirmed unused anywhere
+    # in the codebase (portfolio_sim.py, the actual capital-constrained
+    # comparison arm, defines its own account tiers rather than reading
+    # this). Not deleted -- may still reflect an intended future config
+    # surface for portfolio_sim.py -- but currently has zero live readers.
     ACCOUNT_SIZES: List[float] = [10_000, 100_000, 1_000_000]
 
     # Position sizing methods
@@ -631,7 +636,22 @@ class BacktestConfig:
     COARSE_STOP_ZSCORE = [3.0, 3.5, 4.0, 4.5]
     COARSE_TRAIL_PCT = [0.01, 0.02, 0.05]
 
+    # sensitivity.py's own sweep grids (2026-07-20, Grand Sweep task #24) —
+    # previously duplicated as local module constants in sensitivity.py
+    # (ENTRY_Z_LEVELS/EXIT_Z_LEVELS happened to match COARSE_ENTRY_ZSCORE/
+    # COARSE_EXIT_ZSCORE above by coincidence, not by import — the exact
+    # same silent-drift risk BUG-D71 found in wfa.py). MAX_HL/ADV had no
+    # config.py home at all before this. sensitivity.py now imports all of
+    # these directly instead of duplicating.
+    SENSITIVITY_MAX_HL_LEVELS = [20, 35, 50, 75]
+    SENSITIVITY_ADV_LEVELS_M = [0, 10, 25, 50, 100]  # millions USD
+
     # Phase 2 (fine) — populated programmatically around best coarse region
+    # DEAD (Tier 6 fix, Grand Sweep 2026-07-20): confirmed unused anywhere —
+    # sensitivity.py currently only implements the coarse grid; the
+    # coarse-then-fine two-stage search these two fields describe was never
+    # built. Not deleted -- an aspirational placeholder for that
+    # not-yet-built stage, but currently has zero live readers.
     FINE_GRID_STEPS = 5  # steps per dimension in fine search
     FINE_GRID_RADIUS = 0.25  # ± radius around coarse optimum
 
@@ -651,11 +671,20 @@ class BacktestConfig:
     ]
 
     # Walk-forward analysis
+    # DEAD (Tier 6 fix, Grand Sweep 2026-07-20): confirmed unused anywhere
+    # — wfa.py implements its own window scheme independently of these
+    # (never reads Config.BACKTEST.WFA_*). Not deleted -- may reflect an
+    # earlier/planned config surface for wfa.py, but currently has zero
+    # live readers.
     WFA_N_WINDOWS = 10
     WFA_TRAIN_PCT = 0.70
     WFA_TEST_PCT = 0.30
 
     # Circuit breakers (applied during backtest simulation)
+    # DEAD (Tier 6 fix, Grand Sweep 2026-07-20): confirmed unused anywhere
+    # in backtest.py's actual event loop — no daily-loss-limit or
+    # consecutive-loss circuit breaker is currently enforced. Not deleted
+    # -- genuinely aspirational risk-management features, not yet wired in.
     DAILY_LOSS_LIMIT_PCT = 0.03  # halt day if drawdown > 3% of account
     CONSECUTIVE_LOSS_LIMIT = 5  # halt if 5 consecutive losses
 
@@ -670,6 +699,13 @@ class BacktestConfig:
     MIN_HALF_LIFE_BARS = 5       # skip entry if half_life_at_entry < this (degenerate)
 
     # Capital concentration (per pair)
+    # DEAD (Tier 6 fix, Grand Sweep 2026-07-20): confirmed unused anywhere
+    # — backtest.py's own module docstring previously described this as an
+    # active Layer 1 constraint (now corrected, see its own Tier 6 fix
+    # note), but no code actually reads this field to cap position size.
+    # Related to BUG-D60 (docs/BUG_LOG.md); portfolio_sim.py is the actual
+    # capital-constrained comparison arm built in response, with its own
+    # separate account-size/sizing-method parameters, not this field.
     MAX_CONCENTRATION_PCT = 0.20  # max fraction of account in any one pair at any time
     N_SHARES_PER_TRADE = 100      # fixed share count for leg A; leg B = N × hedge_ratio
 
@@ -944,6 +980,43 @@ class ReportConfig:
 
 
 # =============================================================================
+# RESEARCH (research/*.py comparison-arm scripts)
+# =============================================================================
+
+
+class ResearchConfig:
+    """
+    Shared constants for research/*.py comparison-arm scripts. Added
+    2026-07-20 (Grand Sweep task #24) after finding the same entry/exit/
+    hold/window values duplicated as separate local module constants across
+    5+ files (research/spread_construction.py's own consumers:
+    breakout_vs_reversion.py, leg_level_early_exit.py,
+    archetype_conditional_sizing.py, vol_targeting_and_drawdown_derisking.py,
+    hub_leg_stop_conditioning.py — all independently defining
+    ENTRY_Z/EXIT_Z/MAX_HOLD_BARS/z_window with the same values). This is a
+    partial consolidation, not exhaustive — see Development.md's
+    2026-07-20 "config centralization" entry for what's covered here vs.
+    what remains as future work across the ~90 research/ scripts.
+    """
+    # Matches production's ENTRY_ZSCORE/EXIT_ZSCORE (config.py's own
+    # BacktestConfig, above) — kept as separate named constants here rather
+    # than pointing research scripts at BacktestConfig directly, since
+    # research scripts intentionally use FIXED single values for a simple
+    # comparison, not production's own (possibly overridden) live config.
+    ENTRY_Z = 2.0
+    EXIT_Z = 0.0
+    MAX_HOLD_BARS = 100
+    Z_WINDOW = 60
+
+    # Lead-lag family (lead_lag_scan.py and its several downstream
+    # consumers: lead_lag_permutation_check.py, near_miss_lag_scan.py,
+    # lag_sweep_validation.py, lag_aware_cointegration_discovery.py, etc.)
+    # -- previously each script's own --max-lag CLI default (10), not
+    # sourced from config.py.
+    LEAD_LAG_MAX_LAG = 10
+
+
+# =============================================================================
 # MASTER CONFIG — single import point for all modules
 # =============================================================================
 
@@ -959,6 +1032,7 @@ class Config:
     STATS = StatsConfig
     REPORT = ReportConfig
     MACRO = MacroConfig
+    RESEARCH = ResearchConfig
 
     @staticmethod
     def ensure_dirs():

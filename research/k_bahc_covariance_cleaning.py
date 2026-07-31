@@ -95,11 +95,38 @@ def _best_k_by_silhouette(dist_matrix: np.ndarray, max_k: int) -> int:
     return best_k, link
 
 
-def k_bahc_correlation(returns: pd.DataFrame, max_k: int = 6) -> np.ndarray:
-    corr = returns.corr().values
+def clean_correlation_matrix(corr: np.ndarray, max_k: int = 6, force_k: int = None):
+    """Core k-BAHC cleaning routine, operating on an ALREADY-COMPUTED
+    correlation matrix directly. Split out from k_bahc_correlation()
+    2026-07-21 for research/k_bahc_candidate_discovery.py's reuse: that
+    script needs to clean UniverseFilter's own NaN-padding-aware,
+    pairwise-complete Pearson matrix (analysis.py's _vectorized_pairwise_stats),
+    which a naive returns.corr() call does NOT correctly reproduce (it
+    doesn't handle UniverseFilter's per-asset different-length NaN-prefix
+    padding scheme the same way) -- so the correlation-FROM-returns
+    computation and the cleaning-of-an-existing-matrix concern must be
+    separable. k_bahc_correlation() below is unchanged in behavior, now
+    just a thin wrapper.
+
+    force_k (added 2026-07-21, k-BAHC candidate-discovery follow-up #1):
+    if given, bypasses silhouette-based k selection entirely and cuts the
+    dendrogram at exactly this k. Silhouette consistently picked k=2 on the
+    real full 1h universe (1567 assets) regardless of max_k up to 40 --
+    this override exists specifically to test whether a deliberately finer
+    (but not metric-optimized -- no Garden-of-Forking-Paths risk here since
+    the caller states a k up front rather than searching over several and
+    keeping whichever produces the best downstream result) partition
+    surfaces genuine sub-cluster structure silhouette's global optimum
+    misses at whole-universe scale."""
+    corr = np.nan_to_num(corr, nan=0.0)
     dist = np.sqrt(np.clip((1 - corr) / 2, 0, None))
     np.fill_diagonal(dist, 0.0)
-    k, link = _best_k_by_silhouette(dist, max_k)
+    if force_k is not None:
+        condensed = squareform(dist, checks=False)
+        link = linkage(condensed, method="average")
+        k = force_k
+    else:
+        k, link = _best_k_by_silhouette(dist, max_k)
     labels = fcluster(link, k, criterion="maxclust")
 
     cleaned = corr.copy()
@@ -115,6 +142,11 @@ def k_bahc_correlation(returns: pd.DataFrame, max_k: int = 6) -> np.ndarray:
             if labels[i] != labels[j]:
                 cleaned[i, j] = cleaned[j, i] = cross_mean
     return cleaned, k
+
+
+def k_bahc_correlation(returns: pd.DataFrame, max_k: int = 6) -> np.ndarray:
+    corr = returns.corr().values
+    return clean_correlation_matrix(corr, max_k)
 
 
 def _gmv_weights(cov: np.ndarray) -> np.ndarray:

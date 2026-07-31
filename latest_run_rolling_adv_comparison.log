@@ -1,0 +1,9 @@
+14:44:24 INFO  === rolling_adv_comparison.py: flat (whole-history) ADV vs. rolling, point-in-time ADV -- do they give the same eligibility verdict? ===
+14:44:48 INFO  Loaded 2846 symbols with close+volume from output/cache/wrds/
+14:44:48 INFO  Threshold: $25M ADV, episodic window=2520 bars (~10yr), step=252 bars, rolling window=252 bars (~1yr)
+14:44:58 INFO  === 44266 (symbol, window) combinations checked across 2287 symbols ===
+14:44:58 INFO  Disagreements: 12682/44266 (28.6%)
+14:44:58 INFO    FALSE LIQUID (flat says OK, this specific window actually wasn't): 11876 (26.8%) -- the dangerous case, a pair could be accepted as tradable using overall-average liquidity when it was actually untradeable during the specific historical regime being tested
+14:44:58 INFO    false illiquid (flat says NO, this window actually was liquid): 806 (1.8%) -- a missed-opportunity case, less dangerous but still a real difference in which pairs get considered
+14:44:58 INFO  Saved -> output/research/rolling_adv_comparison.parquet
+14:44:58 INFO  rolling_adv_comparison.py complete. NOT yet wired into analysis.py's production filter or the Tier 2/3 episodic scan -- standalone comparison arm only, per Ross's explicit direction to build and verify this first.

@@ -214,11 +214,20 @@ def _build_examples_for_pair(
     entries = _find_entry_events(series["z_rolling"], entry_threshold, clean_mask)
 
     half_life_fallback = pair_row.get("half_life_rolling", np.nan)
-    hedge_drift = np.nan
-    ols = pair_row.get("hedge_ratio_ols", np.nan)
-    kal = pair_row.get("hedge_ratio_kalman_mean", np.nan)
-    if np.isfinite(ols) and ols != 0 and np.isfinite(kal):
-        hedge_drift = abs(ols - kal) / abs(ols)
+    # Point-in-time hedge_ratio_ols_t/kalman_t series (added to spread_series by
+    # analysis.py after the same lookahead-bias fix backtest.py already uses,
+    # see backtest.py:535-540) -- NOT the static full-sample scalar
+    # hedge_ratio_ols/hedge_ratio_kalman_mean fields, which embed full-sample
+    # information and would give every entry event (including early-history
+    # ones) a feature computed with knowledge of the pair's ENTIRE hedge-ratio
+    # drift, not just what was known up to that entry. Found 2026-07-20 Grand
+    # Sweep as the same defect class as comomentum.py's hedge_ratio_ols misuse.
+    _has_pit_hedge = "hedge_ratio_ols_t" in series.columns and "hedge_ratio_kalman_t" in series.columns
+    if not _has_pit_hedge:
+        # Fallback for pre-fix spread_series files with no _t columns, matching
+        # backtest.py's own scalar fallback convention.
+        _ols_fallback = pair_row.get("hedge_ratio_ols", np.nan)
+        _kal_fallback = pair_row.get("hedge_ratio_kalman_mean", np.nan)
 
     events: List[EntryEvent] = []
     n_censored = 0
@@ -258,6 +267,14 @@ def _build_examples_for_pair(
         zvel = float(
             series["z_rolling"].iloc[feat_pos] - series["z_rolling"].iloc[max(0, feat_pos - 5)]
         )
+        hedge_drift = np.nan
+        if _has_pit_hedge:
+            ols_t = series["hedge_ratio_ols_t"].iloc[feat_pos]
+            kal_t = series["hedge_ratio_kalman_t"].iloc[feat_pos]
+            if np.isfinite(ols_t) and ols_t != 0 and np.isfinite(kal_t):
+                hedge_drift = abs(ols_t - kal_t) / abs(ols_t)
+        elif np.isfinite(_ols_fallback) and _ols_fallback != 0 and np.isfinite(_kal_fallback):
+            hedge_drift = abs(_ols_fallback - _kal_fallback) / abs(_ols_fallback)
         events.append(
             EntryEvent(
                 symbol_a=symbol_a,
@@ -598,13 +615,22 @@ def _train_and_validate(result: MLResult, summary: MLRunSummary) -> None:
     from sklearn.utils.class_weight import compute_sample_weight
 
     df = result.examples.sort_values("entry_time").reset_index(drop=True)
-    X = df[_FEATURE_COLS].fillna(df[_FEATURE_COLS].median())
+    X_raw = df[_FEATURE_COLS]
     le = LabelEncoder()
     y = le.fit_transform(df["label_for_training"])
 
     n = len(df)
     train_end = int(n * Config.ML.TRAIN_PCT)
     val_end = train_end + int(n * Config.ML.VAL_PCT)
+
+    # Fit the imputation median on the TRAIN split only, then apply that same
+    # value to fill NaN in train/val/test. Computing the median over the full
+    # (train+val+test) dataset first -- the prior behavior -- leaks val/test
+    # feature-distribution information into the value used to fill training-set
+    # NaNs (found 2026-07-20 Grand Sweep).
+    train_median = X_raw.iloc[:train_end].median()
+    X = X_raw.fillna(train_median)
+
     X_train, y_train = X.iloc[:train_end], y[:train_end]
     X_val, y_val = X.iloc[train_end:val_end], y[train_end:val_end]
     X_test, y_test = X.iloc[val_end:], y[val_end:]
