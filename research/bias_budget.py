@@ -118,7 +118,19 @@ def main():
 
     print("\n6. Structural biases already mitigated at the code level (not scored — "
           "why these don't need a haircut, not evidence they don't exist):")
-    print("   - Survivorship: 378 delist events excluded via survivorship.py's OOS truncation")
+    # Tier 6 fix (Grand Sweep 2026-07-20): previously a hardcoded literal
+    # ("378 delist events") that would silently go stale the next time
+    # survivorship.py reruns and produces a different count -- ironic given
+    # this script's entire purpose is an honest, CURRENT bias ledger. Read
+    # the actual exclusions file directly instead.
+    survivorship_path = os.path.join("output", "cache", "survivorship_exclusions.csv")
+    if os.path.exists(survivorship_path):
+        n_delist = len(pd.read_csv(survivorship_path))
+        print(f"   - Survivorship: {n_delist} delist events excluded via survivorship.py's "
+              f"OOS truncation")
+    else:
+        print(f"   - Survivorship: exclusions file not found at {survivorship_path} — "
+              f"run survivorship.py first")
     print("   - Hedge-ratio lookahead: point-in-time hedge_ratio_*_t series (analysis.py), "
           "not full-sample scalars")
     print("   - Calendar-padding/DATA_GAP: GapFlag masking on every spread/correlation calc")

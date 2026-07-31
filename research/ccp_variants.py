@@ -62,7 +62,7 @@ import pandas as pd
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from aligned_pair_loader import load_aligned_pair
-from data import _clean_close
+from data import _clean_close, valid_lag1_mask
 from predictability_optimizer import (
     ols_weights, predictability_ratio, predictability_weights, _expanding_folds,
 )
@@ -78,9 +78,12 @@ _DIR_TO_LABEL = {
 # (a) Shrinkage toward OLS
 # ---------------------------------------------------------------------------
 
-def shrinkage_weights(X: np.ndarray, alpha: float) -> np.ndarray:
-    """alpha=1 -> pure predictability-optimal; alpha=0 -> pure OLS."""
-    w_pred = predictability_weights(X)
+def shrinkage_weights(X: np.ndarray, alpha: float, valid_lag1: np.ndarray = None) -> np.ndarray:
+    """alpha=1 -> pure predictability-optimal; alpha=0 -> pure OLS.
+    `valid_lag1`: optional boolean mask (length T-1) excluding gap-spanning
+    lag-1 transitions, passed through to predictability_weights (Tier 2.8
+    fix, Grand Sweep 2026-07-20)."""
+    w_pred = predictability_weights(X, valid_lag1)
     w_ols = ols_weights(X)
     # Sign-align: eigenvectors have an arbitrary sign; pick the sign that
     # makes w_pred point the same direction as w_ols (else blending could
@@ -344,6 +347,10 @@ def run_pair_comparison(sym_a, sym_b, tf_label, n_folds=4, alpha=0.5):
         return {"status": "skipped_insufficient_history", "n_obs": len(joined)}
 
     X = joined.values
+    # See predictability_optimizer.py's _lag1_pairs docstring / Tier 2.7-2.8
+    # (Grand Sweep 2026-07-20): must be computed on the already-dropna'd
+    # joined series, not before it.
+    full_valid_lag1 = valid_lag1_mask(joined.index)
     fold_results = []
     for train_end, test_start, test_end in _expanding_folds(len(X), n_folds):
         X_train = X[:train_end]
@@ -351,18 +358,20 @@ def run_pair_comparison(sym_a, sym_b, tf_label, n_folds=4, alpha=0.5):
         train_mean = X_train.mean(axis=0)
         X_train_c = X_train - train_mean
         X_test_c = X_test - train_mean
+        valid_train = full_valid_lag1[:train_end - 1]
+        valid_test = full_valid_lag1[test_start:test_end - 1]
         try:
             w_ols = ols_weights(X_train_c)
-            w_pred = predictability_weights(X_train_c)
-            w_shrink = shrinkage_weights(X_train_c, alpha=alpha)
+            w_pred = predictability_weights(X_train_c, valid_train)
+            w_shrink = shrinkage_weights(X_train_c, alpha=alpha, valid_lag1=valid_train)
             w_mb = moving_band_weights(X_train_c)
         except np.linalg.LinAlgError:
             continue
         fold_results.append({
-            "oos_ols": predictability_ratio(X_test_c, w_ols),
-            "oos_pred": predictability_ratio(X_test_c, w_pred),
-            "oos_shrink": predictability_ratio(X_test_c, w_shrink),
-            "oos_mb": predictability_ratio(X_test_c, w_mb),
+            "oos_ols": predictability_ratio(X_test_c, w_ols, valid_test),
+            "oos_pred": predictability_ratio(X_test_c, w_pred, valid_test),
+            "oos_shrink": predictability_ratio(X_test_c, w_shrink, valid_test),
+            "oos_mb": predictability_ratio(X_test_c, w_mb, valid_test),
         })
     if not fold_results:
         return {"status": "skipped_ill_conditioned", "n_obs": len(joined)}

@@ -95,9 +95,17 @@ def main():
     p.add_argument("--seed", type=int, default=42)
     args = p.parse_args()
 
+    # near_miss_lag_scan.py (BUG-D67's fix) only remaps the labels that
+    # actually collide case-insensitively (1M/3M/6M -> 1mo/3mo/6mo), leaving
+    # others (e.g. "1h") as-is on the write side -- this read path must
+    # mirror that EXACT convention, not a full remap, or it silently reads
+    # a differently-cased same-named file on Windows (Tier 2.1, confirmed
+    # live bug, Grand Sweep 2026-07-20).
+    _COLLIDING_TFS = {"1M", "3M", "6M"}
+    near_miss_safe = _TF_LABEL_TO_SAFE[args.tf] if args.tf in _COLLIDING_TFS else args.tf
     near_miss_path = args.near_miss_file or os.path.join(
         os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-        "output", "research", f"near_miss_lag_scan_{args.tf}.parquet",
+        "output", "research", f"near_miss_lag_scan_{near_miss_safe}.parquet",
     )
     if not os.path.exists(near_miss_path):
         print(f"No near-miss scan output at {near_miss_path} -- run near_miss_lag_scan.py --tf {args.tf} first.")
@@ -180,14 +188,17 @@ def main():
         risk_df = pd.DataFrame(risk_rows)[["symbol", "n_ok", "n_rejected", "risk_rate"]] if risk_rows else pd.DataFrame()
         out_risk_path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-            "output", "research", f"lag_aware_coint_discovery_survivor_risk_{args.tf}.parquet",
+            "output", "research",
+            f"lag_aware_coint_discovery_survivor_risk_{_TF_LABEL_TO_SAFE.get(args.tf, args.tf.lower())}.parquet",
         )
         risk_df.to_parquet(out_risk_path)
         print(f"    Survivor leg risk scores written to {out_risk_path}")
 
     out_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "output", "research")
     os.makedirs(out_dir, exist_ok=True)
-    out_path = os.path.join(out_dir, f"lag_aware_cointegration_discovery_{args.tf}.parquet")
+    out_path = os.path.join(
+        out_dir, f"lag_aware_cointegration_discovery_{_TF_LABEL_TO_SAFE.get(args.tf, args.tf.lower())}.parquet"
+    )
     testable.to_parquet(out_path)
     print(f"\nFull results written to {out_path}")
 

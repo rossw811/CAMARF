@@ -15,11 +15,13 @@ normal-distribution assumption entirely: it is just the mean of the worst
 (1-alpha) fraction of REALIZED daily P&L observations, not a fitted-
 distribution quantile.
 
-Method: reuses the same exit-date daily-P&L grouping convention as
-deflated_sharpe.py's _daily_pnl_stats() and stats.py's permutation test
-(group closed-trade pnl_net by exit date, sum to one portfolio P&L per day).
-CVaR_alpha = mean loss among the worst (1-alpha) fraction of days, where
-"loss" = -daily_pnl (so a profitable day contributes a negative "loss").
+Method: reuses portfolio_math.daily_pnl_from_trades() — the same zero-filled
+daily-P&L pooling convention as deflated_sharpe.py's _daily_pnl_stats() and
+stats.py's permutation test (fixed together, 2026-07-20 Grand Sweep, after
+all three were found sharing a groupby(exit_date)-drops-zero-days bug that
+understated N; see BUG-D62/D64). CVaR_alpha = mean loss among the worst
+(1-alpha) fraction of days, where "loss" = -daily_pnl (so a profitable day
+contributes a negative "loss").
 
 Output: output/stats/cvar.json
 """
@@ -32,6 +34,8 @@ import time
 import numpy as np
 import pandas as pd
 from scipy import stats as sp_stats
+
+import portfolio_math
 
 _ROOT = os.path.dirname(os.path.abspath(__file__))
 _BACKTEST_DIR = os.path.join(_ROOT, "output", "backtest")
@@ -61,9 +65,7 @@ def daily_pnl_series(trades_path: str) -> "pd.Series | None":
     trades = pd.read_parquet(trades_path)
     if trades.empty or "pnl_net" not in trades.columns:
         return None
-    tr = trades.copy()
-    tr["exit_date"] = pd.to_datetime(tr["exit_time"]).dt.date
-    daily = tr.groupby("exit_date")["pnl_net"].sum()
+    daily = portfolio_math.daily_pnl_from_trades(trades)
     return daily if len(daily) >= 3 else None
 
 

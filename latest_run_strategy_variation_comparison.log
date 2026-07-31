@@ -1,0 +1,167 @@
+17:39:19 INFO  === strategy_variation_comparison.py: does the stat-arb structure carry the edge, or would generic single-asset strategies do as well on the same names? ===
+17:39:19 INFO  Loaded 20 (pair, tf) rows from all_candidates.parquet across all timeframes
+17:39:19 INFO    [stat_arb] PNC/ZION@1h: 35 trades
+17:39:19 INFO    [stat_arb] SPY/VOO@1h: 133 trades
+17:39:20 INFO    [stat_arb] SPY/VOO@1m: 76 trades
+17:39:20 INFO    [stat_arb] IVT/WSBC@1m: 0 trades
+17:39:20 INFO    [stat_arb] 7267.T/8058.T@1M: 0 trades
+17:39:20 INFO    [stat_arb] KVUE/KMB@2m: 113 trades
+17:39:20 INFO    [stat_arb] IWM/AAL@2m: 95 trades
+17:39:20 INFO    [stat_arb] KVUE/KMB@3m: 0 trades
+17:39:20 INFO    [stat_arb] IWM/AAL@3m: 0 trades
+17:39:20 INFO    [stat_arb] SPY/VOO@4h: 19 trades
+17:39:20 INFO    [stat_arb] ETR/EXC@5m: 65 trades
+17:39:20 INFO    [stat_arb] ETR/PPL@5m: 70 trades
+17:39:20 INFO    [stat_arb] ETR/PEG@5m: 88 trades
+17:39:20 INFO    [stat_arb] ETR/SRE@5m: 62 trades
+17:39:20 INFO    [stat_arb] ETR/SO@5m: 0 trades
+17:39:20 INFO    [stat_arb] ETR/WEC@5m: 143 trades
+17:39:20 INFO    [stat_arb] ETR/XEL@5m: 59 trades
+17:39:20 INFO    [stat_arb] FITB/PNC@5m: 79 trades
+17:39:20 INFO    [stat_arb] AXTA/ENVA@7D: 3 trades
+17:39:20 INFO    [stat_arb] 7267.T/8058.T@7D: 24 trades
+17:39:20 INFO    Loading 4 unique legs at 1h via load_aligned_symbols (gap-flag-aware)...
+17:39:21 INFO    [breakout] PNC@1h: 152 trades
+17:39:21 INFO    [dca_trend] PNC@1h: 293 trades
+17:39:24 INFO    [mean_reversion] PNC@1h: 149 trades
+17:39:24 INFO    [breakout] SPY@1h: 102 trades
+17:39:25 INFO    [dca_trend] SPY@1h: 321 trades
+17:39:25 INFO    [mean_reversion] SPY@1h: 150 trades
+17:39:25 INFO    [breakout] VOO@1h: 101 trades
+17:39:26 INFO    [dca_trend] VOO@1h: 322 trades
+17:39:26 INFO    [mean_reversion] VOO@1h: 150 trades
+17:39:26 INFO    [breakout] ZION@1h: 187 trades
+17:39:27 INFO    [dca_trend] ZION@1h: 295 trades
+17:39:27 INFO    [mean_reversion] ZION@1h: 157 trades
+17:39:27 INFO    Loading 4 unique legs at 1m via load_aligned_symbols (gap-flag-aware)...
+17:39:27 INFO    [breakout] IVT@1m: 1 trades
+17:39:28 INFO    [dca_trend] IVT@1m: 1 trades
+17:39:28 INFO    [mean_reversion] IVT@1m: 1 trades
+17:39:28 INFO    [breakout] SPY@1m: 149 trades
+17:39:29 INFO    [dca_trend] SPY@1m: 601 trades
+17:39:29 INFO    [mean_reversion] SPY@1m: 329 trades
+17:39:29 INFO    [breakout] VOO@1m: 148 trades
+17:39:31 INFO    [dca_trend] VOO@1m: 596 trades
+17:39:31 INFO    [mean_reversion] VOO@1m: 325 trades
+17:39:31 INFO    [breakout] WSBC@1m: 3 trades
+17:39:31 INFO    [dca_trend] WSBC@1m: 11 trades
+17:39:31 INFO    [mean_reversion] WSBC@1m: 4 trades
+17:39:31 INFO    Loading 2 unique legs at 1M via load_aligned_symbols (gap-flag-aware)...
+17:39:31 INFO    [breakout] 7267.T@1M: 25 trades
+17:39:31 INFO    [dca_trend] 7267.T@1M: 24 trades
+17:39:31 INFO    [mean_reversion] 7267.T@1M: 9 trades
+17:39:31 INFO    [breakout] 8058.T@1M: 34 trades
+17:39:31 INFO    [dca_trend] 8058.T@1M: 26 trades
+17:39:31 INFO    [mean_reversion] 8058.T@1M: 9 trades
+17:39:31 INFO    Loading 4 unique legs at 2m via load_aligned_symbols (gap-flag-aware)...
+17:39:32 INFO    [breakout] AAL@2m: 171 trades
+17:39:33 INFO    [dca_trend] AAL@2m: 621 trades
+17:39:33 INFO    [mean_reversion] AAL@2m: 361 trades
+17:39:34 INFO    [breakout] IWM@2m: 154 trades
+17:39:35 INFO    [dca_trend] IWM@2m: 643 trades
+17:39:35 INFO    [mean_reversion] IWM@2m: 336 trades
+17:39:36 INFO    [breakout] KMB@2m: 154 trades
+17:39:37 INFO    [dca_trend] KMB@2m: 616 trades
+17:39:37 INFO    [mean_reversion] KMB@2m: 362 trades
+17:39:37 INFO    [breakout] KVUE@2m: 148 trades
+17:39:39 INFO    [dca_trend] KVUE@2m: 620 trades
+17:39:39 INFO    [mean_reversion] KVUE@2m: 358 trades
+17:39:39 INFO    Loading 4 unique legs at 3m via load_aligned_symbols (gap-flag-aware)...
+17:39:39 INFO    [breakout] AAL@3m: 60 trades
+17:39:40 INFO    [dca_trend] AAL@3m: 188 trades
+17:39:40 INFO    [mean_reversion] AAL@3m: 128 trades
+17:39:40 INFO    [breakout] IWM@3m: 51 trades
+17:39:40 INFO    [dca_trend] IWM@3m: 192 trades
+17:39:40 INFO    [mean_reversion] IWM@3m: 121 trades
+17:39:40 INFO    [breakout] KMB@3m: 49 trades
+17:39:41 INFO    [dca_trend] KMB@3m: 199 trades
+17:39:41 INFO    [mean_reversion] KMB@3m: 116 trades
+17:39:41 INFO    [breakout] KVUE@3m: 48 trades
+17:39:41 INFO    [dca_trend] KVUE@3m: 194 trades
+17:39:41 INFO    [mean_reversion] KVUE@3m: 113 trades
+17:39:41 INFO    Loading 2 unique legs at 4h via load_aligned_symbols (gap-flag-aware)...
+17:39:42 INFO    [breakout] SPY@4h: 83 trades
+17:39:42 INFO    [dca_trend] SPY@4h: 270 trades
+17:39:42 INFO    [mean_reversion] SPY@4h: 134 trades
+17:39:42 INFO    [breakout] VOO@4h: 85 trades
+17:39:43 INFO    [dca_trend] VOO@4h: 271 trades
+17:39:43 INFO    [mean_reversion] VOO@4h: 133 trades
+17:39:43 INFO    Loading 10 unique legs at 5m via load_aligned_symbols (gap-flag-aware)...
+17:39:44 INFO    [breakout] ETR@5m: 96 trades
+17:39:44 INFO    [dca_trend] ETR@5m: 383 trades
+17:39:45 INFO    [mean_reversion] ETR@5m: 234 trades
+17:39:45 INFO    [breakout] EXC@5m: 96 trades
+17:39:45 INFO    [dca_trend] EXC@5m: 371 trades
+17:39:46 INFO    [mean_reversion] EXC@5m: 224 trades
+17:39:46 INFO    [breakout] FITB@5m: 97 trades
+17:39:46 INFO    [dca_trend] FITB@5m: 402 trades
+17:39:47 INFO    [mean_reversion] FITB@5m: 229 trades
+17:39:47 INFO    [breakout] PEG@5m: 95 trades
+17:39:48 INFO    [dca_trend] PEG@5m: 361 trades
+17:39:48 INFO    [mean_reversion] PEG@5m: 227 trades
+17:39:48 INFO    [breakout] PNC@5m: 100 trades
+17:39:49 INFO    [dca_trend] PNC@5m: 398 trades
+17:39:49 INFO    [mean_reversion] PNC@5m: 235 trades
+17:39:49 INFO    [breakout] PPL@5m: 95 trades
+17:39:50 INFO    [dca_trend] PPL@5m: 372 trades
+17:39:50 INFO    [mean_reversion] PPL@5m: 222 trades
+17:39:50 INFO    [breakout] SO@5m: 97 trades
+17:39:51 INFO    [dca_trend] SO@5m: 358 trades
+17:39:51 INFO    [mean_reversion] SO@5m: 225 trades
+17:39:51 INFO    [breakout] SRE@5m: 96 trades
+17:39:52 INFO    [dca_trend] SRE@5m: 365 trades
+17:39:52 INFO    [mean_reversion] SRE@5m: 211 trades
+17:39:52 INFO    [breakout] WEC@5m: 94 trades
+17:39:53 INFO    [dca_trend] WEC@5m: 353 trades
+17:39:53 INFO    [mean_reversion] WEC@5m: 214 trades
+17:39:53 INFO    [breakout] XEL@5m: 100 trades
+17:39:54 INFO    [dca_trend] XEL@5m: 360 trades
+17:39:54 INFO    [mean_reversion] XEL@5m: 234 trades
+17:39:54 INFO    Loading 4 unique legs at 7D via load_aligned_symbols (gap-flag-aware)...
+17:39:54 INFO    [breakout] 7267.T@7D: 134 trades
+17:39:54 INFO    [dca_trend] 7267.T@7D: 101 trades
+17:39:54 INFO    [mean_reversion] 7267.T@7D: 53 trades
+17:39:54 INFO    [breakout] 8058.T@7D: 140 trades
+17:39:55 INFO    [dca_trend] 8058.T@7D: 101 trades
+17:39:55 INFO    [mean_reversion] 8058.T@7D: 49 trades
+17:39:55 INFO    [breakout] AXTA@7D: 57 trades
+17:39:55 INFO    [dca_trend] AXTA@7D: 38 trades
+17:39:55 INFO    [mean_reversion] AXTA@7D: 24 trades
+17:39:55 INFO    [breakout] ENVA@7D: 59 trades
+17:39:55 INFO    [dca_trend] ENVA@7D: 46 trades
+17:39:55 INFO    [mean_reversion] ENVA@7D: 20 trades
+17:39:55 INFO  
+17:39:55 INFO  === Pooled comparison (all trades per arm pooled before computing one Sharpe each) ===
+17:39:55 INFO    stat_arb         @ 1h  : n=168  sharpe=13.4418  profit_factor=4.7691   win_rate=0.3988
+17:39:55 INFO    stat_arb         @ 1m  : n=76   sharpe=11.5599  profit_factor=1.1738   win_rate=0.2237
+17:39:55 INFO    stat_arb         @ 2m  : n=208  sharpe=25.6899  profit_factor=2.4163   win_rate=0.3077
+17:39:55 INFO    stat_arb         @ 4h  : n=19   sharpe=8.241    profit_factor=3.5803   win_rate=0.5263
+17:39:55 INFO    stat_arb         @ 5m  : n=566  sharpe=33.8546  profit_factor=3.9041   win_rate=0.5018
+17:39:55 INFO    stat_arb         @ 7D  : n=27   sharpe=-7.7592  profit_factor=0.211    win_rate=0.1481
+17:39:55 INFO    breakout         @ 1h  : n=542  sharpe=-1.3738  profit_factor=0.9026   win_rate=0.3838
+17:39:55 INFO    breakout         @ 1m  : n=301  sharpe=-91.4956 profit_factor=0.4263   win_rate=0.3289
+17:39:55 INFO    breakout         @ 1M  : n=59   sharpe=3.932    profit_factor=3.0266   win_rate=0.4068
+17:39:55 INFO    breakout         @ 2m  : n=627  sharpe=-27.8091 profit_factor=0.6219   win_rate=0.3923
+17:39:55 INFO    breakout         @ 3m  : n=208  sharpe=-23.2131 profit_factor=0.6503   win_rate=0.4183
+17:39:55 INFO    breakout         @ 4h  : n=168  sharpe=-0.4424  profit_factor=0.9342   win_rate=0.4702
+17:39:55 INFO    breakout         @ 5m  : n=966  sharpe=-20.2253 profit_factor=0.6577   win_rate=0.4244
+17:39:55 INFO    breakout         @ 7D  : n=390  sharpe=0.2261   profit_factor=1.0833   win_rate=0.3385
+17:39:55 INFO    dca_trend        @ 1h  : n=1231 sharpe=2.3572   profit_factor=1.2215   win_rate=0.3314
+17:39:55 INFO    dca_trend        @ 1m  : n=1209 sharpe=-205.911 profit_factor=0.1371   win_rate=0.1191
+17:39:55 INFO    dca_trend        @ 1M  : n=50   sharpe=4.5181   profit_factor=4.2528   win_rate=0.28
+17:39:55 INFO    dca_trend        @ 2m  : n=2500 sharpe=-46.3246 profit_factor=0.4349   win_rate=0.178
+17:39:55 INFO    dca_trend        @ 3m  : n=773  sharpe=-64.7209 profit_factor=0.2668   win_rate=0.1772
+17:39:55 INFO    dca_trend        @ 4h  : n=541  sharpe=1.1057   profit_factor=1.2571   win_rate=0.3641
+17:39:55 INFO    dca_trend        @ 5m  : n=3723 sharpe=-30.2617 profit_factor=0.5036   win_rate=0.2017
+17:39:55 INFO    dca_trend        @ 7D  : n=286  sharpe=2.0459   profit_factor=1.9078   win_rate=0.3531
+17:39:55 INFO    mean_reversion   @ 1h  : n=606  sharpe=-4.0022  profit_factor=0.7439   win_rate=0.599
+17:39:55 INFO    mean_reversion   @ 1m  : n=659  sharpe=-141.1224 profit_factor=0.1876   win_rate=0.1244
+17:39:55 INFO    mean_reversion   @ 1M  : n=18   sharpe=-3.5475  profit_factor=0.3967   win_rate=0.5556
+17:39:55 INFO    mean_reversion   @ 2m  : n=1417 sharpe=-38.6231 profit_factor=0.454    win_rate=0.4594
+17:39:55 INFO    mean_reversion   @ 3m  : n=478  sharpe=-4.9541  profit_factor=0.8963   win_rate=0.546
+17:39:55 INFO    mean_reversion   @ 4h  : n=267  sharpe=-1.3021  profit_factor=0.8047   win_rate=0.5843
+17:39:55 INFO    mean_reversion   @ 5m  : n=2255 sharpe=-13.135  profit_factor=0.7288   win_rate=0.5623
+17:39:55 INFO    mean_reversion   @ 7D  : n=146  sharpe=-1.404   profit_factor=0.6876   win_rate=0.637
+17:39:55 INFO  Saved -> output/research/strategy_variation_comparison_{per_pair,pooled}.parquet
+17:39:55 INFO  ============================================================
+17:39:55 INFO  strategy_variation_comparison.py complete (0.6 min)

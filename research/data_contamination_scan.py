@@ -109,7 +109,8 @@ def scan_series_for_jumps(path: str, threshold: float = JUMP_THRESHOLD):
     df.index = pd.to_datetime(df.index)
     df = df.sort_index()
     close = pd.to_numeric(df[close_col], errors="coerce")
-    pct = close.pct_change().abs()
+    raw_pct = close.pct_change()
+    pct = raw_pct.abs()
     flagged = pct[pct > threshold]
     if flagged.empty:
         return [], None
@@ -126,6 +127,15 @@ def scan_series_for_jumps(path: str, threshold: float = JUMP_THRESHOLD):
             {
                 "date": ts,
                 "magnitude": float(mag),
+                # Signed pct-change, kept alongside the abs-value "magnitude"
+                # threshold/detection field (Tier 6 fix, Grand Sweep
+                # 2026-07-20) -- the console print previously lost the sign
+                # entirely (only magnitude=abs(pct_change) was tracked) and
+                # showed an ambiguous "ratio=1+magnitude (or 1/(1+magnitude))"
+                # dual interpretation instead of just reporting which
+                # direction the jump actually went. Cosmetic-only: saved
+                # parquet's "magnitude" column is unchanged.
+                "signed_change": float(raw_pct.loc[ts]),
                 "position_frac": float(frac_pos),
                 "shape": shape,
                 "n_rows": n,
@@ -288,27 +298,33 @@ def main():
     if not tier1.empty:
         print("\nTier 1 (append-seam) unexplained symbols/timeframes:")
         for _, r in tier1.sort_values(["symbol", "tf"]).iterrows():
-            print(f"  {r['symbol']:>10s} {r['tf']:>6s}  {r['date']}  ratio={1+r['magnitude']:.3f}x "
-                  f"(or 1/{1/(1+r['magnitude']) if r['magnitude'] != -1 else float('nan'):.3f}) pos_frac={r['position_frac']:.3f}")
+            signed = r.get("signed_change", r["magnitude"])
+            print(f"  {r['symbol']:>10s} {r['tf']:>6s}  {r['date']}  "
+                  f"{'+' if signed >= 0 else ''}{signed:.3%} ({1+signed:.3f}x) pos_frac={r['position_frac']:.3f}")
 
     if not tier2.empty:
         print("\nTier 2 (mid-series) unexplained symbols/timeframes:")
         for _, r in tier2.sort_values(["symbol", "tf"]).iterrows():
-            print(f"  {r['symbol']:>10s} {r['tf']:>6s}  {r['date']}  ratio={1+r['magnitude']:.3f}x pos_frac={r['position_frac']:.3f}")
+            signed = r.get("signed_change", r["magnitude"])
+            print(f"  {r['symbol']:>10s} {r['tf']:>6s}  {r['date']}  "
+                  f"{'+' if signed >= 0 else ''}{signed:.3%} ({1+signed:.3f}x) pos_frac={r['position_frac']:.3f}")
 
     # Cross-check against confirmed pairs manifest.
     try:
         import json
         with open(MANIFEST_PATH) as f:
             manifest = json.load(f)
-        manifest_symbols = set()
-        for k in manifest.keys():
-            if "_" in k:
-                a, b = k.split("_", 1)
-                manifest_symbols.add(a)
-                manifest_symbols.add(b)
-            else:
-                manifest_symbols.add(k)
+        # Tier 6 fix (Grand Sweep 2026-07-20): the manifest's actual schema
+        # (confirmed by reading output/results/confirmed_pairs_manifest.json
+        # directly) is {symbol: {"tfs": [...], "added": ...}} -- each
+        # TOP-LEVEL KEY IS ALREADY AN INDIVIDUAL SYMBOL, not a "SYMBOLA_
+        # SYMBOLB" compound pair-key. The prior "_"-split logic was
+        # currently inert (no real symbol here contains "_", so the else
+        # branch always fired and happened to add the correct bare key
+        # anyway) but reflected a wrong mental model of the schema -- e.g.
+        # it would have silently mis-parsed a symbol like "BRK_B" had one
+        # ever appeared. Manifest keys are used directly now, no split.
+        manifest_symbols = set(manifest.keys())
         flagged_symbols_unexplained = set(unexplained["symbol"]) if not unexplained.empty else set()
         overlap = manifest_symbols & flagged_symbols_unexplained
         print(f"\nConfirmed-pairs manifest cross-check ({len(manifest)} pairs, "

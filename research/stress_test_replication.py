@@ -64,7 +64,10 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from analysis import _eg_worker
 from config import Config
-from data import DataStore
+from aligned_pair_loader import load_aligned_pair
+from lead_lag_scan import _gap_masked_log_price
+
+_TF_LABEL = "1D"
 
 _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _OUT_DIR = os.path.join(_ROOT, "output", "research")
@@ -116,22 +119,21 @@ def _setup_logging():
     log.addHandler(fh)
 
 
-def _load_log_close_1D(symbol: str) -> "pd.Series | None":
-    df = DataStore.load(symbol, "1D")
-    if df is None or "close" not in df.columns:
-        return None
-    close = df["close"].dropna()
-    close.index = pd.to_datetime(close.index)
-    return np.log(close)
-
-
 def stress_test_pair(sym_a: str, sym_b: str, crisis_name: str, crisis_start: str, crisis_end: str) -> "dict | None":
     """Returns None (with the caller expected to log why) if either leg's
-    history doesn't reach far enough back to build a real baseline."""
-    log_a = _load_log_close_1D(sym_a)
-    log_b = _load_log_close_1D(sym_b)
-    if log_a is None or log_b is None:
+    history doesn't reach far enough back to build a real baseline.
+
+    Tier 6 fix (Grand Sweep 2026-07-20): previously loaded each leg via bare
+    DataStore.load() with no gap-flag masking at all before the EG test —
+    low risk for a level-based test at daily resolution (this file's own
+    _eg_worker fix's is_genuine_data_gap treats 1D as a no-op, since the
+    dense-calendar-padding artifact only affects intraday timeframes), but
+    aligned here for consistency with sibling scripts."""
+    df_a, df_b = load_aligned_pair(sym_a, sym_b, _TF_LABEL)
+    if df_a is None or df_b is None:
         return None
+    log_a = pd.Series(_gap_masked_log_price(df_a), index=df_a.index)
+    log_b = pd.Series(_gap_masked_log_price(df_b), index=df_b.index)
 
     crisis_start_ts = pd.Timestamp(crisis_start)
     crisis_end_ts = pd.Timestamp(crisis_end)
@@ -165,7 +167,8 @@ def stress_test_pair(sym_a: str, sym_b: str, crisis_name: str, crisis_start: str
 
     # Formal EG re-test on baseline+crisis combined, at daily resolution.
     combined = aligned[(aligned.index >= baseline_start_ts) & (aligned.index <= crisis_end_ts)]
-    eg_result = _eg_worker((sym_a, sym_b, combined["a"].values, combined["b"].values, Config.ANALYSIS.EG_MAX_LAG))
+    eg_result = _eg_worker((sym_a, sym_b, combined["a"].values, combined["b"].values,
+                             Config.ANALYSIS.EG_MAX_LAG, _TF_LABEL))
 
     return {
         "status": "TESTED",

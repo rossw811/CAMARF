@@ -1,0 +1,11 @@
+08:38:32 INFO  === bayesian_pair_confirmation.py: continuously-updated Bayesian confidence, COMPARISON ARM ONLY (does not replace static EG+FDR confirmation) ===
+08:38:32 INFO  Loaded 3 confirmed pairs across all timeframes
+08:38:32 INFO  Loaded 449 OOS holdout trades across 24 unique pairs
+08:38:32 INFO    7267.T/8058.T@1M: prior=0.978 [0.889, 1.000]  n_oos=0 (0 win/0 loss)  posterior=0.978 [0.889, 1.000]  shift=+0.000
+08:38:32 INFO    KVUE/KMB@2m: prior=0.990 [0.940, 1.000]  n_oos=0 (0 win/0 loss)  posterior=0.990 [0.940, 1.000]  shift=+0.000
+08:38:32 INFO    KVUE/KMB@3m: prior=0.990 [0.940, 1.000]  n_oos=0 (0 win/0 loss)  posterior=0.990 [0.940, 1.000]  shift=+0.000
+08:38:32 INFO  
+08:38:32 INFO  === Summary: 3 pairs, 0 with at least 1 OOS trade ===
+08:38:32 INFO  Saved -> output/research/bayesian_pair_confirmation.parquet
+08:38:32 INFO  ============================================================
+08:38:32 INFO  bayesian_pair_confirmation.py complete (0.0 min)

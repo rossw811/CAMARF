@@ -156,15 +156,27 @@ def implied_jump_variance_share(fit: dict) -> float:
 
 
 def _load_z_delta(results_dir: str, sym_a: str, sym_b: str) -> np.ndarray:
+    """Diffs z_rolling on the FULL, un-compacted series first, then masks
+    (drops) any diff whose start or end bar is DATA_GAP-flagged. Inherited
+    the same defect as jump_diffusion_spread_analysis.py (Tier 2.6, Grand
+    Sweep 2026-07-20) -- the prior version dropped gap rows BEFORE
+    diffing, silently concatenating positions spanning a multi-bar/multi-
+    day gap as if one bar apart, feeding the Merton MLE fit a delta series
+    where genuine gaps look identical to real single-bar jumps."""
     path = os.path.join(results_dir, f"spread_series_{sym_a}_{sym_b}.parquet")
     if not os.path.exists(path):
         return np.array([])
     df = pd.read_parquet(path)
-    real_mask = (df["gap_flag_a"] != 4) & (df["gap_flag_b"] != 4)
-    df = df.loc[real_mask]
-    z = df["z_rolling"].to_numpy(dtype=float)
-    z = z[np.isfinite(z)]
-    return np.diff(z)
+    z_raw = df["z_rolling"].to_numpy(dtype=float)
+    finite_mask = np.isfinite(z_raw)
+    gap_bad = ((df["gap_flag_a"].to_numpy() == 4) | (df["gap_flag_b"].to_numpy() == 4))
+    z_for_diff = np.where(finite_mask, z_raw, np.nan)
+    delta = np.diff(z_for_diff, prepend=np.nan)
+    bad_delta = gap_bad | np.roll(gap_bad, 1)
+    bad_delta[0] = False
+    delta = np.where(bad_delta, np.nan, delta)
+    keep = finite_mask & ~gap_bad
+    return delta[keep][np.isfinite(delta[keep])]
 
 
 def main():

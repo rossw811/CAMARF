@@ -426,6 +426,17 @@ This is as important as the technical rules above.
   adversarial-reviewer.md`, built 2026-07-13) — general-purpose, for a
   single targeted claim/change needing a skeptical second look, distinct
   from the full `council-*` milestone review.
+- **`premortem` skill** (`.claude/skills/premortem/SKILL.md`, built
+  2026-07-21, adapted from
+  https://github.com/b1rdmania/claude-premortem-skill) — runs BEFORE a new
+  methodology/comparison arm/production change/PAPER.md claim is built or
+  finalized, not after (the council and adversarial-reviewer are both
+  post-hoc). Seeds its failure-reason generation from this project's own
+  BUG-D taxonomy first, then ranges freely; dispatches one sub-agent per
+  failure reason SEQUENTIALLY (not parallel — see the skill file's own
+  note on why, tied to the still-open §11.9 orchestration-model
+  question); outputs a markdown file under `docs/premortems/`. Trigger:
+  "premortem this" / "find the blind spots" / "where will this break".
 - **`guard_manifest.py` hook** (`.claude/hooks/`, built 2026-07-13) —
   PreToolUse hook blocking direct Write/Edit to
   `confirmed_pairs_manifest.json`, motivated by BUG-D63 (this exact file

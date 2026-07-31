@@ -56,6 +56,33 @@ from aligned_pair_loader import (
 )
 
 
+def _longest_clean_run(mask: np.ndarray):
+    """Returns (start, end) of the longest contiguous True-run in `mask`
+    (end exclusive), or (0, 0) if no True values exist. Used to restrict
+    the variance-ratio test (a HIGH-concern-mechanism, lag-sensitive test
+    per the refined risk classification, docs/GRAND_SWEEP_BUG_AUDIT_
+    2026-07-20.md) to a single strictly-contiguous span with NO gap-
+    flagged bars at all -- unlike a level/cointegration test, which may
+    safely bridge a ROUTINE overnight/weekend closure, a variance-ratio
+    statistic's q-period overlapping-differences formula assumes every
+    "q lag" step represents the same real elapsed time throughout the
+    whole series, so even a routine closure must not be silently bridged
+    here (Tier 2.9, Grand Sweep 2026-07-20)."""
+    n = len(mask)
+    best_start, best_end, best_len = 0, 0, 0
+    i = 0
+    while i < n:
+        if mask[i]:
+            start = i
+            while i < n and mask[i]:
+                i += 1
+            if i - start > best_len:
+                best_start, best_end, best_len = start, i, i - start
+        else:
+            i += 1
+    return best_start, best_end
+
+
 def variance_ratio(series, q):
     """
     Lo & MacKinlay (1988) variance ratio VR(q) and both test statistics for
@@ -135,12 +162,20 @@ def main():
                 print(f"SKIP {sym_a}/{sym_b}@{tf_label}: no spread_series file")
                 continue
             series_df = pd.read_parquet(series_path)
-            real_bar_mask = (series_df["gap_flag_a"] != 4) & (series_df["gap_flag_b"] != 4)
-            series_df = series_df.loc[real_bar_mask]
+            # Restrict to the single longest strictly-contiguous, gap-free
+            # run BEFORE any diffing -- boolean-masking DATA_GAP rows out of
+            # the full series first (the pre-fix order) silently concatenates
+            # positions spanning a routine overnight/weekend closure (or a
+            # genuine multi-day outage) as if one bar apart, contaminating
+            # every q-period overlapping-differences calculation this test
+            # depends on (Tier 2.9, Grand Sweep 2026-07-20; see
+            # _longest_clean_run's docstring for why even ROUTINE closures
+            # must not be bridged for this specific test type).
+            real_bar_mask = ((series_df["gap_flag_a"] != 4) & (series_df["gap_flag_b"] != 4)
+                              & series_df["spread"].notna()).to_numpy()
+            start, end = _longest_clean_run(real_bar_mask)
+            series_df = series_df.iloc[start:end]
             spread = series_df["spread"].to_numpy(dtype=float)
-            finite_mask = np.isfinite(spread)
-            spread = spread[finite_mask]
-            series_df = series_df.loc[finite_mask]
 
             if args.q_values is not None:
                 q_values = args.q_values

@@ -79,18 +79,30 @@ def _resolve_tf_results_dir(tf_dir="1hr"):
 
 
 def _load_real_bar_series(results_dir, sym_a, sym_b, column="z_rolling"):
-    """Loads one pair's spread_series parquet, excludes DATA_GAP-flagged
-    padding on either leg (see threshold_cointegration.py's docstring for
-    why this matters — the file is stored on the full calendar-padded grid,
-    not a compacted real-bars-only series), returns a Series indexed by
-    the real DatetimeIndex so multiple pairs can be aligned by date."""
+    """Loads one pair's spread_series parquet on its FULL calendar-padded
+    index (rows NOT dropped), with the value set to NaN wherever THIS
+    pair's own gap_flag is DATA_GAP-flagged on either leg. Returns a Series
+    indexed by the shared calendar DatetimeIndex.
+
+    Tier 2.13 fix (Grand Sweep 2026-07-20): previously dropped each pair's
+    own DATA_GAP rows independently BEFORE aligning multiple pairs. Since
+    gap timestamps differ per pair, main()'s prior row-wise intersection
+    (`dropna(how="any")` across all pairs) could drop a bar that was
+    perfectly fine for pair B just because pair A had a gap there --
+    silently making pair B's `.diff()` at that row span 2 nominal bars
+    instead of 1, while a sibling pair's diff at the SAME row spans only 1.
+    Keeping the full calendar index (NaN only where GENUINELY gap-flagged
+    for that specific pair) lets each pair's `.diff()` be computed
+    independently and correctly on its own gap pattern; combining via
+    pandas' pairwise-complete `.corr()` afterward means one pair's gaps no
+    longer force a sibling pair to discard bars it never needed to."""
     path = os.path.join(results_dir, f"spread_series_{sym_a}_{sym_b}.parquet")
     if not os.path.exists(path):
         return None
     df = pd.read_parquet(path)
-    real_mask = (df["gap_flag_a"] != 4) & (df["gap_flag_b"] != 4)
-    s = df.loc[real_mask, column]
-    return s[np.isfinite(s)]
+    gap_bad = (df["gap_flag_a"] == 4) | (df["gap_flag_b"] == 4)
+    s = df[column].where(~gap_bad & np.isfinite(df[column]))
+    return s
 
 
 def grinold_kahn_breadth(rho_bar, n):
@@ -192,17 +204,31 @@ def main():
         print("Fewer than 2 DD-hub pairs available — cannot build a correlation matrix.")
         return
 
-    # Align on common real-bar timestamps, take first differences of
-    # z_rolling (the entry-signal series itself) as each pair's "return."
-    aligned = pd.DataFrame(series_by_pair).dropna(how="any")
-    deltas = aligned.diff().dropna(how="any")
-    print(f"Aligned on {len(deltas)} common real bars across {len(series_by_pair)} pairs\n")
+    # Combine on the shared calendar index (each column still carries its
+    # OWN gap_flag-derived NaN pattern -- see _load_real_bar_series), then
+    # diff PER PAIR/COLUMN independently so each pair's delta reflects a
+    # true 1-nominal-bar step under ITS OWN gap pattern, not one distorted
+    # by an unrelated pair's gap (Tier 2.13 fix, Grand Sweep 2026-07-20).
+    # pandas' .corr() is pairwise-complete by default, so combining here
+    # does not force any pair to discard bars a sibling pair happened to
+    # be missing.
+    aligned = pd.DataFrame(series_by_pair)
+    deltas = aligned.diff()
+    n_all_pairs_valid = int(deltas.dropna(how="any").shape[0])
+    print(f"{len(deltas)} total calendar bars across {len(series_by_pair)} pairs; "
+          f"{n_all_pairs_valid} bars where ALL pairs are simultaneously valid "
+          f"(the pairwise-complete correlation below uses more data than this per-pair overlap)\n")
 
-    corr_matrix = deltas.corr().to_numpy()
+    corr_df = deltas.corr()
+    corr_matrix = corr_df.to_numpy()
     labels = list(deltas.columns)
     print("Correlation matrix (z_rolling deltas):")
-    print(deltas.corr().round(3).to_string())
+    print(corr_df.round(3).to_string())
     print()
+    if not np.all(np.isfinite(corr_matrix)):
+        print("At least one pair-pair combination had no overlapping valid bars at all "
+              "(pairwise-complete correlation returned NaN) -- cannot proceed.")
+        return
 
     result = analyze_cluster(corr_matrix, labels)
     print(f"N pairs: {result['n']}")

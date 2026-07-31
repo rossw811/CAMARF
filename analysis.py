@@ -93,6 +93,7 @@ from data import (
     GapFlag,
     gap_aware_returns,
     clean_close,
+    longest_gap_respecting_segment,
 )
 
 warnings.filterwarnings("ignore", category=RuntimeWarning)
@@ -240,6 +241,15 @@ class PairResult:
     # trailing 20 bars. High drift → hedge ratio is moving, dynamic instability.
     # Near-zero → beta is stable, OU process well-calibrated.
     kalman_drift_velocity: Optional[float] = None
+
+    # Both-directions EG p-values (added 2026-07-22, see CointScanner.scan's
+    # docstring): coint_pvalue_raw above is now max(coint_pvalue_raw_ab,
+    # coint_pvalue_raw_ba) — the conservative combination requiring
+    # cointegration to hold in BOTH regression directions, since EG's
+    # ADF-on-residual test is not direction-invariant. Both raw directional
+    # values kept here for transparency/auditability, not collapsed away.
+    coint_pvalue_raw_ab: Optional[float] = None  # OLS(A on B) direction
+    coint_pvalue_raw_ba: Optional[float] = None  # OLS(B on A) direction
 
 
 @dataclass
@@ -1162,7 +1172,7 @@ class UniverseFilter:
             "cointegrated in subperiods may be excluded",
         )
 
-        _min_overlap = getattr(Config.ANALYSIS, "MIN_OVERLAP_BY_TF", {}).get(tf_label, 252)
+        _min_overlap = getattr(Config.STATS, "MIN_OVERLAP_BY_TF", {}).get(tf_label, 252)
         returns, symbols, _idx = UniverseFilter.build_returns_matrix(
             aligned_data,
             min_overlap=_min_overlap,
@@ -1222,19 +1232,28 @@ class UniverseFilter:
 # =============================================================================
 
 
-def _eg_worker(args: Tuple[str, str, np.ndarray, np.ndarray, int]) -> Dict[str, Any]:
+def _eg_worker(args: Tuple[str, str, np.ndarray, np.ndarray, int, str]) -> Dict[str, Any]:
     """
     Worker run inside ProcessPoolExecutor. Must be top-level (picklable).
 
     Returns a dict with cointegration p-value and OLS hedge ratio so the
     main process can build PairResult objects without re-fitting OLS.
     """
-    sym_a, sym_b, log_p_a, log_p_b, max_lag = args
+    sym_a, sym_b, log_p_a, log_p_b, max_lag, tf_label = args
     try:
-        # Drop any NaN overlap (alignment should have handled this but be defensive)
+        # Keep only the longest run that never spans a GENUINE data gap
+        # (BUG-D77, 2026-07-20) -- a plain `arr[isfinite(a) & isfinite(b)]`
+        # fancy-index drop would silently concatenate across ANY gap,
+        # including a rare genuine multi-day provider outage, producing the
+        # spurious-jump artifact _build_log_price_map's docstring warns
+        # about. Routine overnight/weekend/holiday closures are still safely
+        # bridged (dropped) within a segment -- see
+        # longest_gap_respecting_segment's docstring and data.py's
+        # is_genuine_data_gap for the calibration.
         mask = np.isfinite(log_p_a) & np.isfinite(log_p_b)
-        a = log_p_a[mask]
-        b = log_p_b[mask]
+        keep = longest_gap_respecting_segment(mask, tf_label)
+        a = log_p_a[keep]
+        b = log_p_b[keep]
         n_overlap = a.size
         if n_overlap < 60:
             return {
@@ -1278,17 +1297,20 @@ def _eg_worker(args: Tuple[str, str, np.ndarray, np.ndarray, int]) -> Dict[str, 
 
 
 def _rolling_coint_worker(
-    args: Tuple[str, str, np.ndarray, np.ndarray, int, int],
+    args: Tuple[str, str, np.ndarray, np.ndarray, int, int, str],
 ) -> Dict[str, Any]:
     """
     Compute rolling cointegration fraction for one pair.
     Returns fraction of rolling windows where EG p < 0.05.
     """
-    sym_a, sym_b, log_p_a, log_p_b, window, step = args
+    sym_a, sym_b, log_p_a, log_p_b, window, step, tf_label = args
     try:
+        # Same genuine-gap-respecting segment selection as _eg_worker (BUG-D77) --
+        # a rolling window must never silently span a real multi-day gap.
         mask = np.isfinite(log_p_a) & np.isfinite(log_p_b)
-        a = log_p_a[mask]
-        b = log_p_b[mask]
+        keep = longest_gap_respecting_segment(mask, tf_label)
+        a = log_p_a[keep]
+        b = log_p_b[keep]
         n = a.size
         if n < window + step:
             return {
@@ -1336,13 +1358,37 @@ class CointScanner:
     via ProcessPoolExecutor across 12 workers.
 
     Procedure:
-      1. For each candidate pair, run OLS(log_price_A on log_price_B)
-         and ADF on residuals. statsmodels.tsa.stattools.coint() does both.
-      2. Collect all p-values.
-      3. Apply Benjamini-Hochberg FDR correction at FDR_ALPHA=0.05.
-      4. Confirmed pairs are those whose BH-adjusted p-value remains
+      1. For each candidate pair, run EG in BOTH regression directions —
+         OLS(log_price_A on log_price_B) AND OLS(log_price_B on log_price_A)
+         — and ADF on each residual. statsmodels.tsa.stattools.coint() does
+         both per direction. Engle-Granger is well-known to be direction-
+         asymmetric (this is the textbook motivation for Johansen's test):
+         for a borderline pair, regressing A-on-B vs B-on-A can differ by
+         orders of magnitude in p-value. Found directly, 2026-07-21, root-
+         causing why FELE/MAS was FDR-confirmed in one independent
+         recomputation (p=4.52e-7, A-on-B) but not in production's own run
+         of the identical universe (p=8.96e-4, B-on-A) — same data, same
+         code, opposite regression direction, purely from an accident of
+         which symbol landed in which role during candidate-pair ordering.
+      2. Combine each pair's two directional p-values via max() — the MORE
+         conservative choice (require cointegration to hold regardless of
+         which symbol is treated as dependent variable), not the more
+         significant of the two. Chosen deliberately over min()/either-
+         direction: taking the better of two p-values per pair is an
+         implicit multiple-comparison problem (2 tests, report the nicer
+         one) that would inflate the true false-positive rate beyond what
+         BH-FDR's own m accounts for; max() has no such inflation and
+         matches this project's standing bias toward conservative,
+         defensible confirmation over sensitivity (Aronson's own framework,
+         dedicated_pass.md sec 11.4). Both raw directional p-values are
+         still recorded (coint_pvalue_raw_ab/_ba) for transparency, not
+         collapsed away — same "expose every method side by side" habit as
+         OLS/TLS/Kalman hedge ratios.
+      3. Collect the one combined p-value per pair.
+      4. Apply Benjamini-Hochberg FDR correction at FDR_ALPHA=0.05.
+      5. Confirmed pairs are those whose BH-adjusted p-value remains
          significant.
-      5. For each confirmed pair, run rolling 252-bar cointegration test
+      6. For each confirmed pair, run rolling 252-bar cointegration test
          and record the fraction of windows with p<0.05. This is the
          strategy decay signal.
 
@@ -1419,21 +1465,24 @@ class CointScanner:
         )
 
         log.info(
-            f"  [{tf_label}] Running EG on {len(candidate_pairs)} pairs "
-            f"(workers={n_workers}, max_lag={max_lag})..."
+            f"  [{tf_label}] Running EG on {len(candidate_pairs)} pairs, BOTH "
+            f"regression directions (workers={n_workers}, max_lag={max_lag})..."
         )
 
         # Build log-price arrays once
         log_prices = CointScanner._build_log_price_map(aligned_data, symbols_in_corr)
 
-        # Prepare worker tasks
+        # Prepare worker tasks — BOTH directions per pair (2026-07-21 fix for
+        # EG's regression-direction asymmetry, see class docstring). Doubles
+        # the EG task count and roughly doubles this stage's wall-clock cost.
         tasks = []
         for p in candidate_pairs:
             lp_a = log_prices.get(p["symbol_a"])
             lp_b = log_prices.get(p["symbol_b"])
             if lp_a is None or lp_b is None:
                 continue
-            tasks.append((p["symbol_a"], p["symbol_b"], lp_a, lp_b, max_lag))
+            tasks.append((p["symbol_a"], p["symbol_b"], lp_a, lp_b, max_lag, tf_label))
+            tasks.append((p["symbol_b"], p["symbol_a"], lp_b, lp_a, max_lag, tf_label))
 
         if not tasks:
             return [], {"n_tested": 0, "n_passed_raw": 0, "n_passed_fdr": 0}
@@ -1446,47 +1495,143 @@ class CointScanner:
                 results.append(r)
         log.info(f"  [{tf_label}] EG complete in {time.time()-t0:.1f}s")
 
+        # Combine the two directions per pair: max() of the two p-values
+        # (conservative — see class docstring for why not min()/either).
+        ok_results = [r for r in results if r.get("ok")]
+        by_key: Dict[frozenset, List[Dict[str, Any]]] = {}
+        for r in ok_results:
+            by_key.setdefault(frozenset((r["symbol_a"], r["symbol_b"])), []).append(r)
+
+        combined = []
+        for p in candidate_pairs:
+            key = frozenset((p["symbol_a"], p["symbol_b"]))
+            rs = by_key.get(key)
+            if not rs or len(rs) < 2:
+                continue  # one or both directions failed / insufficient overlap
+            fwd = next((r for r in rs if r["symbol_a"] == p["symbol_a"]), None)
+            rev = next((r for r in rs if r["symbol_a"] == p["symbol_b"]), None)
+            if fwd is None or rev is None:
+                continue
+            combined.append({
+                "symbol_a": p["symbol_a"],
+                "symbol_b": p["symbol_b"],
+                "pvalue": max(fwd["pvalue"], rev["pvalue"]),
+                "pvalue_ab": float(fwd["pvalue"]),
+                "pvalue_ba": float(rev["pvalue"]),
+                # Hedge ratio/n_overlap reported from the forward (a-on-b)
+                # direction only — downstream spread construction needs a
+                # single canonical direction, unlike the significance
+                # decision above, which deliberately doesn't pick one.
+                "hedge_ratio": fwd["hedge_ratio"],
+                "n_overlap": fwd["n_overlap"],
+            })
+
+        if not combined:
+            return [], {"n_tested": len(results), "n_passed_raw": 0, "n_passed_fdr": 0}
+
         # Build index from results back to candidate metadata
         meta_by_key = {(p["symbol_a"], p["symbol_b"]): p for p in candidate_pairs}
 
-        # Collect p-values for BH-FDR
-        ok_results = [r for r in results if r.get("ok")]
-        if not ok_results:
-            return [], {"n_tested": len(results), "n_passed_raw": 0, "n_passed_fdr": 0}
-
-        pvals = np.array([r["pvalue"] for r in ok_results])
+        pvals = np.array([c["pvalue"] for c in combined])
         rejected, adjusted = _benjamini_hochberg(pvals, fdr_alpha)
 
         n_raw_pass = int(np.sum(pvals < Config.ANALYSIS.EG_SIGNIFICANCE))
         n_fdr_pass = int(np.sum(rejected))
 
         confirmed = []
-        for i, r in enumerate(ok_results):
+        for i, c in enumerate(combined):
             if rejected[i]:
-                key = (r["symbol_a"], r["symbol_b"])
+                key = (c["symbol_a"], c["symbol_b"])
                 meta = meta_by_key.get(key, {})
                 confirmed.append(
                     {
                         **meta,
-                        "coint_pvalue_raw": float(r["pvalue"]),
+                        "coint_pvalue_raw": float(c["pvalue"]),
+                        "coint_pvalue_raw_ab": c["pvalue_ab"],
+                        "coint_pvalue_raw_ba": c["pvalue_ba"],
                         "coint_pvalue_adjusted": float(adjusted[i]),
-                        "hedge_ratio_ols_pointest": float(r["hedge_ratio"]),
-                        "n_overlap": int(r["n_overlap"]),
+                        "hedge_ratio_ols_pointest": float(c["hedge_ratio"]),
+                        "n_overlap": int(c["n_overlap"]),
                     }
                 )
 
         stats = {
-            "n_tested": len(results),
+            "n_tested": len(combined),
             "n_passed_raw": n_raw_pass,
             "n_passed_fdr": n_fdr_pass,
             "fdr_alpha": fdr_alpha,
         }
         log.info(
-            f"  [{tf_label}] EG: tested={len(results)}, "
+            f"  [{tf_label}] EG (both-directions, max-combined): tested={len(combined)}, "
             f"raw<{Config.ANALYSIS.EG_SIGNIFICANCE}={n_raw_pass}, "
             f"FDR-adjusted<{fdr_alpha}={n_fdr_pass}"
         )
         return confirmed, stats
+
+    @staticmethod
+    def expanding_coint_fraction(
+        log_a: np.ndarray,
+        log_b: np.ndarray,
+        tf_label: str,
+        window: int = 252,
+        step: int = 21,
+    ) -> np.ndarray:
+        """
+        Causal, point-in-time-safe companion to rolling_fraction() above.
+
+        rolling_fraction()/_rolling_coint_worker() compute ONE aggregate
+        fraction over a pair's ENTIRE available history, then that single
+        scalar (coint_fraction_rolling) is applied uniformly to every bar
+        and every trade for that pair regardless of date — ml.py attaches
+        it as a feature on every entry event, and backtest.py's
+        --storm-coint-frac scales every trade's position size by it. A
+        window ending in 2024 has always been allowed to justify a trade
+        in 2015, an in-sample-circularity/lookahead mechanism (found in
+        the 2026-07-27 causality audit) never covered by BUG-D76's earlier
+        fix, which only addressed backtest.py's risk-parity/HRP/pnl_cap
+        sizing paths.
+
+        This function instead returns a per-bar EXPANDING fraction: at
+        each bar, uses ONLY EG tests from rolling windows that have
+        already CONCLUDED by that bar, forward-filled between window
+        evaluations — same causal shape and same forward-fill convention
+        as SpreadModel.rolling_half_life's already-causal series (and the
+        same "point-in-time series in spread_series parquet, scalar
+        fallback for pre-fix files" pattern already established for
+        hedge_ratio_ols_t/hedge_ratio_kalman_t). Downscales window/step
+        for shallow history exactly like rolling_fraction() does, but
+        per-PAIR (using this pair's own bar count) rather than per-TF-batch
+        off one sample pair's length — a side-effect improvement, not the
+        point of this function.
+        """
+        mask = np.isfinite(log_a) & np.isfinite(log_b)
+        keep = longest_gap_respecting_segment(mask, tf_label)
+        frac_series = np.full(log_a.size, np.nan, dtype=float)
+        n = int(np.sum(keep))
+        if n < window + step:
+            new_window = max(60, n // 3)
+            new_step = max(5, new_window // 10)
+            if new_window < window + new_step:
+                return frac_series
+            window, step = new_window, new_step
+        a = log_a[keep]
+        b = log_b[keep]
+        real_positions = np.flatnonzero(keep)
+        n_sig = 0
+        n_win = 0
+        for start in range(0, n - window + 1, step):
+            a_w = a[start : start + window]
+            b_w = b[start : start + window]
+            try:
+                _t, p, _c = coint(a_w, b_w, trend="c", maxlag=1, autolag=None)
+                if p < 0.05:
+                    n_sig += 1
+                n_win += 1
+            except Exception:
+                continue
+            end_pos_full = real_positions[start + window - 1]
+            frac_series[end_pos_full] = n_sig / n_win if n_win > 0 else np.nan
+        return pd.Series(frac_series).ffill().values
 
     @staticmethod
     def rolling_fraction(
@@ -1547,7 +1692,7 @@ class CointScanner:
             lp_b = log_prices.get(p["symbol_b"])
             if lp_a is None or lp_b is None:
                 continue
-            tasks.append((p["symbol_a"], p["symbol_b"], lp_a, lp_b, window, step))
+            tasks.append((p["symbol_a"], p["symbol_b"], lp_a, lp_b, window, step, tf_label))
 
         log.info(
             f"  [{tf_label}] Rolling coint on {len(tasks)} pairs "
@@ -3941,6 +4086,7 @@ class ThresholdCalibrator:
                         lp_a,
                         lp_b,
                         Config.ANALYSIS.EG_MAX_LAG,
+                        tf_label,
                     )
                 )
 
@@ -4413,27 +4559,44 @@ class AnalysisPipeline:
 
         # ADV liquidity filter — requires both symbols in any pair to exceed threshold.
         # Computed from 1hr cache (close × volume, aggregated to daily sums) so it is
-        # independent of the current TF being analyzed.
-        _adv_threshold = getattr(Config.ANALYSIS, "ADV_FILTER_USD", 0.0)
+        # independent of the current TF being analyzed. Falls back to 1day cache
+        # (already one row per day, no aggregation needed) when 1hr cache doesn't
+        # exist for a symbol — found 2026-07-22, first real run after BUG-D96
+        # activated this filter: 8058.T has no {sym}_1hr.parquet at all (only
+        # 1day/1mo/3mo/6mo/7day), so the un-fallback'd version silently computed
+        # NaN ADV and excluded it from EVERY timeframe's candidate pool — including
+        # 1M, which needs no 1hr data at all — dropping the real, previously-
+        # confirmed 7267.T/8058.T@1M pair not because it's actually illiquid, but
+        # because of a missing-granularity gap in the liquidity PROXY computation.
+        # Known, separate, NOT fixed here: this proxy compares raw close×volume
+        # against a USD threshold with no currency conversion — for a JPY-priced
+        # symbol like 7267.T/8058.T this happens to still clear $25M correctly
+        # once converted (~$109M at ~150 JPY/USD) so it doesn't change today's
+        # outcome, but is a latent gap for any international symbol where it
+        # might. Flagged, not silently expanded into scope here.
+        _adv_threshold = getattr(Config.STATS, "ADV_FILTER_USD", 0.0)
         if _adv_threshold > 0:
             _cache_dir = Config.DATA.CACHE_DIR
-            _adv_map: dict = {}
-            for sym in list(tf_data_raw.keys()):
-                _hr_path = os.path.join(_cache_dir, f"{sym}_1hr.parquet")
-                if not os.path.exists(_hr_path):
-                    _adv_map[sym] = float("nan")
-                    continue
-                try:
-                    _hr = pd.read_parquet(_hr_path)
-                    if "close" in _hr.columns and "volume" in _hr.columns:
-                        _hr.index = pd.to_datetime(_hr.index)
-                        _dv = _hr["close"] * _hr["volume"]
-                        _daily_dv = _dv.groupby(_hr.index.date).sum()
-                        _adv_map[sym] = float(_daily_dv.mean()) if len(_daily_dv) > 0 else float("nan")
-                    else:
-                        _adv_map[sym] = float("nan")
-                except Exception:
-                    _adv_map[sym] = float("nan")
+
+            def _compute_adv(sym: str) -> float:
+                for _suffix in ("1hr", "1day"):
+                    _path = os.path.join(_cache_dir, f"{sym}_{_suffix}.parquet")
+                    if not os.path.exists(_path):
+                        continue
+                    try:
+                        _df = pd.read_parquet(_path)
+                        if "close" not in _df.columns or "volume" not in _df.columns:
+                            continue
+                        _df.index = pd.to_datetime(_df.index)
+                        _dv = _df["close"] * _df["volume"]
+                        _daily_dv = _dv.groupby(_df.index.date).sum()
+                        if len(_daily_dv) > 0:
+                            return float(_daily_dv.mean())
+                    except Exception:
+                        continue
+                return float("nan")
+
+            _adv_map: dict = {sym: _compute_adv(sym) for sym in list(tf_data_raw.keys())}
             _adv_filtered = {s: v for s, v in _adv_map.items() if v >= _adv_threshold}
             _adv_excluded = {s for s in tf_data_raw if s not in _adv_filtered}
             funnel.record("adv_liquidity_symbols", len(tf_data_raw), len(_adv_filtered))
@@ -4899,6 +5062,14 @@ class AnalysisPipeline:
             is_cross_asset=bool(pd_meta.get("is_cross_asset", False)),
             pearson_corr=float(pd_meta.get("pearson_corr", np.nan)),
             coint_pvalue_raw=float(pd_meta.get("coint_pvalue_raw", np.nan)),
+            coint_pvalue_raw_ab=(
+                float(pd_meta["coint_pvalue_raw_ab"])
+                if pd_meta.get("coint_pvalue_raw_ab") is not None else None
+            ),
+            coint_pvalue_raw_ba=(
+                float(pd_meta["coint_pvalue_raw_ba"])
+                if pd_meta.get("coint_pvalue_raw_ba") is not None else None
+            ),
             coint_pvalue_adjusted=float(pd_meta.get("coint_pvalue_adjusted", np.nan)),
             coint_fraction_rolling=float(pd_meta.get("coint_fraction_rolling", np.nan)),
             hedge_ratio_ols=(
@@ -5016,8 +5187,21 @@ class AnalysisPipeline:
         )
 
         # --- thin_info_content ---
+        # Uses DataStore._TF_SAFE's mapping for the filename, not the raw
+        # tf_label -- fixed 2026-07-21 alongside the same fix in
+        # research/audit_price_degeneracy.py. Raw tf_label collides on a
+        # case-insensitive filesystem (Windows) for "1m"/"1M" and "3m"/"3M"
+        # specifically -- a real, verified collision: extending the
+        # price-degeneracy audit to 1M for the first time this session
+        # silently overwrote the existing, correct 1m audit/flagged files
+        # (and 3M overwrote 3m) before this fix, caught by directly
+        # inspecting the resulting file contents (1m's "audit" file showed
+        # ~300-row per-symbol history — a monthly bar count — not the
+        # thousands of bars a real 1-minute audit produces). Both this
+        # reader and the writer must agree on the SAME safe-name mapping.
         degenerate_syms: set = set()
-        deg_path = os.path.join(research_dir, f"price_degeneracy_flagged_{tf_label}.parquet")
+        safe_tf = DataStore._TF_SAFE.get(tf_label, tf_label.lower())
+        deg_path = os.path.join(research_dir, f"price_degeneracy_flagged_{safe_tf}.parquet")
         if os.path.exists(deg_path):
             try:
                 deg_df = pd.read_parquet(deg_path)
@@ -5507,79 +5691,97 @@ class AnalysisPipeline:
                 pairs_df = pd.DataFrame([asdict(p) for p in discovered_pairs])
                 pairs_df.to_parquet(os.path.join(out_dir, "pairs.parquet"))
 
-            # Persist per-bar spread/z-score/half-life series for every pair
-            # that survived EG+FDR and the price-degeneracy filter (`pairs`),
-            # NOT just the final post-coint_frac/post-structural set
-            # (`discovered_pairs`) — added 2026-06-21 for ml.py's labeled
-            # training examples; extended 2026-06-30 (Phase 1 filter-ablation
-            # work) to cover the broader `pairs` set specifically so a pair
-            # excluded by the coint_frac threshold or the structural-pair
-            # filter still has a spread_series file on disk and can be
-            # counterfactually backtested via `backtest.py --pairs-override`
-            # (research/filter_ablation.py). Before this change, spread_series
-            # existed only for `discovered_pairs`, making "what if this filter
-            # hadn't excluded these pairs" impossible to test — the very data
-            # needed to answer that question was never saved. Price-degeneracy
-            # exclusions are NOT covered here (those pairs are dropped from
-            # `pairs` itself, one step earlier in `_run_one_tf`, before this
-            # function is even called) — an accepted scope limit, since a
-            # spread built on a price-degenerate series (2-7 distinct closes)
-            # isn't a meaningful counterfactual to begin with. See
-            # DEVELOPMENT.md ml.py section. Per-bar regime-state labels
-            # deliberately NOT included here (RegimeClassifier.predict_labels()
-            # is unused/orphaned today and fitting it would add ~15-20% pipeline
-            # runtime) — deferred to a follow-up pass, not this one.
-            if per_bar_by_pair:
-                _n_persisted = 0
-                for _p in pairs:
-                    _pb = per_bar_by_pair.get((_p.symbol_a, _p.symbol_b))
-                    if _pb is None:
-                        continue
-                    try:
-                        _series_df = pd.DataFrame(
-                            {
-                                "spread": _pb["spread"],
-                                "z_rolling": _pb["z_rolling"],
-                                "z_expanding": _pb["z_expanding"],
-                                "half_life_rolling": _pb["half_life_rolling_series"],
-                                "gap_flag_a": _pb["gap_flag_a"],
-                                "gap_flag_b": _pb["gap_flag_b"],
-                                "hedge_ratio_ols_t": _pb.get("hedge_ratio_ols_t"),
-                                "hedge_ratio_kalman_t": _pb.get("hedge_ratio_kalman_t"),
-                            },
-                            index=_pb["index"],
-                        )
-                        _series_df.to_parquet(
-                            os.path.join(
-                                out_dir,
-                                f"spread_series_{_p.symbol_a}_{_p.symbol_b}.parquet",
-                            )
-                        )
-                        _n_persisted += 1
-                    except Exception as _e:
-                        log.debug(
-                            f"  spread_series persist failed for "
-                            f"{_p.symbol_a}/{_p.symbol_b}: {_e}"
-                        )
-                if _n_persisted:
-                    log.info(
-                        f"  [{tf_label}] persisted per-bar spread/z-score series "
-                        f"for {_n_persisted}/{len(pairs)} EG+FDR-confirmed pairs "
-                        f"(post price-degeneracy filter, pre coint_frac/structural)"
-                    )
+        # BUG-D95 fix (2026-07-21, found during the filter-relevance sweep):
+        # the two persistence steps below key off `pairs` (the EG+FDR+price-
+        # degeneracy survivors, BEFORE the coint_frac/structural filters run),
+        # not `discovered_pairs` (the FINAL post-filter set) — they must run
+        # whenever `pairs` is non-empty, independent of whether the funnel
+        # emptied to zero final confirmed pairs. Previously nested inside
+        # `if discovered_pairs:` above, so a timeframe whose funnel collapsed
+        # to zero (1h's exact case: 2 EG+FDR survivors in `pairs`, both then
+        # cut by coint_frac/structural, 0 in `discovered_pairs`) persisted
+        # NOTHING — no all_candidates.parquet, no spread_series_*.parquet —
+        # defeating research/filter_ablation.py's own stated purpose for
+        # exactly the most diagnostically important case. Moving these out
+        # to their own top-level blocks preserves the original ordering
+        # relative to episodic deep-history enrichment above (which only
+        # mutates per_bar_by_pair for pairs that ARE in discovered_pairs;
+        # when discovered_pairs is empty there's nothing to enrich, and
+        # per_bar_by_pair is used here exactly as originally computed).
 
-            # Persist the full pre-coint_frac/pre-structural candidate set
-            # (`pairs`, with the same schema as pairs.parquet) so
-            # research/filter_ablation.py can build --pairs-override files
-            # for the coint_frac and structural filters directly from this —
-            # no need to reconstruct pair metadata from scratch.
-            if pairs:
-                all_candidates_df = pd.DataFrame([asdict(p) for p in pairs])
-                all_candidates_df.to_parquet(os.path.join(out_dir, "all_candidates.parquet"))
+        # Persist per-bar spread/z-score/half-life series for every pair
+        # that survived EG+FDR and the price-degeneracy filter (`pairs`),
+        # NOT just the final post-coint_frac/post-structural set
+        # (`discovered_pairs`) — added 2026-06-21 for ml.py's labeled
+        # training examples; extended 2026-06-30 (Phase 1 filter-ablation
+        # work) to cover the broader `pairs` set specifically so a pair
+        # excluded by the coint_frac threshold or the structural-pair
+        # filter still has a spread_series file on disk and can be
+        # counterfactually backtested via `backtest.py --pairs-override`
+        # (research/filter_ablation.py). Before this change, spread_series
+        # existed only for `discovered_pairs`, making "what if this filter
+        # hadn't excluded these pairs" impossible to test — the very data
+        # needed to answer that question was never saved. Price-degeneracy
+        # exclusions are NOT covered here (those pairs are dropped from
+        # `pairs` itself, one step earlier in `_run_one_tf`, before this
+        # function is even called) — an accepted scope limit, since a
+        # spread built on a price-degenerate series (2-7 distinct closes)
+        # isn't a meaningful counterfactual to begin with. See
+        # DEVELOPMENT.md ml.py section. Per-bar regime-state labels
+        # deliberately NOT included here (RegimeClassifier.predict_labels()
+        # is unused/orphaned today and fitting it would add ~15-20% pipeline
+        # runtime) — deferred to a follow-up pass, not this one.
+        if per_bar_by_pair:
+            _n_persisted = 0
+            for _p in pairs:
+                _pb = per_bar_by_pair.get((_p.symbol_a, _p.symbol_b))
+                if _pb is None:
+                    continue
+                try:
+                    _series_df = pd.DataFrame(
+                        {
+                            "spread": _pb["spread"],
+                            "z_rolling": _pb["z_rolling"],
+                            "z_expanding": _pb["z_expanding"],
+                            "half_life_rolling": _pb["half_life_rolling_series"],
+                            "gap_flag_a": _pb["gap_flag_a"],
+                            "gap_flag_b": _pb["gap_flag_b"],
+                            "hedge_ratio_ols_t": _pb.get("hedge_ratio_ols_t"),
+                            "hedge_ratio_kalman_t": _pb.get("hedge_ratio_kalman_t"),
+                        },
+                        index=_pb["index"],
+                    )
+                    _series_df.to_parquet(
+                        os.path.join(
+                            out_dir,
+                            f"spread_series_{_p.symbol_a}_{_p.symbol_b}.parquet",
+                        )
+                    )
+                    _n_persisted += 1
+                except Exception as _e:
+                    log.debug(
+                        f"  spread_series persist failed for "
+                        f"{_p.symbol_a}/{_p.symbol_b}: {_e}"
+                    )
+            if _n_persisted:
                 log.info(
-                    f"  [{tf_label}] saved {len(pairs)} pre-coint_frac/pre-structural "
-                    f"candidates → {out_dir}/all_candidates.parquet"
+                    f"  [{tf_label}] persisted per-bar spread/z-score series "
+                    f"for {_n_persisted}/{len(pairs)} EG+FDR-confirmed pairs "
+                    f"(post price-degeneracy filter, pre coint_frac/structural)"
                 )
+
+        # Persist the full pre-coint_frac/pre-structural candidate set
+        # (`pairs`, with the same schema as pairs.parquet) so
+        # research/filter_ablation.py can build --pairs-override files
+        # for the coint_frac and structural filters directly from this —
+        # no need to reconstruct pair metadata from scratch.
+        if pairs:
+            all_candidates_df = pd.DataFrame([asdict(p) for p in pairs])
+            all_candidates_df.to_parquet(os.path.join(out_dir, "all_candidates.parquet"))
+            log.info(
+                f"  [{tf_label}] saved {len(pairs)} pre-coint_frac/pre-structural "
+                f"candidates → {out_dir}/all_candidates.parquet"
+            )
         if n_structural:
             log.info(
                 f"  [{tf_label}] {n_structural} structural pairs excluded "

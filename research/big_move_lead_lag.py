@@ -56,9 +56,9 @@ import pandas as pd
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "research"))
 
-from data import _gap_aware_returns
+from data import DataStore, _gap_aware_returns
 from aligned_pair_loader import load_aligned_pair
-from lead_lag_scan import lagged_corr_scan, best_lag
+from lead_lag_scan import best_lag, _MIN_CORR_N
 
 # Same stable starting set as earnings_lead_lag.py, for direct comparability.
 _DEFAULT_PAIRS = [
@@ -99,10 +99,58 @@ def _window_mask(index: pd.DatetimeIndex, event_dates, window_days: int) -> np.n
     return mask
 
 
-def _pooled_scan(ret_a: pd.Series, ret_b: pd.Series, mask: np.ndarray, max_lag: int):
-    if mask.sum() < 10:
+def _event_windows(index: pd.DatetimeIndex, event_dates, window_days: int):
+    """Returns a list of (start_ts, end_ts) CONTIGUOUS windows, one per
+    event date, instead of one combined boolean mask -- kept separate so a
+    later lagged shift/join never crosses from the tail of one event's
+    window into the head of an unrelated, possibly months-distant one.
+    Fixes Tier 2.3 (Grand Sweep 2026-07-20), same defect class copied
+    verbatim from earnings_lead_lag.py: boolean-masking all events into one
+    compacted array and shifting THAT loses each window's real-time
+    boundary, since pandas .shift() is purely positional."""
+    windows = []
+    dates_only = index.normalize()
+    for d in event_dates:
+        in_window = np.abs((dates_only - d).days) <= window_days
+        if in_window.any():
+            windows.append((index[in_window].min(), index[in_window].max()))
+    return windows
+
+
+def _pooled_scan(ret_a: pd.Series, ret_b: pd.Series, mask: np.ndarray, windows, max_lag: int):
+    """Runs the lagged-correlation scan across multiple disjoint contiguous
+    `windows` without ever shifting across a window boundary -- see
+    earnings_lead_lag.py's identical fix for the full mechanism. `mask` is
+    used only for the cheap pre-check; the real scan uses `windows`."""
+    if mask.sum() < 10 or not windows:
         return None
-    scan = lagged_corr_scan(ret_a[mask], ret_b[mask], max_lag)
+    scan = {}
+    for lag in range(-max_lag, max_lag + 1):
+        pooled_a, pooled_b = [], []
+        for start, end in windows:
+            sub_a = ret_a.loc[start:end]
+            sub_b = ret_b.loc[start:end]
+            if sub_a.empty or sub_b.empty:
+                continue
+            shifted_b = sub_b.shift(-lag)
+            joined = pd.concat([sub_a, shifted_b], axis=1, join="inner").dropna()
+            if joined.empty:
+                continue
+            pooled_a.append(joined.iloc[:, 0].values)
+            pooled_b.append(joined.iloc[:, 1].values)
+        if not pooled_a:
+            scan[lag] = (None, 0)
+            continue
+        a_vals = np.concatenate(pooled_a)
+        b_vals = np.concatenate(pooled_b)
+        n = len(a_vals)
+        if n < _MIN_CORR_N:
+            scan[lag] = (None, n)
+            continue
+        c = float(np.corrcoef(a_vals, b_vals)[0, 1])
+        if not np.isfinite(c):
+            c = None
+        scan[lag] = (c, n)
     return best_lag(scan)
 
 
@@ -133,7 +181,8 @@ def run_pair(symbol_a, symbol_b, tf_label, z_threshold, vol_window, window_days,
 
         mask = _window_mask(common_idx, event_dates, window_days)
         n_bars_in_windows = int(mask.sum())
-        real = _pooled_scan(ret_a, ret_b, mask, max_lag)
+        windows = _event_windows(common_idx, event_dates, window_days)
+        real = _pooled_scan(ret_a, ret_b, mask, windows, max_lag)
         if real is None or real[0] is None:
             results.append({
                 "mover": mover_name, "other_leg": other_name,
@@ -152,7 +201,8 @@ def run_pair(symbol_a, symbol_b, tf_label, z_threshold, vol_window, window_days,
                 for _ in range(len(event_dates))
             ]
             null_mask = _window_mask(common_idx, rand_anchors, window_days)
-            null_result = _pooled_scan(ret_a, ret_b, null_mask, max_lag)
+            null_windows = _event_windows(common_idx, rand_anchors, window_days)
+            null_result = _pooled_scan(ret_a, ret_b, null_mask, null_windows, max_lag)
             if null_result is not None and null_result[0] is not None:
                 null_abs_corrs.append(abs(null_result[1]))
 
@@ -222,7 +272,8 @@ def main():
 
     out_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "output", "research")
     os.makedirs(out_dir, exist_ok=True)
-    out_path = os.path.join(out_dir, f"big_move_lead_lag_{args.tf}.parquet")
+    safe_tf = DataStore._TF_SAFE.get(args.tf, args.tf.lower())
+    out_path = os.path.join(out_dir, f"big_move_lead_lag_{safe_tf}.parquet")
     out_df.to_parquet(out_path)
     print(f"\nFull results written to {out_path}")
 

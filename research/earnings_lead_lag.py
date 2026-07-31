@@ -55,9 +55,9 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "research"))
 
 from earnings import EarningsCalendar
-from data import _gap_aware_returns
+from data import DataStore, _gap_aware_returns
 from aligned_pair_loader import load_aligned_pair
-from lead_lag_scan import lagged_corr_scan, best_lag
+from lead_lag_scan import best_lag, _MIN_CORR_N
 
 # Stable, already-vetted starting set (task #71's 1h investigation): real
 # raw EG significance (p<0.001) confirmed directly on the current clean
@@ -82,12 +82,62 @@ def _earnings_window_mask(index: pd.DatetimeIndex, earnings_dates, window_days: 
     return mask
 
 
-def _pooled_scan(ret_a: pd.Series, ret_b: pd.Series, mask: np.ndarray, max_lag: int):
-    if mask.sum() < 10:
+def _earnings_windows(index: pd.DatetimeIndex, earnings_dates, window_days: int):
+    """Returns a list of (start_ts, end_ts) CONTIGUOUS windows, one per
+    earnings date, instead of one combined boolean mask -- kept separate so
+    a later lagged shift/join never crosses from the tail of one event's
+    window into the head of an unrelated, possibly months-distant one.
+    Fixes Tier 2.3 (Grand Sweep 2026-07-20): boolean-masking all events into
+    one compacted array and shifting THAT loses each window's real-time
+    boundary, since pandas .shift() is purely positional."""
+    windows = []
+    dates_only = index.normalize()
+    for d in earnings_dates:
+        d_norm = pd.Timestamp(d).normalize()
+        in_window = np.abs((dates_only - d_norm).days) <= window_days
+        if in_window.any():
+            windows.append((index[in_window].min(), index[in_window].max()))
+    return windows
+
+
+def _pooled_scan(ret_a: pd.Series, ret_b: pd.Series, mask: np.ndarray, windows, max_lag: int):
+    """Runs the lagged-correlation scan across multiple disjoint contiguous
+    `windows` without ever shifting across a window boundary: each window's
+    own shift+inner-join stays inside that window's own contiguous index
+    range (safe -- within one earnings window, positions ARE temporally
+    adjacent), and only the resulting (a_t, b_{t-k}) VALUE PAIRS are pooled
+    across windows before computing one correlation per lag. `mask` is used
+    only for the cheap pre-check (matches the pre-fix threshold); the real
+    scan uses `windows`."""
+    if mask.sum() < 10 or not windows:
         return None
-    sub_a = ret_a[mask]
-    sub_b = ret_b[mask]
-    scan = lagged_corr_scan(sub_a, sub_b, max_lag)
+    scan = {}
+    for lag in range(-max_lag, max_lag + 1):
+        pooled_a, pooled_b = [], []
+        for start, end in windows:
+            sub_a = ret_a.loc[start:end]
+            sub_b = ret_b.loc[start:end]
+            if sub_a.empty or sub_b.empty:
+                continue
+            shifted_b = sub_b.shift(-lag)
+            joined = pd.concat([sub_a, shifted_b], axis=1, join="inner").dropna()
+            if joined.empty:
+                continue
+            pooled_a.append(joined.iloc[:, 0].values)
+            pooled_b.append(joined.iloc[:, 1].values)
+        if not pooled_a:
+            scan[lag] = (None, 0)
+            continue
+        a_vals = np.concatenate(pooled_a)
+        b_vals = np.concatenate(pooled_b)
+        n = len(a_vals)
+        if n < _MIN_CORR_N:
+            scan[lag] = (None, n)
+            continue
+        c = float(np.corrcoef(a_vals, b_vals)[0, 1])
+        if not np.isfinite(c):
+            c = None
+        scan[lag] = (c, n)
     return best_lag(scan)
 
 
@@ -125,7 +175,8 @@ def run_pair(symbol_a, symbol_b, tf_label, window_days, max_lag, n_boot, seed, m
 
         mask = _earnings_window_mask(common_idx, covered_dates, window_days)
         n_bars_in_windows = int(mask.sum())
-        real = _pooled_scan(ret_a, ret_b, mask, max_lag)
+        windows = _earnings_windows(common_idx, covered_dates, window_days)
+        real = _pooled_scan(ret_a, ret_b, mask, windows, max_lag)
         if real is None or real[0] is None:
             results.append({
                 "announcer": announcer, "other_leg": other,
@@ -148,7 +199,8 @@ def run_pair(symbol_a, symbol_b, tf_label, window_days, max_lag, n_boot, seed, m
                 for _ in range(len(covered_dates))
             ]
             null_mask = _earnings_window_mask(common_idx, rand_anchors, window_days)
-            null_result = _pooled_scan(ret_a, ret_b, null_mask, max_lag)
+            null_windows = _earnings_windows(common_idx, rand_anchors, window_days)
+            null_result = _pooled_scan(ret_a, ret_b, null_mask, null_windows, max_lag)
             if null_result is not None and null_result[0] is not None:
                 null_abs_corrs.append(abs(null_result[1]))
 
@@ -213,7 +265,8 @@ def main():
 
     out_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "output", "research")
     os.makedirs(out_dir, exist_ok=True)
-    out_path = os.path.join(out_dir, f"earnings_lead_lag_{args.tf}.parquet")
+    safe_tf = DataStore._TF_SAFE.get(args.tf, args.tf.lower())
+    out_path = os.path.join(out_dir, f"earnings_lead_lag_{safe_tf}.parquet")
     out_df.to_parquet(out_path)
     print(f"\nFull results written to {out_path}")
 

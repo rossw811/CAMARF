@@ -54,7 +54,8 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from analysis import _eg_worker
 from config import Config
-from data import DataStore
+from aligned_pair_loader import load_aligned_pair
+from lead_lag_scan import _gap_masked_log_price
 
 _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _RESULTS_DIR = os.path.join(_ROOT, "output", "results")
@@ -80,15 +81,6 @@ def _setup_logging():
     log.addHandler(fh)
 
 
-def _load_log_close(symbol: str, tf_label: str) -> Optional[pd.Series]:
-    df = DataStore.load(symbol, tf_label)
-    if df is None or "close" not in df.columns:
-        return None
-    close = df["close"].dropna()
-    close.index = pd.to_datetime(close.index)
-    return np.log(close)
-
-
 def requalify_pair(
     sym_a: str, sym_b: str, tf_label: str, break_date: pd.Timestamp,
     settling_bars: int = _SETTLING_BARS,
@@ -98,11 +90,19 @@ def requalify_pair(
     kept separate from main() so debug/_verify_decoupling_requalification.py
     can call it directly against real cached prices for a known pair.
     Returns None if there isn't enough post-settling history to test.
+
+    Tier 6 fix (Grand Sweep 2026-07-20): previously loaded each leg via bare
+    DataStore.load() with no gap-flag masking at all before the EG test —
+    low risk for a level-based test (bridging a routine closure is standard
+    practice, per the refined risk classification), but inconsistent with
+    sibling scripts (eg_permutation_check.py etc.) that DO mask via
+    DataAligner + _gap_masked_log_price. Aligned here for consistency.
     """
-    log_a = _load_log_close(sym_a, tf_label)
-    log_b = _load_log_close(sym_b, tf_label)
-    if log_a is None or log_b is None:
+    df_a, df_b = load_aligned_pair(sym_a, sym_b, tf_label)
+    if df_a is None or df_b is None:
         return None
+    log_a = pd.Series(_gap_masked_log_price(df_a), index=df_a.index)
+    log_b = pd.Series(_gap_masked_log_price(df_b), index=df_b.index)
 
     aligned = pd.DataFrame({"a": log_a, "b": log_b}).dropna()
     post_break = aligned[aligned.index > break_date]
@@ -113,7 +113,7 @@ def requalify_pair(
         return None
 
     eg_result = _eg_worker((
-        sym_a, sym_b, settled["a"].values, settled["b"].values, Config.ANALYSIS.EG_MAX_LAG
+        sym_a, sym_b, settled["a"].values, settled["b"].values, Config.ANALYSIS.EG_MAX_LAG, tf_label
     ))
     return {
         "symbol_a": sym_a, "symbol_b": sym_b, "tf_label": tf_label,

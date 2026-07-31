@@ -53,7 +53,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from aligned_pair_loader import load_aligned_pair
 from analysis import Config
-from data import _gap_aware_returns
+from data import DataStore, _gap_aware_returns
 from lead_lag_scan import _eg_pvalue, _gap_masked_log_price, best_lag, lagged_corr_scan
 
 
@@ -176,7 +176,8 @@ def main():
 
     out_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "output", "research")
     os.makedirs(out_dir, exist_ok=True)
-    out_path = os.path.join(out_dir, f"lead_lag_permutation_check_{args.tf}.parquet")
+    safe_tf = DataStore._TF_SAFE.get(args.tf, args.tf.lower())
+    out_path = os.path.join(out_dir, f"lead_lag_permutation_check_{safe_tf}.parquet")
     result_df.to_parquet(out_path)
     print(f"\nFull results written to {out_path}")
 

@@ -1,0 +1,2 @@
+2026-07-27 15:19:26  INFO      Fetched 26 FX series from frb_all.fx_daily (1971-01-04 through 2025-02-07 -- STALE, see staleness warning)
+2026-07-27 15:19:26  INFO      --only-fx complete: 26 FX series saved to output/cache/wrds/FX_*_1D.parquet

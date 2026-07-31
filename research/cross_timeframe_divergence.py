@@ -27,7 +27,14 @@ set.
 
 Usage:
     python research/cross_timeframe_divergence.py
-    python research/cross_timeframe_divergence.py --tfs 15min 30min 1hr 4hr 1day
+
+Takes no arguments — always runs both fixed timeframe groups defined in
+main() (a "deep-history" group ["1hr","4hr","1day"] and a "shallow-history"
+group ["15min","30min","1hr"], chosen for comparable shared cached depth per
+_run_group's own docstring). Doc-drift fix (Tier 6, Grand Sweep 2026-07-20):
+an earlier usage example showed a "--tfs 15min 30min 1hr 4hr 1day" flag that
+main()'s ArgumentParser never actually registered — running that command
+would error on the unrecognized argument, not select a custom TF list.
 """
 import argparse
 import os

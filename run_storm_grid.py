@@ -13,6 +13,7 @@ warnings.filterwarnings("ignore")
 
 from backtest import BacktestEngine, RegimeConditioner, MLConditioner, load_mm_hedge_map
 from config import Config
+import portfolio_math
 
 _ROOT = os.path.dirname(os.path.abspath(__file__))
 _OUT_DIR = os.path.join(_ROOT, "output", "backtest")
@@ -60,16 +61,14 @@ def portfolio_sharpe(trades):
     total = float(pnl.sum())
     n = len(trades)
     wr = float((pnl > 0).mean())
-    # equity-curve Sharpe using daily P&L
+    # Equity-curve Sharpe using daily P&L, zero-filled via portfolio_math (matches
+    # aggregate_portfolio()'s convention) -- NOT groupby("date"), which silently
+    # drops zero-P&L calendar days and inflates Sharpe (BUG-D62/D64/D70/D71 class,
+    # found here 2026-07-20 Grand Sweep as a previously-missed 7th recurrence).
     exit_times = [t.exit_time for t in trades if t.exit_time is not None]
     if exit_times:
         df = pd.DataFrame({"exit_time": exit_times, "pnl_net": pnl})
-        df["date"] = pd.to_datetime(df["exit_time"]).dt.date
-        daily = df.groupby("date")["pnl_net"].sum()
-        if len(daily) >= 5 and daily.std() > 0:
-            sharpe = float(daily.mean() / daily.std() * np.sqrt(252))
-        else:
-            sharpe = float("nan")
+        sharpe = portfolio_math.sharpe_from_trades(df)
     else:
         sharpe = float("nan")
     return sharpe, total, n, wr

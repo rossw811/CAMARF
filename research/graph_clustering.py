@@ -186,7 +186,8 @@ def main():
         "confirmed_pairs_total": len(confirmed),
     }
     os.makedirs(_RESEARCH_DIR, exist_ok=True)
-    out_path = os.path.join(_RESEARCH_DIR, f"{tf_label}_summary.json")
+    safe_tf = DataStore._TF_SAFE.get(tf_label, tf_label.lower())
+    out_path = os.path.join(_RESEARCH_DIR, f"{safe_tf}_summary.json")
     with open(out_path, "w") as f:
         json.dump(out, f, indent=2)
     print(f"\nSummary written to {out_path}")

@@ -42,6 +42,8 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(
 from data import DataStore, _gap_aware_returns
 from aligned_pair_loader import load_aligned_pair
 from lead_lag_scan import _gap_masked_log_price
+from spread_construction import full_sample_ols_spread
+from config import Config
 
 _DEFAULT_PAIRS = [
     ("LNT", "VTR"), ("LNT", "WELL"), ("AME", "MAR"), ("CMS", "DUK"),
@@ -49,11 +51,12 @@ _DEFAULT_PAIRS = [
     ("UMBF", "FHB"),
 ]
 
-ENTRY_Z = 2.0
-EXIT_Z = 0.0
-BASELINE_STOP_Z = 3.5   # matches config.py's Config.BACKTEST.STOP_ZSCORE default
+ENTRY_Z = Config.RESEARCH.ENTRY_Z
+EXIT_Z = Config.RESEARCH.EXIT_Z
+BASELINE_STOP_Z = Config.BACKTEST.STOP_ZSCORE  # was hardcoded 3.5 with a comment
+                                                # claiming this match -- sourced directly now
 TIGHT_STOP_Z = 2.5
-MAX_HOLD_BARS = 100
+MAX_HOLD_BARS = Config.RESEARCH.MAX_HOLD_BARS
 HUB_VOL_PERCENTILE_THRESHOLD = 0.80
 
 
@@ -66,20 +69,14 @@ def _find_hubs(pairs):
 
 
 def build_spread_z(symbol_a, symbol_b, tf_label, z_window=60):
-    df_a, df_b = load_aligned_pair(symbol_a, symbol_b, tf_label)
-    if df_a is None or df_b is None or df_a.empty or df_b.empty:
+    # Full-sample static OLS hedge ratio -- consolidated 2026-07-20 into
+    # spread_construction.py (was independently copy-pasted here; see that
+    # module's docstring for the non-causal/lookahead disclosure this
+    # function must keep making to its own callers).
+    result = full_sample_ols_spread(symbol_a, symbol_b, tf_label)
+    if result is None:
         return None
-    log_a = pd.Series(_gap_masked_log_price(df_a), index=df_a.index)
-    log_b = pd.Series(_gap_masked_log_price(df_b), index=df_b.index)
-    common_idx = log_a.index.intersection(log_b.index)
-    log_a, log_b = log_a.reindex(common_idx), log_b.reindex(common_idx)
-    mask = log_a.notna() & log_b.notna()
-    la, lb = log_a[mask], log_b[mask]
-    if len(la) < 100:
-        return None
-    beta = np.dot(lb - lb.mean(), la - la.mean()) / np.dot(lb - lb.mean(), lb - lb.mean())
-    alpha = la.mean() - beta * lb.mean()
-    spread = la - (alpha + beta * lb)
+    la, lb, beta, alpha, spread = result
     z = (spread - spread.rolling(z_window).mean()) / spread.rolling(z_window).std()
     return z.dropna()
 

@@ -2,7 +2,7 @@
 CAMARF regime_conditional_analysis.py — research/comparison script, NOT
 part of the production pipeline.
 
-Tests whether confirmed pairs' mean-reversion properties differ significantly
+Tests whether confirmed pairs' mean-reversion properties differ descriptively
 across macro regime states. The central question: does the RegimeClassifier's
 per-bar regime output in analysis.py already capture structurally different
 spread behavior, or are the regimes post-hoc labels on a uniform process?
@@ -16,12 +16,24 @@ Method:
        frequency.
     4. Within each regime bucket, estimate the spread's half-life via OLS
        on (spread_t+1 - spread_t) ~ alpha * spread_t.
-    5. Compare half-lives across regimes via Welch t-test (unequal variance).
-    6. Record: which regimes show faster/slower mean-reversion.
+    5. Compare each regime's half-life against the pair's OWN full-series
+       half-life via a simple ratio (hl_ratio = half_life_in_regime /
+       half_life_full_series; <1.0 = faster mean-reversion in this regime).
 
 Key output columns per pair-regime combination:
-  half_life, n_bars_in_regime, mean_abs_spread, mean_reversion_coeff
-  + whether the difference from the 'normal' regime is significant.
+  half_life_in_regime, n_bars_in_regime, mean_abs_spread_in_regime,
+  half_life_full_series, hl_ratio.
+
+Doc-drift fix (Tier 6, Grand Sweep 2026-07-20): earlier versions of this
+docstring described a "Welch t-test (unequal variance)" significance
+comparison and a "whether the difference ... is significant" output column —
+neither was ever actually implemented (confirmed directly: no ttest/scipy.stats
+significance call exists anywhere in this file, and no "significant" column is
+produced). This is a purely DESCRIPTIVE ratio comparison, not a formal
+hypothesis test. Building the promised Welch t-test would be new statistical
+methodology and needs its own sign-off before being added (CLAUDE.md's
+working-style rule) — not silently invented here; this fix corrects the
+documentation to match what the code actually does.
 
 Usage:
     python research/regime_conditional_analysis.py

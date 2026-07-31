@@ -160,6 +160,14 @@ def merge_with_yfinance(
     yf_start = yf_df.index.min()
     ibkr_hist = ibkr_deep[ibkr_deep.index < yf_start]
 
+    # Reconcile a split/reverse-split that may have occurred between IBKR's
+    # deep-history pull and yfinance's currently-adjusted series -- the same
+    # append-seam price-discontinuity bug BUG-D65 found and fixed for
+    # DataStore.append()'s 13 call sites, but this concat is an independent
+    # merge path never covered by that fix (found 2026-07-20 Grand Sweep).
+    # Rescales ibkr_hist (the older-basis side) to match yf_df's current basis.
+    ibkr_hist = DataStore._reconcile_split_adjustment(symbol, ibkr_hist, yf_df)
+
     merged = pd.concat([ibkr_hist, yf_df]).sort_index()
     merged = merged[~merged.index.duplicated(keep="last")]
     merged.sort_index(inplace=True)

@@ -278,7 +278,17 @@ def main():
     result_df = pd.DataFrame(result_rows)
     out_dir = os.path.join("output", "research")
     os.makedirs(out_dir, exist_ok=True)
-    out_path = os.path.join(out_dir, "coint_frac_window_grid.parquet")
+    tf_dir_map = {
+        "1m": "1min", "2m": "2min", "3m": "3min", "5m": "5min", "15m": "15min",
+        "30m": "30min", "1h": "1hr", "4h": "4hr", "7D": "7day", "1M": "1mo",
+        "3M": "3mo", "6M": "6mo",
+    }
+    safe_tf = tf_dir_map.get(args.tf, args.tf.lower())
+    # Previously wrote one fixed filename regardless of --tf, silently
+    # overwriting the prior timeframe's grid results on every run at a
+    # different tf (Tier 5, Grand Sweep 2026-07-20) -- not a case-collision,
+    # a missing suffix entirely.
+    out_path = os.path.join(out_dir, f"coint_frac_window_grid_{safe_tf}.parquet")
     result_df.to_parquet(out_path)
     print(f"\nFull grid written to {out_path}")
 

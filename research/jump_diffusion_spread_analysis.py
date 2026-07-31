@@ -71,15 +71,20 @@ JUMP_PROXIMITY_BARS = 3
 _BACKTEST_DIR = "output/backtest"
 
 
-def detect_jumps(z_rolling: np.ndarray) -> np.ndarray:
+def detect_jumps(delta: np.ndarray) -> np.ndarray:
     """Returns a boolean array, True where the bar-to-bar delta is flagged
-    as a jump relative to its own trailing local volatility."""
-    delta = np.diff(z_rolling, prepend=np.nan)
+    as a jump relative to its own trailing local volatility. `delta` must
+    already be diffed and gap-masked (NaN at any position whose diff spans
+    a DATA_GAP-flagged bar) by the caller -- this function no longer
+    computes np.diff() itself (Tier 2.6 fix, Grand Sweep 2026-07-20): the
+    diff must happen BEFORE any gap-flagged rows are dropped/compacted, or
+    a diff silently spanning a dropped multi-day gap becomes
+    indistinguishable from a genuine single-bar jump to this detector."""
     s = pd.Series(delta)
     # shift(1) so the trailing window excludes the current bar itself
     trailing_std = s.shift(1).rolling(JUMP_VOL_WINDOW, min_periods=20).std()
-    is_jump = (delta.__abs__() > JUMP_THRESHOLD_SIGMA * trailing_std.to_numpy())
-    return np.nan_to_num(is_jump, nan=False).astype(bool), delta
+    is_jump = (np.abs(delta) > JUMP_THRESHOLD_SIGMA * trailing_std.to_numpy())
+    return np.nan_to_num(is_jump, nan=False).astype(bool)
 
 
 def analyze_pair_jumps(results_dir: str, sym_a: str, sym_b: str) -> dict:
@@ -87,20 +92,30 @@ def analyze_pair_jumps(results_dir: str, sym_a: str, sym_b: str) -> dict:
     if not os.path.exists(path):
         return {}
     df = pd.read_parquet(path)
-    real_mask = (df["gap_flag_a"] != 4) & (df["gap_flag_b"] != 4)
-    df = df.loc[real_mask]
     z_raw = df["z_rolling"].to_numpy(dtype=float)
     finite_mask = np.isfinite(z_raw)
-    z = z_raw[finite_mask]
-    # BUG FIX: timestamps aligned 1:1 with z via the SAME finite_mask — the
-    # original version re-applied real_mask (already applied once via
-    # df.loc above) to the POST-finite-filter df.index, a double-filter
-    # length mismatch that crashed outright on real data.
-    timestamps = df.index[finite_mask]
+    gap_bad = ((df["gap_flag_a"].to_numpy() == 4) | (df["gap_flag_b"].to_numpy() == 4))
+    # Diff on the FULL, un-compacted series first (preserves real bar-to-bar
+    # adjacency), THEN mask any diff whose start or end bar is DATA_GAP-
+    # flagged, mirroring data.py::_gap_aware_returns' convention. Dropping
+    # gap rows before diffing (the pre-fix order) silently concatenates
+    # positions spanning a multi-bar/multi-day gap as if one bar apart --
+    # exactly what this jump detector exists to distinguish from a genuine
+    # single-bar jump.
+    z_for_diff = np.where(finite_mask, z_raw, np.nan)
+    delta = np.diff(z_for_diff, prepend=np.nan)
+    bad_delta = gap_bad | np.roll(gap_bad, 1)
+    bad_delta[0] = False
+    delta = np.where(bad_delta, np.nan, delta)
+
+    keep = finite_mask & ~gap_bad
+    z = z_raw[keep]
+    delta = delta[keep]
+    timestamps = df.index[keep]
     if len(z) < JUMP_VOL_WINDOW * 2:
         return {}
 
-    is_jump, delta = detect_jumps(z)
+    is_jump = detect_jumps(delta)
     n_jumps = int(is_jump.sum())
     if n_jumps == 0:
         return {

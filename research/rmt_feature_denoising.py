@@ -104,7 +104,11 @@ def gather_real_examples():
                         row["symbol_a"], row["symbol_b"], tf_label, row, summary
                     )
                     all_events.extend(events)
-                except Exception:
+                except Exception as e:
+                    # Tier 6 fix (Grand Sweep 2026-07-20): previously a bare
+                    # except with no record of which pair failed or why.
+                    print(f"  SKIP {row['symbol_a']}/{row['symbol_b']}@{tf_label}: "
+                          f"_build_examples_for_pair failed: {e}")
                     continue
     finally:
         ml._tf_dirname = orig_tf_dirname

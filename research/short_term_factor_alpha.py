@@ -84,15 +84,29 @@ def seasonality_signal(returns_df: pd.DataFrame) -> pd.DataFrame:
 
 def evaluate_signal(signal: pd.DataFrame, returns_df: pd.DataFrame, lag: int = 1) -> dict:
     """Signal at t predicts return at t+lag — pooled correlation across all
-    assets/days, same evaluation convention as network_momentum.py."""
+    assets/days, same evaluation convention as network_momentum.py.
+
+    Tier 4.2 fix (Grand Sweep 2026-07-20): `n_obs` (day x asset flattened
+    count) overstates the true independent sample size for a
+    CROSS-SECTIONALLY IDENTICAL signal like the Monday dummy — the same
+    scalar value is broadcast across every asset on a given day, so its
+    real information content scales with the number of DAYS, not
+    days*assets. Also reports `n_effective_days` (unique dates with at
+    least one valid signal/return pair) alongside the existing `n_obs`, so
+    a reader isn't misled into reading a large days*assets count as if it
+    were that many independent observations — most relevant for the
+    seasonality signal specifically, harmless (a looser but still honest
+    bound) for signals that genuinely vary asset-by-asset."""
     sig_shifted = signal.shift(lag)
     sig_flat = sig_shifted.to_numpy().flatten()
     ret_flat = returns_df.to_numpy().flatten()
     valid = np.isfinite(sig_flat) & np.isfinite(ret_flat)
+    valid_2d = np.isfinite(sig_shifted.to_numpy()) & np.isfinite(returns_df.to_numpy())
+    n_effective_days = int(np.sum(valid_2d.any(axis=1)))
     if valid.sum() < 100:
-        return {"corr": np.nan, "n_obs": int(valid.sum())}
+        return {"corr": np.nan, "n_obs": int(valid.sum()), "n_effective_days": n_effective_days}
     corr = float(np.corrcoef(sig_flat[valid], ret_flat[valid])[0, 1])
-    return {"corr": corr, "n_obs": int(valid.sum())}
+    return {"corr": corr, "n_obs": int(valid.sum()), "n_effective_days": n_effective_days}
 
 
 def main():
@@ -117,11 +131,13 @@ def main():
     r_composite = evaluate_signal(composite, returns_df)
 
     print(f"\nShort-term reversal signal: corr(signal, forward return)={r_reversal['corr']:.4f} "
-          f"(n={r_reversal['n_obs']})")
+          f"(n={r_reversal['n_obs']}, n_effective_days={r_reversal['n_effective_days']})")
     print(f"Day-of-week (Monday) seasonality: corr(signal, forward return)={r_seasonality['corr']:.4f} "
-          f"(n={r_seasonality['n_obs']})")
+          f"(n={r_seasonality['n_obs']}, n_effective_days={r_seasonality['n_effective_days']} -- "
+          f"the Monday dummy is IDENTICAL across every asset on a given day, so this signal's true "
+          f"independent sample size is ~n_effective_days, not n_obs)")
     print(f"Equal-weight composite: corr(signal, forward return)={r_composite['corr']:.4f} "
-          f"(n={r_composite['n_obs']})")
+          f"(n={r_composite['n_obs']}, n_effective_days={r_composite['n_effective_days']})")
 
     os.makedirs("output/research", exist_ok=True)
     pd.DataFrame([

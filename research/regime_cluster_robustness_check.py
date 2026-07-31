@@ -121,17 +121,25 @@ def run_bootstrap_check(is_trades, macro_df, n_boot=200, seed=42):
 
     found_count = 0
     best_or_near_best_count = 0
+    insufficient_data_count = 0
+    gmm_fail_count = 0
     for b in range(n_boot):
         idx = rng.integers(0, n, size=n)
         resampled = is_feat.iloc[idx].reset_index(drop=True)
         X, ok = _clean_feature_matrix(resampled)
         if X.shape[0] < 30:
+            insufficient_data_count += 1
             continue
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             try:
                 _, states, _ = fit_gmm(X, n_states=_N_STATES, seed=b)
-            except Exception:
+            except Exception as e:
+                # Tier 6 fix (Grand Sweep 2026-07-20): previously a bare
+                # `except Exception: continue` with no record of what
+                # failed or how often -- now counted and logged, not silent.
+                gmm_fail_count += 1
+                print(f"  [bootstrap {b}] GMM fit failed: {e}")
                 continue
         perf = performance_by_state(resampled, ok, states, f"boot_{b}")
         open_cluster = _find_market_open_cluster(perf)
@@ -144,9 +152,11 @@ def run_bootstrap_check(is_trades, macro_df, n_boot=200, seed=42):
             if rank <= 1:
                 best_or_near_best_count += 1
 
-    print(f"Market-open-like cluster found in {found_count}/{n_boot} bootstrap draws.")
+    print(f"Market-open-like cluster found in {found_count}/{n_boot} bootstrap draws "
+          f"({insufficient_data_count} skipped for insufficient data, {gmm_fail_count} GMM fit failures).")
     print(f"Of those, it was the BEST-performing cluster in {best_or_near_best_count}/{found_count} draws.")
-    return {"n_boot": n_boot, "found_count": found_count, "best_count": best_or_near_best_count}
+    return {"n_boot": n_boot, "found_count": found_count, "best_count": best_or_near_best_count,
+            "insufficient_data_count": insufficient_data_count, "gmm_fail_count": gmm_fail_count}
 
 
 def main():

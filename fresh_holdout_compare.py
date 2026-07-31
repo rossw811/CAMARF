@@ -31,6 +31,8 @@ import os
 import numpy as np
 import pandas as pd
 
+import portfolio_math
+
 log = logging.getLogger("fresh_holdout_compare")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s  %(levelname)-8s  %(message)s", datefmt="%H:%M:%S")
 
@@ -39,17 +41,21 @@ _PAIR_RESERVE_FRACTION = 0.20  # ~20% of confirmed pairs reserved, deterministic
 
 
 def _pooled_sharpe(df: pd.DataFrame) -> tuple:
-    """Portfolio Sharpe from pooled daily P&L, matching aggregate_portfolio()'s convention.
+    """Portfolio Sharpe from pooled daily P&L via portfolio_math (zero-filled
+    resample("1D"), matching aggregate_portfolio()'s convention exactly —
+    this function previously used groupby(exit_date) instead, which silently
+    drops zero-P&L calendar days despite the docstring's claim of matching;
+    fixed 2026-07-20 Grand Sweep, same bug class as BUG-D62/D64).
     Returns (sharpe, n_trades, n_days)."""
     if len(df) == 0:
         return float("nan"), 0, 0
-    d = df.copy()
-    d["exit_date"] = pd.to_datetime(d["exit_time"]).dt.date
-    daily = d.groupby("exit_date")["pnl_net"].sum()
-    if len(daily) < 5 or daily.std() == 0:
-        return float("nan"), len(df), len(daily)
-    sharpe = float(daily.mean() / daily.std() * np.sqrt(252))
-    return sharpe, len(df), len(daily)
+    daily = portfolio_math.daily_pnl_from_trades(df)
+    sharpe = portfolio_math.sharpe_from_daily_pnl(daily)
+    # n_days = distinct days with a nonzero exit (the pre-fix meaning of this
+    # count, e.g. "28 trades/10 days" in Development.md) -- NOT the full
+    # zero-filled calendar span, which len(daily) would now give.
+    n_days = int((daily != 0).sum()) if len(daily) else 0
+    return sharpe, len(df), n_days
 
 
 def time_based_split(holdout: pd.DataFrame, fresh_fraction: float = _TIME_FRESH_FRACTION) -> dict:

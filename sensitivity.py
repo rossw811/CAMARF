@@ -40,15 +40,28 @@ _OUT_DIR = os.path.join(_ROOT, "output", "sensitivity")
 
 _TF_DIRS = [("1hr", "1h")]
 
-# Default sweep grid
-ENTRY_Z_LEVELS = [1.5, 2.0, 2.5, 3.0]
-EXIT_Z_LEVELS  = [0.0, 0.25, 0.5, 0.75]
-MAX_HL_LEVELS  = [20, 35, 50, 75]
-ADV_LEVELS_M   = [0, 10, 25, 50, 100]   # in millions USD
+# Sweep grids -- sourced directly from Config.BACKTEST (2026-07-20, Grand
+# Sweep task #24), not duplicated as local constants. ENTRY_Z_LEVELS/
+# EXIT_Z_LEVELS/STOP_Z_LEVELS previously happened to match
+# COARSE_ENTRY_ZSCORE/COARSE_EXIT_ZSCORE/COARSE_STOP_ZSCORE by coincidence,
+# not by import -- the exact same silent-drift risk BUG-D71 found in
+# wfa.py. MAX_HL_LEVELS/ADV_LEVELS_M had no config.py home before this
+# (added as SENSITIVITY_MAX_HL_LEVELS/SENSITIVITY_ADV_LEVELS_M).
+ENTRY_Z_LEVELS = Config.BACKTEST.COARSE_ENTRY_ZSCORE
+EXIT_Z_LEVELS  = Config.BACKTEST.COARSE_EXIT_ZSCORE
+STOP_Z_LEVELS  = Config.BACKTEST.COARSE_STOP_ZSCORE  # NEW sweep dimension -- was
+                                                       # in config.py but never
+                                                       # actually swept before this
+MAX_HL_LEVELS  = Config.BACKTEST.SENSITIVITY_MAX_HL_LEVELS
+ADV_LEVELS_M   = Config.BACKTEST.SENSITIVITY_ADV_LEVELS_M   # in millions USD
 
 # Baseline for 1D sweeps (while varying the other axis)
-BASELINE_ENTRY_Z = 2.0
-BASELINE_EXIT_Z  = 0.5
+BASELINE_ENTRY_Z = Config.BACKTEST.ENTRY_ZSCORE
+BASELINE_EXIT_Z  = 0.5  # deliberately NOT Config.BACKTEST.EXIT_ZSCORE (0.0) --
+                         # this baseline predates that field and 0.5 sits at
+                         # the grid's midpoint; kept as its own named constant
+                         # rather than silently changing the existing baseline
+BASELINE_STOP_Z  = Config.BACKTEST.STOP_ZSCORE
 BASELINE_MAX_HL  = 50
 BASELINE_ADV_M   = 0
 
@@ -149,13 +162,18 @@ def _portfolio_sharpe(trades: list) -> float:
 
 
 def run_variant(pairs: pd.DataFrame, spreads: dict, adv_map: dict,
-                entry_z: float, exit_z: float, max_hl: int, adv_usd: float) -> Dict[str, Any]:
+                entry_z: float, exit_z: float, max_hl: int, adv_usd: float,
+                stop_z: float = None) -> Dict[str, Any]:
     """Run one parameter combination through BacktestEngine and return metrics.
 
     max_hl: pre-filter pairs whose half_life_rolling > max_hl (pair-selection filter,
             not a BacktestConfig param since HL ceiling is set at analysis.py time).
     adv_usd: pre-filter pairs where either symbol has ADV < adv_usd.
-    entry_z / exit_z: patched directly onto BacktestConfig for this call.
+    entry_z / exit_z / stop_z: patched directly onto BacktestConfig for this call.
+        stop_z defaults to Config.BACKTEST.STOP_ZSCORE (baseline, unswept)
+        unless explicitly overridden by the stop_z 1D sweep (added 2026-07-20,
+        Grand Sweep task #24 -- STOP_ZSCORE existed in config.py's own
+        COARSE_STOP_ZSCORE grid but was never actually swept before this).
     """
     from backtest import BacktestEngine, RegimeConditioner, MLConditioner
 
@@ -174,17 +192,21 @@ def run_variant(pairs: pd.DataFrame, spreads: dict, adv_map: dict,
         ]
 
     if len(pairs) == 0:
-        return {"entry_z": entry_z, "exit_z": exit_z, "max_hl": max_hl,
-                "adv_m": adv_usd / 1e6, "sharpe": float("nan"),
+        return {"entry_z": entry_z, "exit_z": exit_z,
+                "stop_z": stop_z if stop_z is not None else Config.BACKTEST.STOP_ZSCORE,
+                "max_hl": max_hl, "adv_m": adv_usd / 1e6, "sharpe": float("nan"),
                 "n_trades": 0, "n_pairs": 0}
 
     # Patch config for this run
     cfg = Config.BACKTEST
     original_entry = cfg.ENTRY_ZSCORE
     original_exit  = cfg.EXIT_ZSCORE
+    original_stop  = cfg.STOP_ZSCORE
+    used_stop_z    = stop_z if stop_z is not None else original_stop
 
     cfg.ENTRY_ZSCORE = entry_z
     cfg.EXIT_ZSCORE  = exit_z
+    cfg.STOP_ZSCORE  = used_stop_z
 
     try:
         engine = BacktestEngine(
@@ -205,11 +227,12 @@ def run_variant(pairs: pd.DataFrame, spreads: dict, adv_map: dict,
     finally:
         cfg.ENTRY_ZSCORE  = original_entry
         cfg.EXIT_ZSCORE   = original_exit
+        cfg.STOP_ZSCORE   = original_stop
 
     sh = _portfolio_sharpe(all_trades)
     return {
-        "entry_z": entry_z, "exit_z": exit_z, "max_hl": max_hl,
-        "adv_m": adv_usd / 1e6, "sharpe": round(sh, 3) if np.isfinite(sh) else float("nan"),
+        "entry_z": entry_z, "exit_z": exit_z, "stop_z": used_stop_z,
+        "max_hl": max_hl, "adv_m": adv_usd / 1e6, "sharpe": round(sh, 3) if np.isfinite(sh) else float("nan"),
         "n_trades": len(all_trades), "n_pairs": len(pairs),
     }
 
@@ -284,6 +307,22 @@ def main():
             log.info("    ADV>=$%.0fM  n_pairs=%d  => Sharpe=%.3f  n=%d",
                      adv_m, r["n_pairs"],
                      r["sharpe"] if np.isfinite(r["sharpe"]) else float("nan"), r["n_trades"])
+
+        # 1D: STOP_ZSCORE sweep (at baseline entry_z, exit_z, max_hl, ADV) --
+        # NEW 2026-07-20 (Grand Sweep task #24). STOP_ZSCORE has always had a
+        # coarse grid in config.py (COARSE_STOP_ZSCORE) but was never actually
+        # swept by this script before this -- "test for all the values in
+        # config as well" per Ross's direction.
+        log.info("  Running 1D stop_z sweep...")
+        for sz in STOP_Z_LEVELS:
+            r = run_variant(pairs, spreads, adv_map,
+                            BASELINE_ENTRY_Z, BASELINE_EXIT_Z, BASELINE_MAX_HL,
+                            BASELINE_ADV_M * 1e6, stop_z=sz)
+            r["sweep"] = "stop_z_1d"
+            r["tf_label"] = tf_label
+            all_results.append(r)
+            log.info("    stop_z=%.2f  => Sharpe=%.3f  n=%d",
+                     sz, r["sharpe"] if np.isfinite(r["sharpe"]) else float("nan"), r["n_trades"])
 
     if not all_results:
         log.warning("No results generated.")

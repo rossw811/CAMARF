@@ -59,9 +59,15 @@ _OUT_DIR = "output/research"
 
 def _run_backtest_override(pairs_df: pd.DataFrame, tf_label: str, holdout: bool) -> dict:
     """Write pairs_df to a temp override file, invoke backtest.py, read back
-    the portfolio-level stats parquet it writes. Returns {} if backtest.py
-    produced no trades for this subset (a legitimate, reportable outcome,
-    not an error)."""
+    the portfolio-level stats parquet it writes. Returns a dict with an
+    explicit "status" key (Tier 6 fix, Grand Sweep 2026-07-20 — previously
+    a real subprocess crash and "legitimately zero trades" both returned an
+    identical bare {}, indistinguishable in the saved parquet even though
+    the console print DID show the crash reason at the time): "crashed"
+    (subprocess non-zero exit, "stderr_tail" carries the tail of stderr),
+    "no_trades" (backtest.py ran fine but produced no trades for this
+    subset — a legitimate, reportable outcome, not an error), or "ok"
+    (real stats present, merged into the returned dict)."""
     with tempfile.NamedTemporaryFile(suffix=".parquet", delete=False) as f:
         tmp_path = f.name
     try:
@@ -80,13 +86,13 @@ def _run_backtest_override(pairs_df: pd.DataFrame, tf_label: str, holdout: bool)
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
         if result.returncode != 0:
             print(f"    backtest.py failed (rc={result.returncode}): {result.stderr[-500:]}")
-            return {}
+            return {"status": "crashed", "stderr_tail": result.stderr[-500:]}
         portfolio_path = os.path.join("output", "backtest", f"portfolio_{label}.parquet")
         if not os.path.exists(portfolio_path):
-            return {}
+            return {"status": "no_trades"}
         stats = pd.read_parquet(portfolio_path).iloc[0].to_dict()
         os.remove(portfolio_path)  # don't let counterfactual runs pollute real output dir
-        return stats
+        return {"status": "ok", **stats}
     finally:
         os.remove(tmp_path)
 
@@ -137,9 +143,11 @@ def main():
                 "tf_label": tf_label,
                 "filter": filter_name,
                 "n_excluded": len(excluded_df),
+                "is_status": is_stats.get("status"),
                 "is_sharpe": is_stats.get("sharpe_portfolio"),
                 "is_trades": is_stats.get("n_trades_total"),
                 "is_pnl": is_stats.get("total_pnl_portfolio"),
+                "oos_status": oos_stats.get("status"),
                 "oos_sharpe": oos_stats.get("sharpe_portfolio"),
                 "oos_trades": oos_stats.get("n_trades_total"),
                 "oos_pnl": oos_stats.get("total_pnl_portfolio"),

@@ -1,23 +1,29 @@
 === CAMARF analysis.py ===
-date:        2026-07-15 01:06
-runtime_min: 11.9
-universe:    1661 assets  20427 symbol-TF keys
+date:        2026-07-22 15:10
+runtime_min: 91.0
+universe:    1660 assets  20423 symbol-TF keys
 
 === results_by_tf ===
 tf    pairs cross trios regimes
-5min  0     0     0     0
-15min 0     0     0     0
-30min 0     0     0     0
+1m    0     0     0     2
+2m    1     0     0     2
+3m    1     0     0     2
+5m    0     0     0     0
+15m   0     0     0     0
+30m   0     0     0     0
+1h    0     0     0     0
 4h    0     0     0     2
-1D    0     0     1     11
-7day  0     0     0     0
-3mo   0     0     0     0
-6mo   0     0     0     0
-TOTAL  0           1     13
-bias_audit_entries: 19
+1D    0     0     0     0
+7D    0     0     0     0
+1M    0     0     0     0
+3M    0     0     0     0
+6M    0     0     0     0
+TOTAL  2           0     8
+bias_audit_entries: 64
 
 === confirmed_pairs ===
-  none
+2m     KVUE     KMB      hl=18.9  H=0.491  tier=silver  coint_frac=0.88
+3m     KVUE     KMB      hl=3.4  H=0.428  tier=silver  coint_frac=0.98
 
 === errors_and_skipped ===
 

@@ -59,9 +59,15 @@ from aligned_pair_loader import (
 )
 
 
-def news_impact_asymmetry_test(z, n_perm=1000, rng=None):
+def news_impact_asymmetry_test(z, n_perm=1000, rng=None, already_diffed=False):
     """
-    z: 1-D array of the entry-signal series (e.g. z_rolling), real bars only.
+    z: 1-D array. By default the entry-signal LEVEL series (e.g.
+    z_rolling), real bars only, and dz=np.diff(z) is computed here. If
+    `already_diffed` is True, `z` is instead treated as the already-
+    gap-masked delta series itself (Tier 2.11 fix, Grand Sweep
+    2026-07-20 -- the caller must diff BEFORE dropping gap-flagged rows,
+    not after, so this function no longer does the diff itself in that
+    path).
 
     Returns var_after_narrow, var_after_widen, variance_ratio (narrow/widen),
     and a two-sided permutation p-value for the ratio departing from 1.0.
@@ -69,7 +75,7 @@ def news_impact_asymmetry_test(z, n_perm=1000, rng=None):
     if rng is None:
         rng = np.random.default_rng(0)
     z = np.asarray(z, dtype=float)
-    dz = np.diff(z)
+    dz = z if already_diffed else np.diff(z)
     n = dz.size
     if n < 60:
         return {"ok": False, "error": "insufficient_obs"}
@@ -126,10 +132,30 @@ def main():
             if not os.path.exists(series_path):
                 continue
             df = pd.read_parquet(series_path)
-            real_mask = (df["gap_flag_a"] != 4) & (df["gap_flag_b"] != 4)
-            z = df.loc[real_mask, "z_rolling"].to_numpy(dtype=float)
-            z = z[np.isfinite(z)]
-            r = news_impact_asymmetry_test(z, n_perm=1000, rng=rng)
+            # Tier 2.11 fix (Grand Sweep 2026-07-20): the prior version
+            # borrowed threshold_cointegration.py's gap-masking
+            # justification, but that script's rationale is specifically
+            # about a LEVEL-based test (bridging a routine closure is fine
+            # there) -- it does not transfer to this dz_t (diff-based,
+            # lag-sensitive) asymmetry test, per the refined risk
+            # classification (docs/GRAND_SWEEP_BUG_AUDIT_2026-07-20.md).
+            # Dropping gap rows BEFORE np.diff() silently concatenates
+            # positions spanning any gap as if one bar apart. Fixed by
+            # diffing the full series first, then masking any diff whose
+            # start or end bar is DATA_GAP-flagged, mirroring
+            # data.py::_gap_aware_returns' convention.
+            z_raw = df["z_rolling"].to_numpy(dtype=float)
+            finite_mask = np.isfinite(z_raw)
+            gap_bad = ((df["gap_flag_a"].to_numpy() == 4) | (df["gap_flag_b"].to_numpy() == 4))
+            z_for_diff = np.where(finite_mask, z_raw, np.nan)
+            delta = np.diff(z_for_diff, prepend=np.nan)
+            bad_delta = gap_bad | np.roll(gap_bad, 1)
+            bad_delta[0] = False
+            delta = np.where(bad_delta, np.nan, delta)
+            keep = finite_mask & ~gap_bad
+            z_delta = delta[keep]
+            z_delta = z_delta[np.isfinite(z_delta)]
+            r = news_impact_asymmetry_test(z_delta, n_perm=1000, rng=rng, already_diffed=True)
             r.update({"symbol_a": sym_a, "symbol_b": sym_b, "tf_label": tf_label})
             rows.append(r)
             if r["ok"]:

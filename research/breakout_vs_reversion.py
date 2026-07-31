@@ -64,6 +64,8 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(
 
 from aligned_pair_loader import load_aligned_pair
 from lead_lag_scan import _gap_masked_log_price
+from spread_construction import full_sample_ols_spread
+from config import Config
 
 _DEFAULT_PAIRS = [
     ("LNT", "VTR"), ("LNT", "WELL"), ("AME", "MAR"), ("CMS", "DUK"),
@@ -71,10 +73,13 @@ _DEFAULT_PAIRS = [
     ("UMBF", "FHB"),
 ]
 
-ENTRY_Z = 2.0          # matches config.py's production ENTRY_ZSCORE
-EXIT_Z = 0.0           # matches config.py's production EXIT_ZSCORE
-BREAKOUT_TARGET_DELTA = 1.0   # breakout profit target: |z| grows by this much further
-MAX_HOLD_BARS = 100    # shared cap for both strategies
+# Sourced from Config.RESEARCH (2026-07-20, Grand Sweep task #24) -- was
+# hardcoded here (and independently in 4 sibling files); see config.py's
+# ResearchConfig docstring.
+ENTRY_Z = Config.RESEARCH.ENTRY_Z
+EXIT_Z = Config.RESEARCH.EXIT_Z
+BREAKOUT_TARGET_DELTA = 1.0   # breakout profit target: |z| grows by this much further -- unique to this file
+MAX_HOLD_BARS = Config.RESEARCH.MAX_HOLD_BARS
 
 # Entry/exit combination sweep grid (added 2026-07-14, per Ross's direction
 # to sweep the same way production already does — config.py's
@@ -89,20 +94,17 @@ TARGET_DELTA_GRID = [0.5, 1.0, 1.5, 2.0]
 
 
 def build_spread_and_z(symbol_a, symbol_b, tf_label, z_window=60):
-    df_a, df_b = load_aligned_pair(symbol_a, symbol_b, tf_label)
-    if df_a is None or df_b is None or df_a.empty or df_b.empty:
+    # Full-sample static OLS hedge ratio -- consolidated 2026-07-20 into
+    # spread_construction.py (this file was the ORIGIN that leg_level_early_exit.py,
+    # archetype_conditional_sizing.py, vol_targeting_and_drawdown_derisking.py, and
+    # hub_leg_stop_conditioning.py all independently copy-pasted; see that
+    # module's docstring for the non-causal/lookahead disclosure this
+    # function must keep making to its own callers, per this file's own
+    # docstring above).
+    result = full_sample_ols_spread(symbol_a, symbol_b, tf_label)
+    if result is None:
         return None
-    log_a = pd.Series(_gap_masked_log_price(df_a), index=df_a.index)
-    log_b = pd.Series(_gap_masked_log_price(df_b), index=df_b.index)
-    common_idx = log_a.index.intersection(log_b.index)
-    log_a, log_b = log_a.reindex(common_idx), log_b.reindex(common_idx)
-    mask = log_a.notna() & log_b.notna()
-    la, lb = log_a[mask], log_b[mask]
-    if len(la) < 100:
-        return None
-    beta = np.dot(lb - lb.mean(), la - la.mean()) / np.dot(lb - lb.mean(), lb - lb.mean())
-    alpha = la.mean() - beta * lb.mean()
-    spread = la - (alpha + beta * lb)
+    la, lb, beta, alpha, spread = result
     z = (spread - spread.rolling(z_window).mean()) / spread.rolling(z_window).std()
     return spread.dropna(), z.dropna()
 
@@ -199,6 +201,8 @@ def main():
     args = p.parse_args()
 
     rows = []
+    all_mr_trades = []
+    all_bo_trades = []
     for sym_a, sym_b in _DEFAULT_PAIRS:
         result = build_spread_and_z(sym_a, sym_b, args.tf)
         if result is None:
@@ -207,6 +211,8 @@ def main():
         spread, z = result
         mr_trades = simulate_mean_reversion(z)
         bo_trades = simulate_breakout(z)
+        all_mr_trades.extend(mr_trades)
+        all_bo_trades.extend(bo_trades)
         mr_sum = _summarize(mr_trades, "mean_reversion")
         bo_sum = _summarize(bo_trades, "breakout")
         mr_sum.update({"symbol_a": sym_a, "symbol_b": sym_b})
@@ -226,8 +232,19 @@ def main():
             total_trades=("n_trades", "sum"),
             mean_win_rate=("win_rate", "mean"),
             mean_total_pnl_z=("total_pnl_z", "mean"),
-            mean_sharpe_like=("sharpe_like", "mean"),
         )
+        # Tier 4.1 fix (BUG-D59-class, Grand Sweep 2026-07-20): the previous
+        # "mean_sharpe_like" column averaged each PAIR's own sharpe_like --
+        # the exact BUG-D59 pattern run_combination_sweep() (a few dozen
+        # lines below) already avoids by pooling trades across pairs FIRST.
+        # A single low-trade-count pair's noisy per-pair ratio could
+        # otherwise dominate the aggregate the way a naive per-pair average
+        # does. Pool here the same way.
+        pooled_sharpe = {}
+        for label, trades in (("mean_reversion", all_mr_trades), ("breakout", all_bo_trades)):
+            pnls = np.array([t["pnl_z"] for t in trades]) if trades else np.array([])
+            pooled_sharpe[label] = float(pnls.mean() / pnls.std()) if len(pnls) > 1 and pnls.std() > 1e-9 else np.nan
+        agg["pooled_sharpe_like"] = agg.index.map(pooled_sharpe)
         print(f"\nAggregate across {len(_DEFAULT_PAIRS)} pairs:")
         print(agg.to_string())
 

@@ -45,10 +45,12 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(
 
 from aligned_pair_loader import load_aligned_pair
 from lead_lag_scan import _gap_masked_log_price
+from spread_construction import full_sample_ols_spread
+from config import Config
 
-ENTRY_Z = 2.0
-EXIT_Z = 0.0
-MAX_HOLD_BARS = 100
+ENTRY_Z = Config.RESEARCH.ENTRY_Z
+EXIT_Z = Config.RESEARCH.EXIT_Z
+MAX_HOLD_BARS = Config.RESEARCH.MAX_HOLD_BARS
 _CHAR_PATH = "output/research/pair_characteristics.parquet"
 _ALLOWED_NAMES = {"entry_z_abs", "half_life_at_entry", "side_long", "side_short", "entry_hour"}
 
@@ -83,20 +85,14 @@ def _safe_eval_rule(rule: str, context: dict) -> bool:
 
 
 def build_spread_z(symbol_a, symbol_b, tf_label, z_window=60):
-    df_a, df_b = load_aligned_pair(symbol_a, symbol_b, tf_label)
-    if df_a is None or df_b is None or df_a.empty or df_b.empty:
+    # Full-sample static OLS hedge ratio -- consolidated 2026-07-20 into
+    # spread_construction.py (was independently copy-pasted here; see that
+    # module's docstring for the non-causal/lookahead disclosure this
+    # function must keep making to its own callers).
+    result = full_sample_ols_spread(symbol_a, symbol_b, tf_label)
+    if result is None:
         return None
-    log_a = pd.Series(_gap_masked_log_price(df_a), index=df_a.index)
-    log_b = pd.Series(_gap_masked_log_price(df_b), index=df_b.index)
-    common_idx = log_a.index.intersection(log_b.index)
-    log_a, log_b = log_a.reindex(common_idx), log_b.reindex(common_idx)
-    mask = log_a.notna() & log_b.notna()
-    la, lb = log_a[mask], log_b[mask]
-    if len(la) < 100:
-        return None
-    beta = np.dot(lb - lb.mean(), la - la.mean()) / np.dot(lb - lb.mean(), lb - lb.mean())
-    alpha = la.mean() - beta * lb.mean()
-    spread = la - (alpha + beta * lb)
+    la, lb, beta, alpha, spread = result
     z = (spread - spread.rolling(z_window).mean()) / spread.rolling(z_window).std()
     return z.dropna()
 

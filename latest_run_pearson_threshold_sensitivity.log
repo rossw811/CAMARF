@@ -1,0 +1,23 @@
+11:54:59 INFO  === pearson_threshold_sensitivity.py: does loosening the Pearson pre-filter recover confirmed pairs at 1h, or just add multiple-testing burden? ===
+11:55:08 INFO  Loaded 1567 symbols with usable 1h cache
+11:55:08 INFO  Aligning via real production DataAligner.align_universe()...
+11:55:36 INFO  Aligned: 1567 symbols
+11:55:36 INFO  Computing correlation matrices ONCE at the loosest threshold (0.30)...
+11:56:10 INFO  Candidates at threshold 0.30: 239138
+11:56:13 INFO  Candidates at threshold 0.35: 133657
+11:56:15 INFO  Candidates at threshold 0.40: 67582
+11:56:16 INFO  Verified: every tighter threshold's candidate set is a strict subset of the loosest threshold's -- safe to run EG once and subset the results.
+11:56:16 INFO  Running real EG test (_eg_worker) on all 239138 candidates at threshold 0.30 (workers=12)...
+13:00:00 INFO  EG complete in 3823.2s
+13:00:00 INFO  EG usable results: 130043/239138
+13:00:02 INFO  
+13:00:02 INFO  === Threshold sensitivity summary (alpha=0.05) ===
+13:00:02 INFO    threshold=0.40: m=36132 candidates, raw p<0.05=2481, FDR-adjusted<0.05=3
+13:00:02 INFO    threshold=0.35: m=72315 candidates, raw p<0.05=4701, FDR-adjusted<0.05=3
+13:00:03 INFO    threshold=0.30: m=130043 candidates, raw p<0.05=8389, FDR-adjusted<0.05=2
+13:00:03 INFO  
+13:00:03 INFO  Additional candidates admitted at 0.35 vs 0.40: 66075
+13:00:03 INFO  Additional candidates admitted at 0.30 vs 0.35: 105481
+13:00:03 INFO  Saved -> output/research/pearson_threshold_sensitivity{,_summary}.parquet
+13:00:03 INFO  ============================================================
+13:00:03 INFO  pearson_threshold_sensitivity.py complete (65.1 min)

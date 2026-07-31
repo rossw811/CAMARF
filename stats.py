@@ -38,6 +38,7 @@ from scipy.stats import genpareto
 from sklearn.linear_model import HuberRegressor
 
 from config import Config
+import portfolio_math
 
 warnings.filterwarnings("ignore", category=FutureWarning)
 warnings.filterwarnings("ignore", category=UserWarning)
@@ -1018,10 +1019,12 @@ def run_permutation_test(
         except Exception:
             pass
 
-    # Build realized closed-trade daily P&L
-    tr = trades.copy()
-    tr["exit_date"] = pd.to_datetime(tr["exit_time"]).dt.date
-    daily_agg = tr.groupby("exit_date")["pnl_net"].sum()
+    # Build realized closed-trade daily P&L, zero-filled via portfolio_math
+    # (NOT a plain groupby(exit_date), which silently drops zero-P&L calendar
+    # days and both inflates the realized Sharpe and compresses the block
+    # bootstrap's "days" into artificial contiguity — BUG-D62/D64 recurrence,
+    # 2026-07-20 Grand Sweep).
+    daily_agg = portfolio_math.daily_pnl_from_trades(trades)
     daily_vals = daily_agg.values.astype(float)
 
     realized_closed_sharpe = _portfolio_sharpe(daily_vals)

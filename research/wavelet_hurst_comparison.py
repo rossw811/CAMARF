@@ -45,6 +45,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(
 from aligned_pair_loader import load_aligned_pair
 from lead_lag_scan import _gap_masked_log_price
 from analysis import HurstEstimator
+from data import DataStore
 
 _DEFAULT_PAIRS = [
     ("LNT", "VTR"), ("LNT", "WELL"), ("AME", "MAR"), ("CMS", "DUK"),
@@ -170,7 +171,8 @@ def main():
 
     out_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "output", "research")
     os.makedirs(out_dir, exist_ok=True)
-    out_path = os.path.join(out_dir, f"wavelet_hurst_comparison_{args.tf}.parquet")
+    safe_tf = DataStore._TF_SAFE.get(args.tf, args.tf.lower())
+    out_path = os.path.join(out_dir, f"wavelet_hurst_comparison_{safe_tf}.parquet")
     df.to_parquet(out_path)
     print(f"\nFull results written to {out_path}")
 
