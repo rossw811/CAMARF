@@ -372,6 +372,17 @@ def backtest_pair_on_test_window(
             "gap_flag_b": per_bar["gap_flag_b"],
             "hedge_ratio_ols_t": per_bar.get("hedge_ratio_ols_t"),
             "hedge_ratio_kalman_t": per_bar.get("hedge_ratio_kalman_t"),
+            # Causal per-bar companions (BUG-D101) — engine.run()'s own
+            # _has_pit-style lookup (backtest.py) picks these up per-bar
+            # within the test slice automatically, taking priority over the
+            # train-only scalar fallback in pair_row below. Correct here:
+            # each test-window bar's value only reflects EG/half-life/Hurst
+            # windows concluded by that bar, same causal guarantee as
+            # hedge_ratio_ols_t/kalman_t two lines up.
+            "coint_fraction_rolling_t": per_bar.get("coint_fraction_rolling_t"),
+            "half_life_trend_slope_t": per_bar.get("half_life_trend_slope_t"),
+            "mean_reversion_speed_t": per_bar.get("mean_reversion_speed_t"),
+            "hurst_rs_t": per_bar.get("hurst_rs_t"),
         },
         index=per_bar["index"],
     )
@@ -400,6 +411,7 @@ def backtest_pair_on_test_window(
         "coint_fraction_rolling": getattr(pair_result, "coint_fraction_rolling", np.nan),
         "half_life_trend_slope": getattr(pair_result, "half_life_trend_slope", np.nan),
         "mean_reversion_speed": getattr(pair_result, "mean_reversion_speed", np.nan),
+        "hurst_rs": getattr(pair_result, "hurst_rs", np.nan),
         "tf_label": _TF_LABEL,
     })
     engine = BacktestEngine(

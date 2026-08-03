@@ -211,7 +211,7 @@ def _run_fold_backtest(
 
     # STORM: garch_stop pre-compute
     _garch_stop = sf.get("garch_stop", False)
-    _hist_z_std = 1.0
+    _hist_z_std_arr = None
     _rolling_z_std = None
     _session_edge = sf.get("session_edge", False)
     _is_intraday = any(c in tf_label for c in ["m", "h"]) and "D" not in tf_label
@@ -224,12 +224,15 @@ def _run_fold_backtest(
     z_arr = (spread_arr - train_mu) / train_sigma
 
     if _garch_stop:
-        _hist_z_std = float(np.nanstd(z_arr)) or 1.0
-        _rolling_z_std = (pd.Series(z_arr)
-                          .rolling(100, min_periods=10)
-                          .std()
-                          .fillna(_hist_z_std)
-                          .values)
+        # Causal expanding baseline (BUG-D100, mirrors BUG-D89's fix for
+        # _cf_carver): bar i's "historical" std must only use z-observations
+        # at or before i, not the whole test window at once. A flat
+        # np.nanstd(z_arr) let an early bar's stop-tightening decision be
+        # informed by later bars in the same test window.
+        _hist_z_std_arr = pd.Series(z_arr).expanding(min_periods=10).std().values
+        _hist_z_std_arr = np.where(np.isfinite(_hist_z_std_arr) & (_hist_z_std_arr > 0), _hist_z_std_arr, 1.0)
+        _rolling_raw = pd.Series(z_arr).rolling(100, min_periods=10).std().values
+        _rolling_z_std = np.where(np.isfinite(_rolling_raw), _rolling_raw, _hist_z_std_arr)
 
     trades: List[WFATrade] = []
     in_position = False
@@ -298,7 +301,7 @@ def _run_fold_backtest(
             # STORM: garch_stop
             _eff_stop = STOP_ZSCORE
             if _garch_stop and _rolling_z_std is not None:
-                if _rolling_z_std[i] > 2.0 * _hist_z_std:
+                if _rolling_z_std[i] > 2.0 * _hist_z_std_arr[i]:
                     _eff_stop = min(_eff_stop, 3.0)
             if abs(z) >= _eff_stop:
                 exit_reason = "stop"
@@ -438,7 +441,25 @@ def run_wfa(folds: List[Tuple], variant_name: str, tiers: pd.DataFrame,
                 continue
 
             mu, sigma, half_life = _estimate_ou_params(train_df["spread"].values)
-            _cfrac = float(pair_row.get("coint_fraction_rolling", 1.0))
+
+            # BUG-D102 (2026-07-27 causality audit finding #4): pair_row's
+            # coint_fraction_rolling is a static, whole-history scalar from
+            # output/stats/cointegration_tiers.parquet, computed OUTSIDE this
+            # fold loop -- every fold of every variant read the SAME value,
+            # meaning an early fold's test-window trades were sized using a
+            # fraction that included cointegration windows from later folds
+            # (including future ones relative to that fold's own train/test
+            # boundary). Fix: read the causal per-bar coint_fraction_rolling_t
+            # series (BUG-D101) at THIS fold's own train-window end bar --
+            # reflects only EG windows concluded by that point in the pair's
+            # history, genuinely fold-scoped. Falls back to the static scalar
+            # for spread_series files that predate the causal column.
+            if "coint_fraction_rolling_t" in spread_df.columns and ti_e > 0:
+                _cfrac = float(spread_df["coint_fraction_rolling_t"].values[ti_e - 1])
+            else:
+                _cfrac = np.nan
+            if not np.isfinite(_cfrac):
+                _cfrac = float(pair_row.get("coint_fraction_rolling", 1.0))
             fold_trades = _run_fold_backtest(
                 sym_a, sym_b, tf_label, test_df,
                 mu, sigma, half_life, fold_label, variant_name,

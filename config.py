@@ -71,6 +71,21 @@ class DataConfig:
         "6M",
     ]
 
+    # WRDS-primary routing (2026-08-01, docs/HANDOFF.md's WRDS-replacement
+    # plan): CRSP/Compustat Global have NO intraday data at all -- only
+    # these 5 daily-and-coarser TFs can ever be WRDS-sourced, the other 8
+    # TIMEFRAME_LABELS stay on yfinance regardless. Scoped to
+    # CRSP-resolvable US equities/ETFs only for the first cut -- Compustat
+    # Global's international symbols use a GVKEY{n}_{iid} identifier scheme
+    # with no natural ticker, a separate reconciliation problem not solved
+    # here (see docs/HANDOFF.md). data.py reads the already-populated
+    # output/cache/wrds/ cache (data_wrds.py, run separately and manually,
+    # same "separate script, main pipeline only reads its output" pattern
+    # already established for data_ibkr.py/ibkr_supplement_reader.py) --
+    # never a merged live fetch path, per CLAUDE.md rule 2.
+    WRDS_PRIMARY_ASSET_CLASSES: set = {"equity", "etf"}
+    WRDS_PRIMARY_TFS: set = {"1D", "7D", "1M", "3M", "6M"}
+
     # Historical depth per asset class — calibrated to actual IBKR account limits
     # Confirmed via diagnose.py on 2026-06-11:
     #   Daily equity (AAPL): 2006-06-16, depth = ~20 years confirmed

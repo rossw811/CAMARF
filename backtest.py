@@ -515,14 +515,17 @@ class BacktestEngine:
         # STORM: pre-compute rolling z-score volatility for garch_stop variant
         _garch_stop = self.storm_flags.get("garch_stop", False)
         _rolling_z_std = None
-        _hist_z_std = 1.0
+        _hist_z_std_arr = None
         if _garch_stop:
-            _hist_z_std = float(np.nanstd(z_arr)) or 1.0
-            _rolling_z_std = (pd.Series(z_arr)
-                               .rolling(100, min_periods=10)
-                               .std()
-                               .fillna(_hist_z_std)
-                               .values)
+            # Causal expanding baseline (BUG-D100, mirrors BUG-D89's fix for
+            # _cf_carver below): bar i's "historical" std must only use
+            # z-observations at or before i, not the whole backtest history
+            # at once. A flat np.nanstd(z_arr) let an early bar's
+            # stop-tightening decision be informed by every later bar.
+            _hist_z_std_arr = pd.Series(z_arr).expanding(min_periods=10).std().values
+            _hist_z_std_arr = np.where(np.isfinite(_hist_z_std_arr) & (_hist_z_std_arr > 0), _hist_z_std_arr, 1.0)
+            _rolling_raw = pd.Series(z_arr).rolling(100, min_periods=10).std().values
+            _rolling_z_std = np.where(np.isfinite(_rolling_raw), _rolling_raw, _hist_z_std_arr)
 
         # STORM: MM execution — look up beta_mm for this pair
         _mm_exec = self.storm_flags.get("mm_exec", False)
@@ -607,6 +610,19 @@ class BacktestEngine:
             _ols_t_arr = df["hedge_ratio_ols_t"].values
             _kal_t_arr = df["hedge_ratio_kalman_t"].values
 
+        # Point-in-time causal companions to coint_fraction_rolling/
+        # half_life_trend_slope/mean_reversion_speed/hurst_rs (position-
+        # sizing circularity fix, 2026-07-27 causality audit finding #1 /
+        # BUG-D101) -- same _has_pit-style column-presence + per-bar-NaN
+        # fallback pattern as hedge_ratio_ols_t above. Without this, every
+        # trade across a pair's ENTIRE history was sized/gated using a
+        # single whole-history scalar -- a window ending in 2024 was always
+        # allowed to justify a trade's position size in 2015.
+        _cfrac_t_arr = df["coint_fraction_rolling_t"].values if "coint_fraction_rolling_t" in df.columns else None
+        _hlslope_t_arr = df["half_life_trend_slope_t"].values if "half_life_trend_slope_t" in df.columns else None
+        _meanrev_t_arr = df["mean_reversion_speed_t"].values if "mean_reversion_speed_t" in df.columns else None
+        _hurst_t_arr = df["hurst_rs_t"].values if "hurst_rs_t" in df.columns else None
+
         # Rolling correlation for structural breakdown exit
         _default_flags = pd.Series(0, index=df.index)
         gap_a = df.get("gap_flag_a", _default_flags).fillna(0).astype(int).values
@@ -687,15 +703,33 @@ class BacktestEngine:
                 elif np.isfinite(hedge_scalar_ols) and hedge_scalar_ols != 0 and np.isfinite(hedge_scalar_kalman):
                     hedge_drift_at_bar = abs(hedge_scalar_ols - hedge_scalar_kalman) / abs(hedge_scalar_ols)
 
+                # Point-in-time coint_fraction_rolling/half_life_trend_slope/
+                # mean_reversion_speed/hurst_rs at this bar (causal, no
+                # lookahead). Falls back to the whole-history scalar when the
+                # per-bar value is absent/NaN (warmup bars, or a spread_series
+                # file that predates this fix).
+                _cfrac_at_bar = _cfrac_t_arr[i] if _cfrac_t_arr is not None else np.nan
+                if not np.isfinite(_cfrac_at_bar):
+                    _cfrac_at_bar = _ml_coint_frac
+                _hlslope_at_bar = _hlslope_t_arr[i] if _hlslope_t_arr is not None else np.nan
+                if not np.isfinite(_hlslope_at_bar):
+                    _hlslope_at_bar = _ml_hl_slope
+                _meanrev_at_bar = _meanrev_t_arr[i] if _meanrev_t_arr is not None else np.nan
+                if not np.isfinite(_meanrev_at_bar):
+                    _meanrev_at_bar = _ml_mean_rev
+                _hurst_at_bar = _hurst_t_arr[i] if _hurst_t_arr is not None else np.nan
+                if not np.isfinite(_hurst_at_bar):
+                    _hurst_at_bar = hurst
+
                 # Layer 2: ML gate — feature names must match ml.py's _FEATURE_COLS exactly
                 ml_features = {
                     "zscore": abs(z),
                     "zscore_velocity": float(z_arr[i] - z_arr[max(0, i - 5)]),
                     "half_life_current": hl_at_entry,
-                    "hurst_exponent": hurst,
-                    "coint_fraction_rolling": _ml_coint_frac,
-                    "half_life_trend_slope": _ml_hl_slope,
-                    "mean_reversion_speed": _ml_mean_rev,
+                    "hurst_exponent": _hurst_at_bar,
+                    "coint_fraction_rolling": _cfrac_at_bar,
+                    "half_life_trend_slope": _hlslope_at_bar,
+                    "mean_reversion_speed": _meanrev_at_bar,
                     "hedge_ratio_drift": hedge_drift_at_bar,
                 }
                 ml_prob = self.ml_cond.predict_prob(ml_features)
@@ -712,9 +746,10 @@ class BacktestEngine:
                 rp_w = self.risk_parity_weights.get(_pair_key, 1.0)
                 n_shares = max(1, int(self.cfg.N_SHARES_PER_TRADE * size_mult * hub_w * rp_w))
 
-                # STORM: coint_frac_sizing — scale shares by rolling confirmation fraction
+                # STORM: coint_frac_sizing — scale shares by rolling confirmation
+                # fraction, point-in-time (see _cfrac_at_bar above, BUG-D101).
                 if _coint_frac_sizing:
-                    n_shares = max(1, int(n_shares * _coint_frac))
+                    n_shares = max(1, int(n_shares * _cfrac_at_bar))
 
                 # STORM: continuous forecast scaling — replaces the binary
                 # in/out sizing above with a scale continuous in |z| at entry.
@@ -728,7 +763,7 @@ class BacktestEngine:
                     n_shares = max(1, int(self.cfg.N_SHARES_PER_TRADE * (scaled_forecast / 10.0)
                                           * size_mult * hub_w * rp_w))
                     if _coint_frac_sizing:
-                        n_shares = max(1, int(n_shares * _coint_frac))
+                        n_shares = max(1, int(n_shares * _cfrac_at_bar))
                 elif _cf_linear:
                     # Simpler convention: scale directly off CAMARF's own entry
                     # threshold rather than Carver's separate forecast-unit
@@ -738,7 +773,7 @@ class BacktestEngine:
                     n_shares = max(1, int(self.cfg.N_SHARES_PER_TRADE * linear_mult
                                           * size_mult * hub_w * rp_w))
                     if _coint_frac_sizing:
-                        n_shares = max(1, int(n_shares * _coint_frac))
+                        n_shares = max(1, int(n_shares * _cfrac_at_bar))
 
                 # STORM: mm_exec — use MM hedge ratio for position sizing if available
                 if _mm_exec and _beta_mm is not None and np.isfinite(_beta_mm) and _beta_mm > 0:
@@ -751,7 +786,7 @@ class BacktestEngine:
                     hedge_method=hedge_method, hedge_ratio=hedge_pit,
                     entry_time=ts, entry_z=z, entry_spread=spread, side=side,
                     n_shares_a=n_shares, n_shares_b=n_shares * abs(hedge_pit),
-                    half_life_at_entry=hl_at_entry, hurst_at_entry=hurst,
+                    half_life_at_entry=hl_at_entry, hurst_at_entry=_hurst_at_bar,
                     ml_prob=ml_prob,
                     vix_ts_regime=regime_ctx.get("vix_ts", ""),
                     yield_regime=regime_ctx.get("yield", ""),
@@ -777,7 +812,7 @@ class BacktestEngine:
                 # STORM: garch_stop — tighten stop when conditional vol > 2× historical
                 _effective_stop = self.cfg.STOP_ZSCORE
                 if _garch_stop and _rolling_z_std is not None:
-                    if _rolling_z_std[i] > 2.0 * _hist_z_std:
+                    if _rolling_z_std[i] > 2.0 * _hist_z_std_arr[i]:
                         _effective_stop = min(_effective_stop, 3.0)
 
                 # 1. Stop loss: spread widened further

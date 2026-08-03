@@ -4017,7 +4017,84 @@ class UniverseBuilder:
             f"{sum(1 for _,c in yf_assets if c=='etf')} ETFs"
         )
 
-        yf_daily_done = set()  # track which symbols have daily data confirmed
+        # WRDS-primary routing (2026-08-01, docs/HANDOFF.md's WRDS-replacement
+        # plan): for CRSP-resolvable US equities/ETFs, read the
+        # already-populated output/cache/wrds/ cache (data_wrds.py, run
+        # separately/manually -- never a merged live fetch path, per rule 2)
+        # for the 5 daily-and-coarser TFs it covers, instead of yfinance.
+        # Symbols with no WRDS coverage fall through to the yfinance path
+        # below unchanged.
+        wrds_daily_done: dict = {}
+        if Config.DATA.WRDS_PRIMARY_ASSET_CLASSES and Config.DATA.WRDS_PRIMARY_TFS:
+            _wrds_cache_dir = os.path.join(Config.DATA.CACHE_DIR, "wrds")
+
+            def _load_wrds_symbol_tf(symbol: str, tf_label: str) -> Optional[pd.DataFrame]:
+                path = os.path.join(_wrds_cache_dir, f"{symbol}_{tf_label}.parquet")
+                if not os.path.exists(path):
+                    return None
+                try:
+                    raw = pd.read_parquet(path)
+                except Exception as e:
+                    log.debug(f"  WRDS cache read failed for {symbol}_{tf_label}: {e}")
+                    return None
+                if raw.empty or "close_total_return" not in raw.columns:
+                    return None
+                # close_total_return is split-AND-dividend-adjusted -- the
+                # like-for-like match to yfinance's auto_adjust=True close.
+                # WRDS's own split-only "close" is dropped here, not used,
+                # to avoid silently understating returns (see
+                # data_wrds.py::fetch_symbol's docstring).
+                out = raw.drop(columns=["close"], errors="ignore").rename(
+                    columns={"close_total_return": "close"}
+                )
+                # CRSP's native monthly file (msf_v2) has NO open/high/low at
+                # all -- close/volume only (data_wrds.py's own docstring).
+                # DataCleaner._standardize() hard-requires open/high/low/close
+                # and silently empties any frame missing them -- confirmed via
+                # debug/_verify_wrds_primary_wiring.py against real cached
+                # AAPL_1M.parquet (empty_after_standardize). A single
+                # end-of-month close observation has no real intra-period
+                # range to report, so open=high=low=close is the honest
+                # representation (not fabricated information), not a
+                # guess -- same convention this project already applies
+                # wherever only a close-equivalent series exists.
+                if not {"open", "high", "low"}.issubset(out.columns):
+                    for _c in ("open", "high", "low"):
+                        out[_c] = out["close"]
+                return out
+
+            _wrds_candidates = [
+                (s, cls) for s, cls in yf_assets
+                if cls in Config.DATA.WRDS_PRIMARY_ASSET_CLASSES
+            ]
+            for symbol, asset_class in _wrds_candidates:
+                wrds_1d = _load_wrds_symbol_tf(symbol, "1D")
+                if wrds_1d is None:
+                    continue  # no WRDS coverage -- falls through to yfinance below
+                for tf_label in Config.DATA.WRDS_PRIMARY_TFS:
+                    raw_tf = wrds_1d if tf_label == "1D" else _load_wrds_symbol_tf(symbol, tf_label)
+                    if raw_tf is None:
+                        continue
+                    cleaned, report = DataCleaner.clean(
+                        raw_tf, symbol, asset_class, tf_label, tf_label, source="wrds"
+                    )
+                    if cleaned is not None:
+                        all_data[f"{symbol}_{tf_label}"] = cleaned
+                    elif not report.passed:
+                        log.debug(f"  WRDS {symbol} {tf_label}: {report.fail_reason}")
+                wrds_daily_done[symbol] = asset_class
+            if wrds_daily_done:
+                log.info(
+                    f"  WRDS primary: {len(wrds_daily_done)}/{len(_wrds_candidates)} "
+                    f"equity/ETF symbols sourced from output/cache/wrds/ "
+                    f"({sorted(Config.DATA.WRDS_PRIMARY_TFS)})"
+                )
+            # Symbols with WRDS coverage don't need the yfinance daily fetch
+            # below -- remove so the existing uncached_yf/stale_yf logic
+            # doesn't redundantly re-fetch them from yfinance.
+            yf_assets = [(s, cls) for s, cls in yf_assets if s not in wrds_daily_done]
+
+        yf_daily_done = set(wrds_daily_done)  # track which symbols have daily data confirmed
 
         # Separate into: completely missing vs. stale (has cache but needs update)
         uncached_yf = [
@@ -4933,6 +5010,19 @@ class UniverseBuilder:
             if symbol in yf_daily_done and symbol not in passed_symbols:
                 passed.append((symbol, asset_class))
 
+        # WRDS-primary symbols were removed from yf_assets above (2026-08-01
+        # WRDS routing, so they don't get redundantly re-fetched from
+        # yfinance) -- but that same removal meant they never went through
+        # the "add to passed" loop above, since it only iterates yf_assets.
+        # Confirmed via a real run (2026-08-02): this silently dropped all
+        # 1512 WRDS-sourced symbols from the analysis universe entirely
+        # (Universe complete: 148 assets passed, vs. ~1650+ expected) --
+        # BUG-D105. Add them explicitly here.
+        passed_symbols = {s for s, _ in passed}
+        for symbol, asset_class in wrds_daily_done.items():
+            if symbol not in passed_symbols:
+                passed.append((symbol, asset_class))
+
         # ---------------------------------------------------------------
         # Post-build incremental refresh for COMPLETED assets
         # The progress-based resume skips completed assets entirely —
@@ -5004,6 +5094,26 @@ class UniverseBuilder:
             f"Data keys: {len(all_data)} symbol-timeframe combinations "
             f"({backfill_count} loaded from cache)"
         )
+
+        # WRDS-primary source provenance (2026-08-01) -- which symbols'
+        # daily-and-coarser TFs came from output/cache/wrds/ vs. yfinance,
+        # per CLAUDE.md's Data Test Range & Reproducibility requirement that
+        # a headline result be traceable to the exact data behind it.
+        try:
+            _prov_path = os.path.join(Config.DATA.CACHE_DIR, "wrds_provenance_last_run.json")
+            with open(_prov_path, "w", encoding="utf-8") as _f:
+                json.dump(
+                    {
+                        "run_timestamp": datetime.now().isoformat(),
+                        "wrds_primary_tfs": sorted(Config.DATA.WRDS_PRIMARY_TFS),
+                        "wrds_sourced_symbols": sorted(wrds_daily_done),
+                        "n_wrds_sourced": len(wrds_daily_done),
+                    },
+                    _f,
+                    indent=2,
+                )
+        except Exception as _e:
+            log.debug(f"  WRDS provenance write failed: {_e}")
 
         _summary.write()
         return UniverseResult(
