@@ -518,3 +518,231 @@ whether drawdown is considered at all.
 Files: `portfolio_sim.py` (4 new functions), `debug/_verify_pdr_calmar.py` (new, 3/3 pass),
 `research/pdr_calmar_comparison.py` (new), `output/research/pdr_calmar_comparison.parquet` (new).
 Full write-up: Development.md, "Task #49" (2026-07-14).
+
+---
+
+## 13. Cycle Detection (Wavelet Dominant Period, Cross-Asset Phase Sync, Cross-Timeframe
+Consistency) — First Pass, Honest Null on the Only Real Pair Available [2026-08-02]
+
+Ross asked to explore cycle detection along three axes at once, research/comparison purposes
+first, no production wiring: (1) within-asset dominant cycle period via a Morlet continuous
+wavelet transform, implemented directly in numpy/FFT rather than adding a PyWavelets dependency
+— same "no new dependency" convention `wavelet_hurst_comparison.py` already established, for the
+same documented reason (this project's history of environment/dependency pain); (2) cross-asset
+phase synchronization via a rolling, **causal** Hilbert-transform phase-locking value (PLV)
+between a pair's two legs; (3) cross-timeframe cycle consistency — does the same pair's dominant
+cycle length agree once converted to a common calendar-day unit across timeframes.
+
+**Verification first.** `debug/_verify_cycle_detection.py` (6/6 pass): the wavelet estimator
+recovers a known synthetic period (true=40 bars, recovered=42); the PLV estimator gives 0.998 for
+a synthetic phase-locked pair vs. 0.155 for independent white noise, and — the check this
+project's causality audit (BUG-D99–D103) makes mandatory for anything rolling/windowed — a large
+perturbation placed strictly *after* a cutoff bar leaves every PLV value *before* that cutoff
+bit-for-bit unchanged, confirming `rolling_plv` is genuinely causal, unlike the wavelet dominant-
+cycle series (disclosed below).
+
+**Real-data result: KVUE/KMB, the only real confirmed pair as of Session 29, at its two confirmed
+timeframes (2min, 3min).**
+
+| pair@TF | n bars | dominant period (bars) | dominant period (calendar days) | mean rolling PLV (window=60) |
+|---|---|---|---|---|
+| KVUE/KMB@2min | 11,804 | 2951.0 | 15.13 | 0.411 |
+| KVUE/KMB@3min | 4,159 | 677.5 | 5.21 | 0.327 |
+
+Cross-timeframe consistency check: ratio = 2.90 (15.13 / 5.21 days), **outside the 0.5–2.0x
+consistency band** — `consistent_within_2x: False`.
+
+**Honest read, not oversold:** this is a null result on n=1 pair, not a finding to build on yet.
+Two disclosed limitations make it weaker still: (a) the 2min dominant period (2951.0 bars) landed
+*exactly* at the edge of the scanned period grid (`max_period_frac=0.25 * 11804 = 2951.0`) — the
+estimator is reporting "the longest cycle I was allowed to look for," not a genuinely resolved
+peak, so that number is an artifact of the grid bound, not real evidence of a 15-day cycle; (b)
+the dominant-cycle wavelet transform itself is **not point-in-time-safe** (computed via one
+whole-series FFT, so it uses both past and future data) and the PLV is computed on raw,
+unfiltered returns rather than band-pass-filtered to a frequency of interest first — both are
+disclosed, deliberate v1 simplifications for a research diagnostic, not something to promote to
+an `ml.py` feature or live signal as-is.
+
+**Bottom line:** no evidence yet that KVUE/KMB carries a stable, cross-timeframe-consistent cycle,
+and the one number that looked most interesting (15-day dominant period at 2min) is explainable
+by a grid-boundary artifact rather than a real periodicity. With only one confirmed pair to test
+against, this can't be generalized either way — re-running against a larger confirmed-pair set
+(once one exists) with a wider period grid and a causal, right-truncated wavelet retrofit is the
+right next step before drawing any conclusion, positive or negative.
+
+Files: `research/cycle_detection.py` (new), `debug/_verify_cycle_detection.py` (new, 6/6 pass),
+`output/research/cycle_detection.parquet` (new).
+
+---
+
+## 14. Lévy Jump-Diffusion Test vs. GapFlag — They Detect Completely Different Things [2026-08-02]
+
+Ross asked whether jump-diffusion (Lévy process) modeling adds anything over treating gaps as
+noise, tied to the existing `GapFlag` system (`data.py`'s NONE/FILL/NO_ACTIVITY/HALT/DATA_GAP/
+SPARSE classification). Built the Lee & Mykland (2008) jump test — a bipower-variation local
+volatility estimator (robust to jumps, since it multiplies ADJACENT absolute returns rather than
+squaring one, so a single jump return doesn't blow up its own local vol estimate) gives a jump
+statistic at every bar; bars exceeding the test's exact asymptotic critical value (computed per
+the paper's formula, not a rule-of-thumb threshold) are flagged. No new dependency — pure numpy.
+
+**Verification caught a real bug before real data.** The first implementation applied the square
+root to the wrong term (`sqrt(π/2) * mean(prod)` instead of `sqrt(π/2 * mean(prod))`) — bipower
+variation estimates *variance*, so the sqrt must wrap the whole product. This flagged 95.5% of a
+pure-diffusion synthetic series as jumps against a 1% nominal rate — an obviously broken result the
+synthetic test (`debug/_verify_levy_jump_diffusion.py`) caught immediately. After the fix: 0/5000
+false positives on pure diffusion, 5/5 injected large jumps recovered exactly, continuous-vol
+(jump-excluded) correctly lower than total vol on a jumpy synthetic series.
+
+**Real-data result: KVUE/KMB, both confirmed timeframes.**
+
+| symbol@TF | jumps detected | % of bars | total_vol | continuous_vol | Δ% |
+|---|---|---|---|---|---|
+| KVUE@2min | 252 | 2.13% | 0.001110 | 0.000777 | −30.0% |
+| KMB@2min | 183 | 1.55% | 0.001307 | 0.000967 | −26.0% |
+| KVUE@3min | 167 | 4.02% | 0.001363 | 0.000788 | −42.2% |
+| KMB@3min | 144 | 3.46% | 0.001693 | 0.001060 | −37.4% |
+
+**The genuinely interesting part: 0% overlap with GapFlag, in either direction.** Every one of
+these statistically-detected jumps occurred on a bar with `GapFlag == NONE` — confirmed directly
+(`df["gap_flag"].value_counts()` is 100% `NONE`, 11,805/11,805 bars, for this pair/window — not an
+extraction bug, the real data has no flagged gaps at all here). So GapFlag and jump-diffusion jumps
+are not two views of the same phenomenon — they're answering genuinely different questions.
+`GapFlag` tracks provider-side data continuity (a bar is missing, a halt occurred, volume is
+degenerate); the Lee-Mykland test finds large instantaneous price *moves* within an otherwise
+completely normally-reported price series. A pair can have zero data-continuity problems and still
+carry 1.5–4% of its bars as statistically significant return jumps — real jump risk that CAMARF's
+existing gap-handling machinery has no mechanism to see, because it was never designed to look for
+that.
+
+**Bottom line, not oversold:** jump-adjusted (continuous-only) volatility is materially lower than
+the naive full-sample volatility `wfa.py`'s `garch_stop` baseline currently uses — 26-42% lower
+across the four symbol/TF combinations tested. That's a real, disclosed candidate for a vol-
+estimator refinement, not yet wired into production (deliberate v1 scope, per Ross's "research/
+comparison sake first" framing) and tested on only one confirmed pair. Whether jump-adjusted vol
+changes `garch_stop`'s actual stop-trigger behavior or backtest Sharpe in a way that matters is the
+next question, not yet answered here.
+
+Files: `research/levy_jump_diffusion.py` (new), `debug/_verify_levy_jump_diffusion.py` (new, 4/4
+pass), `output/research/levy_jump_diffusion.parquet` (new).
+
+---
+
+## 15. Is CAMARF's Realized Volatility "Rough"? Mixed Signal, Estimator Disagreement Disclosed
+[2026-08-02]
+
+Companion comparison arm to the jump-diffusion test above: Gatheral, Jaisson & Rosenbaum (2018,
+"Volatility is Rough") found real-market realized volatility has a Hurst exponent around H≈0.1 —
+far rougher/more anti-persistent than a standard diffusive process's H=0.5 — which would mean
+`wfa.py`'s `garch_stop` baseline (built on the standard smooth/persistent-vol picture) is modeling
+the wrong kind of process. Tested this directly: build a rolling realized-vol series, log-transform
+(matching Gatheral et al.'s log-RV convention), then estimate its Hurst exponent with the SAME
+three estimators this project already uses for spread mean-reversion quality — R/S and DFA
+(`analysis.py::HurstEstimator`) and the Haar-wavelet-variance estimator
+(`wavelet_hurst_comparison.py::wavelet_hurst`) — reused directly, not reimplemented, for a true
+apples-to-apples reading against every other H number already in this project's record.
+
+Verified first (`debug/_verify_rough_volatility.py`, 3/3 pass) using this project's existing
+AR(1)-direction-check convention (same approach `debug/_verify_wavelet_hurst.py` already
+established): a strongly mean-reverting synthetic vol process gives H well below 0.5 (0.30-0.43
+across estimators), and a more persistent vol process gives a strictly higher H than a rougher one
+on the same estimator.
+
+**Real-data result: KVUE/KMB, both confirmed timeframes.**
+
+| symbol@TF | H_rs | H_dfa | H_wavelet |
+|---|---|---|---|
+| KVUE@2min | 0.453 | 0.326 | 0.333 |
+| KMB@2min | 0.462 | 0.275 | 0.271 |
+| KVUE@3min | 0.499 | 0.377 | 0.385 |
+| KMB@3min | 0.508 | 0.257 | 0.199 |
+
+**Honest read: the three estimators disagree, and that disagreement is itself the finding.** DFA
+and the wavelet estimator both land well below 0.5 (0.20-0.39) across all four symbol/TF
+combinations — directionally consistent with Gatheral et al.'s rough-vol picture, though not as
+extreme as their reported H≈0.1. R/S lands much closer to 0.5 (0.45-0.51), on the border between
+"rough" and "not rough" — this is the SAME known R/S finite-sample upward bias
+`analysis.py::HurstEstimator`'s own docstring already documents ("Slight finite-sample upward
+bias"), not a new artifact of this module. Reporting all three rather than picking whichever
+supports a conclusion is the honest move here, per CLAUDE.md rule #7 — a result that depended on
+which of three legitimate estimators you happened to report would not be a real result.
+
+**Bottom line, not oversold:** DFA/wavelet give real, if modest, evidence of vol roughness on
+CAMARF's own confirmed pair; R/S does not clearly agree. One confirmed pair, two timeframes, three
+estimators with a genuine split verdict is not enough to justify building a rough-vol-based
+alternative to `garch_stop` yet — this is a candidate worth re-testing once a larger confirmed-pair
+set exists, not a result to act on now.
+
+Files: `research/rough_volatility.py` (new), `debug/_verify_rough_volatility.py` (new, 3/3 pass),
+`output/research/rough_volatility.parquet` (new).
+
+---
+
+## 16. Options Greeks as Correlation/Convergence Features — Significant Correlation, Likely a
+Price-Level Confound, Not a Clean Signal [2026-08-02]
+
+Ross asked whether options Greeks (gamma especially) add signal to correlation/convergence
+detection. `options.py` already has Black-Scholes pricing and a realized-vol IV proxy (Session
+27, no paid data) — reused both directly here rather than reimplementing. **Upfront limitation,
+stated in the module itself:** there is no real options-chain data anywhere in this project (no
+paid data source). Every Greek here is a MODEL value from a fixed ATM (K=S), fixed-tenor
+(30-day) Black-Scholes assumption fed `options.py`'s realized-vol proxy as the "implied" vol —
+not a market-quoted Greek, and inheriting the same variance-risk-premium bias `options.py`'s own
+docstring already discloses for that proxy.
+
+**Verified first** (`debug/_verify_options_greeks_features.py`, 5/5 pass) against finite-difference
+derivatives of `options.py`'s own already-existing `black_scholes_call()` — delta, gamma, and vega
+all match their numerically-differentiated counterparts to within 1e-3, and gamma correctly peaks
+ATM relative to 20%-OTM/ITM strikes.
+
+**Real-data result: KVUE/KMB, daily, n=753 overlapping bars.** Correlation between the pair's
+gamma spread (|gamma_KVUE − gamma_KMB|) and their 30-day rolling realized return correlation:
+**r=0.442, p<0.0001** — statistically significant.
+
+**Honest read: this is very likely a price-level confound, not a real convergence signal.**
+Checked directly: KVUE trades around $18-24, KMB around $100+. Black-Scholes gamma scales
+approximately as 1/S, so KVUE's gamma (mean 0.3185) is ~4.6x KMB's (mean 0.0698) almost entirely
+because of the price-level difference between the two stocks, not because of anything about their
+joint dynamics. A gamma_spread computed this way is dominated by that fixed level gap and will
+track whatever else co-moves with overall market volatility regimes (which also drives realized
+correlation up during stress periods) — a classic case of two variables both responding to a
+common regime driver, not one causing or informing the other. The statistically significant r=0.442
+should NOT be read as "gamma spread predicts pair correlation" without first normalizing gamma by
+price level (e.g. dollar gamma or gamma as a fraction of position notional) and re-testing —
+not done here, flagged as the honest next step rather than silently accepted at face value per
+CLAUDE.md rule #7.
+
+**Bottom line:** a real, significant correlation exists in the raw numbers, but the most likely
+explanation is a shared-regime/price-level artifact rather than options convexity carrying genuine
+information about co-movement. Not promotable as a feature without the normalization fix and
+re-test above.
+
+Files: `research/options_greeks_features.py` (new), `debug/_verify_options_greeks_features.py`
+(new, 5/5 pass), `output/research/options_greeks_features_KVUE_KMB.parquet` (new).
+
+---
+
+## 17. SVM-via-Gradient-Descent Meta-Labeler Comparison Arm — Built and Verified, Real-Data Run
+Blocked on Timing, Not Yet a Result [2026-08-02]
+
+Ross's last comparison-arm request: an SVM alternate classifier for `ml.py`'s meta-labeler,
+trained via gradient descent (sklearn's `SGDClassifier(loss="hinge")` — hinge loss + SGD is the
+standard linear-SVM training method, the Pegasos algorithm is exactly this), A/B'd against
+`ml.py`'s production XGBoost. No new dependency. Built to reuse `ml.py::build()` directly (the
+real, already-persisted examples XGBoost trains on, not a separate dataset) and reproduce
+`_train_and_validate`'s exact chronological-split + train-only-median-imputation convention.
+
+Verified first (`debug/_verify_svm_gradient_descent_classifier.py`, 3/3 pass): split sizes exactly
+match `Config.ML.TRAIN_PCT`/`VAL_PCT` arithmetic, median imputation is confirmed to use the TRAIN
+slice only (matching the no-leakage fix `ml.py` already documents finding 2026-07-20), and the SGD-
+hinge fit mechanics recover a trivially separable synthetic 3-class problem at 100% accuracy.
+
+**Real-data run did not produce a comparison** — not a failure of this module, a timing collision
+with the WRDS-comparison `analysis.py` re-run happening in the same session: that run's own startup
+clears stale `output/results/` directories before regenerating them (`analysis.py`'s documented
+"Clearing stale results: script changed" behavior), so `ml.py::build()` found 0 confirmed pairs at
+the moment this was run — an honest, correctly-reported "insufficient data" (per `Config.ML.
+MIN_CLASS_SAMPLES`'s own design intent), not a bug. Re-run once the `analysis.py` rerun completes
+and fresh `pairs.parquet` files exist.
+
+Files: `research/svm_gradient_descent_classifier.py` (new), `debug/_verify_svm_gradient_descent_
+classifier.py` (new, 3/3 pass). No `output/research/*.parquet` yet — real comparison still pending.

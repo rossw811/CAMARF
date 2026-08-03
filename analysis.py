@@ -2445,6 +2445,33 @@ class SpreadModel:
         return float(np.log(2) / half_life)
 
     @staticmethod
+    def expanding_half_life_trend_slope(
+        hl_series: np.ndarray,
+        step: int = 21,
+    ) -> np.ndarray:
+        """
+        Causal, point-in-time-safe companion to half_life_trend_slope()
+        above — same shape/pattern as CointScanner.expanding_coint_fraction().
+
+        half_life_trend_slope() computes ONE OLS slope over a pair's ENTIRE
+        half-life history at once (feeds backtest.py's ML gate/sizing on
+        every trade regardless of entry date via the `half_life_trend_slope`
+        scalar — a bar early in a pair's history had its "is mean-reversion
+        strengthening or weakening" signal informed by decades of future
+        half-life observations, part of the position-sizing circularity
+        found in the 2026-07-27 causality audit). This returns a per-bar
+        EXPANDING slope: at each step-spaced evaluation point, the OLS
+        slope of ONLY the half-life values (`hl_series`, itself already
+        causal — see rolling_half_life()) available up to that bar,
+        forward-filled between evaluations.
+        """
+        n = hl_series.size
+        out = np.full(n, np.nan, dtype=float)
+        for t in range(step - 1, n, step):
+            out[t] = SpreadModel.half_life_trend_slope(hl_series[: t + 1])
+        return pd.Series(out).ffill().values
+
+    @staticmethod
     def fit_pair(
         log_a: np.ndarray,
         log_b: np.ndarray,
@@ -2519,6 +2546,21 @@ class SpreadModel:
         trend_slope = SpreadModel.half_life_trend_slope(hl_roll_real)
         theta = SpreadModel.mean_reversion_speed(hl_full)
 
+        # Causal per-bar companions (position-sizing circularity fix,
+        # 2026-07-27 causality audit finding #1 / BUG-D101) — see
+        # expanding_half_life_trend_slope()'s own docstring. mean_reversion_speed_t
+        # needs no dedicated estimator: it's a direct elementwise transform of
+        # the already-causal hl_rolling series (theta = ln(2)/half_life).
+        trend_slope_roll_real = SpreadModel.expanding_half_life_trend_slope(hl_roll_real)
+        trend_slope_t = np.full(n, np.nan, dtype=float)
+        trend_slope_t[real_pos] = trend_slope_roll_real
+        with np.errstate(invalid="ignore", divide="ignore"):
+            mean_reversion_speed_t = np.where(
+                np.isfinite(hl_rolling) & (hl_rolling > 0),
+                np.log(2) / hl_rolling,
+                np.nan,
+            )
+
         return {
             "spread": spread,
             "z_rolling": z_rolling,
@@ -2528,6 +2570,8 @@ class SpreadModel:
             "half_life_rolling_median": hl_rolling_median,
             "half_life_trend_slope": trend_slope,
             "mean_reversion_speed": theta,
+            "half_life_trend_slope_t": trend_slope_t,
+            "mean_reversion_speed_t": mean_reversion_speed_t,
             "window": mean_window,
         }
 
@@ -2632,6 +2676,31 @@ class HurstEstimator:
                 log_rs.append(np.log(float(np.mean(rs_vals))))
         H = HurstEstimator._ols_slope(np.array(log_n), np.array(log_rs))
         return float(np.clip(H, 0.0, 1.0)) if np.isfinite(H) else np.nan
+
+    @staticmethod
+    def expanding_hurst_rs(spread: np.ndarray, step: int = 21) -> np.ndarray:
+        """
+        Causal, point-in-time-safe companion to hurst_rs() above — same
+        shape/pattern as CointScanner.expanding_coint_fraction()/
+        SpreadModel.expanding_half_life_trend_slope().
+
+        hurst_rs() computes ONE R/S estimate over a pair's ENTIRE spread
+        history at once (feeds backtest.py's ML gate/sizing on every trade
+        via the `hurst_rs` scalar, and was the one field BUG-D99 found
+        missing from pit_wfa.py's point-in-time override — same underlying
+        circularity, just caught at a different call site first). Returns
+        a per-bar EXPANDING R/S estimate: at each step-spaced evaluation
+        point, R/S computed using only spread values observed up to that
+        bar, forward-filled between evaluations. Same MIN_BARS floor
+        hurst_rs() itself enforces before the first evaluation.
+        """
+        n = spread.size
+        out = np.full(n, np.nan, dtype=float)
+        if n < HurstEstimator.MIN_BARS:
+            return out
+        for t in range(HurstEstimator.MIN_BARS - 1, n, step):
+            out[t] = HurstEstimator.hurst_rs(spread[: t + 1])
+        return pd.Series(out).ffill().values
 
     @staticmethod
     def hurst_dfa(spread: np.ndarray) -> float:
@@ -4998,6 +5067,15 @@ class AnalysisPipeline:
         # Hurst exponent on spread series (both R/S and DFA)
         hurst_result = HurstEstimator.estimate(_spread_real)
 
+        # Causal per-bar companions (position-sizing circularity fix,
+        # 2026-07-27 causality audit finding #1 / BUG-D101): coint_fraction_rolling_t
+        # and hurst_rs_t, same "point-in-time series in spread_series parquet,
+        # scalar fallback for pre-fix files" pattern as hedge_ratio_ols_t.
+        coint_fraction_rolling_t = CointScanner.expanding_coint_fraction(log_a, log_b, tf_label)
+        hurst_rs_real = HurstEstimator.expanding_hurst_rs(_spread_real)
+        hurst_rs_t = np.full(_spread_full.size, np.nan, dtype=float)
+        hurst_rs_t[_real_pos] = hurst_rs_real
+
         # Log non-ML-gate pairs for diagnostic awareness
         if not hurst_result["passes_ml_gate"]:
             _dfa_str = (
@@ -5039,6 +5117,10 @@ class AnalysisPipeline:
             "gap_flag_b": gap_flag_b,
             "hedge_ratio_ols_t": hr["ols_series"],
             "hedge_ratio_kalman_t": hr["kalman_series"],
+            "coint_fraction_rolling_t": coint_fraction_rolling_t,
+            "half_life_trend_slope_t": sm["half_life_trend_slope_t"],
+            "mean_reversion_speed_t": sm["mean_reversion_speed_t"],
+            "hurst_rs_t": hurst_rs_t,
         }
 
         # Kalman drift velocity: mean absolute 1-bar change in the Kalman beta
@@ -5738,6 +5820,17 @@ class AnalysisPipeline:
                 if _pb is None:
                     continue
                 try:
+                    # The IBKR deep-history enrichment path (above) rebuilds
+                    # per_bar without the 4 causal columns below — .get()
+                    # would otherwise leave a bare None in the dict, which
+                    # pyarrow serializes as a null-typed column and can break
+                    # round-tripping. NaN-fill to the pair's own bar count
+                    # instead, so absence reads back exactly like a pre-fix
+                    # spread_series file (backtest.py's _has_pit-style check
+                    # already treats an all-NaN column as "no PIT data,
+                    # fall back to scalar").
+                    _n_bars_pb = len(_pb["index"])
+                    _nan_fill = np.full(_n_bars_pb, np.nan)
                     _series_df = pd.DataFrame(
                         {
                             "spread": _pb["spread"],
@@ -5748,6 +5841,10 @@ class AnalysisPipeline:
                             "gap_flag_b": _pb["gap_flag_b"],
                             "hedge_ratio_ols_t": _pb.get("hedge_ratio_ols_t"),
                             "hedge_ratio_kalman_t": _pb.get("hedge_ratio_kalman_t"),
+                            "coint_fraction_rolling_t": _pb.get("coint_fraction_rolling_t", _nan_fill),
+                            "half_life_trend_slope_t": _pb.get("half_life_trend_slope_t", _nan_fill),
+                            "mean_reversion_speed_t": _pb.get("mean_reversion_speed_t", _nan_fill),
+                            "hurst_rs_t": _pb.get("hurst_rs_t", _nan_fill),
                         },
                         index=_pb["index"],
                     )

@@ -229,6 +229,17 @@ def _build_examples_for_pair(
         _ols_fallback = pair_row.get("hedge_ratio_ols", np.nan)
         _kal_fallback = pair_row.get("hedge_ratio_kalman_mean", np.nan)
 
+    # Point-in-time coint_fraction_rolling_t/half_life_trend_slope_t/
+    # mean_reversion_speed_t/hurst_rs_t (position-sizing circularity fix,
+    # 2026-07-27 causality audit finding #1 / BUG-D101) -- same pattern as
+    # hedge_ratio_ols_t/kalman_t above. Without this, every labeled training
+    # example for a pair got the SAME whole-history scalar feature value
+    # regardless of the entry's actual date.
+    _has_pit_cfrac = "coint_fraction_rolling_t" in series.columns
+    _has_pit_hlslope = "half_life_trend_slope_t" in series.columns
+    _has_pit_meanrev = "mean_reversion_speed_t" in series.columns
+    _has_pit_hurst = "hurst_rs_t" in series.columns
+
     events: List[EntryEvent] = []
     n_censored = 0
     n_no_half_life = 0
@@ -275,6 +286,22 @@ def _build_examples_for_pair(
                 hedge_drift = abs(ols_t - kal_t) / abs(ols_t)
         elif np.isfinite(_ols_fallback) and _ols_fallback != 0 and np.isfinite(_kal_fallback):
             hedge_drift = abs(_ols_fallback - _kal_fallback) / abs(_ols_fallback)
+
+        # Point-in-time lookups at feat_pos (same staled bar zscore/half_life
+        # features above already use), scalar fallback when absent/NaN.
+        _cfrac_feat = series["coint_fraction_rolling_t"].iloc[feat_pos] if _has_pit_cfrac else np.nan
+        if not np.isfinite(_cfrac_feat):
+            _cfrac_feat = pair_row.get("coint_fraction_rolling", np.nan)
+        _hlslope_feat = series["half_life_trend_slope_t"].iloc[feat_pos] if _has_pit_hlslope else np.nan
+        if not np.isfinite(_hlslope_feat):
+            _hlslope_feat = pair_row.get("half_life_trend_slope", np.nan)
+        _meanrev_feat = series["mean_reversion_speed_t"].iloc[feat_pos] if _has_pit_meanrev else np.nan
+        if not np.isfinite(_meanrev_feat):
+            _meanrev_feat = pair_row.get("mean_reversion_speed", np.nan)
+        _hurst_feat = series["hurst_rs_t"].iloc[feat_pos] if _has_pit_hurst else np.nan
+        if not np.isfinite(_hurst_feat):
+            _hurst_feat = pair_row.get("hurst_rs", np.nan)
+
         events.append(
             EntryEvent(
                 symbol_a=symbol_a,
@@ -288,14 +315,10 @@ def _build_examples_for_pair(
                 zscore=z_feat,
                 zscore_velocity=zvel,
                 half_life_current=float(hl_feat),
-                hurst_exponent=(
-                    float(pair_row["hurst_rs"])
-                    if np.isfinite(pair_row.get("hurst_rs", np.nan))
-                    else None
-                ),
-                coint_fraction_rolling=float(pair_row.get("coint_fraction_rolling", np.nan)),
-                half_life_trend_slope=float(pair_row.get("half_life_trend_slope", np.nan)),
-                mean_reversion_speed=float(pair_row.get("mean_reversion_speed", np.nan)),
+                hurst_exponent=float(_hurst_feat) if np.isfinite(_hurst_feat) else None,
+                coint_fraction_rolling=float(_cfrac_feat),
+                half_life_trend_slope=float(_hlslope_feat),
+                mean_reversion_speed=float(_meanrev_feat),
                 hedge_ratio_drift=float(hedge_drift),
             )
         )

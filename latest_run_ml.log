@@ -1,28 +1,11 @@
 === CAMARF ml.py ===
-date:        2026-07-22 08:41
-runtime_min: 0.1
+date:        2026-08-02 10:20
+runtime_min: 0.0
 
 === pairs ===
-  7267.T/8058.T@1M         entry_events=3     labeled=0     censored=3     no_half_life=0     future_not_clean=0
-  KVUE/KMB@2m              entry_events=40    labeled=24    censored=0     no_half_life=0     future_not_clean=16
-  KVUE/KMB@3m              entry_events=102   labeled=0     censored=0     no_half_life=102   future_not_clean=0 perm_robust=True
-
-=== label_distribution (label_scheme=binary, this is what training/the MIN_CLASS_SAMPLES gate sees) ===
-  not_converged: 22
-  converged: 2
-
-=== granular_label_distribution (always the full 4-class outcome, regardless of label_scheme) ===
-  no_move: 12
-  diverge_further: 10
-  weak_converge: 2
+  (none)
 
 === notes ===
-  Trained: n_train=14 n_test=6 test_accuracy=83.33%
-  Conformal: n_cal=4 avg_set_size=1.50 empirical_coverage=83.33%
-  Model persisted → C:\Users\RossW\Projects\CAMARF\output\ml\model_stage1.pkl
-
-=== pairs_skipped ===
-  7267.T/8058.T@1M: zero labeled entry events
-  KVUE/KMB@3m: zero labeled entry events
+  Insufficient data to train: 0 total examples across 0 classes (label_scheme=binary, min class count=0, need >=30/class per Config.ML.MIN_CLASS_SAMPLES). This is the expected, honest result tonight — most confirmed pairs are on intraday TFs whose history just started accumulating (see DEVELOPMENT.md's data.py append-switch, 2026-06-21). Re-run as more history accumulates.
 
 === end ===

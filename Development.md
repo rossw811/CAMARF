@@ -19900,3 +19900,475 @@ and sufficient at this per-symbol granularity) and fetched the remaining 2,577.
 iid pairs with no available price data, logged and skipped rather than silently dropped). Split-adjusted only
 (same disclosed limitation as the original single-symbol `fetch_symbol_global` — total-return reconstruction via
 `trfd` remains unverified/not attempted for Compustat Global generally).
+
+## Session 29 — 5 Causality-Audit Bugs Fixed + Verified; WRDS Wired as Primary for Daily-and-Coarser Data (2026-08-01)
+
+**Context this session inherited**: the session immediately above (2026-07-27 evening → 2026-07-28) was never
+written up — it hit sustained "Usage limit reached" errors and was archived mid-task with Ross's last message
+("continue as you were") unanswered. `docs/HANDOFF.md` was reconstructed from that session's transcript,
+cross-checked against actual repo state, and is the canonical record of what that session did and didn't finish:
+a WRDS Tier 1/2/3 episodic cointegration scan (103/189/620 confirmed pairs, a much larger and cleaner set than
+the collapsed ~2-pair yfinance-production set), a `research/wrds_universal_lead_lag_scan.py` discovery
+methodology, and — the important part carried into this session — a 4-agent causality/point-in-time audit that
+found 5 real, unfixed bugs in `backtest.py`/`ml.py`/`pit_wfa.py`/`wfa.py`/`macro.py`. One of the 5
+(`analysis.py::CointScanner.expanding_coint_fraction()`, the position-sizing circularity) was half-built and
+never wired in before the session died. See `docs/HANDOFF.md` for the full reconstructed narrative — not
+reproduced here in full, only what's needed to understand this session's fixes.
+
+Ross's direction this session: fix all 5 causality bugs first (his explicit ordering choice over starting WRDS
+integration immediately), then make WRDS the primary source for daily-and-coarser data where realistic. A plan
+was written and approved (`~/.claude/plans/reflective-squishing-liskov.md`) before any code was touched, per this
+project's standing rule that new methodology/architecture decisions get discussed before being built. Two
+constraints surfaced during planning that shaped the WRDS-integration scope: **CRSP/Compustat Global have no
+intraday data at all** — WRDS can only ever serve 5 of `data.py`'s 13 timeframes (1D/7D/1M/3M/6M); and
+**merging a second live fetch path into `data.py`'s main loop is the exact IBKR mistake CLAUDE.md's rule 2 says
+cost weeks of instability** — so "WRDS primary" means `data.py` reads the already-populated
+`output/cache/wrds/` cache (populated separately by the already-existing `data_wrds.py`, run manually, same
+precedent as `data_ibkr.py`), never a merged fetch loop.
+
+### Fix 1 (BUG-D99): `pit_wfa.py`'s BUG-D69 point-in-time override missing `hurst_rs`
+
+`pit_wfa.py::backtest_pair_on_test_window()`'s override dict (the BUG-D69 fix from Session 28-era, which
+replaces `full_pair_result`'s train+test-contaminated scalar fields with the genuinely train-only `pair_result`'s
+own values) covered `coint_fraction_rolling`/`half_life_trend_slope`/`mean_reversion_speed` but not `hurst_rs` —
+a bar early in a fold's test window had its Hurst-exponent feature computed with knowledge of the fold's own
+future (train+test combined), same lookahead mechanism BUG-D69 fixed for the other 3 fields, just missed for
+this one. One-line fix: added `"hurst_rs": getattr(pair_result, "hurst_rs", np.nan)` to the override dict.
+
+**Verified** (`debug/_verify_bugD99_pit_wfa_hurst_rs.py`, new): synthetic pair with a mean-reverting (low-Hurst)
+train window and a trending (high-Hurst) test window, so train-only and train+test-combined Hurst genuinely
+differ (0.708 vs 0.610 in the actual run). Monkeypatches `BacktestEngine.run` to capture the `pair_row` it
+receives; confirms `hurst_rs` matches the train-only value, not the contaminated one. Confirmed the test fails
+correctly against the pre-fix code (git-stashed the fix, reran, got the expected lookahead-bug failure) before
+re-applying.
+
+### Fix 2 (BUG-D100): `garch_stop`'s volatility baseline was full-sample, not causal
+
+Both `wfa.py::_run_fold_backtest` and `backtest.py::BacktestEngine.run`'s `garch_stop` STORM variant ("tighten
+the stop when current vol is 2x elevated vs. historical") computed the historical-vol denominator as
+`float(np.nanstd(z_arr))` over the ENTIRE test window/backtest history at once — a bar early in the window had
+its "is vol elevated" comparison informed by every later bar in the same run. The causal 100-bar rolling
+numerator (`_rolling_z_std`) was already fine; only the denominator was full-sample. Mirrors the same mechanism
+BUG-D89 already fixed for `backtest.py`'s `_cf_carver` STORM variant (an expanding cumsum/cumcount average).
+
+**Fix**: `_hist_z_std` (scalar) → `_hist_z_std_arr` (per-bar), via
+`pd.Series(z_arr).expanding(min_periods=10).std()`, floored at 1.0, in both files. Usage sites now index
+`_hist_z_std_arr[i]` instead of the scalar.
+
+**Verified** (`debug/_verify_bugD100_garch_stop_causal.py`, new): two checks — (1) structural, greps both source
+files to confirm the old full-sample pattern is gone and the new expanding pattern is present; (2) numerical,
+constructs two z-score arrays sharing an identical past but diverging futures (calm vs. a 15x vol spike),
+confirms the causal baseline's past-window values are bit-identical regardless of the future (max diff 0.0)
+while the future-window values genuinely diverge (max diff 10.2) — proving the construction actually exercises
+the bug, not just that the formula looks causal. Confirmed the structural check fails correctly against
+git-stashed pre-fix code.
+
+### Fix 3 (BUG-D101): position-sizing circularity — the main finding, four fields
+
+`analysis.py::CointScanner.expanding_coint_fraction()` already existed (built the interrupted session, per its
+own docstring/mtime) as a causal, per-bar expanding-fraction companion to the whole-history scalar
+`coint_fraction_rolling` — but was called from nowhere (`grep -rn "expanding_coint_fraction"` returned only its
+own definition). Three more fields had the identical whole-history-scalar shape with no causal companion built
+yet at all: `half_life_trend_slope`, `mean_reversion_speed`, `hurst_rs`. All four feed `backtest.py`'s
+`coint_frac_sizing`/ML-gate position sizing and `ml.py`'s training-example features on every entry across a
+pair's ENTIRE history — a window ending in 2024 was always allowed to justify a trade's size in 2015.
+
+**Built the two missing causal estimators**, following `expanding_coint_fraction()`'s own established
+step-spaced-evaluation-then-forward-fill pattern:
+- `SpreadModel.expanding_half_life_trend_slope(hl_series, step=21)` — per-bar OLS slope of the (already-causal)
+  rolling half-life series, using only values observed up to each step-spaced evaluation point.
+- `HurstEstimator.expanding_hurst_rs(spread, step=21)` — per-bar R/S Hurst estimate, same expanding-window
+  pattern, same `MIN_BARS` floor `hurst_rs()` itself enforces.
+- `mean_reversion_speed_t` needed no new estimator: it's `ln(2)/half_life_rolling_series` computed elementwise —
+  already-causal input, direct transform.
+
+**Wired end-to-end**, following the already-solved `hedge_ratio_ols_t`/`hedge_ratio_kalman_t` pattern exactly
+(point-in-time series in `spread_series_{A}_{B}.parquet`, column-presence + per-bar-NaN scalar fallback at every
+read site):
+- `analysis.py::_build_pair_result` now computes all 4 causal series and adds them to `per_bar`
+  (`coint_fraction_rolling_t`, `half_life_trend_slope_t`, `mean_reversion_speed_t`, `hurst_rs_t`), persisted into
+  `spread_series` parquet. The IBKR deep-history enrichment path (a separate `per_bar_by_pair` rebuild for
+  confirmed pairs with `data_ibkr.py` supplemental history) does NOT compute these 4 fields — NaN-filled at the
+  persistence step so it degrades to the scalar fallback exactly like a pre-fix file, rather than breaking
+  parquet serialization on a bare `None` column (caught before it shipped: a first pass left `.get()` with no
+  default, which would have written a null-typed pyarrow column for any deep-history-enriched pair).
+- `backtest.py::BacktestEngine.run`: `_coint_frac`/`_ml_coint_frac`/`_ml_hl_slope`/`_ml_mean_rev`/`hurst` (all
+  scalars) now only serve as per-bar-NaN fallbacks; the per-bar loop looks up `_cfrac_at_bar`/`_hlslope_at_bar`/
+  `_meanrev_at_bar`/`_hurst_at_bar` at each entry's own bar index, feeding both `ml_features` and all 3
+  `coint_frac_sizing` share-count sites. Also fixed a related miss caught during verification:
+  `Trade.hurst_at_entry` itself (a diagnostic field, separate from `ml_features`) was still being set from the
+  stale scalar `hurst` after the ml_features fix — same root cause, different line, caught by the synthetic
+  test's own coverage rather than a second manual pass.
+- `ml.py::_build_examples_for_pair`: `EntryEvent` construction now does the same `feat_pos`-indexed point-in-time
+  lookup (mirroring the already-causal `hedge_drift` computation immediately above it in the same function)
+  instead of reading `pair_row` scalars unconditionally for every labeled training example.
+- `pit_wfa.py::backtest_pair_on_test_window`: the 4 causal columns are now included in the `spread_df` fed to
+  `engine.run()` — picked up automatically by `backtest.py`'s own per-bar lookup within the test slice (each test
+  bar's value reflects only EG/half-life/Hurst windows concluded by that bar), taking priority over the
+  train-only scalar override which remains as the correctly-scoped fallback.
+
+**Verified** (`debug/_verify_bugD101_position_sizing_circularity.py`, new, most involved of the 5): (1) causality
+of both new estimator functions via the same past-independent-of-future technique as fixes 1-2; (2) a hand-built
+synthetic `spread_series`-shaped DataFrame with DISTINCT known causal values at two well-separated bars and a
+static scalar fallback deliberately different from both — calls `BacktestEngine.run()` with `coint_frac_sizing`
+enabled, monkeypatches `ml_cond.predict_prob` to capture `ml_features` at each entry, confirms both entries'
+features AND `n_shares_a` AND `Trade.hurst_at_entry` match their OWN bar's causal value, not each other and not
+the scalar; (3) same idea via a direct call to `ml.py::_build_examples_for_pair`, confirming `EntryEvent` fields
+differ correctly between two entries at different `feat_pos`. Confirmed the full test suite fails with 23
+distinct failures when `backtest.py`/`ml.py` are git-stashed back to pre-fix — every scalar-fallback-only path
+correctly detected as identical-for-both-entries.
+
+### Fix 4 (BUG-D102): `coint_frac_sizing` WFA variant — cross-fold leakage
+
+`wfa.py::run_wfa`'s main fold loop read `pair_row["coint_fraction_rolling"]` — the SAME static, whole-history
+scalar from `output/stats/cointegration_tiers.parquet` for every fold of every variant, computed once outside
+the loop. An early fold's test-window trades were sized using a fraction that included cointegration windows
+from later folds, including future ones relative to that specific fold's own train/test boundary — undermining
+the entire point of walk-forward validation for this variant. Fix (depended on Fix 3's causal series existing):
+read `coint_fraction_rolling_t` at THIS fold's own train-window end bar (`ti_e - 1`) instead, falling back to
+the static scalar only for `spread_series` files that predate the causal column.
+
+**Verified** (`debug/_verify_bugD102_coint_frac_sizing_fold_leakage.py`, new): synthetic 2-fold scenario with a
+`coint_fraction_rolling_t` series holding distinct plateau values (0.75, 0.30) bracketing each fold's own
+train-end bar, and a static scalar fallback (0.55) deliberately different from both. Monkeypatches
+`wfa._run_fold_backtest` to capture the `coint_frac` kwarg per fold; confirms fold 1 gets 0.75, fold 2 gets 0.30
+— neither the shared 0.55. Confirmed the pre-fix code produces the leakage bug exactly as described (both folds
+got 0.55) before the fix was applied.
+
+### Fix 5 (BUG-D103): `macro.py` monthly FRED series had no publication-lag
+
+`macro.py::_align_to_trading_calendar()` indexed monthly FRED series (FEDFUNDS/CPIAUCSL/UNRATE/derived
+`sahm_indicator`/USREC) by REFERENCE period (e.g. `"2024-01-01"` for January's reading), not the date the print
+was actually released — `reindex(..., method="ffill")` against the trading calendar made a reading available on
+the calendar weeks before the public actually had it. Currently dormant (nothing feeds `macro.build()`'s output
+into `RegimeConditioner` live today, confirmed via grep) but would silently activate the moment it is.
+
+**Fix**: `_MONTHLY_PUBLICATION_LAG_DAYS` dict (approximate real-world lags, documented per-series, not derived
+from a live release-calendar feed — FEDFUNDS 5d, CPIAUCSL 15d, UNRATE/`sahm_indicator` 40d matching CLAUDE.md's
+own stated ~5-6-week figure, USREC 120d flagged explicitly as a conservative approximation since NBER recession
+dating is irregular/committee-driven, not a fixed schedule). Applied by shifting each monthly series' own index
+forward by its lag before the `reindex(method="ffill")` step.
+
+**Verified** (`debug/_verify_bugD103_macro_publication_lag.py`, new): synthetic UNRATE reading at a known
+reference date, confirms it's absent from every trading day before `reference_date + lag_days` and present from
+that date onward; a reference check confirms the OLD (lag=0) behavior would have leaked the value into the
+gap window, proving the test actually distinguishes lagged from unlagged behavior. Confirmed the pre-fix code
+(git-stashed) fails with an `ImportError` (the lag dict didn't exist), the expected failure mode for code that
+doesn't have the fix at all.
+
+### Real-pipeline verification of all 5 fixes (no synthetic-only trust)
+
+Per this project's verify-before-claiming-done rule, ran the real pipeline after all 5 fixes, not just the
+synthetic tests: `analysis.py --timeframes 2m 3m` (5.4 min, real cached universe) — same confirmed pair set as
+before (KVUE/KMB@2m, KVUE/KMB@3m), all 4 new causal columns persisted with real finite values in
+`spread_series_KVUE_KMB.parquet`. One data-availability gap confirmed as PRE-EXISTING, not fix-caused: 3m's
+`half_life_rolling` column is already entirely NaN upstream of this session's changes (checked directly — 0/19330
+finite), so `half_life_trend_slope_t`/`mean_reversion_speed_t` correctly inherit NaN there rather than fabricating
+values; not investigated further this session (likely 3m's short 5-day yfinance window per `_YF_INTRADAY_MAP`,
+not confirmed).
+
+`backtest.py` — baseline run (no STORM flags) unchanged at SR=3.31(OLS)/3.58(Kalman), exactly as expected since
+the circularity fix only activates under STORM flags; `--storm-all` run completed cleanly (SR=32.8, no crash,
+every fixed code path exercised). `wfa.py` — all 6 strategy variants × 2 fold structures ran cleanly;
+`cfrac_sizing`'s PnL now measurably diverges from `baseline` (3282.97 vs 3530.08 expanding; 6783.43 vs 7332.41
+rolling) — concrete confirmation BUG-D102's fix is live, not just present-but-inert; `garch_stop` showed no
+difference in this specific tiny 5-22-trade sample, plausible given sample size, not investigated further.
+`pit_wfa.py`'s full real-universe run was NOT executed this session (documented ~45-50 min/fold, multi-hour
+total for a full screen) — relying on its passing synthetic test (which exercises exactly the modified function,
+`backtest_pair_on_test_window`) plus a clean `py_compile`, explicitly flagged as a real, disclosed gap rather
+than silently skipped.
+
+### WRDS wired as primary for daily-and-coarser CRSP/US-equity data
+
+Scope, deliberately narrower than "full replacement" (discussed and agreed with Ross before building, per this
+project's new-methodology-needs-buy-in rule): CRSP-resolvable US equities/ETFs only (`equity`/`etf` asset
+classes), timeframes `{1D, 7D, 1M, 3M, 6M}` only. International (`equity_intl`, Compustat Global) stays on
+yfinance — its `GVKEY{n}_{iid}` identifier scheme has no natural ticker, a separate reconciliation problem not
+solved here. Intraday stays on yfinance/IBKR regardless of scope — CRSP has no intraday data at all, a hard
+fact, not a scope choice.
+
+**Architecture**: `Config.DATA.WRDS_PRIMARY_ASSET_CLASSES`/`WRDS_PRIMARY_TFS` (new, `config.py`) gate a new
+branch inserted into `data.py::UniverseBuilder.build()`'s Phase 1 (right before the existing
+`uncached_yf`/`stale_yf` yfinance-fetch split) — for gated symbols, reads `output/cache/wrds/{symbol}_{TF}.parquet`
+(populated separately/manually by the already-existing `data_wrds.py`, never a merged live fetch path) instead of
+calling `YFinanceFeed`. Symbols with no WRDS coverage fall through to the unmodified yfinance path unchanged.
+Renames `close_total_return` → `close` (the like-for-like match to yfinance's `auto_adjust=True` close; WRDS's
+own split-only `close` is dropped, not used, to avoid silently understating returns for dividend payers).
+Explicitly invokes `DataCleaner.clean(..., source="wrds")` on the WRDS-sourced frame before inserting into
+`all_data` — confirmed this does NOT happen automatically for a non-yfinance branch (`DataCleaner.clean()` is
+only called inline within the yfinance fetch path itself), so skipping it would have silently dropped the
+dedup/liquidity-filter/`MIN_BARS_REQUIRED` gate for every WRDS-sourced symbol. `GapFlag`/`DataAligner`
+classification, by contrast, confirmed to apply automatically downstream regardless of source — no change needed
+there. A small provenance manifest (`output/cache/wrds_provenance_last_run.json`: run timestamp, which TFs, which
+symbols) is written at the end of `build()`, per CLAUDE.md's Data Test Range & Reproducibility requirement that a
+headline result be traceable to the exact data behind it.
+
+**Two real bugs found and fixed during verification against REAL cached WRDS data** (not synthetic — the thing
+being verified here is I/O + real-schema compatibility, which a synthetic mock wouldn't meaningfully exercise;
+`debug/_verify_wrds_primary_wiring.py`, new, run against the ~20k real files already in `output/cache/wrds/`):
+
+1. **CRSP's native monthly file (`msf_v2`) has NO open/high/low at all** — close/volume only, confirmed via
+   `data_wrds.py`'s own module docstring. `DataCleaner._standardize()` hard-requires open/high/low/close and
+   silently empties any frame missing them (`return None` with no error) — real AAPL_1M.parquet fed through the
+   new WRDS branch failed with `empty_after_standardize` before this was caught. Fixed: when the WRDS-sourced
+   frame lacks open/high/low, synthesize `open=high=low=close` (a single end-of-month observation genuinely has
+   no intra-period range to report — this is the honest representation of what CRSP actually provides, not a
+   fabrication of new information, same convention already implicit anywhere else in the codebase that a
+   close-only series gets treated as OHLC-equivalent). Re-verified after the fix: AAPL_1M now passes cleanly,
+   541 bars.
+2. Confirmed the `close_total_return`→`close` rename is doing the right thing, not just running without
+   crashing: for a long enough real history (AAPL, dividend payer since 2012), the renamed `close` column must
+   NOT equal the original split-only `close` column bar-for-bar — verified directly, would have failed loudly if
+   the rename had silently picked the wrong source column.
+
+**Also confirmed, not fixed (pre-existing, out of this session's scope)**: `Config.DATA.MIN_BARS_REQUIRED` has no
+explicit `3M`/`6M` entries, defaulting to the generic 100-bar floor — AAPL's full ~45-year real history only
+produces 68 six-month bars, below that floor, so 6M was rejected by `DataCleaner.clean()` even with maximal real
+depth. This is a schema-independent config gap (yfinance-derived 6M data would hit the identical ceiling for
+virtually any symbol, since no real asset has 50+ years of clean 6-month-bucketed history) — not caused by or
+specific to the WRDS wiring, flagged here rather than silently worked around.
+
+**B1 (CRSP volume share-count adjustment) deferred, not fixed this session**: `data_wrds.py`'s own docstring
+already flags that `dlyvol` is persisted raw, unadjusted for share-count changes across splits (`dlycumfacshr`
+exists for this but the correct multiply-vs-divide direction was never verified against a real split event).
+Verifying this needs a live WRDS query — no `.pgpass`/cached credentials available in this session's environment,
+and WRDS is IP-allowlisted to WSU's network (VPN-gated). Ross confirmed he'll activate the VPN separately; this
+stays open pending that. Does not block the daily-data wiring above (volume/ADV already carried this exact
+disclosed limitation before this session; the wiring doesn't make it worse, just doesn't fix it either).
+
+**Full end-to-end production verification** (`data.py` full run, then `analysis.py` full rerun, comparing WRDS-
+primary vs. the yfinance-only baseline across the whole universe): launched this session, not yet complete at
+the time of this write-up — see the next session-log entry or `latest_run_data.log`/`latest_run_analysis.log`
+for the actual result once it finishes.
+
+## Session 30 — BUG-D105 (WRDS Wiring Silently Collapsed the Analysis Universe), Cycle-Detection
+and Comparison-Arm Sweep (2026-08-02)
+
+Continuation of Session 29's own unfinished thread: that session's browser tab (`claude.ai/code/
+session_01VjNx54nhUFHzb9KncV8ZeW`, "Verify Phase A causality bug fixes with real data") stalled on
+Claude's own usage limit while idling in a wait-loop for the full `data.py` production run it had
+just launched — see `docs/HANDOFF.md`'s 2026-08-02 reconstruction entry for the full account of how
+that was recovered. This session picked up exactly where it left off: the `data.py` run had
+actually finished in the background (125.9 min, completed 2026-08-02 00:13) but `analysis.py` had
+never been re-run against the fresh WRDS-primary output to get the real comparison Task 16 of that
+plan was for.
+
+### BUG-D105: WRDS-primary routing silently dropped 1,512 symbols from the analysis universe
+
+Running that comparison immediately surfaced a severe regression: `analysis.py`'s universe
+collapsed from the expected ~1650+ assets down to **148**, and confirmed pairs went to **zero at
+every timeframe**, including 2m/3m — where KVUE/KMB had been confirmed continuously since Session
+21. Not glossed over or attributed to noise — root-caused directly.
+
+**Mechanism**: `UniverseBuilder.build()`'s WRDS branch (added Session 29, see above) correctly
+removes WRDS-covered symbols from the local `yf_assets` list right after routing them
+(`yf_assets = [(s, cls) for s, cls in yf_assets if s not in wrds_daily_done]`, `data.py:4095`) —
+this is deliberate and correct, it prevents the subsequent `uncached_yf`/`stale_yf` logic from
+redundantly re-fetching WRDS-sourced symbols from yfinance. The bug: `yf_assets` is a single
+variable serving two purposes across the function — (1) "which symbols need a yfinance daily
+fetch" (the WRDS branch's own concern) and (2) far later in the same function, the ONLY source for
+the final `passed` list construction (`data.py:5007-5011`'s `for symbol, asset_class in
+yf_assets: ... passed.append(...)`). Filtering `yf_assets` for purpose (1) silently starved
+purpose (2) — every WRDS-sourced symbol was fetched, cleaned, and written into `all_data`
+correctly, but never once reached `passed`, so `UniverseResult.assets` (what `analysis.py` actually
+iterates over) never contained them.
+
+**Fix**: `wrds_daily_done` converted from a `set` to a `dict` (`{symbol: asset_class}` — a fully
+compatible change everywhere it was previously used as a set, since `in`/`len`/`sorted()` all work
+identically on dict keys), then a second explicit pass added right after the existing yf_assets-based
+`passed`-population loop: `for symbol, asset_class in wrds_daily_done.items(): if symbol not in
+passed_symbols: passed.append((symbol, asset_class))`. Surgical — doesn't touch the WRDS branch's
+own (correct) filtering logic at all, just restores the missing "and also mark these `passed`" step
+the removal silently broke.
+
+**Verified**: `debug/_verify_bugD105_wrds_universe_passed.py` (new) reproduces the exact bug
+mechanism at small scale — a hand-simulated `yf_assets`/`wrds_daily_done`/`passed` sequence
+mirroring `data.py`'s exact inline logic (duplicated rather than imported, since it's inline in a
+~1200-line method, not a standalone function — same precedent `debug/_verify_wrds_primary_wiring.py`
+already established). Pre-fix simulation reproduces the bug exactly (WRDS symbols excluded from
+`passed`); post-fix simulation includes all symbols with no duplicates. Real-data confirmation: see
+below, the re-run universe size and confirmed-pair set are the actual proof.
+
+### Real-data confirmation: `analysis.py` re-run after the fix
+
+Full `analysis.py` run (all 13 timeframes) launched twice: once before the fix (reproducing BUG-D105
+live — 148 assets passed, 0 confirmed pairs anywhere, log: `analysis_wrds_compare_run.log`), once
+after (`analysis_wrds_compare_run2.log`) — see the next session-log entry for that run's actual
+completion numbers once available; it was still in progress at the time of this write-up (WRDS load
+phase observed completing normally at 10:20:52, ~3.5 min after the "Resuming" line, consistent with
+the pre-fix run's own timing for that phase).
+
+### Cycle-detection and comparison-arm sweep (Ross's research-topics discussion, same session)
+
+Following up on the deferred research-topics list `docs/HANDOFF.md` flagged from the browser
+session (Lévy/rough-vol, wavelets, options Greeks, SVM classifier, cross-asset cycle detection),
+Ross greenlit all of it for research/comparison purposes — full write-ups of each in
+`docs/FINDINGS.md` §13-17, summarized here:
+
+- **Cycle detection** (`research/cycle_detection.py`, `debug/_verify_cycle_detection.py`, 6/6 pass):
+  Morlet-CWT dominant-cycle period (implemented directly in numpy/FFT, no PyWavelets dependency —
+  same convention `wavelet_hurst_comparison.py` already established), a causal rolling Hilbert-phase
+  PLV between pair legs, and cross-timeframe cycle consistency. Real result on KVUE/KMB (the only
+  confirmed pair): honest null — cross-TF consistency check failed (ratio 2.9x, outside the 0.5-2x
+  band), and the 2min dominant-period estimate landed exactly at the scanned grid's edge (a
+  boundary artifact, not a resolved peak). See FINDINGS.md §13 for full detail and disclosed
+  limitations (the wavelet series is not point-in-time-safe as implemented).
+- **Lévy jump-diffusion vs. GapFlag** (`research/levy_jump_diffusion.py`,
+  `debug/_verify_levy_jump_diffusion.py`, 4/4 pass): Lee & Mykland (2008) jump test. Verification
+  caught a real implementation bug before real data (`sqrt(π/2) * mean(prod)` instead of
+  `sqrt(π/2 * mean(prod))` — bipower variation is a variance estimator, the sqrt was on the wrong
+  term, producing a 95.5% false-positive rate on pure-diffusion synthetic data against a 1% nominal
+  target). After the fix: 0 false positives, 5/5 injected jumps recovered. Real result: 0% overlap
+  between statistically-detected jumps and `GapFlag`, in either direction — GapFlag tracks
+  provider-side data continuity, the jump test finds return-magnitude discontinuities within
+  otherwise perfectly continuous data; they answer genuinely different questions. See FINDINGS.md
+  §14.
+- **Rough volatility** (`research/rough_volatility.py`, `debug/_verify_rough_volatility.py`, 3/3
+  pass): reuses `analysis.py::HurstEstimator` and `wavelet_hurst_comparison.py::wavelet_hurst`
+  unchanged, applied to log-realized-vol instead of spread levels. Real result: DFA/wavelet
+  estimators land well below 0.5 (0.20-0.39, directionally consistent with Gatheral et al.'s
+  rough-vol picture) but R/S stays close to 0.5 (0.45-0.51) — reported the disagreement honestly
+  rather than picking the estimator that tells the cleaner story. See FINDINGS.md §15.
+- **Options Greeks as features** (`research/options_greeks_features.py`,
+  `debug/_verify_options_greeks_features.py`, 5/5 pass): closed-form BS Greeks verified against
+  finite-difference derivatives of `options.py`'s own existing `black_scholes_call()`. Real result:
+  statistically significant correlation (r=0.442, p<0.0001) between gamma-spread and rolling
+  return correlation, but directly checked and flagged as very likely a price-level confound
+  (KVUE ~$20 vs KMB ~$100+, and BS gamma scales ~1/S) rather than a real convexity signal — not
+  promotable without a dollar-gamma normalization and re-test. See FINDINGS.md §16.
+- **SVM-via-gradient-descent classifier** (`research/svm_gradient_descent_classifier.py`,
+  `debug/_verify_svm_gradient_descent_classifier.py`, 3/3 pass): `SGDClassifier(loss="hinge")`
+  reusing `ml.py::build()`'s real examples and `_train_and_validate`'s exact chronological-split
+  convention. Real-data run returned "0 confirmed pairs" — a timing collision with the concurrent
+  `analysis.py` re-run clearing stale `output/results/` directories at that exact moment, not a bug
+  in this module. Needs re-running once the `analysis.py` re-run above completes. See FINDINGS.md
+  §17.
+
+All five modules follow the same discipline: verify-before-trusting (synthetic ground truth first,
+one module's verification directly caught a real bug before touching real data), disclosed
+limitations stated in the module docstring itself (not discovered later), and honest reporting of
+null/mixed/confounded results rather than only writing up the clean ones. None are wired into
+production (`ml.py`/`backtest.py`/`wfa.py`) — all five are Ross's explicit "research/comparison
+sake first" scope, promotion to production is a separate, later decision.
+
+### Episodic WRDS scanner's non-causal window-aggregation gap — fixed
+
+Ross asked to confirm bias-mitigation and episodic/PIT-testing discipline broadly. Re-checked the
+specific gap `docs/HANDOFF.md` had flagged and left open: `research/wrds_deep_history_episodic_
+scan.py`'s `episodic_bhfdr_confirm()` collapses across EVERY historical window regardless of date
+when deciding if a pair is "episodically confirmed" — "was this pair EVER confirmed in any window,"
+not "as of date T, using only windows already concluded by T." Confirmed directly (not assumed) that
+this was still present and unfixed. Mitigating factor also confirmed directly: nothing downstream
+consumes this WRDS output yet (repo-wide grep), so it wasn't a live bug — but Ross chose to fix it
+now rather than leave it deferred.
+
+**Root cause of why the retrofit wasn't "simple," traced exactly**: `build_rolling_eg_tasks` only
+computed a window's real calendar date (`dates_masked[start]`) transiently, inside the ADV-liquidity-
+gate branch, for the ADV lookup itself — it was never attached to `task_meta`, so it never survived
+into the flat per-window rows `episodic_bhfdr_confirm` consumes. Fixed: `dates_masked` is now always
+computed (not gated on `adv_by_symbol`), and both `window_start_date` and `window_end_date` (the
+window's OWN last bar — a window "concludes" at its end, not its start) are attached to every
+`task_meta` tuple and threaded through `run_rolling_eg_pool` (including its checkpoint round-trip)
+into the final flat rows.
+
+Added `episodic_bhfdr_confirm_asof(flat_pvalue_rows, alpha, as_of_date, min_windows_confirmed=1)` —
+filters to only windows whose `window_end_date <= as_of_date` before running the same joint BH-FDR
+correction, so the multiple-testing universe itself genuinely shrinks at an earlier `as_of_date`
+(the correct causal behavior — a real deployment at an early date could not have run tests on data
+it hadn't collected yet). The original `episodic_bhfdr_confirm` is kept, unchanged, with its
+docstring updated to explicitly disclose it is NOT point-in-time-safe and should only be used as a
+descriptive whole-history stability check, never as backtest/live input.
+
+**Verified** (`debug/_verify_episodic_pit_asof.py`, new, 4/4 pass): `build_rolling_eg_tasks` now
+attaches dates even with no ADV gate active; the as-of-T confirmed set at an early date is a strict
+SUBSET of the full-history confirmed set (a real deployment can never see more evidence than one
+that waited longer — checked directly, not assumed); rows with a missing `window_end_date`
+(simulating a pre-fix checkpoint) are excluded rather than silently treated as eligible; the
+eligible-window count is monotonically non-decreasing as `as_of_date` advances.
+
+Nothing downstream was rewired to consume `episodic_bhfdr_confirm_asof` — per the same finding
+above, nothing consumes either function's output yet, so there's no live integration to update.
+This closes the capability gap; wiring the WRDS Tier 2/3 output into anything real is still a
+separate, later methodology decision (per CLAUDE.md's new-methodology-needs-buy-in rule), same as
+before this fix.
+
+### `pit_wfa.py` real-universe re-run, post BUG-D99/BUG-D105
+
+Launched in the background per Ross's explicit request (it had not been re-run since BUG-D99's
+causal-field fix or today's BUG-D105 universe fix — a documented, previously-deferred item). Fold 1
+(expanding, train window ending 2024-02-21) found exactly 1 candidate pair and 0 point-in-time-
+confirmed pairs, portfolio Sharpe=nan — consistent with the already-documented pattern (PAPER.md
+§7.3.1: causal re-screens at earlier checkpoints tend to find far fewer/zero pairs than the full-
+history screen). Fold 2 (train window ending 2025-01-20) is running against a correctly-sized
+32,131-candidate-pair universe — a direct, real-scale confirmation that BUG-D105's fix is live in
+this pipeline too, not just in the standalone `analysis.py` comparison run. Full results — whether
+the already-documented negative OOS Sharpe (-1.04 to -0.72) changes at all post-fixes — pending; see
+the next session-log entry or `pit_wfa_session30_run.log`/`output/backtest/pit_wfa_*.parquet` once
+complete.
+
+### New supplemental data source: `data_crypto.py` (Binance.US), including a real pivot mid-build
+
+Ross asked, given the Dukascopy tick-data verification above showed direct-exchange access is
+viable, whether CAMARF should go direct to more exchanges. Talked through the honest tradeoff by
+asset class: US equities/futures exchange tape data is genuinely expensive/restricted (WRDS/CRSP
+already is about as direct as an academic project can affordably get); forex is solved (Dukascopy);
+crypto was the one open, legitimately-free candidate — yfinance's own crypto intraday depth is
+capped by the same `_YF_INTRADAY_MAP` limits as everything else (1m -> 5 calendar days), a severe
+shortfall for an asset class that's traded continuously since 2017-2019. Ross gave explicit buy-in
+to scope and build it.
+
+**Exchange selection, verified directly, not assumed**: Binance.com (the global exchange) is
+GEO-BLOCKED for US IPs — hit its own ToS "Eligibility" restriction directly from this machine, not
+usable. Binance.US (the separate, licensed US-facing entity) has no such restriction and covers
+15/15 of `Config.UNIVERSE.CRYPTO`'s symbols (Coinbase Exchange, checked as an alternative, only
+covers 14/15 — missing TRX).
+
+**Real pivot, found by the verify script, not assumed away**: v1 used Binance.US's native USD
+pairs (15/15 coverage, no stablecoin-proxy approximation needed — seemingly the cleaner choice).
+`debug/_verify_data_crypto_binance.py`'s gap-check caught a genuine **586-day hole in BTCUSD's
+daily history** (2023-07-14 -> 2025-02-19). Investigated, not dismissed: fetched BTCUSDT for the
+identical window and found ZERO gap. This matches real history — Binance.US lost its USD banking
+partner after 2023 SEC action and suspended USD deposits/withdrawals/trading for ~19 months before
+restoring it in early 2025; USDT (stablecoin) pairs traded continuously throughout. Presented the
+tradeoff to Ross directly (native-USD-with-a-real-gap vs. continuous-USDT-as-proxy vs. fetch both);
+his explicit choice: switch to USDT for continuity, disclosing the USDT~USD peg as a standard,
+widely-accepted approximation in crypto quant research — same "state the approximation explicitly"
+convention already applied to WRDS's `close_total_return` and options.py's realized-vol IV proxy.
+USDT coverage independently re-verified: still 15/15.
+
+**Architecture**: separate, manually-run script (`data_crypto.py`), mirroring `data_ibkr.py`/
+`data_wrds.py`'s established precedent — own cache directory (`output/cache/binance/`), never
+merged into `data.py`'s main fetch loop, per CLAUDE.md rule 2. Checkpointed per symbol/interval
+(same "don't lose progress on a crash" discipline as `data_wrds.py`'s long-running scans). No
+authentication needed for Binance.US's public market-data endpoints — confirmed directly. Scope,
+stated precisely (v1): Binance's native intervals matching CAMARF's `TIMEFRAME_LABELS` directly —
+1m/3m/5m/15m/30m/1h/4h/1d. NOT built in v1, disclosed rather than silently missing: 2m (no native
+Binance interval, would need 1m-derivation same as data.py's own convention) and 7D/1M/3M/6M
+(would need resampling from 1d).
+
+**Verified** (`debug/_verify_data_crypto_binance.py`, 3/3 pass, real-data checks not synthetic —
+same reasoning as `debug/_verify_wrds_primary_wiring.py`'s precedent, the thing being verified is
+I/O + real-schema/continuity, not an algorithm): OHLC internal consistency (0 violations), no
+unexpected multi-day gaps in the corrected USDT series, and Binance.US's BTC daily close agrees
+with yfinance's existing cached BTC close within a median 0.075% (2460 overlapping days) — real,
+expected cross-venue spread, not a red flag.
+
+**Disclosed limitation, stated plainly**: Binance.US carries a small fraction of global Binance.com's
+liquidity/volume. This is real, accurate, tradeable US-venue market data — just not the same depth
+of market as the geo-blocked global exchange.
+
+Full 15-symbol x 8-interval backfill launched in the background; not yet wired into `data.py`'s main
+pipeline (that would be a separate Phase C-style decision, same phased rollout WRDS went through) —
+this closes the fetch/cache capability, nothing more yet.
+
+### Mid-session interruption: three background jobs killed, relaunched clean
+
+The `analysis.py` WRDS-comparison re-run, `pit_wfa.py`'s re-screen, and the crypto backfill were all
+killed simultaneously partway through. Checked machine uptime directly before assuming a reboot —
+it did NOT reboot (`LastBootUpTime` predated all of this session's work), so this was some other
+interruption, not the Windows Update this session was originally opened to hand off around.
+`pit_wfa.py`'s "checkpoint" only guarantees no output is LOST on a kill (overwrites the same final
+parquet paths after every fold) — it does not actually resume a partial run, so relaunching restarts
+from fold 1. `data_crypto.py`'s checkpoint file was never written (killed before the first
+symbol/interval completed), so it also restarts clean. All three relaunched
+(`analysis_wrds_compare_run3.log`, `pit_wfa_session30_run2.log`, `data_crypto_backfill2.log`).

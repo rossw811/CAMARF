@@ -535,6 +535,32 @@ def _stale_days(reindexed: pd.Series) -> pd.Series:
     return stale.where(reindexed.notna())
 
 
+# BUG-D103 (2026-07-27 causality audit finding #5): monthly FRED series are
+# date-stamped to their REFERENCE period (e.g. "2024-01-01" for January
+# 2024's reading), not the date the print was actually published -- a
+# `reindex(..., method="ffill")` against the trading calendar therefore made
+# a reading available on the trading calendar days/weeks before it was
+# actually released to the public. Currently dormant (nothing consumes
+# macro.build()'s output into RegimeConditioner live today), but would
+# silently activate the moment it is. Approximate real-world publication
+# lags (reference-period end to public release), NOT a precise release
+# calendar -- documented per-series, not derived from a live BLS/Fed
+# schedule feed:
+_MONTHLY_PUBLICATION_LAG_DAYS: Dict[str, int] = {
+    "fed_funds_rate": 5,      # FEDFUNDS: FRED posts within the first few business days of the following month
+    "cpi": 15,                # CPIAUCSL: BLS CPI release ~mid-month following the reference month
+    "unemployment_rate": 40,  # UNRATE: BLS Employment Situation report, ~first Friday of the following month (~5-6 weeks)
+    "sahm_indicator": 40,     # derived directly from unemployment_rate -- same real-world availability lag
+    # USREC: NBER recession-dating committee announcements are irregular,
+    # not a fixed release calendar -- historically anywhere from several
+    # months to over a year after the fact. 120 days is a deliberately
+    # conservative, approximate floor, not a precise release-calendar
+    # figure like the others above -- flag if this series is ever used for
+    # anything lag-sensitive rather than trusting this number precisely.
+    "recession_flag": 120,
+}
+
+
 def _align_to_trading_calendar(
     daily_native: Dict[str, pd.Series],
     monthly_native: Dict[str, pd.Series],
@@ -579,7 +605,17 @@ def _align_to_trading_calendar(
         out[name] = s.sort_index().reindex(master_idx, method="ffill")
 
     for name, s in monthly_native.items():
-        reindexed = s.sort_index().reindex(master_idx, method="ffill")
+        s_sorted = s.sort_index()
+        lag_days = _MONTHLY_PUBLICATION_LAG_DAYS.get(name, 0)
+        if lag_days > 0:
+            # Shift the series' own index forward by its real-world
+            # publication lag BEFORE reindexing -- a reading stamped to
+            # reference date T is only actually available as of T+lag_days,
+            # so it must not be visible on the trading calendar any earlier
+            # than that (BUG-D103).
+            s_sorted = s_sorted.copy()
+            s_sorted.index = s_sorted.index + pd.Timedelta(days=lag_days)
+        reindexed = s_sorted.reindex(master_idx, method="ffill")
         out[name] = reindexed
         out[f"{name}_days_stale"] = _stale_days(reindexed)
 

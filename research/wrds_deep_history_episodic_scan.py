@@ -405,13 +405,22 @@ def build_rolling_eg_tasks(pairs, log_price_df, max_lag, window=EPISODIC_WINDOW_
             lp_b = log_price_df[sym_b].to_numpy()
         mask = np.isfinite(lp_a) & np.isfinite(lp_b)
         a, b = lp_a[mask], lp_b[mask]
-        dates_masked = log_price_df.index[mask] if adv_by_symbol is not None else None
+        # ALWAYS compute dates_masked, not just when adv_by_symbol is given
+        # (2026-08-02, BUG-episodic-PIT fix) -- window_start_date/window_end_date
+        # are now attached to every task's meta so a genuinely point-in-time
+        # confirmation (episodic_bhfdr_confirm_asof, below) is possible. Prior
+        # version only computed real calendar dates transiently inside the
+        # ADV-gate branch and never persisted them, so a window's actual date
+        # never survived past this function -- confirmed via docs/HANDOFF.md's
+        # explicit flag of this exact gap.
+        dates_masked = log_price_df.index[mask]
         n = len(a)
         if n < window:
             continue
         for start in range(0, n - window + 1, step):
+            window_start_date = dates_masked[start]
+            window_end_date = dates_masked[start + window - 1]
             if adv_by_symbol is not None:
-                window_start_date = dates_masked[start]
                 adv_a_series = adv_by_symbol.get(sym_a)
                 adv_b_series = adv_by_symbol.get(sym_b)
                 adv_a_val = adv_a_series.asof(window_start_date) if adv_a_series is not None else np.nan
@@ -423,9 +432,9 @@ def build_rolling_eg_tasks(pairs, log_price_df, max_lag, window=EPISODIC_WINDOW_
                     continue
             seg_a, seg_b = a[start:start + window], b[start:start + window]
             tasks.append((sym_a, sym_b, seg_a, seg_b, max_lag, TF_LABEL))
-            task_meta.append((sym_a, sym_b, start, "ab"))
+            task_meta.append((sym_a, sym_b, start, "ab", window_start_date, window_end_date))
             tasks.append((sym_b, sym_a, seg_b, seg_a, max_lag, TF_LABEL))
-            task_meta.append((sym_a, sym_b, start, "ba"))
+            task_meta.append((sym_a, sym_b, start, "ba", window_start_date, window_end_date))
     if adv_by_symbol is not None:
         log.info(f"  ADV liquidity gate: skipped {n_gated} (pair, window) combinations where "
                  f"either symbol's rolling ADV was below ${thr/1e6:.0f}M at that window's start date")
@@ -474,6 +483,7 @@ def run_rolling_eg_pool(pairs, log_price_df, max_lag, window=EPISODIC_WINDOW_BAR
     array_cache = _build_symbol_array_cache(log_price_df, all_symbols)
 
     by_key = {}
+    window_end_by_key = {}  # (symbol_a, symbol_b, window_start) -> window_end_date, for asof(T) confirmation
     start_pair_idx = 0
     if checkpoint_id:
         loaded, n_done = _load_checkpoint(checkpoint_id)
@@ -481,6 +491,8 @@ def run_rolling_eg_pool(pairs, log_price_df, max_lag, window=EPISODIC_WINDOW_BAR
             for row in loaded:
                 key = (row["symbol_a"], row["symbol_b"], row["window_start"])
                 by_key.setdefault(key, {})[row["direction"]] = row["pvalue"]
+                if "window_end_date" in row:
+                    window_end_by_key[key] = row["window_end_date"]
             start_pair_idx = n_done
             log.info(f"Resuming '{checkpoint_id}' from checkpoint: {len(loaded)} (pair,window,direction) "
                      f"rows already computed, {n_done}/{len(pairs)} pairs already done -- "
@@ -488,7 +500,8 @@ def run_rolling_eg_pool(pairs, log_price_df, max_lag, window=EPISODIC_WINDOW_BAR
 
     def _flatten_by_key(d):
         return [{"symbol_a": k[0], "symbol_b": k[1], "window_start": k[2], "direction": direction,
-                 "pvalue": pval} for k, dirs in d.items() for direction, pval in dirs.items()]
+                 "pvalue": pval, "window_end_date": window_end_by_key.get(k)}
+                for k, dirs in d.items() for direction, pval in dirs.items()]
 
     n_batches = (len(pairs) + pair_batch_size - 1) // pair_batch_size
     log.info(f"Running rolling-window EG on {len(pairs)} pairs in {n_batches} batches of "
@@ -508,10 +521,12 @@ def run_rolling_eg_pool(pairs, log_price_df, max_lag, window=EPISODIC_WINDOW_BAR
                 continue
             results = pool.map(_eg_worker, tasks, chunksize=200)
             for meta, r in zip(task_meta, results):
-                symbol_a, symbol_b, start, direction = meta
+                symbol_a, symbol_b, start, direction, window_start_date, window_end_date = meta
                 if not r.get("ok"):
                     continue
-                by_key.setdefault((symbol_a, symbol_b, start), {})[direction] = r["pvalue"]
+                key = (symbol_a, symbol_b, start)
+                by_key.setdefault(key, {})[direction] = r["pvalue"]
+                window_end_by_key[key] = window_end_date
             if checkpoint_id and batch_num % checkpoint_every == 0:
                 _save_checkpoint(checkpoint_id, _flatten_by_key(by_key), n_done_now)
             if (i // pair_batch_size) % 10 == 0:
@@ -525,12 +540,24 @@ def run_rolling_eg_pool(pairs, log_price_df, max_lag, window=EPISODIC_WINDOW_BAR
     for (symbol_a, symbol_b, start), d in by_key.items():
         if "ab" in d and "ba" in d:
             flat.append({"symbol_a": symbol_a, "symbol_b": symbol_b,
-                         "window_start": start, "pvalue": max(d["ab"], d["ba"])})
+                         "window_start": start, "pvalue": max(d["ab"], d["ba"]),
+                         "window_end_date": window_end_by_key.get((symbol_a, symbol_b, start))})
     return flat
 
 
 def episodic_bhfdr_confirm(flat_pvalue_rows, alpha, min_windows_confirmed=1):
     """
+    NOT POINT-IN-TIME-SAFE (disclosed 2026-08-02, per docs/HANDOFF.md's flagged
+    gap): this collapses across EVERY historical window regardless of date --
+    "was this pair EVER confirmed in any window," not "as of date T, using
+    only windows already concluded by T." Fine as a descriptive whole-history
+    stability check (same spirit as Tier 1's own full-sample EG gate); NOT
+    fine as an input to any backtest or live decision, which needs
+    episodic_bhfdr_confirm_asof (below) instead. Kept as-is (not removed) --
+    nothing downstream currently consumes either function's output (confirmed
+    via repo-wide grep), so this is not a live bug, and the whole-history
+    version remains a legitimate question in its own right.
+
     Joint BH-FDR correction across the ENTIRE (pair, window) test family --
     deliberately NOT per-pair-independent uncorrected p<0.05 thresholding
     (which is what the original episodic_fraction() draft used). Testing
@@ -573,6 +600,35 @@ def episodic_bhfdr_confirm(flat_pvalue_rows, alpha, min_windows_confirmed=1):
                 "episodic_fraction_fdr": n_rejected / len(rows),
                 "min_adjusted_pvalue": min(r["fdr_adjusted_pvalue"] for r in rows),
             })
+    return confirmed
+
+
+def episodic_bhfdr_confirm_asof(flat_pvalue_rows, alpha, as_of_date, min_windows_confirmed=1):
+    """
+    POINT-IN-TIME-SAFE episodic confirmation (2026-08-02) -- "as of date T,
+    would this pair have been episodically confirmed using only windows that
+    had ALREADY CONCLUDED by T?" This is the causal question
+    episodic_bhfdr_confirm (above) cannot answer, per Ross's own framing of
+    the underlying bias: "for rolling windows it must always be rolling up to
+    that point" (docs/HANDOFF.md).
+
+    A window "concludes" at its own last bar (window_end_date), not its start
+    -- a window whose start is before T but whose end is after T still uses
+    data a real deployment at time T would not yet have. Rows missing
+    window_end_date (e.g. loaded from a pre-fix checkpoint) are excluded
+    rather than silently treated as eligible.
+
+    Applies the SAME joint BH-FDR correction as episodic_bhfdr_confirm, but
+    over only the as-of-T-eligible subset of the test family -- the
+    correction's multiple-testing universe genuinely shrinks as T moves
+    earlier, which is the correct causal behavior (a real deployment at an
+    early T could not have run tests it hadn't collected the data for yet).
+    """
+    eligible = [r for r in flat_pvalue_rows
+                if r.get("window_end_date") is not None and r["window_end_date"] <= as_of_date]
+    confirmed = episodic_bhfdr_confirm(eligible, alpha, min_windows_confirmed)
+    for c in confirmed:
+        c["as_of_date"] = as_of_date
     return confirmed
 
 
