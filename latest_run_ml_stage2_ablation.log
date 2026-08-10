@@ -1,11 +1,11 @@
-00:44:21 INFO  === ml_stage2_ablation.py: macro-context ablation on ml.py's Stage 1 examples ===
-00:44:22 INFO  Stage 1 examples available: 13 (pairs_used=9, pairs_skipped=11)
-00:44:23 INFO  Stage 2: joined macro columns ['yield_curve_regime', 'credit_regime', 'vix_regime', 'recession_state'] onto 13 examples
-00:44:23 INFO    yield_curve_regime distribution: {'flat_inverted': np.int64(8), 'normal': np.int64(5)}
-00:44:23 INFO    credit_regime distribution: {'normal': np.int64(10), 'tight': np.int64(3)}
-00:44:23 INFO    vix_regime distribution: {'normal': np.int64(8), 'calm': np.int64(5)}
-00:44:23 INFO    recession_state distribution: {'expansion': np.int64(13)}
-00:44:23 WARNING  Stage 2 blocked by the SAME gate as Stage 1: 13 examples, 2 classes, min class count=2 (need >=30/class). This is the expected result, not a Stage-2-specific failure — Stage 2 adds feature columns to the SAME 13 labeled events Stage 1 has, it cannot manufacture more labeled events. Per Ross's explicit instruction, this confirms the infrastructure is built and ready, without training (or reporting a 'model') on data this thin. Re-run once Stage 1's own example count clears the gate.
-00:44:23 INFO  Saved -> output/research/ml_stage2_examples.parquet (13 examples with macro columns joined, ready for training once the label-count gate clears)
-00:44:23 INFO  ============================================================
-00:44:23 INFO  ml_stage2_ablation.py complete (0.0 min)
+09:18:32 INFO  === ml_stage2_ablation.py: macro-context ablation on ml.py's Stage 1 examples ===
+09:18:33 INFO  Stage 1 examples available: 19 (pairs_used=1, pairs_skipped=2)
+09:18:34 INFO  Stage 2: joined macro columns ['yield_curve_regime', 'credit_regime', 'vix_regime', 'recession_state'] onto 19 examples
+09:18:34 INFO    yield_curve_regime distribution: {'steep': np.int64(9), 'normal': np.int64(8), 'flat_inverted': np.int64(2)}
+09:18:34 INFO    credit_regime distribution: {'normal': np.int64(1)}
+09:18:34 INFO    vix_regime distribution: {'calm': np.int64(10), 'normal': np.int64(9)}
+09:18:34 INFO    recession_state distribution: {'expansion': np.int64(19)}
+09:18:34 WARNING  Stage 2 blocked by the SAME gate as Stage 1: 19 examples, 2 classes, min class count=9 (need >=30/class). This is the expected result, not a Stage-2-specific failure — Stage 2 adds feature columns to the SAME 19 labeled events Stage 1 has, it cannot manufacture more labeled events. Per Ross's explicit instruction, this confirms the infrastructure is built and ready, without training (or reporting a 'model') on data this thin. Re-run once Stage 1's own example count clears the gate.
+09:18:34 INFO  Saved -> output/research/ml_stage2_examples.parquet (19 examples with macro columns joined, ready for training once the label-count gate clears)
+09:18:34 INFO  ============================================================
+09:18:34 INFO  ml_stage2_ablation.py complete (0.0 min)

@@ -177,13 +177,26 @@ def _returns(log_price: np.ndarray) -> np.ndarray:
 def main():
     ap = argparse.ArgumentParser(description="Cycle detection research diagnostic (2026-08-02)")
     ap.add_argument("--plv-window", type=int, default=60)
+    ap.add_argument("--pit-safe", action="store_true",
+                     help="Source pairs from the PIT-safe episodic screen (research/"
+                          "pit_pair_discovery.py, task #5) instead of ml._discover_confirmed_pairs() "
+                          "(the standard full-history screen, disclosed non-PIT-safe in PAPER.md "
+                          "§7.3.1 -- see docs/FINDINGS.md's PIT-safety disclosure for why this flag "
+                          "exists). Requires the episodic scan to have completed with the "
+                          "BUG-D106 fix; returns an empty pair list otherwise rather than "
+                          "silently falling back.")
     args = ap.parse_args()
 
     from data import DataStore
 
-    pairs = ml._discover_confirmed_pairs()  # (symbol_a, symbol_b, tf_label) for EVERY confirmed pair, all TFs
+    if args.pit_safe:
+        from pit_pair_discovery import discover_pit_confirmed_pairs
+        pairs = discover_pit_confirmed_pairs()
+        print(f"Using PIT-safe episodic pair discovery: {len(pairs)} pairs")
+    else:
+        pairs = ml._discover_confirmed_pairs()  # (symbol_a, symbol_b, tf_label) for EVERY confirmed pair, all TFs
     if not pairs:
-        print("No confirmed pairs found (no persisted spread_series_*.parquet) — nothing to run.")
+        print("No confirmed pairs found — nothing to run.")
         return
     print(f"Running cycle detection on {len(pairs)} confirmed (pair, TF) combinations...")
 

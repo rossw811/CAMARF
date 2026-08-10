@@ -1,0 +1,7 @@
+2026-08-03 09:58:15  INFO      Survivorship exclusions loaded: 378 delist events
+2026-08-03 09:58:15  INFO      entry-z override: ENTRY_ZSCORE = 1.50
+2026-08-03 09:58:15  INFO      [3m] 1 confirmed pairs
+2026-08-03 09:58:15  INFO      [4h] 1 confirmed pairs
+2026-08-03 09:58:15  INFO        PNC/ZION@4h[ols] 11 trades | WR=100% | SR=58.41 | PnL=1051.11
+2026-08-03 09:58:15  INFO        PNC/ZION@4h[kalman] 11 trades | WR=100% | SR=57.68 | PnL=1044.43
+2026-08-03 09:58:15  INFO      Run summary → latest_run_backtest.log

@@ -1,0 +1,2 @@
+2026-08-04 14:34:03  INFO      DataAligner: aligning 1730 assets to NYSE calendar (1962-01-02 \u2192 2026-07-31, 16253 sessions)
+2026-08-04 14:34:46  INFO      DataAligner: 1705/1730 assets aligned (25 excluded for excessive gaps)

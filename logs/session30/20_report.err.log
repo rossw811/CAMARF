@@ -1,0 +1,32 @@
+2026-08-03 09:58:42  INFO      ======================================================================
+2026-08-03 09:58:42  INFO      CAMARF  —  report.py  —  LaTeX Report Generator
+2026-08-03 09:58:42  INFO      ======================================================================
+2026-08-03 09:58:43  INFO      Loaded: 3 pairs, 2 OOS trades, 10 IS trades
+2026-08-03 09:58:43  INFO      Generating figures...
+2026-08-03 09:58:43  INFO        [fig] tier -> figures/tier_distribution.png
+2026-08-03 09:58:44  INFO        [fig] equity -> figures/equity_curve.png
+2026-08-03 09:58:44  INFO        [fig] evt -> figures/evt_tail_risk.png
+2026-08-03 09:58:44  INFO        [fig] slippage -> figures/slippage_sensitivity.png
+2026-08-03 09:58:48  INFO        [fig] dcc -> figures/dcc_rolling.png
+2026-08-03 09:58:48  INFO        [fig] coint_frac_hist -> figures/coint_fraction_hist.png
+2026-08-03 09:58:48  INFO        [fig] half_life_tier -> figures/half_life_by_tier.png
+2026-08-03 09:58:49  INFO        [fig] hurst_scatter -> figures/hurst_scatter.png
+2026-08-03 09:58:49  INFO        [fig] tf_dist -> figures/timeframe_distribution.png
+2026-08-03 09:58:49  INFO        [fig] pair_sharpe_oos -> figures/per_pair_sharpe_oos.png
+2026-08-03 09:58:49  INFO        [fig] exit_reasons -> figures/exit_reasons.png
+2026-08-03 09:58:50  INFO        [fig] hold_duration -> figures/hold_duration.png
+2026-08-03 09:58:50  INFO        [fig] pnl_by_pair -> figures/pnl_by_pair.png
+2026-08-03 09:58:50  INFO        [fig] variant_cmp -> figures/variant_comparison.png
+2026-08-03 09:58:51  INFO        [fig] win_rate_cmp -> figures/win_rate_is_vs_oos.png
+2026-08-03 09:58:51  INFO        [fig] all_hedge_est -> figures/all_hedge_estimators.png
+2026-08-03 09:58:51  INFO        [fig] coint_vs_sharpe -> figures/coint_vs_oos_sharpe.png
+2026-08-03 09:58:53  INFO        [fig] perm_dist -> figures/perm_distribution.png
+2026-08-03 09:58:53  INFO        [fig] mc_quality -> figures/mc_quality.png
+2026-08-03 09:58:59  INFO        [fig] dcc_heatmap -> figures/dcc_heatmap.png
+2026-08-03 09:58:59  INFO      Figures generated: 20/26
+2026-08-03 09:58:59  INFO      Building main.tex...
+2026-08-03 09:58:59  INFO      main.tex written: 23,814 chars
+2026-08-03 09:58:59  INFO      references.bib written
+2026-08-03 09:58:59  INFO      compile.bat written
+2026-08-03 09:58:59  INFO      Done in 0.3 min. Output: C:\Users\RossW\Projects\CAMARF\output\report
+2026-08-03 09:58:59  INFO      To compile: cd output/report && pdflatex main.tex && bibtex main && pdflatex main.tex x2

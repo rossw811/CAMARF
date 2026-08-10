@@ -1,0 +1,4 @@
+03:32:43 INFO  === decoupling_analysis.py: descriptive study of post-decoupling behavior ===
+2026-08-04 03:32:43  INFO      === decoupling_analysis.py: descriptive study of post-decoupling behavior ===
+03:32:43 INFO  SCOPE: pure description, not a trading rule. Small-n by nature ΓÇö decoupling events are rare and CAMARF's per-pair history is short.
+2026-08-04 03:32:43  INFO      SCOPE: pure description, not a trading rule. Small-n by nature ΓÇö decoupling events are rare and CAMARF's per-pair history is short.

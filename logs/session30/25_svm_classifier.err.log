@@ -1,0 +1,4 @@
+2026-08-03 09:59:23  INFO        Discovered 3 confirmed pairs with persisted spread series; 1 produced labeled examples, 2 skipped
+2026-08-03 09:59:23  INFO        Total labeled entry events: 19
+2026-08-03 09:59:23  WARNING     Insufficient data to train: 19 total examples across 2 classes (label_scheme=binary, min class count=9, need >=30/class per Config.ML.MIN_CLASS_SAMPLES). This is the expected, honest result tonight — most confirmed pairs are on intraday TFs whose history just started accumulating (see DEVELOPMENT.md's data.py append-switch, 2026-06-21). Re-run as more history accumulates.
+2026-08-03 09:59:23  INFO      Run summary → C:\Users\RossW\Projects\CAMARF\latest_run_ml.log

@@ -1,0 +1,4 @@
+03:34:53 INFO  === decoupling_requalification.py: re-test broken pairs on their post-break window ===
+2026-08-04 03:34:53  INFO      === decoupling_requalification.py: re-test broken pairs on their post-break window ===
+03:34:53 INFO  SETTLING_BARS=60 before re-testing; EG_SIGNIFICANCE=0.050 (same threshold production analysis.py uses)
+2026-08-04 03:34:53  INFO      SETTLING_BARS=60 before re-testing; EG_SIGNIFICANCE=0.050 (same threshold production analysis.py uses)

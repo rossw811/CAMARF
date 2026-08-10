@@ -27,6 +27,7 @@ from __future__ import annotations
 import glob
 import logging
 import os
+import sys
 import time
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Tuple
@@ -44,6 +45,7 @@ logging.basicConfig(
 log = logging.getLogger("CAMARF.ml")
 
 _RESULTS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "output", "results")
+_RESEARCH_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "output", "research")
 
 
 # =============================================================================
@@ -442,31 +444,90 @@ class MLRunSummary:
 # =============================================================================
 
 
-def build(min_class_samples: Optional[int] = None) -> MLResult:
+def build(min_class_samples: Optional[int] = None, pit_safe: bool = False) -> MLResult:
     """
     Discover all confirmed pairs with persisted spread series, build
     labeled entry-event examples, and train a meta-labeler if there's
     enough data (Config.ML.MIN_CLASS_SAMPLES per class — honestly reports
     "insufficient data" rather than training on too little to trust, per
     this project's no-bandaid-fixes / verify-everything discipline).
+
+    pit_safe (2026-08-04, task #5): source pairs from research/
+    pit_pair_discovery.py's PIT-safe episodic screen instead of
+    _discover_confirmed_pairs()'s standard full-history screen. Motivating
+    finding: even on 2026-08-04, the standard 3-pair confirmed set still
+    only produces 19 labeled examples (`latest_run_ml.log`), still under
+    Config.ML.MIN_CLASS_SAMPLES -- the wider PIT-safe universe (19+ pairs
+    as of the same date, from the still-running episodic scan) is the
+    actual path to "enough data," not a data-volume problem that will
+    resolve itself by waiting on the standard set alone.
     """
     summary = MLRunSummary()
-    pairs = _discover_confirmed_pairs()
+    _adapter_df = None
+    if pit_safe:
+        _research_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "research")
+        if _research_dir not in sys.path:
+            sys.path.insert(0, _research_dir)
+        # 2026-08-08: switched from calling discover_pit_confirmed_pairs()
+        # (WRDS/1D-only, tf_label hardcoded to the caller's default) to
+        # reading research/episodic_pairs_adapter.py's own combined output
+        # file directly -- it already unions the WRDS/1D, intraday-1h, and
+        # intraday-4h episodic sources with real tf_label per row, AND
+        # already carries the scalar pair_row fields this loop needs
+        # (hedge_ratio_ols, coint_fraction_rolling, etc.), which
+        # discover_pit_confirmed_pairs() alone does not -- that gap
+        # (707 PIT-safe pairs found, 0 labeled examples produced, because
+        # this loop's pairs.parquet lookup below has nothing to match
+        # against for a pair the standard screen never confirmed) was the
+        # exact blocker found and documented the same night this flag was
+        # first wired. The adapter's spread_series_*.parquet files (written
+        # for every adapter-sourced pair, same directory convention as the
+        # standard screen) mean _build_examples_for_pair's own `series is
+        # None` disk-read path below already finds them with NO further
+        # change needed there.
+        _adapter_path = os.path.join(_RESEARCH_DIR, "episodic_confirmed_pairs_adapter_output.parquet")
+        if os.path.exists(_adapter_path):
+            _adapter_df = pd.read_parquet(_adapter_path)
+            pairs = list(zip(_adapter_df["symbol_a"], _adapter_df["symbol_b"], _adapter_df["tf_label"]))
+            log.info(f"Using PIT-safe episodic pair discovery (adapter output): {len(pairs)} pairs")
+        else:
+            from pit_pair_discovery import discover_pit_confirmed_pairs
+            pairs = discover_pit_confirmed_pairs()
+            log.warning(
+                f"episodic_confirmed_pairs_adapter_output.parquet not found -- falling back to "
+                f"discover_pit_confirmed_pairs() ({len(pairs)} pairs), which has NO pair_row "
+                f"scalar fields of its own; every pair will need a pairs.parquet match below or "
+                f"be skipped, reproducing the original 707-pairs/0-examples gap."
+            )
+    else:
+        pairs = _discover_confirmed_pairs()
 
     all_events: List[EntryEvent] = []
     pairs_used: List[Tuple[str, str, str]] = []
     pairs_skipped: List[Tuple[str, str, str, str]] = []
 
     for symbol_a, symbol_b, tf_label in pairs:
+        row = None
         try:
             pairs_df = pd.read_parquet(
                 os.path.join(_RESULTS_DIR, _tf_dirname(tf_label), "pairs.parquet")
             )
-            row = pairs_df[
+            match = pairs_df[
                 (pairs_df["symbol_a"] == symbol_a) & (pairs_df["symbol_b"] == symbol_b)
-            ].iloc[0]
-        except Exception as e:
-            pairs_skipped.append((symbol_a, symbol_b, tf_label, f"pairs.parquet lookup failed: {e}"))
+            ]
+            if not match.empty:
+                row = match.iloc[0]
+        except Exception:
+            pass
+        if row is None and _adapter_df is not None:
+            match = _adapter_df[
+                (_adapter_df["symbol_a"] == symbol_a) & (_adapter_df["symbol_b"] == symbol_b)
+                & (_adapter_df["tf_label"] == tf_label)
+            ]
+            if not match.empty:
+                row = match.iloc[0]
+        if row is None:
+            pairs_skipped.append((symbol_a, symbol_b, tf_label, "no pairs.parquet or adapter row found"))
             continue
         # Skip BUG-D49 degenerate pairs: one/both legs have implausibly few
         # distinct close prices despite adequate dollar volume. Training on
@@ -756,12 +817,12 @@ def _train_and_validate(result: MLResult, summary: MLRunSummary) -> None:
     summary.note(f"Model persisted → {_pkl_path}")
 
 
-def main(min_class_samples: Optional[int] = None) -> MLResult:
+def main(min_class_samples: Optional[int] = None, pit_safe: bool = False) -> MLResult:
     """Entry point — build labeled examples and train the meta-labeler if viable."""
     log.info("=" * 70)
     log.info("CAMARF  —  ml.py  —  Spread Resolution Meta-Labeler")
     log.info("=" * 70)
-    result = build(min_class_samples=min_class_samples)
+    result = build(min_class_samples=min_class_samples, pit_safe=pit_safe)
     log.info("=" * 70)
     return result
 
@@ -776,5 +837,11 @@ if __name__ == "__main__":
         default=None,
         help="Override Config.ML.MIN_CLASS_SAMPLES for this run",
     )
+    p.add_argument(
+        "--pit-safe",
+        action="store_true",
+        help="Source pairs from research/pit_pair_discovery.py's PIT-safe episodic screen "
+             "instead of the standard full-history _discover_confirmed_pairs() (task #5).",
+    )
     args = p.parse_args()
-    main(min_class_samples=args.min_class_samples)
+    main(min_class_samples=args.min_class_samples, pit_safe=args.pit_safe)

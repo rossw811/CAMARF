@@ -1,0 +1,4 @@
+01:06:29 INFO  === cvar.py: Historical CVaR / Expected Shortfall (portfolio daily P&L) ===
+01:06:29 INFO    [layer1] in-sample baseline: VaR_95% = $-0.00, CVaR_95% (mean of worst 506/511 days) = $0.00
+01:06:29 INFO    [layer1] VaR_95% backtest: 0/481 exceedances (rate=0.000 vs expected 0.050), Kupiec p=n/a, Christoffersen-independence p=n/a, conditional-coverage p=n/a
+01:06:29 INFO    [layer1] in-sample baseline: VaR_99% = $-0.00, CVaR_99% (mean of worst 506/511 days) = $0.00

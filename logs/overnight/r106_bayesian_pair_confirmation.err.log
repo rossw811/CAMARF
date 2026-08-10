@@ -1,0 +1,4 @@
+02:04:11 INFO  === bayesian_pair_confirmation.py: continuously-updated Bayesian confidence, COMPARISON ARM ONLY (does not replace static EG+FDR confirmation) ===
+02:04:11 INFO  Loaded 3 confirmed pairs across all timeframes
+02:04:11 INFO  Loaded 2 OOS holdout trades across 1 unique pairs
+02:04:11 INFO    IQV/Q@1D: prior=0.990 [0.940, 1.000]  n_oos=0 (0 win/0 loss)  posterior=0.990 [0.940, 1.000]  shift=+0.000

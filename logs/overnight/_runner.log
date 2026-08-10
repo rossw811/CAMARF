@@ -1,0 +1,399 @@
+﻿2026-08-04 01:04:42  ================ CAMARF overnight research runner started (workers=6, timeout=45min/stage) ================
+2026-08-04 01:04:42  Free RAM at start: 2.9 GB
+2026-08-04 01:04:42  START   01_backtest_is  ->  backtest.py 
+2026-08-04 01:04:46  DONE    01_backtest_is in 0 min (exit 0)
+2026-08-04 01:04:46  START   02_backtest_oos  ->  backtest.py --holdout
+2026-08-04 01:04:49  DONE    02_backtest_oos in 0 min (exit 0)
+2026-08-04 01:04:49  START   03_storm_session_edge  ->  backtest.py --holdout --storm-session-edge
+2026-08-04 01:04:53  DONE    03_storm_session_edge in 0 min (exit 0)
+2026-08-04 01:04:53  START   04_storm_session_edge_postopen  ->  backtest.py --holdout --storm-session-edge-postopen
+2026-08-04 01:04:56  DONE    04_storm_session_edge_postopen in 0 min (exit 0)
+2026-08-04 01:04:56  START   05_storm_mm_exec  ->  backtest.py --holdout --storm-mm-exec
+2026-08-04 01:04:59  DONE    05_storm_mm_exec in 0 min (exit 0)
+2026-08-04 01:04:59  START   06_storm_coint_frac  ->  backtest.py --holdout --storm-coint-frac
+2026-08-04 01:05:03  DONE    06_storm_coint_frac in 0 min (exit 0)
+2026-08-04 01:05:03  START   07_storm_all  ->  backtest.py --holdout --storm-all
+2026-08-04 01:05:06  DONE    07_storm_all in 0 min (exit 0)
+2026-08-04 01:05:06  START   08_hub_weight  ->  backtest.py --holdout --hub-weight
+2026-08-04 01:05:09  DONE    08_hub_weight in 0 min (exit 0)
+2026-08-04 01:05:09  START   09_risk_parity  ->  backtest.py --holdout --risk-parity
+2026-08-04 01:05:13  DONE    09_risk_parity in 0 min (exit 0)
+2026-08-04 01:05:13  START   10_pnl_cap  ->  backtest.py --holdout --pnl-cap
+2026-08-04 01:05:16  DONE    10_pnl_cap in 0 min (exit 0)
+2026-08-04 01:05:16  START   11_neg_hedge  ->  backtest.py --holdout --neg-hedge
+2026-08-04 01:05:19  DONE    11_neg_hedge in 0 min (exit 0)
+2026-08-04 01:05:19  START   12_entryz15_is  ->  backtest.py --entry-z 1.5
+2026-08-04 01:05:23  DONE    12_entryz15_is in 0 min (exit 0)
+2026-08-04 01:05:23  START   13_entryz15_oos  ->  backtest.py --holdout --entry-z 1.5
+2026-08-04 01:05:26  DONE    13_entryz15_oos in 0 min (exit 0)
+2026-08-04 01:05:26  START   14_stats  ->  stats.py 
+2026-08-04 01:05:39  DONE    14_stats in 0 min (exit 0)
+2026-08-04 01:05:39  START   15_wfa  ->  wfa.py 
+2026-08-04 01:05:44  DONE    15_wfa in 0 min (exit 0)
+2026-08-04 01:05:44  START   16_distance  ->  distance.py 
+2026-08-04 01:05:48  DONE    16_distance in 0 min (exit 0)
+2026-08-04 01:05:48  START   17_sensitivity  ->  sensitivity.py 
+2026-08-04 01:05:49  DONE    17_sensitivity in 0 min (exit 0)
+2026-08-04 01:05:49  START   18_deflated_sharpe  ->  deflated_sharpe.py 
+2026-08-04 01:05:52  DONE    18_deflated_sharpe in 0 min (exit 0)
+2026-08-04 01:05:52  START   19_report  ->  report.py 
+2026-08-04 01:06:13  DONE    19_report in 0 min (exit 0)
+2026-08-04 01:06:13  START   20_ml  ->  ml.py 
+2026-08-04 01:06:15  DONE    20_ml in 0 min (exit 0)
+2026-08-04 01:06:15  START   21_run_storm_grid  ->  run_storm_grid.py 
+2026-08-04 01:06:19  DONE    21_run_storm_grid in 0 min (exit 0)
+2026-08-04 01:06:20  START   22_fresh_holdout_compare  ->  fresh_holdout_compare.py 
+2026-08-04 01:06:21  DONE    22_fresh_holdout_compare in 0 min (exit 0)
+2026-08-04 01:06:21  START   23_absorption_ratio  ->  absorption_ratio.py 
+2026-08-04 01:06:27  DONE    23_absorption_ratio in 0 min (exit 0)
+2026-08-04 01:06:27  START   24_cvar  ->  cvar.py 
+2026-08-04 01:06:30  DONE    24_cvar in 0 min (exit 0)
+2026-08-04 01:06:30  START   25_decay_proxy  ->  decay_proxy.py 
+2026-08-04 01:06:31  DONE    25_decay_proxy in 0 min (exit 0)
+2026-08-04 01:06:31  START   26_portfolio_sim  ->  portfolio_sim.py 
+2026-08-04 01:06:33  DONE    26_portfolio_sim in 0 min (exit 0)
+2026-08-04 01:06:33  START   27_survivorship  ->  survivorship.py 
+2026-08-04 01:06:35  DONE    27_survivorship in 0 min (exit 0)
+2026-08-04 01:06:35  START   28_options  ->  options.py 
+2026-08-04 01:06:38  DONE    28_options in 0 min (exit 0)
+2026-08-04 01:06:38  START   29_gics  ->  gics.py 
+2026-08-04 01:06:46  DONE    29_gics in 0 min (exit 0)
+2026-08-04 01:06:46  START   30_reproduce  ->  reproduce.py 
+2026-08-04 01:17:36  FAILED  30_reproduce after 11 min (exit -1) - see logs\overnight\30_reproduce.err.log
+2026-08-04 01:17:37  START   31_run_verify_suite  ->  run_verify_suite.py 
+2026-08-04 02:02:37  TIMEOUT 31_run_verify_suite after 45 min -- killing and moving on
+2026-08-04 02:02:38  START   r100__regime_features  ->  research\_regime_features.py 
+2026-08-04 02:02:45  DONE    r100__regime_features in 0 min (exit 0)
+2026-08-04 02:02:45  START   r101_adf_confirmatory_tier  ->  research\adf_confirmatory_tier.py 
+2026-08-04 02:03:04  DONE    r101_adf_confirmatory_tier in 0 min (exit 0)
+2026-08-04 02:03:04  START   r102_aligned_pair_loader  ->  research\aligned_pair_loader.py 
+2026-08-04 02:03:08  DONE    r102_aligned_pair_loader in 0 min (exit 0)
+2026-08-04 02:03:08  START   r103_annotate_symbol_metadata  ->  research\annotate_symbol_metadata.py 
+2026-08-04 02:03:09  DONE    r103_annotate_symbol_metadata in 0 min (exit 0)
+2026-08-04 02:03:09  START   r104_archetype_conditional_sizing  ->  research\archetype_conditional_sizing.py 
+2026-08-04 02:03:14  DONE    r104_archetype_conditional_sizing in 0 min (exit 0)
+2026-08-04 02:03:14  START   r105_audit_price_degeneracy  ->  research\audit_price_degeneracy.py 
+2026-08-04 02:04:10  DONE    r105_audit_price_degeneracy in 1 min (exit 0)
+2026-08-04 02:04:10  START   r106_bayesian_pair_confirmation  ->  research\bayesian_pair_confirmation.py 
+2026-08-04 02:04:12  DONE    r106_bayesian_pair_confirmation in 0 min (exit 0)
+2026-08-04 02:04:12  START   r107_bertram_ou_thresholds  ->  research\bertram_ou_thresholds.py 
+2026-08-04 02:04:39  DONE    r107_bertram_ou_thresholds in 0 min (exit 0)
+2026-08-04 02:04:39  START   r108_bh_fdr_dependence_check  ->  research\bh_fdr_dependence_check.py 
+2026-08-04 02:04:43  DONE    r108_bh_fdr_dependence_check in 0 min (exit 0)
+2026-08-04 02:04:43  START   r109_bh_vs_by_full_universe  ->  research\bh_vs_by_full_universe.py 
+2026-08-04 02:07:09  DONE    r109_bh_vs_by_full_universe in 2 min (exit 0)
+2026-08-04 02:07:09  START   r110_bias_budget  ->  research\bias_budget.py 
+2026-08-04 02:07:10  DONE    r110_bias_budget in 0 min (exit 0)
+2026-08-04 02:07:10  START   r111_big_move_lead_lag  ->  research\big_move_lead_lag.py 
+2026-08-04 02:52:10  TIMEOUT r111_big_move_lead_lag after 45 min -- killing and moving on
+2026-08-04 02:52:11  START   r112_bounded_lookback_primary_screen  ->  research\bounded_lookback_primary_screen.py 
+2026-08-04 02:52:31  DONE    r112_bounded_lookback_primary_screen in 0 min (exit 0)
+2026-08-04 02:52:31  START   r113_breakout_vs_reversion  ->  research\breakout_vs_reversion.py 
+2026-08-04 02:52:40  DONE    r113_breakout_vs_reversion in 0 min (exit 0)
+2026-08-04 02:52:40  START   r114_capital_sim_selection_mechanism  ->  research\capital_sim_selection_mechanism.py 
+2026-08-04 02:54:15  DONE    r114_capital_sim_selection_mechanism in 2 min (exit 0)
+2026-08-04 02:54:15  START   r115_caviar_dynamic_var  ->  research\caviar_dynamic_var.py 
+2026-08-04 02:54:19  DONE    r115_caviar_dynamic_var in 0 min (exit 0)
+2026-08-04 02:54:19  START   r116_ccp_variants  ->  research\ccp_variants.py 
+2026-08-04 02:54:29  DONE    r116_ccp_variants in 0 min (exit 0)
+2026-08-04 02:54:29  START   r117_coint_frac_window_grid  ->  research\coint_frac_window_grid.py 
+2026-08-04 02:54:34  DONE    r117_coint_frac_window_grid in 0 min (exit 0)
+2026-08-04 02:54:34  START   r118_comomentum  ->  research\comomentum.py 
+2026-08-04 02:54:36  DONE    r118_comomentum in 0 min (exit 0)
+2026-08-04 02:54:36  START   r119_comparison_arm_scaffold  ->  research\comparison_arm_scaffold.py 
+2026-08-04 02:54:37  DONE    r119_comparison_arm_scaffold in 0 min (exit 0)
+2026-08-04 02:54:37  START   r120_confirmatory_cointegration_check  ->  research\confirmatory_cointegration_check.py 
+2026-08-04 02:54:45  FAILED  r120_confirmatory_cointegration_check after 0 min (exit 1) - see logs\overnight\r120_confirmatory_cointegration_check.err.log
+2026-08-04 02:54:45  START   r121_convex_portfolio_construction  ->  research\convex_portfolio_construction.py 
+2026-08-04 02:54:48  DONE    r121_convex_portfolio_construction in 0 min (exit 0)
+2026-08-04 02:54:48  START   r122_copula_pairs  ->  research\copula_pairs.py 
+2026-08-04 02:54:54  DONE    r122_copula_pairs in 0 min (exit 0)
+2026-08-04 02:54:54  START   r123_corporate_actions_audit  ->  research\corporate_actions_audit.py 
+2026-08-04 02:54:56  DONE    r123_corporate_actions_audit in 0 min (exit 0)
+2026-08-04 02:54:56  START   r124_cross_listing_lead_lag  ->  research\cross_listing_lead_lag.py 
+2026-08-04 02:55:22  DONE    r124_cross_listing_lead_lag in 0 min (exit 0)
+2026-08-04 02:55:22  START   r125_cross_session_leadlag  ->  research\cross_session_leadlag.py 
+2026-08-04 02:55:37  DONE    r125_cross_session_leadlag in 0 min (exit 0)
+2026-08-04 02:55:37  START   r126_cross_timeframe_divergence  ->  research\cross_timeframe_divergence.py 
+2026-08-04 02:55:57  DONE    r126_cross_timeframe_divergence in 0 min (exit 0)
+2026-08-04 02:55:57  START   r127_cycle_detection  ->  research\cycle_detection.py 
+2026-08-04 02:56:07  DONE    r127_cycle_detection in 0 min (exit 0)
+2026-08-04 02:56:07  START   r128_data_contamination_scan  ->  research\data_contamination_scan.py 
+2026-08-04 03:32:38  DONE    r128_data_contamination_scan in 37 min (exit 0)
+2026-08-04 03:32:38  START   r129_dd_hub_effective_bets  ->  research\dd_hub_effective_bets.py 
+2026-08-04 03:32:40  DONE    r129_dd_hub_effective_bets in 0 min (exit 0)
+2026-08-04 03:32:40  START   r130_decoupling_analysis  ->  research\decoupling_analysis.py 
+2026-08-04 03:32:44  DONE    r130_decoupling_analysis in 0 min (exit 0)
+2026-08-04 03:32:44  START   r131_decoupling_backtest  ->  research\decoupling_backtest.py 
+2026-08-04 03:34:49  DONE    r131_decoupling_backtest in 2 min (exit 0)
+2026-08-04 03:34:49  START   r132_decoupling_contamination_crosscheck  ->  research\decoupling_contamination_crosscheck.py 
+2026-08-04 03:34:51  DONE    r132_decoupling_contamination_crosscheck in 0 min (exit 0)
+2026-08-04 03:34:51  START   r133_decoupling_requalification  ->  research\decoupling_requalification.py 
+2026-08-04 03:34:59  DONE    r133_decoupling_requalification in 0 min (exit 0)
+2026-08-04 03:34:59  START   r134_descriptive_check_concordance  ->  research\descriptive_check_concordance.py 
+2026-08-04 03:35:08  FAILED  r134_descriptive_check_concordance after 0 min (exit 1) - see logs\overnight\r134_descriptive_check_concordance.err.log
+2026-08-04 03:35:08  START   r135_earnings_lead_lag  ->  research\earnings_lead_lag.py 
+2026-08-04 04:20:08  TIMEOUT r135_earnings_lead_lag after 45 min -- killing and moving on
+2026-08-04 04:20:08  START   r136_earnings_structural_break_correlation  ->  research\earnings_structural_break_correlation.py 
+2026-08-04 04:21:10  DONE    r136_earnings_structural_break_correlation in 1 min (exit 0)
+2026-08-04 04:21:10  START   r137_eg_null_calibration_montecarlo  ->  research\eg_null_calibration_montecarlo.py 
+2026-08-04 04:43:42  DONE    r137_eg_null_calibration_montecarlo in 23 min (exit 0)
+2026-08-04 04:43:42  START   r138_eg_permutation_check  ->  research\eg_permutation_check.py 
+2026-08-04 04:59:13  DONE    r138_eg_permutation_check in 16 min (exit 0)
+2026-08-04 04:59:13  START   r139_eigenvalue_weighted_position_sizing  ->  research\eigenvalue_weighted_position_sizing.py 
+2026-08-04 04:59:21  DONE    r139_eigenvalue_weighted_position_sizing in 0 min (exit 0)
+2026-08-04 04:59:21  START   r140_era_decay_replication  ->  research\era_decay_replication.py 
+2026-08-04 04:59:24  DONE    r140_era_decay_replication in 0 min (exit 0)
+2026-08-04 04:59:24  START   r141_fdr_method_comparison  ->  research\fdr_method_comparison.py 
+2026-08-04 05:44:24  TIMEOUT r141_fdr_method_comparison after 45 min -- killing and moving on
+2026-08-04 05:44:25  START   r142_fill_timing_sensitivity  ->  research\fill_timing_sensitivity.py 
+2026-08-04 05:44:28  DONE    r142_fill_timing_sensitivity in 0 min (exit 0)
+2026-08-04 05:44:28  START   r143_filter_ablation  ->  research\filter_ablation.py 
+2026-08-04 05:44:44  DONE    r143_filter_ablation in 0 min (exit 0)
+2026-08-04 05:44:44  START   r144_filter_relevance_sweep_1h  ->  research\filter_relevance_sweep_1h.py 
+2026-08-04 05:50:50  DONE    r144_filter_relevance_sweep_1h in 6 min (exit 0)
+2026-08-04 05:50:50  START   r145_financial_turbulence_index  ->  research\financial_turbulence_index.py 
+2026-08-04 05:51:04  DONE    r145_financial_turbulence_index in 0 min (exit 0)
+2026-08-04 05:51:05  START   r146_follower_direction_validation  ->  research\follower_direction_validation.py 
+2026-08-04 05:51:08  FAILED  r146_follower_direction_validation after 0 min (exit 1) - see logs\overnight\r146_follower_direction_validation.err.log
+2026-08-04 05:51:08  START   r147_graph_clustering  ->  research\graph_clustering.py 
+2026-08-04 06:00:40  ================ CAMARF overnight research runner started (workers=6, timeout=45min/stage) ================
+2026-08-04 06:00:41  Free RAM at start: 6.7 GB
+2026-08-04 06:00:41  SKIP    01_backtest_is (already completed)
+2026-08-04 06:00:41  SKIP    02_backtest_oos (already completed)
+2026-08-04 06:00:41  SKIP    03_storm_session_edge (already completed)
+2026-08-04 06:00:41  SKIP    04_storm_session_edge_postopen (already completed)
+2026-08-04 06:00:41  SKIP    05_storm_mm_exec (already completed)
+2026-08-04 06:00:41  SKIP    06_storm_coint_frac (already completed)
+2026-08-04 06:00:41  SKIP    07_storm_all (already completed)
+2026-08-04 06:00:41  SKIP    08_hub_weight (already completed)
+2026-08-04 06:00:41  SKIP    09_risk_parity (already completed)
+2026-08-04 06:00:41  SKIP    10_pnl_cap (already completed)
+2026-08-04 06:00:41  SKIP    11_neg_hedge (already completed)
+2026-08-04 06:00:41  SKIP    12_entryz15_is (already completed)
+2026-08-04 06:00:41  SKIP    13_entryz15_oos (already completed)
+2026-08-04 06:00:41  SKIP    14_stats (already completed)
+2026-08-04 06:00:41  SKIP    15_wfa (already completed)
+2026-08-04 06:00:41  SKIP    16_distance (already completed)
+2026-08-04 06:00:41  SKIP    17_sensitivity (already completed)
+2026-08-04 06:00:41  SKIP    18_deflated_sharpe (already completed)
+2026-08-04 06:00:41  SKIP    19_report (already completed)
+2026-08-04 06:00:41  SKIP    20_ml (already completed)
+2026-08-04 06:00:41  SKIP    21_run_storm_grid (already completed)
+2026-08-04 06:00:41  SKIP    22_fresh_holdout_compare (already completed)
+2026-08-04 06:00:41  SKIP    23_absorption_ratio (already completed)
+2026-08-04 06:00:41  SKIP    24_cvar (already completed)
+2026-08-04 06:00:41  SKIP    25_decay_proxy (already completed)
+2026-08-04 06:00:41  SKIP    26_portfolio_sim (already completed)
+2026-08-04 06:00:41  SKIP    27_survivorship (already completed)
+2026-08-04 06:00:41  SKIP    28_options (already completed)
+2026-08-04 06:00:41  SKIP    29_gics (already completed)
+2026-08-04 06:00:41  START   30_reproduce  ->  reproduce.py --verify-only
+2026-08-04 06:00:43  DONE    30_reproduce in 0 min (exit 0)
+2026-08-04 06:00:43  START   31_run_verify_suite  ->  run_verify_suite.py 
+2026-08-04 06:45:43  TIMEOUT 31_run_verify_suite after 45 min -- killing and moving on
+2026-08-04 06:45:43  SKIP    r100__regime_features (already completed)
+2026-08-04 06:45:43  SKIP    r101_adf_confirmatory_tier (already completed)
+2026-08-04 06:45:43  SKIP    r102_aligned_pair_loader (already completed)
+2026-08-04 06:45:43  SKIP    r103_annotate_symbol_metadata (already completed)
+2026-08-04 06:45:43  SKIP    r104_archetype_conditional_sizing (already completed)
+2026-08-04 06:45:43  SKIP    r105_audit_price_degeneracy (already completed)
+2026-08-04 06:45:43  SKIP    r106_bayesian_pair_confirmation (already completed)
+2026-08-04 06:45:43  SKIP    r107_bertram_ou_thresholds (already completed)
+2026-08-04 06:45:43  SKIP    r108_bh_fdr_dependence_check (already completed)
+2026-08-04 06:45:43  SKIP    r109_bh_vs_by_full_universe (already completed)
+2026-08-04 06:45:44  SKIP    r110_bias_budget (already completed)
+2026-08-04 06:45:44  START   r111_big_move_lead_lag  ->  research\big_move_lead_lag.py 
+2026-08-04 07:30:43  TIMEOUT r111_big_move_lead_lag after 45 min -- killing and moving on
+2026-08-04 07:30:44  SKIP    r112_bounded_lookback_primary_screen (already completed)
+2026-08-04 07:30:44  SKIP    r113_breakout_vs_reversion (already completed)
+2026-08-04 07:30:44  SKIP    r114_capital_sim_selection_mechanism (already completed)
+2026-08-04 07:30:44  SKIP    r115_caviar_dynamic_var (already completed)
+2026-08-04 07:30:44  SKIP    r116_ccp_variants (already completed)
+2026-08-04 07:30:44  SKIP    r117_coint_frac_window_grid (already completed)
+2026-08-04 07:30:44  SKIP    r118_comomentum (already completed)
+2026-08-04 07:30:44  SKIP    r119_comparison_arm_scaffold (already completed)
+2026-08-04 07:30:44  START   r120_confirmatory_cointegration_check  ->  research\confirmatory_cointegration_check.py 
+2026-08-04 07:30:51  FAILED  r120_confirmatory_cointegration_check after 0 min (exit 1) - see logs\overnight\r120_confirmatory_cointegration_check.err.log
+2026-08-04 07:30:51  SKIP    r121_convex_portfolio_construction (already completed)
+2026-08-04 07:30:51  SKIP    r122_copula_pairs (already completed)
+2026-08-04 07:30:51  SKIP    r123_corporate_actions_audit (already completed)
+2026-08-04 07:30:51  SKIP    r124_cross_listing_lead_lag (already completed)
+2026-08-04 07:30:51  SKIP    r125_cross_session_leadlag (already completed)
+2026-08-04 07:30:51  SKIP    r126_cross_timeframe_divergence (already completed)
+2026-08-04 07:30:51  SKIP    r127_cycle_detection (already completed)
+2026-08-04 07:30:51  SKIP    r128_data_contamination_scan (already completed)
+2026-08-04 07:30:51  SKIP    r129_dd_hub_effective_bets (already completed)
+2026-08-04 07:30:51  SKIP    r130_decoupling_analysis (already completed)
+2026-08-04 07:30:51  SKIP    r131_decoupling_backtest (already completed)
+2026-08-04 07:30:51  SKIP    r132_decoupling_contamination_crosscheck (already completed)
+2026-08-04 07:30:51  SKIP    r133_decoupling_requalification (already completed)
+2026-08-04 07:30:51  START   r134_descriptive_check_concordance  ->  research\descriptive_check_concordance.py 
+2026-08-04 07:31:00  FAILED  r134_descriptive_check_concordance after 0 min (exit 1) - see logs\overnight\r134_descriptive_check_concordance.err.log
+2026-08-04 07:31:00  START   r135_earnings_lead_lag  ->  research\earnings_lead_lag.py 
+2026-08-04 08:16:00  TIMEOUT r135_earnings_lead_lag after 45 min -- killing and moving on
+2026-08-04 08:16:00  SKIP    r136_earnings_structural_break_correlation (already completed)
+2026-08-04 08:16:00  SKIP    r137_eg_null_calibration_montecarlo (already completed)
+2026-08-04 08:16:00  SKIP    r138_eg_permutation_check (already completed)
+2026-08-04 08:16:00  SKIP    r139_eigenvalue_weighted_position_sizing (already completed)
+2026-08-04 08:16:00  SKIP    r140_era_decay_replication (already completed)
+2026-08-04 08:16:00  START   r141_fdr_method_comparison  ->  research\fdr_method_comparison.py 
+2026-08-04 08:43:52  DONE    r141_fdr_method_comparison in 28 min (exit 0)
+2026-08-04 08:43:52  SKIP    r142_fill_timing_sensitivity (already completed)
+2026-08-04 08:43:52  SKIP    r143_filter_ablation (already completed)
+2026-08-04 08:43:52  SKIP    r144_filter_relevance_sweep_1h (already completed)
+2026-08-04 08:43:52  SKIP    r145_financial_turbulence_index (already completed)
+2026-08-04 08:43:52  START   r146_follower_direction_validation  ->  research\follower_direction_validation.py 
+2026-08-04 08:43:55  FAILED  r146_follower_direction_validation after 0 min (exit 1) - see logs\overnight\r146_follower_direction_validation.err.log
+2026-08-04 08:43:55  START   r147_graph_clustering  ->  research\graph_clustering.py 
+2026-08-04 09:09:52  DONE    r147_graph_clustering in 26 min (exit 0)
+2026-08-04 09:09:52  START   r148_graphical_lasso_clusters  ->  research\graphical_lasso_clusters.py 
+2026-08-04 09:09:58  DONE    r148_graphical_lasso_clusters in 0 min (exit 0)
+2026-08-04 09:09:58  START   r149_grid_bootstrap_ar_ci  ->  research\grid_bootstrap_ar_ci.py 
+2026-08-04 09:11:04  DONE    r149_grid_bootstrap_ar_ci in 1 min (exit 0)
+2026-08-04 09:11:04  START   r150_hmm_gmm_regime_trade_features  ->  research\hmm_gmm_regime_trade_features.py 
+2026-08-04 09:11:30  DONE    r150_hmm_gmm_regime_trade_features in 0 min (exit 0)
+2026-08-04 09:11:30  START   r151_hmm_regime_detection  ->  research\hmm_regime_detection.py 
+2026-08-04 09:11:47  DONE    r151_hmm_regime_detection in 0 min (exit 0)
+2026-08-04 09:11:47  START   r152_hub_leg_stop_conditioning  ->  research\hub_leg_stop_conditioning.py 
+2026-08-04 09:11:51  DONE    r152_hub_leg_stop_conditioning in 0 min (exit 0)
+2026-08-04 09:11:51  START   r153_inverse_polarity  ->  research\inverse_polarity.py 
+2026-08-04 09:11:58  DONE    r153_inverse_polarity in 0 min (exit 0)
+2026-08-04 09:11:58  START   r154_investigate_price_degeneracy_cause  ->  research\investigate_price_degeneracy_cause.py 
+2026-08-04 09:11:59  DONE    r154_investigate_price_degeneracy_cause in 0 min (exit 0)
+2026-08-04 09:11:59  START   r155_jump_diffusion_parameter_fit  ->  research\jump_diffusion_parameter_fit.py 
+2026-08-04 09:12:03  DONE    r155_jump_diffusion_parameter_fit in 0 min (exit 0)
+2026-08-04 09:12:04  START   r156_jump_diffusion_spread_analysis  ->  research\jump_diffusion_spread_analysis.py 
+2026-08-04 09:12:06  DONE    r156_jump_diffusion_spread_analysis in 0 min (exit 0)
+2026-08-04 09:12:06  START   r157_k_bahc_candidate_discovery  ->  research\k_bahc_candidate_discovery.py 
+2026-08-04 09:14:04  DONE    r157_k_bahc_candidate_discovery in 2 min (exit 0)
+2026-08-04 09:14:04  START   r158_k_bahc_covariance_cleaning  ->  research\k_bahc_covariance_cleaning.py 
+2026-08-04 09:14:12  DONE    r158_k_bahc_covariance_cleaning in 0 min (exit 0)
+2026-08-04 09:14:12  START   r159_kalman_slope_intercept  ->  research\kalman_slope_intercept.py 
+2026-08-04 09:14:24  DONE    r159_kalman_slope_intercept in 0 min (exit 0)
+2026-08-04 09:14:24  START   r160_lag_aware_cointegration_discovery  ->  research\lag_aware_cointegration_discovery.py 
+2026-08-04 09:15:11  DONE    r160_lag_aware_cointegration_discovery in 1 min (exit 0)
+2026-08-04 09:15:11  START   r161_lag_sweep_validation  ->  research\lag_sweep_validation.py 
+2026-08-04 09:16:40  DONE    r161_lag_sweep_validation in 1 min (exit 0)
+2026-08-04 09:16:40  START   r162_lead_lag_permutation_check  ->  research\lead_lag_permutation_check.py 
+2026-08-04 09:16:44  DONE    r162_lead_lag_permutation_check in 0 min (exit 0)
+2026-08-04 09:16:44  START   r163_lead_lag_scan  ->  research\lead_lag_scan.py 
+2026-08-04 09:17:14  DONE    r163_lead_lag_scan in 0 min (exit 0)
+2026-08-04 09:17:14  START   r164_leg_level_early_exit  ->  research\leg_level_early_exit.py 
+2026-08-04 09:17:18  DONE    r164_leg_level_early_exit in 0 min (exit 0)
+2026-08-04 09:17:18  START   r165_levy_jump_diffusion  ->  research\levy_jump_diffusion.py 
+2026-08-04 09:17:21  DONE    r165_levy_jump_diffusion in 0 min (exit 0)
+2026-08-04 09:17:21  START   r166_lo2002_sharpe_correction  ->  research\lo2002_sharpe_correction.py 
+2026-08-04 09:17:23  FAILED  r166_lo2002_sharpe_correction after 0 min (exit 1) - see logs\overnight\r166_lo2002_sharpe_correction.err.log
+2026-08-04 09:17:23  START   r167_lstm_attention_architecture  ->  research\lstm_attention_architecture.py 
+2026-08-04 09:17:54  DONE    r167_lstm_attention_architecture in 1 min (exit 0)
+2026-08-04 09:17:54  START   r168_midas_cross_asset_lead_lag  ->  research\midas_cross_asset_lead_lag.py 
+2026-08-04 09:18:12  DONE    r168_midas_cross_asset_lead_lag in 0 min (exit 0)
+2026-08-04 09:18:12  START   r169_midas_feature  ->  research\midas_feature.py 
+2026-08-04 09:18:15  DONE    r169_midas_feature in 0 min (exit 0)
+2026-08-04 09:18:15  START   r170_ml_lookahead_selftest  ->  research\ml_lookahead_selftest.py 
+2026-08-04 09:18:18  DONE    r170_ml_lookahead_selftest in 0 min (exit 0)
+2026-08-04 09:18:18  START   r171_ml_model_comparison  ->  research\ml_model_comparison.py 
+2026-08-04 09:18:32  DONE    r171_ml_model_comparison in 0 min (exit 0)
+2026-08-04 09:18:32  START   r172_ml_stage2_ablation  ->  research\ml_stage2_ablation.py 
+2026-08-04 09:18:35  DONE    r172_ml_stage2_ablation in 0 min (exit 0)
+2026-08-04 09:18:35  START   r173_multiscale_entropy  ->  research\multiscale_entropy.py 
+2026-08-04 09:18:42  DONE    r173_multiscale_entropy in 0 min (exit 0)
+2026-08-04 09:18:42  START   r174_near_miss_lag_scan  ->  research\near_miss_lag_scan.py 
+2026-08-04 10:03:42  TIMEOUT r174_near_miss_lag_scan after 45 min -- killing and moving on
+2026-08-04 10:03:43  START   r175_network_momentum  ->  research\network_momentum.py 
+2026-08-04 10:03:48  DONE    r175_network_momentum in 0 min (exit 0)
+2026-08-04 10:03:48  START   r176_news_impact_asymmetry  ->  research\news_impact_asymmetry.py 
+2026-08-04 10:03:50  DONE    r176_news_impact_asymmetry in 0 min (exit 0)
+2026-08-04 10:03:50  START   r177_options_greeks_features  ->  research\options_greeks_features.py 
+2026-08-04 10:03:53  DONE    r177_options_greeks_features in 0 min (exit 0)
+2026-08-04 10:03:53  START   r178_pair_characteristics_analyzer  ->  research\pair_characteristics_analyzer.py 
+2026-08-04 10:03:55  DONE    r178_pair_characteristics_analyzer in 0 min (exit 0)
+2026-08-04 10:03:55  START   r179_pdr_calmar_comparison  ->  research\pdr_calmar_comparison.py 
+2026-08-04 10:03:56  DONE    r179_pdr_calmar_comparison in 0 min (exit 0)
+2026-08-04 10:03:56  START   r180_pearson_threshold_sensitivity  ->  research\pearson_threshold_sensitivity.py 
+2026-08-04 10:48:56  TIMEOUT r180_pearson_threshold_sensitivity after 45 min -- killing and moving on
+2026-08-04 10:48:57  START   r181_peer_correlation_contamination_check  ->  research\peer_correlation_contamination_check.py 
+2026-08-04 10:50:29  DONE    r181_peer_correlation_contamination_check in 2 min (exit 0)
+2026-08-04 10:50:29  START   r182_portfolio_effective_bets  ->  research\portfolio_effective_bets.py 
+2026-08-04 10:50:31  DONE    r182_portfolio_effective_bets in 0 min (exit 0)
+2026-08-04 10:50:32  START   r183_portfolio_position_sizing_correction  ->  research\portfolio_position_sizing_correction.py 
+2026-08-04 10:50:34  DONE    r183_portfolio_position_sizing_correction in 0 min (exit 0)
+2026-08-04 10:50:34  START   r184_predictability_optimizer  ->  research\predictability_optimizer.py 
+2026-08-04 10:50:36  DONE    r184_predictability_optimizer in 0 min (exit 0)
+2026-08-04 10:50:36  START   r185_price_degeneracy_root_cause  ->  research\price_degeneracy_root_cause.py 
+2026-08-04 10:50:39  DONE    r185_price_degeneracy_root_cause in 0 min (exit 0)
+2026-08-04 10:50:39  START   r186_price_density_screen  ->  research\price_density_screen.py 
+2026-08-04 10:50:41  DONE    r186_price_density_screen in 0 min (exit 0)
+2026-08-04 10:50:42  START   r187_quantile_regression_forest  ->  research\quantile_regression_forest.py 
+2026-08-04 10:50:45  DONE    r187_quantile_regression_forest in 0 min (exit 0)
+2026-08-04 10:50:45  START   r188_regime_cluster_robustness_check  ->  research\regime_cluster_robustness_check.py 
+2026-08-04 10:51:24  DONE    r188_regime_cluster_robustness_check in 1 min (exit 0)
+2026-08-04 10:51:24  START   r189_regime_conditional_analysis  ->  research\regime_conditional_analysis.py 
+2026-08-04 10:51:42  DONE    r189_regime_conditional_analysis in 0 min (exit 0)
+2026-08-04 10:51:42  START   r190_regime_conditional_entry_gate  ->  research\regime_conditional_entry_gate.py 
+2026-08-04 10:51:47  DONE    r190_regime_conditional_entry_gate in 0 min (exit 0)
+2026-08-04 10:51:47  START   r191_reimers_trio_correction  ->  research\reimers_trio_correction.py 
+2026-08-04 10:51:50  DONE    r191_reimers_trio_correction in 0 min (exit 0)
+2026-08-04 10:51:50  START   r192_relational_regime_indicator  ->  research\relational_regime_indicator.py 
+2026-08-04 10:51:57  DONE    r192_relational_regime_indicator in 0 min (exit 0)
+2026-08-04 10:51:57  START   r193_return_smoothing_audit  ->  research\return_smoothing_audit.py 
+2026-08-04 10:51:59  DONE    r193_return_smoothing_audit in 0 min (exit 0)
+2026-08-04 10:51:59  START   r194_rmt_feature_denoising  ->  research\rmt_feature_denoising.py 
+2026-08-04 10:52:04  DONE    r194_rmt_feature_denoising in 0 min (exit 0)
+2026-08-04 10:52:04  START   r195_rolling_adv_comparison  ->  research\rolling_adv_comparison.py 
+2026-08-04 10:55:47  DONE    r195_rolling_adv_comparison in 4 min (exit 0)
+2026-08-04 10:55:47  START   r196_rough_volatility  ->  research\rough_volatility.py 
+2026-08-04 10:55:52  DONE    r196_rough_volatility in 0 min (exit 0)
+2026-08-04 10:55:53  START   r197_sample_entropy_spreads  ->  research\sample_entropy_spreads.py 
+2026-08-04 10:56:09  DONE    r197_sample_entropy_spreads in 0 min (exit 0)
+2026-08-04 10:56:09  START   r198_sector_restricted_fdr_rescan  ->  research\sector_restricted_fdr_rescan.py 
+2026-08-04 10:56:13  DONE    r198_sector_restricted_fdr_rescan in 0 min (exit 0)
+2026-08-04 10:56:13  START   r199_sensitivity_research  ->  research\sensitivity_research.py 
+2026-08-04 11:18:44  DONE    r199_sensitivity_research in 23 min (exit 0)
+2026-08-04 11:18:44  START   r200_short_term_factor_alpha  ->  research\short_term_factor_alpha.py 
+2026-08-04 11:18:49  DONE    r200_short_term_factor_alpha in 0 min (exit 0)
+2026-08-04 11:18:49  START   r201_smoothing_comparison  ->  research\smoothing_comparison.py 
+2026-08-04 11:25:29  DONE    r201_smoothing_comparison in 7 min (exit 0)
+2026-08-04 11:25:29  START   r202_spread_construction  ->  research\spread_construction.py 
+2026-08-04 11:25:33  DONE    r202_spread_construction in 0 min (exit 0)
+2026-08-04 11:25:33  START   r203_stop_loss_correlation_caps  ->  research\stop_loss_correlation_caps.py 
+2026-08-04 11:25:35  DONE    r203_stop_loss_correlation_caps in 0 min (exit 0)
+2026-08-04 11:25:35  START   r204_strategy_risk_precision  ->  research\strategy_risk_precision.py 
+2026-08-04 11:25:36  DONE    r204_strategy_risk_precision in 0 min (exit 0)
+2026-08-04 11:25:36  START   r205_strategy_variation_comparison  ->  research\strategy_variation_comparison.py 
+2026-08-04 11:26:13  DONE    r205_strategy_variation_comparison in 1 min (exit 0)
+2026-08-04 11:26:13  START   r206_stress_test_replication  ->  research\stress_test_replication.py 
+2026-08-04 11:26:29  DONE    r206_stress_test_replication in 0 min (exit 0)
+2026-08-04 11:26:29  START   r207_svm_gradient_descent_classifier  ->  research\svm_gradient_descent_classifier.py 
+2026-08-04 11:26:31  DONE    r207_svm_gradient_descent_classifier in 0 min (exit 0)
+2026-08-04 11:26:31  START   r208_tail_dependence  ->  research\tail_dependence.py 
+2026-08-04 11:26:33  DONE    r208_tail_dependence in 0 min (exit 0)
+2026-08-04 11:26:33  START   r209_tail_dependence_deep  ->  research\tail_dependence_deep.py 
+2026-08-04 11:26:35  DONE    r209_tail_dependence_deep in 0 min (exit 0)
+2026-08-04 11:26:35  START   r210_tail_dependence_universe_screen  ->  research\tail_dependence_universe_screen.py 
+2026-08-04 11:29:27  DONE    r210_tail_dependence_universe_screen in 3 min (exit 0)
+2026-08-04 11:29:27  START   r211_threshold_cointegration  ->  research\threshold_cointegration.py 
+2026-08-04 11:29:56  DONE    r211_threshold_cointegration in 0 min (exit 0)
+2026-08-04 11:29:57  START   r212_trend_dominance_diagnostic  ->  research\trend_dominance_diagnostic.py 
+2026-08-04 11:31:32  DONE    r212_trend_dominance_diagnostic in 2 min (exit 0)
+2026-08-04 11:31:32  START   r213_trig_convergence  ->  research\trig_convergence.py 
+2026-08-04 11:31:38  DONE    r213_trig_convergence in 0 min (exit 0)
+2026-08-04 11:31:38  START   r214_variance_ratio_test  ->  research\variance_ratio_test.py 
+2026-08-04 11:31:41  DONE    r214_variance_ratio_test in 0 min (exit 0)
+2026-08-04 11:31:42  START   r215_vol_targeting_and_drawdown_derisking  ->  research\vol_targeting_and_drawdown_derisking.py 
+2026-08-04 11:31:46  DONE    r215_vol_targeting_and_drawdown_derisking in 0 min (exit 0)
+2026-08-04 11:31:46  START   r216_wavelet_hurst_comparison  ->  research\wavelet_hurst_comparison.py 
+2026-08-04 11:31:52  DONE    r216_wavelet_hurst_comparison in 0 min (exit 0)
+2026-08-04 11:31:52  START   r217_weak_exogeneity_test  ->  research\weak_exogeneity_test.py 
+2026-08-04 11:31:55  DONE    r217_weak_exogeneity_test in 0 min (exit 0)
+2026-08-04 11:31:55  START   r218_wrds_deep_history_episodic_scan  ->  research\wrds_deep_history_episodic_scan.py 
+2026-08-04 11:59:30  FAILED  r218_wrds_deep_history_episodic_scan after 28 min (exit 1) - see logs\overnight\r218_wrds_deep_history_episodic_scan.err.log
+2026-08-04 11:59:30  START   r219_wrds_lead_lag_scan  ->  research\wrds_lead_lag_scan.py 
+2026-08-04 11:59:54  DONE    r219_wrds_lead_lag_scan in 0 min (exit 0)
+2026-08-04 11:59:54  START   r220_wrds_universal_lead_lag_scan  ->  research\wrds_universal_lead_lag_scan.py 
+2026-08-04 12:44:54  TIMEOUT r220_wrds_universal_lead_lag_scan after 45 min -- killing and moving on
+2026-08-04 12:44:55  START   99_pit_wfa  ->  pit_wfa.py --workers 6
+2026-08-04 13:29:55  TIMEOUT 99_pit_wfa after 45 min -- killing and moving on
+2026-08-04 13:29:56  ================ CAMARF overnight research runner finished ================
+2026-08-04 13:29:56  Stages completed: 141

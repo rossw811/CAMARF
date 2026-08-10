@@ -1,17 +1,17 @@
-16:21:58 INFO  === pit_wfa.py: Point-In-Time Portfolio-Wide Walk-Forward Analysis (1h) ===
-16:21:58 INFO  Unlike wfa.py's semi-WFA, pair SELECTION itself is re-derived per fold using only train-window data — see module docstring for exact scope.
-16:22:10 INFO  Universe: 1576 symbols with cached 1h data
-16:22:10 INFO  Analysis window: [2023-07-13, 2026-07-31]
-16:22:10 INFO  [expanding/fold1_exp] screening train window [2023-07-13, 2024-02-21] (point-in-time, no test-period data used)...
-16:22:33 INFO  [expanding/fold1_exp] 0 pairs point-in-time confirmed (0.4 min)
-16:22:33 INFO  [expanding/fold1_exp] backtest: 0 pairs traded, 0 trades, portfolio Sharpe=nan
-16:22:33 INFO  [expanding/fold1_exp] checkpoint saved (1 folds completed so far)
-16:22:33 INFO  [expanding/fold2_exp] screening train window [2023-07-13, 2025-01-20] (point-in-time, no test-period data used)...
-16:39:00 INFO  [expanding/fold2_exp] 2 pairs point-in-time confirmed (16.4 min)
-16:39:20 INFO  [expanding/fold2_exp] backtest: 2 pairs traded, 32 trades, portfolio Sharpe=-1.0121
-16:39:20 INFO  [expanding/fold2_exp] checkpoint saved (2 folds completed so far)
-16:39:20 INFO  [rolling/fold1_roll] screening train window [2023-07-13, 2024-02-21] (point-in-time, no test-period data used)...
-16:39:44 INFO  [rolling/fold1_roll] 0 pairs point-in-time confirmed (0.4 min)
-16:39:44 INFO  [rolling/fold1_roll] backtest: 0 pairs traded, 0 trades, portfolio Sharpe=nan
-16:39:44 INFO  [rolling/fold1_roll] checkpoint saved (3 folds completed so far)
-16:39:44 INFO  [rolling/fold2_roll] screening train window [2025-01-20, 2025-08-31] (point-in-time, no test-period data used)...
+12:44:59 INFO  === pit_wfa.py: Point-In-Time Portfolio-Wide Walk-Forward Analysis (1h) ===
+12:44:59 INFO  Unlike wfa.py's semi-WFA, pair SELECTION itself is re-derived per fold using only train-window data — see module docstring for exact scope.
+12:45:13 INFO  Universe: 1576 symbols with cached 1h data
+12:45:13 INFO  Analysis window: [2023-07-13, 2026-07-31]
+12:45:13 INFO  [expanding/fold1_exp] screening train window [2023-07-13, 2024-02-21] (point-in-time, no test-period data used)...
+12:45:42 INFO  [expanding/fold1_exp] 0 pairs point-in-time confirmed (0.5 min)
+12:45:42 INFO  [expanding/fold1_exp] backtest: 0 pairs traded, 0 trades, portfolio Sharpe=nan
+12:45:42 INFO  [expanding/fold1_exp] checkpoint saved (1 folds completed so far)
+12:45:42 INFO  [expanding/fold2_exp] screening train window [2023-07-13, 2025-01-20] (point-in-time, no test-period data used)...
+13:06:34 INFO  [expanding/fold2_exp] 2 pairs point-in-time confirmed (20.9 min)
+13:07:00 INFO  [expanding/fold2_exp] backtest: 2 pairs traded, 32 trades, portfolio Sharpe=-1.0121
+13:07:00 INFO  [expanding/fold2_exp] checkpoint saved (2 folds completed so far)
+13:07:00 INFO  [rolling/fold1_roll] screening train window [2023-07-13, 2024-02-21] (point-in-time, no test-period data used)...
+13:07:25 INFO  [rolling/fold1_roll] 0 pairs point-in-time confirmed (0.4 min)
+13:07:25 INFO  [rolling/fold1_roll] backtest: 0 pairs traded, 0 trades, portfolio Sharpe=nan
+13:07:25 INFO  [rolling/fold1_roll] checkpoint saved (3 folds completed so far)
+13:07:25 INFO  [rolling/fold2_roll] screening train window [2025-01-20, 2025-08-31] (point-in-time, no test-period data used)...

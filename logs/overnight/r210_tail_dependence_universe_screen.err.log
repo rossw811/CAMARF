@@ -1,0 +1,4 @@
+11:26:37 INFO  === tail_dependence_universe_screen.py: does REAL TAIL dependence exist in the near-miss band (0.25<=|corr|<0.40) the linear pre-filter misses? (tf=1h) ===
+2026-08-04 11:26:37  INFO      === tail_dependence_universe_screen.py: does REAL TAIL dependence exist in the near-miss band (0.25<=|corr|<0.40) the linear pre-filter misses? (tf=1h) ===
+11:26:47 INFO  Loaded 1576 symbols with usable 1h cache
+2026-08-04 11:26:47  INFO      Loaded 1576 symbols with usable 1h cache

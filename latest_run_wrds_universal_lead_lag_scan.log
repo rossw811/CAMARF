@@ -1,26 +1,25 @@
-20:06:05 INFO  === wrds_universal_lead_lag_scan.py: lead-lag correlation as a PAIR-DISCOVERY methodology across the FULL WRDS universe (not just already-confirmed pairs) ===
-20:07:42 INFO  5762 symbols, 16,597,441 unordered pairs in the full combinatorial universe
-20:08:34 DEBUG    Stage 0 lag=-10 done (40.4s elapsed)
-20:09:13 DEBUG    Stage 0 lag=-9 done (79.9s elapsed)
-20:09:52 DEBUG    Stage 0 lag=-8 done (118.6s elapsed)
-20:10:33 DEBUG    Stage 0 lag=-7 done (159.0s elapsed)
-20:11:11 DEBUG    Stage 0 lag=-6 done (197.9s elapsed)
-20:11:50 DEBUG    Stage 0 lag=-5 done (236.5s elapsed)
-20:12:33 DEBUG    Stage 0 lag=-4 done (279.1s elapsed)
-20:13:11 DEBUG    Stage 0 lag=-3 done (317.8s elapsed)
-20:13:53 DEBUG    Stage 0 lag=-2 done (359.1s elapsed)
-20:14:30 DEBUG    Stage 0 lag=-1 done (396.3s elapsed)
-20:15:09 DEBUG    Stage 0 lag=0 done (435.3s elapsed)
-20:15:47 DEBUG    Stage 0 lag=1 done (473.5s elapsed)
-20:16:25 DEBUG    Stage 0 lag=2 done (511.5s elapsed)
-20:17:07 DEBUG    Stage 0 lag=3 done (553.2s elapsed)
-20:17:48 DEBUG    Stage 0 lag=4 done (594.4s elapsed)
-20:18:30 DEBUG    Stage 0 lag=5 done (636.5s elapsed)
-20:19:07 DEBUG    Stage 0 lag=6 done (673.3s elapsed)
-20:19:49 DEBUG    Stage 0 lag=7 done (715.1s elapsed)
-20:20:28 DEBUG    Stage 0 lag=8 done (754.7s elapsed)
-20:21:08 DEBUG    Stage 0 lag=9 done (794.4s elapsed)
-20:21:47 DEBUG    Stage 0 lag=10 done (833.9s elapsed)
-20:21:47 INFO  Stage 0 (vectorized approximate screen): all 21 lags computed in 13.9 min
-20:22:07 INFO  Stage 0: 435,549/16,597,441 pairs survive the approximate |corr| >= 0.15 floor at a non-zero lag
-20:22:22 INFO  --count-only set: stopping after Stage 0. No EG-confirm compute spent.
+11:59:58 INFO  === wrds_universal_lead_lag_scan.py [whole-sample]: lead-lag correlation as a PAIR-DISCOVERY methodology across the FULL WRDS universe (not just already-confirmed pairs) ===
+12:02:23 INFO  5762 symbols, 16,597,441 unordered pairs in the full combinatorial universe
+12:04:21 DEBUG    Stage 0 lag=-10 done (101.7s elapsed)
+12:06:04 DEBUG    Stage 0 lag=-9 done (204.9s elapsed)
+12:07:48 DEBUG    Stage 0 lag=-8 done (308.3s elapsed)
+12:09:28 DEBUG    Stage 0 lag=-7 done (408.3s elapsed)
+12:11:05 DEBUG    Stage 0 lag=-6 done (505.3s elapsed)
+12:12:47 DEBUG    Stage 0 lag=-5 done (607.3s elapsed)
+12:14:31 DEBUG    Stage 0 lag=-4 done (711.8s elapsed)
+12:16:15 DEBUG    Stage 0 lag=-3 done (815.7s elapsed)
+12:18:01 DEBUG    Stage 0 lag=-2 done (921.2s elapsed)
+12:19:46 DEBUG    Stage 0 lag=-1 done (1026.4s elapsed)
+12:21:33 DEBUG    Stage 0 lag=0 done (1133.6s elapsed)
+12:23:18 DEBUG    Stage 0 lag=1 done (1238.9s elapsed)
+12:25:03 DEBUG    Stage 0 lag=2 done (1343.8s elapsed)
+12:26:40 DEBUG    Stage 0 lag=3 done (1440.4s elapsed)
+12:28:20 DEBUG    Stage 0 lag=4 done (1540.7s elapsed)
+12:30:01 DEBUG    Stage 0 lag=5 done (1641.8s elapsed)
+12:31:44 DEBUG    Stage 0 lag=6 done (1744.2s elapsed)
+12:33:28 DEBUG    Stage 0 lag=7 done (1848.6s elapsed)
+12:35:13 DEBUG    Stage 0 lag=8 done (1953.3s elapsed)
+12:36:57 DEBUG    Stage 0 lag=9 done (2057.6s elapsed)
+12:38:42 DEBUG    Stage 0 lag=10 done (2162.3s elapsed)
+12:38:42 INFO  Stage 0 (vectorized approximate screen): all 21 lags computed in 36.0 min
+12:39:10 INFO  Stage 0: 435,549/16,597,441 pairs survive the approximate |corr| >= 0.15 floor at a non-zero lag

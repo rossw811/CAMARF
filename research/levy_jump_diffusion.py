@@ -134,41 +134,50 @@ def gap_flag_overlap(gap_flags: np.ndarray, is_jump: np.ndarray) -> dict:
 def main():
     ap = argparse.ArgumentParser(description="Lévy jump-diffusion diagnostic (2026-08-02)")
     ap.add_argument("--alpha", type=float, default=0.01)
+    ap.add_argument("--pit-safe", action="store_true",
+                     help="Source pairs from research/pit_pair_discovery.py's PIT-safe episodic "
+                          "screen instead of the hardcoded KVUE/KMB (task #5).")
     args = ap.parse_args()
 
+    if args.pit_safe:
+        from pit_pair_discovery import discover_pit_confirmed_pairs
+        pair_tf_list = discover_pit_confirmed_pairs()
+        print(f"Using PIT-safe episodic pair discovery: {len(pair_tf_list)} (pair, tf) combinations")
+    else:
+        pair_tf_list = [(a, b, tf) for a, b in _CONFIRMED_PAIRS for tf in _CONFIRMED_TFS]
+
     rows = []
-    for sym_a, sym_b in _CONFIRMED_PAIRS:
-        for tf in _CONFIRMED_TFS:
-            df_a, df_b = load_aligned_pair(sym_a, sym_b, tf)
-            if df_a is None or df_b is None or df_a.empty or df_b.empty:
-                print(f"skip {sym_a}/{sym_b}@{tf}: no aligned data")
+    for sym_a, sym_b, tf in pair_tf_list:
+        df_a, df_b = load_aligned_pair(sym_a, sym_b, tf)
+        if df_a is None or df_b is None or df_a.empty or df_b.empty:
+            print(f"skip {sym_a}/{sym_b}@{tf}: no aligned data")
+            continue
+        for sym, df in ((sym_a, df_a), (sym_b, df_b)):
+            log_p = _gap_masked_log_price(df)
+            r = np.diff(log_p)
+            mask = np.isfinite(r)
+            r_f = r[mask]
+            if len(r_f) < 200:
+                print(f"skip {sym}@{tf}: only {len(r_f)} clean returns")
                 continue
-            for sym, df in ((sym_a, df_a), (sym_b, df_b)):
-                log_p = _gap_masked_log_price(df)
-                r = np.diff(log_p)
-                mask = np.isfinite(r)
-                r_f = r[mask]
-                if len(r_f) < 200:
-                    print(f"skip {sym}@{tf}: only {len(r_f)} clean returns")
-                    continue
-                gap_flags = df["gap_flag"].values[1:][mask] if "gap_flag" in df.columns else np.zeros(len(r_f))
+            gap_flags = df["gap_flag"].values[1:][mask] if "gap_flag" in df.columns else np.zeros(len(r_f))
 
-                jump_result = lee_mykland_jump_test(r_f, alpha=args.alpha)
-                vol_result = continuous_vs_total_vol(r_f, jump_result["is_jump"])
-                overlap_result = gap_flag_overlap(gap_flags, jump_result["is_jump"])
+            jump_result = lee_mykland_jump_test(r_f, alpha=args.alpha)
+            vol_result = continuous_vs_total_vol(r_f, jump_result["is_jump"])
+            overlap_result = gap_flag_overlap(gap_flags, jump_result["is_jump"])
 
-                print(f"\n{sym}@{tf}: n={len(r_f)}, critical_value={jump_result['critical_value']:.2f}")
-                print(f"  jumps detected: {jump_result['n_jumps']} ({jump_result['jump_frac']*100:.2f}% of bars)")
-                print(f"  total_vol={vol_result['total_vol']:.6f}  continuous_vol={vol_result['continuous_vol']:.6f}  "
-                      f"({vol_result['pct_change']:+.2f}%)")
-                print(f"  of detected jumps, {overlap_result['jumps_with_nonnone_gapflag_pct']:.1f}% already had a non-NONE GapFlag")
-                print(f"  of non-NONE GapFlag bars, {overlap_result['gapflag_bars_that_are_jumps_pct']:.1f}% are statistically detected jumps")
+            print(f"\n{sym}@{tf}: n={len(r_f)}, critical_value={jump_result['critical_value']:.2f}")
+            print(f"  jumps detected: {jump_result['n_jumps']} ({jump_result['jump_frac']*100:.2f}% of bars)")
+            print(f"  total_vol={vol_result['total_vol']:.6f}  continuous_vol={vol_result['continuous_vol']:.6f}  "
+                  f"({vol_result['pct_change']:+.2f}%)")
+            print(f"  of detected jumps, {overlap_result['jumps_with_nonnone_gapflag_pct']:.1f}% already had a non-NONE GapFlag")
+            print(f"  of non-NONE GapFlag bars, {overlap_result['gapflag_bars_that_are_jumps_pct']:.1f}% are statistically detected jumps")
 
-                rows.append({
-                    "symbol": sym, "tf": tf, "n_bars": len(r_f),
-                    **{k: v for k, v in jump_result.items() if k not in ("L", "is_jump")},
-                    **vol_result, **overlap_result,
-                })
+            rows.append({
+                "symbol": sym, "tf": tf, "n_bars": len(r_f),
+                **{k: v for k, v in jump_result.items() if k not in ("L", "is_jump")},
+                **vol_result, **overlap_result,
+            })
 
     out_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "output", "research")
     os.makedirs(out_dir, exist_ok=True)

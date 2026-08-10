@@ -1,0 +1,4 @@
+09:18:19 INFO  === ml_model_comparison.py: LightGBM/Ridge/Lasso/RandomForest vs. ml.py's XGBoost, COMPARISON ARM ONLY (nothing here feeds backtest.py's MLConditioner) ===
+2026-08-04 09:18:19  INFO      === ml_model_comparison.py: LightGBM/Ridge/Lasso/RandomForest vs. ml.py's XGBoost, COMPARISON ARM ONLY (nothing here feeds backtest.py's MLConditioner) ===
+2026-08-04 09:18:20  INFO        Discovered 3 confirmed pairs with persisted spread series; 1 produced labeled examples, 2 skipped
+2026-08-04 09:18:20  INFO        Total labeled entry events: 19

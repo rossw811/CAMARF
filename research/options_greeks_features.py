@@ -83,11 +83,24 @@ def rolling_correlation(ret_a: pd.Series, ret_b: pd.Series, window: int = 30) ->
 def main():
     ap = argparse.ArgumentParser(description="Options Greeks vs. pair correlation diagnostic (2026-08-02)")
     ap.add_argument("--window", type=int, default=30)
+    ap.add_argument("--pit-safe", action="store_true",
+                     help="Source pairs from research/pit_pair_discovery.py's PIT-safe episodic "
+                          "screen instead of the hardcoded KVUE/KMB (task #5). This script loads "
+                          "daily price series directly (not TF-aware), so only the (symbol_a, "
+                          "symbol_b) part of each PIT-safe triple is used, deduplicated.")
     args = ap.parse_args()
 
     T = _TENOR_DAYS / 365.0
 
-    for sym_a, sym_b in _CONFIRMED_PAIRS:
+    if args.pit_safe:
+        from pit_pair_discovery import discover_pit_confirmed_pairs
+        pit_pairs = discover_pit_confirmed_pairs()
+        confirmed_pairs = sorted(set((a, b) for a, b, _tf in pit_pairs))
+        print(f"Using PIT-safe episodic pair discovery: {len(confirmed_pairs)} unique pairs")
+    else:
+        confirmed_pairs = _CONFIRMED_PAIRS
+
+    for sym_a, sym_b in confirmed_pairs:
         close_a = load_price_series(sym_a)
         close_b = load_price_series(sym_b)
         if close_a is None or close_b is None:

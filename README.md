@@ -1,28 +1,38 @@
 # CAMARF — Cross-Asset Co-Movement Arbitrage Research Framework
 
 **Author:** Ross W.
-**Status:** Active research — full pipeline (data → analysis → ML → backtest → statistical
-validation → walk-forward → report) built and run end-to-end; ML gate deferred pending
-labeled-data accumulation.
+**Status:** Active research, mid-pivot. The production pipeline (data → analysis → ML →
+backtest → statistical validation → walk-forward → report) runs end-to-end, but the
+confirmed-pair universe underneath it changed materially in the last two sessions (see
+"Current Results" below) and a genuinely new, more novel central thesis — point-in-time-safe
+episodic cointegration confirmation vs. the standard static full-sample screen — is actively
+being built and is not yet concluded. Read this file's status as "in motion," not settled.
 
 ---
 
 ## Overview
 
-CAMARF is an institutional-grade statistical arbitrage research framework testing
-whether cross-asset co-movement relationships exhibit regime-dependent,
-volatility-normalized arbitrage structure predictable at statistically significant
-rates using multiclass ML — and, more specifically, whether the standard way the
-field screens for that structure (a single full-sample cointegration test) is itself
-well-calibrated across time horizons.
+CAMARF is an institutional-grade statistical arbitrage research framework built around two
+related, evolving questions: (1) whether cross-asset co-movement relationships exhibit
+regime-dependent, volatility-normalized arbitrage structure predictable at statistically
+significant rates, and (2) whether the standard way the field screens for that structure — a
+single, static, full-sample cointegration test — is itself well-calibrated across time and
+data depth. Question (2) has grown from a secondary finding (the "Strictness Paradox" below)
+into the project's current main line of investigation: a **point-in-time-safe episodic
+confirmation methodology** (rolling-window cointegration tests, joint BH-FDR corrected across
+the full test family, filtered to only information a real deployment date would have had) is
+being built and compared directly against the static screen, on the same universe, to measure
+how much real structure the static approach misses. As of this writing that comparison is
+**not yet complete** — see "Current Results" for exactly what's done vs. in progress.
 
-The universe is configured for ~1,691 assets (S&P Composite 1500 + international
-equities/ADRs/FX spots + an expanded cross-asset set — bonds, additional crypto/
-commodities/forex, deepened international coverage) across 13 timeframes, from 1-minute
-to 6-month bars. The last full pipeline run (and every confirmed pair/backtest result
-below) used the prior, smaller ~1,609-asset universe — the expansion has not yet been run
-through the full screening pipeline. This project serves as a primary portfolio piece for
-quantitative finance program applications.
+Daily-and-coarser US equity/ETF data is now sourced primarily from WRDS (CRSP total-return-
+adjusted, Compustat Global split-only as a disclosed fallback), which gives this project
+decades of clean history instead of yfinance's comparatively short and noisier daily bars —
+directly enabling the episodic methodology above. International equities and everything
+intraday remain yfinance-sourced. This project serves as a primary portfolio piece for
+quantitative finance program applications; the current expectation (see below) is that it
+will produce two related but separate papers rather than one — the original cross-asset
+backtest work, and the newer episodic-vs-static screening methodology finding.
 
 ---
 
@@ -57,70 +67,59 @@ CUSUM structural-break tests) operationalize, at the ~10⁶-pairwise-test scale 
 project runs at, a question formal econometrics already has tools for at the
 single-pair scale (Gregory & Hansen, 1996; Hansen, 1992; Quintos & Phillips, 1993).
 
-See `PAPER.md` for the full argument, literature review, and empirical results.
+See `PAPER.md` for the full argument, literature review, and empirical results. **Note:** the
+episodic-vs-static methodology finding described above (currently the project's most novel
+direction, per its own owner's stated preference) is NOT yet in `PAPER.md` — it's real, in-progress
+work, tracked in `Development.md`'s Session 30/31 entries and `docs/HANDOFF.md`, not yet promoted
+to a citable claim.
 
 ---
 
-## Current Results (Session 28, full pipeline rerun + 3 bug fixes, 2026-07-12)
+## Current Results
 
-**Confirmed pairs: 26** — 24 @1h (incl. 12 cross-asset), 1 @3m, 1 @1M (international,
-7267.T/8058.T). The 30m/4h pairs present in the prior Session 22 snapshot are not in this
-session's fresh confirmed set — a genuine change in what the current screen finds as data has
-grown, not a bug.
+**Superseded, kept for provenance:** an earlier snapshot (Session 28, 2026-07-12) reported 26
+confirmed pairs (mostly @1h) and a 5.80/5.22 IS/OOS portfolio Sharpe under a yfinance-primary
+daily-and-coarser data source. That entire snapshot is now **stale in a specific, disclosed way**:
+switching WRDS to primary for daily-and-coarser US equity/ETF data (Session 29-30) changed the
+underlying price series for a large fraction of the universe, not just added coverage, and the
+confirmed-pair set it produces is materially different — this is a genuine methodology-driven
+change, not a regression, but headline numbers from before this switch should not be quoted as
+current. Full historical detail in `Development.md`.
 
-| Metric | In-Sample | Out-of-Sample (20% holdout) |
-|---|---|---|
-| Portfolio Sharpe | **5.8044** | **5.2155** |
-| Trades | 2,168 | 449 |
+**Current, WRDS-primary confirmed set (as of Session 30, 2026-08-03/04): 3 pairs** —
+`KVUE/KMB@3m`, `PNC/ZION@4h`, `IQV/Q@1D`. This is a real, large reduction from the pre-WRDS 23-26
+pair sets, and PAPER.md §3/§5 carry the full honest accounting of why — WRDS/CRSP's cleaner,
+longer daily history changes which pairs a static full-sample screen confirms, it isn't a
+data-quality regression. **`backtest.py` has a real, just-fixed gap here** (BUG-D107, Session 31,
+not yet re-verified with a real run): its production timeframe list never included `1D` at all, so
+`IQV/Q@1D` has never actually been included in any backtest run to date, including whatever is
+currently cited as "the baseline" — any headline Sharpe/trade-count figure describing "the 3
+confirmed pairs" has so far only covered 2 of them.
 
-IS→OOS degradation is **10.2%** — up from the previously-reported 0.9% figure, reported honestly
-rather than glossed over. This session found and fixed two real bugs affecting these numbers:
-**BUG-D58** (a survivorship-exclusion false positive was silently zeroing out 7/24 confirmed
-pairs — DD/NOV/FHN were flagged as "delisted" based on being demoted out of the S&P 500 index at
-some point, not on actually ceasing to trade) and **BUG-D59** (the cointegration-vs-distance
-portfolio comparison below was an unweighted mean of noisy per-pair Sharpes, not a real pooled
-portfolio statistic). Full write-ups in `Development.md` and `docs/BUG_LOG.md`.
+**Separately, and larger in scale: a point-in-time-safe episodic confirmation scan (WRDS
+daily-and-coarser, 10-year rolling windows stepped annually, joint BH-FDR across the whole test
+family) found 647 unique PIT-confirmed pairs** — vastly more than the static screen's 3, because a
+static full-history test structurally can't distinguish "cointegrated its entire life" from
+"recently coupled." This is the empirical basis for the episodic-vs-static methodology thesis
+described above. **As of this writing, that 647-pair episodic set is NOT yet wired into
+production `backtest.py`/`report.py`** — live trading is still gated on the 3-pair static set;
+promoting the episodic screen to primary (vs. hybrid vs. confidence-tiered — three designs are
+being built and compared in parallel, not decided in advance) is Session 31's active, unfinished
+work. A parallel intraday (1h/4h) extension of the same episodic methodology is also mid-run as of
+this writing (`Development.md`'s Session 31 entry has exact current status and real interim
+numbers — e.g. 73,825 candidate pairs found for 1h alone before confirmation).
 
-- **Distance-method baseline comparison (Gatev, Goetzmann & Rouwenhorst 2006), fully resolved
-  2026-07-13 (BUG-D61):** the comparison had been computing the two methods' trades over different
-  date windows, not the same one — closed by aligning both to the same holdout convention and
-  measuring the residual per-pair cutoff gap directly (max 5 days across all 24 @1h pairs, trivial).
-  Cointegration-based selection's pooled portfolio Sharpe is **8.542** (222 trades, the trustworthy
-  figure). The distance method's own result is reported by direction only, not as a specific Sharpe
-  — the corrected sample is thin (16 trades/7 distinct days) and most of those trades are forced
-  end-of-window exits rather than completed round trips. The direction (cointegration outperforming
-  distance) is supported; no specific distance-method Sharpe is cited as a finding.
-- **Statistical validation stack:** EG+KPSS+Phillips-Ouliaris confirmatory tiers (17
-  gold / 8 silver of 25 testable pairs, unchanged by this session's fixes), EVT/GPD tail risk
-  (17/26 pairs fat-tailed, up from 16/26 — several previously-truncated pairs now have real
-  P&L-based tail estimates), DCC-GARCH concentration monitoring, portfolio-level permutation
-  tests (IS p=0.559, OOS p=0.546 — not significant at conventional levels; see PAPER.md §6.6)
-- **Deflated Sharpe Ratio** (correcting for 52 backtest variants tried, non-normal daily P&L,
-  small sample size): **IS z=9.52, OOS z=2.90** — strengthened, not weakened, by the BUG-D58 fix
-  (more real trade data gives a cleaner signal). 29 evaluations have now examined the same OOS
-  holdout window — reserving a genuinely fresh holdout slice is an agreed next step, not yet
-  implemented (see `Development.md`'s Garden-of-Forking-Paths caveat).
-- **Not yet re-verified against this session's fixes** (flagged explicitly rather than silently
-  left stale): best position-sizing variant (risk-parity, previously 5.8689), walk-forward
-  robustness range (previously 3.13/3.27 baseline — note `wfa.py` doesn't apply survivorship
-  truncation so is unaffected by BUG-D58, but hasn't been rechecked against this exact write-up),
-  filter-ablation, Absorption Ratio, HRP comparison, square-root market impact. These all need a
-  dedicated re-run pass before being restated as current.
-- **Capital-constrained backtesting (`--capital-sim`):** an earlier pass observed capital
-  constraints apparently RAISING risk-adjusted returns above the unconstrained headline —
-  root-caused (2026-07-13, BUG-D62) to a Sharpe-computation convention mismatch between two
-  internal tools, not a real effect. After the fix, capital-constrained performance sits at or
-  below the 5.8044 headline at every account-size tier; a small real residual (order-of-arrival
-  trade admission suppressing variance during correlated signal storms) survives but is not cited
-  as an independent finding. See `PAPER.md` §7.16.
-- **Fresh-holdout convention, universe expansion, and two new research diagnostics** (cross-session
-  lead-lag, rolling-cointegration window/threshold grid) — see `PAPER.md` §7.16 and
-  `Development.md` for details. Russell 2000/small-cap universe coverage remains unimplemented: a
-  public constituent-list source was sought (iShares CSV, Wikipedia) and neither worked — documented
-  in `Development.md` rather than forced through with a fragile scraper.
+**Backtest/statistical-validation numbers from the pre-WRDS 23-26 pair era (IS Sharpe ~5.8-8.5
+depending on variant, OOS ~5.2, deflated Sharpe z~9.5 IS/2.9 OOS, distance-method comparison, tail
+risk, permutation tests, capital-constrained backtesting) are preserved in full historical detail
+in `Development.md` and `docs/BUG_LOG.md` (BUG-D58/59/61/62 and others) but are **not restated
+here as current** — they describe a confirmed-pair universe this project no longer uses as its
+production default. A fresh backtest re-run against the corrected 3-pair (or eventually
+episodic/hybrid/tiered) set, once `backtest.py`'s 1D gap and the pair-source decision above are
+both resolved, is the next real "current results" entry for this section — not yet available.
 
-Numbers update as the pipeline reruns; `PAPER.md` and `Development.md` are the sources
-of truth, not this file.
+`Development.md`, `docs/FINDINGS.md`, and `docs/HANDOFF.md` are the sources of truth for exact
+current numbers, not this file, more so now than usual given how much is actively in flux.
 
 ---
 
@@ -129,10 +128,13 @@ of truth, not this file.
 1. **`data.py` fetches, `analysis.py` analyzes — never the reverse.** `analysis.py`
    always calls `builder.build(connect=False)` and never touches yfinance or IBKR
    directly.
-2. **yfinance is primary; IBKR is a separate, supplemental script.** `data.py` is
-   yfinance-only and completes in ~30–40 minutes. `data_ibkr.py` is run manually to
-   fetch 10-year deep history for *confirmed pairs only* (read from
-   `confirmed_pairs_manifest.json`), enabling the episodic-cointegration test.
+2. **WRDS is primary for daily-and-coarser US equity/ETF data; yfinance covers everything
+   else (intraday, international) and is the fallback.** `data_wrds.py` (manual, separate)
+   fetches CRSP total-return-adjusted daily history for the whole US equity/ETF universe —
+   decades deep, directly enabling the episodic PIT-safe confirmation methodology described
+   above. `data.py` remains yfinance-only for intraday and international data, ~30–40 minutes.
+   IBKR is a further, separate supplemental script: `data_ibkr.py` fetches 10-year deep history
+   for *confirmed pairs only* (read from `confirmed_pairs_manifest.json`).
    `ibkr_supplement_reader.py` is a parquet-only reader shared by `data_ibkr.py` and
    `analysis.py` with zero `ib_insync` dependency — this keeps the IBKR fetch boundary
    fully decoupled from the core pipeline.
@@ -157,9 +159,12 @@ Run in this order (each stage writes its own `latest_run_*.log`):
 
 ```bash
 python data.py                    # yfinance fetch, ~1,691 configured assets × 13 TFs, ~30-40 min
+python data_wrds.py                # manual, separate: WRDS/CRSP daily-and-coarser US equity/ETF bulk fetch, primary source
 python data_ibkr.py                # manual, separate: 10Y deep history for confirmed pairs only
 python analysis.py                 # correlation, EG+BH-FDR, hedge ratio, OU spread,
                                     #   eigenportfolio, coint_fraction_rolling + override
+python research/wrds_deep_history_episodic_scan.py   # PIT-safe episodic confirmation (WRDS daily+coarser), decades-deep rolling windows
+python research/intraday_episodic_scan.py --tf both  # same methodology extended to 1h/4h (Session 31, in progress)
 python ml.py                       # meta-labeling Stage 1 (Stage 2 + SHAP deferred)
 python backtest.py --holdout       # event-driven Layer 1 baseline
 python backtest.py --holdout --risk-parity   # best position-sizing variant
@@ -183,9 +188,15 @@ All scripts run via the project's pinned conda environment (`trading`) — see
 This run's exact data footprint (see `CLAUDE.md`'s "Data Test Range & Reproducibility"
 section for the canonical, kept-current version of this table):
 
-- **Universe snapshot:** last full pipeline run used 1,608 candidate symbols (S&P Composite
-  1500 + international), completed **2026-06-30** in 5.6 minutes. `config.py` now specifies
-  ~1,691 assets as of 2026-07-13 (see "Current Results" above) — not yet exercised by a full run.
+- **Universe snapshot:** current canonical daily-and-coarser universe is WRDS-primary as of
+  Session 30 (2026-08-03), ~1,730 symbols with cached daily data, 1,660 passing the full
+  screening funnel — see `CLAUDE.md`'s "Data Test Range & Reproducibility" section for the
+  exact, kept-current figures (this file's own copy of that table drifts faster than `CLAUDE.md`'s
+  does). International equities and intraday timeframes remain yfinance-sourced against the
+  ~1,608-1,691-symbol universe from the pre-WRDS snapshot below, kept for provenance.
+  Pre-WRDS snapshot: 1,608 candidate symbols (S&P Composite 1500 + international), completed
+  **2026-06-30** in 5.6 minutes; `config.py` specifies ~1,691 assets as of 2026-07-13 — not yet
+  exercised by a full yfinance-side run.
 - **Per-timeframe fetch windows (yfinance):** 1m/3m → 5 calendar days (3m derived by
   resampling 1m — Yahoo's 1m hard limit is 8 days), 2m → 55 days, 5m/15m/30m → 60 days,
   1h/4h → 730 days (4h derived by resampling 1h with session-aligned bins), 1D/1M → full
@@ -204,10 +215,21 @@ to the exact script/flags that generated it.
 
 - **Survivorship bias:** the universe is built from *current* S&P Composite 1500
   constituents, not a point-in-time, delisting-inclusive historical universe.
+- **Point-in-time (PIT) safety of the production pair source — the current headline
+  disclosure.** The confirmed-pair set `backtest.py`/`report.py` actually trade is still sourced
+  from the standard full-history screen, which is NOT point-in-time-safe (a real deployment at
+  any past date would not have discovered or traded that same pair set — a direct PIT re-screen
+  found zero pair overlap with the standing set and negative OOS Sharpe in every fold, see
+  `PAPER.md` §7.3.1). A genuinely PIT-safe episodic alternative exists and finds far more real
+  structure (647 pairs vs. 3), but is not yet wired into production — see "Current Results" above.
+  Every research comparison arm built in Session 30 was also found to inherit this same bias
+  (sourcing pairs from the same non-PIT screen), disclosed in `docs/FINDINGS.md`.
 - **Kelly-sizing lookahead** and **in-sample stop comparison:** flagged explicitly in
   `bias_audit.json`, not corrected away.
 - **Small-n filtering** at short timeframes (1m/3m) where limited history constrains
-  statistical power.
+  statistical power — now compounded by `KVUE/KMB@3m`'s cached history being only ~7 weeks deep
+  (Yahoo's 1m fetch has a hard 8-day limit; 3m is derived by resampling, so more history can only
+  accumulate over real calendar time, not be fetched around).
 - **No unified re-audit yet** combining a survivorship-bias-free universe, a properly
   deflated Sharpe ratio (correcting for the number of backtest variants actually run),
   and structural-break-robust cointegration testing simultaneously — an open item, see
@@ -218,7 +240,8 @@ to the exact script/flags that generated it.
 ## File Map
 
 **Production pipeline (root):**
-- `data.py` — yfinance-primary fetch pipeline
+- `data.py` — yfinance fetch pipeline (intraday + international; primary for those, fallback for US daily-and-coarser)
+- `data_wrds.py` — WRDS/CRSP bulk fetch, primary source for daily-and-coarser US equity/ETF data (manual, separate)
 - `data_ibkr.py` / `ibkr_supplement_reader.py` — supplemental IBKR deep-history fetch
   (manual, separate) and its parquet-only reader
 - `analysis.py` — full co-movement/cointegration analysis pipeline
@@ -263,6 +286,19 @@ rolling-stability diagnostic, with an out-of-sample overfitting guard), and
 `cross_session_leadlag.py` (overnight-gap and cross-timezone lead-lag, distinct from the
 already-tested and rejected same-session case).
 
+**PIT-safe episodic confirmation family** (Sessions 30-31, the project's current main line of
+work — see "Overview"/"Current Results" above): `wrds_deep_history_episodic_scan.py` (WRDS
+daily-and-coarser, decades-deep rolling-window EG+joint-BH-FDR confirmation, causal
+`episodic_bhfdr_confirm_asof` variant), `intraday_episodic_scan.py` (same methodology extended
+to 1h/4h, in progress as of this writing), `intraday_episodic_window_sensitivity.py` (empirical
+test of window/step sizing — see `docs/FINDINGS.md` #22 — rather than a guessed constant),
+`pit_pair_discovery.py` (drop-in PIT-safe replacement for `ml._discover_confirmed_pairs()`),
+`episodic_pairs_adapter.py` (builds `backtest.py --pairs-override`-compatible rows from the
+episodic-confirmed set, respecting the same train-only-scalar PIT discipline as `pit_wfa.py`),
+`structural_break_onset_detection.py` (per-pair coupling/decoupling onset dates via
+Quandt-Andrews/Chow-test break detection, the mechanism behind "recently coupled vs. always
+cointegrated").
+
 **`debug/`** — ad-hoc scratch utilities plus `_verify_*.py` synthetic proofs cited
 throughout `Development.md`.
 
@@ -296,6 +332,9 @@ exist.
 
 ## Dependencies
 
-See `requirements.txt` for exact pinned versions. Core stack: `yfinance`, `ib_insync`
-(supplemental only), `pandas`/`numpy`, `statsmodels` (EG/Johansen/KPSS), `scikit-learn`,
-`hmmlearn`, `scipy`, `pyarrow==24.0.0`, `arch` (GARCH), `xgboost`.
+See `requirements.txt` for exact pinned versions. Core stack: `yfinance`, `wrds` (primary
+source for daily-and-coarser US equity/ETF data, Session 29+ — was missing from
+`requirements.txt` entirely until 2026-08-08 despite being an active import in
+`data_wrds.py`, found and fixed while updating this file), `ib_insync` (supplemental only),
+`pandas`/`numpy`, `statsmodels` (EG/Johansen/KPSS), `scikit-learn`, `hmmlearn`, `scipy`,
+`pyarrow==24.0.0`, `arch` (GARCH), `xgboost`.

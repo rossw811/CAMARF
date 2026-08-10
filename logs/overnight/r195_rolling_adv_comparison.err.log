@@ -1,0 +1,4 @@
+10:52:05 INFO  === rolling_adv_comparison.py: flat (whole-history) ADV vs. rolling, point-in-time ADV -- do they give the same eligibility verdict? ===
+10:55:12 INFO  Loaded 5820 symbols with close+volume from output/cache/wrds/
+10:55:12 INFO  Threshold: $25M ADV, episodic window=2520 bars (~10yr), step=252 bars, rolling window=252 bars (~1yr)
+10:55:45 INFO  === 54686 (symbol, window) combinations checked across 4115 symbols ===

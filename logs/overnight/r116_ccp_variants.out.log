@@ -1,0 +1,4 @@
+OK  shrinkage alpha=1.0 matches pure predictability weights
+OK  shrinkage alpha=0.0 matches pure OLS weights
+OK  sparse selection drops the irrelevant leg in-sample (w3=0.0000) and generalizes comparably out-of-sample (sparse_oos=0.8916 ~= full_oos=0.8877)
+OK  moving-band solution respects the band constraint (max deviation 1.9980 <= 1.9980)

@@ -204,6 +204,12 @@ def main():
     parser.add_argument("--limit-network", type=int, default=None,
                          help="Cap the number of unique symbols cross-validated against yfinance split history "
                               "(local jump-detection scan itself is never capped). Omit for no cap.")
+    parser.add_argument("--pit-safe", action="store_true",
+                         help="Cross-check unexplained-contamination symbols against research/"
+                              "pit_pair_discovery.py's PIT-safe episodic screen instead of the "
+                              "production confirmed_pairs_manifest.json (task #5). The universe-wide "
+                              "jump-detection scan itself is unaffected either way -- this only "
+                              "changes which symbol set the final cross-check highlights against.")
     args = parser.parse_args()
 
     files = list_price_cache_files()
@@ -309,25 +315,33 @@ def main():
             print(f"  {r['symbol']:>10s} {r['tf']:>6s}  {r['date']}  "
                   f"{'+' if signed >= 0 else ''}{signed:.3%} ({1+signed:.3f}x) pos_frac={r['position_frac']:.3f}")
 
-    # Cross-check against confirmed pairs manifest.
+    # Cross-check against confirmed pairs (production manifest, or PIT-safe episodic set).
     try:
-        import json
-        with open(MANIFEST_PATH) as f:
-            manifest = json.load(f)
-        # Tier 6 fix (Grand Sweep 2026-07-20): the manifest's actual schema
-        # (confirmed by reading output/results/confirmed_pairs_manifest.json
-        # directly) is {symbol: {"tfs": [...], "added": ...}} -- each
-        # TOP-LEVEL KEY IS ALREADY AN INDIVIDUAL SYMBOL, not a "SYMBOLA_
-        # SYMBOLB" compound pair-key. The prior "_"-split logic was
-        # currently inert (no real symbol here contains "_", so the else
-        # branch always fired and happened to add the correct bare key
-        # anyway) but reflected a wrong mental model of the schema -- e.g.
-        # it would have silently mis-parsed a symbol like "BRK_B" had one
-        # ever appeared. Manifest keys are used directly now, no split.
-        manifest_symbols = set(manifest.keys())
+        if args.pit_safe:
+            sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "research"))
+            from pit_pair_discovery import discover_pit_confirmed_pairs
+            pit_pairs = discover_pit_confirmed_pairs()
+            manifest_symbols = set(s for a, b, _tf in pit_pairs for s in (a, b))
+            source_desc = f"PIT-safe episodic screen ({len(pit_pairs)} (pair,tf) combinations"
+        else:
+            import json
+            with open(MANIFEST_PATH) as f:
+                manifest = json.load(f)
+            # Tier 6 fix (Grand Sweep 2026-07-20): the manifest's actual schema
+            # (confirmed by reading output/results/confirmed_pairs_manifest.json
+            # directly) is {symbol: {"tfs": [...], "added": ...}} -- each
+            # TOP-LEVEL KEY IS ALREADY AN INDIVIDUAL SYMBOL, not a "SYMBOLA_
+            # SYMBOLB" compound pair-key. The prior "_"-split logic was
+            # currently inert (no real symbol here contains "_", so the else
+            # branch always fired and happened to add the correct bare key
+            # anyway) but reflected a wrong mental model of the schema -- e.g.
+            # it would have silently mis-parsed a symbol like "BRK_B" had one
+            # ever appeared. Manifest keys are used directly now, no split.
+            manifest_symbols = set(manifest.keys())
+            source_desc = f"production manifest ({len(manifest)} pairs"
         flagged_symbols_unexplained = set(unexplained["symbol"]) if not unexplained.empty else set()
         overlap = manifest_symbols & flagged_symbols_unexplained
-        print(f"\nConfirmed-pairs manifest cross-check ({len(manifest)} pairs, "
+        print(f"\nConfirmed-pairs cross-check, {source_desc}, "
               f"{len(manifest_symbols)} unique constituent symbols):")
         if overlap:
             print(f"  *** {len(overlap)} confirmed-pair symbol(s) have unexplained contamination: "

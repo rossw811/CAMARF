@@ -1,0 +1,14 @@
+12:44:59 INFO  === pit_wfa.py: Point-In-Time Portfolio-Wide Walk-Forward Analysis (1h) ===
+2026-08-04 12:44:59  INFO      === pit_wfa.py: Point-In-Time Portfolio-Wide Walk-Forward Analysis (1h) ===
+2026-08-04 12:44:59  INFO      Unlike wfa.py's semi-WFA, pair SELECTION itself is re-derived per fold using only train-window data ΓÇö see module docstring for exact scope.
+12:44:59 INFO  Unlike wfa.py's semi-WFA, pair SELECTION itself is re-derived per fold using only train-window data ΓÇö see module docstring for exact scope.
+12:45:13 INFO  Universe: 1576 symbols with cached 1h data
+2026-08-04 12:45:13  INFO      Universe: 1576 symbols with cached 1h data
+12:45:13 INFO  Analysis window: [2023-07-13, 2026-07-31]
+2026-08-04 12:45:13  INFO      Analysis window: [2023-07-13, 2026-07-31]
+12:45:13 INFO  [expanding/fold1_exp] screening train window [2023-07-13, 2024-02-21] (point-in-time, no test-period data used)...
+2026-08-04 12:45:13  INFO      [expanding/fold1_exp] screening train window [2023-07-13, 2024-02-21] (point-in-time, no test-period data used)...
+2026-08-04 12:45:37  INFO        [1h] Computing 9├ù9 correlation matrices (Pearson + Spearman + rolling avg)...
+2026-08-04 12:45:37  INFO        [1h] Pearson 0.1s | Spearman 0.0s | RollingAvg 0.0s
+2026-08-04 12:45:37  INFO        [1h] Candidate pairs: 1 (0 cross-asset)  threshold |╧ü| ΓëÑ 0.40  [gold=1 silver=0 bronze=0]
+2026-08-04 12:45:37  INFO        [1h] Running EG on 1 pairs, BOTH regression directions (workers=6, max_lag=10)...

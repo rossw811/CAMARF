@@ -1,0 +1,4 @@
+KVUE/KMB@3m: gamma=-0.1008 (p80) alpha_in=-0.0594 alpha_out=-0.1982 outside_faster=True boot_p=0.446
+PNC/ZION@4h: gamma=1.6582 (p21) alpha_in=-0.0111 alpha_out=-0.0024 outside_faster=False boot_p=0.836
+Wrote output/research/threshold_cointegration.parquet: 2 pairs tested, 2 valid, 0 significant threshold effects at p<0.05
+

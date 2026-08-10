@@ -1,0 +1,4 @@
+01:06:34 INFO  Fetching S&P 500 historical changes from Wikipedia...
+01:06:34 INFO  Found 3 tables on the page
+01:06:34 INFO  Using changes table with 406 rows, 6 cols, score=4
+01:06:34 INFO  Columns: [('Effective Date', 'Effective Date'), ('Added', 'Ticker'), ('Added', 'Security'), ('Removed', 'Ticker'), ('Removed', 'Security'), ('Reason', 'Reason')]

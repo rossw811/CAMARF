@@ -1,36 +1,30 @@
 === CAMARF report.py ===
-date:        2026-07-12 00:42
+date:        2026-08-04 01:06
 runtime_min: 0.3
 
-Loaded: 26 pairs, 449 OOS trades, 2168 IS trades
+Loaded: 3 pairs, 2 OOS trades, 10 IS trades
   [fig] tier -> figures/tier_distribution.png
   [fig] equity -> figures/equity_curve.png
   [fig] evt -> figures/evt_tail_risk.png
   [fig] slippage -> figures/slippage_sensitivity.png
   [fig] dcc -> figures/dcc_rolling.png
-  [fig] mc -> figures/mc_distribution.png
-  [fig] mfe -> figures/mfe_mae.png
-  [fig] hedge -> figures/hedge_estimators.png
   [fig] coint_frac_hist -> figures/coint_fraction_hist.png
   [fig] half_life_tier -> figures/half_life_by_tier.png
   [fig] hurst_scatter -> figures/hurst_scatter.png
   [fig] tf_dist -> figures/timeframe_distribution.png
-  [fig] half_life_trend -> figures/half_life_trend.png
   [fig] pair_sharpe_oos -> figures/per_pair_sharpe_oos.png
   [fig] exit_reasons -> figures/exit_reasons.png
   [fig] hold_duration -> figures/hold_duration.png
-  [fig] entry_z_pnl -> figures/entry_z_vs_pnl.png
   [fig] pnl_by_pair -> figures/pnl_by_pair.png
   [fig] variant_cmp -> figures/variant_comparison.png
   [fig] win_rate_cmp -> figures/win_rate_is_vs_oos.png
   [fig] all_hedge_est -> figures/all_hedge_estimators.png
-  [fig] evt_xi_scatter -> figures/evt_xi_scatter.png
   [fig] coint_vs_sharpe -> figures/coint_vs_oos_sharpe.png
   [fig] perm_dist -> figures/perm_distribution.png
   [fig] mc_quality -> figures/mc_quality.png
   [fig] dcc_heatmap -> figures/dcc_heatmap.png
-Figures generated: 26/26
-main.tex written: 27,673 chars
+Figures generated: 20/26
+main.tex written: 23,814 chars
 references.bib written
 compile.bat written
 

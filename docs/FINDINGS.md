@@ -521,6 +521,41 @@ Full write-up: Development.md, "Task #49" (2026-07-14).
 
 ---
 
+## Disclosure Added Retroactively to Findings #1–12: All Predate the WRDS-Primary Universe
+Transition and Cite a Confirmed-Pair Set (20-26 Pairs) That No Longer Exists [2026-08-09,
+surfaced during a systematic re-verification pass]
+
+Re-verifying every finding in this document (re-running each cited `debug/_verify_*.py` synthetic
+test — all 14 checked at this point pass cleanly, no methodology bugs found at that level) surfaced
+a gap of a different kind: Findings #1–12 (dated 2026-07-11 through 2026-07-14) all reference and
+quote specific numbers from CAMARF's **pre-WRDS confirmed-pair set** (20, 21, 22, 24, or 26 pairs,
+depending on the exact finding and date) — e.g. Finding #1's HRP/Kalman/ERC/eigenvalue/Meucci
+comparisons on "the 22-pair daily P&L panel," Finding #10's stop-loss sweep "across all 24 confirmed
+pairs," Finding #12's PDR/Calmar table on "2,168 real trades." **None of these findings carry a note
+that this universe was real and current AT THE TIME, but is not the current production universe** —
+Session 29-30 (2026-08-01 through 08-04) switched WRDS to primary for daily-and-coarser US
+equity/ETF data, which collapsed the confirmed-pair set to **3 pairs** (`KVUE/KMB@3m`,
+`PNC/ZION@4h`, `IQV/Q@1D`), a real, disclosed, methodology-driven change (not a data-quality
+regression — see `PAPER.md` §3/§5 and `README.md`'s "Current Results"), not something that has ever
+been silently reversed.
+
+**This is the same class of gap Findings #13-19's own retroactive disclosure (below) already
+covers for the Session 30 comparison arms — extended here to the earlier findings that predate even
+that disclosure.** None of these 12 findings are wrong for what they measured at the time (every
+cited number was real, verified against real data as it existed then, and every synthetic
+`debug/_verify_*.py` test behind them re-runs clean today). But a reader encountering "24 confirmed
+pairs" or "the 22-pair panel" in Findings #1-12 today, without this note, could reasonably assume
+that describes CAMARF's current production universe. **It does not.** Whether any of these
+comparison-arm results (HRP vs. risk-parity, the stop-loss sweep, PDR/Calmar sizing-method ranking,
+regime-conditional entry gate, etc.) still hold directionally on the current 3-pair universe is an
+open, real question — not yet re-tested, and likely to be data-starved at n=3 the same way Session
+30's own new comparison arms were found to be (see Finding #17's SVM null: "19 examples, need 30/
+class"). Re-running each of Findings #1-12 against the current universe is real follow-up work, not
+attempted here — flagged as a candidate addition to the master plan's Thread C (exhaustive
+parameter-sensitivity/re-verification work) rather than done piecemeal.
+
+---
+
 ## 13. Cycle Detection (Wavelet Dominant Period, Cross-Asset Phase Sync, Cross-Timeframe
 Consistency) — First Pass, Honest Null on the Only Real Pair Available [2026-08-02]
 
@@ -624,6 +659,25 @@ next question, not yet answered here.
 
 Files: `research/levy_jump_diffusion.py` (new), `debug/_verify_levy_jump_diffusion.py` (new, 4/4
 pass), `output/research/levy_jump_diffusion.parquet` (new).
+
+**Update, broad-scale confirmation via `--pit-safe` [2026-08-04]:** the original result above was
+one confirmed pair. Wired `--pit-safe` (task #5) to source pairs from `research/
+pit_pair_discovery.py`'s episodic screen instead, and ran it against all 707 PIT-safe (pair, tf)
+combinations. After the `load_aligned_pair`/200-clean-returns filter, 640 symbol@TF rows survived
+across 206 unique symbols, ALL at 1D (intraday history for most PIT-safe pairs is too short/gappy
+to pass at this scale — a real, disclosed data-availability constraint, not a bug). **The 0%
+GapFlag-overlap finding holds exactly at this much broader scale: 640/640 rows show 0.0% overlap
+between statistically-detected jumps and non-NONE GapFlag bars.** Jump frequency: mean 0.51%,
+median 0.47% of bars (range 0.04%-1.64%) — lower than the original 2min/3min KVUE/KMB result
+(1.5-4%) because these are all 1D bars, not intraday (fewer, larger-magnitude jumps per bar at
+daily resolution is expected, not a contradiction). Continuous-vs-total vol reduction: mean -7.3%,
+median -5.8% (smaller than the original single-pair -26% to -42%, again consistent with 1D vs.
+intraday granularity, not a weaker effect). **This meaningfully strengthens the core claim** — "real
+jump risk invisible to GapFlag" is not a KVUE/KMB idiosyncrasy, it replicates across 206 symbols
+at production scale. Whether jump-adjusted vol changes `garch_stop`'s actual behavior remains the
+open next question this finding was already honest about.
+
+Files: `output/research/levy_jump_diffusion.parquet` (updated, 640 rows).
 
 ---
 
@@ -736,13 +790,518 @@ match `Config.ML.TRAIN_PCT`/`VAL_PCT` arithmetic, median imputation is confirmed
 slice only (matching the no-leakage fix `ml.py` already documents finding 2026-07-20), and the SGD-
 hinge fit mechanics recover a trivially separable synthetic 3-class problem at 100% accuracy.
 
-**Real-data run did not produce a comparison** — not a failure of this module, a timing collision
-with the WRDS-comparison `analysis.py` re-run happening in the same session: that run's own startup
-clears stale `output/results/` directories before regenerating them (`analysis.py`'s documented
-"Clearing stale results: script changed" behavior), so `ml.py::build()` found 0 confirmed pairs at
-the moment this was run — an honest, correctly-reported "insufficient data" (per `Config.ML.
-MIN_CLASS_SAMPLES`'s own design intent), not a bug. Re-run once the `analysis.py` rerun completes
-and fresh `pairs.parquet` files exist.
+**Real-data run, first attempt, did not produce a comparison** — not a failure of this module, a
+timing collision with the WRDS-comparison `analysis.py` re-run happening in the same session: that
+run's own startup clears stale `output/results/` directories before regenerating them
+(`analysis.py`'s documented "Clearing stale results: script changed" behavior), so `ml.py::build()`
+found 0 confirmed pairs at the moment this was run.
+
+**Re-run after `analysis.py` completed (2026-08-03, real WRDS-primary universe, 3 confirmed pairs)
+— still insufficient data, but now for a genuine reason, not a collision.** `ml.py::build()` found 19
+total labeled entry-event examples (10 `converged` / 9 `not_converged`) sourced from 1 of the 3
+confirmed pairs' persisted spread series (`KVUE/KMB`; the two new pairs, `PNC/ZION` and `IQV/Q`,
+produced no labeled examples yet — their confirming timeframes are 4h/1D, so entry events accumulate
+slowly). `Config.ML.MIN_CLASS_SAMPLES` requires >=30 examples per class; smallest class here is 9.
+Reported honestly as the expected result rather than forced — see `Config.ML.MIN_CLASS_SAMPLES`'s
+own design intent. No SVM-vs-XGBoost comparison is possible until more entry-event history
+accumulates across the 3 confirmed pairs, or the confirmed-pair set grows on intraday timeframes.
 
 Files: `research/svm_gradient_descent_classifier.py` (new), `debug/_verify_svm_gradient_descent_
-classifier.py` (new, 3/3 pass). No `output/research/*.parquet` yet — real comparison still pending.
+classifier.py` (new, 3/3 pass). No `output/research/*.parquet` — by design, there is nothing to
+compare yet; re-run periodically as pair history accumulates.
+
+## 18. Inverse-Polarity ("Polar Opposite" Equilibrium) Comparison Arm — Built and Verified, Honest
+Null on the Current Confirmed-Pair Set [2026-08-03]
+
+Ross's framing: instead of screening for pairs that move together, look for pairs whose *bounded
+state* sits at opposite extremes of its own historical range (one near its rolling max exactly when
+the other is near its rolling min — literal "polar opposites"), and trade a breakdown of that
+expected opposite-extremes relationship as a mean-reversion/arbitrage signal.
+
+**Key design constraint, established before building anything:** raw negative return correlation
+alone does not imply a real equilibrium exists. Two assets can have return correlation near -1 while
+their price levels drift apart without bound forever (independent regimes that happen to
+anti-correlate over the sample). `research/inverse_polarity.py` therefore runs a two-stage screen —
+(1) the existing Engle-Granger cointegration test (`statsmodels.tsa.stattools.coint`, already used
+for standard pair confirmation; its internal OLS step already fits whatever hedge-ratio sign
+minimizes residual variance, so a genuine negative-hedge cointegrating relationship is detectable
+with the *existing* test, unmodified — nothing new needed there) applied to strongly
+anti-correlated (`rho <= -0.40` default) candidates, and (2) three bounded [-1,1] per-asset
+"polarity" metrics (`zscore_tanh`, `percentile_rank`, and `eg_spread_zscore` — all three built for
+comparison per Ross's request, not just one) whose rolling anti-correlation with each other is the
+literal "opposite extremes" signal.
+
+**Verified first** (`debug/_verify_inverse_polarity.py`, 8/8 pass): all three polarity metrics
+correctly bounded to [-1,1] and recover known extremes; `polarity_anti_correlation` correctly reads
+near -1 for a constructed true-opposite pair and near 0 for an independent pair; the cointegration
+guard correctly ACCEPTS a genuine synthetic negative-hedge stationary spread (p=4e-8, hedge=-1.48)
+and correctly REJECTS a synthetic spurious-correlation pair with no real equilibrium (Granger-Newbold
+1974 style: correlated innovations, independent random walks — rho=-0.587, coint p=0.234, correctly
+fails to reject the unit-root null); causality confirmed (no future leakage) for all metrics.
+
+**A genuinely useful near-miss during verification, worth recording**: an earlier draft of the
+"reject spurious correlation" test used two series with opposite constant DRIFT, expecting that to
+produce negative return correlation with no cointegration. It didn't — rho came back ~0.03, not
+negative at all, because Pearson correlation is computed on DEMEANED returns, and a constant drift is
+entirely removed by demeaning. This is a real, useful methodological point for the module's own
+premise: pure trend-divergence (the "drifts apart forever" failure mode) does not even register as
+return anti-correlation in the first place — the raw-correlation stage already filters out that
+specific pathology before cointegration is ever tested. The actual spurious-correlation risk this
+module has to guard against is genuinely SYNCHRONIZED opposite-direction moves without a shared
+error-correction term (correlated innovations, independent accumulation) — which the rebuilt test
+now exercises correctly.
+
+**Real-data run: honest null.** Screened against the 3 currently-confirmed pairs (`analysis.py`'s
+2026-08-03 corrected re-run) — all three are POSITIVELY correlated (`IQV/Q` @1D rho=0.19, `KVUE/KMB`
+@3m rho=0.43, `PNC/ZION` @4h rho=0.81), none anti-correlated. Unsurprising: the existing EG screen
+tends to surface same-sector pairs (both banks, both consumer staples), which move together, not
+oppositely — there is no reason to expect the *already-confirmed* set to contain "polar opposite"
+candidates. Finding one requires scanning the full universe correlation matrix (all ~1660 assets,
+not just the 3 already-confirmed pairs) — a materially heavier job than what ran here, deliberately
+not launched without Ross's go-ahead given the compute cost.
+
+**Real integration bug found and fixed while running on real data** (not caught by synthetic
+verification, since synthetic pairs are constructed with matching lengths by hand): `IQV/Q`'s aligned
+frames came back as `(3297, 7)` vs `(161, 7)` — `aligned_pair_loader.align_pair_dataframes` does not
+guarantee identical df_a/df_b length (Q's cache only starts 2025-10-27, a recent listing). This is a
+previously-documented gotcha (`research/bounded_lookback_primary_screen.py` hit the same class of bug
+live on AME/MAR@1h) — fixed with the same established pattern, `df_a.index.intersection(df_b.index)`
+before building arrays.
+
+**Full-universe scan, run 2026-08-03 (`--full-universe` mode, added same day)**: 1730 symbols with
+cached 1D data, 1705 aligned, 1697 survive `min_overlap=252`, full 1697×1697 correlation matrix
+(1,439,056 pairs) computed via `analysis.py`'s own `DataAligner.align_universe` /
+`UniverseFilter.build_returns_matrix` / `UniverseFilter.correlation_matrix` — reused directly, not
+reimplemented. Result: only **2 pairs** anywhere in the full universe clear `rho <= -0.40`
+(`ADT/BIVV` rho=-0.440, `BIVV/SANM` rho=-0.475) — confirming how rare strong anti-correlation actually
+is across 1730 real assets, not an artifact of a small candidate set. **Neither is actually
+cointegrated**: `coint_pvalue` = 0.8710 and 0.4054, both far above any reasonable significance bar —
+this is precisely the "correlated but no real equilibrium" failure mode the module's two-stage screen
+exists to catch, and it caught it correctly on real data.
+
+**A real reporting bug found and fixed at this scale, not caught by synthetic verification (a pure
+labeling bug, not a computational one)**: the original real-data print labeled both candidates
+`[NEGATIVE-HEDGE COINTEGRATED]` based only on the fitted hedge ratio's SIGN
+(`result["is_negative_hedge"]`), never checking `coint_pvalue` — so a correlated-but-not-cointegrated
+pair was being reported as if it were a confirmed finding. Fixed: the label now requires both a
+negative hedge AND `coint_pvalue < 0.05`; re-verified against the two real observed values (correctly
+now labeled "correlated but NOT cointegrated") plus a synthetic p=0.001 control case (correctly still
+labeled cointegated). **Bottom line, honestly stated**: across the entire real universe this project
+tracks, zero genuine "polar opposite" equilibrium pairs currently exist. A real, informative null —
+not a placeholder for "we haven't looked yet."
+
+Files: `research/inverse_polarity.py` (new), `debug/_verify_inverse_polarity.py` (new, 8/8 pass),
+`output/research/inverse_polarity_screen.parquet` (3 rows, 0 candidates),
+`output/research/inverse_polarity_full_universe.parquet` (2 rows, 0 confirmed).
+
+## 19. Trig-Identity Convergence/Divergence Comparison Arm — A Design Error Caught by Verification,
+Then a Corrected Honest Null [2026-08-03]
+
+Ross's framing: map a bounded metric CAMARF already tracks onto trig identities to look for
+convergence/divergence, and/or produce a graphed (phase-portrait-style) relationship. Built as
+`research/trig_convergence.py`, standalone (not folded into `inverse_polarity.py`, per Ross's
+explicit choice), comparing two angle mappings (`arccos`, `arcsin`) applied to the bounded polarity
+scores from Finding #18.
+
+**Where this actually sits relative to existing machinery, stated plainly rather than oversold**:
+Pearson correlation is already `cos(θ)` between two demeaned return vectors — every correlation
+matrix `analysis.py` has ever produced already *is* a matrix of cosines. `cycle_detection.py`'s
+rolling PLV is already the trig-identity form of phase sync (`|mean(cos Δφ) + i·mean(sin Δφ)|`). This
+module does not add either of those. What's actually new: mapping the bounded `[-1,1]` polarity
+scores onto an angle (`arccos`/`arcsin`, both built and compared per Ross's request), then a
+sum-to-product decomposition of the polarity difference into a co-movement factor (half-sum) and a
+divergence factor (half-difference) — exact algebraic identities, verified to reconstruct the
+original polarity difference to floating-point precision (`debug/_verify_trig_convergence.py`, max
+error ~1e-16).
+
+**A real design error, caught by synthetic verification before touching real data — documented per
+CLAUDE.md rule 8 rather than silently fixed.** The first draft claimed a true polar-opposite pair
+(`p_B = -p_A` always) produces `θ_A - θ_B` stationary near `±π` under both mappings, and proposed
+trading *drift in that difference* as the break signal. The synthetic test failed immediately
+(`mean|θ_A-θ_B| = 1.159`, not `π`). Root cause, confirmed algebraically: `arccos(-x) = π - arccos(x)`
+and `arcsin(-x) = -arcsin(x)`, so for a perfect opposite pair `θ_A - θ_B = 2θ_A - π` (arccos) or
+`2θ_A` (arcsin) — **not constant**, it swings across the full range as the pair cycles. What actually
+is constant, exactly, regardless of cycle position: the **sum** `θ_A + θ_B = π` (arccos) or `= 0`
+(arcsin). Corrected design: the real polar-opposite invariant is the co-movement factor (built from
+the half-sum), and the break/health signal (`opposite_equilibrium_break_signal`) tracks *that term's*
+drift from its theoretical constant, not the divergence term's. Re-verified against the corrected
+hypothesis (`debug/_verify_trig_convergence.py`, 6/6 pass after the numerical-stability fix below): `θ_A+θ_B` exactly constant to `4e-16` for
+a true opposite pair across a full oscillating cycle (not just at the `±1` extremes); the original
+wrong hypothesis explicitly re-checked and confirmed false (`θ_A-θ_B` range `3.75`, not near zero);
+causality confirmed; the break signal correctly spikes at a constructed genuine equilibrium collapse
+and not before.
+
+**Real-data run, honest null, consistent with Finding #18**: run against the same 3 confirmed pairs,
+none of which are anti-correlated. Deviation from the polar-opposite invariant scales with how far
+from anti-correlated each pair actually is — `KVUE/KMB` (weakest correlation, ρ=0.43) shows the
+smallest deviation (0.33–0.52), `PNC/ZION` (strongest, ρ=0.81) the largest (1.43–1.64) — a sensible
+real-data consistency check, not formally part of the synthetic suite.
+
+**Ross asked whether the divergence between `arccos` and `arcsin` was statistically significant —
+investigated directly rather than run a formal significance test, since the algebra already answers
+it.** Proved computationally, not just asserted: `co_movement` is bit-identical between mappings
+(`arccos(p) = π/2 - arcsin(p)` is an identity; verified diff ~5e-16, machine precision), and
+`divergence` is an exact sign-flip (`divergence_arccos = -divergence_arcsin`, verified diff ~2e-16).
+The two mappings carry **zero independent information relative to each other** in this decomposition
+— `arcsin`'s output is a fully deterministic function of `arccos`'s. A formal significance test would
+have been testing whether floating-point noise is significant, not an economic question — a stronger
+and more useful answer than a p-value would have given.
+
+**A real bug did surface from asking the question, though — not a phantom.** The first real-data run
+showed `mean_break_signal_abs_z` genuinely differing between mappings on some pairs (`KVUE/KMB`:
+0.522 vs 0.476) despite the two `co_movement` series being mathematically identical. Traced to the
+rolling-std denominator in `opposite_equilibrium_break_signal`: in the exact regime this module cares
+about most — `co_movement` pinned near-constant, i.e. a genuine polar-opposite pair — the true
+variance is at or below float64 noise, so the ~5e-16 rounding difference between mappings tips the
+computed std to opposite sides of exactly zero, producing a different NaN pattern per mapping (12,343
+vs 13,536 finite bars on the same underlying series) and therefore a different aggregate mean. Fixed
+with a documented `_MIN_STD_FLOOR = 1e-6` clip (`debug/_verify_trig_convergence.py`, new check 5/6,
+confirms both mappings agree bar-for-bar in a synthetic pinned-regime case after the fix). Re-run
+against real data: every one of the 12 rows now matches **exactly** between `arccos` and `arcsin`,
+confirming the algebra held all along and the discrepancy was purely a numerical-stability bug in the
+signal computation, not a property of the underlying quantity.
+
+Same conclusion as Finding #18 follows: like the polarity screen, this needs the full-universe
+correlation matrix (not just the 3 already-confirmed, positively-correlated pairs) to find anything —
+not launched without Ross's go-ahead given the compute cost. The graphed-relationship half of Ross's
+original request (a phase-portrait / polar-plot visualization of `θ_A` vs `θ_B` over time) is not yet
+built — flagged here so it isn't silently dropped, not done in this entry.
+
+Files: `research/trig_convergence.py` (new), `debug/_verify_trig_convergence.py` (new, 6/6 pass),
+`output/research/trig_convergence.parquet` (12 rows: 3 pairs × 2 metrics × 2 mappings).
+
+## 20. Parameter Sensitivity for the Session 30 Comparison Arms — Batch 1 of a Multi-Session Effort
+[2026-08-03]
+
+Ross asked to extend `sensitivity.py`'s existing parameter-grid-vs-headline-metric pattern to the
+`research/*.py` comparison arms, confirmed as a **bespoke, per-script** effort (not a generic
+mechanical sweep) — real multi-session work. Survey: 120 research scripts total, 46 with real
+CLI-tunable numeric parameters, 74 fixed-logic diagnostics sensitivity doesn't apply to in the same
+way. **Batch 1** (`research/sensitivity_research.py`, new): the 6 sweepable Session 30 arms (5 of the
+7 built this session, plus `inverse_polarity`'s full-universe mode). `svm_gradient_descent_classifier`
+excluded — it has no CLI parameters at all, and is currently data-blocked (19/30 examples per
+Finding #17), not parameter-blocked, so a sweep would be meaningless right now. **The remaining 39
+parameterized scripts are explicit backlog, not silently dropped** — each needs the same
+headline-metric identification work this batch did, one script at a time.
+
+Each script run as a subprocess across its own small grid (5 values, baseline included), headline
+metric(s) extracted via regex from stdout (for scripts with clean scalar summaries) or read directly
+from the script's own output parquet (for `trig_convergence`, whose headline is a table, not a scalar
+print).
+
+**Results, one per arm:**
+
+- **`cycle_detection` (`--plv-window` ∈ [30,45,60,90,120])**: `mean_plv` stays in a tight, unremarkable
+  band (0.43–0.51) throughout — Finding #13's honest null holds. **A real methodological catch,
+  not previously visible**: `n_pairs_reported` drops from 3 to 2 once `--plv-window >= 60` — the
+  module's own minimum-bars gate scales as `3× plv_window`, so one (pair, TF) combination silently
+  falls out of the sample at larger windows, changing what's actually being averaged without any
+  error or warning. Worth disclosing in any future use of this module at non-default windows.
+- **`levy_jump_diffusion` (`--alpha` ∈ [0.001,0.005,0.01,0.05,0.10])**: `mean_gapflag_overlap_pct`
+  stays at **exactly 0.0** across the entire grid — Finding #14's headline claim (jumps and GapFlag
+  detect unrelated things) is robust to the significance threshold, not a default-alpha artifact.
+  `jump_frac` rises monotonically with looser alpha (2.43%→3.34%), the expected mechanical effect of
+  a looser bar, not a fragility.
+- **`rough_volatility` (`--rv-window` ∈ [15,20,30,45,60])**: a real, non-trivial finding — `H_rs`
+  crosses **above 0.5** (the not-rough side) once the window reaches ~45–60 (0.42→0.51), while
+  `H_dfa`/`H_wavelet` stay well below 0.5 throughout (0.16–0.43). Finding #15's "mixed signal,
+  estimators disagree" is not just present, it's **window-dependent** — the disagreement sharpens at
+  larger windows rather than staying constant. Worth investigating further before treating any single
+  window's roughness estimate as authoritative.
+- **`options_greeks_features` (`--window` ∈ [15,20,30,45,60])**: statistical significance
+  (`p=0.0`) holds at every window, but effect size decays substantially — `r` falls from 0.44 (windows
+  15–30) to 0.15 (window 60), roughly a 3× drop. Consistent with Finding #16's "likely a price-level
+  confound" read: a genuine structural relationship would be expected to hold its magnitude better
+  across window choices than a confound whose influence dilutes as the window lengthens.
+- **`inverse_polarity` full-universe (`--corr-threshold` ∈ [-0.30,-0.35,-0.40,-0.50,-0.60])**: the
+  strongest result of the batch. Even loosening the threshold to -0.30 (20 raw candidates, 10× more
+  than at the -0.40 baseline) finds **zero genuinely cointegrated pairs** — `n_genuinely_cointegrated
+  = 0` at every single threshold tested. Finding #18's null ("no polar-opposite equilibrium currently
+  exists in this universe") is not an artifact of one threshold choice — it holds across a wide,
+  reasonable range, which is real evidence *for* the null, not just an absence of evidence against it.
+- **`trig_convergence` (`--window` ∈ [30,45,60,90,120])**: stable throughout —
+  `mean_sum_deviation` 0.89–1.00, `mean_break_signal_z` 0.63–0.81, no dramatic swings. Finding #19's
+  honest null is not a single-window artifact.
+
+**Harness bug found and fixed while assembling this entry, worth recording**: `--only` mode saved by
+overwriting `research_scripts_sensitivity_batch1.parquet` from scratch each invocation, rather than
+merging — running the 6 arms as 6 separate `--only` calls (done here to manage memory pressure from
+concurrently-running background jobs, one arm at a time) silently discarded every earlier arm's rows,
+leaving only the last-run arm on disk. Fixed to merge by `comparison_arm` (replace just the
+re-run arm's rows, keep everything else) rather than blind overwrite. The full 30-row result below was
+reconstructed from the actual verified run output already produced before the bug was caught, not
+re-run from scratch (the full-universe sweep alone is too expensive to redo unnecessarily).
+
+Files: `research/sensitivity_research.py` (new), `output/sensitivity/research_scripts_sensitivity_
+batch1.parquet` (30 rows: 6 arms × 5 grid points each). No new `debug/_verify_*.py` — this batch runs
+already-verified modules across parameter grids, it doesn't introduce new math needing its own
+synthetic proof.
+
+## 21. Parameter Sensitivity, Batch 2 — Six More Research Scripts, Prioritized by Centrality to Core
+Methodology [2026-08-03]
+
+Continuation of Finding #20's multi-session effort. Picked 6 of the remaining 40 parameterized
+scripts for centrality to the project's core cointegration/lead-lag/robustness methodology — closest
+to touching `PAPER.md`-level claims. **34 scripts remain after this batch** — still explicit backlog,
+tracked in `Development.md`, not silently dropped.
+
+**Results:**
+
+- **`eg_permutation_check` (`--n-perm` ∈ [100,200,500,1000])**: `mean_null_frac_significant` drifts
+  from 0.045 → 0.062 as permutation count increases — moving slightly AWAY from the textbook ~0.05
+  expectation as the estimate gets less noisy, not converging toward it. A mild, real finding: the
+  baseline `n_perm=500` reading (0.056) may understate a small excess false-positive risk that only
+  becomes visible with more permutations. Not dramatic, but worth a note if this module's output is
+  ever promoted beyond a diagnostic.
+- **`tail_dependence` (`--asymmetry-threshold` ∈ [0.10,0.15,0.20,0.25])**: `gate_flagged=False` at
+  every threshold in the range — the "no material tail asymmetry" null is robust, not a fragile
+  boundary case sitting right at the default.
+- **`variance_ratio_test` (`--q-values` ∈ [{2,4,8}, {2,4,8,16}, {4,8,16,32}])**: the directional
+  finding (VR<1, mean-reversion) is **100% consistent** — `n_vr_below_1 == n_valid` in every single
+  grid tested. Significance count softens at the longest-horizon grid (2→1 significant at p<0.05),
+  worth noting given small n (5-6 valid tests) rather than treating as a contradiction. **Real bug
+  found and fixed running this sweep**: the harness's output `value` column mixed float (other arms'
+  numeric grids) and string (`"2 4 8"`, this arm's multi-value grid) types in the same column, which
+  pyarrow refuses to write (`ArrowInvalid: Could not convert '2 4 8'...`). Fixed by storing `value` as
+  string universally across all arms (parse back to float at read time for numeric-grid arms if
+  needed) — applied retroactively to the already-saved batch 1 rows too.
+- **`wavelet_hurst_comparison` (`--tf` ∈ [1h,4h,1D])**: stable, unremarkable divergence values
+  (0.018–0.089) across all three timeframes — the RS/DFA/wavelet estimator-disagreement pattern
+  replicates across TFs, not specific to the 1h default. A `--tf` sweep is this project's own
+  established robustness-check convention (does a finding hold across timeframes), applied here
+  rather than a generic parameter grid.
+- **`threshold_cointegration` (`--n-boot` ∈ [100,250,500,1000])**: perfectly stable —
+  `n_significant=0` at every single bootstrap-draw count. The baseline count wasn't noisy; the null
+  (no significant threshold effects among the 2 tested pairs) is robust.
+- **`regime_cluster_robustness_check` (`--n-boot` ∈ [50,100,200,400])**: `found_frac=0.0` at every
+  `n_boot` — the bootstrap never once found the target cluster, at any draw count. Ironic given the
+  script's own name, but a genuine, stable null, not a bug (0/n_boot consistently, not an
+  intermittent or noisy zero).
+
+Files: `research/sensitivity_research.py` (extended, not a new file — `BATCH2_REGISTRY` merged into
+the same `REGISTRY`), `output/sensitivity/research_scripts_sensitivity_batch1.parquet` (52 rows: 12
+arms total across both batches — filename kept as-is despite now covering 2 batches, to avoid
+doc/file mismatches across Findings #20/#21; the merge-by-`comparison_arm` logic in the harness
+already handles accumulating across batches correctly regardless of the filename).
+
+## 22. Intraday Episodic Window/Step Sizing — an Actual Test, not a Guessed Constant [2026-08-08]
+
+Directly answers Ross's request: *"we should change the 200 bars and run an actual test to see what
+value makes a valid relationship... that goes for any and all hardcoded values."* The "200 bars" is
+`structural_break_onset_detection.py`'s `MIN_SEGMENT_BARS=200`, already diagnosed as producing 9
+spurious "breaks" on `KVUE/KMB@3m` in a couple months (200 bars at 3m granularity is only a few
+days, not real regime-change timescale). Rather than pick a new number, this builds a new intraday
+episodic scanner's window/step choice from 4 candidate configs, each derived from an existing
+production convention, and evaluates them on real data with two metrics stated before running, not
+chosen post-hoc.
+
+**First, a real prerequisite finding**: is enough intraday history available to even ask this
+question at scale, or is it a `PNC/ZION`-only situation? Checked directly
+(`debug/_check_intraday_cache_coverage.py`, new): of 1,576 cached `*_1hr.parquet` symbols, **1,535
+(97%) have >= 2 years of history** (median ~1,103 days ≈ 3yr); `*_4hr.parquet` is essentially
+identical (1,573 symbols, 1,531 ≥ 2yr). **Universe-wide, not a special case.**
+
+**The 4 configs tested** (`research/intraday_episodic_window_sensitivity.py`, new, verified 9/9
+synthetic checks first — one real bug caught: `onset_anchored` was silently dropping every window
+anchored near the end of available data, fixed to clip-not-drop, mirroring `find_all_breaks`'s own
+pattern): `fixed_min_overlap_1x`/`_2x` (1x/2x `Config.STATS.MIN_OVERLAP_BY_TF[tf]`),
+`adaptive_halflife_8x` (per-pair, via `SpreadModel._adaptive_window`, the same half-life-relative
+convention already used in production z-score estimation), `onset_anchored` (window start at
+`structural_break_onset_detection.py`'s detected onset date).
+
+**Real result, on real PNC/ZION + KVUE/KMB + IQV/Q 1h data:**
+
+| config | n_confirmed | perturbation counts | CV (stability) | PNC/ZION windows | PNC/ZION contiguity |
+|---|---|---|---|---|---|
+| fixed_min_overlap_1x | 1 | [1,2,2] | 0.283 | 20 | 0.857 |
+| fixed_min_overlap_2x | 1 | [1,1,1] | **0.000** | 8 | **1.000** |
+| adaptive_halflife_8x | 1 | [1,1,1] | **0.000** | 20 | 0.857 |
+| onset_anchored | 2 | [2,1,2] | 0.283 | 5 | **1.000** |
+
+Two configs (`fixed_min_overlap_2x`, `adaptive_halflife_8x`) show perfect confirmed-count stability
+across window perturbations (CV=0.0); `adaptive_halflife_8x` gets there while testing 2.5x more
+windows for PNC/ZION at the same contiguity as `fixed_min_overlap_1x`. `onset_anchored` found one
+additional confirmed pair but is the least stable and has the fewest PNC/ZION windows to judge from.
+**No winner is declared here** — the new intraday episodic scanner (`research/intraday_episodic_
+scan.py`) defaults to `fixed_min_overlap_2x` (the empirically most stable, and the only kind of
+config the scanner's batched-pooling machinery can use as a single global window/step — `adaptive_
+halflife_8x`/`onset_anchored` are inherently per-pair, disclosed as a scope limit in that script's
+own docstring rather than force-fit), with `--window-config` exposed to try `fixed_min_overlap_1x`
+too. Which config should ultimately govern production is Ross's call, once the fuller comparison
+(episodic scan real output, not yet complete as of this writing) exists to judge against.
+
+Files: `research/intraday_episodic_window_sensitivity.py` (new), `debug/_verify_intraday_episodic_
+window_sensitivity.py` (new, 9/9 pass), `debug/_check_intraday_cache_coverage.py` (new),
+`output/research/intraday_episodic_window_sensitivity.parquet` (new, real run),
+`output/research/intraday_cache_coverage.parquet` (new, real run).
+
+## 23. Episodic Confirmation's Duration/Degree Knobs — Precision Rises With Strictness, Recall
+Collapses, No Overfitting Signal [2026-08-09]
+
+Directly answers Ross's request: *"run the test for at what length of time and degree of
+cointegration is it actually accurate and usable for us."* Distinct from Finding #22 (which tuned
+the intraday scanner's rolling-WINDOW width) — this tunes the episodic screen's own two
+confirmation knobs, **duration** (`min_windows_confirmed`) and **degree** (`alpha`), against real
+forward usability rather than in-sample statistical significance alone.
+
+**A real methodological correction made before trusting any result, worth recording as process, not
+just outcome**: the first version of this test scored grid cells on raw accuracy and got a
+suspiciously flat ~91-92% across every one of 12 cells. Checked directly rather than assumed fine:
+ground truth ("did the pair's cointegration actually hold up in a later, held-out period") is only
+**8.3% positive** (16,819/202,257 candidate pairs) — a trivial "always predict not-confirmed"
+baseline already scores ~91.7% by matching the majority class, which is almost exactly what was
+observed. Accuracy was the wrong metric entirely at this class balance. Replaced with **precision**
+(of the pairs a given duration/degree threshold would confirm, what fraction actually held up
+forward — the directly decision-relevant question for "should I trust this confirmation") and
+**recall**, reported honestly alongside so a cell can't look good purely by confirming almost
+nothing.
+
+**Real result** (`research/episodic_duration_degree_usability.py`, verified 12/12 synthetic checks
+first, real run against the existing WRDS/1D episodic scan's 202,257 candidate pairs — no new scan
+needed, this reused already-on-disk `wrds_deep_history_episodic_scan_tier{2,3}_windows.parquet`):
+
+| min_windows_confirmed | alpha | precision | recall | n_confirmed |
+|---|---|---|---|---|
+| 1 | 0.01 | 0.215 | 0.0027 | 209 |
+| 1 | 0.05 | 0.205 | 0.0082 | 673 |
+| 1 | 0.10 | 0.210 | 0.0174 | 1,394 |
+| 2 | 0.10 | 0.251 | 0.0064 | 431 |
+| 3 | 0.05 | 0.467 | 0.0004 | 15 |
+| **3** | **0.10** | **0.382** | **0.0015** | **68** |
+| 5 | 0.10 | 0.600 | 0.0004 | 10 |
+
+Precision rises meaningfully with stricter duration/degree requirements (0.21 at the loosest
+setting → up to 0.60 at the strictest), roughly **2.5x-7x the 8.3% unconditional base rate** — a
+real, usable signal, not noise. But recall collapses just as fast (1.7% down to 0.04%), and the
+strictest cells confirm too few pairs to trust their own precision estimate (`min_windows_
+confirmed=5, alpha=0.01` confirms **zero** pairs at all — precision is mathematically undefined
+there, not a real 0 or 1, and this project's own harness now refuses to silently treat an
+undefined precision as a winning cell, requiring >=20 confirmed pairs for eligibility).
+
+**Recommended cell, among those confirming enough pairs to trust the estimate**:
+`min_windows_confirmed=3, alpha=0.10` — precision 0.382. **Required overfitting guard** (same
+discipline as `coint_frac_window_grid.py`): pairs split into two disjoint halves, this cell selected
+on half A (precision 0.381), scored on untouched half B (precision **0.4375**) — held-out precision
+was actually *higher* than in-sample, the opposite direction overfitting would produce. No
+overfitting signal at this setting.
+
+**Honest scope note**: this result is scoped to the WRDS/1D episodic source only (real data,
+available now); it should be re-run once the intraday (1h/4h) episodic scan (Step 2 of the current
+master plan) completes, since duration/degree tradeoffs could plausibly differ at intraday
+granularity where "a window" spans much less calendar time. Whether `min_windows_confirmed=3,
+alpha=0.10` (or any specific cell) should become a new production default, versus staying a
+research-only diagnostic, is Ross's decision from these numbers — not decided here, consistent with
+this project's comparison-arm-before-promotion discipline.
+
+Files: `research/episodic_duration_degree_usability.py` (new), `debug/_verify_episodic_duration_
+degree_usability.py` (new, 12/12 pass), `output/research/episodic_duration_degree_usability.parquet`
+(new, real run).
+
+## Disclosure Added Retroactively to Findings #13–#19: All 7 Session 30 Comparison Arms Inherit the
+Same Non-PIT Pair-Selection Bias Already Quantified in §7.3.1 [2026-08-03, flagged by Ross]
+
+Ross pointed out mid-session that the project's pair universe is larger than the "standing" confirmed
+set once episodic relationships are accounted for, and that **every research script must be
+point-in-time (PIT) safe**. Checking this directly against the actual code (not assumed) confirmed a
+real, previously-undisclosed gap: **all 7 comparison arms built this session
+(`cycle_detection.py`, `levy_jump_diffusion.py`, `rough_volatility.py`, `options_greeks_features.py`,
+`svm_gradient_descent_classifier.py`, `inverse_polarity.py`, `trig_convergence.py`) source their pairs
+from the SAME non-PIT full-history screen** — `cycle_detection.py`/`inverse_polarity.py`/
+`trig_convergence.py` call `ml._discover_confirmed_pairs()` directly (reads `output/results/*/
+pairs.parquet`, produced by `analysis.py`'s full-history EG screen); `levy_jump_diffusion.py`/
+`rough_volatility.py`/`options_greeks_features.py`/`svm_gradient_descent_classifier.py` hardcode
+`KVUE/KMB`, itself a member of that same full-history-confirmed set. **None of them use the episodic/
+PIT-confirmed pair set** from `research/wrds_deep_history_episodic_scan.py::
+episodic_bhfdr_confirm_asof` (this session's own BUG-D106 fix, same day) or `pit_wfa.py`'s actual
+point-in-time re-screened pairs.
+
+**This is not a new bias — it is the SAME already-disclosed, already-quantified limitation from
+§7.3.1** ("the confirmed-pair set is selected via a full-history screen that borrows from the future
+relative to any real deployment date... a genuine point-in-time re-screen found zero pair overlap with
+the known set and negative OOS Sharpe in every fold"). What was missing is that Findings #13–#19 never
+stated this explicitly for the NEW modules — a reader could reasonably assume a freshly-built 2026-08-03
+comparison arm had been built PIT-aware from the start, when in fact it inherits exactly the same
+selection bias every other confirmed-pair-based analysis in this project already carries and discloses.
+Stated here so the record is complete; each of §13–#19's individual entries above should be read with
+this caveat, not as newly PIT-clean results.
+
+**Priority for next session, not attempted here** (this is real engineering work, not a quick fix —
+consistent with `pit_wfa.py`'s own multi-hour runtime and the deliberate, careful pace BUG-D99–D106
+were each built at): build a PIT-aware pair-discovery adapter using `episodic_bhfdr_confirm_asof`
+that these and future research scripts can call instead of (or alongside) `ml._discover_confirmed_pairs()`,
+decide the `as_of_date` semantics for a "current" research run, systematically audit every research
+script (not just these 7) for which pair-source it uses, and re-run the affected comparisons once
+wired. Full priority item logged in `Development.md`.
+
+---
+
+## 24. Ridge-Regularized Hedge Ratio — Clean Negative on Full-Sample Estimates, With a Real Scope
+Mismatch to the Motivating Hypothesis [2026-08-10]
+
+Ross's question: does ridge (L2-regularized) regression improve hedge-ratio estimation over the
+existing production methods (`analysis.py::HedgeRatioEstimator` — OLS, TLS, Kalman)? Motivated by
+this session's intraday work — shorter, noisier rolling windows are exactly the regime where an
+unregularized OLS slope is most exposed to overfitting a handful of noisy observations, and ridge's
+whole point is trading a little bias for less variance there.
+
+**Method** (`research/ridge_hedge_ratio_comparison.py`, new): `ridge_rolling` is a structural copy
+of `HedgeRatioEstimator.ols_rolling` (byte-for-byte identical causal windowing convention) with one
+change — the OLS normal equation's `var(B)` denominator becomes `var(B)*(1+k)`, the closed-form
+univariate ridge shrinkage. `k` is expressed as a *fraction* of that window's own `var(B)`, not a
+fixed absolute lambda, so it's comparable across pairs with wildly different price-level variances
+— a real design choice, not an arbitrary convenience. Grid: `k ∈ {0, 0.01, 0.05, 0.10, 0.25, 0.50}`
+(`k=0` is exactly plain OLS, verified bit-identical to `ols_rolling`, not just claimed). Evaluated
+via ADF p-value on the resulting spread — a lower p-value at a given `k` than at `k=0` counts as
+"improved."
+
+**A real bug caught against real data, not synthetic data** (the exact reason this project runs
+synthetic checks first but doesn't stop there): `research/aligned_pair_loader.py::load_aligned_pair`
+uses `DataAligner.align_universe`'s default (`drop_data_gap_rows=False`, correct for the main
+pipeline's cross-*symbol* dense-matrix construction) which does **not** guarantee the two returned
+per-pair series come back the same length. `IQV/Q@1D` crashed the first real run with a length
+mismatch (252 vs. 161 rows — `IQV` has a shorter cached history, already noted elsewhere in this
+project as "recently listed"). `research/coint_frac_window_grid.py`'s own `build_pair_data` already
+has this exact requirement and handles it with an explicit inner join before treating the two series
+as parallel arrays — mirrored here (the same fix) rather than assuming equal length.
+
+**A real, useful catch inside the synthetic verification itself, worth recording as process.** The
+first version of check 4 (does ridge help on a short, noisy window — the actual motivating use case)
+used WIN RATE: does ridge land closer to the true beta than OLS more than half the time across many
+trials? It failed, 8/30. Not a broken test — a real statistical fact: ridge trades variance for
+*bias* (shrinks toward 0), and with a true beta of 1.2 (not near 0), that bias cost is real. Win rate
+is the wrong criterion for a bias-variance tradeoff; the textbook-correct one is **mean squared
+error** averaged across trials, which ridge (k=0.1) did lower — 0.1327 vs. OLS's 0.1472 over 200
+trials, ~10% reduction — even while still "losing" per-trial most of the time. Fixed the check to
+use MSE; 7/7 pass.
+
+**Real result, all 3 current confirmed pairs, full-sample point estimate**: ridge makes the spread
+*monotonically less stationary* (higher ADF p-value) at **every single tested `k`, on all 3 pairs**
+— e.g. `PNC/ZION@4h`: ADF p rises from 2.1e-7 (k=0, already extremely stationary) to 0.55 (k=0.50,
+essentially non-stationary); `IQV/Q@1D`: 0.138 → 0.254; `KVUE/KMB@3m`: 0.00027 → 0.192. Zero
+improvements across the full 3-pair × 6-k grid (0/3 at every k).
+
+**Why this is a clean negative and not a contradiction of the synthetic MSE result above — a real
+scope mismatch worth stating plainly, not glossed over.** This real-data test used
+`ridge_rolling`'s **full-sample** point estimate — thousands of bars even for the shortest pair
+(`KVUE/KMB@3m` alone has ~4,160 cached 3m bars). The synthetic check that found a real ridge benefit
+specifically used a **short** window (60 bars) with **large** relative noise — exactly the regime
+ridge's bias-variance tradeoff is supposed to help in. These 3 pairs were selected *because* they're
+already strongly, confidently cointegrated by a strict full-history screen — ample data, a
+well-determined OLS estimate, no variance problem for ridge to fix, so shrinkage only ever costs
+bias here. **This test did not actually evaluate the motivating hypothesis** (does ridge help the
+*rolling, short-window* hedge ratio used for live per-bar spread tracking, especially on noisy
+intraday data) — it evaluated a different, mismatched regime where a negative result is close to
+theoretically expected. Real follow-up, not attempted here: re-run this same comparison using
+`ridge_rolling`'s *rolling* series (not the full-sample point estimate) against the intraday
+episodic scan's own short windows (Step 2/Thread A of the current master plan) once that data
+exists, which is the setting this was actually motivated by.
+
+**Honest conclusion.** Ridge does not help CAMARF's current 3-pair confirmed set's full-sample hedge
+ratio — a real, clean, verified negative result, not a failed feature (per this project's rule 8, a
+negative result with a well-understood mechanism is exactly as valuable as a positive one). Whether
+it helps the actual motivating case (short intraday rolling windows) remains untested and is a
+concrete, scoped follow-up, not resolved by this result either way.
+
+Files: `research/ridge_hedge_ratio_comparison.py` (new), `debug/_verify_ridge_hedge_ratio_
+comparison.py` (new, 7/7 pass), `output/research/ridge_hedge_ratio_comparison.parquet` (new, real
+run).

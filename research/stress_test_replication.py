@@ -52,6 +52,7 @@ for most symbols, per the docstring's real-data check above):
 
 Output: output/research/stress_test_replication.parquet
 """
+import argparse
 import logging
 import os
 import sys
@@ -186,6 +187,15 @@ def stress_test_pair(sym_a: str, sym_b: str, crisis_name: str, crisis_start: str
 
 
 def main():
+    ap = argparse.ArgumentParser(description="Historical crisis stress test on confirmed pairs (2026-07-01)")
+    ap.add_argument("--pit-safe", action="store_true",
+                     help="Source pairs from research/pit_pair_discovery.py's PIT-safe episodic "
+                          "screen instead of the production confirmed_pairs_manifest.json (task #5). "
+                          "NOTE: this is a real compute-scale jump (~700 pairs vs. a handful) since "
+                          "every pair is tested across 3 crisis windows + 3 calm controls — hold "
+                          "this for a time when it won't contend with other running jobs.")
+    args = ap.parse_args()
+
     _setup_logging()
     t0 = time.time()
     log.info("=== stress_test_replication.py: historical crisis stress test on confirmed pairs (1D resolution) ===")
@@ -193,24 +203,28 @@ def main():
              "historical crisis windows — does NOT replay the intraday strategy (no cached 1h data "
              "reaches back to 2007/2020; see module docstring).")
 
-    if not os.path.exists(_MANIFEST_PATH):
-        log.warning("No confirmed_pairs_manifest.json found — run analysis.py first.")
-        return
-    import json
-    with open(_MANIFEST_PATH) as f:
-        manifest = json.load(f)
+    if args.pit_safe:
+        sys.path.insert(0, os.path.join(_ROOT, "research"))
+        from pit_pair_discovery import discover_pit_confirmed_pairs
+        pit_pairs = discover_pit_confirmed_pairs()
+        pairs = sorted(set((a, b) for a, b, _tf in pit_pairs))
+        log.info("Using PIT-safe episodic pair discovery: %d unique pairs", len(pairs))
+    else:
+        if not os.path.exists(_MANIFEST_PATH):
+            log.warning("No confirmed_pairs_manifest.json found — run analysis.py first.")
+            return
+        # Reconstruct confirmed pairs from per-TF pairs.parquet (manifest only
+        # tracks symbols, not pairings) — same source decoupling_requalification.py uses.
+        import glob
+        pairs = []
+        for pairs_path in sorted(glob.glob(os.path.join(_ROOT, "output", "results", "*", "pairs.parquet"))):
+            df = pd.read_parquet(pairs_path)
+            for _, row in df.iterrows():
+                pairs.append((row["symbol_a"], row["symbol_b"]))
+        pairs = sorted(set(pairs))
 
-    # Reconstruct confirmed pairs from per-TF pairs.parquet (manifest only
-    # tracks symbols, not pairings) — same source decoupling_requalification.py uses.
-    import glob
-    pairs = []
-    for pairs_path in sorted(glob.glob(os.path.join(_ROOT, "output", "results", "*", "pairs.parquet"))):
-        df = pd.read_parquet(pairs_path)
-        for _, row in df.iterrows():
-            pairs.append((row["symbol_a"], row["symbol_b"]))
-    pairs = sorted(set(pairs))
     all_windows = _CRISES + _CALM_CONTROLS
-    log.info("%d confirmed pairs to test across %d crisis windows + %d calm controls",
+    log.info("%d pairs to test across %d crisis windows + %d calm controls",
               len(pairs), len(_CRISES), len(_CALM_CONTROLS))
 
     rows = []
