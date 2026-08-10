@@ -1,0 +1,4 @@
+10:03:54 INFO  === pair_characteristics_analyzer.py: Stage 3 (per-pair decision tree) + Stage 4 (archetype clustering) ===
+10:03:54 INFO  Loaded 12 total trades across 1 pair-tf combinations
+10:03:54 INFO  PNC/ZION@4h: SKIP (insufficient_trades, n=12)
+10:03:54 INFO  

@@ -1,0 +1,4 @@
+07:30:48 INFO  === confirmatory_cointegration_check.py: Johansen + KPSS on 15 target/control pairs ===
+2026-08-04 07:30:48  INFO      === confirmatory_cointegration_check.py: Johansen + KPSS on 15 target/control pairs ===
+07:30:48 INFO  Supplementary evidence only -- does NOT bypass or re-derive the FDR-corrected confirmed-pair set. See module docstring.
+2026-08-04 07:30:48  INFO      Supplementary evidence only -- does NOT bypass or re-derive the FDR-corrected confirmed-pair set. See module docstring.

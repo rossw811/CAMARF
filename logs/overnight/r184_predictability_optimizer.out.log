@@ -1,0 +1,4 @@
+OK    KVUE/KMB@3m (4 folds, n_obs=4160): IS pred_ratio=0.8857 vs ols=0.8869 | OOS pred_ratio=3.4390 vs ols=2.9599 | OOS pred wins 75% of folds
+
+=== Summary across 2 pairs with sufficient history ===
+Mean in-sample advantage (ols_ratio - pred_ratio, higher=pred wins more): 0.0019

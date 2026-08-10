@@ -1,0 +1,4 @@
+KVUE/KMB@3m: rho=0.8212 optimal_entry_z*=0.75 (production uses 2.0, grid-search-best was 2.5)
+PNC/ZION@4h: rho=0.9982 optimal_entry_z*=3.50 (production uses 2.0, grid-search-best was 2.5)
+
+Wrote output/research/bertram_ou_thresholds.parquet: 2 pairs, median optimal_entry_z*=2.12

@@ -1,0 +1,4 @@
+======================================================================
+Portfolio risk-management comparison arms: stop-loss sweep + correlation-aware exposure caps
+======================================================================
+--- Part 1: Stop-loss sweep (config.py's COARSE_STOP_ZSCORE grid) ---

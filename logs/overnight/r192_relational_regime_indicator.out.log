@@ -1,0 +1,4 @@
+Building return matrix for 17 legs at 1D: ['LNT', 'VTR', 'WELL', 'AME', 'MAR', 'CMS', 'DUK', 'EG', 'WRB', 'HAL', 'NOV', 'MET', 'TMHC', 'PFG', 'STLD', 'UMBF', 'FHB']
+Return matrix: 13583 bars x 17 symbols (1972-07-26 to 2026-06-17)
+
+Relational regime indicator: 11569 points, mean=0.212, std=0.186, min=-0.249, max=0.800

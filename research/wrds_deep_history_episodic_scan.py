@@ -199,12 +199,32 @@ def _save_checkpoint(checkpoint_id, results, n_pairs_done):
     """Persists accumulated results + progress marker so a crash can RESUME
     from the last saved batch instead of restarting the whole run -- added
     2026-07-27 directly in response to the real BrokenProcessPool crash this
-    project hit partway through Tier 1's full-sample EG step."""
+    project hit partway through Tier 1's full-sample EG step.
+
+    ATOMIC WRITE (added 2026-08-08): writes to a `.tmp` sibling file first,
+    then `os.replace()`s it onto the real path -- `os.replace` is atomic on
+    both POSIX and Windows (MoveFileEx w/ MOVEFILE_REPLACE_EXISTING), so a
+    process killed mid-write leaves the PREVIOUS good checkpoint intact
+    rather than a truncated/corrupt file. Found the hard way running
+    research/intraday_episodic_scan.py: a kill mid-`to_parquet()` left a
+    4-byte unreadable checkpoint_intraday_1h_tier2.parquet while its
+    sibling .meta file still said 56,500 pairs done (meta is written
+    second, after the parquet write completes) -- resuming then crashed
+    outright with `pyarrow.lib.ArrowInvalid` instead of just losing the
+    unsaved tail, destroying everything back to the PRIOR checkpoint's
+    data (parquet is written whole each call, not appended, so there was
+    nothing to partially recover from the corrupt file). This exact class
+    of bug is why atomic writes matter for any file a resume path depends
+    on being either fully-old or fully-new, never half-written."""
     os.makedirs(_OUT_DIR, exist_ok=True)
     data_path, meta_path = _checkpoint_paths(checkpoint_id)
-    pd.DataFrame(results).to_parquet(data_path, index=False)
-    with open(meta_path, "w") as f:
+    data_tmp = data_path + ".tmp"
+    meta_tmp = meta_path + ".tmp"
+    pd.DataFrame(results).to_parquet(data_tmp, index=False)
+    os.replace(data_tmp, data_path)
+    with open(meta_tmp, "w") as f:
         f.write(str(n_pairs_done))
+    os.replace(meta_tmp, meta_path)
 
 
 def clear_checkpoint(checkpoint_id):

@@ -1,0 +1,4 @@
+KVUE/KMB@3m: n_bars=4146 n_jumps=92 jump_frac_of_var=0.739
+PNC/ZION@4h: n_bars=1386 n_jumps=10 jump_frac_of_var=0.342
+=== Jump detection summary across 2 pairs ===
+Pairs with >=1 detected jump: 2/2

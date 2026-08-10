@@ -1,0 +1,4 @@
+09:18:32 INFO  === ml_stage2_ablation.py: macro-context ablation on ml.py's Stage 1 examples ===
+2026-08-04 09:18:32  INFO      === ml_stage2_ablation.py: macro-context ablation on ml.py's Stage 1 examples ===
+2026-08-04 09:18:33  INFO        Discovered 3 confirmed pairs with persisted spread series; 1 produced labeled examples, 2 skipped
+2026-08-04 09:18:33  INFO        Total labeled entry events: 19

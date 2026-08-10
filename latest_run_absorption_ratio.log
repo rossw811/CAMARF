@@ -1,6 +1,3 @@
-22:20:14 INFO  === absorption_ratio.py: Kritzman-Li-Page-Rigobon (2011) systemic risk measure ===
-22:20:14 INFO  Universe: 39 unique symbols across all confirmed pairs
-22:20:15 INFO  Loaded daily returns: 14782 dates x 39 symbols
-22:20:16 INFO  Saved 692 windows -> C:\Users\RossW\Projects\CAMARF\output\stats\absorption_ratio.parquet (mean AR=0.427, min=0.205, max=0.847, k=8 of 39 assets)
-22:20:16 INFO  ============================================================
-22:20:16 INFO  absorption_ratio.py complete (0.0 min)
+01:06:26 INFO  === absorption_ratio.py: Kritzman-Li-Page-Rigobon (2011) systemic risk measure ===
+01:06:26 INFO  Universe: 6 unique symbols across all confirmed pairs
+01:06:26 WARNING  Too few symbols (6) — run analysis.py first. Aborting.

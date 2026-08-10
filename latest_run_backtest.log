@@ -1,10 +1,10 @@
-backtest.py run: layer1_stormall
+backtest.py run: layer1_holdout_pairsoverride
 layer2_enabled: False
 n_pairs_run: 1
-n_trades_total: 190
-total_net_pnl: 2126.40
-mean_sharpe: 32.8285
-mean_win_rate: 0.4105
-portfolio_sharpe: 3.8693
+n_trades_total: 2
+total_net_pnl: 36.47
+mean_sharpe: nan
+mean_win_rate: 1.0000
+portfolio_sharpe: nan
 max_concentration_pct: 1.0
-outputs: output/backtest/trades_layer1_stormall.parquet, summary_layer1_stormall.parquet, portfolio_layer1_stormall.parquet
+outputs: output/backtest/trades_layer1_holdout_pairsoverride.parquet, summary_layer1_holdout_pairsoverride.parquet, portfolio_layer1_holdout_pairsoverride.parquet

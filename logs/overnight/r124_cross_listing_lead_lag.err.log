@@ -1,0 +1,4 @@
+02:55:01 INFO  === cross_listing_lead_lag.py: does one exchange listing predict the SAME company's price on a different exchange listing? ===
+2026-08-04 02:55:01  INFO      === cross_listing_lead_lag.py: does one exchange listing predict the SAME company's price on a different exchange listing? ===
+02:55:01 INFO  Found 36 companies with 2+ distinct exchange listings fetched
+2026-08-04 02:55:01  INFO      Found 36 companies with 2+ distinct exchange listings fetched

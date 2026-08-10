@@ -1,50 +1,50 @@
-01:11:15 INFO  === price_degeneracy_root_cause.py: characterizing the BUG-D49 pattern ===
-01:11:15 INFO  1353 symbols with valid metadata, 433 flagged (32.0%)
-01:11:15 INFO  
+10:50:39 INFO  === price_degeneracy_root_cause.py: characterizing the BUG-D49 pattern ===
+10:50:39 INFO  1353 symbols with valid metadata, 433 flagged (32.0%)
+10:50:39 INFO  
 --- Continuous variables (Mann-Whitney U, flagged vs. not) ---
-01:11:15 INFO    market_cap           flagged median=3.03e+09  not-flagged median=1.73e+10  p=3.65e-145
-01:11:15 INFO    float_ratio          flagged median=0.955  not-flagged median=0.988  p=6.92e-25
-01:11:15 INFO    average_volume       flagged median=1.2e+06  not-flagged median=2.08e+06  p=2.84e-15
-01:11:15 INFO    shares_outstanding   flagged median=1.02e+08  not-flagged median=1.67e+08  p=2.34e-16
-01:11:15 INFO  
+10:50:39 INFO    market_cap           flagged median=3.03e+09  not-flagged median=1.73e+10  p=3.65e-145
+10:50:39 INFO    float_ratio          flagged median=0.955  not-flagged median=0.988  p=6.92e-25
+10:50:39 INFO    average_volume       flagged median=1.2e+06  not-flagged median=2.08e+06  p=2.84e-15
+10:50:39 INFO    shares_outstanding   flagged median=1.02e+08  not-flagged median=1.67e+08  p=2.34e-16
+10:50:39 INFO  
 --- Sector distribution (uncontrolled) ---
-01:11:15 INFO    Real Estate               flagged_rate=0.542  n=107
-01:11:15 INFO    Financial Services        flagged_rate=0.418  n=196
-01:11:15 INFO    Energy                    flagged_rate=0.364  n=66
-01:11:15 INFO    Healthcare                flagged_rate=0.342  n=155
-01:11:15 INFO    Consumer Cyclical         flagged_rate=0.339  n=180
-01:11:15 INFO    Communication Services    flagged_rate=0.326  n=46
-01:11:15 INFO    Utilities                 flagged_rate=0.320  n=50
-01:11:15 INFO    Consumer Defensive        flagged_rate=0.250  n=68
-01:11:15 INFO    Industrials               flagged_rate=0.232  n=211
-01:11:15 INFO    Technology                flagged_rate=0.224  n=210
-01:11:15 INFO    Basic Materials           flagged_rate=0.192  n=52
-01:11:15 INFO  
+10:50:39 INFO    Real Estate               flagged_rate=0.542  n=107
+10:50:39 INFO    Financial Services        flagged_rate=0.418  n=196
+10:50:39 INFO    Energy                    flagged_rate=0.364  n=66
+10:50:39 INFO    Healthcare                flagged_rate=0.342  n=155
+10:50:39 INFO    Consumer Cyclical         flagged_rate=0.339  n=180
+10:50:39 INFO    Communication Services    flagged_rate=0.326  n=46
+10:50:39 INFO    Utilities                 flagged_rate=0.320  n=50
+10:50:39 INFO    Consumer Defensive        flagged_rate=0.250  n=68
+10:50:39 INFO    Industrials               flagged_rate=0.232  n=211
+10:50:39 INFO    Technology                flagged_rate=0.224  n=210
+10:50:39 INFO    Basic Materials           flagged_rate=0.192  n=52
+10:50:39 INFO  
 --- Flagged rate by market-cap quintile (the dominant driver) ---
-01:11:15 INFO    Q1_smallest  flagged_rate=0.885  n=269
-01:11:15 INFO    Q2           flagged_rate=0.537  n=268
-01:11:15 INFO    Q3           flagged_rate=0.160  n=268
-01:11:15 INFO    Q4           flagged_rate=0.026  n=268
-01:11:15 INFO    Q5_largest   flagged_rate=0.000  n=269
-01:11:15 INFO    Monotonic decreasing Q1->Q5: True
-01:11:15 INFO  
+10:50:39 INFO    Q1_smallest  flagged_rate=0.885  n=269
+10:50:39 INFO    Q2           flagged_rate=0.537  n=268
+10:50:39 INFO    Q3           flagged_rate=0.160  n=268
+10:50:39 INFO    Q4           flagged_rate=0.026  n=268
+10:50:39 INFO    Q5_largest   flagged_rate=0.000  n=269
+10:50:39 INFO    Monotonic decreasing Q1->Q5: True
+10:50:39 INFO  
 --- Sector effect WITHIN a fixed cap band (controls for cap; Q3 = middle quintile) ---
-01:11:15 INFO    Utilities                 flagged_rate=0.667  n=9
-01:11:15 INFO    Real Estate               flagged_rate=0.375  n=24
-01:11:15 INFO    Financial Services        flagged_rate=0.324  n=37
-01:11:15 INFO    Energy                    flagged_rate=0.308  n=13
-01:11:15 INFO    Communication Services    flagged_rate=0.250  n=8
-01:11:15 INFO    Consumer Defensive        flagged_rate=0.091  n=11
-01:11:15 INFO    Industrials               flagged_rate=0.088  n=57
-01:11:15 INFO    Technology                flagged_rate=0.059  n=34
-01:11:15 INFO    Consumer Cyclical         flagged_rate=0.033  n=30
-01:11:15 INFO    Healthcare                flagged_rate=0.028  n=36
-01:11:15 INFO    Basic Materials           flagged_rate=0.000  n=9
-01:11:15 INFO  
+10:50:39 INFO    Utilities                 flagged_rate=0.667  n=9
+10:50:39 INFO    Real Estate               flagged_rate=0.375  n=24
+10:50:39 INFO    Financial Services        flagged_rate=0.324  n=37
+10:50:39 INFO    Energy                    flagged_rate=0.308  n=13
+10:50:39 INFO    Communication Services    flagged_rate=0.250  n=8
+10:50:39 INFO    Consumer Defensive        flagged_rate=0.091  n=11
+10:50:39 INFO    Industrials               flagged_rate=0.088  n=57
+10:50:39 INFO    Technology                flagged_rate=0.059  n=34
+10:50:39 INFO    Consumer Cyclical         flagged_rate=0.033  n=30
+10:50:39 INFO    Healthcare                flagged_rate=0.028  n=36
+10:50:39 INFO    Basic Materials           flagged_rate=0.000  n=9
+10:50:39 INFO  
   Within Q3, REIT/Financial/Utilities (n=70, rate=0.386) vs. all other sectors (n=198, rate=0.081): one-sided Mann-Whitney p=0.0000 (tests whether REIT/Fin/Util rate is GREATER, the direction the uncontrolled breakdown suggested)
-01:11:15 INFO  
+10:50:39 INFO  
 --- Conclusion ---
-01:11:15 INFO  Market cap is the dominant, near-monotonic driver (88.5% flagged in the smallest quintile vs 0.0% in the largest). Sector (REIT/Financial/Utilities) is a SECOND, cap-independent factor — elevated flagged rate persists within a fixed cap band, consistent with these sectors' historically thinner intraday order-book activity relative to daily dollar volume (income/institutional-heavy ownership, less intraday/momentum trading interest) even when daily liquidity looks adequate.
-01:11:15 INFO  Saved -> output/research/price_degeneracy_root_cause.parquet
-01:11:15 INFO  ============================================================
-01:11:15 INFO  price_degeneracy_root_cause.py complete (0.0 min)
+10:50:39 INFO  Market cap is the dominant, near-monotonic driver (88.5% flagged in the smallest quintile vs 0.0% in the largest). Sector (REIT/Financial/Utilities) is a SECOND, cap-independent factor — elevated flagged rate persists within a fixed cap band, consistent with these sectors' historically thinner intraday order-book activity relative to daily dollar volume (income/institutional-heavy ownership, less intraday/momentum trading interest) even when daily liquidity looks adequate.
+10:50:39 INFO  Saved -> output/research/price_degeneracy_root_cause.parquet
+10:50:39 INFO  ============================================================
+10:50:39 INFO  price_degeneracy_root_cause.py complete (0.0 min)

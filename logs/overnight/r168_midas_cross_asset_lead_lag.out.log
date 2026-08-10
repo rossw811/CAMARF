@@ -1,0 +1,4 @@
+LNT(1h)->VTR(1D next-day): midas_decay=corr=0.014,p=0.688 | midas_flat=corr=0.008,p=0.832 | b_own_lag_baseline=corr=0.005,p=0.880
+LNT(1h)->WELL(1D next-day): midas_decay=corr=0.021,p=0.544 | midas_flat=corr=-0.004,p=0.914 | b_own_lag_baseline=corr=0.008,p=0.802
+AME(1h)->MAR(1D next-day): midas_decay=corr=0.000,p=1.000 | midas_flat=corr=-0.052,p=0.136 | b_own_lag_baseline=corr=-0.033,p=0.390
+CMS(1h)->DUK(1D next-day): midas_decay=corr=0.039,p=0.288 | midas_flat=corr=0.035,p=0.294 | b_own_lag_baseline=corr=0.000,p=0.992

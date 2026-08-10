@@ -1,0 +1,4 @@
+  median_hl = float(np.nanmedian(hl_col)) if hl_col is not None else np.nan
+C:\Users\RossW\Projects\CAMARF\research\variance_ratio_test.py:195: RuntimeWarning: All-NaN slice encountered
+C:\Users\RossW\Projects\CAMARF\research\variance_ratio_test.py:195: RuntimeWarning: All-NaN slice encountered
+  median_hl = float(np.nanmedian(hl_col)) if hl_col is not None else np.nan

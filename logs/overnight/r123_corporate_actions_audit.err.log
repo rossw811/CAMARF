@@ -1,0 +1,4 @@
+02:54:55 INFO  === corporate_actions_audit.py: spot-check yfinance auto_adjust on real known splits ===
+2026-08-04 02:54:55  INFO      === corporate_actions_audit.py: spot-check yfinance auto_adjust on real known splits ===
+02:54:55 INFO    NVDA (NVIDIA 10-for-1, 10:1 on 2024-06-10): ADJUSTED_CORRECTLY ΓÇö max |return| near split = 0.0355, price $120.68 -> $129.40 (already at post-split scale)
+2026-08-04 02:54:55  INFO        NVDA (NVIDIA 10-for-1, 10:1 on 2024-06-10): ADJUSTED_CORRECTLY ΓÇö max |return| near split = 0.0355, price $120.68 -> $129.40 (already at post-split scale)

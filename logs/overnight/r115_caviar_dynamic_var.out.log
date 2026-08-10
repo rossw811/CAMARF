@@ -1,0 +1,4 @@
+[layer1] n_days=511  CAViaR: beta=(0.00, 0.008, 0.000)  exceedance_rate=0.000 (target=0.95)  converged=True
+  Static historical VaR (constant): $-0.00  CAViaR VaR range: [$-0.00, $0.00] (mean=$0.00)
+[layer1_holdout] no usable trades ΓÇö skipping
+  Wrote output/stats/caviar_dynamic_var_layer1.parquet

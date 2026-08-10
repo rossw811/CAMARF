@@ -1,0 +1,4 @@
+02:52:14 INFO  === bounded_lookback_primary_screen.py: bounded-recent-lookback EG/KPSS/PO as primary screen, vs. full-sample ===
+2026-08-04 02:52:14  INFO      === bounded_lookback_primary_screen.py: bounded-recent-lookback EG/KPSS/PO as primary screen, vs. full-sample ===
+02:52:25 INFO  KVUE/KMB@3m: full=silver (p=0.0016, 0.1y)  5y=silver (p=0.0016)  10y=silver (p=0.0016)  [5y window is a no-op, full history < 5y]
+2026-08-04 02:52:25  INFO      KVUE/KMB@3m: full=silver (p=0.0016, 0.1y)  5y=silver (p=0.0016)  10y=silver (p=0.0016)  [5y window is a no-op, full history < 5y]

@@ -1,0 +1,4 @@
+C:\Users\RossW\Projects\CAMARF\research\lo2002_sharpe_correction.py:126: RuntimeWarning: Mean of empty slice
+  f"eta): full-ACF swing under pure noise = {null_pct_full.mean():.2f}% mean, "
+C:\Users\RossW\anaconda3\envs\trading\Lib\site-packages\numpy\_core\_methods.py:142: RuntimeWarning: invalid value encountered in scalar divide
+  ret = ret.dtype.type(ret / rcount)

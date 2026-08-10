@@ -1,0 +1,26 @@
+
+KVUE@2min: n=11804, critical_value=6.27
+  jumps detected: 252 (2.13% of bars)
+  total_vol=0.001110  continuous_vol=0.000777  (-30.04%)
+  of detected jumps, 0.0% already had a non-NONE GapFlag
+  of non-NONE GapFlag bars, nan% are statistically detected jumps
+
+KMB@2min: n=11804, critical_value=6.27
+  jumps detected: 183 (1.55% of bars)
+  total_vol=0.001307  continuous_vol=0.000967  (-26.03%)
+  of detected jumps, 0.0% already had a non-NONE GapFlag
+  of non-NONE GapFlag bars, nan% are statistically detected jumps
+
+KVUE@3min: n=4159, critical_value=6.03
+  jumps detected: 167 (4.02% of bars)
+  total_vol=0.001363  continuous_vol=0.000788  (-42.18%)
+  of detected jumps, 0.0% already had a non-NONE GapFlag
+  of non-NONE GapFlag bars, nan% are statistically detected jumps
+
+KMB@3min: n=4159, critical_value=6.03
+  jumps detected: 144 (3.46% of bars)
+  total_vol=0.001693  continuous_vol=0.001060  (-37.39%)
+  of detected jumps, 0.0% already had a non-NONE GapFlag
+  of non-NONE GapFlag bars, nan% are statistically detected jumps
+
+Results written to output/research/levy_jump_diffusion.parquet

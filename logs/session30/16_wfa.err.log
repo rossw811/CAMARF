@@ -1,0 +1,91 @@
+2026-08-03 09:58:28  INFO      ======================================================================
+2026-08-03 09:58:28  INFO      CAMARF  —  wfa.py  —  Walk-Forward Analysis (semi-WFA)
+2026-08-03 09:58:28  INFO      ======================================================================
+2026-08-03 09:58:29  INFO      Loaded 3 confirmed pairs
+2026-08-03 09:58:29  INFO      MM hedge map: 2 pairs
+2026-08-03 09:58:29  INFO      
+--- WFA [expanding] strategy=baseline ---
+2026-08-03 09:58:29  INFO      WFA [expanding_baseline] KVUE/KMB@3m fold=fold1_exp  train=4730 test=7095  n_trades=5  sharpe=195.75  pnl=4114.28
+2026-08-03 09:58:29  INFO      WFA [expanding_baseline] KVUE/KMB@3m fold=fold2_exp  train=11825 test=7095  n_trades=9  sharpe=156.11  pnl=6196.08
+2026-08-03 09:58:29  INFO      WFA [expanding_baseline] PNC/ZION@4h fold=fold1_exp  train=1324 test=1986  n_trades=1  sharpe=nan  pnl=165.00
+2026-08-03 09:58:29  INFO      WFA [expanding_baseline] PNC/ZION@4h fold=fold2_exp  train=3310 test=1986  n_trades=2  sharpe=17733.03  pnl=304.96
+2026-08-03 09:58:29  INFO      WFA [expanding/baseline] 17 trades | Sharpe=1.8085 | PnL=10780.32
+2026-08-03 09:58:29  INFO      
+--- WFA [expanding] strategy=cfrac_sizing ---
+2026-08-03 09:58:29  INFO      WFA [expanding_cfrac_sizing] KVUE/KMB@3m fold=fold1_exp  train=4730 test=7095  n_trades=5  sharpe=195.75  pnl=3908.56
+2026-08-03 09:58:29  INFO      WFA [expanding_cfrac_sizing] KVUE/KMB@3m fold=fold2_exp  train=11825 test=7095  n_trades=9  sharpe=156.11  pnl=5762.35
+2026-08-03 09:58:29  INFO      WFA [expanding_cfrac_sizing] PNC/ZION@4h fold=fold1_exp  train=1324 test=1986  n_trades=1  sharpe=nan  pnl=14.85
+2026-08-03 09:58:29  INFO      WFA [expanding_cfrac_sizing] PNC/ZION@4h fold=fold2_exp  train=3310 test=1986  n_trades=2  sharpe=17820.06  pnl=18.30
+2026-08-03 09:58:29  INFO      WFA [expanding/cfrac_sizing] 17 trades | Sharpe=1.7381 | PnL=9704.06
+2026-08-03 09:58:29  INFO      
+--- WFA [expanding] strategy=garch_stop ---
+2026-08-03 09:58:29  INFO      WFA [expanding_garch_stop] KVUE/KMB@3m fold=fold1_exp  train=4730 test=7095  n_trades=5  sharpe=195.75  pnl=4114.28
+2026-08-03 09:58:29  INFO      WFA [expanding_garch_stop] KVUE/KMB@3m fold=fold2_exp  train=11825 test=7095  n_trades=9  sharpe=156.11  pnl=6196.08
+2026-08-03 09:58:29  INFO      WFA [expanding_garch_stop] PNC/ZION@4h fold=fold1_exp  train=1324 test=1986  n_trades=1  sharpe=nan  pnl=165.00
+2026-08-03 09:58:29  INFO      WFA [expanding_garch_stop] PNC/ZION@4h fold=fold2_exp  train=3310 test=1986  n_trades=2  sharpe=17733.03  pnl=304.96
+2026-08-03 09:58:29  INFO      WFA [expanding/garch_stop] 17 trades | Sharpe=1.8085 | PnL=10780.32
+2026-08-03 09:58:29  INFO      
+--- WFA [expanding] strategy=session_edge ---
+2026-08-03 09:58:29  INFO      WFA [expanding_session_edge] KVUE/KMB@3m fold=fold1_exp  train=4730 test=7095  n_trades=5  sharpe=195.75  pnl=4114.28
+2026-08-03 09:58:30  INFO      WFA [expanding_session_edge] KVUE/KMB@3m fold=fold2_exp  train=11825 test=7095  n_trades=9  sharpe=156.11  pnl=6196.08
+2026-08-03 09:58:30  INFO      WFA [expanding_session_edge] PNC/ZION@4h fold=fold1_exp  train=1324 test=1986  n_trades=1  sharpe=nan  pnl=167.80
+2026-08-03 09:58:30  INFO      WFA [expanding_session_edge] PNC/ZION@4h fold=fold2_exp  train=3310 test=1986  n_trades=2  sharpe=17733.03  pnl=304.96
+2026-08-03 09:58:30  INFO      WFA [expanding/session_edge] 17 trades | Sharpe=1.8089 | PnL=10783.12
+2026-08-03 09:58:30  INFO      
+--- WFA [expanding] strategy=mm_exec ---
+2026-08-03 09:58:30  INFO      WFA [expanding_mm_exec] KVUE/KMB@3m fold=fold1_exp  train=4730 test=7095  n_trades=137  sharpe=23.59  pnl=12243.49
+2026-08-03 09:58:30  INFO      WFA [expanding_mm_exec] KVUE/KMB@3m fold=fold2_exp  train=11825 test=7095  n_trades=11  sharpe=133.44  pnl=10053.85
+2026-08-03 09:58:30  INFO      WFA [expanding_mm_exec] PNC/ZION@4h fold=fold1_exp  train=1324 test=1986  n_trades=1  sharpe=nan  pnl=164.32
+2026-08-03 09:58:30  INFO      WFA [expanding_mm_exec] PNC/ZION@4h fold=fold2_exp  train=3310 test=1986  n_trades=2  sharpe=16670.96  pnl=305.07
+2026-08-03 09:58:30  INFO      WFA [expanding/mm_exec] 151 trades | Sharpe=1.5085 | PnL=22766.73
+2026-08-03 09:58:30  INFO      
+--- WFA [expanding] strategy=storm_all ---
+2026-08-03 09:58:30  INFO      WFA [expanding_storm_all] KVUE/KMB@3m fold=fold1_exp  train=4730 test=7095  n_trades=94  sharpe=27.34  pnl=11101.24
+2026-08-03 09:58:30  INFO      WFA [expanding_storm_all] KVUE/KMB@3m fold=fold2_exp  train=11825 test=7095  n_trades=11  sharpe=133.44  pnl=9350.08
+2026-08-03 09:58:30  INFO      WFA [expanding_storm_all] PNC/ZION@4h fold=fold1_exp  train=1324 test=1986  n_trades=1  sharpe=nan  pnl=15.04
+2026-08-03 09:58:30  INFO      WFA [expanding_storm_all] PNC/ZION@4h fold=fold2_exp  train=3310 test=1986  n_trades=2  sharpe=16604.28  pnl=18.30
+2026-08-03 09:58:30  INFO      WFA [expanding/storm_all] 108 trades | Sharpe=1.4443 | PnL=20484.66
+2026-08-03 09:58:30  INFO      
+--- WFA [rolling] strategy=baseline ---
+2026-08-03 09:58:30  INFO      WFA [rolling_baseline] KVUE/KMB@3m fold=fold1_roll  train=4730 test=7095  n_trades=5  sharpe=195.75  pnl=4114.28
+2026-08-03 09:58:30  INFO      WFA [rolling_baseline] KVUE/KMB@3m fold=fold2_roll  train=4730 test=7095  n_trades=26  sharpe=33.83  pnl=3148.16
+2026-08-03 09:58:31  INFO      WFA [rolling_baseline] PNC/ZION@4h fold=fold1_roll  train=1324 test=1986  n_trades=1  sharpe=nan  pnl=165.00
+2026-08-03 09:58:31  INFO      WFA [rolling_baseline] PNC/ZION@4h fold=fold2_roll  train=1324 test=1986  n_trades=1  sharpe=nan  pnl=147.59
+2026-08-03 09:58:31  INFO      WFA [rolling/baseline] 33 trades | Sharpe=1.1650 | PnL=7575.03
+2026-08-03 09:58:31  INFO      
+--- WFA [rolling] strategy=cfrac_sizing ---
+2026-08-03 09:58:31  INFO      WFA [rolling_cfrac_sizing] KVUE/KMB@3m fold=fold1_roll  train=4730 test=7095  n_trades=5  sharpe=195.75  pnl=3908.56
+2026-08-03 09:58:31  INFO      WFA [rolling_cfrac_sizing] KVUE/KMB@3m fold=fold2_roll  train=4730 test=7095  n_trades=26  sharpe=33.83  pnl=2927.79
+2026-08-03 09:58:31  INFO      WFA [rolling_cfrac_sizing] PNC/ZION@4h fold=fold1_roll  train=1324 test=1986  n_trades=1  sharpe=nan  pnl=14.85
+2026-08-03 09:58:31  INFO      WFA [rolling_cfrac_sizing] PNC/ZION@4h fold=fold2_roll  train=1324 test=1986  n_trades=1  sharpe=nan  pnl=8.86
+2026-08-03 09:58:31  INFO      WFA [rolling/cfrac_sizing] 33 trades | Sharpe=1.1270 | PnL=6860.06
+2026-08-03 09:58:31  INFO      
+--- WFA [rolling] strategy=garch_stop ---
+2026-08-03 09:58:31  INFO      WFA [rolling_garch_stop] KVUE/KMB@3m fold=fold1_roll  train=4730 test=7095  n_trades=5  sharpe=195.75  pnl=4114.28
+2026-08-03 09:58:31  INFO      WFA [rolling_garch_stop] KVUE/KMB@3m fold=fold2_roll  train=4730 test=7095  n_trades=26  sharpe=33.83  pnl=3148.16
+2026-08-03 09:58:31  INFO      WFA [rolling_garch_stop] PNC/ZION@4h fold=fold1_roll  train=1324 test=1986  n_trades=1  sharpe=nan  pnl=165.00
+2026-08-03 09:58:31  INFO      WFA [rolling_garch_stop] PNC/ZION@4h fold=fold2_roll  train=1324 test=1986  n_trades=1  sharpe=nan  pnl=147.59
+2026-08-03 09:58:31  INFO      WFA [rolling/garch_stop] 33 trades | Sharpe=1.1650 | PnL=7575.03
+2026-08-03 09:58:31  INFO      
+--- WFA [rolling] strategy=session_edge ---
+2026-08-03 09:58:31  INFO      WFA [rolling_session_edge] KVUE/KMB@3m fold=fold1_roll  train=4730 test=7095  n_trades=5  sharpe=195.75  pnl=4114.28
+2026-08-03 09:58:31  INFO      WFA [rolling_session_edge] KVUE/KMB@3m fold=fold2_roll  train=4730 test=7095  n_trades=18  sharpe=36.70  pnl=2814.24
+2026-08-03 09:58:31  INFO      WFA [rolling_session_edge] PNC/ZION@4h fold=fold1_roll  train=1324 test=1986  n_trades=1  sharpe=nan  pnl=167.80
+2026-08-03 09:58:31  INFO      WFA [rolling_session_edge] PNC/ZION@4h fold=fold2_roll  train=1324 test=1986  n_trades=1  sharpe=nan  pnl=147.59
+2026-08-03 09:58:31  INFO      WFA [rolling/session_edge] 25 trades | Sharpe=1.1237 | PnL=7243.91
+2026-08-03 09:58:31  INFO      
+--- WFA [rolling] strategy=mm_exec ---
+2026-08-03 09:58:32  INFO      WFA [rolling_mm_exec] KVUE/KMB@3m fold=fold1_roll  train=4730 test=7095  n_trades=137  sharpe=23.59  pnl=12243.49
+2026-08-03 09:58:32  INFO      WFA [rolling_mm_exec] KVUE/KMB@3m fold=fold2_roll  train=4730 test=7095  n_trades=193  sharpe=29.39  pnl=9374.92
+2026-08-03 09:58:32  INFO      WFA [rolling_mm_exec] PNC/ZION@4h fold=fold1_roll  train=1324 test=1986  n_trades=1  sharpe=nan  pnl=164.32
+2026-08-03 09:58:32  INFO      WFA [rolling_mm_exec] PNC/ZION@4h fold=fold2_roll  train=1324 test=1986  n_trades=1  sharpe=nan  pnl=147.03
+2026-08-03 09:58:32  INFO      WFA [rolling/mm_exec] 332 trades | Sharpe=1.5231 | PnL=21929.75
+2026-08-03 09:58:32  INFO      
+--- WFA [rolling] strategy=storm_all ---
+2026-08-03 09:58:32  INFO      WFA [rolling_storm_all] KVUE/KMB@3m fold=fold1_roll  train=4730 test=7095  n_trades=94  sharpe=27.34  pnl=11101.24
+2026-08-03 09:58:32  INFO      WFA [rolling_storm_all] KVUE/KMB@3m fold=fold2_roll  train=4730 test=7095  n_trades=162  sharpe=24.27  pnl=6221.00
+2026-08-03 09:58:32  INFO      WFA [rolling_storm_all] PNC/ZION@4h fold=fold1_roll  train=1324 test=1986  n_trades=1  sharpe=nan  pnl=15.04
+2026-08-03 09:58:32  INFO      WFA [rolling_storm_all] PNC/ZION@4h fold=fold2_roll  train=1324 test=1986  n_trades=1  sharpe=nan  pnl=8.82
+2026-08-03 09:58:32  INFO      WFA [rolling/storm_all] 258 trades | Sharpe=1.3338 | PnL=17346.10
+2026-08-03 09:58:32  INFO      
+WFA complete in 0.1 min. Outputs in C:\Users\RossW\Projects\CAMARF\output\backtest

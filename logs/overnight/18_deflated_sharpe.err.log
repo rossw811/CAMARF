@@ -1,0 +1,4 @@
+01:05:51 INFO  === deflated_sharpe.py: Deflated Sharpe Ratio (Bailey & Lopez de Prado 2014) ===
+01:05:51 INFO  Backfilled 0 historical trial(s) from output/backtest/portfolio_*.parquet not already in trial_registry.json
+01:05:51 INFO  N trials = 70, Var[Sharpe across trials] = 0.009846 (per-period/daily units, converted from annualized sharpe_portfolio via /sqrt(252))
+01:05:51 INFO  Holdout exposure: 36 trial(s) evaluated against the OOS holdout window across 16 distinct labels (layer1_holdout, layer1_holdout_ez15, layer1_holdout_hrp, layer1_holdout_hubw, layer1_holdout_neghedge)...

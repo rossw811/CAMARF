@@ -139,11 +139,24 @@ against whatever happens to be sitting in `output/cache/`.
 **Current canonical data footprint (Session 22 full pipeline run, verified
 against `latest_run_data.log`, not assumed):**
 
-- **Universe snapshot:** 1,608 candidate symbols (S&P Composite 1500 +
-  international equities/ADRs/FX spots), `data.py` run completed
-  **2026-06-30 10:10**, runtime 5.6 minutes, config_hash `0c0e67a6b00ff0bb`.
-  1,357 symbols resumed from existing cache; 0 excluded; 0 cache-contamination
-  clears this run.
+- **Universe snapshot (SUPERSEDED — kept for provenance; see the current snapshot immediately
+  below):** 1,608 candidate symbols (S&P Composite 1500 + international equities/ADRs/FX spots),
+  `data.py` run completed **2026-06-30 10:10**, runtime 5.6 minutes, config_hash
+  `0c0e67a6b00ff0bb`. 1,357 symbols resumed from existing cache; 0 excluded; 0
+  cache-contamination clears this run.
+- **Current canonical universe snapshot (2026-08-03 09:57, post-BUG-D105 fix, WRDS-primary):**
+  1,730 symbols with cached daily data, **1,660 assets passed the full screening funnel**
+  (`latest_run_analysis.log`, 54.3 min runtime). **WRDS is now wired as primary** for
+  daily-and-coarser (1D/7D/1M/3M/6M) CRSP-resolvable US equities/ETFs — CRSP
+  total-return-adjusted where available, Compustat Global split-only-adjusted as disclosed
+  fallback, via Baruch's WRDS subscription. International equities and everything intraday
+  remain yfinance-sourced (fetch windows below unchanged for those). **Confirmed pairs under
+  this snapshot: 3** — `KVUE/KMB`@3m, `PNC/ZION`@4h, `IQV/Q`@1D — a real, large reduction from
+  the 23/26-pair pre-WRDS sets; see `PAPER.md` §3 for the full honest accounting of why (WRDS
+  changes the underlying daily-and-coarser price series for a large fraction of the universe,
+  not just adds coverage). An independent party reproducing the pre-WRDS snapshot above still
+  can, exactly as described; reproducing the current snapshot additionally requires WRDS/CRSP
+  access, which this repo's `output/cache/wrds/` reflects but does not itself distribute.
 - **Per-timeframe yfinance fetch windows** (`_YF_INTRADAY_MAP`,
   `data.py:1869-1878`): `1m`/`3m` → 5 calendar days (3m is derived by
   resampling 1m, not fetched separately — Yahoo's 1m interval has an 8-day
@@ -546,6 +559,51 @@ rather than implied to fit in one session and coming up short:
    same discipline as every prior session) — deferring documentation entirely to one giant end step
    is a real risk given how many times a process died mid-task this session; current docs mean
    nothing real gets lost if something crashes partway through.
+
+### Session 30 (2026-08-02 through 2026-08-04, still in progress) — see Development.md for full detail
+
+**Section header claims below this point (Sessions 27/28's "v1 functionally complete", 23-pair
+headline Sharpe) are now SUPERSEDED — stated plainly, not left for the reader to notice.** WRDS
+was wired as primary for daily-and-coarser US equity/ETF data (Session 29), which changed the
+underlying confirmed-pair universe materially, not just refreshed it. **Current confirmed set: 3
+pairs** (`KVUE/KMB`@3m, `PNC/ZION`@4h, `IQV/Q`@1D — see `docs/FINDINGS.md`'s PIT-safety disclosure
+section and `PAPER.md` §3/§5 for the full, honest accounting of why this is a real reduction from
+23/26 pairs, not a data-quality regression). Seven new research/comparison-arm modules built
+(cycle detection, Lévy jump-diffusion, rough volatility, options-Greeks features, SVM classifier,
+inverse polarity, trig-identity convergence — `docs/FINDINGS.md` §13-19); a real PIT-safety gap
+found across all seven (they source pairs from the same non-PIT full-history screen already
+disclosed in `PAPER.md` §7.3.1, just not previously stated for these new modules — `docs/
+FINDINGS.md`'s dedicated disclosure section); parameter sensitivity extended to the research/
+layer for the first time, 12 arms across 2 batches (`docs/FINDINGS.md` §20-21, `research/
+sensitivity_research.py`, new). `data_crypto.py` (Binance.US) built and completed its full
+15-symbol backfill overnight — first time in 4 attempts. An unattended overnight pipeline
+(`run_overnight_research.ps1`, new) covering the full non-data-fetch pipeline plus all 121
+research scripts, and a dedicated episodic-scan re-run (`run_episodic_scan_overnight.ps1`, new,
+the prerequisite for closing the PIT-safety gap) were both launched and actively monitored —
+5 real infrastructure bugs found and fixed live during the overnight run (a misreported exit
+code, a genuine PowerShell async deadlock, a silently-dropped-arguments bug, every stage-timeout
+orphaning its process tree for hours before being caught via a sustained near-zero-RAM
+investigation, and a same-script collision between the general pipeline and the dedicated
+episodic job) — see `Development.md`'s "Late-night close-out" and "Overnight monitoring" entries
+for the full, hard-won detail; this class of bug is worth reading before trusting any future
+long-running unattended PowerShell orchestration in this project. **Top priority next session**:
+build a PIT-aware pair-discovery adapter (`episodic_bhfdr_confirm_asof`, Session 30's own
+BUG-D106 fix) once the overnight episodic scan completes, audit every research script for its
+pair source, rewire, and re-run the affected `docs/FINDINGS.md` entries.
+
+### Session 29 (2026-08-01) — see Development.md for full detail
+
+5 causality-audit bugs found and fixed (BUG-D99-103 — GARCH-stop causal baseline, position-sizing
+circularity, coint_fraction_rolling fold-leakage, macro publication-lag), each verified against a
+real-data check that the synthetic test correctly fails against git-stashed pre-fix code. **WRDS
+wired as primary** for daily-and-coarser (1D/7D/1M/3M/6M) CRSP-resolvable US equities/ETFs in
+`data.py` (BUG-D104 found and fixed along the way — CRSP's native monthly file has no OHLC).
+International equities and everything intraday remain yfinance-sourced. B1 (CRSP volume
+share-count adjustment) remains open, deferred pending WRDS VPN access. A full
+`data.py`→`analysis.py` production run comparing WRDS-primary against the yfinance-only baseline
+was launched at the end of this session but not completed until Session 30 (BUG-D105, a real
+regression in the WRDS wiring, silently collapsed the analysis universe to 148 assets and blocked
+this comparison for most of Session 30 until found and fixed).
 
 ### Session 28 (2026-07-13 through 2026-07-14) — see Development.md for full detail
 

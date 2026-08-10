@@ -1,0 +1,3 @@
+2026-08-04 02:05:04  INFO        [1h] Computing 299├ù299 correlation matrices (Pearson + Spearman + rolling avg)...
+2026-08-04 02:05:06  INFO        [1h] Pearson 1.0s | Spearman 1.2s | RollingAvg 0.4s
+2026-08-04 02:05:06  INFO        [1h] Candidate pairs: 2863 (0 cross-asset)  threshold |╧ü| ΓëÑ 0.40  [gold=565 silver=855 bronze=1443]

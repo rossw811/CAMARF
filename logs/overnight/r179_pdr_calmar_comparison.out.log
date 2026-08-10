@@ -1,0 +1,4 @@
+Loaded 10 trades from output/backtest/trades_layer1.parquet, account size $100,000
+
+      sizing_method  n_taken  skipped  final_equity  sharpe  max_dd_pct  profit_factor  pdr  calmar
+              fixed       10        0  101,306.5691  1.5353      0.0000            inf  NaN     NaN

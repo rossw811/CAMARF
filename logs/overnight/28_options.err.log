@@ -1,0 +1,4 @@
+01:06:38 INFO  === options.py: protective-put overlay, realized-vol IV proxy ===
+01:06:38 INFO  n_trades_with_overlay=5  mean_hedge_cost=$187.46  mean_hedge_payoff=$682.36
+01:06:38 INFO  Unhedged: total_pnl=$654.66  max_drawdown=$0.00
+01:06:38 INFO  Hedged (protective put/call by trade side, 5% OTM, realized-vol proxy): total_pnl=$3129.17  max_drawdown=$39.67

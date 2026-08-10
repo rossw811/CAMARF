@@ -1,0 +1,4 @@
+PNC/ZION: n=10 precision=1.000 freq/yr=6.6 implied_annual_SR=1280.374
+
+0 pairs have precision < 0.55 (near coin-flip, 'structurally fragile' ΓÇö surviving mostly on frequency/timing, not per-bet edge): []
+Wrote output/research/strategy_risk_precision.parquet: 1 pairs

@@ -1,0 +1,62 @@
+2026-08-03 09:58:22  INFO      ======================================================================
+2026-08-03 09:58:22  INFO      CAMARF  —  stats.py  —  Statistical Validation Layer
+2026-08-03 09:58:22  INFO      ======================================================================
+2026-08-03 09:58:22  INFO      Loaded 3 confirmed pairs across 3 TFs
+2026-08-03 09:58:22  INFO      Trades: IS=10  OOS=2  OOS+neg-hedge=2
+2026-08-03 09:58:22  INFO      === Section 1: Confirmatory Cointegration (KPSS + PO) ===
+C:\Users\RossW\Projects\CAMARF\stats.py:258: DeprecationWarning: Lag selection has changed to use a data-dependent method. To use the old method that only depends on time, set lags=-1
+  kpss = ArchKPSS(vals)  # lags=None → data-dependent selection (arch 8)
+2026-08-03 09:58:24  INFO        KVUE/KMB@3m  EG=0.003  KPSS=0.033  PO=0.000  n_confirm=2  tier=silver [CONFLICT]
+C:\Users\RossW\Projects\CAMARF\stats.py:258: DeprecationWarning: Lag selection has changed to use a data-dependent method. To use the old method that only depends on time, set lags=-1
+  kpss = ArchKPSS(vals)  # lags=None → data-dependent selection (arch 8)
+2026-08-03 09:58:24  INFO        PNC/ZION@4h  EG=0.031  KPSS=0.000  PO=0.006  n_confirm=2  tier=silver [CONFLICT]
+2026-08-03 09:58:24  INFO        Tiers: gold=0  silver=2  bronze=0  no_spread=1  flagged_conflict=2
+2026-08-03 09:58:24  INFO        Saved → output/stats/cointegration_tiers.parquet
+2026-08-03 09:58:24  INFO      === Section 2: Robust Hedge Ratio Comparison ===
+2026-08-03 09:58:25  INFO        KVUE/KMB@3m  OLS=0.785  TLS=1.269  Kal=0.628  Hub=0.779  MM=0.782  spread_bps=7552  robust=False
+2026-08-03 09:58:25  INFO        PNC/ZION@4h  OLS=0.974  TLS=1.014  Kal=1.330  Hub=0.960  MM=0.964  spread_bps=3527  robust=False
+2026-08-03 09:58:25  INFO        Robust pairs (all estimators agree within 5%): 0/3
+2026-08-03 09:58:25  INFO        Hedge direction conflicts (OLS vs MM sign flip): 0/3
+2026-08-03 09:58:25  INFO        Saved → output/stats/hedge_ratio_comparison.parquet
+2026-08-03 09:58:25  INFO        Updated cointegration_tiers.parquet with hedge_direction_conflict
+2026-08-03 09:58:25  INFO      === Section 3: EVT / GPD Tail Risk ===
+2026-08-03 09:58:25  INFO        IQV/Q@1D  ξ_spread=-99.000  ξ_pnl=-99.000  fat_tail=False
+2026-08-03 09:58:25  INFO        KVUE/KMB@3m  ξ_spread=1.071  ξ_pnl=-99.000  fat_tail=True
+2026-08-03 09:58:25  INFO        PNC/ZION@4h  ξ_spread=0.353  ξ_pnl=-99.000  fat_tail=True
+2026-08-03 09:58:25  INFO        Fat-tailed pairs (ξ > 0.3): 2/3
+2026-08-03 09:58:25  INFO        Saved → output/stats/evt_tail_risk.parquet
+2026-08-03 09:58:25  INFO      === Section 4: DCC-GARCH Dynamic Correlation ===
+2026-08-03 09:58:25  WARNING     Insufficient daily P&L data for DCC (need ≥30 days, ≥2 pairs)
+2026-08-03 09:58:25  INFO      === Section 5: Monte Carlo Simulation ===
+2026-08-03 09:58:25  INFO        Phase 1: Distribution fitting (12 per-trade P&L observations)
+2026-08-03 09:58:25  INFO          normal: AIC=119.5  BIC=120.5
+2026-08-03 09:58:25  INFO          t: AIC=121.5  BIC=122.9
+2026-08-03 09:58:25  INFO          nig_proxy_skewnorm: AIC=111.1  BIC=112.5
+2026-08-03 09:58:25  INFO          laplace: AIC=117.0  BIC=118.0
+2026-08-03 09:58:25  INFO        Best-fit distribution (AIC): nig_proxy_skewnorm
+2026-08-03 09:58:25  INFO        Phase 2: Regime-conditional bootstrap
+2026-08-03 09:58:25  INFO        No regime tags — IID bootstrap: Sharpe 5/50/95 pct = 52.28/73.14/204.21
+2026-08-03 09:58:25  INFO        Phase 3: Slippage sensitivity
+2026-08-03 09:58:26  INFO           0 bps/side: Sharpe=31.105  TotalPnL=$1627
+2026-08-03 09:58:26  INFO           2 bps/side: Sharpe=30.187  TotalPnL=$1579
+2026-08-03 09:58:26  INFO           5 bps/side: Sharpe=28.810  TotalPnL=$1507
+2026-08-03 09:58:26  INFO          10 bps/side: Sharpe=26.515  TotalPnL=$1387
+2026-08-03 09:58:26  INFO          20 bps/side: Sharpe=21.926  TotalPnL=$1147
+2026-08-03 09:58:26  INFO        Strategy Sharpe positive across all tested slippage levels
+2026-08-03 09:58:26  INFO        Phase 4: Trade quality (MAE/MFE)
+2026-08-03 09:58:26  INFO        efficiency=0.952  bliss=5.899  win_rate=1.000
+2026-08-03 09:58:26  INFO        Saved → output/stats/montecarlo_*.parquet
+2026-08-03 09:58:26  INFO      === Section 6: Permutation Test / White Reality Check ===
+2026-08-03 09:58:26  INFO        Realized: backtest_equity_sharpe=-999.0000  closed_trade_sharpe=-999.0000  n_trades=2
+2026-08-03 09:58:26  INFO      === Section 6: Permutation Test / White Reality Check ===
+2026-08-03 09:58:26  INFO        Realized: backtest_equity_sharpe=1.5353  closed_trade_sharpe=1.5368  n_trades=10
+2026-08-03 09:58:26  INFO        Permutation test: realized=1.5368  perm_mean=1.5118  perm_95pct=2.1564  p_value=0.4889  significant=False  n_perms=988
+2026-08-03 09:58:26  INFO        Saved IS permutation → output/stats/permutation_test_is.json
+2026-08-03 09:58:26  INFO      === Section 7: Half-Life Stationarity (AR(1) + Zivot-Andrews) ===
+2026-08-03 09:58:27  INFO        PNC/ZION@4h  AR1_rho=0.973  ZA_stat=-5.02  ZA_pval=0.026  stationary=True
+2026-08-03 09:58:27  INFO        HL stationary (ZA p<0.10): 1/3  |  mean AR1_rho=0.973
+2026-08-03 09:58:27  INFO        Saved => output/stats/halflife_stationarity.parquet (3 rows)
+2026-08-03 09:58:27  INFO      ======================================================================
+2026-08-03 09:58:27  INFO      stats.py complete  (0.1 min)
+2026-08-03 09:58:27  INFO      Output: C:\Users\RossW\Projects\CAMARF\output\stats
+2026-08-03 09:58:27  INFO      Log written → latest_run_stats.log

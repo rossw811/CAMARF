@@ -1,0 +1,5 @@
+01:06:32  INFO      Replaying 10 trades, starting capital $100000, sizing=fixed
+01:06:32  INFO      === Result: account=$100000 sizing=fixed ===
+01:06:32  INFO        Trades taken: 10 / 10 (0 skipped, capital-constrained)
+01:06:32  INFO        Peak concurrent notional (committed): $62870
+01:06:32  INFO        Peak mark-to-market equity: $100986.61  |  Trough: $100000.00

@@ -1,0 +1,10 @@
+2026-08-03 13:58:17  INFO      DataAligner: aligning 1730 assets to NYSE calendar (1962-01-02 \u2192 2026-07-31, 16253 sessions)
+2026-08-03 13:58:47  INFO      DataAligner: 1705/1730 assets aligned (25 excluded for excessive gaps)
+Loading full universe at 1D...
+  1730 symbols with cached 1D data
+  1705/1730 aligned
+  1697 symbols survive min_overlap=252, computing 1697x1697 correlation matrix...
+  2 pairs with rho <= -0.4 out of 1439056 total pairs
+  ADT/BIVV@1D: rho=-0.440, coint_p=0.8710, hedge=-0.146  [NEGATIVE-HEDGE COINTEGRATED]
+  BIVV/SANM@1D: rho=-0.475, coint_p=0.4054, hedge=-1.392  [NEGATIVE-HEDGE COINTEGRATED]
+Done. 2 anti-correlated candidates, 2 with a negative-hedge cointegrating relationship. Saved -> output\research\inverse_polarity_full_universe.parquet

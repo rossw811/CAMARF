@@ -1,0 +1,4 @@
+
+=== GROUP 1: known-confirmed pairs (positive control) (24 pairs) ===
+  LNT/VTR: argmax_lag= +0 argmax_corr=0.428 corr@0=0.428 near_zero_is_peak=True eg_p@0=0.0004571121196487479 n_eg_sig=17/17
+  LNT/WELL: argmax_lag= +0 argmax_corr=0.401 corr@0=0.401 near_zero_is_peak=True eg_p@0=7.569243327099827e-05 n_eg_sig=15/15

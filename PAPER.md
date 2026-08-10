@@ -453,33 +453,73 @@ framework with honest power reporting. No found paper combines all five.
   Architecture is sound; empirical evidence is deferred. State explicitly.
 - No papers found applying EVT/GPD specifically to *pairs trading spread
   tails* — appears genuinely novel as applied methodology.
-## 3. Data and Universe [DRAFTED — universe configuration current as of 2026-07-13; confirmed-pair screening results below are the last full pipeline run and predate the universe expansion]
+## 3. Data and Universe [DRAFTED — universe configuration current as of 2026-08-03; a major
+methodology change (WRDS-primary sourcing) has landed since the 2026-07-13 snapshot below, and
+the confirmed-pair set has changed accordingly. §5 through §7.16 below still report backtest
+results against the OLDER, pre-WRDS 23/26-pair universe and have not yet been re-derived against
+the current one — see the superseded-content notice at the start of §5 for exactly what that
+means and why it has not been done casually.]
 
-Universe as configured as of 2026-07-13: **~1,691 assets** (S&P Composite 1500 +
-international equities/ADRs/FX spots + an expanded cross-asset set — bonds via Treasury
-ETFs/futures, additional crypto/commodities/forex, and deepened FTSE 100/Nikkei 225/Hang Seng
-coverage within the three international exchanges already exercised end-to-end), **13
-timeframes** from 1-minute to 6-month (8h removed as analytically equivalent to 1D).
-yfinance-primary fetch (`data.py`), IBKR supplemental deep history for confirmed pairs only
-(`data_ibkr.py`, 10Y for 1h, 1Y for 5m, 2Y for 15m). Every confirmed pair and backtest result in
-this paper derives from the last full pipeline run against the prior, smaller universe — **1,608
-candidate symbols, S&P Composite 1500 + international equities/ADRs/FX spots, run completed
-2026-06-30 10:10, config hash `0c0e67a6b00ff0bb`** — not the expanded universe described above.
-An independent party can reproduce this exact snapshot by fetching the S&P Composite 1500
-constituent list as of that date alongside the international/FX symbol set in `config.py`'s
-pre-expansion state; the expanded universe has not yet been run through the full screening
-pipeline, so it does not yet contribute any new confirmed pairs or change any figure below;
-Russell 2000/small-cap coverage remains unimplemented (a public constituent-list source was
-sought and not found — see Development.md for the two access attempts and why each failed).
+**Current universe (as of the 2026-08-03 corrected pipeline run, config hash post-BUG-D105
+fix):** **1,730 symbols with cached daily data, 1,660 assets passed the full screening funnel**
+(`latest_run_analysis.log`, 2026-08-03 09:57, 54.3 min runtime). **WRDS is now wired as primary**
+for daily-and-coarser (1D/7D/1M/3M/6M) CRSP-resolvable US equities/ETFs — sourced from CRSP
+(total-return-adjusted) where available and Compustat Global (split-only-adjusted, disclosed) as
+fallback, via Baruch's WRDS subscription — a real methodology change from the pure-yfinance
+universe reported below, not just a data refresh (`data.py`'s WRDS-read branch, landed Session
+29, 2026-08-01; see BUG-D104/BUG-D105 in `docs/BUG_LOG.md` for the two real bugs found and fixed
+getting this correct — the second, BUG-D105, silently collapsed the analysis universe from ~1,650
+to 148 assets for one full session before being caught and fixed). International equities
+(`equity_intl`) and everything intraday remain yfinance-sourced; forex intraday remains IBKR
+(yfinance's own forex intraday depth was judged too shallow — see the historical Data Test Range
+note below). B1 (CRSP volume share-count adjustment) remains **open**, deferred pending live WRDS
+VPN query access.
 
-**Confirmed pairs (last full pipeline run, 2026-07-12, post survivorship-exclusion fix):**
-**26 pairs** across timeframes — 24 @1h (including 12 cross-asset pairs and a DD/MLI-hub
-cluster), 1 @3m, 1 @1M (international, 7267.T/8058.T). This set no longer includes 30m/4h
-pairs the way an earlier (2026-06-30, 23-pair) snapshot did — a genuine change in what the
-current screen finds after the survivorship fix restored pairs that had been silently
-truncated, not a data-quality issue. SPY/VOO, present in the 2026-06-30 snapshot below, is
-excluded from the current confirmed set by the market-cap-tracking-pair detection built for
-this purpose (`CrossAssetTagger._is_index_tracking_pair`).
+**Confirmed pairs, current WRDS-primary universe (2026-08-03 run): 3 pairs** — `KVUE/KMB` @3m
+(hl=3.5, H=0.413, silver tier, coint_frac=0.88 — the same pair confirmed continuously since
+Session 21, now confirmed again under the new WRDS-primary sourcing), `PNC/ZION` @4h (hl=83.5,
+H=0.757, silver, coint_frac=0.12, new under this universe), `IQV/Q` @1D (hl=152.9, H=0.818, gold
+tier, coint_frac=1.00, new). **This is a large, real reduction from the 26-pair (2026-07-12) and
+23-pair (2026-06-30) sets reported in §5 below — stated plainly, not minimized.** The reduction is
+not evidence of a data-quality regression in the new pairs; it reflects that WRDS-primary sourcing
+changes the underlying daily-and-coarser price series for a large fraction of the universe (CRSP
+total-return-adjusted vs. yfinance's own adjustment convention), so the EG+BH-FDR screen is
+testing materially different input data for those timeframes, not just more of the same data. A
+dedicated WRDS-vs-yfinance comparison writeup (which specific pairs from the old set no longer
+clear the screen under WRDS pricing, and why) is flagged as needed and has not yet been written —
+see `Development.md`, Session 30 close-out, for the raw run data this would draw from.
+
+**Prior universe snapshot (2026-07-13, pre-WRDS, superseded above but retained for provenance
+since §5-§7.16 still reference it):** ~1,691 assets (S&P Composite 1500 + international
+equities/ADRs/FX spots + an expanded cross-asset set — bonds via Treasury ETFs/futures,
+additional crypto/commodities/forex, and deepened FTSE 100/Nikkei 225/Hang Seng coverage), 13
+timeframes from 1-minute to 6-month. yfinance-primary fetch, IBKR supplemental deep history for
+confirmed pairs only. Every confirmed pair and backtest result in §5-§7.16 derives from an even
+earlier pipeline run against a smaller prior universe — **1,608 candidate symbols, S&P Composite
+1500 + international equities/ADRs/FX spots, run completed 2026-06-30 10:10, config hash
+`0c0e67a6b00ff0bb`**. Russell 2000/small-cap coverage remains unimplemented (a public
+constituent-list source was sought and not found — see `Development.md` for the two access
+attempts and why each failed).
+
+**Confirmed pairs, prior (pre-WRDS) full pipeline run, 2026-07-12, post survivorship-exclusion
+fix — the set §5 below actually reports on:** **26 pairs** across timeframes — 24 @1h (including
+12 cross-asset pairs and a DD/MLI-hub cluster), 1 @3m, 1 @1M (international, 7267.T/8058.T). This
+set no longer includes 30m/4h pairs the way an earlier (2026-06-30, 23-pair) snapshot did — a
+genuine change in what the current screen finds after the survivorship fix restored pairs that had
+been silently truncated, not a data-quality issue. SPY/VOO, present in the 2026-06-30 snapshot
+below, is excluded from the current confirmed set by the market-cap-tracking-pair detection built
+for this purpose (`CrossAssetTagger._is_index_tracking_pair`).
+
+**Supplemental data sources scoped but not yet integrated into the main pipeline (2026-08-03,
+`data_crypto.py`):** Binance.US direct-exchange fetch for the 15-symbol CAMARF crypto universe,
+built to close a real gap — yfinance's own 1-minute intraday cap is 5 days, vs. Binance.US's
+continuous history back to 2019-09-17. Verified against yfinance's existing overlapping daily
+closes (2,460 overlapping days, median 0.075% difference, consistent with real cross-venue
+spread). A real mid-build pivot is documented in `Development.md`: native USD pairs turned out to
+have a genuine ~19-month data hole (Binance.US losing its USD banking partner after SEC action,
+2023-2025) that USDT-denominated pairs do not have; switched to USDT pairs, re-verified. Not yet
+wired into the main pipeline as a read source — a separate, later decision, same phased rollout
+WRDS itself went through.
 
 **Corporate-actions handling, spot-checked (2026-07-01):** `data.py` requests yfinance's
 `auto_adjust=True` at every fetch call site; `research/corporate_actions_audit.py` verifies
@@ -757,18 +797,36 @@ same conclusion: the multi-stage pipeline's calibration matters at every
 stage, not just one, and no single metric — correlation or a single
 full-sample cointegration test — is sufficient on its own.
 
-## 5. Empirical Findings [DRAFTED — 23-pair confirmed set, 2026-06-30; NOT yet reconciled to the current 26-pair set]
+## 5. Empirical Findings [DRAFTED — 23-pair confirmed set, 2026-06-30; NOT yet reconciled to the
+current 26-pair set, and a SECOND, larger reconciliation gap has since opened — see below]
 
 **Reconciliation status, stated plainly rather than left for the reader to notice by cross-
 referencing dates:** the detailed sub-analyses in this section and in §6-§7 below (tiering,
 DD-hub concentration, walk-forward variants, half-life stationarity, RMT denoising, and others)
 were run against the 23-pair confirmed set as of the 2026-06-30 pipeline run, before the
-survivorship-exclusion and portfolio-aggregation fixes described in the Abstract. The current
-confirmed set is 26 pairs (see the Abstract, and §7.1/§7.7 below, which HAVE been re-verified
-against it). Re-running every sub-analysis below against the current 26-pair set is a distinct,
-tracked, not-yet-completed task — each subsection's own date tag indicates which snapshot it
-reflects; none of the 23-pair-era figures below should be read as the current headline numbers,
-which live in the Abstract and the sections explicitly marked as reconciled.
+survivorship-exclusion and portfolio-aggregation fixes described in the Abstract. The 26-pair set
+below (see the Abstract, and §7.1/§7.7, which HAVE been re-verified against it) was itself the
+most current confirmed set as of 2026-07-12. Re-running every sub-analysis below against the
+26-pair set was already a distinct, tracked, not-yet-completed task as of that date.
+
+**A second, larger reconciliation gap opened 2026-08-03, not yet closed, stated with the same
+plainness as the first**: WRDS was subsequently wired as primary for daily-and-coarser US
+equity/ETF data (§3), and the corrected (post-BUG-D105) confirmed-pair set under this new universe
+is **3 pairs**, not 26 — see §3 for the full, honest accounting of why (a real methodology change
+in the underlying price series, not a data-quality regression). **Every number in §5-§7.16 below,
+including the ones already marked "reconciled" to the 26-pair set, is now itself running behind
+the current confirmed-pair universe.** This has deliberately NOT been patched with a quick
+number-swap: a proper reconciliation requires a full, dedicated `backtest.py`→`stats.py`→`wfa.py`
+run against the 3-pair WRDS-primary universe with its own clean, uniquely-named output files (the
+2026-08-03 overnight pipeline run touched `backtest.py`/`stats.py`/`wfa.py` as part of a much
+broader ~140-stage sweep sharing mutable log files across many variants in sequence — not a
+reliable source for a specific headline number without cross-checking which variant's output
+survived in each shared log, which has not been done). Tracked as explicit priority work, not
+silently deferred — see `Development.md`'s Session 30 close-out and `docs/HANDOFF.md` for the
+current state of the overnight infrastructure this depends on. **Every figure below this point in
+§5-§7.16 should be read as describing the pre-WRDS, 23/26-pair universe, not the paper's current
+empirical reality** — a genuinely uncomfortable thing to have to say about most of a paper's own
+results section, said directly rather than glossed over, consistent with CLAUDE.md's rule 7.
 
 **Confirmed set as of the 2026-06-30 full pipeline run:** 23 pairs survive the full
 screening pipeline across 5 timeframes. Breakdown:
@@ -1364,7 +1422,36 @@ fills being counted individually (not a bug; documented in Development.md). Rela
 Sharpe ranking is the operative finding; absolute P&L scale should be interpreted
 with the different trade count in mind.
 
-### 7.3.1 Point-in-Time Portfolio-Wide Walk-Forward: Testing the Pair-Discovery Step Itself [DRAFTED — 2026-07-01]
+### 7.3.1 Point-in-Time Portfolio-Wide Walk-Forward: Testing the Pair-Discovery Step Itself [DRAFTED — 2026-07-01, RESULT TABLE UPDATED 2026-08-04 with the current post-BUG-D99/BUG-D105 re-run against the WRDS-primary universe (§3); the ORIGINAL 2026-07-01 result below the update is retained for provenance, not deleted]
+
+**2026-08-04 update — real numbers from the current universe, first full 4-fold completion since
+the BUG-D99 causality fix and BUG-D105 universe-collapse fix (both Development.md, Session
+29/30):** `latest_run_pit_wfa.log`, run completed 2026-08-03, universe 1,576 symbols with cached
+1h data, window [2023-07-13, 2026-07-31], 153.8 min total runtime.
+
+| Fold | PIT-Confirmed Pairs | Trades | Portfolio Sharpe |
+|---|---|---|---|
+| expanding/fold1 | 0 | 0 | NaN |
+| expanding/fold2 | 2 | 32 | **−1.0121** |
+| rolling/fold1 | 0 | 0 | NaN |
+| rolling/fold2 | 1 | 5 | **+0.2547** |
+
+**Read honestly, not cherry-picked toward either conclusion:** 3 of 4 folds still find either zero
+pairs or a negative Sharpe — the core finding this subsection exists to report (that the
+full-history screen's confirmed set is not reliably rediscoverable or profitable under a genuine
+point-in-time re-screen) still holds directionally. The one new data point,
+`rolling/fold2`'s +0.2547 Sharpe on pair `AUB/XHR@1h` (5 trades), is real and reported here rather
+than omitted, but 5 trades is too small a sample to treat as evidence the underlying problem is
+resolved — it does not overturn the negative aggregate finding, it is one additional honest data
+point alongside it. This run also serves as a real-scale confirmation of two same-session bug
+fixes: `expanding/fold2`'s −1.0121 result is bit-for-bit unchanged from a partial run interrupted
+mid-session by an unrelated process-management incident (see `Development.md`), confirming that
+number was already real and not an artifact of interruption; and the universe size (1,576 symbols)
+confirms BUG-D105's fix (which had collapsed the analysis universe to 148 assets before being
+caught) is holding at full scale in this dependent pipeline too.
+
+**Original 2026-07-01 result, retained below for provenance — ran against the pre-BUG-D99 causal
+fields and the pre-WRDS universe, superseded by the table above, not deleted:**
 
 §7.3's WFA is, by its own docstring, a *semi*-WFA: it re-estimates OU spread parameters per
 fold but does not re-run pair *selection* — the 23-pair confirmed set is fixed from the
@@ -2153,6 +2240,74 @@ recorded in `docs/FINDINGS.md`'s closing section, not just the ones that showed 
   complex one. The current production default sits within the region both approaches found best,
   which is reassuring for that choice without being strong evidence at this sample size (24
   pairs).
+
+### 7.17 WRDS-Primary Wiring, Seven New Comparison Arms, and a PIT-Safety Gap Found and Disclosed
+— Session 30, 2026-08-02/04 [DRAFTED]
+
+The largest single-session update since 2026-07-13, spanning three real threads: the WRDS-primary
+universe change already reported in §3, seven new research/comparison-arm modules, and a real
+point-in-time (PIT) safety gap found in all seven of them together. Full writeups in
+`docs/FINDINGS.md` §13-21; summarized here per this project's own bias-transparency convention.
+
+**Seven new comparison arms, each built with a synthetic verification test before touching real
+data, per this project's standing discipline:**
+- **Cycle detection** (wavelet dominant period, causal cross-asset phase-sync, cross-timeframe
+  consistency) — honest null on the current confirmed pairs. `docs/FINDINGS.md` §13.
+- **Lévy jump-diffusion vs. `GapFlag`** — the one clearly positive finding of the batch:
+  statistically-detected return jumps (Lee-Mykland test) have **0% overlap** with `GapFlag`-flagged
+  bars, confirmed robust across an alpha sensitivity sweep from 0.001 to 0.10. The two systems
+  answer genuinely different questions — provider-side data continuity vs. return-magnitude
+  discontinuity in otherwise normally-reported data. `docs/FINDINGS.md` §14, §20.
+- **Rough volatility** — mixed, reported as mixed: DFA/wavelet Hurst estimators show real
+  roughness, R/S does not clearly agree, and a sensitivity sweep found the disagreement is itself
+  window-dependent (sharpens at larger windows) rather than a fixed property. `docs/FINDINGS.md`
+  §15, §20.
+- **Options Greeks as correlation features** — statistically significant but very likely a
+  price-level confound; a sensitivity sweep found effect size decays ~3× across window choices
+  while significance holds, consistent with a confound rather than a stable structural signal.
+  `docs/FINDINGS.md` §16, §20.
+- **SVM-via-gradient-descent meta-labeler** — built and verified, blocked on real data volume (19
+  labeled examples, needs 30/class), an honest data-availability limitation, not a bug.
+  `docs/FINDINGS.md` §17.
+- **Inverse polarity ("polar opposite" equilibrium pairs)** — a two-stage screen (raw
+  anti-correlation, then genuine cointegration testing to guard against pairs that merely drift
+  apart forever). A full-universe scan (1,697 assets, 1.4M pairs) found only 2 candidates clearing
+  a strong anti-correlation bar, **neither actually cointegrated** — confirmed robust across a
+  threshold sensitivity sweep from -0.30 to -0.60. Honest, well-supported conclusion: no genuine
+  polar-opposite equilibrium currently exists in this universe. `docs/FINDINGS.md` §18, §20.
+- **Trig-identity convergence/divergence** — maps the polarity scores above onto angles
+  (arccos/arcsin), decomposed via a sum-to-product identity. A real design error was caught by
+  synthetic verification before touching real data (the angle *difference*, not the angle *sum*,
+  was initially and incorrectly claimed to be the polar-opposite invariant) and corrected.
+  `docs/FINDINGS.md` §19.
+
+**A real PIT-safety gap, found and disclosed, not caught by any single script's own verification:**
+all seven arms above source their pairs from the same full-history-screen confirmed-pair set
+already disclosed as non-PIT-safe in §7.3.1 — three call `ml._discover_confirmed_pairs()`
+directly, four hardcode `KVUE/KMB` (itself a member of that same set). This is not a new bias —
+it is §7.3.1's already-quantified limitation, simply not previously stated explicitly for these
+new modules. `docs/FINDINGS.md` has a dedicated disclosure section on this immediately after §21.
+Closing this gap for real (building a PIT-aware pair-discovery adapter from the episodic
+confirmation machinery below, and re-running the affected comparisons) is tracked as the top open
+priority as of this writing, not yet completed — see `Development.md` and `docs/HANDOFF.md`.
+
+**Episodic point-in-time confirmation, `research/wrds_deep_history_episodic_scan.py`:** a
+causal-safe episodic confirmation function (`episodic_bhfdr_confirm_asof`) was built and verified
+(4/4 synthetic checks) — "was this pair confirmed as of date T, using only historical windows
+already concluded by T," as distinct from the original function's non-causal "was this pair EVER
+confirmed in any window." Not yet a live bug (nothing downstream consumed the non-causal version),
+but a real, previously-flagged design gap now closed. The full episodic re-scan needed to populate
+this function's required input (`window_end_date`, absent from all cached prior output) was
+relaunched overnight 2026-08-03/04 and is the direct prerequisite for closing the PIT-safety gap
+above.
+
+**Parameter sensitivity extended to the research/ layer, two batches, 12 comparison arms total** —
+a new pattern for this project, applying `sensitivity.py`'s existing parameter-grid-vs-headline-
+metric discipline to `research/*.py` scripts, not just `backtest.py`. `docs/FINDINGS.md` §20-21
+have the full per-arm results (several genuine findings surfaced this way, not just robustness
+confirmations — see the rough-volatility and options-Greeks summaries above). 34 of the 46
+parameterized research scripts remain unswept, explicit tracked backlog, genuinely multi-session
+work.
 
 ## 8. Bias Documentation [OUTLINED, one bias drafted in detail]
 

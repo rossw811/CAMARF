@@ -20372,3 +20372,1148 @@ parquet paths after every fold) — it does not actually resume a partial run, s
 from fold 1. `data_crypto.py`'s checkpoint file was never written (killed before the first
 symbol/interval completed), so it also restarts clean. All three relaunched
 (`analysis_wrds_compare_run3.log`, `pit_wfa_session30_run2.log`, `data_crypto_backfill2.log`).
+
+### Session 30 close-out: the WRDS-vs-yfinance comparison finally completed, plus everything gated on it
+
+After the second round of kills (traced to unrelated multiprocessing load on this machine from a
+separate, non-CAMARF project — see `docs/HANDOFF.md`'s 2026-08-03 update for the process-table
+evidence), the full production pipeline plus every Session 30 script was run through
+`run_session30.ps1`, a new strictly-sequential runner (`Start-Process`-based, one stage at a time,
+resumable via a completed-stages state file so a kill doesn't restart from stage 1 — see that
+script's header for the full rationale). Workers reduced to 6 (from the usual 12) to leave headroom.
+
+**The `analysis.py` re-run — the actual point of Task 16, blocked across three prior sessions —
+completed cleanly**: `latest_run_analysis.log`, 2026-08-03 09:57, 54.3 min, universe **1660 assets,
+20457 symbol-TF keys**, confirming BUG-D105's fix holds at full real scale, not just the partial
+1069-asset/1m-only progress seen in the killed run3 attempt. Real WRDS-vs-yfinance-primary result:
+**3 confirmed pairs** — `KVUE/KMB` @3m (hl=3.5, H=0.413, silver, coint_frac=0.88, the same pair
+confirmed since Session 21), `PNC/ZION` @4h (hl=83.5, H=0.757, silver, coint_frac=0.12, new), and
+`IQV/Q` @1D (hl=152.9, H=0.818, gold, coint_frac=1.00, new). 68 bias-audit entries logged. This is
+the first time the corrected WRDS-primary universe has actually produced a confirmed-pair set to
+compare against the old yfinance-only baseline — worth a dedicated comparison write-up in
+`docs/FINDINGS.md` once there's time to do it justice (not done in this entry; flagging so it isn't
+silently skipped).
+
+**`pit_wfa.py` ran all 4 folds to completion for the first time** (`latest_run_pit_wfa.log`,
+153.8 min total): `expanding/fold1` 0 pairs (Sharpe nan), `expanding/fold2` 2 pairs/32 trades/Sharpe
+**-1.0121** (unchanged from the partial run two handoffs ago — confirms that number was already
+real, not a fluke of an interrupted run), `rolling/fold1` 0 pairs (Sharpe nan), and **new**:
+`rolling/fold2` **1 pair/5 trades/Sharpe +0.2547** (pair `AUB/XHR@1h`). One positive-Sharpe PIT fold
+does not overturn the already-disclosed §7.3.1 negative aggregate finding (still 3 of 4 folds are
+zero-pair-or-negative) — reported here for completeness, not as a reversal.
+
+**`research/svm_gradient_descent_classifier.py` finally got a real-data run** (no longer blocked by
+the stale-results collision described in `docs/FINDINGS.md` §17): with the analysis.py re-run's 3
+confirmed pairs now on disk, `ml.py::build()` found 19 labeled entry-event examples (10
+`converged`/9 `not_converged`) from 1 of the 3 pairs' persisted spread series (2 pairs had none).
+Still short of `Config.ML.MIN_CLASS_SAMPLES` (need >=30/class) — an honest "insufficient data"
+result, not a bug, and not a change from what §17 already disclosed as the expected outcome. §17
+updated in `docs/FINDINGS.md` to record the actual attempted number (19) rather than "run pending."
+
+All other pipeline stages (`backtest.py` baseline/holdout/all STORM variants/entry-z diagnostic,
+`stats.py`, `wfa.py`, `distance.py`, `sensitivity.py`, `deflated_sharpe.py`, `report.py`, and the
+`cycle_detection.py`/`levy_jump_diffusion.py`/`rough_volatility.py`/`options_greeks_features.py`
+comparison arms) re-ran cleanly against the corrected universe, each completing in under a minute.
+
+`data_crypto.py`'s full 15-symbol backfill is still running as of this entry (started 12:33, still
+alive and using CPU 30+ minutes in) — its `print()`-based progress output is fully buffered under
+`Start-Process` redirection, so the log file appears empty while it works; this is a visibility gap
+in the runner, not evidence of a hang (confirmed via `Get-Process` CPU-time growth, not assumed).
+Will be documented here once it completes or is confirmed stalled.
+
+### Same-day continuation (2026-08-03 afternoon): two new comparison arms, a full-universe scan,
+### batch-1 parameter sensitivity — three real bugs found and fixed along the way, none by accident
+
+`data_crypto.py`'s backfill kept running through all of this (still alive at end of entry, 8 files
+written — `BTC_1m/3m/5m/30m/4h.parquet` plus a live checkpoint — further than any of the three prior
+attempts, which all lost 100% of progress on kill).
+
+**Two new comparison arms, Ross's own design questions, built with the established verify-first
+discipline** (docs/FINDINGS.md #18/#19 have the full writeups):
+
+- **`research/inverse_polarity.py`** — "polar opposite" equilibrium pairs: bounded [-1,1] per-asset
+  polarity scores (3 built for comparison: `zscore_tanh`, `percentile_rank`, `eg_spread_zscore`), a
+  two-stage screen (raw anti-correlation → genuine EG cointegration test, guarding against "two assets
+  just drift apart forever" false positives). 8/8 synthetic checks.
+- **`research/trig_convergence.py`** — maps those polarity scores to angles (`arccos`/`arcsin`),
+  sum-to-product decomposition. **A real design error caught by verification before touching real
+  data**: first draft claimed `θ_A - θ_B` was the polar-opposite invariant; algebra (and a failing
+  test) showed it's actually `θ_A + θ_B` that's constant — the difference term swings across the full
+  range as an oscillating pair cycles. Corrected, re-verified 5/5.
+- **Ross asked whether the arccos/arcsin divergence was statistically significant.** Investigated
+  directly rather than run a test: `arccos(p) = π/2 - arcsin(p)` is an identity, so `co_movement` is
+  provably bit-identical between mappings (diff ~5e-16) and `divergence` is an exact sign-flip — zero
+  independent information between the two mappings, so no significance test would have meant anything.
+  **But asking surfaced a real bug**: the rolling z-score's std denominator was numerically unstable
+  exactly where `co_movement` is pinned near-constant (the true-opposite regime), causing ~5e-16
+  rounding to flip some bars between NaN and a finite value depending on mapping (12,343 vs 13,536
+  finite bars on the identical underlying series). Fixed with a documented `1e-6` floor; re-run
+  confirmed all 12 real-data rows now match exactly between mappings. 6/6 checks pass.
+
+**Full-universe scan, the natural next step both arms' initial confirmed-pairs-only runs pointed
+to** (the 3 confirmed pairs are all positively correlated — finding a real "polar opposite" needs the
+whole universe, not just what's already confirmed). Reused `analysis.py`'s own
+`DataAligner.align_universe`/`UniverseFilter.build_returns_matrix`/`UniverseFilter.correlation_matrix`
+directly rather than reimplementing alignment/correlation logic.
+
+- **Bug 1 (dict-key mismatch)**: first attempt returned "0 symbols survive min_overlap=252" —
+  a fabricated null, not a real result. `DataAligner.align_universe`'s OUTPUT dict is keyed by bare
+  symbol, not `symbol_tf` (confirmed against the already-correct pattern in
+  `aligned_pair_loader.align_pair_dataframes`); a hand-written lookup got this backwards. Fixed,
+  smoke-tested directly against real symbols before re-running the expensive full scan.
+- **Real result after the fix**: 1730 symbols with cached 1D data, 1705 aligned, 1697 survive
+  `min_overlap=252`, full 1697×1697 correlation matrix (1,439,056 pairs). Only **2 pairs** anywhere
+  clear `rho <= -0.40` (`ADT/BIVV` -0.440, `BIVV/SANM` -0.475) — real evidence of how rare strong
+  anti-correlation is across this universe, not a small-sample artifact.
+- **Bug 2 (mislabeling)**: the first real-data print labeled both candidates
+  `[NEGATIVE-HEDGE COINTEGRATED]` based only on the fitted hedge ratio's SIGN, never checking
+  `coint_pvalue` — but both pairs' p-values (0.8710, 0.4054) are nowhere close to significant. Exactly
+  the "correlated but no real equilibrium" failure mode the module's own two-stage design exists to
+  catch, mislabeled as a finding by a pure string-formatting bug. Fixed: label now requires both
+  negative hedge AND `coint_pvalue < 0.05`; verified against the real observed values plus a
+  synthetic p=0.001 control. **Honest bottom line**: zero genuine polar-opposite equilibrium pairs
+  currently exist anywhere in this universe.
+
+**Batch 1 of parameter sensitivity for the research/ comparison arms** (Ross's request, confirmed
+bespoke per-script not generic/mechanical — genuinely multi-session work). Survey: 120 research
+scripts, 46 with real CLI-tunable numeric parameters, 74 fixed-logic diagnostics. Batch 1 covers the 6
+sweepable Session 30 arms (`svm_gradient_descent_classifier` excluded — no CLI params, and
+data-blocked not parameter-blocked). `research/sensitivity_research.py` (new): subprocess-based
+runner, regex/parquet extraction of each arm's headline metric.
+
+- **`cycle_detection` (`--plv-window`)**: mean PLV stable (0.43–0.51), honest null holds. Real catch:
+  `n_pairs_reported` drops 3→2 once window ≥60 — the module's own minimum-bars gate (`3×window`)
+  silently drops a pair from the sample, changing what's being averaged with no warning.
+- **`levy_jump_diffusion` (`--alpha`)**: `mean_gapflag_overlap_pct` stays exactly 0.0 across the
+  entire grid (0.001–0.10) — Finding #14's headline claim is robust to the significance threshold.
+- **`rough_volatility` (`--rv-window`)**: real finding — `H_rs` crosses above 0.5 (not-rough) at
+  larger windows (0.42→0.51) while `H_dfa`/`H_wavelet` stay well below 0.5 throughout — the
+  "estimators disagree" finding is window-dependent, sharpening rather than staying constant.
+- **`options_greeks_features` (`--window`)**: `p=0.0` at every window, but `r` decays 0.44→0.15 —
+  consistent with the confound interpretation (a genuine relationship should hold magnitude better).
+- **`inverse_polarity` full-universe (`--corr-threshold`)**: the strongest result — even at -0.30
+  (20 raw candidates, 10× more than baseline) **zero are genuinely cointegrated**. The null holds
+  across the entire reasonable threshold range, real evidence for it, not just absence of evidence
+  against it.
+- **`trig_convergence` (`--window`)**: stable throughout, no dramatic swings.
+- **Harness bug found assembling this section**: `--only` mode overwrote the output parquet from
+  scratch each call instead of merging — running the 6 arms as separate `--only` invocations (to
+  manage memory pressure from concurrent background jobs) silently discarded every earlier arm's
+  rows, leaving only the last one on disk. Fixed to merge by `comparison_arm`; the 30-row result was
+  reconstructed from the already-correct captured output, not re-run (the full-universe sweep alone
+  is too expensive to redo unnecessarily).
+
+**Remaining scope, explicit backlog, not silently dropped**: 39 more parameterized research scripts
+still need the same bespoke headline-metric identification batch 1 did for these 6 — genuinely
+multi-session work per Ross's own framing.
+
+Full writeups: `docs/FINDINGS.md` #18 (inverse_polarity + full-universe scan), #19 (trig_convergence +
+the arccos/arcsin investigation), #20 (batch-1 sensitivity).
+
+### Late-night close-out (2026-08-04 ~01:00): overnight compute launched, a real PIT-safety gap found
+
+Ross flagged, correctly, that all 7 of tonight's new comparison arms share a real, previously-
+undisclosed limitation: they all source pairs from the SAME non-PIT full-history screen already
+disclosed in PAPER.md §7.3.1 (`ml._discover_confirmed_pairs()`, or hardcoded `KVUE/KMB` which is a
+member of that same set) — confirmed directly by grep, not assumed. This is the SAME already-
+quantified bias, just newly applying to modules built today that hadn't stated it explicitly.
+Disclosure added to `docs/FINDINGS.md` (new section right after #21).
+
+Ross then scoped the fix in full, across several messages: (1) research scripts must be PIT-safe,
+(2) the true pair universe is larger than the "standing" 3-pair confirmed set once episodic
+relationships are counted, (3) research scripts should run against the ENTIRE PIT universe, not just
+confirmed pairs, and (4) discovery-type scripts specifically should target the full universe, not
+just already-confirmed pairs — with explicit authorization to proceed autonomously ("auto accept
+every permission request") since he was going to sleep.
+
+**What was checked before committing to any plan** (not guessed): `episodic_bhfdr_confirm_asof`
+(today's BUG-D106 fix) requires `flat_pvalue_rows` carrying `window_end_date`. The only cached
+episodic-scan output on disk (`output/research/wrds_deep_history_episodic_scan_tier2_windows.parquet`,
+406,924 rows, from 2026-07-28) predates that fix — verified directly: 0 of 406,924 rows have the
+field. **The full episodic scan must be re-run before any PIT-universe wiring is even possible** —
+this is a genuine prerequisite, not optional.
+
+**What was launched overnight, safely, with real verification of the tooling before trusting it**:
+1. `run_overnight_research.ps1` (new) — every non-data-fetch script in the project (backtest.py all
+   variants, stats/wfa/distance/sensitivity/deflated_sharpe/report, pit_wfa.py, ml.py,
+   run_storm_grid.py, run_verify_suite.py, fresh_holdout_compare.py, reproduce.py,
+   absorption_ratio.py/cvar.py/decay_proxy.py/portfolio_sim.py/survivorship.py/options.py/gics.py,
+   plus all 121 research/*.py scripts discovered dynamically). Excludes `data.py`/`data_wrds.py`/
+   `data_ibkr.py`/`data_crypto.py` (the data-fetch layer, per Ross's instruction) and `analysis.py`
+   (skip this time, per instruction) — plus, found while scoping and flagged rather than silently
+   dropped, `macro.py` (live FRED fetch via `requests`) and `seed_sp_caches.py` (live Wikipedia
+   scraper), same category as the explicit exclusions even though not named.
+2. `run_episodic_scan_overnight.ps1` (new) — re-runs `wrds_deep_history_episodic_scan.py` to produce
+   `window_end_date`-carrying output, the direct prerequisite for next session's PIT-universe wiring.
+   Already operates on the full WRDS universe by design (not confirmed-pairs-only), so no code change
+   was needed for that part of the ask.
+
+**Real bugs found and fixed building the overnight runner, twice, before trusting it for 8 unattended
+hours** — worth recording precisely since both were subtle and both were caught by live testing, not
+assumed away:
+- **Bug 1**: `Start-Process -PassThru`'s returned process object read back an EMPTY `ExitCode` after a
+  timed `WaitForExit()`, even applying the documented `WaitForExit()`+`Refresh()` fix — misreported a
+  real, successful `backtest.py` run (PNC/ZION 5 trades, SR=68.80, confirmed in the actual log) as
+  FAILED. First fix attempt (raw `System.Diagnostics.Process` + `ReadToEndAsync().Result`) traded
+  this for a worse bug:
+- **Bug 2**: deadlocked. Windows PowerShell 5.1's synchronous execution model doesn't pump .NET Task
+  continuations while blocked inside `WaitForExit()`, so the async read task's `.Result` never
+  resolved — confirmed live: the child `python.exe` process had already exited (per
+  `Get-CimInstance`), but the outer script never logged DONE or FAILED, hung indefinitely.
+- **Fixed** with the standard, officially-recommended .NET idiom for exactly this combination:
+  `OutputDataReceived`/`ErrorDataReceived` events + `BeginOutputReadLine()`/`BeginErrorReadLine()`,
+  which drains output via the runtime's own I/O completion callbacks instead of a blocking `.Result`.
+- **Bug 3**, found in the SAME test pass: `ProcessStartInfo.ArgumentList` (the newer, no-manual-quoting
+  .NET Core collection API) came back NULL in this Windows PowerShell 5.1 / .NET Framework
+  environment — every `.Add()` call errored, and the child process silently launched with ZERO
+  arguments (dropped into python's bare interactive REPL instead of running the intended script,
+  which is why the first "success" test showing `ExitCode=0` was actually a false positive — the REPL
+  exits cleanly on EOF with no error). Fixed with the classic `.Arguments` STRING property
+  (manually quoting any argument containing whitespace/quotes).
+- All three fixes verified with live, targeted tests (a real success case AND a real timeout case,
+  both against actual subprocess launches, not just parse-checked) before the real 8-hour run was
+  trusted to them.
+
+**Next session's top priority, in order** (see task tracker #5 for the live version of this list):
+1. Once the overnight episodic scan completes, build a PIT-aware pair-discovery adapter around
+   `episodic_bhfdr_confirm_asof(rows, alpha, as_of_date=<today>)` that research scripts can call
+   instead of (or alongside) `ml._discover_confirmed_pairs()`.
+2. Audit every research script (not just today's 7) for which pair source it actually uses — some
+   discovery-type scripts (`lead_lag_scan.py`, `near_miss_lag_scan.py`,
+   `k_bahc_candidate_discovery.py`, `graph_clustering.py`, etc.) may already operate on the full
+   universe by design (not yet checked, don't assume either way).
+3. Rewire the confirmed-pairs-only scripts to the PIT-universe adapter; for discovery-type scripts,
+   confirm/fix full-universe scope specifically (Ross's explicit ask, separate from the PIT concern).
+4. Re-run affected comparisons once wired; update the affected `docs/FINDINGS.md` entries (#13-#19)
+   to reflect PIT-safe, full-universe results rather than leaving today's disclosure note as the
+   final word.
+5. Check both overnight jobs' final state (`logs/overnight/_runner.log`,
+   `logs/overnight/_episodic_scan_runner.log`) before anything else — don't assume either completed
+   cleanly without reading the actual logs.
+
+### Overnight monitoring (2026-08-04, ~01:20-06:00): a 4th real bug found and fixed live — every
+### stage-level TIMEOUT tonight left a fully unsupervised zombie process tree running for hours
+
+Ross asked to keep the pipeline running and monitor it. A persistent background monitor was armed
+(FAILED/TIMEOUT alerts + periodic heartbeat across all 3 overnight jobs). Real events surfaced and
+handled as they came, cheapest/most routine first:
+
+- `data.py` was found running (PID 15544) despite being explicitly excluded — traced to `reproduce.py`
+  (stage 30) internally shelling out to `[PYTHON, "data.py"]` as part of its own reproduction chain
+  (its own purpose, per CLAUDE.md, is mapping PAPER.md findings back to the scripts that produced
+  them — `reproduce.py`'s default mode literally re-runs the pipeline it's verifying). Only checking
+  for a runnable `__main__` block when scoping the overnight runner wasn't enough — should have also
+  checked what each script actually DOES. Fixed: `--verify-only` (checks outputs exist, doesn't
+  re-run anything) added to stage 30's invocation.
+- `run_verify_suite.py` (stage 31) and later `r141_fdr_method_comparison`, `r135_earnings_lead_lag`,
+  `r111_big_move_lead_lag` all hit the 45-minute per-stage TIMEOUT and were logged as correctly
+  killed-and-continued. They were not.
+
+**The real bug, found investigating a sustained free-RAM crisis (0.29-0.55 GB free across several
+heartbeats)**: `Process.Kill($true)` — the tree-kill overload — is a .NET 5+/Core-only API. Windows
+PowerShell 5.1 runs on .NET Framework, which only has the parameterless `Kill()` (single process, no
+children). The call was throwing internally every single time a stage timed out, and the surrounding
+`try {} catch {}` silently swallowed it — the runner logged "TIMEOUT ... killing and moving on" and
+moved on, while the actual OS process (plus, in `reproduce.py`'s case, a downstream `analysis.py
+--workers 12` it had already chain-launched before being interrupted) kept running completely
+unsupervised. Confirmed directly, not inferred: a `Get-CimInstance Win32_Process` sweep at ~06:00
+found `run_verify_suite.py` (PID 18404, "timed out" at 02:02, still alive 4 hours later) and an
+orphaned `analysis.py --workers 12` (PID 19276, 2.7 GB working set, parented to the long-dead
+`reproduce.py` PID from the earlier incident) both still running, plus TWO MORE full worker pools
+from `fdr_method_comparison.py` and (implicitly) the other two timed-out stages — **every one of
+tonight's 4 timeouts had silently orphaned its process tree**, and each orphan's own worker pool
+(12 processes apiece for the multiprocessing-based scripts) compounded on top of the others over
+the following hours. This, not any single script, was the real driver of the sustained near-zero
+free RAM.
+
+**Fixed and verified live, not just patched blind**: `taskkill /PID <id> /T /F` (the correct Windows
+tree-kill for this runtime) proven directly against the actual orphans first — `taskkill /PID 18404
+/T /F` and `taskkill /PID 19276 /T /F` correctly took down both zombie trees, free RAM jumped
+0.29 GB -> 6.81 GB confirming the diagnosis. `run_overnight_research.ps1`'s timeout branch updated to
+use the same `taskkill` call instead of `$proc.Kill($true)`. Since a running PowerShell script
+executes from its own already-parsed in-memory copy, editing the file on disk does not retroactively
+fix the instance already running — the runner itself was stopped cleanly (`taskkill /PID 9528 /T /F`
+on the OUTER runner process, which correctly swept every remaining child in its tree, including the
+orphans that were still nominally its descendants) and relaunched. Resume verified working as
+designed: `logs/overnight/_completed_stages.txt` had 70 entries, the relaunched instance correctly
+`SKIP`ped all 70 and picked up cleanly at stage 30 (this time with `--verify-only`, completing in 0
+min instead of spawning `data.py` again).
+
+**Lesson for any future long-running unattended PowerShell orchestration in this project**: verify
+`Process.Kill()`'s actual behavior on the target .NET runtime directly before trusting it in a
+timeout/cleanup path — the .NET 5+/Core API surface silently degrades rather than erroring loudly on
+.NET Framework in several places (this session already found two others: `Start-Process -PassThru`'s
+`ExitCode`, `ProcessStartInfo.ArgumentList`). `taskkill /PID <id> /T /F` is the reliable primitive on
+this runtime for anything that needs a real tree-kill.
+
+### A 5th real issue, ~11:32-11:59: the general pipeline collided with the dedicated episodic-scan job
+
+`run_overnight_research.ps1`'s dynamically-discovered research-script list (by design, every file in
+`research/`) includes `wrds_deep_history_episodic_scan.py` — the SAME script already running as its
+own dedicated overnight job (`run_episodic_scan_overnight.ps1`, launched ~1:10 AM specifically to
+produce the `window_end_date` field task #5 needs). At 11:31:55 the general pipeline reached that
+script alphabetically and launched a SECOND independent instance, with its own 12-worker
+`ProcessPoolExecutor` pool, concurrently with the first — both instances share the same checkpoint
+IDs (`tier1_fullsample`, `tier2_rolling`) and output paths, a real collision risk to the actual data
+this whole night was run to produce.
+
+**Resolution, verified not assumed**: the second instance crashed naturally 28 minutes later (exit 1,
+consistent with a checkpoint file race — not investigated further since the fix is to prevent the
+collision, not to make the collision safe) — the runner correctly caught this and moved on. Its 12
+worker processes did NOT die when their parent crashed (same orphaning class as the `Kill()` bug
+above, but at the Python/OS level this time — `with ProcessPoolExecutor(...) as pool:` should clean
+up its own workers on exit, but did not in this crash path) — found and killed manually
+(`taskkill /PID 4180 /T /F`). **Checked directly, not assumed**: the PRIMARY dedicated job (PID 1820)
+was confirmed still alive throughout, its own 12-worker pool intact, and its progress log showing
+genuine forward progress before, during, and after the collision window (ADV liquidity gate
+timestamps advancing 11:39 -> 11:46 -> 11:54, skip-counts increasing each time) — no evidence of
+corrupted or lost state.
+
+**Not yet fixed in the script** (tonight's run already passed this stage and won't revisit it, so not
+urgent for tonight, but real for any future run): `run_overnight_research.ps1`'s research-script
+discovery should explicitly exclude `wrds_deep_history_episodic_scan.py` whenever the dedicated
+episodic-scan job might also be running, to prevent this class of collision from recurring.
+
+### Overnight pipeline complete (2026-08-04 13:29:56)
+
+`run_overnight_research.ps1` finished its full run: **141 stages DONE, 9 FAILED, 11 TIMEOUT** (all
+self-healed cleanly after the `taskkill`/tree-kill fix — no further orphaning after that fix landed).
+Final stage (`99_pit_wfa`, deliberately placed last since it's the most expensive) timed out at the
+45-minute per-stage limit as anticipated (it needs ~154 min per its last full completion this
+session) — an accepted, already-designed-for outcome, not a failure requiring action: it's the last
+stage, nothing downstream depends on it, and fresh PIT numbers from this exact universe already exist
+from earlier in Session 30 (§7.3.1 in `PAPER.md`, updated today). Confirmed cleanly killed, no orphan
+(`Get-CimInstance` sweep post-completion: no `pit_wfa.py` process, 18 total python processes
+remaining, all attributable to the still-running episodic scan's own 12-worker pool plus unrelated
+background jobs from another project). Free RAM stable at ~3 GB at completion.
+
+**The 9 FAILED stages, for the record** (none were infrastructure bugs by the end — all traced to
+either the `reproduce.py`/`data.py` incident (fixed, see above) or genuine thin-data/script-specific
+issues on the current 3-pair universe): `30_reproduce` (fixed, `data.py` subprocess — see above),
+`r111_big_move_lead_lag` / `r135_earnings_lead_lag` / `r141_fdr_method_comparison` /
+`r220_wrds_universal_lead_lag_scan` (all TIMEOUT, self-healed, likely genuinely need more than 45
+min against a large universe rather than being stuck), `r120_confirmatory_cointegration_check` /
+`r134_descriptive_check_concordance` / `r146_follower_direction_validation` (exit 1, truncated error
+logs from the async-event-capture race described above — not yet root-caused, logged as a known gap
+rather than investigated further tonight), `r166_lo2002_sharpe_correction` (exit 1, real
+`RuntimeWarning: Mean of empty slice` — a genuine thin-data artifact of the current 3-pair universe,
+not an infrastructure issue), `r218_wrds_deep_history_episodic_scan` (the documented collision with
+the dedicated episodic job, above).
+
+**Full universe/lead-lag/episodic pair-count reconciliation, requested and answered directly this
+session (not yet formally written up beyond this entry):** Ross asked whether the "3 confirmed
+pairs" figure represented the entire universe including lead-lag leniency and episodic
+relationships. Checked directly against actual output files, not estimated: the strict, standard
+full-history EG+BH-FDR screen (§3/§7.3.1 in `PAPER.md`) is 3 pairs; the episodic scan's STALE
+(2026-07-28, pre-BUG-D106-fix) cache separately found 189 (tier2) and 620 (tier3) unique pairs
+cointegrated in at least one historical window; `wrds_lead_lag_scan_tier1.parquet` flagged 2 of 103
+tested pairs as "worth checking" on a correlation-lift basis (not a cointegration confirmation);
+`near_miss_lag_scan`'s flagged-only outputs show 9 pairs @1h and 667 @3m close to but not clearing
+the strict threshold. None of these larger, more lenient counts have been through the same rigor as
+the 3 (multiple-testing correction at that scale, PIT-safety) — this is precisely the reconciliation
+task #5 exists to do once the current episodic re-scan (overnight, still running as of this entry)
+completes with the BUG-D106 PIT-safety fix actually applied.
+
+### New comparison arm: cross-timeframe cointegration, `research/cross_timeframe_cointegration.py`
+(2026-08-04) — a real design error caught and fixed, again by verification before real data
+
+Ross's question: is there a genuine COINTEGRATING equilibrium between two assets sampled at
+DIFFERENT timeframes, not just a predictive correlation (already covered, and explicitly
+disclosed as correlation-only, by `midas_cross_asset_lead_lag.py`) or the same pair's same-TF
+verdict replicated across granularities (`cross_timeframe_divergence.py`,
+`cycle_detection.py`'s cross-TF consistency). Scoped with Ross first per the project's own
+new-methodology norm; he chose to build and compare all 3 candidate test designs rather than pick
+one, and to scan the full universe rather than start from just the 3 confirmed pairs.
+
+**Three methods, one real design flaw caught by synthetic verification, not shipped blind:**
+- **Method A** — downsample the finer leg to the coarser leg's frequency, run the existing
+  production EG test at the shared frequency. Cheapest, reuses already-validated machinery,
+  correctly discriminated in verification (rejects the null for a true synthetic cross-TF pair,
+  fails to reject it for independent trends).
+- **Method B** — the genuinely novel piece: regress the coarse leg's log-price LEVEL on a causal
+  MIDAS-weighted aggregate of the fine leg's recent history (reusing `midas_feature.py`'s
+  `beta_weights`/`midas_aggregate` directly), ADF-test the residual for stationarity. Also
+  correctly discriminated in verification.
+- **Method C, as first built — a real bug, not just underpowered.** Regressed the fine leg's
+  forward cumulative return against the coarse level, then ADF-tested THAT residual. Verification
+  found `adf_p=0.0000` for BOTH a true synthetic cross-TF relationship AND a fully independent
+  null case — zero discriminating power. Root cause: a forward cumulative-return series is already
+  close to stationary by construction (unlike a price level), so ADF-testing any regression
+  residual against it will essentially always "pass," regardless of whether a real relationship
+  exists. **Redesigned** (Ross's explicit choice over dropping Method C): replaced ADF-on-residual
+  with a circular-shift permutation test on the regression's own correlation coefficient — the
+  same convention `lead_lag_permutation_check.py`/`eg_permutation_check.py` already use.
+- **A second, related finding while re-verifying the fix**: running Method A/B's shared-trend
+  synthetic construction through the corrected Method C found NO significant discrimination
+  (perm_p=0.094) — not a bug this time, a genuine confirmation that Method C tests a DIFFERENT
+  hypothesis than A/B (does the coarse level predict the fine leg's FUTURE return, which a
+  contemporaneous equilibrium does not guarantee). Built a dedicated synthetic construction with
+  an explicit causal predictive link specifically to verify Method C correctly; 4/4 checks now
+  pass with real, non-tautological discrimination on all three methods.
+
+**Real-data run, confirmed pairs (coarse=1D, fine=1h, both directions per pair):** `PNC/ZION`
+shows strong, consistent cross-timeframe cointegration on both Methods A and B in both directions
+(coint_p ≈ 9e-9 / 1.9e-10, adf_p ≈ 1.3e-5 / 0.015) — a real finding, and an expected one given
+they're already same-TF confirmed at @4h. `KVUE/KMB` borderline on Method B one direction
+(adf_p=0.051). `IQV/Q` null on everything (short overlapping history, `Q` only listed since
+2025-10-27). Method C found no significant predictive relationship for any real pair — an honest
+null, appropriately harder bar to clear than contemporaneous equilibrium.
+
+**Full-universe scan, deliberately NOT launched yet**: checked memory first rather than launch
+blind — the dedicated episodic-scan job (still running, the higher-priority task #5 prerequisite)
+has legitimately grown to 3.87 GB working set deep into its multi-hour Tier 2/3 scan (confirmed
+via `Get-CimInstance`, not an orphan — a single process, expected memory accumulation from a
+long-running job, not the zombie-process pattern from earlier tonight). Free RAM at 0.71 GB.
+Running a second heavy multiprocessing job now risks destabilizing the higher-priority one; holding
+off until it completes or frees resources.
+
+Files: `research/cross_timeframe_cointegration.py` (new), `debug/_verify_cross_timeframe_
+cointegration.py` (new, 4/4 pass), `output/research/cross_timeframe_cointegration.parquet` (18
+rows: 3 methods × 6 pair-directions). Full-universe run pending resource availability.
+
+**Real bug found launching the full-universe scan once resources freed up**: `Config.ANALYSIS.
+MIN_PEARSON_CORR` -- `AttributeError`, the constant actually lives on `Config.UNIVERSE`, not
+`Config.ANALYSIS`. The SAME wrong reference was already sitting in `research/inverse_polarity.py`
+(written earlier this session) but never threw there, because that module's `--corr-threshold`
+CLI argument has a concrete default (`-0.40`), so the `if corr_threshold is None:` fallback branch
+holding the bad reference was dead code, never executed via CLI. `cross_timeframe_cointegration.py`
+used `default=None` for the same flag, which actually exercised the buggy line. Fixed in both
+files (`Config.UNIVERSE.MIN_PEARSON_CORR`). Worth a general note: a default value in one script can
+mask a real bug that only surfaces when the exact same pattern is reused with a different default
+elsewhere -- worth grepping for this exact string (`Config.ANALYSIS.MIN_PEARSON_CORR`) across the
+rest of `research/` if it turns out to have been copy-pasted anywhere else.
+
+### Task #5, first real progress: `research/pit_pair_discovery.py` built, verified, and wired into
+the 3 confirmed-pairs-using comparison arms (2026-08-04)
+
+Built the PIT-safety adapter Ross scoped: `discover_pit_confirmed_pairs(as_of_date=None, alpha=0.05,
+min_windows_confirmed=1)`, a drop-in-shaped replacement for `ml._discover_confirmed_pairs()` (same
+`(symbol_a, symbol_b, tf_label)` return contract) sourced from `episodic_bhfdr_confirm_asof`
+(BUG-D106's fix) instead of the standard non-PIT-safe full-history screen. Reads the episodic scan's
+own checkpoint files directly; explicitly rejects (not silently uses) any file missing
+`window_end_date`, with a printed warning rather than a fabricated result.
+
+**Verified first, 4/4 pass** (`debug/_verify_pit_pair_discovery.py`): return shape matches the
+`ml._discover_confirmed_pairs()` contract exactly; missing-`window_end_date` files correctly rejected
+rather than silently trusted; `as_of_date` semantics are genuinely causally monotonic (confirmed set
+at an earlier date is always a subset of the confirmed set at a later date, tested on synthetic
+windows spread across time, not just asserted); the BH-FDR gate is genuinely applied (a synthetic
+pair with no significant window is correctly absent from the confirmed output despite being present
+in the input rows).
+
+**Tested against REAL, though still-partial, data** — the episodic scan (still running as of this
+entry) already has 49,692 rows with `window_end_date` populated in its live tier3 checkpoint, enough
+for a genuine (if not yet final) real-data test: **19 PIT-confirmed pairs as of 2026-08-04**, none
+overlapping with the standard 3-pair set (`AIG/TRV`, `F/VZ`, `PPL/UIS`, `EMR/PEP`, `PEP/RTX`, `F/OLN`,
+`IP/PPG`, `CVX/F`, `LLY/PFE`, `GT/WBA`, `LMT/PG`, `F/GE`, `GLW/GT`, `IP/PPL`, `PEP/SLB`, `APD/MMM`,
+`AVT/BC`, `AEE/APD`, `UIS/VNO`). This count will change as the episodic scan continues -- reported as
+a genuine partial result, not a final one.
+
+**Wired into the 3 scripts confirmed to use `ml._discover_confirmed_pairs()`** (`cycle_detection.py`,
+`inverse_polarity.py`, `trig_convergence.py`) via a new `--pit-safe` flag on each -- opt-in, not a
+forced default, since the episodic scan isn't complete yet and the pair count will keep changing.
+Smoke-tested `trig_convergence.py --pit-safe` end-to-end against the real partial data: ran cleanly
+across 16 of 19 pairs (3 skipped gracefully, presumably insufficient cached history for symbols like
+`UIS`/`VNO` — same graceful-degradation behavior these scripts already have elsewhere, not a new
+issue), produced real output for pairs the standard screen has never surfaced (`LMT/PG`, `GLW/GT`,
+etc.).
+
+**Remaining scope, explicit backlog, not silently dropped**: the other 4 Session 30 arms that
+hardcode `KVUE/KMB` (`levy_jump_diffusion.py`, `rough_volatility.py`, `options_greeks_features.py`,
+`svm_gradient_descent_classifier.py`) still need the same `--pit-safe` wiring; the broader ~114
+remaining research scripts (of 121 total) have not been audited for their own pair source at all.
+Once the episodic scan completes (both tier2 and tier3, full history, not just the partial
+in-progress checkpoint used tonight), the confirmed PIT-safe pair count should be treated as final
+and the affected `docs/FINDINGS.md`/`PAPER.md` entries re-run against it.
+
+Files: `research/pit_pair_discovery.py` (new), `debug/_verify_pit_pair_discovery.py` (new, 4/4
+pass), `research/cycle_detection.py`/`inverse_polarity.py`/`trig_convergence.py` (each +`--pit-safe`
+flag).
+
+### New comparison-arm-in-progress: structural-break onset detection, `research/structural_break_
+onset_detection.py` (2026-08-04) — a real design discussion, then a real design flaw caught by
+verification and fixed in two rounds
+
+Live design discussion with Ross: the episodic scan's 10-year fixed window can't distinguish "always
+cointegrated" from "just became coupled" — a pair that coupled 6 months ago is invisible inside 9.5
+years of pre-coupling noise. Ross's own framing: "for what period of time and to what degree should
+a relationship be cointegrated to consider arbitrage," and a sharp, well-motivated hypothesis —
+newly-coupled pairs may be MORE valuable for trading than always-cointegrated ones (less likely to be
+already arbitraged away, more likely to reflect an identifiable, current economic mechanism), not
+less. Synthesized a design connecting three things already in the codebase that had never talked to
+each other: `coint_fraction_rolling`'s half-life-relative window sizing, `analysis.py`'s
+`StrategyDecayDetector.zivot_andrews`/`cusum` structural-break tests (currently only used to check
+whether an ALREADY-cointegrated pair's relationship broke down), and `coint_frac_window_grid.py`'s
+multi-window validation methodology. Ross's explicit choices: universe-wide precomputation (its own
+module, not inline), and report the FULL break history per pair (not just the most recent break),
+leaving interpretation to downstream comparison arms.
+
+**Reuses `StrategyDecayDetector.zivot_andrews` directly** (Quandt-Andrews Chow-F break-point scan on
+the spread's own AR(1) coefficient) rather than reimplementing break detection — only exposes a
+single break per call, so multiple-break detection needed a real design choice.
+
+**Round 1 (binary segmentation) — a real design flaw caught by verification, not shipped**: the
+natural first design (find the best global break, split, recurse on each side) found ZERO breaks on
+a synthetic 3-segment (unrelated → coupled → unrelated) series with two deliberately-constructed
+breaks. Root-caused directly, not guessed: called `zivot_andrews` on the full series by hand and
+confirmed it returns `None` — a single global Chow-F scan loses power when more than one real regime
+change is present, since any candidate split point's pre/post OLS mixes data from both sides of at
+least one true break, diluting the statistic everywhere. Binary segmentation's top-level call failing
+means recursion never starts, regardless of how many real breaks exist.
+
+**Round 2 (sliding window) — the fix, then a SECOND real problem found tuning it, not assumed
+correct on the first pass**: replaced binary segmentation with a sliding window scan (local windows
+have full power on any break within them, avoiding distant-break dilution), with overlapping-window
+deduplication by phi-separation. First window/step choice (2× min_segment_bars, step =
+min_segment_bars) fixed the multi-break case but broke the single-break case — traced directly, not
+guessed: manually confirmed a well-CENTERED 500-bar window found the break the sliding scan's actual
+generated windows all missed, meaning the failure was misALIGNMENT (the coarse step left every actual
+window off-center relative to the true break), not pure lack of power. Fixed with a larger window
+(3× min_segment_bars) and finer step (0.5× min_segment_bars, i.e. more overlap) — enough overlap that
+some window is always reasonably well-centered on any true break, while still well under a full
+long-series scan's length. All 4/4 synthetic checks pass at this final setting (single-break existence
++ direction + approximate location, no-false-positive on a genuinely unchanging spread, correct
+two-break detection with correct chronological order and classification, and a basic OLS
+spread-construction sanity check).
+
+**Real-data run deliberately NOT launched yet**: checked memory first, same discipline as the
+cross-timeframe scan earlier tonight — the episodic scan (task #5's higher-priority prerequisite) is
+still running and free RAM is at 0.95 GB. Holding off until it completes or frees resources, same
+reasoning as before: don't risk destabilizing the higher-priority job for a comparison arm that can
+wait.
+
+**Explicitly NOT yet built** (the onset-age comparison arm this module exists to feed, per Ross's own
+"new dedicated comparison arm" choice): a script that uses this module's break history to split
+confirmed/candidate pairs into "recently onset" vs. "long-standing" groups as of a historical
+`as_of_date`, backtests both forward with `pit_wfa.py`'s existing engine, and reports the honest
+comparison. That is the actual test of Ross's core hypothesis — this module only supplies its raw
+material.
+
+Files: `research/structural_break_onset_detection.py` (new), `debug/_verify_structural_break_
+onset_detection.py` (new, 4/4 pass). No real-data output yet.
+
+### A major methodology discussion: should the standard confirmed-pairs screen still be the
+live-trading gate, and should ml.py train on it at all? (2026-08-04)
+
+Ross's real, sharp catch: "the 3 pair set... we ought to discuss a new approach" — training ml.py's
+meta-labeler only on the strict, curated confirmed-pairs set (whether the current WRDS-primary 3,
+the pre-WRDS 23/26, or any other narrow screen output) means the model only ever learns from a
+handful of pre-selected "winners," never from a representative range of real outcomes, and its
+usable data volume is hostage to whatever a narrow screen happens to find at any given moment
+(confirmed tonight this is unstable: 3 under strict full-history, 19+ under PIT-episodic).
+**Correction made plainly during the discussion**: the current 3-pair set is actually the
+post-WRDS-primary confirmed set (2026-08-03 corrected run), not a yfinance-era set as first
+stated — but the deeper point holds regardless of which data source produced the narrow set.
+
+**Decided, not yet built**: `ml.py` should train on real entry/exit outcomes across the FULL
+correlation-screened candidate universe, with NO confirmed-pairs gate on training data at all —
+episodic cointegration significance (`episodic_fraction_fdr`, `min_adjusted_pvalue`, and once
+`structural_break_onset_detection.py` has real output, onset age / break-type) becomes a FEATURE the
+model learns from, not a pre-filter that excludes data. Separately, and a bigger decision: Ross wants
+to reconsider whether the strict full-history screen should remain the **live-trading eligibility
+gate** at all, given §7.3.1's own already-disclosed point-in-time evidence against it (3 of 4
+`pit_wfa.py` folds zero-pairs-or-negative). My recommendation, given directly: the PIT-safe episodic
+screen should become the PRIMARY live-trading gate, full-history demoted to a secondary corroborating
+signal (mirroring the existing secondary-evidence-override pattern in §4.4, applied in the opposite
+direction). **Ross confirmed this direction explicitly** — proceed with scoping/design now; the
+actual production cutover (changing `backtest.py`/`report.py`'s pair source) waits until the episodic
+scan completes with real, complete data and the design is verified, not the partial 19-pair snapshot.
+
+**Real scope finding, checked directly rather than assumed easy**: `ml.py::_build_examples_for_pair`
+already accepts an optional pre-computed `series` DataFrame (built for `research/
+ml_lookahead_selftest.py`'s own use) — meaning the broader-universe training data build can reuse
+this function COMPLETELY UNCHANGED, just needs to supply its own `series` for candidate pairs
+`analysis.py` never ran its full confirmed-pair enrichment on. The blocker: that enrichment (the
+point-in-time-safe `hedge_ratio_ols_t`/`coint_fraction_rolling_t`/`half_life_trend_slope_t`/
+`mean_reversion_speed_t`/`hurst_rs_t` series every EntryEvent feature ultimately reads from) is built
+inside `analysis.py::_regime_worker` -- confirmed by reading it directly, not assumed -- a large,
+`ProcessPoolExecutor`-oriented function that is ALSO fitting K-means/GMM/HMM regime models in the
+same pass. Extracting a clean, standalone "build this point-in-time series for an arbitrary
+candidate pair" function means disentangling two genuinely unrelated concerns (spread/hedge-ratio
+construction vs. regime classification) that got bundled together in the same worker for
+multiprocessing-pickling reasons, not because they're conceptually related. This is real refactoring
+work on production code that took multiple careful bug fixes (BUG-D99-101) to get causally correct
+this session -- deliberately NOT rushed under time pressure tonight.
+
+**Concrete next-session plan, in order** (task #8 in the tracker has the live version):
+1. Extract a clean, standalone point-in-time series-construction function from `_regime_worker`,
+   separate from its regime-fitting logic -- verify it produces BIT-IDENTICAL output to the existing
+   confirmed-pair path on the 3 known pairs before trusting it on new candidates (the same
+   "verify the extraction didn't change behavior" discipline this project already applies elsewhere).
+2. Build the broader-universe candidate discovery (correlation-screened, no confirmation gate) --
+   very likely reusable directly from `research/inverse_polarity.py`'s or `structural_break_
+   onset_detection.py`'s existing full-universe candidate-generation code, already built this session.
+3. Wire episodic significance features (from `pit_pair_discovery.py`'s underlying data, once the
+   episodic scan completes, plus `structural_break_onset_detection.py`'s break history once it has
+   real output) into each `EntryEvent`'s feature set.
+4. Re-run `ml.py` against this much larger training set; re-verify `research/
+   ml_lookahead_selftest.py` and the existing chronological-split/train-only-imputation safeguards
+   still hold at the new scale.
+5. Only THEN, with Ross's earlier confirmation already on record: swap `backtest.py`/`report.py`'s
+   production pair source to the PIT-safe episodic screen (primary) with full-history screen demoted
+   to secondary corroboration -- update `PAPER.md`'s headline claims accordingly, since this changes
+   what pairs the paper's own central results are about.
+
+**Also requested, not yet built**: a systematic "ML validation system" auditing for overfitting,
+survivorship, and lookahead specifically -- real, mature partial infrastructure already exists
+(`BiasAuditLog`, 45 entries/run; `research/ml_lookahead_selftest.py`, a genuinely well-designed
+mechanical lookahead self-test that correctly lags only the FEATURE snapshot, not the label, with a
+documented near-miss from its own first draft). The remaining work is consolidating these into one
+runnable suite and auditing for real gaps (e.g. is there a dedicated overfitting/train-val-test-gap
+check today? not yet confirmed either way) -- scoped but not yet built, folded into the plan above
+since it depends on the same broader training data this whole redesign produces.
+
+**`ml.py` wiring completed tonight** (the mechanical, low-risk part): `--pit-safe` flag added
+(`build()`/`main()`), sourcing pairs from `pit_pair_discovery.py` instead of the standard screen when
+passed -- consistent with the same flag already added to `cycle_detection.py`/`inverse_polarity.py`/
+`trig_convergence.py`. Not yet real-data tested (same resource-deferral reasoning as the other new
+modules tonight).
+
+**Now real-data tested, and it confirms task #8's blocking dependency empirically, not just in
+theory.** Two bugs found running it for real: (1) `ModuleNotFoundError` -- `ml.py` lives at project
+root, not in `research/`, so it lacked the `sys.path` insertion the other 3 `--pit-safe` scripts
+already have; fixed (also added a missing `import sys`, not previously needed by `ml.py` at all).
+(2) After the fix: **707 PIT-safe pairs found** (real growth in the episodic scan since the earlier
+19-pair check -- confirms it keeps making genuine progress), but **all 707 were skipped, 0 labeled
+examples produced**. Exactly the mechanism flagged when task #8 was scoped: `build()`'s per-pair loop
+looks up each pair in `pairs.parquet` (analysis.py's confirmed-ONLY output) before it ever reaches
+spread-series construction; none of the 707 PIT-safe pairs have that entry, since they were never
+run through analysis.py's confirmed-pair enrichment. **This confirms the pair-discovery fix alone
+does not unlock training data** -- task #8's `_regime_worker` extraction is a hard prerequisite, not
+an optimization. Standard (non-`--pit-safe`) mode still separately caps at 19 examples (below the
+30/class bar). Neither mode currently produces anything to train on.
+
+### `structural_break_onset_detection.py` first real-data run (confirmed pairs, cheap mode) — a real
+finding, plus a real scale-mismatch caveat found in the same run
+
+`PNC/ZION@4h`: exactly 2 breaks, a clean single regime -- onset 2024-10-21, decoupling 2025-11-17, a
+13-month coupled window. This is precisely the kind of economically sensible signal the module was
+designed to find. `IQV/Q@1D` correctly skipped (only 161 overlapping bars, `Q` recently listed --
+same limitation flagged elsewhere tonight).
+
+**`KVUE/KMB@3m`: 9 breaks inside roughly six weeks of data — NOT read as 9 genuine coupling/
+decoupling events, flagged honestly rather than presented at face value.** Root cause, found
+immediately on inspection: `min_segment_bars=200` is a bar COUNT, not a calendar-time floor. At 4h/1D
+granularity 200 bars is many months, a sensible floor for "has the relationship genuinely changed."
+At 3m granularity, 200 bars is only a few days -- the module is correctly finding statistically real
+local AR(1) shifts at that scale, but they almost certainly reflect ordinary short-horizon spread
+oscillation, not the kind of structural, economically-meaningful coupling event ("M&A rumor,
+competitive shift") this whole design discussion was motivated by. **Not yet fixed** -- the honest
+fix is a calendar-time-relative floor (e.g. min_segment_bars scaled by bars-per-day for the given
+timeframe, reusing `cross_timeframe_divergence.py`'s existing `_BARS_PER_DAY` table rather than a
+new one), not yet built. Tracked as a known limitation on `structural_break_onset_detection.py`,
+worth fixing before task #7's onset-age comparison arm uses this module's output for anything at
+intraday timeframes -- daily/coarser output (like `PNC/ZION`) is trustworthy as-is.
+
+Files: `output/research/structural_break_onset_detection.parquet` (11 rows: 9 KVUE/KMB@3m + 2
+PNC/ZION@4h).
+
+## `levy_jump_diffusion.py --pit-safe` save/capture discrepancy — resolved (2026-08-04 18:12)
+
+The earlier run's saved parquet timestamp didn't match its run time and the captured background
+log was truncated mid-print. Re-ran with explicit `> file 2>&1` redirection instead of relying on
+the background-task capture. Confirmed clean: exit 0, `output/research/levy_jump_diffusion.parquet`
+now timestamped 18:11, matching the run. **640 rows, 206 unique symbols, all at 1D** (the 718
+PIT-safe (pair,tf) combinations collapse to 1D-only once `load_aligned_pair` and the ">=200 clean
+returns" filter are applied -- most PIT-confirmed pairs' aligned intraday history is too short/
+gappy to pass, daily is the only timeframe with enough history across this many symbols). Root
+cause of the original discrepancy was almost certainly the same stdout-buffering-under-redirection
+class of issue seen earlier with `data_crypto.py` -- not a real bug in the script itself, no jump-
+detection logic was affected. Task #5's wiring for this script is confirmed working end-to-end at
+real scale.
+
+## New research direction proposed by Ross, not yet built (2026-08-04 18:12)
+
+Ross: "is there an opportunity to arbitrage when on one tf there's a break but a relationship
+still exists on the other tf? what about cross asset cross timeframe?" This combines the two
+modules built earlier this session rather than requiring new machinery:
+`structural_break_onset_detection.py` (per-timeframe break/onset/decoupling classification) and
+`cross_timeframe_cointegration.py` (does a cointegrating relationship exist between the SAME pair
+sampled at two different frequencies). Design discussed with Ross, not yet built -- pending his
+scoping choice on same-asset-cross-TF vs. true cross-asset-cross-TF as the first cut. See chat
+for the proposed 3-tier design (Tier 1: same-pair, break status disagreement across TFs; Tier 2:
+same-pair, `cross_timeframe_cointegration.py`-style joint test of "TF1 spread broke AND TF1-vs-TF2
+cross-frequency relationship still holds"; Tier 3: genuinely cross-asset, cross-TF, e.g. does
+asset A's break at TF1 coincide with asset B's still-intact relationship at TF2).
+
+## Tier 1 built: `research/cross_tf_break_divergence.py` (2026-08-04 18:12-18:21)
+
+Ross approved starting with Tier 1 only. Built `research/cross_tf_break_divergence.py`, reusing
+`structural_break_onset_detection.py`'s `find_all_breaks()`/`compute_ols_spread()` directly (not
+reimplemented) -- runs the break scan independently at two explicit timeframes (`--tf1`/`--tf2`,
+default 1D/1h) for the same pair, then flags every DECOUPLING break on one side that has no
+corresponding break (of either type) on the other side afterward -- i.e. the other side has stayed
+unbroken since. Checked symmetrically both directions. DETECTION-ONLY, disclosed directly in the
+docstring: this does not yet backtest whether trading the still-intact side during these windows
+beats baseline -- deferred pending Tier 1 showing the pattern occurs often enough to justify that
+work (same precedent as task #7's onset-age arm).
+
+Synthetic verification (`debug/_verify_cross_tf_break_divergence.py`, 5/5 passed): operates
+directly on break-history dicts (the function under test is pure comparison logic over
+already-detected breaks, not a new statistical estimator -- the estimator itself is already
+verified in `debug/_verify_structural_break_onset_detection.py`). Checks: divergence correctly
+flagged when the intact side's only break predates the decoupling; correctly NOT flagged when the
+intact side also breaks afterward; `onset` breaks (not `decoupling`) never trigger a flag; an
+intact side with zero break history ever is flagged correctly (`intact_side_ever_broke=False`);
+multiple decoupling events on the same pair resolved independently.
+
+Real-data run, confirmed pairs (3 pairs, 1D vs 1h): 0 divergence events -- only 2/3 pairs had
+enough aligned 1h history to test at all, and n=2 is far too small to expect this pattern to
+surface; not a null result worth reading into.
+
+PIT-safe run (707 pairs, 1D vs 1h) launched in background, **killed before producing output** --
+likely memory contention with the episodic scan (`run_episodic_scan_overnight.ps1`), which was
+confirmed still healthy and actively progressing at the time (checkpoint_tier3_rolling.parquet
+modified 3 minutes prior; multiple worker pools still alive). Free RAM was ~2.7GB at the time of
+the kill. Per this session's own established precedent (the `cross_timeframe_cointegration.py`
+full-universe scan deferral earlier tonight), NOT relaunching into contended memory -- deferred
+until the episodic scan completes or frees meaningfully more RAM. Task #6 in the tracker now
+effectively covers both deferred full-universe/broad-scale scans.
+
+## Task #5 continued: remaining 3 manifest-reading scripts wired (2026-08-04 21:37-22:07)
+
+Full audit of all 125 research scripts for pair-discovery patterns found only 14 actually source
+confirmed pairs. 9 already wired (prior entries); `pit_pair_discovery.py` is the module itself
+(N/A); `ml_lookahead_selftest.py` deliberately deferred to task #8 step 4 (it's a self-test of
+`ml.py`'s own lookahead correctness, re-verifying it against the PIT-safe path is that task's job,
+not a generic wiring pass). The remaining 3 predate this session's Session-30 convention and read
+`output/results/confirmed_pairs_manifest.json` directly rather than calling
+`ml._discover_confirmed_pairs()`:
+
+- **`stress_test_replication.py`** -- `--pit-safe` added. Real compute-scale jump disclosed in the
+  flag's own help text: every pair gets tested across 3 crisis windows + 3 calm controls, so 707
+  PIT-safe pairs vs. a handful of production pairs is a genuinely heavier run, not a drop-in
+  swap -- deliberately NOT run yet, held for when it won't contend with other jobs.
+- **`data_contamination_scan.py`** -- `--pit-safe` added. Different case: the universe-wide
+  jump-detection scan itself is already unconditional (scans every cached file regardless of any
+  pair set) -- the flag only changes which symbol set the final cross-check/highlighting step
+  compares unexplained-contamination symbols against. Cheap, no scale concern.
+- **`coint_frac_window_grid.py`** -- `--pit-safe` added, filtered to pairs confirmed at the exact
+  `--tf` requested (matching production's own per-TF `pairs.parquet` scoping). Smoke-tested for
+  real: `--pit-safe --tf 1D` was launched to verify it runs against real PIT-safe data, but was
+  KILLED after ~2 minutes when free RAM dropped to 1.4GB -- the window x threshold grid running EG
+  tests across ~700 pairs is heavier than the 24-confirmed-pair case this script was originally
+  sized for. Confirmed via `taskkill /PID <id> /T /F` that the episodic scan's own main process
+  (PID 1820) was untouched and its checkpoint file continued advancing normally afterward -- same
+  resource-priority discipline as the rest of tonight's contention incidents. Flag wiring itself
+  verified correct via `--help` output before the kill; the real-data run itself is deferred
+  alongside task #9 and the other PIT-safe broad-scale scans.
+
+All 3 syntax-checked clean; `--help` output confirmed the new flag registers correctly in each.
+Task #5 (wire episodic PIT pair-discovery into all research scripts that source confirmed pairs)
+is now COMPLETE at the wiring level -- 12/12 applicable scripts wired (9 + these 3), 2 legitimately
+excluded (infrastructure module, ml.py-specific self-test). Actually RUNNING the newly-wired
+PIT-safe paths at broad scale remains gated on the episodic scan finishing / RAM freeing up,
+tracked under task #9 (which now covers all of: `cross_tf_break_divergence.py --pit-safe`,
+`coint_frac_window_grid.py --pit-safe`, and `stress_test_replication.py --pit-safe`).
+
+## Two strategic discussions with Ross (2026-08-04, ~23:50)
+
+**1. Repointing PAPER.md's central thesis.** With Tier 2 of the episodic scan showing 189
+confirmed pairs against the current static-screen headline of 3 (Tier 3 still running, likely to
+add more), Ross agreed the paper's central claim should shift: from "N confirmed pairs, here's
+their backtest Sharpe" (a number that's been eroding all session, 23->3 after WRDS) to "static
+full-history cointegration screening systematically undercounts real, time-varying relationships;
+a point-in-time-safe episodic/variable-window confirmation methodology recovers most of what it
+misses." This is a genuinely stronger, more novel, more citable claim for an MFE portfolio piece
+-- an empirical finding about the SCREENING METHODOLOGY itself, not just a strategy backtest.
+Explicitly NOT yet promoted to PAPER.md -- Ross wants to discuss the concrete structure/framing
+further before any rewrite, and the claim itself isn't backtest-validated yet (episodic
+confirmation != tradeable edge; task #8's broad backtest against the episodic set is the real
+gate). Next step: a scoped discussion of the new paper's structure once Tier 3 + task #8 produce
+real backtest numbers on the episodic-confirmed set.
+
+**2. "End-all-be-all" generalized arbitrage-research platform -- explicitly parked, not built.**
+Ross floated turning CAMARF into a general-purpose platform others could use to validate their own
+arbitrage research scripts. Pushed back on doing this NOW: conflicts with this project's own
+simplicity-first/no-speculative-abstraction principles, is real scope creep against the actual
+MFE-application goal, and the futures/NQ-ES system is already deliberately kept as a SEPARATE
+codebase sharing only conventions (GapFlag, PIT discipline, bias-audit logging) -- the right model
+if generalization ever happens, not a merged platform. Ross agreed: "that's a separate project,
+probably just note it for now." Noted here for future reference -- NOT scoped, NOT started, no
+timeline. If revisited, the natural entry point is probably formalizing the conventions this
+project already has (GapFlag, PIT-safety discipline, bias-audit logging, the verify-before-trust
+workflow) as an extractable layer, rather than generalizing the CAMARF codebase itself.
+
+## Episodic scan complete (2026-08-05 03:43:38, 1593.4 min / ~26.6 hours total)
+
+**Final numbers**: Tier 1 (full-sample) confirmed=103 of 220,493 pairs | Tier 2 (rolling EG, static
+corr prefilter) episodic-confirmed=189 of 220,493 pairs | Tier 3 (rolling EG, rolling corr
+prefilter) episodic-confirmed=620 of 1,089,763 pairs. Exit code 0, no errors. RAM recovered to
+5.4GB free immediately after (was oscillating 1.4-2.7GB most of the night).
+
+**Real bug found and fixed immediately on completion**: `pit_pair_discovery.py`'s
+`_DEFAULT_CHECKPOINT_PATHS` pointed at `checkpoint_tier2_rolling.parquet`/
+`checkpoint_tier3_rolling.parquet` -- the IN-PROGRESS files the scan writes while running. On
+successful completion the scan consolidates these into
+`wrds_deep_history_episodic_scan_tier{2,3}_windows.parquet` and DELETES the checkpoint files (both
+confirmed missing via `ls` immediately post-completion). This would have made every PIT-safe
+script silently return 0 pairs from this point forward -- caught before it did any damage because
+`_load_pit_safe_rows`'s own explicit design (added when the module was built) prints a clear
+warning and returns `[]` rather than silently fabricating a result when its source files are
+missing; that warning is what surfaced the problem on the very first post-completion check rather
+than an empty result being misread as "no confirmed pairs." Fixed by pointing
+`_DEFAULT_CHECKPOINT_PATHS` at the final `_windows.parquet` files (confirmed via direct read: both
+carry `window_end_date`, 406,924 and 2,034,303 rows respectively, matching the log's tier totals
+exactly). Re-ran `debug/_verify_pit_pair_discovery.py` (4/4 still pass) and a live call to
+`discover_pit_confirmed_pairs()` against the real, complete data: **647 unique PIT-confirmed
+pairs** as of today (the union of Tier 2 + Tier 3's episodic-confirmed sets, deduplicated by
+`episodic_bhfdr_confirm_asof`'s own as-of-date logic) -- up from the ~707 (pair,tf) COMBINATIONS
+figure quoted earlier tonight against partial Tier 3 data (that was combinations, not unique
+pairs, and Tier 3 was only ~60% done at the time). 647 unique pairs is the real, final, current
+number going into tasks #6/#7/#8/#9.
+
+## Task #9: cross_tf_break_divergence.py --pit-safe, real result (2026-08-05 03:51-03:56)
+
+First attempt was killed with no output (empty log, no memory pressure this time -- root cause not
+identified, possibly transient); retried with `python -u` (unbuffered stdout) and it completed
+clean, exit 0. **Real result: 338/647 pairs had enough aligned 1D+1h history to test (309
+skipped); 159 divergence events found across 133 unique pairs (39% of tested pairs).** This is a
+real, non-trivial hit rate -- the pattern Ross asked about does occur commonly enough to be worth
+the next step (backtest evaluation, still not done -- this script remains detection-only per its
+own docstring).
+
+**Two honest caveats found in the aggregate breakdown, disclosed directly rather than left for a
+reader to notice:**
+1. **158/159 events are "1h decoupled, 1D intact" — only 1 is the reverse direction.** This
+   asymmetry could be a real economic signal (short-horizon dynamics break far more often than
+   long-horizon ones, which is intuitively plausible -- more microstructure/noise-driven breaks at
+   1h) OR could be a pure statistical-power artifact (1h has vastly more bars than 1D over the same
+   calendar span, so `find_all_breaks`'s sliding window has more windows to test and more chances
+   to find A break, independent of whether short-horizon relationships are actually less stable).
+   NOT yet disentangled -- this needs controlling for bar-count/window-count before the asymmetry
+   itself can be treated as a finding rather than an artifact.
+2. **Every single event has `intact_side_ever_broke=True`** -- meaning the "intact" 1D side did
+   break at SOME point in its history, just not after the specific 1h decoupling date being
+   flagged. None of the 159 events are the strongest case (a side that never broke at all). This
+   is the weaker-but-still-qualifying case per the module's own docstring, not a bug, but worth
+   being precise about when this eventually gets written up -- "1D relationship intact since the
+   1h break" is accurate; "1D relationship has never broken" would not be.
+
+Not yet promoted to `docs/FINDINGS.md` -- detection-only, no backtest validation, and the two
+caveats above need resolving first. Files: `output/research/cross_tf_break_divergence.parquet`
+(updated, 159 rows).
+
+## Task #9: coint_frac_window_grid.py --pit-safe, real result (2026-08-05 04:10-04:2x)
+
+Also killed once with no memory pressure (same transient pattern as the divergence scan --
+confirmed NOT an OOM issue, real progress each time, retried clean). **Real result at n=338
+PIT-safe pairs (vs. the original design's n=24) -- a much larger, more statistically meaningful
+sample than this script has ever had:** joint grid's raw in-sample winner is (window=250,
+threshold=0.50) at 88.76% accuracy predicting whether early-period cointegration-stability calls
+hold up on late-period held-out data. Production's current default (window=252, threshold=0.70)
+ties for the SAME 88.76% accuracy at every window tested -- not beaten by the grid search, just
+matched. **Overfitting guard (select on half A, score on held-out half B) found NO large gap**:
+half-A-selected accuracy 87.57%, held-out half-B accuracy 89.94% -- gap of -0.024 (held-out
+slightly BETTER than in-sample-selected, the opposite direction overfitting would produce).
+Honest caveat retained from the module's own design: n=338/half=169 is still a modest sample for
+this kind of split, so this is real evidence, not proof either way. **Bottom line: production's
+existing window=252/threshold=0.70 default is validated, not just untested, at meaningfully
+broader PIT-safe scale than the original n=24 confirmed-pair check could support.** Per the
+script's own rule-7 discipline, the grid's raw "winner" is NOT reported as beating production,
+since it doesn't (same accuracy) and the held-out check doesn't favor added complexity.
+
+Files: `output/research/coint_frac_window_grid_1d.parquet` (new, PIT-safe run).
+
+## Task #9: stress_test_replication.py --pit-safe, real result -- genuinely interesting nuance
+(2026-08-05 05:20-05:42, 21.4 min, completed clean first try)
+
+**At real scale (338 pairs, 1996/2028 pair-crisis combinations testable across 3 crisis windows +
+3 calm controls) this produces a much more statistically convincing crisis-vs-calm comparison than
+the original design (a handful of production pairs) ever could:**
+
+- **Extreme dislocation rate (|z|>3.5): crisis=65% (636/985) vs. calm=14% (145/1011).** A 51-point
+  gap -- real, strong evidence that historically-episodic pairs show genuine crisis-period
+  fragility, not just noise. This is the single most statistically convincing version of this
+  check the project has run.
+- **Cointegration-holds rate: crisis=8% (83/985) vs. calm=9% (92/1011) -- essentially
+  IDENTICAL.** This is the genuinely interesting, non-obvious nuance: the formal EG cointegration
+  test surviving baseline+crisis combined is NOT meaningfully more likely to fail during a real
+  crisis than during a calm control window of the same length. **The risk crises pose to these
+  pairs is short-term extreme spread divergence (which would trip a production stop-loss), not a
+  higher rate of the underlying relationship formally breaking under the EG test.** That's a
+  real, disclosed, non-overclaimed finding -- crises look dangerous by one honest measure and not
+  by another, and both measures are reported rather than picking the one that tells a cleaner
+  story.
+- Script's own honest framing, worth preserving verbatim: "extreme z excursions during a crisis
+  window are a finding about this pair's stress-period fragility, not a defect in this script, and
+  the reverse (no dislocation) is not evidence the pair is immune to future stress, only that it
+  survived these particular historical windows."
+
+**Paper relevance**: this is a strong candidate for the new episodic-methodology paper's risk
+section -- a concrete, honest answer to "are these newly-discovered episodic pairs riskier," with
+a nuanced two-part answer (yes on dislocation magnitude, no on relationship survival) rather than a
+single number. Not yet in `docs/FINDINGS.md` -- worth a dedicated write-up once task #9 is fully
+closed out.
+
+## VIX-crisis mean-reversion finding: robustness check built and run (2026-08-05 08:20-08:23)
+
+Ross asked whether VIX crisis is exploitable for entries/exits. Before building anything, resolved
+Session 13's own unresolved caveat first: does the 11x-faster-convergence-in-crisis result
+(`regime_conditional_analysis.py`, hl_ratio=0.09 crisis vs. 3.929 normal) survive z-score
+normalization and outlier-robust re-estimation, or is it partly an artifact of raw-spread-level
+OLS being dominated by large jumps in small crisis-regime samples (n=28-58 bars originally)?
+
+Built `research/vix_crisis_hl_robustness_check.py`: three half-life estimators on the same
+per-regime spread data -- raw OLS (reproduces the original method), z-score-normalized OLS
+(worked out algebraically beforehand that this should be IDENTICAL to raw, since OLS half-life
+from a delta~alpha*lag regression is scale-invariant to constant rescaling -- included anyway
+since it's the exact check Session 13's writeup asked for), and winsorized-delta OLS (1st/99th
+percentile clip before regression -- the mechanistically plausible artifact, motivated directly by
+this session's own Lévy jump-diffusion finding that 0.04-1.6% of bars are statistically real
+jumps, which could dominate a small-sample OLS slope). Synthetic verification
+(`debug/_verify_vix_crisis_hl_robustness_check.py`) caught a real bug in its own first draft (check
+2 compared the jumpy-regime winsorized estimate against a separate noisy "clean" sample's own raw
+estimate instead of the KNOWN true half-life -- fixed to compare against ground truth directly);
+after the fix, both checks confirmed the mechanism cleanly: raw and z-scored are identical as
+predicted, both get fooled by injected jumps (estimated hl 4.48 vs. true 20.0), winsorized
+correctly resists (18.50 vs. true 20.0).
+
+**Scope problem found and fixed before real-data run**: `output/results/1hr/pairs.parquet` (the
+original finding's data source) no longer exists -- a direct consequence of the WRDS-primary
+universe collapse documented throughout this session (current confirmed set has zero 1h pairs:
+IQV/Q@1D, KVUE/KMB@3m, PNC/ZION@4h only). Rewired to re-derive the SAME 3 pairs' 1h dynamics
+directly from cached price data (which does still exist at 1h for all 3 symbols) with a fresh
+full-sample OLS hedge ratio, same disclosed simplification `structural_break_onset_detection.py`
+already uses.
+
+**Real result, with an important caveat on sample size**: crisis regime hl_ratio = 0.055 raw,
+0.055 z-scored (as predicted, identical), 0.045 winsorized -- a -17.9% shift, i.e. NO substantial
+shrinkage under the outlier-robust re-estimation. **The mechanism check came back clean: the
+faster-reversion-in-crisis effect is not evidence of being jump/outlier-driven**, on this data.
+BUT -- and this must be stated plainly, not glossed over -- **this test now only has n=2-3 pairs
+per regime bucket**, dramatically thinner than the original's n=28-58 (a direct casualty of the
+same universe collapse that removed the 1hr pairs.parquet source in the first place). This is
+suggestive corroborating evidence, not a strong confirmation -- 3 pairs is barely a test. A
+stronger version of this check would need a broader 1h-timeframe pair set, which doesn't currently
+exist in the PIT-safe episodic universe either (that's 1D-only per `pit_pair_discovery.py`'s own
+disclosed scope limit). Noted as a real, open limitation rather than treated as resolved.
+
+Files: `research/vix_crisis_hl_robustness_check.py` (new), `debug/_verify_vix_crisis_hl_robustness_check.py`
+(new, 2/2 pass after fixing the ground-truth comparison bug), `output/research/vix_crisis_hl_robustness_check.parquet`
+(new).
+
+**Task #9 COMPLETE** -- all 3 deferred PIT-safe broad-scale scripts (cross_tf_break_divergence.py,
+coint_frac_window_grid.py, stress_test_replication.py) re-run successfully against the final,
+complete episodic scan output. Moving to task #6.
+
+Files: `output/research/stress_test_replication.parquet` (updated, PIT-safe run, 1996 rows).
+
+## Session 31 — Intraday Episodic PIT-Safe Scanner, backtest.py's 1D Gap Found, ml.py's PIT-Safe
+Training Blocker Fixed (2026-08-08)
+
+**Starting point**: the interrupted browser session that produced Session 30's content above ran
+out of usage mid-response, on Ross's own unanswered request to (a) audit hardcoded window/threshold
+constants project-wide instead of guessing new ones, and (b) resolve the fact that live trading was
+still gated on the 3 standard-confirmed pairs despite 647 pairs being PIT-safe-episodically-confirmed.
+Full reconstruction of that session is in `docs/HANDOFF.md`'s 2026-08-08 entry. This session picks
+up from there, via the Claude Code web session `session_01EhHH5o2Y7WjLrJdzTLph4s`, worked through
+the CLI/local environment instead.
+
+### The three-way design fork, and why it's three arms not one
+
+Investigating the PIT-safe-episodic-primary-gate decision (agreed in principle in Session 30, never
+implemented) found a real problem: the episodic scan is 1D/WRDS-only. Two of the three standard-
+confirmed pairs are intraday (`KVUE/KMB@3m`, `PNC/ZION@4h`) -- a naive cutover would silently drop
+them. Checking actual cached history found a genuine, verified split, not a guess:
+
+- `output/cache/*_1hr.parquet`: **1,576 files, 1,535 (97%) span >= 2 years** (median 1,103 days ~=
+  3yr) -- confirmed via `debug/_check_intraday_cache_coverage.py` (new), independently re-verified
+  with a direct pandas scan matching exactly. `*_4hr.parquet`: 1,573 files, 1,531 (97%) >= 2yr, same
+  median. **This is a universe-wide situation, not a PNC/ZION-only one** -- the intraday episodic
+  scanner (below) was scoped universe-wide on this evidence, not narrowly.
+- `KVUE/KMB@3m`: only ~7 weeks cached (2026-06-12 to 2026-07-31, 4,160 bars) -- a hard data-
+  availability limit (3m derives from 1m, which has Yahoo's 8-day hard fetch limit per
+  `CLAUDE.md`), not a code gap. No amount of building fixes this; it requires real calendar time to
+  accumulate.
+
+Given this split, Ross asked to build and compare THREE designs rather than pick one: **Hybrid**
+(episodic-primary wherever data supports it, full-history-only where it structurally can't, e.g.
+`KVUE/KMB@3m` today), **Purity** (only trade pairs with genuine PIT-safe confirmation today), and
+**Confidence-tier** (keep the full standard set, attach PIT confidence as a sizing feature rather
+than a binary gate). Full plan written to `C:\Users\RossW\.claude\plans\ancient-mixing-feather.md`
+after a 3-agent parallel Explore pass (backtest.py's pair-row contract, analysis.py's reusable
+per-pair computation, the episodic scan's windowing mechanics) plus a Plan-agent design pass, then
+independently spot-verified against the real repo before execution (universe coverage number
+re-checked directly; `Config.STATS.MIN_OVERLAP_BY_TF`, `SpreadModel._adaptive_window`,
+`backtest.py::compute_risk_parity_weights`, `pit_pair_discovery.discover_pit_confirmed_pairs_with_
+detail` all confirmed to exist as cited before being relied on).
+
+### Step 0 -- intraday cache coverage inventory (COMPLETE)
+
+`debug/_check_intraday_cache_coverage.py` (new): scans every `output/cache/*_1hr.parquet`/`*_4hr.
+parquet`, writes `output/research/intraday_cache_coverage.parquet`. Real output: see numbers above.
+No synthetic verify needed (pure inventory, not a statistical method).
+
+### Step 1 -- empirical window/step sizing test (COMPLETE), directly answers the "run an actual
+test, not another guessed constant" request
+
+`research/intraday_episodic_window_sensitivity.py` (new) + `debug/_verify_intraday_episodic_window_
+sensitivity.py` (new, 9/9 pass after one real fix -- see below). Registers 4 candidate window/step
+configs, each derived from an EXISTING production convention rather than a new guess:
+`fixed_min_overlap_1x`/`_2x` (window = 1x/2x `Config.STATS.MIN_OVERLAP_BY_TF[tf]`),
+`adaptive_halflife_8x` (per-pair, via `SpreadModel._adaptive_window`, mult=8 -- the same convention
+already used in production z-score/half-life estimation), `onset_anchored` (window anchored at
+`structural_break_onset_detection.py`'s detected onset date instead of a fixed calendar step).
+Evaluated on two metrics stated up front, not chosen post-hoc: confirmed-pair-count stability
+(coefficient of variation across small window perturbations) and, for `PNC/ZION` specifically,
+contiguity of significant windows (the direct analogue of the already-diagnosed
+`MIN_SEGMENT_BARS=200` bug -- clustered significant windows = real regime structure, isolated ones =
+noise).
+
+**Real bug found and fixed during verification, before real data**: `onset_anchored` produced 0
+windows on a synthetic pair with a genuine, real coupling regime near the series end -- traced to
+`rolling_pvalue_rows` requiring a full `window`-length segment even for explicit onset-anchored
+starts, so any onset detected too close to the end of available data got silently dropped entirely.
+Fixed by clipping to available data (mirroring `find_all_breaks`'s own `end = min(start+window, n)`
+pattern) with a `min_bars=60` floor (matching `_eg_worker`'s own refusal threshold) so a clipped
+window is still statistically meaningful, not just short. Re-verified 9/9 pass.
+
+**Real result, on real PNC/ZION + KVUE/KMB + IQV/Q 1h data** (`output/research/intraday_episodic_
+window_sensitivity.parquet`):
+
+| config | n_base_confirmed | perturbation_counts | cv_confirmed_count | PNC/ZION n_windows | PNC/ZION contiguity |
+|---|---|---|---|---|---|
+| fixed_min_overlap_1x | 1 | [1,2,2] | 0.283 | 20 | 0.857 |
+| fixed_min_overlap_2x | 1 | [1,1,1] | **0.000** | 8 | **1.000** |
+| adaptive_halflife_8x | 1 | [1,1,1] | **0.000** | 20 | 0.857 |
+| onset_anchored | 2 | [2,1,2] | 0.283 | 5 | **1.000** |
+
+`fixed_min_overlap_2x` and `adaptive_halflife_8x` both show perfect stability (CV=0); `adaptive_
+halflife_8x` gets there with 2.5x more windows tested for PNC/ZION (20 vs 8) at the same contiguity.
+`onset_anchored` found one MORE confirmed pair but is less stable and has the fewest PNC/ZION
+windows. **No winner picked here by design** -- `intraday_episodic_scan.py` (Step 2) defaults to
+`fixed_min_overlap_2x` (global-window-compatible, empirically most stable) with `--window-config`
+exposed to try `fixed_min_overlap_1x` too; final production choice is Ross's, from these real
+numbers, once the full comparison (Step 5/6, not yet run) exists.
+
+### Step 2 -- intraday episodic scanner: STILL RUNNING as of this write-up, not yet complete
+
+`research/intraday_episodic_scan.py` (new) + `debug/_verify_intraday_episodic_scan.py` (new, 3/3
+check groups pass). Adapts `wrds_deep_history_episodic_scan.py`'s Tier 2/3 logic for 1h/4h (Tier 1
+dropped -- ~3yr of 1h data adds little beyond what the standard screen covers, episodic discovery is
+the whole point here), reusing `episodic_bhfdr_confirm`/`_asof`, `build_rolling_eg_tasks`, `run_
+rolling_eg_pool`, `rolling_correlation_candidate_pairs`, and the checkpoint helpers unchanged, with
+data loading rewritten to use `DataStore.load`/`structural_break_onset_detection.py`'s existing
+intraday-aware pattern instead of the WRDS script's `*_1D.parquet`-only loader.
+
+**Real scale finding**: at `fixed_min_overlap_2x` (window=1512, step=378 for 1h), 1,537/1,561
+eligible symbols survive the overlap floor, producing **73,825 Tier-2-equivalent candidate pairs**
+for 1h alone (before Tier 3's broader rolling-correlation prefilter, and before 4h is even run) --
+genuinely large-scale, comparable in kind to the WRDS scan's own ~26.6-hour multi-day run.
+
+**Real infrastructure bug found and fixed**: `_save_checkpoint` (`research/wrds_deep_history_
+episodic_scan.py`, shared by both the WRDS scan and this new intraday scanner) wrote directly to its
+final path, not atomically. The run was killed 3 times by an unexplained external cause (see below)
+during a ~78-minute wall-clock window each time, regardless of worker count (6->4->2) or memory
+(confirmed healthy, 4.3GB free, on the 3rd kill) -- the 3rd kill happened to land mid-`to_parquet()`
+write, leaving a 4-byte unreadable `checkpoint_intraday_1h_tier2.parquet` while its `.meta` sibling
+(written second, never reached) still said `56,500` pairs done. Resuming then crashed outright
+(`pyarrow.lib.ArrowInvalid: ... smaller than the minimum file footer`) instead of just losing the
+unsaved tail -- and since parquet is written whole each call (not appended), the entire 56,500-pair
+checkpoint was unrecoverable, not just the last few hundred. **Fixed at the source**: `_save_
+checkpoint` now writes to a `.tmp` sibling then `os.replace()`s onto the real path (atomic on both
+POSIX and Windows) -- verified with a direct functional self-test (write/read-back/no-stray-`.tmp`-
+files). `checkpoint_every` also reduced 10->3 (per `run_rolling_eg_pool` call) so any future kill
+loses at most ~1,500 pairs of recompute, not up to ~5,000. The corrupted checkpoint was deleted and
+the 1h Tier-2 pass restarted from pair 0 -- the 56,500 pairs of prior progress are genuinely gone,
+not recoverable.
+
+**The repeated-kill cause itself remains unexplained.** Investigated directly rather than assumed:
+Windows sleep/hibernate settings (AC power: never sleep, ruled out), Windows Event Viewer System log
+(no Kernel-Power/critical events at any of the 3 actual kill timestamps), Application log (found a
+cluster of BlueScreen/LiveKernelEvent WER entries around 17:20-17:23, but cross-referencing against
+the actual kill timeline showed this did NOT correlate with any of the 3 real kills -- the process
+was still logging progress an hour after that cluster on one occasion, ruling it out directly rather
+than reporting a plausible-looking coincidence as the cause). Current working theory, unconfirmed:
+some background-task duration ceiling in the Claude Code harness itself (~60-80 min), outside both
+Python's and Windows' own visibility. **Not resolved -- flagged for Ross, who also doesn't have a
+known explanation.** Practical handling going forward: keep resuming through kills (same brute-force
+pattern the original WRDS scan needed), now cheap thanks to the atomic-checkpoint fix.
+
+**Status as of this write-up: 1h Tier-2 pass restarted from 0, in progress. 1h Tier-3, and all of
+4h, not yet started.** No final intraday-confirmed-pair count exists yet -- do not treat any number
+above 73,825 (the CANDIDATE count, not a confirmed count) as a result.
+
+### Step 3 -- PIT-safe pairs.parquet-schema adapter: code complete and verified, NOT yet run for real
+
+`research/episodic_pairs_adapter.py` (new) + `debug/_verify_episodic_pairs_adapter.py` (new, 13/13
+pass). Follows `pit_wfa.py::backtest_pair_on_test_window`'s exact precedent (confirmed via direct
+exploration, not assumed): calls `AnalysisPipeline._build_pair_result` TWICE per pair -- once on
+data truncated to the pair's PIT `as_of_date` (for the 6 GATING scalar fields: `hedge_ratio_ols`,
+`hedge_ratio_kalman_mean`, `hurst_rs`, `coint_fraction_rolling`, `half_life_trend_slope`, `mean_
+reversion_speed` -- the BUG-D69 discipline, never compute these from data beyond the pair's own
+confirmation date), once on the FULL untruncated range (for the per-bar spread series actually used
+to trade the pair going forward, written to `output/results/{tf_dir}/spread_series_{A}_{B}.parquet`
+-- required because `backtest.py --pairs-override` does NOT supply per-bar data, confirmed via direct
+code reading that `_load_spread` is a separate, unconditional file read regardless of pair-list
+provenance). Real bug found and fixed during verification: `coint_fraction_rolling` was always NaN
+in the output, because `_build_pair_result` only ECHOES that field from `pd_meta`, it does not
+compute it -- fixed by calling `CointScanner.rolling_fraction()` first, in the same order `pit_wfa.
+py::screen_universe_at_cutoff` already establishes. **Real run against the existing WRDS/1D episodic
+source (647 pairs) deferred** -- attempted once, immediately stopped to protect Step 2's scan from
+memory contention (a direct, confirmed causal link: Step 3's concurrent launch drove free RAM to
+1.3GB, and Step 2 was killed shortly after). Will run once Step 2's scan is not actively mid-batch.
+
+### backtest.py's 1D gap -- found, fixed, NOT yet verified against a real run
+
+**Real, previously-undisclosed production gap, found while investigating how to feed the WRDS/1D
+episodic pairs into a comparison-arm backtest**: `backtest.py::_TF_DIRS` (line 82) has ALWAYS only
+listed intraday timeframes (`1min` through `4hr`) -- `"1day"`/`"1D"` was never in it, even though
+`output/results/1day/pairs.parquet` genuinely exists and confirms `IQV/Q@1D` as a real pair
+(confirmed by reading the file directly). Since `backtest.py`'s main loop only iterates `_TF_DIRS`,
+**`IQV/Q@1D` has never been included in any `backtest.py` run, ever, including whatever is currently
+reported as "the baseline."** Every headline Sharpe/trade-count figure describing "the 3 confirmed
+pairs" has, as far as this investigation found, only ever actually covered 2 of them.
+
+Confirmed safe to fix, not just convenient, before touching it: `BacktestEngine.run()` already has an
+`_is_intraday` guard (`any(c in tf for c in ["m","h"]) and "D" not in tf and "W" not in tf`) that
+correctly excludes `"1D"` from every intraday-only STORM filter already, and `pit_wfa.py` already runs
+`BacktestEngine.run()` directly on `"1D"` pairs successfully (its `rolling/fold2` result). **Fixed**:
+added `("1day", "1D")` to `_TF_DIRS`, with an in-code comment disclosing this changes the default
+(no-override) baseline too, not just new comparison arms. **Not yet verified with a real run**
+(deferred alongside Step 3's real run, same memory-contention reasoning). Ross's explicit direction:
+fix this AND ensure ML trains fully BEFORE any backtest comparison runs -- both are gating items on
+the task list now, ahead of the comparison-arm builds.
+
+### ml.py's PIT-safe training blocker -- root-caused more precisely than Session 30 left it, fixed,
+NOT yet run
+
+Session 30 (above) found `ml.py build(pit_safe=True)` produces **707 PIT-safe pairs found, 0 labeled
+examples** and diagnosed it as needing a `_regime_worker` extraction -- flagged in that session's own
+5-step task #8 plan as "real refactoring work... deliberately not rushed." **This session's fresh,
+independent exploration found that diagnosis was likely a misdiagnosis, on re-reading the actual
+code rather than trusting the prior write-up**: `_regime_worker` (confirmed by reading its full body)
+is unrelated to per-pair series construction entirely -- it's per-symbol K-means/GMM/HMM regime
+fitting, no `PairResult` field traces to it. The actual reusable function is `AnalysisPipeline._
+build_pair_result`, already confirmed clean/standalone (no multiprocessing entanglement) and already
+proven to work on arbitrary pairs by `pit_wfa.py`. Directly confirmed against `ml.py`'s real code:
+`_build_examples_for_pair` already accepts an optional pre-computed `series` DataFrame (`series:
+Optional[pd.DataFrame] = None`) -- the ACTUAL blocker is narrower: `build()`'s per-pair loop does a
+hard `pairs.parquet` lookup and skips the pair entirely on failure, before ever reaching series
+construction, with no fallback for a pair the standard screen never confirmed.
+
+**Fixed** (`ml.py::build()`): when `pit_safe=True`, now reads `research/episodic_pairs_adapter.py`'s
+combined output file (`output/research/episodic_confirmed_pairs_adapter_output.parquet`) directly
+as both the pair list AND the `pair_row` scalar-fallback source for any pair missing from the
+standard `pairs.parquet` -- falling back to the old `discover_pit_confirmed_pairs()`-only path (with
+an explicit warning that it reproduces the original 707/0 gap) if the adapter output doesn't exist
+yet. No change needed to `_build_examples_for_pair` itself or its disk-read fallback for `series`,
+since Step 3's adapter already writes `spread_series_{A}_{B}.parquet` to the exact same location that
+path already reads from. **Not yet run for real** -- gated on Step 3's real adapter output existing,
+which is gated on Step 2 finishing (or at least freeing enough memory to run Step 3's WRDS/1D portion
+concurrently without contention).
+
+### Current gating sequence (task list, most current in the tool tracker, summarized here for the
+written record)
+
+Step 2 (intraday scan, running) -> Step 3 real run (adapter output) + backtest.py 1D verify -> ml.py
+`--pit-safe` training run to completion (Ross's explicit gate: ML trains fully before any backtest
+comparison) -> Step 4 (Hybrid/Purity/Tiered arm files + `compute_pit_confidence_weights` in
+backtest.py) -> Step 5 (5-way real comparison run) -> Step 6 (`docs/FINDINGS.md` write-up). Also
+logged, not yet started, genuinely multi-session scope: a duration/degree-of-cointegration
+"actually usable, not just significant" test (extends Step 1's window-sizing work to threshold/
+duration dimensions), and exhaustively extending `sensitivity_research.py`'s coverage to literally
+every tunable variable across all ~46 parameterized research scripts plus a standardized overfitting
+guard applied consistently (both explicitly Ross's own framing, both scoped as separate follow-on
+work, not folded into the current plan).

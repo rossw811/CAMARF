@@ -1,37 +1,12 @@
-00:23:47 INFO  === pair_characteristics_analyzer.py: Stage 3 (per-pair decision tree) + Stage 4 (archetype clustering) ===
-00:23:47 INFO  Loaded 1338 total trades across 24 pair-tf combinations
-00:23:56 INFO  AME/MAR@1h: n=120, perm_significant=True, 0/5 leaves holdout-confirmed, regime_sensitivity=-1.00, best_leaf_winrate=nan (n=0)  [no holdout-confirmed leaf]
-00:24:05 INFO  APP/CRWD@1h: n=88, perm_significant=True, 1/4 leaves holdout-confirmed, regime_sensitivity=-1.00, best_leaf_winrate=1.00 (n=18)
-00:24:15 INFO  AVGO/CRWD@1h: n=112, perm_significant=True, 0/6 leaves holdout-confirmed, regime_sensitivity=-1.00, best_leaf_winrate=nan (n=0)  [no holdout-confirmed leaf]
-00:24:25 INFO  AXP/CRWD@1h: n=102, perm_significant=True, 2/4 leaves holdout-confirmed, regime_sensitivity=1.51, best_leaf_winrate=0.80 (n=10)
-00:24:35 INFO  CMS/DUK@1h: n=94, perm_significant=False, 0/4 leaves holdout-confirmed, regime_sensitivity=-1.00, best_leaf_winrate=nan (n=0)  [no holdout-confirmed leaf]
-00:24:35 INFO  CVX/OXY@3m: SKIP (insufficient_trades, n=22)
-00:24:35 INFO  EG/ORI@1h: SKIP (insufficient_trades, n=4)
-00:24:35 INFO  EG/WRB@1h: SKIP (insufficient_trades, n=4)
-00:24:35 INFO  EQR/INVH@30m: SKIP (insufficient_trades, n=2)
-00:24:35 INFO  KVUE/KMB@3m: SKIP (insufficient_trades, n=12)
-00:24:45 INFO  LNT/VTR@1h: n=32, perm_significant=False, 0/1 leaves holdout-confirmed, regime_sensitivity=-1.00, best_leaf_winrate=nan (n=0)  [no holdout-confirmed leaf]
-00:24:45 INFO  LNT/WELL@1h: SKIP (insufficient_trades, n=24)
-00:24:55 INFO  MET/TMHC@1h: n=30, perm_significant=False, 1/1 leaves holdout-confirmed, regime_sensitivity=-1.00, best_leaf_winrate=0.67 (n=18)
-00:24:55 INFO  MTSI/WCC@1h: SKIP (insufficient_trades, n=28)
-00:25:04 INFO  PFG/STLD@1h: n=30, perm_significant=False, 0/1 leaves holdout-confirmed, regime_sensitivity=-1.00, best_leaf_winrate=nan (n=0)  [no holdout-confirmed leaf]
-00:25:04 INFO  PRU/AXTA@1h: SKIP (insufficient_trades, n=22)
-00:25:04 INFO  SPY/VOO@4h: SKIP (insufficient_trades, n=2)
-00:25:14 INFO  TMHC/WAL@1h: n=146, perm_significant=False, 3/5 leaves holdout-confirmed, regime_sensitivity=0.54, best_leaf_winrate=1.00 (n=18)
-00:25:24 INFO  TT/MLI@1h: n=94, perm_significant=False, 0/4 leaves holdout-confirmed, regime_sensitivity=-1.00, best_leaf_winrate=nan (n=0)  [no holdout-confirmed leaf]
-00:25:34 INFO  UMBF/FHB@1h: n=108, perm_significant=True, 1/5 leaves holdout-confirmed, regime_sensitivity=-1.00, best_leaf_winrate=0.00 (n=12)
-00:25:44 INFO  VRT/MTZ@1h: n=98, perm_significant=True, 1/4 leaves holdout-confirmed, regime_sensitivity=-1.00, best_leaf_winrate=0.36 (n=14)
-00:25:54 INFO  WAB/MLI@1h: n=70, perm_significant=True, 0/3 leaves holdout-confirmed, regime_sensitivity=-1.00, best_leaf_winrate=nan (n=0)  [no holdout-confirmed leaf]
-00:26:04 INFO  WAL/MC@1h: n=82, perm_significant=False, 0/4 leaves holdout-confirmed, regime_sensitivity=-1.00, best_leaf_winrate=nan (n=0)  [no holdout-confirmed leaf]
-00:26:04 INFO  ZION/FHB@1h: SKIP (insufficient_trades, n=12)
-00:26:04 INFO  
---- Stage 4: archetype clustering (6/24 pairs have >=1 holdout-confirmed leaf) ---
-00:26:04 INFO  Archetype 0 (n=2): mean_regime_sensitivity=1.03, mean_best_winrate=0.90 — AXP/CRWD@1h, TMHC/WAL@1h
-00:26:04 INFO  Archetype 1 (n=3): mean_regime_sensitivity=nan, mean_best_winrate=0.67 — APP/CRWD@1h, MET/TMHC@1h, VRT/MTZ@1h
-00:26:04 INFO  Archetype 2 (n=1): mean_regime_sensitivity=nan, mean_best_winrate=0.00 — UMBF/FHB@1h
-00:26:04 INFO  
-14 pairs had enough trades to attempt characteristics analysis (of 24 total pair-tf combos)
-00:26:04 INFO  Saved -> output/research/pair_characteristics.parquet + pair_archetypes.parquet
-00:26:04 INFO  ============================================================
-00:26:04 INFO  pair_characteristics_analyzer.py complete (2.3 min)
-00:26:04 INFO  REMINDER (Ross's explicit instruction): exploratory only — not wired into ml.py Stage 2 training or backtest.py entry logic. Try it and see, don't rely on it yet.
+10:03:54 INFO  === pair_characteristics_analyzer.py: Stage 3 (per-pair decision tree) + Stage 4 (archetype clustering) ===
+10:03:54 INFO  Loaded 12 total trades across 1 pair-tf combinations
+10:03:54 INFO  PNC/ZION@4h: SKIP (insufficient_trades, n=12)
+10:03:54 INFO  
+--- Stage 4: archetype clustering (0/1 pairs have >=1 holdout-confirmed leaf) ---
+10:03:54 WARNING  Only 0 pairs have a holdout-confirmed characteristic — too few for archetype clustering (need >=3). This is an honest small-N limitation, not a bug: most confirmed pairs currently have < 30 trades total.
+10:03:54 INFO  
+0 pairs had enough trades to attempt characteristics analysis (of 1 total pair-tf combos)
+10:03:54 INFO  Saved -> output/research/pair_characteristics.parquet (no archetypes.parquet — too few pairs)
+10:03:54 INFO  ============================================================
+10:03:54 INFO  pair_characteristics_analyzer.py complete (0.0 min)
+10:03:54 INFO  REMINDER (Ross's explicit instruction): exploratory only — not wired into ml.py Stage 2 training or backtest.py entry logic. Try it and see, don't rely on it yet.

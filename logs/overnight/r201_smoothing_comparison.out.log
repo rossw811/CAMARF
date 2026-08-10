@@ -1,0 +1,4 @@
+Testing 309 pairs at 1h (9 known-good sanity-check pairs + 300 sampled near-miss candidates)...
+
+309 pairs tested.
+  raw: 40/309 pairs with p<0.05

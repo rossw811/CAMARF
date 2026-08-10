@@ -25,6 +25,12 @@ pandas-market-calendars==5.4.0
 requests
 pyarrow==24.0.0
 
+# --- data_wrds.py (WRDS-primary daily-and-coarser US equity/ETF fetch, Session 29+) ---
+# Found missing from this file entirely (2026-08-08) despite being a real, actively-used
+# import (`import wrds` inside data_wrds.py's connection helper) -- verified against the
+# actual installed "trading" env via `pip show wrds`, not assumed.
+wrds==3.5.0
+
 # --- analysis.py ---
 statsmodels==0.14.6
 scikit-learn==1.9.0

@@ -82,7 +82,23 @@ _LOG_PATH = "latest_run_backtest.log"
 _TF_DIRS = [
     ("1min", "1m"), ("2min", "2m"), ("3min", "3m"), ("5min", "5m"),
     ("15min", "15m"), ("30min", "30m"), ("1hr", "1h"), ("4hr", "4h"),
+    ("1day", "1D"),
 ]
+# 1D added 2026-08-08: this list previously covered ONLY intraday
+# timeframes, so IQV/Q@1D -- a real confirmed pair in
+# output/results/1day/pairs.parquet -- was silently never backtested by
+# any default (no-override) run, despite being reported as one of the
+# project's confirmed pairs. Confirmed safe to add, not just convenient:
+# the engine already has an `_is_intraday` guard (`_is_intraday = any(c
+# in tf for c in ["m","h"]) and "D" not in tf...`, see BacktestEngine.run
+# below) that correctly excludes "1D" from every intraday-only STORM
+# filter (session_edge, session_edge_postopen), and pit_wfa.py already
+# runs BacktestEngine.run() directly on "1D" pairs successfully (its
+# rolling/fold2 result). This is a real, previously-undisclosed gap in
+# the DEFAULT baseline, not just a plumbing addition for a new
+# comparison arm -- the baseline should be re-run once this lands, and
+# any prior "3 confirmed pairs" backtest figure should be understood as
+# having actually only ever covered 2 of them.
 
 # ---------------------------------------------------------------------------
 # Trade record

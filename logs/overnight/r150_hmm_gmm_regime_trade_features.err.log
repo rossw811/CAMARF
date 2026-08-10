@@ -1,0 +1,4 @@
+2026-08-04 09:11:07  INFO      Run summary ΓåÆ C:\Users\RossW\Projects\CAMARF\latest_run_macro.log
+2026-08-04 09:11:28  WARNING   Fitting a model with 50 free scalar parameters with only 21 data points will result in a degenerate solution.
+2026-08-04 09:11:29  WARNING   Some rows of transmat_ have zero sum because no transition from the state was ever observed.
+2026-08-04 09:11:29  WARNING   Some rows of transmat_ have zero sum because no transition from the state was ever observed.

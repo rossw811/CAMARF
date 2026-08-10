@@ -1,0 +1,4 @@
+
+  H_rs=0.453  H_dfa=0.326  H_wavelet=0.333  (H=0.5 -> smooth/diffusive, H<<0.5 -> rough)
+
+KMB@2min: n_rv_bars=11728

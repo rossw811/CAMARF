@@ -186,11 +186,23 @@ def score_cell(pair_data, window, threshold, subset=None):
 def main():
     p = argparse.ArgumentParser(description="coint_fraction_rolling window/threshold grid (2026-07-13)")
     p.add_argument("--tf", default="1h")
+    p.add_argument("--pit-safe", action="store_true",
+                    help="Source pairs from research/pit_pair_discovery.py's PIT-safe episodic "
+                         "screen instead of production's pairs.parquet at --tf (task #5). Filtered "
+                         "to pairs confirmed at this exact tf_label, same per-TF scoping the "
+                         "production path already uses.")
     args = p.parse_args()
 
-    pairs = load_confirmed_pairs(args.tf)
+    if args.pit_safe:
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        from pit_pair_discovery import discover_pit_confirmed_pairs
+        pit_pairs = discover_pit_confirmed_pairs()
+        pairs = sorted(set((a, b) for a, b, tf in pit_pairs if tf == args.tf))
+        print(f"Using PIT-safe episodic pair discovery: {len(pairs)} pairs at tf={args.tf}")
+    else:
+        pairs = load_confirmed_pairs(args.tf)
     if not pairs:
-        print(f"No confirmed pairs found at tf={args.tf}.")
+        print(f"No {'PIT-safe' if args.pit_safe else 'confirmed'} pairs found at tf={args.tf}.")
         return
     pair_data = build_pair_data(pairs, args.tf)
     n = len(pair_data)

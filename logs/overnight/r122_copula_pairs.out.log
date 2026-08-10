@@ -1,0 +1,5 @@
+CCL/NCLH@3m: n_obs=4128 n_folds=4
+ train_end  test_start  test_end  n_test  rho_gaussian  theta_clayton  theta_rotated_clayton  oos_loglik_gaussian  oos_loglik_clayton  oos_loglik_rotated_clayton
+       825         825      1650     825      0.387198       0.665885               0.665885             0.043384            0.015010                    0.037592
+      1650        1650      2475     825      0.345415       0.588220               0.588220             0.047383            0.044854                    0.030522
+      2475        2475      3300     825      0.332070       0.568486               0.568486             0.035717            0.012973                    0.027483

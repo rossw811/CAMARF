@@ -73,28 +73,37 @@ def vol_roughness(log_rv: np.ndarray) -> dict:
 def main():
     ap = argparse.ArgumentParser(description="Rough volatility diagnostic (2026-08-02)")
     ap.add_argument("--rv-window", type=int, default=30)
+    ap.add_argument("--pit-safe", action="store_true",
+                     help="Source pairs from research/pit_pair_discovery.py's PIT-safe episodic "
+                          "screen instead of the hardcoded KVUE/KMB (task #5).")
     args = ap.parse_args()
 
+    if args.pit_safe:
+        from pit_pair_discovery import discover_pit_confirmed_pairs
+        pair_tf_list = discover_pit_confirmed_pairs()
+        print(f"Using PIT-safe episodic pair discovery: {len(pair_tf_list)} (pair, tf) combinations")
+    else:
+        pair_tf_list = [(a, b, tf) for a, b in _CONFIRMED_PAIRS for tf in _CONFIRMED_TFS]
+
     rows = []
-    for sym_a, sym_b in _CONFIRMED_PAIRS:
-        for tf in _CONFIRMED_TFS:
-            df_a, df_b = load_aligned_pair(sym_a, sym_b, tf)
-            if df_a is None or df_b is None or df_a.empty or df_b.empty:
-                print(f"skip {sym_a}/{sym_b}@{tf}: no aligned data")
+    for sym_a, sym_b, tf in pair_tf_list:
+        df_a, df_b = load_aligned_pair(sym_a, sym_b, tf)
+        if df_a is None or df_b is None or df_a.empty or df_b.empty:
+            print(f"skip {sym_a}/{sym_b}@{tf}: no aligned data")
+            continue
+        for sym, df in ((sym_a, df_a), (sym_b, df_b)):
+            log_p = _gap_masked_log_price(df)
+            r = np.diff(log_p)
+            r = r[np.isfinite(r)]
+            if len(r) < 200:
+                print(f"skip {sym}@{tf}: only {len(r)} clean returns")
                 continue
-            for sym, df in ((sym_a, df_a), (sym_b, df_b)):
-                log_p = _gap_masked_log_price(df)
-                r = np.diff(log_p)
-                r = r[np.isfinite(r)]
-                if len(r) < 200:
-                    print(f"skip {sym}@{tf}: only {len(r)} clean returns")
-                    continue
-                log_rv = realized_vol_series(r, window=args.rv_window)
-                rough = vol_roughness(log_rv)
-                print(f"\n{sym}@{tf}: n_rv_bars={rough['n']}")
-                print(f"  H_rs={rough['h_rs']:.3f}  H_dfa={rough['h_dfa']:.3f}  "
-                      f"H_wavelet={rough['h_wavelet']:.3f}  (H=0.5 -> smooth/diffusive, H<<0.5 -> rough)")
-                rows.append({"symbol": sym, "tf": tf, **rough})
+            log_rv = realized_vol_series(r, window=args.rv_window)
+            rough = vol_roughness(log_rv)
+            print(f"\n{sym}@{tf}: n_rv_bars={rough['n']}")
+            print(f"  H_rs={rough['h_rs']:.3f}  H_dfa={rough['h_dfa']:.3f}  "
+                  f"H_wavelet={rough['h_wavelet']:.3f}  (H=0.5 -> smooth/diffusive, H<<0.5 -> rough)")
+            rows.append({"symbol": sym, "tf": tf, **rough})
 
     out_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "output", "research")
     os.makedirs(out_dir, exist_ok=True)

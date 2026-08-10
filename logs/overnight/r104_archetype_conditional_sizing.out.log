@@ -1,0 +1,5 @@
+Pairs with a real regime_sensitivity_score: 2 (honest scope: this is a 2-pair test, not a general claim)
+
+AXP/CRWD: 2 confirmed leaf rules, mean_train_winrate=0.456, regime_sensitivity_score=1.512
+  flat sizing: n=71 total_pnl=201.66 sharpe_like=2.942
+  archetype-conditional sizing: total_pnl=255.19 sharpe_like=2.867 (mean size_mult=1.330)
