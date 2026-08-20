@@ -11,6 +11,23 @@ proposed new text/number, and the source (which script/run produced it, so Ross 
 merging). Organized in the order phases produced them, not by PAPER.md section — a table of contents
 will be added once there's enough content to need one.
 
+**Staleness note, added 2026-08-20 (markdown-currency sweep), not a fix, just a flag**: confirmed
+directly (`grep` for "182"/"BUG-D112" in `PAPER.md`) that none of the 9 entries below have been
+merged, and PAPER.md itself still describes the pre-Session-30 confirmed-pair universe throughout —
+consistent with this project's own "promotion into PAPER.md is a separate deliberate decision" rule
+(CLAUDE.md), not a bug. **However, a materially bigger pending change than anything below is not yet
+tracked in this file at all**: the point-in-time-safe episodic confirmation pivot (Sessions 30-31,
+2026-08-03 through 2026-08-12) reframed the project's entire headline reference set from the
+pre-WRDS 23-26-pair set, to a 3-pair WRDS-static-screen set, to the current 182-pair BUG-D112-fixed
+PIT-safe episodic set (`README.md`'s "Current Results" and `CLAUDE.md`'s "Current canonical data
+footprint" both carry the current numbers) — none of that is reflected as a drafted pending change
+here, even though it's a far larger revision to PAPER.md's own pair-selection-lookahead narrative
+(entries #7/#8 below) than anything currently queued. Not drafted here deliberately — reframing
+PAPER.md's actual narrative around the PIT-safe pivot is a real authorial/paper-structure decision
+for Ross to make (matches this file's own "draft, don't apply without review" purpose one level up:
+even drafting the replacement text is a bigger call than a markdown-currency sweep should make
+unilaterally), flagged here so it isn't lost, not resolved.
+
 ---
 
 ## 1. §4.2.1 — add a methodological caveat to the Monte Carlo null-construction (Phase 12, STORM perspective 1/4)

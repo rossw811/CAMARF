@@ -818,6 +818,24 @@ search "tail_dependence_universe_screen" or "Copula/tail-dependence universe-wid
 Next in Ross's stated order: wavelet-scale cointegration / DCC-GARCH dynamic correlation — not yet
 started.
 
+**k-BAHC update, added 2026-08-20 (markdown-currency sweep) — the negative finding above is scoped
+to the small 1,567-asset run, NOT yet re-validated at the current full WRDS-expanded universe.**
+Across 2026-08-16/17, `k_bahc_candidate_discovery.py` was re-run against the real, much larger
+WRDS-expanded universe (44,840+ symbols) — a genuinely different scale than the 1,567-asset run the
+"0 new candidates" conclusion above was based on. Four distinct real OOM bugs were found and fixed
+in the CORRELATION-MATRIX/candidate-discovery infrastructure itself (`pearson_only` mode,
+`columns=["close"]` disk-level pruning, `_vectorized_pairwise_stats(low_memory=True)`, and
+`UniverseFilter.chunked_pearson_matrix()` for block-wise dense matrix construction) — the pipeline
+now genuinely survives at this scale, producing a real result: **1,016,299 raw candidates found
+from 150,051,826 possible pairs** at the Pearson pre-filter stage (see `docs/HANDOFF.md`'s
+2026-08-17 entry). **However, the actual k-BAHC CLUSTERING/denoising step at this new, larger scale
+was never run to completion** — paused per Ross's explicit hold instruction ("if we're going to
+risk OOM kill the task until i tell you to pick it up"), resumable but not restarted as of this
+sweep. So: the small-scale negative finding above ("k-BAHC-style denoising is not a useful
+candidate-discovery lens... full stop") remains accurate for THAT run, but is not yet confirmed or
+refuted at the scale that actually matters for this project's current universe — a real, open
+question, not a closed one.
+
 ### 11.3 Monte Carlo generalization
 
 Phase 6 of the big plan already scopes a real-data-derived Monte Carlo null (randomly-shuffled

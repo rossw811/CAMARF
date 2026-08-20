@@ -1493,77 +1493,6 @@ wired. Full priority item logged in `Development.md`.
 
 ---
 
-## 24. Ridge-Regularized Hedge Ratio — Clean Negative on Full-Sample Estimates, With a Real Scope
-Mismatch to the Motivating Hypothesis [2026-08-10]
-
-Ross's question: does ridge (L2-regularized) regression improve hedge-ratio estimation over the
-existing production methods (`analysis.py::HedgeRatioEstimator` — OLS, TLS, Kalman)? Motivated by
-this session's intraday work — shorter, noisier rolling windows are exactly the regime where an
-unregularized OLS slope is most exposed to overfitting a handful of noisy observations, and ridge's
-whole point is trading a little bias for less variance there.
-
-**Method** (`research/ridge_hedge_ratio_comparison.py`, new): `ridge_rolling` is a structural copy
-of `HedgeRatioEstimator.ols_rolling` (byte-for-byte identical causal windowing convention) with one
-change — the OLS normal equation's `var(B)` denominator becomes `var(B)*(1+k)`, the closed-form
-univariate ridge shrinkage. `k` is expressed as a *fraction* of that window's own `var(B)`, not a
-fixed absolute lambda, so it's comparable across pairs with wildly different price-level variances
-— a real design choice, not an arbitrary convenience. Grid: `k ∈ {0, 0.01, 0.05, 0.10, 0.25, 0.50}`
-(`k=0` is exactly plain OLS, verified bit-identical to `ols_rolling`, not just claimed). Evaluated
-via ADF p-value on the resulting spread — a lower p-value at a given `k` than at `k=0` counts as
-"improved."
-
-**A real bug caught against real data, not synthetic data** (the exact reason this project runs
-synthetic checks first but doesn't stop there): `research/aligned_pair_loader.py::load_aligned_pair`
-uses `DataAligner.align_universe`'s default (`drop_data_gap_rows=False`, correct for the main
-pipeline's cross-*symbol* dense-matrix construction) which does **not** guarantee the two returned
-per-pair series come back the same length. `IQV/Q@1D` crashed the first real run with a length
-mismatch (252 vs. 161 rows — `IQV` has a shorter cached history, already noted elsewhere in this
-project as "recently listed"). `research/coint_frac_window_grid.py`'s own `build_pair_data` already
-has this exact requirement and handles it with an explicit inner join before treating the two series
-as parallel arrays — mirrored here (the same fix) rather than assuming equal length.
-
-**A real, useful catch inside the synthetic verification itself, worth recording as process.** The
-first version of check 4 (does ridge help on a short, noisy window — the actual motivating use case)
-used WIN RATE: does ridge land closer to the true beta than OLS more than half the time across many
-trials? It failed, 8/30. Not a broken test — a real statistical fact: ridge trades variance for
-*bias* (shrinks toward 0), and with a true beta of 1.2 (not near 0), that bias cost is real. Win rate
-is the wrong criterion for a bias-variance tradeoff; the textbook-correct one is **mean squared
-error** averaged across trials, which ridge (k=0.1) did lower — 0.1327 vs. OLS's 0.1472 over 200
-trials, ~10% reduction — even while still "losing" per-trial most of the time. Fixed the check to
-use MSE; 7/7 pass.
-
-**Real result, all 3 current confirmed pairs, full-sample point estimate**: ridge makes the spread
-*monotonically less stationary* (higher ADF p-value) at **every single tested `k`, on all 3 pairs**
-— e.g. `PNC/ZION@4h`: ADF p rises from 2.1e-7 (k=0, already extremely stationary) to 0.55 (k=0.50,
-essentially non-stationary); `IQV/Q@1D`: 0.138 → 0.254; `KVUE/KMB@3m`: 0.00027 → 0.192. Zero
-improvements across the full 3-pair × 6-k grid (0/3 at every k).
-
-**Why this is a clean negative and not a contradiction of the synthetic MSE result above — a real
-scope mismatch worth stating plainly, not glossed over.** This real-data test used
-`ridge_rolling`'s **full-sample** point estimate — thousands of bars even for the shortest pair
-(`KVUE/KMB@3m` alone has ~4,160 cached 3m bars). The synthetic check that found a real ridge benefit
-specifically used a **short** window (60 bars) with **large** relative noise — exactly the regime
-ridge's bias-variance tradeoff is supposed to help in. These 3 pairs were selected *because* they're
-already strongly, confidently cointegrated by a strict full-history screen — ample data, a
-well-determined OLS estimate, no variance problem for ridge to fix, so shrinkage only ever costs
-bias here. **This test did not actually evaluate the motivating hypothesis** (does ridge help the
-*rolling, short-window* hedge ratio used for live per-bar spread tracking, especially on noisy
-intraday data) — it evaluated a different, mismatched regime where a negative result is close to
-theoretically expected. Real follow-up, not attempted here: re-run this same comparison using
-`ridge_rolling`'s *rolling* series (not the full-sample point estimate) against the intraday
-episodic scan's own short windows (Step 2/Thread A of the current master plan) once that data
-exists, which is the setting this was actually motivated by.
-
-**Honest conclusion.** Ridge does not help CAMARF's current 3-pair confirmed set's full-sample hedge
-ratio — a real, clean, verified negative result, not a failed feature (per this project's rule 8, a
-negative result with a well-understood mechanism is exactly as valuable as a positive one). Whether
-it helps the actual motivating case (short intraday rolling windows) remains untested and is a
-concrete, scoped follow-up, not resolved by this result either way.
-
-Files: `research/ridge_hedge_ratio_comparison.py` (new), `debug/_verify_ridge_hedge_ratio_
-comparison.py` (new, 7/7 pass), `output/research/ridge_hedge_ratio_comparison.parquet` (new, real
-run).
-
 ## 28. Thread J Test 2 — Cointegration Regime Segmentation: Only 9.2% of Candidate Pair-Windows Are
 Ever Cointegrated, Split Evenly Across Strong/Moderate/Weak [2026-08-13]
 
@@ -2083,3 +2012,79 @@ filter worth having as an option, just not a fix for the Sharpe problem on its o
 
 Files: `backtest.py` (`--storm-liquidity-bar-filter`), `debug/_verify_dead_constants_comparison_arms.py`
 (Check 3 added).
+
+## 38. Ridge-Regularized Hedge Ratio — Clean Negative on Full-Sample Estimates, With a Real Scope
+Mismatch to the Motivating Hypothesis [2026-08-10]
+
+(Numbered out of strict chronological order — dated 2026-08-10, but originally mis-numbered as a
+duplicate "## 24." and moved here 2026-08-20 to resolve that collision without renumbering/breaking
+any of the many existing cross-references to Findings #25-#37 elsewhere in the codebase. Content
+unchanged from the original entry.)
+
+Ross's question: does ridge (L2-regularized) regression improve hedge-ratio estimation over the
+existing production methods (`analysis.py::HedgeRatioEstimator` — OLS, TLS, Kalman)? Motivated by
+this session's intraday work — shorter, noisier rolling windows are exactly the regime where an
+unregularized OLS slope is most exposed to overfitting a handful of noisy observations, and ridge's
+whole point is trading a little bias for less variance there.
+
+**Method** (`research/ridge_hedge_ratio_comparison.py`, new): `ridge_rolling` is a structural copy
+of `HedgeRatioEstimator.ols_rolling` (byte-for-byte identical causal windowing convention) with one
+change — the OLS normal equation's `var(B)` denominator becomes `var(B)*(1+k)`, the closed-form
+univariate ridge shrinkage. `k` is expressed as a *fraction* of that window's own `var(B)`, not a
+fixed absolute lambda, so it's comparable across pairs with wildly different price-level variances
+— a real design choice, not an arbitrary convenience. Grid: `k ∈ {0, 0.01, 0.05, 0.10, 0.25, 0.50}`
+(`k=0` is exactly plain OLS, verified bit-identical to `ols_rolling`, not just claimed). Evaluated
+via ADF p-value on the resulting spread — a lower p-value at a given `k` than at `k=0` counts as
+"improved."
+
+**A real bug caught against real data, not synthetic data** (the exact reason this project runs
+synthetic checks first but doesn't stop there): `research/aligned_pair_loader.py::load_aligned_pair`
+uses `DataAligner.align_universe`'s default (`drop_data_gap_rows=False`, correct for the main
+pipeline's cross-*symbol* dense-matrix construction) which does **not** guarantee the two returned
+per-pair series come back the same length. `IQV/Q@1D` crashed the first real run with a length
+mismatch (252 vs. 161 rows — `IQV` has a shorter cached history, already noted elsewhere in this
+project as "recently listed"). `research/coint_frac_window_grid.py`'s own `build_pair_data` already
+has this exact requirement and handles it with an explicit inner join before treating the two series
+as parallel arrays — mirrored here (the same fix) rather than assuming equal length.
+
+**A real, useful catch inside the synthetic verification itself, worth recording as process.** The
+first version of check 4 (does ridge help on a short, noisy window — the actual motivating use case)
+used WIN RATE: does ridge land closer to the true beta than OLS more than half the time across many
+trials? It failed, 8/30. Not a broken test — a real statistical fact: ridge trades variance for
+*bias* (shrinks toward 0), and with a true beta of 1.2 (not near 0), that bias cost is real. Win rate
+is the wrong criterion for a bias-variance tradeoff; the textbook-correct one is **mean squared
+error** averaged across trials, which ridge (k=0.1) did lower — 0.1327 vs. OLS's 0.1472 over 200
+trials, ~10% reduction — even while still "losing" per-trial most of the time. Fixed the check to
+use MSE; 7/7 pass.
+
+**Real result, all 3 current confirmed pairs, full-sample point estimate**: ridge makes the spread
+*monotonically less stationary* (higher ADF p-value) at **every single tested `k`, on all 3 pairs**
+— e.g. `PNC/ZION@4h`: ADF p rises from 2.1e-7 (k=0, already extremely stationary) to 0.55 (k=0.50,
+essentially non-stationary); `IQV/Q@1D`: 0.138 → 0.254; `KVUE/KMB@3m`: 0.00027 → 0.192. Zero
+improvements across the full 3-pair × 6-k grid (0/3 at every k).
+
+**Why this is a clean negative and not a contradiction of the synthetic MSE result above — a real
+scope mismatch worth stating plainly, not glossed over.** This real-data test used
+`ridge_rolling`'s **full-sample** point estimate — thousands of bars even for the shortest pair
+(`KVUE/KMB@3m` alone has ~4,160 cached 3m bars). The synthetic check that found a real ridge benefit
+specifically used a **short** window (60 bars) with **large** relative noise — exactly the regime
+ridge's bias-variance tradeoff is supposed to help in. These 3 pairs were selected *because* they're
+already strongly, confidently cointegrated by a strict full-history screen — ample data, a
+well-determined OLS estimate, no variance problem for ridge to fix, so shrinkage only ever costs
+bias here. **This test did not actually evaluate the motivating hypothesis** (does ridge help the
+*rolling, short-window* hedge ratio used for live per-bar spread tracking, especially on noisy
+intraday data) — it evaluated a different, mismatched regime where a negative result is close to
+theoretically expected. Real follow-up, not attempted here: re-run this same comparison using
+`ridge_rolling`'s *rolling* series (not the full-sample point estimate) against the intraday
+episodic scan's own short windows (Step 2/Thread A of the current master plan) once that data
+exists, which is the setting this was actually motivated by.
+
+**Honest conclusion.** Ridge does not help CAMARF's current 3-pair confirmed set's full-sample hedge
+ratio — a real, clean, verified negative result, not a failed feature (per this project's rule 8, a
+negative result with a well-understood mechanism is exactly as valuable as a positive one). Whether
+it helps the actual motivating case (short intraday rolling windows) remains untested and is a
+concrete, scoped follow-up, not resolved by this result either way.
+
+Files: `research/ridge_hedge_ratio_comparison.py` (new), `debug/_verify_ridge_hedge_ratio_
+comparison.py` (new, 7/7 pass), `output/research/ridge_hedge_ratio_comparison.parquet` (new, real
+run).
