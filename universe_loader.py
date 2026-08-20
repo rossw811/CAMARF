@@ -48,7 +48,9 @@ callers doing an O(N^2) correlation-matrix step on the FULL merged universe
 must size that separately (float32, chunking, or a staged/bounded subset)
 -- this loader does not attempt to solve that on its own.
 """
+import hashlib
 import os
+import pickle
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import pandas as pd
@@ -85,6 +87,47 @@ _BINANCE_SUFFIX = {"1D": "1d", "1h": "1h"}
 # symbols): 1min/5min/15min/30min/1hr/4hr/1day all exist.
 _IBKR_SUFFIX = {"1D": "1day", "1h": "1hr", "4h": "4hr", "30min": "30min",
                 "15min": "15min", "5min": "5min", "1min": "1min"}
+
+# Consolidated-load memoization (added 2026-08-20, software optimization audit §6): an overnight
+# run sequence that calls load_full_universe() from multiple independent scripts back-to-back
+# re-reads the same ~45,000 parquet files from disk fresh every single time -- real, measured
+# cost is 2-4 minutes even in the fast case. Opt-in only (use_memo_cache=False by default) so no
+# existing caller's behavior changes unless it explicitly asks for this. Cache key includes a
+# cheap per-source-directory signature (file count + max mtime, stat-only -- no content hashing)
+# so a cache built before a fresh data.py/data_wrds.py run is never silently reused after new
+# files land; it's invalidated and rebuilt instead, transparently, the next time it's requested.
+_MEMO_CACHE_DIR = os.path.join("output", "cache", "_universe_loader_memo")
+
+
+def _dir_signature(directory: str) -> tuple:
+    """(file count, max mtime) over one cache directory -- cheap staleness check, no content
+    hashing. Any file added, removed, or rewritten changes at least one of these two numbers."""
+    if not os.path.isdir(directory):
+        return (0, 0.0)
+    n = 0
+    max_mtime = 0.0
+    for entry in os.scandir(directory):
+        if entry.is_file():
+            n += 1
+            mtime = entry.stat().st_mtime
+            if mtime > max_mtime:
+                max_mtime = mtime
+    return (n, max_mtime)
+
+
+def _memo_cache_path(tf_label, include_yfinance, include_wrds, include_binance, include_ibkr, columns):
+    sig_parts = [tf_label]
+    if include_yfinance:
+        sig_parts.append(("yf", _dir_signature(_YF_CACHE_DIR)))
+    if include_wrds:
+        sig_parts.append(("wrds", _dir_signature(_WRDS_CACHE_DIR)))
+    if include_binance:
+        sig_parts.append(("binance", _dir_signature(_BINANCE_CACHE_DIR)))
+    if include_ibkr:
+        sig_parts.append(("ibkr", _dir_signature(_IBKR_CACHE_DIR)))
+    sig_parts.append(("cols", tuple(sorted(columns)) if columns else None))
+    key = hashlib.sha1(repr(sig_parts).encode()).hexdigest()[:20]
+    return os.path.join(_MEMO_CACHE_DIR, f"{tf_label}_{key}.pkl")
 
 
 def _read_one(cache_dir: str, filename: str, sym: str, columns=None):
@@ -316,7 +359,8 @@ def filter_structural_pairs(candidate_pairs: list, gvkey_cross_listing_threshold
 
 def load_full_universe(tf_label: str = "1D", include_yfinance: bool = True,
                         include_wrds: bool = True, include_binance: bool = True,
-                        include_ibkr: bool = True, columns=None) -> dict:
+                        include_ibkr: bool = True, columns=None,
+                        use_memo_cache: bool = False) -> dict:
     """Merges every real price-data source for `tf_label` into one
     {symbol: DataFrame} dict. Later sources win on a symbol collision (WRDS,
     then Binance, then IBKR override yfinance) -- real collisions are
@@ -346,7 +390,25 @@ def load_full_universe(tf_label: str = "1D", include_yfinance: bool = True,
     loading all 44,840 symbols' full OHLCV pushed this project's own machine
     to within ~600MB of a second RAM crash the same night this was found
     and fixed (see docs/HANDOFF.md). Default None (read every column,
-    unchanged prior behavior) -- callers must opt in explicitly."""
+    unchanged prior behavior) -- callers must opt in explicitly.
+
+    use_memo_cache (added 2026-08-20, opt-in, default False -- existing callers
+    unaffected unless they explicitly pass this): when True, the merged result is
+    cached to disk under output/cache/_universe_loader_memo/, keyed by tf_label,
+    the include_* flags, columns, and a cheap staleness signature of each source
+    directory (file count + max mtime -- see _dir_signature). A second call in the
+    same overnight run with matching arguments and unchanged source directories
+    loads from that one consolidated file instead of re-globbing and re-reading
+    tens of thousands of individual parquet files. New/changed source files are
+    detected via the signature and transparently trigger a rebuild, not a stale
+    read."""
+    if use_memo_cache:
+        cache_path = _memo_cache_path(tf_label, include_yfinance, include_wrds,
+                                       include_binance, include_ibkr, columns)
+        if os.path.exists(cache_path):
+            with open(cache_path, "rb") as f:
+                return pickle.load(f)
+
     merged = {}
     if include_yfinance and tf_label in _YF_SUFFIX:
         merged.update(_load_dir(_YF_CACHE_DIR, _YF_SUFFIX[tf_label], columns=columns))
@@ -356,4 +418,9 @@ def load_full_universe(tf_label: str = "1D", include_yfinance: bool = True,
         merged.update(_load_dir(_BINANCE_CACHE_DIR, _BINANCE_SUFFIX[tf_label], columns=columns))
     if include_ibkr and tf_label in _IBKR_SUFFIX:
         merged.update(_load_ibkr_dir(_IBKR_CACHE_DIR, _IBKR_SUFFIX[tf_label], columns=columns))
+
+    if use_memo_cache:
+        os.makedirs(_MEMO_CACHE_DIR, exist_ok=True)
+        with open(cache_path, "wb") as f:
+            pickle.dump(merged, f, protocol=pickle.HIGHEST_PROTOCOL)
     return merged

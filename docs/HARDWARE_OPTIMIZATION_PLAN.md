@@ -19,18 +19,31 @@ Per Ross's explicit instruction (2026-08-20: "let's first plan out an optimizati
 we run anything") — this plan stays a plan until each of these is answered. Re-checked live on
 2026-08-20, corrected from the first draft where it was wrong:
 
-1. **CLOSED, 2026-08-20 — the two NVMe drives are NOT reusable for CAMARF.** Ross confirmed
-   directly: they hold real data he's been unable to get working again, not spare capacity.
-   **Do not mount, format, or otherwise touch `nvme0n1`/`nvme1n1` as part of this plan.** Storage
-   optimization (§2) now targets the existing btrfs root only (390.9GB total, 278GB free) —
-   smaller ceiling than originally hoped, but the ~278GB free is still ample for CAMARF's own
-   cache (the WRDS parquet cache + research outputs are well under that on the Windows box
-   today) and it's already NVMe-adjacent-fast SSD via `sdb`... actually `sdb` is confirmed
-   rotational (§1's HDD row) — so the real, available, safe win is narrower than first hoped:
-   moving CAMARF's working directory onto the existing SATA SSD (`sda`, 111.8GB, NOT the
-   rotational `sdb` that currently hosts `/home`) if there's room, or accepting HDD-speed
-   storage for now and revisiting only if it's a real bottleneck once the project is actually
-   running there. Not a blocking issue for git-sync/setup below.
+1. **CLOSED, 2026-08-20 — NO free SSD/NVMe capacity exists anywhere on this machine; ALL of it is
+   off-limits, now confirmed by direct inspection, not just Ross's own recollection.**
+   Superseding this item's original text (which floated moving CAMARF onto `sda` as a SATA-SSD
+   option "if there's room") — checked directly and definitively, 2026-08-20 same session:
+   `lsblk -d -o name,rota,size,model` confirms `sda` (111.8GB, `WDC WDS120G2G0A` SSD, rota=0)
+   holds Ross's real dual-boot Windows install (per the drive-story entry in `docs/HANDOFF.md`).
+   The two NVMe drives were then read-only mounted (in-kernel `ntfs3` driver, `mount -t ntfs3 -o
+   ro`, via the existing scoped `mount` sudo rule; both cleanly unmounted afterward, nothing
+   written) and their contents actually inspected, not just recalled from memory: `nvme0n1p2`
+   (931.5GB, 767GB used) is a full, real second Windows OS installation (`Windows/`, `Program
+   Files/`, `Users/`, `EFI/`, `bootmgr`, `Recovery/`, plus `XboxGames/` and `Oculus/`); `nvme1n1p2`
+   (931.5GB, 510GB used) is a paired secondary data/games drive (`SteamLibrary/`, `ComfyUI/`,
+   `AI/`) — together ~1.27TB of real, substantial data, confirming Ross's original recollection
+   was accurate, not just cautious. `nvme0n1p1` (16MB) is a near-empty remnant; `nvme1n1p1` (16MB)
+   is a standard Microsoft Reserved partition, no filesystem, normal GPT boilerplate. Both drives
+   passed a `smartctl -H` health check. **All three SSD-class devices are off-limits.** The ONLY
+   device CAMARF can safely use is `sdb` (931.5GB, `WDC WD10EZEX`, **rota=1, a genuine spinning
+   HDD**, confirmed via `/sys/block/sdb/queue/rotational` = `1`) — which is also where `/` and
+   `/home` themselves live (789GB free after this session's btrfs expansion).
+   **Practical consequence**: CAMARF's storage on CachyOS is HDD-speed, permanently, not a
+   temporary state to "revisit" — there is no faster free tier to move to. The real lever is
+   therefore access-PATTERN efficiency (fewer, larger reads; OS page-cache reuse across repeated
+   runs) rather than a storage-tier upgrade — see item 4 below for what was actually checked and
+   found already-favorable, and this session's `use_memo_cache` work (`docs/
+   SOFTWARE_OPTIMIZATION_AUDIT.md` §6) for the concrete code-level answer to the same problem.
 2. **Ross does not have broad passwordless sudo on this box** — `sudo -ln` shows only a
    scoped `visudo` entitlement, not general command access. Any mount/format/fstab work needs
    either Ross running the commands himself (I'll hand over exact commands) or a deliberate,
@@ -43,12 +56,56 @@ we run anything") — this plan stays a plan until each of these is answered. Re
    Any GPU-accelerated CAMARF work needs a real "is there enough free VRAM right now" check
    before allocating, not an assumption of 16GB available (§8 already flagged this in principle;
    now confirmed concretely).
-4. **Git-based sync between the two machines is available** (`origin` already points at
-   `https://github.com/rossw811/CAMARF`) but committing and pushing tonight's ~403 changed files
-   is a real, visible, hard-to-fully-reverse action on a real GitHub repo — checked the diff for
-   secrets/oversized files (clean: `output/` is gitignored, nothing over 5MB), but still waiting
-   on Ross's explicit go-ahead before anything gets committed or pushed, per this session's own
-   commit-only-when-asked rule.
+4. **CHECKED, 2026-08-20 — HDD I/O tunables largely already favorable; one real, low-risk,
+   sudo-gated lever identified but NOT applied (needs Ross's own hands, per the same
+   destructive-action boundary the `wipefs`/`btrfs device add` work already established this
+   session).** Checked directly, not assumed, since `sdb` being a genuine HDD (item 1 above)
+   makes I/O-pattern tuning the real remaining lever:
+   - `vm.vfs_cache_pressure = 50` (kernel default is 100) — already favors keeping directory/inode
+     metadata cached longer, which is exactly what a 92,568-small-file workload benefits from.
+     Already good, CachyOS's own default, no change needed.
+   - `read_ahead_kb = 8192` (8MB) on `sdb` — already fairly aggressive for a rotational device
+     (typical default is 128-256KB); helps the kind of "touch many small files in a directory"
+     access pattern this project's cache reads are. Already good, no change needed.
+   - `free -h` showed 25GiB already resident in the OS page cache (40GiB available, 46.9GB total)
+     — since the full `output/cache/` transfer this session is only 9.2GB, it comfortably fits in
+     RAM page cache in its entirety once touched once; the kernel will keep serving it from RAM on
+     every subsequent read across repeated pipeline runs with ZERO code changes needed. This is
+     the real reason `use_memo_cache` (built this session, `docs/SOFTWARE_OPTIMIZATION_AUDIT.md`
+     §6) and OS-level page caching are complementary, not redundant: `use_memo_cache` saves the
+     Python-level per-file-open/parquet-parse overhead across calls in the SAME run;
+     page-cache reuse saves the physical disk read across DIFFERENT runs (even a fresh Python
+     process on a later day still benefits, as long as the page cache hasn't been evicted).
+   - **The one real, unapplied lever**: I/O scheduler is currently `bfq` (`cat
+     /sys/block/sdb/queue/scheduler`) — CachyOS's own default, tuned for desktop fairness across
+     many competing processes (a real, correct choice for interactive use). For a single dominant
+     I/O-heavy batch workload (a CAMARF overnight run reading thousands of files with little
+     competing disk activity), `mq-deadline` typically gives better sustained throughput at the
+     cost of the fairness `bfq` provides — a real, but NOT dramatically proven without a
+     workload-specific A/B benchmark this session didn't run (deprioritized, per Ross's own
+     "skip benchmarking for now" call on the separate GPU-timing question this same session — the
+     same reasoning applies here: correctness/safety of the change is not in question, only
+     whether the win is worth measuring right now). Switching is a single, instantly reversible
+     sysfs write (`echo mq-deadline | sudo tee /sys/block/sdb/queue/scheduler`) — NOT run this
+     session since it needs sudo beyond the existing scoped `NOPASSWD` rule (`mount, umount,
+     btrfs, wipefs, smartctl, dmesg` — doesn't cover sysfs queue-parameter writes). Handed to Ross
+     as an exact command rather than expanding sudo scope unilaterally, same boundary this
+     session's `wipefs`/`btrfs device add` work already established and correctly deferred.
+   - **Built and verified, no sudo needed**: `run_overnight_research.py` now front-loads a
+     `_warm_cache()` pass over `output/cache/` at the very start of a run (thread-pool
+     read-and-discard over every file, `--skip-warm-cache` to disable) — pulls the whole 9.2GB
+     cache into the OS page cache BEFORE stage 00 starts, so even a run's FIRST pass through the
+     ~150 downstream scripts reads from RAM, not the HDD, rather than only re-runs benefiting for
+     free via the kernel's own caching. Verified with a synthetic test (real files + empty dir +
+     missing dir, all handled correctly) — not yet timed against the real 9.2GB cache on CachyOS.
+6. **CLOSED, 2026-08-20 — git sync done.** Ross confirmed go-ahead ("go for git sync"). Committed
+   the 403 changed files (`1fda7d96`, checked clean first: `output/` gitignored, nothing over
+   5MB), pushed to `origin/main`, then `git clone https://github.com/rossw811/CAMARF.git` on the
+   CachyOS box under `~/CAMARF`. This is now the real, working way to move code between the two
+   machines going forward: commit + push from Windows, `git pull` on CachyOS (or the reverse, if
+   CachyOS work needs to flow back). Note this only syncs the *code* — `output/cache/` (the
+   ~45,000-file WRDS parquet cache) is gitignored on purpose and needs its own transfer if/when
+   CachyOS needs to run against real cached data rather than fetching fresh.
 
 ---
 
@@ -152,18 +209,110 @@ own verify-before-trusting discipline applies here just as much as any other cha
 behind a `Config`-level `USE_GPU` flag defaulting to `False` so the Windows machine's code path
 is completely unaffected.
 
-### 3.2 CuPy/RAPIDS for the EG cointegration test batch
+**DONE (2026-08-20, executed same session).** Deviated slightly from the sketch above based on
+what was actually found live: `cupy-cuda12x` was installed instead of `cuda13x` (CachyOS has no
+system CUDA toolkit/`nvcc` at all — confirmed directly — and `cupy-cuda13x` needs one; `cuda12x`'s
+prebuilt wheel plus the pip-distributed `nvidia-*-cu12` runtime packages, which `cupy`'s own
+`cuda-pathfinder` dependency locates automatically, worked cleanly against the installed 610.57.04
+driver, which is backward-compatible). Rather than a separate `_vectorized_pairwise_stats_gpu`
+function plus a global `Config.USE_GPU` flag, added a single `use_gpu: bool = False` parameter
+directly to the existing `_vectorized_pairwise_stats` (matching this codebase's own established
+per-call opt-in-flag pattern, e.g. `low_memory`) — dispatches through a new shared
+`gpu_backend.py` module (`get_array_module()`, `to_numpy()`, `errstate_ctx()` — the last needed
+because `cupy` has no `errstate`, confirmed directly, unlike numpy). Default `False` everywhere:
+zero behavior change for any existing caller, and `use_gpu=True` on a GPU-less machine (the
+Windows dev box) warns once and silently falls back to CPU rather than raising.
 
-`_eg_worker` (the per-pair Engle-Granger test, run tens of thousands to hundreds of thousands
-of times per screen via `ProcessPoolExecutor`) is currently CPU-bound, one pair at a time, via
-`statsmodels.coint()`. This is a much harder GPU port (statsmodels' implementation is not
-GPU-native and reimplementing EG's ADF-on-residuals machinery correctly on GPU is real,
-error-prone numerical work, not a drop-in swap) — **flagged as a real opportunity but NOT
-recommended as a first move**. The correlation pre-filter (§3.1) is the same order-of-magnitude
-win with a fraction of the implementation/verification risk. Revisit EG-on-GPU only after §3.1
-is built, verified, and has freed up real engineering time — and only with Ross's explicit
-sign-off given it touches this project's single most safety-critical statistical test (per
-CLAUDE.md's own "new methodology → discuss first" rule, this is squarely that case).
+**Verified, not just written**: (1) on Windows, the existing `debug/_verify_pairwise_stats_low_
+memory.py` 7-check suite still passes bit-exact after the refactor (zero regression to the
+CPU-only path); (2) on Windows, `use_gpu=True` correctly warns and produces output identical to
+`use_gpu=False` (proven, not assumed — array-equality-checked); (3) on CachyOS, against the REAL
+RTX 4080 (files copied over, not committed — tested in a throwaway overlay on a clean working
+tree, then reverted): CPU vs actual-GPU output matches to 1e-9 tolerance (max observed diff
+~1e-16, ordinary floating-point non-associativity from a different summation order, not a bug) on
+a 300×250 synthetic array. **A real, honest limitation surfaced during this verification, not
+glossed over**: CachyOS's GPU was under heavy concurrent load from Ross's own `ollama`/
+`whisper-cli` work during testing (`nvidia-smi` showed ~14.3GB/16.4GB used) — a full-scale timing
+benchmark at N=4000+ OOM'd, and even a second small follow-up allocation OOM'd afterward,
+suggesting real available headroom is less than `nvidia-smi`'s raw used/total numbers imply under
+concurrent multi-process load. Correctness is proven; a real production-scale speedup number is
+NOT yet measured and needs either idle GPU time or Ross's go-ahead to contend with the other
+active jobs. `gpu_backend.py` and the `analysis.py` change exist locally on Windows,
+UNCOMMITTED (per this project's "only commit when explicitly asked" rule) — not yet pushed to
+CachyOS as part of the real repo.
+
+### 3.2 CuPy/RAPIDS for the EG cointegration test batch — SCOPING ONLY, not built, not authorized
+
+`_eg_worker` (`analysis.py:1642`, the per-pair Engle-Granger test, run tens of thousands to
+hundreds of thousands of times per screen via `ProcessPoolExecutor`) is currently CPU-bound, one
+pair at a time, via `statsmodels.tsa.stattools.coint(a, b, trend="c", maxlag=max_lag,
+autolag="aic")`. **This section is a scoping-only writeup, per Ross's explicit instruction
+(2026-08-20: write the plan, do not build it)** — no code exists for this, and none should be
+written without a separate, explicit go-ahead given it touches this project's single most
+safety-critical statistical test (CLAUDE.md's "new methodology → discuss first" rule applies
+directly here).
+
+**What `coint()` actually computes, read directly from `analysis.py`'s own call site and
+statsmodels' implementation — this is why it's NOT a drop-in swap like §3.1:**
+1. **Step 1 — cointegrating regression**: OLS of `a` on `b` (with a constant, `trend="c"|`),
+   producing residuals `e_t = a_t - (α + β·b_t)`. This part alone IS simple dense linear algebra
+   (a single small OLS, `(X'X)^-1 X'y`) — genuinely GPU-portable in isolation.
+2. **Step 2 — ADF test on the residuals, WITH `autolag="aic"`**: this is the real complexity.
+   `autolag="aic"` means statsmodels doesn't run one fixed-lag ADF regression — it runs a
+   *family* of ADF regressions, one per candidate lag length from 0 up to `max_lag`, computes
+   each candidate's AIC, and selects the lag that minimizes AIC before reporting that model's
+   t-statistic. **This is a per-pair, data-dependent model-selection loop, not a single fixed
+   computation** — the "same op repeated over many pairs" pattern that makes §3.1 GPU-easy does
+   NOT hold here in the same way: each pair may select a different lag length, so a naive GPU
+   port either (a) forces every pair to the same `maxlag` (a real methodology change — comparable
+   to disabling `autolag` project-wide, not something to do silently) or (b) implements the
+   AIC-selection loop itself on GPU, which is control-flow-heavy, not a clean batched matmul.
+3. **P-value lookup**: statsmodels converts the ADF t-statistic to a p-value via `mackinnonp()`,
+   a polynomial regression against MacKinnon's (1994/2010) precomputed response-surface
+   coefficients — this part IS a simple, cheap, GPU-trivial polynomial evaluation once the
+   t-statistic is known; not a source of real risk or difficulty either way.
+
+**What a real CUDA/CuPy reimplementation would require, concretely:**
+- Batch-fit OLS Step 1 for many pairs at once (easy — this is exactly §3.1's kind of dense
+  linear algebra, just applied to residual construction instead of correlation).
+- Either (a) fix `maxlag` uniformly across all pairs (drops `autolag="aic"`'s per-pair
+  data-adaptivity — a real, disclosable methodology change, not free to make silently) and batch
+  the single resulting ADF regression per pair, or (b) reimplement the full AIC-lag-selection
+  loop as a batched, vectorized operation (run all candidate lags for all pairs as one big batched
+  regression, then reduce by per-pair argmin(AIC) — doable, but a genuinely new, unverified
+  numerical procedure, not a "port," and the kind of thing that needs its own from-scratch
+  derivation and testing, not a reference implementation to copy against).
+- Reimplement `mackinnonp()`'s response-surface polynomial evaluation (low risk, small effort).
+- A verification standard at least as strict as §3.1's, but with a much larger attack surface for
+  disagreement: statsmodels' ADF regression has edge-case handling (near-singular regressions,
+  degenerate/constant series, short windows near the `n_overlap < 60` floor already enforced in
+  `_eg_worker`) that a from-scratch reimplementation could silently diverge from in ways a simple
+  `np.allclose` on a handful of synthetic series would not catch. A real verification pass would
+  need: (a) a large-N comparison against the actual production universe's real pairs (thousands
+  of real p-values, not just synthetic data, since real financial series hit edge cases synthetic
+  test data won't), (b) explicit adversarial synthetic cases (near-unit-root series, short
+  windows, near-zero-variance segments), and (c) a decision — made WITH Ross, not silently — on
+  whether option (a) or (b) above is acceptable, since (a) is a real, disclosable scope reduction
+  to the current methodology (`docs/FINDINGS.md`/`PAPER.md` currently describe `autolag="aic"`
+  behavior; changing it changes what's being claimed).
+
+**Effort/risk estimate**: materially larger than §3.1 (which was a same-day build-and-verify).
+This is a from-scratch numerical reimplementation of a two-step econometric test with a
+data-dependent model-selection component, on the project's single most safety-critical test,
+where a subtle divergence from statsmodels wouldn't necessarily crash — it would silently produce
+slightly-wrong p-values feeding directly into which pairs get confirmed as cointegrated. Real
+verification (large-N real-data comparison, adversarial edge cases, an explicit methodology
+decision on the `autolag` question) is a multi-session effort in its own right, not a follow-on
+afternoon to §3.1.
+
+**Recommendation, unchanged from the original scoping**: NOT a good first GPU move. §3.1 (built
+and correctness-verified this session) already captures the same order-of-magnitude class of win
+identified in this project's own OOM-bug history, at a small fraction of the implementation and
+verification risk. Revisit this section only with Ross's explicit, separate sign-off — and even
+then, expect it to be scoped as its own dedicated multi-session effort with its own premortem
+(this project's `.claude/skills/premortem/SKILL.md` — "run BEFORE a new methodology/comparison
+arm/production change is built or finalized" — is exactly the right tool to invoke before writing
+the first line of this, not after).
 
 ### 3.3 k-BAHC clustering on GPU
 

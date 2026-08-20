@@ -1,0 +1,38 @@
+[project]
+name = "camarf"
+version = "0.1.0"
+description = "Cross-Asset Co-Movement Arbitrage Research Framework"
+requires-python = ">=3.12"
+
+# Added 2026-08-20 (software optimization audit): this project previously had
+# zero packaging/tooling metadata at all -- pure requirements.txt, no home for
+# [tool.ruff]/[tool.pytest.ini_options]/etc. This file exists to give tooling
+# a place to configure, not to change how the project is installed --
+# requirements.txt + `uv pip install -r requirements.txt` (Windows conda env)
+# / `uv venv` (CachyOS) remain the real, documented install paths (see
+# CLAUDE.md). No build backend is declared on purpose: this project has no
+# packaging/distribution need, only a tooling-config need.
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+# Report-only defaults to start: unused imports/variables (a real, checkable
+# consequence of this session's own universe_loader/DataAligner rewiring --
+# verify nothing was left dead-importing) and undefined names. Deliberately
+# NOT enabling the full default rule set yet on a ~200-file, multi-month
+# research codebase with its own established conventions (e.g. `_snake_case`
+# private helpers, long descriptive docstrings) -- broadening the rule set is
+# a real decision for Ross to make deliberately, not something to default to
+# silently.
+[tool.ruff.lint]
+select = [
+    "F",   # pyflakes: unused imports/variables, undefined names, etc.
+    "E9",  # syntax errors
+]
+ignore = []
+
+[tool.ruff.lint.per-file-ignores]
+# debug/_verify_*.py scripts are throwaway synthetic-check harnesses, often
+# with intentionally-unused imports for readability/documentation purposes.
+"debug/_verify_*.py" = ["F401"]

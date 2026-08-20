@@ -9,6 +9,23 @@ from typing import List, Dict, Tuple
 import os
 
 # =============================================================================
+# RUNTIME / PARALLELISM
+# =============================================================================
+
+
+class RuntimeConfig:
+    # Added 2026-08-20 (software optimization audit): analysis.py hardcoded
+    # n_workers=12 as a default in 8 separate call sites, never derived from
+    # the actual machine's core count. Harmless on a 12+-thread machine, a
+    # real oversubscription on 8-core/no-SMT hardware (this project's own
+    # CachyOS box, and the old Windows dev box under contention) -- same bug
+    # class already found and fixed in 4 research/ scripts this session.
+    # max(1, cpu_count - 1) leaves one core free for the OS/other concurrent
+    # work rather than claiming every core.
+    N_WORKERS = max(1, (os.cpu_count() or 4) - 1)
+
+
+# =============================================================================
 # IBKR CONNECTION
 # =============================================================================
 
@@ -1062,6 +1079,7 @@ class ResearchConfig:
 
 
 class Config:
+    RUNTIME = RuntimeConfig
     IBKR = IBKRConfig
     DATA = DataConfig
     UNIVERSE = UniverseConfig
