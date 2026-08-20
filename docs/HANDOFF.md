@@ -122,12 +122,31 @@ Built a diff instead — sorted relative-path file lists from both sides (`LC_AL
    written): `nvme0n1p2` is a full second Windows install (767GB used — `Windows/`, `Users/`,
    `EFI/`, `XboxGames/`, `Oculus/`), `nvme1n1p2` is a paired data/games drive (510GB used —
    `SteamLibrary/`, `ComfyUI/`, `AI/`). ~1.27TB combined, both healthy (SMART PASSED). Confirms:
-   not spare capacity, correctly left alone.
+   not spare capacity, correctly left alone as CAMARF storage.
+
+10. **NVMe drives made accessible, per your follow-up ("make the NVMes accessible").** G
+    (SteamLibrary/ComfyUI/AI) mounted read-write cleanly. F (the actual Windows OS) failed a
+    read-write mount — `dmesg` showed why: `volume is dirty and "force" flag is not set!`,
+    meaning Windows wasn't shut down cleanly last time (hibernation or a crash), and the NTFS
+    driver correctly refuses to write on top of that rather than risk real corruption. You chose
+    read-only for F rather than forcing it. **Both are live right now**: `~/mnt/win-f` (read-only)
+    and `~/mnt/win-g` (read-write), verified with an actual write test on G and a confirmed
+    read-only block on F. **Not yet persistent across reboots** — I deliberately didn't edit
+    `/etc/fstab` myself (core system config file, different risk class than the mount commands
+    already covered by your scoped sudo rule). Add these two lines yourself if you want them to
+    survive a reboot:
+    ```
+    /dev/nvme0n1p2  /home/rw/mnt/win-f  ntfs3  ro,uid=1000,gid=1000,nofail  0  0
+    /dev/nvme1n1p2  /home/rw/mnt/win-g  ntfs3  rw,uid=1000,gid=1000,nofail  0  0
+    ```
+    If you ever want F writable, boot into that Windows install and shut it down properly
+    (not hibernate/fast-startup) to clear the dirty flag first — don't force the Linux mount.
 
 Remaining audit items not started: confirming `run_verify_suite.py` is actually run regularly,
 pytest migration for the 176 verify scripts. Also open: the real GPU timing benchmark (blocked on
 GPU headroom, deprioritized per your call), the `mq-deadline` scheduler switch (exact command
-above, needs your sudo), and the Tier-2 GPU reimplementation (scoped only, needs your sign-off).
+above, needs your sudo), the `/etc/fstab` persistence for the two NVMe mounts (exact lines above,
+needs your sudo), and the Tier-2 GPU reimplementation (scoped only, needs your sign-off).
 
 Files: `config.py`, `analysis.py`, `pyproject.toml` (new), `data_wrds.py`,
 `research/build_symbol_permno_map.py`, `research/build_wrds_supplementary_data.py`,
