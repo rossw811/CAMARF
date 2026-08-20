@@ -53,6 +53,20 @@ For a single-timeframe debug run instead of the full ~13-timeframe sweep:
 python analysis.py --timeframes 1h
 ```
 
+**Running the full non-fetch pipeline unattended (overnight/multi-script):** two orchestrators
+exist, both write to the same `logs/overnight/` layout and share the same plain-text
+`_completed_stages.txt` state file, so a run started by one can be resumed by the other —
+`run_overnight_research.ps1` (Windows/PowerShell, the original) and `run_overnight_research.py`
+(cross-platform, added 2026-08-20 — works on Linux, e.g. CachyOS, where PowerShell doesn't exist
+at all; also parallelizes the 13 `backtest.py` variant stages as one batch instead of running
+them sequentially). Use whichever matches your OS; `python run_overnight_research.py --help` for
+flags.
+
+**Linting:** `pyproject.toml`/`[tool.ruff]` (added 2026-08-20) is currently a report-only
+pyflakes+syntax-error check, not enforced automatically — `ruff check .` from the project root
+to see current findings. Not yet wired into a pre-commit hook or CI; run it manually before a
+nontrivial change if you want the signal.
+
 ---
 
 ## Adding a new backtest variant (the "STORM variant" pattern)

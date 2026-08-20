@@ -458,7 +458,22 @@ methodology change (WRDS-primary sourcing) has landed since the 2026-07-13 snaps
 the confirmed-pair set has changed accordingly. §5 through §7.16 below still report backtest
 results against the OLDER, pre-WRDS 23/26-pair universe and have not yet been re-derived against
 the current one — see the superseded-content notice at the start of §5 for exactly what that
-means and why it has not been done casually.]
+means and why it has not been done casually.
+
+**Further disclosure, added 2026-08-20 (markdown-currency sweep) — even the "current" 3-pair set
+described immediately below is no longer this project's actual headline reference set.** A
+point-in-time-safe episodic confirmation methodology (Sessions 30-31, 2026-08-08 through
+2026-08-12) found the 3-pair WRDS-static-screen set below has ZERO overlap with a genuinely
+PIT-safe re-screen and produces poor real capital-constrained backtest results — reframed
+2026-08-11 as no longer the project's reference set. The current headline reference is a
+182-pair PIT-safe episodic-confirmed universe (170 WRDS/1D, 6 intraday/1h, 6 intraday/4h; BUG-D112-
+fixed, `output/research/episodic_confirmed_pairs_adapter_output.parquet`) — see `README.md`'s
+"Current Results" section and `CLAUDE.md`'s "Current canonical data footprint" section for the
+current numbers. This pivot is NOT yet reflected in this paper's own methodology/results
+sections below — promoting it into PAPER.md's own narrative is a separate, deliberate authorial
+decision (per this project's own research-vs-paper decoupling policy), not done as part of this
+disclosure pass. See `docs/PAPER_PENDING_CHANGES.md`'s top-of-file note for the same gap tracked
+from the paper-editing side.]
 
 **Current universe (as of the 2026-08-03 corrected pipeline run, config hash post-BUG-D105
 fix):** **1,730 symbols with cached daily data, 1,660 assets passed the full screening funnel**

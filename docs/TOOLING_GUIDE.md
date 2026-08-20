@@ -58,6 +58,20 @@ file is the full inventory, with an exact invocation for every entry.
 
 ---
 
+## CAMARF-specific tools (built for this project, not generic plugins) — added to this guide
+2026-08-20, was missing since this file's own creation date; confirmed each still exists on disk
+before documenting
+
+| Tool | When to use on CAMARF | Exact prompt / command |
+|---|---|---|
+| `verify-new-module` skill (`.claude/skills/verify-new-module/`) | Building a new `research/` module, a new analysis technique, or any statistical method that will run on real data | Invoke with the module's purpose and what it computes — packages this project's own synthetic-ground-truth → real-run → Development.md-writeup discipline as a repeatable workflow |
+| `diagnose-run-log` skill (`.claude/skills/diagnose-run-log/`) | After any `data.py`/`analysis.py`/`backtest.py` run, to parse `latest_run_*.log` for anomalies instead of manually reading console scrollback | Ask directly, e.g. "diagnose the latest_run_analysis.log" |
+| `premortem` skill (`.claude/skills/premortem/`, built 2026-07-21) | BEFORE a new methodology/comparison arm/production change/PAPER.md claim is built or finalized — runs BEFORE, not after, unlike the council/adversarial-reviewer below. Seeds failure-reason generation from this project's own BUG-D taxonomy first | "premortem this" / "find the blind spots" / "where will this break [claim/plan/module]" |
+| `adversarial-reviewer` subagent (`.claude/agents/adversarial-reviewer.md`) | A single targeted claim/change needing a skeptical second look, distinct from the full council below | Dispatch the `adversarial-reviewer` subagent directly on the specific claim/change |
+| `council-*` 5-lens review panel (`.claude/agents/council-quant-pm.md`, `council-academic-reviewer.md`, `council-code-quality.md`, `council-process-meta.md`, `council-mfe-portfolio.md`) | Real project milestones only, NOT every session — each is a fresh, independent-visibility agent by design; run all 5 together, never alone | Dispatch all 5 council subagents in one batch |
+| `guard_manifest.py` PreToolUse hook (`.claude/hooks/`) | Always active, no invocation needed — blocks direct Write/Edit to `confirmed_pairs_manifest.json` (backstop for BUG-D63, this exact file contaminated with test data twice) | N/A — fires automatically |
+| `headroom` CLI (installed 2026-08-13, `uv tool install "headroom-ai[all]"`, isolated from the `trading` conda env) | Context-compression proxy for AI agent workflows — installed and verified working (`headroom --version` confirms), but NOT wired into this session as an active proxy | `headroom init`/`deploy` is the further step to actually activate it — Ross's call, not done by default |
+
 ## Not yet exercised on CAMARF, worth knowing about
 
 - **`obsidian`** — Ross wants to use this at some point; no current CAMARF integration.

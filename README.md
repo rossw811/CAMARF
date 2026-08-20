@@ -234,7 +234,10 @@ to the exact script/flags that generated it.
   any past date would not have discovered or traded that same pair set — a direct PIT re-screen
   found zero pair overlap with the standing set and negative OOS Sharpe in every fold, see
   `PAPER.md` §7.3.1). A genuinely PIT-safe episodic alternative exists and finds far more real
-  structure (647 pairs vs. 3), but is not yet wired into production — see "Current Results" above.
+  structure (182 BUG-D112-fixed confirmed pairs vs. 3 — corrected 2026-08-20; an earlier
+  454-pair count, and before that a 647-pair count, were both later found contaminated by a
+  candidate-generation lookahead bug, see BUG-D112), but is not yet wired into production —
+  see "Current Results" above.
   Every research comparison arm built in Session 30 was also found to inherit this same bias
   (sourcing pairs from the same non-PIT screen), disclosed in `docs/FINDINGS.md`.
 - **Kelly-sizing lookahead** and **in-sample stop comparison:** flagged explicitly in

@@ -144,6 +144,15 @@ already present), then `graphify claude install` from the project root to
 wire the CLAUDE.md section + PreToolUse hook. See the `## graphify`
 section in `CLAUDE.md` for the query/path/explain usage convention.
 
+**This list is no longer complete** (added as a note 2026-08-20, not rewritten in place — this
+guide's job is "how to install from scratch," not "the current full inventory"). Several more
+plugins/CAMARF-specific skills/subagents/hooks have been added since this section was written —
+`storm`, `superpowers`, `last30days`, `code-review`, plus CAMARF-specific tools under
+`.claude/skills/`/`.claude/agents/`/`.claude/hooks/` (the `council-*` 5-lens review panel,
+`adversarial-reviewer`, `premortem`, `verify-new-module`, `diagnose-run-log`,
+`guard_manifest.py`). See `docs/TOOLING_GUIDE.md` for the full, kept-current inventory with exact
+invocations — this section only covers the handful installed at initial setup time.
+
 ### Explicitly do NOT install
 
 **`ponytail`** — verified real, but its "minimize code written, flag
@@ -225,6 +234,11 @@ connection to a live paper-trading system with real financial consequences:
 - **Be aware of quota sharing.** Claude Code and claude.ai chat share the
   same rolling 5-hour subscription quota on Pro/Max plans. Heavy use in one
   surface reduces what's available in the other during that window.
+- **A concrete example of this discipline, actually implemented, not just discussed** (added
+  2026-08-20): `.claude/hooks/guard_manifest.py` is a `PreToolUse` hook that blocks direct
+  Write/Edit to `confirmed_pairs_manifest.json` — built after that exact file was contaminated
+  with test data twice (BUG-D63). A real, working example of turning a repeated real incident
+  into an automated guardrail rather than just a documented rule to remember.
 
 ---
 
