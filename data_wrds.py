@@ -83,6 +83,7 @@ Output
   regardless; this file only ever serves 1D and coarser.
 """
 import argparse
+import glob
 import logging
 import os
 import re
@@ -1328,6 +1329,224 @@ def fetch_fx_wrds(db) -> Dict[str, pd.Series]:
     log.info(f"Fetched {len(out)} FX series from frb_all.fx_daily "
              f"(1971-01-04 through {df.index.max().date()} -- STALE, see staleness warning)")
     return out
+
+
+# =============================================================================
+# CONSOLIDATED FROM research/ (Thread O, 2026-08-20 execution) -- mechanical,
+# literal moves of pure fetch-layer functions per this file's own header
+# ("ALL WRDS data sources live in this ONE file, one file per external
+# PROVIDER"). Each function's logic is UNCHANGED from its research/ origin --
+# no live WRDS testing was possible for this move (all 3 need interactive
+# Duo 2FA, per this project's own established constraint), so this is
+# deliberately a pure relocate, not a refactor: verified via syntax/import
+# checks only. The original research/ scripts remain as thin CLI wrappers
+# calling these functions, not deleted, so nothing that already worked stops
+# working.
+# =============================================================================
+
+
+def cached_wrds_symbols() -> list:
+    """Every symbol with a cached output/cache/wrds/*_1D.parquet file.
+    Moved from research/build_symbol_permno_map.py, unchanged."""
+    out = []
+    for path in glob.glob(os.path.join(_OUT_DIR, "*_1D.parquet")):
+        fname = os.path.basename(path)
+        out.append(fname[: -len("_1D.parquet")])
+    return out
+
+
+_PERMNO_FILENAME_RE = re.compile(r"^PERMNO(\d+)_1D\.parquet$")
+
+
+def build_symbol_permno_map() -> pd.DataFrame:
+    """Builds and caches the ticker-symbol -> permno mapping bridging the
+    ticker-keyed WRDS price cache to CRSP's permno-keyed S&P 500 membership
+    history. Moved from research/build_symbol_permno_map.py::main(),
+    unchanged logic -- see that script's own (still-present) docstring for
+    the full "why this exists" explanation. Requires a live WRDS connection
+    (ticker->permno resolution query) -- run manually, same as before this
+    move.
+
+    Output: output/cache/wrds/symbol_permno_map.parquet, columns
+    [symbol, permno] -- one row per resolved WRDS-cached ticker symbol.
+    """
+    _map_out_path = os.path.join(_OUT_DIR, "symbol_permno_map.parquet")
+    symbols = cached_wrds_symbols()
+    log.info(f"{len(symbols)} symbols with cached WRDS daily price data")
+
+    already_permno = {}
+    ticker_symbols = []
+    for sym in symbols:
+        m = _PERMNO_FILENAME_RE.match(f"{sym}_1D.parquet")
+        if m:
+            already_permno[sym] = int(m.group(1))
+        else:
+            ticker_symbols.append(sym)
+    log.info(f"{len(already_permno)} already permno-keyed by filename, "
+             f"{len(ticker_symbols)} need ticker->permno resolution")
+
+    db = _connect()
+    if not os.path.exists(os.path.expanduser("~/.pgpass")):
+        db.create_pgpass_file()
+        log.info("Wrote ~/.pgpass -- future connections will not need interactive credentials")
+
+    permno_by_symbol = dict(already_permno)
+    for i in range(0, len(ticker_symbols), 500):
+        chunk = ticker_symbols[i:i + 500]
+        permno_by_symbol.update(resolve_permnos_bulk(db, chunk))
+    n_unresolved = len(symbols) - len(permno_by_symbol)
+    log.info(f"Resolved {len(permno_by_symbol)}/{len(symbols)} symbols to permnos "
+             f"({n_unresolved} not found -- likely non-CRSP-covered tickers, e.g. international ADRs)")
+
+    out = pd.DataFrame(
+        [{"symbol": s, "permno": p} for s, p in permno_by_symbol.items()]
+    )
+    out.to_parquet(_map_out_path, index=False)
+    log.info(f"Saved -> {_map_out_path} ({len(out)} rows)")
+    return out
+
+
+def fetch_fama_french(db):
+    """Fama-French 3-factor and 5-factor daily. Moved from
+    research/build_wrds_supplementary_data.py, unchanged."""
+    q3 = "select * from ff.factors_daily order by date"
+    q5 = "select * from ff.fivefactors_daily order by date"
+    df3 = db.raw_sql(q3)
+    df5 = db.raw_sql(q5)
+    df3.to_parquet(os.path.join(_OUT_DIR, "ff_factors_3_daily.parquet"), index=False)
+    df5.to_parquet(os.path.join(_OUT_DIR, "ff_factors_5_daily.parquet"), index=False)
+    log.info(f"Fama-French 3-factor daily: {len(df3)} rows, {df3['date'].min()} to {df3['date'].max()}")
+    log.info(f"Fama-French 5-factor daily: {len(df5)} rows, {df5['date'].min()} to {df5['date'].max()}")
+
+
+def fetch_compustat_fundamentals(db):
+    """Compustat annual fundamentals for CAMARF's universe, CCM-linked.
+    Moved from research/build_wrds_supplementary_data.py, unchanged --
+    see that script's own docstring for the full scoping rationale (why
+    these specific fields, why CCM-linked, why NOT the full comp library)."""
+    permno_map_path = os.path.join(_OUT_DIR, "symbol_permno_map.parquet")
+    if not os.path.exists(permno_map_path):
+        log.warning(f"{permno_map_path} not found -- run build_symbol_permno_map() "
+                    f"first. Skipping Compustat fundamentals.")
+        return
+    permno_map = pd.read_parquet(permno_map_path)
+    permnos = permno_map["permno"].dropna().astype(int).unique().tolist()
+    log.info(f"Fetching Compustat fundamentals for {len(permnos)} permnos (via CRSP-Compustat "
+             f"Merged link, standard indfmt/datafmt/popsrc/consol filter)...")
+
+    permnos_sql = ",".join(str(p) for p in permnos)
+    q = f"""
+        with linked as (
+            select gvkey, lpermno as permno, linkdt, linkenddt
+            from crsp_a_ccm.ccmxpf_lnkhist
+            where lpermno in ({permnos_sql})
+              and linktype in ('LU', 'LC')
+              and linkprim in ('P', 'C')
+        )
+        select f.gvkey, l.permno, f.datadate, f.fyear, f.at, f.sale, f.revt, f.ni, f.ceq, f.csho
+        from comp.funda f
+        join linked l on f.gvkey = l.gvkey
+        where f.indfmt = 'INDL' and f.datafmt = 'STD' and f.popsrc = 'D' and f.consol = 'C'
+          and f.datadate >= l.linkdt
+          and (l.linkenddt is null or f.datadate <= l.linkenddt)
+        order by l.permno, f.datadate
+    """
+    df = db.raw_sql(q)
+    df.to_parquet(os.path.join(_OUT_DIR, "compustat_funda_camarf_universe.parquet"), index=False)
+    log.info(f"Compustat fundamentals: {len(df)} rows, {df['permno'].nunique()} distinct permnos, "
+             f"{df['datadate'].min()} to {df['datadate'].max()}")
+
+    gvkeys = df["gvkey"].dropna().unique().tolist()
+    if gvkeys:
+        gvkeys_sql = ",".join(f"'{g}'" for g in gvkeys)
+        company_q = f"""
+            select gvkey, sic, gsector, gind, conm
+            from comp.company
+            where gvkey in ({gvkeys_sql})
+        """
+        company_df = db.raw_sql(company_q)
+        company_df.to_parquet(os.path.join(_OUT_DIR, "compustat_company_camarf_universe.parquet"), index=False)
+        log.info(f"Compustat company reference (SIC/GICS sector): {len(company_df)} companies")
+
+
+_GLOBAL_INDEX_MIN_CONSTITUENTS = 20  # discovery threshold -- matches the 2026-07-27 inventory's
+    # own "genuinely usable" bar (FTSE 100/CAC 40 at 0 constituents were the motivating
+    # counterexample this threshold rules out)
+
+
+def discover_populated_indices(db, min_constituents: int = _GLOBAL_INDEX_MIN_CONSTITUENTS) -> pd.DataFrame:
+    """Real query, not a hardcoded list -- re-derives the 2026-07-27 inventory
+    fresh each run. Moved from research/wrds_global_index_universe_fetch.py,
+    unchanged -- see that script's own (still-present) docstring for the full
+    column-name self-healing rationale (g_idx_index's schema was never
+    reliably documented, so this introspects information_schema.columns
+    first rather than guessing column names a second time)."""
+    cols_df = db.raw_sql("""
+        select column_name from information_schema.columns
+        where table_schema = 'comp_global_daily' and table_name = 'g_idx_index'
+        order by ordinal_position
+    """)
+    real_cols = set(cols_df["column_name"])
+    log.info(f"g_idx_index real columns (introspected, not guessed): {sorted(real_cols)}")
+
+    name_col = "conm" if "conm" in real_cols else None
+    country_candidates = [c for c in ("loc", "country", "iso", "isocur", "region") if c in real_cols]
+    country_col = country_candidates[0] if country_candidates else None
+
+    select_extra = []
+    group_extra = []
+    if name_col:
+        select_extra.append(f"i.{name_col} as conm")
+        group_extra.append(f"i.{name_col}")
+    if country_col:
+        select_extra.append(f"i.{country_col} as country")
+        group_extra.append(f"i.{country_col}")
+    select_clause = ", ".join(["h.gvkeyx"] + select_extra)
+    group_clause = ", ".join(["h.gvkeyx"] + group_extra)
+
+    q = f"""
+        select {select_clause},
+               count(distinct (h.gvkey, h.iid)) as n_constituents
+        from comp_global_daily.g_idxcst_his h
+        join comp_global_daily.g_idx_index i on h.gvkeyx = i.gvkeyx
+        group by {group_clause}
+        having count(distinct (h.gvkey, h.iid)) >= %(min_c)s
+        order by n_constituents desc
+    """
+    df = db.raw_sql(q, params={"min_c": min_constituents})
+    if "conm" not in df.columns:
+        df["conm"] = "gvkeyx_" + df["gvkeyx"].astype(str)  # fallback display label if no name column found
+    log.info(f"Discovered {len(df)} populated global indices with >= {min_constituents} "
+             f"constituents each (total distinct constituents may overlap across indices).")
+    return df
+
+
+_GLOBAL_STATEMENT_TIMEOUT_MS = 120_000  # 2 minutes -- see connect_with_retry_global's docstring
+
+
+def connect_with_retry_global(max_attempts: int = 5, base_delay: float = 30.0):
+    """WRDS-connection-with-retry-and-statement-timeout, specifically hardened
+    for the global-index fetch's real production incidents. Moved from
+    research/wrds_global_index_universe_fetch.py::_connect_with_retry,
+    unchanged (renamed from the leading-underscore private name since this
+    is now a shared, importable utility, not a script-local helper) -- see
+    that script's own docstring for the full incident history (a real
+    server-side connection drop after ~2200 symbols, and a separate real
+    8+-hour silent hang from a raw network stall that exception-based retry
+    couldn't catch until a hard statement_timeout was added)."""
+    last_exc = None
+    for attempt in range(1, max_attempts + 1):
+        try:
+            db = _connect()
+            db.connection.exec_driver_sql(f"SET statement_timeout = {_GLOBAL_STATEMENT_TIMEOUT_MS}")
+            return db
+        except Exception as e:
+            last_exc = e
+            delay = base_delay * attempt
+            log.warning(f"WRDS connect attempt {attempt}/{max_attempts} failed ({e}); "
+                        f"retrying in {delay:.0f}s...")
+            time.sleep(delay)
+    raise RuntimeError(f"Could not connect to WRDS after {max_attempts} attempts") from last_exc
 
 
 def main():

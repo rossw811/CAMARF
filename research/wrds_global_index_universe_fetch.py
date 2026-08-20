@@ -52,6 +52,7 @@ import pandas as pd
 from data_wrds import (
     _connect, _OUT_DIR, fetch_index_membership_history_global,
     fetch_symbols_bulk_global, build_global_symbol_label,
+    discover_populated_indices, connect_with_retry_global,
 )
 
 log = logging.getLogger("wrds_global_index_universe_fetch")
@@ -62,104 +63,14 @@ _MIN_CONSTITUENTS = 20  # discovery threshold -- matches the 2026-07-27 inventor
                         # "genuinely usable" bar (FTSE 100/CAC 40 at 0 constituents were
                         # the motivating counterexample this threshold rules out)
 
-
-def discover_populated_indices(db, min_constituents: int = _MIN_CONSTITUENTS) -> pd.DataFrame:
-    """
-    Real query, not a hardcoded list -- re-derives the 2026-07-27 inventory
-    fresh each run (WRDS coverage can be added to over time; a hardcoded
-    gvkeyx list would silently go stale). Joins g_idxcst_his (actual
-    constituent rows) to g_idx_index (index name) so a definition with zero
-    real rows never appears in the result.
-
-    Column-name self-healing: this project has no prior verified reference
-    for g_idx_index's exact schema (a prior session's inventory pass never
-    recorded its literal SQL, only prose findings), and a guessed country
-    column (`i.loc`) failed against the real table (UndefinedColumn). Rather
-    than guess a second time, this queries information_schema.columns FIRST
-    to get the real column list, logs it (so it's on record for next time),
-    then builds the query only from confirmed-real columns -- `gvkeyx` is
-    guaranteed (it's the join key that already worked), `conm` is checked
-    for and used if present (matches the company-name convention already
-    verified elsewhere in this file for g_company), any country-like column
-    is included opportunistically if one exists, never assumed by a fixed
-    name.
-    """
-    cols_df = db.raw_sql("""
-        select column_name from information_schema.columns
-        where table_schema = 'comp_global_daily' and table_name = 'g_idx_index'
-        order by ordinal_position
-    """)
-    real_cols = set(cols_df["column_name"])
-    log.info(f"g_idx_index real columns (introspected, not guessed): {sorted(real_cols)}")
-
-    name_col = "conm" if "conm" in real_cols else None
-    country_candidates = [c for c in ("loc", "country", "iso", "isocur", "region") if c in real_cols]
-    country_col = country_candidates[0] if country_candidates else None
-
-    select_extra = []
-    group_extra = []
-    if name_col:
-        select_extra.append(f"i.{name_col} as conm")
-        group_extra.append(f"i.{name_col}")
-    if country_col:
-        select_extra.append(f"i.{country_col} as country")
-        group_extra.append(f"i.{country_col}")
-    select_clause = ", ".join(["h.gvkeyx"] + select_extra)
-    group_clause = ", ".join(["h.gvkeyx"] + group_extra)
-
-    q = f"""
-        select {select_clause},
-               count(distinct (h.gvkey, h.iid)) as n_constituents
-        from comp_global_daily.g_idxcst_his h
-        join comp_global_daily.g_idx_index i on h.gvkeyx = i.gvkeyx
-        group by {group_clause}
-        having count(distinct (h.gvkey, h.iid)) >= %(min_c)s
-        order by n_constituents desc
-    """
-    df = db.raw_sql(q, params={"min_c": min_constituents})
-    if "conm" not in df.columns:
-        df["conm"] = "gvkeyx_" + df["gvkeyx"].astype(str)  # fallback display label if no name column found
-    log.info(f"Discovered {len(df)} populated global indices with >= {min_constituents} "
-             f"constituents each (total distinct constituents may overlap across indices).")
-    return df
-
-
-_STATEMENT_TIMEOUT_MS = 120_000  # 2 minutes -- see docstring below
-
-
-def _connect_with_retry(max_attempts: int = 5, base_delay: float = 30.0):
-    """WRDS's server dropped the connection mid-fetch on a real run (2026-08-12,
-    'server closed the connection unexpectedly' after ~2200 symbols) and the
-    very next immediate reconnect attempt ALSO failed ('SSL connection has
-    been closed unexpectedly') -- a transient server-side issue, not
-    something a code fix on this end can prevent, but retrying with backoff
-    instead of dying on the first attempt is a real, warranted fix.
-
-    Sets a server-side `statement_timeout` (2026-08-13, after a real run hung
-    for 8+ hours with near-zero CPU accumulation -- a raw network/query stall
-    never raises an exception on its own, so exception-based retry logic
-    never gets a chance to catch it; a hard statement timeout forces the
-    server to kill the query and return an error instead, which retry logic
-    CAN catch). Applied once per connection, immediately after connecting."""
-    last_exc = None
-    for attempt in range(1, max_attempts + 1):
-        try:
-            db = _connect()
-            # NOT db.raw_sql() -- that wraps pd.read_sql_query(), which requires
-            # a result set with rows. A `SET` command returns none, so raw_sql()
-            # threw "This result object does not return rows" on the real run
-            # (2026-08-13). Use the underlying SQLAlchemy connection's own
-            # exec_driver_sql directly instead -- the same method wrds.Connection
-            # itself uses internally for non-pandas execution.
-            db.connection.exec_driver_sql(f"SET statement_timeout = {_STATEMENT_TIMEOUT_MS}")
-            return db
-        except Exception as e:
-            last_exc = e
-            delay = base_delay * attempt
-            log.warning(f"WRDS connect attempt {attempt}/{max_attempts} failed ({e}); "
-                        f"retrying in {delay:.0f}s...")
-            time.sleep(delay)
-    raise RuntimeError(f"Could not connect to WRDS after {max_attempts} attempts") from last_exc
+# discover_populated_indices() and the connect-with-retry helper (now
+# connect_with_retry_global) were moved into data_wrds.py on 2026-08-20
+# (Thread O consolidation) -- both are pure fetch/connection-layer
+# primitives per that file's own scope statement. See data_wrds.py's
+# docstrings on those two functions for the full rationale (column-name
+# self-healing, the real production incidents behind the retry/timeout
+# logic). Imported above, unchanged.
+_connect_with_retry = connect_with_retry_global  # local alias -- keeps main()'s existing call site unchanged
 
 
 def discover_and_build_manifest(db, min_constituents: int):

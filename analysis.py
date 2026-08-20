@@ -83,6 +83,7 @@ except ImportError:
     _HMMLEARN_AVAILABLE = False
 
 # Project imports
+import gpu_backend
 from config import Config
 from data import (
     UniverseBuilder,
@@ -720,7 +721,8 @@ class UniverseFilter:
         return returns_kept, symbols_kept, pd.DatetimeIndex([])
 
     @staticmethod
-    def _vectorized_pairwise_stats(x: np.ndarray, low_memory: bool = False) -> Tuple[np.ndarray, ...]:
+    def _vectorized_pairwise_stats(x: np.ndarray, low_memory: bool = False,
+                                    use_gpu: bool = False) -> Tuple[np.ndarray, ...]:
         """
         Shared masked-matmul core for pairwise-complete correlation stats.
 
@@ -750,31 +752,44 @@ class UniverseFilter:
         on real data before trusting it (debug/_verify_pairwise_stats_low_
         memory.py). Default False -- zero behavior change for the existing
         rolling_corr_avg_matrix caller, which still needs the full tuple.
+
+        use_gpu (added 2026-08-20, opt-in, default False -- see gpu_backend.py
+        module docstring for the full rationale): computes this function's
+        masked-matmul core on GPU via CuPy when True AND a CUDA device is
+        actually available; silently falls back to NumPy/CPU otherwise (a
+        machine with no GPU, e.g. the Windows dev box, behaves identically to
+        use_gpu=False -- always safe to pass). Inputs are moved to the GPU
+        once at the start (xp.asarray) and results are converted back to
+        plain numpy arrays once at the end (gpu_backend.to_numpy) -- the
+        return type/contract is IDENTICAL regardless of which backend
+        actually ran; callers never need to know or care.
         """
-        finite = np.isfinite(x)
-        x0 = np.where(finite, x, 0.0)
-        m = finite.astype(np.float64)
+        xp = gpu_backend.get_array_module(use_gpu)
+        x_dev = xp.asarray(x)
+        finite = xp.isfinite(x_dev)
+        x0 = xp.where(finite, x_dev, 0.0)
+        m = finite.astype(xp.float64)
 
         count = m @ m.T
         sum_x = x0 @ m.T          # sum_x[i, j] = sum of row i over overlap(i, j)
 
-        with np.errstate(invalid="ignore", divide="ignore"):
+        with gpu_backend.errstate_ctx(xp, invalid="ignore", divide="ignore"):
             mean_x = sum_x / count
             mean_y = sum_x.T / count
         if low_memory:
             del sum_x
 
         sum_x2 = (x0 * x0) @ m.T  # sum_x2[i, j] = sum of row i^2 over overlap(i, j)
-        with np.errstate(invalid="ignore", divide="ignore"):
+        with gpu_backend.errstate_ctx(xp, invalid="ignore", divide="ignore"):
             var_x = sum_x2 / count - mean_x * mean_x
             var_y = sum_x2.T / count - mean_y * mean_y
         if low_memory:
             del sum_x2
 
         sum_xy = x0 @ x0.T        # sum_xy[i, j] = sum of row i * row j over overlap(i, j)
-        with np.errstate(invalid="ignore", divide="ignore"):
+        with gpu_backend.errstate_ctx(xp, invalid="ignore", divide="ignore"):
             cov_xy = sum_xy / count - mean_x * mean_y
-            den = np.sqrt(var_x * var_y)
+            den = xp.sqrt(var_x * var_y)
             corr_raw = cov_xy / den
         if low_memory:
             # Same 8-element tuple SHAPE/ORDER as the full path (position compatibility for
@@ -782,8 +797,11 @@ class UniverseFilter:
             # since _pairwise_corr (the only low_memory caller) never uses them past this
             # point; only count/var_x/var_y/corr_raw survive into _fix_ambiguous_variance_cells.
             del sum_xy, cov_xy, mean_x, mean_y, den
-            return count, None, None, var_x, var_y, None, corr_raw, None
-        return count, mean_x, mean_y, var_x, var_y, cov_xy, corr_raw, den
+            return (gpu_backend.to_numpy(count), None, None, gpu_backend.to_numpy(var_x),
+                    gpu_backend.to_numpy(var_y), None, gpu_backend.to_numpy(corr_raw), None)
+        return (gpu_backend.to_numpy(count), gpu_backend.to_numpy(mean_x), gpu_backend.to_numpy(mean_y),
+                gpu_backend.to_numpy(var_x), gpu_backend.to_numpy(var_y), gpu_backend.to_numpy(cov_xy),
+                gpu_backend.to_numpy(corr_raw), gpu_backend.to_numpy(den))
 
     @staticmethod
     def _exact_pair_corr(a: np.ndarray, b: np.ndarray, valid: np.ndarray, min_overlap: int):
@@ -1818,7 +1836,7 @@ class CointScanner:
         tf_label: str,
         fdr_alpha: float = None,
         max_lag: int = None,
-        n_workers: int = 12,
+        n_workers: int = None,
     ) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
         """
         Run Engle-Granger on all candidate pairs, apply BH-FDR, return
@@ -1836,6 +1854,7 @@ class CointScanner:
 
         fdr_alpha = fdr_alpha if fdr_alpha is not None else Config.STATS.FDR_ALPHA
         max_lag = max_lag if max_lag is not None else Config.ANALYSIS.EG_MAX_LAG
+        n_workers = n_workers if n_workers is not None else Config.RUNTIME.N_WORKERS
 
         if not candidate_pairs:
             return [], {"n_tested": 0, "n_passed_raw": 0, "n_passed_fdr": 0}
@@ -2029,7 +2048,7 @@ class CointScanner:
         tf_label: str,
         window: int = 252,
         step: int = 21,
-        n_workers: int = 12,
+        n_workers: int = None,
     ) -> List[Dict[str, Any]]:
         """
         For each confirmed pair, compute fraction of rolling windows where
@@ -2039,6 +2058,7 @@ class CointScanner:
         We use step=21 (one month for daily) to balance independence and
         coverage. Documented in BiasAuditLog.
         """
+        n_workers = n_workers if n_workers is not None else Config.RUNTIME.N_WORKERS
         if not _STATSMODELS_AVAILABLE or not confirmed_pairs:
             return confirmed_pairs
 
@@ -4337,7 +4357,7 @@ class TrioBuilder:
         det_order: int = None,
         k_ar_diff: int = None,
         sig_level: float = None,
-        n_workers: int = 12,
+        n_workers: int = None,
     ) -> List[TrioResult]:
         """
         Run Johansen test on candidate trios in parallel.
@@ -4357,6 +4377,7 @@ class TrioBuilder:
             if sig_level is not None
             else Config.ANALYSIS.JOHANSEN_SIGNIFICANCE
         )
+        n_workers = n_workers if n_workers is not None else Config.RUNTIME.N_WORKERS
 
         BiasAuditLog.record(
             bias_type="multiple_testing",
@@ -4487,7 +4508,7 @@ class ThresholdCalibrator:
         asset_class_map: Dict[str, str],
         tf_label: str,
         thresholds: List[float] = (0.45, 0.50, 0.55, 0.60, 0.65, 0.70, 0.75),
-        n_workers: int = 12,
+        n_workers: int = None,
     ) -> Dict[str, Any]:
         """
         For each threshold, run UniverseFilter + a SUBSET of EG (capped at
@@ -4496,6 +4517,7 @@ class ThresholdCalibrator:
         Returns:
             { threshold: {n_candidates, n_eg_confirmed, confirmation_rate}, ... }
         """
+        n_workers = n_workers if n_workers is not None else Config.RUNTIME.N_WORKERS
         if not _STATSMODELS_AVAILABLE:
             return {}
 
@@ -4588,7 +4610,7 @@ class ThresholdCalibrator:
         asset_class_map: Dict[str, str],
         tf_label: str,
         sig_levels: List[float] = (0.01, 0.05, 0.10),
-        n_workers: int = 12,
+        n_workers: int = None,
     ) -> Dict[float, int]:
         """
         Run Johansen at multiple significance levels and report confirmed
@@ -4596,6 +4618,7 @@ class ThresholdCalibrator:
         critical values — we compare against the same crit values but
         interpret as different significance levels.
         """
+        n_workers = n_workers if n_workers is not None else Config.RUNTIME.N_WORKERS
         results = {}
         if not candidate_trios or not _STATSMODELS_AVAILABLE:
             return results
@@ -4839,7 +4862,7 @@ class AnalysisPipeline:
         timeframes: Optional[List[str]] = None,
         run_calibration: bool = True,
         run_synthetic: bool = False,
-        n_workers: int = 12,
+        n_workers: int = None,
     ) -> AnalysisResults:
         """
         Run the full analysis pipeline.
@@ -4856,6 +4879,7 @@ class AnalysisPipeline:
         Returns:
             AnalysisResults with all confirmed pairs, trios, regimes, and audit log.
         """
+        n_workers = n_workers if n_workers is not None else Config.RUNTIME.N_WORKERS
         t_start = time.time()
         BiasAuditLog.reset()
 
@@ -5814,7 +5838,7 @@ class AnalysisPipeline:
             {"symbol_a": p.symbol_a, "symbol_b": p.symbol_b} for p in pairs_to_test
         ]
         deep_results = CointScanner.rolling_fraction(
-            confirmed_dicts, deep_aligned, tf_label, n_workers=min(12, len(pairs_to_test))
+            confirmed_dicts, deep_aligned, tf_label, n_workers=min(Config.RUNTIME.N_WORKERS, len(pairs_to_test))
         )
         deep_frac_by_key = {
             (r["symbol_a"], r["symbol_b"]): r.get("coint_fraction_rolling", np.nan)
@@ -6312,7 +6336,7 @@ class AnalysisPipeline:
 def main(
     timeframes: Optional[List[str]] = None,
     run_calibration: bool = True,
-    n_workers: int = 12,
+    n_workers: int = None,
 ) -> AnalysisResults:
     """
     Entry point — build universe from cache, then run analysis pipeline.
