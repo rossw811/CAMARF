@@ -1,0 +1,4 @@
+Running on confirmed pairs, testing each leg as coarse=1D/fine=1h...
+  IQV(coarse)/Q(fine) [A_downsample_eg]: {'method': 'A_downsample_eg', 'n': 155, 'coint_pvalue': 0.3571346564050832, 'coarse_symbol': 'IQV', 'fine_symbol': 'Q'}
+  IQV(coarse)/Q(fine) [B_midas_residual]: {'method': 'B_midas_residual', 'n': 155, 'adf_pvalue': 0.2687622927831399, 'hedge_ratio': -0.47876999761428746, 'coarse_symbol': 'IQV', 'fine_symbol': 'Q'}
+  IQV(coarse)/Q(fine) [C_coarse_predicts_fine]: {'method': 'C_coarse_predicts_fine', 'n': 155, 'perm_pvalue': 0.27, 'observed_corr': -0.09227700731848278, 'beta': -0.013745050846989142, 'coarse_symbol': 'IQV', 'fine_symbol': 'Q'}

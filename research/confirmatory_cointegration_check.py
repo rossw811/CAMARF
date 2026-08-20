@@ -174,17 +174,35 @@ def main():
     )
     log.info("Aligned %d/%d needed symbols", len(aligned), len(needed_symbols))
 
-    log_prices = CointScanner._build_log_price_map(aligned, list(aligned.keys()))
+    # BUG-D111 fix (found live, 2026-08-11): DataAligner.align_universe does NOT
+    # guarantee every symbol shares one common index -- each symbol's own history
+    # depth (e.g. TMHC ending 2026-07-22 vs MET/LNT/VTR's 2026-07-31) produces a
+    # DIFFERENT-length array. _build_log_price_map returns bare np.ndarray with no
+    # index, so passing two different symbols' arrays straight into
+    # run_confirmatory_pair as if positionally aligned crashed with a numpy
+    # broadcast ValueError the moment two target-pair symbols had unequal depth
+    # (MET/TMHC: 26478 vs 26262). Fixed the same way episodic_pairs_adapter.py's
+    # _load_aligned/ridge_hedge_ratio_comparison.py's evaluate_pair already do:
+    # keep the index, inner-join per pair before treating the two series as
+    # parallel arrays.
+    log_price_series = {}
+    for sym in aligned:
+        close = CointScanner._build_log_price_map({sym: aligned[sym]}, [sym]).get(sym)
+        if close is not None:
+            log_price_series[sym] = pd.Series(close, index=aligned[sym].index)
 
     rows = []
     for sym_a, sym_b, role in TARGET_PAIRS:
-        lp_a = log_prices.get(sym_a)
-        lp_b = log_prices.get(sym_b)
-        if lp_a is None or lp_b is None:
+        s_a = log_price_series.get(sym_a)
+        s_b = log_price_series.get(sym_b)
+        if s_a is None or s_b is None:
             log.warning("  %s/%s (%s): no aligned data, skipping", sym_a, sym_b, role)
             rows.append({"symbol_a": sym_a, "symbol_b": sym_b, "role": role, "ok": False,
                          "error": "no_aligned_data"})
             continue
+        common_idx = s_a.index.intersection(s_b.index)
+        lp_a = s_a.loc[common_idx].to_numpy()
+        lp_b = s_b.loc[common_idx].to_numpy()
         res = run_confirmatory_pair(lp_a, lp_b, max_lag=Config.ANALYSIS.EG_MAX_LAG)
         res["symbol_a"] = sym_a
         res["symbol_b"] = sym_b

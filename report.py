@@ -1432,12 +1432,16 @@ trades z-scores of the spread. \citet{vidyamurthy2004} provides the canonical
 treatment; \citet{krauss2017} surveys the resulting literature.
 
 The project documented in this paper began as a strategy implementation and became
-a methods paper when a systematic empirical anomaly emerged in full-pipeline
-scanning across 14 timeframes and $1{,}500+$ assets: cointegration tests at long
-horizons (1D, 1M) reject candidate pairs at rates \emph{3,000$\times$ below} the
-expected false-positive rate under the null hypothesis. This is not an absence of
-cointegrated pairs. It is evidence that the full-sample EG test is, in a precise
-sense, miscalibrated for those horizons---the \textbf{Strictness Paradox}.
+a methods paper when a systematic empirical pattern emerged in full-pipeline
+scanning across 14 timeframes and $1{,}500+$ assets: a full-sample Engle-Granger
+test can certify a pair with overwhelming significance on the strength of a
+relationship that has since broken, and this project's own original headline
+confirmed pairs are a direct, reproducible demonstration of exactly that --
+the \textbf{durability-vs-currency conflation}. A companion hypothesis, that the
+test itself is miscalibrated at long horizons, was tested directly via Monte
+Carlo simulation and refuted (\S\ref{sec:strictness}): the empirical
+false-positive rate under a genuine null is elevated relative to nominal, not
+suppressed, at every timeframe tested.
 
 \subsection{Contribution to Literature}
 
@@ -1446,12 +1450,22 @@ sense, miscalibrated for those horizons---the \textbf{Strictness Paradox}.
     scanning across 14 timeframes (1-minute to 1-month) with per-TF confirmatory
     tier assignments. No found paper does this simultaneously.
 
-  \item \textbf{Quantification of the Strictness Paradox.} The empirical finding
-    that full-sample EG rejects pairs at rates $\sim$3,000$\times$ below the
-    expected false-positive rate at 1D timeframes is documented and quantified in
-    \S\ref{sec:strictness}. \citet{clegg_krauss2018} motivate partial cointegration
-    by the episodic nature of relationships, but do not characterize the full-sample
-    test's miscalibration directly.
+  \item \textbf{Discovery and quantification of the durability-vs-currency
+    conflation in full-sample cointegration screening.} A full-sample EG test can
+    confirm a pair with overwhelming significance on the strength of a relationship
+    that has since broken (\S\ref{sec:strictness}, on this project's own original
+    headline confirmed pairs). \citet{clegg_krauss2018} motivate partial
+    cointegration by the episodic nature of relationships, but do not characterize
+    this specific conflation directly. A companion hypothesis -- that full-sample
+    EG's low raw rejection rate at long horizons reflects test miscalibration
+    itself, not just this conflation -- was tested directly via Monte Carlo
+    simulation against the production test code on real, randomly-repaired null
+    data and REFUTED: the empirical false-positive rate under a genuine null is
+    elevated relative to nominal (7.75\%--12.75\%, all 95\% CIs above 5\%), not
+    suppressed, and grows with horizon -- the opposite of an over-conservative
+    test. Reporting that refutation honestly, rather than keeping only the
+    inference that survived, is itself consistent with this project's verification
+    discipline.
 
   \item \textbf{Meta-labeling on spread resolution with conformal calibration.}
     Following \citet{lopezdeprado2018}: cointegration z-score is the primary signal;
@@ -1471,10 +1485,16 @@ sense, miscalibrated for those horizons---the \textbf{Strictness Paradox}.
 \section{Data and Universe}
 
 The asset universe consists of S\&P Composite 1500 constituents plus a supplemental
-set of ETFs, futures, forex, and crypto instruments, totaling $1{,}521$ assets as
-of the most recent full pipeline run (2026-06-23). Data are fetched at 14 timeframes
-from 1-minute to 1-month using yfinance as the primary source, with IBKR TWS
-supplementing deep intraday history for confirmed pairs only.
+set of ETFs, futures, forex, and crypto instruments -- $1{,}730$ symbols with cached
+daily data, $1{,}660$ passing the full screening funnel as of the most recent
+WRDS-primary pipeline run (2026-08-03). \textbf{WRDS is wired as primary} for
+daily-and-coarser (1D/7D/1M/3M/6M) CRSP-resolvable US equities/ETFs -- CRSP
+total-return-adjusted where available, Compustat Global split-only-adjusted
+(disclosed) as fallback, via a WRDS institutional subscription -- a real
+methodology change from the pure-yfinance universe reported in earlier project
+snapshots, not just a data refresh (landed Session 29, 2026-08-01). International
+equities and everything intraday remain yfinance-sourced; forex intraday remains
+IBKR TWS, supplementing deep intraday history for confirmed pairs only.
 
 Bar construction follows exchange-calendar alignment. The 7-day bar is derived by
 resampling daily bars to week-ending-Friday, avoiding direct 7D yfinance fetching
@@ -1536,34 +1556,8 @@ history accumulates. The expected timeline is 2--4 additional weeks of daily
 """
 
     sec4_strictness = r"""
-\section{The Strictness Paradox}
+\section{The Durability-vs-Currency Conflation}
 \label{sec:strictness}
-
-Raw (pre-FDR) significance rates from a full pipeline scan:
-
-\begin{table}[htbp]
-\centering
-\caption{Engle-Granger raw significance rates by timeframe. A rate far \emph{below}
-the 5\% expected false-positive rate under $H_0$ is evidence of test miscalibration,
-not an absence of signal.}
-\label{tab:strictness}
-\small
-\begin{tabular}{lrrrr}
-\toprule
-TF & Pairs tested & Raw $p<0.05$ & Raw rate & vs.\ 5\% expected \\
-\midrule
-15m & 14,412 & 585 & 4.06\% & \emph{close to chance} \\
-1h  & 65,721 & 2,335 & 3.55\% & \emph{close to chance} \\
-1D  & 122,082 & 2 & 0.0016\% & $\sim$3,000$\times$ \textbf{below} chance \\
-1M  & 34,263 & 9 & 0.026\% & $\sim$190$\times$ below chance \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-The intraday timeframes (15m, 1h) reject at rates consistent with genuine signal
-present at the expected noise floor. The daily and monthly timeframes reject orders
-of magnitude \emph{below} even the null false-positive rate---indicating the
-full-sample test has become too strict to be informative at those horizons.
 
 Direct illustration: the same pair, tested on the full sample vs.\ the last 5 years:
 
@@ -1588,8 +1582,85 @@ KO/PEP    & 0.114 & 0.916 & 13,423 (since 1973) \\
 \end{table}
 
 NTRS/STT and SHW/UNP pass the full-sample test with high significance but fail
-the identical test restricted to the last 5 years alone---the reverse of what a
-decision-relevant cointegration screen should certify.
+the identical test restricted to the last 5 years alone -- a full-sample EG test
+answers "was this relationship ever cointegrated," not "is it cointegrated now,"
+and cannot itself distinguish a relationship that held throughout from one that
+held for decades and then broke. \texttt{coint\_fraction\_rolling} (a rolling-window
+recency filter applied downstream of the primary full-sample screen) exists to
+close exactly this gap.
+
+\subsection{A companion observation, tested directly rather than left asserted, and refuted}
+
+A second pattern in the same data was initially read as reinforcing evidence for
+the conflation above: full-sample screens reject candidate pairs at long horizons
+(1D, 1M) at rates far below the $\sim$5\% false-positive rate a well-calibrated
+test should show under the null:
+
+\begin{table}[htbp]
+\centering
+\caption{Engle-Granger raw significance rates by timeframe -- the pattern that
+motivated (but does not itself establish) the over-conservative-test hypothesis
+tested and refuted below.}
+\label{tab:strictness}
+\small
+\begin{tabular}{lrrrr}
+\toprule
+TF & Pairs tested & Raw $p<0.05$ & Raw rate & vs.\ 5\% expected \\
+\midrule
+15m & 14,412 & 585 & 4.06\% & \emph{close to chance} \\
+1h  & 65,721 & 2,335 & 3.55\% & \emph{close to chance} \\
+1D  & 122,082 & 2 & 0.0016\% & $\sim$3,000$\times$ below chance \\
+1M  & 34,263 & 9 & 0.026\% & $\sim$190$\times$ below chance \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The reading initially drawn from this table -- that the EG test is itself
+statistically over-conservative at long horizons, compounding the conflation
+above by also causing real, currently-live relationships to be missed -- was an
+inference from a heuristic comparison, never independently validated. That gap
+was closed directly: a Monte Carlo calibration study
+(\texttt{research/eg\_null\_calibration\_montecarlo.py}) runs the production
+EG-test code itself against pairs constructed to be genuinely null by design --
+real cached price series, randomly re-paired so any true bilateral relationship
+is destroyed while each series' own real volatility, fat tails, and
+autocorrelation are preserved (400 null pairs per timeframe; a synthetic
+ground-truth check first confirmed the harness recovers a plausible
+$\sim$5--6\% empirical rate on textbook independent random walks before
+trusting it on the harder, real-data-derived case).
+
+\begin{table}[htbp]
+\centering
+\caption{Empirical false-positive rate under a genuine, Monte-Carlo-constructed
+null, using the production EG-test code directly. Every 95\% CI lower bound
+sits above nominal 5\%, and the rate rises with horizon rather than falling --
+the opposite of what the over-conservative-test reading predicted.}
+\label{tab:strictness_montecarlo}
+\small
+\begin{tabular}{lrrrl}
+\toprule
+TF & Null pairs & Rejected $p<0.05$ & Empirical rate & 95\% CI (Clopper-Pearson) \\
+\midrule
+15m & 400 & 31 & 7.75\% & [5.33\%, 10.82\%] \\
+1h  & 400 & 31 & 7.75\% & [5.33\%, 10.82\%] \\
+1D  & 400 & 36 & 9.00\% & [6.38\%, 12.24\%] \\
+1M  & 400 & 51 & 12.75\% & [9.64\%, 16.42\%] \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The mechanism is ordinary spurious regression, not a defect in the test's own
+statistical size: randomly-paired real equities still share market-wide drift,
+and that shared drift becomes a stronger false-positive driver the longer the
+window over which it accumulates (Granger and Newbold, 1974). \textbf{Corrected
+conclusion:} the full-sample screen's near-total rejection rate at 1D/1M in
+production reflects the test correctly guarding against exactly this risk --
+appropriately strict, not miscalibrated -- not a defect that compounds the
+conflation above. The actionable failure mode is entirely the one demonstrated
+directly above and does not need this companion observation to establish it;
+it is reported here, refuted rather than quietly dropped, consistent with this
+project's standing verification discipline of treating an unvalidated inference
+as a hypothesis to check, not a fact to keep.
 """
 
     sec5_coint = r"""
@@ -1614,8 +1685,8 @@ $n\_\text{confirm} = \mathbf{1}[p_\text{EG}<0.05] + \mathbf{1}[p_\text{KPSS}>0.0
 \textbf{Conflict flags} (EG confirms, KPSS rejects simultaneously): """ + str(n_conflict) + r""" pairs.
 
 The high conflict count (""" + str(n_conflict) + r"""\ of """ + str(n_pairs) + r""")
-is the statistical face of the Strictness Paradox: for most confirmed pairs,
-cointegration is episodic rather than durable.
+is the statistical face of the durability-vs-currency conflation (\S\ref{sec:strictness}):
+for most confirmed pairs, cointegration is episodic rather than durable.
 """
 
     sec6_backtest = r"""
@@ -1682,14 +1753,15 @@ entry signal produced which P\&L outcome is non-random.
     sec8_conclusion = r"""
 \section{Conclusion}
 
-The central finding of this paper is methodological rather than strategic: the
+The central finding of this paper is methodological rather than strategic: a
 full-sample Engle-Granger cointegration test, applied at daily and longer horizons,
-exhibits a systematic failure mode---the Strictness Paradox---in which genuine
-candidate pairs are rejected at rates orders of magnitude below the expected
-false-positive rate. The cause is not an absence of cointegrated pairs; it is that
-cointegration, when it exists at these horizons, is episodic rather than durable,
-and the full-sample test cannot distinguish ``never cointegrated'' from ``cointegrated
-in subperiods.''
+can certify a pair with overwhelming significance on the strength of a
+relationship that has since broken -- the durability-vs-currency conflation. The
+test itself is not miscalibrated (a companion hypothesis to that effect was
+tested via Monte Carlo simulation and refuted, \S\ref{sec:strictness}); the
+failure is that a full-sample test cannot distinguish ``held throughout'' from
+``held for decades and then broke,'' and cointegration, when it exists at these
+horizons, is often episodic rather than durable.
 
 The scalable rolling-stability diagnostic and three-test confirmatory tier system
 introduced here address this directly. The resulting confirmed-pair set is smaller

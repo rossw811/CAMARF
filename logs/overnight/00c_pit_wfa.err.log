@@ -1,0 +1,4 @@
+10:20:21 INFO  === pit_wfa.py: Point-In-Time Portfolio-Wide Walk-Forward Analysis (1h) ===
+2026-08-11 10:20:21  INFO      === pit_wfa.py: Point-In-Time Portfolio-Wide Walk-Forward Analysis (1h) ===
+10:20:21 INFO  Unlike wfa.py's semi-WFA, pair SELECTION itself is re-derived per fold using only train-window data ΓÇö see module docstring for exact scope.
+2026-08-11 10:20:21  INFO      Unlike wfa.py's semi-WFA, pair SELECTION itself is re-derived per fold using only train-window data ΓÇö see module docstring for exact scope.

@@ -1,2 +1,2 @@
-07:30:55 INFO  === descriptive_check_concordance.py: do Hurst/half-life/ADF/permutation actually predict coint_fraction_rolling (production's own stability gate)? ===
-07:30:55 INFO  Loaded 11 (pair, tf) rows across all 12 timeframes' all_candidates.parquet (BUG-D95 fix makes this the full EG+FDR+price-degeneracy survivor population, not just the 2 final confirmed pairs)
+13:41:47 INFO  === descriptive_check_concordance.py: do Hurst/half-life/ADF/permutation actually predict coint_fraction_rolling (production's own stability gate)? ===
+13:41:48 INFO  Loaded 11 (pair, tf) rows across all 12 timeframes' all_candidates.parquet (BUG-D95 fix makes this the full EG+FDR+price-degeneracy survivor population, not just the 2 final confirmed pairs)

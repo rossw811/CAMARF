@@ -1,0 +1,4 @@
+15:42:59 INFO  === pair_characteristics_analyzer.py: Stage 3 (per-pair decision tree) + Stage 4 (archetype clustering) ===
+15:42:59 INFO  Loaded 98 total trades across 2 pair-tf combinations
+15:43:04 INFO  IQV/Q@1D: n=86, perm_significant=False, 1/1 leaves holdout-confirmed, regime_sensitivity=-1.00, best_leaf_winrate=0.00 (n=51)
+15:43:04 INFO  PNC/ZION@4h: SKIP (insufficient_trades, n=12)

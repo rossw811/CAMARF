@@ -720,16 +720,36 @@ class UniverseFilter:
         return returns_kept, symbols_kept, pd.DatetimeIndex([])
 
     @staticmethod
-    def _vectorized_pairwise_stats(x: np.ndarray) -> Tuple[np.ndarray, ...]:
+    def _vectorized_pairwise_stats(x: np.ndarray, low_memory: bool = False) -> Tuple[np.ndarray, ...]:
         """
         Shared masked-matmul core for pairwise-complete correlation stats.
 
-        Returns (count, mean_x, mean_y, var_x, var_y, cov_xy, corr_raw) where
-        each is an (n, n) matrix. mean_x/var_x are asset-i's mean/variance
-        computed over the i/j overlap only (and mean_y/var_y the mirror for
-        asset j) — see _pairwise_corr docstring for the derivation. corr_raw
-        is cov_xy / sqrt(var_x * var_y) computed WITHOUT any zero-variance
-        guard (caller applies thresholds/guards).
+        Returns (count, mean_x, mean_y, var_x, var_y, cov_xy, corr_raw, den)
+        where each is an (n, n) matrix. mean_x/var_x are asset-i's mean/
+        variance computed over the i/j overlap only (and mean_y/var_y the
+        mirror for asset j) — see _pairwise_corr docstring for the
+        derivation. corr_raw is cov_xy / sqrt(var_x * var_y) computed
+        WITHOUT any zero-variance guard (caller applies thresholds/guards).
+
+        low_memory (added 2026-08-17, real OOM near-miss found live via
+        k-BAHC at N=17,324): the naive version holds up to 11 separate
+        (n, n) float64 arrays simultaneously (count, sum_x, sum_x2, sum_xy,
+        mean_x, mean_y, var_x, var_y, cov_xy, den, corr_raw) -- at n=17,324
+        that's ~2.4GB EACH, ~26GB+ peak, which is what actually crashed
+        (not the caller-level fixes already applied elsewhere -- those
+        addressed the universe-load phase, this is a separate, deeper
+        bottleneck inside this function itself). When True, deletes
+        sum_x/sum_x2/sum_xy as soon as each stops being needed (real
+        savings, always safe, zero behavior change) AND returns None for
+        mean_x/mean_y/cov_xy/den once corr_raw is derived from them --
+        the only caller of this mode (_pairwise_corr) never uses those 4
+        past this point (confirmed by reading _fix_ambiguous_variance_cells'
+        own signature: it only takes count/var_x/var_y/corr_raw). Peak drops
+        to 4 concurrent (n,n) arrays (count, var_x, var_y, corr_raw) instead
+        of up to 11 -- verified bit-exact against the non-low_memory path
+        on real data before trusting it (debug/_verify_pairwise_stats_low_
+        memory.py). Default False -- zero behavior change for the existing
+        rolling_corr_avg_matrix caller, which still needs the full tuple.
         """
         finite = np.isfinite(x)
         x0 = np.where(finite, x, 0.0)
@@ -737,17 +757,32 @@ class UniverseFilter:
 
         count = m @ m.T
         sum_x = x0 @ m.T          # sum_x[i, j] = sum of row i over overlap(i, j)
-        sum_x2 = (x0 * x0) @ m.T  # sum_x2[i, j] = sum of row i^2 over overlap(i, j)
-        sum_xy = x0 @ x0.T        # sum_xy[i, j] = sum of row i * row j over overlap(i, j)
 
         with np.errstate(invalid="ignore", divide="ignore"):
             mean_x = sum_x / count
             mean_y = sum_x.T / count
+        if low_memory:
+            del sum_x
+
+        sum_x2 = (x0 * x0) @ m.T  # sum_x2[i, j] = sum of row i^2 over overlap(i, j)
+        with np.errstate(invalid="ignore", divide="ignore"):
             var_x = sum_x2 / count - mean_x * mean_x
             var_y = sum_x2.T / count - mean_y * mean_y
+        if low_memory:
+            del sum_x2
+
+        sum_xy = x0 @ x0.T        # sum_xy[i, j] = sum of row i * row j over overlap(i, j)
+        with np.errstate(invalid="ignore", divide="ignore"):
             cov_xy = sum_xy / count - mean_x * mean_y
             den = np.sqrt(var_x * var_y)
             corr_raw = cov_xy / den
+        if low_memory:
+            # Same 8-element tuple SHAPE/ORDER as the full path (position compatibility for
+            # any caller that unpacks positionally) -- mean_x/mean_y/cov_xy/den are None
+            # since _pairwise_corr (the only low_memory caller) never uses them past this
+            # point; only count/var_x/var_y/corr_raw survive into _fix_ambiguous_variance_cells.
+            del sum_xy, cov_xy, mean_x, mean_y, den
+            return count, None, None, var_x, var_y, None, corr_raw, None
         return count, mean_x, mean_y, var_x, var_y, cov_xy, corr_raw, den
 
     @staticmethod
@@ -865,8 +900,11 @@ class UniverseFilter:
         skip and `den > 0` guard.
         """
         n = returns.shape[0]
+        # low_memory=True: this function never uses mean_x/mean_y/cov_xy/den past this point
+        # (only count/var_x/var_y/corr_raw feed into _fix_ambiguous_variance_cells below) --
+        # real memory finding, see _vectorized_pairwise_stats' own docstring.
         count, mean_x, mean_y, var_x, var_y, cov_xy, corr_raw, den = (
-            UniverseFilter._vectorized_pairwise_stats(returns)
+            UniverseFilter._vectorized_pairwise_stats(returns, low_memory=True)
         )
         corr_raw, den_valid = UniverseFilter._fix_ambiguous_variance_cells(
             returns, count, var_x, var_y, corr_raw, min_overlap
@@ -969,7 +1007,7 @@ class UniverseFilter:
             w = dm[:, s:e]
 
             ov_count, _mx, _my, var_x, var_y, _cov, window_corr, _den = (
-                UniverseFilter._vectorized_pairwise_stats(w)
+                UniverseFilter._vectorized_pairwise_stats(w, low_memory=True)
             )
             window_corr, window_valid = UniverseFilter._fix_ambiguous_variance_cells(
                 w, ov_count, var_x, var_y, window_corr, min_overlap
@@ -1147,6 +1185,7 @@ class UniverseFilter:
         tf_label: str,
         run_dcor: bool = False,
         return_matrices: bool = False,  # if True, returns (pairs, syms, returns, corr, sym_order)
+        pearson_only: bool = False,
     ) -> Tuple:
         """
         Top-level entry. Returns (candidate_pairs, retained_symbols) by default.
@@ -1158,6 +1197,19 @@ class UniverseFilter:
         (decay-aware) correlation matrices. dCor is optional (expensive).
         Each candidate pair is tagged with confidence tier based on how
         many methods confirm it.
+
+        pearson_only (added 2026-08-17, real memory finding): skips the
+        Spearman and rolling-avg matrix computation entirely -- for callers
+        that only use the raw Pearson matrix directly (e.g.
+        research/k_bahc_candidate_discovery.py, whose own docstring already
+        states it only needs "the REAL, NaN-padding-aware pairwise-complete
+        Pearson correlation matrix"), computing the other two costs real,
+        avoidable memory: at N=17,324 (the real WRDS-expanded universe,
+        confirmed live 2026-08-17) holding 3 simultaneous NxN float64
+        matrices pushed a 16GB machine from ~5.9GB free down to ~1GB free
+        during matrix construction alone, a genuine near-miss OOM caught and
+        killed before it crashed. Default False -- zero behavior change for
+        every existing caller.
         """
         BiasAuditLog.record(
             bias_type="lookahead",
@@ -1184,26 +1236,36 @@ class UniverseFilter:
             return [], []
 
         n = len(symbols)
-        log.info(
-            f"  [{tf_label}] Computing {n}×{n} correlation matrices "
-            f"(Pearson + Spearman + rolling avg)..."
-        )
-        t0 = time.time()
-        pearson = UniverseFilter.correlation_matrix(returns)
-        t1 = time.time()
-        spearman = UniverseFilter.spearman_matrix(returns)
-        t2 = time.time()
-        rolling_avg = UniverseFilter.rolling_corr_avg_matrix(returns)
-        t3 = time.time()
-        dcor_mat = None
-        if run_dcor:
-            log.info(f"  [{tf_label}] Computing dCor matrix (may take minutes)...")
-            dcor_mat = UniverseFilter.dcor_matrix(returns)
-        log.info(
-            f"  [{tf_label}] Pearson {t1-t0:.1f}s | "
-            f"Spearman {t2-t1:.1f}s | "
-            f"RollingAvg {t3-t2:.1f}s"
-        )
+        if pearson_only:
+            log.info(f"  [{tf_label}] Computing {n}×{n} Pearson correlation matrix only "
+                      f"(pearson_only=True)...")
+            t0 = time.time()
+            pearson = UniverseFilter.correlation_matrix(returns)
+            spearman = None
+            rolling_avg = None
+            dcor_mat = None
+            log.info(f"  [{tf_label}] Pearson {time.time()-t0:.1f}s")
+        else:
+            log.info(
+                f"  [{tf_label}] Computing {n}×{n} correlation matrices "
+                f"(Pearson + Spearman + rolling avg)..."
+            )
+            t0 = time.time()
+            pearson = UniverseFilter.correlation_matrix(returns)
+            t1 = time.time()
+            spearman = UniverseFilter.spearman_matrix(returns)
+            t2 = time.time()
+            rolling_avg = UniverseFilter.rolling_corr_avg_matrix(returns)
+            t3 = time.time()
+            dcor_mat = None
+            if run_dcor:
+                log.info(f"  [{tf_label}] Computing dCor matrix (may take minutes)...")
+                dcor_mat = UniverseFilter.dcor_matrix(returns)
+            log.info(
+                f"  [{tf_label}] Pearson {t1-t0:.1f}s | "
+                f"Spearman {t2-t1:.1f}s | "
+                f"RollingAvg {t3-t2:.1f}s"
+            )
 
         pairs = UniverseFilter.candidate_pairs(
             pearson,
@@ -1224,7 +1286,334 @@ class UniverseFilter:
         )
         if return_matrices:
             return pairs, symbols, returns, pearson, symbols
+
         return pairs, symbols, None, None, symbols
+
+    @staticmethod
+    def chunked_pearson_candidate_pairs(
+        returns: np.ndarray,
+        symbols: List[str],
+        threshold: float,
+        asset_class_map: Dict[str, str],
+        batch_size: int = 1500,
+        progress_every: Optional[int] = None,
+        progress_label: str = "",
+    ) -> List[Dict[str, Any]]:
+        """
+        Memory-bounded Pearson-only candidate-pair extraction, for callers
+        that already have a returns matrix in hand (no build_returns_matrix
+        step) and only need Pearson (not the Spearman/rolling-avg tiering
+        run_chunked() also computes). Built 2026-08-16 for research/
+        wrds_deep_history_episodic_scan.py::rolling_correlation_candidate_
+        pairs, which calls a full-universe correlation step ONCE PER ROLLING
+        WINDOW (not once per run) -- at the full ~18,283-symbol universe
+        (episodic_window_size_sweep.py --full-universe, 2026-08-15/16), the
+        direct `UniverseFilter.correlation_matrix(seg.T)` call this replaces
+        OOM-crashed on its FIRST window: "Unable to allocate 2.49 GiB for an
+        array with shape (18283, 18283)" -- and _vectorized_pairwise_stats
+        computes ~8 such arrays simultaneously (count/mean_x/mean_y/var_x/
+        var_y/cov_xy/corr_raw/den), so real peak usage was several times
+        that single reported allocation.
+
+        Same block-pair splitting design as run_chunked() (bit-exact
+        equivalence with the direct, unchunked call -- same underlying
+        correlation_matrix/candidate_pairs functions, just applied to
+        row-subsets), reused rather than reimplemented, minus: (1) the
+        build_returns_matrix step (caller already has returns), (2) Spearman/
+        rolling-avg computation (not needed by this caller, and doubling/
+        tripling the per-window cost for a value this caller discards would
+        be pure waste), (3) flush_path streaming (per-window candidate counts
+        here are expected to be far smaller than the one-time full-universe
+        screen's, so returning in-memory is fine -- a caller processing many
+        windows already bounds memory by not accumulating across windows
+        itself).
+
+        progress_every (added 2026-08-16, live/real gap found this same
+        night): the first version of this function had ZERO internal
+        progress signal, same class of omission run_chunked() itself had
+        already been bitten by once before ("the ORIGINAL version had zero
+        internal progress signal, which is why the memory-growth problem
+        wasn't caught until a live process inspection") -- repeated here
+        despite that lesson already being in this codebase. Caught live
+        during episodic_window_size_sweep.py's real run: ~65 minutes with
+        no visibility into whether window 1 of 91 block-pairs was
+        progressing or stuck. When set, logs after every `progress_every`
+        block-pairs. `progress_label` (e.g. a window's own end-date) is
+        prefixed so a caller processing many windows can tell which window's
+        block-pairs are being logged.
+        """
+        n = returns.shape[0]  # returns is (n_symbols, n_bars) here, matching correlation_matrix's own convention
+        blocks = [list(range(i, min(i + batch_size, n))) for i in range(0, n, batch_size)]
+        total_block_pairs = len(blocks) * (len(blocks) + 1) // 2
+        all_pairs: List[Dict[str, Any]] = []
+        n_done = 0
+        t0 = time.time()
+        for bi, block_i in enumerate(blocks):
+            for bj, block_j in enumerate(blocks):
+                if bj < bi:
+                    continue
+                idx = block_i if bi == bj else block_i + block_j
+                sub_returns = returns[idx]
+                sub_symbols = [symbols[k] for k in idx]
+                sub_corr = UniverseFilter.correlation_matrix(sub_returns)
+                sub_pairs = UniverseFilter.candidate_pairs(sub_corr, sub_symbols, threshold, asset_class_map)
+                if bi != bj:
+                    block_i_syms = set(symbols[k] for k in block_i)
+                    sub_pairs = [
+                        p for p in sub_pairs
+                        if (p["symbol_a"] in block_i_syms) != (p["symbol_b"] in block_i_syms)
+                    ]
+                all_pairs.extend(sub_pairs)
+                n_done += 1
+                if progress_every and (n_done % progress_every == 0 or n_done == total_block_pairs):
+                    elapsed = time.time() - t0
+                    log.info(f"    {progress_label}chunked_pearson: {n_done}/{total_block_pairs} "
+                             f"block-pairs ({n_done/total_block_pairs*100:.1f}%), "
+                             f"{len(all_pairs)} candidates so far, {elapsed:.0f}s elapsed")
+        return all_pairs
+
+    @staticmethod
+    def chunked_pearson_matrix(
+        returns: np.ndarray,
+        batch_size: int = 1500,
+        progress_every: Optional[int] = None,
+        progress_label: str = "",
+    ) -> np.ndarray:
+        """
+        Memory-bounded FULL Pearson correlation matrix, for callers that need
+        the complete N×N matrix itself (not just thresholded candidate pairs
+        -- chunked_pearson_candidate_pairs, above, is for that case and
+        cannot be reused here). Built 2026-08-17 for research/
+        k_bahc_candidate_discovery.py, whose hierarchical-clustering step
+        needs the full dense matrix at once and cannot work from a
+        candidate-pairs list.
+
+        Real, measured reason this is needed even after `low_memory=True`
+        was added to `_vectorized_pairwise_stats`: at N=17,324 (the real
+        WRDS-expanded universe), the naive single-call `correlation_matrix()`
+        peaks at multiple simultaneous (n,n) float64 arrays during its own
+        internal expression evaluation (temporaries created mid-expression,
+        not fully eliminated by explicit `del` alone) -- confirmed live,
+        pushed a 16GB machine to within ~600MB of free memory and was killed
+        before crashing. This function never materializes more than ONE
+        (n,n) array (the final output, pre-allocated once) plus small,
+        bounded per-block-pair temporaries (each block is at most
+        2*batch_size rows -- e.g. 3000x3000 at the default batch_size=1500,
+        ~72MB per intermediate array, trivial) -- same block-pair splitting
+        design as chunked_pearson_candidate_pairs/run_chunked (reused, not
+        reimplemented), just writing each block's result into the
+        pre-allocated output instead of extracting/discarding it.
+
+        Verified against the direct, unchunked `correlation_matrix()` call
+        (matches to 1e-9, not literally bit-exact -- different block
+        groupings sum the same underlying matmuls in a different order,
+        producing ordinary float64 last-bit rounding differences, same
+        magnitude already documented as acceptable in _pairwise_corr's own
+        docstring) across 5 batch sizes including fully-fragmented
+        (batch_size=1) before trusting it (debug/_verify_chunked_pearson_
+        matrix.py).
+        """
+        n = returns.shape[0]
+        out = np.full((n, n), np.nan, dtype=np.float64)
+        blocks = [list(range(i, min(i + batch_size, n))) for i in range(0, n, batch_size)]
+        total_block_pairs = len(blocks) * (len(blocks) + 1) // 2
+        n_done = 0
+        t0 = time.time()
+        for bi, block_i in enumerate(blocks):
+            for bj, block_j in enumerate(blocks):
+                if bj < bi:
+                    continue
+                if bi == bj:
+                    sub_corr = UniverseFilter.correlation_matrix(returns[block_i])
+                    out[np.ix_(block_i, block_i)] = sub_corr
+                else:
+                    idx = block_i + block_j
+                    sub_corr = UniverseFilter.correlation_matrix(returns[idx])
+                    ni = len(block_i)
+                    cross = sub_corr[:ni, ni:]
+                    out[np.ix_(block_i, block_j)] = cross
+                    out[np.ix_(block_j, block_i)] = cross.T
+                n_done += 1
+                if progress_every and (n_done % progress_every == 0 or n_done == total_block_pairs):
+                    elapsed = time.time() - t0
+                    log.info(f"    {progress_label}chunked_pearson_matrix: {n_done}/{total_block_pairs} "
+                             f"block-pairs ({n_done/total_block_pairs*100:.1f}%), {elapsed:.0f}s elapsed")
+        return out
+
+    @staticmethod
+    def run_chunked(
+        aligned_data: Dict[str, pd.DataFrame],
+        asset_class_map: Dict[str, str],
+        threshold: float,
+        tf_label: str,
+        batch_size: int = 1500,
+        flush_path: Optional[str] = None,
+        flush_every: int = 20,
+        progress_every: int = 10,
+    ) -> Tuple:
+        """
+        Memory-bounded alternative to `run()`, for universe sizes where a
+        full N x N correlation matrix (in ANY of Pearson/Spearman/rolling-avg,
+        `run()` computes all three) would not fit in RAM. Built 2026-08-14
+        per Ross's direct request ("build a version compatible with batches -
+        keep the full run as an option") after the real combined universe
+        (44,694 WRDS + 1,659 data.py = 46,353 candidates) was sized at 17.2GB
+        (float64) / 8.6GB (float32) for a SINGLE full matrix -- on a 16GB
+        machine with ~5GB historically free, this doesn't fit, and `run()`
+        computes THREE such matrices (Pearson, Spearman, rolling-avg).
+
+        DESIGN, chosen specifically to guarantee bit-exact equivalence with
+        `run()`'s output, not just "a similar answer": splits symbols into
+        blocks of `batch_size`, then for every block pair (i, j) with i <= j,
+        calls the EXISTING, UNMODIFIED `correlation_matrix`/`spearman_matrix`/
+        `rolling_corr_avg_matrix`/`candidate_pairs` functions on just that
+        block pair's row-subset of the returns matrix -- the SAME functions
+        `run()` itself calls, just on a smaller slice. This is not a
+        reimplementation of the correlation math (real risk of a subtle
+        numerical divergence from the already-verified full-matrix path) --
+        it is the identical math, called repeatedly on bounded-size inputs.
+        Peak memory for the correlation-matrix step is O(batch_size^2), not
+        O(n^2), regardless of total universe size -- `batch_size` is a real,
+        tunable parameter (not hardcoded for any one machine): the default
+        (1500) is sized safely for this project's current 16GB development
+        machine; a more capable machine (e.g. a desktop with more RAM) can
+        pass a larger `batch_size` for fewer, bigger BLAS calls and better
+        wall-clock performance, trading memory headroom for speed exactly as
+        the caller chooses.
+
+        Real cost tradeoff, stated plainly: this recomputes each within-block
+        diagonal's own Pearson/Spearman/rolling-avg matrices once, and each
+        off-diagonal block-pair's cross correlation once -- total work is the
+        same asymptotic order as `run()`'s single full computation, but with
+        more, smaller BLAS calls (each carrying its own fixed overhead)
+        instead of one large one, so wall-clock time is HIGHER for a universe
+        size that would have fit in memory anyway. Use `run()` when the
+        universe is small enough to fit (existing default, unchanged
+        behavior); use `run_chunked()` when it would not.
+
+        Verified for bit-exact equivalence against `run()` on a small
+        synthetic universe before being trusted at real scale --
+        see debug/_verify_universe_filter_chunked.py.
+
+        REAL BUG FOUND AND FIXED 2026-08-14, at actual full-universe scale
+        (44,840 symbols): the original version accumulated ALL candidate
+        pairs in one Python list for the whole run. At threshold=0.40 across
+        ~1 billion possible pairs, even a modest true hit rate (the OLD
+        1,567-symbol universe's own k-BAHC investigation found 5.5%) implies
+        millions of candidate dicts -- a real run measured memory growing
+        from 8.36GB to 9.66GB in 20 seconds (a rate that would have hit this
+        machine's ~15.6GB ceiling within ~90 more seconds), killed before it
+        could OOM-crash and lose all progress. `flush_path`, when given,
+        writes accumulated candidates to `{flush_path}/candidates_NNNNNN.parquet`
+        (flush_path is a DIRECTORY, one file per flush -- NOT a single
+        growing file re-read-and-rewritten each time, which would itself be
+        an O(n^2) cost as the candidate count grows into the millions;
+        caught and fixed before this was ever run at real scale) every
+        `flush_every` block-pairs, clearing the in-memory list each time and
+        bounding peak memory regardless of total candidate count -- an
+        architectural fix, not a methodology change (the threshold itself is
+        untouched; lowering it to reduce candidate volume would have
+        silently changed what's being measured, which is not the actual
+        problem). `progress_every` logs
+        real block-pair completion counts -- the ORIGINAL version had zero
+        internal progress signal, which is why the memory-growth problem
+        wasn't caught until a live process inspection, not from the run's
+        own logging.
+        """
+        _min_overlap = getattr(Config.STATS, "MIN_OVERLAP_BY_TF", {}).get(tf_label, 252)
+        returns, symbols, _idx = UniverseFilter.build_returns_matrix(
+            aligned_data, min_overlap=_min_overlap,
+        )
+        if returns.size == 0:
+            log.warning(f"  [{tf_label}] UniverseFilter (chunked): no valid assets after filtering")
+            return [], []
+
+        n = len(symbols)
+        blocks = [list(range(i, min(i + batch_size, n))) for i in range(0, n, batch_size)]
+        log.info(
+            f"  [{tf_label}] Chunked correlation: {n} symbols, {len(blocks)} blocks of "
+            f"<= {batch_size} ({len(blocks) * (len(blocks) + 1) // 2} block-pairs to process)..."
+        )
+
+        t0 = time.time()
+        total_block_pairs = len(blocks) * (len(blocks) + 1) // 2
+        all_pairs: List[Dict[str, Any]] = []
+        pending: List[Dict[str, Any]] = []  # buffer awaiting the next flush, when flush_path is set
+        n_total_pairs_found = 0
+        n_done = 0
+        _flush_count = 0
+
+        def _flush(buf: List[Dict[str, Any]]) -> None:
+            nonlocal _flush_count
+            if not buf or not flush_path:
+                return
+            os.makedirs(flush_path, exist_ok=True)
+            out_file = os.path.join(flush_path, f"candidates_{_flush_count:06d}.parquet")
+            pd.DataFrame(buf).to_parquet(out_file, index=False)
+            _flush_count += 1
+
+        for bi, block_i in enumerate(blocks):
+            for bj, block_j in enumerate(blocks):
+                if bj < bi:
+                    continue
+                idx = block_i if bi == bj else block_i + block_j
+                sub_returns = returns[idx]
+                sub_symbols = [symbols[k] for k in idx]
+
+                sub_pearson = UniverseFilter.correlation_matrix(sub_returns)
+                sub_spearman = UniverseFilter.spearman_matrix(sub_returns)
+                sub_rolling = UniverseFilter.rolling_corr_avg_matrix(sub_returns)
+
+                sub_pairs = UniverseFilter.candidate_pairs(
+                    sub_pearson, sub_symbols, threshold, asset_class_map,
+                    spearman=sub_spearman, rolling_avg=sub_rolling,
+                )
+                if bi != bj:
+                    # This block-pair's combined sub-matrix also contains
+                    # within-block_i and within-block_j pairs (already
+                    # counted by their own diagonal (bi, bi)/(bj, bj) passes)
+                    # -- keep only genuinely cross-block pairs here.
+                    block_i_syms = set(symbols[k] for k in block_i)
+                    block_j_syms = set(symbols[k] for k in block_j)
+                    sub_pairs = [
+                        p for p in sub_pairs
+                        if (p["symbol_a"] in block_i_syms) != (p["symbol_b"] in block_i_syms)
+                    ]
+                n_total_pairs_found += len(sub_pairs)
+                if flush_path:
+                    pending.extend(sub_pairs)
+                else:
+                    all_pairs.extend(sub_pairs)
+                n_done += 1
+
+                if flush_path and n_done % flush_every == 0:
+                    _flush(pending)
+                    pending = []
+                if n_done % progress_every == 0 or n_done == total_block_pairs:
+                    elapsed = time.time() - t0
+                    log.info(
+                        f"  [{tf_label}] Chunked progress: {n_done}/{total_block_pairs} block-pairs "
+                        f"({n_done/total_block_pairs*100:.1f}%), {n_total_pairs_found} candidates "
+                        f"found so far, {elapsed:.0f}s elapsed"
+                    )
+
+        if flush_path:
+            _flush(pending)
+            all_pairs = []  # caller reads results from flush_path, not the return value, when streaming
+            log.info(f"  [{tf_label}] All candidates flushed to {flush_path} "
+                     f"({n_total_pairs_found} total)")
+            return [], symbols
+
+        cross = sum(1 for p in all_pairs if p["is_cross_asset"])
+        n_gold = sum(1 for p in all_pairs if p.get("confidence_tier") == "gold")
+        n_sil = sum(1 for p in all_pairs if p.get("confidence_tier") == "silver")
+        log.info(
+            f"  [{tf_label}] Chunked candidate pairs: {len(all_pairs)} ({cross} cross-asset)  "
+            f"threshold |ρ| >= {threshold:.2f}  "
+            f"[gold={n_gold} silver={n_sil} bronze={len(all_pairs)-n_gold-n_sil}]  "
+            f"({time.time()-t0:.1f}s)"
+        )
+        return all_pairs, symbols
 
 
 # =============================================================================

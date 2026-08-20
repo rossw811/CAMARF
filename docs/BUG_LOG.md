@@ -151,3 +151,119 @@ Development.md — flagging as a numbering note, not filling in a fabricated ent
 When fixing a new bug in `Development.md`, add the write-up there as usual (this file is not where
 bug write-ups get authored), then add one row here pointing at it. Keep the summary to one line —
 the full context stays in `Development.md`.
+- **BUG-D110** (2026-08-11): `research/episodic_pairs_adapter.py`'s per-pair build (2x
+  `DataAligner.align_universe` + `AnalysisPipeline._build_pair_result` per confirmed pair,
+  sequential, single-threaded) takes ~25-30s/pair on the WRDS/1D source's long-history pairs
+  (647 pairs total => hours, not the 45-min default stage timeout). The overnight runner's
+  `00a_episodic_adapter` stage was killed by its own 45-min timeout before writing any output,
+  which silently propagated into `00b_ml_pit_safe` falling back to `discover_pit_confirmed_pairs()`
+  (647 pairs, no scalar fields) instead of the adapter's real PIT-safe output -- not a crash,
+  wrong/incomplete data flowing downstream instead. Fixed two ways: (1) `run_overnight_research.ps1`
+  now gives this stage a 240-min `-TimeoutOverrideMinutes` override; (2) `episodic_pairs_adapter.py`
+  itself now writes an atomic (tmp+os.replace) per-pair resumable checkpoint
+  (`episodic_pairs_adapter_progress_{source}.parquet`) and skips already-done pairs on restart, so
+  a future kill costs at most one pair, not the whole run -- same discipline as BUG-D108's fix to
+  the intraday scanner. `00b_ml_pit_safe` will need a manual re-run once the adapter's real output
+  exists, since this overnight run's `ml.py --pit-safe` already completed against the fallback data.
+- **BUG-D107 verification** (2026-08-11, real run): `backtest.py` (IS baseline) confirmed the 1D fix
+  works -- `IQV/Q@1D` now runs (was silently 0-trade/excluded before). Real result, disclosed
+  honestly, not spun: 40 trades, WR=0%, Sharpe=-13986.57 (both ols and kalman hedge methods), PnL=
+  -79.99. The fix correctly makes the pair backtestable; the pair itself performs badly at 1D in
+  this IS window. `KVUE/KMB@3m` (the other confirmed pair) produced 0 trades this run (pre-existing,
+  unrelated to BUG-D107). Portfolio-level (PNC/ZION@4h + IQV/Q@1D): 90 trades, portfolio Sharpe
+  0.4598, total PnL $1146.59 -- IQV/Q@1D's -$79.99 is a small drag, not what's driving this number.
+  OOS (`--holdout`) re-run not yet done as of this entry.
+  OOS (`--holdout`) also confirmed same session: IQV/Q@1D 3 trades, WR=0%, SR=-12201.91, PnL=-6.01
+  (consistent direction with IS). Portfolio OOS: 8 trades, portfolio Sharpe 0.6299, PnL $307.94.
+  BUG-D107 verification is now complete (IS + OOS both re-run for real against the fixed
+  _TF_DIRS).
+- **BUG-D111** (2026-08-11): `research/confirmatory_cointegration_check.py` crashed with a numpy
+  broadcast ValueError (`operands could not be broadcast together with shapes (26478,) (26262,)`)
+  on the 6th target pair (MET/TMHC) -- `DataAligner.align_universe` does not guarantee every symbol
+  shares one common index (each symbol's own history depth differs, e.g. TMHC ending 2026-07-22 vs
+  MET/LNT/VTR's 2026-07-31), and `_build_log_price_map` returns bare `np.ndarray` with the index
+  stripped, so two different symbols' arrays were treated as positionally aligned when they weren't.
+  Same bug class as the ridge_hedge_ratio_comparison.py fix earlier this session. Fixed by keeping
+  the index as a `pd.Series` per symbol and doing an explicit `.index.intersection()` inner-join per
+  pair before extracting parallel arrays. Re-run after the fix produced a clean, sensible result:
+  negative controls 0/4 corroborated by both Johansen+KPSS (harness working correctly), positive
+  controls 2/3 corroborated (SPY/VOO and **PNC/ZION** both corroborate -- a real, independent-test-
+  family confirmation for one of the 3 de-headlined pairs, worth weighing against its zero PIT-safe-
+  episodic overlap), targets 2/8 corroborated.
+- **BUG-D112** (2026-08-11, found during Ross's direct question about overfitting/lookahead in
+  the current PIT-safe pair set): the episodic PIT-safety machinery (`episodic_bhfdr_confirm_asof`,
+  BUG-D106's fix) only date-filters the CONFIRMATION step -- "which already-tested windows count as
+  of date T" -- it does NOT date-filter CANDIDATE GENERATION. `rolling_correlation_candidate_pairs`
+  (Tier 2/3's upstream filter) unions each pair's qualifying windows across the ENTIRE available
+  history in ONE PASS, run once, before any as-of-date query exists; a pair only needs to clear the
+  correlation threshold in ANY window anywhere in history (including windows dated AFTER a later
+  as-of-date query) to enter the candidate pool and get EG-tested at every window, early ones
+  included. Concretely: a pair whose correlation only strengthens in 2025-2026 would still get
+  EG-tested at its (potentially spuriously significant) 2018 window, and could show up as
+  "PIT-confirmed as of 2018" even though a real 2018 deployment, screening only contemporaneously
+  available correlation, would never have proposed that pair as a candidate at all -- the candidate
+  UNIVERSE itself is not what a real point-in-time deployment would have seen, even though the
+  CONFIRMATION decision correctly restricts to already-concluded windows. Net effect: the tested
+  hypothesis family at any historical as-of-date is larger than the genuinely contemporaneous one,
+  which is a real, disclosed limitation of the current PIT-safe methodology -- not proven to have
+  materially changed the 454-pair confirmed set's real composition (would require rebuilding
+  candidate generation with true date-truncated correlation, a large separate undertaking, not
+  attempted here), but a genuine gap, not previously stated anywhere in Development.md/FINDINGS.md's
+  existing PIT-safety disclosures. Full fix (future work, not started): re-run candidate generation
+  independently per historical as-of-date cutoff, using only correlation windows concluded by that
+  date -- structurally the same fix pattern as BUG-D106 but one level upstream (candidates, not
+  just confirmation).
+
+  **VERIFIED FIXED (2026-08-12)**, both parts implemented and the full redo completed: Part 1
+  (Tier 2 excluded from the PIT-safe checkpoint path, `pit_pair_discovery.py`/`episodic_pairs_
+  adapter.py`) and Part 2 (`first_qualified_window_end_date` causal gating added to `rolling_
+  correlation_candidate_pairs`/`build_rolling_eg_tasks`, `wrds_deep_history_episodic_scan.py`),
+  verified synthetically first (`debug/_verify_bug_d112_causal_candidacy.py`, 4/4 checks) before a
+  full multi-hour re-scan (WRDS Tier 1+2+3, then intraday 1h+4h). **Real materiality, now confirmed
+  end to end**: the contaminated 454-pair set shrank to a genuinely PIT-safe **182 pairs** (170
+  WRDS/1D + 6 intraday/1h + 6 intraday/4h) -- a 60% reduction, on top of the 93% reduction the
+  stricter-confirmation-threshold check alone had already shown was possible. A related, second
+  PIT-safety gap was found and closed in the same pass: candidate generation also never checked
+  whether a symbol was an actual S&P 500 member at a given historical window's date (see the new
+  point-in-time membership gate entry below). A third, smaller bug was found and fixed while
+  rebuilding the adapter under the new fix: `episodic_pairs_adapter.py`'s resume-checkpoint logic
+  blindly trusted every previously-checkpointed row, including ones for pairs no longer in the
+  current (much smaller, post-fix) confirmed set -- would have silently reintroduced stale,
+  no-longer-confirmed pairs into the "fixed" output, defeating the point of the redo. Fixed:
+  `build_adapter_rows` now filters checkpointed rows against the CURRENT confirmed set before
+  trusting them (verified via `debug/_verify_adapter_stale_checkpoint_fix.py`). Full real Step 5
+  8-run comparison (baseline + Purity/Hybrid/Tiered, IS+OOS, `--capital-sim`) completed against the
+  real 182-pair set -- see `docs/FINDINGS.md`'s updated entry for the honest result (the genuinely
+  PIT-safe pairs lose money under realistic capital constraints; the old 3 standard pairs remain
+  profitable; tier-confidence weighting on this snapshot changes capital efficiency, not
+  risk-adjusted return, since all 3 standard pairs share one tier).
+
+- **Point-in-time S&P 500 membership gate** (2026-08-11/12, found alongside BUG-D112): candidate
+  generation also never checked whether a symbol was an actual S&P 500 member at a given historical
+  window's date -- a symbol added to the index in 2022 could still get tested against 2015-era
+  windows. Reused `data_wrds.py::fetch_sp500_membership_history`/`sp500_members_asof` (CRSP
+  `dsp500list_v2`, already cached from 2026-07-27, multi-spell-aware) rather than the abandoned
+  Wikipedia-scraping path (that page's historical changes-log table no longer exists, found live --
+  also silently broke the pre-existing `survivorship.py::build_exclusions` scraper, not fixed here,
+  separate scope; the cached `survivorship_exclusions.csv` remains valid). New `research/build_
+  symbol_permno_map.py` (run by Ross himself -- WRDS requires interactive Duo 2FA per session, no
+  headless workaround found) resolved 2,826/5,846 WRDS-cached symbols to permnos. Wired into `wrds_
+  deep_history_episodic_scan.py::build_rolling_eg_tasks` as a third gate alongside ADV-liquidity and
+  BUG-D112's causal-candidacy gate. Verified (`debug/_verify_membership_gate.py`, 4/4, including a
+  multi-spell gap-window check). S&P MidCap 400/SmallCap 600 membership confirmed NOT available in
+  this WRDS subscription (checked both CRSP `crsp_a_indexes` and Compustat Global `g_idx_index`
+  directly) -- the gate covers only the S&P 500 slice of the S&P Composite 1500 universe, disclosed
+  in the code's own docstrings.
+
+- **BUG-D113** (2026-08-13, found while building Thread G-Full's generic `--override` mechanism):
+  `portfolio_sim.py` had FIVE module-level constants independently hardcoded to "match" `config.py`
+  values by manual convention only -- `Config` was never actually imported in this file, so a
+  future edit to `config.py`'s `STOP_ZSCORE`/`FLAT_RISK_PCT`/`OU_WINDOW_HALFLIFE_MULT_MEAN`/
+  `OU_WINDOW_MIN_BARS`/`OU_LOOKBACK_DAYS` would silently NOT propagate to the capital-constrained
+  backtest replay that reads these copies -- same silent-drift class of bug BUG-D71 already caught
+  in `wfa.py`. All 5 values happened to still match at time of discovery (no wrong number was ever
+  produced), but the coupling was fictional, not real. Fixed: `portfolio_sim.py` now imports
+  `Config` and reads all 5 live from `Config.BACKTEST`/`Config.ANALYSIS` instead of duplicating
+  them. Verified: re-ran the real `flat_2pct` capsim test before/after and confirmed byte-identical
+  output (`taken=11/32793, sharpe=-0.4757`) -- the fix removes the drift risk without changing
+  current behavior, exactly as intended.

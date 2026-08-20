@@ -1,8 +1,8 @@
-10:56:12 INFO  === sector_restricted_fdr_rescan.py: same-GICS-sector restriction, reapply 4 FDR methods to the smaller m ===
-10:56:12 INFO  Loaded 34593 candidate pairs from the prior full-universe EG run
-10:56:12 INFO  GICS sector tags loaded for 1506 symbols
-10:56:12 INFO  Same-sector restriction: 13488/34593 candidates retained (m: 34593 -> 13488)
-10:56:12 INFO  Same-sector candidate breakdown:
+16:21:05 INFO  === sector_restricted_fdr_rescan.py: same-GICS-sector restriction, reapply 4 FDR methods to the smaller m ===
+16:21:05 INFO  Loaded 34593 candidate pairs from the prior full-universe EG run
+16:21:05 INFO  GICS sector tags loaded for 1506 symbols
+16:21:05 INFO  Same-sector restriction: 13488/34593 candidates retained (m: 34593 -> 13488)
+16:21:05 INFO  Same-sector candidate breakdown:
 sector
 Financials                3726
 Industrials               2690
@@ -15,20 +15,20 @@ Materials                  322
 Health Care                168
 Consumer Staples           145
 Communication Services      33
-10:56:12 INFO  
-10:56:12 INFO  === Survivor counts under same-sector restriction (m=13488, alpha=0.05) vs full-universe m=34593 ===
-10:56:12 INFO    step_up_bh            : 2/13488 survive
-10:56:12 INFO    benjamini_yekutieli   : 2/13488 survive
-10:56:12 INFO    two_stage_tsbh        : 2/13488 survive
-10:56:12 INFO    fixed_bonferroni      : 2/13488 survive
-10:56:12 INFO  
-10:56:12 INFO  === The 8 known non-DD target pairs under this restriction ===
-10:56:12 INFO    LNT   /VTR   : CROSS-SECTOR (Utilities / Real Estate) -- structurally excluded by this rule, not testable here
-10:56:12 INFO    LNT   /WELL  : CROSS-SECTOR (Utilities / Real Estate) -- structurally excluded by this rule, not testable here
-10:56:12 INFO    CMS   /DUK   : same-sector (Utilities), raw_p=1.875462e-04  {'step_up_bh': False, 'benjamini_yekutieli': False, 'two_stage_tsbh': False, 'fixed_bonferroni': False}
-10:56:12 INFO    EG    /WRB   : same-sector (Financials), raw_p=5.555288e-04  {'step_up_bh': False, 'benjamini_yekutieli': False, 'two_stage_tsbh': False, 'fixed_bonferroni': False}
-10:56:12 INFO    HAL   /NOV   : same-sector (Energy), raw_p=1.813602e-03  {'step_up_bh': False, 'benjamini_yekutieli': False, 'two_stage_tsbh': False, 'fixed_bonferroni': False}
-10:56:12 INFO    MET   /TMHC  : CROSS-SECTOR (Financials / None) -- structurally excluded by this rule, not testable here
-10:56:12 INFO    PFG   /STLD  : CROSS-SECTOR (Financials / Materials) -- structurally excluded by this rule, not testable here
-10:56:12 INFO    UMBF  /FHB   : same-sector (Financials), raw_p=1.350589e-04  {'step_up_bh': False, 'benjamini_yekutieli': False, 'two_stage_tsbh': False, 'fixed_bonferroni': False}
-10:56:12 INFO  Saved -> output/research/sector_restricted_fdr_rescan_{raw,summary}.parquet
+16:21:05 INFO  
+16:21:05 INFO  === Survivor counts under same-sector restriction (m=13488, alpha=0.05) vs full-universe m=34593 ===
+16:21:05 INFO    step_up_bh            : 2/13488 survive
+16:21:05 INFO    benjamini_yekutieli   : 2/13488 survive
+16:21:05 INFO    two_stage_tsbh        : 2/13488 survive
+16:21:05 INFO    fixed_bonferroni      : 2/13488 survive
+16:21:05 INFO  
+16:21:05 INFO  === The 8 known non-DD target pairs under this restriction ===
+16:21:05 INFO    LNT   /VTR   : CROSS-SECTOR (Utilities / Real Estate) -- structurally excluded by this rule, not testable here
+16:21:05 INFO    LNT   /WELL  : CROSS-SECTOR (Utilities / Real Estate) -- structurally excluded by this rule, not testable here
+16:21:05 INFO    CMS   /DUK   : same-sector (Utilities), raw_p=1.875462e-04  {'step_up_bh': False, 'benjamini_yekutieli': False, 'two_stage_tsbh': False, 'fixed_bonferroni': False}
+16:21:05 INFO    EG    /WRB   : same-sector (Financials), raw_p=5.555288e-04  {'step_up_bh': False, 'benjamini_yekutieli': False, 'two_stage_tsbh': False, 'fixed_bonferroni': False}
+16:21:05 INFO    HAL   /NOV   : same-sector (Energy), raw_p=1.813602e-03  {'step_up_bh': False, 'benjamini_yekutieli': False, 'two_stage_tsbh': False, 'fixed_bonferroni': False}
+16:21:05 INFO    MET   /TMHC  : CROSS-SECTOR (Financials / None) -- structurally excluded by this rule, not testable here
+16:21:05 INFO    PFG   /STLD  : CROSS-SECTOR (Financials / Materials) -- structurally excluded by this rule, not testable here
+16:21:05 INFO    UMBF  /FHB   : same-sector (Financials), raw_p=1.350589e-04  {'step_up_bh': False, 'benjamini_yekutieli': False, 'two_stage_tsbh': False, 'fixed_bonferroni': False}
+16:21:05 INFO  Saved -> output/research/sector_restricted_fdr_rescan_{raw,summary}.parquet

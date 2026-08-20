@@ -54,12 +54,11 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from config import Config
-from data import DataAligner
 from analysis import UniverseFilter, _eg_worker, _benjamini_hochberg, CointScanner
 from bh_fdr_dependence_check import benjamini_yekutieli
+from universe_loader import align_to_common_calendar, load_full_universe
 
 _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-_CACHE_DIR = os.path.join(_ROOT, "output", "cache")
 _OUT_DIR = os.path.join(_ROOT, "output", "research")
 TF_LABEL = "1h"
 
@@ -106,34 +105,25 @@ def apply_all_methods(pvals: np.ndarray, alpha: float = 0.05) -> dict:
     }
 
 
-def load_full_universe(suffix: str = "1hr"):
-    all_files = [f for f in os.listdir(_CACHE_DIR) if f.endswith(f"_{suffix}.parquet")]
-    symbols = sorted(f[: -len(f"_{suffix}.parquet")] for f in all_files)
-    tf_data_raw = {}
-    for sym in symbols:
-        path = os.path.join(_CACHE_DIR, f"{sym}_{suffix}.parquet")
-        try:
-            df = pd.read_parquet(path)
-            if df is not None and not df.empty and "close" in df.columns:
-                tf_data_raw[sym] = df
-        except Exception:
-            continue
-    return tf_data_raw
-
-
 def main():
     _setup_logging()
     t0 = time.time()
     log.info("=== fdr_method_comparison.py: 4-method FDR comparison on the FULL current 1h universe ===")
     log.info("Ross's direct request after the BH-FDR bug sweep -- honest comparison, no cherry-picking.")
 
-    tf_data_raw = load_full_universe()
-    log.info("Loaded %d symbols with usable 1h cache", len(tf_data_raw))
+    # REWIRED 2026-08-17 (methodology audit, Ross: "rewire them"): this script's own
+    # load_full_universe() previously read only Config.DATA.CACHE_DIR (old yfinance-only
+    # cache), never WRDS -- same duplicated-loader bug class found and fixed in
+    # k_bahc_candidate_discovery.py. Now uses the canonical universe_loader.py merge.
+    # Real caveat, disclosed not hidden: WRDS is daily-only (see universe_loader._WRDS_SUFFIX),
+    # so at TF_LABEL="1h" this merge is NOT meaningfully larger than the old yfinance-only
+    # scope -- only a tf=1D run would see the real WRDS expansion.
+    tf_data_raw = load_full_universe(TF_LABEL, columns=["close"])
+    log.info("Loaded %d symbols from the merged yfinance+WRDS+Binance+IBKR universe (tf=%s)",
+             len(tf_data_raw), TF_LABEL)
 
-    log.info("Aligning via real production DataAligner.align_universe()...")
-    aligned = DataAligner.align_universe(
-        {f"{sym}_{TF_LABEL}": df for sym, df in tf_data_raw.items()}, TF_LABEL
-    )
+    log.info("Aligning to a shared calendar (align_to_common_calendar, lookback_years=10)...")
+    aligned = align_to_common_calendar(tf_data_raw, lookback_years=10)
     log.info("Aligned: %d symbols", len(aligned))
 
     log.info("Running real production UniverseFilter (Pearson pre-filter, threshold=%s)...",

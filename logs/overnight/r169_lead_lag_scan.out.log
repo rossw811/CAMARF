@@ -1,0 +1,5 @@
+ok    KVUE/KMB@3m: best_lag=0 corr*=0.432(n=4128) corr0=0.432(n=4128) lift=0.000
+
+ok    PNC/ZION@4h: best_lag=0 corr*=0.807(n=3702) corr0=0.807(n=3702) lift=0.000
+0/2 confirmed pairs show a non-zero lag with a correlation lift >= 0.05 over lag 0.
+Full results written to C:\Users\RossW\Projects\CAMARF\output\research\lead_lag_scan.parquet

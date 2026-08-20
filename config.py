@@ -86,6 +86,18 @@ class DataConfig:
     WRDS_PRIMARY_ASSET_CLASSES: set = {"equity", "etf"}
     WRDS_PRIMARY_TFS: set = {"1D", "7D", "1M", "3M", "6M"}
 
+    # Compustat Global international universe (Thread I, 2026-08-12/13) -- the
+    # "separate reconciliation problem not solved here" flagged above IS now
+    # solved (GVKEY{n}_{iid} labels, read from output/cache/wrds/global_
+    # universe_manifest.parquet), but gated OFF by default: this is a real,
+    # large (~15,195 symbol) addition to the universe that should be turned on
+    # deliberately once Ross is ready to run the full pipeline against it, not
+    # silently activated the next time data.py runs. Flip to True to include.
+    # Split-adjusted-only close (no close_total_return -- Compustat Global's
+    # `trfd` total-return field remains unverified, see data_wrds.py) --
+    # DataCleaner/WRDS-primary loader disclose this explicitly per symbol.
+    INCLUDE_GLOBAL_WRDS_UNIVERSE: bool = False
+
     # Historical depth per asset class — calibrated to actual IBKR account limits
     # Confirmed via diagnose.py on 2026-06-11:
     #   Daily equity (AAPL): 2006-06-16, depth = ~20 years confirmed
@@ -705,7 +717,20 @@ class BacktestConfig:
 
     # Layer 1 event-driven baseline (Ross Q&A 2026-06-28)
     MAX_HALF_LIFE = 50           # pair-selection ceiling: half_life_rolling > this → excluded
-    ENTRY_ZSCORE = 2.0           # |z_rolling| >= this triggers entry
+    ENTRY_ZSCORE = 3.0           # |z_rolling| >= this triggers entry. Raised from 2.0, 2026-08-17
+        # (Ross: "if the increased z score yields better results let's do that"), per
+        # docs/FINDINGS.md #27 (Thread G Phase 2, real 4x3 factorial, IS+OOS, 182-pair Purity
+        # universe): entry_z=3.0 + hedge=both (this project's own default hedge method,
+        # unchanged) is the single BEST OOS Sharpe in the entire 12-cell grid (-0.179) and a
+        # robust pattern (all 3 hedge sub-cells positive IS at this entry_z level, not a
+        # single-cell fluke) -- explicitly NOT the naive IS-best cell (entry_z=3.0+kalman,
+        # +0.159 IS but -0.748 OOS, a real overfitting trap the study caught and avoided).
+        # Stated honestly: -0.179 OOS Sharpe is still NEGATIVE -- this is "the most robust
+        # lever found so far," not "a fix that makes the current universe profitable."
+    ENTRY_ZSCORE_MAX = None      # entry also requires |z_rolling| <= this, if set (None = no
+        # upper bound, original behavior). Added 2026-08-12 (Thread G): entry has no upper
+        # z-bound by default, which lets a trade enter already past STOP_ZSCORE -- undefined
+        # risk-per-share for any risk-based sizing method (see docs/FINDINGS.md #25/#26).
     EXIT_ZSCORE = 0.0            # z crosses this toward mean → exit
     STOP_ZSCORE = 3.5            # |z| widens to this → stop loss
     MAX_HOLD_MULTIPLIER = 2.0    # max bars in position = multiplier × half_life_at_entry

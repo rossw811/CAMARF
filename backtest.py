@@ -400,6 +400,7 @@ class BacktestEngine:
         mm_hedge_map: Optional[Dict[str, float]] = None,
         adv_shares_map: Optional[Dict[str, float]] = None,
         earnings_cal: Optional["EarningsCalendar"] = None,
+        pit_confidence_weights: Optional[Dict[str, float]] = None,
     ):
         self.cfg = cfg
         self.regime_cond = regime_cond
@@ -410,6 +411,10 @@ class BacktestEngine:
         self.hub_weights = hub_weights or {}
         # risk_parity_weights: {sym_a/sym_b -> global_mean_std/pair_std} — from IS trades
         self.risk_parity_weights = risk_parity_weights or {}
+        # pit_confidence_weights: {sym_a/sym_b -> tier multiplier} — from the Tiered
+        # comparison arm's pit_confidence_tier column (Thread A Step 4, ancient-mixing-
+        # feather.md), see compute_pit_confidence_weights() below
+        self.pit_confidence_weights = pit_confidence_weights or {}
         # pnl_cap_by_pair: {sym_a/sym_b -> cap_threshold} — gates new entries above cap
         self.pnl_cap_by_pair = pnl_cap_by_pair or {}
         self._pair_pnl: Dict[str, float] = {}  # cumulative net P&L per pair (for cap)
@@ -527,6 +532,30 @@ class BacktestEngine:
         hl_arr = df["half_life_rolling"].values
         timestamps = df.index
         n = len(df)
+
+        # STORM: real_corr_exit / max_half_life_filter -- added 2026-08-14, both
+        # gated opt-in comparison arms, see argparse help text above for scope.
+        _real_corr_exit = self.storm_flags.get("real_corr_exit", False)
+        _max_half_life_filter = self.storm_flags.get("max_half_life_filter", False)
+
+        # STORM: liquidity_bar_filter -- added 2026-08-14, per Ross's direct instruction
+        # ("skip trades and avoid use of illiquid bars"). Skips ENTRY on any bar where either
+        # leg's OWN dollar volume that day falls below Config.DATA.MIN_DOLLAR_VOLUME -- reuses
+        # research/liquidity_bar_masking.py::liquid_bar_mask directly (not reimplemented).
+        # Real investigation (Development.md 2026-08-14) found the originally-hypothesized
+        # mechanism ("illiquid bars falsely spike the cointegration number") does NOT hold on
+        # average for CAMARF's real domestic universe -- illiquid days here more often show
+        # HIGHER, not suppressed, spread variance (likely genuine anomalies -- thin holiday
+        # trading, brief halts -- rather than classic stale-quote effects). This filter remains
+        # well-motivated for a DIFFERENT, still-real reason: noisier/more erratic days make any
+        # entry signal generated on them less reliable, independent of the cointegration-number
+        # question, plus fill-realism (an illiquid day's own execution is less trustworthy).
+        _liquidity_bar_filter = self.storm_flags.get("liquidity_bar_filter", False)
+        _liquid_a = _liquid_b = None
+        if _liquidity_bar_filter:
+            from research.liquidity_bar_masking import liquid_bar_mask
+            _liquid_a = liquid_bar_mask(sym_a).reindex(timestamps, fill_value=False)
+            _liquid_b = liquid_bar_mask(sym_b).reindex(timestamps, fill_value=False)
 
         # STORM: pre-compute rolling z-score volatility for garch_stop variant
         _garch_stop = self.storm_flags.get("garch_stop", False)
@@ -684,12 +713,23 @@ class BacktestEngine:
                     if (self.earnings_cal.near_earnings(sym_a, ts, _EARNINGS_BLACKOUT_DAYS)
                             or self.earnings_cal.near_earnings(sym_b, ts, _EARNINGS_BLACKOUT_DAYS)):
                         continue
+                # STORM: liquidity_bar_filter — skip entry if either leg's OWN bar is illiquid
+                if _liquidity_bar_filter:
+                    if not (bool(_liquid_a.iloc[i]) and bool(_liquid_b.iloc[i])):
+                        continue
 
                 if abs(z) < self.cfg.ENTRY_ZSCORE:
+                    continue
+                if self.cfg.ENTRY_ZSCORE_MAX is not None and abs(z) > self.cfg.ENTRY_ZSCORE_MAX:
                     continue
                 hl_at_entry = hl if np.isfinite(hl) and hl >= self.cfg.MIN_HALF_LIFE_BARS else np.nan
                 if not np.isfinite(hl_at_entry):
                     continue  # can't set max hold without half-life
+                # STORM: max_half_life_filter -- symmetric ceiling to the MIN_HALF_LIFE_BARS
+                # floor above (skip degenerately SLOW mean-reversion, same logic that already
+                # skips degenerately FAST/noisy mean-reversion).
+                if _max_half_life_filter and hl_at_entry > self.cfg.MAX_HALF_LIFE:
+                    continue
 
                 # Point-in-time hedge ratio at this bar (causal, no lookahead).
                 # Uses the Kalman/OLS trajectory from analysis.py if available;
@@ -757,10 +797,12 @@ class BacktestEngine:
                 if _cap is not None and self._pair_pnl.get(_pair_key, 0.0) >= _cap:
                     continue
 
-                # N_SHARES: hub-count and risk-parity multipliers on top of Layer 2 size_mult
+                # N_SHARES: hub-count, risk-parity, and PIT-confidence-tier multipliers
+                # on top of Layer 2 size_mult
                 hub_w = self.hub_weights.get(_pair_key, 1.0)
                 rp_w = self.risk_parity_weights.get(_pair_key, 1.0)
-                n_shares = max(1, int(self.cfg.N_SHARES_PER_TRADE * size_mult * hub_w * rp_w))
+                pcw = self.pit_confidence_weights.get(_pair_key, 1.0)
+                n_shares = max(1, int(self.cfg.N_SHARES_PER_TRADE * size_mult * hub_w * rp_w * pcw))
 
                 # STORM: coint_frac_sizing — scale shares by rolling confirmation
                 # fraction, point-in-time (see _cfrac_at_bar above, BUG-D101).
@@ -777,7 +819,7 @@ class BacktestEngine:
                 if _cf_carver:
                     scaled_forecast = np.clip(abs(z) * _cf_scale_factor_arr[i], -20.0, 20.0)
                     n_shares = max(1, int(self.cfg.N_SHARES_PER_TRADE * (scaled_forecast / 10.0)
-                                          * size_mult * hub_w * rp_w))
+                                          * size_mult * hub_w * rp_w * pcw))
                     if _coint_frac_sizing:
                         n_shares = max(1, int(n_shares * _cfrac_at_bar))
                 elif _cf_linear:
@@ -787,7 +829,7 @@ class BacktestEngine:
                     # average cap for a fair, like-for-like comparison).
                     linear_mult = min(abs(z) / self.cfg.ENTRY_ZSCORE, 2.0)
                     n_shares = max(1, int(self.cfg.N_SHARES_PER_TRADE * linear_mult
-                                          * size_mult * hub_w * rp_w))
+                                          * size_mult * hub_w * rp_w * pcw))
                     if _coint_frac_sizing:
                         n_shares = max(1, int(n_shares * _cfrac_at_bar))
 
@@ -848,6 +890,26 @@ class BacktestEngine:
                 # (simplified: if z widens past 2.5× entry z, flag as breakdown)
                 elif abs(z) > 2.0 * abs(current_trade.entry_z) and current_trade.hold_bars > 5:
                     exit_reason = "corr_exit"
+
+                # 5. STORM: real_corr_exit -- a genuine structural-breakdown exit using
+                # CORR_EXIT_THRESHOLD against coint_fraction_rolling_t (see argparse help
+                # text: a disclosed substitution for leg-price correlation, not available
+                # in spread_series files without a new data-loading pipeline). ADDITIVE to
+                # condition #4 above, not a replacement -- runs only if #4 didn't already
+                # trigger, so this can only ADD exits relative to baseline, never suppress one.
+                elif _real_corr_exit and current_trade.hold_bars > 5:
+                    # hold_bars > 5 guard: SAME as condition #4's existing z-widening heuristic,
+                    # required here too after a real run showed WITHOUT it, coint_fraction_rolling_t's
+                    # bar-to-bar noise near CORR_EXIT_THRESHOLD causes pathological immediate-exit/
+                    # re-entry chattering (269,707 trades vs. baseline's 146 on the same pairs --
+                    # see Development.md's 2026-08-14 real_corr_exit entry for the full account).
+                    # Not a new hysteresis mechanism invented here -- reusing the codebase's own
+                    # already-established debounce convention for exactly this failure mode.
+                    _cfrac_now = _cfrac_t_arr[i] if _cfrac_t_arr is not None else np.nan
+                    if not np.isfinite(_cfrac_now):
+                        _cfrac_now = _ml_coint_frac
+                    if np.isfinite(_cfrac_now) and _cfrac_now < self.cfg.CORR_EXIT_THRESHOLD:
+                        exit_reason = "real_corr_exit"
 
                 if exit_reason:
                     current_trade.exit_time = ts
@@ -1245,6 +1307,48 @@ def compute_risk_parity_weights(
     return weights
 
 
+_PIT_CONFIDENCE_TIER_WEIGHTS = {
+    "full_episodic": 1.0,
+    "partial_episodic": 0.6,
+    "full_history_only": 0.3,
+}
+
+
+def compute_pit_confidence_weights(pairs_df: Optional[pd.DataFrame]) -> Dict[str, float]:
+    """
+    N_SHARES multipliers from the Tiered comparison arm's `pit_confidence_tier`
+    column (Thread A Step 4, C:\\Users\\RossW\\.claude\\plans\\ancient-mixing-
+    feather.md): full_episodic=1.0, partial_episodic=0.6, full_history_only=0.3
+    -- a first-pass proposal, not yet itself sensitivity-swept (explicit
+    non-goal of this plan's current pass).
+
+    Only meaningful for a --pairs-override file carrying pit_confidence_tier
+    (the Tiered arm's own pairs.parquet-schema file); returns {} with a
+    warning for any other input, same "explicit empty, not a silent
+    fallback" discipline research/pit_pair_discovery.py already established.
+    """
+    if pairs_df is None or "pit_confidence_tier" not in pairs_df.columns:
+        log.warning("PIT-confidence weighting requested but no pit_confidence_tier "
+                     "column available (not a Tiered-arm --pairs-override file) — flat sizing")
+        return {}
+    weights: Dict[str, float] = {}
+    unknown_tiers = set()
+    for _, row in pairs_df.iterrows():
+        tier = row["pit_confidence_tier"]
+        w = _PIT_CONFIDENCE_TIER_WEIGHTS.get(tier)
+        if w is None:
+            unknown_tiers.add(tier)
+            w = 1.0
+        weights[f"{row['symbol_a']}/{row['symbol_b']}"] = w
+    if unknown_tiers:
+        log.warning("PIT-confidence weighting: unrecognized tier(s) %s treated as 1.0", unknown_tiers)
+    vals = list(weights.values())
+    if vals:
+        log.info("PIT-confidence weighting: %d pairs, range [%.2f, %.2f], mean=%.3f",
+                  len(weights), min(vals), max(vals), sum(vals) / len(vals))
+    return weights
+
+
 def _hrp_ivp(cov: np.ndarray) -> np.ndarray:
     """Inverse-variance weights within a single cluster (HRP building block)."""
     ivp = 1.0 / np.diag(cov)
@@ -1636,11 +1740,39 @@ def main() -> None:
     p.add_argument("--pnl-cap", action="store_true",
                    help="Cap each pair's cumulative P&L at IS mean pair P&L. "
                         "Requires trades_layer1.parquet (IS run first).")
+    p.add_argument("--pit-confidence-weight", action="store_true", default=False,
+                   help="N_SHARES multiplier from --pairs-override's pit_confidence_tier "
+                        "column (Tiered PIT-safe comparison arm only; see "
+                        "compute_pit_confidence_weights()). Default off.")
     # STORM experimental variants
     p.add_argument("--storm-coint-frac", action="store_true",
                    help="STORM: scale N_SHARES by coint_fraction_rolling (0–1 continuous sizing).")
     p.add_argument("--storm-garch-stop", action="store_true",
                    help="STORM: tighten stop to |z|>3.0 when rolling z-vol > 2× historical.")
+    p.add_argument("--storm-real-corr-exit", action="store_true",
+                   help="STORM (added 2026-08-14, Thread G-Full follow-up): a genuine structural-"
+                        "breakdown exit using CORR_EXIT_THRESHOLD against coint_fraction_rolling_t "
+                        "(the existing point-in-time rolling cointegration-strength series -- NOT a "
+                        "newly-computed leg-price correlation, which isn't available in spread_series "
+                        "files without a new data-loading pipeline; disclosed substitution, same "
+                        "underlying question of 'has this pair's structural relationship broken "
+                        "down'). Additive: does NOT replace the existing always-on z-widening "
+                        "'corr_exit' heuristic (priority #4) -- this is a new, separate priority #5 "
+                        "condition, for real comparison against the status quo, not a silent swap.")
+    p.add_argument("--storm-max-half-life-filter", action="store_true",
+                   help="STORM (added 2026-08-14, Thread G-Full follow-up): skip entry if "
+                        "half_life_at_entry > MAX_HALF_LIFE, symmetric to the existing "
+                        "MIN_HALF_LIFE_BARS floor filter. MAX_HALF_LIFE was previously a declared-"
+                        "but-dead config constant (confirmed via codebase grep -- read nowhere).")
+    p.add_argument("--storm-liquidity-bar-filter", action="store_true",
+                   help="STORM (added 2026-08-14, per Ross's direct instruction): skip entry if "
+                        "either leg's OWN dollar volume that day falls below "
+                        "Config.DATA.MIN_DOLLAR_VOLUME (reuses research/liquidity_bar_masking.py's "
+                        "liquid_bar_mask, not a symbol-level average). Real investigation "
+                        "(Development.md 2026-08-14) found the originally-hypothesized 'illiquid "
+                        "bars falsely spike cointegration' mechanism does NOT hold on average for "
+                        "this domestic universe -- kept as a fill-realism/signal-quality filter "
+                        "for a different, still-real reason, see the engine's own inline comment.")
     p.add_argument("--storm-session-edge", action="store_true",
                    help="STORM: skip pre-open entries (9:00-9:29 ET) and late-day (15:00+) (intraday only).")
     p.add_argument("--storm-session-edge-postopen", action="store_true",
@@ -1666,6 +1798,20 @@ def main() -> None:
     p.add_argument("--entry-z", type=float, default=None,
                    help="Override ENTRY_ZSCORE (default: Config.BACKTEST.ENTRY_ZSCORE=2.0). "
                         "Use --entry-z 1.5 for DD/GPN and DD/JCI zero-trade diagnostic.")
+    p.add_argument("--entry-z-max", type=float, default=None,
+                   help="Set ENTRY_ZSCORE_MAX: entry also requires |z| <= this (default: None, "
+                        "no upper bound -- original behavior). Added 2026-08-12 (Thread G) so "
+                        "an entry can't already be past STOP_ZSCORE, which leaves risk-based "
+                        "sizing (flat_2pct/Kelly) with an undefined risk-per-share estimate.")
+    p.add_argument("--override", nargs="+", default=None, metavar="NAME=VALUE",
+                   help="Generic Config.BACKTEST attribute override(s), e.g. "
+                        "--override STOP_ZSCORE=4.0 CORR_EXIT_THRESHOLD=0.15. Added 2026-08-13 "
+                        "(Thread G-Full) so every Tier-2 static constant is sweepable without a "
+                        "bespoke CLI flag per parameter -- same pattern --entry-z/--entry-z-max "
+                        "already established, generalized. Value is coerced to match the CURRENT "
+                        "attribute's own type (bool/int/float/str) so e.g. an int-typed constant "
+                        "like N_SHARES_PER_TRADE doesn't silently become a float. Unknown attribute "
+                        "names raise immediately (fail loud, not a silently-ignored typo).")
     p.add_argument("--pairs-override", type=str, default=None,
                    help="Path to a parquet/CSV with columns [tf_label, symbol_a, symbol_b] "
                         "to backtest instead of output/results/{tf_dir}/pairs.parquet — "
@@ -1685,6 +1831,19 @@ def main() -> None:
                    help="Sizing method for --capital-sim (default: fixed, matching this run's "
                         "own N_SHARES_PER_TRADE convention -- isolates the pure capital-"
                         "constraint effect from any sizing-method change).")
+    p.add_argument("--concentration-cap", action="store_true",
+                   help="Added 2026-08-14 (Thread G-Full follow-up): enforce MAX_CONCENTRATION_PCT "
+                        "as a real cap on any single position's target notional (fraction of "
+                        "CURRENT equity) in --capital-sim's replay. MAX_CONCENTRATION_PCT was "
+                        "previously a declared-but-dead config constant -- confirmed via codebase "
+                        "grep that no code anywhere enforced it. Opt-in, off by default -- does not "
+                        "change existing --capital-sim behavior unless explicitly passed.")
+    p.add_argument("--leverage-cap", type=float, default=None,
+                   help="Thread N #2 (2026-08-14): caps TOTAL gross exposure (all open positions "
+                        "combined) at this multiple of current equity in --capital-sim's replay -- "
+                        "matches the UCITS commitment-approach / '40 Act Section 18 asset-coverage "
+                        "convention. E.g. --leverage-cap 1.0 = no leverage (gross exposure never "
+                        "exceeds 100% of equity). None (default) = no cap, unchanged behavior.")
     args = p.parse_args()
 
     _pairs_override_df: Optional[pd.DataFrame] = None
@@ -1735,8 +1894,12 @@ def main() -> None:
         label += "_hrp"
     if args.pnl_cap:
         label += "_pnlcap"
+    if args.pit_confidence_weight:
+        label += "_pitconf"
     if args.entry_z is not None:
         label += f"_ez{str(args.entry_z).replace('.', '')}"
+    if args.entry_z_max is not None:
+        label += f"_ezmax{str(args.entry_z_max).replace('.', '')}"
     # (STORM-flag suffixes, then _pairsoverride, appended to `label` further
     # below once storm_flags exists -- preserves the exact original suffix
     # order: .../ez.../storm.../pairsoverride)
@@ -1753,6 +1916,9 @@ def main() -> None:
             log.warning("Could not load survivorship exclusions: %s", _e)
 
     hub_weights = compute_hub_weights(_TF_DIRS, args.tf) if args.hub_weight else {}
+    pit_confidence_weights = (
+        compute_pit_confidence_weights(_pairs_override_df) if args.pit_confidence_weight else {}
+    )
 
     # Sizing-weight fitting (risk-parity / HRP / P&L cap). BUG-D76 (2026-07-20
     # Grand Sweep): these previously always fit on the full-series
@@ -1775,6 +1941,7 @@ def main() -> None:
             allow_negative_hedge=args.neg_hedge,
             hub_weights={}, risk_parity_weights={}, pnl_cap_by_pair={},
             storm_flags={}, mm_hedge_map={}, adv_shares_map={}, earnings_cal=None,
+            pit_confidence_weights={},
         )
         _is_only_trades, _ = _run_all_pairs(
             _fitting_engine, hedge_methods, args, _pairs_override_df, _survivorship,
@@ -1818,6 +1985,11 @@ def main() -> None:
         "continuous_forecast_linear":  getattr(args, "storm_continuous_forecast_linear", False),
         # Also not folded into --storm-all: comparison arm added 2026-07-11.
         "earnings_blackout":       getattr(args, "storm_earnings_blackout", False),
+        # Also not folded into --storm-all: comparison arms added 2026-08-14
+        # (Thread G-Full's 4-dead-config-constant investigation follow-up).
+        "real_corr_exit":          getattr(args, "storm_real_corr_exit", False),
+        "max_half_life_filter":    getattr(args, "storm_max_half_life_filter", False),
+        "liquidity_bar_filter":    getattr(args, "storm_liquidity_bar_filter", False),
     }
     # STORM-flag suffixes on `label` (the rest of label was built above, before
     # storm_flags existed).
@@ -1831,6 +2003,9 @@ def main() -> None:
         if storm_flags.get("session_edge_postopen"): sfx += "_sedge_post"
         if storm_flags.get("mm_exec"):               sfx += "_mmexec"
         if storm_flags.get("sqrt_impact"):           sfx += "_sqrtimpact"
+        if storm_flags.get("real_corr_exit"):        sfx += "_realcorrexit"
+        if storm_flags.get("max_half_life_filter"):  sfx += "_maxhlfilter"
+        if storm_flags.get("liquidity_bar_filter"):  sfx += "_liqbarfilter"
         label += sfx
     if args.pairs_override:
         label += "_pairsoverride"
@@ -1876,11 +2051,39 @@ def main() -> None:
 
     # --entry-z override for z=1.5 comparison arm (DD/GPN, DD/JCI zero-trade diagnostic)
     _backtest_cfg = Config.BACKTEST
-    if args.entry_z is not None:
+    _override_label_sfx = ""
+    if args.entry_z is not None or args.entry_z_max is not None or args.override:
         import copy
         _backtest_cfg = copy.copy(Config.BACKTEST)
-        _backtest_cfg.ENTRY_ZSCORE = args.entry_z
-        log.info("entry-z override: ENTRY_ZSCORE = %.2f", args.entry_z)
+        if args.entry_z is not None:
+            _backtest_cfg.ENTRY_ZSCORE = args.entry_z
+            log.info("entry-z override: ENTRY_ZSCORE = %.2f", args.entry_z)
+        if args.entry_z_max is not None:
+            _backtest_cfg.ENTRY_ZSCORE_MAX = args.entry_z_max
+            log.info("entry-z-max override: ENTRY_ZSCORE_MAX = %.2f", args.entry_z_max)
+        if args.override:
+            for item in args.override:
+                if "=" not in item:
+                    raise ValueError(f"--override entries must be NAME=VALUE, got {item!r}")
+                name, raw_value = item.split("=", 1)
+                if not hasattr(_backtest_cfg, name):
+                    raise ValueError(
+                        f"--override {name!r} is not an existing Config.BACKTEST attribute -- "
+                        f"refusing to silently create a new one (likely a typo)."
+                    )
+                current = getattr(_backtest_cfg, name)
+                if isinstance(current, bool):
+                    coerced = raw_value.strip().lower() in ("1", "true", "yes", "on")
+                elif isinstance(current, int) and not isinstance(current, bool):
+                    coerced = int(raw_value)
+                elif isinstance(current, float):
+                    coerced = float(raw_value)
+                else:
+                    coerced = raw_value
+                setattr(_backtest_cfg, name, coerced)
+                log.info("--override: %s = %r (was %r)", name, coerced, current)
+                _override_label_sfx += f"_ov{name}{str(coerced).replace('.', 'p').replace('-', 'neg')}"
+    label += _override_label_sfx
 
     engine = BacktestEngine(
         cfg=_backtest_cfg, regime_cond=regime_cond, ml_cond=ml_cond,
@@ -1893,6 +2096,7 @@ def main() -> None:
         mm_hedge_map=mm_hedge_map,
         adv_shares_map=adv_shares_map,
         earnings_cal=earnings_cal,
+        pit_confidence_weights=pit_confidence_weights,
     )
 
     # Run over confirmed pairs
@@ -1920,14 +2124,19 @@ def main() -> None:
         log.info("--capital-sim: replaying %d trades, account=$%.0f, sizing=%s",
                   len(trades_for_sim), args.capital_account_size, args.capital_sizing)
         sim_result = portfolio_sim.replay_portfolio(
-            trades_for_sim, args.capital_account_size, args.capital_sizing
+            trades_for_sim, args.capital_account_size, args.capital_sizing,
+            flat_risk_pct=_backtest_cfg.FLAT_RISK_PCT,
+            concentration_cap=_backtest_cfg.MAX_CONCENTRATION_PCT if args.concentration_cap else None,
+            leverage_cap=args.leverage_cap,
         )
         sim_sharpe = portfolio_sim.portfolio_sharpe_from_replay(sim_result)
         log.info("  [capital_sim] taken=%d/%d skipped=%d peak_notional=$%.0f "
                   "final_equity=$%.2f sharpe=%.4f",
                   sim_result["n_taken"], len(trades_for_sim), sim_result["skipped_count"],
                   sim_result["peak_concurrent_notional"], sim_result["final_equity"], sim_sharpe)
-        sim_label = f"{label}_capsim_{args.capital_sizing}_{int(args.capital_account_size)}"
+        _ccap_sfx = "_ccap" if args.concentration_cap else ""
+        _lev_sfx = f"_levcap{str(args.leverage_cap).replace('.', 'p')}" if args.leverage_cap is not None else ""
+        sim_label = f"{label}_capsim_{args.capital_sizing}_{int(args.capital_account_size)}{_ccap_sfx}{_lev_sfx}"
         sim_result["taken"].to_parquet(
             os.path.join(_OUT_DIR, f"trades_{sim_label}.parquet"), index=False
         )

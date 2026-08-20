@@ -1,0 +1,4 @@
+16:18:35 INFO  === price_degeneracy_root_cause.py: characterizing the BUG-D49 pattern ===
+16:18:35 INFO  1353 symbols with valid metadata, 433 flagged (32.0%)
+16:18:35 INFO  
+--- Continuous variables (Mann-Whitney U, flagged vs. not) ---

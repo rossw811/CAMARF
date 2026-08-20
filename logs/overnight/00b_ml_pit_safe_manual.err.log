@@ -1,0 +1,11 @@
+2026-08-11 13:36:23  INFO      ======================================================================
+2026-08-11 13:36:23  INFO      CAMARF  —  ml.py  —  Spread Resolution Meta-Labeler
+2026-08-11 13:36:23  INFO      ======================================================================
+2026-08-11 13:36:23  INFO      Using PIT-safe episodic pair discovery (adapter output): 454 pairs
+2026-08-11 13:36:53  INFO        Discovered 454 confirmed pairs with persisted spread series; 436 produced labeled examples, 18 skipped
+2026-08-11 13:36:53  INFO        Total labeled entry events: 24275
+2026-08-11 13:37:00  INFO        Trained on 14565 examples, holdout accuracy on 4855 examples: 52.94%
+2026-08-11 13:37:00  INFO        Conformal (n_cal=4855, alpha=0.1): avg set size 1.68/2 classes, empirical coverage on test 87.85% (target >=90%)
+2026-08-11 13:37:00  INFO        Model saved → C:\Users\RossW\Projects\CAMARF\output\ml\model_stage1.pkl
+2026-08-11 13:37:00  INFO      Run summary → C:\Users\RossW\Projects\CAMARF\latest_run_ml.log
+2026-08-11 13:37:00  INFO      ======================================================================

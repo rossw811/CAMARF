@@ -1,0 +1,32 @@
+2026-08-13 19:36:50,177  INFO      Security master: 29366 distinct permnos
+2026-08-13 19:38:33,601  INFO      Security master: 29366 distinct permnos
+2026-08-13 19:41:22,459  INFO      Security master: 29366 distinct permnos
+2026-08-13 19:41:22,675  INFO      29366 labels built, 6731 collision-relabeled as PERMNO<n>
+2026-08-13 19:41:23,430  INFO      2639/29366 already cached (resuming), 26727 remaining.
+2026-08-13 19:42:56,385  INFO        progress: 1000 fetched this session (1.5 min)
+2026-08-13 19:44:39,279  INFO        progress: 2000 fetched this session (3.3 min)
+2026-08-13 19:46:24,364  INFO        progress: 3000 fetched this session (5.0 min)
+2026-08-13 19:47:47,410  INFO        progress: 4000 fetched this session (6.4 min)
+2026-08-13 19:49:12,387  INFO        progress: 5000 fetched this session (7.8 min)
+2026-08-13 19:50:24,310  INFO        progress: 6000 fetched this session (9.0 min)
+2026-08-13 19:51:21,036  INFO        progress: 7000 fetched this session (10.0 min)
+2026-08-13 19:52:29,647  INFO        progress: 8000 fetched this session (11.1 min)
+2026-08-13 19:54:14,138  INFO        progress: 9000 fetched this session (12.8 min)
+2026-08-13 19:56:00,975  INFO        progress: 10000 fetched this session (14.6 min)
+2026-08-13 19:57:43,572  INFO        progress: 11000 fetched this session (16.3 min)
+2026-08-13 19:59:49,970  INFO        progress: 12000 fetched this session (18.4 min)
+2026-08-13 20:01:40,601  INFO        progress: 13000 fetched this session (20.3 min)
+2026-08-13 20:03:36,180  INFO        progress: 14000 fetched this session (22.2 min)
+2026-08-13 20:05:11,723  INFO        progress: 15000 fetched this session (23.8 min)
+2026-08-13 20:06:41,731  INFO        progress: 16000 fetched this session (25.3 min)
+2026-08-13 20:08:22,301  INFO        progress: 17000 fetched this session (27.0 min)
+2026-08-13 20:09:45,832  INFO        progress: 18000 fetched this session (28.4 min)
+2026-08-13 20:11:21,005  INFO        progress: 19000 fetched this session (30.0 min)
+2026-08-13 20:12:31,990  INFO        progress: 20000 fetched this session (31.1 min)
+2026-08-13 20:13:46,655  INFO        progress: 21000 fetched this session (32.4 min)
+2026-08-13 20:15:18,529  INFO        progress: 22000 fetched this session (33.9 min)
+2026-08-13 20:16:49,641  INFO        progress: 23000 fetched this session (35.4 min)
+2026-08-13 20:18:12,598  INFO        progress: 24000 fetched this session (36.8 min)
+2026-08-13 20:19:59,505  INFO        progress: 25000 fetched this session (38.6 min)
+2026-08-13 20:21:33,959  INFO        progress: 26000 fetched this session (40.2 min)
+2026-08-13 20:22:51,026  INFO      Full US market price fetch complete: 26727 symbols this session, 41.5 min total.

@@ -59,15 +59,31 @@ statistically significant rates using multiclass ML.
    never touch IBKR or yfinance. If you see analysis.py doing a fetch,
    that's a regression — fix it immediately, don't rationalize it.
 
-2. **yfinance is primary. IBKR is supplemental-only, run separately.**
-   `data.py` is yfinance-only (`connect=False` default) and must complete
-   in ~30-40 minutes with no IBKR dependency. `data_ibkr.py` is a SEPARATE
-   script, run manually, that fetches 10-year deep history for CONFIRMED
-   PAIRS ONLY (read from `confirmed_pairs_manifest.json`), enabling the
-   episodic cointegration test. Never merge IBKR fetching back into the
-   main data.py path — this was tried, it was the source of weeks of
-   instability, see DEVELOPMENT.md Session 5-7 bug registry before ever
-   reconsidering this.
+2. **yfinance is primary. IBKR fetching stays supplemental-only and separate
+   from data.py — but once cached, its data is usable more broadly for
+   discovery (updated 2026-08-14).** `data.py` is yfinance-only
+   (`connect=False` default) and must complete in ~30-40 minutes with no
+   IBKR dependency. `data_ibkr.py` is a SEPARATE script, run manually, that
+   fetches 10-year deep history for CONFIRMED PAIRS ONLY (read from
+   `confirmed_pairs_manifest.json`), enabling the episodic cointegration
+   test. Never merge IBKR *fetching* back into the main data.py path — this
+   was tried, it was the source of weeks of instability, see
+   DEVELOPMENT.md Session 5-7 bug registry before ever reconsidering this
+   (that restriction is about the FETCH PIPELINE's own stability, unrelated
+   to what's below).
+   **Downstream use, relaxed 2026-08-14 (Ross, directly: "i'm fine with
+   using IBKR for the intraday data")**: WRDS/CRSP now covers the DAILY
+   equity case IBKR was originally the only source for, but WRDS's own
+   table (`crsp_a_stock.dsf_v2`) is daily-only — IBKR's cache (539 files,
+   92 symbols, confirmed directly) is the only source in this project for
+   INTRADAY granularity (1min/5min/15min/30min/1hr/4hr) at any real depth.
+   `universe_loader.py` (the canonical, shared "load everything" utility —
+   see that file, use it instead of any script-local `load_full_universe`)
+   includes IBKR's already-cached data as a real discovery-universe source
+   by default (`include_ibkr=True`). Checked directly, not assumed: despite
+   an earlier belief IBKR was also a forex/commodities source, the real
+   cache and `data_ibkr.py`'s own code contain zero forex/commodity symbols
+   or fetch logic — that remains a genuinely separate, unbuilt need.
 
 3. **GapFlag system governs all gap handling.** Six codes: NONE, FILL,
    NO_ACTIVITY, HALT, DATA_GAP, SPARSE. DATA_GAP (>5 consecutive missing
@@ -150,13 +166,21 @@ against `latest_run_data.log`, not assumed):**
   daily-and-coarser (1D/7D/1M/3M/6M) CRSP-resolvable US equities/ETFs — CRSP
   total-return-adjusted where available, Compustat Global split-only-adjusted as disclosed
   fallback, via Baruch's WRDS subscription. International equities and everything intraday
-  remain yfinance-sourced (fetch windows below unchanged for those). **Confirmed pairs under
-  this snapshot: 3** — `KVUE/KMB`@3m, `PNC/ZION`@4h, `IQV/Q`@1D — a real, large reduction from
-  the 23/26-pair pre-WRDS sets; see `PAPER.md` §3 for the full honest accounting of why (WRDS
-  changes the underlying daily-and-coarser price series for a large fraction of the universe,
-  not just adds coverage). An independent party reproducing the pre-WRDS snapshot above still
-  can, exactly as described; reproducing the current snapshot additionally requires WRDS/CRSP
-  access, which this repo's `output/cache/wrds/` reflects but does not itself distribute.
+  remain yfinance-sourced (fetch windows below unchanged for those). The standard full-history
+  screen's output under this snapshot was 3 pairs, a real, large reduction from the 23/26-pair
+  pre-WRDS sets (see `PAPER.md` §3 for the full honest accounting of why). **These 3 pairs are
+  no longer this project's headline reference set** (reframed 2026-08-11, Session 31 — see
+  Development.md for the full reasoning): they showed zero overlap with the PIT-safe episodic-
+  confirmation methodology (Thread A) and produced poor, honest realistic-portfolio results
+  (`--capital-sim`) when actually tested. The current headline reference is the PIT-safe
+  episodic-confirmed universe (`output/research/episodic_confirmed_pairs_adapter_output.parquet`,
+  **182 pairs** as of the BUG-D112-fixed adapter run, 2026-08-12 — 170 WRDS/1D, 6 intraday/1h, 6
+  intraday/4h; supersedes the earlier, candidate-generation-lookahead-contaminated 454-pair count,
+  see `docs/BUG_LOG.md` BUG-D112) — start there, not the old 3-pair set, when orienting to
+  "what pairs does this project currently trade." An independent party reproducing the pre-WRDS
+  snapshot above still can, exactly as described; reproducing the current snapshot additionally
+  requires WRDS/CRSP access, which this repo's `output/cache/wrds/` reflects but does not itself
+  distribute.
 - **Per-timeframe yfinance fetch windows** (`_YF_INTRADAY_MAP`,
   `data.py:1869-1878`): `1m`/`3m` → 5 calendar days (3m is derived by
   resampling 1m, not fetched separately — Yahoo's 1m interval has an 8-day
@@ -408,6 +432,13 @@ This is as important as the technical rules above.
 
 ## Recommended Plugins / Tools
 
+- **`headroom` CLI** (installed 2026-08-13, `uv tool install "headroom-ai[all]"`, isolated —
+  NOT in the `trading` conda env, no CAMARF dependency conflict risk) — a context-compression
+  proxy/tool for AI agent workflows (compresses tool outputs/logs/RAG chunks/conversation history
+  before they reach the LLM; https://github.com/headroomlabs-ai/headroom). Installed and verified
+  working (`headroom --version` → 0.35.0) but NOT wired into this session/Claude Code as an active
+  proxy — that's a further `headroom init`/`deploy` step, deliberately not done yet, Ross's call
+  when/if he wants it active.
 - **`context7`** (installed) — use before writing/debugging code against
   yfinance, ib_insync, statsmodels, or scikit-learn, where exact current
   version behavior matters more than general training knowledge.
@@ -559,6 +590,75 @@ rather than implied to fit in one session and coming up short:
    same discipline as every prior session) — deferring documentation entirely to one giant end step
    is a real risk given how many times a process died mid-task this session; current docs mean
    nothing real gets lost if something crashes partway through.
+
+### Session 31 (2026-08-08 through 2026-08-11) — see Development.md for full detail
+
+**Headline reframe, stated plainly**: the 3-pair standard-screen set (`KVUE/KMB`@3m, `PNC/ZION`@4h,
+`IQV/Q`@1D) that Sessions 29-30 treated as "the confirmed pairs" is **no longer this project's
+reference set** — reframed 2026-08-11 after two independent findings this session: (1) all 3 pairs
+have ZERO overlap with the PIT-safe episodic-confirmation methodology (Thread A) — the standard
+full-history screen and the point-in-time-safe screen produce completely disjoint confirmed-pair
+sets at this snapshot; (2) real, capital-constrained portfolio backtests (`--capital-sim`) on both
+the 3-pair set and the PIT-safe universe show poor results (e.g. `IQV/Q@1D`: 40 trades, WR=0%,
+Sharpe=-13986.57) — not something to keep presenting as the project's working pair set.
+**Current reference set (SUPERSEDED by the BUG-D112 fix, see Session 31 addendum below — kept
+here for provenance only): the PIT-safe episodic-confirmed universe,
+`output/research/episodic_confirmed_pairs_adapter_output.parquet` (454 pairs as of the original
+adapter run: 338 WRDS/1D, 76 intraday/1h, 40 intraday/4h; Purity arm portfolio Sharpe -0.95).**
+This 454-pair set was later found to be contaminated by a candidate-generation lookahead bug
+(BUG-D112 — Tier 2's static whole-history correlation candidate pool, and Tier 3's ungated rolling
+candidate windows, both let a pair be EG-tested on dates before it would have genuinely qualified
+as a candidate). **The real, BUG-D112-fixed set is 182 pairs** (170 WRDS/1D, 6 intraday/1h, 6
+intraday/4h) — see the "BUG-D112 fix and full redo (2026-08-12)" entry further below for the real,
+non-provisional numbers. Full historical detail on both the 3-pair set and the original 454-pair
+set is NOT deleted — see Development.md and `docs/BUG_LOG.md` BUG-D107/D110/D112 for the complete
+record, per this file's own "document what was tried" rule — each is de-headlined here, not erased.
+
+Also this session: intraday episodic scanner (1h+4h, both tiers) completed after a ~502-minute
+run with multiple unexplained kills (root cause never found, mitigated via atomic per-pair/per-tier
+checkpointing — BUG-D108); the PIT-safe pairs adapter (Step 3) built, found genuinely CPU-bound
+(~28s/pair sequential, hours for 647+ pairs — BUG-D110), fixed with both a longer stage timeout and
+multiprocessing support (`--workers N`); `ml.py --pit-safe` retrained (provisional, superseded —
+see below) against the original 454-pair adapter output (holdout accuracy 52.94%, conformal
+coverage 87.85%); `backtest.py`'s BUG-D107 1D-timeframe fix verified with real IS+OOS re-runs;
+Thread A Step 4 built and verified (`compute_pit_confidence_weights()` in backtest.py,
+Hybrid/Purity/Tiered comparison-arm pairs files); Step 5 (baseline + 3-arm portfolio comparison,
+`--capital-sim`) completed against the (later superseded) 454-pair set.
+
+### BUG-D112 fix and full redo (2026-08-12) — the current, real numbers
+
+Found and fixed a candidate-generation lookahead bias in the episodic PIT-safety pipeline (full
+detail: `docs/BUG_LOG.md` BUG-D112). Part 1: excluded Tier 2's non-causal static-correlation
+candidate pool from all PIT-safe checkpoint sources (same exclusion principle already applied to
+Tier 1, for the identical reason). Part 2: added causal `first_qualified_window_end_date` gating to
+Tier 3's rolling candidate generation, so a pair is only EG-tested on windows dated at or after the
+point it would have genuinely qualified as a candidate — previously a pair could be tested (and
+FDR-flagged significant) on early windows that predate any real correlation evidence for it.
+
+Full redo executed after the fix: WRDS/1D re-scan (326 pairs confirmed), intraday 1h+4h re-scan (6
+each), adapter rebuilt (**182 real PIT-safe pairs**: 170 WRDS/1D, 6 intraday/1h, 6 intraday/4h — a
+second real bug found and fixed along the way, a stale-checkpoint-contamination issue in the
+adapter's resume logic, see BUG-D112's bug-log entry), comparison-arm files rebuilt
+(`build_comparison_arm_pairs.py` — Hybrid=185, Purity=182, Tiered=3), `ml.py --pit-safe` retrained
+(**test_accuracy=52.58%, conformal coverage=91.26%**, n_train=7544/n_test=2516 — up from the
+provisional 52.94%/87.85%), and all Step 5 backtest arms re-run for real
+(`output/research/step5_arm_results/real_*`, old provisional files preserved under
+`provisional_pre_bugd112/`):
+
+| Arm      | IS Sharpe | OOS Sharpe |
+|----------|-----------|------------|
+| Purity   | -0.679    | -0.834     |
+| Hybrid   | -0.442    | -1.125     |
+| Tiered   | +1.417    | +0.630     |
+| Baseline | +1.417    | +0.630     |
+
+Headline honest finding: the genuinely PIT-safe 182-pair Purity universe **loses money** under
+realistic capital-constrained sizing, both IS and OOS — this is the real, uncontaminated result,
+not an artifact of the bug. Tiered and Baseline are numerically identical because this snapshot's 3
+non-PIT-safe standard pairs all share one uniform PIT-confidence tier weight — Tiered's apparent
+outperformance over Purity/Hybrid is a **capital-efficiency artifact** of which pairs get traded at
+all, not evidence that PIT-confidence tier-weighting itself adds risk-adjusted value. See
+Development.md's Session 31 redo-execution entry and `docs/FINDINGS.md` for the full writeup.
 
 ### Session 30 (2026-08-02 through 2026-08-04, still in progress) — see Development.md for full detail
 

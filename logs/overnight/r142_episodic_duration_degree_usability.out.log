@@ -1,0 +1,5 @@
+Loaded 2441227 raw window rows from sources=['tier2', 'tier3']
+202257 pairs have >= 4 windows for an early/late split
+
+======================================================================
+DURATION x DEGREE GRID (min_windows_confirmed x alpha)

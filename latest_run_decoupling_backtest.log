@@ -1,20 +1,18 @@
-03:32:51 INFO  === decoupling_backtest.py: backtest the re-qualified pairs on their post-break window ===
-03:32:51 INFO  5 re-qualified pairs to build and backtest
-03:33:16 INFO    ALB/DD@1h: 72 trades, Sharpe=-3.074, PnL=-1223.22, WR=12%, HL=181.0, coint_frac=nan
-03:33:30 INFO    CDW/DD@1h: 0 trades, Sharpe=nan, PnL=nan, WR=nan%, HL=161.8, coint_frac=nan
-03:33:56 INFO    DD/FDX@1h: 93 trades, Sharpe=-10.130, PnL=-1959.44, WR=8%, HL=125.6, coint_frac=nan
-03:34:22 INFO    DD/ROST@1h: 41 trades, Sharpe=7.822, PnL=1210.12, WR=24%, HL=294.8, coint_frac=nan
-03:34:48 INFO    DD/ENS@1h: 29 trades, Sharpe=0.691, PnL=38.05, WR=24%, HL=158.6, coint_frac=nan
-03:34:48 INFO  
---- Result: 4/5 re-qualified pairs generated trades; 2/5 had positive Sharpe ---
-03:34:48 INFO  
-symbol_a symbol_b tf_label break_date  n_post_settling_bars  half_life_rolling  coint_fraction_rolling  n_trades   sharpe  total_pnl  win_rate
-     ALB       DD       1h 2024-03-05                  3546         181.003870                     NaN        72  -3.0737   -1223.22    0.1250
-     CDW       DD       1h 2024-11-04                  2535         161.769916                     NaN         0      NaN        NaN       NaN
-      DD      FDX       1h 2024-01-12                  3756         125.578646                     NaN        93 -10.1305   -1959.44    0.0753
-      DD     ROST       1h 2024-01-12                  3756         294.752526                     NaN        41   7.8215    1210.12    0.2439
-      DD      ENS       1h 2024-01-16                  3750         158.627929                     NaN        29   0.6907      38.05    0.2414
-03:34:48 INFO  Saved -> C:\Users\RossW\Projects\CAMARF\output\research\decoupling_backtest.parquet
-03:34:48 INFO  This is IS-only (no holdout split — too little post-break history to split further for most pairs). A positive result here is evidence for the live-pipeline wiring decision, not itself an OOS-validated claim.
-03:34:48 INFO  ============================================================
-03:34:48 INFO  decoupling_backtest.py complete (1.9 min)
+13:41:21 INFO  === decoupling_backtest.py: backtest the re-qualified pairs on their post-break window ===
+13:41:21 INFO  4 re-qualified pairs to build and backtest
+13:41:27 INFO    ETN/PH@1D: 35 trades, Sharpe=-3.980, PnL=-642.69, WR=20%, HL=232.5, coint_frac=nan
+13:41:30 INFO    SPY/VOO@1m: 15 trades, Sharpe=-279.584, PnL=-21.91, WR=27%, HL=67.2, coint_frac=nan
+13:41:34 INFO    EXC/SO@2m: 12 trades, Sharpe=-146.512, PnL=-635.84, WR=33%, HL=181.4, coint_frac=nan
+13:41:35 INFO    SPY/VOO@2m: 12 trades, Sharpe=-590.154, PnL=-25.63, WR=0%, HL=56.4, coint_frac=nan
+13:41:35 INFO  
+--- Result: 4/4 re-qualified pairs generated trades; 0/4 had positive Sharpe ---
+13:41:35 INFO  
+symbol_a symbol_b tf_label break_date  n_post_settling_bars  half_life_rolling  coint_fraction_rolling  n_trades    sharpe  total_pnl  win_rate
+     ETN       PH       1D 2013-04-30                  3243         232.529788                     NaN        35   -3.9800    -642.69    0.2000
+     SPY      VOO       1m 2026-07-27                  1890          67.167409                     NaN        15 -279.5843     -21.91    0.2667
+     EXC       SO       2m 2026-07-14                  2670         181.439178                     NaN        12 -146.5123    -635.84    0.3333
+     SPY      VOO       2m 2026-07-23                  1305          56.369823                     NaN        12 -590.1535     -25.63    0.0000
+13:41:35 INFO  Saved -> C:\Users\RossW\Projects\CAMARF\output\research\decoupling_backtest.parquet
+13:41:35 INFO  This is IS-only (no holdout split — too little post-break history to split further for most pairs). A positive result here is evidence for the live-pipeline wiring decision, not itself an OOS-validated claim.
+13:41:35 INFO  ============================================================
+13:41:35 INFO  decoupling_backtest.py complete (0.2 min)

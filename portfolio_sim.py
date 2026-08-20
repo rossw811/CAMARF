@@ -52,6 +52,8 @@ import sys
 import numpy as np
 import pandas as pd
 
+from config import Config
+
 log = logging.getLogger("portfolio_sim")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s  %(levelname)-8s  %(message)s", datefmt="%H:%M:%S")
 
@@ -120,10 +122,15 @@ def get_spread_at(symbol_a: str, symbol_b: str, tf_label: str, ts: pd.Timestamp)
 # existed since the project's original design phase, never implemented
 # anywhere until this build (2026-07-12).
 # ---------------------------------------------------------------------------
-_ADAPTIVE_WINDOW_MULT = 8      # matches analysis.py's OU_WINDOW_HALFLIFE_MULT_MEAN
-_ADAPTIVE_WINDOW_MIN = 30      # matches analysis.py's OU_WINDOW_MIN_BARS
-_ADAPTIVE_WINDOW_MAX = 252     # matches analysis.py's OU_LOOKBACK_DAYS
-STOP_ZSCORE = 3.5              # matches Config.BACKTEST.STOP_ZSCORE
+# Formerly hardcoded module constants "matching" config.py by manual convention
+# only (Config was never actually imported here) -- a real silent-drift risk,
+# same class of bug BUG-D71 already caught in wfa.py: edit config.py, this
+# file's copy quietly goes stale. Fixed 2026-08-13 (Thread G-Full) to read
+# live from Config instead of a frozen, independently-maintained duplicate.
+_ADAPTIVE_WINDOW_MULT = Config.ANALYSIS.OU_WINDOW_HALFLIFE_MULT_MEAN
+_ADAPTIVE_WINDOW_MIN = Config.ANALYSIS.OU_WINDOW_MIN_BARS
+_ADAPTIVE_WINDOW_MAX = Config.ANALYSIS.OU_LOOKBACK_DAYS
+STOP_ZSCORE = Config.BACKTEST.STOP_ZSCORE
 
 _rolling_std_cache = {}
 
@@ -205,7 +212,9 @@ def unrealized_pnl(pos: dict, ts: pd.Timestamp) -> float:
 _KELLY_MIN_TRADES = 60  # Development.md's own documented convention: Kelly estimate unreliable
                         # below 60 realized trades -- a bias, not silently corrected away
                         # (CLAUDE.md rule 6). Below this, Kelly methods fall back to flat_2pct.
-_FLAT_RISK_PCT = 0.02   # "Fixed 2% risk" per the original Development.md sizing spec
+_FLAT_RISK_PCT = Config.BACKTEST.FLAT_RISK_PCT  # "Fixed 2% risk" per the original Development.md
+                        # sizing spec -- was hardcoded independently of config.py's own
+                        # (also-0.02, but disconnected) FLAT_RISK_PCT, same drift-risk bug fixed above
 
 # Kelly fraction multipliers. half_kelly/full_kelly were the original Development.md spec;
 # quarter_kelly/third_kelly added 2026-07-12 per Ross's request. IMPORTANT, stated explicitly
@@ -241,6 +250,9 @@ def replay_portfolio(
     starting_capital: float,
     sizing_method: str = "fixed",
     min_size_scale: float = 0.05,
+    flat_risk_pct: float = None,
+    concentration_cap: float = None,
+    leverage_cap: float = None,
 ) -> dict:
     """
     Event-driven, capital-constrained, mark-to-market replay of an already-generated trade list.
@@ -252,7 +264,17 @@ def replay_portfolio(
     sizing_method: "fixed" | "equity_proportional" | "flat_2pct" | "half_kelly" | "full_kelly".
     The three risk-based methods size off the causal stop-distance estimate (see
     stop_distance_dollars_per_share) rather than scaling the original backtest.py share count.
+
+    flat_risk_pct: overrides the module-level `_FLAT_RISK_PCT` default (itself read from
+    Config.BACKTEST.FLAT_RISK_PCT at IMPORT time). Real bug found + fixed 2026-08-13 (Thread G-Full
+    Tier 2 investigation): backtest.py's `--override FLAT_RISK_PCT=X` mutates a per-run COPY of
+    Config.BACKTEST, not the global itself, so the module-level `_FLAT_RISK_PCT` here never saw the
+    override regardless of import order -- every Tier 2 sweep grid point silently used the SAME
+    default value, producing a measured zero effect that was actually a wiring gap, not a genuine
+    null result. Callers that want an override must now pass it explicitly; the default (None)
+    preserves the original module-level-constant behavior for every other existing caller.
     """
+    risk_pct = flat_risk_pct if flat_risk_pct is not None else _FLAT_RISK_PCT
     trades = trades_df.sort_values("entry_time").copy()
     trades["notional_at_entry"] = trades.apply(lambda t: notional_at_entry(t), axis=1)
     records = trades.to_dict("records")
@@ -320,11 +342,11 @@ def replay_portfolio(
                 n_skipped_no_risk_estimate += 1
                 continue  # can't estimate risk causally -- skip rather than guess
             if sizing_method == "flat_2pct":
-                risk_fraction = _FLAT_RISK_PCT
+                risk_fraction = risk_pct
             else:
                 f_star = _kelly_fraction(closed_pnls)
                 if not np.isfinite(f_star):
-                    risk_fraction = _FLAT_RISK_PCT  # fallback: <60 trades, per Development.md convention
+                    risk_fraction = risk_pct  # fallback: <60 trades, per Development.md convention
                     used_kelly_fallback = True
                 else:
                     risk_fraction = f_star * _KELLY_MULTS[sizing_method]
@@ -345,6 +367,28 @@ def replay_portfolio(
 
         if used_kelly_fallback:
             n_kelly_fallback += 1
+
+        # concentration_cap (added 2026-08-14, Thread G-Full follow-up): MAX_CONCENTRATION_PCT
+        # was a declared-but-dead config constant -- confirmed via codebase grep that no code
+        # anywhere enforced it despite backtest.py's own module docstring once describing it as
+        # active (see the 2026-07-20 "Tier 6 doc-drift fix" note there). This is the real
+        # enforcement point: applied here, not in backtest.py's per-pair Layer 1 loop, because
+        # concentration is inherently a PORTFOLIO-level (cross-pair) concept -- this replay
+        # engine is the only place that already tracks current_equity across all open positions
+        # simultaneously. Caps target_notional at a fraction of CURRENT equity (not starting
+        # capital), consistent with every other sizing method here scaling off current_equity.
+        if concentration_cap is not None:
+            target_notional = min(target_notional, current_equity * concentration_cap)
+
+        # leverage_cap (Thread N #2, 2026-08-14): caps TOTAL gross exposure (already-committed
+        # notional across ALL open positions + this new one) at a fixed multiple of current
+        # equity -- matches the UCITS commitment-approach / '40 Act Section 18 asset-coverage
+        # convention (a portfolio-wide constraint, unlike concentration_cap's per-position one).
+        # Enforced the same way as the capital-availability cap below: shrinks target_notional
+        # to whatever gross-exposure room remains, rather than rejecting the trade outright.
+        if leverage_cap is not None:
+            max_allowed_new_notional = max(0.0, leverage_cap * current_equity - committed_now)
+            target_notional = min(target_notional, max_allowed_new_notional)
 
         size_scale = min(1.0, available / target_notional) if target_notional > 0 else 0.0
         if size_scale < min_size_scale:

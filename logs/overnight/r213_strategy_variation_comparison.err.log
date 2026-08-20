@@ -1,0 +1,4 @@
+16:40:55 INFO  === strategy_variation_comparison.py: does the stat-arb structure carry the edge, or would generic single-asset strategies do as well on the same names? ===
+2026-08-11 16:40:55  INFO      === strategy_variation_comparison.py: does the stat-arb structure carry the edge, or would generic single-asset strategies do as well on the same names? ===
+16:40:55 INFO  Loaded 11 (pair, tf) rows from all_candidates.parquet across all timeframes
+2026-08-11 16:40:55  INFO      Loaded 11 (pair, tf) rows from all_candidates.parquet across all timeframes

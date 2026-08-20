@@ -23,13 +23,19 @@ wrds_deep_history_episodic_scan.py, built 2026-08-02 as BUG-D106's fix,
 verified 4/4 synthetically at build time) -- "as of date T, would this
 pair have been episodically confirmed using only historical windows
 that had ALREADY CONCLUDED by T." Reads the episodic scan's own final
-output files directly (tier2_windows, tier3_windows), which carry a
-real window_end_date on every row as of the 2026-08-04/05 overnight
-re-scan (the ONLY re-scan that has this field -- the prior 2026-07-28
-cache predates the fix and is explicitly rejected, not silently used,
-if window_end_date is absent). Tier 1 (full-sample confirmation) is
+Tier 3 output file directly (tier3_windows), which carries a real
+window_end_date on every row as of the 2026-08-04/05 overnight re-scan
+(the ONLY re-scan that has this field -- the prior 2026-07-28 cache
+predates the fix and is explicitly rejected, not silently used, if
+window_end_date is absent). Tier 1 (full-sample confirmation) is
 deliberately excluded -- it is not point-in-time by construction, the
-same reasoning behind this whole module's existence.
+same reasoning behind this whole module's existence. **Tier 2 excluded
+for the SAME reason as of BUG-D112 (2026-08-11)**: its candidate pool is
+also a single whole-history correlation matrix, non-causal by
+construction -- this was an inconsistency in the original exclusion
+logic (Tier 1 excluded, Tier 2 wasn't, despite sharing the identical
+non-causal candidate-selection mechanism), not a newly-introduced
+restriction.
 
 PATH UPDATE (2026-08-05): originally pointed at
 `checkpoint_tier2_rolling.parquet`/`checkpoint_tier3_rolling.parquet` --
@@ -43,8 +49,8 @@ it could return an empty result masquerading as "confirmed" -- see
 surfaced this). Paths below now point at the final, complete files.
 
 IMPORTANT SCOPE NOTE, disclosed directly: this covers the WRDS-sourced,
-daily-and-coarser episodic universe (Tier 2/3 of the episodic scan) --
-it does NOT cover intraday timeframes, which analysis.py's standard
+daily-and-coarser episodic universe (Tier 3 of the episodic scan only,
+as of BUG-D112) -- it does NOT cover intraday timeframes, which analysis.py's standard
 screen does test. Every returned tuple currently carries tf_label="1D"
 for this reason. A research script switching to this adapter for an
 intraday comparison arm should keep that limitation in mind rather than
@@ -68,7 +74,12 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(
 from wrds_deep_history_episodic_scan import episodic_bhfdr_confirm_asof
 
 _DEFAULT_CHECKPOINT_PATHS = (
-    "output/research/wrds_deep_history_episodic_scan_tier2_windows.parquet",
+    # Tier 2 REMOVED (BUG-D112, 2026-08-11): its candidate pool comes from a
+    # single whole-history correlation matrix, non-causal by construction --
+    # the SAME reason Tier 1 was already excluded from this PIT-safe set (see
+    # module docstring). Tier 2's files still exist as a legitimate,
+    # disclosed non-PIT-safe comparison arm; they just no longer feed the
+    # PIT-safe pair-discovery path. Tier 3 only from here on.
     "output/research/wrds_deep_history_episodic_scan_tier3_windows.parquet",
 )
 

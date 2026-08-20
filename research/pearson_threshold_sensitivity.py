@@ -48,14 +48,12 @@ import pandas as pd
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from config import Config
-from data import DataAligner
 from analysis import UniverseFilter, _eg_worker, _benjamini_hochberg, CointScanner
+from universe_loader import align_to_common_calendar, load_full_universe
 
 _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-_CACHE_DIR = os.path.join(_ROOT, "output", "cache")
 _OUT_DIR = os.path.join(_ROOT, "output", "research")
 TF_LABEL = "1h"
-TF_SUFFIX = "1hr"
 
 # Loosest threshold tested (superset), plus the two tighter cuts to compare
 # against, including the current production value (0.40).
@@ -79,34 +77,23 @@ def _setup_logging():
     log.addHandler(fh)
 
 
-def load_full_universe(suffix: str = TF_SUFFIX):
-    all_files = [f for f in os.listdir(_CACHE_DIR) if f.endswith(f"_{suffix}.parquet")]
-    symbols = sorted(f[: -len(f"_{suffix}.parquet")] for f in all_files)
-    tf_data_raw = {}
-    for sym in symbols:
-        path = os.path.join(_CACHE_DIR, f"{sym}_{suffix}.parquet")
-        try:
-            df = pd.read_parquet(path)
-            if df is not None and not df.empty and "close" in df.columns:
-                tf_data_raw[sym] = df
-        except Exception:
-            continue
-    return tf_data_raw
-
-
 def main():
     _setup_logging()
     t0 = time.time()
     log.info("=== pearson_threshold_sensitivity.py: does loosening the Pearson pre-filter "
               "recover confirmed pairs at 1h, or just add multiple-testing burden? ===")
 
-    tf_data_raw = load_full_universe()
-    log.info("Loaded %d symbols with usable %s cache", len(tf_data_raw), TF_LABEL)
+    # REWIRED 2026-08-17 (methodology audit, Ross: "rewire them"): dropped this script's own
+    # local load_full_universe() (old yfinance-only cache, same duplicated-loader bug class
+    # as k_bahc_candidate_discovery.py) for the canonical universe_loader.py merge. WRDS is
+    # daily-only, so at TF_LABEL="1h" this is not meaningfully larger than the old scope --
+    # disclosed, not hidden.
+    tf_data_raw = load_full_universe(TF_LABEL, columns=["close"])
+    log.info("Loaded %d symbols from the merged yfinance+WRDS+Binance+IBKR universe (tf=%s)",
+             len(tf_data_raw), TF_LABEL)
 
-    log.info("Aligning via real production DataAligner.align_universe()...")
-    aligned = DataAligner.align_universe(
-        {f"{sym}_{TF_LABEL}": df for sym, df in tf_data_raw.items()}, TF_LABEL
-    )
+    log.info("Aligning to a shared calendar (align_to_common_calendar, lookback_years=10)...")
+    aligned = align_to_common_calendar(tf_data_raw, lookback_years=10)
     log.info("Aligned: %d symbols", len(aligned))
 
     asset_class_map = {sym: "equity" for sym in aligned}

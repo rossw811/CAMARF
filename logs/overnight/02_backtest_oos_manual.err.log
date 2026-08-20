@@ -1,0 +1,9 @@
+2026-08-11 13:38:35  INFO      Survivorship exclusions loaded: 383 delist events
+2026-08-11 13:38:35  INFO      [3m] 1 confirmed pairs
+2026-08-11 13:38:35  INFO      [4h] 1 confirmed pairs
+2026-08-11 13:38:35  INFO        PNC/ZION@4h[ols] 1 trades | WR=100% | SR=nan | PnL=160.07
+2026-08-11 13:38:35  INFO        PNC/ZION@4h[kalman] 1 trades | WR=100% | SR=nan | PnL=159.89
+2026-08-11 13:38:35  INFO      [1D] 1 confirmed pairs
+2026-08-11 13:38:35  INFO        IQV/Q@1D[ols] 3 trades | WR=0% | SR=-12201.91 | PnL=-6.01
+2026-08-11 13:38:35  INFO        IQV/Q@1D[kalman] 3 trades | WR=0% | SR=-12201.91 | PnL=-6.01
+2026-08-11 13:38:35  INFO      Run summary → latest_run_backtest.log

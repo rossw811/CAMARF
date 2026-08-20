@@ -1,0 +1,14 @@
+16:44:43 INFO  === wrds_deep_history_episodic_scan.py: does WRDS's much deeper daily history reveal cointegrated pairs yfinance's own 1D scan (0 confirmed) lacked the depth/quality to detect? ===
+2026-08-11 16:44:43  INFO      === wrds_deep_history_episodic_scan.py: does WRDS's much deeper daily history reveal cointegrated pairs yfinance's own 1D scan (0 confirmed) lacked the depth/quality to detect? ===
+16:45:20 INFO  Loaded 5846 symbols from output/cache/wrds/: 2843 total-return-adjusted (CRSP), 3003 split-only-adjusted (Compustat Global, disclosed)
+2026-08-11 16:45:20  INFO      Loaded 5846 symbols from output/cache/wrds/: 2843 total-return-adjusted (CRSP), 3003 split-only-adjusted (Compustat Global, disclosed)
+16:45:20 INFO  Building rolling ADV series for the liquidity gate (separate load pass, needs volume)...
+2026-08-11 16:45:20  INFO      Building rolling ADV series for the liquidity gate (separate load pass, needs volume)...
+2026-08-11 16:45:49  INFO      Loaded 5820 symbols with close+volume from output/cache/wrds/
+16:45:59 INFO  Rolling ADV computed for 5820 symbols (threshold $25M, applied to Tier 2/3 only -- Tier 1's full-sample test is unchanged, production-identical)
+2026-08-11 16:45:59  INFO      Rolling ADV computed for 5820 symbols (threshold $25M, applied to Tier 2/3 only -- Tier 1's full-sample test is unchanged, production-identical)
+16:46:00 INFO  Point-in-time membership gate ACTIVE: 2084 membership spells, 2826 symbols resolved to permnos
+2026-08-11 16:46:00  INFO      Point-in-time membership gate ACTIVE: 2084 membership spells, 2826 symbols resolved to permnos
+16:46:36 INFO  5762 symbols have >=756 bars of overlapping history
+2026-08-11 16:46:36  INFO      5762 symbols have >=756 bars of overlapping history
+16:47:43 INFO  Candidate pairs at threshold 0.4: 220493 (Pearson pre-filter, same as production)

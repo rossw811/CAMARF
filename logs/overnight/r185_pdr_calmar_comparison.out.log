@@ -1,0 +1,4 @@
+Loaded 90 trades from output/backtest/trades_layer1.parquet, account size $100,000
+
+        third_kelly        4       86  102,002.3107  1.3922      0.0000            inf         NaN     NaN
+      quarter_kelly        4       86  102,002.3107  1.3922      0.0000            inf         NaN     NaN

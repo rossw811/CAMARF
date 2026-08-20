@@ -82,20 +82,13 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from config import Config
-from data import DataAligner
 from analysis import UniverseFilter, _eg_worker, _benjamini_hochberg, CointScanner
 from tail_dependence import _empirical_tail_dependence
 from bh_fdr_dependence_check import benjamini_yekutieli
+from universe_loader import align_to_common_calendar, load_full_universe
 
 _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-_CACHE_DIR = os.path.join(_ROOT, "output", "cache")
 _OUT_DIR = os.path.join(_ROOT, "output", "research")
-
-_TF_SAFE = {
-    "1m": "1min", "2m": "2min", "3m": "3min", "5m": "5min", "15m": "15min",
-    "30m": "30min", "1h": "1hr", "4h": "4hr", "1D": "1day", "7D": "7day",
-    "1M": "1mo", "3M": "3mo", "6M": "6mo",
-}
 
 log = logging.getLogger("tail_dependence_universe_screen")
 
@@ -125,21 +118,6 @@ def binomial_tail_pvalue(hit_count: int, n: int, q: float) -> float:
     if n <= 0:
         return float("nan")
     return float(binom.sf(hit_count - 1, n, q))
-
-
-def load_full_universe(suffix):
-    all_files = [f for f in os.listdir(_CACHE_DIR) if f.endswith(f"_{suffix}.parquet")]
-    symbols = sorted(f[: -len(f"_{suffix}.parquet")] for f in all_files)
-    tf_data_raw = {}
-    for sym in symbols:
-        path = os.path.join(_CACHE_DIR, f"{sym}_{suffix}.parquet")
-        try:
-            df = pd.read_parquet(path)
-            if df is not None and not df.empty and "close" in df.columns:
-                tf_data_raw[sym] = df
-        except Exception:
-            continue
-    return tf_data_raw
 
 
 def find_near_miss_pairs(pearson, symbols, near_miss_low, near_miss_high):
@@ -238,17 +216,20 @@ def main():
               "near-miss band (%.2f<=|corr|<%.2f) the linear pre-filter misses? (tf=%s) ===",
               args.near_miss_low, near_miss_high, tf_label)
 
-    suffix = _TF_SAFE.get(tf_label, tf_label.lower())
-    tf_data_raw = load_full_universe(suffix)
-    log.info("Loaded %d symbols with usable %s cache", len(tf_data_raw), tf_label)
+    # REWIRED 2026-08-17 (methodology audit, Ross: "rewire them"): dropped this script's own
+    # local load_full_universe() (old yfinance-only cache, same duplicated-loader bug class
+    # as k_bahc_candidate_discovery.py) for the canonical universe_loader.py merge. WRDS is
+    # daily-only, so at tf != "1D" this is not meaningfully larger than the old scope --
+    # disclosed, not hidden.
+    tf_data_raw = load_full_universe(tf_label, columns=["close"])
+    log.info("Loaded %d symbols from the merged yfinance+WRDS+Binance+IBKR universe (tf=%s)",
+             len(tf_data_raw), tf_label)
     if len(tf_data_raw) < 10:
         log.warning("Fewer than 10 symbols -- aborting.")
         return
 
-    log.info("Aligning via real production DataAligner.align_universe()...")
-    aligned = DataAligner.align_universe(
-        {f"{sym}_{tf_label}": df for sym, df in tf_data_raw.items()}, tf_label
-    )
+    log.info("Aligning to a shared calendar (align_to_common_calendar, lookback_years=10)...")
+    aligned = align_to_common_calendar(tf_data_raw, lookback_years=10)
     log.info("Aligned: %d symbols", len(aligned))
 
     asset_class_map = {sym: "equity" for sym in aligned}
