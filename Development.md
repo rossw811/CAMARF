@@ -23641,6 +23641,25 @@ benchmark (blocked on GPU headroom, deprioritized per Ross — "skip benchmarkin
 doesn't have scoped), and the deliberately-gated Tier-2 GPU reimplementation of the
 Engle-Granger/Johansen test family (scoped only, needs Ross's explicit sign-off before any code).
 
+### START HERE next session (2026-08-20) — verify, full rerun, narrative from the ground up
+
+Ross's explicit sequencing, discussing the PAPER.md pivot: "i think we need to rerun all our
+scripts after we've verified they're properly updated and figure out a narrative from the ground
+up but i like your idea" — agreeing with the extended two-paper pivot (this file's "PAPER.md
+restructuring discussion" entry, `docs/HANDOFF.md` ~line 1048): new thesis = "PIT-safe episodic
+screening finds more relationships than static screening, and honestly backtesting them shows why
+static screening's apparent edge was itself lookahead-contaminated" — built from real numbers,
+not the old chat's pre-BUG-D112 647-pair count. Genuinely multi-session (matches the already-scoped
+capstone task #46), deliberately NOT started this session. Order: (1) verify every script is
+properly updated — confirm `episodic_pairs_adapter.py` output is current against the
+BUG-D112-fixed 182-pair set not a stale checkpoint (this exact bug class hit twice already), audit
+the ~90 research scripts never individually checked this session for cross-script pair-source
+wiring, get an explicit decision on `eg_null_calibration_montecarlo.py`'s known stale-cache bug
+before including it; (2) full rerun — likely on CachyOS now the cache transfer is complete and
+`run_overnight_research.py` exists, a real chance to also get the GPU/scheduler timing questions
+answered as a side effect; (3) narrative only after real numbers exist — don't draft PAPER.md text
+first, that's the exact mistake being corrected.
+
 Files: `config.py` (new `RuntimeConfig`), `analysis.py` (8 sites), `pyproject.toml` (new),
 `data_wrds.py` (3 new consolidated functions + `glob` import), `research/build_symbol_permno_map.py`,
 `research/build_wrds_supplementary_data.py`, `research/wrds_global_index_universe_fetch.py`
