@@ -36,8 +36,33 @@ docstring), the honest expectation going in is that this mechanism is
 UNLIKELY to surface much at full-universe scale -- reported honestly
 either way, not massaged toward a predetermined conclusion.
 
+REWIRED 2026-08-17 (Ross, after the RAM-crash handoff: "run everything on the
+17-18k universe calendar aligned"): this script previously read only
+Config.DATA.CACHE_DIR (the old yfinance-only, ~1,567-1,730 symbol cache) via
+its own local load_full_universe(suffix) -- meaning every "universe-wide"
+k-BAHC run to date (2026-07-21 original, 2026-08-16 "reconfirmed" 1h/4h/1D)
+never actually saw the WRDS-expanded universe at all, despite the plan
+treating Thread P step 1 as complete. Real, checked-not-assumed reason this
+can't just point at the full 44,840-symbol merged universe like the other
+full-universe scripts: k-BAHC's clustering step needs the FULL dense N×N
+correlation matrix at once (UniverseFilter.run(..., return_matrices=True)),
+unlike the streaming/chunked candidate-pairs-only approach used elsewhere --
+at 44,840 symbols that's a ~16GB float64 (or ~8GB float32) matrix alone, not
+feasible on this 16GB-RAM machine even before adding a second concurrent job.
+Rewired instead to universe_loader.load_full_universe() (yfinance+WRDS+
+Binance+IBKR merge) + align_to_common_calendar(lookback_years=10) -- the
+same calendar-bounded ~17-18k-symbol scope Thread J Test 1 uses (18,283
+symbols in that run), which keeps the dense matrix feasible (~18k^2 * 4
+bytes float32 =~ 1.2GB) while still being a real, order-of-magnitude-larger
+test than the old ~1,700-symbol scope. If this run and a genuine 44,840-
+symbol run (memory permitting, e.g. on different hardware) disagree
+considerably, use the larger, more complete universe's result -- this
+scoped-down run is a capacity compromise, not a claim that 17-18k is the
+methodologically preferred universe.
+
 Usage:
     python research/k_bahc_candidate_discovery.py --tf 1h
+    python research/k_bahc_candidate_discovery.py --tf 1h --lookback-years 10
 """
 import argparse
 import logging
@@ -53,19 +78,12 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from config import Config
-from data import DataAligner
 from analysis import UniverseFilter, _eg_worker, _benjamini_hochberg, CointScanner
 from k_bahc_covariance_cleaning import clean_correlation_matrix
+from universe_loader import align_to_common_calendar, load_full_universe
 
 _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-_CACHE_DIR = os.path.join(_ROOT, "output", "cache")
 _OUT_DIR = os.path.join(_ROOT, "output", "research")
-
-_TF_SAFE = {
-    "1m": "1min", "2m": "2min", "3m": "3min", "5m": "5min", "15m": "15min",
-    "30m": "30min", "1h": "1hr", "4h": "4hr", "1D": "1day", "7D": "7day",
-    "1M": "1mo", "3M": "3mo", "6M": "6mo",
-}
 
 log = logging.getLogger("k_bahc_candidate_discovery")
 
@@ -84,21 +102,6 @@ def _setup_logging(tf_label):
     fh.setLevel(logging.DEBUG)
     fh.setFormatter(fmt)
     log.addHandler(fh)
-
-
-def load_full_universe(suffix):
-    all_files = [f for f in os.listdir(_CACHE_DIR) if f.endswith(f"_{suffix}.parquet")]
-    symbols = sorted(f[: -len(f"_{suffix}.parquet")] for f in all_files)
-    tf_data_raw = {}
-    for sym in symbols:
-        path = os.path.join(_CACHE_DIR, f"{sym}_{suffix}.parquet")
-        try:
-            df = pd.read_parquet(path)
-            if df is not None and not df.empty and "close" in df.columns:
-                tf_data_raw[sym] = df
-        except Exception:
-            continue
-    return tf_data_raw
 
 
 def find_new_and_removed_candidates(raw_corr, cleaned_corr, symbols, threshold):
@@ -179,6 +182,9 @@ def main():
                          "Correlation structure may be richer within a single sector than across the "
                          "full ~1500-asset universe, where cross-sector relationships dilute the "
                          "average toward the project's own established rho_bar~0 finding.")
+    p.add_argument("--lookback-years", type=int, default=10,
+                    help="Calendar-alignment bound passed to align_to_common_calendar (2026-08-17 "
+                         "rewire) -- matches Thread J Test 1's own scope by default.")
     args = p.parse_args()
     tf_label = args.tf
     _setup_logging(tf_label)
@@ -187,9 +193,15 @@ def main():
     log.info("=== k_bahc_candidate_discovery.py: does denoising the correlation matrix "
               "surface new pair candidates the raw Pearson pre-filter misses? (tf=%s) ===", tf_label)
 
-    suffix = _TF_SAFE.get(tf_label, tf_label.lower())
-    tf_data_raw = load_full_universe(suffix)
-    log.info("Loaded %d symbols with usable %s cache", len(tf_data_raw), tf_label)
+    # columns=["close"] (2026-08-17, real OOM near-miss): this script only ever uses the
+    # close column downstream -- see universe_loader.load_full_universe's own docstring.
+    tf_data_raw = load_full_universe(tf_label, columns=["close"])
+    log.info("Loaded %d symbols from the merged yfinance+WRDS+Binance+IBKR universe for tf=%s",
+             len(tf_data_raw), tf_label)
+    if tf_label != "1D":
+        log.warning("tf=%s: WRDS (the source of the ~44,840-symbol expansion) is daily-only -- "
+                     "the merged universe at this timeframe is NOT meaningfully larger than the "
+                     "old ~1,700-symbol scope. Only tf=1D sees the real expansion.", tf_label)
 
     if args.sector:
         sector_map = _load_sector_map()
@@ -204,20 +216,31 @@ def main():
         log.warning("Fewer than 10 symbols -- not enough for a meaningful clustering exercise. Aborting.")
         return
 
-    log.info("Aligning via real production DataAligner.align_universe()...")
-    aligned = DataAligner.align_universe(
-        {f"{sym}_{tf_label}": df for sym, df in tf_data_raw.items()}, tf_label
-    )
+    log.info("Aligning to a shared calendar (lookback_years=%d)...", args.lookback_years)
+    aligned = align_to_common_calendar(tf_data_raw, lookback_years=args.lookback_years)
     log.info("Aligned: %d symbols", len(aligned))
 
     threshold = Config.UNIVERSE.MIN_PEARSON_CORR
     asset_class_map = {sym: "equity" for sym in aligned}
-    log.info("Running real production UniverseFilter (Pearson pre-filter, threshold=%s)...", threshold)
-    pairs, symbols, returns, pearson, symbol_order = UniverseFilter.run(
-        aligned, asset_class_map, threshold=threshold, tf_label=tf_label, return_matrices=True,
+    # REWIRED again, 2026-08-17, same night: even pearson_only=True still peaked at multiple
+    # simultaneous (n,n) float64 arrays during correlation_matrix()'s own internal expression
+    # evaluation (mid-expression temporaries, not eliminated by low_memory=True's explicit
+    # `del`s alone) -- a second real near-miss caught live at N=17,324, ~600MB free before
+    # being killed. Real fix: UniverseFilter.chunked_pearson_matrix() builds the SAME full
+    # dense matrix k-BAHC's clustering step needs, but bounded to block-sized peaks (see its
+    # own docstring). This is what k-BAHC needed all along -- the full matrix, computed safely.
+    _min_overlap = getattr(Config.STATS, "MIN_OVERLAP_BY_TF", {}).get(tf_label, 252)
+    returns, symbols, _idx = UniverseFilter.build_returns_matrix(aligned, min_overlap=_min_overlap)
+    log.info("Returns matrix built: %d symbols retained after overlap filtering", len(symbols))
+    log.info("Computing %dx%d Pearson correlation matrix (chunked, memory-bounded)...",
+              len(symbols), len(symbols))
+    pearson = UniverseFilter.chunked_pearson_matrix(
+        returns, batch_size=1500, progress_every=20, progress_label=f"[{tf_label}] ",
     )
+    finite_mask = np.isfinite(pearson) & ~np.eye(len(symbols), dtype=bool)
+    n_candidates = int(np.sum((np.abs(pearson) >= threshold) & finite_mask)) // 2
     n_possible = len(symbols) * (len(symbols) - 1) // 2
-    log.info("Raw candidates (|corr|>=%.2f): %d / %d possible pairs", threshold, len(pairs), n_possible)
+    log.info("Raw candidates (|corr|>=%.2f): %d / %d possible pairs", threshold, n_candidates, n_possible)
 
     log.info("Applying k-BAHC cleaning (max_k=%d) to the %dx%d Pearson matrix...",
               args.max_k, len(symbols), len(symbols))

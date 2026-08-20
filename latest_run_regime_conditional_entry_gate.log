@@ -1,14 +1,16 @@
-10:51:45 INFO  === regime_conditional_entry_gate.py: rule-based regime bucketing, conditional vs. unconditional Sharpe ===
-10:51:46 INFO  Regime bucket distribution:
+16:19:14 INFO  === regime_conditional_entry_gate.py: rule-based regime bucketing, conditional vs. unconditional Sharpe ===
+16:19:14 INFO  Regime bucket distribution:
 regime_bucket
-neutral    8
-bad        4
-10:51:46 INFO  
---- Unconditional (all 12 trades) Sharpe: 72.306 ---
-10:51:46 INFO    bad        n=   4  Sharpe=    n/a  win_rate=1.00  mean_pnl=$109.44  total_pnl=$437.78
-10:51:46 INFO    neutral    n=   8  Sharpe=172.472  win_rate=1.00  mean_pnl=$148.59  total_pnl=$1188.75
-10:51:46 INFO  
+unknown    86
+neutral     8
+bad         4
+16:19:14 INFO  
+--- Unconditional (all 98 trades) Sharpe: 5.092 ---
+16:19:14 INFO    bad        n=   4  Sharpe=    n/a  win_rate=1.00  mean_pnl=$109.44  total_pnl=$437.78
+16:19:14 INFO    neutral    n=   8  Sharpe=172.472  win_rate=1.00  mean_pnl=$148.59  total_pnl=$1188.75
+16:19:14 INFO    unknown    n=  86  Sharpe=-13499.549  win_rate=0.00  mean_pnl=$-2.00  total_pnl=$-171.99
+16:19:14 INFO  
 Honest scope note: regime bucketing is rule-based (fixed thresholds on hurst_at_entry/spread_velocity/vix_ts_regime), not the original spec's full HMM-discovered-state design. 'good'/'bad' bucket sizes may be small — read Sharpe comparisons in light of n_trades per bucket, not as a settled finding at low n.
-10:51:46 INFO  Saved -> output/research/regime_conditional_entry_gate.parquet
-10:51:46 INFO  ============================================================
-10:51:46 INFO  regime_conditional_entry_gate.py complete (0.0 min)
+16:19:14 INFO  Saved -> output/research/regime_conditional_entry_gate.parquet
+16:19:14 INFO  ============================================================
+16:19:14 INFO  regime_conditional_entry_gate.py complete (0.0 min)

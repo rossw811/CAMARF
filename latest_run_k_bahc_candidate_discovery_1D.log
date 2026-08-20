@@ -1,0 +1,3 @@
+13:18:58 INFO  === k_bahc_candidate_discovery.py: does denoising the correlation matrix surface new pair candidates the raw Pearson pre-filter misses? (tf=1D) ===
+13:20:59 INFO  Loaded 44840 symbols from the merged yfinance+WRDS+Binance+IBKR universe for tf=1D
+13:20:59 INFO  Aligning to a shared calendar (lookback_years=10)...

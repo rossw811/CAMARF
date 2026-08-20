@@ -1,0 +1,4 @@
+ok    KVUE/KMB@3m: real_p=0.0000 perm_p=0.0220 null_frac_sig=0.070 (n_overlap=23650)
+ok    PNC/ZION@4h: real_p=0.0000 perm_p=0.0259 null_frac_sig=0.042 (n_overlap=6620)
+
+0/2 confirmed pairs flagged: real EG significant but permutation-based check is not ΓÇö BH-FDR's independence-leaning guarantee may be optimistic for these.

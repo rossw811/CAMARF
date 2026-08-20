@@ -1,0 +1,4 @@
+=== Stage 1: trend R^2 (DD vs. 30-symbol random comparison sample) ===
+symbol  r_squared     slope    n
+  EBAY   0.949349  0.000233 4533
+  IESC   0.943732  0.000533 4347

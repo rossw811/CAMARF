@@ -2,6 +2,615 @@
 
 ---
 
+**2026-08-20 — hardware optimization plan written for Ross's second machine (CachyOS,
+10.0.0.196, LAN).** k-BAHC's Windows run stays paused (last entry above) while this was done.
+Connected via SSH and read real specs directly (not assumed): 46.9GB RAM + 46.9GB zram swap
+(vs. the 16GB that caused tonight's whole ordeal), RTX 4080 (16GB VRAM, compute cap 8.9),
+8-core i7-10700K (SMT disabled), 1.86TB of currently-unmounted NVMe storage sitting next to a
+spinning-HDD-hosted `/home`. Full plan: `docs/HARDWARE_OPTIMIZATION_PLAN.md` — covers storage
+(mount the NVMe, move CAMARF's cache off the HDD), GPU (CuPy port of the exact correlation-
+matrix code that caused all 4 of tonight's real bugs — same math, ~2.4GB fits trivially in 16GB
+VRAM vs. fighting 16GB of shared system RAM; RAPIDS cuML for k-BAHC's clustering step, which
+would make the silhouette-search k-selection tonight's `--force-k` workaround avoided actually
+tractable), scoped Polars swaps (I/O-bound loader paths only, explicitly NOT a pandas rewrite),
+Ruff, Pandera at the load-boundary where this session's recurring bug classes kept originating,
+a real Python-3.14-compatibility risk flagged before any of it gets built, and an explicit
+sequencing plan. Ross is actively using this machine for other work concurrently (GPU already
+at 78% util from a running whisper-cpp job) -- the plan's own §8 covers coexistence explicitly.
+**Plan only, nothing built yet** -- each infrastructure step is flagged for a go/no-go check-in
+with Ross first, per this project's own working-style rule.
+
+---
+
+**2026-08-17, still later — the correlation-matrix memory problem is fully SOLVED (real,
+verified proof: 1,016,299 raw candidates found from 150,051,826 possible pairs, the first time
+k-BAHC has ever computed this at real WRDS-expanded scale). A fourth, different bottleneck
+found in the clustering step itself, fixed and disclosed.**
+
+`chunked_pearson_matrix` worked exactly as designed: full 17,324×17,324 matrix built in 151s,
+no memory issue, real progress the whole way through. Then a fourth near-miss hit during
+`clean_correlation_matrix`'s clustering step. **This one is NOT primarily a memory-management
+bug like the first three** -- investigated properly rather than patching blindly again:
+
+1. **Real, fixable memory waste in preprocessing**: `dist = np.sqrt(np.clip((1-corr)/2, 0, None))`
+   created 3 separate full (n,n) temporaries before `dist` itself existed, on top of the
+   caller's own `corr` array staying alive throughout. Fixed with in-place operations
+   (`dist = 1.0 - corr; dist *= 0.5; np.clip(..., out=dist); np.sqrt(..., out=dist)`) -- cuts
+   this to 1 array, explicit `del` of `dist`/`condensed` once no longer needed. Verified
+   deterministic and matches itself across runs; existing `debug/_verify_k_bahc_candidate_
+   discovery.py` still passes (no regression in the actual cleaning math).
+2. **The real, dominant cost: a genuine algorithmic-scalability wall, not memory.**
+   `_best_k_by_silhouette()` (the DEFAULT k-selection path k-BAHC's own call uses --
+   `force_k=None`) calls sklearn's `silhouette_score(metric="precomputed")` once per candidate
+   k value (up to `max_k`=6 times), each an O(n²)-scale operation over the full 17,324×17,324
+   distance matrix. This is not something an array-management fix touches -- sklearn's
+   silhouette scoring is well-documented as not scaling to this N regardless of available
+   memory. **Fix, not a workaround**: the script already has a `--force-k` flag built in
+   2026-07-21 for exactly this kind of scale concern (its own docstring already flagged
+   silhouette's cost). Relaunched with `--force-k 20`, matching the SAME value used in the
+   original 2026-07-21 exploratory run (chosen for consistency with prior project history, not
+   invented fresh) -- bypasses the expensive multi-k silhouette loop entirely (one `linkage()`
+   call, one `fcluster()` call, zero `silhouette_score` calls). **Disclosed plainly**: this is a
+   real methodological choice (which k to force), not a neutral default -- k=20 was chosen for
+   this run to get a real result at all given silhouette's infeasibility at this scale, not
+   validated as the "correct" k. If the real result looks interesting, the k-choice question is
+   worth its own follow-up, same as the original 07-21 forced-k=20 test was framed.
+
+**Universe remains the full, unscoped 44,840→17,324 symbols throughout all four fixes tonight.**
+Watch `output/k_bahc_1D_full_stderr.log` for the real result.
+
+**PAUSED, deliberately, by Ross's direct instruction: "if we're going to risk OOM kill the task
+until i tell you to pick it up."** Killed PID 23020 (the `--force-k 20` run, still in its
+loading phase, not yet re-tested against the clustering fix) and the memory-watch monitor.
+Memory confirmed recovered (~7.8GB free). **This is a deliberate pause, not a 5th crash** --
+do not restart this specific job until Ross explicitly says to. All 4 fixes so far (`pearson_
+only`, `columns=["close"]`, `chunked_pearson_matrix`, the `--force-k` clustering fix) are real,
+verified, and committed to the code -- only the actual k-BAHC *run* is on hold.
+
+---
+
+**2026-08-17, still later — the real, root-cause k-BAHC memory fix (Ross: "for k-BAHC do all,
+do not skip a piece"), found after a THIRD near-miss revealed the `pearson_only` fix was
+insufficient on its own.**
+
+Relaunched with `pearson_only=True` per the previous entry, and the memory monitor fired a
+third time -- down to ~1GB free DURING the Pearson-only matrix computation itself. Investigated
+properly rather than patching again blindly: read `_vectorized_pairwise_stats`'s actual
+implementation and found it holds up to **11 separate (n,n) float64 arrays simultaneously**
+(count, sum_x, sum_x2, sum_xy, mean_x, mean_y, var_x, var_y, cov_xy, den, corr_raw) -- at
+n=17,324 that's ~2.4GB EACH, ~26GB+ true peak, dwarfing the ~2.4GB single-matrix estimate the
+earlier `pearson_only` fix was based on. This is a genuine, pre-existing inefficiency in
+production code (`analysis.py::UniverseFilter._vectorized_pairwise_stats`), invisible at the
+old ~1,700-symbol scale (peaks at a trivial ~250MB there) and only surfaced by tonight's
+WRDS-expansion-scale k-BAHC run.
+
+**Two real fixes, both verified, not one patch on top of another:**
+
+1. **`_vectorized_pairwise_stats(low_memory=True)`** (analysis.py) -- deletes `sum_x`/`sum_x2`/
+   `sum_xy` as soon as each stops being needed, and skips computing/retaining `mean_x`/`mean_y`/
+   `cov_xy`/`den` entirely once `corr_raw` is derived from them (confirmed by reading
+   `_fix_ambiguous_variance_cells`'s own signature: it never uses those 4). Default `False` --
+   zero behavior change for existing callers. Verified bit-exact
+   (`debug/_verify_pairwise_stats_low_memory.py`, 7/7). Also applied to the existing
+   `rolling_corr_avg_matrix` call site (line ~1007), which was *already* discarding those same
+   4 values via underscore-prefixed unpacking -- same latent risk, now fixed there too, not just
+   for k-BAHC.
+2. **`UniverseFilter.chunked_pearson_matrix()`** (new, analysis.py) -- even with `low_memory=True`,
+   a single unchunked call still hits a real peak of ~6-9 co-existing (n,n) arrays during the
+   `cov_xy`/`den`/`corr_raw` expression evaluation itself (Python doesn't free mid-expression
+   temporaries until the whole statement completes) -- insufficient alone at this scale. Built a
+   proper block-wise matrix builder, same block-pair splitting pattern as the already-verified
+   `chunked_pearson_candidate_pairs`/`run_chunked` (reused, not reimplemented), except it writes
+   each block's result into ONE pre-allocated (n,n) output array instead of extracting/discarding
+   candidate pairs -- true peak is now one final (n,n) array (~2.4GB at n=17,324) plus small,
+   bounded per-block temporaries (~72MB at the default batch_size=1500), regardless of universe
+   size. Verified against the direct `correlation_matrix()` call across 5 batch sizes including
+   fully-fragmented (batch_size=1) -- matches to 1e-9 (ordinary float64 summation-order rounding,
+   not bit-exact by design, same magnitude already accepted elsewhere in this codebase)
+   (`debug/_verify_chunked_pearson_matrix.py`, 11/11).
+
+**k-BAHC rewired a third time** to call `UniverseFilter.build_returns_matrix()` +
+`UniverseFilter.chunked_pearson_matrix()` directly instead of `UniverseFilter.run()` --
+this is what the script actually needed all along (the full dense matrix, built safely), not
+another parameter tweak on the same unsuitable code path. Relaunched (new PID, watch
+`output/k_bahc_1D_full_stderr.log`), same active memory-watch monitor. **The universe itself
+remains the full, unscoped 44,840-symbol merge at every step** -- every fix tonight targeted
+how the computation is done, never what it covers, per Ross's explicit instruction.
+
+---
+
+**2026-08-17, later still — PIT-safety audit of episodic pair counting (Ross's direct request),
+a real near-miss OOM caught and fixed, and `ENTRY_ZSCORE` raised to 3.0 (Ross's explicit
+go-ahead, evidence verified first).**
+
+### PIT-safety audit of episodic/PIT pair counting — real, verified answer
+
+Ross: "i want to be sure we are properly counting episodic and PIT pairs, without look ahead
+bias or overfitting or other biases." Checked the actual code paths directly rather than trusting
+prior documentation:
+
+- **Production 182-pair set: genuinely PIT-safe, verified.** `research/episodic_pairs_adapter.py`
+  sources from `research/pit_pair_discovery.py::discover_pit_confirmed_pairs_with_detail`, which
+  uses a real `as_of_date` (defaults to "now," not hardcoded to a stale date) and
+  `episodic_bhfdr_confirm_asof()` — confirmed by reading its code: it filters to only rolling
+  windows whose `window_end_date <= as_of_date` BEFORE running BH-FDR, correctly excludes any row
+  missing that field rather than assuming eligibility, and re-applies the multiple-testing
+  correction only over the as-of-T-eligible (shrinking) subset. This is the real BUG-D112 fix,
+  and it holds up under direct inspection.
+- **Finding #27 (the `ENTRY_ZSCORE` evidence, see below) rests on this same PIT-safe 182-pair
+  set** — confirmed directly, not assumed. The z-score change is on solid ground.
+- **Thread J Test 1 is explicitly NOT PIT-safe — by its own code's docstring, not a new finding
+  tonight, but worth restating plainly since Ross asked**: it calls `episodic_bhfdr_confirm()`
+  (not the `_asof` variant), whose own docstring says outright: "this collapses across EVERY
+  historical window regardless of date -- 'was this pair EVER confirmed in any window,' not 'as of
+  date T, using only windows already concluded by T'... NOT fine as an input to any backtest or
+  live decision." Thread J Test 1's 679/341/157 counts are a legitimate answer to "does window
+  length affect episodic confirmability in principle" (its own stated, research-only purpose) but
+  must NOT be read as "what a live deployment could have actually traded" — that would require
+  rerunning with `episodic_bhfdr_confirm_asof` and a real `as_of_date` walk-forward, a materially
+  more expensive job not done here.
+- **A separate, standing statistical property worth knowing generally, not just for Thread J**:
+  BOTH confirmation functions default to `min_windows_confirmed=1` — a pair counts as confirmed
+  if AT LEAST ONE of its rolling windows clears FDR. This makes confirmation mechanically easier
+  for any pair/setup that generates more independent rolling-window tests (shorter windows, more
+  history, etc.), regardless of real edge — already covered in detail above for Thread J
+  specifically, but it's a property of the methodology itself, not a bug isolated to that one
+  script. Not something to "fix" unilaterally (min_windows_confirmed is a real, disclosed,
+  configurable parameter) — just worth keeping in mind whenever comparing episodic-confirmed
+  counts across different configurations.
+
+### `ENTRY_ZSCORE` raised 2.0 -> 3.0 (config.py:720) — Ross's explicit go-ahead, evidence verified
+
+Ross: "if the increased z scored yields better results let's do that." Re-verified Finding #27
+directly from `docs/FINDINGS.md` (not just the earlier fork's paraphrase) before applying:
+real 4x3 factorial (`entry_zscore` x `hedge_method`), IS+OOS, against the PIT-safe 182-pair
+Purity universe. `entry_z=3.0` + `hedge=both` (the project's own already-current default hedge
+method, unchanged) is the single BEST OOS Sharpe in the entire 12-cell grid (-0.179), and the
+pattern is robust (all 3 hedge sub-cells positive IS at `entry_z=3.0`) — explicitly NOT the
+naive IS-best cell (`entry_z=3.0`+kalman: +0.159 IS but -0.748 OOS, correctly identified in the
+finding itself as an overfitting trap and avoided). Applied to `config.py` with the full
+reasoning inline as a comment. **Stated plainly, not oversold**: OOS Sharpe is still **-0.179,
+negative** — this is the most robust lever found so far, not a fix that makes the current
+universe profitable. Verified: `Config.BACKTEST.ENTRY_ZSCORE` loads as 3.0, no code elsewhere
+hardcodes an assumption of the old 2.0 default.
+
+### Real near-miss OOM caught and fixed — k-BAHC's `UniverseFilter.run()` call
+
+First real k-BAHC launch against the WRDS-expanded universe (tf=1D, N=17,324 after internal
+overlap filtering) pushed system free memory from ~5.9GB down to ~1GB during matrix construction
+— caught via a live memory check and killed before it crashed, not after. Root cause: `UniverseFilter.
+run()` unconditionally computes 3 full N×N matrices (Pearson + Spearman + rolling-avg) even though
+k-BAHC's own docstring says it only ever uses Pearson. Real fix, not a workaround: added a
+`pearson_only: bool = False` parameter to `UniverseFilter.run()` (analysis.py) that skips the
+other two matrices entirely — default `False`, zero behavior change for every other caller.
+Verified: synthetic check confirms the Pearson matrix is bit-identical either way, correct
+None/NaN handling, correct bronze-only tiering when spearman/rolling_avg are skipped. Wired
+`pearson_only=True` into k-BAHC's own call site. Relaunched (PID 15796) with an active memory-watch monitor this time (warns below 1.5GB free)
+so a recurrence gets caught immediately rather than relying on a manual check.
+
+**UPDATE — second near-miss, real root cause different from the first, k-BAHC PAUSED, not
+retried a third time.** The memory monitor fired again almost immediately: free memory dropped
+to **~600-700MB** (614208-701760 KB) during the LOAD phase itself -- before k-BAHC
+had even reached the correlation-matrix step the `pearson_only` fix addressed. Killed again
+(clean, confirmed dead, memory recovered to ~8.8GB free). Real diagnosis, checked directly:
+`universe_loader.load_full_universe()` loads all 44,840 symbols' full raw DataFrames into one
+dict simultaneously (no streaming/lazy loading) -- this alone costs ~7.9GB+ before any alignment
+or filtering narrows anything down. Checked actual current baseline system usage with k-BAHC
+killed: top non-k-BAHC processes (Windows Defender, 2 Claude Code sessions, several Brave tabs)
+account for real, unavoidable overhead tonight, leaving only ~8.8GB genuinely free system-wide --
+not enough margin for an 8GB+ load phase plus anything after it. This is a different bottleneck
+than the first near-miss (that was the matrix-computation step, now fixed by `pearson_only`;
+this is the raw-data-loading step, NOT yet fixed).
+
+**Decision: NOT attempting a third relaunch tonight.** Two near-misses in a row on the same
+run is a real pattern, not bad luck -- forcing a third attempt risks the exact RAM-crash this
+whole handoff document exists because of. This needs one of two real fixes, not a quick patch:
+(a) more free system memory (closing other applications), which is outside what I can control,
+or (b) a genuine streaming/lazy-load architecture change to `universe_loader.load_full_universe()`
+itself (e.g. load in per-source batches, drop to float32 immediately on read, or stream-filter
+by minimum-overlap before fully materializing every symbol) -- real engineering work, not
+something to rush unilaterally overnight.
+
+**UPDATE — Ross: "for k-BAHC do all, do not skip a piece" (i.e. build the real fix, don't scope
+the universe down). Built option (b) above for real, verified it, relaunched.** Checked a real
+cache file directly: 5 columns (open/high/low/close/volume), and confirmed every current caller
+of `universe_loader.load_full_universe()` (all 6: k-BAHC, both full-universe cascade drivers, and
+the 3 other rewired scripts) only ever uses `close` downstream -- nothing else. Added a
+`columns=` parameter (forwarded to every underlying `pd.read_parquet` call, real disk-level
+column pruning via pyarrow, not a post-read drop) to `_read_one`/`_load_dir`/`_load_ibkr_dir`/
+`load_full_universe` in `universe_loader.py` -- default `None` (unchanged behavior for any future
+caller that needs more), wired `columns=["close"]` explicitly into all 6 real call sites. Verified
+directly before relaunching, not assumed: loading the full 44,840-symbol universe close-only used
+4.09GB RSS, down from ~7.9GB for full OHLCV -- a real, measured ~48% reduction (less than the raw
+column-size ratio of ~83% would suggest, because per-DataFrame fixed overhead -- 44,840 separate
+Index/block-manager objects -- doesn't shrink with fewer columns; still a large, real win).
+Relaunched k-BAHC (PID 10264) with both fixes (`pearson_only` + `columns=["close"]`) and the same
+active memory-watch monitor. This is the real fix, not a third blind retry -- **the universe
+itself is still the full, unscoped 44,840 symbols**, only the loading mechanism changed.
+
+---
+
+**2026-08-17 continuation (later same night) — Thread J Test 1 COMPLETE (real, final
+numbers), k-BAHC launched on the real WRDS-expanded universe, and the exhaustive
+full-session re-read fork returned with genuinely new findings.**
+
+### Thread J Test 1 — final, real results (PID 19416 exited cleanly)
+
+| Window (bars, ~yrs) | Candidate pairs | (pair,window) tests | **Confirmed** | Runtime |
+|---|---|---|---|---|
+| 1260 (~5yr) | 475,569 | 1,093,385 | **679** | 462.8 min (~7.7hr) |
+| 2520 (~10yr) | 165,739 | 109,771 | **341** | 95.1 min (~1.6hr) |
+| 3780 (~15yr) | 79,008 | 12,146 | **157** | 22.5 min (~0.4hr) |
+
+**Real, important discrepancy worth flagging prominently, not glossing over**: this
+rolling-window Tier-3 methodology finds MORE confirmed pairs at the SHORTER window
+(5yr: 679) than at longer windows (10yr: 341, 15yr: 157) — a monotonic decrease with
+window length. That is the **opposite direction** from the static 3y/5y/10y full-sample
+cascade from earlier the same night (3y: 6 real, 5y: 7 real, 10y: 30 real — monotonic
+*increase* with window length, explained there by EG/ADF test power scaling with sample
+size). Same underlying question (does window length matter, and which direction), two
+different methodologies, opposite answers. Plausible reconciling explanation, NOT
+verified: the rolling-window Tier-3 method re-tests many overlapping shorter windows per
+pair (so a 5yr grid point gets ~28 independent rolls per candidate, each a fresh chance to
+clear BH-FDR), while the static cascade tests each candidate exactly ONCE per window
+length — more rolls at a shorter window plausibly mechanically inflates raw
+confirmation counts independent of any real "shorter windows have more edge" effect. This
+needs real investigation (e.g., checking overlap between the two methods' confirmed-pair
+sets, or normalizing by number of tests run) before either number is treated as the
+answer to "what window length is best" — flagging honestly as unresolved, not deciding
+unilaterally.
+
+**UPDATE, same night — investigated, and found a real, verified mechanical explanation**
+(not just a plausible guess): read `episodic_bhfdr_confirm()`'s actual code
+(`research/wrds_deep_history_episodic_scan.py:780`). It confirms a pair as "episodically
+confirmed" if **AT LEAST ONE** of its (potentially many) rolling windows clears the
+joint BH-FDR correction (`min_windows_confirmed=1`, the function's own default, used
+by Thread J Test 1 with no override). Checked directly against the real confirmed-pair
+output files:
+
+| Window (bars) | n confirmed | avg windows tested per confirmed pair | avg episodic_fraction_fdr |
+|---|---|---|---|
+| 1260 (5yr) | 679 | **15.9** | 0.468 |
+| 2520 (10yr) | 341 | 5.6 | 0.676 |
+| 3780 (15yr) | 157 | **1.07** | 0.971 |
+
+A 5yr-window pair gets tested ~15.9 independent times on average (many rolling windows
+fit inside the available history); a 15yr-window pair gets tested ~1.07 times (barely
+more than once — a 15yr window barely fits twice in the cached history at all). Since
+"confirmed" only requires clearing FDR in ONE of those N rolls, more rolls mechanically
+raises the "at least one hit" rate — this is standard multiple-opportunities behavior,
+not something specific to BH-FDR's own correction (which controls the false-discovery
+proportion across the whole pooled test family, not each individual pair's own
+per-pair hit probability at different N). **Real, honest conclusion: Thread J's 679 >
+341 > 157 pattern is at least partly, quite possibly mostly, a test-opportunity-count
+artifact of the `min_windows_confirmed=1` definition — not established evidence that
+shorter windows have more real cointegration edge.** This does not contradict the
+static cascade's finding (longer windows → more real candidates, there explained by
+EG/ADF power scaling with sample size) — it's a plausible, real reason the two numbers
+disagree, not a genuine contradiction requiring one to be "wrong." A cleaner read of
+Thread J's own data: `avg_episodic_fraction_fdr` (the fraction of a pair's OWN windows
+that individually clear FDR, which controls for the "how many rolls" confound) actually
+*increases* monotonically with window length (0.468 → 0.676 → 0.971) — the same
+direction as the static cascade, once the opportunity-count artifact is accounted for.
+**Recommendation, not yet acted on**: re-derive Thread J's headline comparison using
+`episodic_fraction_fdr` (or `min_windows_confirmed` set higher, or normalized by
+n_windows_tested) rather than the raw "confirmed" count, before treating 679/341/157 as
+the sweep's real answer to the window-length question.
+
+### k-BAHC launched for real (PID 30396, tf=1D, the real WRDS-expanded universe)
+
+Memory freed up once Thread J exited (~5.9GB free, was ~3-3.5GB all night). Launched
+immediately: `python research/k_bahc_candidate_discovery.py --tf 1D --lookback-years 10`,
+detached, logging to `output/k_bahc_1D_full_stdout.log` / `_stderr.log`. This is the
+FIRST real test of k-BAHC clustering against the actual WRDS-expanded (~17-18k
+calendar-aligned) universe — every prior k-BAHC run (2026-07-21 original, 2026-08-16
+"reconfirmed" 1h/4h/1D) used the old ~1,700-symbol yfinance-only scope, per this
+session's own methodology audit. Check `output/k_bahc_1D_full_stderr.log` for progress.
+
+### Exhaustive full-session re-read (fork) — genuinely new findings not previously captured
+
+Dispatched per Ross's explicit "don't gloss over anything" instruction. Full raw
+chronological log: `docs/SESSION_014f_FULL_LOG.md`. The fork did NOT reach the session's
+literal first message (extremely long, multiply-compacted session) — it reached a clean,
+explicitly-stated stopping point (Thread G Phase 2 completion), not false completeness.
+New items, verified against real files where possible:
+
+- **Most consequential, and CONFIRMED still unresolved**: Finding #27 (Thread G Phase 2
+  interaction study) recommends raising `ENTRY_ZSCORE` from 2.0 to 3.0 as the production
+  default — the best OOS cell in the entire study, multi-angle evidence, left as Ross's
+  call rather than auto-applied. **Checked `config.py` directly: still `ENTRY_ZSCORE =
+  2.0` (line 720)** — the recommendation was never acted on. Real, standing decision
+  waiting on Ross.
+- Ross granted full autonomous-operation mode mid-session at some point ("run everything
+  yourself... remind me about the question though") and explicitly asked to be reminded
+  of open questions on his return — unclear from the fork's stopping point whether any
+  such flagged questions are still dangling; worth checking `docs/SESSION_014f_FULL_LOG.md`
+  for the exact context if it matters later.
+- **Thread L status correction — it is NOT "scoped only"** as this file previously said
+  (copied from the stale plan-file index). It was actually built, run, and produced a real
+  result: Finding #34. Update any reference to Thread L's status accordingly.
+- **Thread N has two more real, verified sub-arms** not previously in this file: VaR
+  calibration (found and fixed a real Basel 95%/99% mismatch bug plus a degenerate-VaR
+  artifact — Finding #35) and leverage cap (Finding #36).
+- **A real codebase-hygiene finding, Finding #33**: a "4 dead config constants"
+  investigation found constants declared and documented as active but read by nothing.
+  All 3 backtest-level ones were implemented as real comparison arms; one of them
+  (`real_corr_exit`) had a genuine overtrading bug (269,707 trades) found and fixed along
+  the way.
+- Thread M's factor set expanded 6→17 characteristics (already independently confirmed
+  via `docs/FINDINGS.md` #32 earlier this session — consistent, not new, but the fork
+  found the same literature-grounded explanation given to Ross at the time).
+- **Operational note, may matter later**: a non-interactive WRDS auth path was unlocked
+  mid-session (a `wrds_username` kwarg that bypasses Duo 2FA) — explicitly caveated in the
+  original session as possibly temporary (tied to a Duo device-trust window), not a
+  guaranteed permanent fix. If WRDS auth breaks again in a future session, check this
+  first before assuming it needs re-solving from scratch.
+- **Thread I's liquidity filter actually failed three separate times for three different
+  root causes** (a genuine multi-hour hang, a query-shape/batching stall, and the pd.NA
+  crash) before finally succeeding — this file's earlier entry only captured the last of
+  the three. Doesn't change Thread I's DONE status, just the real cost it took to get there.
+- The gs-quant EWMA/vol-swap/BUG-D45-retest work (Finding #29, already indexed in the plan
+  file) has richer mechanism detail in the fork's log, including Ross directly asking "is
+  [the BUG-D45 blowup] an arbitrage opportunity?" — confirmed no, a pure numerical
+  artifact, not a real signal.
+
+---
+
+**2026-08-17 continuation — methodology audit, rewiring, and stale-content fixes, working
+autonomously overnight per Ross's explicit instruction ("keep working through everything...
+update every file that needs to be updated autonomously").**
+
+Ross asked for a project-wide methodology consistency check ("older files might have different
+processes, optimizations, universes, philosophies... we might need to update some of them")
+before continuing. Did a real, evidence-based sweep (grep across every research/ script for
+`load_full_universe` definitions, `DataAligner.align_universe` usage, and WRDS references) rather
+than guessing — see the full audit reasoning in the conversation; summary:
+
+- **Production pipeline (`data.py`→`analysis.py`) is clean** — `UniverseBuilder.build()` +
+  per-symbol WRDS substitution is internally consistent, not touched by any of this.
+- **Two deliberately different universe methodologies now coexist** (production's curated
+  ~1,700-asset set vs. the new research-only `universe_loader.py` full-merge track) — not a bug,
+  but worth naming so results aren't conflated across them.
+- **Found 3 more scripts with the same duplicated-local-loader bug class already fixed in
+  `k_bahc_candidate_discovery.py`**: `research/fdr_method_comparison.py`,
+  `research/pearson_threshold_sensitivity.py`, `research/tail_dependence_universe_screen.py` —
+  all had their own copy-pasted `load_full_universe()` reading only the old yfinance-only cache.
+  **All 3 rewired** to `universe_loader.load_full_universe()` + `align_to_common_calendar()`,
+  same pattern as k-BAHC, verified importable. Caveat carried into each: WRDS is daily-only, so at
+  non-1D timeframes (all 3 scripts default to 1h) the merge isn't meaningfully bigger than before
+  — disclosed in each file's own updated docstring, not hidden.
+- **Checked all 17 scripts using `DataAligner.align_universe`** for hidden WRDS exposure — zero
+  do, so no misalignment risk anywhere in that group; they're old-universe-scoped by history, not
+  broken.
+- **Real, higher-value finding**: `report.py` (the LaTeX paper generator) had **hardcoded, frozen
+  narrative text from a very early session**, including a "Strictness Paradox" framing (§1, §4,
+  §8, and two more references) asserting the full-sample EG test is "miscalibrated" — a claim
+  `PAPER.md` itself already tested via Monte Carlo simulation and **explicitly refuted** months
+  ago (§4.2.1: the test is "appropriately strict, not miscalibrated"; the real, standing finding
+  is the durability-vs-currency conflation instead). If `report.py` had been run and read as-is,
+  it would have presented a scientifically retracted claim as the paper's headline contribution.
+  **Fixed**: rewrote all 5 locations in `report.py` (intro, contributions list, §4's title/tables/
+  conclusion, the conflict-count callout, and the paper's own Conclusion section) to match
+  `PAPER.md`'s current, already-decided, already-verified framing — a factual sync to an existing
+  decision, not new content invented unilaterally. Also fixed `report.py`'s "Data and Universe"
+  section, which still said "1,521 assets... 2026-06-23... yfinance as the primary source" with
+  zero mention of WRDS — updated to the current WRDS-primary description (1,730 cached / 1,660
+  passing screening, 2026-08-03 run). Verified: `ast.parse` + import both clean.
+- **`options.py` checked, needs no fix** — despite Ross's original chat instruction listing it
+  alongside `report.py`/`paper.md`, it turns out `options.py` only reads already-computed backtest
+  trade output, never loads a raw universe — there's nothing in it to rewire.
+- **`README.md` checked, needs no fix** — its own "Strictness Paradox" section already correctly
+  reports the durability-vs-currency conflation and the Monte Carlo refutation; the phrase there is
+  just a kept legacy section label, not a stale claim. Good, not stale.
+- **Explicitly NOT touched**: `PAPER.md`'s own headline pair-count/backtest numbers in §5-§7.16.
+  `PAPER.md` itself already flags these as stale relative to the WRDS-primary universe and states
+  plainly they have "not yet been re-derived... not done casually" — rewriting those overnight
+  without Ross's review would contradict the project's own stated caution on exactly this point.
+  Left alone on purpose, not missed.
+
+**Also launched a dedicated fork** to re-read the ENTIRE crashed session
+(`claude.ai/code/session_014f6574WEQZKywfguD4Dish`) end-to-end in small scroll increments (Ross:
+"make sure you fully read the old chat for every detail and comprehension, don't gloss over
+anything") — the earlier pass used large scroll jumps in a virtualized UI, which risks silently
+skipping content. Output going to `docs/SESSION_014f_FULL_LOG.md` once that fork completes; check
+there for anything not already captured in this file.
+
+**Thread J Test 1 status as of this entry**: grid point 1 (5yr) completed — **679 confirmed
+pairs**, a real result worth comparing against the 3y/5y/10y static-cascade's very different
+6/7/30 counts once Test 1 fully finishes (different methodology — rolling-window vs. static
+full-sample — so a large discrepancy isn't necessarily a contradiction, but worth reconciling
+explicitly). Now on grid point 2/3 (10yr). PID 19416, still healthy. k-BAHC (rewired, verified,
+NOT yet launched) is still queued behind Thread J for memory-safety reasons — free RAM has stayed
+around 3-3.5GB all night, too tight to risk a second concurrent heavy job.
+
+---
+
+**2026-08-16 update — RAM crash mid-session, reconstructed via Chrome extension from the live
+browser session `claude.ai/code/session_014f6574WEQZKywfguD4Dish`, then cross-checked directly
+against real local process/log state (not just the transcript's own narration).**
+
+### Why this entry exists
+
+Ross's machine ran out of RAM mid-session (the local Claude Code process crashed, which shows up
+in the transcript as a repeated "Remote Control disconnected" banner starting partway through).
+**Critically, the crash killed the local Claude Code app and its Remote Control link to
+claude.ai — it did NOT kill the actual research jobs**, because they were launched as detached
+background OS processes (PowerShell `Start-Process`), not as children of the Claude Code process
+itself. I confirmed this directly: `Get-Process python` still shows PID 19416 alive and healthy
+right now, and its log file is current to the last few minutes, not stale. Read the transcript
+end-to-end (scrolled past the point where it had been auto-compacted once, ~897k tokens saved by
+Claude Code itself mid-session) and cross-checked every live/completed claim against real files —
+several things below were confirmed independently, not just trusted from the transcript.
+
+### What's still running right now — DO NOT KILL
+
+**PID 19416**, `research/episodic_window_size_sweep.py --grid 1260 2520 3780 --threshold 0.6
+--full-universe` (Thread J Test 1 — the EPISODIC_WINDOW_BARS sensitivity sweep). This is the
+**only** job still running; every other background job from this session has already finished
+(see "Also completed" below). Real state as of this write-up (2026-08-16 ~18:53, log timestamps
+confirmed, not estimated):
+
+- Started 12:36:47. Universe load (44,694 WRDS symbols → bounded-build 18,283 symbols after the
+  17yr-lookback memory-bounded construction) took until 16:17:53 — genuinely slow sequential I/O,
+  not a bug (see "Two real OOM bugs fixed" below for why a bounded build is even needed here).
+- Now inside the **first grid point's rolling-correlation phase** (window=1260 bars, ~5yr),
+  window 13 of an estimated ~25-28 for this grid point, pace ~12 min/window, memory low and flat
+  (545MB — no OOM risk). Log: `output/episodic_window_sweep_real3_stderr.log`.
+- **EG-testing has not started for any grid point yet** — `run_one_window_size()` runs the full
+  rolling-correlation phase (all windows) before EG-testing begins for that grid point. This is a
+  genuinely multi-day job: 3 grid points (5/10/15yr), each needs its own multi-hour correlation
+  phase before its own EG-testing phase even starts.
+- **Real risk worth knowing**: the rolling-correlation phase is NOT checkpointed per-window within
+  a grid point — only `run_rolling_eg_pool` (the later EG-testing phase) is batch-checkpointed. If
+  this process dies before finishing grid point 1's correlation phase, that grid point restarts
+  from window 1, losing everything done since 16:17:53. The per-grid-point *outputs*
+  (`episodic_window_sweep_w{N}_windows.parquet` / `_confirmed.parquet` / summary) are only written
+  once a grid point fully completes.
+- **Nobody is actively monitoring it right now.** The web session had been doing hourly
+  `ScheduleWakeup` check-ins on this job, but that loop runs through the same Remote Control link
+  that's now disconnected — it won't fire again until Remote Control reconnects. If you're reading
+  this from a live Claude Code session with local tool access, that session should pick up
+  monitoring (`tail output/episodic_window_sweep_real3_stderr.log`, `Get-Process -Id 19416`).
+
+### Also completed this session, not yet synthesized
+
+A separate, earlier thread this same session ran the **full-universe correlation+EG cascade at
+three lookback windows** (10y/5y/3y) — distinct from Thread J Test 1 above (that one only tests
+Tier-3 rolling-window EG at fixed lookback; this one re-ran the static full-universe screen at
+each window length). All three finished and are sitting on disk, confirmed directly:
+
+| Window | Candidates tested | Confirmed (BH-FDR) | Output file |
+|---|---|---|---|
+| 10y | 57,974/58,247 (99.5%) | 66 | `output/research/full_universe_eg_confirmed_pairs_10y.parquet` (or equivalent — check for `_OLD_pre_alignment_fix` naming) |
+| 5y | 51,409/51,483 (99.9%) | 35 | `output/research/full_universe_eg_confirmed_pairs_5y.parquet` |
+| 3y | 58,455/58,470 (99.99%) | 36 | `output/research/full_universe_eg_confirmed_pairs_3y.parquet` (confirmed directly: 36 rows, run finished 2026-08-15 19:00) |
+
+**CORRECTION (added after initially writing this entry): the 3-way comparison IS already done.**
+My first pass through this handoff wrongly said the 5y/3y sets hadn't been categorized yet — that
+was based on an earlier, in-session narration of the artifact that got superseded before the
+crash. I re-fetched the actual live artifact
+(`https://claude.ai/code/artifact/f581f564-ee8b-4b6a-be44-ab4ee8748057`, page title "Full-Universe
+Correlation → Cointegration Cascade: 3y / 5y / 10y Window Comparison", **updated 2026-08-15**,
+later than the version I'd summarized) and it already contains the full 3-way comparison, a
+**second real bug fix found mid-analysis** (see below), and an explicit recommendation. Ross most
+likely never saw this update before the crash — the transcript moves straight from "3y prefilter
+launched" into a new Thread Q conversation with no visible acknowledgment of this artifact.
+
+**The real, current, post-correction numbers:**
+
+| Window | Confirmed (raw FDR) | Real candidates | Cross-listing dup | Same-co dual-listing | Suspected identity dup | Index-tracking |
+|---|---|---|---|---|---|---|
+| 3y | 36 | **6** | 15 | 14 | 0 | 1 |
+| 5y | 35 | **7** | 13 | 13 | 2 | 0 |
+| 10y | 66 | **30** | 8 | 19 | 8 | 1 |
+
+**Second bug found while building this comparison**: the original 10y writeup's dual-listing
+detector only caught pairs where *both* legs were `GVKEY`-labeled with the same root. Building the
+3-way comparison surfaced a pattern it missed — a plain ticker (e.g. `RR.L`, `EXPN.L`) paired
+against a `GVKEY`-labeled entry at correlation 0.995–0.9999, almost certainly the same company
+reaching the merged universe through two different data sources (yfinance vs. Compustat Global).
+**This retroactively killed the earlier "10 genuinely novel pairs" headline** — six of those ten
+(6902.T/7267.T-style pairs) were entirely made up of this newly-caught pattern once checked. That
+number never should have been repeated as the answer; the corrected, current numbers are in the
+table above. New rule applied to all three windows: `GVKEY`-labeled symbol + `|corr| >= 0.99` →
+`likely_cross_listing_duplicate` (a heuristic, not a confirmed identity match — no company-name
+crosswalk was queried).
+
+**Explicit recommendation already written in the artifact, likely never seen by Ross**: *keep the
+10-year window.* The empirical result runs against the "shorter window = more edge" intuition —
+10y produces more real candidates (30), not fewer, than 3y (6) or 5y (7), because EG/ADF test power
+scales with sample size and most of the 10y-only pairs have correlations too modest (0.60–0.75) or
+overlaps too short (70–90 bars at 3y) for a short window to confirm with confidence. Only 1 pair
+(`VRT`/`PERMNO17987`) recurs across any two windows; zero recur across all three. The artifact's
+own stated next step: **don't switch the reference window** based on this result — treat 3y/5y-only
+pairs as an unconfirmed watchlist, and let Thread J Test 1 (the real, precision/recall-validated
+sweep, running now) settle the window question properly rather than this 3-point comparison.
+
+I independently re-derived a categorization (`debug/_categorize_full_universe_window_cascade.py`,
+output in `output/research/full_universe_eg_confirmed_pairs_{3y,5y,10y}_categorized.parquet`) as a
+cross-check before finding the real artifact — it agrees directionally (10y finds more real
+candidates than 3y/5y) but used a cruder heuristic and doesn't match the artifact's counts exactly.
+**Defer to the artifact's numbers in the table above, not my script's output.**
+
+### Two real OOM bugs found and fixed this session (both verified, both narrow-scoped)
+
+1. **`build_log_prices_and_returns` OOM's at full-universe scale** (44,694 symbols) — plain
+   `pd.DataFrame(dict_of_series)` tries one contiguous allocation that doesn't fit in 15.6GB RAM.
+   Fixed with a new `build_log_prices_and_returns_bounded()` in
+   `research/wrds_deep_history_episodic_scan.py` (float32, bounded lookback) — **scoped to the new
+   `--full-universe` sweep path only**, the existing production 182-pair episodic scanner's own
+   calls are untouched. Also surfaced and fixed a `pd.NA`-into-numpy-boolean-comparison crash in
+   the same function (same bug class already flagged in the plan notes from Thread I).
+2. **`rolling_correlation_candidate_pairs` computes the full dense N×N correlation matrix once per
+   rolling window** (not once per run) — crashed on window 1 at 18,283 symbols. Fixed by wiring in
+   `UniverseFilter.chunked_pearson_candidate_pairs` (built earlier in the session for the
+   full-universe cascade's own OOM, see below), verified bit-exact against the unchunked call.
+   Also added real per-block-pair progress logging here — the earlier version had zero internal
+   progress signal, which is why a ~65-minute silent stretch got mistaken for a possible hang
+   before this fix landed.
+
+Earlier in the same session, the full-universe correlation cascade above hit its own, structurally
+different OOM (memory grew ~1.3GB in 20s, would've hit the 15.6GB ceiling in ~90s) — fixed by
+adding disk-streaming (numbered chunk files, not one growing re-read-and-rewritten file) to
+`UniverseFilter.run_chunked()` in `analysis.py`. And separately, a real **root-cause data bug**
+was found and fixed: `universe_loader.py` never reindexed symbols from different sources onto a
+shared calendar before correlation/EG testing — safe in the production `DataAligner` pipeline
+(which already guarantees this), not safe for this raw multi-source merge. This silently corrupted
+or crashed ~14,000/18,450 candidates' EG tests in the first 10y cascade attempt (reproduced
+directly: `0700.HK` 5,438 bars from 2004 vs `3690.HK` 1,907 bars from 2018 → broadcast
+`ValueError`, silently lumped in with genuine `insufficient_overlap` cases). Fixed with
+`align_to_common_calendar()` + `filter_exact_correlation_duplicates()` (drops `|pearson_corr| >=
+0.999999` — catches same-security-different-label duplicates AND literal inverse-FX-quote pairs
+that a naming-pattern regex missed), both in `universe_loader.py`, both wired into
+`full_universe_correlation_prefilter.py` and `full_universe_eg_confirmation.py` (both scripts now
+take `--lookback-years`). Old contaminated outputs archived under `*_OLD_pre_alignment_fix`, not
+deleted.
+
+### Open items to flag to Ross, not yet acted on
+
+- **FIXED (2026-08-16, same session as this handoff)**: SPY/VOO was slipping through the 10y and 3y
+  cascades because the full-universe driver scripts bypass `analysis.py`'s
+  `CrossAssetTagger._is_index_tracking_pair`/`_is_share_class_pair` guards entirely. Added
+  `universe_loader.filter_structural_pairs()` (reuses those two guards, plus a new GVKEY-
+  cross-listing heuristic from the artifact's own correction: a plain ticker + `GVKEY`-labeled
+  entry at `|corr| >= 0.99` is almost certainly the same company via two data sources). Wired into
+  `research/full_universe_eg_confirmation.py` right after the existing exact-correlation dedup.
+  Verified: `debug/_verify_filter_structural_pairs.py` (7/7 synthetic checks), then re-applied
+  against the real on-disk confirmed-pair sets — drops 16/36 (3y), 13/35 (5y), 9/66 (10y), all
+  matching the artifact's manual audit categories. Not re-run through the full cascade (that's a
+  multi-hour job); the fix only takes effect on the *next* full-universe cascade run.
+- **permno-crosswalk refresh blocked** — `research/build_symbol_permno_map.py` needs live WRDS
+  credentials, which a detached background process can't supply interactively. A few residual
+  duplicate pairs in the 10y set (`MKC`/`PERMNO89155`, `HWC`/`PERMNO21294`/`PERMNO76684`) still
+  need this cross-check; the exact-correlation dedup filter catches most but not all of this class.
+- **`run_rolling_eg_pool`'s "unbounded accumulation" concern** was flagged but deliberately NOT
+  fixed this session (lower-confidence, didn't want a third surprise crash from touching working
+  code) — worth watching once Thread J Test 1's EG-testing phase actually starts for grid point 1.
+- **Thread Q** (Ross's two new research ideas — bullish/quick cointegration-regime timing;
+  exploiting the ~90.8% non-cointegrated majority of time using the existing factor bench) is
+  scoped in full in the plan file (`ancient-mixing-feather.md`) but not built — deliberately queued
+  behind Threads J and M per Ross's own instruction.
+- Still open from before this session, unchanged: **Thread M** (WRDS factor exposure vs.
+  gs-quant/Marquee replacement — built, verified, ready to launch, never run for real), **Thread P**
+  (k-BAHC universe-wide + cross-timeframe cointegration — in progress, not finished), **Thread N**
+  (regulatory-risk-convention comparison arm — only scoped).
+
+### Recommended immediate next steps
+
+1. Don't touch PID 19416 — it's healthy, just slow (multi-day job, by design).
+2. Pick up hourly-ish monitoring of `output/episodic_window_sweep_real3_stderr.log` locally, since
+   the web session's own monitoring loop is stalled behind the disconnected Remote Control link.
+3. ~~Build the 3-way comparison~~ — **already done**, see the corrected numbers above. Ross should
+   just be pointed at the recommendation (keep 10y) and asked to confirm or override it.
+4. Small, cheap fix worth doing: wire `CrossAssetTagger._is_index_tracking_pair` (or equivalent)
+   into `full_universe_correlation_prefilter.py`/`full_universe_eg_confirmation.py` so SPY/VOO
+   stops recurring in every future cascade run.
+5. Thread J Test 1 (running, multi-day away) will give the rigorous, precision/recall-validated
+   answer to the window-length question — the 3y/5y/10y cascade is a faster, cruder proxy already
+   pointing the same direction (favor the longer window) and can be read now.
+
+---
+
 **2026-08-08 update — "Verify polar-opposite angle invariant and correlation matrix scan",
 reconstructed via the Chrome extension from the live browser session
 `claude.ai/code/session_01EhHH5o2Y7WjLrJdzTLph4s` — full pass, start to finish.** This is a long

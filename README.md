@@ -12,12 +12,18 @@ being built and is not yet concluded. Read this file's status as "in motion," no
 
 ## Overview
 
-CAMARF is an institutional-grade statistical arbitrage research framework built around two
-related, evolving questions: (1) whether cross-asset co-movement relationships exhibit
-regime-dependent, volatility-normalized arbitrage structure predictable at statistically
-significant rates, and (2) whether the standard way the field screens for that structure — a
-single, static, full-sample cointegration test — is itself well-calibrated across time and
-data depth. Question (2) has grown from a secondary finding (the "Strictness Paradox" below)
+CAMARF is an institutional-grade quantitative research framework that systematically discovers,
+characterizes, and models statistical co-movement relationships across a broad multi-asset
+universe, spanning the full S&P Composite 1500, cryptocurrency, foreign exchange, commodities,
+and futures markets simultaneously. (Corrected from "S&P 500" to "S&P Composite 1500" against
+this file's own verified universe figures below — the broader 1500-constituent index, not just
+the 500 large-caps, is what `config.py` actually screens.)
+
+Concretely, the framework is built around two related, evolving questions: (1) whether
+cross-asset co-movement relationships exhibit regime-dependent, volatility-normalized arbitrage
+structure predictable at statistically significant rates, and (2) whether the standard way the
+field screens for that structure — a single, static, full-sample cointegration test — is itself
+well-calibrated across time and data depth. Question (2) has grown from a secondary finding (the "Strictness Paradox" below)
 into the project's current main line of investigation: a **point-in-time-safe episodic
 confirmation methodology** (rolling-window cointegration tests, joint BH-FDR corrected across
 the full test family, filtered to only information a real deployment date would have had) is
@@ -86,28 +92,35 @@ confirmed-pair set it produces is materially different — this is a genuine met
 change, not a regression, but headline numbers from before this switch should not be quoted as
 current. Full historical detail in `Development.md`.
 
-**Current, WRDS-primary confirmed set (as of Session 30, 2026-08-03/04): 3 pairs** —
-`KVUE/KMB@3m`, `PNC/ZION@4h`, `IQV/Q@1D`. This is a real, large reduction from the pre-WRDS 23-26
-pair sets, and PAPER.md §3/§5 carry the full honest accounting of why — WRDS/CRSP's cleaner,
-longer daily history changes which pairs a static full-sample screen confirms, it isn't a
-data-quality regression. **`backtest.py` has a real, just-fixed gap here** (BUG-D107, Session 31,
-not yet re-verified with a real run): its production timeframe list never included `1D` at all, so
-`IQV/Q@1D` has never actually been included in any backtest run to date, including whatever is
-currently cited as "the baseline" — any headline Sharpe/trade-count figure describing "the 3
-confirmed pairs" has so far only covered 2 of them.
+**The static full-history screen's output (as of Session 30, 2026-08-03/04) was 3 pairs** —
+`KVUE/KMB@3m`, `PNC/ZION@4h`, `IQV/Q@1D` — a real, large reduction from the pre-WRDS 23-26 pair
+sets (PAPER.md §3/§5 carry the full accounting of why: WRDS/CRSP's cleaner, longer daily history
+changes which pairs a static full-sample screen confirms, not a data-quality regression). **These 3
+pairs are no longer this project's reference set, reframed 2026-08-11 (Session 31)**: they have
+ZERO overlap with the PIT-safe episodic-confirmation methodology below, and real, capital-
+constrained backtests (`backtest.py --capital-sim`) on them are honestly poor — `IQV/Q@1D`: 40
+trades, WR=0%, Sharpe=-13986.57 (BUG-D107's 1D-timeframe fix verified this is a real result, not a
+bug — the pair genuinely underperforms at 1D once actually backtestable). Full historical detail
+preserved in `Development.md`/`docs/BUG_LOG.md`, not restated as current here.
 
-**Separately, and larger in scale: a point-in-time-safe episodic confirmation scan (WRDS
-daily-and-coarser, 10-year rolling windows stepped annually, joint BH-FDR across the whole test
-family) found 647 unique PIT-confirmed pairs** — vastly more than the static screen's 3, because a
-static full-history test structurally can't distinguish "cointegrated its entire life" from
-"recently coupled." This is the empirical basis for the episodic-vs-static methodology thesis
-described above. **As of this writing, that 647-pair episodic set is NOT yet wired into
-production `backtest.py`/`report.py`** — live trading is still gated on the 3-pair static set;
-promoting the episodic screen to primary (vs. hybrid vs. confidence-tiered — three designs are
-being built and compared in parallel, not decided in advance) is Session 31's active, unfinished
-work. A parallel intraday (1h/4h) extension of the same episodic methodology is also mid-run as of
-this writing (`Development.md`'s Session 31 entry has exact current status and real interim
-numbers — e.g. 73,825 candidate pairs found for 1h alone before confirmation).
+**Current reference set: the point-in-time-safe episodic confirmation methodology** (WRDS
+daily-and-coarser + intraday 1h/4h extensions, rolling windows, joint BH-FDR across the whole test
+family) — **182 PIT-safe confirmed pairs** as of the BUG-D112-fixed adapter run, 2026-08-12 (170
+WRDS/1D, 6 intraday/1h, 6 intraday/4h; `output/research/episodic_confirmed_pairs_adapter_output.parquet`).
+This supersedes an earlier 454-pair count (338 WRDS/1D, 76 intraday/1h, 40 intraday/4h) that was
+found to be contaminated by a candidate-generation lookahead bug (BUG-D112 — pairs could be tested,
+and flagged FDR-significant, on dates before they would have genuinely qualified as a candidate;
+see `docs/BUG_LOG.md`). A static full-history test structurally can't distinguish "cointegrated its
+entire life" from "recently coupled" — this is the empirical basis for the episodic-vs-static
+methodology thesis described above. A real, capital-constrained portfolio backtest of this
+genuinely PIT-safe 182-pair set (`--capital-sim`, $100k fixed sizing): **Purity arm IS Sharpe
+-0.679, OOS Sharpe -0.834** — the honest, uncontaminated result is that this universe loses money
+under realistic capital constraints, both in- and out-of-sample. The Hybrid arm (mixes in the 3
+non-PIT-safe standard pairs) is similarly negative (IS -0.442, OOS -1.125); the Tiered and Baseline
+arms both post +1.417 IS / +0.630 OOS, but that outperformance is a capital-efficiency artifact of
+which pairs trade at all, not evidence PIT-confidence tier-weighting adds risk-adjusted value (all
+3 standard pairs share one tier weight at this snapshot). See `Development.md`'s Session 31
+redo-execution entry and `docs/FINDINGS.md` for the full writeup.
 
 **Backtest/statistical-validation numbers from the pre-WRDS 23-26 pair era (IS Sharpe ~5.8-8.5
 depending on variant, OOS ~5.2, deflated Sharpe z~9.5 IS/2.9 OOS, distance-method comparison, tail

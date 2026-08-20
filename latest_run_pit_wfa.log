@@ -1,17 +1,29 @@
-12:44:59 INFO  === pit_wfa.py: Point-In-Time Portfolio-Wide Walk-Forward Analysis (1h) ===
-12:44:59 INFO  Unlike wfa.py's semi-WFA, pair SELECTION itself is re-derived per fold using only train-window data — see module docstring for exact scope.
-12:45:13 INFO  Universe: 1576 symbols with cached 1h data
-12:45:13 INFO  Analysis window: [2023-07-13, 2026-07-31]
-12:45:13 INFO  [expanding/fold1_exp] screening train window [2023-07-13, 2024-02-21] (point-in-time, no test-period data used)...
-12:45:42 INFO  [expanding/fold1_exp] 0 pairs point-in-time confirmed (0.5 min)
-12:45:42 INFO  [expanding/fold1_exp] backtest: 0 pairs traded, 0 trades, portfolio Sharpe=nan
-12:45:42 INFO  [expanding/fold1_exp] checkpoint saved (1 folds completed so far)
-12:45:42 INFO  [expanding/fold2_exp] screening train window [2023-07-13, 2025-01-20] (point-in-time, no test-period data used)...
-13:06:34 INFO  [expanding/fold2_exp] 2 pairs point-in-time confirmed (20.9 min)
-13:07:00 INFO  [expanding/fold2_exp] backtest: 2 pairs traded, 32 trades, portfolio Sharpe=-1.0121
-13:07:00 INFO  [expanding/fold2_exp] checkpoint saved (2 folds completed so far)
-13:07:00 INFO  [rolling/fold1_roll] screening train window [2023-07-13, 2024-02-21] (point-in-time, no test-period data used)...
-13:07:25 INFO  [rolling/fold1_roll] 0 pairs point-in-time confirmed (0.4 min)
-13:07:25 INFO  [rolling/fold1_roll] backtest: 0 pairs traded, 0 trades, portfolio Sharpe=nan
-13:07:25 INFO  [rolling/fold1_roll] checkpoint saved (3 folds completed so far)
-13:07:25 INFO  [rolling/fold2_roll] screening train window [2025-01-20, 2025-08-31] (point-in-time, no test-period data used)...
+10:20:21 INFO  === pit_wfa.py: Point-In-Time Portfolio-Wide Walk-Forward Analysis (1h) ===
+10:20:21 INFO  Unlike wfa.py's semi-WFA, pair SELECTION itself is re-derived per fold using only train-window data — see module docstring for exact scope.
+10:20:57 INFO  Universe: 1576 symbols with cached 1h data
+10:20:57 INFO  Analysis window: [2023-07-13, 2026-07-31]
+10:20:57 INFO  [expanding/fold1_exp] screening train window [2023-07-13, 2024-02-21] (point-in-time, no test-period data used)...
+10:21:17 INFO  [expanding/fold1_exp] 0 pairs point-in-time confirmed (0.3 min)
+10:21:17 INFO  [expanding/fold1_exp] backtest: 0 pairs traded, 0 trades, portfolio Sharpe=nan
+10:21:17 INFO  [expanding/fold1_exp] checkpoint saved (1 folds completed so far)
+10:21:17 INFO  [expanding/fold2_exp] screening train window [2023-07-13, 2025-01-20] (point-in-time, no test-period data used)...
+10:28:28 INFO  [expanding/fold2_exp] 2 pairs point-in-time confirmed (7.2 min)
+10:28:43 INFO  [expanding/fold2_exp] backtest: 2 pairs traded, 32 trades, portfolio Sharpe=-1.0121
+10:28:43 INFO  [expanding/fold2_exp] checkpoint saved (2 folds completed so far)
+10:28:43 INFO  [rolling/fold1_roll] screening train window [2023-07-13, 2024-02-21] (point-in-time, no test-period data used)...
+10:29:00 INFO  [rolling/fold1_roll] 0 pairs point-in-time confirmed (0.3 min)
+10:29:00 INFO  [rolling/fold1_roll] backtest: 0 pairs traded, 0 trades, portfolio Sharpe=nan
+10:29:00 INFO  [rolling/fold1_roll] checkpoint saved (3 folds completed so far)
+10:29:00 INFO  [rolling/fold2_roll] screening train window [2025-01-20, 2025-08-31] (point-in-time, no test-period data used)...
+11:48:05 INFO  [rolling/fold2_roll] 1 pairs point-in-time confirmed (79.1 min)
+11:48:09 INFO  [rolling/fold2_roll] backtest: 1 pairs traded, 5 trades, portfolio Sharpe=0.2547
+11:48:09 INFO  [rolling/fold2_roll] checkpoint saved (4 folds completed so far)
+11:48:09 INFO  
+wfa_variant       fold  n_pit_confirmed_pairs  n_pairs_with_trades  n_pairs  n_trades_total  total_pnl_portfolio  sharpe_portfolio  max_drawdown_portfolio max_concentration_pair  max_concentration_pct
+  expanding  fold1_exp                      0                    0      NaN             NaN                  NaN               NaN                     NaN                    NaN                    NaN
+  expanding  fold2_exp                      2                    2      2.0            32.0              -427.46           -1.0121                  302.52              MC/WAL@1h                 1.1718
+    rolling fold1_roll                      0                    0      NaN             NaN                  NaN               NaN                     NaN                    NaN                    NaN
+    rolling fold2_roll                      1                    1      1.0             5.0                31.13            0.2547                   98.17             AUB/XHR@1h                 1.0000
+11:48:09 INFO  Saved -> output/backtest/pit_wfa_{fold_comparison,portfolio,pair_sets}.parquet
+11:48:09 INFO  ============================================================
+11:48:09 INFO  pit_wfa.py complete (87.8 min)

@@ -1,0 +1,4 @@
+              config  n_base_confirmed perturbation_counts  cv_confirmed_count  pnc_zion_n_windows  pnc_zion_contiguity
+fixed_min_overlap_1x                 1           [1, 2, 2]            0.282843                  20             0.857143
+fixed_min_overlap_2x                 1           [1, 1, 1]            0.000000                   8             1.000000
+      onset_anchored                 2           [2, 1, 2]            0.282843                   5             1.000000

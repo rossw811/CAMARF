@@ -1,0 +1,4 @@
+Scanning 3 unique pairs at 1D vs 1h
+DETECTION-ONLY: no backtest evaluation performed. See module docstring.
+Done. 0 divergence event(s) across 0 pair(s). Saved -> output\research\cross_tf_break_divergence.parquet
+1/3 pairs skipped (insufficient aligned history at one or both timeframes)

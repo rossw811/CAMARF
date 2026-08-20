@@ -1,0 +1,4 @@
+KVUE/KMB@3m: var_ratio(narrow/widen)=0.716 narrow_higher_vol=False p=0.427
+PNC/ZION@4h: var_ratio(narrow/widen)=2.292 narrow_higher_vol=True p=0.015
+Wrote output/research/news_impact_asymmetry.parquet: 2 valid pairs, 1 with significant asymmetric volatility (p<0.05), 1 of those showing HIGHER vol after narrowing (vs. after widening)
+

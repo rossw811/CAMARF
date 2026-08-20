@@ -111,8 +111,20 @@ _LOG_PATH = "latest_run_data_wrds.log"
 
 
 def _connect():
+    """Real finding (2026-08-13): passing `wrds_username` explicitly lets
+    wrds.Connection() skip its interactive `input()` username prompt
+    entirely and go straight to .pgpass for the password -- confirmed to
+    work fully non-interactively (no Duo re-prompt) when a valid Duo
+    "remember this device" trust window is still active from an earlier
+    interactive login. NOT guaranteed to always skip Duo -- once that trust
+    window expires, a connection will fall back to needing an interactive
+    session again (this project's earlier-established constraint), this
+    doesn't change that. `WRDS_USERNAME` env var overrides the fallback
+    default if ever needed for a different account."""
+    import os
     import wrds
-    return wrds.Connection()
+    username = os.environ.get("WRDS_USERNAME", "rossw0811")
+    return wrds.Connection(wrds_username=username)
 
 
 # =============================================================================
@@ -629,6 +641,70 @@ def fetch_sp500_membership_history(db) -> pd.DataFrame:
     log.info(f"S&P 500 membership history: {len(df)} spells, {df['permno'].nunique()} distinct permnos "
              f"({int(df['is_current'].sum())} currently active)")
     return df
+
+
+_CRSP_SECURITY_MASTER_CACHE = os.path.join(_OUT_DIR, "crsp_full_security_master.parquet")
+
+
+def fetch_full_crsp_security_master(db) -> pd.DataFrame:
+    """
+    Thread K Part 1 (2026-08-13, Ross: "let's make sure we also get the
+    entire US market and all what assets we're when and where at what
+    time") -- the point-in-time "who/when/where" security master for
+    CRSP's ENTIRE historical common-stock universe (shrcd 10/11/12,
+    NYSE/AMEX/NASDAQ exchcd 1/2/3), not just the current ~1,700-symbol
+    S&P-1500-based universe this project otherwise uses. One row per
+    (permno, ticker/exchange/name) SPELL -- a security that changed
+    ticker, exchange, or name gets multiple rows, each with its own
+    namedt/nameenddt validity range (confirmed real, e.g. permno 10001
+    spans 6 spells across 1986-2017 as it moved tickers/exchanges).
+
+    "Still current" placeholder handling, checked directly before writing
+    this (not assumed from the S&P 500/Compustat Global precedent alone):
+    stocknames.nameenddt has ZERO genuine NULLs -- currently-active spells
+    instead share the table's own max nameenddt (2024-12-31, confirmed via
+    a real query: 4,758 rows share this exact date) as a refresh-date
+    placeholder, same convention already fixed for dsp500list_v2 and
+    Compustat Global's g_idxcst_his. Same fix applied here.
+
+    This is METADATA ONLY (ticker/exchange/name/date-range) -- does NOT
+    fetch price history, a separate, dramatically more expensive step
+    (29,366 distinct securities vs. this project's current ~1,700; sizing
+    that separately before any commitment, not bundled into this function).
+    Caches to output/cache/wrds/crsp_full_security_master.parquet.
+    """
+    q = """
+        select permno, permco, namedt, nameenddt, shrcd, exchcd, ncusip, ticker, comnam
+        from crsp_a_stock.stocknames
+        where shrcd in (10, 11, 12) and exchcd in (1, 2, 3)
+        order by permno, namedt
+    """
+    df = db.raw_sql(q)
+    df["namedt"] = pd.to_datetime(df["namedt"])
+    df["nameenddt"] = pd.to_datetime(df["nameenddt"])
+    max_end = df["nameenddt"].max()
+    df["is_current"] = df["nameenddt"] == max_end
+    df.loc[df["is_current"], "nameenddt"] = pd.NaT
+
+    os.makedirs(_OUT_DIR, exist_ok=True)
+    df.to_parquet(_CRSP_SECURITY_MASTER_CACHE, index=False)
+    log.info(f"Full CRSP security master: {len(df)} spells, {df['permno'].nunique()} distinct "
+             f"permnos, {df['ticker'].nunique()} distinct tickers, "
+             f"{df['namedt'].min().date()}-{df['nameenddt'].fillna(pd.Timestamp('today')).max().date()} "
+             f"({int(df['is_current'].sum())} currently active spells)")
+    return df
+
+
+def security_master_asof(master_df: pd.DataFrame, as_of_date: Optional[str] = None) -> pd.DataFrame:
+    """Point-in-time lookup mirroring sp500_members_asof's own convention:
+    returns the rows (permno, ticker, exchange, etc.) that were valid on
+    as_of_date -- i.e. which securities genuinely existed, under which
+    ticker, on which exchange, at that point in time."""
+    as_of = pd.Timestamp(as_of_date) if as_of_date else pd.Timestamp.today()
+    return master_df[
+        (master_df["namedt"] <= as_of)
+        & (master_df["is_current"] | (master_df["nameenddt"] >= as_of))
+    ]
 
 
 def sp500_members_asof(membership_df: pd.DataFrame, as_of_date: Optional[str] = None) -> set:

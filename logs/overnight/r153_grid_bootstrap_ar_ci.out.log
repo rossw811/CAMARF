@@ -1,0 +1,4 @@
+KVUE/KMB@3m: rho_hat=0.8212 90% CI=[0.8251, 0.8251]
+PNC/ZION@4h: rho_hat=0.9982 90% CI=[0.9990, 0.9990]
+Wrote output/research/grid_bootstrap_ar_ci.parquet: 2 pairs
+

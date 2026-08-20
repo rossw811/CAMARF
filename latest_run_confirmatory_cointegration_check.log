@@ -1,8 +1,24 @@
-07:30:48 INFO  === confirmatory_cointegration_check.py: Johansen + KPSS on 15 target/control pairs ===
-07:30:48 INFO  Supplementary evidence only -- does NOT bypass or re-derive the FDR-corrected confirmed-pair set. See module docstring.
-07:30:49 INFO  Aligned 29/29 needed symbols
-07:30:49 INFO    LNT   /VTR    (target           ) n=4530  Johansen_rejects_no_coint@95=True   KPSS_fails_to_reject_stationarity@95=False  BOTH_CORROBORATE=False
-07:30:49 INFO    LNT   /WELL   (target           ) n=4530  Johansen_rejects_no_coint@95=True   KPSS_fails_to_reject_stationarity@95=True   BOTH_CORROBORATE=True
-07:30:49 INFO    CMS   /DUK    (target           ) n=4530  Johansen_rejects_no_coint@95=True   KPSS_fails_to_reject_stationarity@95=True   BOTH_CORROBORATE=True
-07:30:50 INFO    EG    /WRB    (target           ) n=4525  Johansen_rejects_no_coint@95=True   KPSS_fails_to_reject_stationarity@95=False  BOTH_CORROBORATE=False
-07:30:50 INFO    HAL   /NOV    (target           ) n=4533  Johansen_rejects_no_coint@95=True   KPSS_fails_to_reject_stationarity@95=False  BOTH_CORROBORATE=False
+15:08:00 INFO  === confirmatory_cointegration_check.py: Johansen + KPSS on 15 target/control pairs ===
+15:08:00 INFO  Supplementary evidence only -- does NOT bypass or re-derive the FDR-corrected confirmed-pair set. See module docstring.
+15:08:00 INFO  Aligned 29/29 needed symbols
+15:08:00 INFO    LNT   /VTR    (target           ) n=4530  Johansen_rejects_no_coint@95=True   KPSS_fails_to_reject_stationarity@95=False  BOTH_CORROBORATE=False
+15:08:00 INFO    LNT   /WELL   (target           ) n=4530  Johansen_rejects_no_coint@95=True   KPSS_fails_to_reject_stationarity@95=True   BOTH_CORROBORATE=True
+15:08:00 INFO    CMS   /DUK    (target           ) n=4530  Johansen_rejects_no_coint@95=True   KPSS_fails_to_reject_stationarity@95=True   BOTH_CORROBORATE=True
+15:08:00 INFO    EG    /WRB    (target           ) n=4525  Johansen_rejects_no_coint@95=True   KPSS_fails_to_reject_stationarity@95=False  BOTH_CORROBORATE=False
+15:08:00 INFO    HAL   /NOV    (target           ) n=4533  Johansen_rejects_no_coint@95=True   KPSS_fails_to_reject_stationarity@95=False  BOTH_CORROBORATE=False
+15:08:00 INFO    MET   /TMHC   (target           ) n=4489  Johansen_rejects_no_coint@95=True   KPSS_fails_to_reject_stationarity@95=False  BOTH_CORROBORATE=False
+15:08:00 INFO    PFG   /STLD   (target           ) n=4529  Johansen_rejects_no_coint@95=True   KPSS_fails_to_reject_stationarity@95=False  BOTH_CORROBORATE=False
+15:08:00 INFO    UMBF  /FHB    (target           ) n=4514  Johansen_rejects_no_coint@95=True   KPSS_fails_to_reject_stationarity@95=False  BOTH_CORROBORATE=False
+15:08:00 INFO    SPY   /VOO    (positive_control ) n=4533  Johansen_rejects_no_coint@95=True   KPSS_fails_to_reject_stationarity@95=True   BOTH_CORROBORATE=True
+15:08:00 INFO    FELE  /MAS    (positive_control ) n=4509  Johansen_rejects_no_coint@95=True   KPSS_fails_to_reject_stationarity@95=False  BOTH_CORROBORATE=False
+15:08:00 INFO    PNC   /ZION   (positive_control ) n=4533  Johansen_rejects_no_coint@95=True   KPSS_fails_to_reject_stationarity@95=True   BOTH_CORROBORATE=True
+15:08:00 INFO    MU    /ORCL   (negative_control ) n=4533  Johansen_rejects_no_coint@95=False  KPSS_fails_to_reject_stationarity@95=False  BOTH_CORROBORATE=False
+15:08:00 INFO    CAT   /HLI    (negative_control ) n=4527  Johansen_rejects_no_coint@95=False  KPSS_fails_to_reject_stationarity@95=False  BOTH_CORROBORATE=False
+15:08:00 INFO    AMG   /BX     (negative_control ) n=4529  Johansen_rejects_no_coint@95=False  KPSS_fails_to_reject_stationarity@95=False  BOTH_CORROBORATE=False
+15:08:00 INFO    ATI   /PNR    (negative_control ) n=4529  Johansen_rejects_no_coint@95=False  KPSS_fails_to_reject_stationarity@95=False  BOTH_CORROBORATE=False
+15:08:00 INFO  Saved -> output/research/confirmatory_cointegration_check.parquet
+15:08:00 INFO  
+15:08:00 INFO  === Summary by role ===
+15:08:00 INFO    target            : 2/8 pairs corroborated by BOTH Johansen and KPSS
+15:08:00 INFO    positive_control  : 2/3 pairs corroborated by BOTH Johansen and KPSS
+15:08:00 INFO    negative_control  : 0/4 pairs corroborated by BOTH Johansen and KPSS

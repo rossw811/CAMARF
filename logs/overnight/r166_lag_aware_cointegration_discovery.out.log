@@ -1,0 +1,4 @@
+Near-miss scan: 324863 total near-miss pairs, 1 flagged with lift >= 0.1 -- these get the confirmatory lagged-EG test.
+  CALY/USO: best_lag=4 eg_p=0.8916706590307889 eg_perm_p=0.75
+
+1/1 near-miss pairs produced a usable permutation-corrected EG p-value.

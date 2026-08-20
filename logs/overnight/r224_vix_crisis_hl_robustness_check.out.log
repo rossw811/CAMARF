@@ -1,0 +1,3 @@
+Loading macro regime data...
+Testing 3 currently-confirmed pairs' 1h dynamics (pairs.parquet no longer has a native 1hr entry under the current WRDS-primary universe -- see module comment)
+

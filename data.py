@@ -4094,6 +4094,57 @@ class UniverseBuilder:
             # doesn't redundantly re-fetch them from yfinance.
             yf_assets = [(s, cls) for s, cls in yf_assets if s not in wrds_daily_done]
 
+        # Compustat Global international index universe (Thread I, 2026-08-12/13):
+        # NOT routed through yf_assets/yfinance at all -- GVKEY{gvkey}_{iid}
+        # labels have no yfinance equivalent, unlike CRSP-resolvable US equity
+        # tickers above. Fully separate, self-contained loop; only reads
+        # output/cache/wrds/, never touches yfinance for these symbols.
+        _global_wrds_candidates = [(s, cls) for s, cls in raw_assets if cls == "equity_global_wrds"]
+        if _global_wrds_candidates:
+            _wrds_cache_dir = os.path.join(Config.DATA.CACHE_DIR, "wrds")
+
+            def _load_global_wrds_symbol_tf(symbol: str, tf_label: str) -> Optional[pd.DataFrame]:
+                path = os.path.join(_wrds_cache_dir, f"{symbol}_{tf_label}.parquet")
+                if not os.path.exists(path):
+                    return None
+                try:
+                    raw = pd.read_parquet(path)
+                except Exception as e:
+                    log.debug(f"  Global WRDS cache read failed for {symbol}_{tf_label}: {e}")
+                    return None
+                if raw.empty or "close" not in raw.columns:
+                    return None
+                # Compustat Global's fetch_symbols_bulk_global only provides
+                # split-adjusted close (no close_total_return -- the `trfd`
+                # total-return field remains unverified, see data_wrds.py's own
+                # docstring). Used AS-IS here, not silently upgraded to imply
+                # dividend adjustment that was never actually applied.
+                out = raw.copy()
+                if not {"open", "high", "low"}.issubset(out.columns):
+                    for _c in ("open", "high", "low"):
+                        out[_c] = out["close"]
+                return out
+
+            _n_global_done = 0
+            for symbol, asset_class in _global_wrds_candidates:
+                g_1d = _load_global_wrds_symbol_tf(symbol, "1D")
+                if g_1d is None:
+                    continue  # no cached data for this symbol -- not fetchable elsewhere, skipped
+                cleaned, report = DataCleaner.clean(
+                    g_1d, symbol, asset_class, "1D", "1D", source="wrds_global"
+                )
+                if cleaned is not None:
+                    all_data[f"{symbol}_1D"] = cleaned
+                    wrds_daily_done[symbol] = asset_class
+                    _n_global_done += 1
+                elif not report.passed:
+                    log.debug(f"  Global WRDS {symbol} 1D: {report.fail_reason}")
+            log.info(
+                f"  Global WRDS (Compustat Global, split-adjusted-only): "
+                f"{_n_global_done}/{len(_global_wrds_candidates)} international index symbols "
+                f"loaded from output/cache/wrds/ (1D only -- no intraday, no dividend adjustment)"
+            )
+
         yf_daily_done = set(wrds_daily_done)  # track which symbols have daily data confirmed
 
         # Separate into: completely missing vs. stale (has cache but needs update)
@@ -5207,6 +5258,34 @@ class UniverseBuilder:
                 add(sym, "fx_spot")
             n_intl = len(raw) - n_before
             log.info(f"  International equities + ADRs + FX spots added: {n_intl} symbols")
+
+        # -----------------------------------------------------------------------
+        # Compustat Global international index universe (Thread I, 2026-08-12/13)
+        # ~15,195 symbols across 46 populated national/global indices, fetched
+        # separately via research/wrds_global_index_universe_fetch.py (WRDS Duo
+        # 2FA, run manually by Ross -- never a merged live fetch path, per
+        # CLAUDE.md rule 2, same as the rest of data_wrds.py's own sources).
+        # GVKEY{gvkey}_{iid}-labeled (no natural ticker for most constituents --
+        # `tic` confirmed unreliably populated, see data_wrds.py's own docstring).
+        # Gated OFF by default (Config.DATA.INCLUDE_GLOBAL_WRDS_UNIVERSE) --
+        # a real, large universe change, turned on deliberately, not silently.
+        # -----------------------------------------------------------------------
+        if getattr(Config.DATA, "INCLUDE_GLOBAL_WRDS_UNIVERSE", False):
+            n_before = len(raw)
+            manifest_path = os.path.join(
+                Config.DATA.CACHE_DIR, "wrds", "global_universe_manifest.parquet"
+            )
+            if os.path.exists(manifest_path):
+                _global_manifest = pd.read_parquet(manifest_path, columns=["label"])
+                for label in _global_manifest["label"]:
+                    add(label, "equity_global_wrds")
+            else:
+                log.warning(
+                    f"  INCLUDE_GLOBAL_WRDS_UNIVERSE is True but {manifest_path} not found -- "
+                    f"run research/wrds_global_index_universe_fetch.py first. Skipping."
+                )
+            n_global = len(raw) - n_before
+            log.info(f"  Compustat Global index universe added: {n_global} symbols")
 
         log.info(f"  Total universe: {len(raw)} assets")
         return raw

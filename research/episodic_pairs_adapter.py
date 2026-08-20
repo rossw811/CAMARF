@@ -64,13 +64,14 @@ Usage (as a library):
     rows_1h = build_adapter_rows(
         "intraday_1h", tf_label="1h",
         checkpoint_paths=(
-            "output/research/intraday_episodic_scan_1h_tier2_windows.parquet",
+            # Tier 3 only (BUG-D112) -- Tier 2's candidate pool is non-causal.
             "output/research/intraday_episodic_scan_1h_tier3_windows.parquet",
         ),
     )
 """
 import os
 import sys
+from concurrent.futures import ProcessPoolExecutor, as_completed
 
 import numpy as np
 import pandas as pd
@@ -207,9 +208,30 @@ def build_one_row(sym_a: str, sym_b: str, tf_label: str, as_of_date, source: str
     return row
 
 
+def _build_one_row_worker(args):
+    sym_a, sym_b, tf_label, as_of_date, source, detail = args
+    return build_one_row(sym_a, sym_b, tf_label, as_of_date, source, detail)
+
+
+def _resume_checkpoint_path(source: str) -> str:
+    return os.path.join(_OUT_DIR, f"episodic_pairs_adapter_progress_{source}.parquet")
+
+
+def _save_progress(path: str, rows: list):
+    """Atomic tmp+os.replace write, same pattern as BUG-D108's fix to
+    wrds_deep_history_episodic_scan.py -- a multi-hour, per-pair sequential
+    build with no incremental persistence lost 44 min of real CPU-bound work
+    to a single stage-timeout kill (found live, 2026-08-11); this makes each
+    kill/resume cost at most one pair, not the whole run."""
+    tmp = path + ".tmp"
+    pd.DataFrame(rows).to_parquet(tmp)
+    os.replace(tmp, path)
+
+
 def build_adapter_rows(
     source: str, tf_label: str, checkpoint_paths=_DEFAULT_CHECKPOINT_PATHS,
     as_of_date=None, alpha: float = 0.05, min_windows_confirmed: int = 1,
+    n_workers: int = 1,
 ) -> pd.DataFrame:
     if as_of_date is None:
         as_of_date = pd.Timestamp.now().normalize()
@@ -217,23 +239,85 @@ def build_adapter_rows(
         as_of_date=as_of_date, alpha=alpha, min_windows_confirmed=min_windows_confirmed,
         checkpoint_paths=checkpoint_paths,
     )
+
+    progress_path = _resume_checkpoint_path(source)
     rows = []
-    for d in details:
-        row = build_one_row(d["symbol_a"], d["symbol_b"], tf_label, as_of_date, source, d)
-        if row is not None:
-            rows.append(row)
+    done_keys = set()
+    if os.path.exists(progress_path):
+        prior = pd.read_parquet(progress_path)
+        prior_rows = prior.to_dict("records")
+        # BUG (found live, 2026-08-12, while rebuilding the adapter post-
+        # BUG-D112): a prior checkpoint can contain rows for pairs that are
+        # NO LONGER in the current `details` (e.g. the confirmed set shrank
+        # after a methodology fix, exactly BUG-D112's own situation --
+        # 647->326 for WRDS/1D). Blindly trusting every checkpointed row
+        # would silently reintroduce stale, no-longer-confirmed pairs into
+        # supposedly-current PIT-safe output -- the same class of silent
+        # contamination this whole session has been fixing. Filter to only
+        # keep checkpointed rows whose key is STILL in the current
+        # `details` before treating them as valid/already-done.
+        current_keys = {(d["symbol_a"], d["symbol_b"]) for d in details}
+        rows = [r for r in prior_rows if (r["symbol_a"], r["symbol_b"]) in current_keys]
+        done_keys = {(r["symbol_a"], r["symbol_b"]) for r in rows}
+        n_dropped = len(prior_rows) - len(rows)
+        print(f"{source}: resuming from {len(rows)} already-built rows in {progress_path}"
+              + (f" ({n_dropped} stale checkpointed rows dropped -- no longer in the current "
+                 f"confirmed set)" if n_dropped else ""))
+        if n_dropped:
+            _save_progress(progress_path, rows)  # persist the pruned checkpoint immediately
+
+    pending = [d for d in details if (d["symbol_a"], d["symbol_b"]) not in done_keys]
+
+    if n_workers <= 1:
+        for d in pending:
+            row = build_one_row(d["symbol_a"], d["symbol_b"], tf_label, as_of_date, source, d)
+            if row is not None:
+                rows.append(row)
+                _save_progress(progress_path, rows)
+        return pd.DataFrame(rows)
+
+    # Per-pair work (2x DataAligner.align_universe + AnalysisPipeline.
+    # _build_pair_result) is independent across pairs -- embarrassingly
+    # parallel, same pattern intraday_episodic_scan.py already uses for its
+    # own per-pair EG tests (BUG-D110: single-threaded, this source's 647
+    # WRDS/1D pairs alone took ~28s/pair, ~5 hours sequential). Each worker
+    # calls CointScanner.rolling_fraction with n_workers=1 internally
+    # (build_one_row's own call) to avoid nested pool spawning.
+    tasks = [(d["symbol_a"], d["symbol_b"], tf_label, as_of_date, source, d) for d in pending]
+    completed_since_save = 0
+    with ProcessPoolExecutor(max_workers=n_workers) as pool:
+        futures = {pool.submit(_build_one_row_worker, t): t for t in tasks}
+        for fut in as_completed(futures):
+            row = fut.result()
+            if row is not None:
+                rows.append(row)
+                completed_since_save += 1
+                if completed_since_save >= 5:
+                    _save_progress(progress_path, rows)
+                    completed_since_save = 0
+    if completed_since_save > 0:
+        _save_progress(progress_path, rows)
     return pd.DataFrame(rows)
 
 
 def main():
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--workers", type=int, default=1,
+                         help="Parallel worker processes for the per-pair build "
+                              "(BUG-D110: single-threaded, ~28s/pair, hours for "
+                              "647+ pairs). Each pair's build is independent.")
+    args = parser.parse_args()
+
+    # Tier 2 REMOVED from every source (BUG-D112, 2026-08-11): its candidate
+    # pool is a single whole-history correlation matrix, non-causal by
+    # construction -- same reason Tier 1 was already excluded. Tier 3 only.
     sources = [
         ("wrds_1D", "1D", _DEFAULT_CHECKPOINT_PATHS),
         ("intraday_1h", "1h", (
-            os.path.join(_OUT_DIR, "intraday_episodic_scan_1h_tier2_windows.parquet"),
             os.path.join(_OUT_DIR, "intraday_episodic_scan_1h_tier3_windows.parquet"),
         )),
         ("intraday_4h", "4h", (
-            os.path.join(_OUT_DIR, "intraday_episodic_scan_4h_tier2_windows.parquet"),
             os.path.join(_OUT_DIR, "intraday_episodic_scan_4h_tier3_windows.parquet"),
         )),
     ]
@@ -243,7 +327,7 @@ def main():
         if not existing:
             print(f"SKIP {source}: no checkpoint files found at {checkpoint_paths}")
             continue
-        df = build_adapter_rows(source, tf_label, checkpoint_paths=checkpoint_paths)
+        df = build_adapter_rows(source, tf_label, checkpoint_paths=checkpoint_paths, n_workers=args.workers)
         print(f"{source}@{tf_label}: {len(df)} rows built")
         all_rows.append(df)
 

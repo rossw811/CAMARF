@@ -1,0 +1,4 @@
+2026-08-11 10:19:35  INFO      ======================================================================
+2026-08-11 10:19:35  INFO      CAMARF  ΓÇö  ml.py  ΓÇö  Spread Resolution Meta-Labeler
+2026-08-11 10:19:35  INFO      ======================================================================
+2026-08-11 10:20:08  WARNING   episodic_confirmed_pairs_adapter_output.parquet not found -- falling back to discover_pit_confirmed_pairs() (647 pairs), which has NO pair_row scalar fields of its own; every pair will need a pairs.parquet match below or be skipped, reproducing the original 707-pairs/0-examples gap.

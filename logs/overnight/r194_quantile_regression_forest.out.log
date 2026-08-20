@@ -1,0 +1,2 @@
+Gathered 0 real labeled examples across all confirmed pairs
+Too few examples (0 < 30) for a meaningful QRF fit ΓÇö reporting as exploratory/insufficient-data, same constraint ml.py's own Stage 1 classifier already documents. Not attempting a fit on this little data.

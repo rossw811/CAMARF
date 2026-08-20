@@ -1,10 +1,23 @@
-10:03:59 INFO  === pearson_threshold_sensitivity.py: does loosening the Pearson pre-filter recover confirmed pairs at 1h, or just add multiple-testing burden? ===
-10:04:11 INFO  Loaded 1576 symbols with usable 1h cache
-10:04:11 INFO  Aligning via real production DataAligner.align_universe()...
-10:04:53 INFO  Aligned: 1576 symbols
-10:04:53 INFO  Computing correlation matrices ONCE at the loosest threshold (0.30)...
-10:05:36 INFO  Candidates at threshold 0.30: 232937
-10:05:41 INFO  Candidates at threshold 0.35: 129141
-10:05:45 INFO  Candidates at threshold 0.40: 65060
-10:05:45 INFO  Verified: every tighter threshold's candidate set is a strict subset of the loosest threshold's -- safe to run EG once and subset the results.
-10:05:45 INFO  Running real EG test (_eg_worker) on all 232937 candidates at threshold 0.30 (workers=12)...
+15:43:11 INFO  === pearson_threshold_sensitivity.py: does loosening the Pearson pre-filter recover confirmed pairs at 1h, or just add multiple-testing burden? ===
+15:43:22 INFO  Loaded 1576 symbols with usable 1h cache
+15:43:22 INFO  Aligning via real production DataAligner.align_universe()...
+15:43:57 INFO  Aligned: 1576 symbols
+15:43:57 INFO  Computing correlation matrices ONCE at the loosest threshold (0.30)...
+15:44:18 INFO  Candidates at threshold 0.30: 232937
+15:44:20 INFO  Candidates at threshold 0.35: 129141
+15:44:22 INFO  Candidates at threshold 0.40: 65060
+15:44:23 INFO  Verified: every tighter threshold's candidate set is a strict subset of the loosest threshold's -- safe to run EG once and subset the results.
+15:44:23 INFO  Running real EG test (_eg_worker) on all 232937 candidates at threshold 0.30 (workers=12)...
+16:17:16 INFO  EG complete in 1972.3s
+16:17:16 INFO  EG usable results: 125716/232937
+16:17:17 INFO  
+16:17:17 INFO  === Threshold sensitivity summary (alpha=0.05) ===
+16:17:17 INFO    threshold=0.40: m=34593 candidates, raw p<0.05=2504, FDR-adjusted<0.05=3
+16:17:18 INFO    threshold=0.35: m=69335 candidates, raw p<0.05=4743, FDR-adjusted<0.05=3
+16:17:18 INFO    threshold=0.30: m=125716 candidates, raw p<0.05=8490, FDR-adjusted<0.05=3
+16:17:18 INFO  
+16:17:18 INFO  Additional candidates admitted at 0.35 vs 0.40: 64081
+16:17:18 INFO  Additional candidates admitted at 0.30 vs 0.35: 103796
+16:17:18 INFO  Saved -> output/research/pearson_threshold_sensitivity{,_summary}.parquet
+16:17:18 INFO  ============================================================
+16:17:18 INFO  pearson_threshold_sensitivity.py complete (34.1 min)

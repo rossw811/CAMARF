@@ -1,0 +1,4 @@
+IQV/Q: n=40 theta=(0.92,0.00,0.08) smoothing_index=0.849 (1.0=no smoothing)
+SKIP PNC/ZION: only 5 distinct trading days
+
+Wrote output/research/return_smoothing_audit.parquet: 1 pairs, 0 showing meaningful smoothing signature (index<0.8): []

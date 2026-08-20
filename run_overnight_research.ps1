@@ -42,7 +42,15 @@
 #   Start-Process powershell.exe -ArgumentList "-ExecutionPolicy","Bypass","-NonInteractive","-File","run_overnight_research.ps1" -WindowStyle Hidden
 
 param(
-    [int]$Workers = 6,
+    [int]$Workers = 10,  # 2026-08-11: this is now the ONLY orchestrator running
+                          # (the separate parallel episodic-scan loop was retired
+                          # and consolidated into stage 00 below, sequential, not
+                          # concurrent) -- no second process to share cores with,
+                          # so use most of this 12-PHYSICAL-core machine
+                          # (Snapdragon X1E80100, no SMT -- 12 is the real hard
+                          # limit), leaving 2 cores free for the OS rather than
+                          # the intermediate 4/6-split used while two orchestrators
+                          # ran concurrently.
     [int]$TimeoutMinutes = 45,
     [switch]$Fresh
 )
@@ -69,7 +77,8 @@ function Invoke-Stage {
     param(
         [string]$Name,
         [string]$Script,
-        [string[]]$Arguments = @()
+        [string[]]$Arguments = @(),
+        [int]$TimeoutOverrideMinutes = 0   # 0 = use the script-wide $TimeoutMinutes default
     )
 
     $done = Get-Content $StateFile -ErrorAction SilentlyContinue
@@ -77,6 +86,7 @@ function Invoke-Stage {
         Log "SKIP    $Name (already completed)"
         return
     }
+    $effectiveTimeout = if ($TimeoutOverrideMinutes -gt 0) { $TimeoutOverrideMinutes } else { $TimeoutMinutes }
 
     $outLog = Join-Path $LogDir "$Name.out.log"
     $errLog = Join-Path $LogDir "$Name.err.log"
@@ -138,11 +148,11 @@ function Invoke-Stage {
     $proc.BeginOutputReadLine()
     $proc.BeginErrorReadLine()
 
-    $exited = $proc.WaitForExit($TimeoutMinutes * 60 * 1000)
+    $exited = $proc.WaitForExit($effectiveTimeout * 60 * 1000)
     $dur = [int]((Get-Date) - $t0).TotalMinutes
 
     if (-not $exited) {
-        Log "TIMEOUT $Name after ${TimeoutMinutes} min -- killing and moving on"
+        Log "TIMEOUT $Name after ${effectiveTimeout} min -- killing and moving on"
         # $proc.Kill($true) is a .NET 5+/Core-only overload (kills the
         # entire process tree) -- SILENTLY DOES NOTHING on Windows
         # PowerShell 5.1's .NET Framework runtime, which only has the
@@ -173,9 +183,134 @@ function Invoke-Stage {
     }
 }
 
+function Invoke-StageUntilSuccess {
+    # For a genuinely long-running, resumable-via-its-own-checkpoint script
+    # (research/intraday_episodic_scan.py -- atomic per-tier checkpointing,
+    # BUG-D108 fix) where a single Invoke-Stage timeout would just discard
+    # partial progress and never actually finish. Loops re-launching the
+    # SAME script (no timeout -- the underlying script's own checkpoints are
+    # what make each relaunch cheap, not an outer time limit) until it exits
+    # 0 or $MaxAttempts is reached. Absorbs what used to be a SEPARATE,
+    # PARALLEL process (run_episodic_scan_retry_loop.ps1) -- consolidated
+    # here 2026-08-11 per Ross's explicit direction that the intraday scan
+    # must run and complete BEFORE the adapter/ML/PIT-backtest stages, not
+    # alongside them; running both concurrently also meant two processes
+    # contending for the same checkpoint files.
+    param(
+        [string]$Name,
+        [string]$Script,
+        [string[]]$Arguments = @(),
+        [int]$MaxAttempts = 100
+    )
+
+    $done = Get-Content $StateFile -ErrorAction SilentlyContinue
+    if ($done -contains $Name) {
+        Log "SKIP    $Name (already completed)"
+        return
+    }
+
+    for ($attempt = 1; $attempt -le $MaxAttempts; $attempt++) {
+        $outLog = Join-Path $LogDir "$Name.attempt$attempt.out.log"
+        $errLog = Join-Path $LogDir "$Name.attempt$attempt.err.log"
+        $argLine = ($Arguments -join " ")
+        Log "START   $Name attempt $attempt/$MaxAttempts  ->  $Script $argLine"
+        $t0 = Get-Date
+
+        $psi = New-Object System.Diagnostics.ProcessStartInfo
+        $psi.FileName = $Python
+        $allArgs = @($Script) + $Arguments
+        $quotedArgs = $allArgs | ForEach-Object { if ($_ -match '[\s"]') { '"' + ($_ -replace '"', '\"') + '"' } else { $_ } }
+        $psi.Arguments = ($quotedArgs -join " ")
+        $psi.UseShellExecute = $false
+        $psi.RedirectStandardOutput = $true
+        $psi.RedirectStandardError = $true
+        $psi.WorkingDirectory = (Get-Location).Path
+
+        $outWriter = New-Object System.IO.StreamWriter($outLog, $false)
+        $errWriter = New-Object System.IO.StreamWriter($errLog, $false)
+        $outWriter.AutoFlush = $true
+        $errWriter.AutoFlush = $true
+
+        $proc = New-Object System.Diagnostics.Process
+        $proc.StartInfo = $psi
+        $proc.EnableRaisingEvents = $true
+        Register-ObjectEvent -InputObject $proc -EventName OutputDataReceived -Action {
+            if ($null -ne $Event.SourceEventArgs.Data) { $Event.MessageData.WriteLine($Event.SourceEventArgs.Data) }
+        } -MessageData $outWriter | Out-Null
+        Register-ObjectEvent -InputObject $proc -EventName ErrorDataReceived -Action {
+            if ($null -ne $Event.SourceEventArgs.Data) { $Event.MessageData.WriteLine($Event.SourceEventArgs.Data) }
+        } -MessageData $errWriter | Out-Null
+
+        $proc.Start() | Out-Null
+        $proc.BeginOutputReadLine()
+        $proc.BeginErrorReadLine()
+        $proc.WaitForExit()  # no timeout -- babysitting an unbounded-length run is the point
+
+        Start-Sleep -Milliseconds 500
+        $outWriter.Close(); $errWriter.Close()
+        Get-EventSubscriber | Where-Object { $_.SourceObject -eq $proc } | Unregister-Event
+
+        $dur = [int]((Get-Date) - $t0).TotalMinutes
+        if ($proc.ExitCode -eq 0) {
+            Log "DONE    $Name in ${dur} min on attempt $attempt (exit 0)"
+            Add-Content -Path $StateFile -Value $Name -Encoding utf8
+            return
+        } else {
+            Log "ENDED   $Name attempt $attempt after ${dur} min (exit $($proc.ExitCode)) -- retrying (checkpoints make this cheap)"
+        }
+    }
+    Log "GAVE UP on $Name after $MaxAttempts attempts -- moving on without marking it complete"
+}
+
 Log "================ CAMARF overnight research runner started (workers=$Workers, timeout=${TimeoutMinutes}min/stage) ================"
 $freeGB = [math]::Round((Get-CimInstance Win32_OperatingSystem).FreePhysicalMemory / 1MB, 1)
 Log "Free RAM at start: ${freeGB} GB"
+
+# --- ADDED 2026-08-11, Ross's explicit order: the intraday episodic scan
+# (the pipeline already running before the earlier usage-limit interruption)
+# runs to completion FIRST -- not in parallel, not deferred -- so the
+# adapter/ML/PIT-backtest stages that follow use the COMPLETE episodic
+# universe (WRDS/1D + intraday 1h/4h), not just WRDS/1D. Uses
+# Invoke-StageUntilSuccess (no per-attempt timeout, retries via the script's
+# own atomic checkpointing) since a single 45-min Invoke-Stage timeout would
+# never let this genuinely multi-hour scan finish.
+Invoke-StageUntilSuccess -Name "00_intraday_episodic_scan" -Script "research\intraday_episodic_scan.py" -Arguments @("--tf", "both", "--workers", "$Workers")
+
+# ML trains fully BEFORE any backtest run (Ross's explicit gate). The
+# adapter stage builds the real pairs.parquet-schema + spread_series data
+# ml.py --pit-safe's fallback path needs (see research/episodic_pairs_
+# adapter.py / ml.py's build() docstring) from BOTH the WRDS/1D episodic
+# scan (647 pairs, already complete) and the intraday scan that just
+# finished above -- its main() already checks for and includes whichever
+# sources exist on disk, no separate WRDS-only invocation needed.
+# -TimeoutOverrideMinutes 240 (added 2026-08-11): a live overnight run showed
+# this stage is genuinely CPU-bound for far longer than 45 min -- it builds
+# two full DataAligner.align_universe + AnalysisPipeline._build_pair_result
+# passes (truncated + full history) per PIT-confirmed pair, sequentially,
+# single-threaded (n_workers=1 in build_one_row's rolling_fraction call).
+# The 647-pair WRDS/1D source alone is the bulk of the cost; some pairs with
+# very long history (e.g. 13,000+ daily sessions since the 1970s) take
+# materially longer per pair than the ~10-20s typical case. The 45-min
+# default silently killed this stage before it produced any output, which
+# then propagated into 00b_ml_pit_safe silently falling back to
+# discover_pit_confirmed_pairs() (647 pairs, no scalar fields) instead of
+# the adapter's PIT-safe output -- not a crash, just wrong/incomplete data
+# flowing downstream. Not a mystery kill like Step 2's -- this one was our
+# own runner's per-stage timeout doing exactly what it's configured to do.
+Invoke-Stage -Name "00a_episodic_adapter" -Script "research\episodic_pairs_adapter.py" -TimeoutOverrideMinutes 240
+Invoke-Stage -Name "00b_ml_pit_safe"      -Script "ml.py" -Arguments @("--pit-safe")
+
+# --- ADDED 2026-08-11, Ross's explicit re-prioritization: PIT-safe backtest
+# (pit_wfa.py) runs BEFORE the regular backtest.py suite, not after -- was
+# previously placed last in this file specifically because it's "the most
+# expensive single item" (see the comment that used to sit at the bottom of
+# this file, now moved here since the reasoning moved with the stage). That
+# reasoning still applies to its RUNTIME (already observed hitting the old
+# uniform 45-min stage timeout without finishing, and separately documented
+# elsewhere in this project as a ~2.5-hour run) but not to its PRIORITY --
+# given a longer, dedicated timeout via -TimeoutOverrideMinutes instead of
+# silently keeping the same 45-min budget that already proved too short.
+Invoke-Stage -Name "00c_pit_wfa" -Script "pit_wfa.py" -Arguments @("--workers", "$Workers") -TimeoutOverrideMinutes 180
 
 # --- Core production pipeline (analysis.py's output from today's run is reused as-is) ---
 Invoke-Stage -Name "01_backtest_is"          -Script "backtest.py"
@@ -223,10 +358,6 @@ foreach ($rs in $researchScripts) {
     Invoke-Stage -Name $stageName -Script ("research\" + $rs.Name)
     $i++
 }
-
-# --- The most expensive single item, placed last: if still running or timed
-# out, everything else has already completed and produced fresh output. ---
-Invoke-Stage -Name "99_pit_wfa" -Script "pit_wfa.py" -Arguments @("--workers", "$Workers")
 
 Log "================ CAMARF overnight research runner finished ================"
 $doneCount = (Get-Content $StateFile | Measure-Object -Line).Lines

@@ -1,0 +1,4 @@
+14:31:13 INFO  === era_decay_replication.py: Do & Faff (2010)-style era-decay replication on CAMARF's own data ===
+2026-08-11 14:31:13  INFO      === era_decay_replication.py: Do & Faff (2010)-style era-decay replication on CAMARF's own data ===
+14:31:13 INFO  SCOPE: tests decay + convergence-property (half-life) trend only ΓÇö cannot test the 'crowding' hypothesis (requires external capital-flow data CAMARF does not have). See module docstring.
+2026-08-11 14:31:13  INFO      SCOPE: tests decay + convergence-property (half-life) trend only ΓÇö cannot test the 'crowding' hypothesis (requires external capital-flow data CAMARF does not have). See module docstring.

@@ -1,29 +1,29 @@
-08:16:03 INFO  === fdr_method_comparison.py: 4-method FDR comparison on the FULL current 1h universe ===
-08:16:03 INFO  Ross's direct request after the BH-FDR bug sweep -- honest comparison, no cherry-picking.
-08:16:15 INFO  Loaded 1576 symbols with usable 1h cache
-08:16:15 INFO  Aligning via real production DataAligner.align_universe()...
-08:16:52 INFO  Aligned: 1576 symbols
-08:16:52 INFO  Running real production UniverseFilter (Pearson pre-filter, threshold=0.4)...
-08:17:38 INFO  Pearson pre-filter: 1241100 possible pairs -> 65060 candidates
-08:17:38 INFO  Running real EG test (_eg_worker, same code as production CointScanner.scan) on all 65060 candidates (workers=12)...
-08:43:46 INFO  EG complete in 1566.8s
-08:43:46 INFO  EG usable results: 34593/65060
-08:43:47 INFO  
-08:43:47 INFO  === Survivor counts by method (m=34593 candidates tested, alpha=0.05) ===
-08:43:47 INFO    step_up_bh            : 3/34593 survive
-08:43:47 INFO    benjamini_yekutieli   : 1/34593 survive
-08:43:47 INFO    two_stage_tsbh        : 3/34593 survive
-08:43:47 INFO    fixed_bonferroni      : 3/34593 survive
-08:43:47 INFO  
-08:43:47 INFO  === Known non-DD pairs (previously individually significant, raw p<0.001) -- confirmed by which method? ===
-08:43:47 INFO    LNT/VTR      raw_p=0.0004571121196487479  {'step_up_bh': False, 'benjamini_yekutieli': False, 'two_stage_tsbh': False, 'fixed_bonferroni': False}
-08:43:47 INFO    LNT/WELL     raw_p=7.569243327099827e-05  {'step_up_bh': False, 'benjamini_yekutieli': False, 'two_stage_tsbh': False, 'fixed_bonferroni': False}
-08:43:47 INFO    CMS/DUK      raw_p=0.00018754616988048527  {'step_up_bh': False, 'benjamini_yekutieli': False, 'two_stage_tsbh': False, 'fixed_bonferroni': False}
-08:43:47 INFO    EG/WRB       raw_p=0.0005555288095518048  {'step_up_bh': False, 'benjamini_yekutieli': False, 'two_stage_tsbh': False, 'fixed_bonferroni': False}
-08:43:47 INFO    HAL/NOV      raw_p=0.001813601624806935  {'step_up_bh': False, 'benjamini_yekutieli': False, 'two_stage_tsbh': False, 'fixed_bonferroni': False}
-08:43:47 INFO    MET/TMHC     raw_p=not in candidate pool this run  {'step_up_bh': None, 'benjamini_yekutieli': None, 'two_stage_tsbh': None, 'fixed_bonferroni': None}
-08:43:47 INFO    PFG/STLD     raw_p=0.00024355712155489884  {'step_up_bh': False, 'benjamini_yekutieli': False, 'two_stage_tsbh': False, 'fixed_bonferroni': False}
-08:43:47 INFO    UMBF/FHB     raw_p=0.00013505888526888486  {'step_up_bh': False, 'benjamini_yekutieli': False, 'two_stage_tsbh': False, 'fixed_bonferroni': False}
-08:43:47 INFO  Saved -> output/research/fdr_method_comparison_{raw,summary,known_pairs}.parquet
-08:43:47 INFO  ============================================================
-08:43:47 INFO  fdr_method_comparison.py complete (27.7 min)
+14:31:18 INFO  === fdr_method_comparison.py: 4-method FDR comparison on the FULL current 1h universe ===
+14:31:18 INFO  Ross's direct request after the BH-FDR bug sweep -- honest comparison, no cherry-picking.
+14:31:26 INFO  Loaded 1576 symbols with usable 1h cache
+14:31:26 INFO  Aligning via real production DataAligner.align_universe()...
+14:31:48 INFO  Aligned: 1576 symbols
+14:31:48 INFO  Running real production UniverseFilter (Pearson pre-filter, threshold=0.4)...
+14:32:06 INFO  Pearson pre-filter: 1241100 possible pairs -> 65060 candidates
+14:32:06 INFO  Running real EG test (_eg_worker, same code as production CointScanner.scan) on all 65060 candidates (workers=12)...
+14:38:50 INFO  EG complete in 402.4s
+14:38:50 INFO  EG usable results: 34593/65060
+14:38:50 INFO  
+14:38:50 INFO  === Survivor counts by method (m=34593 candidates tested, alpha=0.05) ===
+14:38:50 INFO    step_up_bh            : 3/34593 survive
+14:38:50 INFO    benjamini_yekutieli   : 1/34593 survive
+14:38:50 INFO    two_stage_tsbh        : 3/34593 survive
+14:38:50 INFO    fixed_bonferroni      : 3/34593 survive
+14:38:50 INFO  
+14:38:50 INFO  === Known non-DD pairs (previously individually significant, raw p<0.001) -- confirmed by which method? ===
+14:38:50 INFO    LNT/VTR      raw_p=0.0004571121196487479  {'step_up_bh': False, 'benjamini_yekutieli': False, 'two_stage_tsbh': False, 'fixed_bonferroni': False}
+14:38:50 INFO    LNT/WELL     raw_p=7.569243327099827e-05  {'step_up_bh': False, 'benjamini_yekutieli': False, 'two_stage_tsbh': False, 'fixed_bonferroni': False}
+14:38:50 INFO    CMS/DUK      raw_p=0.00018754616988048527  {'step_up_bh': False, 'benjamini_yekutieli': False, 'two_stage_tsbh': False, 'fixed_bonferroni': False}
+14:38:50 INFO    EG/WRB       raw_p=0.0005555288095518048  {'step_up_bh': False, 'benjamini_yekutieli': False, 'two_stage_tsbh': False, 'fixed_bonferroni': False}
+14:38:50 INFO    HAL/NOV      raw_p=0.001813601624806935  {'step_up_bh': False, 'benjamini_yekutieli': False, 'two_stage_tsbh': False, 'fixed_bonferroni': False}
+14:38:50 INFO    MET/TMHC     raw_p=not in candidate pool this run  {'step_up_bh': None, 'benjamini_yekutieli': None, 'two_stage_tsbh': None, 'fixed_bonferroni': None}
+14:38:50 INFO    PFG/STLD     raw_p=0.00024355712155489884  {'step_up_bh': False, 'benjamini_yekutieli': False, 'two_stage_tsbh': False, 'fixed_bonferroni': False}
+14:38:50 INFO    UMBF/FHB     raw_p=0.00013505888526888486  {'step_up_bh': False, 'benjamini_yekutieli': False, 'two_stage_tsbh': False, 'fixed_bonferroni': False}
+14:38:50 INFO  Saved -> output/research/fdr_method_comparison_{raw,summary,known_pairs}.parquet
+14:38:50 INFO  ============================================================
+14:38:50 INFO  fdr_method_comparison.py complete (7.5 min)

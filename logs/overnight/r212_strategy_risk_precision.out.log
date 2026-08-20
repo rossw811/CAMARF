@@ -1,0 +1,4 @@
+IQV/Q: n=80 precision=0.000 freq/yr=6.9 implied_annual_SR=-1310.267
+PNC/ZION: n=10 precision=1.000 freq/yr=6.6 implied_annual_SR=1280.374
+
+Wrote output/research/strategy_risk_precision.parquet: 2 pairs

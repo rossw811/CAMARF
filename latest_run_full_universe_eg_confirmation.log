@@ -1,0 +1,31 @@
+2026-08-14 21:28:32,492  INFO      Loaded 58579 candidate pairs from 4 chunk files
+2026-08-14 21:28:32,505  INFO      Dedup (|pearson_corr|>=0.999999): dropped 332 identity-duplicate candidates, 58247 real candidates remain
+2026-08-14 21:28:32,505  INFO      Loading full merged universe for tf=1D (same source as the pre-filter stage)...
+2026-08-14 21:31:11,970  INFO      Loaded 44840 symbols in 159.5s
+2026-08-14 21:31:11,986  INFO      Aligning all symbols to a shared calendar (lookback_years=10)...
+2026-08-14 21:33:25,207  INFO      Aligned 44840 symbols in 133.2s
+2026-08-14 21:33:25,224  INFO      Running EG + BH-FDR confirmation on 58247 candidates (n_workers=12)...
+2026-08-14 21:44:04,544  INFO      EG/BH-FDR complete in 639.3s (10.7 min). stats={'n_tested': 57974, 'n_passed_raw': 3147, 'n_passed_fdr': 66, 'fdr_alpha': 0.05}
+2026-08-14 21:44:04,544  INFO      CONFIRMED: 66 pairs out of 58247 candidates tested
+2026-08-14 21:44:04,628  INFO      Saved 66 confirmed pairs -> output/research/full_universe_eg_confirmed_pairs.parquet
+2026-08-15 17:43:24,430  ERROR     No candidate chunk files found in output/research/full_universe_correlation_prefilter_candidates_chunks_5y
+2026-08-15 17:59:43,174  INFO      Loaded 51795 candidate pairs from 3 chunk files in output/research/full_universe_correlation_prefilter_candidates_5y_chunks
+2026-08-15 17:59:43,186  INFO      Dedup (|pearson_corr|>=0.999999): dropped 312 identity-duplicate candidates, 51483 real candidates remain
+2026-08-15 17:59:43,186  INFO      Loading full merged universe for tf=1D (same source as the pre-filter stage)...
+2026-08-15 18:02:47,691  INFO      Loaded 44840 symbols in 184.5s
+2026-08-15 18:02:47,697  INFO      Aligning all symbols to a shared calendar (lookback_years=5)...
+2026-08-15 18:04:55,488  INFO      Aligned 44840 symbols in 127.8s
+2026-08-15 18:04:55,501  INFO      Running EG + BH-FDR confirmation on 51483 candidates (n_workers=12)...
+2026-08-15 18:12:31,196  INFO      EG/BH-FDR complete in 455.7s (7.6 min). stats={'n_tested': 51409, 'n_passed_raw': 2138, 'n_passed_fdr': 35, 'fdr_alpha': 0.05}
+2026-08-15 18:12:31,226  INFO      CONFIRMED: 35 pairs out of 51483 candidates tested
+2026-08-15 18:12:31,289  INFO      Saved 35 confirmed pairs -> output/research/full_universe_eg_confirmed_pairs_5y.parquet
+2026-08-15 18:47:21,971  INFO      Loaded 58782 candidate pairs from 3 chunk files in output/research/full_universe_correlation_prefilter_candidates_3y_chunks
+2026-08-15 18:47:21,985  INFO      Dedup (|pearson_corr|>=0.999999): dropped 312 identity-duplicate candidates, 58470 real candidates remain
+2026-08-15 18:47:21,986  INFO      Loading full merged universe for tf=1D (same source as the pre-filter stage)...
+2026-08-15 18:50:06,229  INFO      Loaded 44840 symbols in 164.2s
+2026-08-15 18:50:06,246  INFO      Aligning all symbols to a shared calendar (lookback_years=3)...
+2026-08-15 18:51:55,640  INFO      Aligned 44840 symbols in 109.4s
+2026-08-15 18:51:55,656  INFO      Running EG + BH-FDR confirmation on 58470 candidates (n_workers=12)...
+2026-08-15 19:00:04,964  INFO      EG/BH-FDR complete in 489.3s (8.2 min). stats={'n_tested': 58455, 'n_passed_raw': 2914, 'n_passed_fdr': 36, 'fdr_alpha': 0.05}
+2026-08-15 19:00:04,964  INFO      CONFIRMED: 36 pairs out of 58470 candidates tested
+2026-08-15 19:00:05,047  INFO      Saved 36 confirmed pairs -> output/research/full_universe_eg_confirmed_pairs_3y.parquet

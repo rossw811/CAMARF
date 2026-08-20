@@ -1,20 +1,20 @@
-09:18:19 INFO  === ml_model_comparison.py: LightGBM/Ridge/Lasso/RandomForest vs. ml.py's XGBoost, COMPARISON ARM ONLY (nothing here feeds backtest.py's MLConditioner) ===
-09:18:28 INFO  Loaded 19 labeled entry events (ml.build(min_class_samples=0), same data ml.py's own XGBoost trains on)
-09:18:28 INFO  Label distribution: {'converged': 10, 'not_converged': 9}
-09:18:28 INFO  Chronological split: n_train=11 n_val=3 n_test=5
-09:18:28 INFO  Majority-class baseline accuracy on test fold: 20.00% (the floor any real model must clear)
-09:18:29 INFO    xgboost (production): test_accuracy=40.00%
-09:18:30 INFO    lightgbm: test_accuracy=80.00%
-09:18:30 INFO    ridge_logistic (l2): test_accuracy=40.00%
-09:18:30 INFO    lasso_logistic (l1): test_accuracy=40.00%
-09:18:31 INFO    random_forest: test_accuracy=40.00%
-09:18:31 INFO  
-09:18:31 INFO  === Summary (test_accuracy - majority_baseline; positive = beats the naive floor) ===
-09:18:31 INFO    xgboost (production)  : +20.0% vs. baseline
-09:18:31 INFO    lightgbm              : +60.0% vs. baseline
-09:18:31 INFO    ridge_logistic (l2)   : +20.0% vs. baseline
-09:18:31 INFO    lasso_logistic (l1)   : +20.0% vs. baseline
-09:18:31 INFO    random_forest         : +20.0% vs. baseline
-09:18:31 INFO  Saved -> output/research/ml_model_comparison.parquet
-09:18:31 INFO  ============================================================
-09:18:31 INFO  ml_model_comparison.py complete (0.2 min)
+14:57:26 INFO  === ml_model_comparison.py: LightGBM/Ridge/Lasso/RandomForest vs. ml.py's XGBoost, COMPARISON ARM ONLY (nothing here feeds backtest.py's MLConditioner) ===
+14:57:31 INFO  Loaded 19 labeled entry events (ml.build(min_class_samples=0), same data ml.py's own XGBoost trains on)
+14:57:31 INFO  Label distribution: {'converged': 10, 'not_converged': 9}
+14:57:31 INFO  Chronological split: n_train=11 n_val=3 n_test=5
+14:57:31 INFO  Majority-class baseline accuracy on test fold: 20.00% (the floor any real model must clear)
+14:57:31 INFO    xgboost (production): test_accuracy=40.00%
+14:57:32 INFO    lightgbm: test_accuracy=80.00%
+14:57:32 INFO    ridge_logistic (l2): test_accuracy=40.00%
+14:57:32 INFO    lasso_logistic (l1): test_accuracy=40.00%
+14:57:32 INFO    random_forest: test_accuracy=40.00%
+14:57:32 INFO  
+14:57:32 INFO  === Summary (test_accuracy - majority_baseline; positive = beats the naive floor) ===
+14:57:32 INFO    xgboost (production)  : +20.0% vs. baseline
+14:57:32 INFO    lightgbm              : +60.0% vs. baseline
+14:57:32 INFO    ridge_logistic (l2)   : +20.0% vs. baseline
+14:57:32 INFO    lasso_logistic (l1)   : +20.0% vs. baseline
+14:57:32 INFO    random_forest         : +20.0% vs. baseline
+14:57:32 INFO  Saved -> output/research/ml_model_comparison.parquet
+14:57:32 INFO  ============================================================
+14:57:32 INFO  ml_model_comparison.py complete (0.1 min)

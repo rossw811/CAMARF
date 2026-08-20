@@ -72,10 +72,13 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config import Config
 from analysis import UniverseFilter, _eg_worker, _benjamini_hochberg, CointScanner
 from research.rolling_adv_comparison import rolling_adv, load_wrds_universe_ohlcv
+from data_wrds import sp500_members_asof
 
 _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _WRDS_CACHE_DIR = os.path.join(_ROOT, "output", "cache", "wrds")
 _OUT_DIR = os.path.join(_ROOT, "output", "research")
+_SYMBOL_PERMNO_MAP_PATH = os.path.join(_WRDS_CACHE_DIR, "symbol_permno_map.parquet")
+_SP500_MEMBERSHIP_PATH = os.path.join(_WRDS_CACHE_DIR, "sp500_membership_history.parquet")
 
 TF_LABEL = "1D_wrds"  # distinct label -- NOT the production "1D" tf_label, to avoid any risk
                        # of this research output being mistaken for a production result
@@ -101,6 +104,52 @@ def _setup_logging():
     fh.setLevel(logging.DEBUG)
     fh.setFormatter(fmt)
     log.addHandler(fh)
+
+
+def load_membership_gate():
+    """
+    Point-in-time S&P 500 index-membership gate (2026-08-11, Ross's direct
+    observation): candidate generation previously loaded every symbol with
+    cached WRDS price history regardless of whether it was actually an S&P
+    500 member at any given historical window's date -- a symbol added to
+    the index in 2022 would still get correlation/EG-tested against 2015-era
+    windows, which a real deployment back then would never have screened.
+
+    Returns (membership_df, permno_by_symbol) from the two cache files
+    research/build_symbol_permno_map.py + data_wrds.py::
+    fetch_sp500_membership_history already produced (both READ-ONLY here,
+    NEITHER re-fetched -- membership_df was already cached 2026-07-27;
+    permno_by_symbol requires a one-time live WRDS metadata query, run
+    separately via `python research/build_symbol_permno_map.py`).
+
+    Returns (None, {}) if either cache is missing -- callers must treat this
+    as "membership gating unavailable, do not filter," never as "no symbols
+    are eligible." Logged loudly either way so an accidentally-missing cache
+    is never silently indistinguishable from "gating deliberately off."
+    """
+    if not os.path.exists(_SP500_MEMBERSHIP_PATH) or not os.path.exists(_SYMBOL_PERMNO_MAP_PATH):
+        log.warning(
+            "Point-in-time membership gate UNAVAILABLE (missing %s -- run "
+            "research/build_symbol_permno_map.py first) -- candidate generation will NOT be "
+            "filtered by index-membership date this run.",
+            _SYMBOL_PERMNO_MAP_PATH if not os.path.exists(_SYMBOL_PERMNO_MAP_PATH) else _SP500_MEMBERSHIP_PATH,
+        )
+        return None, {}
+    membership_df = pd.read_parquet(_SP500_MEMBERSHIP_PATH)
+    permno_map_df = pd.read_parquet(_SYMBOL_PERMNO_MAP_PATH)
+    permno_by_symbol = dict(zip(permno_map_df["symbol"], permno_map_df["permno"]))
+    log.info(f"Point-in-time membership gate ACTIVE: {len(membership_df)} membership spells, "
+             f"{len(permno_by_symbol)} symbols resolved to permnos")
+    return membership_df, permno_by_symbol
+
+
+def _build_member_permno_cache(membership_df, window_end_dates) -> dict:
+    """Precomputes {window_end_date: set(member_permnos)} ONCE for every
+    UNIQUE window_end_date that will be queried, instead of recomputing
+    sp500_members_asof's full membership_df scan per (pair, window) --
+    there are only ~10-20 unique window dates shared across every candidate
+    pair, versus tens of thousands of (pair, window) combinations."""
+    return {d: sp500_members_asof(membership_df, d) for d in set(window_end_dates)}
 
 
 def load_wrds_universe():
@@ -131,10 +180,86 @@ def build_log_prices_and_returns(close_by_symbol):
     dates present in the loaded WRDS data) and returns (log_price_df,
     returns_df). Log returns require min 756 bars (~3yr) overlap to be
     included -- matches production's own MIN_OVERLAP_BY_TF-style floor for
-    daily-ish data, not an arbitrary new choice."""
+    daily-ish data, not an arbitrary new choice.
+
+    UNCHANGED since this function's original version -- kept byte-for-byte
+    identical in behavior for existing callers (this script's own production
+    182-pair episodic run). At the full unrestricted ~44,694-symbol scale
+    (episodic_window_size_sweep.py's --full-universe mode, added 2026-08-15),
+    `pd.DataFrame(close_by_symbol)`'s internal alignment genuinely OOM-crashes
+    on this machine (confirmed live: "Unable to allocate 5.25 GiB for an
+    array with shape (25434, 27716)") -- see build_log_prices_and_returns_
+    bounded() below for the memory-safe alternative used ONLY by that new
+    caller, not a replacement for this function."""
     close_df = pd.DataFrame(close_by_symbol).sort_index()
     log_price_df = np.log(close_df.astype(float))
     returns = log_price_df.diff().iloc[1:]
+    valid_cols = returns.columns[returns.notna().sum() >= 756]
+    return log_price_df[valid_cols], returns[valid_cols]
+
+
+def build_log_prices_and_returns_bounded(close_by_symbol, lookback_years=25, dtype=np.float32):
+    """Memory-bounded alternative to build_log_prices_and_returns(), built
+    2026-08-15 after the plain pd.DataFrame(dict-of-Series) constructor
+    OOM-crashed at the full ~44,694-symbol scale (Ross: "use the full
+    universe", then "fix it properly" once the crash was found). Root cause:
+    pandas' internal DataFrame-from-dict-of-Series alignment path allocates
+    large intermediate blocks proportional to symbol count x full historical
+    depth (some WRDS symbols have ~100 years of history), with no caller
+    control over dtype or scope.
+
+    Fixed the same way as universe_loader.align_to_common_calendar's OOM fix
+    earlier this session: build ONE canonical DatetimeIndex directly via a
+    fast union (np.unique(concatenate(...)), not pandas' internal merge),
+    bounded to `lookback_years`, then reindex each symbol into a
+    pre-allocated array of `dtype` by column -- avoids pandas' internal
+    merge machinery entirely (the actual OOM site) and float32 halves the
+    per-cell footprint vs the original's float64.
+
+    lookback_years defaults to 25 -- comfortably above this sweep's own grid
+    max (5040 bars ~= 20yr, DEFAULT_GRID_BARS in episodic_window_size_
+    sweep.py), so no window this script actually tests ever needs history
+    older than this bound; NOT the same as claiming 25y is universally
+    sufficient for every possible future caller. A caller sweeping windows
+    larger than ~23-24yr equivalent should widen this bound accordingly, not
+    assume it's safe by default.
+
+    Precision note, disclosed not hidden: float32 vs the original's float64
+    changes results at the ~1e-7 relative precision level -- immaterial for
+    EG/ADF test statistics and correlation screening at the scale this
+    operates on, but a real, deliberate tradeoff, not a free lunch."""
+    symbols = list(close_by_symbol.keys())
+    idx_arrays = []
+    for s in symbols:
+        idx = close_by_symbol[s].index
+        if getattr(idx, "tz", None) is not None:
+            idx = idx.tz_localize(None)
+        idx_arrays.append(idx.values)
+    all_dates = np.unique(np.concatenate(idx_arrays))
+    cutoff = all_dates.max() - np.timedelta64(int(lookback_years * 365.25), "D")
+    all_dates = all_dates[all_dates >= cutoff]
+    canonical_index = pd.DatetimeIndex(all_dates)
+
+    log_price_arr = np.full((len(canonical_index), len(symbols)), np.nan, dtype=dtype)
+    for j, s in enumerate(symbols):
+        ser = close_by_symbol[s]
+        if ser.index.tz is not None:
+            ser = ser.copy()
+            ser.index = ser.index.tz_localize(None)
+        aligned = ser.reindex(canonical_index)
+        # BUG-D-style pd.NA leak (same class already hit and fixed in Thread I's WRDS work,
+        # 2026-08-13): some cached columns use pandas nullable dtypes (pd.NA), not plain
+        # np.nan -- `aligned.values > 0` on those raises "boolean value of NA is ambiguous"
+        # inside np.where, since pd.NA's __bool__ refuses to resolve to True/False. Force a
+        # real float64 array FIRST (pd.NA -> np.nan under .astype("float64")) before any
+        # numpy-level comparison touches it.
+        vals64 = pd.to_numeric(aligned, errors="coerce").astype("float64").values
+        with np.errstate(invalid="ignore", divide="ignore"):
+            vals = np.where(vals64 > 0, np.log(vals64), np.nan)
+        log_price_arr[:, j] = vals.astype(dtype)
+
+    log_price_df = pd.DataFrame(log_price_arr, index=canonical_index, columns=symbols)
+    returns = log_price_df.astype(np.float64).diff().iloc[1:]
     valid_cols = returns.columns[returns.notna().sum() >= 756]
     return log_price_df[valid_cols], returns[valid_cols]
 
@@ -328,7 +453,8 @@ def run_full_sample_eg_pool(pairs, log_price_df, max_lag, workers=12, pair_batch
 # =============================================================================
 
 def rolling_correlation_candidate_pairs(returns_df, symbols, threshold, asset_class_map,
-                                         window=EPISODIC_WINDOW_BARS, step=EPISODIC_STEP_BARS):
+                                         window=EPISODIC_WINDOW_BARS, step=EPISODIC_STEP_BARS,
+                                         chunk_batch_size=None):
     """
     Tier-3 upstream candidate filter. Production's own (and Tier 1/2's)
     correlation prefilter requires WHOLE-HISTORY correlation to clear
@@ -343,20 +469,61 @@ def rolling_correlation_candidate_pairs(returns_df, symbols, threshold, asset_cl
     the same vectorized production implementation Tier 1 already calls once
     for the whole sample, just called once per window here instead of
     reimplementing a new correlation routine.
+
+    chunk_batch_size (added 2026-08-16, default None = original unchunked
+    behavior, UNCHANGED for existing callers -- this project's own already-
+    validated 182-pair production episodic run never sets this): when given,
+    routes each window's correlation step through UniverseFilter.
+    chunked_pearson_candidate_pairs() instead of the direct correlation_
+    matrix() call. Needed at the full ~18,283-symbol universe scope
+    (episodic_window_size_sweep.py --full-universe) -- the direct call
+    OOM-crashed on its first window ("Unable to allocate 2.49 GiB for an
+    array with shape (18283, 18283)"), since this function calls the full
+    dense N x N correlation step ONCE PER ROLLING WINDOW (potentially dozens
+    of times per grid point), not once per run the way the one-time
+    full-universe correlation screen does.
+
+    BUG-D112 fix (2026-08-11): each returned pair now also carries
+    `first_qualified_window_end_date` -- the EARLIEST window's own
+    `window_end_date` (via `returns_df`'s DatetimeIndex, matching
+    build_rolling_eg_tasks' own window_end_date convention exactly) at
+    which that pair first cleared `threshold`. This is tracked SEPARATELY
+    from `pearson_corr` (which stays the BEST correlation seen, for
+    reporting) -- the two can point at different windows, so overwriting
+    one into the other was the root of the original lookahead bug: a
+    pair's best-correlation window could be a LATE one while its
+    first-qualifying window is earlier, or vice versa; only the earliest
+    qualifying date is what makes candidacy causal. Consumed by
+    build_rolling_eg_tasks below to gate which windows a pair is even
+    ELIGIBLE to be EG-tested on.
     """
     returns_arr = returns_df.to_numpy()
     n = len(returns_arr)
     union_pairs = {}
+    first_qualified = {}
     n_windows = 0
     for start in range(0, n - window + 1, step):
         seg = returns_arr[start:start + window]
-        corr = UniverseFilter.correlation_matrix(seg.T)
-        window_pairs = UniverseFilter.candidate_pairs(corr, symbols, threshold, asset_class_map)
+        window_end_date = returns_df.index[start + window - 1]
+        if chunk_batch_size:
+            window_pairs = UniverseFilter.chunked_pearson_candidate_pairs(
+                seg.T, symbols, threshold, asset_class_map, batch_size=chunk_batch_size,
+                progress_every=10, progress_label=f"window end={window_end_date.date()} ",
+            )
+        else:
+            corr = UniverseFilter.correlation_matrix(seg.T)
+            window_pairs = UniverseFilter.candidate_pairs(corr, symbols, threshold, asset_class_map)
         n_windows += 1
+        log.info(f"  Rolling correlation: window {n_windows} (end={window_end_date.date()}) -- "
+                 f"{len(window_pairs)} pairs qualify")
         for p in window_pairs:
             key = frozenset((p["symbol_a"], p["symbol_b"]))
             if key not in union_pairs or p["pearson_corr"] > union_pairs[key]["pearson_corr"]:
                 union_pairs[key] = p
+            if key not in first_qualified or window_end_date < first_qualified[key]:
+                first_qualified[key] = window_end_date
+    for key, p in union_pairs.items():
+        p["first_qualified_window_end_date"] = first_qualified[key]
     log.info(f"Rolling correlation prefilter: {n_windows} windows scanned, "
              f"{len(union_pairs)} pairs qualify in >=1 window (vs whole-history static filter)")
     return list(union_pairs.values())
@@ -380,7 +547,8 @@ def _build_symbol_array_cache(log_price_df, symbols):
 
 
 def build_rolling_eg_tasks(pairs, log_price_df, max_lag, window=EPISODIC_WINDOW_BARS, step=EPISODIC_STEP_BARS,
-                           adv_by_symbol=None, adv_threshold=None, array_cache=None):
+                           adv_by_symbol=None, adv_threshold=None, array_cache=None,
+                           membership_df=None, permno_by_symbol=None):
     """Builds the flat both-directions EG task list for every (pair, window)
     combination, in the exact tuple shape _eg_worker already expects -- lets
     Tier 2/3 reuse the SAME ProcessPoolExecutor pattern Tier 1's full-sample
@@ -412,12 +580,28 @@ def build_rolling_eg_tasks(pairs, log_price_df, max_lag, window=EPISODIC_WINDOW_
     `.to_numpy()` again -- purely a memory/CPU optimization, same task
     output either way. Defaults to None (original per-call behavior) so
     existing callers/tests that don't pass it are unaffected.
+
+    Point-in-time index-membership gate (2026-08-11, see load_membership_gate):
+    if BOTH `membership_df` and `permno_by_symbol` are provided, a window is
+    only tested if BOTH symbols were resolved to a permno AND that permno
+    was an S&P 500 member as of the window's OWN end date (via
+    data_wrds.sp500_members_asof, memoized per unique date within this call
+    -- only ~10-20 unique window dates are ever queried, not one lookup per
+    (pair, window)). A symbol with no permno resolution is NOT excluded by
+    this gate (unresolved != ineligible -- see load_membership_gate's own
+    docstring); it simply isn't checked. Defaults to (None, None) so
+    existing callers/tests that don't pass these are unaffected.
     """
     tasks, task_meta = [], []
     thr = adv_threshold if adv_threshold is not None else Config.STATS.ADV_FILTER_USD
     n_gated = 0
+    n_causally_gated = 0
+    n_membership_gated = 0
+    _member_cache: dict = {}
     for p in pairs:
         sym_a, sym_b = p["symbol_a"], p["symbol_b"]
+        permno_a = permno_by_symbol.get(sym_a) if permno_by_symbol else None
+        permno_b = permno_by_symbol.get(sym_b) if permno_by_symbol else None
         if array_cache is not None:
             lp_a, lp_b = array_cache[sym_a], array_cache[sym_b]
         else:
@@ -437,9 +621,28 @@ def build_rolling_eg_tasks(pairs, log_price_df, max_lag, window=EPISODIC_WINDOW_
         n = len(a)
         if n < window:
             continue
+        # BUG-D112 fix (2026-08-11): if this pair carries a
+        # first_qualified_window_end_date (Tier 3's causal candidacy date --
+        # absent for Tier 1/2, which use a single whole-history filter and
+        # are NOT gated here, unchanged behavior), skip any window that
+        # concluded BEFORE the pair first qualified as a candidate. A real
+        # deployment at that early date would never have proposed this pair
+        # for EG testing at all.
+        pair_first_qualified = p.get("first_qualified_window_end_date")
         for start in range(0, n - window + 1, step):
             window_start_date = dates_masked[start]
             window_end_date = dates_masked[start + window - 1]
+            if pair_first_qualified is not None and window_end_date < pair_first_qualified:
+                n_causally_gated += 1
+                continue
+            if membership_df is not None and permno_a is not None and permno_b is not None:
+                members = _member_cache.get(window_end_date)
+                if members is None:
+                    members = sp500_members_asof(membership_df, window_end_date)
+                    _member_cache[window_end_date] = members
+                if permno_a not in members or permno_b not in members:
+                    n_membership_gated += 1
+                    continue
             if adv_by_symbol is not None:
                 adv_a_series = adv_by_symbol.get(sym_a)
                 adv_b_series = adv_by_symbol.get(sym_b)
@@ -458,12 +661,20 @@ def build_rolling_eg_tasks(pairs, log_price_df, max_lag, window=EPISODIC_WINDOW_
     if adv_by_symbol is not None:
         log.info(f"  ADV liquidity gate: skipped {n_gated} (pair, window) combinations where "
                  f"either symbol's rolling ADV was below ${thr/1e6:.0f}M at that window's start date")
+    if n_causally_gated:
+        log.info(f"  BUG-D112 causal-candidacy gate: skipped {n_causally_gated} (pair, window) "
+                 f"combinations dated before that pair's first_qualified_window_end_date")
+    if membership_df is not None:
+        log.info(f"  Point-in-time S&P 500 membership gate: skipped {n_membership_gated} "
+                 f"(pair, window) combinations where either symbol was not an index member "
+                 f"as of that window's end date")
     return tasks, task_meta
 
 
 def run_rolling_eg_pool(pairs, log_price_df, max_lag, window=EPISODIC_WINDOW_BARS,
                          step=EPISODIC_STEP_BARS, workers=12, adv_by_symbol=None, adv_threshold=None,
-                         pair_batch_size=500, checkpoint_id=None, checkpoint_every=10):
+                         pair_batch_size=500, checkpoint_id=None, checkpoint_every=10,
+                         membership_df=None, permno_by_symbol=None):
     """Runs the rolling-window EG-both-directions test for EVERY candidate
     pair, independent of any full-sample EG result -- the actual episodic
     DISCOVERY step Tier 2/3 both need. Returns a flat list of
@@ -533,6 +744,7 @@ def run_rolling_eg_pool(pairs, log_price_df, max_lag, window=EPISODIC_WINDOW_BAR
             tasks, task_meta = build_rolling_eg_tasks(
                 batch_pairs, log_price_df, max_lag, window, step,
                 adv_by_symbol=adv_by_symbol, adv_threshold=adv_threshold, array_cache=array_cache,
+                membership_df=membership_df, permno_by_symbol=permno_by_symbol,
             )
             n_done_now = i + len(batch_pairs)
             if not tasks:
@@ -679,6 +891,11 @@ def main():
              f"(threshold ${Config.STATS.ADV_FILTER_USD/1e6:.0f}M, applied to Tier 2/3 only -- "
              f"Tier 1's full-sample test is unchanged, production-identical)")
 
+    # Point-in-time S&P 500 membership gate (2026-08-11) -- applied to Tier 2/3
+    # only, same scope as the ADV gate above; Tier 1's full-sample test is
+    # unchanged, production-identical.
+    membership_df, permno_by_symbol = load_membership_gate()
+
     log_price_df, returns = build_log_prices_and_returns(close_by_symbol)
     symbols = list(returns.columns)
     log.info(f"{len(symbols)} symbols have >=756 bars of overlapping history")
@@ -772,7 +989,8 @@ def main():
     log.info(f"[TIER 2] Rolling-window EG discovery on the SAME {len(pairs)} static-corr-prefiltered "
              f"candidate pairs as Tier 1 -- no full-sample EG gate.")
     tier2_flat = run_rolling_eg_pool(pairs, log_price_df, Config.ANALYSIS.EG_MAX_LAG,
-                                      adv_by_symbol=adv_by_symbol, checkpoint_id="tier2_rolling")
+                                      adv_by_symbol=adv_by_symbol, checkpoint_id="tier2_rolling",
+                                      membership_df=membership_df, permno_by_symbol=permno_by_symbol)
     clear_checkpoint("tier2_rolling")
     tier2_confirmed = episodic_bhfdr_confirm(tier2_flat, Config.STATS.FDR_ALPHA)
     log.info(f"[TIER 2] {len(tier2_flat)} (pair,window) tests -> "
@@ -801,7 +1019,8 @@ def main():
     log.info(f"[TIER 3] {len(tier3_pairs)} candidate pairs (vs Tier 1/2's {len(pairs)} "
              f"static-corr-prefiltered pairs) -- running rolling-window EG discovery...")
     tier3_flat = run_rolling_eg_pool(tier3_pairs, log_price_df, Config.ANALYSIS.EG_MAX_LAG,
-                                      adv_by_symbol=adv_by_symbol, checkpoint_id="tier3_rolling")
+                                      adv_by_symbol=adv_by_symbol, checkpoint_id="tier3_rolling",
+                                      membership_df=membership_df, permno_by_symbol=permno_by_symbol)
     clear_checkpoint("tier3_rolling")
     tier3_confirmed = episodic_bhfdr_confirm(tier3_flat, Config.STATS.FDR_ALPHA)
     log.info(f"[TIER 3] {len(tier3_flat)} (pair,window) tests -> "

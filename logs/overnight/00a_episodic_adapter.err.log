@@ -1,0 +1,14 @@
+2026-08-11 09:35:03  INFO      DataAligner: aligning 2 assets to NYSE calendar (1981-09-22 ΓåÆ 2026-06-17, 11275 sessions)
+2026-08-11 09:35:03  INFO      DataAligner: 2/2 assets aligned (0 excluded for excessive gaps)
+2026-08-11 09:35:03  INFO        [1D] Rolling coint on 1 pairs (window=252, step=21)...
+2026-08-11 09:35:08  INFO        [1D] Rolling coint complete in 4.5s
+2026-08-11 09:35:27  INFO      DataAligner: aligning 2 assets to NYSE calendar (1981-09-22 ΓåÆ 2026-06-17, 11275 sessions)
+2026-08-11 09:35:27  INFO      DataAligner: 2/2 assets aligned (0 excluded for excessive gaps)
+2026-08-11 09:35:46  INFO      DataAligner: aligning 2 assets to NYSE calendar (1986-08-13 ΓåÆ 2026-06-17, 10038 sessions)
+2026-08-11 09:35:46  INFO      DataAligner: 2/2 assets aligned (0 excluded for excessive gaps)
+2026-08-11 09:35:46  INFO        [1D] Rolling coint on 1 pairs (window=252, step=21)...
+2026-08-11 09:35:50  INFO        [1D] Rolling coint complete in 4.4s
+2026-08-11 09:36:06  INFO      DataAligner: aligning 2 assets to NYSE calendar (1986-08-13 ΓåÆ 2026-06-17, 10038 sessions)
+2026-08-11 09:36:06  INFO      DataAligner: 2/2 assets aligned (0 excluded for excessive gaps)
+2026-08-11 09:36:21  INFO      DataAligner: aligning 2 assets to NYSE calendar (1973-02-21 ΓåÆ 2026-06-17, 13444 sessions)
+2026-08-11 09:36:21  INFO      DataAligner: 2/2 assets aligned (0 excluded for excessive gaps)

@@ -1197,6 +1197,264 @@ Files: `research/episodic_duration_degree_usability.py` (new), `debug/_verify_ep
 degree_usability.py` (new, 12/12 pass), `output/research/episodic_duration_degree_usability.parquet`
 (new, real run).
 
+**SUPERSEDED-BUT-CONFIRMED update (2026-08-12, after BUG-D112's fix)**: the table above was
+computed against the candidate-generation-lookahead-contaminated WRDS/1D scan (see BUG-D112,
+`docs/BUG_LOG.md`). Re-ran the identical script against the fixed, causally-gated Tier 3 scan
+output once the redo completed. The recommended cell's basic shape holds: `min_windows_confirmed=3,
+alpha=0.10` remains the strictest cell with enough confirmed pairs to trust (44 confirmed, of
+118,575 total scored candidate windows — both numbers differ from the original 68/202,257 since the
+fixed candidate pool is smaller and causally gated), precision **0.4545** (up slightly from the
+original contaminated run's 0.382), and the overfitting guard again shows **no overfitting** — half-A
+selected precision 0.4545 (`(3, 0.1)` is again the best cell on half A), held-out half-B precision
+**0.4783** (higher than in-sample, gap -0.0497). The full grid (12 cells: `min_windows_confirmed` in
+{1,2,3,5} x `alpha` in {0.01,0.05,0.10}) is unchanged in shape — precision still rises with
+stricter duration/degree settings, recall still collapses, `min_windows_confirmed=5, alpha=0.01`
+still confirms zero pairs (undefined precision). **Conclusion: Finding #23's methodology and
+recommended cell survive the BUG-D112 fix intact** — the original directional finding (stricter
+duration/degree confirmation buys real, non-noise precision at a steep recall cost) was not an
+artifact of the candidate-generation contamination, just computed against a mildly larger,
+pre-fix candidate pool. Real re-run output: `output/research/episodic_duration_degree_usability.parquet`
+(overwritten in place, 2026-08-12; the pre-fix table above is preserved here in this file, not
+deleted, per this project's "document what was tried" rule).
+
+## 24. BUG-D112 Redo — Real Step 5 Portfolio Backtest Results Supersede the Provisional 454-Pair
+Numbers [2026-08-12]
+
+Supersedes the provisional Step 5 comparison in the disclosure section below (which was run
+against the 454-pair set later found contaminated by BUG-D112's candidate-generation lookahead
+bias — see `docs/BUG_LOG.md`). After the fix (Tier 2 excluded from PIT-safe sources; Tier 3 gated
+so a pair is only EG-tested on windows dated at or after when it would genuinely have qualified as
+a candidate), the full redo sequence — re-scan, adapter rebuild (with a second real bug found and
+fixed along the way: the adapter's resume-checkpoint logic was reintroducing stale, no-longer-
+confirmed pairs; see BUG-D112's bug-log entry), comparison-arm rebuild, `ml.py --pit-safe` retrain,
+Step 5 re-run — produced these real, non-provisional numbers:
+
+- **Real PIT-safe universe: 182 pairs** (170 WRDS/1D, 6 intraday/1h, 6 intraday/4h) — down from the
+  contaminated run's 454, as expected once candidate-generation is properly causally gated.
+- **`ml.py --pit-safe` retrain**: test_accuracy **52.58%** (n_train=7544, n_test=2516), conformal
+  coverage **91.26%** (n_cal=2514, avg_set_size=1.77) — up from the provisional 52.94%/87.85%.
+  4 pairs skipped for zero labeled entry events (`KEY/RF@4h`, `CMS/PPL@4h`, `SPY/VOO@4h`,
+  `CFG/COLB@4h`).
+- **Step 5 portfolio backtest** (`--capital-sim`, $100k fixed sizing), real numbers:
+
+| Arm      | IS Sharpe | OOS Sharpe |
+|----------|-----------|------------|
+| Purity   | -0.679    | -0.834     |
+| Hybrid   | -0.442    | -1.125     |
+| Tiered   | +1.417    | +0.630     |
+| Baseline | +1.417    | +0.630     |
+
+**Headline, honest finding**: the genuinely PIT-safe 182-pair Purity universe loses money under
+realistic capital-constrained sizing, both in-sample and out-of-sample — a real result, not an
+artifact of the fixed bug (if anything, the contaminated 454-pair run's Purity Sharpe of -0.95 was
+already directionally the same conclusion; the fix changes the magnitude and the honest provenance
+of the number, not the qualitative finding that PIT-safe pairs currently don't produce a positive
+realistic-capital edge). Hybrid (mixes in the 3 non-PIT-safe standard pairs) is similarly negative
+on both IS and OOS, actually worse OOS than Purity alone. Tiered and Baseline post identical
+positive numbers (+1.417 IS / +0.630 OOS) — **this is a capital-efficiency artifact, not evidence
+that PIT-confidence tier-weighting adds value**: at this snapshot all 3 non-PIT-safe standard pairs
+(the ones actually driving the positive Sharpe) share one uniform PIT-confidence tier weight, so
+Tiered's weighting scheme has nothing to differentiate — it degenerates to the same trade set and
+sizing as Baseline. Tier-weighting's real effect can only be tested once the PIT-safe universe
+itself contains pairs spanning multiple genuine confidence tiers, which it currently does not
+(all 182 pairs come from the same episodic-confirmation methodology, not a mix of tiers).
+
+Files: `research/episodic_pairs_adapter.py` (stale-checkpoint fix), `debug/_verify_adapter_stale_
+checkpoint_fix.py` (new, verified before the real rebuild), `output/research/step5_arm_results/
+real_*` (new, real numbers — `provisional_pre_bugd112/` holds the old contaminated-run files,
+preserved not deleted).
+
+## 25. Thread G Phase 1 — OAT Parameter Sensitivity Screen: Entry Threshold Dominates, Kelly Sizing
+Untestable at This Universe's Trade Volume [2026-08-12]
+
+First real answer to Ross's "every factor must be scrutinized" directive. Phase 1 (one-at-a-time
+screening, wide net) swept 3 backtest.py-level design parameters against the real, BUG-D112-fixed
+182-pair Purity universe, `--capital-sim` ($100k), both IS and OOS, with an overfitting guard (does
+the IS-best grid value also look good OOS, same "select on one half, verify on the other"
+discipline as Finding #23): `ENTRY_ZSCORE` (`--entry-z`, grid 1.5/2.0/2.5/3.0), hedge method
+(`--hedge`, both/ols/kalman), and capital-sizing method (`--capital-sizing`, fixed/equity_
+proportional/quarter_kelly/third_kelly/half_kelly/full_kelly). Explicitly NOT covered this pass —
+tracked, not dropped: `--risk-parity`/`--hrp-weight`/`--pit-confidence-weight` (each has a real
+IS-fitting state dependency on `trades_layer1.parquet`, per BUG-D76, needing careful sequencing
+before a clean sweep is possible) and every episodic-confirmation-level parameter (`min_windows_
+confirmed`, `alpha`, `tier3_threshold`, window/step sizes, the ~90-day fundamentals reporting lag)
+— each requires a multi-hour re-scan per grid point, not a cheap CLI sweep.
+
+**Effect size ranking** (range of `sharpe_portfolio` across the grid — the bigger the range, the
+more this parameter actually moves the result):
+
+| param | split | sharpe_range | sharpe_min | sharpe_max |
+|---|---|---|---|---|
+| entry_zscore | IS | 1.182 | -1.036 | +0.146 |
+| entry_zscore | OOS | 0.971 | -1.150 | -0.179 |
+| hedge_method | OOS | 0.591 | -1.102 | -0.511 |
+| capital_sizing_method | IS | 0.203 | -0.679 | -0.476 |
+| hedge_method | IS | 0.078 | -0.746 | -0.668 |
+| capital_sizing_method | OOS | 0.007 | -0.834 | -0.827 |
+
+**Entry threshold (`ENTRY_ZSCORE`) is by far the strongest real lever found so far** — both the
+largest IS and second-largest OOS effect size. `z=3.0` is the IS-best AND the OOS-best value (no
+overfitting risk: IS-best's OOS rank is 1/4), the only cell in this entire screen with a positive
+IS Sharpe (+0.146), and its OOS Sharpe (-0.179) is dramatically better than the current default
+`z=2.0`'s OOS Sharpe (-0.834) — an honest, real, non-noise, non-overfit signal that the current
+default entry threshold may be too loose for this specific 182-pair PIT-safe universe. Not yet a
+production recommendation (Phase 1 is a screen, not a promotion decision — same discipline as this
+project's comparison-arm-before-production rule), but the strongest single finding this screen
+produced.
+
+**Hedge method: OLS beats the default "both" pool and Kalman, consistently** — smaller effect than
+entry-z but real and non-overfit (OLS is IS-best AND OOS-best, rank 1/3 both times). Pooling
+OLS+Kalman trades together (`--hedge both`, the project's own default) is worse than OLS alone on
+both splits — a real, if modest, signal that Kalman-hedged trades are diluting rather than helping
+in this universe.
+
+**Capital-sizing method: a genuine scope limitation, not a null result on Kelly sizing itself** —
+investigated directly rather than reported at face value, since all 4 Kelly variants (quarter/
+third/half/full) produced BIT-FOR-BIT IDENTICAL output (IS: 11 trades taken, Sharpe -0.4757; OOS: 7
+trades, Sharpe -0.8323), which would be a red flag if left unexplained. Root-caused in `portfolio_
+sim.py`: `_kelly_fraction()` requires `_KELLY_MIN_TRADES = 60` closed trades before it estimates a
+real Kelly fraction (`f_star`); below that it always falls back to the same `flat_2pct` risk
+sizing regardless of which Kelly multiplier (0.25/0.333/0.5/1.0) was requested. This Purity
+universe's risk-based sizing methods (`flat_2pct` and the Kelly family, which both require a
+causally-estimable `risk_per_share` via `stop_distance_dollars_per_share`) take far fewer trades
+than `fixed`/`equity_proportional` (11-149 vs 105-149) and never accumulate the 60 closed trades
+needed for Kelly's fraction estimate to ever activate — so the Kelly-fraction PARAMETER is
+currently untestable at this universe's trade volume, not evidence it doesn't matter. This is a
+real, useful negative finding in its own right (a design parameter this project built and never
+sensitivity-tested turns out to have zero possible signal at current trade counts) and flags a
+separate, genuine question worth its own follow-up: does risk-based sizing's much smaller trade
+count (vs. fixed sizing) reflect a real risk-estimation constraint, or an overly conservative skip
+condition in `stop_distance_dollars_per_share`/`_kelly_fraction`'s NaN-fallback path — not answered
+here, noted as a candidate for a future targeted investigation, not Phase 1's scope.
+
+**Overfitting guard result, all 3 parameters**: no overfitting risk flagged for any of the 3 —
+every IS-best value's OOS rank was in the top half of its grid (entry_zscore 1/4, hedge_method
+1/3, capital_sizing_method 2/6). The capital_sizing_method "no overfitting" result should be read
+with the scope-limitation caveat above in mind (the whole Kelly family is a flat tie under the
+fallback, so "IS-best" there is really "IS-best among fixed/equity_proportional/degenerate-Kelly",
+not a meaningful Kelly-specific comparison).
+
+**Phase 2 (interaction study) is explicitly gated on Ross's review of these survivors** — not
+started automatically, per the master plan's own "a real decision point, not automatic" design.
+`entry_zscore` is the clear, strong candidate; `hedge_method` a real but modest one; `capital_
+sizing_method` needs either a larger-trade-count universe or the sizing-mechanism follow-up above
+before it can be meaningfully screened at all.
+
+Files: `research/parameter_sensitivity_screen.py` (new), `output/research/param_sensitivity/
+phase1_oat_results.parquet`, `phase1_overfitting_guard.parquet`, `phase1_effect_size_ranking.parquet`
+(new, real runs — 26 real `backtest.py --capital-sim` subprocess invocations, individual portfolio/
+trades outputs archived per grid point).
+
+## 26. Kelly Sizing Root Cause + Entry Z-Band Comparison Arm — the Entry-Overflow Gap Is Real But NOT
+the Dominant Blocker [2026-08-12]
+
+Ross asked why the 4 Kelly variants in Finding #25 tied exactly. Investigated directly against the
+real 32,793-candidate Purity IS trade list rather than accepting the scope-limitation explanation
+at face value.
+
+**Root cause, confirmed with real sampled data**: `stop_distance_dollars_per_share()` returns NaN
+whenever `|entry_z| >= STOP_ZSCORE (3.5)` at entry — a real, structural property of `backtest.py`'s
+entry logic, which has **no upper z-bound** (entry only requires `|z| >= ENTRY_ZSCORE`, nothing
+caps it above). A random 2,000-trade cross-section of the real trade list showed **56% of all
+candidate entries already have `|entry_z| >= 3.5`** (consistent with the raw column stats: 25th/75th
+percentiles are -3.59/+3.58, straddling the stop level on both sides) — any risk-based sizing
+method (`flat_2pct` or Kelly) skips these outright. Of the remaining ~44%, median `risk_per_share`
+is a tiny $0.135/share, which at 2% fixed risk on $100k equity implies a position size that
+overshoots the account by 10-100x for many trades, tripping the 0.05 `size_scale` skip floor.
+Combined: only 11/32,793 trades survive under `flat_2pct`/Kelly (IS) vs. 146/32,793 under `fixed`
+sizing (no risk estimate needed). Kelly's own `f*` estimator additionally needs 60 closed trades
+before activating (`_KELLY_MIN_TRADES`) — never reached here — so every Kelly multiplier silently
+falls back to `flat_2pct`, explaining Finding #25's exact tie.
+
+**New comparison arm built and tested to address the entry-overflow half of this**: added
+`Config.BACKTEST.ENTRY_ZSCORE_MAX` (`config.py`, default `None` = unchanged behavior) and
+`--entry-z-max` to `backtest.py`, gating entry to `ENTRY_ZSCORE <= |z| <= ENTRY_ZSCORE_MAX`
+instead of unbounded above. Verified with a real-data sanity check before trusting it (a razor-thin
+band `[2.00, 2.05]` on the 1D subset produced 11,010 trades vs. 32,200 unbounded — confirms the
+gate is genuinely filtering, not a no-op) before running the real comparison.
+
+**Real result, entry-z-max=3.5 (bounding at STOP_ZSCORE, the natural choice) vs. baseline
+(unbounded)**:
+
+| sizing | split | baseline sharpe | z-band[2,3.5] sharpe | baseline n_taken | z-band n_taken |
+|---|---|---|---|---|---|
+| fixed | IS | -0.679 | **-0.839** (worse) | 146 | 47 |
+| fixed | OOS | -0.834 | **-0.657** (better) | 105 | 40 |
+| flat_2pct | IS | -0.476 | **-0.644** (worse) | 11 | 13 |
+| flat_2pct | OOS | -0.832 | -0.870 (worse) | 7 | 7 |
+
+**Two honest, non-obvious conclusions, neither is what the initial hypothesis predicted**:
+1. **Z-banding at 3.5 does NOT reliably improve Sharpe** — mixed IS/OOS results for `fixed`
+   sizing, and worse on both splits for `flat_2pct`. This is meaningfully worse than Phase 1's
+   `entry_z=3.0` (raising the FLOOR, no upper bound), which remains the strongest lever found
+   (IS +0.146, OOS -0.179) — bounding entries and raising the entry floor are NOT the same lever,
+   and the floor-raise alone outperforms the band tested here.
+2. **The entry-overflow gap is real but is NOT the dominant blocker for Kelly viability.**
+   Removing it (z-band[2,3.5]) barely moved `flat_2pct`'s trade count (11 -> 13 trades) and made
+   its Sharpe worse, not better — most trades were already being skipped by the capital
+   size-floor (tiny `risk_per_share` implying oversized positions), a mechanism the entry-overflow
+   fix doesn't touch at all. Kelly/risk-based sizing's real blocker is the risk_per_share/available-
+   capital mismatch, not the missing upper z-bound — a more precise, corrected diagnosis than the
+   entry z-bound framing this investigation started with.
+
+Files: `config.py` (`ENTRY_ZSCORE_MAX`, new), `backtest.py` (`--entry-z-max` flag, entry gate,
+label suffix), `output/research/param_sensitivity/zband/*.parquet` (new, real runs).
+
+## 27. Thread G Phase 2 — Entry-Z x Hedge-Method Interaction: a Real Interaction Exists, and the
+Naive Combination of Two Good Marginal Choices Is NOT the Best Joint Choice [2026-08-12]
+
+Full 4x3 reduced factorial (`entry_zscore` in {1.5, 2.0, 2.5, 3.0} x `hedge_method` in {both, ols,
+kalman}), IS + OOS, against the real 182-pair Purity universe — the interaction study Phase 1
+explicitly deferred pending Ross's review of survivors.
+
+**IS pivot** (rows=entry_z, cols=hedge, values=sharpe_portfolio):
+
+| entry_z | both | kalman | ols |
+|---|---|---|---|
+| 1.5 | -1.036 | -0.897 | -0.592 |
+| 2.0 | -0.679 | -0.746 | -0.668 |
+| 2.5 | -0.912 | -0.992 | -0.961 |
+| **3.0** | **0.146** | **0.159** | **0.117** |
+
+**OOS pivot:**
+
+| entry_z | both | kalman | ols |
+|---|---|---|---|
+| 1.5 | -0.216 | -0.313 | -1.007 |
+| 2.0 | -0.834 | -1.102 | -0.511 |
+| 2.5 | -1.150 | -0.861 | -0.475 |
+| **3.0** | **-0.179** | -0.748 | -0.610 |
+
+**A real interaction exists, not just two independent marginal effects**: the best hedge method is
+NOT consistent across entry_z levels, on either split (IS: ols/ols/both/kalman as entry_z rises;
+OOS: both/ols/ols/both). Phase 1's own marginal finding ("OLS beats both/kalman") does not hold
+at `entry_z=3.0` — the single most important entry_z level, where every hedge choice is positive
+IS and best overall OOS.
+
+**The naive combination of Phase 1's two "best" marginal choices (`entry_z=3.0` + `hedge=ols`) is
+NOT the best joint cell — a concrete demonstration of why this project scoped Phase 2 at all,
+not just Phase 1's OAT screen.** Two candidate cells at `entry_z=3.0`:
+- `hedge=kalman`: the single BEST IS Sharpe in the entire 12-cell grid (+0.159) — but its OOS
+  Sharpe (-0.748) is the WORST of the three hedge options at that entry_z level. Picking this cell
+  from IS alone would have been a real overfitting trap.
+- `hedge=both` (the project's own current default, NOT the Phase-1-recommended pure-OLS): the
+  second-best IS Sharpe at `entry_z=3.0` (+0.146) AND the single BEST OOS Sharpe in the entire
+  12-cell grid (-0.179) — no other cell, at any entry_z or hedge combination, beats it OOS.
+
+**Recommendation, not yet acted on**: `entry_z=3.0` combined with the DEFAULT `hedge=both` (not a
+switch to pure OLS) is the most robust cell found across all of Thread G — best OOS in the whole
+grid, strong and non-overfit IS, and the entry_z=3.0 pattern holds regardless of hedge choice (all
+3 hedge sub-cells positive IS at that level, a robust pattern, not a single-cell fluke). **Still an
+honest, not-yet-profitable result**: OOS Sharpe -0.179 is the best found, not a positive number —
+this is "the strongest lever Thread G has found so far," not "a fix that makes the PIT-safe
+universe tradeable." Production promotion of `entry_z=3.0` (default hedge, unchanged) as the new
+production default is a real, defensible candidate given this evidence, but remains Ross's decision
+per this project's comparison-arm-before-production discipline — not promoted automatically here.
+
+Files: `research/parameter_sensitivity_phase2_interaction.py` (new), `output/research/param_
+sensitivity/phase2_interaction_results.parquet` (new, real run — 24 real `backtest.py --capital-sim`
+invocations).
+
 ## Disclosure Added Retroactively to Findings #13–#19: All 7 Session 30 Comparison Arms Inherit the
 Same Non-PIT Pair-Selection Bias Already Quantified in §7.3.1 [2026-08-03, flagged by Ross]
 
@@ -1305,3 +1563,523 @@ concrete, scoped follow-up, not resolved by this result either way.
 Files: `research/ridge_hedge_ratio_comparison.py` (new), `debug/_verify_ridge_hedge_ratio_
 comparison.py` (new, 7/7 pass), `output/research/ridge_hedge_ratio_comparison.parquet` (new, real
 run).
+
+## 28. Thread J Test 2 — Cointegration Regime Segmentation: Only 9.2% of Candidate Pair-Windows Are
+Ever Cointegrated, Split Evenly Across Strong/Moderate/Weak [2026-08-13]
+
+First real result from Thread J (scoped the same session, high priority per Ross). Built `research/
+cointegration_regime_segmentation.py` to segment each candidate pair's full history into contiguous
+cointegrated/non-cointegrated REGIME SPANS (not a single binary verdict), reusing the already-real,
+already-verified per-window EG p-values from `wrds_deep_history_episodic_scan_tier3_windows.
+parquet` (1,197,576 rows, no new statistical test introduced) rather than rebuilding a rolling EG
+loop from scratch.
+
+**The real design question**: a raw per-window state (p-value < alpha -> "coint") flips noisily
+near genuine transitions and even within a stable regime (one borderline p-value shouldn't end a
+10-year cointegrated stretch). Fixed via hysteresis: a state change only confirms once it persists
+for >= `MIN_REGIME_WINDOWS=3` consecutive windows (reusing Finding #23's own already-validated
+`min_windows_confirmed=3`, not a new invented number), with the regime's recorded start set to the
+ONSET of that persistent run, not the later confirmation point. Verified synthetically first (5/5
+checks, `debug/_verify_cointegration_regime_segmentation.py`): a single-window noise blip gets
+correctly absorbed into the surrounding regime, while a real short-lived regime that clears the
+3-window bar gets correctly detected as its own span.
+
+**A real bug caught by running against real data, not just synthetic tests**: the first design
+computed strength terciles (strong/moderate/weak) PER PAIR, from that pair's own coint spans. Real
+data showed why this was wrong — 16,064 coint spans across 158,849 pairs, ~0.1 spans/pair, so almost
+every pair has 0-1 coint spans and per-pair terciles are statistically meaningless (confirmed: the
+first real run produced zero "weak" spans at all, only strong/moderate, because the tercile branch
+requiring >=3 same-pair spans almost never triggered). Fixed: strength is now assigned as a GLOBAL
+post-processing step (`assign_strength_terciles()`) across every pair's spans together — the
+synthetic test's own check 5 was rewritten to test this cross-pair behavior, not the removed
+per-pair path.
+
+**Real result** (158,849 candidate pairs, full available WRDS/1D history):
+
+| state | n_spans |
+|---|---|
+| not_coint | 158,011 |
+| coint | 16,064 |
+
+Of the 16,064 "coint" spans, strength splits almost exactly evenly by construction (global
+terciles): strong=5,349, moderate=5,366, weak=5,349.
+
+**Headline, honest finding**: only **9.2% of all detected regime spans across the full candidate
+universe are ever genuinely cointegrated** at any point in their history — the overwhelming
+majority of a pair's own history is spent in a non-cointegrated state, even among pairs that pass
+the correlation prefilter enough to be episodic-scan candidates at all. This is a real, quantified
+confirmation of Ross's original concern (a single fixed 10-year window and a binary confirmed/not
+verdict obscures how rare and often short-lived genuine cointegration actually is within a pair's
+full history) — not yet connected to Thread G-Full Tier 4's window-size sweep (Test 1, not run this
+entry — the expensive multi-hour-per-grid-point piece, deferred pending Ross's go-ahead) or to
+whether PIT confirmation's precision (Finding #23) differs by regime strength (the natural next
+question this segmentation enables, not yet asked of the data).
+
+Files: `research/cointegration_regime_segmentation.py` (new), `debug/_verify_cointegration_regime_
+segmentation.py` (new, 5/5 pass), `output/research/cointegration_regime_segments.parquet` (new, real
+run — 174,075 spans).
+
+## 29. Three gs_quant-Inspired Comparison Arms + a BUG-D45 Retest at Scale [2026-08-13]
+
+Ross reviewed `gs_quant` (Goldman Sachs' open-source quant toolkit — most of it Marquee-API-gated
+and unusable without institutional credentials, but its `timeseries` submodule has ~40 standalone
+functions) and asked for 3 ideas implemented as comparison arms, plus a retest of BUG-D45's
+single-pair finding at scale. All 4 run against real cached `spread_series_*.parquet` data
+(~471-474 confirmed pairs), not synthetic.
+
+**29a. EWMA z-score vs. the production rolling-window z-score.** A real design correction was made
+BEFORE building, not after: the original idea (swap just the std for EWMA, keep the existing
+rolling mean) would have repeated BUG-D45's exact reverted mistake (decoupling mean/std windows).
+Built correctly instead — EWMA for BOTH mean and std together (coupled, same halflife), matching
+BUG-D45's own "single shared window" principle while still testing exponential vs. flat weighting.
+Verified synthetically first (causality, no BUG-D45-style blowup on a drifting series), then run
+for real: **mean correlation 0.846** between the two z-score series, **86.7% entry-signal
+agreement** — a real, non-trivial ~13% disagreement rate, and neither method shows the BUG-D45
+blowup pattern (frac|z|>10 ≈0.0001 for both). Not yet promoted to production — comparison-arm
+result only.
+
+**29b. Vol-swap-style (zero-mean, diff-based) risk-per-share estimate vs. the current level-std
+convention** — motivated directly by this session's own Kelly-sizing investigation (Finding #25/
+#26: risk-based sizing is unusable because `risk_per_share` estimates are too small relative to
+account size). **Honest negative result, the opposite of the hoped-for direction**: the vol-swap
+estimator produces risk-per-share values **~8.6x SMALLER** (median ratio 0.116) than the current
+convention across 474 pairs — smaller risk-per-share means LARGER implied position sizes, which
+would make the capital-overshoot/size-floor skip problem WORSE, not better. Mechanism: bar-to-bar
+spread movement (what a diff-based vol estimator measures) is naturally much smaller than the
+spread's full range within a window (what the current level-std measures) for a mean-reverting,
+range-bound spread. A real, useful negative result — rules out this specific fix, doesn't leave the
+question open.
+
+**29c. BUG-D45 retest at scale — Ross's direct instruction ("a single case ... should be
+retested")**: reconstructed BUG-D45's exact reverted design (decoupled short-std/long-mean z-score,
+`OU_WINDOW_HALFLIFE_MULT_VOL=2x` half-life vs. the production `OU_WINDOW_HALFLIFE_MULT_MEAN=8x`)
+and re-ran it across all 471 real cached pairs, not just the one (CRWD/DDOG) the original bug
+report used. **The retest surfaces something more serious than the single-pair case suggested**:
+96.2% of pairs (453/471) show the decoupled version as same-or-better by the `frac|z|>10`
+diagnostic — the ORIGINAL single-pair framing ("decoupling is worse") doesn't hold as a general
+rule for most pairs. But a real minority — **18 pairs (3.8%)** — show CATASTROPHIC blowups, not
+just "somewhat worse" like CRWD/DDOG's reported 12.3%: e.g. `BXMT/ECL` shows a decoupled mean
+z-score of **-88,141** with std **598,460**. This reframes BUG-D45's own finding — not "decoupling
+is bad on average" (mostly false, per this retest) but "decoupling creates unbounded TAIL risk for
+a real minority of pairs" (true, and arguably a stronger reason to keep the shared-window design
+than the original single-pair framing implied, since a production system can't selectively apply a
+change only to the 96.2% of pairs where it's safe without first knowing which 3.8% will blow up).
+
+Files: `research/ewma_zscore_comparison.py`, `research/vol_swap_style_risk_estimate_comparison.py`,
+`research/bug_d45_decoupled_std_retest.py` (all new), `debug/_verify_ewma_zscore_comparison.py`
+(5/5... 4/4 checks pass), `debug/_verify_vol_swap_style_risk_estimate.py` (3/3 pass),
+`output/research/{ewma_zscore_comparison,vol_swap_style_risk_estimate_comparison,
+bug_d45_decoupled_std_retest}.parquet` (new, real runs).
+
+## 30. Thread J Follow-Up — PIT Confirmation Precision by Early-Period Regime Strength: a Real,
+Counter-Intuitive Signal at Small Sample Size [2026-08-13]
+
+Directly connects two already-complete pieces of work rather than requiring a new expensive scan:
+Finding #23's precision/recall methodology (does episodic BH-FDR confirmation actually hold up
+forward) joined against Finding #28's regime segments (strong/moderate/weak cointegration-regime
+strength, global terciles). Question: among pairs the methodology CONFIRMS, does precision differ
+by the STRENGTH of the early-period regime that led to confirmation?
+
+**Method**: reused Finding #23's own `build_pair_data`/`score_cell` functions directly (not
+reimplemented) at its recommended cell (`min_windows_confirmed=3, alpha=0.10`), Tier 3 only
+(BUG-D112 scope). For each of the resulting confirmed pairs, joined against Finding #28's regime
+segments to find the coint-regime span overlapping ONLY the early (pre-confirmation-decision)
+period — verified synthetically first (4/4 checks, including that a span overlapping only the LATE
+period is correctly excluded, avoiding ground-truth leakage into the strength label).
+
+**Real result**: 28 pairs confirmed at this cell (pooled precision 0.393, matching Finding #23's
+own already-reported ballpark). By early-period regime strength:
+
+| strength | precision | n_confirmed_pairs |
+|---|---|---|
+| strong | 0.304 | 23 |
+| weak | 0.750 | 4 |
+| moderate | 1.000 | 1 |
+
+**Honest, counter-intuitive finding, reported with its real sample-size caveat front and center,
+not buried**: pairs confirmed during a "strong" regime show LOWER precision than those confirmed
+during a "weak" one — the opposite of the naive expectation. With n=23/4/1, this is NOT a
+statistically robust result on its own (the weak/moderate buckets are far too small to trust in
+isolation) — but the direction is real and worth flagging, not dismissed as noise reflexively. A
+plausible, defensible mechanism: "winner's curse" / regression-to-the-mean — the most extreme-
+looking early signal in a discovery sample (the "strong" bucket, by construction the lowest-
+p-value tercile) is disproportionately likely to reflect a temporary statistical artifact that
+reverts, rather than a genuinely robust relationship, precisely BECAUSE it was selected for being
+extreme. This is a well-known statistical phenomenon generally, not invented for this result.
+
+**What this means for Session 31's "Tiered" arm** (docs/FINDINGS.md's Step 5 writeup, which found
+Tiered/Baseline were numerically identical because all pairs shared one PIT-confidence tier): this
+result is a real, if small-sample, indication that a genuine strength-aware confidence tier COULD
+add real value once tested at scale — but the DIRECTION found here (weaker early regimes showing
+higher forward precision) is the opposite of what a naive "trust strong signals more" tiering
+scheme would assume. Any future tier-weighting design should be validated against this direction,
+not assumed to run the intuitive way, before being trusted.
+
+Files: `research/pit_precision_by_regime_strength.py` (new), `debug/_verify_pit_precision_by_
+regime_strength.py` (new, 4/4 pass), `output/research/pit_precision_by_regime_strength.parquet`
+
+## 31. Thread G-Full Tier 2 — Backtest-Level Static Parameter OAT Screen: Exit/Stop Thresholds
+Dominate, One Real Overfitting Flag, Five Parameters Show Zero Measured Effect [2026-08-13]
+
+**Method**: same OAT-screen + overfitting-guard discipline as Thread G Phase 1 (Finding #25),
+extended to the 12 Tier 2 backtest.py/portfolio_sim.py-level constants scoped in the master plan
+(`stop_zscore`, `exit_zscore`, `max_hold_multiplier`, `corr_exit_threshold`, `corr_exit_window`,
+`min_half_life_bars`, `max_half_life`, `flat_risk_pct`, `n_shares_per_trade`,
+`commission_per_share`, `slippage_bps`, `max_concentration_pct`). Each perturbed individually (grid
+of discrete alternative values including the current default) against the Purity arm's IS+OOS
+portfolio Sharpe (`--capital-sim`), ranked by effect size (range of Sharpe across the grid), with
+the IS-best value's OOS rank checked as an overfitting guard (a param whose IS-optimal setting
+ranks poorly OOS is flagged, not silently trusted).
+
+**Real result, effect-size ranking**:
+
+| Parameter | IS range | OOS range | Overfit flag |
+|---|---|---|---|
+| `max_hold_multiplier` | 1.416 (largest IS) | 0.266 | No |
+| `exit_zscore` | 0.918 | 0.864 (largest OOS) | No |
+| `stop_zscore` | 0.421 | 0.577 | No |
+| `min_half_life_bars` | 0.539 | 0.402 | **Yes** — IS-best=20 bars, OOS-best=1 bar, IS-best's OOS rank 4/5 |
+| `n_shares_per_trade` | 0.614 | 0.141 | No |
+| `commission_per_share` | 0.089 | 0.071 | No |
+| `slippage_bps` | 0.015 | 0.016 | No |
+| `corr_exit_threshold`, `corr_exit_window`, `max_half_life`, `flat_risk_pct`, `max_concentration_pct` | 0.000 | 0.000 | N/A |
+
+**`exit_zscore` and `stop_zscore` are the two parameters with a real, consistent, non-trivial
+effect on BOTH splits** (not just IS-only, which would itself be a red flag) — genuine candidates
+for the Phase-2 interaction-study survivor list, same role `entry_zscore` played in Thread G
+Phase 1. `max_hold_multiplier` and `n_shares_per_trade` show a real IS effect but a much smaller
+OOS one — not flagged as outright overfitting (their IS-best value's OOS rank isn't in the bottom
+half), but weaker survivors than the exit/stop pair, worth including in Phase 2 only as a lower
+priority.
+
+**One real overfitting flag, stated honestly**: `min_half_life_bars` is the one parameter where the
+IS-optimal setting (20 bars) performs poorly OOS (rank 4 of 5) while the OOS-optimal setting is a
+very different value (1 bar) — a textbook overfitting signature at this grid resolution. This
+parameter should NOT be tuned to its IS-optimal value in production without further, more granular
+validation.
+
+**Five parameters show EXACTLY zero measured effect on both splits, flagged as an open question,
+not silently accepted as "confirmed irrelevant"**: `corr_exit_threshold`, `corr_exit_window`,
+`max_half_life`, `flat_risk_pct`, `max_concentration_pct` all produced byte-identical Sharpe across
+every grid value tested (visible directly in the raw log — e.g. every `MAX_CONCENTRATION_PCT` grid
+point from 0.1 to 0.5 produced identical `sharpe=-0.6789 n_taken=146` IS / `sharpe=-0.8336
+n_taken=105` OOS). Two honestly distinct explanations are possible and NOT yet distinguished: (a)
+these parameters are genuinely non-binding at this run's actual trade set (e.g. `max_concentration_pct`
+never binds because the realized position sizes never approach the cap), which would be a real,
+legitimate null result; or (b) the CLI override for these 5 parameters isn't actually reaching the
+backtest engine (a wiring bug in the Tier 2 registry entries, not a property of the strategy).
+**Not yet checked which** — flagged here as a required follow-up before trusting the zero-effect
+result at face value, per this project's own "negative results are real results, but only once
+verified as genuinely negative and not a bug" discipline.
+
+**Sequencing**: per the master plan's Thread G-Full design, this feeds a future cross-tier
+interaction study once Tier 3/4 screens also complete — `exit_zscore`/`stop_zscore` join
+`entry_zscore` (Finding #25/#27) as confirmed Phase-2 survivors from the backtest-level tier.
+
+Files: `research/parameter_sensitivity_screen.py` (Tier 2 registry extension, already built),
+`output/research/param_sensitivity/tier2_oat_results.parquet` (108 rows),
+`output/research/param_sensitivity/tier2_overfitting_guard.parquet`,
+`output/research/param_sensitivity/tier2_run.log` (raw run log, real numbers cited above verified
+directly against it, not summarized from memory).
+
+**Addendum (2026-08-13, same day) — the zero-effect investigation resolved, two distinct root
+causes found, one fixed**: per Ross's explicit "investigate" instruction, traced all 5 zero-effect
+parameters directly against the actual codebase rather than leaving the ambiguity open.
+
+- **`corr_exit_threshold`, `corr_exit_window`, `max_concentration_pct`, `max_half_life` are DEAD
+  config constants.** All 4 are declared in `config.py`, described (in `max_concentration_pct`'s
+  and `corr_exit_threshold`'s case, directly in `backtest.py`'s own module docstring, as if they
+  were active exit/sizing conditions) — but a codebase-wide grep confirms none of the 4 is actually
+  READ by any executable code path anywhere in the project. `max_concentration_pct` was already
+  independently caught once before (a "Tier 6 doc-drift fix, Grand Sweep 2026-07-20" comment sitting
+  directly in `backtest.py` lines 10-19, confirming the exact same "documented as active, never
+  wired in" finding). `max_half_life` is additionally mis-scoped for this sweep methodology even if
+  it WERE implemented: its own comment describes it as a pair-SELECTION-time ceiling (would belong
+  in `analysis.py`'s screening funnel, filtering candidates before `backtest.py` ever runs), not a
+  backtest-time parameter at all — sweeping it against an ALREADY-FIXED `purity_pairs.parquet` file
+  could never show an effect regardless of implementation status. **Left unimplemented, not fixed
+  unilaterally** — building 4 new pieces of trading logic (a correlation-based structural-breakdown
+  exit, a live concentration cap, a redesigned half-life screening step) is new-methodology work
+  requiring Ross's sign-off per this project's own Working Style rule, not something to add as a
+  side effect of a sensitivity-screen bug hunt. Real open decision for Ross: implement these 4
+  described-but-dead features for real, or retire them from `config.py`/the Tier 2 registry (as
+  currently written, re-sweeping them will always report a misleading "zero effect" that actually
+  means "not wired in," not a genuine null finding).
+- **`flat_risk_pct` was a genuine, fixable wiring bug — fixed.** `portfolio_sim.py` read
+  `Config.BACKTEST.FLAT_RISK_PCT` into a MODULE-LEVEL constant (`_FLAT_RISK_PCT`) once, at import
+  time. `backtest.py`'s `--override FLAT_RISK_PCT=X` mutates a per-run `copy.copy()` of
+  `Config.BACKTEST` — a DIFFERENT object from the global `Config.BACKTEST` that `portfolio_sim.py`
+  read from, so the override could never reach it regardless of import order. Fixed by adding an
+  explicit `flat_risk_pct` parameter to `replay_portfolio()` (default `None` preserves the original
+  module-constant behavior for every other existing caller), with `backtest.py` now passing
+  `_backtest_cfg.FLAT_RISK_PCT` through explicitly at the `--capital-sim` call site. Verified
+  synthetically (`debug/_verify_flat_risk_pct_override.py`, 2/2 checks: doubling `flat_risk_pct`
+  exactly doubles target notional under `flat_2pct` sizing; omitting the parameter reproduces the
+  original default-constant behavior) before trusting the fix. Re-ran the sweep against the fixed
+  code (`--only flat_risk_pct`): **still exactly zero effect** on both splits, but now for a fully
+  understood, different reason — this Tier 2 sweep's `capital_sizing` is `"fixed"` throughout
+  (`parameter_sensitivity_screen.py`'s own default), and the `"fixed"` sizing branch never consults
+  `risk_fraction`/`FLAT_RISK_PCT` at all (`target_notional = original_notional`, full stop — see
+  `portfolio_sim.py`'s `replay_portfolio`). `FLAT_RISK_PCT` only matters under `flat_2pct` or
+  Kelly-family sizing, neither of which this sweep exercises. The import-time wiring bug was real
+  and is now fixed (confirmed by the synthetic test doubling the parameter and seeing target
+  notional exactly double), but it was never the reason THIS specific sweep showed zero effect — a
+  second, independent reason (wrong sizing-method context for this parameter to matter in) was
+  masking the first. `flat_risk_pct` only becomes a meaningful Tier 2 sweep target once run under
+  `--capital-sizing flat_2pct` specifically, not the default `fixed`.
+(new, real run).
+
+## 32. Thread M's Real Purpose Run — Both Options Built, Verified, and Run Against CAMARF's Own
+Realized Returns; the Honest Result Is "Not Enough Trade History Yet," Not a Fabricated Alpha
+[2026-08-14]
+
+**Expanded Option A from 6 to 17 characteristics** (Ross: "let's use them and more if available"),
+adding 2-3 more per category (value: `at_me`/`ni_me`/`sale_me`; profitability/quality: `gp_at`/
+`f_score`/`o_score`; investment: `capx_gr1`/`noa_gr1a`; low-risk: `ivol_capm_252d`) plus a wholly
+new liquidity category (`dolvol_126d`, `ami_126d`) the original 6 didn't touch. Re-verified
+synthetically (5/5, unchanged mechanics), re-ran against real WRDS data — all 17 factors produced
+plausible monthly return statistics, and the momentum validation against Fama-French/Carhart's
+trusted `umd` factor held at the same 0.8005 correlation (unaffected, since momentum's own
+construction wasn't touched by the expansion).
+
+**Built `research/jkp_thread_m_driver.py`**, connecting both options to CAMARF's actual realized
+Step 5 backtest-arm returns (`output/research/step5_arm_results/real_*_trades_capsim.parquet`) for
+every arm (baseline/hybrid/purity/tiered) x split (IS/OOS) combination -- reusing Thread F Part A's
+`build_daily_return_series` directly, aggregated to monthly to match JKP's frequency. Verified
+synthetically first (`debug/_verify_jkp_thread_m_driver.py`, 4 checks: known-relationship recovery,
+insufficient-overlap rejection, DOF-trustworthiness flagging, sparse-trading flagging).
+
+**A real bug found via the run itself (4th recurrence this session of the same bug class)**:
+`build_portfolio_characteristic_exposure`'s `np.nanmean()` call crashed on a genuine pandas `pd.NA`
+value returned by `raw_sql()` (`TypeError: boolean value of NA is ambiguous`) -- the exact same root
+cause already found and fixed 3 times earlier this session in unrelated files (`data_wrds.py`'s
+`build_full_market_label_map`, `international_liquidity_filter.py`'s currency lookup). Fixed by
+converting to a definite plain float via `pd.notna()` before any numpy operation touches the value.
+A deliberate codebase-wide grep for the same pattern (raw WRDS-fetched values feeding directly into
+`np.isnan`/`np.nanmean`/truthiness checks without an explicit float conversion) found no further
+un-fixed instances.
+
+**The real, honest headline result**: every single one of the 20 regressions run (Option A's core-6
+and full-17 factor sets, Option B's raw-characteristic exposure, across all 8 arm/split
+combinations) is flagged **NOT TRUSTWORTHY** -- not because the pipeline is broken (both options are
+independently verified correct via synthetic tests with known ground-truth relationships), but
+because CAMARF's own realized trade history is currently too sparse to support a monthly factor
+regression at all. Direct inspection of the underlying monthly return series confirms this
+concretely: the `baseline` and `tiered` arms are **81-82% exact-zero-return months** (17 of 21),
+with real P&L concentrated in only 3-4 months total; even the more actively-traded `purity`/`hybrid`
+arms are 40-57% zero months. A regression against a return series this sparse produces spuriously
+extreme-looking statistics that don't reflect genuine risk-factor exposure (observed before the
+sparsity guard was added: |t-stats| up to 67, an implausible magnitude for ~20-30 monthly
+observations) -- the guard now catches and flags this explicitly rather than letting a misleadingly
+"significant"-looking alpha stand unchallenged.
+
+**What this means, stated plainly**: Thread M cannot currently answer its own scoped question
+("does CAMARF's edge look like known style-factor exposure in disguise") with any real confidence,
+for a data-volume reason unrelated to either option's methodology. This connects directly to this
+project's already-documented ML-gate constraint (Session 22-27 notes: "~2 weeks from 2026-06-30 for
+training data accumulation") -- CAMARF's realized trade count is still accumulating, and Thread M is
+a second, independent illustration of the same underlying limitation (not enough closed trades yet
+for statistically meaningful post-hoc analysis), not a new problem. **Re-run this driver once trade
+count/density has grown substantially** (the pipeline itself needs no further changes) -- until then,
+no alpha/loading number from this thread should be cited as a real finding in `PAPER.md` or
+elsewhere.
+
+Files: `research/jkp_factor_portfolio_construction.py` (17-factor expansion),
+`research/jkp_raw_characteristic_regression.py` (pd.NA fix), `research/jkp_thread_m_driver.py`
+(new), `debug/_verify_jkp_thread_m_driver.py` (new, 4/4 pass, includes the sparse-trading guard
+check), `debug/_verify_jkp_raw_characteristic_regression.py` (Check 2b added, reproduces the real
+pd.NA bug with a genuine nullable-dtype column), `output/research/jkp_factor_portfolios_monthly.parquet`
+(17-factor real output), `output/research/jkp_thread_m_regression_results.parquet` (20 regression
+results, all honestly flagged untrustworthy).
+
+## 33. Thread G-Full's 4 Dead Config Constants -- 3 Implemented For Real Comparison (Not Retired),
+One Real Bug Found and Fixed Along the Way [2026-08-14]
+
+Per Ross's explicit direction ("instead of deleting the 4 dead config constants can we implement
+for comparison first?") -- all 3 backtest.py/portfolio_sim.py-level dead constants from Finding
+#31's investigation were built as real, opt-in comparison arms (not silently made the new default),
+each verified synthetically against the REAL BacktestEngine.run()/portfolio_sim.replay_portfolio()
+(not a re-implemented copy of the logic) before being run for real. `MAX_HALF_LIFE_DAYS`/
+`MIN_HALF_LIFE_DAYS` (the SEPARATE, already-implemented `analysis.py`-level screening-tier
+constants) are untouched -- this entry is about the 3 backtest.py-tier ones.
+
+**`--storm-max-half-life-filter`**: skip entry if `half_life_at_entry > MAX_HALF_LIFE`, symmetric
+to the existing `MIN_HALF_LIFE_BARS` floor. Verified
+(`debug/_verify_dead_constants_comparison_arms.py` Check 1): correctly skips a synthetic entry with
+half_life=80 (> default MAX_HALF_LIFE=50). Real result against Purity pairs: **IS Sharpe -1.4333
+(193 trades, vs. baseline -0.6789/146), OOS Sharpe -1.9772 (119 trades, vs. baseline -0.8336/105)**
+-- WORSE on both splits, and MORE trades taken, not fewer. Real, disclosed finding: filtering pairs
+whose entry-time half-life exceeds 50 bars doesn't help and may be actively harmful at this
+snapshot -- plausibly because slower-reverting entries excluded by this filter were, on net, some
+of the better-performing trades, not noise being correctly screened out. Divergence, not
+convergence, with the naive expectation that a tighter half-life ceiling should help.
+
+**`--storm-real-corr-exit`**: a genuine structural-breakdown exit using `CORR_EXIT_THRESHOLD`
+against the already-available, point-in-time `coint_fraction_rolling_t` series -- a disclosed
+substitution for leg-price correlation (not available in `spread_series` files without a new
+data-loading pipeline), additive to the existing z-widening `corr_exit` heuristic (priority #4),
+not a replacement. **A real bug found and fixed during this build**: the first version, with no
+debounce, produced catastrophic overtrading -- 269,707 trades across the Purity pairs (vs. 146
+baseline) from `coint_fraction_rolling_t` chattering back and forth across the 0.20 threshold bar
+to bar, triggering immediate exit/re-entry cycles. Fixed by applying the SAME `hold_bars > 5`
+debounce guard the existing z-widening heuristic (condition #4) already uses for exactly this
+failure mode -- not a new mechanism invented, just consistently applying the codebase's own
+established convention to the new condition. Re-verified synthetically, then re-run for real: **IS
+Sharpe -6.4701 (951 trades), OOS Sharpe -5.4733 (775 trades)** -- vastly worse than baseline even
+with debouncing, and still 6-7x baseline's trade count. Real, disclosed finding: even debounced,
+`coint_fraction_rolling_t` crosses below `CORR_EXIT_THRESHOLD=0.20` far more often than a genuine
+rare "structural breakdown" event should, causing destructive overtrading -- either the 0.20
+threshold is miscalibrated for this use (too loose), or `coint_fraction_rolling_t`'s own rolling
+window is too short/noisy to serve as a real-time exit trigger without additional smoothing. A
+clear, understood negative result, not a surprising unexplained one.
+
+**`--concentration-cap`**: caps a single position's target notional at `MAX_CONCENTRATION_PCT`
+(default 0.20) of CURRENT equity, enforced in `portfolio_sim.py`'s unified replay engine (the
+correct architectural home -- concentration is inherently portfolio-level/cross-pair, unlike the
+other two which are genuinely per-pair). Verified (`debug/_verify_flat_risk_pct_override.py` Check
+3): a position whose uncapped target notional would exceed the cap is correctly clamped exactly to
+it. Real result against Purity pairs: **IS Sharpe -0.6349 (167 trades), OOS Sharpe -0.8972 (116
+trades)** -- essentially unchanged from baseline (-0.6789/146, -0.8336/105). Real, disclosed
+finding: `MAX_CONCENTRATION_PCT=0.20`'s default value rarely BINDS for this pairs set under `fixed`
+sizing at $100k starting capital -- the strategy's own default position sizes are already comfortably
+under the cap most of the time, so this constraint has near-zero real-world effect at its default
+value (a legitimate near-null result, not evidence the mechanism itself is broken -- confirmed
+working correctly via the synthetic test's much more aggressive sizing parameters).
+
+**No promotion to production decided here** -- these are disclosed comparison-arm results per this
+project's own comparison-arm-before-production discipline, not a recommendation to adopt any of
+the 3 by default. Two of three (max_half_life_filter, real_corr_exit) show real, moderate-to-severe
+degradation versus baseline; concentration_cap shows a real near-null effect at its current default
+threshold.
+
+Files: `backtest.py` (3 new `--storm-*`/`--concentration-cap` flags + engine logic),
+`portfolio_sim.py` (concentration_cap parameter), `debug/_verify_dead_constants_comparison_arms.py`
+(new, 2/2 checks), `debug/_verify_flat_risk_pct_override.py` (Check 3 added, concentration_cap),
+real output files under `output/backtest/portfolio_layer1*{maxhlfilter,realcorrexit}*capsim*.parquet`
+and `output/backtest/portfolio_layer1*_ccap.parquet`.
+
+## 34. Thread L -- Local Event-Study Framework Built and Run For Real [2026-08-14]
+
+Built `research/event_study_framework.py`, the CAMARF-native equivalent of gs-quant's Marquee-gated
+`timeseries.event_study` module (`frame_timeseries_around_events`/`event_impact_analysis`), using
+only already-cached local data -- `earnings.py::EarningsCalendar` (real quarterly earnings dates)
+and macro.py's regime classification output (transition dates derived generically here, not a new
+macro.py function). Core primitive `frame_series_around_events(series, event_dates, window_before,
+window_after)` re-indexes any series to RELATIVE bar offset from each event (0 = event bar) --
+verified synthetically first (`debug/_verify_event_study_framework.py`, 5/5 checks: exact window
+recovery, multi-event independence, out-of-range event exclusion, correct transition-date detection,
+both-legs earnings-date union).
+
+**Real run, ADBE/MDT (Purity pair)**: 48 earnings events framed at +/-10 trading days. A real,
+plausible pattern: z-score standard deviation NARROWS from ~1.55 at 10 days before an earnings
+announcement to ~1.22 at 10 days after -- consistent with earnings-related uncertainty resolving
+post-announcement (a real, disclosed descriptive observation, not a new trading signal -- per this
+thread's own explicit non-goal, lead-lag/event-driven PREDICTION already has 3 independent null
+results on this universe, Finding #11 area; this is descriptive regime-framing only).
+
+Not yet run against macro regime transitions (the `frame_pair_around_macro_transition` wrapper is
+built and would need a real MacroResult column aligned to a pair's spread_series index -- a
+mechanical follow-up, not a design gap).
+
+Files: `research/event_study_framework.py` (new), `debug/_verify_event_study_framework.py` (new,
+5/5 pass).
+
+## 35. Thread N #5 -- VaR Model Backtesting/Calibration Check (Basel-Style): a Real Degenerate-Data
+Artifact Caught and Fixed, Purity/Hybrid's 99% VaR Is Genuinely Well-Calibrated [2026-08-14]
+
+**Stated plainly, per Thread N's own framing**: this is a risk-METHODOLOGY comparison, not a legal
+compliance certification. Sequenced first per that thread's own design (#5 before #1) -- answers
+"is a VaR framework even meaningful for this strategy" before any VaR-based position sizing tries
+to use one.
+
+Built `research/var_backtest_calibration.py`: rolling, strictly causal historical VaR (empirical
+percentile of a trailing window, no distributional assumption), Basel-style exception counting
+against CAMARF's real Step 5 daily P&L (reusing `build_daily_return_series` directly). Verified
+synthetically first (`debug/_verify_var_backtest_calibration.py`, 4 checks: causal no-lookahead
+confirmation, known-exception recovery, traffic-light threshold correctness, a genuinely
+well-calibrated synthetic model correctly landing green).
+
+**A real degenerate-data artifact found via the run itself, not glossed over**: the first real run
+showed baseline/tiered arms with "0 exceptions across 392 observations" -- looking like a perfect
+calibration result. Direct investigation confirmed this was entirely artifactual: ALL 392
+observations had a degenerate VaR estimate (`var_t <= 0`), a direct consequence of Thread M's
+already-documented finding (baseline/tiered are 81-82% exact-zero-return days) -- a trailing window
+that's mostly zeros produces a zero empirical percentile, and `count_exceptions`'s own `var_t > 0`
+guard silently excluded every single one of these from consideration, leaving genuinely ZERO
+meaningful observations behind a misleadingly clean "0/392" headline. Fixed: `count_exceptions` now
+reports `n_obs` as only the non-degenerate count, with `n_degenerate`/`n_attempted` surfaced
+separately so this can't be silently misread again.
+
+**A second real methodology point found and disclosed**: Basel's own 4/9 exception-count
+traffic-light thresholds are calibrated specifically for 99% VaR (1% expected daily exceedance) --
+applying the same raw thresholds to a 95% VaR result (5% expected) will show "red" even for a
+PERFECTLY calibrated model, since 5% inherently exceeds a threshold built around 1%. Disclosed
+directly in `basel_traffic_light()`'s docstring and the driver's own output (an explicit caveat
+line on every 95%-confidence result), not silently misapplied.
+
+**The real, honest result after both fixes**: baseline/tiered remain genuinely data-starved (0
+meaningful 95%-VaR observations; only 92 thin observations at 99%, still showing exceptions=0 --
+consistent with, not contradicting, Thread M's "not enough trade history yet" finding). Purity and
+Hybrid (the more actively-traded arms, 732 total observations) show a REAL, positive calibration
+result at 99% VaR: exception rates of **1.4-1.8%** against a 1% target -- close enough to be
+plausible for a well-functioning historical VaR model at this sample size, landing green/yellow
+(not red) on Basel's own scale. 95% VaR exception rates (5.1-5.8% against a 5% target) are similarly
+close to well-calibrated, though the traffic-light label itself isn't meaningful at that confidence
+level per the caveat above.
+
+**What this means for Thread N #1 (VaR-based position sizing, the next sub-arm)**: a genuine green
+light, with a real caveat -- 99% VaR appears usable as a sizing input for the Purity/Hybrid arms
+specifically (where real observation counts exist), but NOT yet for baseline/tiered, which remain
+too data-starved for any VaR-based methodology to be meaningfully validated first.
+
+Files: `research/var_backtest_calibration.py` (new), `debug/_verify_var_backtest_calibration.py`
+(new, 4/4 pass), `output/research/var_backtest_calibration_results.parquet` (16 real results).
+
+## 36. Thread N #2 -- Leverage/Gross Exposure Cap Comparison Arm: a Real Architectural Discovery
+(No-Leverage Already Implicit) and a Mixed, Honest Real Result [2026-08-14]
+
+Built `--leverage-cap` (portfolio_sim.py's `replay_portfolio`), capping TOTAL gross exposure (all
+open positions combined, not a single position like `concentration_cap`) at a fixed multiple of
+current equity -- matches the UCITS commitment-approach / '40 Act Section 18 asset-coverage
+convention.
+
+**A real architectural property found while verifying this, not a bug**: `portfolio_sim.py`'s
+EXISTING capital-availability constraint (`available = current_equity - committed_now`) already
+implicitly enforces a de facto `leverage_cap=1.0` by construction -- positions can never be sized
+beyond available cash regardless of `leverage_cap`, since this engine has no borrowing/margin
+mechanism anywhere. This means `leverage_cap >= 1.0` is ALWAYS a no-op against the existing default
+behavior; the parameter only has a genuinely distinct effect for values < 1.0 (a real, TIGHTER
+constraint than what's already implicit). Verified directly (`debug/_verify_flat_risk_pct_override.py`
+Check 4): two overlapping positions' unlevered combined notional already saturates at exactly 100%
+of equity by itself; `leverage_cap=0.5` correctly clamps that to 50%.
+
+**Real result against Purity pairs at `leverage_cap=0.5`**: IS Sharpe -0.4320 (128 trades, vs.
+baseline -0.6789/146) -- an IMPROVEMENT; OOS Sharpe -0.9654 (88 trades, vs. baseline -0.8336/105) --
+a DEGRADATION. A genuinely mixed, honest result, not a clean win or loss -- tighter gross-exposure
+constraint helped in-sample but hurt out-of-sample, consistent with reduced position sizing cutting
+both the strategy's losses AND its (limited) gains roughly proportionally, with the net direction
+differing by split. Not evidence either for or against adopting a leverage cap by default.
+
+Files: `portfolio_sim.py` (leverage_cap parameter), `backtest.py` (`--leverage-cap` flag),
+`debug/_verify_flat_risk_pct_override.py` (Check 4).
+
+## 37. Liquidity Bar Filter -- Real Entry-Filter Comparison Arm, Mixed Result [2026-08-14]
+
+Built `--storm-liquidity-bar-filter` (backtest.py), reusing `research/liquidity_bar_masking.py`'s
+`liquid_bar_mask` -- skips entry if either leg's OWN dollar volume that day falls below
+`MIN_DOLLAR_VOLUME`. Verified synthetically (`debug/_verify_dead_constants_comparison_arms.py`
+Check 3): a pair whose only entry-qualifying bar coincides with one leg being illiquid produces
+zero trades with the flag on.
+
+**Real result against Purity pairs**: IS Sharpe -0.5782 (93 trades, vs. baseline -0.6789/146) --
+a real improvement; OOS Sharpe -0.9153 (136 trades, vs. baseline -0.8336/105) -- a real
+degradation, and OOS trade count went UP despite the filter being strictly more restrictive at
+entry (same mechanism already seen with `max_half_life_filter`: skipping some entries frees
+capacity for other, later entries that would have been blocked by an already-open position).
+Genuinely mixed -- not a clean confirmation that illiquid-bar contamination explains the negative
+Sharpe, consistent with Finding on the bar-masking investigation (the originally-hypothesized
+mechanism doesn't dominate on this universe). Still a legitimate signal-quality/fill-realism
+filter worth having as an option, just not a fix for the Sharpe problem on its own.
+
+Files: `backtest.py` (`--storm-liquidity-bar-filter`), `debug/_verify_dead_constants_comparison_arms.py`
+(Check 3 added).

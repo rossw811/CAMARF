@@ -1,12 +1,13 @@
-10:03:54 INFO  === pair_characteristics_analyzer.py: Stage 3 (per-pair decision tree) + Stage 4 (archetype clustering) ===
-10:03:54 INFO  Loaded 12 total trades across 1 pair-tf combinations
-10:03:54 INFO  PNC/ZION@4h: SKIP (insufficient_trades, n=12)
-10:03:54 INFO  
---- Stage 4: archetype clustering (0/1 pairs have >=1 holdout-confirmed leaf) ---
-10:03:54 WARNING  Only 0 pairs have a holdout-confirmed characteristic — too few for archetype clustering (need >=3). This is an honest small-N limitation, not a bug: most confirmed pairs currently have < 30 trades total.
-10:03:54 INFO  
-0 pairs had enough trades to attempt characteristics analysis (of 1 total pair-tf combos)
-10:03:54 INFO  Saved -> output/research/pair_characteristics.parquet (no archetypes.parquet — too few pairs)
-10:03:54 INFO  ============================================================
-10:03:54 INFO  pair_characteristics_analyzer.py complete (0.0 min)
-10:03:54 INFO  REMINDER (Ross's explicit instruction): exploratory only — not wired into ml.py Stage 2 training or backtest.py entry logic. Try it and see, don't rely on it yet.
+15:42:59 INFO  === pair_characteristics_analyzer.py: Stage 3 (per-pair decision tree) + Stage 4 (archetype clustering) ===
+15:42:59 INFO  Loaded 98 total trades across 2 pair-tf combinations
+15:43:04 INFO  IQV/Q@1D: n=86, perm_significant=False, 1/1 leaves holdout-confirmed, regime_sensitivity=-1.00, best_leaf_winrate=0.00 (n=51)
+15:43:04 INFO  PNC/ZION@4h: SKIP (insufficient_trades, n=12)
+15:43:04 INFO  
+--- Stage 4: archetype clustering (1/2 pairs have >=1 holdout-confirmed leaf) ---
+15:43:04 WARNING  Only 1 pairs have a holdout-confirmed characteristic — too few for archetype clustering (need >=3). This is an honest small-N limitation, not a bug: most confirmed pairs currently have < 30 trades total.
+15:43:04 INFO  
+1 pairs had enough trades to attempt characteristics analysis (of 2 total pair-tf combos)
+15:43:04 INFO  Saved -> output/research/pair_characteristics.parquet (no archetypes.parquet — too few pairs)
+15:43:04 INFO  ============================================================
+15:43:04 INFO  pair_characteristics_analyzer.py complete (0.1 min)
+15:43:04 INFO  REMINDER (Ross's explicit instruction): exploratory only — not wired into ml.py Stage 2 training or backtest.py entry logic. Try it and see, don't rely on it yet.

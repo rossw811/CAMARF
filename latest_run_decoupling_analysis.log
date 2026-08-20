@@ -1,16 +1,16 @@
-03:32:43 INFO  === decoupling_analysis.py: descriptive study of post-decoupling behavior ===
-03:32:43 INFO  SCOPE: pure description, not a trading rule. Small-n by nature — decoupling events are rare and CAMARF's per-pair history is short.
-03:32:43 INFO  [1min] 1/1 candidates have a detected Zivot-Andrews break
-03:32:43 INFO  [2min] 2/2 candidates have a detected Zivot-Andrews break
-03:32:43 INFO  [3min] 1/1 candidates have a detected Zivot-Andrews break
-03:32:43 INFO  [1hr] 0/2 candidates have a detected Zivot-Andrews break
-03:32:43 INFO  [4hr] 0/2 candidates have a detected Zivot-Andrews break
-03:32:43 INFO  
+13:41:16 INFO  === decoupling_analysis.py: descriptive study of post-decoupling behavior ===
+13:41:16 INFO  SCOPE: pure description, not a trading rule. Small-n by nature — decoupling events are rare and CAMARF's per-pair history is short.
+13:41:16 INFO  [1min] 1/1 candidates have a detected Zivot-Andrews break
+13:41:16 INFO  [2min] 2/2 candidates have a detected Zivot-Andrews break
+13:41:16 INFO  [3min] 1/1 candidates have a detected Zivot-Andrews break
+13:41:16 INFO  [1hr] 0/2 candidates have a detected Zivot-Andrews break
+13:41:16 INFO  [4hr] 0/2 candidates have a detected Zivot-Andrews break
+13:41:16 INFO  
 --- Descriptive result across 4 detected decoupling events ---
-03:32:43 INFO    INCONCLUSIVE                    3  (75.0%)
-03:32:43 INFO    CONTINUED_DIVERGENCE            1  (25.0%)
-03:32:43 INFO  
+13:41:16 INFO    INCONCLUSIVE                    3  (75.0%)
+13:41:16 INFO    CONTINUED_DIVERGENCE            1  (25.0%)
+13:41:16 INFO  
 Honest scope note: n=4 events, drawn from CAMARF's available history per TF (deepest: 10Y IBKR-supplemented 1h pairs; most TFs much shorter). This is a descriptive result to inform signal design, not a statistically powered claim.
-03:32:43 INFO  Saved -> C:\Users\RossW\Projects\CAMARF\output\research\decoupling_analysis.parquet
-03:32:43 INFO  ============================================================
-03:32:43 INFO  decoupling_analysis.py complete (0.0 min)
+13:41:16 INFO  Saved -> C:\Users\RossW\Projects\CAMARF\output\research\decoupling_analysis.parquet
+13:41:16 INFO  ============================================================
+13:41:16 INFO  decoupling_analysis.py complete (0.0 min)

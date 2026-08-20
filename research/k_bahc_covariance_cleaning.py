@@ -118,14 +118,34 @@ def clean_correlation_matrix(corr: np.ndarray, max_k: int = 6, force_k: int = No
     keeping whichever produces the best downstream result) partition
     surfaces genuine sub-cluster structure silhouette's global optimum
     misses at whole-universe scale."""
+    # In-place preprocessing (2026-08-17, real OOM near-miss found live at N=17,324): the
+    # original `dist = np.sqrt(np.clip((1 - corr) / 2, 0, None))` creates 3 separate full
+    # (n,n) temporaries before `dist` itself exists, on top of the caller's own `corr` array
+    # still being alive -- real, avoidable memory at this scale. Reusing one buffer in-place
+    # throughout cuts that to 1 array. Does not change the computed values.
     corr = np.nan_to_num(corr, nan=0.0)
-    dist = np.sqrt(np.clip((1 - corr) / 2, 0, None))
+    dist = 1.0 - corr
+    dist *= 0.5
+    np.clip(dist, 0, None, out=dist)
+    np.sqrt(dist, out=dist)
     np.fill_diagonal(dist, 0.0)
     if force_k is not None:
         condensed = squareform(dist, checks=False)
+        del dist  # full (n,n) matrix no longer needed once the condensed form exists
         link = linkage(condensed, method="average")
+        del condensed
         k = force_k
     else:
+        # force_k=None (silhouette-based k-selection) is a genuine algorithmic-scalability
+        # wall at large N, not a memory bug: _best_k_by_silhouette calls sklearn's
+        # silhouette_score(metric="precomputed") once per candidate k (up to max_k times),
+        # each an O(n^2)-scale operation on the full distance matrix -- found live 2026-08-17
+        # at n=17,324 (the real WRDS-expanded universe) to make no visible progress and grow
+        # memory unboundedly rather than complete in a reasonable time. Not something an
+        # in-place memory optimization here can fix -- the real cost is repeated O(n^2)
+        # silhouette evaluation, not array retention. Callers at this scale should pass
+        # force_k explicitly (research/k_bahc_candidate_discovery.py's own --force-k flag
+        # exists for exactly this reason, already built 2026-07-21).
         k, link = _best_k_by_silhouette(dist, max_k)
     labels = fcluster(link, k, criterion="maxclust")
 

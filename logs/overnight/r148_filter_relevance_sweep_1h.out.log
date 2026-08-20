@@ -1,0 +1,4 @@
+=== Filter-relevance reconstruction for 1h (analysis.py's own persistence never ran for this TF: 0 final confirmed pairs) ===
+
+PNC/ZION: EG p=1.099e-06  coint_frac=0.121 (passes 0.70 threshold: False)  secondary_evidence_override=False  structural_exclusion=False
+    half_life_trend_slope=5.652130122845995e-05  zivot_andrews_break=None  cusum_first_excursion=2023-08-11
