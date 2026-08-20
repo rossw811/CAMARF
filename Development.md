@@ -23392,6 +23392,14 @@ cache.
 Files: `docs/HARDWARE_OPTIMIZATION_PLAN.md` (§0 items 1/4, §3.2), `run_overnight_research.py`
 (`_warm_cache` + `--skip-warm-cache` flag), `docs/HANDOFF.md`.
 
+### Session work committed to git (2026-08-20)
+
+All of the above (n_workers/ruff config, Thread O WRDS consolidation, universe-load memoization,
+`run_overnight_research.py`, `gpu_backend.py`, the hardware-plan corrections) committed on
+`main` as `5fa46e3d` after Ross reviewed the file list. **Pushed to `origin/main`** per Ross's
+explicit "put it to main" instruction — this is now the real, shared state both machines should
+pull from, not just local Windows working-tree state.
+
 ### NVMe drive contents directly verified (2026-08-20, same session, Ross's follow-up request:
 ### "check the data on the other two SSDs")
 
@@ -23406,7 +23414,39 @@ data. `nvme0n1p1` (16MB) is a near-empty remnant; `nvme1n1p1` (16MB) is a standa
 Reserved partition (no filesystem, normal GPT boilerplate, not data). Both drives passed
 `smartctl -H`. Updated `docs/HARDWARE_OPTIMIZATION_PLAN.md` §0 item 1 with this direct
 confirmation. No change to the standing conclusion — all three SSD-class devices remain
-off-limits, `sdb` (the HDD) is the only usable storage.
+off-limits **for CAMARF storage** (item 1's own scope), but see below: Ross separately asked to
+make them accessible for his own general use, which is a different, narrower request than
+"usable as CAMARF's working directory."
+
+### NVMe drives made persistently accessible (2026-08-20, same session, Ross: "if we can make the
+### NVMes accessible lets do it")
+
+Attempted a real read-write mount on both (`mount -t ntfs3 -o rw`, via the scoped sudo `mount`
+permission) to check feasibility before deciding anything: `nvme1n1p2` ("G", the
+SteamLibrary/ComfyUI/AI data drive) mounted read-write cleanly, no issues. `nvme0n1p2` ("F", the
+actual Windows OS volume) FAILED — `dmesg` showed the real reason directly:
+`ntfs3(nvme0n1p2): volume is dirty and "force" flag is not set!` — Windows wasn't shut down
+cleanly last time (hibernation or a crash), so the in-kernel NTFS driver correctly refuses a
+write mount rather than risk compounding an already-unresolved journal state. Presented this to
+Ross with the real tradeoff (force it and risk real corruption on a 767GB Windows install, vs.
+read-only-only until Windows itself clears the dirty flag via a clean shutdown) — he chose
+read-only for F, read-write for G, not forcing anything.
+
+**Final state, live now**: both mounted under `~/mnt/win-f` (F, read-only) and `~/mnt/win-g` (G,
+read-write) on CachyOS, with `uid=1000,gid=1000` so files are directly accessible/writable by
+`rw` without permission friction. Verified with a real write test on G (file created and removed
+successfully) and confirmed the read-only block on F (write attempt correctly returned
+"Read-only file system"). Mount points created under `~/mnt/` (the user's own home directory,
+not `/mnt`) specifically because `/mnt` needs root to create subdirectories and that's outside
+the scoped sudo permission set — avoided expanding sudo scope for a directory-creation
+convenience. **These mounts are live but NOT yet persistent** — they will not survive a reboot.
+Handed Ross the exact `/etc/fstab` lines to add himself (including the `nofail` option, so a
+future boot won't hang if either drive is ever disconnected) — deliberately did NOT edit
+`/etc/fstab` directly myself, since that's a core system configuration file controlling all boot
+mounts (including root), a materially different risk class than the mount/unmount commands
+already covered by the existing scoped sudo rule, and consistent with this session's own
+established pattern of handing higher-risk system changes to Ross rather than self-authorizing
+past that line.
 
 Remaining audit items (not started this session): confirming `run_verify_suite.py` is actually
 invoked regularly (process check, not code), and pytest migration for the 176
