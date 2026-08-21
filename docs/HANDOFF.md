@@ -148,6 +148,40 @@ GPU headroom, deprioritized per your call), the `mq-deadline` scheduler switch (
 above, needs your sudo), the `/etc/fstab` persistence for the two NVMe mounts (exact lines above,
 needs your sudo), and the Tier-2 GPU reimplementation (scoped only, needs your sign-off).
 
+11. **Everything NOT done as of end of session (2026-08-20), consolidated in one place per your
+    request.** The documentation layer itself is caught up and internally consistent (see items
+    1-10 above), but that's a different claim from "the underlying numbers/code are freshly
+    verified" — they aren't, on purpose, pending the sequencing below:
+    - **`PAPER.md`'s actual narrative is NOT rewritten.** Only a disclosure pointer was added
+      flagging that the PIT-safe pivot is pending — the paper still tells the old pre-pivot story
+      (3-pair/23-pair framing). Deliberately not rewritten yet — see the "verify, full rerun,
+      narrative from the ground up" sequencing you agreed to (`Development.md`'s new "START HERE
+      next session" entry), which exists specifically to avoid drafting a thesis before real
+      numbers exist (the old chat's mistake with the 647-pair count).
+    - **~90 of the 121 `research/*.py` scripts were never individually audited** this session for
+      whether they're actually wired to the current BUG-D112-fixed 182-pair PIT-safe source
+      rather than a stale manifest/checkpoint — flagged by the dependency-audit fork
+      (`docs/SOFTWARE_OPTIMIZATION_AUDIT.md` §2) as a real, unclosed gap, not assumed safe.
+    - **`eg_null_calibration_montecarlo.py`'s known stale-cache bug remains unfixed** — it reads
+      the old yfinance-only universe directly rather than the current WRDS-primary one, and its
+      output is cited as a published `PAPER.md` §4.2.1 claim. Needs your explicit decision
+      (rewire + re-run, changing the published number; or disclose the scope limitation as-is)
+      before it's included in any future full rerun.
+    - **No full pipeline rerun has happened this session.** Every pair-count/Sharpe number
+      referenced in the docs (182 pairs, the Step 5 arm results table, etc.) is the last-known-good
+      figure from Session 31/BUG-D112's redo, not freshly re-verified end-to-end against
+      currently-checked-in code.
+    - **The real GPU production-scale timing benchmark** — correctness proven on the real RTX
+      4080, speedup number not measured (GPU was under load from your other work).
+    - **Two sudo-gated system changes still need your own hands**: the `mq-deadline` I/O
+      scheduler switch, and the `/etc/fstab` lines for the two NVMe mounts (both exact commands
+      given above in this file).
+    - **The Tier-2 GPU reimplementation of Engle-Granger/Johansen** — scoped only
+      (`docs/HARDWARE_OPTIMIZATION_PLAN.md` §3.2), zero code, needs your explicit separate
+      sign-off given it touches the project's single most safety-critical statistical test.
+    - **`run_verify_suite.py` usage-habit confirmation and the pytest migration for the 176
+      verify scripts** — both untouched, lowest urgency of everything in this list.
+
 Files: `config.py`, `analysis.py`, `pyproject.toml` (new), `data_wrds.py`,
 `research/build_symbol_permno_map.py`, `research/build_wrds_supplementary_data.py`,
 `research/wrds_global_index_universe_fetch.py`, `universe_loader.py`,
