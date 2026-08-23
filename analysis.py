@@ -884,7 +884,7 @@ class UniverseFilter:
         return corr_raw, den_valid
 
     @staticmethod
-    def _pairwise_corr(returns: np.ndarray, min_overlap: int = 30) -> np.ndarray:
+    def _pairwise_corr(returns: np.ndarray, min_overlap: int = 30, use_gpu: bool = False) -> np.ndarray:
         """
         Internal: N×N pairwise-complete Pearson correlation from demeaned returns.
         Used by correlation_matrix, spearman_matrix (after ranking), and
@@ -922,7 +922,7 @@ class UniverseFilter:
         # (only count/var_x/var_y/corr_raw feed into _fix_ambiguous_variance_cells below) --
         # real memory finding, see _vectorized_pairwise_stats' own docstring.
         count, mean_x, mean_y, var_x, var_y, cov_xy, corr_raw, den = (
-            UniverseFilter._vectorized_pairwise_stats(returns, low_memory=True)
+            UniverseFilter._vectorized_pairwise_stats(returns, low_memory=True, use_gpu=use_gpu)
         )
         corr_raw, den_valid = UniverseFilter._fix_ambiguous_variance_cells(
             returns, count, var_x, var_y, corr_raw, min_overlap
@@ -934,9 +934,9 @@ class UniverseFilter:
         return corr
 
     @staticmethod
-    def correlation_matrix(returns: np.ndarray) -> np.ndarray:
+    def correlation_matrix(returns: np.ndarray, use_gpu: bool = False) -> np.ndarray:
         """N×N Pearson correlation (pairwise complete, NaN-safe)."""
-        return UniverseFilter._pairwise_corr(returns)
+        return UniverseFilter._pairwise_corr(returns, use_gpu=use_gpu)
 
     @staticmethod
     def spearman_matrix(returns: np.ndarray) -> np.ndarray:
@@ -1396,6 +1396,7 @@ class UniverseFilter:
         batch_size: int = 1500,
         progress_every: Optional[int] = None,
         progress_label: str = "",
+        use_gpu: bool = False,
     ) -> np.ndarray:
         """
         Memory-bounded FULL Pearson correlation matrix, for callers that need
@@ -1405,6 +1406,30 @@ class UniverseFilter:
         k_bahc_candidate_discovery.py, whose hierarchical-clustering step
         needs the full dense matrix at once and cannot work from a
         candidate-pairs list.
+
+        use_gpu (added 2026-08-23, after two real CachyOS crashes running the
+        UNCHUNKED GPU path at N=17,324 -- see docs/HANDOFF.md): the earlier
+        `_vectorized_pairwise_stats(use_gpu=True)` call on a full N=17,324
+        matrix needs 6-9 co-existing (n,n) VRAM arrays simultaneously even
+        with low_memory=True -- 14-22GB against a 16GB card, the same
+        undercount class that caused the original CPU/RAM near-misses this
+        function was built to fix, just never extended to the GPU path.
+        Passing use_gpu=True HERE is safe at any N: each block-pair's own
+        `correlation_matrix()` call only ever holds arrays sized by
+        `batch_size` (default 3000x3000 cross-block at batch_size=1500,
+        ~72MB per intermediate, ~650MB peak across all 4 low_memory arrays)
+        -- VRAM usage is bounded by batch_size, not by the full universe
+        size N. gpu_backend.py's own headroom check (added the same session)
+        also re-checks real free VRAM before EVERY block-pair, so even a
+        concurrent GPU consumer (ollama etc.) showing up mid-run degrades
+        gracefully to CPU for subsequent blocks instead of crashing.
+
+        Real, measured guidance from the 2026-08-23 benchmark (see
+        docs/HANDOFF.md): GPU is SLOWER than CPU below roughly N~2,000-4,000
+        (kernel-launch/transfer overhead dominates) -- at CAMARF's actual
+        production universe size (~1,660), don't pass use_gpu=True at all.
+        Only worth it for genuinely large universes (WRDS-expanded scale,
+        k-BAHC's ~17k-44k symbol runs).
 
         Real, measured reason this is needed even after `low_memory=True`
         was added to `_vectorized_pairwise_stats`: at N=17,324 (the real
@@ -1442,11 +1467,11 @@ class UniverseFilter:
                 if bj < bi:
                     continue
                 if bi == bj:
-                    sub_corr = UniverseFilter.correlation_matrix(returns[block_i])
+                    sub_corr = UniverseFilter.correlation_matrix(returns[block_i], use_gpu=use_gpu)
                     out[np.ix_(block_i, block_i)] = sub_corr
                 else:
                     idx = block_i + block_j
-                    sub_corr = UniverseFilter.correlation_matrix(returns[idx])
+                    sub_corr = UniverseFilter.correlation_matrix(returns[idx], use_gpu=use_gpu)
                     ni = len(block_i)
                     cross = sub_corr[:ni, ni:]
                     out[np.ix_(block_i, block_j)] = cross
