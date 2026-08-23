@@ -46,6 +46,18 @@ for batch_size in [1, 5, 12, 47, 1000]:
 
 check("diagonal is all 1.0", np.allclose(np.diag(chunked), 1.0))
 
+# use_gpu=True path, added 2026-08-23 (Thread P follow-on, after two real CachyOS crashes
+# running the UNCHUNKED GPU path at N=17,324 -- see docs/HANDOFF.md). Safe to run on any
+# machine: gpu_backend.get_array_module() falls back to CPU with a warning if no GPU is
+# present (the Windows dev box), so this check exercises the code path everywhere even
+# though it only actually touches CUDA on CachyOS.
+for batch_size in [5, 47]:
+    chunked_gpu = UniverseFilter.chunked_pearson_matrix(returns, batch_size=batch_size, use_gpu=True)
+    check(f"use_gpu=True, batch_size={batch_size}: matches direct correlation_matrix() to 1e-6",
+          np.allclose(direct, chunked_gpu, equal_nan=True, atol=1e-6, rtol=1e-6))
+    check(f"use_gpu=True, batch_size={batch_size}: symmetric",
+          np.allclose(chunked_gpu, chunked_gpu.T, equal_nan=True, atol=0, rtol=0))
+
 n_fail = sum(1 for _, c in checks if not c)
 print(f"\n{len(checks) - n_fail}/{len(checks)} checks passed")
 sys.exit(1 if n_fail else 0)

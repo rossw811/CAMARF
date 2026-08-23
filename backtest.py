@@ -1307,6 +1307,81 @@ def compute_risk_parity_weights(
     return weights
 
 
+def compute_var_sizing_weights(
+    is_trades_path: str = "output/backtest/trades_layer1.parquet",
+    trades_df: Optional[pd.DataFrame] = None,
+    confidence: float = 0.99,
+    min_obs: int = 20,
+) -> Dict[str, float]:
+    """
+    Thread N #1 (VaR-based N_SHARES sizing) -- the sub-arm Finding #35
+    (docs/FINDINGS.md) explicitly flagged as unblocked, sequenced after #5's
+    calibration check per that thread's own design. Same shape as
+    compute_risk_parity_weights() (inverse-magnitude multiplier, [0.1, 5.0]
+    clip, IS-fit) but the per-pair risk magnitude is each pair's own static
+    historical VaR (empirical (1-confidence) percentile of its IS trade P&L)
+    instead of raw std -- a genuinely different risk convention (tail-focused,
+    not variance-focused), not a relabeling of the same computation.
+
+    confidence=0.99 default, NOT 0.95: Finding #35's real, verified result is
+    that 99% VaR is well-calibrated for Purity/Hybrid (1.4-1.8% exception rate
+    vs 1% target) while 95% VaR's Basel traffic-light label isn't even
+    meaningful at this sample size (disclosed caveat in that finding). Using
+    95% here would apply an unvalidated confidence level to a real sizing
+    decision.
+
+    min_obs=20 (matches var_backtest_calibration.py's own _MIN_WINDOW_OBS):
+    a pair with fewer IS trades than this is excluded, not given a degenerate
+    VaR estimate -- same "explicit empty, not silently wrong" discipline
+    Finding #35's own count_exceptions fix established after finding 0/392
+    was an artifact of exactly this failure mode, not real calibration.
+    """
+    if trades_df is not None:
+        trades = trades_df
+    else:
+        if not os.path.exists(is_trades_path):
+            log.warning("VaR sizing: IS trades not found at %s — flat sizing", is_trades_path)
+            return {}
+        trades = pd.read_parquet(is_trades_path)
+    if trades.empty:
+        log.warning("VaR sizing: no IS trades available — flat sizing")
+        return {}
+
+    pct = (1.0 - confidence) * 100
+    excluded_thin, excluded_degenerate = [], []
+    pair_var: Dict[str, float] = {}
+    for (sym_a, sym_b), grp in trades.groupby(["symbol_a", "symbol_b"]):
+        pnl = grp["pnl_net"].dropna()
+        pair_key = f"{sym_a}/{sym_b}"
+        if len(pnl) < min_obs:
+            excluded_thin.append(pair_key)
+            continue
+        var_est = -np.percentile(pnl, pct)
+        if var_est <= 0:
+            excluded_degenerate.append(pair_key)
+            continue
+        pair_var[pair_key] = float(var_est)
+
+    if excluded_thin:
+        log.warning("VaR sizing: %d pair(s) excluded, <%d IS trades: %s",
+                     len(excluded_thin), min_obs, excluded_thin)
+    if excluded_degenerate:
+        log.warning("VaR sizing: %d pair(s) excluded, degenerate VaR<=0: %s",
+                     len(excluded_degenerate), excluded_degenerate)
+    if not pair_var:
+        log.warning("VaR sizing: no pairs with a valid VaR estimate — flat sizing")
+        return {}
+
+    global_mean_var = sum(pair_var.values()) / len(pair_var)
+    weights = {k: float(np.clip(global_mean_var / v, 0.1, 5.0)) for k, v in pair_var.items()}
+    vals = list(weights.values())
+    log.info("VaR sizing (%.0f%% conf): %d pairs, range [%.3f, %.3f], mean=%.3f "
+             "(global_mean_var=%.2f)",
+             confidence * 100, len(weights), min(vals), max(vals),
+             sum(vals) / len(vals), global_mean_var)
+    return weights
+
+
 _PIT_CONFIDENCE_TIER_WEIGHTS = {
     "full_episodic": 1.0,
     "partial_episodic": 0.6,
@@ -1737,6 +1812,12 @@ def main() -> None:
                         "own volatility. Mutually exclusive with --risk-parity (both are "
                         "alternative theories of the same sizing decision). Requires "
                         "trades_layer1.parquet (IS run first).")
+    p.add_argument("--var-sizing", action="store_true",
+                   help="Thread N #1: inverse-99%%-historical-VaR N_SHARES scaling from IS trade "
+                        "P&L (see compute_var_sizing_weights(), Finding #35 in docs/FINDINGS.md). "
+                        "Mutually exclusive with --risk-parity/--hrp-weight (alternative theories "
+                        "of the same sizing decision). Requires trades_layer1.parquet (IS run "
+                        "first).")
     p.add_argument("--pnl-cap", action="store_true",
                    help="Cap each pair's cumulative P&L at IS mean pair P&L. "
                         "Requires trades_layer1.parquet (IS run first).")
@@ -1868,11 +1949,12 @@ def main() -> None:
     regime_cond = RegimeConditioner(enabled=layer2)
     ml_cond = MLConditioner(enabled=layer2)
 
-    if args.risk_parity and args.hrp_weight:
+    _sizing_flags_set = sum([args.risk_parity, args.hrp_weight, args.var_sizing])
+    if _sizing_flags_set > 1:
         raise ValueError(
-            "--risk-parity and --hrp-weight are mutually exclusive — both compute "
-            "an alternative N_SHARES multiplier for the same sizing decision; "
-            "applying both would multiply two different portfolio theories together."
+            "--risk-parity, --hrp-weight, and --var-sizing are mutually exclusive — each "
+            "computes an alternative N_SHARES multiplier for the same sizing decision; "
+            "applying more than one would multiply different portfolio theories together."
         )
 
     # hedge_methods, label, and survivorship exclusions -- moved here (were
@@ -1892,6 +1974,8 @@ def main() -> None:
         label += "_riskparity"
     if args.hrp_weight:
         label += "_hrp"
+    if args.var_sizing:
+        label += "_varsizing"
     if args.pnl_cap:
         label += "_pnlcap"
     if args.pit_confidence_weight:
@@ -1928,7 +2012,9 @@ def main() -> None:
     # with a sizing flag, run a preliminary, flat-sizing IS-only pass first
     # (BacktestEngine.run(is_only=True), the exact chronological complement of
     # the holdout window) and fit weights on THAT instead.
-    _needs_is_only_fit = bool(args.holdout) and (args.risk_parity or args.hrp_weight or args.pnl_cap)
+    _needs_is_only_fit = bool(args.holdout) and (
+        args.risk_parity or args.hrp_weight or args.var_sizing or args.pnl_cap
+    )
     if _needs_is_only_fit:
         log.info(
             "Fitting sizing weights on a genuinely non-overlapping IS-only pass "
@@ -1956,6 +2042,7 @@ def main() -> None:
         risk_parity_weights = (
             compute_hrp_weights(trades_df=_is_only_df) if args.hrp_weight
             else compute_risk_parity_weights(trades_df=_is_only_df) if args.risk_parity
+            else compute_var_sizing_weights(trades_df=_is_only_df) if args.var_sizing
             else {}
         )
         pnl_cap_by_pair = compute_pnl_cap_thresholds(trades_df=_is_only_df) if args.pnl_cap else {}
@@ -1963,6 +2050,7 @@ def main() -> None:
         risk_parity_weights = (
             compute_hrp_weights() if args.hrp_weight
             else compute_risk_parity_weights() if args.risk_parity
+            else compute_var_sizing_weights() if args.var_sizing
             else {}
         )
         pnl_cap_by_pair = compute_pnl_cap_thresholds() if args.pnl_cap else {}

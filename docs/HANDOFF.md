@@ -2,6 +2,80 @@
 
 ---
 
+**2026-08-23, later — CachyOS hard-crashed running a GPU benchmark; root-caused, fixed at the
+source, and general hardware safety measures added.**
+
+### What happened
+
+Ran a CPU-vs-GPU correlation-core benchmark (N=1,660/4,000/17,324) as part of a hardware
+optimization sweep. The machine went fully unreachable mid-run (no ping, no port 22) and needed
+a physical power-cycle — no clean shutdown, no reboot logged.
+
+### Root cause, confirmed directly (not guessed)
+
+- `systemd-oomd` is active and enabled — it would have logged a kill if this were a plain system-
+  RAM OOM. It logged nothing.
+- `rasdaemon` logged zero hardware faults (no MCE, no PCIe AER event) — rules out ECC/hardware.
+- **The real cause**: `ollama`'s own journal entries show it had **14.2GB/16GB VRAM in use**
+  (~1GB free) from its own request load at the exact timestamp the benchmark launched. A single
+  `nvidia-smi` snapshot taken before launch read the GPU as idle (caught it between ollama's
+  bursty requests) — the benchmark's own CUDA allocation then collided with ollama's, hanging the
+  NVIDIA driver hard enough to take the whole machine down. This is exactly the "machine is
+  shared with other GPU work, not CAMARF-dedicated" risk `docs/HARDWARE_OPTIMIZATION_PLAN.md` §8
+  already named — the gap was that nothing actually *checked* live headroom at launch time, only
+  device presence.
+
+### Fixed at the source, verified
+
+- **`gpu_backend.py`**: `get_array_module()` now checks real, current free VRAM
+  (`gpu_has_headroom()`, default floor 3GB) immediately before returning the GPU backend, not
+  just whether a CUDA device responds. Falls back to CPU with a clear warning if headroom is
+  short, rather than proceeding into contention. Verified 5/5
+  (`debug/_verify_gpu_backend_vram_headroom.py`), on both Windows (no GPU) and the real CachyOS
+  hardware.
+- **`scripts/mem_guard.py`** (new): reusable wrapper for any future heavy CAMARF job — polls
+  system free memory and VRAM at a short interval, kills the job cleanly before a floor breach
+  rather than letting the OS/driver hang. `--stop-gpu-sharers` stops `ollama` (extensible to
+  other services) before launching and restarts it after, regardless of how the job ends.
+  Smoke-tested end to end on CachyOS.
+- **`ollama` stopped** for the remainder of this session per Ross's direct instruction ("kill
+  ollama, make sure it's not running with CAMARF work active, same with whisper.cpp") — confirmed
+  no whisper process was running either. GPU now genuinely idle (15.6GB/16GB free, confirmed via
+  `nvidia-smi`, not assumed).
+
+### Still open, needs Ross's own hands (sudo not scoped for these)
+
+- **`mq-deadline` I/O scheduler** — unchanged from the earlier entry below, still `bfq`:
+  `echo mq-deadline | sudo tee /sys/block/sdb/queue/scheduler`
+- **Persistent journald storage** — the crash's own journal was thin (a `system.journal ...
+  corrupted or uncleanly shut down` message appeared on THIS reboot, meaning the previous boot's
+  log didn't fully flush either) because `Storage=` is commented out in `/etc/systemd/
+  journald.conf` (defaults to volatile, tmpfs-backed). Persistent storage would preserve more
+  forensic detail across a future hard crash:
+  ```
+  sudo sed -i 's/^#Storage=.*/Storage=persistent/' /etc/systemd/journald.conf
+  sudo systemctl restart systemd-journald
+  ```
+- **No hardware watchdog available** (`/sys/class/watchdog/watchdog0` doesn't exist,
+  `RuntimeWatchdogUSec=0`) — this is why the hang required a physical power-cycle rather than an
+  automatic reboot. Checked, not assumed: this machine may genuinely lack a usable watchdog
+  device (BIOS-dependent), not something to force from software. Not pursued further this
+  session — flagging honestly rather than claiming a fix that wasn't verified.
+
+Files: `gpu_backend.py`, `debug/_verify_gpu_backend_vram_headroom.py` (new), `scripts/mem_guard.py`
+(new). Deployed directly to CachyOS via `scp` (not yet committed — same as all other uncommitted
+work this session, pending Ross's review).
+
+---
+
+**2026-08-23 — CachyOS IP changed, new network.** LAN moved from the `10.0.0.x` subnet to
+`10.0.1.x`. CachyOS's current address is **`rw@10.0.1.9`** (was `10.0.0.196` — that value below
+and in `Development.md` line ~23262 is historical, correct as of when it was written, not current).
+Confirmed live via SSH key-auth: `hostname` → `cachyos-x8664`, kernel `6.18.42-1-cachyos-lts`.
+Found via a port-22 scan of `10.0.1.0/24` since no mDNS (`cachyos.local`) resolution was available.
+
+---
+
 **2026-08-20, latest — software optimization audit, first 3 prioritized items executed.**
 Following the CachyOS hardware plan, Ross asked for optimization to cover "literally every part
 and or aspect" of the project, not just hardware. A forked agent produced

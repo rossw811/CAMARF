@@ -49,6 +49,20 @@ except ImportError:
     _CUPY_IMPORTABLE = False
 
 _warned_no_gpu = False
+_warned_no_headroom = False
+
+# 2026-08-23 crash root cause (see docs/HANDOFF.md): a GPU benchmark launched with
+# gpu_available()==True hung the entire CachyOS machine -- no OOM-killer entry (systemd-oomd
+# is active and would have logged one), no rasdaemon hardware-fault entry, journal just stops
+# mid-stream. Root cause, confirmed from ollama's own journal entries at the same timestamp:
+# ollama had 14.2/16GB VRAM in use (~1GB free) from its own bursty request load -- a single
+# nvidia-smi snapshot taken before launch read the GPU as idle (caught it between ollama
+# requests), then the benchmark's own allocation collided with ollama's, hanging the NVIDIA
+# driver. gpu_available() alone (compute_capability responds) says nothing about how much VRAM
+# is actually free RIGHT NOW -- this machine is explicitly shared with other GPU work (ollama,
+# whisper-cli), not CAMARF-dedicated, per this project's own hardware plan. This checks real,
+# current headroom, not just device presence.
+_DEFAULT_MIN_VRAM_FREE_GB = 3.0
 
 
 def gpu_available() -> bool:
@@ -68,28 +82,62 @@ def gpu_available() -> bool:
         return False
 
 
-def get_array_module(use_gpu: bool = False):
+def gpu_free_vram_gb() -> float:
+    """Real, current free VRAM in GB via cupy's own mem_info (free, total) -- queried fresh on
+    every call, never cached, specifically because other processes' usage (ollama, whisper-cli)
+    changes between calls. Returns 0.0 if the GPU isn't available at all, so callers can compare
+    against a floor without a separate gpu_available() check."""
+    if not gpu_available():
+        return 0.0
+    free_bytes, _total_bytes = _cupy.cuda.Device(0).mem_info
+    return free_bytes / (1024 ** 3)
+
+
+def gpu_has_headroom(min_free_gb: float = _DEFAULT_MIN_VRAM_FREE_GB) -> bool:
+    """Real headroom check, not just device presence -- see the 2026-08-23 crash note above.
+    Callers doing anything beyond a trivial allocation should check this immediately before
+    the real work starts (not just once at process launch), since usage on a shared GPU
+    fluctuates. Default floor (3GB) is deliberately above what a single N=4000-scale
+    correlation-matrix job needs (~2.4GB peak per array) -- leaves real margin, not a
+    razor's-edge threshold."""
+    return gpu_free_vram_gb() >= min_free_gb
+
+
+def get_array_module(use_gpu: bool = False, min_free_gb: float = _DEFAULT_MIN_VRAM_FREE_GB):
     """Returns numpy or cupy -- both expose a (near-)identical ndarray API,
     the standard "xp" idiom this module and its callers use throughout.
     use_gpu=False (the default) always returns numpy, unconditionally --
     zero cost, zero import-time cupy dependency check, on any caller that
-    never opts in. use_gpu=True returns cupy only if gpu_available();
+    never opts in. use_gpu=True returns cupy only if gpu_available() AND
+    gpu_has_headroom(min_free_gb) -- device presence alone is not enough on
+    a GPU shared with other processes (see the 2026-08-23 crash note above);
     otherwise warns once per process and returns numpy."""
-    global _warned_no_gpu
+    global _warned_no_gpu, _warned_no_headroom
     if not use_gpu:
         return np
-    if gpu_available():
-        return _cupy
-    if not _warned_no_gpu:
-        warnings.warn(
-            "use_gpu=True requested but CuPy/CUDA is not available on this machine -- "
-            "falling back to NumPy (CPU). Expected on the Windows dev box; install "
-            "cupy-cuda12x (+ the nvidia-*-cu12 runtime packages) on a CUDA-capable "
-            "machine to actually use GPU acceleration.",
-            stacklevel=2,
-        )
-        _warned_no_gpu = True
-    return np
+    if not gpu_available():
+        if not _warned_no_gpu:
+            warnings.warn(
+                "use_gpu=True requested but CuPy/CUDA is not available on this machine -- "
+                "falling back to NumPy (CPU). Expected on the Windows dev box; install "
+                "cupy-cuda12x (+ the nvidia-*-cu12 runtime packages) on a CUDA-capable "
+                "machine to actually use GPU acceleration.",
+                stacklevel=2,
+            )
+            _warned_no_gpu = True
+        return np
+    if not gpu_has_headroom(min_free_gb):
+        if not _warned_no_headroom:
+            warnings.warn(
+                f"use_gpu=True requested but free VRAM ({gpu_free_vram_gb():.2f}GB) is below "
+                f"the {min_free_gb}GB safety floor -- another process (ollama/whisper-cli?) is "
+                "likely using the GPU right now. Falling back to NumPy (CPU) rather than risk "
+                "a VRAM-contention hang (see the 2026-08-23 incident in docs/HANDOFF.md).",
+                stacklevel=2,
+            )
+            _warned_no_headroom = True
+        return np
+    return _cupy
 
 
 def to_numpy(arr):
