@@ -46,12 +46,7 @@ from aligned_pair_loader import load_aligned_pair
 from lead_lag_scan import _gap_masked_log_price
 from analysis import HurstEstimator
 from data import DataStore
-
-_DEFAULT_PAIRS = [
-    ("LNT", "VTR"), ("LNT", "WELL"), ("AME", "MAR"), ("CMS", "DUK"),
-    ("EG", "WRB"), ("HAL", "NOV"), ("MET", "TMHC"), ("PFG", "STLD"),
-    ("UMBF", "FHB"),
-]
+from pair_source import confirmed_pairs_list
 
 
 def wavelet_hurst(spread: np.ndarray, min_scale_pts: int = 4) -> float:
@@ -151,8 +146,13 @@ def main():
     p.add_argument("--tf", default="1h")
     args = p.parse_args()
 
+    pairs_to_run = confirmed_pairs_list()
+    if not pairs_to_run:
+        print("No confirmed pairs found in output/results/*/pairs.parquet -- run analysis.py first. Aborting.")
+        return
+
     rows = []
-    for sym_a, sym_b in _DEFAULT_PAIRS:
+    for sym_a, sym_b in pairs_to_run:
         r = run_pair(sym_a, sym_b, args.tf)
         if r is not None:
             rows.append(r)

@@ -142,7 +142,7 @@ def run_eg_fdr(candidates, aligned, retained_symbols, tf_label, alpha=None):
         return pd.DataFrame()
 
     results = []
-    with ProcessPoolExecutor(max_workers=12) as pool:
+    with ProcessPoolExecutor(max_workers=Config.RUNTIME.N_WORKERS) as pool:
         for r in pool.map(_eg_worker, tasks, chunksize=25):
             results.append(r)
     ok = [r for r in results if r.get("ok")]
@@ -306,7 +306,7 @@ def main():
     # sector-restricted) so follow-up runs don't silently overwrite each
     # other's results (same class of bug as BUG-D67/A14's tf-label
     # collisions, avoided here by construction).
-    variant_suffix = suffix
+    variant_suffix = tf_label
     if args.sector:
         variant_suffix += f"_sector-{args.sector.replace(' ', '')}"
     if args.force_k is not None:

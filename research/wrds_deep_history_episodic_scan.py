@@ -57,6 +57,7 @@ debug/_verify_wrds_deep_history_episodic_scan.py.
 Usage:
     python research/wrds_deep_history_episodic_scan.py
 """
+import gc
 import glob
 import logging
 import os
@@ -70,7 +71,7 @@ import pandas as pd
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from config import Config
-from analysis import UniverseFilter, _eg_worker, _benjamini_hochberg, CointScanner
+from analysis import UniverseFilter, _eg_worker, _benjamini_hochberg, CointScanner, _limit_worker_blas_threads
 from research.rolling_adv_comparison import rolling_adv, load_wrds_universe_ohlcv
 from data_wrds import sp500_members_asof
 
@@ -160,9 +161,20 @@ def load_wrds_universe():
     out = {}
     used_total_return = set()
     used_split_only = set()
+    skipped_unreadable = []
     for f in sorted(glob.glob(os.path.join(_WRDS_CACHE_DIR, "*_1D.parquet"))):
         sym = os.path.basename(f)[: -len("_1D.parquet")]
-        df = pd.read_parquet(f)
+        # Found live 2026-08-24: 1032/44694 WRDS cache files are 0-byte (an interrupted bulk
+        # fetch during an earlier session crash left partial/empty files) -- a single corrupted
+        # file previously crashed this WHOLE function's read loop (pyarrow.lib.ArrowInvalid),
+        # taking down every downstream caller (episodic_window_size_sweep.py,
+        # rolling_adv_comparison.py) over one bad symbol. Skip and log, don't crash the scan;
+        # re-fetching the missing data is a separate follow-up needing live WRDS access.
+        try:
+            df = pd.read_parquet(f)
+        except Exception as e:
+            skipped_unreadable.append(sym)
+            continue
         if "close_total_return" in df.columns and df["close_total_return"].notna().any():
             out[sym] = df["close_total_return"]
             used_total_return.add(sym)
@@ -172,6 +184,11 @@ def load_wrds_universe():
     log.info(f"Loaded {len(out)} symbols from output/cache/wrds/: "
              f"{len(used_total_return)} total-return-adjusted (CRSP), "
              f"{len(used_split_only)} split-only-adjusted (Compustat Global, disclosed)")
+    if skipped_unreadable:
+        log.warning(f"Skipped {len(skipped_unreadable)} unreadable/corrupted cache files "
+                    f"(0-byte or otherwise unparseable) -- re-fetch needed via live WRDS access, "
+                    f"not attempted here: {skipped_unreadable[:20]}"
+                    f"{'...' if len(skipped_unreadable) > 20 else ''}")
     return out, used_split_only
 
 
@@ -259,7 +276,14 @@ def build_log_prices_and_returns_bounded(close_by_symbol, lookback_years=25, dty
         log_price_arr[:, j] = vals.astype(dtype)
 
     log_price_df = pd.DataFrame(log_price_arr, index=canonical_index, columns=symbols)
-    returns = log_price_df.astype(np.float64).diff().iloc[1:]
+    # Live OOM #2 (2026-08-24, same day as the fix above): `.astype(np.float64)` here made a
+    # full-width float64 COPY of log_price_df transiently coexisting with the float32 original
+    # plus diff()'s own same-size output -- at 100yr lookback x 43,636 symbols this alone spiked
+    # ~18GB free -> 6.84GB free in a single mem_guard poll interval (breach). diff() on the
+    # float32 array directly avoids the transient upcast entirely; precision is already the
+    # disclosed float32 tradeoff this function's own docstring accepts for log_price_arr itself,
+    # so keeping returns at the same precision is not a new tradeoff, just a consistent one.
+    returns = log_price_df.diff().iloc[1:]
     valid_cols = returns.columns[returns.notna().sum() >= 756]
     return log_price_df[valid_cols], returns[valid_cols]
 
@@ -307,17 +331,52 @@ def _checkpoint_paths(checkpoint_id):
     return base + ".parquet", base + ".meta"
 
 
+def _checkpoint_part_glob(checkpoint_id):
+    return os.path.join(_OUT_DIR, f"checkpoint_{checkpoint_id}_part*.parquet")
+
+
 def _load_checkpoint(checkpoint_id):
     """Loads a prior run's checkpoint (results + how many pairs were already
     processed), if one exists. Returns (results_list, n_pairs_done) --
-    (None, 0) if no checkpoint is found, so callers can start clean."""
-    data_path, meta_path = _checkpoint_paths(checkpoint_id)
-    if not (os.path.exists(data_path) and os.path.exists(meta_path)):
+    (None, 0) if no checkpoint is found, so callers can start clean.
+
+    Incremental format (added 2026-08-26, after a real crash at 7.8M-pair
+    Tier-3 scale -- see _save_checkpoint_batch's own docstring): reads all
+    checkpoint_{id}_part*.parquet files and concatenates them, rather than
+    one single ever-growing snapshot file. Falls back to the OLD single-
+    snapshot format (checkpoint_{id}.parquet) if that's what's on disk --
+    a run already mid-flight on the old format must still resume correctly
+    from it, not be silently discarded just because the save format changed."""
+    _, meta_path = _checkpoint_paths(checkpoint_id)
+    if not os.path.exists(meta_path):
         return None, 0
-    df = pd.read_parquet(data_path)
     with open(meta_path) as f:
         n_done = int(f.read().strip())
-    return df.to_dict("records"), n_done
+    part_files = sorted(glob.glob(_checkpoint_part_glob(checkpoint_id)))
+    if part_files:
+        dfs = [pd.read_parquet(p) for p in part_files]
+        records = pd.concat(dfs, ignore_index=True).to_dict("records") if dfs else []
+        return records, n_done
+    old_data_path = _checkpoint_paths(checkpoint_id)[0]
+    if os.path.exists(old_data_path):
+        return pd.read_parquet(old_data_path).to_dict("records"), n_done
+    return None, 0
+
+
+def _load_checkpoint_meta(checkpoint_id):
+    """Lightweight resume-point lookup: reads ONLY the small `.meta` file (a
+    single integer), never the potentially-huge accumulated row data.
+    Returns n_pairs_done, or None if no checkpoint exists. Added 2026-08-26
+    alongside the streaming-results fix in run_rolling_eg_pool -- a caller
+    that only needs to know WHERE to resume from should never pay the cost
+    of loading and concatenating a multi-million-row checkpoint just to
+    read one number (confirmed live: at 2.4M+ already-checkpointed rows,
+    that concatenation itself was a real, and growing, resume-time cost)."""
+    _, meta_path = _checkpoint_paths(checkpoint_id)
+    if not os.path.exists(meta_path):
+        return None
+    with open(meta_path) as f:
+        return int(f.read().strip())
 
 
 def _save_checkpoint(checkpoint_id, results, n_pairs_done):
@@ -352,17 +411,46 @@ def _save_checkpoint(checkpoint_id, results, n_pairs_done):
     os.replace(meta_tmp, meta_path)
 
 
+def _save_checkpoint_batch(checkpoint_id, part_idx, new_rows, n_pairs_done):
+    """Incremental checkpoint save (added 2026-08-26, live crash at 7.8M-pair
+    Tier-3 scale): writes ONLY the rows computed since the last checkpoint
+    to a new, uniquely-numbered part file, instead of _save_checkpoint's
+    re-serialize-the-ENTIRE-accumulated-history-every-time behavior. Found
+    live on CachyOS: at 815,500/7,834,906 Tier-3 pairs already done, that
+    full-history reserialization was already large enough (several million
+    accumulated rows) to spike memory ~2.6GB in a single checkpoint write
+    and breach the mem_guard floor -- memory had been flat/stable for a long
+    stretch of real batch processing right up until that one write. This
+    cost only grows as a run progresses further, so a fixed memory floor can
+    never be a durable fix against it -- the actual write volume per
+    checkpoint needed to stop growing. Same per-batch-file pattern already
+    proven elsewhere in this codebase (fund_membership_checkpoints/
+    batch_N.parquet), reused rather than inventing a new scheme. Same atomic
+    -write discipline as _save_checkpoint (`.tmp` + os.replace)."""
+    os.makedirs(_OUT_DIR, exist_ok=True)
+    _, meta_path = _checkpoint_paths(checkpoint_id)
+    part_path = os.path.join(_OUT_DIR, f"checkpoint_{checkpoint_id}_part{part_idx:06d}.parquet")
+    part_tmp = part_path + ".tmp"
+    meta_tmp = meta_path + ".tmp"
+    pd.DataFrame(new_rows).to_parquet(part_tmp, index=False)
+    os.replace(part_tmp, part_path)
+    with open(meta_tmp, "w") as f:
+        f.write(str(n_pairs_done))
+    os.replace(meta_tmp, meta_path)
+
+
 def clear_checkpoint(checkpoint_id):
-    """Deletes a checkpoint's files -- call after a run completes
+    """Deletes a checkpoint's files (both the old single-snapshot format and
+    any new incremental part files) -- call after a run completes
     successfully, so a later, unrelated invocation doesn't accidentally
     resume from stale progress."""
     data_path, meta_path = _checkpoint_paths(checkpoint_id)
-    for p in (data_path, meta_path):
+    for p in [data_path, meta_path] + glob.glob(_checkpoint_part_glob(checkpoint_id)):
         if os.path.exists(p):
             os.remove(p)
 
 
-def run_full_sample_eg_pool(pairs, log_price_df, max_lag, workers=12, pair_batch_size=5000,
+def run_full_sample_eg_pool(pairs, log_price_df, max_lag, workers=Config.RUNTIME.N_WORKERS, pair_batch_size=5000,
                              checkpoint_id=None, checkpoint_every=5):
     """
     Tier 1's full-sample EG-both-directions step, run in BOUNDED-MEMORY
@@ -412,7 +500,12 @@ def run_full_sample_eg_pool(pairs, log_price_df, max_lag, workers=12, pair_batch
     log.info(f"Running full-sample EG on {len(pairs)} pairs in {n_batches} batches of "
              f"<={pair_batch_size} pairs each (workers={workers})...")
     t0 = time.time()
-    with ProcessPoolExecutor(max_workers=workers) as pool:
+    # initializer=_limit_worker_blas_threads (2026-08-26, found live on CachyOS during this exact
+    # run): load average was 35.25 on a 16-core machine (2.2x oversubscribed) -- the SAME
+    # ProcessPoolExecutor-plus-unthrottled-BLAS trap analysis.py's own EG pools were already fixed
+    # for earlier this session (measured there: load avg 45->12-18, a stage going from "never
+    # finishing" to 46 minutes). This script's pools never got that fix. Reused, not duplicated.
+    with ProcessPoolExecutor(max_workers=workers, initializer=_limit_worker_blas_threads) as pool:
         for batch_num, i in enumerate(range(start_pair_idx, len(pairs), pair_batch_size)):
             batch_pairs = pairs[i:i + pair_batch_size]
             tasks = []
@@ -672,7 +765,7 @@ def build_rolling_eg_tasks(pairs, log_price_df, max_lag, window=EPISODIC_WINDOW_
 
 
 def run_rolling_eg_pool(pairs, log_price_df, max_lag, window=EPISODIC_WINDOW_BARS,
-                         step=EPISODIC_STEP_BARS, workers=12, adv_by_symbol=None, adv_threshold=None,
+                         step=EPISODIC_STEP_BARS, workers=Config.RUNTIME.N_WORKERS, adv_by_symbol=None, adv_threshold=None,
                          pair_batch_size=500, checkpoint_id=None, checkpoint_every=10,
                          membership_df=None, permno_by_symbol=None):
     """Runs the rolling-window EG-both-directions test for EVERY candidate
@@ -709,25 +802,60 @@ def run_rolling_eg_pool(pairs, log_price_df, max_lag, window=EPISODIC_WINDOW_BAR
     pvalue} rows for persistence, then reconstructed into the same dict
     shape on resume. Same caveat as the full-sample version: `pairs` must be
     passed in the SAME order across a resumed run.
+
+    STREAMING RESULTS (added 2026-08-26, after a second, more severe live
+    incident at 7.8M Tier-3 pairs): the original checkpointing above still
+    kept `by_key`/`window_end_by_key` fully in memory for the ENTIRE run
+    (needed only to build the final `flat` return value at the end) -- an
+    unbounded, ever-growing cost as a run progresses. Confirmed live: crash
+    frequency got WORSE, not better, the deeper into the run it got (every
+    ~5 minutes at 2.4M/7.8M pairs done, vs. long stable stretches earlier),
+    because this accumulator kept growing regardless of the earlier
+    checkpoint-WRITE fix (which only bounded `pending_new_rows` between
+    saves, not this separate structure). Since build_rolling_eg_tasks always
+    builds BOTH directions of a pair in the SAME batch, `by_key` never
+    actually needed cross-batch persistence for correctness -- only for
+    reconstruction, which is now instead read back from the already-
+    checkpointed part files at the very end (`_load_checkpoint`, the same
+    mechanism a resumed run already uses), never held in memory meanwhile.
+    Only engages when `checkpoint_id` is given (every real production
+    caller); smaller one-off callers with no checkpoint_id keep the
+    original in-memory accumulator, since their scale never needed this.
     """
     all_symbols = {p["symbol_a"] for p in pairs} | {p["symbol_b"] for p in pairs}
     array_cache = _build_symbol_array_cache(log_price_df, all_symbols)
 
+    # Streaming results (2026-08-26, replacing the always-in-memory `by_key`/`window_end_by_key`
+    # accumulator for checkpointed callers -- live incident: at 7.8M Tier-3 pairs, crashes got
+    # MORE frequent, not less, the deeper into the run it got, because this accumulator held
+    # EVERY processed pair's result for the ENTIRE run, needed only to build the final `flat`
+    # return value -- an unbounded, ever-growing cost, separate from (and not fixed by) the
+    # earlier checkpoint-WRITE fix, which only bounded `pending_new_rows` between saves, not this.
+    # Since build_rolling_eg_tasks always builds BOTH directions of a pair in the SAME batch, no
+    # cross-batch persistence is actually needed for correctness -- only for reconstructing the
+    # final flat list, which is instead read back from the already-checkpointed part files at the
+    # very end (same mechanism _load_checkpoint already uses for resuming), never held in memory
+    # meanwhile. Only used when checkpoint_id is given (every real production caller); smaller,
+    # one-off callers with no checkpoint_id (some debug/verify scripts, episodic_window_size_
+    # sweep.py) keep the simpler in-memory accumulator -- their scale never needed this.
+    use_streaming = checkpoint_id is not None
     by_key = {}
     window_end_by_key = {}  # (symbol_a, symbol_b, window_start) -> window_end_date, for asof(T) confirmation
     start_pair_idx = 0
     if checkpoint_id:
-        loaded, n_done = _load_checkpoint(checkpoint_id)
-        if loaded is not None:
-            for row in loaded:
-                key = (row["symbol_a"], row["symbol_b"], row["window_start"])
-                by_key.setdefault(key, {})[row["direction"]] = row["pvalue"]
-                if "window_end_date" in row:
-                    window_end_by_key[key] = row["window_end_date"]
+        n_done = _load_checkpoint_meta(checkpoint_id)
+        if n_done is not None:
             start_pair_idx = n_done
-            log.info(f"Resuming '{checkpoint_id}' from checkpoint: {len(loaded)} (pair,window,direction) "
-                     f"rows already computed, {n_done}/{len(pairs)} pairs already done -- "
-                     f"skipping to pair {n_done}.")
+            log.info(f"Resuming '{checkpoint_id}' from checkpoint: {n_done}/{len(pairs)} pairs "
+                     f"already done -- skipping to pair {n_done}. (Row data reconstructed from "
+                     f"disk at the end, not loaded into memory now.)")
+
+    # Incremental checkpointing (2026-08-26, see _save_checkpoint_batch's own docstring): only
+    # the rows computed SINCE the last flush are kept in `pending_new_rows` and written out, never
+    # the full accumulated `by_key` history -- part_idx starts past whatever part files a resumed
+    # run already has on disk, so a resume never overwrites earlier parts.
+    pending_new_rows = []
+    part_idx = len(glob.glob(_checkpoint_part_glob(checkpoint_id))) if checkpoint_id else 0
 
     def _flatten_by_key(d):
         return [{"symbol_a": k[0], "symbol_b": k[1], "window_start": k[2], "direction": direction,
@@ -738,7 +866,12 @@ def run_rolling_eg_pool(pairs, log_price_df, max_lag, window=EPISODIC_WINDOW_BAR
     log.info(f"Running rolling-window EG on {len(pairs)} pairs in {n_batches} batches of "
              f"<={pair_batch_size} pairs each (workers={workers})...")
     t0 = time.time()
-    with ProcessPoolExecutor(max_workers=workers) as pool:
+    # initializer=_limit_worker_blas_threads (2026-08-26, found live on CachyOS during this exact
+    # run): load average was 35.25 on a 16-core machine (2.2x oversubscribed) -- the SAME
+    # ProcessPoolExecutor-plus-unthrottled-BLAS trap analysis.py's own EG pools were already fixed
+    # for earlier this session (measured there: load avg 45->12-18, a stage going from "never
+    # finishing" to 46 minutes). This script's pools never got that fix. Reused, not duplicated.
+    with ProcessPoolExecutor(max_workers=workers, initializer=_limit_worker_blas_threads) as pool:
         for batch_num, i in enumerate(range(start_pair_idx, len(pairs), pair_batch_size)):
             batch_pairs = pairs[i:i + pair_batch_size]
             tasks, task_meta = build_rolling_eg_tasks(
@@ -748,25 +881,49 @@ def run_rolling_eg_pool(pairs, log_price_df, max_lag, window=EPISODIC_WINDOW_BAR
             )
             n_done_now = i + len(batch_pairs)
             if not tasks:
-                if checkpoint_id and batch_num % checkpoint_every == 0:
-                    _save_checkpoint(checkpoint_id, _flatten_by_key(by_key), n_done_now)
+                if checkpoint_id and batch_num % checkpoint_every == 0 and pending_new_rows:
+                    _save_checkpoint_batch(checkpoint_id, part_idx, pending_new_rows, n_done_now)
+                    part_idx += 1
+                    pending_new_rows = []
                 continue
             results = pool.map(_eg_worker, tasks, chunksize=200)
             for meta, r in zip(task_meta, results):
                 symbol_a, symbol_b, start, direction, window_start_date, window_end_date = meta
                 if not r.get("ok"):
                     continue
-                key = (symbol_a, symbol_b, start)
-                by_key.setdefault(key, {})[direction] = r["pvalue"]
-                window_end_by_key[key] = window_end_date
-            if checkpoint_id and batch_num % checkpoint_every == 0:
-                _save_checkpoint(checkpoint_id, _flatten_by_key(by_key), n_done_now)
+                if not use_streaming:
+                    key = (symbol_a, symbol_b, start)
+                    by_key.setdefault(key, {})[direction] = r["pvalue"]
+                    window_end_by_key[key] = window_end_date
+                pending_new_rows.append({"symbol_a": symbol_a, "symbol_b": symbol_b,
+                                          "window_start": start, "direction": direction,
+                                          "pvalue": r["pvalue"], "window_end_date": window_end_date})
+            if checkpoint_id and batch_num % checkpoint_every == 0 and pending_new_rows:
+                _save_checkpoint_batch(checkpoint_id, part_idx, pending_new_rows, n_done_now)
+                part_idx += 1
+                pending_new_rows = []
             if (i // pair_batch_size) % 10 == 0:
                 log.info(f"  batch (pairs {i}-{n_done_now}/{len(pairs)}) done "
                          f"({(time.time()-t0)/60:.1f} min elapsed)")
-    if checkpoint_id:
-        _save_checkpoint(checkpoint_id, _flatten_by_key(by_key), len(pairs))
+    if checkpoint_id and pending_new_rows:
+        _save_checkpoint_batch(checkpoint_id, part_idx, pending_new_rows, len(pairs))
     log.info(f"  done in {(time.time()-t0)/60:.1f} min")
+
+    # Reconstruct the final result from disk (streaming path only) -- a ONE-TIME cost paid once
+    # at the very end, not compounding throughout the run the way the old always-in-memory
+    # accumulator did. The function's own return contract already requires holding the full
+    # flattened result in memory for the caller regardless (main() runs BH-FDR and saves it right
+    # after) -- this doesn't add a new burden, it just relocates the existing one to a single
+    # point instead of letting it grow continuously mid-run.
+    if use_streaming:
+        loaded, _ = _load_checkpoint(checkpoint_id)
+        by_key = {}
+        window_end_by_key = {}
+        for row in (loaded or []):
+            key = (row["symbol_a"], row["symbol_b"], row["window_start"])
+            by_key.setdefault(key, {})[row["direction"]] = row["pvalue"]
+            if row.get("window_end_date") is not None:
+                window_end_by_key[key] = row["window_end_date"]
 
     flat = []
     for (symbol_a, symbol_b, start), d in by_key.items():
@@ -896,88 +1053,152 @@ def main():
     # unchanged, production-identical.
     membership_df, permno_by_symbol = load_membership_gate()
 
-    log_price_df, returns = build_log_prices_and_returns(close_by_symbol)
+    # Bounded builder (2026-08-24): the plain build_log_prices_and_returns() OOM-crashed live
+    # here tonight (mem_guard floor breach, 26GB free -> 13GB free in under a minute) -- the SAME
+    # already-diagnosed pandas dict-of-Series alignment OOM this function's own docstring
+    # documents ("Unable to allocate 5.25 GiB for an array with shape (25434, 27716)"), now hit
+    # by this script's own main() at the real ~43,662-symbol WRDS universe scale (previously this
+    # scope was ~1,500 symbols per the module docstring above -- stale as of the WRDS bulk fetch's
+    # growth this session).
+    #
+    # lookback_years=100 was tried FIRST and also OOM-crashed (18GB free -> 6.84GB free in one
+    # mem_guard poll, same night) -- the canonical_index length here is driven by the OLDEST
+    # single symbol's earliest date across all 43,636 symbols (a handful of outlier long-history
+    # names), not the typical symbol, so a 100yr bound produces a ~25,000-row index even though
+    # the overwhelming majority of symbols are NaN for most of that span -- combined with the
+    # (also since-fixed) float64 upcast in build_log_prices_and_returns_bounded's own returns.diff()
+    # call, peak transient memory for log_price_arr+returns alone approached ~20GB+. Reduced to
+    # lookback_years=50: still >2x yfinance's typical ~20-30yr depth (preserving this script's
+    # actual hypothesis -- does WRDS's deeper history reveal pairs yfinance's shorter history
+    # missed), while roughly halving canonical_index length. Combined with the diff() dtype fix
+    # (see that function's own updated docstring/comment), this keeps the two-array peak in the
+    # single-digit GB.
+    log_price_df, returns = build_log_prices_and_returns_bounded(close_by_symbol, lookback_years=50)
     symbols = list(returns.columns)
     log.info(f"{len(symbols)} symbols have >=756 bars of overlapping history")
 
+    # Third OOM crash tonight, live (2026-08-25): the SAME construction step above crashed again
+    # (16.12GB free -> 13.17GB free in one poll) despite succeeding cleanly on an earlier launch
+    # -- baseline system memory had shifted (desktop session active this time) leaving less
+    # headroom, tipping an already-marginal peak over the floor. Root cause, previously missed:
+    # `close_by_symbol` (raw per-symbol daily Series for all 43,636 symbols, up to 100yr each --
+    # confirmed via grep, ~9-17GB realistic estimate) is loaded at this function's start and never
+    # referenced again anywhere in main() after the line above -- everything downstream (Tier
+    # 1/2/3) uses log_price_df/returns/symbols instead. It was staying fully resident for the
+    # ENTIRE multi-hour rest of the run regardless, wasting real headroom rather than depending on
+    # a lucky baseline. Freeing it here is a genuine fix, not a gamble on quiet system conditions.
+    del close_by_symbol
+    gc.collect()
+
     asset_class_map = {s: "equity" for s in symbols}
     threshold = Config.UNIVERSE.MIN_PEARSON_CORR
-    corr = UniverseFilter.correlation_matrix(returns.to_numpy().T)
-    pairs = UniverseFilter.candidate_pairs(corr, symbols, threshold, asset_class_map)
-    log.info(f"Candidate pairs at threshold {threshold}: {len(pairs)} "
-             f"(Pearson pre-filter, same as production)")
 
-    if not pairs:
-        log.warning("No candidate pairs above threshold -- nothing to test further.")
-        return
+    # Cross-launch resume (added 2026-08-25, live crash-recovery gap found this same night):
+    # Tier 1 alone took ~4h34m (correlation chunking + the full-sample EG pool) on its successful
+    # 3rd launch, but a later mem_guard floor breach DURING TIER 2 killed the whole process --
+    # main() has no "skip a tier whose output already exists" check, so a naive relaunch would
+    # have silently redone all 4h34m of already-completed, already-saved Tier 1 work before ever
+    # reaching Tier 2's own within-tier checkpoint (checkpoint_id="tier2_rolling", which DOES
+    # resume correctly -- this gap was specifically the missing ACROSS-tier equivalent). Only
+    # symbol_a/symbol_b/pearson_corr are ever read from `pairs` by any downstream code (confirmed
+    # via grep) -- Tier 1's own saved output already carries exactly those three columns, so
+    # reconstructing `pairs` from it is lossless. Delete the output file first to force a genuine
+    # from-scratch Tier 1 re-run.
+    _tier1_output_path = os.path.join(_OUT_DIR, "wrds_deep_history_episodic_scan_tier1.parquet")
+    if os.path.exists(_tier1_output_path):
+        log.info(f"[TIER 1] Found existing output at {_tier1_output_path} -- resuming from it "
+                 f"instead of re-running correlation+EG from scratch. Delete this file first to "
+                 f"force a genuine re-run.")
+        tier1_df = pd.read_parquet(_tier1_output_path)
+        pairs = tier1_df[["symbol_a", "symbol_b", "pearson_corr"]].to_dict("records")
+        n_confirmed = int(tier1_df["fdr_confirmed"].sum())
+        log.info(f"[TIER 1] Loaded {len(pairs)} candidate pairs, {n_confirmed} full-sample "
+                 f"confirmed (from existing file, not recomputed)")
+    else:
+        # Chunked (2026-08-24): direct correlation_matrix() on the full ~44,700-symbol universe
+        # allocates ~8 co-existing (N,N) float64 arrays in _vectorized_pairwise_stats -- the same
+        # OOM class chunked_pearson_candidate_pairs was built for (see its own docstring, "Unable
+        # to allocate 2.49 GiB for an array with shape (18283, 18283)" at 18,283 symbols; this
+        # universe is now ~44,700). batch_size=1500 keeps peak per-block memory in the tens of MB
+        # regardless of total universe size, well inside the ~32GB ceiling.
+        pairs = UniverseFilter.chunked_pearson_candidate_pairs(
+            returns.to_numpy().T, symbols, threshold, asset_class_map,
+            batch_size=1500, progress_every=25, progress_label="tier1 ",
+        )
+        log.info(f"Candidate pairs at threshold {threshold}: {len(pairs)} "
+                 f"(Pearson pre-filter, same as production)")
 
-    results = run_full_sample_eg_pool(pairs, log_price_df, Config.ANALYSIS.EG_MAX_LAG,
-                                       checkpoint_id="tier1_fullsample")
-    clear_checkpoint("tier1_fullsample")
+        if not pairs:
+            log.warning("No candidate pairs above threshold -- nothing to test further.")
+            return
 
-    ok_results = [r for r in results if r.get("ok")]
-    by_key = {}
-    for r in ok_results:
-        by_key.setdefault(frozenset((r["symbol_a"], r["symbol_b"])), []).append(r)
+        results = run_full_sample_eg_pool(pairs, log_price_df, Config.ANALYSIS.EG_MAX_LAG,
+                                           checkpoint_id="tier1_fullsample")
+        clear_checkpoint("tier1_fullsample")
 
-    combined = []
-    for p in pairs:
-        key = frozenset((p["symbol_a"], p["symbol_b"]))
-        rs = by_key.get(key)
-        if not rs or len(rs) < 2:
-            continue
-        fwd = next((r for r in rs if r["symbol_a"] == p["symbol_a"]), None)
-        rev = next((r for r in rs if r["symbol_a"] == p["symbol_b"]), None)
-        if fwd is None or rev is None:
-            continue
-        combined.append({
-            "symbol_a": p["symbol_a"], "symbol_b": p["symbol_b"],
-            "pvalue": max(fwd["pvalue"], rev["pvalue"]),
-            "pvalue_ab": fwd["pvalue"], "pvalue_ba": rev["pvalue"],
-            "pearson_corr": p["pearson_corr"],
-        })
+        ok_results = [r for r in results if r.get("ok")]
+        by_key = {}
+        for r in ok_results:
+            by_key.setdefault(frozenset((r["symbol_a"], r["symbol_b"])), []).append(r)
 
-    if not combined:
-        log.warning("No pairs had usable EG results in both directions.")
-        return
+        combined = []
+        for p in pairs:
+            key = frozenset((p["symbol_a"], p["symbol_b"]))
+            rs = by_key.get(key)
+            if not rs or len(rs) < 2:
+                continue
+            fwd = next((r for r in rs if r["symbol_a"] == p["symbol_a"]), None)
+            rev = next((r for r in rs if r["symbol_a"] == p["symbol_b"]), None)
+            if fwd is None or rev is None:
+                continue
+            combined.append({
+                "symbol_a": p["symbol_a"], "symbol_b": p["symbol_b"],
+                "pvalue": max(fwd["pvalue"], rev["pvalue"]),
+                "pvalue_ab": fwd["pvalue"], "pvalue_ba": rev["pvalue"],
+                "pearson_corr": p["pearson_corr"],
+            })
 
-    pvals_arr = np.array([c["pvalue"] for c in combined])
-    rejected, adjusted = _benjamini_hochberg(pvals_arr, Config.STATS.FDR_ALPHA)
-    n_confirmed = int(rejected.sum())
-    log.info(f"=== BH-FDR (alpha={Config.STATS.FDR_ALPHA}, m={len(combined)}): "
-             f"{n_confirmed} confirmed (production's own yfinance 1D scan found 0) ===")
+        if not combined:
+            log.warning("No pairs had usable EG results in both directions.")
+            return
 
-    rows = []
-    for i, c in enumerate(combined):
-        c["fdr_adjusted_pvalue"] = float(adjusted[i])
-        c["fdr_confirmed"] = bool(rejected[i])
-        rows.append(c)
-        if rejected[i]:
-            log.info(f"  CONFIRMED: {c['symbol_a']}/{c['symbol_b']}: "
-                      f"p={c['pvalue']:.3e} adj={c['fdr_adjusted_pvalue']:.3e} "
-                      f"corr={c['pearson_corr']:.3f}")
+        pvals_arr = np.array([c["pvalue"] for c in combined])
+        rejected, adjusted = _benjamini_hochberg(pvals_arr, Config.STATS.FDR_ALPHA)
+        n_confirmed = int(rejected.sum())
+        log.info(f"=== BH-FDR (alpha={Config.STATS.FDR_ALPHA}, m={len(combined)}): "
+                 f"{n_confirmed} confirmed (production's own yfinance 1D scan found 0) ===")
 
-    # Tier 1's own post-hoc stability check for its full-sample-confirmed
-    # pairs only (unchanged behavior -- see episodic_fraction's docstring for
-    # why this is a stability DESCRIPTION, not the episodic DISCOVERY step).
-    confirmed_rows = [r for r in rows if r["fdr_confirmed"]]
-    log.info(f"[TIER 1] Computing post-hoc episodic stability ({EPISODIC_WINDOW_BARS}-bar / ~10yr "
-              f"windows) for {len(confirmed_rows)} full-sample-confirmed pairs...")
-    for r in confirmed_rows:
-        lp_a = log_price_df[r["symbol_a"]].to_numpy()
-        lp_b = log_price_df[r["symbol_b"]].to_numpy()
-        frac, pvals = episodic_fraction(lp_a, lp_b, Config.ANALYSIS.EG_MAX_LAG)
-        r["episodic_fraction"] = frac
-        r["episodic_n_windows"] = len(pvals)
-        log.info(f"  {r['symbol_a']}/{r['symbol_b']}: episodic_fraction={frac} "
-                  f"over {len(pvals)} ~10yr windows")
+        rows = []
+        for i, c in enumerate(combined):
+            c["fdr_adjusted_pvalue"] = float(adjusted[i])
+            c["fdr_confirmed"] = bool(rejected[i])
+            rows.append(c)
+            if rejected[i]:
+                log.info(f"  CONFIRMED: {c['symbol_a']}/{c['symbol_b']}: "
+                          f"p={c['pvalue']:.3e} adj={c['fdr_adjusted_pvalue']:.3e} "
+                          f"corr={c['pearson_corr']:.3f}")
 
-    os.makedirs(_OUT_DIR, exist_ok=True)
-    pd.DataFrame(rows).to_parquet(
-        os.path.join(_OUT_DIR, "wrds_deep_history_episodic_scan_tier1.parquet"), index=False
-    )
-    log.info(f"[TIER 1] Saved -> output/research/wrds_deep_history_episodic_scan_tier1.parquet "
-             f"({len(rows)} candidate pairs, {n_confirmed} full-sample confirmed)")
+        # Tier 1's own post-hoc stability check for its full-sample-confirmed
+        # pairs only (unchanged behavior -- see episodic_fraction's docstring for
+        # why this is a stability DESCRIPTION, not the episodic DISCOVERY step).
+        confirmed_rows = [r for r in rows if r["fdr_confirmed"]]
+        log.info(f"[TIER 1] Computing post-hoc episodic stability ({EPISODIC_WINDOW_BARS}-bar / ~10yr "
+                  f"windows) for {len(confirmed_rows)} full-sample-confirmed pairs...")
+        for r in confirmed_rows:
+            lp_a = log_price_df[r["symbol_a"]].to_numpy()
+            lp_b = log_price_df[r["symbol_b"]].to_numpy()
+            frac, pvals = episodic_fraction(lp_a, lp_b, Config.ANALYSIS.EG_MAX_LAG)
+            r["episodic_fraction"] = frac
+            r["episodic_n_windows"] = len(pvals)
+            log.info(f"  {r['symbol_a']}/{r['symbol_b']}: episodic_fraction={frac} "
+                      f"over {len(pvals)} ~10yr windows")
+
+        os.makedirs(_OUT_DIR, exist_ok=True)
+        pd.DataFrame(rows).to_parquet(
+            os.path.join(_OUT_DIR, "wrds_deep_history_episodic_scan_tier1.parquet"), index=False
+        )
+        log.info(f"[TIER 1] Saved -> output/research/wrds_deep_history_episodic_scan_tier1.parquet "
+                 f"({len(rows)} candidate pairs, {n_confirmed} full-sample confirmed)")
 
     # -------------------------------------------------------------------
     # TIER 2: same static (whole-history) correlation prefilter as Tier 1
@@ -986,12 +1207,26 @@ def main():
     # effect of relaxing the EG-confirmation gate alone, holding the
     # correlation prefilter fixed.
     # -------------------------------------------------------------------
-    log.info(f"[TIER 2] Rolling-window EG discovery on the SAME {len(pairs)} static-corr-prefiltered "
-             f"candidate pairs as Tier 1 -- no full-sample EG gate.")
-    tier2_flat = run_rolling_eg_pool(pairs, log_price_df, Config.ANALYSIS.EG_MAX_LAG,
-                                      adv_by_symbol=adv_by_symbol, checkpoint_id="tier2_rolling",
-                                      membership_df=membership_df, permno_by_symbol=permno_by_symbol)
-    clear_checkpoint("tier2_rolling")
+    # Cross-launch resume for Tier 2, matching Tier 1's own pattern (added 2026-08-26 --
+    # this exact gap kept costing a full ~1hr Tier-2 re-run every time a LATER stage, Tier 3's
+    # EG-testing, crashed and forced a relaunch, even though Tier 2 itself had already completed
+    # and saved cleanly each time. Only `tier2_flat` (raw pvalue rows) needs to survive --
+    # `episodic_bhfdr_confirm` is cheap to recompute from it, not worth caching separately.
+    _tier2_windows_path = os.path.join(_OUT_DIR, "wrds_deep_history_episodic_scan_tier2_windows.parquet")
+    if os.path.exists(_tier2_windows_path):
+        log.info(f"[TIER 2] Found existing output at {_tier2_windows_path} -- resuming from it "
+                 f"instead of re-running rolling EG from scratch. Delete this file first to force "
+                 f"a genuine re-run.")
+        tier2_flat = pd.read_parquet(_tier2_windows_path).to_dict("records")
+    else:
+        log.info(f"[TIER 2] Rolling-window EG discovery on the SAME {len(pairs)} static-corr-prefiltered "
+                 f"candidate pairs as Tier 1 -- no full-sample EG gate.")
+        tier2_flat = run_rolling_eg_pool(pairs, log_price_df, Config.ANALYSIS.EG_MAX_LAG,
+                                          adv_by_symbol=adv_by_symbol, checkpoint_id="tier2_rolling",
+                                          membership_df=membership_df, permno_by_symbol=permno_by_symbol)
+        clear_checkpoint("tier2_rolling")
+        os.makedirs(_OUT_DIR, exist_ok=True)
+        pd.DataFrame(tier2_flat).to_parquet(_tier2_windows_path, index=False)
     tier2_confirmed = episodic_bhfdr_confirm(tier2_flat, Config.STATS.FDR_ALPHA)
     log.info(f"[TIER 2] {len(tier2_flat)} (pair,window) tests -> "
              f"{len(tier2_confirmed)} episodically confirmed (>=1 FDR-rejected window)")
@@ -999,9 +1234,6 @@ def main():
         log.info(f"  [TIER 2 episodic] {r['symbol_a']}/{r['symbol_b']}: "
                  f"{r['n_windows_fdr_rejected']}/{r['n_windows_tested']} windows FDR-rejected, "
                  f"min_adj_p={r['min_adjusted_pvalue']:.3e}")
-    pd.DataFrame(tier2_flat).to_parquet(
-        os.path.join(_OUT_DIR, "wrds_deep_history_episodic_scan_tier2_windows.parquet"), index=False
-    )
     pd.DataFrame(tier2_confirmed).to_parquet(
         os.path.join(_OUT_DIR, "wrds_deep_history_episodic_scan_tier2_confirmed.parquet"), index=False
     )
@@ -1013,11 +1245,49 @@ def main():
     # discovery step as Tier 2. Isolates the ADDITIONAL effect of relaxing
     # the correlation prefilter too.
     # -------------------------------------------------------------------
-    log.info("[TIER 3] Rolling correlation prefilter (pair qualifies if correlated in >=1 window, "
-             "not the whole history)...")
-    tier3_pairs = rolling_correlation_candidate_pairs(returns, symbols, threshold, asset_class_map)
+    # Cross-launch resume for the correlation-prefilter phase itself (added 2026-08-25, live loss
+    # this same night): the rolling correlation prefilter took ~8h34m (all 45 windows, ending at
+    # the present day) and found 7,834,906 candidate pairs, but a mem_guard floor breach hit
+    # IMMEDIATELY on transitioning into run_rolling_eg_pool below -- and `tier3_pairs` was never
+    # written to disk anywhere before that point, so the entire 8.5-hour correlation phase was
+    # lost outright on relaunch (Tier 1 already had this exact protection via its own resume-skip
+    # a few hours earlier tonight; this phase did not, and paid for it). Fixed the same way: save
+    # `tier3_pairs` to its own checkpoint file immediately after computing it, and skip
+    # recomputation on a future relaunch if that file already exists.
+    _tier3_pairs_path = os.path.join(_OUT_DIR, "wrds_deep_history_episodic_scan_tier3_pairs.parquet")
+    if os.path.exists(_tier3_pairs_path):
+        log.info(f"[TIER 3] Found existing candidate-pairs cache at {_tier3_pairs_path} -- "
+                 f"resuming from it instead of re-running the multi-hour rolling correlation "
+                 f"prefilter. Delete this file first to force a genuine re-run.")
+        tier3_pairs = pd.read_parquet(_tier3_pairs_path).to_dict("records")
+    else:
+        log.info("[TIER 3] Rolling correlation prefilter (pair qualifies if correlated in >=1 "
+                 "window, not the whole history)...")
+        # chunk_batch_size=1500 (2026-08-24): this calls the full N x N correlation step ONCE PER
+        # ROLLING WINDOW (potentially dozens of times) at the real ~44,700-symbol universe scale
+        # -- the unchunked default is exactly the OOM class this function's own chunked_pearson_
+        # candidate_pairs path was built for (see its docstring). Was silently defaulting to
+        # chunk_batch_size=None (unchunked) since no caller ever passed it.
+        tier3_pairs = rolling_correlation_candidate_pairs(
+            returns, symbols, threshold, asset_class_map, chunk_batch_size=1500,
+        )
+        os.makedirs(_OUT_DIR, exist_ok=True)
+        pd.DataFrame(tier3_pairs).to_parquet(_tier3_pairs_path, index=False)
+        log.info(f"[TIER 3] Checkpointed {len(tier3_pairs)} candidate pairs -> {_tier3_pairs_path} "
+                 f"BEFORE starting EG-testing, so a crash during that phase doesn't lose this "
+                 f"one again.")
     log.info(f"[TIER 3] {len(tier3_pairs)} candidate pairs (vs Tier 1/2's {len(pairs)} "
              f"static-corr-prefiltered pairs) -- running rolling-window EG discovery...")
+    # Second floor breach at this exact transition, live (2026-08-26): `returns` (the OTHER big
+    # float32 array, same size as log_price_df, ~1.5GB+) has NO remaining use anywhere past this
+    # point (confirmed via grep -- its only two call sites are Tier 1's and Tier 3's own
+    # correlation-prefilter branches above, BOTH of which are skipped entirely when their resume
+    # caches exist, exactly what happened on this run). It was sitting resident, unused, through
+    # all of Tier 2 and into Tier 3's EG-testing pool spin-up (which ALSO builds a second
+    # near-full-universe-sized array_cache via _build_symbol_array_cache at 7.8M pairs' worth of
+    # unique symbols) -- real, avoidable headroom lost right when this stage needs it most.
+    del returns
+    gc.collect()
     tier3_flat = run_rolling_eg_pool(tier3_pairs, log_price_df, Config.ANALYSIS.EG_MAX_LAG,
                                       adv_by_symbol=adv_by_symbol, checkpoint_id="tier3_rolling",
                                       membership_df=membership_df, permno_by_symbol=permno_by_symbol)

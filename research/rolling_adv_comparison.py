@@ -118,12 +118,23 @@ def load_wrds_universe_ohlcv():
     columns (needed for ADV; NOT the log-price/returns loading the episodic
     scan script uses, since this comparison only needs dollar volume)."""
     out = {}
+    skipped_unreadable = []
     for f in sorted(glob.glob(os.path.join(_WRDS_CACHE_DIR, "*_1D.parquet"))):
         sym = os.path.basename(f)[: -len("_1D.parquet")]
-        df = pd.read_parquet(f)
+        # Same fix as wrds_deep_history_episodic_scan.py::load_wrds_universe (found live
+        # 2026-08-24): 1032/44694 WRDS cache files are 0-byte from an interrupted bulk fetch
+        # during an earlier session crash -- skip and log, don't crash the whole scan.
+        try:
+            df = pd.read_parquet(f)
+        except Exception:
+            skipped_unreadable.append(sym)
+            continue
         if "close" in df.columns and "volume" in df.columns:
             out[sym] = df
     log.info(f"Loaded {len(out)} symbols with close+volume from output/cache/wrds/")
+    if skipped_unreadable:
+        log.warning(f"Skipped {len(skipped_unreadable)} unreadable/corrupted cache files -- "
+                    f"re-fetch needed via live WRDS access, not attempted here.")
     return out
 
 

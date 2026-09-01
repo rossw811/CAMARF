@@ -57,18 +57,11 @@ from config import Config
 from analysis import UniverseFilter, _eg_worker, _benjamini_hochberg, CointScanner
 from bh_fdr_dependence_check import benjamini_yekutieli
 from universe_loader import align_to_common_calendar, load_full_universe
+from pair_source import confirmed_pairs_list
 
 _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _OUT_DIR = os.path.join(_ROOT, "output", "research")
 TF_LABEL = "1h"
-
-# The 8 non-DD/non-contaminated pairs already confirmed (this session) to be
-# genuinely, individually significant at raw p<0.001 on clean data -- the
-# specific pairs this comparison is checking for recovery under each method.
-KNOWN_NON_DD_PAIRS = [
-    ("LNT", "VTR"), ("LNT", "WELL"), ("CMS", "DUK"), ("EG", "WRB"),
-    ("HAL", "NOV"), ("MET", "TMHC"), ("PFG", "STLD"), ("UMBF", "FHB"),
-]
 
 log = logging.getLogger("fdr_method_comparison")
 
@@ -93,6 +86,17 @@ def apply_all_methods(pvals: np.ndarray, alpha: float = 0.05) -> dict:
     returns {method_name: rejected_boolean_array}. Kept data-loading-free so
     debug/_verify_fdr_method_comparison.py can call it directly on synthetic
     arrays with known expected behavior."""
+    if len(pvals) == 0:
+        # Found live 2026-08-24 (sector_restricted_fdr_rescan.py, a same-sector restriction
+        # that happened to leave m=0 candidates): statsmodels' multipletests computes
+        # 1./ntests internally for fdr_tsbh, a real ZeroDivisionError on an empty array, not
+        # a bug in the correction methods themselves. An empty input has no pairs to test --
+        # every method's own honest answer is "reject nothing," not an error.
+        empty = np.array([], dtype=bool)
+        return {
+            "step_up_bh": empty, "benjamini_yekutieli": empty,
+            "two_stage_tsbh": empty, "fixed_bonferroni": empty,
+        }
     bh_rejected, _ = _benjamini_hochberg(pvals, alpha)
     by_rejected, _ = benjamini_yekutieli(pvals, alpha)
     tsbh_rejected, _, _, _ = multipletests(pvals, alpha=alpha, method="fdr_tsbh")
@@ -138,7 +142,7 @@ def main():
     log.info("Pearson pre-filter: %d possible pairs -> %d candidates", n_possible, len(candidates))
 
     log.info("Running real EG test (_eg_worker, same code as production CointScanner.scan) "
-              "on all %d candidates (workers=12)...", len(candidates))
+              "on all %d candidates (workers=%d)...", len(candidates), Config.RUNTIME.N_WORKERS)
     log_prices = CointScanner._build_log_price_map(aligned, retained_symbols)
     tasks, meta = [], []
     for p in candidates:
@@ -151,7 +155,7 @@ def main():
 
     t_eg = time.time()
     results = []
-    with ProcessPoolExecutor(max_workers=12) as pool:
+    with ProcessPoolExecutor(max_workers=Config.RUNTIME.N_WORKERS) as pool:
         for r in pool.map(_eg_worker, tasks, chunksize=50):
             results.append(r)
     log.info("EG complete in %.1fs", time.time() - t_eg)
@@ -170,12 +174,13 @@ def main():
     log.info("")
     log.info("=== Survivor counts by method (m=%d candidates tested, alpha=%.2f) ===", len(pvals), alpha)
     summary_rows = []
-    known_pair_status = {f"{a}/{b}": {} for a, b in KNOWN_NON_DD_PAIRS}
+    watchlist_pairs = confirmed_pairs_list(tf_label=TF_LABEL)
+    known_pair_status = {f"{a}/{b}": {} for a, b in watchlist_pairs}
     for method, rej in rejections.items():
         n_survive = int(rej.sum())
         log.info("  %-22s: %d/%d survive", method, n_survive, len(pvals))
         summary_rows.append({"method": method, "n_survive": n_survive, "m_tested": len(pvals)})
-        for sym_a, sym_b in KNOWN_NON_DD_PAIRS:
+        for sym_a, sym_b in watchlist_pairs:
             mask = ((df["symbol_a"] == sym_a) & (df["symbol_b"] == sym_b)) | \
                    ((df["symbol_a"] == sym_b) & (df["symbol_b"] == sym_a))
             if mask.any():

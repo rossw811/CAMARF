@@ -84,6 +84,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(
 from config import Config
 from data import DataStore, _gap_aware_returns, _clean_close
 from midas_feature import beta_weights, midas_aggregate
+from universe_loader import load_full_universe
 import ml
 
 
@@ -248,15 +249,11 @@ def full_universe_scan(coarse_tf: str = "1D", fine_tf: str = "1h", corr_threshol
     if corr_threshold is None:
         corr_threshold = Config.UNIVERSE.MIN_PEARSON_CORR
 
-    safe = DataStore._TF_SAFE.get(coarse_tf, coarse_tf.lower())
-    pattern = os.path.join(Config.DATA.CACHE_DIR, f"*_{safe}.parquet")
-    raw = {}
-    for path in glob.glob(pattern):
-        fname = os.path.basename(path)
-        symbol = fname[: -(len(safe) + len(".parquet") + 1)]
-        df = DataStore.load(symbol, coarse_tf)
-        if df is not None and not df.empty:
-            raw[symbol] = df
+    # Found live 2026-08-24: previously globbed ONLY Config.DATA.CACHE_DIR (the old
+    # yfinance-only cache, ~1,697 symbols) -- every "full universe" claim this scan made was
+    # actually scoped to <4% of the real ~44,700-symbol universe. Fixed to the same real loader
+    # already used by fdr_method_comparison.py/k_bahc_candidate_discovery.py.
+    raw = load_full_universe(tf_label=coarse_tf)
     print(f"Loaded {len(raw)} symbols at {coarse_tf}")
     if len(raw) < 10:
         print("Too few symbols -- aborting.")

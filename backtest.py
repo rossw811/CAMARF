@@ -557,6 +557,30 @@ class BacktestEngine:
             _liquid_a = liquid_bar_mask(sym_a).reindex(timestamps, fill_value=False)
             _liquid_b = liquid_bar_mask(sym_b).reindex(timestamps, fill_value=False)
 
+        # Thread Q Idea 1 Path B (2026-08-23, Development.md's Thread Q entry): only allow entry
+        # when coint_fraction_rolling_t is both above a strength floor AND rising over a short
+        # lookback -- skip an entry during a WEAKENING relationship even if price z-score
+        # triggers. UNVERIFIED hypothesis, same status as Path A -- built and verified as a
+        # comparison arm, not confirmed to help. REGIME_STRENGTH_GATE_LOOKBACK (10 bars) and
+        # _MIN_STRENGTH (0.5, matching this project's existing "meaningfully cointegrated"
+        # convention) are real, disclosed choices, not empirically tuned.
+        _regime_strength_gate = self.storm_flags.get("regime_strength_gate", False)
+        _REGIME_STRENGTH_GATE_LOOKBACK = 10
+        _REGIME_STRENGTH_MIN = 0.5
+
+        # Thread Q Idea 1 Path C (2026-08-23): exit early if coint_fraction_rolling_t is
+        # DECLINING SHARPLY over a short window -- a real, disclosed design simplification from
+        # the originally-scoped "run live break-detection mid-trade" (find_all_breaks per bar
+        # inside the backtest's own hot loop would be prohibitively expensive at CAMARF's real
+        # pair/bar counts -- a genuinely different, much heavier computation than this rate-of-
+        # decline proxy). Distinct from the EXISTING static CORR_EXIT_THRESHOLD level-crossing
+        # exit (backtest.py's own storm_real_corr_exit) -- this one triggers on the RATE of
+        # decline, catching a fast-breaking relationship before it necessarily crosses the
+        # static threshold, not a replacement for that existing exit.
+        _decoupling_avoidance_exit = self.storm_flags.get("decoupling_avoidance_exit", False)
+        _DECOUPLE_LOOKBACK = 10
+        _DECOUPLE_DROP_THRESHOLD = 0.3  # cfrac must drop by at least this much over the lookback
+
         # STORM: pre-compute rolling z-score volatility for garch_stop variant
         _garch_stop = self.storm_flags.get("garch_stop", False)
         _rolling_z_std = None
@@ -668,6 +692,30 @@ class BacktestEngine:
         _meanrev_t_arr = df["mean_reversion_speed_t"].values if "mean_reversion_speed_t" in df.columns else None
         _hurst_t_arr = df["hurst_rs_t"].values if "hurst_rs_t" in df.columns else None
 
+        # Thread Q decay-rate path (scoped 2026-08-24, Development.md): entry gate variant --
+        # block entry when the relationship's decay-rate signal is NEGATIVE (weakening) right
+        # now. Complementary to, NOT the same mechanism as, _regime_strength_gate above (that
+        # gates on the CURRENT LEVEL crossing a floor AND rising; this gates purely on the SIGN
+        # of the RATE OF CHANGE, no level floor at all -- a pair can be gated open here even at
+        # a low absolute coint_fraction, as long as it's trending up). Scoped to the
+        # coint_fraction/half_life signals only in this v1 -- eg_pvalue's rolling series is NOT
+        # a pre-persisted per-bar column (research/decay_rate_signals.py's
+        # expanding_eg_pvalue_series needs raw log-prices, not available in this per-pair
+        # spread_series context) -- a real, disclosed limitation, not a silent omission.
+        _decay_rate_gate = self.storm_flags.get("decay_rate_gate", False)
+        _decay_rate_gate_arr = None
+        if _decay_rate_gate:
+            _dr_spec = self.storm_flags.get("decay_rate_gate_spec", "coint_fraction:sma")
+            _dr_signal, _dr_smoothing = _dr_spec.split(":")
+            _dr_raw = None
+            if _dr_signal == "coint_fraction" and _cfrac_t_arr is not None:
+                _dr_raw = _cfrac_t_arr
+            elif _dr_signal == "half_life" and "half_life_rolling_series" in df.columns:
+                _dr_raw = df["half_life_rolling_series"].values
+            if _dr_raw is not None:
+                from research.decay_rate_signals import decay_rate_series, decay_rate_direction
+                _decay_rate_gate_arr = decay_rate_series(_dr_raw, _dr_smoothing) * decay_rate_direction(_dr_signal)
+
         # Rolling correlation for structural breakdown exit
         _default_flags = pd.Series(0, index=df.index)
         gap_a = df.get("gap_flag_a", _default_flags).fillna(0).astype(int).values
@@ -722,6 +770,27 @@ class BacktestEngine:
                     continue
                 if self.cfg.ENTRY_ZSCORE_MAX is not None and abs(z) > self.cfg.ENTRY_ZSCORE_MAX:
                     continue
+                # Thread Q Idea 1 Path B: regime-strength gate -- skip entry unless the
+                # relationship is both currently strong AND strengthening (not just currently
+                # above threshold, which alone wouldn't distinguish a stable regime from one
+                # that's actively weakening but hasn't crossed the floor yet).
+                if _regime_strength_gate and _cfrac_t_arr is not None:
+                    _cfrac_now = _cfrac_t_arr[i]
+                    _lb_i = max(0, i - _REGIME_STRENGTH_GATE_LOOKBACK)
+                    _cfrac_prior = _cfrac_t_arr[_lb_i]
+                    if not (np.isfinite(_cfrac_now) and np.isfinite(_cfrac_prior)):
+                        continue  # can't evaluate the gate without both points -- skip, don't assume pass
+                    if not (_cfrac_now >= _REGIME_STRENGTH_MIN and _cfrac_now > _cfrac_prior):
+                        continue
+                # Thread Q decay-rate path: entry gate -- fail CLOSED (skip) when the signal
+                # can't be evaluated, same convention as the regime-strength gate above, not
+                # treated as a silent pass.
+                if _decay_rate_gate:
+                    if _decay_rate_gate_arr is None:
+                        continue
+                    _dr_now = _decay_rate_gate_arr[i]
+                    if not np.isfinite(_dr_now) or _dr_now < 0:
+                        continue
                 hl_at_entry = hl if np.isfinite(hl) and hl >= self.cfg.MIN_HALF_LIFE_BARS else np.nan
                 if not np.isfinite(hl_at_entry):
                     continue  # can't set max hold without half-life
@@ -910,6 +979,17 @@ class BacktestEngine:
                         _cfrac_now = _ml_coint_frac
                     if np.isfinite(_cfrac_now) and _cfrac_now < self.cfg.CORR_EXIT_THRESHOLD:
                         exit_reason = "real_corr_exit"
+
+                # 6. Thread Q Idea 1 Path C: decoupling-avoidance exit -- RATE of cfrac decline
+                # over a short lookback, not a level crossing (that's #5 above). Same hold_bars>5
+                # debounce guard as #5, for the identical documented chattering reason (Development.md
+                # 2026-08-14). ADDITIVE, runs only if neither #4 nor #5 already triggered.
+                elif _decoupling_avoidance_exit and current_trade.hold_bars > 5 and _cfrac_t_arr is not None:
+                    _lb_i = max(0, i - _DECOUPLE_LOOKBACK)
+                    _cfrac_now2, _cfrac_prior2 = _cfrac_t_arr[i], _cfrac_t_arr[_lb_i]
+                    if np.isfinite(_cfrac_now2) and np.isfinite(_cfrac_prior2):
+                        if (_cfrac_prior2 - _cfrac_now2) >= _DECOUPLE_DROP_THRESHOLD:
+                            exit_reason = "decoupling_avoidance_exit"
 
                 if exit_reason:
                     current_trade.exit_time = ts
@@ -1305,6 +1385,242 @@ def compute_risk_parity_weights(
     log.info("Risk parity: %d pairs, range [%.3f, %.3f], mean=%.3f (global_mean_std=%.4f)",
              len(weights), min(vals), max(vals), sum(vals) / len(vals), global_mean_std)
     return weights
+
+
+def compute_regime_age_weights(
+    detail_path: str = "output/research/regime_age_at_entry_detail.parquet",
+    trades_df: Optional[pd.DataFrame] = None,
+    decay_fn: str = "step",
+    min_obs: int = 5,
+) -> Dict[str, float]:
+    """
+    Thread Q Idea 1 Path A (2026-08-23): N_SHARES multiplier from how RECENTLY a pair's
+    cointegrating relationship began, relative to when each trade entered -- reuses
+    research/regime_age_at_entry_diagnostic.py's own per-trade `regime_age_days` column
+    (real break detection via find_all_breaks, not recomputed here; this file stays decoupled
+    from importing research/ code, matching this project's established dependency direction).
+
+    Hypothesis under test (Development.md's Thread Q scoping entry): a freshly-formed
+    relationship may carry more real information than one that's persisted so long it could
+    just be surviving-because-it-survived. UNVERIFIED as of this build -- the age-bucketed
+    diagnostic that would confirm/refute this ran inconclusive on CAMARF's current thin
+    pair set (100% "unknown" bucket, a structurally expected result for full-history-confirmed
+    pairs, not a bug -- see Development.md). This function exists so the mechanism is ready
+    and verified the moment richer (episodic/PIT-safe) trade data makes the hypothesis testable,
+    not because the hypothesis is already confirmed.
+
+    decay_fn -- three variations, all real, disclosed choices, not one "correct" answer:
+      "step": bucketed multiplier matching the diagnostic's own bucket boundaries
+              (fresh<90d=1.5x, established 90-365d=1.0x, long_running>365d=0.7x, unknown=1.0x).
+      "linear": multiplier decays linearly from 1.5x at age=0 to 0.5x at age>=730 days, clipped.
+      "exponential": multiplier = 0.5 + 1.0 * exp(-age_days / 180), a half-life-style decay
+                     (180-day half-life is a real, disclosed choice, not empirically tuned).
+    Pairs with unknown regime age (no detected onset within cached history) get multiplier 1.0
+    (flat/neutral) under every decay_fn -- "unknown" is deliberately NOT treated as "old", since
+    that would silently encode an assumption the diagnostic explicitly could not verify.
+    """
+    if trades_df is not None:
+        trades = trades_df
+    else:
+        if not os.path.exists(detail_path):
+            log.warning("Regime-age sizing: detail file not found at %s — flat sizing "
+                        "(run research/regime_age_at_entry_diagnostic.py first)", detail_path)
+            return {}
+        trades = pd.read_parquet(detail_path)
+    if trades.empty or "regime_age_days" not in trades.columns:
+        log.warning("Regime-age sizing: no usable regime_age_days data — flat sizing")
+        return {}
+
+    def _age_multiplier(age_days):
+        if age_days is None or (isinstance(age_days, float) and np.isnan(age_days)):
+            return 1.0
+        if decay_fn == "step":
+            if age_days < 90:
+                return 1.5
+            if age_days < 365:
+                return 1.0
+            return 0.7
+        if decay_fn == "linear":
+            return float(np.clip(1.5 - (1.0 / 730.0) * age_days, 0.5, 1.5))
+        if decay_fn == "exponential":
+            return float(0.5 + 1.0 * np.exp(-age_days / 180.0))
+        raise ValueError(f"Unknown decay_fn: {decay_fn!r} (expected step/linear/exponential)")
+
+    weights: Dict[str, float] = {}
+    excluded_thin = []
+    for (sym_a, sym_b), grp in trades.groupby(["symbol_a", "symbol_b"]):
+        if len(grp) < min_obs:
+            excluded_thin.append(f"{sym_a}/{sym_b}")
+            continue
+        mean_mult = float(grp["regime_age_days"].apply(_age_multiplier).mean())
+        weights[f"{sym_a}/{sym_b}"] = float(np.clip(mean_mult, 0.1, 5.0))
+
+    if excluded_thin:
+        log.warning("Regime-age sizing (%s): %d pair(s) excluded, <%d trades: %s",
+                     decay_fn, len(excluded_thin), min_obs, excluded_thin)
+    if not weights:
+        log.warning("Regime-age sizing: no pairs with enough trades — flat sizing")
+        return {}
+    vals = list(weights.values())
+    log.info("Regime-age sizing (%s): %d pairs, range [%.3f, %.3f], mean=%.3f",
+              decay_fn, len(weights), min(vals), max(vals), sum(vals) / len(vals))
+    return weights
+
+
+def compute_decay_rate_weights(
+    detail_path: str = "output/research/decay_rate_at_entry_detail.parquet",
+    trades_df: Optional[pd.DataFrame] = None,
+    signal: str = "coint_fraction",
+    smoothing: str = "sma",
+    decay_fn: str = "step",
+    min_obs: int = 5,
+) -> Dict[str, float]:
+    """
+    Thread Q decay-rate path (scoped 2026-08-24, Development.md): N_SHARES multiplier from
+    whether a pair's cointegrating relationship is STRENGTHENING or WEAKENING at trade entry
+    (research/decay_rate_at_entry_diagnostic.py's per-trade decay_rate_{signal}_{smoothing}
+    column), a complementary axis to compute_regime_age_weights' age-since-onset signal, not a
+    replacement for it.
+
+    9 raw (signal, smoothing) combinations exist -- coint_fraction/eg_pvalue/half_life x
+    sma/kalman/fast_slow (see research/decay_rate_signals.py) -- living on very different native
+    scales (coint_fraction/eg_pvalue in [0,1], half_life in bars). Rather than inventing a
+    per-signal absolute threshold (itself a fresh instance of exactly the hardcoding problem this
+    session fixed elsewhere in research/*.py), each trade's raw decay_rate value is Z-SCORE
+    NORMALIZED against the population of that same column across every trade being sized here,
+    before decay_fn is applied -- a real, disclosed, signal-agnostic choice, not empirically
+    tuned per signal.
+
+    decay_fn (same 3 forms/clip bounds as compute_regime_age_weights, reused verbatim for direct
+    comparability):
+      "step": z > 0.5 -> 1.5x (clearly strengthening), z < -0.5 -> 0.7x (clearly weakening),
+              else 1.0x (near-neutral).
+      "linear": multiplier = clip(1.0 + 0.5*z, 0.5, 1.5).
+      "exponential": multiplier = clip(1.0 * exp(0.3*z), 0.5, 1.5) (bounded, not an unbounded
+                     blow-up at extreme z).
+    Unknown (NaN) decay_rate -> multiplier 1.0 (flat/neutral) -- "unknown" is deliberately NOT
+    treated as a directional signal, same discipline as compute_regime_age_weights.
+
+    UNVERIFIED hypothesis as of this build -- research/decay_rate_at_entry_diagnostic.py's own
+    correlation check (Spearman rho between raw decay_rate and pnl_net) is the thing that would
+    confirm/refute this before trusting a production run; this function exists so the mechanism
+    is ready and verified (debug/_verify_decay_rate_sizing.py) the moment that check supports it.
+    """
+    col = f"decay_rate_{signal}_{smoothing}"
+    if trades_df is not None:
+        trades = trades_df
+    else:
+        if not os.path.exists(detail_path):
+            log.warning("Decay-rate sizing: detail file not found at %s — flat sizing "
+                        "(run research/decay_rate_at_entry_diagnostic.py first)", detail_path)
+            return {}
+        trades = pd.read_parquet(detail_path)
+    if trades.empty or col not in trades.columns:
+        log.warning("Decay-rate sizing: no usable %s data — flat sizing", col)
+        return {}
+
+    pop = trades[col].dropna()
+    if len(pop) < min_obs or pop.std() <= 1e-9:
+        log.warning("Decay-rate sizing (%s/%s): insufficient population variance — flat sizing",
+                     signal, smoothing)
+        return {}
+    pop_mean, pop_std = float(pop.mean()), float(pop.std())
+
+    def _z(val):
+        if val is None or (isinstance(val, float) and np.isnan(val)):
+            return np.nan
+        return (val - pop_mean) / pop_std
+
+    def _rate_multiplier(z):
+        if not np.isfinite(z):
+            return 1.0
+        if decay_fn == "step":
+            if z > 0.5:
+                return 1.5
+            if z < -0.5:
+                return 0.7
+            return 1.0
+        if decay_fn == "linear":
+            return float(np.clip(1.0 + 0.5 * z, 0.5, 1.5))
+        if decay_fn == "exponential":
+            return float(np.clip(1.0 * np.exp(0.3 * z), 0.5, 1.5))
+        raise ValueError(f"Unknown decay_fn: {decay_fn!r} (expected step/linear/exponential)")
+
+    weights: Dict[str, float] = {}
+    excluded_thin = []
+    for (sym_a, sym_b), grp in trades.groupby(["symbol_a", "symbol_b"]):
+        vals = grp[col]
+        # Matches compute_regime_age_weights' own convention: total trade count, not
+        # notna-only count -- a NaN observation is a real "unknown" trade (neutral 1.0
+        # multiplier), not a missing one, and still counts toward min_obs.
+        if len(grp) < min_obs:
+            excluded_thin.append(f"{sym_a}/{sym_b}")
+            continue
+        mean_mult = float(vals.apply(lambda v: _rate_multiplier(_z(v))).mean())
+        weights[f"{sym_a}/{sym_b}"] = float(np.clip(mean_mult, 0.1, 5.0))
+
+    if excluded_thin:
+        log.warning("Decay-rate sizing (%s/%s/%s): %d pair(s) excluded, <%d valid obs: %s",
+                     signal, smoothing, decay_fn, len(excluded_thin), min_obs, excluded_thin)
+    if not weights:
+        log.warning("Decay-rate sizing: no pairs with enough valid data — flat sizing")
+        return {}
+    vals = list(weights.values())
+    log.info("Decay-rate sizing (%s/%s/%s): %d pairs, range [%.3f, %.3f], mean=%.3f",
+              signal, smoothing, decay_fn, len(weights), min(vals), max(vals), sum(vals) / len(vals))
+    return weights
+
+
+def compose_regime_age_and_decay_rate_weights(
+    age_weights: Dict[str, float], decay_rate_weights: Dict[str, float],
+) -> Dict[str, float]:
+    """Multiplicative composition of the two Thread Q sizing signals -- age says how long since
+    onset, decay rate says which direction it's trending right now (Ross's 2026-08-24 direction:
+    build both the standalone decay-rate flag AND this composed variant, for comparison). A pair
+    missing from either dict gets that dict's neutral 1.0 multiplier, not silently dropped."""
+    keys = set(age_weights) | set(decay_rate_weights)
+    return {
+        k: float(np.clip(age_weights.get(k, 1.0) * decay_rate_weights.get(k, 1.0), 0.1, 5.0))
+        for k in keys
+    }
+
+
+def _parse_decay_rate_spec(spec: str):
+    """SIGNAL:SMOOTHING:DECAY_FN CLI spec -> (signal, smoothing, decay_fn), validated against
+    research/decay_rate_signals.py's real SIGNAL_NAMES/SMOOTHING_NAMES and
+    compute_decay_rate_weights' 3 decay_fn forms."""
+    parts = spec.split(":")
+    if len(parts) != 3:
+        raise ValueError(
+            f"Invalid decay-rate spec {spec!r} — expected SIGNAL:SMOOTHING:DECAY_FN, "
+            f"e.g. 'coint_fraction:sma:step'."
+        )
+    signal, smoothing, decay_fn = parts
+    if signal not in ("coint_fraction", "eg_pvalue", "half_life"):
+        raise ValueError(f"Unknown decay-rate signal: {signal!r}")
+    if smoothing not in ("sma", "kalman", "fast_slow"):
+        raise ValueError(f"Unknown decay-rate smoothing: {smoothing!r}")
+    if decay_fn not in ("step", "linear", "exponential"):
+        raise ValueError(f"Unknown decay-rate decay_fn: {decay_fn!r}")
+    return signal, smoothing, decay_fn
+
+
+def _resolve_regime_age_decay_rate_weights(args) -> Dict[str, float]:
+    """Resolves the --regime-age-sizing/--decay-rate-sizing/--decay-rate-modifier combination
+    (mutually exclusive with risk-parity/HRP/var-sizing, enforced by the caller) into one final
+    weights dict: --regime-age-sizing alone, --decay-rate-sizing alone, or --regime-age-sizing +
+    --decay-rate-modifier composed multiplicatively (compose_regime_age_and_decay_rate_weights)."""
+    if args.regime_age_sizing and args.decay_rate_modifier:
+        signal, smoothing, decay_fn = _parse_decay_rate_spec(args.decay_rate_modifier)
+        age_w = compute_regime_age_weights(decay_fn=args.regime_age_sizing)
+        rate_w = compute_decay_rate_weights(signal=signal, smoothing=smoothing, decay_fn=decay_fn)
+        return compose_regime_age_and_decay_rate_weights(age_w, rate_w)
+    if args.regime_age_sizing:
+        return compute_regime_age_weights(decay_fn=args.regime_age_sizing)
+    if args.decay_rate_sizing:
+        signal, smoothing, decay_fn = _parse_decay_rate_spec(args.decay_rate_sizing)
+        return compute_decay_rate_weights(signal=signal, smoothing=smoothing, decay_fn=decay_fn)
+    return {}
 
 
 def compute_var_sizing_weights(
@@ -1818,6 +2134,32 @@ def main() -> None:
                         "Mutually exclusive with --risk-parity/--hrp-weight (alternative theories "
                         "of the same sizing decision). Requires trades_layer1.parquet (IS run "
                         "first).")
+    p.add_argument("--regime-age-sizing", default=None, choices=["step", "linear", "exponential"],
+                   help="Thread Q Idea 1 Path A: N_SHARES scaling by how recently each pair's "
+                        "cointegrating relationship began (see compute_regime_age_weights(), "
+                        "Development.md's Thread Q entry). UNVERIFIED hypothesis as of build --"
+                        " the diagnostic that would confirm/refute it was inconclusive on "
+                        "CAMARF's current thin pair set. Mutually exclusive with "
+                        "--risk-parity/--hrp-weight/--var-sizing. Requires "
+                        "output/research/regime_age_at_entry_detail.parquet (run "
+                        "research/regime_age_at_entry_diagnostic.py first).")
+    p.add_argument("--decay-rate-sizing", default=None,
+                   help="Thread Q decay-rate path: N_SHARES scaling by whether each pair's "
+                        "cointegrating relationship is strengthening or weakening RIGHT NOW "
+                        "(see compute_decay_rate_weights(), Development.md's Thread Q entry). "
+                        "Format SIGNAL:SMOOTHING:DECAY_FN, e.g. 'coint_fraction:sma:step' -- "
+                        "SIGNAL in {coint_fraction,eg_pvalue,half_life}, SMOOTHING in "
+                        "{sma,kalman,fast_slow}, DECAY_FN in {step,linear,exponential}. "
+                        "UNVERIFIED hypothesis as of build. Mutually exclusive with "
+                        "--risk-parity/--hrp-weight/--var-sizing/--regime-age-sizing. Requires "
+                        "output/research/decay_rate_at_entry_detail.parquet (run "
+                        "research/decay_rate_at_entry_diagnostic.py first).")
+    p.add_argument("--decay-rate-modifier", default=None,
+                   help="Same SIGNAL:SMOOTHING:DECAY_FN format as --decay-rate-sizing, but "
+                        "composed MULTIPLICATIVELY on top of --regime-age-sizing's weights "
+                        "instead of standing alone -- requires --regime-age-sizing also be set. "
+                        "Comparison arm for whether age + decay-rate together beat either "
+                        "signal alone.")
     p.add_argument("--pnl-cap", action="store_true",
                    help="Cap each pair's cumulative P&L at IS mean pair P&L. "
                         "Requires trades_layer1.parquet (IS run first).")
@@ -1840,6 +2182,32 @@ def main() -> None:
                         "down'). Additive: does NOT replace the existing always-on z-widening "
                         "'corr_exit' heuristic (priority #4) -- this is a new, separate priority #5 "
                         "condition, for real comparison against the status quo, not a silent swap.")
+    p.add_argument("--storm-regime-strength-gate", action="store_true",
+                   help="Thread Q Idea 1 Path B (2026-08-23): only allow entry when "
+                        "coint_fraction_rolling_t is both above 0.5 AND rising over a 10-bar "
+                        "lookback -- skip entry during a weakening relationship even if z "
+                        "triggers. UNVERIFIED hypothesis, comparison-arm only.")
+    p.add_argument("--storm-decoupling-avoidance-exit", action="store_true",
+                   help="Thread Q Idea 1 Path C (2026-08-23): exit if coint_fraction_rolling_t "
+                        "drops >=0.3 over a 10-bar lookback -- a RATE-of-decline proxy, not live "
+                        "break-detection (too expensive per-bar in the hot loop; disclosed "
+                        "simplification). Additive to the existing real_corr_exit level-crossing "
+                        "exit (priority #5) as a new priority #6. UNVERIFIED hypothesis, "
+                        "comparison-arm only.")
+    p.add_argument("--storm-decay-rate-gate", action="store_true",
+                   help="Thread Q decay-rate path (2026-08-24): only allow entry when the "
+                        "decay-rate signal (see compute_decay_rate_weights()) is non-negative -- "
+                        "i.e. strengthening or flat, not weakening. Complementary to (not the "
+                        "same mechanism as) --storm-regime-strength-gate: this gates purely on "
+                        "the SIGN of the rate of change, no level floor. Scoped to "
+                        "coint_fraction/half_life signals only (eg_pvalue needs raw log-prices, "
+                        "not available in the per-pair hot-loop context). Combine with "
+                        "--storm-decay-rate-gate-spec to pick signal:smoothing. UNVERIFIED "
+                        "hypothesis, comparison-arm only.")
+    p.add_argument("--storm-decay-rate-gate-spec", default="coint_fraction:sma",
+                   help="SIGNAL:SMOOTHING for --storm-decay-rate-gate, SIGNAL in "
+                        "{coint_fraction,half_life}, SMOOTHING in {sma,kalman,fast_slow}. "
+                        "Default coint_fraction:sma.")
     p.add_argument("--storm-max-half-life-filter", action="store_true",
                    help="STORM (added 2026-08-14, Thread G-Full follow-up): skip entry if "
                         "half_life_at_entry > MAX_HALF_LIFE, symmetric to the existing "
@@ -1949,12 +2317,20 @@ def main() -> None:
     regime_cond = RegimeConditioner(enabled=layer2)
     ml_cond = MLConditioner(enabled=layer2)
 
-    _sizing_flags_set = sum([args.risk_parity, args.hrp_weight, args.var_sizing])
+    _sizing_flags_set = sum([args.risk_parity, args.hrp_weight, args.var_sizing,
+                              bool(args.regime_age_sizing), bool(args.decay_rate_sizing)])
     if _sizing_flags_set > 1:
         raise ValueError(
-            "--risk-parity, --hrp-weight, and --var-sizing are mutually exclusive — each "
-            "computes an alternative N_SHARES multiplier for the same sizing decision; "
-            "applying more than one would multiply different portfolio theories together."
+            "--risk-parity, --hrp-weight, --var-sizing, --regime-age-sizing, and "
+            "--decay-rate-sizing are mutually exclusive — each computes an alternative "
+            "N_SHARES multiplier for the same sizing decision; applying more than one would "
+            "multiply different portfolio theories together."
+        )
+    if args.decay_rate_modifier and not args.regime_age_sizing:
+        raise ValueError(
+            "--decay-rate-modifier composes onto --regime-age-sizing's weights and requires "
+            "it also be set — use --decay-rate-sizing instead for a standalone decay-rate "
+            "multiplier with no age component."
         )
 
     # hedge_methods, label, and survivorship exclusions -- moved here (were
@@ -1976,6 +2352,12 @@ def main() -> None:
         label += "_hrp"
     if args.var_sizing:
         label += "_varsizing"
+    if args.regime_age_sizing:
+        label += f"_regimeage{args.regime_age_sizing}"
+    if args.decay_rate_sizing:
+        label += f"_decayrate{args.decay_rate_sizing.replace(':', '')}"
+    if args.decay_rate_modifier:
+        label += f"_decayratemod{args.decay_rate_modifier.replace(':', '')}"
     if args.pnl_cap:
         label += "_pnlcap"
     if args.pit_confidence_weight:
@@ -2012,6 +2394,20 @@ def main() -> None:
     # with a sizing flag, run a preliminary, flat-sizing IS-only pass first
     # (BacktestEngine.run(is_only=True), the exact chronological complement of
     # the holdout window) and fit weights on THAT instead.
+    # regime_age_sizing deliberately NOT included in this IS-only-fit mechanism: its data comes
+    # from a separately-precomputed detail file (research/regime_age_at_entry_diagnostic.py's
+    # own output), not derived fresh from IS-only trades the way risk-parity/HRP/var-sizing are
+    # -- that file's own trades_path may itself span the --holdout OOS window. Disclosed as a
+    # real, open lookahead risk (not silently ignored) via the warning below, not yet fixed --
+    # matches this project's "no bandaid, disclose don't hide" rule until a real fix is built.
+    if args.holdout and args.regime_age_sizing:
+        log.warning(
+            "--regime-age-sizing combined with --holdout: the detail file's own source trades "
+            "may span the OOS window this run evaluates -- a real, disclosed lookahead risk, "
+            "NOT yet resolved the way BUG-D76 resolved it for risk-parity/HRP/var-sizing. "
+            "UNVERIFIED hypothesis in the first place (see Development.md's Thread Q entry) -- "
+            "do not treat this comparison arm's result as production-safe."
+        )
     _needs_is_only_fit = bool(args.holdout) and (
         args.risk_parity or args.hrp_weight or args.var_sizing or args.pnl_cap
     )
@@ -2043,7 +2439,10 @@ def main() -> None:
             compute_hrp_weights(trades_df=_is_only_df) if args.hrp_weight
             else compute_risk_parity_weights(trades_df=_is_only_df) if args.risk_parity
             else compute_var_sizing_weights(trades_df=_is_only_df) if args.var_sizing
-            else {}
+            # regime_age_sizing/decay_rate_sizing/decay_rate_modifier: not part of the
+            # IS-only-fit mechanism (see warning above) -- still resolved here from their own
+            # precomputed detail files, not silently skipped.
+            else _resolve_regime_age_decay_rate_weights(args)
         )
         pnl_cap_by_pair = compute_pnl_cap_thresholds(trades_df=_is_only_df) if args.pnl_cap else {}
     else:
@@ -2051,7 +2450,7 @@ def main() -> None:
             compute_hrp_weights() if args.hrp_weight
             else compute_risk_parity_weights() if args.risk_parity
             else compute_var_sizing_weights() if args.var_sizing
-            else {}
+            else _resolve_regime_age_decay_rate_weights(args)
         )
         pnl_cap_by_pair = compute_pnl_cap_thresholds() if args.pnl_cap else {}
 
@@ -2076,6 +2475,10 @@ def main() -> None:
         # Also not folded into --storm-all: comparison arms added 2026-08-14
         # (Thread G-Full's 4-dead-config-constant investigation follow-up).
         "real_corr_exit":          getattr(args, "storm_real_corr_exit", False),
+        "regime_strength_gate":    getattr(args, "storm_regime_strength_gate", False),
+        "decay_rate_gate":         getattr(args, "storm_decay_rate_gate", False),
+        "decay_rate_gate_spec":    getattr(args, "storm_decay_rate_gate_spec", "coint_fraction:sma"),
+        "decoupling_avoidance_exit": getattr(args, "storm_decoupling_avoidance_exit", False),
         "max_half_life_filter":    getattr(args, "storm_max_half_life_filter", False),
         "liquidity_bar_filter":    getattr(args, "storm_liquidity_bar_filter", False),
     }

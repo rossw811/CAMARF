@@ -116,15 +116,18 @@ def main():
             print(f"FAIL: expected 2 distinct cache files after signature change, found {len(cache_files_after)}")
             failed += 1
 
-        # --- Test 4: use_memo_cache=False (default) never touches the memo cache dir ---
+        # --- Test 4: use_memo_cache=False explicitly still bypasses the memo cache dir ---
+        # (default flipped True 2026-08-23 after real production use -- this test now checks
+        # the explicit opt-out still works, not the default itself)
         shutil.rmtree(memo_dir, ignore_errors=True)
         _ = universe_loader.load_full_universe(
-            tf_label="1D", include_wrds=False, include_binance=False, include_ibkr=False)
+            tf_label="1D", include_wrds=False, include_binance=False, include_ibkr=False,
+            use_memo_cache=False)
         if not os.path.isdir(memo_dir):
-            print("PASS: default (use_memo_cache=False) never creates the memo cache dir")
+            print("PASS: use_memo_cache=False (explicit) never creates the memo cache dir")
             passed += 1
         else:
-            print("FAIL: memo cache dir was created even though use_memo_cache defaulted to False")
+            print("FAIL: memo cache dir was created even though use_memo_cache=False was passed")
             failed += 1
 
     finally:

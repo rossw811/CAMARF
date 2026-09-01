@@ -258,7 +258,7 @@ def stage1_exact_recheck(survivors: pd.DataFrame, max_lag: int, min_lift: float,
 
 
 def stage2_eg_confirm(stage1_df: pd.DataFrame, log_price_df: pd.DataFrame, max_lag: int,
-                       workers=12, pair_batch_size=2000, checkpoint_id="universal_leadlag_stage2"):
+                       workers=Config.RUNTIME.N_WORKERS, pair_batch_size=2000, checkpoint_id="universal_leadlag_stage2"):
     """STAGE 2: EG-confirm each Stage-1 survivor at its OWN best lag --
     symbol B's log-price series shifted by exact_best_lag bars before the
     EG test, exactly mirroring wrds_lead_lag_scan.py's scan_pair() EG-confirm
@@ -427,7 +427,7 @@ def stage1_exact_recheck_episodic(survivors: pd.DataFrame, max_lag: int, min_lif
 
 def stage2_eg_confirm_episodic(stage1_df: pd.DataFrame, log_price_df: pd.DataFrame,
                                 returns_df: pd.DataFrame, max_lag: int,
-                                window: int = EPISODIC_WINDOW_BARS, workers=12, task_batch_size=4000,
+                                window: int = EPISODIC_WINDOW_BARS, workers=Config.RUNTIME.N_WORKERS, task_batch_size=4000,
                                 checkpoint_id="universal_leadlag_stage2_episodic"):
     """STAGE 2 (episodic): EG-confirms each (pair, window) row using ONLY
     that window's log-price slice (dates looked up via returns_df's index,

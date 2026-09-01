@@ -44,12 +44,7 @@ from aligned_pair_loader import load_aligned_pair
 from lead_lag_scan import _gap_masked_log_price
 from spread_construction import full_sample_ols_spread
 from config import Config
-
-_DEFAULT_PAIRS = [
-    ("LNT", "VTR"), ("LNT", "WELL"), ("AME", "MAR"), ("CMS", "DUK"),
-    ("EG", "WRB"), ("HAL", "NOV"), ("MET", "TMHC"), ("PFG", "STLD"),
-    ("UMBF", "FHB"),
-]
+from pair_source import confirmed_pairs_list
 
 ENTRY_Z = Config.RESEARCH.ENTRY_Z
 EXIT_Z = Config.RESEARCH.EXIT_Z
@@ -156,12 +151,17 @@ def main():
     p.add_argument("--tf", default="1hr")
     args = p.parse_args()
 
-    hubs = _find_hubs(_DEFAULT_PAIRS)
-    print(f"Hub legs in this 9-pair set (appearing in >1 pair): {hubs}")
+    pairs_to_run = confirmed_pairs_list()
+    if not pairs_to_run:
+        print("No confirmed pairs found in output/results/*/pairs.parquet -- run analysis.py first. Aborting.")
+        return
+
+    hubs = _find_hubs(pairs_to_run)
+    print(f"Hub legs in the {len(pairs_to_run)}-pair confirmed set (appearing in >1 pair): {hubs}")
     if not hubs:
         print("No hub legs found — nothing to test.")
         return
-    hub_pairs = [(a, b) for a, b in _DEFAULT_PAIRS if a in hubs or b in hubs]
+    hub_pairs = [(a, b) for a, b in pairs_to_run if a in hubs or b in hubs]
     print(f"Hub-involving pairs tested: {hub_pairs}\n")
 
     rows = []

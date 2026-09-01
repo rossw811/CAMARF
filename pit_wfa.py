@@ -542,7 +542,10 @@ def run_persistence_fold(
 def main():
     import argparse
     parser = argparse.ArgumentParser(description="Point-in-time portfolio-wide WFA (1h)")
-    parser.add_argument("--workers", type=int, default=12)
+    parser.add_argument("--workers", type=int, default=Config.RUNTIME.N_WORKERS,
+                         help="default: derived from os.cpu_count() -- was hardcoded 12 until "
+                              "2026-08-23, the same oversubscription bug found and fixed in "
+                              "analysis.py's --workers default (docs/HANDOFF.md)")
     parser.add_argument(
         "--variant",
         choices=["expanding", "rolling", "both", "split_sweep", "window_sweep", "checkpoint_sweep",

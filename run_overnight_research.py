@@ -242,6 +242,33 @@ _SEQUENTIAL_STAGES = [
     ("31_run_verify_suite",        "run_verify_suite.py",   []),
 ]
 
+# Scripts scoped to the FULL universe (thousands of symbols, not a handful
+# of pairs) genuinely run longer than the flat 45min default -- confirmed
+# 2026-08-24 after full_universe_eg_confirmation.py hit the flat timeout,
+# was killed, and marked FAILED (never completed, never retried within the
+# run -- a resume would hit the identical 45min wall again and fail again,
+# for good: this class of script can never complete under the flat
+# default). Same pattern this file already uses for 00c_pit_wfa (180min)
+# and 00a_episodic_adapter (240min), extended to every other script whose
+# own docstring/imports show it operates on the full tracked universe via
+# universe_loader.load_full_universe or UniverseFilter, not a small pair
+# set. 180min chosen to match the existing 00c_pit_wfa precedent for a
+# comparably full-workers-scale job -- a reasoned, disclosed choice, not
+# empirically re-derived per script (no stored historical per-script
+# runtime exists yet to derive it from).
+_HEAVY_TIMEOUT_MINUTES = 180
+_HEAVY_SCRIPTS = {
+    "full_universe_correlation_prefilter.py",
+    "full_universe_eg_confirmation.py",
+    "k_bahc_candidate_discovery.py",
+    "pearson_threshold_sensitivity.py",
+    "tail_dependence_universe_screen.py",
+    "wrds_deep_history_episodic_scan.py",
+    "wrds_universal_lead_lag_scan.py",
+    "bh_vs_by_full_universe.py",
+    "market_wide_cointegration_decay.py",
+}
+
 
 def _warm_cache(cache_dir: str, max_workers: int) -> None:
     """Sequentially-issued-but-thread-parallel read-and-discard pass over every
@@ -338,12 +365,23 @@ def main():
     # --- Every research/*.py script, discovered dynamically, sequential
     # (NOT parallelized in this version -- see module docstring: ~90/121
     # scripts remain unaudited for cross-script output dependencies) ---
+    # Stage name is the script's own basename ONLY -- no enumerate() index
+    # (found 2026-08-24: the prior "r{i:03d}_{base}" scheme embedded each
+    # script's ALPHABETICAL POSITION in its stage name, so adding a single
+    # new research/*.py file shifted the index of every alphabetically-later
+    # script, changing ITS stage name too -- a resume after that change would
+    # find no matching completed-stage record for any of them and silently
+    # re-run the entire remainder of the sweep. Purely name-based (no index)
+    # means inserting/removing a script only ever affects that script's own
+    # stage, never any other's.
     research_dir = os.path.join(_ROOT, "research")
     research_scripts = sorted(glob.glob(os.path.join(research_dir, "*.py")))
-    for i, rs in enumerate(research_scripts, start=100):
+    for rs in research_scripts:
         base = os.path.splitext(os.path.basename(rs))[0]
-        stage_name = f"r{i:03d}_{base}"
-        run_stage(stage_name, os.path.join("research", os.path.basename(rs)), [], args.timeout_minutes)
+        stage_name = f"r_{base}"
+        script_basename = os.path.basename(rs)
+        timeout = _HEAVY_TIMEOUT_MINUTES if script_basename in _HEAVY_SCRIPTS else args.timeout_minutes
+        run_stage(stage_name, os.path.join("research", script_basename), [], timeout)
 
     _log("================ CAMARF overnight research runner finished ================")
     done_count = len(_completed_stages())

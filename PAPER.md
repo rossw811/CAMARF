@@ -16,6 +16,22 @@ more than the methodology does.)*
 
 ---
 
+## Two-paper split (2026-08-24) — this is now the companion/secondary paper
+
+Per the agreed pivot (Ross: *"i think it deserves its own shorter paper but
+i like the novel angle"*), `PAPER_MAGNITUDE.md` is now the **lead paper** —
+the seven-pillar, methodology-first synthesis (multiple-testing discipline
+at scale, episodic cointegration, pair-discovery lookahead, SPAC
+NAV-clustering, jump-diffusion vs. GapFlag, calendar-padding artifacts,
+and when complexity earns its keep). This document remains a complete,
+self-contained empirical demonstration scoped to CAMARF's own confirmed
+pair set and backtest — cross-referenced by, not subordinate to, the lead
+paper. Shared infrastructure and bibliography are documented once in
+`PAPER_MAGNITUDE.md` §3/§References; this file is not being duplicated or
+re-derived to match.
+
+---
+
 ## Status of this document
 
 This is a **living draft**, started 2026-06-23, updated incrementally as

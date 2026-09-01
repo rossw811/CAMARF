@@ -7,9 +7,17 @@ only. Current open items: `docs/HANDOFF.md`. Reproducibility numbers/data ranges
 ## What This Project Is
 
 CAMARF (Cross-Asset Co-Movement Arbitrage Research Framework): institutional-grade statistical
-arbitrage research targeting 1,500+ assets (S&P Composite 1500 + crypto/forex/commodities/
-futures/ETFs). Built by Ross, sole developer, partly to support MFE applications (Baruch,
-Berkeley, Columbia) — the codebase is both the research project and the thesis.
+arbitrage research. **Standing direction (confirmed 2026-09-01): use the full ~44,700-symbol
+WRDS-merged universe (`universe_loader.load_full_universe()`) everywhere a script can, not the
+smaller ~1,500-1,700-symbol S&P Composite 1500 / yfinance-only cache** — the S&P Composite 1500 is
+this project's historical starting baseline (still `config.py`'s `UniverseConfig` default for
+daily-fetch scoping), but the ~44,700-symbol pool (WRDS full US market + international GVKEY-
+labeled listings + yfinance + IBKR intraday + Binance crypto) is the actual target scope for
+research/discovery scripts — this is precisely what the 2026-08-24 universe-undercount bug fix
+(5 `research/*.py` scripts silently reinventing their own universe loader instead of calling the
+shared one) was about, and the standing rule going forward. Also spans crypto/forex/commodities/
+futures/ETFs. Built by Ross, sole developer, partly to support MFE applications (Baruch, Berkeley,
+Columbia) — the codebase is both the research project and the thesis.
 
 A connected but separate project: a live NQ/ES futures pairs-trading system (Goldbach levels,
 FVGs, digital root timing, "17→71" lead-lag signal). Directional, not mean-reversion. Separate
@@ -79,8 +87,16 @@ performance cost on top of MKL not being tuned for this chip. 16GB RAM is adequa
 generous — expect existing OOM guards to trip on `DataAligner`'s dense intraday reindex or the
 full-universe correlation matrix on a lower-RAM machine.
 
-Second machine: CachyOS at `rw@10.0.1.9` (LAN IP as of 2026-08-23 — check `docs/HANDOFF.md` if
-stale; a `10.0.1.0/24` port-22 scan finds it if the IP has moved again), SSH key-auth as `rw`.
+Second machine: CachyOS, SSH key-auth as `rw`. **Prefer Tailscale first**: `rw@100.64.64.126`
+(hostname `cachyos-x8664`) — installed 2026-08 as the durable fix after CachyOS's WiFi turned out to
+have client isolation enabled, which silently breaks LAN-IP SSH independent of whether the LAN IP
+itself is current. Check `& "C:\Program Files\Tailscale\tailscale.exe" status` for reachability/
+last-seen before assuming a hang. LAN fallback: `rw@10.0.1.9` (IP as of 2026-08-23 — check
+`docs/HANDOFF.md` if stale; a `10.0.1.0/24` port-22 scan finds it if the IP has moved again). CachyOS
+has also shown recurring hard hangs with no diagnosable cause (non-ECC RAM, no EDAC/thermal trail) —
+an Intel TCO watchdog (`iTCO_wdt`) is armed so a hang auto-recovers in ~30-60s instead of needing a
+physical power-cycle; a prolonged Tailscale "offline" reading may mean a hang the watchdog didn't
+catch, not just a network issue.
 
 ## Working Style
 
@@ -100,6 +116,13 @@ stale; a `10.0.1.0/24` port-22 scan finds it if the IP has moved again), SSH key
 - **Before running a new pipeline stage or research script, self-check it against known bug
   classes first** (lookahead, in-sample circularity, gap-masking, survivorship) — don't wait
   for a dedicated audit to catch it after the fact.
+- **Avoid hardcoding — derive values, don't fix them.** Worker/thread counts from
+  `os.cpu_count()`, window/threshold constants from an actual empirical test of what produces a
+  valid result, not a number that "seemed right" once. When you fix one hardcoded value, check
+  whether the SAME value is hardcoded elsewhere too — `n_workers=12` was fixed once (2026-08-20,
+  `Config.RUNTIME.N_WORKERS`) and still recurred twice more (`analysis.py`'s own `--workers`
+  CLI default, `pit_wfa.py`, both found 2026-08-23) because the first fix didn't grep for the
+  same literal value elsewhere.
 - **When a backtest result is weak, question the pair-*selection* criteria before concluding
   the trading idea doesn't work** — loose FDR threshold, single-window confirmation, candidate-
   pool lookahead have each been the real cause before (BUG-D112).

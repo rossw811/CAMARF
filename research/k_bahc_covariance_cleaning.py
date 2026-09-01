@@ -48,12 +48,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "research"))
 
 from data import DataStore, _gap_aware_returns
-
-_DEFAULT_PAIRS = [
-    ("LNT", "VTR"), ("LNT", "WELL"), ("AME", "MAR"), ("CMS", "DUK"),
-    ("EG", "WRB"), ("HAL", "NOV"), ("MET", "TMHC"), ("PFG", "STLD"),
-    ("UMBF", "FHB"),
-]
+from pair_source import confirmed_pairs_list
 
 
 def _unique_symbols(pairs):
@@ -177,7 +172,10 @@ def _gmv_weights(cov: np.ndarray) -> np.ndarray:
 
 
 def run(tf_label, train_window, test_window, max_k=6):
-    symbols = _unique_symbols(_DEFAULT_PAIRS)
+    pairs_to_run = confirmed_pairs_list()
+    if not pairs_to_run:
+        raise SystemExit("No confirmed pairs found in output/results/*/pairs.parquet -- run analysis.py first.")
+    symbols = _unique_symbols(pairs_to_run)
     ret_matrix = build_return_matrix(symbols, tf_label)
     n = len(ret_matrix)
     print(f"Return matrix: {n} bars x {ret_matrix.shape[1]} symbols "

@@ -48,11 +48,12 @@ import sys
 
 import numpy as np
 import pandas as pd
-from statsmodels.tsa.stattools import coint
+from statsmodels.tsa.stattools import coint, mackinnonp
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+from analysis import _batched_eg_fixed_lag_tstat
 from aligned_pair_loader import load_aligned_pair
 from data import _clean_close
 
@@ -80,24 +81,27 @@ def _log_price(df):
 
 def coint_fraction(a, b, window, step):
     """Same test as analysis.py's _rolling_coint_worker: fraction of rolling
-    windows where EG p<0.05. Reused logic, not reimplemented differently."""
+    windows where EG p<0.05. Reused logic, not reimplemented differently --
+    now literally calling the same batched core (2026-08-23, ~95x faster at
+    real scale, see analysis.py::_batched_eg_fixed_lag_tstat's docstring),
+    not a second copy of the per-window loop."""
     mask = np.isfinite(a) & np.isfinite(b)
     a_, b_ = a[mask], b[mask]
     n = a_.size
     if n < window + step:
         return None, 0
-    n_sig = n_win = 0
-    for start in range(0, n - window + 1, step):
-        aw, bw = a_[start:start + window], b_[start:start + window]
-        try:
-            _t, p, _c = coint(aw, bw, trend="c", maxlag=1, autolag=None)
-            if p < 0.05:
-                n_sig += 1
-            n_win += 1
-        except Exception:
-            continue
+    starts = list(range(0, n - window + 1, step))
+    if not starts:
+        return None, 0
+    a_windows = np.stack([a_[s:s + window] for s in starts])
+    b_windows = np.stack([b_[s:s + window] for s in starts])
+    t_stats = _batched_eg_fixed_lag_tstat(a_windows, b_windows)
+    valid = np.isfinite(t_stats)
+    n_win = int(valid.sum())
     if n_win == 0:
         return None, 0
+    pvals = np.array([mackinnonp(float(t), regression="c", N=2) for t in t_stats[valid]])
+    n_sig = int(np.sum(pvals < 0.05))
     return n_sig / n_win, n_win
 
 

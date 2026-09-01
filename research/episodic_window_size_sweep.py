@@ -42,6 +42,7 @@ Usage:
     python research/episodic_window_size_sweep.py --grid 2520 --dry-run
 """
 import argparse
+import gc
 import os
 import sys
 import time
@@ -189,6 +190,17 @@ def main():
     asset_class_map = {s: "equity" for s in symbols}
     threshold = args.threshold if args.threshold is not None else Config.UNIVERSE.MIN_PEARSON_CORR
     log.info(f"{len(symbols)} symbols loaded, threshold={threshold}")
+
+    # Found 2026-08-26 while auditing sibling scripts for the same bug class as a live
+    # wrds_deep_history_episodic_scan.py crash: `close_by_symbol` (up to the full ~44,700-symbol
+    # universe under --full-universe) is never referenced again past this point -- `returns`/
+    # `log_price_df`/`symbols` (already extracted from it) are what the sweep loop below actually
+    # needs, reused across every grid point. Unlike `returns` (which DOES need to survive the
+    # whole sweep, so it is NOT freed here), close_by_symbol is pure dead weight for the rest of
+    # this script's run -- freeing it is a real, safe memory win, same fix already applied and
+    # confirmed working in wrds_deep_history_episodic_scan.py's main() this session.
+    del close_by_symbol
+    gc.collect()
 
     if args.dry_run:
         log.info("--dry-run: universe loaded, stopping before any grid point runs.")

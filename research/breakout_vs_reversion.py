@@ -66,12 +66,7 @@ from aligned_pair_loader import load_aligned_pair
 from lead_lag_scan import _gap_masked_log_price
 from spread_construction import full_sample_ols_spread
 from config import Config
-
-_DEFAULT_PAIRS = [
-    ("LNT", "VTR"), ("LNT", "WELL"), ("AME", "MAR"), ("CMS", "DUK"),
-    ("EG", "WRB"), ("HAL", "NOV"), ("MET", "TMHC"), ("PFG", "STLD"),
-    ("UMBF", "FHB"),
-]
+from pair_source import confirmed_pairs_list
 
 # Sourced from Config.RESEARCH (2026-07-20, Grand Sweep task #24) -- was
 # hardcoded here (and independently in 4 sibling files); see config.py's
@@ -200,10 +195,15 @@ def main():
     p.add_argument("--tf", default="1hr")
     args = p.parse_args()
 
+    pairs_to_run = confirmed_pairs_list()
+    if not pairs_to_run:
+        print("No confirmed pairs found in output/results/*/pairs.parquet -- run analysis.py first. Aborting.")
+        return
+
     rows = []
     all_mr_trades = []
     all_bo_trades = []
-    for sym_a, sym_b in _DEFAULT_PAIRS:
+    for sym_a, sym_b in pairs_to_run:
         result = build_spread_and_z(sym_a, sym_b, args.tf)
         if result is None:
             print(f"{sym_a}/{sym_b}: insufficient data")
@@ -245,7 +245,7 @@ def main():
             pnls = np.array([t["pnl_z"] for t in trades]) if trades else np.array([])
             pooled_sharpe[label] = float(pnls.mean() / pnls.std()) if len(pnls) > 1 and pnls.std() > 1e-9 else np.nan
         agg["pooled_sharpe_like"] = agg.index.map(pooled_sharpe)
-        print(f"\nAggregate across {len(_DEFAULT_PAIRS)} pairs:")
+        print(f"\nAggregate across {len(pairs_to_run)} pairs:")
         print(agg.to_string())
 
     out_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "output", "research")
@@ -270,7 +270,7 @@ def run_combination_sweep(tf_label):
     avoids letting a single low-trade-count pair's noisy ratio dominate
     the aggregate the way a naive per-pair average would."""
     spreads_z = {}
-    for sym_a, sym_b in _DEFAULT_PAIRS:
+    for sym_a, sym_b in confirmed_pairs_list():
         result = build_spread_and_z(sym_a, sym_b, tf_label)
         if result is not None:
             spreads_z[(sym_a, sym_b)] = result[1]

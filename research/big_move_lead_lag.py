@@ -59,13 +59,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(
 from data import DataStore, _gap_aware_returns
 from aligned_pair_loader import load_aligned_pair
 from lead_lag_scan import best_lag, _MIN_CORR_N
-
-# Same stable starting set as earnings_lead_lag.py, for direct comparability.
-_DEFAULT_PAIRS = [
-    ("LNT", "VTR"), ("LNT", "WELL"), ("AME", "MAR"), ("CMS", "DUK"),
-    ("EG", "WRB"), ("HAL", "NOV"), ("MET", "TMHC"), ("PFG", "STLD"),
-    ("UMBF", "FHB"),
-]
+from pair_source import confirmed_pairs_list
 
 
 def _big_move_dates(ret: pd.Series, z_threshold: float, vol_window: int) -> list:
@@ -237,8 +231,14 @@ def main():
     p.add_argument("--seed", type=int, default=42)
     args = p.parse_args()
 
+    pairs_to_run = confirmed_pairs_list(tf_label=args.tf)
+    if not pairs_to_run:
+        print(f"No confirmed pairs found for tf={args.tf} in output/results/*/pairs.parquet "
+              f"-- run analysis.py first. Aborting.")
+        return
+
     all_rows = []
-    for sym_a, sym_b in _DEFAULT_PAIRS:
+    for sym_a, sym_b in pairs_to_run:
         res = run_pair(sym_a, sym_b, args.tf, args.z_threshold, args.vol_window,
                         args.window_days, args.max_lag, args.n_boot, args.seed)
         if "legs" not in res:

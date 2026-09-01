@@ -1,0 +1,16 @@
+2026-08-23 18:12:53  INFO      ======================================================================
+2026-08-23 18:12:53  INFO      CAMARF  —  analysis.py  —  Cross-Asset Co-Movement Analysis
+2026-08-23 18:12:53  INFO      ======================================================================
+2026-08-23 18:25:25  INFO      Resuming — 1357 assets already complete (config hash 86ca897df0541bcf)
+2026-08-23 18:25:25  INFO      Building asset universe...
+2026-08-23 18:25:25  INFO      S&P 500: 503 tickers from cache (2.4h old)
+2026-08-23 18:25:25  INFO        sp400: 400 tickers from cache (2.4h old)
+2026-08-23 18:25:25  INFO        S&P MidCap 400: fetched 400 tickers (net new after S&P 500 overlap removed by dedup)
+2026-08-23 18:25:25  INFO        sp600: 603 tickers from cache (2.4h old)
+2026-08-23 18:25:25  INFO        S&P SmallCap 600: fetched 603 tickers (net new after dedup)
+2026-08-23 18:25:25  INFO        S&P 1500 total equities in universe: 1506
+2026-08-23 18:25:25  INFO        International equities + ADRs + FX spots added: 108 symbols
+2026-08-23 18:25:25  INFO        Total universe: 1697 assets
+2026-08-23 18:25:25  INFO      Exclusion list: skipping 3 assets ['BNY', 'FDXF', 'VLTO']
+2026-08-23 18:25:25  INFO      Universe candidates: 1694 assets
+2026-08-23 18:25:25  INFO      Phase 1 (yfinance daily): 1517 equities + 89 intl equities + 15 crypto + 25 forex/FX + 21 ETFs

@@ -1386,9 +1386,25 @@ def build_symbol_permno_map() -> pd.DataFrame:
              f"{len(ticker_symbols)} need ticker->permno resolution")
 
     db = _connect()
-    if not os.path.exists(os.path.expanduser("~/.pgpass")):
-        db.create_pgpass_file()
-        log.info("Wrote ~/.pgpass -- future connections will not need interactive credentials")
+    # Found live 2026-08-24: _connect() above already succeeded (proof credentials work via
+    # WHATEVER mechanism this platform uses), but this check only looked for the Unix pgpass
+    # path (~/.pgpass) -- on Windows the real, already-working file is
+    # %APPDATA%\postgresql\pgpass.conf, so this always concluded "no pgpass exists" there and
+    # tried to interactively CREATE one via create_pgpass_file(), which crashes with EOFError
+    # in any non-interactive/headless invocation despite the connection having just worked fine.
+    # Since _connect() already succeeded, writing a pgpass is a pure convenience for FUTURE
+    # connections, never required for this one -- check both platforms' real locations, and
+    # never let this optional step crash a run that already has a working connection.
+    _pgpass_candidates = [os.path.expanduser("~/.pgpass")]
+    if os.name == "nt":
+        _pgpass_candidates.append(os.path.join(os.environ.get("APPDATA", ""), "postgresql", "pgpass.conf"))
+    if not any(os.path.exists(p) for p in _pgpass_candidates):
+        try:
+            db.create_pgpass_file()
+            log.info("Wrote a pgpass file -- future connections will not need interactive credentials")
+        except Exception as e:
+            log.warning(f"Could not write a pgpass file ({type(e).__name__}: {e}) -- harmless, "
+                        f"this connection already succeeded; future runs may just re-prompt.")
 
     permno_by_symbol = dict(already_permno)
     for i in range(0, len(ticker_symbols), 500):

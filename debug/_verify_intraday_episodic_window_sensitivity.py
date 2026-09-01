@@ -73,28 +73,28 @@ def main():
     dates, log_a, log_b = make_single_regime_pair()
     pairs_data = {("PNC", "ZION"): (dates, log_a, log_b)}
     for config_name in sens.REGISTRY:
-        metrics = sens.evaluate_config(config_name, pairs_data)
-        print(f"  {config_name}: n_windows={metrics['pnc_zion_n_windows']} "
-              f"contiguity={metrics['pnc_zion_contiguity']:.3f} "
+        metrics = sens.evaluate_config(config_name, pairs_data, ("PNC", "ZION"))
+        print(f"  {config_name}: n_windows={metrics['sanity_check_n_windows']} "
+              f"contiguity={metrics['sanity_check_contiguity']:.3f} "
               f"cv={metrics['cv_confirmed_count']:.3f}")
         # A clean single-regime pair's significant windows should cluster
         # (contiguity > 0.5) whenever it produces enough windows to judge --
         # too few windows makes the ratio meaningless, so only assert when
         # there's real signal to check.
-        if metrics["pnc_zion_n_windows"] >= 4 and not np.isnan(metrics["pnc_zion_contiguity"]):
+        if metrics["sanity_check_n_windows"] >= 4 and not np.isnan(metrics["sanity_check_contiguity"]):
             results.append(check(
                 f"{config_name}: single-regime pair shows clustered significance (contiguity > 0.5)",
-                metrics["pnc_zion_contiguity"] > 0.5,
+                metrics["sanity_check_contiguity"] > 0.5,
             ))
 
     print("\nCheck set 2: pure-noise pair")
     dates_n, log_a_n, log_b_n = make_pure_noise_pair()
     pairs_data_noise = {("PNC", "ZION"): (dates_n, log_a_n, log_b_n)}
     for config_name in sens.REGISTRY:
-        metrics = sens.evaluate_config(config_name, pairs_data_noise)
+        metrics = sens.evaluate_config(config_name, pairs_data_noise, ("PNC", "ZION"))
         print(f"  {config_name}: n_confirmed={metrics['n_base_confirmed']} "
-              f"n_windows={metrics['pnc_zion_n_windows']} "
-              f"contiguity={metrics['pnc_zion_contiguity']}")
+              f"n_windows={metrics['sanity_check_n_windows']} "
+              f"contiguity={metrics['sanity_check_contiguity']}")
         # A pure-noise pair should essentially never survive joint BH-FDR
         # confirmation (this is exactly episodic_bhfdr_confirm's own
         # already-verified false-positive-control claim -- re-checked here

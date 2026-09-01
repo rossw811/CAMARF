@@ -38,10 +38,11 @@ import pandas as pd
 from scipy.stats import norm, pearsonr
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from options import load_price_series, realized_vol_proxy
+from pair_source import confirmed_pairs_list
 
-_CONFIRMED_PAIRS = [("KVUE", "KMB")]
 _TENOR_DAYS = 30
 
 
@@ -85,9 +86,10 @@ def main():
     ap.add_argument("--window", type=int, default=30)
     ap.add_argument("--pit-safe", action="store_true",
                      help="Source pairs from research/pit_pair_discovery.py's PIT-safe episodic "
-                          "screen instead of the hardcoded KVUE/KMB (task #5). This script loads "
-                          "daily price series directly (not TF-aware), so only the (symbol_a, "
-                          "symbol_b) part of each PIT-safe triple is used, deduplicated.")
+                          "screen instead of the current static confirmed-pair set (task #5). "
+                          "This script loads daily price series directly (not TF-aware), so only "
+                          "the (symbol_a, symbol_b) part of each PIT-safe triple is used, "
+                          "deduplicated.")
     args = ap.parse_args()
 
     T = _TENOR_DAYS / 365.0
@@ -98,7 +100,10 @@ def main():
         confirmed_pairs = sorted(set((a, b) for a, b, _tf in pit_pairs))
         print(f"Using PIT-safe episodic pair discovery: {len(confirmed_pairs)} unique pairs")
     else:
-        confirmed_pairs = _CONFIRMED_PAIRS
+        confirmed_pairs = confirmed_pairs_list()
+        if not confirmed_pairs:
+            print("No confirmed pairs found in output/results/*/pairs.parquet -- run analysis.py first. Aborting.")
+            return
 
     for sym_a, sym_b in confirmed_pairs:
         close_a = load_price_series(sym_a)

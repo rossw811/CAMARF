@@ -1,0 +1,18 @@
+22:00:54 INFO  === pit_wfa_episodic.py: does swapping static full-history screening for the episodic/regime-aware method change the PIT-WFA negative finding? Pre-registered to report the result regardless of direction. ===
+22:01:02 INFO  Loaded 1197576 (pair, window) rows from wrds_deep_history_episodic_scan_tier3_windows.parquet (file mtime: 2026-08-12 09:53:14)
+22:01:02 INFO  Overall available window ends 2026-07-24 -- each checkpoint trades forward from its cutoff to this date.
+22:01:02 INFO  [checkpoint_2024-02-01] screening episodically as-of 2024-02-01 (point-in-time, windows concluded by this date only)...
+22:01:03 INFO  [checkpoint_2024-02-01] 366 pairs point-in-time episodically confirmed (1.5s)
+22:02:43 INFO  [checkpoint_2024-02-01] backtest: 77 pairs traded, 366 trades, portfolio Sharpe=1.4020
+22:02:43 INFO  [checkpoint_2025-01-01] screening episodically as-of 2025-01-01 (point-in-time, windows concluded by this date only)...
+22:02:45 INFO  [checkpoint_2025-01-01] 339 pairs point-in-time episodically confirmed (2.0s)
+22:03:54 INFO  [checkpoint_2025-01-01] backtest: 12 pairs traded, 46 trades, portfolio Sharpe=-1.4784
+22:03:54 INFO  [checkpoint_2025-08-01] screening episodically as-of 2025-08-01 (point-in-time, windows concluded by this date only)...
+22:03:55 INFO  [checkpoint_2025-08-01] 331 pairs point-in-time episodically confirmed (1.7s)
+22:04:33 INFO  [checkpoint_2025-08-01] backtest: 5 pairs traded, 8 trades, portfolio Sharpe=2.5862
+22:04:33 INFO  ======================================================================
+22:04:33 INFO  SUMMARY (reported regardless of direction -- this is a pre-registered comparison arm):
+22:04:33 INFO    checkpoint=2024-02-01: 366 pairs confirmed, 77 traded, Sharpe=1.4020
+22:04:33 INFO    checkpoint=2025-01-01: 339 pairs confirmed, 12 traded, Sharpe=-1.4784
+22:04:33 INFO    checkpoint=2025-08-01: 331 pairs confirmed, 5 traded, Sharpe=2.5862
+22:04:33 INFO  pit_wfa_episodic.py complete (3.6 min)

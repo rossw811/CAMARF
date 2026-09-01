@@ -30,3 +30,7 @@
 2026-08-13 20:19:59,505  INFO        progress: 25000 fetched this session (38.6 min)
 2026-08-13 20:21:33,959  INFO        progress: 26000 fetched this session (40.2 min)
 2026-08-13 20:22:51,026  INFO      Full US market price fetch complete: 26727 symbols this session, 41.5 min total.
+2026-08-25 15:20:50,285  INFO      Security master: 29366 distinct permnos
+2026-08-25 15:20:50,352  INFO      29366 labels built, 6731 collision-relabeled as PERMNO<n>
+2026-08-25 15:20:52,933  INFO      29366/29366 already cached (resuming), 0 remaining.
+2026-08-25 15:20:55,998  INFO      Full US market price fetch complete: 0 symbols this session, 0.1 min total.

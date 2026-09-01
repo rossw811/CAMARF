@@ -3,10 +3,30 @@
 **Author:** Ross W.
 **Status:** Active research, mid-pivot. The production pipeline (data → analysis → ML →
 backtest → statistical validation → walk-forward → report) runs end-to-end, but the
-confirmed-pair universe underneath it changed materially in the last two sessions (see
+confirmed-pair universe underneath it changed materially in the last several sessions (see
 "Current Results" below) and a genuinely new, more novel central thesis — point-in-time-safe
 episodic cointegration confirmation vs. the standard static full-sample screen — is actively
 being built and is not yet concluded. Read this file's status as "in motion," not settled.
+
+**Update, 2026-08-24 — the episodic/methodology thesis is now promoted to its own lead paper.**
+`PAPER_MAGNITUDE.md` (project root) is the new **lead paper**: a seven-pillar synthesis
+(multiple-testing discipline at real ~10^5-10^6-hypothesis scale, episodic-not-persistent
+cointegration, pair-discovery lookahead, SPAC NAV-clustering, jump-diffusion vs. data-quality
+flags, calendar-padding artifacts, and when model complexity earns its keep) built around the
+same central claim previewed below — production-scale statistical arbitrage screening is
+dominated by artifact management, not signal discovery. `PAPER.md` is now the **companion,
+secondary paper** — the original single-pair-set backtest writeup, re-scoped as supporting
+empirical evidence rather than the sole headline. Separately, the same session found and fixed
+a universe-undercount bug (several "full universe" scripts were silently sampling ~1,566-1,730
+symbols against the real ~44,700-symbol merged universe) and promoted 27 new full-universe-
+screened pairs into production (`output/results/1day/pairs.parquet`), bringing the live
+confirmed-pair count from 2 (`KVUE/KMB@3m`, `PNC/ZION@4h`) to **29** — a real ~14.5x expansion.
+Both `PAPER_MAGNITUDE.md`'s §4/§5 headline numbers and this promotion are honestly flagged as
+partially provisional pending a still-in-progress corrected-scale re-run — see that paper's own
+§1.2/§12/§14 for exactly what's settled vs. pending. This note is additive, per this file's own
+"superseded, kept for provenance" convention below — the rest of this file has not been rewritten
+to match and may still describe pre-2026-08-24 state in places; `PAPER_MAGNITUDE.md`,
+`Development.md`, and `docs/HANDOFF.md` are the current sources of truth.
 
 ---
 
@@ -14,10 +34,13 @@ being built and is not yet concluded. Read this file's status as "in motion," no
 
 CAMARF is an institutional-grade quantitative research framework that systematically discovers,
 characterizes, and models statistical co-movement relationships across a broad multi-asset
-universe, spanning the full S&P Composite 1500, cryptocurrency, foreign exchange, commodities,
-and futures markets simultaneously. (Corrected from "S&P 500" to "S&P Composite 1500" against
-this file's own verified universe figures below — the broader 1500-constituent index, not just
-the 500 large-caps, is what `config.py` actually screens.)
+universe, spanning cryptocurrency, foreign exchange, commodities, and futures markets alongside
+a merged, near-total U.S. equity universe. (Corrected from "S&P 500" to "S&P Composite 1500" in an
+earlier pass, then updated again 2026-09-01: the S&P Composite 1500 is `config.py`'s historical
+default screening baseline, but the project's actual standing direction — confirmed directly by
+Ross — is to use the full ~44,700-symbol WRDS-merged universe [`universe_loader.load_full_
+universe()`: WRDS full US market + international GVKEY-labeled listings + yfinance + IBKR
+intraday + Binance crypto] everywhere a script can, not the smaller 1500-constituent baseline.)
 
 Concretely, the framework is built around two related, evolving questions: (1) whether
 cross-asset co-movement relationships exhibit regime-dependent, volatility-normalized arbitrage
@@ -73,11 +96,12 @@ CUSUM structural-break tests) operationalize, at the ~10⁶-pairwise-test scale 
 project runs at, a question formal econometrics already has tools for at the
 single-pair scale (Gregory & Hansen, 1996; Hansen, 1992; Quintos & Phillips, 1993).
 
-See `PAPER.md` for the full argument, literature review, and empirical results. **Note:** the
-episodic-vs-static methodology finding described above (currently the project's most novel
-direction, per its own owner's stated preference) is NOT yet in `PAPER.md` — it's real, in-progress
-work, tracked in `Development.md`'s Session 30/31 entries and `docs/HANDOFF.md`, not yet promoted
-to a citable claim.
+See `PAPER.md` for the full argument, literature review, and empirical results underlying THIS
+section's Strictness Paradox finding specifically. **Update, 2026-08-24:** the episodic-vs-static
+methodology finding described above is now the central thesis of `PAPER_MAGNITUDE.md` (the new
+lead paper — see the top-of-file status note), expanded into a seven-pillar argument rather than
+a single in-progress finding. `PAPER.md` remains the companion paper for the Strictness Paradox
+and backtest-specific results.
 
 ---
 
@@ -133,6 +157,18 @@ both resolved, is the next real "current results" entry for this section — not
 
 `Development.md`, `docs/FINDINGS.md`, and `docs/HANDOFF.md` are the sources of truth for exact
 current numbers, not this file, more so now than usual given how much is actively in flux.
+
+**Update, 2026-08-24 — a separate, DIFFERENT pair set now sits in production alongside the 182-pair
+episodic set above.** A full-universe static EG+BH-FDR cascade (`research/
+full_universe_eg_confirmation.py`, distinct from the episodic/PIT methodology described above —
+this one is the standard static full-sample screen, just finally run against the corrected
+~44,700-symbol universe instead of a narrow undercounted one) found 78 raw candidates; a real,
+multi-round data-integrity vetting (structural/GVKEY duplicates, WRDS ticker/PERMNO aliases, and
+a newly-characterized SPAC NAV-clustering contamination class — see `PAPER_MAGNITUDE.md` §7)
+narrowed this to 27, promoted into `output/results/1day/pairs.parquet`. Combined with the
+pre-existing `KVUE/KMB@3m`/`PNC/ZION@4h`, CAMARF's production confirmed-pair manifest
+(`research/pair_source.py`) is now **29 pairs**, not 3 — do not confuse this with the separate
+182-pair *episodic* research set above, which is a different methodology and a different file.
 
 ---
 

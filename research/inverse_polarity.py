@@ -68,6 +68,7 @@ from config import Config
 from data import DataStore, _gap_aware_returns, _clean_close
 from analysis import SpreadModel
 from aligned_pair_loader import load_aligned_pair
+from universe_loader import load_full_universe
 import ml
 
 
@@ -205,21 +206,14 @@ def polarity_anti_correlation(
 # ---------------------------------------------------------------------------
 
 def _load_full_universe(tf_label: str = "1D") -> dict:
-    """Load every symbol with a cached tf_label file directly from
-    DataStore's own flat cache directory (no manifest exists to enumerate
-    the universe from -- confirmed by checking, not assumed). Returns
-    {symbol: df}, symbols with no data or too little history dropped
-    later by build_returns_matrix's own min_overlap guard."""
-    safe = DataStore._TF_SAFE.get(tf_label, tf_label.lower())
-    pattern = os.path.join(Config.DATA.CACHE_DIR, f"*_{safe}.parquet")
-    out = {}
-    for path in glob.glob(pattern):
-        fname = os.path.basename(path)
-        symbol = fname[: -(len(safe) + len(".parquet") + 1)]
-        df = DataStore.load(symbol, tf_label)
-        if df is not None and not df.empty:
-            out[symbol] = df
-    return out
+    """Load the REAL full universe (yfinance+WRDS+Binance+IBKR merged, ~44,700 symbols) via
+    universe_loader.load_full_universe(). Found live 2026-08-24 (Ross: "shouldn't our inverse
+    polarity full universe be bigger? the full universe means all 44k assets doesn't it?"):
+    this function previously globbed ONLY Config.DATA.CACHE_DIR (the old yfinance-only cache,
+    ~1,697 symbols) -- every "full universe" claim this module made was actually scoped to <4%
+    of the real universe. Same bug, same fix already applied to k_bahc_candidate_discovery.py
+    and fdr_method_comparison.py in an earlier session; never propagated here until now."""
+    return load_full_universe(tf_label=tf_label)
 
 
 def full_universe_negative_candidates(
