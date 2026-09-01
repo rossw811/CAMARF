@@ -71,6 +71,7 @@ from config import Config
 from data import DataStore, _clean_close
 from analysis import _benjamini_hochberg
 from lead_lag_scan import lagged_corr_scan, best_lag, _MIN_EG_N
+from universe_loader import load_full_universe
 
 log = logging.getLogger("cross_tf_lead_lag_scan")
 _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -186,15 +187,10 @@ def full_universe_candidates(coarse_tf: str, corr_threshold: float = None) -> li
     if corr_threshold is None:
         corr_threshold = Config.UNIVERSE.MIN_PEARSON_CORR
 
-    safe = DataStore._TF_SAFE.get(coarse_tf, coarse_tf.lower())
-    pattern = os.path.join(Config.DATA.CACHE_DIR, f"*_{safe}.parquet")
-    raw = {}
-    for path in glob.glob(pattern):
-        fname = os.path.basename(path)
-        symbol = fname[: -(len(safe) + len(".parquet") + 1)]
-        df = DataStore.load(symbol, coarse_tf)
-        if df is not None and not df.empty:
-            raw[symbol] = df
+    # Found live 2026-08-24: previously globbed ONLY Config.DATA.CACHE_DIR (~1,697 symbols,
+    # the old yfinance-only cache) -- fixed to the real ~44,700-symbol merged universe, same
+    # fix already applied to fdr_method_comparison.py/k_bahc_candidate_discovery.py.
+    raw = load_full_universe(tf_label=coarse_tf)
     log.info(f"Loaded {len(raw)} symbols at {coarse_tf}")
     if len(raw) < 10:
         return []

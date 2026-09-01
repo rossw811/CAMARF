@@ -52,12 +52,7 @@ from lead_lag_scan import _gap_masked_log_price
 from spread_construction import full_sample_ols_spread
 from config import Config
 from data import DataStore
-
-_DEFAULT_PAIRS = [
-    ("LNT", "VTR"), ("LNT", "WELL"), ("AME", "MAR"), ("CMS", "DUK"),
-    ("EG", "WRB"), ("HAL", "NOV"), ("MET", "TMHC"), ("PFG", "STLD"),
-    ("UMBF", "FHB"),
-]
+from pair_source import confirmed_pairs_list
 
 ENTRY_Z = Config.RESEARCH.ENTRY_Z
 EXIT_Z = Config.RESEARCH.EXIT_Z
@@ -175,8 +170,13 @@ def main():
     p.add_argument("--tf", default="1hr")
     args = p.parse_args()
 
+    pairs_to_run = confirmed_pairs_list()
+    if not pairs_to_run:
+        print("No confirmed pairs found in output/results/*/pairs.parquet -- run analysis.py first. Aborting.")
+        return
+
     rows = []
-    for sym_a, sym_b in _DEFAULT_PAIRS:
+    for sym_a, sym_b in pairs_to_run:
         result = build_spread_z_and_legs(sym_a, sym_b, args.tf)
         if result is None:
             print(f"{sym_a}/{sym_b}: insufficient data")
@@ -207,7 +207,7 @@ def main():
             mean_hold_bars=("mean_hold_bars", "mean"), mean_total_pnl_z=("total_pnl_z", "mean"),
             mean_sharpe_like=("sharpe_like", "mean"),
         )
-        print(f"\nAggregate across {len(_DEFAULT_PAIRS)} pairs:")
+        print(f"\nAggregate across {len(pairs_to_run)} pairs:")
         print(agg.to_string())
 
     out_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "output", "research")

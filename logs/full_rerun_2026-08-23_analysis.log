@@ -1,0 +1,21 @@
+2026-08-23 16:19:53  INFO      ======================================================================
+2026-08-23 16:19:53  INFO      CAMARF  —  analysis.py  —  Cross-Asset Co-Movement Analysis
+2026-08-23 16:19:53  INFO      ======================================================================
+2026-08-23 16:28:10  INFO      Resuming — 1357 assets already complete (config hash 86ca897df0541bcf)
+2026-08-23 16:28:10  INFO      Building asset universe...
+2026-08-23 16:28:10  INFO      S&P 500: 503 tickers from cache (0.4h old)
+2026-08-23 16:28:10  INFO        sp400: 400 tickers from cache (0.4h old)
+2026-08-23 16:28:10  INFO        S&P MidCap 400: fetched 400 tickers (net new after S&P 500 overlap removed by dedup)
+2026-08-23 16:28:10  INFO        sp600: 603 tickers from cache (0.4h old)
+2026-08-23 16:28:10  INFO        S&P SmallCap 600: fetched 603 tickers (net new after dedup)
+2026-08-23 16:28:10  INFO        S&P 1500 total equities in universe: 1506
+2026-08-23 16:28:10  INFO        International equities + ADRs + FX spots added: 108 symbols
+2026-08-23 16:28:10  INFO        Total universe: 1697 assets
+2026-08-23 16:28:10  INFO      Exclusion list: skipping 3 assets ['BNY', 'FDXF', 'VLTO']
+2026-08-23 16:28:10  INFO      Universe candidates: 1694 assets
+2026-08-23 16:28:10  INFO      Phase 1 (yfinance daily): 1517 equities + 89 intl equities + 15 crypto + 25 forex/FX + 21 ETFs
+2026-08-23 16:32:56  INFO        WRDS primary: 1513/1538 equity/ETF symbols sourced from output/cache/wrds/ (['1D', '1M', '3M', '6M', '7D'])
+2026-08-23 16:32:57  INFO        Read-only mode (fetch=False): skipping yfinance fetch for 8 uncached + 145 stale daily assets — using cache as-is
+2026-08-23 16:32:57  INFO        All daily data cached and current — skipping yfinance download
+2026-08-23 16:33:03  INFO        1503 equities + 19 forex need IBKR intraday
+2026-08-23 16:33:03  INFO        Read-only mode (fetch=False): 1549 assets need intraday data but fetching is disabled — using cache as-is (expected for analysis.py; run data.py to backfill)

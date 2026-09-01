@@ -64,19 +64,14 @@ from data import DataStore
 from analysis import _eg_worker, SpreadModel
 from research.wrds_deep_history_episodic_scan import episodic_bhfdr_confirm
 from research.structural_break_onset_detection import find_all_breaks, compute_ols_spread
+from research.pair_source import confirmed_pairs_list
 
 _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _OUT_DIR = os.path.join(_ROOT, "output", "research")
 
-# The 3 currently standard-confirmed pairs' symbols -- a small, fast,
-# already-relevant candidate set for this sensitivity test (Step 2's real
-# scanner is the full-universe job; this is a config-selection tool, kept
-# deliberately small and fast).
-CANDIDATE_PAIRS = [("PNC", "ZION"), ("KVUE", "KMB"), ("IQV", "Q")]
 CANDIDATE_TFS = ["1h", "4h"]
 MAX_LAG = 1
 ALPHA = 0.05
-PNC_ZION = ("PNC", "ZION")  # the contiguity sanity-check pair
 
 
 def load_aligned_log_prices(sym_a: str, sym_b: str, tf_label: str):
@@ -228,9 +223,12 @@ def contiguity_fraction(rows):
     return in_run / n_sig
 
 
-def evaluate_config(config_name, pairs_data):
-    """pairs_data: {(sym_a, sym_b): (dates, log_a, log_b)}. Returns dict of
-    metrics for this config across the candidate set."""
+def evaluate_config(config_name, pairs_data, sanity_check_pair):
+    """pairs_data: {(sym_a, sym_b): (dates, log_a, log_b)}. sanity_check_pair:
+    the real confirmed pair used for the contiguity sanity check (metric b) --
+    was hardcoded to PNC/ZION; now the first pair in the current confirmed
+    set, so this stays valid as the confirmed-pair population changes.
+    Returns dict of metrics for this config across the candidate set."""
     base_rows_all = []
     per_pair_base_window = {}
     for (sym_a, sym_b), (dates, log_a, log_b) in pairs_data.items():
@@ -257,23 +255,30 @@ def evaluate_config(config_name, pairs_data):
     counts = np.array(perturbation_counts, dtype=float)
     cv = float(np.std(counts) / counts.mean()) if counts.mean() > 0 else float("nan")
 
-    pnc_zion_rows = [r for r in base_rows_all if (r["symbol_a"], r["symbol_b"]) == PNC_ZION
-                     or (r["symbol_b"], r["symbol_a"]) == PNC_ZION]
-    contiguity = contiguity_fraction(pnc_zion_rows)
+    sanity_rows = [r for r in base_rows_all if (r["symbol_a"], r["symbol_b"]) == sanity_check_pair
+                   or (r["symbol_b"], r["symbol_a"]) == sanity_check_pair]
+    contiguity = contiguity_fraction(sanity_rows)
 
     return {
         "config": config_name,
         "n_base_confirmed": n_base_confirmed,
         "perturbation_counts": perturbation_counts,
         "cv_confirmed_count": cv,
-        "pnc_zion_n_windows": len(pnc_zion_rows),
-        "pnc_zion_contiguity": contiguity,
+        "sanity_check_pair": f"{sanity_check_pair[0]}/{sanity_check_pair[1]}",
+        "sanity_check_n_windows": len(sanity_rows),
+        "sanity_check_contiguity": contiguity,
     }
 
 
 def main():
+    candidate_pairs = confirmed_pairs_list()
+    if not candidate_pairs:
+        print("No confirmed pairs found in output/results/*/pairs.parquet -- run analysis.py first. Aborting.")
+        return pd.DataFrame()
+    sanity_check_pair = candidate_pairs[0]
+
     pairs_data = {}
-    for sym_a, sym_b in CANDIDATE_PAIRS:
+    for sym_a, sym_b in candidate_pairs:
         dates, log_a, log_b = load_aligned_log_prices(sym_a, sym_b, "1h")
         if dates is None:
             print(f"SKIP {sym_a}/{sym_b}@1h: missing cache")
@@ -284,7 +289,7 @@ def main():
         print("No candidate pairs have cached 1h data -- aborting.")
         return pd.DataFrame()
 
-    results = [evaluate_config(name, pairs_data) for name in REGISTRY]
+    results = [evaluate_config(name, pairs_data, sanity_check_pair) for name in REGISTRY]
     result_df = pd.DataFrame(results)
 
     os.makedirs(_OUT_DIR, exist_ok=True)

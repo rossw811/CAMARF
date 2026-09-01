@@ -60,10 +60,25 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))  # for aligned_pair_loader
 
 from aligned_pair_loader import resolve_tf_results_dir as _resolve_tf_results_dir_tuple
+from pair_source import confirmed_pairs_list
 
-DD_HUB_PAIRS = [
-    ("AMD", "DD"), ("AME", "DD"), ("AMAT", "DD"), ("CMI", "DD"), ("DAL", "DD"),
-]
+
+def _largest_hub_cluster(pairs):
+    """Generalizes this script beyond the specific DD cluster it was
+    originally written against (Ross's 2026-08-24 direction: no hardcoded
+    pair lists -- derive from the current confirmed-pair set). Returns the
+    (hub_symbol, [pairs involving hub_symbol]) for whichever symbol appears
+    in the MOST confirmed pairs right now -- the current analogue of "the
+    DD hub," not necessarily DD itself."""
+    counts = {}
+    for a, b in pairs:
+        counts[a] = counts.get(a, 0) + 1
+        counts[b] = counts.get(b, 0) + 1
+    if not counts:
+        return None, []
+    hub = max(counts, key=counts.get)
+    hub_pairs = [(a, b) for a, b in pairs if a == hub or b == hub]
+    return hub, hub_pairs
 
 
 def _resolve_tf_results_dir(tf_dir="1hr"):
@@ -189,11 +204,21 @@ def analyze_cluster(corr_matrix, labels=None):
 
 
 def main():
+    confirmed = confirmed_pairs_list()
+    if not confirmed:
+        print("No confirmed pairs found in output/results/*/pairs.parquet -- run analysis.py first. Aborting.")
+        return
+    hub, hub_pairs = _largest_hub_cluster(confirmed)
+    if hub is None or len(hub_pairs) < 2:
+        print(f"No hub with >=2 confirmed pairs found in the current confirmed set "
+              f"(largest: {hub!r} with {len(hub_pairs)}) -- nothing to test.")
+        return
+
     results_dir = _resolve_tf_results_dir("1hr")
-    print(f"Loading DD-hub pairs from: {results_dir}\n")
+    print(f"Hub leg: {hub} ({len(hub_pairs)} confirmed pairs). Loading from: {results_dir}\n")
 
     series_by_pair = {}
-    for sym_a, sym_b in DD_HUB_PAIRS:
+    for sym_a, sym_b in hub_pairs:
         s = _load_real_bar_series(results_dir, sym_a, sym_b, column="z_rolling")
         if s is None:
             print(f"MISSING {sym_a}/{sym_b}: no spread_series file")
@@ -201,7 +226,8 @@ def main():
         series_by_pair[f"{sym_a}/{sym_b}"] = s
 
     if len(series_by_pair) < 2:
-        print("Fewer than 2 DD-hub pairs available — cannot build a correlation matrix.")
+        print(f"Fewer than 2 {hub}-hub pairs have a persisted spread_series file — "
+              f"cannot build a correlation matrix.")
         return
 
     # Combine on the shared calendar index (each column still carries its

@@ -1,25 +1,2 @@
-17:29:59 INFO  === wrds_universal_lead_lag_scan.py [whole-sample]: lead-lag correlation as a PAIR-DISCOVERY methodology across the FULL WRDS universe (not just already-confirmed pairs) ===
-17:31:16 INFO  5762 symbols, 16,597,441 unordered pairs in the full combinatorial universe
-17:32:01 DEBUG    Stage 0 lag=-10 done (35.4s elapsed)
-17:32:34 DEBUG    Stage 0 lag=-9 done (68.3s elapsed)
-17:33:07 DEBUG    Stage 0 lag=-8 done (101.3s elapsed)
-17:33:40 DEBUG    Stage 0 lag=-7 done (134.5s elapsed)
-17:34:13 DEBUG    Stage 0 lag=-6 done (167.4s elapsed)
-17:34:46 DEBUG    Stage 0 lag=-5 done (199.8s elapsed)
-17:35:17 DEBUG    Stage 0 lag=-4 done (231.4s elapsed)
-17:35:49 DEBUG    Stage 0 lag=-3 done (263.5s elapsed)
-17:36:22 DEBUG    Stage 0 lag=-2 done (295.8s elapsed)
-17:36:54 DEBUG    Stage 0 lag=-1 done (328.0s elapsed)
-17:37:26 DEBUG    Stage 0 lag=0 done (359.7s elapsed)
-17:37:57 DEBUG    Stage 0 lag=1 done (391.6s elapsed)
-17:38:29 DEBUG    Stage 0 lag=2 done (423.0s elapsed)
-17:38:56 DEBUG    Stage 0 lag=3 done (450.0s elapsed)
-17:39:28 DEBUG    Stage 0 lag=4 done (482.6s elapsed)
-17:40:00 DEBUG    Stage 0 lag=5 done (514.3s elapsed)
-17:40:32 DEBUG    Stage 0 lag=6 done (545.7s elapsed)
-17:41:03 DEBUG    Stage 0 lag=7 done (577.2s elapsed)
-17:41:38 DEBUG    Stage 0 lag=8 done (611.9s elapsed)
-17:42:10 DEBUG    Stage 0 lag=9 done (643.7s elapsed)
-17:42:41 DEBUG    Stage 0 lag=10 done (675.3s elapsed)
-17:42:41 INFO  Stage 0 (vectorized approximate screen): all 21 lags computed in 11.3 min
-17:42:57 INFO  Stage 0: 435,549/16,597,441 pairs survive the approximate |corr| >= 0.15 floor at a non-zero lag
+14:24:26 INFO  === wrds_universal_lead_lag_scan.py [whole-sample]: lead-lag correlation as a PAIR-DISCOVERY methodology across the FULL WRDS universe (not just already-confirmed pairs) ===
+15:09:13 INFO  33378 symbols, 557,028,753 unordered pairs in the full combinatorial universe

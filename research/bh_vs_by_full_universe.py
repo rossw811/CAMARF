@@ -15,10 +15,12 @@ _eg_worker for the EG test itself, via DataAligner.align_universe for
 alignment) -- not a reimplementation.
 
 Sample size disclosure: the full production 1h candidate pool involves the
-full ~1,566-symbol cached universe (potentially tens of thousands of
+full ~44,700-symbol merged (yfinance+WRDS+Binance+IBKR) universe (fixed
+2026-08-24 -- this previously undercounted the real universe as ~1,566
+symbols, the old yfinance-only cache; potentially tens of thousands of
 Pearson-surviving candidate pairs, per PAPER.md's own Filter-Ablation-funnel
 figure of 70,251 pairs at a prior universe snapshot). Running DataAligner +
-the full N^2 correlation matrix + EG-testing across all ~1,566 symbols in a
+the full N^2 correlation matrix + EG-testing across all ~44,700 symbols in a
 single-shot background task is not practical here. This script instead uses
 a real, randomly-selected sample of cached 1h symbols (SAMPLE_N below,
 seeded for reproducibility) -- large enough to produce a real, substantial
@@ -39,6 +41,7 @@ from config import Config
 from data import DataAligner
 from analysis import UniverseFilter, _eg_worker, _benjamini_hochberg, CointScanner
 from research.bh_fdr_dependence_check import benjamini_yekutieli
+from universe_loader import load_full_universe
 
 SAMPLE_N = 300
 SEED = 20260713
@@ -46,23 +49,22 @@ TF_LABEL = "1h"
 
 
 def load_sample_universe(n=SAMPLE_N, seed=SEED, force_include=("DD", "MIDD")):
-    cache_dir = Config.DATA.CACHE_DIR
-    all_files = [f for f in os.listdir(cache_dir) if f.endswith("_1hr.parquet")]
-    symbols_all = sorted(f[: -len("_1hr.parquet")] for f in all_files)
+    """Found live 2026-08-24: previously sampled from Config.DATA.CACHE_DIR's own directory
+    listing (~1,566 symbols, the old yfinance-only cache) -- the "full 1h candidate universe"
+    this docstring describes was never actually the real ~44,700-symbol merged universe. Fixed
+    to sample from the REAL universe (universe_loader.load_full_universe()), same fix already
+    applied to fdr_method_comparison.py/k_bahc_candidate_discovery.py. The disclosed N=300
+    tractability sampling itself is unchanged -- only the population it's sampled FROM is now
+    correct."""
+    full = load_full_universe(tf_label="1h")
+    symbols_all = sorted(full.keys())
     rng = random.Random(seed)
     forced = [s for s in force_include if s in symbols_all]
     remaining_pool = [s for s in symbols_all if s not in forced]
     sample = forced + rng.sample(remaining_pool, min(n - len(forced), len(remaining_pool)))
 
-    tf_data_raw = {}
-    for sym in sample:
-        path = os.path.join(cache_dir, f"{sym}_1hr.parquet")
-        try:
-            df = pd.read_parquet(path)
-            if df is not None and not df.empty and "close" in df.columns:
-                tf_data_raw[sym] = df
-        except Exception:
-            continue
+    tf_data_raw = {sym: full[sym] for sym in sample if sym in full and not full[sym].empty
+                   and "close" in full[sym].columns}
     return tf_data_raw, len(symbols_all)
 
 
@@ -110,7 +112,7 @@ def main():
 
     from concurrent.futures import ProcessPoolExecutor
     results = []
-    with ProcessPoolExecutor(max_workers=12) as pool:
+    with ProcessPoolExecutor(max_workers=Config.RUNTIME.N_WORKERS) as pool:
         for r in pool.map(_eg_worker, tasks, chunksize=25):
             results.append(r)
 

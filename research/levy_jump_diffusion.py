@@ -45,8 +45,8 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(
 
 from aligned_pair_loader import load_aligned_pair
 from lead_lag_scan import _gap_masked_log_price
+from pair_source import confirmed_pairs_list
 
-_CONFIRMED_PAIRS = [("KVUE", "KMB")]
 _CONFIRMED_TFS = ["2min", "3min"]
 
 
@@ -136,7 +136,7 @@ def main():
     ap.add_argument("--alpha", type=float, default=0.01)
     ap.add_argument("--pit-safe", action="store_true",
                      help="Source pairs from research/pit_pair_discovery.py's PIT-safe episodic "
-                          "screen instead of the hardcoded KVUE/KMB (task #5).")
+                          "screen instead of the current static confirmed-pair set (task #5).")
     args = ap.parse_args()
 
     if args.pit_safe:
@@ -144,7 +144,11 @@ def main():
         pair_tf_list = discover_pit_confirmed_pairs()
         print(f"Using PIT-safe episodic pair discovery: {len(pair_tf_list)} (pair, tf) combinations")
     else:
-        pair_tf_list = [(a, b, tf) for a, b in _CONFIRMED_PAIRS for tf in _CONFIRMED_TFS]
+        confirmed_pairs = confirmed_pairs_list()
+        if not confirmed_pairs:
+            print("No confirmed pairs found in output/results/*/pairs.parquet -- run analysis.py first. Aborting.")
+            return
+        pair_tf_list = [(a, b, tf) for a, b in confirmed_pairs for tf in _CONFIRMED_TFS]
 
     rows = []
     for sym_a, sym_b, tf in pair_tf_list:

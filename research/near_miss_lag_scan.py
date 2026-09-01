@@ -61,15 +61,14 @@ reported correlations for the same real symbols — exactly the kind of
 "verify against ground truth, don't trust the first result" check this
 project's discipline exists for.
 
-Read-only. Loads cached price data directly via DataStore.load/glob —
-never fetches.
+Read-only. Loads cached price data via universe_loader.load_full_universe()
+(2026-09-01, see below) — never fetches.
 
 Usage:
     python research/near_miss_lag_scan.py
     python research/near_miss_lag_scan.py --tf 1h --near-miss-low 0.25 --max-lag 10
 """
 import argparse
-import glob
 import os
 import sys
 
@@ -79,31 +78,27 @@ import pandas as pd
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from analysis import Config, UniverseFilter
-from data import DataAligner, DataStore
+from data import DataAligner
 from lead_lag_scan import best_lag, lagged_corr_scan
+from universe_loader import load_full_universe
 
-_TF_LABEL_TO_SAFE = {
-    "1m": "1min", "2m": "2min", "3m": "3min", "5m": "5min", "15m": "15min",
-    "30m": "30min", "1h": "1hr", "4h": "4hr", "1D": "1day", "7D": "7day",
-    "1M": "1mo", "3M": "3mo", "6M": "6mo",
-}
-
-
-def discover_symbols(tf_label, cache_dir=None):
-    if cache_dir is None:
-        cache_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "output", "cache")
-    safe = _TF_LABEL_TO_SAFE[tf_label]
-    pattern = os.path.join(cache_dir, f"*_{safe}.parquet")
-    files = glob.glob(pattern)
-    suffix = f"_{safe}.parquet"
-    symbols = [os.path.basename(f)[: -len(suffix)] for f in files]
-    return sorted(symbols)
+# Fixed 2026-09-01 per Ross's direct "make sure the 44,700 is consistent in
+# every script" audit: this previously had its own discover_symbols()
+# glob'ing ONLY Config.DATA.CACHE_DIR (the yfinance-only cache, ~1,731
+# symbols at 1D) via DataStore.load(), which has no WRDS awareness at all --
+# the exact same duplicated-loader bug class already fixed in 5+ other
+# research/*.py scripts (see Development.md 2026-08-24), just never caught
+# here. Not an active risk at this script's default --tf 1h (WRDS has no
+# intraday data, so 1h was never undercounted relative to what actually
+# exists), but --tf 1D silently missed WRDS's ~44,694 symbols. Now routed
+# through the canonical universe_loader.load_full_universe() like every
+# other full-universe research script.
 
 
 def find_lagged_near_misses(returns, syms, corr0, near_miss_low, near_miss_high, max_lag, min_lift):
     """Core, independently-testable logic (extracted 2026-06-24 so this
-    can be synthetically verified without needing real cache files on
-    disk for discover_symbols' glob — see debug/_verify_near_miss_lag_scan.py).
+    can be synthetically verified without needing real cache files on disk
+    for the universe load — see debug/_verify_near_miss_lag_scan.py).
     Identify pairs with 0.25<=|corr_lag0|<0.40 (defaults), then run the
     lagged-correlation sweep only on that subset. Returns a DataFrame,
     empty if no near-miss pairs exist at this threshold band."""
@@ -154,18 +149,12 @@ def main():
     args = p.parse_args()
     high = args.near_miss_high if args.near_miss_high is not None else Config.UNIVERSE.MIN_PEARSON_CORR
 
-    symbols = discover_symbols(args.tf)
-    print(f"Discovered {len(symbols)} symbols with cached {args.tf} data.")
-    if not symbols:
+    raw_data = load_full_universe(args.tf, columns=["close"])
+    print(f"Loaded {len(raw_data)} symbols from the merged yfinance+WRDS+Binance+IBKR "
+          f"universe (tf={args.tf}).")
+    if not raw_data:
         print("No cached symbols found for this TF.")
         return
-
-    raw_data = {}
-    for sym in symbols:
-        df = DataStore.load(sym, args.tf)
-        if df is not None and not df.empty:
-            raw_data[sym] = df
-    print(f"{len(raw_data)}/{len(symbols)} loaded with usable data.")
 
     # MUST align onto a shared calendar before build_returns_matrix —
     # see module docstring's "BUG FOUND AND FIXED" account. This exactly

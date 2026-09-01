@@ -52,8 +52,27 @@ from aligned_pair_loader import load_aligned_pair
 from analysis import Config
 from data import DataStore, _gap_aware_returns
 from lead_lag_scan import _eg_pvalue, _gap_masked_log_price, lagged_corr_scan
+from pair_source import confirmed_pairs_list
 
 _MIN_EG_N = 60
+
+
+def _negative_control_pairs(confirmed, n=6, seed=42):
+    """Deterministic negative control, sourced from the current confirmed
+    set's own symbol pool rather than a hand-picked list (Ross's 2026-08-24
+    direction: no hardcoded pair lists). Recombines those symbols into
+    (a, b) combinations that were never THEMSELVES a confirmed pair -- the
+    exact property a negative control needs (no known relationship),
+    without a separate universe fetch."""
+    symbols = sorted(set(s for pair in confirmed for s in pair))
+    confirmed_set = {frozenset(p) for p in confirmed}
+    candidates = [(a, b) for i, a in enumerate(symbols) for b in symbols[i + 1:]
+                  if frozenset((a, b)) not in confirmed_set]
+    if not candidates:
+        return []
+    rng = np.random.RandomState(seed)
+    idx = rng.choice(len(candidates), size=min(n, len(candidates)), replace=False)
+    return [candidates[i] for i in idx]
 
 
 def full_lag_sweep(ret_a, ret_b, logp_a, logp_b, max_lag, max_eg_lag, compute_eg=True):
@@ -138,30 +157,25 @@ def main():
     args = p.parse_args()
     max_eg_lag = Config.ANALYSIS.EG_MAX_LAG
 
-    # Group 1: known-confirmed pairs (positive control). Pulled directly
-    # from the last complete real analysis.py output (see caller notes in
-    # Development.md for exactly which run this came from — the manifest
-    # may be mid-refresh from a concurrent background pipeline run at the
-    # time this executes, so this uses the archived-but-real 1hr pairs
-    # output, not the live manifest, and says so explicitly).
-    confirmed_pairs = [
-        ("LNT", "VTR"), ("LNT", "WELL"), ("AXP", "CRWD"), ("AME", "DD"), ("AME", "MAR"),
-        ("AMAT", "DD"), ("APP", "CRWD"), ("AVGO", "CRWD"), ("CAT", "DD"), ("CMS", "DUK"),
-        ("FIX", "MLI"), ("DE", "DD"), ("DAL", "DD"), ("EME", "MLI"), ("EG", "WRB"),
-        ("GS", "MLI"), ("HAL", "NOV"), ("MET", "TMHC"), ("PFG", "STLD"), ("VRT", "MTZ"),
-        ("QQQ", "MLI"), ("FHN", "MLI"), ("MTSI", "WCC"), ("UMBF", "FHB"),
-    ]
+    # Group 1: known-confirmed pairs (positive control) -- the live,
+    # currently-confirmed set from output/results/*/pairs.parquet, not a
+    # frozen snapshot (Ross's 2026-08-24 direction: no hardcoded pair lists,
+    # always the current confirmed set or full universe).
+    confirmed_pairs = confirmed_pairs_list()
 
-    # Group 2: comparison pairs -- 2 real near-miss pairs already flagged
-    # by the existing (stale, pre-expansion, 2026-06-28) near_miss_lag_scan.py
-    # output, plus 6 hand-picked cross-sector pairs with no known
-    # relationship (arbitrary symbols from unrelated sectors already
-    # present in the confirmed-pair list above, deliberately mismatched).
-    comparison_pairs = [
-        ("CVSA", "STEP"), ("MPT", "SPG"),  # real flagged near-miss (stale scan)
-        ("LNT", "HAL"), ("CAT", "WRB"), ("DUK", "MTSI"), ("STLD", "VTR"),
-        ("FHB", "EME"), ("QQQ", "GS"),  # arbitrary cross-sector, no known relationship
-    ]
+    # Group 2: comparison pairs -- real near-miss pairs from the current
+    # near_miss_lag_scan.py output for this --tf (if present), plus a
+    # dynamic negative control recombined from the confirmed set's own
+    # symbol pool (see _negative_control_pairs).
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    near_miss_path = os.path.join(root, "output", "research", f"near_miss_lag_scan_{args.tf}.parquet")
+    near_miss_pairs = []
+    if os.path.exists(near_miss_path):
+        nm = pd.read_parquet(near_miss_path, columns=["symbol_a", "symbol_b"])
+        near_miss_pairs = list(zip(nm["symbol_a"], nm["symbol_b"]))
+    else:
+        print(f"WARNING: {near_miss_path} not found -- comparison group will have no real near-miss pairs.")
+    comparison_pairs = near_miss_pairs + _negative_control_pairs(confirmed_pairs)
 
     if args.pairs_file:
         pf = pd.read_parquet(args.pairs_file)

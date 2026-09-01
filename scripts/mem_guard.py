@@ -59,6 +59,37 @@ def _free_vram_gb() -> float | None:
 
 
 def _kill_tree(proc: subprocess.Popen):
+    """Found live 2026-08-24: killpg(getpgid(proc.pid)) only reaches processes still in the
+    SAME process group as `proc`. When the wrapped command spawns ITS OWN children with
+    start_new_session=True (run_overnight_research.py does exactly this for its own per-stage
+    timeout/tree-kill mechanism -- os.name-branched _popen_kwargs()), those grandchildren land
+    in a NEW group and survive this killpg entirely -- confirmed live: mem_guard correctly
+    killed run_overnight_research.py on a memory-floor breach, but its orphaned
+    episodic_window_size_sweep.py subprocess kept running unsupervised and grew to 14GB+ before
+    being caught manually. Two independently-correct tree-kill designs that don't compose when
+    nested. Fixed: walk the REAL descendant tree via psutil (works regardless of process-group
+    membership) as the primary mechanism, with the killpg call kept as a fast-path/fallback for
+    when psutil isn't available."""
+    try:
+        import psutil
+        try:
+            parent = psutil.Process(proc.pid)
+            descendants = parent.children(recursive=True)
+            for child in descendants:
+                try:
+                    child.terminate()
+                except psutil.NoSuchProcess:
+                    pass
+            _gone, alive = psutil.wait_procs(descendants, timeout=2)
+            for child in alive:
+                try:
+                    child.kill()
+                except psutil.NoSuchProcess:
+                    pass
+        except psutil.NoSuchProcess:
+            pass
+    except ImportError:
+        pass  # fall through to the process-group kill below regardless
     try:
         os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
         time.sleep(2)
@@ -91,11 +122,21 @@ def _stop_service(name: str) -> bool:
 
 def main() -> int:
     p = argparse.ArgumentParser(description="Memory-watch guard for heavy CAMARF jobs")
-    p.add_argument("--min-free-gb", type=float, default=4.0,
-                   help="Kill the job if system free memory (MemAvailable) drops below this.")
-    p.add_argument("--min-vram-free-gb", type=float, default=1.0,
-                   help="Kill the job if free VRAM drops below this (skipped if no GPU).")
-    p.add_argument("--poll-seconds", type=float, default=5.0)
+    p.add_argument("--min-free-gb", type=float, default=10.0,
+                   help="Kill the job if system free memory (MemAvailable) drops below this. "
+                        "Raised from 4.0 to 10.0 (2026-08-23) after 3 unexplained CachyOS "
+                        "hangs this session with no hardware fault logged anywhere (non-ECC "
+                        "RAM -- EDAC can't monitor it) -- a materially wider safety margin "
+                        "since the actual failure mechanism is unconfirmed, not just a tuned "
+                        "floor for a known-understood risk.")
+    p.add_argument("--min-vram-free-gb", type=float, default=3.0,
+                   help="Kill the job if free VRAM drops below this (skipped if no GPU). "
+                        "Raised from 1.0 to 3.0, same reasoning as --min-free-gb above.")
+    p.add_argument("--poll-seconds", type=float, default=2.0,
+                   help="Raised polling frequency from 5.0 -> 2.0 (2026-08-23) for faster "
+                        "detection given the unexplained hangs -- a real, present cost "
+                        "(more frequent nvidia-smi/meminfo reads) accepted deliberately over "
+                        "slower detection.")
     p.add_argument("--stop-gpu-sharers", action="store_true",
                    help="Stop ollama (and any other services in --gpu-sharer-service, repeatable) "
                         "before launching, restart them after -- added 2026-08-23 after ollama's "

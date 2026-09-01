@@ -113,7 +113,7 @@ we run anything") — this plan stays a plan until each of these is answered. Re
 
 | Component | Spec | Verified via |
 |---|---|---|
-| CPU | Intel i7-10700K, 8 cores / 8 threads (**SMT disabled**), 3.8GHz base / 4.9GHz boost, 16MB L3, AVX2 (no AVX-512) | `lscpu` |
+| CPU | Intel i7-10700K, 8 cores / **16 threads (SMT/HT now ENABLED)**, 3.8GHz base / 4.9GHz boost, 16MB L3, AVX2 (no AVX-512) — **changed 2026-08-23**: was "8 cores/8 threads, SMT disabled" throughout this doc's earlier sections (still accurate for anything dated before 2026-08-23) until a BIOS update (1621→1806) + loading Optimized Defaults (replacing a custom profile suspected as the real cause of that session's 5 unexplained hangs) re-enabled HT. `Config.RUNTIME.N_WORKERS` auto-derives from `os.cpu_count()` so this propagates with no code change (now resolves to 15, was 7) — no other action needed, but any doc/estimate below citing "8 cores"/"no SMT" is describing the OLD topology, not current | `lscpu` |
 | RAM | **46.9GB physical** + **46.9GB zram swap** (compressed, RAM-backed — degrades softly under pressure instead of hard-OOM-killing like the Windows box did all night) | `free -h`, `/proc/meminfo` |
 | GPU | **NVIDIA RTX 4080**, 16GB VRAM, compute capability **8.9** (Ada Lovelace — 4th-gen tensor cores, FP8 support), driver 610.57.04, CUDA runtime 13.3, PCIe Gen3 x16 | `nvidia-smi` |
 | Storage | 2× NVMe SSD, 931.5GB each (**already NTFS-formatted, contents unknown — NOT confirmed empty**, see §0), 1× SATA SSD 111.8GB, 1× SATA HDD 931.5GB (**this is where `/` and `/home` currently live**, on a 390.9GB btrfs subvolume, 278GB free) | `lsblk`, `findmnt`, `lsblk -f` |
@@ -313,6 +313,48 @@ then, expect it to be scoped as its own dedicated multi-session effort with its 
 (this project's `.claude/skills/premortem/SKILL.md` — "run BEFORE a new methodology/comparison
 arm/production change is built or finalized" — is exactly the right tool to invoke before writing
 the first line of this, not after).
+
+**2026-08-23 update — real new evidence changes the effort estimate, still scoping-only, still
+not built.** This session built and verified a batched, fixed-lag (maxlag=1, autolag=None)
+Engle-Granger implementation for two OTHER call sites that already used those exact fixed-lag
+parameters (`analysis.py::_rolling_coint_worker`, `::expanding_coint_fraction` -- not the
+autolag="aic" screen this section is about, no methodology change there, see docs/HANDOFF.md
+2026-08-23). Two findings from that work directly inform this section:
+
+1. **The closed-form batched regression math is now a known-working, verified template, not a
+   theoretical sketch.** Both OLS steps (cointegrating regression, ADF regression) reduce to
+   normal-equations linear algebra that vectorizes cleanly across many (pair, window) rows at
+   once via elementwise array ops -- confirmed correct against real `statsmodels.coint()` output
+   to ~1e-8 (t-stat) / ~1e-6 (p-value) across cointegrated, non-cointegrated, and degenerate
+   edge cases (`debug/_verify_gpu_batched_eg.py`, 7/7). Extending from the fixed maxlag=1 case
+   to a general maxlag=L case (option (b) above) means the ADF regression gains L regressors
+   instead of 2 -- a proper batched `(X'X)^-1 X'y` per (pair, lag) cell via `np.einsum`/batched
+   matrix inversion, not the simple closed-form scalar formulas the maxlag=1 case allowed, but
+   the SHAPE of the problem (many small independent regressions, vectorize across the batch
+   dimension) is now proven to work end-to-end, not an open question.
+2. **GPU is very likely the WRONG framing for this too, based on directly measured evidence, not
+   assumption.** The maxlag=1 case was benchmarked at up to 20,000 windows on the real RTX 4080:
+   plain CPU-batched numpy (94.9x over the statsmodels loop) was FASTER than the GPU/CuPy version
+   at every scale tested (GPU: 54.7x over the loop, i.e. 0.6x vs CPU-batched -- transfer/
+   kernel-launch overhead dominates for small closed-form regressions, unlike the genuinely
+   FLOP-bound correlation-matrix core where GPU wins). This section's own title ("CuPy/RAPIDS for
+   the EG cointegration test batch") and §"Action" plan (`uv pip install cupy-cuda13x`) should be
+   read as a real, evidence-based open question now, not settled: a full autolag="aic"
+   reimplementation should be BENCHMARKED on both CPU-batched and GPU-batched forms before
+   committing to either, the same way this session's smaller EG case was -- do not assume GPU is
+   the right target just because "GPU" was this section's original framing.
+
+**What this changes, concretely**: the effort estimate for option (b) (reimplementing the full
+AIC-lag-selection loop as a batched operation) should be revised DOWN from "a genuinely new,
+unverified numerical procedure" to "a known-working pattern, extended to more regressors and an
+added per-pair argmin(AIC) reduction over the lag dimension" -- still real, non-trivial work
+(proper batched matrix inversion for L>2 regressors, not scalar closed-form; the AIC formula
+itself and its exact degrees-of-freedom convention need to match statsmodels' own exactly), but
+meaningfully less speculative than before. **The verification bar and the recommendation to get
+Ross's explicit sign-off + a premortem before the first line of code are UNCHANGED** -- de-risking
+the "will the batching work at all" question does not de-risk the "does the full AIC-search
+reimplementation match statsmodels bit-close across real production pairs and adversarial edge
+cases" question, which is the actual safety-critical bar for this specific test.
 
 ### 3.3 k-BAHC clustering on GPU
 

@@ -44,6 +44,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import pandas as pd
 
 from analysis import CointScanner
+from config import Config
 from universe_loader import (
     align_to_common_calendar, filter_exact_correlation_duplicates,
     filter_structural_pairs, load_full_universe,
@@ -64,7 +65,7 @@ def main():
     import argparse
     p = argparse.ArgumentParser(description="Full-universe EG/BH-FDR confirmation")
     p.add_argument("--tf", default="1D")
-    p.add_argument("--n-workers", type=int, default=12)
+    p.add_argument("--n-workers", type=int, default=Config.RUNTIME.N_WORKERS)
     p.add_argument("--lookback-years", type=int, default=10,
                     help="Must match the --lookback-years the prefilter stage was run with -- "
                          "selects both the candidate chunk directory to read and the calendar "

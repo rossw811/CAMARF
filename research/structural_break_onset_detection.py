@@ -61,9 +61,52 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(
 from config import Config
 from data import DataStore, _clean_close
 from analysis import StrategyDecayDetector
+from universe_loader import load_full_universe
 import ml
 
-MIN_SEGMENT_BARS = 200  # floor below which zivot_andrews itself refuses (n < 200 -> None)
+MIN_SEGMENT_BARS = 200  # floor below which zivot_andrews itself refuses (n < 200 -> None) --
+# kept as the ABSOLUTE bar-count floor (a genuine numerical requirement of the Chow-F test's own
+# degrees of freedom, unrelated to calendar time) and as the default for callers that don't pass
+# real dates. Prefer min_segment_bars_for_dates() below wherever real dates are available.
+
+_MIN_SEGMENT_CALENDAR_DAYS = 200.0  # matches MIN_SEGMENT_BARS's pre-fix behavior EXACTLY at 1D
+# (200 bars = ~200 calendar days there) -- chosen to preserve existing 1D behavior unchanged,
+# not re-derived from a fresh empirical test. Ross's original ask ("run an actual test to see
+# what value makes a valid relationship") is still open -- this fix corrects the mechanical bug
+# (comparing 200 bars at 3m, a few days, against 200 bars at 1D, ~9.5 months, as the same
+# threshold), not the separate, still-unanswered question of whether 200 calendar days is
+# itself the right regime-length floor. Disclosed, not silently declared correct.
+
+
+def _calendar_days_per_bar(dates: pd.DatetimeIndex) -> float:
+    """Median bar spacing in calendar days, derived directly from the actual data passed in --
+    not a static timeframe-label lookup table (the kind other scripts in this codebase,
+    cross_timeframe_divergence.py::_BARS_PER_DAY, need to keep manually in sync per timeframe,
+    already found missing entries once -- cycle_detection.py had to patch in 2min/3min).
+    Automatically correct for any timeframe/gap pattern with zero table maintenance."""
+    if len(dates) < 2:
+        return 1.0
+    deltas = np.diff(dates.values).astype("timedelta64[s]").astype(float) / 86400.0
+    deltas = deltas[deltas > 0]
+    if len(deltas) == 0:
+        return 1.0
+    return float(np.median(deltas))
+
+
+def min_segment_bars_for_dates(dates: pd.DatetimeIndex,
+                                min_calendar_days: float = _MIN_SEGMENT_CALENDAR_DAYS) -> int:
+    """Calendar-time-normalized segment floor -- fixes the real, previously-diagnosed bug
+    (2026-08-23) where a flat MIN_SEGMENT_BARS=200 meant ~9.5 months of real time at 1D but only
+    a few days at 3m, producing spurious noise-driven "breaks" at fine intraday resolution
+    (confirmed directly: KVUE/KMB@3m showed 9 "breaks" in a couple months under the old flat
+    200-bar floor). Always returns at least MIN_SEGMENT_BARS regardless of calendar-day math --
+    zivot_andrews's own n<200 requirement is a numerical floor, not a calendar-time one, and
+    holds at every timeframe."""
+    days_per_bar = _calendar_days_per_bar(dates)
+    bars_for_calendar_floor = (
+        int(np.ceil(min_calendar_days / days_per_bar)) if days_per_bar > 0 else MIN_SEGMENT_BARS
+    )
+    return max(MIN_SEGMENT_BARS, bars_for_calendar_floor)
 
 
 def _ar1_phi(segment: np.ndarray) -> float:
@@ -96,7 +139,7 @@ def _classify_break(pre_seg: np.ndarray, post_seg: np.ndarray) -> dict:
             "phi_separation": abs(pre_phi - post_phi) if np.isfinite(pre_phi) and np.isfinite(post_phi) else -1.0}
 
 
-def find_all_breaks(spread: np.ndarray, dates: pd.DatetimeIndex, min_segment_bars: int = MIN_SEGMENT_BARS) -> list:
+def find_all_breaks(spread: np.ndarray, dates: pd.DatetimeIndex, min_segment_bars: int = None) -> list:
     """SLIDING-WINDOW scan over StrategyDecayDetector.zivot_andrews, not
     binary segmentation -- a real design correction, found by this
     module's own synthetic verification, not assumed. A single global
@@ -118,6 +161,8 @@ def find_all_breaks(spread: np.ndarray, dates: pd.DatetimeIndex, min_segment_bar
     (within min_segment_bars of each other) are collapsed, keeping the
     one with the largest pre/post phi separation (the more decisively
     resolved of the duplicates) rather than double-counting."""
+    if min_segment_bars is None:
+        min_segment_bars = min_segment_bars_for_dates(dates)
     n = len(spread)
     # Window/step sizing is a real, disclosed tradeoff, found empirically
     # not assumed. Two separate failure modes were found in synthetic
@@ -198,15 +243,10 @@ def full_universe_scan(tf_label: str = "1D", corr_threshold: float = None) -> li
     if corr_threshold is None:
         corr_threshold = Config.UNIVERSE.MIN_PEARSON_CORR
 
-    safe = DataStore._TF_SAFE.get(tf_label, tf_label.lower())
-    pattern = os.path.join(Config.DATA.CACHE_DIR, f"*_{safe}.parquet")
-    raw = {}
-    for path in glob.glob(pattern):
-        fname = os.path.basename(path)
-        symbol = fname[: -(len(safe) + len(".parquet") + 1)]
-        df = DataStore.load(symbol, tf_label)
-        if df is not None and not df.empty:
-            raw[symbol] = df
+    # Found live 2026-08-24: previously globbed ONLY Config.DATA.CACHE_DIR (~1,697 symbols,
+    # the old yfinance-only cache) -- fixed to the real ~44,700-symbol merged universe, same
+    # fix already applied to fdr_method_comparison.py/k_bahc_candidate_discovery.py.
+    raw = load_full_universe(tf_label=tf_label)
     print(f"Loaded {len(raw)} symbols at {tf_label}")
     if len(raw) < 10:
         return []

@@ -45,7 +45,8 @@ import pandas as pd
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from gics import load_gics_tags
-from research.fdr_method_comparison import apply_all_methods, KNOWN_NON_DD_PAIRS
+from research.fdr_method_comparison import apply_all_methods
+from research.pair_source import confirmed_pairs_list
 
 _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _OUT_DIR = os.path.join(_ROOT, "output", "research")
@@ -123,9 +124,10 @@ def main():
         log.info("  %-22s: %d/%d survive", method, n_survive, len(pvals))
         summary_rows.append({"method": method, "n_survive": n_survive, "m_tested": len(pvals)})
 
+    watchlist_pairs = confirmed_pairs_list()
     log.info("")
-    log.info("=== The 8 known non-DD target pairs under this restriction ===")
-    for sym_a, sym_b in KNOWN_NON_DD_PAIRS:
+    log.info("=== The %d known confirmed pairs under this restriction ===", len(watchlist_pairs))
+    for sym_a, sym_b in watchlist_pairs:
         sec_a = sector_map.get(sym_a)
         sec_b = sector_map.get(sym_b)
         same_sector = sec_a is not None and sec_a == sec_b

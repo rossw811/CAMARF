@@ -47,12 +47,7 @@ from aligned_pair_loader import load_aligned_pair
 from lead_lag_scan import _gap_masked_log_price
 from spread_construction import full_sample_ols_spread
 from config import Config
-
-_DEFAULT_PAIRS = [
-    ("LNT", "VTR"), ("LNT", "WELL"), ("AME", "MAR"), ("CMS", "DUK"),
-    ("EG", "WRB"), ("HAL", "NOV"), ("MET", "TMHC"), ("PFG", "STLD"),
-    ("UMBF", "FHB"),
-]
+from pair_source import confirmed_pairs_list
 
 ENTRY_Z = Config.RESEARCH.ENTRY_Z
 EXIT_Z = Config.RESEARCH.EXIT_Z
@@ -119,8 +114,12 @@ def simulate_trades(z: pd.Series, spread_vol: pd.Series = None, target_vol: pd.S
 
 def run_vol_targeting(tf_label):
     print("=== Arm 1: volatility-targeting sizing (per-pair) ===\n")
+    pairs_to_run = confirmed_pairs_list()
+    if not pairs_to_run:
+        print("No confirmed pairs found in output/results/*/pairs.parquet -- run analysis.py first. Aborting.")
+        return pd.DataFrame()
     rows = []
-    for sym_a, sym_b in _DEFAULT_PAIRS:
+    for sym_a, sym_b in pairs_to_run:
         result = build_spread_z(sym_a, sym_b, tf_label)
         if result is None:
             continue
@@ -148,8 +147,12 @@ def run_vol_targeting(tf_label):
 
 def run_drawdown_derisking(tf_label):
     print("\n=== Arm 2: drawdown-triggered de-risking (portfolio-level) ===\n")
+    pairs_to_run = confirmed_pairs_list()
+    if not pairs_to_run:
+        print("No confirmed pairs found in output/results/*/pairs.parquet -- run analysis.py first. Aborting.")
+        return pd.DataFrame()
     all_trades = []
-    for sym_a, sym_b in _DEFAULT_PAIRS:
+    for sym_a, sym_b in pairs_to_run:
         result = build_spread_z(sym_a, sym_b, tf_label)
         if result is None:
             continue
@@ -195,7 +198,7 @@ def run_drawdown_derisking(tf_label):
     flat_sharpe = df["pnl_flat"].mean() / df["pnl_flat"].std() if df["pnl_flat"].std() > 1e-9 else np.nan
     derisked_sharpe = df["pnl_derisked"].mean() / df["pnl_derisked"].std() if df["pnl_derisked"].std() > 1e-9 else np.nan
 
-    print(f"{len(df)} pooled trades across {len(_DEFAULT_PAIRS)} pairs, "
+    print(f"{len(df)} pooled trades across {len(pairs_to_run)} pairs, "
           f"{n_derisk_periods}/{len(df)} trades occurred during a de-risked period.")
     print(f"Flat sizing:       total_pnl={equity_flat.iloc[-1]:.2f}  max_drawdown={max_dd_flat:.2f}  sharpe={flat_sharpe:.3f}")
     print(f"Drawdown de-risked: total_pnl={equity_derisked.iloc[-1]:.2f}  max_drawdown={max_dd_derisked:.2f}  sharpe={derisked_sharpe:.3f}")

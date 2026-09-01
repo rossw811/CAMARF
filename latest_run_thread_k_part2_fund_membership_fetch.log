@@ -8,3 +8,7 @@
 2026-08-14 08:47:54,305  INFO        progress: 120/120 new batches this session (2.8 min)
 2026-08-14 08:47:54,305  INFO      Fetch complete. Assembling final output from all 120 checkpoints...
 2026-08-14 08:47:56,310  INFO      Saved 971066 (ticker, rdate) rows -> output\research\fund_membership_history.parquet, 20335 distinct tickers with any real institutional-holding history found.
+2026-08-25 15:20:57,227  INFO      US universe: 22635 tickers (Thread K Part 1's full US market only -- international excluded, see build_combined_universe()'s docstring)
+2026-08-25 15:20:57,231  INFO      120/120 batches already checkpointed (resuming)
+2026-08-25 15:20:59,386  INFO      Fetch complete. Assembling final output from all 120 checkpoints...
+2026-08-25 15:21:04,247  INFO      Saved 971066 (ticker, rdate) rows -> output\research\fund_membership_history.parquet, 20335 distinct tickers with any real institutional-holding history found.

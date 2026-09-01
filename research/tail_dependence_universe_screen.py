@@ -186,7 +186,7 @@ def run_eg_fdr(candidates, aligned, retained_symbols, tf_label, alpha=None):
     if not tasks:
         return pd.DataFrame()
     results = []
-    with ProcessPoolExecutor(max_workers=12) as pool:
+    with ProcessPoolExecutor(max_workers=Config.RUNTIME.N_WORKERS) as pool:
         for r in pool.map(_eg_worker, tasks, chunksize=25):
             results.append(r)
     ok = [r for r in results if r.get("ok")]

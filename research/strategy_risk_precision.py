@@ -80,6 +80,12 @@ def main():
         print(f"{pair_key}: n={n_trades} precision={precision:.3f} "
               f"freq/yr={frequency:.1f} implied_annual_SR={sr_annualized:.3f}")
 
+    if not rows:
+        # Found live 2026-08-24: every pair had <10 trades (all SKIPped above), leaving rows
+        # empty -- pd.DataFrame([]).sort_values(...) raises KeyError on a column that can't
+        # exist on a columnless empty frame, not a meaningful "no results" signal.
+        print("\nNo pairs had >=10 trades -- nothing to report.")
+        return
     out_df = pd.DataFrame(rows).sort_values("sharpe_annualized_implied")
     os.makedirs("output/research", exist_ok=True)
     out_df.to_parquet("output/research/strategy_risk_precision.parquet")

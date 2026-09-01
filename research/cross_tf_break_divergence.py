@@ -50,23 +50,36 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(
 
 from data import DataStore, _clean_close
 import ml
-from structural_break_onset_detection import find_all_breaks, compute_ols_spread, MIN_SEGMENT_BARS
+from structural_break_onset_detection import (
+    find_all_breaks, compute_ols_spread, MIN_SEGMENT_BARS, min_segment_bars_for_dates,
+)
 
 
-def _breaks_for_pair(symbol_a: str, symbol_b: str, tf_label: str, min_segment_bars: int = MIN_SEGMENT_BARS):
+def _breaks_for_pair(symbol_a: str, symbol_b: str, tf_label: str, min_segment_bars: int = None):
     """Break history for (symbol_a, symbol_b) at a single timeframe, reusing
     structural_break_onset_detection.py's own main()-loop logic exactly
-    (same OLS spread construction, same find_all_breaks call)."""
+    (same OLS spread construction, same find_all_breaks call).
+
+    min_segment_bars default changed 2026-08-23: was a single flat MIN_SEGMENT_BARS shared
+    across every timeframe -- a real bug for THIS script specifically, since scan_pair() below
+    calls this at two DIFFERENT timeframes (tf1, tf2) at once, so a flat value was never even
+    self-consistent across its own two calls. Now resolved per-call from the pair's own real
+    date spacing via min_segment_bars_for_dates() once loaded (still overridable explicitly)."""
     df_a, df_b = DataStore.load(symbol_a, tf_label), DataStore.load(symbol_b, tf_label)
     if df_a is None or df_b is None:
         return None
     common_idx = df_a.index.intersection(df_b.index)
-    if len(common_idx) < min_segment_bars:
+    if len(common_idx) < MIN_SEGMENT_BARS:  # cheap absolute floor before resolving the real one
         return None
     df_a, df_b = df_a.loc[common_idx], df_b.loc[common_idx]
+    resolved_min_segment_bars = (
+        min_segment_bars if min_segment_bars is not None else min_segment_bars_for_dates(common_idx)
+    )
+    if len(common_idx) < resolved_min_segment_bars:
+        return None
     log_a, log_b = np.log(_clean_close(df_a)), np.log(_clean_close(df_b))
     spread = compute_ols_spread(log_a, log_b)
-    return find_all_breaks(spread, df_a.index, min_segment_bars=min_segment_bars)
+    return find_all_breaks(spread, df_a.index, min_segment_bars=resolved_min_segment_bars)
 
 
 def find_divergence_events(broken_side_breaks: list, intact_side_breaks: list) -> list:
@@ -91,7 +104,10 @@ def find_divergence_events(broken_side_breaks: list, intact_side_breaks: list) -
     return events
 
 
-def scan_pair(symbol_a: str, symbol_b: str, tf1: str, tf2: str, min_segment_bars: int = MIN_SEGMENT_BARS) -> list:
+def scan_pair(symbol_a: str, symbol_b: str, tf1: str, tf2: str, min_segment_bars: int = None) -> list:
+    # min_segment_bars=None (default): each call resolves its OWN calendar-normalized floor
+    # independently -- tf1 and tf2 are frequently different timeframes, so sharing one flat
+    # value here was exactly the bug this whole fix addresses, not an edge case.
     breaks_tf1 = _breaks_for_pair(symbol_a, symbol_b, tf1, min_segment_bars)
     breaks_tf2 = _breaks_for_pair(symbol_a, symbol_b, tf2, min_segment_bars)
     if breaks_tf1 is None or breaks_tf2 is None:

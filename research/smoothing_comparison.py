@@ -53,12 +53,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(
 
 from aligned_pair_loader import load_aligned_pair
 from lead_lag_scan import _gap_masked_log_price
-
-_DEFAULT_PAIRS = [
-    ("LNT", "VTR"), ("LNT", "WELL"), ("AME", "MAR"), ("CMS", "DUK"),
-    ("EG", "WRB"), ("HAL", "NOV"), ("MET", "TMHC"), ("PFG", "STLD"),
-    ("UMBF", "FHB"),
-]
+from pair_source import confirmed_pairs_list
 
 _MIN_EG_N = 60
 
@@ -155,17 +150,21 @@ def main():
 
     root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     near_miss_path = os.path.join(root, "output", "research", f"near_miss_lag_scan_{args.tf}.parquet")
-    pairs = list(_DEFAULT_PAIRS)
+    sanity_pairs = confirmed_pairs_list()
+    if not sanity_pairs:
+        print("WARNING: no confirmed pairs found in output/results/*/pairs.parquet -- "
+              "sanity-check leg of this comparison will be empty.")
+    pairs = list(sanity_pairs)
     if os.path.exists(near_miss_path):
         nm = pd.read_parquet(near_miss_path, columns=["symbol_a", "symbol_b"])
         sample = nm.sample(n=min(args.n_sample, len(nm)), random_state=args.seed)
         pairs.extend(list(zip(sample["symbol_a"], sample["symbol_b"])))
     else:
-        print(f"WARNING: {near_miss_path} not found — using only the {len(pairs)} default pairs.")
+        print(f"WARNING: {near_miss_path} not found — using only the {len(pairs)} confirmed pairs.")
 
     print(f"Testing {len(pairs)} pairs at {args.tf} "
-          f"({len(_DEFAULT_PAIRS)} known-good sanity-check pairs + "
-          f"{len(pairs) - len(_DEFAULT_PAIRS)} sampled near-miss candidates)...")
+          f"({len(sanity_pairs)} known-good sanity-check pairs + "
+          f"{len(pairs) - len(sanity_pairs)} sampled near-miss candidates)...")
 
     rows = []
     for sym_a, sym_b in pairs:

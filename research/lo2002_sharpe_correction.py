@@ -107,6 +107,16 @@ def report_for(label: str, path: str) -> None:
             null_pct_full.append(abs((sr_naive_null / sr_corr_null - 1) * 100))
     null_pct_full = np.array(null_pct_full)
     n_dropped = 200 - len(null_pct_full)
+    if len(null_pct_full) == 0:
+        # Found live 2026-08-24: every one of the 200 shuffles produced a non-finite eta or a
+        # zero sr_corr_null (small-n trade series where the ACF-based correction is degenerate
+        # under permutation) -- np.percentile on an empty array raises IndexError, not a
+        # meaningful "no null distribution" result. Report the degeneracy honestly instead.
+        print(f"=== {label} ({path}) ===")
+        print(f"  n daily-P&L observations: {n} -- ALL 200 null shuffles produced a non-finite "
+              f"eta/degenerate sr_corr_null. Too few observations for a meaningful null check at "
+              f"this sample size -- skipping the null comparison, not fabricating a percentile.")
+        return
 
     rho1_se = 1 / np.sqrt(n)
     rho1_z = rho1 / rho1_se if rho1_se > 0 else np.nan

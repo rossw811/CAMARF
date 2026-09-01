@@ -50,12 +50,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(
 
 from data import DataStore, _gap_aware_returns
 from midas_feature import beta_weights, midas_aggregate
-
-_DEFAULT_PAIRS = [
-    ("LNT", "VTR"), ("LNT", "WELL"), ("AME", "MAR"), ("CMS", "DUK"),
-    ("EG", "WRB"), ("HAL", "NOV"), ("MET", "TMHC"), ("PFG", "STLD"),
-    ("UMBF", "FHB"),
-]
+from pair_source import confirmed_pairs_list
 
 K = 16          # trailing 1h bars (~2.5 trading days of intraday context)
 N_PERM = 500
@@ -112,8 +107,13 @@ def run_pair(symbol_a, symbol_b):
 
 
 def main():
+    pairs_to_run = confirmed_pairs_list()
+    if not pairs_to_run:
+        print("No confirmed pairs found in output/results/*/pairs.parquet -- run analysis.py first. Aborting.")
+        return
+
     rows = []
-    for sym_a, sym_b in _DEFAULT_PAIRS:
+    for sym_a, sym_b in pairs_to_run:
         result = run_pair(sym_a, sym_b)
         if result is None:
             print(f"{sym_a}/{sym_b}: insufficient data")

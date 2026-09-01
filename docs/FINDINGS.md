@@ -2088,3 +2088,79 @@ concrete, scoped follow-up, not resolved by this result either way.
 Files: `research/ridge_hedge_ratio_comparison.py` (new), `debug/_verify_ridge_hedge_ratio_
 comparison.py` (new, 7/7 pass), `output/research/ridge_hedge_ratio_comparison.parquet` (new, real
 run).
+
+## 39. Hardcoded Pair-List Fix — First Real Results Against the Live Confirmed Set [2026-08-24]
+
+Ross's direction: no research script should hardcode which pairs it tests — every script must use
+either the current confirmed-pair set (`output/results/*/pairs.parquet`) or the full universe, so
+results always reflect CAMARF's actual live state, not a frozen snapshot from whenever the script was
+written. A codebase-wide grep found ~20 `research/*.py` scripts violating this — 12 shared the exact
+same hand-picked 9-pair list (`LNT/VTR`, `CMS/DUK`, etc.), 3 hardcoded `KVUE/KMB` under a
+misleadingly-named `_CONFIRMED_PAIRS` constant (itself flagged 2026-08-03 in the retroactive
+disclosure above `KVUE/KMB` was real at the time, just frozen since), and a handful of others carried
+their own one-off hardcoded lists. Fixed via a new shared `research/pair_source.py`
+(`confirmed_pairs_list()`/`candidate_pairs_list()`, reading the same `output/results/*/pairs.parquet`
+glob `bayesian_pair_confirmation.py` already used correctly) that all ~20 files now call instead of
+carrying their own copy. One deliberate exception, not silently skipped: `filter_relevance_sweep_1h.py`
+hardcodes PNC/ZION and SPY/VOO because the script's entire purpose is forensically reconstructing a
+specific documented 2026-07-21 persistence-gap incident — those symbols ARE the historical record
+being recovered, not a stand-in for "current confirmed pairs." Verified via
+`debug/_verify_pair_source.py` (6/6 pass, synthetic — stale-dir exclusion, tf_label filtering,
+dedup) plus a live check against real `output/results/` data on both machines before restarting the
+overnight pipeline from its 44/195-stage checkpoint on the corrected code.
+
+**CachyOS's live confirmed set as of this run: 2 pairs — `KVUE/KMB@3m` and `PNC/ZION@4h`** (thinner
+and at different timeframes than the old hardcoded 9-pair set, which was never even a subset of the
+current confirmed set — none of `LNT/VTR`, `AME/MAR`, etc. are currently confirmed). First results
+from the corrected scripts, pulled as each completed in the pipeline's alphabetical research-script
+sweep:
+
+- **`breakout_vs_reversion.py`** (`--tf 1hr`, both confirmed pairs): mean-reversion strongly
+  dominates breakout on both pairs — `KVUE/KMB`: MR n=79 win=100% total_pnl_z=244.95 vs. BO n=157
+  win=7% total_pnl_z=-166.10; `PNC/ZION`: MR n=84 win=100% total_pnl_z=244.27 vs. BO n=136 win=4%
+  total_pnl_z=-169.52. Entry/exit sweep best mean-reversion combo: entry=3.0, exit=0.25 ->
+  sharpe_like=3.900 (n=61, win=100%); best breakout combo is still net-negative (sharpe_like=-0.630).
+  A 100% win rate on n=79/84 trades is a small, non-independent sample (same 2 pairs, same regime) —
+  read as "mean-reversion clearly beats breakout on these two pairs' recent history," not as a
+  production-ready Sharpe.
+- **`cross_timeframe_divergence.py`**: deep-history group (1hr/4hr/1day) — 2/2 pairs show a
+  CONSISTENT significance verdict across all 3 TFs; shallow-history group (15min/30min/1hr) —
+  significance rate drops from 2/2 pairs at 15min/30min to 1/2 at 1hr (`KVUE/KMB` p=0.0876 vs.
+  `PNC/ZION` p=0.0250), correlation(log10(bars/day), mean log10(p)) = -0.995 in that group — consistent
+  with this project's existing granularity/significance finding, now confirmed on the live pair set
+  instead of the frozen one.
+- **`fdr_method_comparison.py`** (`--tf 1h`, full current 1h universe, m=89 candidates): 0/89 survive
+  under all 4 correction methods (step-up BH, Benjamini-Yekutieli, two-stage TSBH, fixed Bonferroni) —
+  a clean, consistent null across every method tested, alpha=0.05. Neither confirmed pair is at 1h
+  (`KVUE/KMB@3m`, `PNC/ZION@4h`), so the "known pairs" watchlist section is empty this run by
+  construction, not a bug.
+- **`big_move_lead_lag.py`, `earnings_lead_lag.py`** (both default `--tf 1h`): correctly aborted with
+  "No confirmed pairs found for tf=1h" — neither confirmed pair is at 1h. This is the fix working as
+  intended (no fabricated result for a timeframe with zero real confirmed pairs), not a failure; these
+  will produce real output once run at `--tf 3m`/`--tf 4h` respectively.
+- **`dd_hub_effective_bets.py`**: now dynamically finds "the largest hub in the current confirmed set"
+  instead of the old fixed DD cluster (which no longer exists in the confirmed set at all). Correctly
+  reported "No hub with >=2 confirmed pairs found (largest: 'KVUE' with 1) -- nothing to test" — with
+  only 2 total confirmed pairs and no shared leg between them, there is structurally no hub to analyze
+  right now. Honest null, not a bug.
+
+13 of the 20 fixed scripts had not yet run in the pipeline's research sweep as of this entry; their
+results will be added here as the pipeline (currently 88/195 stages complete) reaches them.
+
+Files: `research/pair_source.py` (new), `debug/_verify_pair_source.py` (new, 6/6 pass), 20
+`research/*.py` files fixed (see Development.md Session 32 continuation for the full file list),
+fresh `output/research/{breakout_vs_reversion,breakout_vs_reversion_sweep,cross_timeframe_divergence_
+deep,cross_timeframe_divergence_shallow,fdr_method_comparison_raw,fdr_method_comparison_summary,fdr_
+method_comparison_known_pairs}*.parquet` (new, real runs on CachyOS).
+
+**UPDATE, same day**: the "2 confirmed pairs" universe-thinness caveat that runs through this
+entire finding is now STALE. `full_universe_eg_confirmation.py` (a separate full-universe EG+FDR
+cascade, previously never wired into production) found 78 real candidates, and 27 survived a
+real, multi-round data-integrity vetting (structural-pair/GVKEY-duplicate/WRDS-ticker-alias/
+SPAC-NAV-clustering contamination all found and filtered — see Development.md's "78-pair
+promotion" entry, same date, for the full account) before being promoted into
+`output/results/1day/pairs.parquet` with full production enrichment. CAMARF's confirmed-pair
+count as of this update: **29** (27 new @1D + the original `KVUE/KMB@3m` + `PNC/ZION@4h`), not 2
+— every "thin confirmed set" disclaimer above this line describes the state BEFORE that
+promotion, not the current one. Re-running the fixed scripts against the now-richer set is a real
+follow-up, not yet done as of this update.

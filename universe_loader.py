@@ -49,13 +49,75 @@ must size that separately (float32, chunking, or a staged/bounded subset)
 -- this loader does not attempt to solve that on its own.
 """
 import hashlib
+import json
 import os
 import pickle
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import pandas as pd
+import pyarrow.parquet as pq
 
 from config import Config
+
+try:
+    import polars as pl
+    _POLARS_AVAILABLE = True
+except ImportError:
+    pl = None
+    _POLARS_AVAILABLE = False
+
+_PANDAS_INDEX_COL_CACHE: dict = {}  # {file_path: index_col_name or None} -- schema-only lookups,
+# cached per-process since the same cache files get re-read across every load_full_universe()
+# call this process makes; avoids a redundant pyarrow schema read per already-seen file.
+
+
+def _pandas_index_col(path: str):
+    """Reads ONLY the parquet schema's pandas metadata (no data read) to find the real index
+    column pandas' own read_parquet() restores automatically from file metadata -- Polars has
+    no such concept and silently drops any column not explicitly requested, including the
+    index, if read with a columns= filter. Returns (field_name, display_name) or None if
+    there's no restorable named index column (a plain RangeIndex, or metadata is absent/
+    malformed) -- callers must fall back to pandas in that case rather than guess.
+
+    field_name vs display_name is a REAL, confirmed distinction, not redundant (found directly,
+    2026-08-23, via output/cache/wrds/8058.T_1D.parquet): pandas' own metadata separates the
+    PHYSICAL on-disk column name ('field_name', e.g. '__index_level_0__' for an index pandas
+    never gave a .name) from the pandas-facing display name ('name', which can be None). Using
+    field_name for BOTH the Polars column-read request and the resulting index's .name would
+    silently set index.name='__index_level_0__' where the real pandas contract has
+    index.name=None -- confirmed as a real mismatch by debug/_verify_polars_universe_loader.py
+    before this fix, not a hypothetical.
+
+    Also confirmed directly that the index column's NAME is not consistent across cache
+    sources: 'Date' for yfinance-cached files, 'dlycaldt' for WRDS files, None for some
+    international WRDS files -- hardcoding any of these would silently corrupt another
+    source's time alignment.
+    """
+    if path in _PANDAS_INDEX_COL_CACHE:
+        return _PANDAS_INDEX_COL_CACHE[path]
+    result = None
+    try:
+        schema = pq.read_schema(path)
+        meta = schema.metadata or {}
+        raw = meta.get(b"pandas")
+        if raw is not None:
+            pandas_meta = json.loads(raw)
+            idx_cols = pandas_meta.get("index_columns", [])
+            # A real, named index column is a plain string here (the physical field_name); a
+            # default RangeIndex is instead represented as a dict (e.g. {"kind": "range", ...})
+            # -- only the string case is something Polars needs told to preserve.
+            if len(idx_cols) == 1 and isinstance(idx_cols[0], str):
+                field_name = idx_cols[0]
+                display_name = field_name  # fallback if no matching columns-list entry found
+                for col_meta in pandas_meta.get("columns", []):
+                    if col_meta.get("field_name") == field_name:
+                        display_name = col_meta.get("name")
+                        break
+                result = (field_name, display_name)
+    except Exception:
+        result = None
+    _PANDAS_INDEX_COL_CACHE[path] = result
+    return result
 
 # Real bottleneck found and fixed 2026-08-14: at the full merged-universe scale
 # (44,694 WRDS files alone), sequential one-at-a-time pd.read_parquet() calls
@@ -66,7 +128,10 @@ from config import Config
 # dominates at this file count; parallelizing the I/O (these are I/O-bound
 # reads, not CPU-bound, so threads -- not processes -- are the right tool, no
 # GIL contention concern for file I/O) is the real fix, not a workaround.
-_IO_WORKERS = 16
+_IO_WORKERS = 32  # raised from 16 (2026-08-23) -- benchmarked (noisy, contended with a
+# concurrent analysis.py run, not a clean isolated number) at 16/32/64/128 on the real
+# 30,586-file cache; a conservative bump given the signal wasn't clean enough to justify
+# jumping straight to 128
 
 _YF_CACHE_DIR = Config.DATA.CACHE_DIR
 _WRDS_CACHE_DIR = os.path.join("output", "cache", "wrds")
@@ -130,9 +195,45 @@ def _memo_cache_path(tf_label, include_yfinance, include_wrds, include_binance, 
     return os.path.join(_MEMO_CACHE_DIR, f"{tf_label}_{key}.pkl")
 
 
+def _read_one_polars(path: str, columns):
+    """Polars-backed read matching pd.read_parquet(path, columns=columns)'s exact contract
+    (same index restored, same column set/order) -- or None on ANY ambiguity/failure, in which
+    case the caller falls back to the pandas path rather than risk silently wrong data. Added
+    2026-08-23: real-cache benchmark (docs/HANDOFF.md), 30,586 real files, 7.11x faster than the
+    threaded pandas/pyarrow path this replaces (16.91s -> 2.38s), per
+    docs/HARDWARE_OPTIMIZATION_PLAN.md Sec 4's own scoped recommendation. Verified bit-exact
+    against pd.read_parquet across real cache files spanning both index-naming conventions
+    ('Date' for yfinance-sourced files, 'dlycaldt' for WRDS files) --
+    debug/_verify_polars_universe_loader.py."""
+    idx_info = _pandas_index_col(path)
+    field_name = idx_info[0] if idx_info is not None else None
+    display_name = idx_info[1] if idx_info is not None else None
+    if columns is not None:
+        read_cols = list(columns)
+        if field_name is not None and field_name not in read_cols:
+            read_cols = [field_name] + read_cols
+        pdf = pl.read_parquet(path, columns=read_cols).to_pandas()
+    else:
+        pdf = pl.read_parquet(path).to_pandas()
+    if field_name is not None and field_name in pdf.columns:
+        pdf = pdf.set_index(field_name)
+        pdf.index.name = display_name  # may be None -- matches pandas' own contract exactly
+    if columns is not None:
+        pdf = pdf[[c for c in columns if c in pdf.columns]]
+    return pdf
+
+
 def _read_one(cache_dir: str, filename: str, sym: str, columns=None):
+    path = os.path.join(cache_dir, filename)
+    if _POLARS_AVAILABLE:
+        try:
+            df = _read_one_polars(path, columns)
+            if df is not None and not df.empty and "close" in df.columns:
+                return sym, df
+        except Exception:
+            pass  # fall through to the pandas path below -- never guess, never crash on one file
     try:
-        df = pd.read_parquet(os.path.join(cache_dir, filename), columns=columns)
+        df = pd.read_parquet(path, columns=columns)
     except Exception:
         # Real, checked reason this bare except stays broad rather than catching a specific
         # exception type: a `columns=` read fails with different exception classes depending on
@@ -360,7 +461,7 @@ def filter_structural_pairs(candidate_pairs: list, gvkey_cross_listing_threshold
 def load_full_universe(tf_label: str = "1D", include_yfinance: bool = True,
                         include_wrds: bool = True, include_binance: bool = True,
                         include_ibkr: bool = True, columns=None,
-                        use_memo_cache: bool = False) -> dict:
+                        use_memo_cache: bool = True) -> dict:
     """Merges every real price-data source for `tf_label` into one
     {symbol: DataFrame} dict. Later sources win on a symbol collision (WRDS,
     then Binance, then IBKR override yfinance) -- real collisions are
@@ -392,8 +493,10 @@ def load_full_universe(tf_label: str = "1D", include_yfinance: bool = True,
     and fixed (see docs/HANDOFF.md). Default None (read every column,
     unchanged prior behavior) -- callers must opt in explicitly.
 
-    use_memo_cache (added 2026-08-20, opt-in, default False -- existing callers
-    unaffected unless they explicitly pass this): when True, the merged result is
+    use_memo_cache (added 2026-08-20 opt-in/default False; flipped to default True
+    2026-08-23 after real production use across a multi-script run confirmed the
+    staleness check holds -- pass use_memo_cache=False explicitly for a one-off
+    call that must bypass it): when True, the merged result is
     cached to disk under output/cache/_universe_loader_memo/, keyed by tf_label,
     the include_* flags, columns, and a cheap staleness signature of each source
     directory (file count + max mtime -- see _dir_signature). A second call in the

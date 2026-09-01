@@ -48,12 +48,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(
 
 from aligned_pair_loader import load_aligned_pair
 from lead_lag_scan import _gap_masked_log_price, _eg_pvalue
-
-_DEFAULT_PAIRS = [
-    ("LNT", "VTR"), ("LNT", "WELL"), ("AME", "MAR"), ("CMS", "DUK"),
-    ("EG", "WRB"), ("HAL", "NOV"), ("MET", "TMHC"), ("PFG", "STLD"),
-    ("UMBF", "FHB"),
-]
+from pair_source import confirmed_pairs_list
 
 # Approximate bars/trading-day, for the granularity-vs-p-value check.
 _BARS_PER_DAY = {
@@ -94,9 +89,14 @@ def _run_group(tfs, group_label):
     15min's cache only goes back that far, flipping 9/9 significant pairs
     down to 1/9 — not a real finding, a period-matching bug)."""
     from data import DataStore
+    pairs_to_run = confirmed_pairs_list()
+    if not pairs_to_run:
+        print("No confirmed pairs found in output/results/*/pairs.parquet -- run analysis.py first. Aborting.")
+        return pd.DataFrame()
+
     tf_starts = []
     for tf in tfs:
-        df_ref = DataStore.load(_DEFAULT_PAIRS[0][0], tf)
+        df_ref = DataStore.load(pairs_to_run[0][0], tf)
         if df_ref is not None and not df_ref.empty:
             tf_starts.append(df_ref.index.min())
     match_start = max(tf_starts) if tf_starts else None
@@ -105,7 +105,7 @@ def _run_group(tfs, group_label):
           f"(latest common start among this group's own native depth)\n")
 
     rows = []
-    for sym_a, sym_b in _DEFAULT_PAIRS:
+    for sym_a, sym_b in pairs_to_run:
         row = {"symbol_a": sym_a, "symbol_b": sym_b}
         for tf in tfs:
             pval, n = eg_pvalue_for_pair(sym_a, sym_b, tf, min_date=match_start)

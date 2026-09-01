@@ -58,17 +58,7 @@ from earnings import EarningsCalendar
 from data import DataStore, _gap_aware_returns
 from aligned_pair_loader import load_aligned_pair
 from lead_lag_scan import best_lag, _MIN_CORR_N
-
-# Stable, already-vetted starting set (task #71's 1h investigation): real
-# raw EG significance (p<0.001) confirmed directly on the current clean
-# main cache, independent of the still-open BH-FDR/confirmed-pair-set
-# question — a defensible fixed input for a first exploratory pass, not
-# dependent on whichever confirmed-pair set PAPER.md eventually settles on.
-_DEFAULT_PAIRS = [
-    ("LNT", "VTR"), ("LNT", "WELL"), ("AME", "MAR"), ("CMS", "DUK"),
-    ("EG", "WRB"), ("HAL", "NOV"), ("MET", "TMHC"), ("PFG", "STLD"),
-    ("UMBF", "FHB"),
-]
+from pair_source import confirmed_pairs_list
 
 
 def _earnings_window_mask(index: pd.DatetimeIndex, earnings_dates, window_days: int) -> np.ndarray:
@@ -234,8 +224,14 @@ def main():
     p.add_argument("--seed", type=int, default=42)
     args = p.parse_args()
 
+    pairs_to_run = confirmed_pairs_list(tf_label=args.tf)
+    if not pairs_to_run:
+        print(f"No confirmed pairs found for tf={args.tf} in output/results/*/pairs.parquet "
+              f"-- run analysis.py first. Aborting.")
+        return
+
     all_rows = []
-    for sym_a, sym_b in _DEFAULT_PAIRS:
+    for sym_a, sym_b in pairs_to_run:
         res = run_pair(sym_a, sym_b, args.tf, args.window_days, args.max_lag, args.n_boot, args.seed)
         if "legs" not in res:
             print(f"{sym_a}/{sym_b}: {res.get('status')}")

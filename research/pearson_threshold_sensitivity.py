@@ -136,7 +136,7 @@ def main():
               "loosest threshold's -- safe to run EG once and subset the results.")
 
     log.info("Running real EG test (_eg_worker) on all %d candidates at threshold %.2f "
-              "(workers=12)...", len(candidates_loosest), loosest)
+              "(workers=%d)...", len(candidates_loosest), loosest, Config.RUNTIME.N_WORKERS)
     log_prices = CointScanner._build_log_price_map(aligned, retained_symbols)
     tasks = []
     for p in candidates_loosest:
@@ -148,7 +148,7 @@ def main():
 
     t_eg = time.time()
     results = []
-    with ProcessPoolExecutor(max_workers=12) as pool:
+    with ProcessPoolExecutor(max_workers=Config.RUNTIME.N_WORKERS) as pool:
         for r in pool.map(_eg_worker, tasks, chunksize=100):
             results.append(r)
     log.info("EG complete in %.1fs", time.time() - t_eg)

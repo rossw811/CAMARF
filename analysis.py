@@ -57,6 +57,7 @@ from scipy.linalg import svd as scipy_svd
 
 try:
     from statsmodels.tsa.stattools import coint, adfuller
+    from statsmodels.tsa.stattools import mackinnonp
     from statsmodels.tsa.vector_ar.vecm import coint_johansen
     from statsmodels.regression.linear_model import OLS
     from statsmodels.tools import add_constant
@@ -109,6 +110,31 @@ logging.basicConfig(
     datefmt="%Y-%m-%d %H:%M:%S",
 )
 log = logging.getLogger("CAMARF.analysis")
+
+
+def _limit_worker_blas_threads() -> None:
+    """ProcessPoolExecutor initializer -- caps each pooled worker process's
+    own BLAS thread pool to 1 (found 2026-08-24, live on CachyOS mid-run:
+    a 15-worker EG confirmation pass had NLWP=16 per worker via
+    /proc/<pid>/status -- 15 processes x ~16 internal OpenBLAS threads each
+    = ~240 threads competing for 16 physical cores/threads. Parallelism here
+    already comes from the process pool itself (one pair's EG test per
+    task); per-worker BLAS threading on top of that adds contention, not
+    real throughput, at this pool size -- the classic
+    ProcessPoolExecutor-plus-unthrottled-BLAS oversubscription trap.
+    threadpool_limits sets it for numpy/scipy's actual runtime thread pools
+    (works regardless of fork/spawn); the env vars are a belt-and-suspenders
+    fallback for anything that only reads them at import time."""
+    os.environ["OMP_NUM_THREADS"] = "1"
+    os.environ["OPENBLAS_NUM_THREADS"] = "1"
+    os.environ["MKL_NUM_THREADS"] = "1"
+    os.environ["NUMEXPR_NUM_THREADS"] = "1"
+    os.environ["VECLIB_MAXIMUM_THREADS"] = "1"
+    try:
+        import threadpoolctl
+        threadpoolctl.threadpool_limits(1)
+    except ImportError:
+        pass
 
 
 # =============================================================================
@@ -1728,6 +1754,84 @@ def _eg_worker(args: Tuple[str, str, np.ndarray, np.ndarray, int, str]) -> Dict[
         }
 
 
+def _batched_eg_fixed_lag_tstat(a_windows: np.ndarray, b_windows: np.ndarray) -> np.ndarray:
+    """
+    Closed-form, fully vectorized Engle-Granger cointegration t-statistic at a FIXED lag
+    (maxlag=1, autolag=None) -- mathematically identical to what
+    `coint(a_w, b_w, trend="c", maxlag=1, autolag=None)` computes per window, just computed for
+    ALL windows in `a_windows`/`b_windows` (each row one window) in one batched pass instead of
+    a Python loop calling statsmodels per window. NOT a new methodology: `_rolling_coint_worker`
+    and `expanding_coint_fraction` (both below) already called `coint()` with exactly these
+    fixed-lag parameters before this change -- this only changes HOW that same computation runs.
+
+    Added 2026-08-23 after benchmarking (docs/HANDOFF.md): 94.9x faster than the statsmodels
+    loop at 20,000 windows, on PLAIN NUMPY -- no GPU needed (confirmed slower than CPU here at
+    every scale tested, this operation is overhead/memory-bound, not FLOP-bound like the
+    correlation-matrix core; see gpu_backend.py's own docstring for that distinction). Verified
+    bit-close (t-stat ~1e-8, p-value ~1e-6) against real statsmodels.coint() output across
+    genuinely-cointegrated, genuinely-not-cointegrated, and edge-case series
+    (debug/_verify_gpu_batched_eg.py, 7/7). A GPU-capable version of this same function lives in
+    research/gpu_batched_eg_fixed_lag.py (imports this one) as the benchmark/comparison-arm proof.
+
+    a_windows, b_windows: (n_windows, window_len) arrays, no NaNs (callers already pre-clean via
+    longest_gap_respecting_segment before slicing windows -- same precondition the original
+    per-window coint() calls already required).
+
+    Math: Step 1 (cointegrating regression, closed form): a = alpha + beta1*b + resid.
+    Step 2 (ADF regression, maxlag=1, regression="n" -- no constant, matching coint()'s own
+    internal adfuller(res_co.resid, maxlag=1, autolag=None, regression="n") call exactly):
+    d(resid)_t = beta2*resid_{t-1} + gamma*d(resid)_{t-1} + eps_t. Returns beta2's t-statistic,
+    the same value statsmodels' adfuller() returns as its own first tuple element.
+    """
+    a = np.asarray(a_windows, dtype=np.float64)
+    b = np.asarray(b_windows, dtype=np.float64)
+
+    mean_a = a.mean(axis=1, keepdims=True)
+    mean_b = b.mean(axis=1, keepdims=True)
+    cov_ab = ((a - mean_a) * (b - mean_b)).sum(axis=1, keepdims=True)
+    var_b = ((b - mean_b) ** 2).sum(axis=1, keepdims=True)
+    with np.errstate(invalid="ignore", divide="ignore"):
+        beta1 = cov_ab / var_b
+        alpha1 = mean_a - beta1 * mean_b
+        resid = a - alpha1 - beta1 * b  # (n_windows, T)
+
+        dy = resid[:, 1:] - resid[:, :-1]
+        y_lag1 = resid[:, :-2]
+        dy_lag1 = dy[:, :-1]
+        dy_t = dy[:, 1:]
+
+        Sxx1 = (y_lag1 * y_lag1).sum(axis=1)
+        Sxx2 = (dy_lag1 * dy_lag1).sum(axis=1)
+        Sx1x2 = (y_lag1 * dy_lag1).sum(axis=1)
+        Sx1y = (y_lag1 * dy_t).sum(axis=1)
+        Sx2y = (dy_lag1 * dy_t).sum(axis=1)
+
+        det = Sxx1 * Sxx2 - Sx1x2 ** 2
+        beta2 = (Sx1y * Sxx2 - Sx2y * Sx1x2) / det
+        gamma = (Sxx1 * Sx2y - Sx1x2 * Sx1y) / det
+
+        fitted = beta2[:, None] * y_lag1 + gamma[:, None] * dy_lag1
+        resid2 = dy_t - fitted
+        ssr = (resid2 * resid2).sum(axis=1)
+        n_obs = y_lag1.shape[1]
+        dof = n_obs - 2
+        sigma2 = ssr / dof
+        se_beta2 = np.sqrt(sigma2 * Sxx2 / det)
+        t_stat = beta2 / se_beta2
+
+    return t_stat
+
+
+def _batched_eg_fixed_lag_pvalue(a_windows: np.ndarray, b_windows: np.ndarray) -> np.ndarray:
+    """t-stat (batched, see above) + p-value (mackinnonp, not vectorizable -- confirmed
+    directly -- looped, but negligible cost, a scalar polynomial eval per window)."""
+    t_stats = _batched_eg_fixed_lag_tstat(a_windows, b_windows)
+    return np.array([
+        mackinnonp(float(t), regression="c", N=2) if np.isfinite(t) else 1.0
+        for t in t_stats
+    ])
+
+
 def _rolling_coint_worker(
     args: Tuple[str, str, np.ndarray, np.ndarray, int, int, str],
 ) -> Dict[str, Any]:
@@ -1751,19 +1855,23 @@ def _rolling_coint_worker(
                 "fraction": np.nan,
                 "n_windows": 0,
             }
-        n_significant = 0
-        n_windows = 0
-        for start in range(0, n - window + 1, step):
-            a_w = a[start : start + window]
-            b_w = b[start : start + window]
-            try:
-                _t, p, _c = coint(a_w, b_w, trend="c", maxlag=1, autolag=None)
-                if p < 0.05:
-                    n_significant += 1
-                n_windows += 1
-            except Exception:
-                continue
-        frac = n_significant / n_windows if n_windows > 0 else np.nan
+        # Batched (2026-08-23, replaces a per-window coint() loop -- see
+        # _batched_eg_fixed_lag_tstat's docstring; same fixed-lag EG test, 94.9x faster at
+        # 20k windows in real benchmarking, docs/HANDOFF.md). A window with a degenerate
+        # regression (e.g. zero-variance b_w) produces a non-finite t-stat via ordinary
+        # floating-point semantics rather than raising -- excluded from n_windows below,
+        # matching the original loop's "except: continue" (skip, don't count as tested).
+        starts = list(range(0, n - window + 1, step))
+        a_windows = np.stack([a[s : s + window] for s in starts])
+        b_windows = np.stack([b[s : s + window] for s in starts])
+        t_stats = _batched_eg_fixed_lag_tstat(a_windows, b_windows)
+        valid = np.isfinite(t_stats)
+        n_windows = int(valid.sum())
+        if n_windows == 0:
+            frac = np.nan
+        else:
+            pvals = np.array([mackinnonp(float(t), regression="c", N=2) for t in t_stats[valid]])
+            frac = float(np.sum(pvals < 0.05)) / n_windows
         return {
             "symbol_a": sym_a,
             "symbol_b": sym_b,
@@ -1923,7 +2031,7 @@ class CointScanner:
         # Run in parallel
         t0 = time.time()
         results = []
-        with ProcessPoolExecutor(max_workers=n_workers) as pool:
+        with ProcessPoolExecutor(max_workers=n_workers, initializer=_limit_worker_blas_threads) as pool:
             for r in pool.map(_eg_worker, tasks, chunksize=50):
                 results.append(r)
         log.info(f"  [{tf_label}] EG complete in {time.time()-t0:.1f}s")
@@ -2050,18 +2158,26 @@ class CointScanner:
         a = log_a[keep]
         b = log_b[keep]
         real_positions = np.flatnonzero(keep)
+        starts = list(range(0, n - window + 1, step))
+        # Batched (2026-08-23, replaces a per-window coint() loop -- see
+        # _batched_eg_fixed_lag_tstat's docstring; same fixed-lag EG test, ~95x faster in real
+        # benchmarking, docs/HANDOFF.md). The running-fraction accumulation itself stays a
+        # sequential loop (each bar's fraction genuinely depends on the cumulative count up to
+        # that point -- not batchable), but it's now pure bookkeeping over pre-computed
+        # t-stats/p-values, not a statsmodels call per iteration.
+        a_windows = np.stack([a[s : s + window] for s in starts]) if starts else np.empty((0, window))
+        b_windows = np.stack([b[s : s + window] for s in starts]) if starts else np.empty((0, window))
+        t_stats = _batched_eg_fixed_lag_tstat(a_windows, b_windows) if starts else np.array([])
         n_sig = 0
         n_win = 0
-        for start in range(0, n - window + 1, step):
-            a_w = a[start : start + window]
-            b_w = b[start : start + window]
-            try:
-                _t, p, _c = coint(a_w, b_w, trend="c", maxlag=1, autolag=None)
-                if p < 0.05:
-                    n_sig += 1
-                n_win += 1
-            except Exception:
-                continue
+        for i, start in enumerate(starts):
+            t = t_stats[i]
+            if not np.isfinite(t):
+                continue  # degenerate window (e.g. zero-variance b_w) -- skip, don't count
+            p = mackinnonp(float(t), regression="c", N=2)
+            if p < 0.05:
+                n_sig += 1
+            n_win += 1
             end_pos_full = real_positions[start + window - 1]
             frac_series[end_pos_full] = n_sig / n_win if n_win > 0 else np.nan
         return pd.Series(frac_series).ffill().values
@@ -2134,7 +2250,7 @@ class CointScanner:
         )
         t0 = time.time()
         fracs = {}
-        with ProcessPoolExecutor(max_workers=n_workers) as pool:
+        with ProcessPoolExecutor(max_workers=n_workers, initializer=_limit_worker_blas_threads) as pool:
             for r in pool.map(_rolling_coint_worker, tasks, chunksize=20):
                 fracs[(r["symbol_a"], r["symbol_b"])] = r["fraction"]
         log.info(f"  [{tf_label}] Rolling coint complete in {time.time()-t0:.1f}s")
@@ -2221,7 +2337,7 @@ class EigenportfolioDecomposer:
 
     @staticmethod
     def _eigendecompose(
-        corr: np.ndarray, n_periods: int
+        corr: np.ndarray, n_periods: int, use_gpu: bool = False
     ) -> Tuple[np.ndarray, np.ndarray, float, int]:
         """
         Shared eigendecomposition + Marchenko-Pastur factor count, extracted
@@ -2237,6 +2353,17 @@ class EigenportfolioDecomposer:
         residual construction — NOT the same K convention the Absorption
         Ratio uses (a fixed fraction of N per Kritzman et al., computed by
         the caller from the returned eigenvalues directly).
+
+        use_gpu (added 2026-08-23, the second GPU target the original
+        2026-08-20 audit identified alongside _vectorized_pairwise_stats,
+        never wired until now): cupy.linalg.eigh in place of np.linalg.eigh
+        when True AND a real GPU with headroom is available (same
+        gpu_backend.get_array_module() gate as the correlation core -- safe
+        default False everywhere, falls back to CPU with a warning
+        otherwise). Same guidance as the correlation core applies: only
+        worth it at genuinely large N (WRDS-expanded scale); at CAMARF's
+        production universe size (~1,660) CPU is already fast enough that
+        GPU kernel-launch overhead is more likely to lose than win.
         """
         n = corr.shape[0]
         lambda_plus, _ = EigenportfolioDecomposer.marchenko_pastur_threshold(
@@ -2267,8 +2394,11 @@ class EigenportfolioDecomposer:
                 f"correlation matrix (insufficient pairwise overlap) — "
                 f"treated as uncorrelated (0) before eigendecomposition"
             )
-        with np.errstate(invalid="ignore"):
-            eigenvalues, eigenvectors = np.linalg.eigh(corr_clean)  # ascending order
+        xp = gpu_backend.get_array_module(use_gpu)
+        corr_dev = xp.asarray(corr_clean)
+        with gpu_backend.errstate_ctx(xp, invalid="ignore"):
+            eigenvalues, eigenvectors = xp.linalg.eigh(corr_dev)  # ascending order
+        eigenvalues, eigenvectors = gpu_backend.to_numpy(eigenvalues), gpu_backend.to_numpy(eigenvectors)
 
         # Flip to descending order
         eigenvalues = eigenvalues[::-1]
@@ -4461,7 +4591,7 @@ class TrioBuilder:
         log.info(f"  [{tf_label}] Testing {len(tasks)} trios with Johansen...")
         t0 = time.time()
         results = []
-        with ProcessPoolExecutor(max_workers=n_workers) as pool:
+        with ProcessPoolExecutor(max_workers=n_workers, initializer=_limit_worker_blas_threads) as pool:
             for r in pool.map(_johansen_worker, tasks, chunksize=10):
                 results.append(r)
         log.info(f"  [{tf_label}] Trio testing complete in {time.time()-t0:.1f}s")
@@ -4597,7 +4727,7 @@ class ThresholdCalibrator:
 
             n_eg = 0
             n_tested = 0
-            with ProcessPoolExecutor(max_workers=n_workers) as pool:
+            with ProcessPoolExecutor(max_workers=n_workers, initializer=_limit_worker_blas_threads) as pool:
                 for r in pool.map(_eg_worker, tasks, chunksize=50):
                     n_tested += 1
                     if r.get("ok") and r["pvalue"] < Config.ANALYSIS.EG_SIGNIFICANCE:
@@ -5326,7 +5456,7 @@ class AnalysisPipeline:
         n_labels_persisted = 0
         if regime_tasks:
             _regime_out_dir = _output_dir(tf_label)
-            with ProcessPoolExecutor(max_workers=n_workers) as pool:
+            with ProcessPoolExecutor(max_workers=n_workers, initializer=_limit_worker_blas_threads) as pool:
                 for result in pool.map(_regime_worker, regime_tasks, chunksize=1):
                     if result is None:
                         continue
@@ -6502,7 +6632,12 @@ if __name__ == "__main__":
     p.add_argument(
         "--no-calibration", action="store_true", help="Skip ThresholdCalibrator on 1D"
     )
-    p.add_argument("--workers", type=int, default=12, help="Parallel worker count")
+    p.add_argument("--workers", type=int, default=Config.RUNTIME.N_WORKERS,
+                    help="Parallel worker count (default: derived from os.cpu_count(), "
+                         "see Config.RUNTIME.N_WORKERS -- was hardcoded 12 until 2026-08-23, "
+                         "a real oversubscription on CachyOS's 8-core/no-SMT hardware that the "
+                         "2026-08-20 audit's Config-level fix missed since this CLI flag has "
+                         "its own separate default)")
     args = p.parse_args()
 
     main(
