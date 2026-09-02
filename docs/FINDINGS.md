@@ -2164,3 +2164,103 @@ count as of this update: **29** (27 new @1D + the original `KVUE/KMB@3m` + `PNC/
 — every "thin confirmed set" disclaimer above this line describes the state BEFORE that
 promotion, not the current one. Re-running the fixed scripts against the now-richer set is a real
 follow-up, not yet done as of this update.
+
+**UPDATE, 2026-09-01/02, a real gap found and closed**: this "29" figure was written on CachyOS
+and never synced back to the Windows development machine. A full session's worth of new
+comparison-arm work (below) initially ran locally against `pair_source.py::confirmed_pairs_list()`
+reading an EMPTY local `output/results/1day/`, silently returning just the 1 pre-promotion pair
+(`KVUE/KMB`) instead of the real 29 — not a regression in the promotion itself, a two-machine sync
+gap that made local runs look like the project had stalled at n=1. Found via a downstream
+comparison arm's own honest small-sample disclosure, traced to the root cause, and fixed by
+syncing `output/results/{1day,4hr}/*.parquet` from CachyOS. Local reads now correctly return 29.
+See `Development.md`'s 2026-09-01 entry and `docs/HANDOFF.md` for the full account — flagged here
+too since this finding's own "29" claim is exactly what silently went stale.
+
+## 40. Three Comparison-Arm Builds, Synthetic-Factory Extension, and a Contamination Investigation
+[2026-09-01/02]
+
+Per Ross's direct request to build out several open research questions, scoped individually
+before building (per this session's own standing "scope then build" instruction), verified
+synthetically before running on real data, then run for real:
+
+**Sector-restricted FDR vs. a random-restriction null** (`research/sector_fdr_random_null_
+comparison.py`) — motivated by an RQM-3 ("relational quantum mechanics," used only as a naming
+analogy, see `docs/research/RQM_CONCEPTUAL_LENS_2026-09-01.md`) reading of
+`sector_restricted_fdr_rescan.py`: does restricting the FDR candidate pool to same-GICS-sector
+pairs change survivors because sector identity carries real signal, or just because shrinking m
+via ANY same-sized restriction would? Verified via a known-ground-truth discrimination test (a
+planted "real effect" subset correctly scores as an outlier against 500 random-restriction trials
+for all 4 FDR methods) before trusting it on real data. **Real result: marginal.** Same-sector
+restriction confirms 2 pairs vs. a random-null mean of ~1.1 survivors, landing at the 95.8th
+percentile — right at the edge of "outside typical range," not a strong confirmation. At these
+small integer counts the percentile math is coarse (1 vs. 2 survivors is a large percentile jump).
+
+**Johansen basket cointegration vs. pairwise Engle-Granger** (`research/johansen_basket_
+cointegration.py`) — does testing an already-confirmed pair plus a same-sector third leg as a
+3-asset Johansen basket find genuine cointegration that pairwise EG, applied only to the untested
+sub-pairs, misses entirely? A prior library survey wrongly attributed a Johansen test to the
+`arch` package; verified directly it does not exist there (only pairwise Engle-Granger/
+Phillips-Ouliaris) — the real implementation is `statsmodels.tsa.vector_ar.vecm.coint_johansen`,
+already a CAMARF dependency. Verified synthetically (independent-walks null correctly shows rank
+0; a genuine-shared-trend basket correctly shows rank≥1) before running for real. **First real run
+(against the local, incomplete 1-pair confirmed set) found and fixed a real bug**:
+`DataAligner.align_universe()`'s output dict is keyed by bare symbol name, not the `f"{sym}_{tf}"`
+label used for its input — the original lookup silently skipped every triple before the overlap
+check ever ran, an entirely different failure mode than "not enough data." **Re-run against the
+real 29-pair confirmed set (after the sync fix above) found a genuine positive result**: the
+`PNC/ZION/ABR` basket shows Johansen rank=1, and neither `PNC/ABR` nor `ZION/ABR` was ever
+separately pairwise-confirmed — real basket cointegration detected that pairwise EG missed
+entirely, exactly the "novel finding" case this comparison was built to surface. 1/6 triples
+(16.7%) showed rank≥1 in this run; still a small sample (most of the 29 pairs' symbols aren't in
+the Wikipedia-scraped GICS tag set at all, limiting same-sector third-leg matching), but a real,
+positive, non-null result.
+
+**CAMARF's hand-rolled DCC-GARCH vs. `pymgarch`** (`research/dcc_garch_pymgarch_comparison.py`) —
+`stats.py` hand-rolls Engle (2002) two-step DCC on top of `arch`'s univariate GARCH(1,1) because
+`arch.multivariate`'s own DCC class was removed in `arch` 7+. Verified `pymgarch` (PyPI 0.1.1) is
+real, built on the same `arch>=7.0` marginals, with validated two-stage Engle-Sheppard standard
+errors against R's `rmgarch` reference. **Clean, decisive result**: fit both on a synthetic panel
+with a known correlation regime (baseline 0.15, crisis-window 0.75) — CAMARF's hand-rolled
+implementation is validated as correct (RMSE vs. known truth: CAMARF 0.153 vs. pymgarch 0.167,
+CAMARF marginally more accurate), the two independent implementations closely agree
+(method-vs-method RMSE 0.031), and CAMARF's version is ~6.3x faster (2.67s vs. 16.91s on the same
+panel). **Recommendation: keep the existing hand-rolled DCC, no reason to switch** — a rare "the
+code was already right" finding, recorded precisely because most of this project's bug-hunting
+finds the opposite.
+
+**Data-contamination investigation into CAMARF's confirmed pairs — substantially resolved, one
+real infrastructure gap found and fixed along the way.** `data_contamination_scan.py`'s
+confirmed-pairs cross-check flagged all 10 unique symbols across CAMARF's production confirmed
+pairs (`7267.T, 8058.T, EQR, INVH, IQV, KMB, KVUE, PNC, Q, ZION`) as having unexplained price
+jumps. A targeted peer-corroboration follow-up (`research/confirmed_pairs_contamination_
+followup.py`, reusing `peer_correlation_contamination_check.py`'s core logic) found most (639/746)
+events were `likely_real_shared_event`, genuine unlabeled market moves, not contamination.
+Re-checking the residual with GICS **sector-matched** peers instead of random ones corroborated
+9 more, including `ZION` on 2023-03-13, the exact SVB/regional-bank-crisis date. **Separately, a
+code-quality council review** found that `data_contamination_scan.py` itself only ever scanned the
+yfinance-primary cache (`output/cache/`), never `output/cache/wrds/` — meaning this entire
+investigation, as first run, never touched the WRDS-primary data CAMARF actually uses for these
+symbols. Fixed (`list_price_cache_files()` now scans WRDS + Binance too, with a suffix-
+normalization map since WRDS uses a completely different on-disk convention: `1D`/`1M`/`3M`/`6M`/
+`7D`/`1Y` vs. yfinance's `1day`/`1mo`/`3mo`/`6mo`/`7day`); total scanned files jumped from 21,064
+to 79,974. The corrected full re-scan (16,455s) still flags the same 10 symbols, now with
+additional WRDS-only `1Y`-timeframe events included — **the new WRDS-scope events have not yet
+been run through the peer-corroboration check**, so the "substantially resolved" conclusion from
+the first pass is not yet re-verified against the corrected, full-coverage data. Net honest state:
+likely still mostly real market events given the pattern already found, but the newly-surfaced
+WRDS-only events are a genuine open item, not silently assumed clean.
+
+**`debug/synthetic_pair_factory.py` extended** with 4 new factors covering the entire 2026-08
+WRDS-merge/episodic-scan/PIT-safety arc this factory predates: `coint_regime_windows` (a genuine
+time-varying cointegration schedule, replacing the single global bool), `symbol_a/b_membership_
+spells` + `is_pit_member()` (the PIT S&P 500 membership gate), `adv_regime` + synthetic volume
+generation (the ADV liquidity gate), and `make_duplicate_identity_pair()` (the SPAC/GVKEY/
+ticker-collision contamination taxonomy). All additions verified bit-for-bit backward-compatible
+with defaults omitted vs. explicit.
+
+Files: `research/sector_fdr_random_null_comparison.py`, `research/johansen_basket_
+cointegration.py`, `research/dcc_garch_pymgarch_comparison.py`, `research/confirmed_pairs_
+contamination_followup.py` (all new), matching `debug/_verify_*.py` synthetic tests, `debug/
+synthetic_pair_factory.py` (extended), `research/data_contamination_scan.py` (WRDS-coverage fix),
+`debug/_verify_no_private_universe_globs.py` (new structural guard against the recurring
+duplicated-universe-loader bug class, 13+ instances found across this project's history).
