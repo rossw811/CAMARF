@@ -38,14 +38,58 @@ mechanism each one targets:
      -> general statistical-power characterization (sample-size effects
         found directly this session in task #54's cross-timeframe work)
 
+EXTENDED 2026-09-01 (Ross: "update it for sophistication and robustness
+based on the modern needs of the project, as a lot has changed in the past
+month and a half") — the original 8 factors above predate the entire
+2026-08 WRDS-merge/episodic-scan/PIT-safety arc and don't cover any of it.
+Four new factors, same additive/backward-compatible discipline (every new
+parameter defaults to None/off, reproducing the exact original behavior
+when unused — verified explicitly in the self-test section, not assumed):
+  9. coint_regime_windows (list of (start, end, is_cointegrated))
+     -> research/wrds_deep_history_episodic_scan.py's Tier 2/3 episodic,
+        rolling-window EG testing; BUG-D112's causal-candidacy gate
+        (first_qualified_window_end_date); research/pit_wfa_episodic.py.
+        Replaces the single global `cointegrated` bool with a genuine
+        time-varying schedule — a pair that's ONLY cointegrated in some
+        sub-windows, exactly the shape of relationship the whole episodic-
+        vs-static methodology exists to distinguish from a pair that's
+        cointegrated (or not) for its entire history.
+ 10. symbol_a_membership_spells / symbol_b_membership_spells
+     (list of (start, end) index-membership windows per symbol)
+     -> the "Point-in-time S&P 500 membership gate" seen constantly in
+        wrds_deep_history_episodic_scan.py's real production logs — a
+        window should be gated OUT if EITHER symbol wasn't an index member
+        as of that window's end date. Recorded as ground-truth metadata
+        (does not alter the price series) plus an `is_pit_member()` helper
+        so a verify script can check the real gate's decision at any bar
+        against a known-correct answer.
+ 11. adv_regime ("constant_liquid" / "constant_illiquid" /
+     "liquid_then_illiquid" / "illiquid_then_liquid")
+     -> the ADV (rolling average dollar volume) liquidity gate, the other
+        gate constantly seen in real Tier 2/3 logs alongside the PIT gate.
+        This factory previously generated NO volume series at all (price
+        only) — adds one, stored in ground_truth (not the main return
+        tuple, so every existing caller's `price_a, price_b, ground_truth
+        = make_synthetic_pair(...)` unpacking is completely unaffected).
+ 12. make_duplicate_identity_pair() (separate helper, not a
+     make_synthetic_pair parameter — a different concept: two DIFFERENT
+     symbol labels for what is secretly the SAME underlying company, not
+     a cointegrated pair of genuinely different companies)
+     -> the 78->27 pair-promotion contamination taxonomy (Development.md
+        2026-08-24): same-GVKEY duplicate identities, ticker<->PERMNO
+        collisions, SPAC NAV-clustering. Produces two price series that are
+        identical (or near-identical, via a small optional noise_std) up to
+        a synthetic vendor-labeling difference, for testing collision-
+        detection logic like promote_full_universe_pairs.py's same-GVKEY
+        filter without needing a real, already-known contamination case.
+
 Honest scope note: this factory targets the factors this session's own
 work has DIRECTLY touched and can verify are correctly injected/
 detectable. It does not yet cover every conceivable pipeline behavior
-(e.g. IBKR-specific pacing/connection failure modes, universe-
-construction edge cases) — designed to be EXTENDED, not treated as
-already-exhaustive. Each new factor added should get the same
-inject-then-verify-detectable treatment demonstrated in this file's
-self-test section.
+(e.g. IBKR-specific pacing/connection failure modes) — designed to be
+EXTENDED, not treated as already-exhaustive. Each new factor added should
+get the same inject-then-verify-detectable treatment demonstrated in this
+file's self-test section.
 """
 import itertools
 from typing import Optional, List, Tuple, Dict, Any
@@ -71,6 +115,11 @@ def make_synthetic_pair(
     volatility_regime: str = "constant",
     noise_std: float = 1.0,
     start_price: float = 100.0,
+    coint_regime_windows: Optional[List[Tuple[int, int, bool]]] = None,
+    symbol_a_membership_spells: Optional[List[Tuple[int, int]]] = None,
+    symbol_b_membership_spells: Optional[List[Tuple[int, int]]] = None,
+    adv_regime: Optional[str] = None,
+    adv_base_dollar_volume: float = 50_000_000.0,
 ) -> Tuple[pd.Series, pd.Series, Dict[str, Any]]:
     """
     Returns (price_a, price_b, ground_truth) where price_a/price_b are
@@ -103,6 +152,35 @@ def make_synthetic_pair(
       8. gap_positions: sets bars to NaN at specified (start, length,
          type) — 'DATA_GAP' style (>5 consecutive) or 'FILL' style
          (<=5 consecutive), matching data.py's GapFlag convention.
+
+    EXTENDED 2026-09-01:
+      9. coint_regime_windows (list of (start, end, is_cointegrated),
+         covering [0, n_bars) with no gaps or overlaps): if given,
+         OVERRIDES the single global `cointegrated`/`mean_reversion_speed`
+         behavior with a genuine time-varying schedule — the spread is OU
+         (mean-reverting) during is_cointegrated=True windows and a random
+         walk during is_cointegrated=False windows, with the OU/RW state
+         carried continuously across window boundaries (no artificial
+         level jump at a schedule change, only a change in DYNAMICS,
+         exactly like a real relationship gradually starting or stopping
+         to hold rather than teleporting). When None (default), behavior
+         is IDENTICAL to the original single-window `cointegrated` bool.
+     10. symbol_a_membership_spells / symbol_b_membership_spells (list of
+         (start, end) bar-index windows where that symbol is a PIT index
+         member): pure ground-truth metadata, does not touch the price
+         series — use with the module-level is_pit_member() helper to
+         check a real gate's decision at any bar against a known answer.
+         None (default) means "no membership restriction" (always a
+         member), matching a symbol with no gate applied.
+     11. adv_regime: if given, also generates a synthetic DAILY-style
+         dollar-volume series (independent of the hourly price index —
+         collapsed to one value per ~24 bars to mimic a daily ADV signal
+         the way the real pipeline computes it) with a controllable
+         liquidity regime, stored at ground_truth["volume_a"] (a pd.Series
+         aligned to price_a's index, forward-filled within each day) —
+         does not alter price_a/price_b themselves. None (default)
+         generates no volume series at all, identical to the original
+         price-only behavior.
     """
     rng = np.random.default_rng(seed)
     idx = pd.date_range("2024-01-01", periods=n_bars, freq="h")
@@ -159,7 +237,20 @@ def make_synthetic_pair(
     log_b = np.cumsum(b_innov) * 0.01 + np.log(start_price)
 
     # --- A: hedge_ratio*B + spread (OU if cointegrated, else RW) ---
-    if cointegrated:
+    if coint_regime_windows is not None:
+        # 2026-09-01 extension: a genuine time-varying schedule instead of
+        # one global flag. State (spread level) carries continuously across
+        # window boundaries -- only the DYNAMICS (mean-reverting vs random
+        # walk) change at a boundary, never an artificial level jump.
+        _validate_regime_windows(coint_regime_windows, n_bars)
+        spread = np.zeros(n_bars)
+        for start, end, is_coint in coint_regime_windows:
+            for t in range(max(start, 1), end):
+                if is_coint:
+                    spread[t] = (1 - mean_reversion_speed) * spread[t - 1] + a_innov[t] * 0.01
+                else:
+                    spread[t] = spread[t - 1] + a_innov[t] * 0.01
+    elif cointegrated:
         spread = np.zeros(n_bars)
         for t in range(1, n_bars):
             spread[t] = (1 - mean_reversion_speed) * spread[t - 1] + a_innov[t] * 0.01
@@ -208,6 +299,13 @@ def make_synthetic_pair(
             price_a.iloc[start:end] = np.nan
             gap_metadata.append({"start": start, "length": end - start, "type": gtype})
 
+    # --- 8. ADV/liquidity regime (2026-09-01 extension) — a synthetic
+    # dollar-volume series, independent of price. None (default) generates
+    # nothing at all, identical to the original price-only behavior.
+    volume_a = None
+    if adv_regime is not None:
+        volume_a = _make_adv_series(n_bars, idx, adv_regime, adv_base_dollar_volume, rng)
+
     ground_truth = {
         "cointegrated": cointegrated, "hedge_ratio": hedge_ratio,
         "mean_reversion_speed": mean_reversion_speed, "lead_lag_bars": lead_lag_bars,
@@ -215,6 +313,99 @@ def make_synthetic_pair(
         "gaps": gap_metadata, "contamination_seam_at": contamination_seam_at if contamination_applied else None,
         "contamination_ratio": contamination_ratio if contamination_applied else None,
         "jump_dates": jump_dates or [], "volatility_regime": volatility_regime, "n_bars": n_bars,
+        "coint_regime_windows": coint_regime_windows,
+        "symbol_a_membership_spells": symbol_a_membership_spells,
+        "symbol_b_membership_spells": symbol_b_membership_spells,
+        "adv_regime": adv_regime, "volume_a": volume_a,
+    }
+    return price_a, price_b, ground_truth
+
+
+def _validate_regime_windows(windows: List[Tuple[int, int, bool]], n_bars: int) -> None:
+    """Confirms coint_regime_windows covers [0, n_bars) with no gaps or
+    overlaps -- a silently incomplete schedule would leave part of the
+    spread at its zero-initialized default, a subtle bug that would look
+    like a legitimate (but wrong) flat/non-mean-reverting stretch rather
+    than an obvious crash."""
+    sorted_windows = sorted(windows, key=lambda w: w[0])
+    if sorted_windows[0][0] != 0:
+        raise ValueError(f"coint_regime_windows must start at bar 0, got {sorted_windows[0][0]}")
+    if sorted_windows[-1][1] != n_bars:
+        raise ValueError(f"coint_regime_windows must end at n_bars={n_bars}, got {sorted_windows[-1][1]}")
+    for (s1, e1, _), (s2, e2, _) in zip(sorted_windows, sorted_windows[1:]):
+        if e1 != s2:
+            raise ValueError(f"coint_regime_windows has a gap or overlap between ({s1},{e1}) and ({s2},{e2})")
+
+
+def _make_adv_series(n_bars: int, idx: pd.DatetimeIndex, adv_regime: str,
+                      base_dollar_volume: float, rng: np.random.Generator) -> pd.Series:
+    """Pure helper -- one dollar-volume value per calendar day (held
+    constant across that day's intraday bars, mimicking how a real daily
+    ADV signal looks when joined onto an intraday-indexed series), with a
+    controllable liquidity regime. ILLIQUID_MULT=0.1 puts synthetic volume
+    well below a typical $25M ADV gate threshold when base_dollar_volume is
+    the liquid-regime default ($50M), so a real gate applied to this series
+    has a genuine liquid/illiquid distinction to detect, not two values on
+    the same side of any real threshold."""
+    ILLIQUID_MULT = 0.1
+    day_of = idx.floor("D")
+    unique_days = day_of.unique()
+    n_days = len(unique_days)
+    if adv_regime == "constant_liquid":
+        per_day = np.full(n_days, base_dollar_volume)
+    elif adv_regime == "constant_illiquid":
+        per_day = np.full(n_days, base_dollar_volume * ILLIQUID_MULT)
+    elif adv_regime == "liquid_then_illiquid":
+        per_day = np.full(n_days, base_dollar_volume)
+        per_day[n_days // 2:] *= ILLIQUID_MULT
+    elif adv_regime == "illiquid_then_liquid":
+        per_day = np.full(n_days, base_dollar_volume * ILLIQUID_MULT)
+        per_day[n_days // 2:] /= ILLIQUID_MULT
+    else:
+        raise ValueError(f"unknown adv_regime={adv_regime!r}")
+    per_day *= (1.0 + rng.normal(0, 0.05, n_days))  # small realistic day-to-day noise
+    day_to_vol = dict(zip(unique_days, per_day))
+    return pd.Series([day_to_vol[d] for d in day_of], index=idx)
+
+
+def is_pit_member(membership_spells: Optional[List[Tuple[int, int]]], bar_idx: int) -> bool:
+    """Given a symbol's ground_truth membership_spells (list of (start, end)
+    bar-index windows, end exclusive) and a bar index, returns whether that
+    symbol is a known index member at that bar. None means "no restriction
+    specified" -> always a member (matches a symbol with no gate applied).
+    Use this as the KNOWN-correct answer when testing a real PIT
+    membership-gate function against synthetic data."""
+    if membership_spells is None:
+        return True
+    return any(start <= bar_idx < end for start, end in membership_spells)
+
+
+def make_duplicate_identity_pair(
+    n_bars: int = 500, seed: int = 0, start_price: float = 100.0,
+    label_a: str = "TICKER_A", label_b: str = "TICKER_B", noise_std: float = 0.0,
+) -> Tuple[pd.Series, pd.Series, Dict[str, Any]]:
+    """2026-09-01 addition, per the 78->27 pair-promotion contamination
+    taxonomy (Development.md 2026-08-24): produces two DIFFERENTLY-LABELED
+    price series that are secretly the SAME underlying identity (a same-
+    GVKEY duplicate, or a ticker<->PERMNO collision), for testing
+    collision-detection logic like promote_full_universe_pairs.py's
+    same-GVKEY filter without needing a real, already-known contamination
+    case. noise_std=0 (default) makes them bit-for-bit identical -- the
+    cleanest "this MUST be caught" case; a small noise_std produces a
+    near-identical pair (mimics two vendors' slightly different rounding/
+    adjustment of what's still the same underlying security), a harder,
+    more realistic detection case."""
+    rng = np.random.default_rng(seed)
+    idx = pd.date_range("2024-01-01", periods=n_bars, freq="h")
+    log_p = np.cumsum(rng.normal(0, 1, n_bars)) * 0.01 + np.log(start_price)
+    price_a = pd.Series(np.exp(log_p), index=idx)
+    if noise_std > 0:
+        price_b = pd.Series(np.exp(log_p + rng.normal(0, noise_std, n_bars)), index=idx)
+    else:
+        price_b = price_a.copy()
+    ground_truth = {
+        "is_duplicate_identity": True, "label_a": label_a, "label_b": label_b,
+        "noise_std": noise_std, "correlation": float(np.corrcoef(price_a, price_b)[0, 1]),
     }
     return price_a, price_b, ground_truth
 
@@ -336,6 +527,102 @@ if __name__ == "__main__":
     print(f"{status}  return at jump bar: {ret_at_jump:.3f} (expected > 0.10)")
     if not ok:
         failures.append(f"jump factor: return={ret_at_jump}, expected > 0.10")
+
+    # Backward-compatibility check (2026-09-01): every new parameter must
+    # default to reproducing EXACTLY the original behavior when unused —
+    # not just "close," bit-for-bit identical, since this factory has zero
+    # importers today but is meant to be adopted broadly, and a silent
+    # behavior change on upgrade would be a real, hard-to-notice regression.
+    print("\n--- Backward compatibility: new params default to zero effect ---")
+    pa_old = make_synthetic_pair(n_bars=500, cointegrated=True, mean_reversion_speed=0.1, seed=42)
+    pa_new = make_synthetic_pair(n_bars=500, cointegrated=True, mean_reversion_speed=0.1, seed=42,
+                                  coint_regime_windows=None, symbol_a_membership_spells=None,
+                                  symbol_b_membership_spells=None, adv_regime=None)
+    ok = pa_old[0].equals(pa_new[0]) and pa_old[1].equals(pa_new[1])
+    status = "OK" if ok else "FAIL"
+    print(f"{status}  identical output with all new params at their defaults vs. omitted entirely")
+    if not ok:
+        failures.append("backward compatibility: new-param defaults changed original output")
+
+    # Factor 9: coint_regime_windows produces a schedule-following spread —
+    # cointegrated sub-window is EG-significant on its own, non-cointegrated
+    # sub-window is not, even though a single global flag could never
+    # produce this pattern.
+    print("\n--- Factor 9: coint_regime_windows (episodic schedule) ---")
+    pa, pb, truth = make_synthetic_pair(
+        n_bars=2000, mean_reversion_speed=0.1, hedge_ratio=1.0, seed=9,
+        coint_regime_windows=[(0, 1000, True), (1000, 2000, False)],
+    )
+    la, lb = np.log(pa.values), np.log(pb.values)
+    _, pval_coint_window, _ = coint(la[:1000], lb[:1000], trend="c")
+    _, pval_noncoint_window, _ = coint(la[1000:], lb[1000:], trend="c")
+    ok = pval_coint_window < 0.05 and pval_noncoint_window > pval_coint_window
+    status = "OK" if ok else "FAIL"
+    print(f"{status}  cointegrated window (bars 0-1000) EG p={pval_coint_window:.4f} (should be significant), "
+          f"non-cointegrated window (bars 1000-2000) EG p={pval_noncoint_window:.4f} (should be weaker)")
+    if not ok:
+        failures.append(f"coint_regime_windows factor: coint-window p={pval_coint_window}, "
+                         f"non-coint-window p={pval_noncoint_window}")
+    try:
+        make_synthetic_pair(n_bars=100, coint_regime_windows=[(0, 50, True), (60, 100, False)])
+        failures.append("coint_regime_windows: a schedule with a gap (50-60 missing) should have raised, did not")
+        print("FAIL  a schedule with a gap should raise ValueError, did not")
+    except ValueError:
+        print("OK  a schedule with a gap correctly raises ValueError (_validate_regime_windows)")
+
+    # Factor 10: is_pit_member() matches the injected spells exactly
+    print("\n--- Factor 10: PIT membership spells + is_pit_member() ---")
+    spells = [(0, 100), (200, 300)]
+    checks = [(50, True), (150, False), (250, True), (350, False)]
+    ok = all(is_pit_member(spells, bar) == expected for bar, expected in checks)
+    status = "OK" if ok else "FAIL"
+    print(f"{status}  is_pit_member matches known spells at bars {[b for b, _ in checks]}")
+    if not ok:
+        failures.append(f"is_pit_member: mismatch against known spells {spells}")
+    ok_none = all(is_pit_member(None, bar) is True for bar in (0, 500, 99999))
+    print(f"{'OK' if ok_none else 'FAIL'}  is_pit_member(None, ...) is always True (no restriction specified)")
+    if not ok_none:
+        failures.append("is_pit_member: None spells should always return True")
+
+    # Factor 11: adv_regime produces a genuinely liquid/illiquid distinction
+    print("\n--- Factor 11: ADV/liquidity regime ---")
+    pa, pb, truth = make_synthetic_pair(n_bars=500, adv_regime="liquid_then_illiquid",
+                                         adv_base_dollar_volume=50_000_000.0, seed=11)
+    vol = truth["volume_a"]
+    ADV_GATE_THRESHOLD = 25_000_000.0  # matches the real pipeline's $25M ADV gate
+    first_half_liquid = vol.iloc[:len(vol) // 4].mean() > ADV_GATE_THRESHOLD
+    second_half_illiquid = vol.iloc[-len(vol) // 4:].mean() < ADV_GATE_THRESHOLD
+    ok = first_half_liquid and second_half_illiquid
+    status = "OK" if ok else "FAIL"
+    print(f"{status}  liquid_then_illiquid: early mean=${vol.iloc[:len(vol)//4].mean():,.0f} "
+          f"(should be > ${ADV_GATE_THRESHOLD:,.0f}), late mean=${vol.iloc[-len(vol)//4:].mean():,.0f} "
+          f"(should be < ${ADV_GATE_THRESHOLD:,.0f})")
+    if not ok:
+        failures.append("adv_regime factor: liquid_then_illiquid did not cross the real $25M gate threshold "
+                         "in the expected direction")
+    pa2, pb2, truth2 = make_synthetic_pair(n_bars=500, seed=11)  # adv_regime=None (default)
+    ok_none = truth2["volume_a"] is None
+    print(f"{'OK' if ok_none else 'FAIL'}  adv_regime=None (default) generates no volume series at all")
+    if not ok_none:
+        failures.append("adv_regime: default (None) should leave ground_truth['volume_a'] as None")
+
+    # Factor 12: make_duplicate_identity_pair() produces a near-perfect
+    # correlation a collision-detection filter should flag
+    print("\n--- Factor 12: make_duplicate_identity_pair() (GVKEY/ticker-collision contamination) ---")
+    pa, pb, truth = make_duplicate_identity_pair(n_bars=500, seed=12, noise_std=0.0)
+    ok = truth["correlation"] > 0.9999 and pa.equals(pb)
+    status = "OK" if ok else "FAIL"
+    print(f"{status}  noise_std=0: correlation={truth['correlation']:.6f} (expected >0.9999), "
+          f"series bit-identical={pa.equals(pb)}")
+    if not ok:
+        failures.append(f"duplicate identity factor (noise_std=0): correlation={truth['correlation']}")
+    pa2, pb2, truth2 = make_duplicate_identity_pair(n_bars=500, seed=12, noise_std=0.01)
+    ok2 = truth2["correlation"] > 0.95 and not pa2.equals(pb2)
+    status2 = "OK" if ok2 else "FAIL"
+    print(f"{status2}  noise_std=0.01: correlation={truth2['correlation']:.6f} (expected >0.95, <1), "
+          f"series NOT identical={not pa2.equals(pb2)}")
+    if not ok2:
+        failures.append(f"duplicate identity factor (noise_std=0.01): correlation={truth2['correlation']}")
 
     print(f"\n{'='*70}")
     if failures:

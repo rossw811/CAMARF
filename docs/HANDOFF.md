@@ -2,7 +2,158 @@
 
 ---
 
-## 2026-09-01, latest — universe-scope standing direction confirmed by Ross ("we're using the 44,700
+## 2026-09-01, latest — three scoped comparison-arm builds executed (Ross: "you don't need my sign
+off to build once it's scoped. always scope before the build"), plus a factory extension and a full
+bias/hygiene sweep
+
+**Standing process change**: Ross confirmed I don't need his sign-off before building a comparison
+arm once it's properly scoped (docstring/comments stating the question, method, and what "done"
+looks like) — scope first, then build, don't wait for a go-ahead on well-scoped work. Applies going
+forward, not just to the three items below.
+
+1. **`sector_fdr_random_null_comparison.py`** (RQM-3-motivated, see the RQM doc) — built, verified
+   (4/4 synthetic checks including a known-ground-truth discrimination test), run for real: same-
+   sector restriction confirms 2 pairs vs. a 500-trial random-null mean of ~1.1 survivors, landing at
+   the 95.8th percentile — **marginal, not dramatic**. At these small integer counts the percentile
+   math is coarse (1 vs 2 survivors is a big percentile jump); weak evidence sector identity carries
+   some signal, nowhere near a strong confirmation. Output:
+   `output/research/sector_fdr_random_null_comparison_summary.parquet`.
+2. **`johansen_basket_cointegration.py`** (arch-Johansen survey finding, corrected to use
+   `statsmodels.tsa.vector_ar.vecm.coint_johansen` — the original survey wrongly attributed Johansen
+   to `arch`, which only has pairwise EG/Phillips-Ouliaris) — built, verified (3/3 synthetic checks:
+   null case, known-true-positive case, candidate-building logic). **Real run initially showed
+   0/3 triples tested — found and fixed a real bug**: `DataAligner.align_universe()`'s OUTPUT dict is
+   keyed by bare symbol name (`"KVUE"`), not the `f"{sym}_{tf}"` label used for the INPUT dict (verified
+   directly against real data); the lookup was silently failing for every triple and `continue`-ing
+   before ever reaching the overlap check. Fixed, re-ran: **3/3 triples now test correctly, 0/3 found
+   basket cointegration (rank>=1)**. Honest caveat: this is a very small, underpowered sample —
+   `confirmed_pairs_list()` currently returns only **1** confirmed pair (`KVUE/KMB`), so only 3 triples
+   were ever buildable. **No real conclusion can be drawn from n=3** either way; if a properly-powered
+   basket-cointegration test is wanted, rerun against the broader `candidate_pairs_list()` pool instead
+   of confirmed-only. Also worth noting on its own: CAMARF's live confirmed-pairs list being just 1 pair
+   is itself informative context for how thin current production coverage is.
+
+**IMPORTANT, separate finding from `data_contamination_scan.py` (ran ~26 min, see below) — needs your
+attention, not just filed away**: the scan's confirmed-pairs cross-check flagged **ALL 10 unique
+constituent symbols across every one of CAMARF's currently-confirmed pairs** as having unexplained
+price jumps: `7267.T, 8058.T, EQR, INVH, IQV, KMB, KVUE, PNC, Q, ZION`. 7 of the 10
+(`7267.T, 8058.T, EQR, IQV, KMB, PNC, ZION`) are affected specifically at the **`1day`** timeframe —
+the primary production timeframe. **Important caveat before treating this as confirmed data
+corruption**: "unexplained" here means "not matched to a known split or the project's own (necessarily
+incomplete) macro-crisis-window list" — it does NOT mean confirmed contamination. The project's own
+`research/peer_correlation_contamination_check.py` exists specifically to distinguish a real,
+unlabeled shared market event (peers move together same day) from a genuine artifact (isolated to one
+symbol) — **that cross-check has not been run on these 10 symbols yet**. Next step before any alarm or
+any fix: run `peer_correlation_contamination_check.py` against these specific 10 symbols/dates to see
+how many survive as genuinely-unexplained-and-isolated vs. explained by a real shared event this
+project just hasn't labeled. Full scan output: `output/research/data_contamination_scan.parquet`
+(263,904 raw jump events total across the whole 21,064-file cache, 250,138 unexplained — most of that
+volume is thin/early-history noise in obscure symbols at long timeframes, not the urgent part; the
+confirmed-pairs hit is the urgent part).
+3. **`dcc_garch_pymgarch_comparison.py`** — built, verified (2/2 synthetic checks), run for real.
+   **Clean, decisive result**: `pymgarch` (installed, real, built on the same `arch>=7.0` univariate
+   GARCH(1,1) CAMARF already fits) was compared against `stats.py`'s hand-rolled DCC on a synthetic
+   panel with a KNOWN correlation regime (baseline 0.15, crisis-window 0.75) — **CAMARF's hand-rolled
+   implementation is validated as correct** (RMSE vs. known truth: CAMARF 0.153 vs. pymgarch 0.167 —
+   CAMARF is marginally MORE accurate), the two independent implementations closely agree
+   (method-vs-method RMSE 0.031), and **CAMARF's version is ~6.3x faster** (2.67s vs 16.91s on the
+   same panel). Real trade data (`output/backtest/trades_layer1.parquet`, 90 trades/45 days/2 pairs)
+   was thin but both methods fit successfully. **Recommendation: keep the existing hand-rolled DCC,
+   no reason to switch** — a rare "the code was already right" finding, worth recording precisely
+   because most of this project's bug-hunting finds the opposite.
+
+**`debug/synthetic_pair_factory.py` substantially extended** (Ross: "update it for sophistication and
+robustness... a lot has changed in the past month and a half") — 4 new factors, all backward-compatible
+(verified bit-for-bit identical output with new params at their defaults vs. omitted entirely):
+episodic/time-varying `coint_regime_windows` (replaces the single global `cointegrated` bool with a
+real schedule — the core of the whole 2026-08 episodic-scan methodology, which predates this factory),
+`symbol_a/b_membership_spells` + `is_pit_member()` helper (the PIT S&P 500 membership gate seen
+constantly in real Tier 2/3 logs), `adv_regime` + synthetic volume generation (the ADV liquidity gate,
+same logs), and `make_duplicate_identity_pair()` (the 78→27 SPAC/GVKEY/ticker-collision contamination
+taxonomy). All 12 factors + the new backward-compatibility check pass. Nothing currently imports this
+factory yet (checked directly) — zero risk of having broken an existing consumer.
+
+**Full `debug/_verify_*.py` suite run** (193 scripts, per Ross's "run bias tests and data hygiene
+tests"): 189 clean passes, 1 false-fail (`_verify_data_wrds.py` — my own ad-hoc runner's 90s timeout
+was too short for a script that legitimately touches the network; confirmed ALL CHECKS PASSED on
+retry with a longer timeout), **3 real pre-existing failures** — `_verify_bug_d56_compose.py`,
+`_verify_bug_d61_window_alignment.py`, `_verify_dead_constants_comparison_arms.py` — all trace to the
+2026-08-20 `ENTRY_ZSCORE update` commit leaving older synthetic fixtures stale (2 of the 3 files
+weren't touched since 2026-07-12/14, well before that threshold change; the "fixture needs adjustment"
+note is literally printed in one failure's own output). **Not caused by anything today, not urgent,
+but real and unfixed** — worth a dedicated pass to update these 3 fixtures' entry-threshold
+assumptions to match the current `ENTRY_ZSCORE`.
+
+**`research/data_contamination_scan.py` run** — still in progress as of this entry (does a legitimate,
+documented live-yfinance split-history cross-check per flagged symbol, `fetch_splits()`, not a bug —
+just slow with no `--limit-network` cap set on this run at full universe scale).
+
+**Ground truth re-verified**: Tier 3 past 4.4M/7.83M pairs (56%+), still healthy, only 1 crash since
+deploy. CachyOS reachable via Tailscale, uptime continuous.
+
+**Also actioned**: gave Ross the exact elevated-PowerShell command to stop Windows Update from
+force-restarting while logged in (`NoAutoRebootWithLoggedOnUsers=1`) — needs him to run it himself,
+I can't self-elevate. Not yet confirmed run.
+
+---
+
+## 2026-09-01 — plan executed: near_miss_lag_scan.py fix, streaming-checkpoint fix deployed
+and verified live, ~94-file diff committed, secrets sweep closed out, RQM lens delivered
+
+CachyOS came back online (Tailscale `100.64.64.126` reachable, 44 min uptime, healthy load) after
+being confirmed offline earlier this session. Worked the priority list top to bottom:
+
+- **`near_miss_lag_scan.py` fixed** — was the one real remaining instance of the universe-undercount
+  bug (see the entry below), rewired to `universe_loader.load_full_universe()`. Verified via the
+  existing synthetic suite (unaffected) plus a live smoke test (loaded 1,580 real symbols at `--tf 1h`,
+  aligned, built the returns matrix cleanly).
+- **Streaming-checkpoint fix deployed to CachyOS and verified against the REAL checkpoint, not just
+  synthetic tests**: `_load_checkpoint("tier3_rolling")` correctly reconstructed 3,521,562 result rows
+  from the mix of old-format snapshot + 406 incremental part files in 21.8s before anything was
+  relaunched. Relaunched under the auto-restart wrapper; log confirmed *"Resuming 'tier3_rolling' from
+  checkpoint: 2711500/7834906 pairs already done — skipping to pair 2711500."* Currently past
+  3,867,500/7,834,906 (49.4%) and climbing, memory stable (no longer the unbounded-growth crash
+  pattern) — **only one crash since deploy** (an initial mem_guard floor-breach at startup, second
+  attempt has run clean for hours since). Correction to an in-session misread: a `find`/grep across
+  `logs/wrds_deep_history_episodic_scan_auto_attempt*.log` initially looked like 30 crashes — those
+  were stale files from the original 2026-08-26 saga (confirmed via file mtimes), not today's run.
+  Today's wrapper log (`logs/auto_restart_wrapper_20260901.log`) shows the real count: 1 crash, then
+  clean.
+- **The ~94-file uncommitted diff committed** (commit `7119a132`) — everything from the multi-session
+  saga (universe-undercount fixes, the crash-and-fix saga, the paper split, new research modules, this
+  file's own recovery entries) is now safe in git history. Verified no paper-reframe prose was
+  accidentally included (grepped for "unwarranted confidence" in `PAPER.md`/`PAPER_MAGNITUDE.md` first
+  — zero matches, confirming the pending reframe was never actually written into the files).
+- **Public-repo secrets sweep closed out** — confirmed genuinely clean via three independent checks
+  (filename patterns across full history, content-pattern grep of the current tree, and a full-history
+  pickaxe search for private-key markers, all empty). Hardened `.gitignore` with explicit
+  `.pgpass`/`.env`/`.pem`/`.key` exclusions, since none existed before this.
+- **RQM/"Helgoland" research lens delivered**: `docs/research/RQM_CONCEPTUAL_LENS_2026-09-01.md`.
+  Verified Rovelli's actual formal postulates (not the pop-sci gloss) via arXiv/Stanford Encyclopedia
+  of Philosophy, then honestly separated genuine structural matches from decoration. Two real
+  findings: (1) RQM-1 (relative facts) is a legitimate one-paragraph framing device for the
+  already-proposed "unwarranted confidence" paper reframe — same logical structure, not new work;
+  (2) RQM-3 (intrinsic relations) motivates one genuinely new, cheap, well-scoped comparison-arm
+  question that's never been checked: does `sector_restricted_fdr_rescan.py`'s sector-grouped FDR
+  correction change confirmations because sectors are economically meaningful, or just because of the
+  group-size effect (testable against a randomly-grouped control of the same sizes)? **Not built —
+  needs your go-ahead first**, per the document's own explicit boundary-setting.
+- **15-library survey done**: `docs/research/LIBRARY_SURVEY_2026-09-01.md` (355 lines, ranked by
+  actual relevance, every claim web-verified or checked directly against CAMARF's own code — two
+  initial assumptions were caught and corrected mid-research: `ml.py`'s primary model is XGBoost not
+  scikit-learn, GPU acceleration is CuPy not jax). Top findings needing a decision from Ross:
+  (1) `arch` (already used for GARCH stops) also ships a Johansen multi-asset cointegration test —
+  real, scopeable "does basket cointegration find relationships pairwise EG misses?" question, needs
+  buy-in before building, same as the RQM item above; (2) `hftbacktest`'s queue-position fill model is
+  a real execution-realism idea `backtest.py` currently lacks (read for architecture, not adoption);
+  (3) `debug/_verify_polars_universe_loader.py` already exists and already passes — a polars-based
+  loader was prototyped and verified bit-identical to pandas at some point; worth checking whether it
+  was ever actually wired into production or just verified and shelved. Confirmed dead ends: QuantLib,
+  zipline-reloaded, tensortrade, jax, pytorch — no CAMARF gap any of them fill today.
+
+---
+
+## 2026-09-01 — universe-scope standing direction confirmed by Ross ("we're using the 44,700
 everywhere we can" / "I want every script to be using the 44,700"); verified, not just documented
 
 **Direction, confirmed directly by Ross this session**: the ~44,700-symbol WRDS-merged universe

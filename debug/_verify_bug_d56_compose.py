@@ -33,7 +33,10 @@ def build_spread_df():
     n = 100
     idx = pd.date_range("2024-01-01 09:30", periods=n, freq="1h")
     z = np.full(n, 0.3)  # warm-up bars, nonzero (run() drops z_rolling==0 rows)
-    z[60] = 2.5           # triggers entry (short side, |z|>=ENTRY_ZSCORE=2.0)
+    z[60] = 3.5           # triggers entry (short side, |z|>=ENTRY_ZSCORE=3.0, raised from 2.0
+                           # 2026-08-17 -- fixture updated 2026-09-01 to still clear the current
+                           # threshold; this fixture only needs SOME entry to trigger, the exact
+                           # value isn't otherwise load-bearing to the test)
     z[61] = 0.0            # EXIT_ZSCORE=0.0 crossing -> immediate signal_exit next bar
     z[61] = 0.0001          # keep nonzero so the row isn't dropped, still <= EXIT_ZSCORE
     spread = np.zeros(n)

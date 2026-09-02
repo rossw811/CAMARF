@@ -111,7 +111,9 @@ def main():
     ground_truth_cutoff = full_start + (full_end - full_start) * formation_frac
 
     # --- Cointegration side: real BacktestEngine.run(), holdout_only=True ---
-    z_signal = triangle_wave(n, period=40, amplitude=2.5)  # crosses ENTRY_ZSCORE=2.0 and EXIT_ZSCORE=0.0
+    z_signal = triangle_wave(n, period=40, amplitude=3.5)  # crosses ENTRY_ZSCORE=3.0 (raised from 2.0
+                                                             # 2026-08-17, fixture updated 2026-09-01)
+                                                             # and EXIT_ZSCORE=0.0
     pair_row = pd.Series({
         "symbol_a": "SYNA", "symbol_b": "SYNB", "tf_label": "1h",
         "hedge_ratio_ols": 1.0, "hedge_ratio_kalman_mean": 1.0,

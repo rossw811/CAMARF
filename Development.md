@@ -25003,3 +25003,247 @@ into an automatic recovery within ~30-60 seconds. Reduces the operational cost o
 but does not prevent hangs from happening. If CachyOS is ever unreachable for a prolonged period going
 forward, a hang the watchdog failed to catch is a real possibility worth considering alongside
 network-reachability troubleshooting.
+
+## 2026-09-01: universe-consistency audit, streaming-checkpoint fix deployed and verified live,
+RQM/library research, three new comparison-arm builds, synthetic factory extended, full bias/hygiene
+sweep, confirmed-pairs contamination follow-up
+
+Long session, CachyOS back online after the restart saga above. Worked top-to-bottom off
+`docs/HANDOFF.md`'s priority list, then Ross's own follow-up threads. Recorded here in the order the
+work actually happened; `docs/HANDOFF.md` has the same material in "what needs a decision" form.
+
+### Universe-consistency audit (Ross: "make sure the 44,700 is consistent in every script")
+
+Grepped every `research/*.py` reference to `load_full_universe`/`_load_full_universe` (16 files).
+13 already correctly wired to the shared `universe_loader.load_full_universe()` with full default
+flags (the 5 fixed 2026-08-24 + 2 fixed earlier + 6 more confirmed correct this session, never
+actually buggy). **One real instance of the bug found and fixed**: `research/near_miss_lag_scan.py`
+had its own private `discover_symbols()` glob'ing only `Config.DATA.CACHE_DIR` (the ~1,731-symbol
+yfinance-only cache, `_1day.parquet` suffix convention) via `DataStore.load()`, which has zero WRDS
+awareness — the exact same duplicated-loader bug class as the 5+2 already-fixed scripts, just never
+caught here. Not an active risk at the script's default `--tf 1h` (WRDS has no intraday data, so 1h
+was never undercounted relative to what actually exists), but `--tf 1D` would have silently missed
+WRDS's ~44,694 symbols. Fixed: `discover_symbols()` removed entirely, `main()` now calls
+`universe_loader.load_full_universe(args.tf, columns=["close"])` directly, matching the established
+pattern. Verified: existing synthetic suite unaffected (doesn't touch the removed function), live
+smoke test at `--tf 1h` loaded 1,580 real symbols, aligned, built the returns matrix cleanly (timed
+out mid-correlation-matrix on a deliberately short 60s smoke-test window — the expensive O(N^2) step,
+not a bug).
+
+Confirmed separately: `wrds_deep_history_episodic_scan.py` (the main overnight production script) is
+correctly scoped as-is — its `output/cache/wrds/` glob already IS the full 44,694-symbol merge (that
+directory alone holds "the 44,700" everyone's been citing); `lead_lag_scan.py` operates on
+already-confirmed pairs, not a fresh universe scan; `audit_price_degeneracy.py`'s default `--tf 1m` is
+correctly capped by real intraday-data availability (WRDS has none), not a bug.
+
+### Streaming-checkpoint fix deployed to CachyOS, verified against the REAL checkpoint before touching it
+
+CachyOS came back online (Tailscale `100.64.64.126`, confirmed healthy). Before syncing the
+locally-verified-only streaming-checkpoint fix (see the entry above — built, 7/7 synthetic tests
+passing, never deployed), did a READ-ONLY dry-run load of the real production checkpoint through the
+new code path first: `_load_checkpoint_meta("tier3_rolling")` returned the real resume point
+(2,711,500/7,834,906) in <0.01s, and the full `_load_checkpoint("tier3_rolling")` correctly
+reconstructed 3,521,562 result rows from the mix of the old-format single snapshot
+(`checkpoint_tier3_rolling.parquet`, last written 2026-08-26 10:37) plus 406 incremental part files
+(written up to 19:46 the same evening) in 21.8s. Only after that succeeded was the fix synced (`scp`,
+checksums verified identical on both ends) and the auto-restart wrapper relaunched. Log confirmed the
+exact expected resume: *"Resuming 'tier3_rolling' from checkpoint: 2711500/7834906 pairs already
+done — skipping to pair 2711500."* Memory stabilized (no longer the old unbounded-growth crash
+pattern) at ~13.6GB free instead of continuously declining — real production confirmation the fix
+works, not just synthetic. One crash since deploy (an initial mem_guard floor-breach at startup,
+attempt 2 has run clean for hours since, well below the ~30-crashes-in-2-hours the original saga saw
+— a `find`/grep across ALL `logs/wrds_deep_history_episodic_scan_auto_attempt*.log` files initially
+looked alarming but those were stale 2026-08-26 files, confirmed via mtimes; today's real count was 1).
+As of this entry: past 4.4M/7.83M pairs (56%+).
+
+### `docs/HANDOFF.md`'s ~94-file uncommitted diff committed (commit `7119a132`)
+
+Everything from the multi-session saga (universe-undercount fixes, the crash-and-fix saga, the paper
+split, new research modules, `docs/HANDOFF.md`'s own recovery entries) is now in git history. Checked
+first that no pending-reframe prose had been accidentally written into `PAPER.md`/`PAPER_MAGNITUDE.md`
+(grepped for "unwarranted confidence" — zero matches, confirmed the reframe proposal was never
+actually built, only proposed).
+
+### Public-repo secrets sweep closed out
+
+Three independent checks, all clean: filename-pattern search across full git history (`.pgpass`,
+`.env`, `.pem`, `.key`, `id_rsa` — none, ever), content-pattern grep of the current tree (no embedded
+credentials), and a full-history pickaxe search for private-key markers (`BEGIN RSA/OPENSSH/EC
+PRIVATE KEY` — none). `.gitignore` had ZERO entries for any credential-shaped file before this — added
+explicit `.pgpass`/`.env`/`.env.*`/`.pem`/`.key`/`id_rsa*` exclusions as hardening against a future
+`git add -A` accidentally picking one up (ran `git add -A` myself this same session for the commit
+above — good moment to close this gap).
+
+### RQM ("Helgoland") research lens delivered — `docs/research/RQM_CONCEPTUAL_LENS_2026-09-01.md`
+
+Ross's original request (early in the 2026-08-23/28 session, never followed up until now): use
+Rovelli's Relational Quantum Mechanics as a research conceptual lens. Verified the actual formal
+postulates (Adlam & Rovelli's RQM-1 through RQM-4, via arXiv/Stanford Encyclopedia of Philosophy, not
+the popularized gloss) before writing anything, explicitly to avoid the "quantum finance" pattern of
+borrowing physics language for false authority. Two genuine structural matches found, one explicitly
+ruled out:
+- RQM-1 (relative facts — no observer-independent state) is a precise restatement of the already-
+  proposed "unwarranted confidence" paper reframe (a cointegration finding is a fact relative to a
+  specific test/window/universe, never an absolute property of the pair) — a legitimate one-paragraph
+  framing device if the reframe is accepted, not new work.
+- RQM-3 (relations are intrinsic — no third-system information should leak into a pairwise fact)
+  motivated one genuinely new, cheap, well-scoped research question: does
+  `sector_restricted_fdr_rescan.py`'s same-sector pool restriction change FDR survivors because sector
+  identity carries real signal, or just because restricting m to ANY same-sized subset would? (Built
+  and run — see below.)
+- Explicitly ruled out: no literal quantum formalism belongs anywhere in the codebase; this is not a
+  new pillar/section/backtest arm.
+
+### 15-library survey delivered, one real error caught and corrected —
+`docs/research/LIBRARY_SURVEY_2026-09-01.md`
+
+Dispatched as a background research task (real WebSearch/WebFetch verification against each library's
+actual repo/docs, not memory), 355 lines, ranked by actual CAMARF relevance. Top findings: `arch`
+(already used for GARCH stops) was initially claimed to also ship a Johansen multi-asset cointegration
+test — **verified directly against the real docs and this was WRONG**, caught before anything was
+built on it. `arch.unitroot.cointegration` has only pairwise Engle-Granger and Phillips-Ouliaris;
+Johansen actually lives in `statsmodels.tsa.vector_ar.vecm.coint_johansen`, already a CAMARF dependency
+(no new package needed). Corrected in the survey doc itself with an explicit correction note, not
+silently edited. Other real findings: `hftbacktest`'s queue-position fill model (execution-realism gap
+in `backtest.py`, read for architecture only); `debug/_verify_polars_universe_loader.py` already exists
+and passes (a polars loader was prototyped and verified at some point, unclear if ever wired into
+production — worth checking); confirmed dead ends (QuantLib, zipline-reloaded, tensortrade, jax,
+pytorch — no CAMARF gap any of them fill today).
+
+### Three scoped comparison-arm builds — Ross: "you don't need my sign off to build once it's scoped.
+always scope before the build" (standing process change from this session forward)
+
+**1. `research/sector_fdr_random_null_comparison.py`** — the RQM-3 question above. Reuses
+`sector_restricted_fdr_rescan.py`'s `restrict_to_same_sector()` and `fdr_method_comparison.py`'s
+`apply_all_methods()` unchanged. Draws N random size-m subsets of the same full candidate pool (m =
+the real same-sector restriction's size), re-applies the same 4 FDR methods, reports where the real
+same-sector result falls in that random null's empirical distribution. Verified: 4/4 synthetic checks
+including a known-ground-truth discrimination test (a planted "real effect" subset correctly scores as
+an outlier against the random null for all 4 methods — confirms the comparison actually has power
+before trusting it on real data). **Real result**: same-sector restriction confirms 2 pairs vs. a
+500-trial random-null mean of ~1.1 survivors, landing at the 95.8th percentile — **marginal, not
+dramatic**. At these small integer counts the percentile math is coarse (1 vs 2 survivors is a large
+percentile jump); weak evidence sector identity carries some signal, far from a strong confirmation.
+
+**2. `research/johansen_basket_cointegration.py`** — does testing an already-confirmed pair PLUS a
+same-sector third leg as a Johansen basket find genuine multi-asset cointegration that pairwise EG,
+applied only to the untested sub-pairs, would miss? Verified: 3/3 synthetic checks (independent-walks
+null case correctly shows rank 0, a genuine-shared-trend case correctly shows rank>=1, third-leg
+candidate-building logic excludes cross-sector pairs and never offers a pair's own symbols back).
+**Real run initially showed 0/3 triples tested — found and fixed a real bug**:
+`DataAligner.align_universe()`'s OUTPUT dict is keyed by bare symbol name (confirmed directly: a real
+3-symbol call returned `aligned.keys() == ['KVUE','KMB','ACI']`), NOT the `f"{sym}_{tf}"` label used
+for the INPUT dict — the original lookup silently `continue`'d past every triple before the overlap
+check ever ran, an entirely different failure mode than "not enough data." Fixed (lookup by bare
+symbol name, comment explaining the real behavior for the next person who assumes input/output keys
+match). Re-ran: 3/3 triples now test correctly. **Result: 0/3 found basket cointegration** — but
+`confirmed_pairs_list()` currently returns only **1** confirmed pair (`KVUE/KMB`), so only 3 triples
+were ever buildable; **no real conclusion should be drawn from n=3**. `candidate_pairs_list()` only
+adds 2 more pairs (`CRM/NOW`, `SPY/VOO` — 3 total including the confirmed one), so expanding the pool
+wouldn't meaningfully improve power either. The real fix is time, not scope: revisit once Tier 3
+finishes and the confirmed-pairs pool is actually large. Worth noting on its own: CAMARF's live
+confirmed-pairs list being this thin is informative context independent of the Johansen question.
+
+**3. `research/dcc_garch_pymgarch_comparison.py`** — `stats.py` Section 4 hand-rolls Engle (2002)
+two-step DCC-GARCH on top of `arch`'s univariate `arch_model` GARCH(1,1), because `arch.multivariate`'s
+own DCC class was removed in `arch` 7+ (per `stats.py`'s own comments). Ross asked directly whether a
+newer package covers this gap. Verified via web search: `pymgarch` (PyPI 0.1.1) is real, built on the
+SAME `arch>=7.0` univariate marginals CAMARF already fits, with validated two-stage Engle-Sheppard
+standard errors against R's `rmgarch`/`tsmarch` reference. Installed (`pip install pymgarch`, confirmed
+`arch>=7.0` dependency match). Verified: 2/2 synthetic checks (the comparison script's own synthetic
+panel generator produces the correct known realized correlation before either DCC method sees it;
+`rmse_vs_target` scoring sanity-checked against a perfect match and a known mismatch). **Real result,
+clean and decisive**: fit both methods on a synthetic panel with a KNOWN correlation regime (baseline
+0.15, crisis-window 0.75) — **CAMARF's hand-rolled implementation is validated as correct** (RMSE vs.
+known truth: CAMARF 0.153 vs. pymgarch 0.167 — CAMARF is marginally MORE accurate), the two independent
+implementations closely agree with each other (method-vs-method RMSE 0.031), and **CAMARF's version is
+~6.3x faster** (2.67s vs. 16.91s on the same panel). Real trade data
+(`output/backtest/trades_layer1.parquet`, 90 trades/45 days/2 pairs) was thin but both methods fit
+successfully — no accuracy claim made on real data (no ground truth available there), only
+success/failure logged, matching `run_dcc_garch`'s own honest "skip, don't fabricate" convention.
+**Recommendation: keep the existing hand-rolled DCC, no reason to switch** — a rare "the code was
+already right" finding, worth recording precisely because most of this project's bug-hunting finds the
+opposite.
+
+### `debug/synthetic_pair_factory.py` substantially extended — Ross: "update it for sophistication and
+robustness based on the modern needs of the project, as a lot has changed in the past month and a half"
+
+The factory (built 2026-07-14) predates the entire 2026-08 WRDS-merge/episodic-scan/PIT-safety arc.
+Four new factors added, all additive and backward-compatible by construction (every new parameter
+defaults to `None`/off; verified BIT-FOR-BIT identical output with all new params at their defaults vs.
+omitted entirely, not just "close"):
+- `coint_regime_windows` (list of `(start, end, is_cointegrated)`, replacing the single global
+  `cointegrated` bool with a genuine time-varying schedule, state carried continuously across window
+  boundaries) — targets the entire episodic/PIT-safe scan methodology, which had zero synthetic
+  ground-truth coverage before this. `_validate_regime_windows()` raises on a gap/overlap rather than
+  silently leaving part of the spread at its zero-initialized default.
+- `symbol_a/b_membership_spells` + module-level `is_pit_member()` helper — the PIT S&P 500 membership
+  gate seen constantly in real Tier 2/3 production logs. Pure ground-truth metadata, doesn't touch the
+  price series.
+- `adv_regime` (+ `_make_adv_series()`) — the ADV liquidity gate, same logs. The factory previously
+  generated NO volume series at all; new volume is stored in `ground_truth["volume_a"]`, not the main
+  return tuple, so every existing 3-tuple unpacking is unaffected.
+- `make_duplicate_identity_pair()` (separate helper, not a `make_synthetic_pair` param — a different
+  concept: two labels for the SAME underlying identity, not a cointegrated pair of different
+  companies) — targets the 78→27 SPAC/GVKEY/ticker-collision contamination taxonomy.
+
+All 12 factors (8 original + 4 new) plus the new backward-compatibility check pass. Checked directly:
+nothing currently imports this factory (zero risk of having broken an existing consumer).
+
+### Full `debug/_verify_*.py` suite run (193 scripts) + 3 real pre-existing failures found and fixed
+
+Per Ross's "run bias tests and data hygiene tests." 189 clean passes on first run. 1 false-fail
+(`_verify_data_wrds.py` — an ad-hoc test-runner's 90s timeout was too short for a script that
+legitimately touches the network with a graceful EOFError-based skip; confirmed ALL CHECKS PASSED on
+retry with a longer timeout — not a real issue, a harness artifact). **3 real, pre-existing failures**:
+`_verify_bug_d56_compose.py`, `_verify_bug_d61_window_alignment.py`,
+`_verify_dead_constants_comparison_arms.py` — all three constructed synthetic entry z-scores
+(`z[60] = 2.5`) calibrated to the OLD `ENTRY_ZSCORE=2.0`; commit `1fda7d96` ("Post-crash session...
+ENTRY_ZSCORE update") raised it to 3.0, and these 3 fixtures (2 of the 3 untouched since 2026-07-12/14,
+well before that change) were never updated to match, so no synthetic bar cleared the new threshold
+and every downstream assertion about trades/exits failed. **Not caused by anything this session** —
+genuine test debt from a threshold change 12 days ago that nobody's own local verify runs happened to
+surface again until this sweep. **Fixed**: raised each fixture's entry z-score comfortably above 3.0
+(and, in `_verify_dead_constants_comparison_arms.py`'s `real_corr_exit` case, comfortably below
+`STOP_ZSCORE=3.5` too, since that fixture specifically needs a clean entry-then-hold, not an immediate
+stop — first attempt at this fix used 2.9, which doesn't clear 3.0 either, caught and corrected to 3.2
+before re-running). All 3 re-verified passing.
+
+### `research/data_contamination_scan.py` run (full 21,064-file cache, ~26 min) + confirmed-pairs
+follow-up — the one finding here that needs real attention, not just filing away
+
+Full scan: 263,904 raw single-bar jump events >15% across the whole cache, 250,138 unexplained (not
+matched to a known split or the project's own necessarily-incomplete macro-crisis-window list). Most
+of that volume is thin/early-history noise in obscure symbols at long timeframes (1mo/3mo/6mo), not
+urgent. **The urgent part**: the scan's own confirmed-pairs cross-check flagged **all 10 unique
+constituent symbols across every one of CAMARF's currently-confirmed pairs** — `7267.T, 8058.T, EQR,
+INVH, IQV, KMB, KVUE, PNC, Q, ZION` — with 7 of the 10 affected specifically at the `1day` production
+timeframe.
+
+**Immediate follow-up run** (`research/confirmed_pairs_contamination_followup.py`, new — targeted
+variant of `peer_correlation_contamination_check.py`'s existing peer-corroboration logic, reused not
+reimplemented, applied to exactly these 10 symbols' own unexplained events rather than a top-N-by-
+magnitude sample): 746 unexplained events across the 10 symbols, 739 cross-checked against 20 random
+peers each. **Most (639/746) are `likely_real_shared_event`** — genuinely unlabeled real market moves,
+peer-corroborated, not contamination — confirms the peer-check discipline is doing real work, not just
+rubber-stamping. **But a real residual of 145 `likely_isolated_artifact` events remains**, concentrated
+specifically in:
+- **ZION**: 14/29 (48%) of its `1day` events are isolated artifacts — the single most concerning
+  symbol.
+- **PNC**: 5/15 (33%) at `1day`.
+- **7267.T**: 3/3 (100%) at `1day`, though small n.
+- **EQR**: 2/9 (22%) at `1day`.
+- **KMB, IQV**: 1/1 each at `1day` (n=1, not conclusive alone).
+- **INVH, KVUE, Q**: 0 isolated at `1day` — clean at the timeframe that matters most.
+
+**Next step, not yet done**: a real BUG-D65-style investigation (the append-seam split-adjustment-basis
+mismatch pattern already found and fixed once for other symbols) specifically for ZION, PNC, and
+7267.T's flagged `1day` dates — these are the genuine candidates, not the raw 250K-event count. Full
+results: `output/research/confirmed_pairs_contamination_followup.parquet`.
+
+### Also actioned
+
+Gave Ross the exact elevated-PowerShell command (`NoAutoRebootWithLoggedOnUsers=1`) to stop Windows
+Update from force-restarting while logged in — this session's own two-restart interruption saga was
+never definitively traced to Windows Update specifically, but it's the standard cause and the fix is
+free; needs Ross to run it himself (no admin rights available to this session), not yet confirmed run.

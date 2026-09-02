@@ -1,0 +1,12 @@
+19:56:08 INFO  === sector_fdr_random_null_comparison.py: is same-sector restriction's effect sector-specific, or just pool-shrinkage in disguise? ===
+19:56:08 INFO  Loaded 34593 candidate pairs from the full-universe EG run
+19:56:08 INFO  Real same-sector restriction: m=13488 (of 34593 total candidates)
+19:56:08 INFO  Real same-sector survivor counts: {'step_up_bh': 2, 'benjamini_yekutieli': 2, 'two_stage_tsbh': 2, 'fixed_bonferroni': 2}
+19:56:08 INFO  Drawing 500 random size-13488 subsets from the full 34593-candidate pool (no sector information used)...
+19:56:11 INFO  
+19:56:11 INFO  === Real same-sector result vs. random-restriction null (n_trials=500) ===
+19:56:11 INFO    step_up_bh            : real=2  random-null mean=1.1 (std=0.8, range=[0,3])  percentile=95.8%  -> OUTSIDE typical random-null range -- sector identity may carry real signal
+19:56:11 INFO    benjamini_yekutieli   : real=2  random-null mean=0.8 (std=1.0, range=[0,3])  percentile=95.8%  -> OUTSIDE typical random-null range -- sector identity may carry real signal
+19:56:11 INFO    two_stage_tsbh        : real=2  random-null mean=1.1 (std=0.8, range=[0,3])  percentile=95.8%  -> OUTSIDE typical random-null range -- sector identity may carry real signal
+19:56:11 INFO    fixed_bonferroni      : real=2  random-null mean=1.1 (std=0.8, range=[0,3])  percentile=95.8%  -> OUTSIDE typical random-null range -- sector identity may carry real signal
+19:56:11 INFO  Saved -> output/research/sector_fdr_random_null_comparison_summary.parquet
