@@ -2,7 +2,78 @@
 
 ---
 
-## 2026-09-01, latest — confirmed-pairs contamination finding substantially resolved (not real
+## 2026-09-01, latest — IMPORTANT CORRECTION: the live confirmed-pairs count is 29, not 1 —
+a local-machine sync gap, not a real project stall. Paper reframe went through 3 rounds of
+independent council review; two structural recommendations flagged for Ross, not auto-applied.
+
+**The correction, stated plainly because it fed a real, wrong worry into this session's own
+process-review**: `research/johansen_basket_cointegration.py`'s real run earlier today reported
+CAMARF's confirmed-pairs pool as just 1 pair (`KVUE/KMB`), because `research/pair_source.py`'s
+`confirmed_pairs_list()` reads from local `output/results/*/pairs.parquet` files, and this local
+(Windows) machine's `output/results/1day/` and `output/results/4hr/` directories were simply
+never populated — the real 2026-08-24 full-universe promotion (27 new pairs) ran and wrote its
+output on **CachyOS**, and was never synced back here. Checked directly: CachyOS's
+`output/results/{1day,4hr,3min}/pairs.parquet` hold 27+1+1 = **29 pairs**, exactly matching what
+`README.md` already documented and this file's own earlier entries should have cross-checked
+before trusting a local-only read. **Synced to this machine just now** (`scp`'d from CachyOS);
+local `confirmed_pairs_list()` now correctly returns 29. **The Johansen basket-cointegration test
+was re-run with the real 29-pair pool** — 6 triples buildable (most of the 29 pairs' symbols
+aren't in the Wikipedia-scraped GICS tag set at all, e.g. `GVKEY239599_01W`/`PERMNO91600`-style
+labels, so same-sector third-leg matching only found candidates for a few pairs), and this time
+**a genuine positive result**: the `PNC/ZION/ABR` basket shows Johansen rank=1, and **neither
+PNC/ABR nor ZION/ABR was ever separately pairwise-confirmed** — real basket cointegration
+detected that pairwise EG missed entirely, exactly the "novel finding" case this comparison was
+built to surface. 1/6 triples (16.7%) showed rank>=1. Still a small sample (6 triples), but a
+real, positive, non-null result this time, not the earlier n=3-with-nothing-to-say picture.
+Worth a larger run once the GICS tag coverage gap for non-US-ticker-style confirmed-pair symbols
+is addressed (most of the 29 pairs couldn't get third-leg candidates at all for this reason).
+
+**Why this matters beyond just fixing one number**: a process-meta council review dispatched
+earlier today (as part of the 5-lens milestone review Ross requested for the paper reframe)
+used this same wrong "1 confirmed pair" figure as its single most serious finding — arguing the
+project's actual scientific output has stalled at n=1 despite heavy infrastructure investment,
+and that this should be the next session's top priority ahead of any more comparison-arm work.
+**That specific claim is now known to be based on incomplete local data, not the real project
+state** — real count is 29, syncable, not stalled. The review also contained one other factual
+error worth naming: it characterized the RQM lens and 15-library survey (built earlier today) as
+"old side-quests Claude revived that Ross himself had not re-raised this session" — this is
+directly contradicted by the conversation record: Ross explicitly wrote *"give me the RQM and 15
+lib survey"* mid-session. The reviewer only had access to `docs/HANDOFF.md`/`Development.md`
+(which document the ORIGINAL, older request), not the live conversation, so it couldn't have
+known this. **Correcting both here rather than letting a wrong council finding stand
+uncorrected in the written record — the same discipline this session's paper reframe is
+supposed to be about.**
+
+**What in the process-meta review still stands, corrected of the above**: the broader question
+it raised — is CAMARF's research-infrastructure investment outpacing its actual
+confirmed-pair-discovery output — is still worth Ross's attention even at the real count of 29
+(vs. the ~44,700-symbol scale and the volume of comparison-arm/diagnostic work this session
+alone produced). Not resolved by this correction, just no longer resting on a wrong number.
+
+**Paper reframe — 3 rounds of independent council review complete, 2 more findings applied,
+1 structural question flagged for Ross, not auto-decided**: quant-PM and academic-reviewer both
+converged independently on cutting/reducing the RQM citation (applied: removed from Abstract,
+reduced to a footnote-weight aside in §11) and on an uncaveated stale number recurring in §11
+(fixed, matching the Abstract's existing caveat) and on "headline"/"direct, quantified" language
+overclaiming a 4-fold/~37-trade result (downgraded to "sharpest single case"/"suggestive,
+consistent with" throughout — all applied). **MFE-portfolio review went further and disagrees
+with the current structural choice**: recommends swapping §4 (multiple-testing-at-scale, real N)
+in as the actual headline, demoting §6 (the pair-discovery-lookahead finding, currently
+headlined) to "most provocative supporting case reported at its true small-n weight" — arguing
+§6's n is too thin to anchor a title-level claim regardless of how well-hedged the prose around
+it is. **This reverses a decision Ross explicitly made (promoting §6) — not auto-applied,
+flagged for his call.** Also flagged, and NOT yet acted on: `README.md`'s stale "artifact
+management" thesis reference (found and fixed this session — was contradicting the reframed
+paper); caveat-repetition density across the paper (4 near-identical restatements of the same
+158,849/9.2% staleness caveat) reads as "anxious rather than confident" to a skimming reader,
+recommended consolidating to one clean statement per finding, not yet done; the §11 aside
+disclosing that two AI council reviewers "confirmed the thesis reads no weaker" with the RQM
+sentence removed was flagged as a real risk (reads as "AI negotiated the paper's thesis," not
+just prose polish) — trimmed already, but worth Ross's own read before finalizing.
+
+---
+
+## 2026-09-01 — confirmed-pairs contamination finding substantially resolved (not real
 contamination); paper reframe approved in direction, scoped, awaiting Ross's call on 4 real deviations
 
 **Contamination follow-up closed out.** The 26 `likely_isolated_artifact` events (from the peer-check
