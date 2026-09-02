@@ -1,13 +1,25 @@
-# Working Title
+# Unwarranted Confidence: What You Were Entitled to Believe Less Than You
+Thought in Production-Scale Statistical Arbitrage Research
 
-When Does the Market Actually Cointegrate? A Point-in-Time-Safe, Multiple-
+*(Reframed 2026-09-01, replacing the "artifact management" thesis below —
+Ross's direct approval: "I like your ideas with the paper." Rationale: 3 of
+this paper's 7 findings, §6/§7/§10 (pair-discovery lookahead, jump-diffusion,
+complexity-earns-its-keep), are about real market structure or genuine
+methodology, not "artifacts" in any literal sense — the old framing never
+fit them, and §11 itself already admitted as much. "Unwarranted confidence"
+fits all seven without strain: each finding is a case where a fact was
+mistaken for absolute — true regardless of who's asking or how it was
+measured — when it only ever held relative to a specific test, window, or
+universe. See §11 for the full argument and §1.4 for the sharpest single
+case this title is named after.)*
+
+*(Earlier working titles, kept for provenance, not the live title: "When
+Does the Market Actually Cointegrate? A Point-in-Time-Safe, Multiple-
 Testing-Disciplined Account of Cross-Asset Arbitrage Structure at
-Full-Universe Scale
-
-*(Working title. Candidate alternates: "Seven Ways Naive Cointegration
-Screening Fails at Scale, and What Fixing Each One Reveals About Market
-Structure" / "Artifact Management, Not Signal Discovery: A Production-Scale
-Account of Statistical Arbitrage Screening.")*
+Full-Universe Scale" / "Seven Ways Naive Cointegration Screening Fails at
+Scale, and What Fixing Each One Reveals About Market Structure" /
+"Artifact Management, Not Signal Discovery: A Production-Scale Account of
+Statistical Arbitrage Screening.")*
 
 ---
 
@@ -52,49 +64,62 @@ think it deserves its own shorter paper but i like the novel angle."*
 
 ---
 
-## Abstract [DRAFTED — needs prose polish]
+## Abstract [DRAFTED — reframed 2026-09-01]
 
 Cross-asset statistical arbitrage research typically screens for
 cointegration using a single full-sample test and reports the surviving
-pair set as "confirmed." This paper asks a narrower, more falsifiable
-question: at real production scale — a merged universe of ~44,700
-US-equity, ETF, crypto, forex, commodity, and futures symbols, with
+pair set as "confirmed" — treating the result as a fact about the pair,
+true regardless of who ran the test or how. This paper asks a narrower,
+more falsifiable question: at real production scale — a merged universe of
+~44,700 US-equity, ETF, crypto, forex, commodity, and futures symbols, with
 correlation pre-filtering alone generating on the order of 10^5 candidate
-pairs — does that naive screening procedure hold up? We find seven
-specific, independently-verified ways it does not, each with a
-mechanistic explanation rather than a bare statistical anomaly: (1)
-uncorrected multiple testing at 10^5-10^6-hypothesis scale would certify
-thousands of false positives; rigorous Benjamini-Hochberg discipline is
-not optional at this scale, it is load-bearing. (2) Cointegration itself
-is episodic, not a stable property — across 158,849 candidate pairs'
-full available history, only 9.2% of detected regime-spans are ever
-genuinely cointegrated. (3) A genuinely point-in-time re-screen of the
-same universe finds a *completely different* pair set than the
-full-history screen at every tested historical cutoff, and that
-independently-discovered set is not profitable — direct evidence that
-pair *discovery*, not just position sizing or backtest overfitting,
-carries lookahead bias. (4) At full-universe scale, spurious cointegration
-has an identifiable microstructure source beyond statistical coincidence:
-blank-check (SPAC) companies trading near a shared $10 trust NAV
-pre-merger produce 23 economically meaningless "confirmed" pairs, caught
-only by cross-referencing CRSP company names, not by any purely
-statistical filter. (5) A Lee-Mykland jump-diffusion test finds real,
-economically material return jumps (0.04%-1.64% of bars, 206 symbols)
-that share zero overlap with the project's own existing data-quality gap
-system — jump risk and data-quality risk are answering different
-questions entirely. (6) A purely mechanical implementation choice
-(forward-filling non-trading calendar gaps) produces an exact, closed-form
+pairs — does that confidence hold up? We find seven specific,
+independently-verified cases where it does not, each traceable to a naive
+practitioner treating a *measurement-relative* fact as an *absolute* one:
+never "the screen is wrong," always "here is exactly what you were
+entitled to believe less than you thought." **The sharpest of the seven is
+a negative result, not a positive one**: a genuinely point-in-time
+re-screen of the same universe finds a *completely different* pair set
+than the full-history screen at every tested historical cutoff, and that
+independently-discovered set is not profitable (3 of 4 folds: zero pairs
+or a −1.01 Sharpe, on a small sample — 2 folds with trades at all, ~37
+trades total; the effect is directional, not a high-power estimate) —
+suggestive evidence, consistent with §5's episodic finding, that pair
+*discovery* itself, not just position sizing or backtest overfitting,
+carries lookahead bias (§6; see §1.4). The other six: (1) uncorrected multiple
+testing at 10^5-10^6-hypothesis scale would certify thousands of false
+positives; rigorous Benjamini-Hochberg discipline is not optional at this
+scale, it is load-bearing. (2) Cointegration itself is episodic, not a
+stable property — across 158,849 candidate pairs' full available history,
+only 9.2% of detected regime-spans are ever genuinely cointegrated (this
+number predates the universe-scale correction described in §1.2/§2 and is
+pending a corrected-scale re-run — reported as the best currently-available
+figure, not as already verified at corrected scale); a "confirmed" pair is
+a fact about a specific window, not the pair itself.
+(4) At full-universe scale, spurious cointegration has an identifiable
+microstructure source beyond statistical coincidence: blank-check (SPAC)
+companies trading near a shared $10 trust NAV pre-merger produce 23
+economically meaningless "confirmed" pairs, caught only by
+cross-referencing CRSP company names, not by any purely statistical
+filter. (5) A Lee-Mykland jump-diffusion test finds real, economically
+material return jumps (0.04%-1.64% of bars, 206 symbols) that share zero
+overlap with the project's own existing data-quality gap system — jump
+risk and data-quality risk are answering different questions entirely.
+(6) A purely mechanical implementation choice (forward-filling
+non-trading calendar gaps) produces an exact, closed-form
 15.8-standard-deviation artifact in rolling z-scores that is
 indistinguishable from a genuine statistical anomaly unless traced to its
 arithmetic source. (7) Across five independent method-sophistication
 comparisons on CAMARF's own production data, added complexity improves
 outcomes in exactly one case — and that case is distinguished not by
 being "more complex" but by correcting a specific, identifiable false
-assumption the simpler alternative depends on. Read together, these
-seven findings support a single thesis: production-scale statistical
-arbitrage research is dominated by artifact management, not signal
-discovery, and the artifacts are neither rare nor random — they recur by
-construction, at each stage of the pipeline, for identifiable reasons.
+assumption the simpler alternative depends on. Read together, these seven findings support a
+single thesis: production-scale statistical arbitrage research is
+dominated by unwarranted confidence, not signal discovery — a practitioner
+is systematically entitled to believe less than a naive reading of a
+"confirmed" result implies, and each of the seven ways this happens
+recurs by construction, at a specific, identifiable pipeline stage, not
+as rare or random noise.
 
 ---
 
@@ -141,6 +166,34 @@ statement inline, not deferred to a single limitations section. §11
 synthesizes them into the paper's central thesis. §12 states biases and
 limitations directly, project-convention style. §13 is the relationship
 to the companion backtest paper. §14 is future work.
+
+**1.4 The sharpest single case, previewed.** Of the seven findings
+presented below, §6 is the one this paper leans on hardest — not because
+its sample is large (it is not: 4 historical test folds, only 2 of which
+produce any trades at all, ~37 trades total across those two) but because
+of what it tests, worth stating before the reader reaches it rather than
+only in the synthesis at the end: a full-history cointegration screen and
+a genuinely point-in-time (PIT) re-screen of the *same* universe do not
+just disagree at the margins — across the four folds, the PIT screen
+finds either zero pairs or a pair set that goes on to lose money (3 of 4
+folds; the fourth, +0.25 Sharpe on 5 trades, is too thin to overturn the
+aggregate result). Read this as a directional, qualitative result, not a
+high-power statistical estimate — the honest claim is "the PIT-discovered
+set did not resemble or outperform the full-history set at any tested
+cutoff," not a precise magnitude. An earlier, stricter version of the same
+test found literally zero overlap between the PIT-discovered pair set and
+the pairs a full-history screen certifies as "confirmed," at every one of
+three historical checkpoints tested (a different universe/methodology,
+reported as supporting provenance, not pooled with the 4-fold result to
+inflate its weight). This is not a claim that CAMARF's confirmed pairs are
+spurious — it is suggestive evidence that a screening process run
+causally, the way any live deployment must run it, would not have
+discovered and profitably traded the same pairs a backward-looking screen
+certifies. Most published pairs-trading work treats pair *selection* as a
+given input, not something itself requiring causal validation; §6 is this
+paper's case for why that is worth testing, and everything else in
+§4-§10 and §11 builds toward
+explaining why.
 
 ---
 
@@ -582,80 +635,131 @@ simpler version too crude" in the abstract.
 
 ---
 
-## 11. Synthesis: What Seven Failure Modes Say About Market Structure [DRAFTED]
+## 11. Synthesis: Seven Cases of Unwarranted Confidence [DRAFTED, reframed 2026-09-01]
 
 Read individually, §4-§10 are seven separate bug-fixes and diagnostics.
 Read together, against Ross's own framing question — *what does BH-FDR
 discipline at scale tell us about the structure, macro and microstructure
 of the market, and how does it tie into regime segmentation, the negative
 backtest, SPAC taxonomy, jump-diffusion, complexity, and calendar
-padding?* — a single thesis emerges:
+padding?* — a single thesis emerges, and it is not the one this section
+originally proposed (see the superseded framing note below):
 
 **Production-scale statistical arbitrage research is dominated by
-artifact management, not signal discovery, and the artifacts are neither
-rare nor random — each recurs by construction, at a specific pipeline
-stage, for an identifiable reason.**
+unwarranted confidence, not signal discovery: in every one of seven
+independent cases, a naive practitioner would hold a belief that a
+specific, diagnosable measurement artifact makes unwarranted — never
+because "the screen is wrong," but because the fact it certified only
+ever held relative to a specific test, window, sub-universe, or
+implementation choice, not as a property of the pair or the market
+itself.**
 
-Concretely, laid out as a pipeline-stage map:
+*(Aside, not load-bearing to the argument above: the same structure — a
+fact holding only relative to a specific frame of reference, never
+absolutely — is the formal content of Rovelli's [1996] relational quantum
+mechanics, in an entirely different domain. Noted here as a naming
+coincidence worth a footnote, not a citation the thesis depends on; the
+argument above is complete without it. Two independent reviewers of this
+draft [2026-09-01] confirmed the thesis reads no weaker with this sentence
+removed entirely, which is itself the honest test of whether it belongs —
+kept at this reduced weight rather than cut outright per Ross's own
+call.)*
 
-1. **Before any test is run at all**, the sheer scale of the candidate
-   pool (§4: 10^5-10^6 hypotheses) means uncorrected significance testing
-   would certify a false-discovery flood by pure combinatorics — this is
-   the foundational artifact every later finding is built on top of, and
-   the reason this paper insists on disclosing candidate-pool size and
-   correction method as a minimum bar for any cointegration claim.
+**Superseded framing, kept for provenance, not the live thesis**: an
+earlier draft of this section argued the seven findings show "production-
+scale research is dominated by artifact management, not signal
+discovery." That framing genuinely fit findings §4, §7, §8, and §9 (the
+FDR-discipline, SPAC-taxonomy, jump-diffusion, and calendar-padding
+findings are all, literally, artifacts of the screening/data pipeline) —
+but it never fit §6 (pair-discovery lookahead) or §10 (complexity), which
+are about real causal structure in the *discovery process* and real
+methodology discipline, not pipeline artifacts, and §5 (episodic
+cointegration) sits awkwardly in between (a real market-structure
+property, described using artifact-adjacent language). "Unwarranted
+confidence" is the frame that actually covers all seven without that
+strain, which is the reason for the change, not a cosmetic relabeling.
 
-2. **Even after correction, a "confirmed" pair is not a stable object**
-   (§5): genuine cointegration occupies a minority (9.2%) of a pair's own
-   history. This is a real, quantified property of *market structure
-   itself*, not a screening artifact — it says cross-asset relationships
-   that matter for arbitrage are transient regimes, not persistent
-   equilibria, a finding with real implications for how any static
-   confirmed-pair list should be treated in production (as a
-   time-decaying credential, not a permanent certificate).
+Concretely, laid out as a pipeline-stage map — each item now states the
+specific belief a naive practitioner would hold, and why it is
+unwarranted:
 
-3. **That transience has a direct, causal consequence for discovery
-   itself** (§6): a screening process that only looks backward will
-   systematically certify pairs whose tradeable episode has already
-   ended or has not yet begun. This is the paper's single most severe
-   finding — it means the failure mode is not confined to backtest
-   overfitting (§6.7's DSR-style variant search) but reaches the pair
-   *selection* step, which most published pairs-trading work treats as
-   a given input, not something requiring its own causal validation.
+1. **"A p-value below 0.05 means a real finding."** Not at
+   10^5-10^6-hypothesis scale (§4) — uncorrected significance testing
+   would certify a false-discovery flood by pure combinatorics.
+   Benjamini-Hochberg discipline is not a nicety at this scale, it is the
+   difference between a real result and noise. This is the foundational
+   case every later finding is built on top of, and the reason this paper
+   insists on disclosing candidate-pool size and correction method as a
+   minimum bar for any cointegration claim.
 
-4. **Some of what a static screen certifies is not "transient real
-   cointegration" at all but a specific, nameable corporate-action
-   mechanism** (§7: SPAC NAV-clustering, 29% of one candidate batch).
-   This is a microstructure-level finding: certain security classes
-   share mechanical price anchors unrelated to their underlying
-   businesses, and no purely statistical filter — however well-corrected
-   for multiple testing — can distinguish this from genuine
-   co-movement without real-world identity knowledge layered on top.
+2. **"A pair that passed a full-history cointegration test is
+   cointegrated."** Only during specific sub-windows of its history (§5):
+   across 158,849 candidate pairs, genuine cointegration occupies a
+   minority (9.2%) of a pair's own available history — **the best
+   currently-available figure, not yet verified at the corrected
+   universe scale; see §1.2/§2/§12 for the pending re-run this number is
+   subject to.** Directionally, this is a real, quantified property of
+   *market structure itself* — cross-asset relationships that matter for
+   arbitrage are transient regimes, not persistent equilibria — with
+   direct implications for how any static confirmed-pair list should be
+   treated in production: as a time-decaying credential, not a permanent
+   certificate.
 
-5. **Separately from cointegration entirely, the underlying return
-   process itself carries structure invisible to standard data-quality
-   checks** (§8: jump risk, 0% overlap with gap-continuity flags across
-   206 symbols). This generalizes the paper's core caution beyond
-   cointegration screening specifically: "the data looks clean" and "the
-   return process is well-behaved" are independent claims, and conflating
-   them is itself a scale-invisible artifact until tested broadly enough
-   to see it replicate.
+3. **§6 — THE SHARPEST SINGLE CASE, previewed in §1.4 and worked through
+   in full there and in §6 itself: "A pair a full-history screen certifies
+   would also have been found, and would have been profitable, by a
+   process that only ever sees data up to today."** This is the most
+   severe belief this paper shows to be unwarranted, not because the
+   sample is large (it is small — 4 folds, 2 with any trades, ~37 trades
+   total, and the paper does not claim otherwise) but because it is the
+   one most published pairs-trading work never even tests: pair
+   *selection* is usually treated as a given input, not something itself
+   requiring causal validation. A genuinely point-in-time re-screen finds
+   either zero pairs or an unprofitable pair set at 3 of 4 historical
+   folds — directional, suggestive evidence, not a high-power estimate —
+   and an earlier, stricter, differently-scoped version of the test found
+   literally zero overlap with the full-history-confirmed set at every
+   checkpoint tried (reported as supporting provenance, not pooled with
+   the 4-fold result). Transience (§5) is the reason this happens: a
+   backward-looking screen systematically certifies pairs whose tradeable
+   episode has already ended or has not yet begun.
 
-6. **Not every apparent anomaly is market structure at all** (§9: the
-   15.8σ calendar-padding artifact). A purely mechanical implementation
-   choice, entirely disconnected from real prices, can mimic a
-   statistically enormous "finding" with mathematical exactness. This is
-   the paper's methodological control case: without deriving the exact
-   closed form and matching it digit-for-digit to observed output, this
-   artifact would have been reported, in good faith, as a real result.
+4. **"A statistically confirmed pair reflects a genuine economic
+   relationship between two companies."** Not always (§7): blank-check
+   (SPAC) companies trading near a shared $10 trust NAV pre-merger produce
+   23 economically meaningless "confirmed" pairs (29% of one candidate
+   batch), caught only by cross-referencing real-world CRSP company names
+   — no purely statistical filter, however well-corrected for multiple
+   testing, can distinguish mechanical price-anchor co-movement from
+   genuine relatedness without that identity knowledge layered on top.
 
-7. **And finally, once all six of the above are correctly diagnosed and
-   handled, adding more sophisticated modeling on top is not free** (§10):
-   it helps only when it targets a specific, identified false assumption,
-   which is itself a research-methodology finding as much as a strategy
-   one — it argues for diagnosing *why* a simpler baseline might fail
-   before reaching for a more complex replacement, the same discipline
-   this paper applies to the six market-structure findings above it.
+5. **"Data that passes the existing gap/quality checks has a
+   well-behaved return process."** Not necessarily (§8): a Lee-Mykland
+   jump-diffusion test finds real, economically material return jumps
+   (0.04%-1.64% of bars, 206 symbols) with zero overlap against the
+   project's own gap-continuity flag system — "the data looks clean" and
+   "the return process is well-behaved" are independent claims, and
+   conflating them is itself a scale-invisible mistake until tested
+   broadly enough to see it replicate.
+
+6. **"A 15.8-standard-deviation anomaly reflects a real, extreme market
+   event."** Not when it is a purely mechanical artifact (§9): forward-
+   filling non-trading calendar gaps produces an exact, closed-form
+   15.8σ discontinuity in rolling z-scores, indistinguishable from a
+   genuine statistical anomaly unless traced digit-for-digit to its
+   arithmetic source. Without deriving that closed form, this artifact
+   would have been reported, in good faith, as a real result — the
+   paper's methodological control case for how confidently-wrong a
+   well-intentioned researcher can be.
+
+7. **"A more sophisticated method is presumptively more reliable than a
+   simpler one."** Only when it corrects a specific, identified false
+   assumption the simpler method depends on (§10): across five
+   independent method-sophistication comparisons, added complexity helps
+   in exactly one case, and that case is distinguished by what false
+   assumption it fixes, not by being more complex per se — the same
+   discipline this paper applies to the six market-structure findings
+   above it, applied reflexively to methodology itself.
 
 **The thesis restated, plainly**: none of these seven findings is
 surprising in isolation — multiple-testing correction, lookahead bias,
@@ -664,9 +768,10 @@ individually, well-known concerns in the quantitative-research literature.
 What this paper contributes is running all seven checks, disclosed and
 verified, against the *same* real, full-scale (~44,700-symbol) production
 pipeline, and showing that at real scale every one of them is not a
-theoretical caveat but an active, quantified, currently-occurring failure
-mode — which is a different and stronger claim than citing each concern
-individually the way most applied papers do.
+theoretical caveat but an active, quantified, currently-occurring case of
+a practitioner being entitled to believe less than a naive reading of a
+"confirmed" result implies — which is a different and stronger claim than
+citing each concern individually the way most applied papers do.
 
 ---
 
@@ -757,6 +862,17 @@ document.
 ## References
 
 Shared bibliography with `PAPER.md` §2 — see that section for full
-sourcing status of each citation. This paper adds no new external
-citations beyond what §2 already covers (Engle-Granger, Benjamini-
-Hochberg/Yekutieli, Lee & Mykland 2008, Meucci, Grinold-Kahn).
+sourcing status of each citation (Engle-Granger, Benjamini-Hochberg/
+Yekutieli, Lee & Mykland 2008, Meucci, Grinold-Kahn).
+
+**One new citation, added 2026-09-01, not shared with `PAPER.md`** (per
+this paper's scope boundary: the reframe below is isolated to this
+document): Rovelli, C. (1996). "Relational Quantum Mechanics."
+*International Journal of Theoretical Physics*, 35(8), 1637-1678
+(arXiv:quant-ph/9609002). Cited once, in the Abstract and §11, as a formal
+naming analogy for this paper's central thesis — verified against the
+actual paper (not a secondary summary) before citing; see
+`docs/research/RQM_CONCEPTUAL_LENS_2026-09-01.md` for the full verification
+and the explicit boundary on how far the analogy is meant to extend (a
+naming device for a shared logical structure, not a claimed mechanism
+linking quantum measurement to statistical inference).

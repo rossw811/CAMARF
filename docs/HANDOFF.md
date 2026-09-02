@@ -2,7 +2,50 @@
 
 ---
 
-## 2026-09-01, latest — three scoped comparison-arm builds executed (Ross: "you don't need my sign
+## 2026-09-01, latest — confirmed-pairs contamination finding substantially resolved (not real
+contamination); paper reframe approved in direction, scoped, awaiting Ross's call on 4 real deviations
+
+**Contamination follow-up closed out.** The 26 `likely_isolated_artifact` events (from the peer-check
+follow-up, see below) were checked two more ways before treating them as real contamination:
+1. Joined against `data_contamination_scan.py`'s own `shape` classification — **0/26 match the actual
+   BUG-D65 append-seam signature** (`shape="mid_series"` for all 26, `shape="append_seam"` for none).
+   None of these look like the known contamination mechanism at all.
+2. The dates cluster suspiciously on known sector-specific crisis events (1987-10-28, day after Black
+   Monday; repeated 2008-2009 dates for ZION, a bank, during the financial crisis; **2023-03-13 for
+   ZION — the exact SVB/regional-bank-crisis date**). Re-ran the peer-corroboration check with
+   GICS **sector-matched** peers instead of random cross-universe peers (ZION/PNC are Financials,
+   EQR is Real Estate) — **9 more events corroborate as real, sector-wide moves**: both EQR 2009
+   dates, PNC 2009-01-21, and 5 of ZION's 2008-2009/2023 dates including 2023-03-13.
+
+**Net conclusion: this is not evidence of real data contamination.** What's left after both checks:
+`IQV 2025-07-22` (best remaining candidate — 20 sector peers, only 3 corroborated), `KMB 1981-09-25`,
+and a handful of 1980s-90s PNC/ZION dates that stayed uncorroborated but with very thin sector-peer
+coverage that far back (n=2-8 peers, a weak test either way — "inconclusive," not "confirmed"). Full
+sector-matched results were computed inline, not saved to a file (small, one-off diagnostic query, not
+worth a dedicated script) — reproducible via the commands in this session's transcript if needed again.
+`7267.T`'s 3 events have no GICS tag (Japanese ticker, expected) so couldn't be sector-checked this
+way; one of its dates (2024-08-05) is very likely the well-known "Japan carry-trade unwind" Nikkei
+crash, a real, globally-reported event, not verified against a formal peer check here.
+
+**Paper reframe: Ross approved the direction** ("I like your ideas with the paper — let's scope that
+change and what it entails"). Scoped concretely against the real current text (title is literally
+`# Working Title`, never set; §11 already half-acknowledges §6 as "the paper's single most severe
+finding" in prose, just not structurally). **4 real deviations need Ross's call before building** (not
+decided unilaterally — these are identity-defining choices, not implementation details covered by the
+"scope then build, no sign-off needed" rule):
+- **A**: how hard to structurally promote §6 — A1 (abstract/§11 only, cheapest) vs. A2 (add an
+  Introduction forward-reference) vs. A3 (physically move §6 after the Introduction as a full headline
+  case study, compress the other 6 into a shorter catalog — what the 3 reviewers literally proposed,
+  most disruptive to already-drafted prose).
+- **B**: name RQM/Rovelli explicitly as the framing analogy, or use the underlying language
+  unattributed (avoids any "physics-envy" risk with an academic/admissions-committee reader).
+- **C**: 3 real title candidates proposed, needs Ross's pick/rejection/riff.
+- **D**: scope boundary — `PAPER.md` (companion paper) stays untouched, reframe isolated to
+  `PAPER_MAGNITUDE.md` only. Proposed, not assumed.
+
+---
+
+## 2026-09-01 — three scoped comparison-arm builds executed (Ross: "you don't need my sign
 off to build once it's scoped. always scope before the build"), plus a factory extension and a full
 bias/hygiene sweep
 
