@@ -25247,3 +25247,129 @@ Gave Ross the exact elevated-PowerShell command (`NoAutoRebootWithLoggedOnUsers=
 Update from force-restarting while logged in — this session's own two-restart interruption saga was
 never definitively traced to Windows Update specifically, but it's the standard cause and the fix is
 free; needs Ross to run it himself (no admin rights available to this session), not yet confirmed run.
+
+## 2026-09-01/02, continued overnight: paper reframe through 4 rounds of independent council
+review, a major sync-gap correction (confirmed pairs is 29, not 1), a structural guard against the
+recurring universe-loader bug, and Tier 3 finishing at 100% after 94 crash-restart cycles
+
+Ross approved the paper reframe direction, then asked to scope the actual change before building
+("what it entails and the deviations we can make of it"). Scoped as A2 (abstract + a new §1.4
+Introduction forward-reference + §11 Synthesis rewritten to state the new thesis and preview §6,
+leaving §4-§10's body content and section order untouched — not the more disruptive A3 full
+restructure), RQM cited by name once (per Ross: "if it'd be in a real published established PhD
+paper"), title picked by combining his two favorites. Built directly (per his "scope then build, no
+sign-off needed" standing instruction from earlier this session).
+
+### Four-lens council review of the reframe (5th lens, code-quality, redirected to review this
+session's actual new code instead, since a paper-text review isn't its natural focus)
+
+Run strictly sequentially per `CLAUDE.md`'s "one agent at a time" rule, each waited on before the
+next was dispatched:
+
+- **Quant-PM**: reframe is "honest and defensible... a net improvement." Two real fixes required:
+  the Abstract stated the 158,849/9.2% number without the staleness caveat that exists two sections
+  later (fixed — pulled forward); recommended cutting the RQM citation from the Abstract specifically
+  (least room for its own hedge, purely decorative there) while keeping it in §11 (applied).
+- **Academic reviewer**: independently converged on the SAME staleness-caveat gap, this time found
+  recurring in §11 itself (fixed there too — same caveat, not previously duplicated); flagged §1.4's
+  "headline"/"direct, quantified" language as overclaiming the statistical weight of a 4-fold,
+  ~37-trade result; recommended cutting the RQM citation entirely or reducing it to footnote weight.
+  Both applied: "headline" downgraded to "sharpest single case" throughout, "direct, quantified"
+  downgraded to "suggestive, consistent with," RQM reduced to a genuine footnote-weight aside.
+- **Code-quality** (redirected to this session's new research scripts/factory extension instead of
+  the paper): found the pure/testable-core and reuse-discipline patterns were followed correctly
+  throughout, and the verify scripts demonstrate real discriminating power against known ground
+  truth, not tautological pass-throughs. Two real gaps: `confirmed_pairs_contamination_followup.py`
+  had no paired `debug/_verify_*.py` test and used bare `print()` instead of the project's logging
+  convention (both sibling scripts in the same commit followed both conventions correctly); the
+  factory's ADV self-test threshold was a hardcoded copy of the real `$25M` gate instead of importing
+  `Config.STATS.ADV_FILTER_USD` (fixed — now derives it directly, verified still passing). Most
+  valuable finding: 13 independent historical instances of the same duplicated-universe-loader bug,
+  with nothing structural preventing a 14th — recommended a cheap static guard script, built the same
+  session (see below).
+- **Process-meta**: raised a real, serious concern — that CAMARF's confirmed-pairs output had
+  apparently stalled at n=1 despite heavy infrastructure investment, and that reviving the RQM lens
+  and 15-library survey this session (items from an OLD, previously-unresolved interrupted-session
+  thread) without Ross re-raising them was a permissive stretch of the "scope then build" autonomy
+  grant. **The n=1 claim turned out to be wrong** (see the sync-gap correction below) — this review's
+  most serious finding rested on incomplete local data, not the real project state. Its second claim
+  was also factually incorrect: Ross HAD explicitly re-requested both the RQM lens and the library
+  survey mid-session ("give me the RQM and 15 lib survey") — the reviewer only had access to
+  `docs/HANDOFF.md`/this file (which document the OLDER original request), not the live conversation,
+  so it could not have known this. Both corrected in `docs/HANDOFF.md` rather than letting a wrong
+  council finding stand uncorrected in the written record — the same disclosure discipline the paper
+  reframe itself is about. The review's broader underlying question (is research-infrastructure
+  investment outpacing confirmed-pair-discovery output) is still worth Ross's attention even at the
+  real count of 29, just no longer resting on a wrong number.
+- **MFE-portfolio**: the most structurally significant review. Found a real bug on its own first
+  read — `README.md` still stated the paper's OLD "artifact management" thesis, directly
+  contradicting the just-reframed paper (fixed immediately, unambiguous, no judgment call needed).
+  Flagged the caveat-repetition density (the same staleness caveat restated near-verbatim 4 times
+  across 4 sections) as reading "anxious rather than confident" to a skimming admissions reader, not
+  yet consolidated. Flagged the §11 aside disclosing that "two AI reviewers confirmed the thesis
+  reads no weaker" with the RQM sentence removed as a real risk in itself (reads as "AI negotiated
+  the paper's thesis," not just prose polish) — trimmed, not removed, still worth Ross's own read.
+  **Disagreed with the current structural choice**: recommended swapping §4 (multiple-testing-at-
+  scale, real N) in as the actual headline, demoting §6 (currently headlined, n=37 trades) to "most
+  provocative supporting case reported at its true small-n weight." This reverses a decision Ross
+  explicitly made — NOT auto-applied, flagged for his call, not decided unilaterally.
+
+### The sync-gap correction: confirmed pairs is 29, not 1
+
+While investigating the process-meta review's n=1 claim, found the real cause:
+`research/pair_source.py`'s `confirmed_pairs_list()` reads local `output/results/*/pairs.parquet`
+only, and this Windows machine's `output/results/1day/` and `output/results/4hr/` directories were
+simply empty — the real 2026-08-24 full-universe promotion (27 new pairs, Session above) ran and
+wrote its output on CachyOS and was never synced back here. Checked directly: CachyOS holds
+27+1+1=29 pairs across 1day/4hr/3min, exactly matching what `README.md` already documented and this
+file's own Finding #39 entry in `docs/FINDINGS.md`. Synced via `scp`; local reads now correctly
+return 29. Re-ran `johansen_basket_cointegration.py` with the real pool (6 triples now buildable
+instead of 3) and got a genuine positive result this time: `PNC/ZION/ABR` basket shows Johansen
+rank=1, neither sub-pair ever separately pairwise-confirmed — the "novel finding" case the
+comparison was built to detect, invisible at the earlier wrong n=1 scope.
+
+### `debug/_verify_no_private_universe_globs.py`, a structural guard, not another one-off fix
+
+Per the code-quality review's recommendation: a cheap, grep-based static check that fails loudly on
+a NEW instance of the duplicated-universe-loader bug pattern, rather than waiting for the next
+manual audit to catch it by chance (13 independent prior instances, all caught only by manual audit
+until now). Running it immediately found 2 more genuine, lower-priority instances
+(`eg_null_calibration_montecarlo.py`, `trend_dominance_diagnostic.py`, flagged as known debt, not
+fixed this session — both are calibration/diagnostic checks, not pair-discovery-certifying scripts)
+and, more importantly, caught that `data_contamination_scan.py` had the SAME gap in a diagnostic
+context: it never scanned `output/cache/wrds/` at all, meaning the confirmed-pairs contamination
+investigation earlier this session had only ever checked yfinance's legacy copy of ZION/PNC/etc.,
+never their WRDS-primary data. Fixed: `list_price_cache_files()` now scans WRDS + Binance too, with
+a suffix-normalization map since WRDS uses a completely different on-disk convention (`1D`/`1M`/
+`3M`/`6M`/`7D`/`1Y` vs. yfinance's `1day`/`1mo`/`3mo`/`6mo`/`7day`) — verified directly (ZION file
+count 13→19, total scanned files 21,064→79,974). Full corrected re-scan run (16,455s): still flags
+the same 10 confirmed-pair symbols, now with additional WRDS-only `1Y`-timeframe events included —
+**these new events have not yet been run through the peer-corroboration check**, so the earlier
+"substantially resolved, not real contamination" conclusion is not yet re-verified against the full,
+corrected-coverage data. Genuine open item, not silently assumed still clean.
+
+### Humanizer pass on `PAPER_MAGNITUDE.md`
+
+Per Ross's direct request ("use humanizer... on the paper as a whole"): ran the humanizer skill
+across the entire 888-line document, not just the sections written today. 123 em-dashes removed and
+rewritten as periods, commas, or restructured clauses; zero em/en dashes or curly quotes remain
+anywhere in the file (verified directly via a Unicode character scan, not assumed). Content, numbers,
+and citations unchanged — prose only. Caught one real inconsistency along the way: the References
+section still said the Rovelli citation appeared "in the Abstract and §11" after it had already been
+removed from the Abstract during the quant-PM review pass — fixed to match current state.
+
+### Tier 3 finished at 100% overnight, after 94 crash-restart cycles
+
+The streaming-checkpoint fix deployed and verified earlier this session kept working as designed
+throughout — memory never grew unbounded, each restart resumed from the correct checkpoint. But the
+separate, already-documented "spin-up spike" crash pattern (a transient memory spike unrelated to
+the checkpoint-write mechanism, mitigated but never root-caused) recurred far more than the earlier,
+smoother run: 94 attempts overnight vs. the ~30 in the original saga. Real progress continued
+throughout regardless (each restart correctly resumed instead of restarting), and the checkpoint
+meta file confirms genuine 100% completion (7,834,906/7,834,906) as of this entry. Tier 1's
+corrected-scale result, read directly from the resumed run: **894,733 candidate pairs, 1,404
+full-sample confirmed** — this is the real number `PAPER_MAGNITUDE.md`'s §1.2/§4/§5 have been
+flagging as "pending a corrected-scale re-run" throughout the reframe. Final Tier 3 output was still
+being reconstructed from checkpoint parts as of this entry; the actual episodic-confirmed pair count
+and the static-vs-episodic magnitude comparison this whole saga has been building toward are the
+immediate next items once that finishes.
