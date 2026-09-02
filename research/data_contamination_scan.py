@@ -27,6 +27,15 @@ import pandas as pd
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 CACHE_DIR = "output/cache"
+# Fixed 2026-09-01 per a code-quality guard script (debug/_verify_no_private_universe_globs.py)
+# catching this: the scan previously only covered CACHE_DIR (the ~1,700-symbol yfinance-primary
+# cache), never output/cache/wrds/ (the real ~44,700-symbol merged universe) or output/cache/
+# binance/ (crypto) -- the exact duplicated-universe-loader bug class, just in a diagnostic
+# script instead of a pair-discovery one. Found live: the confirmed-pairs contamination
+# cross-check this session ran against ZION/PNC/etc. never actually touched their WRDS-sourced
+# daily data, only whatever legacy/fallback copy happened to exist in the small yfinance cache --
+# a real gap in that investigation's coverage, not just a theoretical one.
+ADDITIONAL_CACHE_DIRS = ["output/cache/wrds", "output/cache/binance"]
 OUT_PATH = "output/research/data_contamination_scan.parquet"
 MANIFEST_PATH = "output/results/confirmed_pairs_manifest.json"
 
@@ -39,10 +48,25 @@ SPLIT_MATCH_REL_TOL = 0.10
 
 # Real cache-file timeframe suffixes as they actually exist on disk (checked
 # directly via a filename survey, not assumed from config.py's comment).
-REAL_TF_SUFFIXES = (
-    "15min", "30min", "1min", "2min", "3min", "5min",
-    "1hr", "4hr", "1day", "7day", "1mo", "3mo", "6mo",
-)
+# Fixed 2026-09-01: this only ever covered the yfinance-primary cache's own
+# lowercase-spelled-out convention. output/cache/wrds/ uses a COMPLETELY
+# DIFFERENT suffix convention (checked directly via a real filename survey:
+# "1D", "1M", "1Y", "3M", "6M", "7D") -- before this fix, adding
+# output/cache/wrds/ to the scanned directories (see ADDITIONAL_CACHE_DIRS)
+# would still have silently found ZERO WRDS files, since none of their
+# suffixes matched anything in this tuple. Maps each raw on-disk suffix to
+# the SAME canonical tf label the rest of this script already uses, so a
+# WRDS "1D" file and a yfinance "1day" file for the same symbol are treated
+# as the same timeframe. "1Y" (WRDS-only, no yfinance equivalent found) is
+# included as a new timeframe, not previously tracked at all.
+_SUFFIX_TO_CANONICAL_TF = {
+    "15min": "15min", "30min": "30min", "1min": "1min", "2min": "2min",
+    "3min": "3min", "5min": "5min", "1hr": "1hr", "4hr": "4hr",
+    "1day": "1day", "1D": "1day", "7day": "7day", "7D": "7day",
+    "1mo": "1mo", "1M": "1mo", "3mo": "3mo", "3M": "3mo",
+    "6mo": "6mo", "6M": "6mo", "1Y": "1Y",
+}
+REAL_TF_SUFFIXES = tuple(_SUFFIX_TO_CANONICAL_TF.keys())
 
 # Known macro/crisis windows where a large single-bar move is a real market
 # event, not contamination. Loosely bounded (multi-day) since a crash is not
@@ -57,23 +81,33 @@ MACRO_WINDOWS = [
 ]
 
 
-def list_price_cache_files(cache_dir: str = CACHE_DIR):
+def list_price_cache_files(cache_dir: str = CACHE_DIR, additional_dirs=None):
     """Enumerate real SYMBOL_TF price cache files, excluding _meta files and
     macro/COT/FRED context series (cot_*, fred_*), which are not part of the
-    equity/asset candidate universe this scan is auditing."""
+    equity/asset candidate universe this scan is auditing. Scans `cache_dir`
+    plus each of `additional_dirs` (default: ADDITIONAL_CACHE_DIRS, i.e. WRDS
+    + Binance) so this covers the real full merged universe, not just the
+    yfinance-primary cache -- see the module-level comment on
+    ADDITIONAL_CACHE_DIRS for why this matters."""
+    if additional_dirs is None:
+        additional_dirs = ADDITIONAL_CACHE_DIRS
     out = []
-    for f in glob.glob(os.path.join(cache_dir, "*.parquet")):
-        base = os.path.basename(f)[: -len(".parquet")]
-        if base.endswith("_meta"):
+    for d in [cache_dir] + list(additional_dirs):
+        if not os.path.isdir(d):
             continue
-        if base.startswith("cot_") or base.startswith("fred_"):
-            continue
-        for tf in REAL_TF_SUFFIXES:
-            suffix = "_" + tf
-            if base.endswith(suffix):
-                symbol = base[: -len(suffix)]
-                out.append((symbol, tf, f))
-                break
+        for f in glob.glob(os.path.join(d, "*.parquet")):
+            base = os.path.basename(f)[: -len(".parquet")]
+            if base.endswith("_meta"):
+                continue
+            if base.startswith("cot_") or base.startswith("fred_"):
+                continue
+            for raw_suffix in REAL_TF_SUFFIXES:
+                suffix = "_" + raw_suffix
+                if base.endswith(suffix):
+                    symbol = base[: -len(suffix)]
+                    canonical_tf = _SUFFIX_TO_CANONICAL_TF[raw_suffix]
+                    out.append((symbol, canonical_tf, f))
+                    break
     return out
 
 

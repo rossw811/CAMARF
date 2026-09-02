@@ -586,10 +586,15 @@ if __name__ == "__main__":
 
     # Factor 11: adv_regime produces a genuinely liquid/illiquid distinction
     print("\n--- Factor 11: ADV/liquidity regime ---")
+    # Derived from the REAL production gate (Config.STATS.ADV_FILTER_USD), not a copy-pasted
+    # number -- code-quality review 2026-09-01 flagged the original hardcoded $25M comment as
+    # exactly the "derive, don't fix" violation CLAUDE.md warns about: if the real threshold
+    # ever changes, this self-test would keep silently passing against a stale value.
+    from config import Config as _Config
+    ADV_GATE_THRESHOLD = _Config.STATS.ADV_FILTER_USD
     pa, pb, truth = make_synthetic_pair(n_bars=500, adv_regime="liquid_then_illiquid",
-                                         adv_base_dollar_volume=50_000_000.0, seed=11)
+                                         adv_base_dollar_volume=2 * ADV_GATE_THRESHOLD, seed=11)
     vol = truth["volume_a"]
-    ADV_GATE_THRESHOLD = 25_000_000.0  # matches the real pipeline's $25M ADV gate
     first_half_liquid = vol.iloc[:len(vol) // 4].mean() > ADV_GATE_THRESHOLD
     second_half_illiquid = vol.iloc[-len(vol) // 4:].mean() < ADV_GATE_THRESHOLD
     ok = first_half_liquid and second_half_illiquid

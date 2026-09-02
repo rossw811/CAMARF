@@ -113,7 +113,13 @@ and a one-line pointer in `PAPER.md` §7.15, not silently left undocumented.
   corresponding synthetic test that reproduces a known-answer case *before*
   trusting the change on real data — this project's own history is that
   code presented without this verification step has had bugs, and code
-  verified this way has not.
+  verified this way has not. For anything needing a synthetic pair with a
+  KNOWN cointegration/lead-lag/gap/contamination/PIT-membership/liquidity
+  ground truth, use `debug/synthetic_pair_factory.py` (`make_synthetic_pair`)
+  rather than writing a bespoke generator — it already covers 12
+  independently-togglable factors and is the shared foundation the
+  `_verify_*.py` convention is meant to build on, not one script's private
+  fixture.
 - **Reproducibility chain:** `reproduce.py` maps every `PAPER.md` finding to
   the exact script/flags that generated it (`--list` to see the mapping,
   `--verify-only` to confirm outputs still exist without re-running
@@ -123,6 +129,15 @@ and a one-line pointer in `PAPER.md` §7.15, not silently left undocumented.
 
 ## Standing project principles (see `CLAUDE.md` for the full statement)
 
+- **Any script claiming universe-wide/"full universe" coverage must load via
+  `universe_loader.py`'s `load_full_universe()`** (the real ~44,700-symbol
+  WRDS-merged universe), never a private glob of `Config.DATA.CACHE_DIR`
+  (the old ~1,700-symbol yfinance-only cache) or any other bespoke loader.
+  This exact bug — a script quietly reinventing its own smaller-scope
+  universe loader — has recurred independently at least 13 times across
+  this project's history (see `Development.md`'s 2026-08-24 and 2026-09-01
+  entries); check `docs/HANDOFF.md`'s most recent universe-consistency audit
+  before assuming a new script is exempt.
 - No bandaid fixes — find the single correct root-cause fix, verified with a
   synthetic reproduction, not the first thing that makes a symptom go away.
 - New methodology/design ideas get discussed (what it is, why it's relevant,

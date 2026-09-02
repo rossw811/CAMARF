@@ -308,6 +308,9 @@ to the exact script/flags that generated it.
 - `reproduce.py` — maps every `PAPER.md` finding to its generating script;
   `--show-provenance` prints the data test range this run's numbers are drawn from
 - `config.py` — all configuration parameters
+- `universe_loader.py` — the canonical `load_full_universe()` merge (WRDS + yfinance + Binance +
+  IBKR, ~44,700 symbols); every script claiming universe-wide coverage must route through this,
+  not a private loader — see `CONTRIBUTING.md`'s standing project principles
 - `seed_sp_caches.py` — standalone S&P 400/600 constituent cache seeder
 - `deflated_sharpe.py` — Deflated Sharpe Ratio (Bailey & López de Prado 2014),
   correcting the headline Sharpe for the number of backtest variants actually tried
@@ -352,7 +355,12 @@ Quandt-Andrews/Chow-test break detection, the mechanism behind "recently coupled
 cointegrated").
 
 **`debug/`** — ad-hoc scratch utilities plus `_verify_*.py` synthetic proofs cited
-throughout `Development.md`.
+throughout `Development.md`. `synthetic_pair_factory.py` is the shared, reusable
+generator underlying most of them — 12 independently-togglable known-ground-truth factors
+(cointegration, lead-lag, structural breaks, gaps, contamination, jumps, volatility regime,
+episodic/time-varying cointegration schedules, PIT index-membership spells, ADV liquidity
+regime, GVKEY/ticker-collision duplicate identities) — write a new synthetic test against this,
+not a bespoke one-off generator.
 
 - `latest_run_*.log` — auto-generated structured run summaries, one per script
 
@@ -368,12 +376,14 @@ misleadingly-narrow picture — use this table to pick the right one first:
 |---|---|---|
 | **`README.md`** (this file) | A first-pass overview: what the project is, the headline finding, how to run the pipeline. Not the source of truth for exact current numbers — those drift between pipeline runs faster than this file gets touched. | Spot-checked each session, not rewritten each run |
 | **`CLAUDE.md`** | Fast orientation for picking the project back up: non-negotiable architecture rules, known-resolved issues (don't re-suggest these), working-style conventions, and a condensed "Current State" pointer to the latest full session in `Development.md`. The file every session should read FIRST. | Updated every session |
-| **`PAPER.md`** | The actual paper draft — the three headline pillars (Strictness Paradox, pair-selection lookahead, price-degeneracy), the full methodology, and a tight "Robustness and Comparison Arms" section (§7.15) that summarizes and points to `docs/FINDINGS.md` for depth. Kept deliberately focused — not every verified finding this project has produced lives here, by design. | Updated when a finding is verified and belongs in the core narrative |
+| **`PAPER_MAGNITUDE.md`** | **The lead paper** (since the 2026-08-24 two-paper split): "Unwarranted Confidence" — seven independently-verified cases where a naive full-sample cointegration screen certifies something a practitioner isn't actually entitled to believe, at real ~44,700-symbol production scale. §6 (pair-discovery lookahead, a negative PIT-backtest result) is the sharpest single case. | Living draft, updated as findings land; council-reviewed at milestones |
+| **`PAPER.md`** | **Companion/secondary paper** (re-scoped 2026-08-24) — the original single-pair-set backtest writeup (durability-vs-currency framing, the Layer 1/2 event-driven backtest, the 5.24 OOS Sharpe headline), a self-contained empirical demonstration that `PAPER_MAGNITUDE.md`'s methodology has teeth, scoped to CAMARF's own confirmed set. Shares machinery with the lead paper by cross-reference, not duplication. | Updated when a finding is verified and belongs in the core narrative |
 | **`docs/FINDINGS.md`** | Full-depth writeups of every OTHER verified, honest finding — comparison arms, robustness checks, negative results — that isn't load-bearing for `PAPER.md`'s central claims but is still real, checked work worth citing. Nothing here is hidden; it's organized by relevance to the thesis, not by confidence or quality. | Updated alongside `PAPER.md` §7.15 |
 | **`Development.md`** | The canonical, full project memory — every session's log, the complete `BUG-D` registry, design rationale, and the honest record of what was tried and reverted (not just what was kept). The place to look if you need to know *why* something is built the way it is, or whether an idea was already tried and abandoned. | Append-only, every session |
 | **`docs/BUG_LOG.md`** | A one-line-per-entry index into `Development.md`'s full bug registry — find a specific `BUG-D`/`BUG-A` number's summary and exact line pointer without reading the full narrative. Pure index; every write-up still lives only in `Development.md`. | Updated alongside each new bug entry |
 | **`docs/HANDOFF.md`** | A point-in-time directive written at the end of a specific session, addressed to whichever session picks the project up next — a punch list of what to verify, not a reference document. Expect it to describe a specific past moment, not the current state. | Written once per handoff, not maintained afterward |
 | **`CONTRIBUTING.md`** | How to actually run, modify, and validate the codebase — environment setup, the pipeline command sequence, the "STORM variant" pattern for adding a new backtest comparison arm, where bias documentation and synthetic verification tests live. | Updated when the development workflow itself changes |
+| **`docs/research/*.md`** | One-off research memos that inform but aren't part of the paper narrative — e.g. a conceptual-framing writeup, a library/tooling survey. Dated filenames; read the specific one relevant to what you're investigating, not as a set. | Written once per research question, not maintained afterward |
 
 If you're only reading one file to get oriented: `CLAUDE.md`. If you're trying to understand
 a specific number in `PAPER.md`: `reproduce.py --list` maps it to the script that generated
