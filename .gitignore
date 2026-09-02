@@ -1,6 +1,18 @@
 __pycache__/
 *.pyc
 
+# Credentials — added 2026-09-01 during a public-repo hygiene sweep (repo has
+# been public for weeks; none of these were ever actually committed, checked
+# via git log --all and content grep, but there was no explicit protection
+# against a future `git add -A` picking one up).
+.pgpass
+.env
+.env.*
+*.pem
+*.key
+id_rsa
+id_rsa.*
+
 # Large generated data/output — regenerate via the pipeline (see README.md
 # "Reproducibility" / CLAUDE.md "Data Test Range & Reproducibility") rather
 # than tracking multi-GB binary parquet in git history. latest_run_*.log

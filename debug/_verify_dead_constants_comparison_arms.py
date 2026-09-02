@@ -58,7 +58,8 @@ def build_max_half_life_df():
     n = 100
     idx = pd.date_range("2024-01-01 09:30", periods=n, freq="1h")
     z = np.full(n, 0.3)
-    z[60] = 2.5  # the ONLY bar clearing ENTRY_ZSCORE=2.0
+    z[60] = 3.5  # the ONLY bar clearing ENTRY_ZSCORE=3.0 (raised from 2.0 2026-08-17,
+                 # fixture updated 2026-09-01)
     spread = np.zeros(n)
     # Deliberately ABOVE MAX_HALF_LIFE (default 50) but still >= MIN_HALF_LIFE_BARS
     # (default 5) -- clears the EXISTING floor filter, only the NEW ceiling should stop it.
@@ -73,9 +74,11 @@ def build_real_corr_exit_df():
     n = 100
     idx = pd.date_range("2024-01-01 09:30", periods=n, freq="1h")
     z = np.full(n, 0.3)
-    z[60] = 2.5  # entry (short side)
+    z[60] = 3.2  # entry (short side) -- clears ENTRY_ZSCORE=3.0 (raised from 2.0 2026-08-17,
+                 # fixture updated 2026-09-01) while staying BELOW STOP_ZSCORE=3.5, since this
+                 # fixture's whole point is a clean entry-then-hold, not an immediate stop
     # Hold z within a SAFE band after entry (not >= STOP_ZSCORE=3.5, not <= EXIT_ZSCORE=0.0,
-    # not > 2.0x entry_z=5.0 which would trigger the existing z-widening corr_exit heuristic).
+    # not > 2.0x entry_z=6.4 which would trigger the existing z-widening corr_exit heuristic).
     z[61:] = 1.0
     spread = np.zeros(n)
     hl = np.full(n, 20.0)  # MAX_HOLD_MULTIPLIER=2.0 * 20 = 40 bars -> triggers ~bar 100, safely late
@@ -95,7 +98,8 @@ def build_liquidity_bar_filter_df():
     n = 100
     idx = pd.date_range("2024-01-01", periods=n, freq="B")
     z = np.full(n, 0.3)
-    z[60] = 2.5  # the ONLY bar clearing ENTRY_ZSCORE=2.0
+    z[60] = 3.5  # the ONLY bar clearing ENTRY_ZSCORE=3.0 (raised from 2.0 2026-08-17,
+                 # fixture updated 2026-09-01)
     spread = np.zeros(n)
     hl = np.full(n, 20.0)
     return idx, pd.DataFrame({

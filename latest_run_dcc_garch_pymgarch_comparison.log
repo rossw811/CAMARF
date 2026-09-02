@@ -1,0 +1,12 @@
+20:35:31 INFO  === dcc_garch_pymgarch_comparison.py: CAMARF's hand-rolled DCC vs. pymgarch's DCC ===
+20:35:31 INFO  
+20:35:31 INFO  --- PRIMARY: synthetic panel with known correlation regime (baseline=0.15, crisis=0.75) ---
+20:35:51 INFO    CAMARF hand-rolled DCC: fit in 2.666s, RMSE vs. known-true rho schedule = 0.1528
+20:35:51 INFO    pymgarch DCC:            fit in 16.910s, RMSE vs. known-true rho schedule = 0.1674
+20:35:51 INFO    Method-vs-method RMSE (CAMARF fitted rho vs. pymgarch fitted rho, same data): 0.0309
+20:35:51 INFO  
+20:35:51 INFO  --- SECONDARY, best-effort: real output/backtest/trades_layer1.parquet ---
+20:35:51 INFO    Real trades: 90 rows -> 45 days x 2 pairs of daily P&L
+20:35:52 INFO    CAMARF fit: succeeded, pymgarch fit: succeeded
+20:35:52 INFO  
+20:35:52 INFO  Saved -> output/research/dcc_garch_pymgarch_comparison_summary.parquet
