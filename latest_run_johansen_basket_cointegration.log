@@ -1,12 +1,13 @@
-20:38:28 INFO  === johansen_basket_cointegration.py: basket (3-asset) vs. pairwise (EG) cointegration comparison, tf=1D ===
-20:38:39 INFO  Loaded 44840 symbols from the merged yfinance+WRDS+Binance+IBKR universe (tf=1D) in 11.0s
-20:38:39 INFO  Loaded 1 confirmed pairs
-20:38:39 INFO  GICS sector tags loaded for 1506 symbols
-20:38:39 INFO  Built 3 (A,B,C) triples from 1 confirmed pairs (up to 3 same-sector third legs each)
-20:38:42 INFO  
-20:38:42 INFO  === Summary ===
-20:38:42 INFO  Triples tested (enough overlapping data): 3 / 3 built
-20:38:42 INFO  Johansen rank >= 1 (some cointegration found): 0/3 (0.0%)
-20:38:42 INFO  NOVEL (rank>=1 AND neither sub-pair ever pairwise-confirmed): 0/3 (0.0%)
-20:38:42 INFO  Johansen testing wall time: 2.45s for 3 triples (0.818s/triple)
-20:38:42 INFO  Saved -> output/research/johansen_basket_cointegration_summary.parquet
+21:53:48 INFO  === johansen_basket_cointegration.py: basket (3-asset) vs. pairwise (EG) cointegration comparison, tf=1D ===
+21:54:00 INFO  Loaded 44840 symbols from the merged yfinance+WRDS+Binance+IBKR universe (tf=1D) in 11.7s
+21:54:00 INFO  Loaded 29 confirmed pairs
+21:54:00 INFO  GICS sector tags loaded for 1506 symbols
+21:54:00 INFO  Built 6 (A,B,C) triples from 29 confirmed pairs (up to 3 same-sector third legs each)
+21:54:06 INFO    NOVEL: PNC/ZION/ABR basket rank=1, but neither PNC/ABR nor ZION/ABR was ever separately pairwise-confirmed
+21:54:06 INFO  
+21:54:06 INFO  === Summary ===
+21:54:06 INFO  Triples tested (enough overlapping data): 6 / 6 built
+21:54:06 INFO  Johansen rank >= 1 (some cointegration found): 1/6 (16.7%)
+21:54:06 INFO  NOVEL (rank>=1 AND neither sub-pair ever pairwise-confirmed): 1/6 (16.7%)
+21:54:06 INFO  Johansen testing wall time: 5.97s for 6 triples (0.994s/triple)
+21:54:06 INFO  Saved -> output/research/johansen_basket_cointegration_summary.parquet

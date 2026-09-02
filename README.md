@@ -8,13 +8,18 @@ confirmed-pair universe underneath it changed materially in the last several ses
 episodic cointegration confirmation vs. the standard static full-sample screen — is actively
 being built and is not yet concluded. Read this file's status as "in motion," not settled.
 
-**Update, 2026-08-24 — the episodic/methodology thesis is now promoted to its own lead paper.**
-`PAPER_MAGNITUDE.md` (project root) is the new **lead paper**: a seven-pillar synthesis
-(multiple-testing discipline at real ~10^5-10^6-hypothesis scale, episodic-not-persistent
-cointegration, pair-discovery lookahead, SPAC NAV-clustering, jump-diffusion vs. data-quality
-flags, calendar-padding artifacts, and when model complexity earns its keep) built around the
-same central claim previewed below — production-scale statistical arbitrage screening is
-dominated by artifact management, not signal discovery. `PAPER.md` is now the **companion,
+**Update, 2026-08-24 — the episodic/methodology thesis is now promoted to its own lead paper.
+Reframed again 2026-09-01 (title/thesis changed, see below) — this note updated to match, not
+left stale.** `PAPER_MAGNITUDE.md` (project root) is the **lead paper**: seven independently-
+verified cases where a naive full-sample cointegration screen certifies something a
+practitioner isn't actually entitled to believe — multiple-testing discipline at real
+~10^5-10^6-hypothesis scale, episodic-not-persistent cointegration, pair-discovery lookahead
+(the sharpest single case — see that paper's §1.4/§6), SPAC NAV-clustering, jump-diffusion vs.
+data-quality flags, calendar-padding artifacts, and when model complexity earns its keep.
+Current title/thesis: **"Unwarranted Confidence"** — production-scale statistical arbitrage
+research is dominated by unwarranted confidence, not signal discovery (superseding the
+2026-08-24 "artifact management" framing, which never fit 2 of the 7 findings; see
+`PAPER_MAGNITUDE.md` §11 for the full reasoning and provenance). `PAPER.md` is now the **companion,
 secondary paper** — the original single-pair-set backtest writeup, re-scoped as supporting
 empirical evidence rather than the sole headline. Separately, the same session found and fixed
 a universe-undercount bug (several "full universe" scripts were silently sampling ~1,566-1,730
