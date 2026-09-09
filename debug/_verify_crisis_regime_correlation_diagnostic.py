@@ -120,5 +120,74 @@ degenerate_summary = summarize(degenerate_table)
 check("no crash, and crisis_vs_calm comparison is explicitly None (not a fabricated result)",
       degenerate_summary["crisis_vs_calm_confirmation_rate"] is None)
 
+print("Check 5: summarize() reappearance-rate two-proportion z-test (added 2026-09-02, "
+      "was previously descriptive-only)")
+# 10 crisis-first pairs, 9 reappear in a different regime; 10 calm-first, 2 reappear -- a real
+# gap that should register as statistically significant, mirroring check 3's confirmation-rate
+# test but on the reappearance column instead.
+reappear_table = pd.DataFrame({
+    "first_regime": ["crisis"] * 10 + ["calm"] * 10,
+    "confirmed": [False] * 20,
+    "episodic_fraction_fdr": [0.0] * 20,
+    "reappears_in_different_regime": [True] * 9 + [False] * 1 + [True] * 2 + [False] * 8,
+})
+reappear_summary = summarize(reappear_table)
+rvc = reappear_summary["crisis_vs_calm_reappearance_rate"]
+check("crisis reappearance rate computed correctly (9/10 = 0.9)",
+      abs(rvc["crisis_reappearance_rate"] - 0.9) < 1e-9)
+check("calm reappearance rate computed correctly (2/10 = 0.2)",
+      abs(rvc["calm_reappearance_rate"] - 0.2) < 1e-9)
+check("a real 0.7 reappearance-rate gap registers as statistically significant (p < 0.05)",
+      rvc["p_value"] is not None and rvc["p_value"] < 0.05)
+
+print("Check 6: summarize() episodic_fraction_fdr Mann-Whitney U test (added 2026-09-02, "
+      "was previously descriptive-only)")
+# Among CONFIRMED pairs only: crisis-confirmed pairs cluster high (0.7-0.9), calm-confirmed
+# pairs cluster low (0.1-0.3) -- a real separation a rank test should catch as significant.
+strength_table = pd.DataFrame({
+    "first_regime": ["crisis"] * 8 + ["calm"] * 8,
+    "confirmed": [True] * 8 + [True] * 8,
+    "episodic_fraction_fdr": [0.7, 0.75, 0.8, 0.85, 0.9, 0.72, 0.78, 0.88]
+                            + [0.1, 0.15, 0.2, 0.25, 0.3, 0.12, 0.18, 0.28],
+    "reappears_in_different_regime": [False] * 16,
+})
+strength_summary = summarize(strength_table)
+evc = strength_summary["crisis_vs_calm_episodic_fraction_fdr"]
+check("crisis_n_confirmed/calm_n_confirmed counted correctly (8 and 8)",
+      evc["crisis_n_confirmed"] == 8 and evc["calm_n_confirmed"] == 8)
+check("crisis mean episodic_fraction_fdr is higher than calm's, matching the constructed gap",
+      evc["crisis_mean"] > evc["calm_mean"])
+check("a real, total separation between groups registers as statistically significant (p < 0.05)",
+      evc["p_value"] is not None and evc["p_value"] < 0.05)
+
+print("Check 7: summarize() non-monotonicity disclosure across calm->normal->elevated->crisis")
+# Deliberately non-monotonic: elevated's confirmation rate dips BELOW calm's, matching the
+# real 2026-09-02 corrected-scale pattern this check is guarding against silently smoothing over.
+non_monotonic_table = pd.DataFrame({
+    "first_regime": ["calm"] * 100 + ["normal"] * 100 + ["elevated"] * 100 + ["crisis"] * 100,
+    "confirmed": ([True] * 15 + [False] * 85)      # calm: 15%
+               + ([True] * 14 + [False] * 86)      # normal: 14%
+               + ([True] * 10 + [False] * 90)      # elevated: 10% -- DIPS below calm/normal
+               + ([True] * 25 + [False] * 75),     # crisis: 25%
+    "episodic_fraction_fdr": [0.0] * 400,
+    "reappears_in_different_regime": [False] * 400,
+})
+non_monotonic_summary = summarize(non_monotonic_table)
+check("non-monotonic confirmation-rate pattern is correctly flagged as NOT monotonic",
+      non_monotonic_summary["confirmation_rate_monotonic_across_regime_severity"] is False)
+
+monotonic_table = pd.DataFrame({
+    "first_regime": ["calm"] * 100 + ["normal"] * 100 + ["elevated"] * 100 + ["crisis"] * 100,
+    "confirmed": ([True] * 10 + [False] * 90)
+               + ([True] * 15 + [False] * 85)
+               + ([True] * 20 + [False] * 80)
+               + ([True] * 25 + [False] * 75),     # a genuine clean gradient, for contrast
+    "episodic_fraction_fdr": [0.0] * 400,
+    "reappears_in_different_regime": [False] * 400,
+})
+monotonic_summary = summarize(monotonic_table)
+check("a genuine clean gradient is correctly flagged as monotonic",
+      monotonic_summary["confirmation_rate_monotonic_across_regime_severity"] is True)
+
 print(f"\n{passed}/{passed + failed} checks passed")
 sys.exit(0 if failed == 0 else 1)

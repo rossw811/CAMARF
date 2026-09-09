@@ -1485,6 +1485,141 @@ def fetch_compustat_fundamentals(db):
         log.info(f"Compustat company reference (SIC/GICS sector): {len(company_df)} companies")
 
 
+def fetch_ibes_price_targets(db):
+    """IBES consensus analyst price targets (ibes.ptgsum, split-adjusted
+    summary -- mean/median/high/low/n_estimates per ticker per statpers
+    report date), CRSP-linked via wrdsapps_link_crsp_ibes for CAMARF's
+    universe. Added 2026-09-08, Ross: build the analyst price-target
+    arbitrage candidate PAPER.md §10 records (blocked until now on "needs
+    a paid or scraped consensus-target data source CAMARF does not
+    currently have" -- research/wrds_capability_audit.py already found
+    `ibes` (194 tables) IS accessible under this subscription, just
+    deliberately deferred pending a real schema check, per
+    Development.md's 2026-08-?? note: "IBES analyst estimates deliberately
+    deferred (lower schema/linking confidence, would risk a wasted 2FA
+    round-trip if guessed wrong)". This function IS that real schema
+    check -- every table/column name below is discovered via
+    information_schema, not guessed, so a schema surprise fails loudly
+    with a clear message instead of silently returning the wrong data or
+    burning Ross's 2FA round-trip on a bad query.
+
+    ptgsum (adjusted), not ptgsumu (unadjusted): matches this project's
+    existing convention of using CRSP's split-adjusted close_total_return
+    everywhere else -- an unadjusted price target compared against an
+    adjusted close would be a real, silent unit mismatch (a stock that
+    did a 2:1 split between the target's issue date and today would show
+    the target at ~2x the comparable adjusted price). Real caveat, not
+    yet resolved by this function alone: ptgsum's own adjustment is as of
+    IBES's OWN adjustment date, which may not exactly track CRSP's
+    cumulative factor at every point in time -- flagged for whoever builds
+    the actual arbitrage signal on top of this, not silently assumed
+    correct.
+    """
+    link_schema = "wrdsapps_link_crsp_ibes"
+    tables_df = db.raw_sql(f"""
+        select table_name from information_schema.tables
+        where table_schema = '{link_schema}'
+        order by table_name
+    """)
+    if tables_df.empty:
+        log.warning(f"fetch_ibes_price_targets: no tables found in schema '{link_schema}' -- "
+                    f"skipping (library may not actually be queryable despite appearing in the "
+                    f"capability audit's library list).")
+        return
+    # Prefer a table whose name suggests the canonical IBES-CRSP history
+    # link (WRDS's own convention is typically "ibcrsphist") -- fall back
+    # to the first table found rather than guessing further, and log
+    # exactly what was picked so a wrong guess is visible, not silent.
+    link_table_names = tables_df["table_name"].tolist()
+    link_table = next((t for t in link_table_names if "ibcrsphist" in t.lower()), None) \
+        or next((t for t in link_table_names if "hist" in t.lower()), None) \
+        or link_table_names[0]
+    log.info(f"fetch_ibes_price_targets: using link table {link_schema}.{link_table} "
+             f"(found {len(link_table_names)} table(s) in schema: {link_table_names})")
+
+    link_cols_df = db.raw_sql(f"""
+        select column_name from information_schema.columns
+        where table_schema = '{link_schema}' and table_name = '{link_table}'
+        order by ordinal_position
+    """)
+    link_cols = set(link_cols_df["column_name"])
+    log.info(f"  real columns: {sorted(link_cols)}")
+
+    ticker_col = next((c for c in ("ticker", "ibtic", "ibes_ticker") if c in link_cols), None)
+    permno_col = next((c for c in ("permno", "lpermno") if c in link_cols), None)
+    start_col = next((c for c in ("sdate", "start_date", "linkdt") if c in link_cols), None)
+    end_col = next((c for c in ("edate", "end_date", "linkenddt") if c in link_cols), None)
+    if not (ticker_col and permno_col):
+        log.warning(f"fetch_ibes_price_targets: could not identify ticker/permno columns in "
+                    f"{link_schema}.{link_table} (found: {sorted(link_cols)}) -- skipping rather "
+                    f"than guess. Needs a human look at the real schema before retrying.")
+        return
+
+    ptg_cols_df = db.raw_sql("""
+        select column_name from information_schema.columns
+        where table_schema = 'ibes' and table_name = 'ptgsum'
+        order by ordinal_position
+    """)
+    ptg_cols = set(ptg_cols_df["column_name"])
+    if not ptg_cols:
+        log.warning("fetch_ibes_price_targets: ibes.ptgsum has no columns visible -- "
+                    "skipping (table may not be queryable under this subscription despite "
+                    "appearing in the library list).")
+        return
+    log.info(f"  ibes.ptgsum real columns: {sorted(ptg_cols)}")
+
+    ptg_ticker_col = next((c for c in ("ticker", "oftic") if c in ptg_cols), None)
+    date_col = next((c for c in ("statpers", "actdats") if c in ptg_cols), None)
+    mean_col = next((c for c in ("meanptg", "mean") if c in ptg_cols), None)
+    if not (ptg_ticker_col and date_col and mean_col):
+        log.warning(f"fetch_ibes_price_targets: could not identify ticker/date/mean-target "
+                    f"columns in ibes.ptgsum (found: {sorted(ptg_cols)}) -- skipping rather "
+                    f"than guess.")
+        return
+    optional_cols = [c for c in ("medptg", "highptg", "lowptg", "sdevptg", "numtoteps",
+                                  "numup", "numdown", "curr") if c in ptg_cols]
+    select_extra = ", ".join(f"p.{c}" for c in optional_cols)
+    select_extra = (", " + select_extra) if select_extra else ""
+
+    permno_map_path = os.path.join(_OUT_DIR, "symbol_permno_map.parquet")
+    if not os.path.exists(permno_map_path):
+        log.warning(f"{permno_map_path} not found -- run build_symbol_permno_map() first. "
+                    f"Skipping IBES price targets.")
+        return
+    permno_map = pd.read_parquet(permno_map_path)
+    permnos = permno_map["permno"].dropna().astype(int).unique().tolist()
+    permnos_sql = ",".join(str(p) for p in permnos)
+
+    date_filter = ""
+    if start_col and end_col:
+        date_filter = f"""
+              and p.{ptg_ticker_col} is not null
+              and (l.{start_col} is null or p.{date_col} >= l.{start_col})
+              and (l.{end_col} is null or p.{date_col} <= l.{end_col})"""
+
+    q = f"""
+        with linked as (
+            select distinct l.{ticker_col} as ibes_ticker, l.{permno_col} as permno
+            {", l." + start_col if start_col else ""}{", l." + end_col if end_col else ""}
+            from {link_schema}.{link_table} l
+            where l.{permno_col} in ({permnos_sql})
+        )
+        select l.permno, p.{ptg_ticker_col} as ibes_ticker, p.{date_col} as statpers,
+               p.{mean_col} as mean_price_target{select_extra}
+        from ibes.ptgsum p
+        join linked l on p.{ptg_ticker_col} = l.ibes_ticker
+        where p.{mean_col} is not null{date_filter}
+        order by l.permno, p.{date_col}
+    """
+    log.info(f"Fetching IBES consensus price targets for {len(permnos)} permnos...")
+    df = db.raw_sql(q)
+    df.to_parquet(os.path.join(_OUT_DIR, "ibes_price_targets_camarf_universe.parquet"), index=False)
+    log.info(f"IBES price targets: {len(df)} rows, {df['permno'].nunique()} distinct permnos, "
+             f"{df['statpers'].min()} to {df['statpers'].max()}" if len(df) else
+             "IBES price targets: 0 rows -- ticker linking or date range may not overlap "
+             "CAMARF's universe/history; not necessarily a query error.")
+
+
 _GLOBAL_INDEX_MIN_CONSTITUENTS = 20  # discovery threshold -- matches the 2026-07-27 inventory's
     # own "genuinely usable" bar (FTSE 100/CAC 40 at 0 constituents were the motivating
     # counterexample this threshold rules out)

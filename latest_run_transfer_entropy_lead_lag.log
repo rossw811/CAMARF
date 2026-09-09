@@ -1,0 +1,30 @@
+2026-09-08 15:35:51  INFO      === transfer_entropy_lead_lag.py: tf=1D, max_lag=5, n_bins=4, n_perm=100 ===
+2026-09-08 15:35:51  INFO      27 confirmed pairs at tf=1D
+2026-09-08 15:36:07  INFO        AGCB/LEAP: best LEAP->AGCB lag=3 TE=0.1338 bits, p=0.030
+2026-09-08 15:36:08  INFO        AISP/GVKEY239599_01W: insufficient_bars
+2026-09-08 15:36:27  INFO        ALTG/FBM: best ALTG->FBM lag=1 TE=0.0948 bits, p=0.130
+2026-09-08 15:36:52  INFO        AMP/RUSHA: best RUSHA->AMP lag=3 TE=0.0101 bits, p=0.000
+2026-09-08 15:37:11  INFO        ARGO/MEGL: best ARGO->MEGL lag=2 TE=0.1133 bits, p=0.120
+2026-09-08 15:37:11  INFO        ATXG/KNBE: insufficient_bars
+2026-09-08 15:37:32  INFO        CATY/FRBA: best CATY->FRBA lag=1 TE=0.0147 bits, p=0.020
+2026-09-08 15:37:50  INFO        CLAS/MSAI: best CLAS->MSAI lag=4 TE=0.1685 bits, p=0.020
+2026-09-08 15:37:51  INFO        CSII/GVKEY355506_01W: insufficient_bars
+2026-09-08 15:37:51  INFO        CVON/PERMNO91600: insufficient_bars
+2026-09-08 15:38:10  INFO        FNLC/JMSB: best JMSB->FNLC lag=4 TE=0.0324 bits, p=0.320
+2026-09-08 15:38:34  INFO        GBNK/SRCE: best GBNK->SRCE lag=4 TE=0.0203 bits, p=0.000
+2026-09-08 15:38:34  INFO        GVKEY101930_01W/GVKEY355506_01W: insufficient_bars
+2026-09-08 15:38:58  INFO        GVKEY201229_01W/GVKEY248104_01W: best GVKEY248104_01W->GVKEY201229_01W lag=1 TE=0.0170 bits, p=0.000
+2026-09-08 15:38:59  INFO        GVKEY204176_01W/GVKEY355326_01W: insufficient_bars
+2026-09-08 15:38:59  INFO        GVKEY223055_02W/PWM: insufficient_bars
+2026-09-08 15:39:00  INFO        GVKEY227396_01W/LLAP: insufficient_bars
+2026-09-08 15:39:00  INFO        GVKEY242580_01W/GVKEY325818_01W: insufficient_bars
+2026-09-08 15:39:00  INFO        GVKEY248220_01W/GVKEY329260_01W: insufficient_bars
+2026-09-08 15:39:01  INFO        GVKEY259160_01W/LDTC: insufficient_bars
+2026-09-08 15:39:01  INFO        GVKEY284837_01W/XBP: insufficient_bars
+2026-09-08 15:39:01  INFO        GVKEY327794_01W/GVKEY346377_01W: insufficient_bars
+2026-09-08 15:39:25  INFO        HSBC/GVKEY015509_06W: best GVKEY015509_06W->HSBC lag=1 TE=0.0090 bits, p=0.000
+2026-09-08 15:39:46  INFO        HWC/FRBA: best FRBA->HWC lag=1 TE=0.0156 bits, p=0.000
+2026-09-08 15:39:47  INFO        OGN/PERMNO78892: insufficient_bars
+2026-09-08 15:40:09  INFO        OVV/DO: best OVV->DO lag=2 TE=0.0111 bits, p=0.000
+2026-09-08 15:40:33  INFO        OVV/PERMNO82298: best OVV->PERMNO82298 lag=2 TE=0.0111 bits, p=0.000
+2026-09-08 15:40:33  INFO      Saved 130 rows to output/research/transfer_entropy_lead_lag.parquet

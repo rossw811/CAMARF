@@ -71,19 +71,59 @@ _TF_SAFE = {
 _price_cache = {}
 _spread_cache = {}
 
+# External-series override (added 2026-09-03): pit_wfa.py's own 1h pipeline writes per-symbol
+# `{symbol}_1hr.parquet` price caches and per-pair `spread_series_{a}_{b}.parquet` files that
+# get_price_at/_load_spread_series read from disk below -- but pit_wfa_wrds_daily.py's WRDS-daily
+# comparison arm works entirely in-memory (universe_loader.load_full_universe(), no per-pair
+# spread_series ever written to disk for _TF_LABEL="1D") and never produces either file. Real bug
+# found live: this silently made get_price_at/_load_spread_series return NaN for every WRDS-daily
+# pair, which cascaded into stop_distance_dollars_per_share always returning NaN, which meant
+# EVERY trade was skipped under flat_2pct/Kelly sizing (0/21 trades taken, reproduced identically
+# across relaunches) -- not a fold-specific data artifact, a systemic wiring gap. Fixed by letting
+# a caller register already-in-memory price/spread series that take priority over the file-based
+# caches, so pit_wfa.py's own file-based behavior (no registrations ever made) is byte-identical
+# to before this change.
+_external_price_cache = {}
+_external_spread_cache = {}
+
+
+def register_price_series(symbol: str, df: pd.DataFrame) -> None:
+    """Registers an in-memory close-price series for `symbol`, checked before the file-based
+    1h cache in get_price_at(). `df` must have a DatetimeIndex and a "close" column."""
+    _external_price_cache[symbol] = df
+
+
+def register_spread_series(symbol_a: str, symbol_b: str, tf_label: str, df: pd.DataFrame) -> None:
+    """Registers an in-memory spread series for (symbol_a, symbol_b, tf_label), checked before
+    the file-based spread_series_*.parquet cache in _load_spread_series(). `df` must have a
+    DatetimeIndex and a "spread" column."""
+    _external_spread_cache[(symbol_a, symbol_b, tf_label)] = df
+
+
+def clear_external_series() -> None:
+    """Drops all registered in-memory price/spread series -- callers that register per-run
+    in-memory series (e.g. pit_wfa_wrds_daily.py) should call this between independent runs to
+    avoid stale series from a prior universe leaking into a new one."""
+    _external_price_cache.clear()
+    _external_spread_cache.clear()
+
 
 def get_price_at(symbol: str, ts: pd.Timestamp) -> float:
-    """Last available 1h close price for symbol AT OR BEFORE ts (method="pad", not "nearest" --
+    """Last available close price for symbol AT OR BEFORE ts (method="pad", not "nearest" --
     "nearest" could pick a bar slightly AFTER ts, a lookahead crack for a sizing/risk decision
     made at ts. Fixed 2026-07-12 while building the causal volatility model below, which made
-    this matter more directly than it did for the simpler original notional-at-entry use.)."""
-    if symbol not in _price_cache:
-        path = os.path.join(_CACHE_DIR, f"{symbol}_1hr.parquet")
-        try:
-            _price_cache[symbol] = pd.read_parquet(path)
-        except Exception:
-            _price_cache[symbol] = None
-    df = _price_cache[symbol]
+    this matter more directly than it did for the simpler original notional-at-entry use.).
+    Checks an in-memory registered series first (see register_price_series), falling back to the
+    file-based 1h cache pit_wfa.py's own pipeline populates."""
+    df = _external_price_cache.get(symbol)
+    if df is None:
+        if symbol not in _price_cache:
+            path = os.path.join(_CACHE_DIR, f"{symbol}_1hr.parquet")
+            try:
+                _price_cache[symbol] = pd.read_parquet(path)
+            except Exception:
+                _price_cache[symbol] = None
+        df = _price_cache[symbol]
     if df is None or len(df) == 0 or "close" not in df.columns:
         return float("nan")
     idx = df.index.get_indexer([ts], method="pad")[0]
@@ -94,6 +134,8 @@ def get_price_at(symbol: str, ts: pd.Timestamp) -> float:
 
 def _load_spread_series(symbol_a: str, symbol_b: str, tf_label: str) -> "pd.DataFrame | None":
     key = (symbol_a, symbol_b, tf_label)
+    if key in _external_spread_cache:
+        return _external_spread_cache[key]
     if key not in _spread_cache:
         tf_dir = _TF_SAFE.get(tf_label, tf_label.lower())
         path = os.path.join(_RESULTS_DIR, tf_dir, f"spread_series_{symbol_a}_{symbol_b}.parquet")

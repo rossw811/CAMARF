@@ -22,7 +22,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from data_wrds import _connect, fetch_fama_french, fetch_compustat_fundamentals
+from data_wrds import _connect, fetch_fama_french, fetch_compustat_fundamentals, fetch_ibes_price_targets
 
 log = logging.getLogger("build_wrds_supplementary_data")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s  %(message)s", datefmt="%H:%M:%S")
@@ -34,6 +34,8 @@ def main():
     fetch_fama_french(db)
     log.info("=== Compustat fundamentals (CAMARF universe, CCM-linked) ===")
     fetch_compustat_fundamentals(db)
+    log.info("=== IBES consensus price targets (CAMARF universe, CRSP-linked) ===")
+    fetch_ibes_price_targets(db)
     db.close()
     log.info("Done. Review the new output/cache/wrds/*.parquet files, then discuss with Claude "
              "which features/comparison arms to build from them.")

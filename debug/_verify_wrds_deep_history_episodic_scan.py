@@ -314,6 +314,74 @@ def verify_checkpoint_resume_matches_uninterrupted_run():
         scan.clear_checkpoint(checkpoint_id)  # never leave test artifacts behind, even on failure
 
 
+def verify_streaming_reconstruction_dedups_duplicate_checkpoint_rows():
+    """Targets the exact gap a 2026-09-02 code-quality council review flagged in the
+    2026-09-02 vectorized reconstruction (run_rolling_eg_pool, the use_streaming branch):
+    the OLD dict-based reconstruction implicitly deduped on (symbol_a, symbol_b,
+    window_start, direction) via dict overwrite; a `_save_checkpoint_batch` crash landing
+    between its part-file write and its meta-file write (each atomic individually, not as
+    a pair) can leave a resumed run reprocessing already-covered pairs, writing a SECOND
+    part file with duplicate (pair, window, direction) rows. The merge()-based rewrite has
+    no dedup of its own -- duplicate keys in the "ab" split crossed with duplicate keys in
+    "ba" produce a many-to-many blowup, not silent correctness, unless explicitly guarded.
+    Confirmed NOT to have fired on this session's real Tier 3 output (checked directly:
+    zero duplicate rows in the actual 5,003,637-row result) -- this test exists so a FUTURE
+    crash at that exact write boundary is caught by CI, not discovered live at scale."""
+    print("\n=== 7. Streaming reconstruction dedups duplicate checkpoint rows (simulating a crash "
+          "between a part-file write and its meta-file write) ===")
+    checkpoint_id = "TEST_ONLY_duplicate_checkpoint_rows"
+    scan.clear_checkpoint(checkpoint_id)
+    try:
+        # Two "part" files as if two separate _save_checkpoint_batch calls wrote them --
+        # part 1 has the real result; part 0001 duplicates ONE of part 1's rows with a
+        # DIFFERENT pvalue (simulating a stale, superseded write from before a crash), to
+        # make it unambiguous whether keep="last" (part 0001, written LATER by file-sort
+        # order) or a naive concat (both rows survive) is what actually happened.
+        rows_part0 = [
+            {"symbol_a": "X", "symbol_b": "Y", "window_start": 0, "direction": "ab",
+             "pvalue": 0.01, "window_end_date": "2020-01-01"},
+            {"symbol_a": "X", "symbol_b": "Y", "window_start": 0, "direction": "ba",
+             "pvalue": 0.02, "window_end_date": "2020-01-01"},
+        ]
+        rows_part1 = [
+            # Duplicate of the SAME (symbol_a, symbol_b, window_start, direction) key as
+            # part0's first row, but a DIFFERENT pvalue -- the "later, correct" rewrite.
+            {"symbol_a": "X", "symbol_b": "Y", "window_start": 0, "direction": "ab",
+             "pvalue": 0.99, "window_end_date": "2020-01-01"},
+            {"symbol_a": "P", "symbol_b": "Q", "window_start": 5, "direction": "ab",
+             "pvalue": 0.3, "window_end_date": "2020-02-01"},
+            {"symbol_a": "P", "symbol_b": "Q", "window_start": 5, "direction": "ba",
+             "pvalue": 0.1, "window_end_date": "2020-02-01"},
+        ]
+        scan._save_checkpoint_batch(checkpoint_id, 0, rows_part0, n_pairs_done=1)
+        scan._save_checkpoint_batch(checkpoint_id, 1, rows_part1, n_pairs_done=2)
+
+        # pairs/adv_by_symbol are irrelevant here -- meta already reports both pairs done, so
+        # the batch loop is a no-op and only the reconstruction path runs. log_price_df still
+        # needs real columns for the 4 symbols: _build_symbol_array_cache runs unconditionally
+        # before the resume-skip check, regardless of whether any batch actually executes.
+        dummy_log_price_df = pd.DataFrame(
+            {"X": [0.0] * 10, "Y": [0.0] * 10, "P": [0.0] * 10, "Q": [0.0] * 10}
+        )
+        flat = scan.run_rolling_eg_pool(
+            [{"symbol_a": "X", "symbol_b": "Y"}, {"symbol_a": "P", "symbol_b": "Q"}],
+            dummy_log_price_df, max_lag=1, workers=1, checkpoint_id=checkpoint_id,
+        )
+        by_key = {(r["symbol_a"], r["symbol_b"], r["window_start"]): r for r in flat}
+
+        ok = check("no duplicate/blown-up rows -- exactly 2 (pair, window) rows returned, "
+                   "not 2x2=4 from a many-to-many merge on the duplicated key",
+                   len(flat) == 2)
+        ok &= check("X/Y's pvalue reflects the LATER part file's value (0.99), matching the "
+                   "old dict's last-write-wins semantics, not the stale 0.01",
+                   by_key.get(("X", "Y", 0), {}).get("pvalue") == 0.99)
+        ok &= check("P/Q (never duplicated) is unaffected: max(0.3, 0.1) = 0.3",
+                   by_key.get(("P", "Q", 5), {}).get("pvalue") == 0.3)
+        return ok
+    finally:
+        scan.clear_checkpoint(checkpoint_id)
+
+
 def main():
     results = [
         verify_episodic_pair_fails_full_sample_but_found_by_rolling(),
@@ -322,6 +390,7 @@ def main():
         verify_batched_pool_matches_single_batch(),
         verify_checkpoint_resume_matches_uninterrupted_run(),
         verify_adv_gate_excludes_illiquid_windows_by_date(),
+        verify_streaming_reconstruction_dedups_duplicate_checkpoint_rows(),
     ]
     print("\n" + "=" * 60)
     if all(results):

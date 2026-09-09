@@ -156,31 +156,56 @@ def build_pair_level_table(windows_df: pd.DataFrame, vix_regime: pd.Series, alph
     pair was ever episodically BH-FDR-confirmed, its episodic_fraction_fdr
     (fraction of ITS OWN tested windows FDR-rejected), and whether it
     reappears as a candidate in any LATER window classified as a DIFFERENT
-    (non-crisis) regime than its first window."""
+    (non-crisis) regime than its first window.
+
+    VECTORIZED (2026-09-02, after a live run at Tier 3's real scale -- 5,003,637
+    (pair, window) rows -- took 10+ minutes with no OOM risk but pure wasted
+    wall-clock): the original version called `_nearest_regime` (a pandas
+    boolean-mask filter + `.iloc[-1]`, effectively an O(len(vix_regime)) linear
+    scan) once per row inside a Python-level `groupby` loop -- roughly 5M
+    individual pandas calls, each with real per-call overhead, for a
+    fundamentally as-of/backward-merge operation pandas already has a
+    vectorized primitive for. Rewritten as ONE `pd.merge_asof` (direction=
+    "backward", the same semantics as `_nearest_regime`'s "most recent value
+    ON OR BEFORE date, else NaN") assigning a regime to every row in a single
+    vectorized pass, then `groupby(...).transform`/`.first`/`.size`/boolean
+    `.any()` for the rest -- no Python-level per-row or per-group loop
+    remains. `_nearest_regime` itself is kept (still exercised directly by
+    debug/_verify_crisis_regime_correlation_diagnostic.py's PIT-safety checks,
+    which test it as a unit in isolation, not through this function) but is
+    no longer called from here."""
     rows = windows_df.to_dict("records")
     confirmed = episodic_bhfdr_confirm(rows, alpha, min_windows_confirmed=1)
     confirmed_by_key = {frozenset((c["symbol_a"], c["symbol_b"])): c for c in confirmed}
 
-    grouped = windows_df.groupby(["symbol_a", "symbol_b"])
-    out_rows = []
-    for (sym_a, sym_b), g in grouped:
-        key = frozenset((sym_a, sym_b))
-        first_date = g["window_end_date"].min()
-        first_regime = _nearest_regime(vix_regime, first_date)
-        c = confirmed_by_key.get(key)
-        later_dates = g.loc[g["window_end_date"] > first_date, "window_end_date"]
-        later_regimes = {_nearest_regime(vix_regime, d) for d in later_dates}
-        reappears_different_regime = bool(later_regimes - {first_regime, np.nan})
-        out_rows.append({
-            "symbol_a": sym_a, "symbol_b": sym_b,
-            "first_window_end_date": first_date,
-            "first_regime": first_regime,
-            "n_windows_tested": len(g),
-            "confirmed": c is not None,
-            "episodic_fraction_fdr": c["episodic_fraction_fdr"] if c is not None else 0.0,
-            "reappears_in_different_regime": reappears_different_regime,
-        })
-    return pd.DataFrame(out_rows)
+    regime_lookup = vix_regime.sort_index().rename("regime").reset_index()
+    date_col = regime_lookup.columns[0]  # whatever macro.build() named its DatetimeIndex
+    merged = pd.merge_asof(
+        windows_df.sort_values("window_end_date"), regime_lookup,
+        left_on="window_end_date", right_on=date_col, direction="backward",
+    ).sort_values(["symbol_a", "symbol_b", "window_end_date"])
+
+    grp = merged.groupby(["symbol_a", "symbol_b"], sort=False)
+    is_first_row = ~merged.duplicated(subset=["symbol_a", "symbol_b"], keep="first")
+    first_regime_bc = grp["regime"].transform("first")
+    diff_regime_later = (~is_first_row) & merged["regime"].notna() & (merged["regime"] != first_regime_bc)
+    reappear = diff_regime_later.groupby([merged["symbol_a"], merged["symbol_b"]], sort=False).any()
+
+    pair_table = grp.agg(
+        first_window_end_date=("window_end_date", "first"),
+        first_regime=("regime", "first"),
+        n_windows_tested=("window_end_date", "size"),
+    ).reset_index()
+    pair_table = pair_table.merge(
+        reappear.rename("reappears_in_different_regime").reset_index(), on=["symbol_a", "symbol_b"]
+    )
+    keys = list(zip(pair_table["symbol_a"], pair_table["symbol_b"]))
+    confirmed_rows = [confirmed_by_key.get(frozenset(k)) for k in keys]
+    pair_table["confirmed"] = [c is not None for c in confirmed_rows]
+    pair_table["episodic_fraction_fdr"] = [
+        c["episodic_fraction_fdr"] if c is not None else 0.0 for c in confirmed_rows
+    ]
+    return pair_table
 
 
 def summarize(pair_table: pd.DataFrame) -> dict:
@@ -213,20 +238,61 @@ def summarize(pair_table: pd.DataFrame) -> dict:
             "z_stat": float(z) if np.isfinite(z) else None,
             "p_value": float(p_value) if np.isfinite(p_value) else None,
         }
+        # Two-proportion z-test, reappearance rate: crisis-first vs calm-first (2026-09-02,
+        # added alongside the episodic_fraction_fdr test below -- both were previously
+        # descriptive-only, means with no test statistic, while the confirmation-rate
+        # comparison above already had one. Same test as confirmation rate, same formula,
+        # just a different binary outcome column.
+        xr1 = int(crisis["reappears_in_different_regime"].sum())
+        xr2 = int(calm["reappears_in_different_regime"].sum())
+        pr_pool = (xr1 + xr2) / (n1 + n2)
+        se_r = np.sqrt(pr_pool * (1 - pr_pool) * (1 / n1 + 1 / n2)) if pr_pool not in (0, 1) else np.nan
+        z_r = (xr1 / n1 - xr2 / n2) / se_r if se_r and np.isfinite(se_r) and se_r > 0 else np.nan
+        p_r = 2 * (1 - stats.norm.cdf(abs(z_r))) if np.isfinite(z_r) else np.nan
         summary["crisis_vs_calm_reappearance_rate"] = {
-            "crisis_reappearance_rate": float(crisis["reappears_in_different_regime"].mean()),
-            "calm_reappearance_rate": float(calm["reappears_in_different_regime"].mean()),
+            "crisis_reappearance_rate": float(xr1 / n1), "calm_reappearance_rate": float(xr2 / n2),
+            "z_stat": float(z_r) if np.isfinite(z_r) else None,
+            "p_value": float(p_r) if np.isfinite(p_r) else None,
         }
+
+        # Mann-Whitney U, episodic_fraction_fdr among CONFIRMED pairs only: a bounded [0,1]
+        # fraction, not obviously normal (especially with min_windows_confirmed=1 meaning many
+        # confirmed pairs sit near the low end), so a rank-based test is the right default over
+        # Welch's t. Small-n caveat carried into the output directly, not hidden: crisis has far
+        # fewer confirmed pairs than calm (29 vs 412 in the 2026-09-02 corrected-scale run).
+        crisis_efd = crisis.loc[crisis["confirmed"], "episodic_fraction_fdr"]
+        calm_efd = calm.loc[calm["confirmed"], "episodic_fraction_fdr"]
+        if len(crisis_efd) >= 2 and len(calm_efd) >= 2:
+            u_stat, u_p = stats.mannwhitneyu(crisis_efd, calm_efd, alternative="two-sided")
+        else:
+            u_stat, u_p = None, None
         summary["crisis_vs_calm_episodic_fraction_fdr"] = {
-            "crisis_mean": float(crisis.loc[crisis["confirmed"], "episodic_fraction_fdr"].mean())
-                if crisis["confirmed"].any() else None,
-            "calm_mean": float(calm.loc[calm["confirmed"], "episodic_fraction_fdr"].mean())
-                if calm["confirmed"].any() else None,
+            "crisis_mean": float(crisis_efd.mean()) if len(crisis_efd) else None,
+            "calm_mean": float(calm_efd.mean()) if len(calm_efd) else None,
+            "crisis_n_confirmed": int(len(crisis_efd)), "calm_n_confirmed": int(len(calm_efd)),
+            "mannwhitney_u": float(u_stat) if u_stat is not None else None,
+            "p_value": float(u_p) if u_p is not None else None,
         }
     else:
         summary["crisis_vs_calm_confirmation_rate"] = None
+        summary["crisis_vs_calm_reappearance_rate"] = None
+        summary["crisis_vs_calm_episodic_fraction_fdr"] = None
         log.warning("Insufficient crisis or calm pairs for a direct comparison -- "
                     "reporting the full by-regime table only.")
+
+    # Non-monotonicity disclosure (2026-09-02): the 4-way by-regime table does NOT show a clean
+    # calm->normal->elevated->crisis dose-response gradient in confirmation_rate -- reported
+    # directly here rather than left for a reader to notice only by inspecting the raw table,
+    # so a "more VIX = more confirmation" overclaim never gets a chance to stand unchallenged.
+    ordered = ["calm", "normal", "elevated", "crisis"]
+    rates = by_regime.set_index("first_regime")["confirmation_rate"].reindex(ordered)
+    is_monotonic = bool(rates.dropna().is_monotonic_increasing)
+    summary["confirmation_rate_monotonic_across_regime_severity"] = is_monotonic
+    if not is_monotonic:
+        log.warning("Confirmation rate is NOT monotonically increasing across calm->normal->"
+                    "elevated->crisis (%s) -- this is a crisis-extreme effect specifically, "
+                    "not a general 'more stress = more confirmation' gradient. Do not report "
+                    "it as a dose-response relationship.", rates.to_dict())
 
     return summary
 

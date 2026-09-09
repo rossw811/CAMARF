@@ -35,46 +35,23 @@ import sys
 
 import numpy as np
 import pandas as pd
-from scipy.stats import norm, pearsonr
+from scipy.stats import pearsonr
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from options import load_price_series, realized_vol_proxy
+from options import load_price_series, realized_vol_proxy, black_scholes_greeks_vectorized
 from pair_source import confirmed_pairs_list
 
 _TENOR_DAYS = 30
 
 
 def bs_greeks(S: np.ndarray, K: np.ndarray, T: float, sigma: np.ndarray, r: float = 0.0) -> dict:
-    """
-    Standard closed-form Black-Scholes call Greeks, same d1/d2 convention
-    as options.py::black_scholes_call. Vectorized over arrays; invalid
-    inputs (sigma<=0, S<=0, T<=0) produce NaN rather than raising.
-    """
-    S = np.asarray(S, dtype=float)
-    K = np.asarray(K, dtype=float)
-    sigma = np.asarray(sigma, dtype=float)
-    valid = (S > 0) & (K > 0) & (sigma > 0) & (T > 0)
-    d1 = np.full_like(S, np.nan)
-    d2 = np.full_like(S, np.nan)
-    with np.errstate(invalid="ignore", divide="ignore"):
-        d1[valid] = (np.log(S[valid] / K[valid]) + (r + 0.5 * sigma[valid] ** 2) * T) / (sigma[valid] * np.sqrt(T))
-        d2[valid] = d1[valid] - sigma[valid] * np.sqrt(T)
-
-    delta = np.full_like(S, np.nan)
-    gamma = np.full_like(S, np.nan)
-    vega = np.full_like(S, np.nan)
-    theta = np.full_like(S, np.nan)
-
-    delta[valid] = norm.cdf(d1[valid])
-    gamma[valid] = norm.pdf(d1[valid]) / (S[valid] * sigma[valid] * np.sqrt(T))
-    vega[valid] = S[valid] * norm.pdf(d1[valid]) * np.sqrt(T)
-    theta[valid] = (
-        -(S[valid] * norm.pdf(d1[valid]) * sigma[valid]) / (2 * np.sqrt(T))
-        - r * K[valid] * np.exp(-r * T) * norm.cdf(d2[valid])
-    )
-    return {"delta": delta, "gamma": gamma, "vega": vega, "theta": theta}
+    """Thin wrapper around options.py's shared black_scholes_greeks_vectorized (added
+    2026-09-07, "options calc unit" work) -- this script's own local Greeks implementation was
+    a byte-for-byte duplicate of that math; consolidated to a single source of truth rather
+    than risking future drift between two copies of the same d1/d2 formulas."""
+    return black_scholes_greeks_vectorized(S, K, T, sigma, r, option_type="call")
 
 
 def rolling_correlation(ret_a: pd.Series, ret_b: pd.Series, window: int = 30) -> pd.Series:

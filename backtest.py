@@ -481,7 +481,8 @@ class BacktestEngine:
             log.debug("SKIP %s/%s@%s: invalid hedge ratio %.3f", sym_a, sym_b, tf, hedge_scalar)
             return []
 
-        hurst = float(pair_row.get("hurst_rs", np.nan))
+        _hurst_raw = pair_row.get("hurst_rs", np.nan)
+        hurst = float(_hurst_raw) if _hurst_raw is not None else np.nan
 
         # Drop rows with NaN z_rolling (warm-up period, before
         # SpreadModel.rolling_zscore's min_periods bars accumulate).
@@ -1085,13 +1086,25 @@ def compute_metrics(trades: List[Trade], tf: str, sym_a: str, sym_b: str,
     win_rate = len(wins) / n if n > 0 else np.nan
     profit_factor = (wins.sum() / abs(losses.sum())) if losses.sum() != 0 else np.inf
 
-    # Sharpe: annualize using TF-specific bars per year
-    bars_per_year = {
-        "1m": 390 * 252, "2m": 195 * 252, "3m": 130 * 252, "5m": 78 * 252,
-        "15m": 26 * 252, "30m": 13 * 252, "1h": 6.5 * 252, "4h": 252,
-    }
-    bpy = bars_per_year.get(tf, 252)
-    sharpe = (pnl.mean() / pnl.std() * np.sqrt(bpy)) if pnl.std() > 0 else np.nan
+    # Sharpe: annualize using the ACTUAL observed trade frequency (n_trades / years the trade
+    # sequence actually spans), not TF-specific bars-per-year. Real bug found live (2026-09-04):
+    # the old formula treated per-TRADE pnl as if it were a per-BAR return series and multiplied
+    # by sqrt(bars_per_year) -- correct only when a trade occurs on (approximately) every bar.
+    # At 1h/1D, where this project's headline results live, that assumption is close enough that
+    # the distortion went unnoticed; at 1m/2m, where trades are far rarer than bars, it produced
+    # Sharpe magnitudes of -279/-590 (research/decoupling_backtest.py's SPY/VOO pairs) that
+    # nothing else in this project remotely resembles. Fixed to use the trade sequence's own
+    # observed frequency: sqrt(n_trades / years_covered), matching how many independent trade
+    # observations actually occurred, not how many bars existed in the underlying data.
+    exit_times = [t.exit_time for t in trades if t.exit_time is not None]
+    entry_times = [t.entry_time for t in trades if t.entry_time is not None]
+    if entry_times and exit_times:
+        years_covered = (max(exit_times) - min(entry_times)).total_seconds() / (365.25 * 86400)
+    else:
+        years_covered = np.nan
+    trades_per_year = (n / years_covered) if years_covered and years_covered > 0 else np.nan
+    sharpe = (pnl.mean() / pnl.std() * np.sqrt(trades_per_year)) if pnl.std() > 0 and \
+        np.isfinite(trades_per_year) and trades_per_year > 0 else np.nan
 
     # Drawdown
     cum = np.cumsum(pnl)

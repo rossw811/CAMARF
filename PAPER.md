@@ -1147,10 +1147,14 @@ claim (equity-curve Sharpe, WFA robustness across expanding/rolling windows)
 does not rest on this test; the corrected test's honest conclusion is that
 the current OOS holdout is not yet long enough to statistically separate the
 realized path from resampling noise, not that the strategy lacks edge —
-individual pair Sharpes and win rates (60-84%) in the same backtest.py run
+positive per-pair total P&L and win rates (60-84%) in the same backtest.py run
 argue for real per-pair skill, and the diversification/correlation question
 this test surfaces is better addressed directly via the DD-hub effective-bets
-diagnostics (§7.2) than by a single aggregate p-value.
+diagnostics (§7.2) than by a single aggregate p-value. (Individual pair
+Sharpe ratios are not cited here as supporting evidence: `backtest.py`'s
+per-pair `compute_metrics()` had a real annualization bug until 2026-09-04
+— see Finding #51 — so those specific magnitudes were overstated; win rate
+and total P&L, unaffected by the bug, carry this claim instead.)
 
 ### 6.7 Deflated Sharpe Ratio [DRAFTED — reconciled 2026-07-13]
 
@@ -1811,7 +1815,9 @@ the ADV liquidity filter and half-life ceiling.
 The production setting (entry = 2.0, exit = 0.0) delivers Sharpe 9.178. The grid
 maximum (entry = 2.5, exit = 0.0, Sharpe 10.59) outperforms production by 15%. No
 parameter choice delivers a negative Sharpe across any combination, confirming genuine
-strategy robustness. The highest single-pair-level Sharpe at entry=1.5 is 10.068 —
+strategy robustness. Every value in this grid is a pooled, portfolio-level Sharpe
+(`sensitivity.py`'s `_portfolio_sharpe()`, daily-bucketed equity curve — not a per-pair
+figure). The highest value in the grid, at entry=1.5/exit=0.00, is 10.068 —
 entry=1.5 trades more frequently, benefiting from higher win-rate at shallower
 crossings but at lower per-trade edge. Entry=2.5 captures fewer but higher-conviction
 opportunities. Entry=2.0 remains the production default for comparability with prior
@@ -2340,6 +2346,130 @@ confirmations — see the rough-volatility and options-Greeks summaries above). 
 parameterized research scripts remain unswept, explicit tracked backlog, genuinely multi-session
 work.
 
+### 7.18 A Second Hedging Attempt, a New Options-Analytics Capability, and an Honest Negative
+Result on Multi-Factor Position Scoring — 2026-09-07/08 [DRAFTED]
+
+A new backlog of items (options calculator unit, additional risk metrics, an asset volatility
+profile, beta-weighting, a confidence-score position-allocation filter) plus a live idea (a
+Breeden-Litzenberger risk-neutral density extractor) were built, verified, and run against real
+data this session. Full writeups in `docs/FINDINGS.md` §54-59; summarized here per this
+project's own bias-transparency convention — three real capabilities, one genuine second
+hedging-cost result, and one honest negative finding, none oversold.
+
+**Options analytics extended, not just the correlation-feature use already reported above.**
+`options.py` gained closed-form Black-Scholes Greeks (delta/gamma/vega/theta), verified against
+finite-difference derivatives of the already-verified pricing functions, not algebra trusted
+from memory. A real duplicate was found and consolidated in the process: `research/options_
+greeks_features.py` (the "Options Greeks as correlation features" work in §7.17 above) had its
+own independent copy of the same Greeks math; refactored to call the new shared implementation,
+with the existing verify suite re-run and confirmed to still pass unchanged — the §7.17 finding's
+numbers are unaffected, only the underlying code path changed. Separately, a Breeden-Litzenberger
+risk-neutral-density extractor (`research/risk_neutral_density.py`) was built to read a live
+option chain's own priced-in probability distribution for a future expiry — genuinely new
+capability, not previously possible with this project's options infrastructure. Building it
+surfaced a real data-quality problem worth disclosing here directly: yfinance's own precomputed
+`impliedVolatility` field, which this project's own `options.py` docstring previously described
+as reliable, turned out NOT to be — checked directly against a real live chain, every deep-ITM
+strike read a degenerate placeholder value, not a real solved implied vol. Fixed by deriving IV
+independently via numerical Black-Scholes inversion against real transaction prices. A companion
+"backtest-overfitting detector" (`research/backtest_overfitting_detector.py`) compares an asset's
+realized historical return distribution against this same live risk-neutral density; a real run
+against SPY found the market currently pricing in ~47% more near-term volatility than SPY's own
+recent history shows — directionally consistent with the well-documented variance risk premium,
+not a surprising anomaly, exactly the kind of check this tool exists to surface either way.
+
+**A second, independent hedging-cost result, consistent with the protective-put/call finding
+already reported above (§7.14).** Pairs trading is theoretically market-neutral, but the two
+legs' own market betas are never actually forced equal by a cointegration screen alone.
+`research/beta_weighted_portfolio.py` measured the resulting net dollar market-beta mismatch
+against SPY and tested hedging it out daily. Real result: hedging makes every risk-adjusted
+metric WORSE, not better (Sharpe 6.0581 unhedged → 0.5019 hedged; Sortino 35.1947 → 0.7360;
+Calmar 29.6516 → 0.9869) — the same qualitative conclusion the earlier protective-overlay result
+already reached (premium/hedging drag outweighing the risk reduction it buys), now demonstrated a
+second, independent way. Taken together, two separately-built hedging mechanisms on two
+different real datasets both point the same direction: naive risk overlays on this strategy
+cost more than they save, a real, disclosed, non-obvious property of CAMARF's actual risk
+profile, not a coincidence of one specific overlay design.
+
+**An honest negative result on combining signals into a single confidence score**, tested rather
+than asserted to work. `research/confidence_score_allocation.py` combined four categories
+(statistical confirmation strength, mean-reversion speed, volatility-regime normality,
+market-neutrality quality) into a per-trade score and validated it via a real filter-threshold
+sweep on 616 production trades. The honest result: filtering to HIGHER confidence scores made
+every risk-adjusted metric progressively WORSE (Sharpe 6.06 → 1.14 from no filter to the
+strictest threshold; overall score-vs-P&L correlation -0.11, the wrong sign for a useful
+filter). Diagnosed, not left unexplained: the reversion-speed category is the dominant driver
+(-0.20 correlation on its own) — faster-reverting trades score higher under this design but
+perform worse, most likely because this project's fixed-shares-per-trade sizing convention
+rewards trades that simply run longer before their exit rule fires. Read plainly: this is not
+"confidence scoring doesn't work" as a concept, it's that this specific four-category, equally-
+weighted, unexamined-direction design does not predict trade quality here, and one category is
+actively anti-predictive. A real, disclosed engineering bug was also found and fixed along the
+way: `options.py:load_price_series()`, used by all of the above, never checked this project's own
+WRDS-cached price data at all — only a yfinance-only cache path — silently limiting coverage for
+every caller until fixed (WRDS then IBKR only, per an explicit later instruction not to use
+yfinance in this specific function at all).
+
+### 7.19 Two of §10's Future-Work Candidates Built: Sequential Bootstrap and Transfer Entropy —
+2026-09-08 [DRAFTED]
+
+Ross approved building the first two of §10's three recorded future-work candidates after an
+explicit design discussion (per this project's standing rule that new methodology is discussed
+before being built), specifically resolving one real open question each discussion surfaced
+rather than picking a default silently.
+
+**Sequential bootstrap / average-uniqueness weighting** (Lopez de Prado, *AFML* Ch. 4). Open
+question resolved: overlap is computed **per pair** — each `(symbol_a, symbol_b, tf_label)`'s
+own entry-event sequence is the underlying "series" the AFML concept applies to, not pooled
+across different pairs (cross-pair simultaneity is a portfolio-concurrency question, a different
+concept). Built as a comparison arm (`research/sequential_bootstrap_ml_comparison.py`), not a
+change to `ml.py` itself, per this project's rule that a new methodology never goes straight into
+production — reuses `ml.py`'s exact chronological train/val/test split and XGBoost
+hyperparameters, varying only the training-sample weighting/resampling scheme across three arms
+(baseline, average-uniqueness-weighted, full sequential bootstrap). `debug/_verify_sequential_
+bootstrap_ml_comparison.py` (11/11) caught a real bug before it reached any real result: an
+early version of the uniqueness calculation equal-weighted every breakpoint in a label's span
+instead of duration-weighting unequal-length segments, giving a wrong answer on a partial-overlap
+synthetic case (uniqueness should land strictly between 0.5 and 1.0, landed at exactly 0.5) —
+fixed to a proper duration-weighted average before trusting it on real data.
+
+Applying it required first finding and fixing a real, separate data-pipeline gap: `ml.build()`
+was producing zero labeled examples on this machine because most `output/results/*/spread_
+series_*.parquet` files existed only on the project's CachyOS compute machine, never synced
+locally. Pulling them over (`tar` over `ssh`, no `rsync` available in this environment) unblocked
+237 real labeled examples across 12 confirmed pairs. **Real result**: average uniqueness 0.457
+mean — confirms the targeted bias (overstated effective sample size from overlapping labels) is
+real and substantial here, not theoretical; effective training size is ~65, not the raw 142.
+Checked for seed sensitivity before reporting rather than trusting one lucky draw: across 10
+random seeds, sequential bootstrap's test accuracy ranges 47.9%-72.9% (mean 59.4%, std 7.9
+percentage points) against the baseline's fixed 56.25% — a real, modest average improvement
+(+3.1pp) but not a stable, decisive win at this project's current tiny holdout size (n=48).
+
+**Transfer entropy for lead-lag detection** (Schreiber 2000, bivariate, embedding dimension 1,
+quantile-binned). Built with the care the original candidate entry flagged as needed: circular-
+shift permutation testing for significance (preserves the shifted series' own autocorrelation
+while destroying its specific temporal alignment with the other leg — more rigorous than i.i.d.
+shuffling, which would also destroy that autocorrelation and understate how much apparent
+"coupling" could arise from shared smoothness alone). `debug/_verify_transfer_entropy_lead_lag.py`
+(5/5) caught a real off-by-one bug before it ever touched real pairs: a known synthetic coupled
+system (`x[t] = 0.85·y[t-2] + noise`) should show transfer entropy peaking at lag 2, but the
+first implementation peaked at lag 1 — traced to `y_past = y[0:n-lag-1]` silently computing
+`y[t-lag-1]` instead of `y[t-lag]` for every call. Fixed and re-verified before running on real
+data — exactly the "self-check against known bug classes before running a new pipeline stage"
+discipline this project's own conventions call for.
+
+Real result, honestly scoped: of 27 confirmed 1D pairs, 26 returned no usable aligned price data
+(a local-caching gap of the same shape as the spread-series one above, not chased down further
+this session) — one pair, AMP/RUSHA, produced a genuine, significant result (best direction
+RUSHA→AMP at lag 3, TE=0.0101 bits, permutation p=0.000). A single working pair confirms the
+method functions correctly on real data; it is not yet a basis for any general claim about
+transfer entropy's value to this project's pair universe, which needs the broader local-cache
+gap resolved first.
+
+Files: `research/sequential_bootstrap_ml_comparison.py`, `debug/_verify_sequential_bootstrap_ml_
+comparison.py` (new, 11/11), `research/transfer_entropy_lead_lag.py`, `debug/_verify_transfer_
+entropy_lead_lag.py` (new, 5/5). Full accounts: `docs/FINDINGS.md` #61-#62.
+
 ## 8. Bias Documentation [OUTLINED, one bias drafted in detail]
 
 Pull directly from `BiasAuditLog` (`output/results/bias_audit.json`,
@@ -2708,7 +2838,9 @@ format is not yet confirmed against any specific program's requirements.
 
 Large pieces still to come: ml.py Stage 2 (macro/characteristics/regime
 context), stats.py (EVT/GPD, DCC-GARCH, confirmatory PO+KPSS),
-backtest.py, options overlay, report.py. Cross-reference
+backtest.py, report.py. (Options overlay is done, not still-to-come —
+built, run, and reported in §7.14, extended with Greeks/RND capability
+and a second beta-hedging result in §7.18.) Cross-reference
 `Development.md`'s Session 10 ideas backlog (~60 ideas across
 architecture, academic, ML, portfolio, and narrative lenses) for the
 full candidate list — none actioned yet, each needs explicit discussion
@@ -2717,23 +2849,25 @@ Two candidates discussed in enough depth as of this session to record
 the actual reasoning, not just the name:
 
 - **Sequential bootstrap / sample-uniqueness weighting** (Lopez de
-  Prado, *AFML* Ch. 4) — direct remedy for the rolling-window-overlap
-  bias documented in §8. Highest value-to-effort candidate identified so
-  far: it targets a bias this project already documents as a limitation
-  rather than introducing a new one, requires no new infrastructure
-  (just a different sampling scheme inside ml.py's existing training
-  loop), and is most useful exactly where the project is currently most
-  constrained — small labeled-example counts (12-32 to date), where
-  overstated effective sample size from overlapping labels matters most.
-- **Transfer entropy for lead-lag detection** — a nonlinear,
-  information-theoretic extension of the still-unbuilt Granger-causality
-  backlog item (Session 6). Maps directly onto the ES↔utility-sector
-  framing already in this project's design outline, and would give a
-  second, independent signal for which leg of a pair leads — useful both
-  as a candidate ml.py feature and as a robustness check on hedge-ratio
-  direction. Real implementation cost: needs careful binning/embedding-
-  dimension choices and permutation-based significance testing to avoid
-  finite-sample bias — flagged as needing care, not a quick add.
+  Prado, *AFML* Ch. 4) — **DONE, 2026-09-08** (§7.19 for the full
+  writeup). Built as a comparison arm (`research/sequential_bootstrap_
+  ml_comparison.py`, `debug/_verify_sequential_bootstrap_ml_comparison.py`,
+  11/11), resolving the one open design question this section originally
+  flagged (per-pair overlap, not pooled across pairs) and confirming the
+  targeted bias is real in this project's own data (average uniqueness
+  0.457 — effective training-example count ~65, not the raw 142). Real
+  result: a modest, seed-sensitive improvement over baseline (mean +3.1pp
+  test accuracy across 10 seeds, 2/10 seeds worse), not a decisive win at
+  this project's current holdout size — honestly reported, not oversold.
+- **Transfer entropy for lead-lag detection** — **DONE, 2026-09-08**
+  (§7.19). Built (`research/transfer_entropy_lead_lag.py`,
+  `debug/_verify_transfer_entropy_lead_lag.py`, 5/5) with the flagged
+  binning/permutation-testing care taken (quantile bins, circular-shift
+  permutation null). A real off-by-one bug in the lag indexing was caught
+  by the synthetic proof before ever touching real data — see §7.19 and
+  Finding #62. One real confirmed pair produced a working, significant
+  result (AMP/RUSHA); the other 26 pairs currently checked are blocked by
+  a local price-data caching gap, not the method itself.
 
 **Newly noted (2026-07-13), not yet discussed in depth or scoped —
 recorded per this project's standing practice of capturing an idea before

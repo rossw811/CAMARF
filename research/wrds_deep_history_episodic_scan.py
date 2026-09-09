@@ -916,14 +916,57 @@ def run_rolling_eg_pool(pairs, log_price_df, max_lag, window=EPISODIC_WINDOW_BAR
     # after) -- this doesn't add a new burden, it just relocates the existing one to a single
     # point instead of letting it grow continuously mid-run.
     if use_streaming:
-        loaded, _ = _load_checkpoint(checkpoint_id)
-        by_key = {}
-        window_end_by_key = {}
-        for row in (loaded or []):
-            key = (row["symbol_a"], row["symbol_b"], row["window_start"])
-            by_key.setdefault(key, {})[row["direction"]] = row["pvalue"]
-            if row.get("window_end_date") is not None:
-                window_end_by_key[key] = row["window_end_date"]
+        # VECTORIZED RECONSTRUCTION (added 2026-09-02, after the 2026-08-26 streaming fix above
+        # still OOM-crashed ~90 consecutive times at 7.8M-pair Tier-3 scale, always at this exact
+        # point, right after the checkpoint reported 100% done). Root cause: the OLD code below
+        # this comment (`loaded = _load_checkpoint(...).to_dict("records")`, then a Python loop
+        # building `by_key`/`window_end_by_key`, then a second loop building `flat`) held THREE
+        # separate giant Python-list/dict-of-dict copies of essentially the same tens-of-millions-
+        # of-rows data simultaneously -- the 2026-08-26 fix removed the accumulator that grew
+        # DURING the run but never touched this end-of-run reconstruction, which still paid a
+        # 2-3x peak over the final row count in redundant Python objects. Rewritten as a single
+        # pandas merge (pivot "ab"/"ba" directions via a join, take max, explicit gc.collect()
+        # between each intermediate) so only ONE Python-dict materialization happens at the very
+        # end (`.to_dict("records")` on the final joined frame), sized to the actual output row
+        # count instead of 2-3x that.
+        part_files = sorted(glob.glob(_checkpoint_part_glob(checkpoint_id)))
+        if part_files:
+            df = pd.concat([pd.read_parquet(p) for p in part_files], ignore_index=True)
+        else:
+            old_data_path = _checkpoint_paths(checkpoint_id)[0]
+            df = (pd.read_parquet(old_data_path) if os.path.exists(old_data_path)
+                  else pd.DataFrame(columns=["symbol_a", "symbol_b", "window_start", "direction",
+                                              "pvalue", "window_end_date"]))
+        # DEDUP (added 2026-09-02, code-quality council review): the OLD dict-based reconstruction
+        # this replaced (`by_key.setdefault(key, {})[direction] = pvalue`, below) implicitly
+        # deduped on (symbol_a, symbol_b, window_start, direction) -- a repeated row for the same
+        # key just overwrote the dict entry, last-write-wins. A crash landing between
+        # `_save_checkpoint_batch`'s part-file write and its meta-file write (both atomic
+        # individually, not atomic as a PAIR) can leave a resumed run reprocessing pairs already
+        # covered by an orphaned part file, writing a second part file with duplicate
+        # (pair, window, direction) rows. The merge()-based rewrite below has no such protection on
+        # its own: duplicate keys in `ab` crossed with duplicate keys in `ba` produce a many-to-many
+        # blowup, not silently-correct dedup -- confirmed NOT to have fired on this session's real
+        # Tier 3 output (checked directly: zero duplicate (symbol_a, symbol_b, window_start) rows in
+        # the actual 5,003,637-row result), but a real, untested gap for a future run where a crash
+        # lands at that exact write boundary. `keep="last"` matches the old dict's overwrite
+        # semantics exactly, given part files are read in the same sorted order the old code
+        # processed them in.
+        df = df.drop_duplicates(subset=["symbol_a", "symbol_b", "window_start", "direction"],
+                                 keep="last")
+        key_cols = ["symbol_a", "symbol_b", "window_start"]
+        ab = df.loc[df["direction"] == "ab", key_cols + ["pvalue", "window_end_date"]]
+        ba = df.loc[df["direction"] == "ba", key_cols + ["pvalue"]]
+        del df
+        gc.collect()
+        merged = ab.merge(ba, on=key_cols, suffixes=("_ab", "_ba"))
+        del ab, ba
+        gc.collect()
+        merged["pvalue"] = merged[["pvalue_ab", "pvalue_ba"]].max(axis=1)
+        flat = merged[key_cols + ["pvalue", "window_end_date"]].to_dict("records")
+        del merged
+        gc.collect()
+        return flat
 
     flat = []
     for (symbol_a, symbol_b, start), d in by_key.items():

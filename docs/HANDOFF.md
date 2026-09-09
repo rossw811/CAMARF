@@ -2,7 +2,630 @@
 
 ---
 
-## 2026-09-01, latest — IMPORTANT CORRECTION: the live confirmed-pairs count is 29, not 1 —
+**Noted for later, not urgent** (Ross, 2026-09-03): build a script that searches arXiv for
+papers remotely related to or usable in finance/quant finance, once the current task queue is
+clear. Also shared a link for context: https://arxiv.org/abs/quant-ph/0105127 (no specific
+action requested on it yet).
+
+## 2026-09-08 — §10 survivorship item resolved; 2 of 3 future-work candidates built (sequential
+bootstrap, transfer entropy); equity-curve-stitching infra built, re-run in progress on CachyOS;
+IBES price-target fetch script built, needs Ross's own WRDS/Duo session to run
+
+Ross asked to work through the remaining paper gaps identified in the prior read-through pass:
+§10's survivorship-snapshot question, equity-curve stitching (both PAPER_MAGNITUDE.md), and the
+three §10 future-work candidates (PAPER.md) — approved building sequential bootstrap and transfer
+entropy after a design discussion, "try both," plus "find a consensus price target source."
+
+**Survivorship — resolved, no build needed, just a real code-reading finding.**
+`data_wrds.py`'s corrected-scale universe fetch starts from `UniverseBuilder`'s current S&P 1500
++ ETF list (survivorship-biased on its own) but a dedicated pass recovers ~74% of the S&P 500
+layer's historical membership (1,956 permnos have EVER been S&P 500 members vs. 503 today) via
+CRSP's own point-in-time membership table. Explicitly partial per the code's own comment: no
+equivalent point-in-time product exists for S&P 400/600 in this WRDS subscription, so mid/small-
+cap survivorship bias is unreduced. Written up in `PAPER_MAGNITUDE.md` §4/§10.
+
+**Equity-curve stitching — DONE.** The prior fold-level output files only carried aggregate
+summary metrics, never trade-level detail — a genuine pooled Sharpe couldn't be computed from
+aggregates alone without fabricating data. Extended `research/pit_wfa_wrds_daily.py` to persist
+each fold's capital-constrained `replay["taken"]` trades. Design agreed with Ross before
+building: arithmetic-pooled (no capital compounding across the fold boundary), the untested
+calendar gap between folds dropped (not zero-filled), annualization keyed to actual trading days
+present in the spliced series. `--variant both` re-run completed on CachyOS (176.2 min,
+reproduced every fold's exact prior metrics). `research/pit_wfa_pooled_equity_curve.py` (new,
+`debug/_verify_pit_wfa_pooled_equity_curve.py`, 6/6) built the actual splice. **Real result:
+pooled Sharpe +0.1845 (rolling) / +0.1285 (expanding), both positive** — but the verification
+suite also surfaced a genuine, disclosed property: the pooling weights by calendar days present
+per fold, not trade count, so the far-longer-spanning `fold2_roll` (1996-2026, 10,988 daily obs)
+dominates over `fold1` (1946-1957, 4,018 daily obs) regardless of their opposite signs. Written
+up honestly in `PAPER_MAGNITUDE.md` §4/§10 as a real answer to the open item, not a resolution of
+the underlying fold-to-fold sign disagreement. Full account: Finding #64.
+
+**Sequential bootstrap and transfer entropy — both built, verified, run on real data.** Full
+account: Finding #61-62, `PAPER.md` §7.19. Sequential bootstrap: real, disclosed positive signal
+(+3.1pp mean test accuracy over 10 seeds) but seed-noisy, not a clean win, at this project's tiny
+holdout size. Transfer entropy: a real off-by-one lag-indexing bug caught by the synthetic proof
+before it ever touched real data; one real confirmed pair (AMP/RUSHA) produced a working,
+significant result, but 26/27 pairs are blocked by a local price-cache gap (base price data,
+distinct from the spread-series gap fixed for the ML side) not chased down further this session.
+**Real, recurring pattern across all three of these last builds**: this machine's local
+`output/results/` and `output/backtest/` caches are frequently behind what CachyOS actually has
+computed — worth a standing check (or a sync step) at the start of future sessions rather than
+re-discovering "no_data"/"insufficient examples" each time and assuming it's a real null result.
+
+**IBES consensus price targets — script built, blocked on Ross's own WRDS/Duo session.**
+`research/wrds_capability_audit.py` had already confirmed `ibes` (194 tables) is accessible under
+this subscription; Development.md's prior note flagged it as "deliberately deferred... would risk
+a wasted 2FA round-trip if guessed wrong." `data_wrds.py:fetch_ibes_price_targets()` (new) is that
+real schema check — every table/column name is discovered via `information_schema` at runtime
+(not guessed), so a schema surprise fails loudly with a clear message instead of a silent wrong
+answer or a burned round-trip. Uses `ibes.ptgsum` (split-adjusted, matching this project's
+CRSP-adjusted-close convention elsewhere) joined via `wrdsapps_link_crsp_ibes`. Wired into
+`research/build_wrds_supplementary_data.py`'s existing runnable entry point, same pattern as the
+Fama-French/Compustat fetches already there. **Cannot be run autonomously — needs Ross's own
+interactive WRDS session** (Duo 2FA constraint, same as every other live WRDS query in this
+project). **Update, same day**: the live query was actually run (Ross offered Duo, an existing
+trust window meant no prompt was needed) — real result 1,133,381 rows, 10,316 permnos, 1999-2025,
+synced to both machines. Analyst-price-target arbitrage itself (the actual trading idea) is still
+undesigned — the data blocker is cleared, the signal design is not yet discussed.
+
+**Update, same day: local price cache gap fixed (root cause, not just sync) and equity-curve
+splice completed.** `aligned_pair_loader.py`/`options.py` had a real, structural WRDS/IBKR-
+fallback gap (Finding #63) — fixed, verified (transfer entropy real-pair coverage 1/27 → 16/27).
+The CachyOS `pit_wfa_wrds_daily --variant both` re-run completed (176.2 min); the actual pooled
+equity-curve splice is built and reported (+0.1845 rolling / +0.1285 expanding, real caveat about
+calendar-day weighting — Finding #64). All of today's `PAPER.md`/`PAPER_MAGNITUDE.md` gaps are
+now closed.
+
+Next session: (1) Ross runs `build_wrds_supplementary_data.py`'s IBES fetch again only if the
+data needs refreshing (already run once, real data in hand) — discuss designing the actual
+analyst-price-target arbitrage signal on top of it; (2) a real commit-and-push of both machines'
+now-substantial uncommitted diffs, so future sessions can sync via `git pull` instead of ad hoc
+`scp`; (3) consider a session-start local/CachyOS cache sync as a standing habit, given the
+repeated no-data surprises this session turned out to have a real root cause, not just staleness.
+
+Files: `research/pit_wfa_wrds_daily.py` (taken-trades persistence), `research/pit_wfa_pooled_
+equity_curve.py` (new), `debug/_verify_pit_wfa_pooled_equity_curve.py` (new, 6/6),
+`research/sequential_bootstrap_ml_comparison.py` (new), `debug/_verify_sequential_bootstrap_ml_comparison.py` (new,
+11/11), `research/transfer_entropy_lead_lag.py` (new), `debug/_verify_transfer_entropy_lead_lag.py`
+(new, 5/5), `data_wrds.py` (`fetch_ibes_price_targets`), `research/build_wrds_supplementary_
+data.py` (wired in), `PAPER_MAGNITUDE.md` (§4/§10 survivorship), `PAPER.md` (§7.19, §10),
+`docs/FINDINGS.md` (#61-62).
+
+---
+
+## 2026-09-07 — New backlog (beta-weighting, options calc unit, risk metrics, vol profile,
+confidence-score allocation) scoped and build-ordered; Phases 1-2 complete, Phase 3 in progress
+
+Ross approved a leverage-first build order for the 2026-09-04 backlog (below) plus a new
+Breeden-Litzenberger risk-neutral-density idea, with explicit standing authorization ("continue
+with absolutely everything with hourly check-ins... you don't need me to say do the next part").
+Beta-weighting scoped: benchmark = SPY, compare BOTH hedge and report-only variants.
+
+**Phase 1 COMPLETE** (options Greeks, portfolio risk metrics, per-asset volatility profile) —
+full account: Finding #54. Options `black_scholes_delta/gamma/vega/theta` added to `options.py`
+(15/15 verified against finite-difference cross-checks), a real duplicate in
+`research/options_greeks_features.py` found and consolidated to the shared implementation.
+`portfolio_math.py` extended with Sortino/rolling-Sharpe/Calmar/M2 (9/9 verified, Calmar
+cross-checked exactly against `portfolio_sim.py`'s independent `calmar_from_replay()`).
+`research/asset_volatility_profile.py` (new, 7/7 verified) — real result: only 11/55 confirmed-
+pair symbols have cached daily price data, a pre-existing gap matching `options.py`'s own known
+cache limitation, not a new bug.
+
+**Phase 2 COMPLETE** (Breeden-Litzenberger risk-neutral density) — full account: Finding #55.
+`research/risk_neutral_density.py` (new, 13/13 verified against the Black-Scholes-lognormal
+ground truth). **Three real data-quality bugs found and fixed against a live SPY chain**: (1)
+the full exchange strike range ($150-$1000 vs. $770 spot) broke the smoothing fit — fixed with a
+disclosed liquid-moneyness-band filter; (2) yfinance's own `impliedVolatility` column is
+UNRELIABLE (pinned at a degenerate 1e-05 for every deep-ITM strike, an implausible staircase on
+the OTM side) — `options.py`'s docstring claim that this column was reliable is now corrected;
+fixed by deriving IV independently via Black-Scholes inversion against real transaction prices,
+exactly Ross's own original "pull strikes and mid price yourself" approach; (3) bid/ask were
+both zero across the whole chain (market closed at fetch time) — fixed with a disclosed
+`lastPrice` fallback. Real, sane result after all fixes on SPY's 11-day expiry: mean 771.2 (vs.
+spot 770.19), std 30.22 (plausible for the horizon), skew 1.301, a proper smile shape. The
+"backtest-overfitting-detector" application (comparing a strategy's own P&L distribution against
+the market's live RND) is scoped but not yet built.
+
+**Phase 3 COMPLETE** (beta-weighting against SPY, hedge vs. report-only) — full account: Finding
+#56. `research/beta_weighted_portfolio.py` (new, 16/16 verified) measures each trade's net
+dollar market-beta mismatch between its two legs (causal 63d rolling beta vs. SPY) — cointegration
+confirmation says nothing about beta matching, so pairs aren't automatically market-neutral in
+practice. **A real bug caught by the verify suite before running on real data**: `pd.date_range`
+wasn't normalized to midnight, so sub-daily trade timestamps broke every daily lookup with a
+KeyError — fixed. **Real result: hedging the residual exposure makes every risk-adjusted metric
+WORSE** (Sharpe 6.06 unhedged → 2.67 hedged; Sortino 35.19 → 4.12; Calmar 29.65 → 1.68) —
+consistent with `options.py`'s own earlier protective-hedge finding (a real cost, not a free
+lunch) and this session's broader pattern of honest negative results sitting alongside real
+positive ones. Real, disclosed caveat: the exposure-SCALE numbers (mean -47% of an assumed
+$100k, max 14.67x) use `baseline_trades_layer1.parquet`, which is capital-UNCONSTRAINED (BUG-D60,
+fixed shares-per-trade, no shared capital pool) — so those are illustrative scaling, not real
+account leverage; the Sharpe comparison itself is a genuine dollar-P&L computation, unaffected by
+that caveat.
+
+**Phase 4 COMPLETE** (confidence-score filter + position allocation) — full account: Finding
+#57. `research/confidence_score_allocation.py` (new, 17/17 verified) combines 4 categories
+(confirmation strength, reversion speed, vol-regime normality, beta-neutrality — each up to 25
+points, percentile-ranked within the real trade set) into a per-trade score, per Ross's own
+framing. **Validated via a real filter-threshold sweep, not just asserted to work — and the
+honest result is a NEGATIVE one**: filtering to HIGHER confidence scores makes every metric
+WORSE (Sharpe 6.06→5.87→4.56→1.52 as threshold rises 0→25→50→75; total P&L $184k→$161k→$81k→
+$8.8k). Overall score-vs-P&L correlation: **-0.1295** (wrong sign). Diagnosed, not left
+unexplained: the reversion-speed category is the main driver (-0.1954 corr — faster-reverting
+trades score higher but perform worse, likely because this project's fixed-shares-per-trade
+sizing rewards trades that run longer); the vol-regime category's correlation is undefined (NaN)
+— a direct, compounding consequence of Finding #54's already-disclosed 11/55 volatility-cache
+coverage gap. **Read plainly**: this isn't "confidence scoring doesn't work," it's "this specific
+4-category, equally-weighted, unexamined-direction design doesn't predict trade quality here" —
+the individual Phase 1-3 building blocks are all real and verified; naively combining them
+wasn't. Real next steps flagged, not done: drop/invert the reversion-speed category (or
+understand why slower reversion wins first), fix the underlying vol-cache gap, re-test with
+proper cross-validation before using this for real position sizing.
+
+**This completes the full 4-phase new-backlog build** (Findings #54-57) — three phases delivered
+real, working, positively-validated tools (options Greeks, risk metrics, RND extraction, beta
+exposure measurement); the fourth delivered an honest, diagnosed negative result rather than a
+system declared "done" by assertion.
+
+**Update, same day (Finding #58)**: started the flagged "fix the vol-cache gap" next step and
+found the real cause was bigger than expected — `options.py:load_price_series()` never checked
+WRDS at all, only the yfinance-only cache, for every caller (options.py, options_greeks_
+features.py, asset_volatility_profile.py). Per Ross's instruction mid-fix ("don't use yfinance,
+use wrds or ibkr"), fixed to WRDS-then-IBKR only, yfinance dropped entirely (a real, disclosed
+coverage tradeoff for ~1,731 yfinance-only-cached symbols). Result: 37/55 confirmed-pair symbols
+now get valid volatility data (was 11/55). A second bug found while re-running Phase 4: the
+pre-computed volatility profile covered the CURRENT confirmed-pair universe, but
+`baseline_trades_layer1.parquet`'s actual traded symbols were almost entirely disjoint from it
+(a likely-legacy trades file) — fixed by computing the vol profile on-demand for exactly the
+symbols each run needs. **Phase 3's qualitative conclusion (hedging hurts risk-adjusted
+performance) holds with updated numbers. Phase 4's negative finding not only holds with full
+4-category coverage, it's now cleanly attributable to a single category** (`score_reversion_
+speed`, -0.1954 correlation) rather than partly an artifact of missing vol data (which is now
+negligible at +0.0254, not undefined). Full account: Finding #58.
+
+**Update, same day: the backtest-overfitting detector (flagged, not built, in Finding #55) is now
+built and working.** `research/backtest_overfitting_detector.py` (new, 11/11 verified) compares
+an asset's realized historical return distribution (non-overlapping windows, matching the
+option's time-to-expiry) against the market's live risk-neutral density for the same asset,
+reusing `research/risk_neutral_density.py` directly. Real result on SPY's 2026-09-18 expiry: the
+market currently prices in ~47% MORE near-term volatility than SPY's own recent history shows
+(realized/implied vol ratio 0.679) — directionally consistent with the already-disclosed
+variance risk premium in `options.py`'s docstring, not a surprising anomaly, exactly the kind of
+check this tool exists to surface either way. Full account: Finding #59. **This completes every
+item flagged as "not yet built" across the whole new-backlog build (Findings #54-59).**
+
+**Update, same day: finishing `PAPER_MAGNITUDE.md`.** Ross asked whether the new backlog data
+impacts the paper — mostly no (options/RND/confidence-score/beta-hedging are tangential to the
+discovery-event thesis, routed to the companion paper or left standalone) — but checking found
+something bigger: the paper's own §10 named its two biggest flagged open items (§4's corrected-
+scale PIT re-run, "the most important item on this whole list"; §5's factor-co-movement confound
+test), and BOTH already had real, computed answers from earlier this session that were never
+folded into the text. §5's was already integrated (checked, confirmed). §4's was not — now
+added: the real 4-fold `pit_wfa_wrds_daily.py` result (mixed, 2 of 4 folds positive, matching the
+original table's qualitative pattern — corrected scale does not resolve the finding either way),
+with the two real bugs found along the way disclosed as methodology footnotes. Updated everywhere
+the old "not yet re-run at scale" language appeared (Abstract, §1.4, §8, §10). **Every substantive
+section of the paper is now `[DRAFTED]`** — only §10 (a future-work list by nature) stays
+`[OUTLINED]`. Full account: Finding #60.
+
+---
+
+## 2026-09-04 — Real Sharpe-annualization bug found and fixed in `backtest.py:compute_metrics()`;
+full audit confirms NO cited headline number was ever affected; 157 diagnostic summary files
+regenerated
+
+Found while scoping Phase 3 (a meta-analysis of `decoupling_requalification.py`/`decoupling_
+backtest.py`'s results): `decoupling_backtest.parquet` showed Sharpe ratios of -279.58/-590.15
+for two 1m/2m pairs. Root cause: `compute_metrics()` annualized per-trade Sharpe using
+`sqrt(bars_per_year[tf])` — correct only if a trade happens on every bar. Fixed to use the
+trade sequence's own observed frequency (`sqrt(n_trades / years_covered)`), verified
+(`debug/_verify_compute_metrics_sharpe_annualization_fix.py`, 5/5).
+
+**Initially over-alarmed Ross with a broader claim than warranted** — corrected immediately after
+a full audit: every function that produces a project HEADLINE Sharpe (`aggregate_portfolio()`,
+`portfolio_math.py`, `sensitivity.py`'s `_portfolio_sharpe()` behind §7.8's entry/exit grid,
+`portfolio_sim.py`'s `portfolio_sharpe_from_replay()`, `fresh_holdout_compare.py`) already used
+the correct daily-resampled/`sqrt(252)` convention, confirmed unaffected. The bug was isolated to
+`compute_metrics()`'s per-pair DIAGNOSTIC summary tables, read only by `reproduce.py` for
+reporting, never by any pair-selection/ranking logic. `PAPER.md`'s two prose spots referencing
+per-pair Sharpe fixed (§6.6 softened to cite win-rate/P&L instead; §7.8's "single-pair-level"
+mislabel corrected to "pooled/portfolio-level" — the number 10.068 itself was always correct).
+
+Regenerated all 159 `output/backtest/*summary*.parquet` files from their cached trades via the
+fix (`research/regenerate_summary_layer1_sharpe_fix.py`) — 157/159 succeeded, 2 skipped cleanly
+(`wfa_summary_{expanding,rolling}.parquet`, different schema, out of scope). Spot-checked:
+`baseline_summary_layer1.parquet`'s LNT/WELL@1h/ols now reads Sharpe 3.6723 (was 38.7668).
+Full account: Finding #51.
+
+**Update: `decoupling_backtest.py` re-run with the fix** (didn't persist raw trades separately,
+so needed a full re-run, not a recompute-from-cache — only 4 pairs, ~1 min). 1m/2m pairs' Sharpe
+magnitudes are STILL large (-63.90, -95.59) — but this is now a genuinely different, non-bug
+issue: those pairs only have 2-3 CALENDAR DAYS of post-break history (bars measured in minutes),
+and annualizing any short-window Sharpe is inherently unstable regardless of formula correctness.
+Only `ETN/PH` (1D, ~8.9 years of history) has a meaningful annualized Sharpe (-0.1047, sane).
+
+**Phase 3 completed**: `research/decoupling_meta_analysis.py` (verified, 10/10) formally combines
+the decoupling chain's own underpowered results — Fisher's method on the 4 requalification
+p-values (χ²=220.50, combined p=3.02e-43, caveated: 3/4 pairs share SPY/VOO, independence
+assumption not fully met) and a t-test/sign-test on the 4 backtested pairs' TOTAL P&L (not
+Sharpe, given the annualization-instability issue above). Real result: **mean P&L=-$9.54,
+t=-0.153, p=0.888; 1/4 positive, sign-test p=0.625 — a clean, honest null**, reinforcing Ross's
+original 2026-07-01 "keep decoupling work research-only" decision with a formal test rather than
+an eyeballed 1/4-positive read. Full account: Finding #52.
+
+**Phase 4 in progress — session ending with Ross shutting down his machine; CachyOS jobs left
+running independently.** Two scripts built and verified locally first
+(`debug/_verify_diversification_basket_test.py` 10/10,
+`debug/_verify_hedge_blend_test.py` 7/7), but the LOCAL Windows machine turned out to have only
+~4GB free RAM — two background runs were silently OOM-killed there (looked like hangs at first;
+confirmed via `Get-CimInstance Win32_OperatingSystem`, not a timeout or a real crash). **Lesson,
+worth remembering explicitly next time rather than re-diagnosing**: any `universe_loader.load_
+full_universe()` call, even with `columns=["close"]` filtering, needs CachyOS, not the Surface —
+this project's own standing "never use the Surface for RAM-heavy work" rule applies to Phase-1/2/
+2b/4-style full-universe research scripts just as much as it did to the WRDS-daily PIT work
+earlier in this session. Moved to CachyOS, re-verified there (same 10/10, 7/7), and synced the
+one missing input file it needed (`output/research/correlation_transitions.parquet`, a Phase-1
+local-only output never previously copied over).
+
+**`diversification_basket_test.py` COMPLETED on CachyOS** (`logs/diversification_basket_
+test_20260904.log`) — real result, honestly noisy, no clear signal: diversification_ratio for
+`not_coint` (currently-uncorrelated) baskets is NOT consistently higher than `coint` or
+`random_control` baskets across the 3 swept basket sizes:
+
+| basket_size | coint | not_coint | random_control |
+|---|---|---|---|
+| 10 | 1.5813 | 1.4844 | 1.3226 |
+| 20 | 2.2194 | 2.0537 | 1.3291 |
+| 30 | 1.2854 | 2.1975 | 2.0644 |
+
+At n=10/20, `coint` > `not_coint` > `random`; at n=30, `not_coint` > `random` > `coint`. No
+consistent ordering — read plainly, "currently decoupled" status does not show a reliable extra
+diversification benefit beyond a random basket, at least with this single-draw-per-arm design
+(seed=42, one basket per size/arm, no repeated sampling for a confidence interval — a real,
+disclosed limitation, not yet a robust statistical test). Not yet written up in `docs/
+FINDINGS.md` as of this entry.
+
+**Update: `hedge_blend_test.py` also COMPLETED on CachyOS before shutdown** — a clean negative
+result. Blending the real production pair strategy (Sharpe ~6.00, 1,340 trades) with a currently-
+uncorrelated 20-symbol basket makes Sharpe monotonically WORSE at every tested blend weight
+(w=1.0 pair-only: 6.0021 → w=0.5: 2.9557) — the hedge basket's own near-zero expected return
+drags down mean return faster than its volatility-reduction benefit helps. Full account:
+Finding #53. **Phase 4, and the full 4-phase discovery-event research program Ross scoped at the
+start of this multi-hour thread, is now complete.**
+
+---
+
+## 2026-09-03 — Residual-correlation factor test completed (decisive confound answer); a real
+production crash found and fixed in the shared BacktestEngine; WRDS-daily PIT run in progress
+
+Per Ross's explicit sequencing ("do the wrds daily bars first, then the capital constrained risk
+management trade measurement then residual correlation factor test... keep working through, you
+don't need me to tell you to keep working"). Full account: Finding #46.
+
+**Real crash found and fixed**: `pit_wfa_wrds_daily.py --variant expanding`'s first full-scale
+run crashed at `backtest.py:484` (`float(None)` — `pair_row.get("hurst_rs", np.nan)` doesn't
+fall back when the key exists with value `None`, which the Hurst R/S estimator can genuinely
+return). Fixed in the shared `BacktestEngine.run()` (benefits both `pit_wfa.py` and
+`pit_wfa_wrds_daily.py`), verified with a new synthetic test
+(`debug/_verify_backtest_hurst_none_fix.py`, 4/4), synced to CachyOS, relaunched as
+`logs/pit_wfa_wrds_daily_20260903_v4.log` — running clean past the crash point as of this entry,
+still mid-fold (early NYSE-calendar-history pairs, expect a long wall-clock given the
+1925-1976-range folds it's currently on).
+
+**`residual_correlation_factor_test.py` completed clean** (nullable-Float64 log-return bug from
+the prior entry fixed, 0 warnings this run). Decisive answer to the confound question left
+inconclusive by Finding #44's same-sector proxy: crisis-regime reappearance persistence is
+**partly, not purely, a market-factor artifact**. Of 638,095 candidate pairs, 42,715 (6.7%)
+survive `|residual correlation| >= 0.4` after regressing out SPY. In that survives-residual
+subset, crisis reappearance is still elevated (88.26% vs. calm's 78.41%, z=9.13) — a real,
+non-factor-driven effect. But the larger share of the raw effect (by pair count and by z) sits in
+the factor-explained subset (91.42% vs. 78.67%, z=31.05) — so the Forbes-Rigobon confound named
+in §5/§8 is real too, just not total.
+
+**Open, flagged before this goes into `PAPER_MAGNITUDE.md` as anything stronger than a
+preliminary split**: both z-tests above are naive pooled pair-level tests — the same style of
+test Finding #43's cluster-robust episode bootstrap showed overstates significance for the
+*confirmation-rate* metric specifically (though the *reappearance-rate* metric, what this test
+also measures, weakly survived cluster-robust testing at p=0.032, not p≈0). A cluster-robust
+rerun on both the survives-residual and factor-explained subgroups is the natural next step
+before updating §5's confound section with this result.
+
+**Update, same day**: the 0/21 capital-constrained result was chased down further and turned out
+to be TWO separate things, one a real bug (now fixed, Finding #47) and one a real, disclosed
+capital-scale finding needing Ross's input (asked via AskUserQuestion, answered: add a
+concentration cap). Real bug: `portfolio_sim.get_price_at()`/`_load_spread_series()` hardcoded
+file paths from `pit_wfa.py`'s 1h pipeline that WRDS-daily pairs never write, silently NaN-ing
+every price/spread lookup — fixed via an in-memory series-registration override
+(`debug/_verify_portfolio_sim_external_series_fix.py`, 7/7), confirmed directly (via a synthetic
+end-to-end reproduction using the real production functions) that this DOES now resolve real
+prices. What remained after that fix was genuine: uncapped `flat_2pct` risk sizing on a $100k
+account can demand a position notional the account can't fund, rejecting the trade outright at
+the 5% `min_size_scale` floor — `pit_wfa.py`'s own 1h run never used this capital-constrained
+overlay at all (confirmed via grep — zero `replay_portfolio` calls there), so there was no
+existing precedent to match. Ross's call: add a concentration cap, using this project's own
+already-declared-but-previously-unenforced `Config.BACKTEST.MAX_CONCENTRATION_PCT = 0.20` as the
+new `--concentration-cap` default (confirmed via the same synthetic reproduction: 1/1 eligible
+trade now taken, up from 0/1). Relaunched as `logs/pit_wfa_wrds_daily_20260903_v7.log` —
+**confirmed on the real run**: fold1_exp's capital-constrained line now reads 11/21 trades taken,
+Sharpe=-0.4779, max_dd=0.22%, profit_factor=0.2311, PDR=105.2074 (real, finite numbers). Run
+continuing through the remaining folds.
+
+**Update: both `--variant expanding` and `--variant rolling` completed. Ross's full 3-item
+sequence (WRDS daily bars → capital-constrained measurement → residual-correlation test) is now
+done.** `expanding` (69.7 min): fold1_exp 11/21 trades, Sharpe=-0.4779; fold2_exp 25/50 trades,
+Sharpe=+0.1918 — mixed sign, not yet a stable edge. `rolling` (103.0 min): fold1_roll matches
+fold1_exp exactly (shared date range by design); fold2_roll is the most substantive result either
+variant produced — 1,533 raw trades, capital-constrained down to 309 taken, and the concentration
+cap FLIPS the portfolio Sharpe's sign (-0.26 raw → **+0.22 constrained**), consistent with real
+downside-risk reduction rather than mere filtering. No single pooled-across-all-4-folds headline
+computed (would need equity-curve stitching across different eras — flagged, not done). Full
+account: Finding #48.
+
+**Real data-loss bug found and fixed same day**: running `expanding` then `rolling` as separate
+invocations silently overwrote expanding's saved parquet output (fixed filenames, no `--variant`
+suffix) — nothing was actually lost since the real numbers were already logged and manually
+recovered, but it would keep recurring on every future two-part run. Fixed via a merge-not-
+overwrite pattern (`_merge_and_save()`, keyed on `wfa_variant`/`fold`), verified
+(`debug/_verify_pit_wfa_wrds_daily_merge_and_save.py`, 7/7), synced to CachyOS.
+
+**Update: Phase 2 built and run — a real, strong, positive result.** `research/coint_decay_rate_
+signal_test.py` (verified, 13/13) tests whether `coint_strength_z` (swept z_window ∈
+{5,10,15,20} × threshold ∈ {1.0,1.5,2.0}) or `coint_decay_rate`'s sign predicts next-window
+cointegration persistence. Real result on the full 5M-row series: elevated `coint_strength_z`
+predicts 1.4x-3.0x baseline persistence rate at every one of 11 qualifying combinations (all
+p≈0, z=38-166); `coint_decay_rate<0` predicts LOWER persistence (2.85% vs. 4.76% baseline,
+z=-107.6), the economically sensible direction. Two honest caveats disclosed: this is a naive
+pooled test with the same clustering concern Finding #43 raised (flagged for a cluster-robust
+rerun before going into the paper as a headline, though z-stats this large are unlikely to
+vanish entirely); the "baseline" population differs across z_window choices (fewer valid rows at
+larger windows), so the ratio column isn't a controlled cross-window comparison. Full account:
+Finding #49. Next: Phase 2b (coint-% "bar" system with entry/exit rules, building directly on
+this confirmed signal).
+
+**Update: Phase 2b built and run.** `research/coint_strength_bar_system.py` (verified, 15/15 —
+caught a real numpy-bool-identity bug: `exited_at_series_end` used `exited is False`, which never
+matches a numpy `bool_` even when equal) mirrors this project's own price-bar `ENTRY_ZSCORE`/
+`EXIT_ZSCORE` convention on `coint_strength_z`. A real performance bug was caught proactively
+before running at scale (a `df.groupby()`-per-pair loop hadn't finished after 2+ min on a 5,000-
+pair subset — the same anti-pattern class fixed twice earlier this session); rewritten as a
+single flat numpy pass, full 5M-row run then took 7.9s per combo. Real result: bar length
+(~2.09 windows) and in-bar persistence (~10.4-11.1% vs. 5.13% baseline, ~2x) are stable across
+entry strictness, but the exit-threshold sweep is essentially INERT — `coint_decay_rate<0`
+dominates as the real exit trigger (73.5%-77.2% of exits) regardless of the z-reversion threshold
+chosen, meaning the price-bar-mirrored z-reversion exit rarely matters in practice. 22.8%-26.1%
+of bars are right-censored (still open at series end), disclosed not absorbed. Implication: a
+simpler decay-rate-only exit rule would likely perform identically at less complexity — not yet
+tested. Full account: Finding #50.
+
+**Not yet done**, continuing without further sign-off per Ross's standing instruction: Phase 3
+(properly-scoped null-result meta-analysis) and Phase 4 (diversification-basket +
+correlated/uncorrelated hedge blend) signal-combination ideas.
+
+---
+
+## 2026-09-02, latest — Full brainstorm-execution round on the paper's weak points: 3 clean new
+tests, a real §4 reproducibility discovery, delisted-S&P-500 WRDS fetch complete
+
+Per Ross's authorization ("give both" for adversarial+council review, then WRDS access via
+`.pgpass` and "test for all those" on the broad brainstorm), this round executed and verified
+5 new scripts against `PAPER_MAGNITUDE.md`'s open weak points. Full account: Finding #44.
+
+**Three clean, verified results, all added to §5**: (1) episode-clustering gap-rule robustness —
+top-2 concentration share is identically 0.931 at 1/2/4/6-month alternatives to the 3-month rule,
+confirming it wasn't tuned after seeing the result. (2) Same-sector vs. cross-sector confound
+test — a real methodological trap (GICS's current-constituent snapshot skewing toward recent,
+right-censored discoveries) found and fixed on the first live run; corrected result: no
+significant crisis effect for same-sector pairs (p=0.69, n=75), a real one for cross-sector
+(p=0.000018, n=359) — a pattern consistent with, not against, the factor-co-movement confound
+already named. (3) Regime-strength vs. discovery-regime — genuine, tested null (χ²=6.70, p=0.349
+across 56,003 pairs); discovery regime predicts persistence, not eventual cointegration strength.
+
+**A real reproducibility discovery in §4, investigated and disclosed, not silently accepted.**
+Re-running the PIT screen live to bootstrap a CI on the existing trade counts found the
+confirmed-pair set no longer matches the original: `expanding/fold2_exp` 2→3 pairs,
+`rolling/fold2_roll` 1→49 pairs, both with materially different Sharpes. Ruled out universe
+growth (1,576→1,579 symbols, negligible) and calendar-window drift (cutoff dates within ~1 week)
+as the cause; ruled out a bug in the re-derivation (call signature matches production `run_fold`
+exactly). Most likely explanation: the shared screening pipeline (`analysis.py`/`Config`) has
+itself changed in the ~3 weeks since the original run. §4's original numbers are kept as reported
+(a historically-dated result, not an on-demand-reproducible fact); the gap is now disclosed
+directly in the paper. Also caught and fixed, in the process: an existing factual error in the
+paper's own §8, which claimed `pit_wfa.py` uses `universe_loader.load_full_universe()` — the
+actual code globs `output/cache/*_1hr.parquet` directly. Verified against the real code, not
+assumed.
+
+**Delisted S&P 500 WRDS fetch complete**: 1,340/1,340 symbols, zero failures, 28.0 min, via the
+pre-configured `.pgpass` (Ross's explicit authorization). Confirmed the new files are picked up
+automatically by `universe_loader.load_full_universe()` — daily merged universe grew from
+~44,700 to **44,840** symbols. Not yet joined into any specific analysis (§5/§7.2 would each need
+a substantial re-run to benefit) — flagged for Ross's scoping call, not done unilaterally.
+
+**Still open**: (1) the daily-vs-1h-granularity fork for §4 — WRDS has zero intraday data, so §4
+can never reach §5's ~44,700-symbol daily scale while staying at 1h; redesigning §4 around daily
+WRDS bars would reach real scale but is a genuine methodology change needing Ross's buy-in, not
+something to do unilaterally. (2) The residual-correlation factor-adjustment test (the bigger-lift
+half of the confound-testing menu — regressing out a market factor before re-deriving the
+correlation prefilter) — not yet attempted, real design work beyond a quick script. (3) Whether
+to actually join the delisted-securities fetch into §5/§7.2.
+
+---
+
+## 2026-09-02 — Tier 3 complete after fixing the real root cause of ~90 consecutive
+OOM crash-restarts: 929 episodic-confirmed pairs of 7,834,906 candidates
+
+**The bug, finally found and fixed.** `wrds_deep_history_episodic_scan.py`'s Tier 3 had been
+crash-restarting on CachyOS for 94+ attempts, every one dying at the identical point: right after
+the rolling-EG checkpoint reported 100% done (7,834,906/7,834,906 pairs), before the final
+FDR-confirmed output ever got written (`tier3_confirmed.parquet` sat at its Aug 12 timestamp the
+whole time). The 2026-08-26 streaming-checkpoint fix (documented inline in
+`run_rolling_eg_pool`'s docstring) solved the mid-run unbounded-accumulator growth, but never
+touched the END-of-run reconstruction step, which still built THREE separate giant Python
+list/dict-of-dict copies of the same tens-of-millions-of-rows data simultaneously
+(`_load_checkpoint(...).to_dict("records")`, then a `by_key`/`window_end_by_key` rebuild, then the
+final `flat` list) — a 2-3x peak over the actual output size, in the least memory-efficient
+possible representation (millions of individual Python dict objects) for the biggest checkpoint
+this project has ever produced. Rewrote it as a single vectorized pandas merge (pivot "ab"/"ba"
+directions via `.merge()`, take `max()`, explicit `gc.collect()` between each intermediate) — only
+ONE Python-dict materialization now happens, at the very end, sized to the actual output row count
+instead of 2-3x that. **Verified two ways before deploying**: (1) existing
+`debug/_verify_wrds_deep_history_episodic_scan.py` suite, all checks pass including the
+checkpoint-resume test that exercises this exact path; (2) a targeted byte-for-byte comparison of
+old-logic vs. new-logic output on a synthetic part-file checkpoint (multi-part, out-of-order
+directions, a deliberately-single-direction row to confirm the inner-merge-equivalent drop
+behavior) — identical. Deployed, relaunched the wrapper, **Tier 3 completed cleanly in 4.9
+minutes** (exit code 0, wrapper logged "completed successfully, stopping").
+
+**Final results, retiring the placeholder numbers**: Tier 1 (full-sample static EG)
+confirmed=1,404 of 894,733 candidate pairs. Tier 2 (rolling-window EG, static-corr prefilter)
+episodic-confirmed=875 of 894,733. **Tier 3 (rolling-window EG, rolling-corr prefilter,
+the broadest candidate pool) episodic-confirmed=929 of 7,834,906 candidate pairs.** Output synced
+back to this machine at `output/research/wrds_deep_history_episodic_scan_tier3_{confirmed,windows}.parquet`.
+
+**Also done this session, same thread**: `research/crisis_regime_correlation_diagnostic.py`
+(gated on Tier 3) ran and found a real, statistically significant result — pairs first
+qualifying in a crisis-VIX regime confirm at ~1.7x the rate of calm-first pairs (0.248% vs.
+0.146% of 11,715 vs. 281,654 candidates, z=2.77, p=0.0056) and REAPPEAR in later different-regime
+windows MORE often (91.0% vs. 78.7%), arguing against the "transient artifact" reading of the
+original motivating observation. Its own first run hit the same class of bug as Tier 3 (not
+OOM, but ~5M individual pandas per-row lookups instead of one vectorized call) — killed after
+12+ minutes, rewritten as a single `pd.merge_asof`, verified 21.5x faster with byte-for-byte
+identical output, redeployed, completed in 31 seconds. `research/cointegration_regime_
+segmentation.py` (the script behind `PAPER_MAGNITUDE.md`'s headline "158,849/9.2%" placeholder)
+also re-run at corrected scale: 638,095 candidate pairs, 691,213 regime spans, 8.18% ever
+cointegrated (down from the stale 9.2% — a real change). `PAPER_MAGNITUDE.md` updated at all 9
+locations that carried the old placeholder; `docs/FINDINGS.md` Findings #28 (superseded, UPDATE
+note added) and #41 (new, the full root-cause story for both OOM/perf fixes) written.
+
+**Optimization sweep** (per Ross's direct request, "let's do a sweep for vectorizing or using
+polars in the scripts too"): a triage pass across ~140 `.iterrows()`/`.apply()`/
+`to_dict("records")` sites in `research/*.py`, `analysis.py`, `backtest.py` found only 3 genuine
+hot spots — everything else is a small pair-level table, fine as-is. Fixed and verified 2 of the
+3 (mechanical `MultiIndex.isin` swaps for row-wise tuple-membership `.apply`s):
+`research/decoupling_requalification.py`, `fresh_holdout_compare.py`. Left `research/earnings_
+structural_break_correlation.py` (nested iterrows inside a window x null-resample loop, hundreds
+of thousands to low millions of steps, each also calling `earnings.py`'s own linear-scan lookup)
+scoped but not built — a bigger rewrite worth deliberate design, not a rushed fix. **No polars
+conversion started or planned without Ross's explicit sign-off** — a new library dependency is
+an architecture decision, not a drop-in perf fix, per CLAUDE.md's "new methodology/architecture
+needs buy-in before building."
+
+**Crisis-regime diagnostic given proper significance tests (2026-09-02, later same day)**: the
+reappearance-rate and episodic_fraction_fdr comparisons were originally descriptive-only (means,
+no test statistic). Added a two-proportion z-test for reappearance rate and a Mann-Whitney U for
+episodic_fraction_fdr, plus an automatic non-monotonicity check across the 4 VIX regime buckets.
+Verified (`debug/_verify_crisis_regime_correlation_diagnostic.py`, 21/21 checks), re-run on
+CachyOS. **Real, more nuanced picture**: confirmation rate (p=0.0056) and reappearance rate
+(p≈0, z=32.2) are both genuinely significant; confirmation STRENGTH (episodic_fraction_fdr) is
+**not** significant (Mann-Whitney p=0.196, underpowered at only 29 crisis-confirmed pairs) —
+reported as directional/inconclusive, not a third confirmed effect. See Finding #41 (updated).
+
+**Paper reframe complete (2026-09-02).** `PAPER_MAGNITUDE.md` fully rewritten around the
+2-finding "discovery event" throughline Ross approved. New title: "The Discovery Event: Causal
+Validity and Regime Information in Statistical Arbitrage Pair Screening." New structure: §4 =
+Finding 1 (PIT pair-discovery lookahead, promoted from old §6 — the bias side: discovery TIMING
+must be corrected for), §5 = Finding 2 (crisis-regime, brand new — the signal side: discovery
+REGIME context should be exploited, not discarded), §6 = Synthesis (rewritten around the
+2-pillar throughline), §7 = "Supporting Findings" (the other 6 old findings — BH-FDR, episodic
+cointegration, SPAC, jump-diffusion, calendar padding, complexity — demoted to §7.1-§7.6, kept
+in full, not deleted, per this project's "document what was tried and reverted" discipline), §8
+= Limitations (updated, includes §5's own honest caveats: non-monotonicity, underpowered
+strength test, VIX-only regime proxy, no downstream-action test yet), §9/§10 = companion
+paper/future work (renumbered, future work extended with 2 new §5-specific items). RQM citation
+cut entirely (was already footnote-weight, doesn't fit the tighter empirical frame) — kept in
+References as a provenance note, not deleted outright. Verified after rewrite: no stale §11-§14
+references, no stray "seven finding" language outside intentional provenance notes, all internal
+cross-references checked. 1,054 lines total.
+
+**Adversarial review complete (2026-09-02, Ross said "give both" — adversarial then council).**
+Found a real, significant problem: §5's crisis-regime confirmation-rate z-tests treat 11,715
+crisis-first pairs as independent trials, but they cluster into just 12 real historical episodes
+(measured directly, `research/crisis_regime_episode_clustering_check.py`, verified 11/11) — 93.1%
+of confirmations come from just 2 episodes (2008-09 GFC, 2011). Confirmation rate is now reported
+as real-but-narrower (a 2008-09-and-2011 effect, not general); persistence/reappearance holds up
+much better (84-100% across nearly every episode) and is now the paper's more defensible pillar.
+Also fixed: two named confounds added (Forbes & Rigobon 2002, Longin & Solnik 2001 — factor
+co-movement, survivorship), §4's "3 of 4 folds negative" framing corrected (only 1 fold is real
+evidence, 2 are inconclusive, 1 is a thin counter-example), the false "§4 and §5 run on the same
+pipeline/scale" claim fixed everywhere it appeared (§4 is still at 1,576 symbols, not corrected
+scale — now the paper's top future-work item), and several instances of overclaiming language
+downgraded. See Finding #42 for the full account.
+
+**Council review in progress (2026-09-02), fixes applied after each agent, not batched.**
+`council-quant-pm` found: the "929 confirmed" headline could mislead a reader into overestimating
+deployable trading capacity vs. the real ~29-pair promotable set (fixed, clarifying note added to
+§5); a sharper survivorship point the adversarial pass missed — §4's "causal" PIT re-screen still
+draws from TODAY's universe list at every historical cutoff, so the true bias could be worse than
+reported, not better (fixed, added to §8's §4 bullet); flagged, not yet resolved, whether "top 2
+of 12 episodes explain 93%" is itself just a small-sample concentration artifact (disclosed as an
+open question in §5). `council-academic-reviewer` found two real, checkable numeric errors: the
+episode table said "8 other episodes" when it's actually 9 (fixed, with the hidden 1998
+single-pair confirmation now shown explicitly), and §7.3's "27 of 78 survived to production"
+was never reconciled with the paper's other references to "29" confirmed pairs — turns out 27 is
+the 1-day-timeframe figure specifically, 29 is the cross-timeframe total (27+1+1 across
+1day/4hr/3min); now stated explicitly (fixed). Also fixed: an unsupported "most published
+pairs-trading work..." claim now cites Gatev, Goetzmann & Rouwenhorst (2006, already verified in
+`PAPER.md`'s shared bibliography) instead of asserting a literature-wide fact with no citation;
+added a WRDS/CRSP paywall reproducibility disclosure to §8 (§4/§5/§7.1-§7.3 are not reproducible
+without institutional WRDS access, only the yfinance-sourced sections are).
+
+**council-code-quality found a real latent bug in the Tier 3 OOM fix from earlier today**: the
+vectorized checkpoint reconstruction (`run_rolling_eg_pool`) lost the implicit dedup the old
+dict-based reconstruction had — a crash between a `_save_checkpoint_batch` part-file write and
+its meta-file write (each atomic individually, not as a pair) could leave a resumed run
+reprocessing already-covered pairs, and the new `merge()`-based reconstruction would
+many-to-many-blow-up on the resulting duplicate keys instead of silently deduping. **Checked
+directly against the real Tier 3 output before treating this as urgent**: zero duplicate rows in
+the actual 5,003,637-row `wrds_deep_history_episodic_scan_tier3_windows.parquet` — the bug is
+real but did NOT fire this session (every one of the 94 crashes happened well after the last
+checkpoint write had already completed cleanly, during the doomed reconstruction step itself, not
+mid-write). Fixed anyway (`.drop_duplicates(keep="last")` restoring the old dict's overwrite
+semantics), verified with a new targeted test (`debug/_verify_wrds_deep_history_episodic_scan.py`,
+new check group #7, all pass both locally and on CachyOS) that specifically simulates the
+crash-between-writes scenario the reviewer identified — no prior test covered this.
+
+**council-process-meta delivered the uncomfortable finding it exists to surface.** Core point,
+relayed to Ross directly, not softened: all 5 council reviewers are the same underlying model —
+"independent" in persona, not in substance — and this project already lived through one dated
+case (2026-09-01 entry) of a process-meta pass confidently getting its single most serious
+finding wrong (stale local data). Sharper: the crisis-regime finding got promoted to the paper's
+title-level throughline BEFORE anyone checked whether 11,715 "independent" crisis-first pairs
+were actually independent — a basic check CLAUDE.md's own standing rules call for proactively,
+caught only because Ross explicitly asked for adversarial review, not because the built-in
+self-check triggered it. Also flagged: Ross's short chat approvals ("give both," "I like your
+ideas") are unlocking hours of unilateral AI restructuring without necessarily an actual read of
+the resulting document; no visible stopping/convergence criterion across review rounds. Explicit
+recommendation: Ross should read the current `PAPER_MAGNITUDE.md` end to end and decide the
+headline finding/structure himself before another automated pass, not delegate that by proxy to
+whichever reviewer persona argues hardest.
+
+**council-mfe-portfolio (5th/last, round complete) independently converged on a related,
+actionable point**: the underlying two-pillar thesis is genuinely strong and citable — better
+than most solo MFE-applicant work — but the ~1,293-line document is packaged as an engineering
+audit log, not a paper: 2 full paragraphs of title-block changelog before the abstract even
+starts, the same caveat (confirmation-rate is narrower than the pooled p-value) restated in 3
+separate places, and the §7.3 "27 vs 29" reconciliation sitting mid-document where a reader
+shouldn't have to see it. A tight 3-4 page "front door" version is extractable from what exists
+but hasn't been made. **STOPPING here per the process-meta finding above — no further automated
+review queued.** This is the natural point for Ross's own end-to-end read and a direct decision
+on packaging (extract a short version? keep full version as the real paper with an appendix?
+something else), not another AI pass deciding it by proxy.
+
+All 5 council lenses now complete (quant-pm, academic-reviewer, code-quality, process-meta,
+mfe-portfolio). No further automated review queued. This is the natural point for Ross's own
+read, not another pass.
+
+**Separately flagged, not acted on**: the local Windows machine ran critically low on memory
+overnight (0.75GB free of 15.6GB, confirmed twice, no single dominant process — just many
+moderate consumers, likely hours of session accumulation: multiple `claude` processes, browser
+tabs, Word). This blocked the crisis-regime diagnostic's first two attempts (both silently
+killed) before the work was rerouted to CachyOS. Not fixed here — freeing it means closing
+Ross's other open applications/tabs, which needs his say-so, not a unilateral action.
+
+**Not yet done**: `research/earnings_structural_break_correlation.py`'s vectorization (scoped
+above); re-checking the still-open WRDS-only "1Y" contamination events flagged in Finding #40.
+
+---
+
+## 2026-09-01 — IMPORTANT CORRECTION: the live confirmed-pairs count is 29, not 1 —
 a local-machine sync gap, not a real project stall. Paper reframe went through 3 rounds of
 independent council review; two structural recommendations flagged for Ross, not auto-applied.
 

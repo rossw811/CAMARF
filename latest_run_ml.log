@@ -1,210 +1,70 @@
 === CAMARF ml.py ===
-date:        2026-08-12 05:23
-runtime_min: 0.4
+date:        2026-09-08 14:31
+runtime_min: 0.1
 
 === pairs ===
-  ADBE/MDT@1D              entry_events=75    labeled=68    censored=7     no_half_life=0     future_not_clean=0
-  CNP/D@1D                 entry_events=85    labeled=83    censored=2     no_half_life=0     future_not_clean=0
-  ADI/C@1D                 entry_events=91    labeled=85    censored=5     no_half_life=1     future_not_clean=0
-  AIG/TRV@1D               entry_events=88    labeled=81    censored=4     no_half_life=3     future_not_clean=0
-  EMR/PEP@1D               entry_events=108   labeled=105   censored=2     no_half_life=1     future_not_clean=0
-  PEP/RTX@1D               entry_events=162   labeled=153   censored=8     no_half_life=1     future_not_clean=0
-  ADM/C@1D                 entry_events=74    labeled=67    censored=3     no_half_life=4     future_not_clean=0
-  ADP/BMY@1D               entry_events=121   labeled=112   censored=6     no_half_life=3     future_not_clean=0
-  ADP/C@1D                 entry_events=96    labeled=88    censored=4     no_half_life=4     future_not_clean=0
-  ADSK/C@1D                entry_events=74    labeled=65    censored=5     no_half_life=4     future_not_clean=0
-  AFL/C@1D                 entry_events=70    labeled=63    censored=4     no_half_life=3     future_not_clean=0
-  AIG/BMY@1D               entry_events=96    labeled=88    censored=3     no_half_life=5     future_not_clean=0
-  AIG/MMM@1D               entry_events=84    labeled=78    censored=3     no_half_life=3     future_not_clean=0
-  AIG/MRK@1D               entry_events=101   labeled=96    censored=2     no_half_life=3     future_not_clean=0
-  AMAT/C@1D                entry_events=64    labeled=60    censored=2     no_half_life=2     future_not_clean=0
-  APD/C@1D                 entry_events=82    labeled=73    censored=8     no_half_life=1     future_not_clean=0
-  AVY/C@1D                 entry_events=75    labeled=75    censored=0     no_half_life=0     future_not_clean=0
-  CI/C@1D                  entry_events=62    labeled=60    censored=2     no_half_life=0     future_not_clean=0
-  CI/TRV@1D                entry_events=90    labeled=68    censored=10    no_half_life=12    future_not_clean=0
-  CMI/C@1D                 entry_events=81    labeled=78    censored=3     no_half_life=0     future_not_clean=0
-  C/DE@1D                  entry_events=85    labeled=80    censored=3     no_half_life=2     future_not_clean=0
-  C/DOV@1D                 entry_events=93    labeled=86    censored=6     no_half_life=1     future_not_clean=0
-  C/DXC@1D                 entry_events=120   labeled=107   censored=10    no_half_life=3     future_not_clean=0
-  C/EMR@1D                 entry_events=99    labeled=94    censored=4     no_half_life=1     future_not_clean=0
-  C/ETN@1D                 entry_events=138   labeled=133   censored=5     no_half_life=0     future_not_clean=0
-  C/GLW@1D                 entry_events=100   labeled=92    censored=5     no_half_life=3     future_not_clean=0
-  C/FDX@1D                 entry_events=96    labeled=92    censored=4     no_half_life=0     future_not_clean=0
-  C/GD@1D                  entry_events=96    labeled=94    censored=1     no_half_life=1     future_not_clean=0
-  C/ITW@1D                 entry_events=138   labeled=134   censored=4     no_half_life=0     future_not_clean=0
-  C/JPM@1D                 entry_events=100   labeled=96    censored=2     no_half_life=2     future_not_clean=0
-  C/KLAC@1D                entry_events=145   labeled=138   censored=7     no_half_life=0     future_not_clean=0
-  C/LHX@1D                 entry_events=99    labeled=94    censored=2     no_half_life=3     future_not_clean=0
-  C/LNC@1D                 entry_events=83    labeled=76    censored=6     no_half_life=1     future_not_clean=0
-  C/MAS@1D                 entry_events=108   labeled=99    censored=5     no_half_life=4     future_not_clean=0
-  C/MS@1D                  entry_events=56    labeled=48    censored=6     no_half_life=2     future_not_clean=0
-  C/MMM@1D                 entry_events=84    labeled=76    censored=6     no_half_life=2     future_not_clean=0
-  C/MU@1D                  entry_events=136   labeled=128   censored=3     no_half_life=5     future_not_clean=0
-  C/ORCL@1D                entry_events=98    labeled=93    censored=5     no_half_life=0     future_not_clean=0
-  C/NTRS@1D                entry_events=108   labeled=103   censored=1     no_half_life=4     future_not_clean=0
-  C/PGR@1D                 entry_events=128   labeled=121   censored=6     no_half_life=1     future_not_clean=0
-  C/PCAR@1D                entry_events=138   labeled=134   censored=3     no_half_life=1     future_not_clean=0
-  C/PH@1D                  entry_events=82    labeled=76    censored=4     no_half_life=2     future_not_clean=0
-  C/RF@1D                  entry_events=92    labeled=90    censored=2     no_half_life=0     future_not_clean=0
-  C/RTX@1D                 entry_events=124   labeled=120   censored=2     no_half_life=2     future_not_clean=0
-  C/RVTY@1D                entry_events=129   labeled=119   censored=10    no_half_life=0     future_not_clean=0
-  C/STT@1D                 entry_events=103   labeled=100   censored=2     no_half_life=1     future_not_clean=0
-  C/SWK@1D                 entry_events=71    labeled=60    censored=7     no_half_life=4     future_not_clean=0
-  C/TROW@1D                entry_events=134   labeled=124   censored=4     no_half_life=6     future_not_clean=0
-  C/TRV@1D                 entry_events=86    labeled=82    censored=3     no_half_life=1     future_not_clean=0
-  C/TT@1D                  entry_events=113   labeled=104   censored=4     no_half_life=5     future_not_clean=0
-  MSFT/NEE@1D              entry_events=117   labeled=109   censored=6     no_half_life=2     future_not_clean=0
-  C/WDC@1D                 entry_events=133   labeled=130   censored=2     no_half_life=1     future_not_clean=0
-  C/TXN@1D                 entry_events=113   labeled=105   censored=3     no_half_life=5     future_not_clean=0
-  C/WHR@1D                 entry_events=86    labeled=83    censored=2     no_half_life=1     future_not_clean=0
-  AIG/PEP@1D               entry_events=100   labeled=93    censored=3     no_half_life=4     future_not_clean=0
-  AEP/PG@1D                entry_events=114   labeled=101   censored=6     no_half_life=7     future_not_clean=0
-  AIG/MO@1D                entry_events=122   labeled=116   censored=4     no_half_life=2     future_not_clean=0
-  ITW/TXT@1D               entry_events=104   labeled=95    censored=6     no_half_life=3     future_not_clean=0
-  AEE/XEL@1D               entry_events=50    labeled=33    censored=7     no_half_life=10    future_not_clean=0
-  AIG/HSY@1D               entry_events=94    labeled=89    censored=1     no_half_life=4     future_not_clean=0
-  PEP/PG@1D                entry_events=100   labeled=94    censored=5     no_half_life=1     future_not_clean=0
-  AMT/PCG@1D               entry_events=51    labeled=41    censored=7     no_half_life=3     future_not_clean=0
-  C/HIG@1D                 entry_events=50    labeled=44    censored=2     no_half_life=4     future_not_clean=0
-  AIG/CL@1D                entry_events=101   labeled=96    censored=1     no_half_life=4     future_not_clean=0
-  AIG/DIS@1D               entry_events=132   labeled=126   censored=3     no_half_life=3     future_not_clean=0
-  CNP/PG@1D                entry_events=116   labeled=105   censored=9     no_half_life=2     future_not_clean=0
-  LNC/MET@1D               entry_events=41    labeled=27    censored=12    no_half_life=2     future_not_clean=0
-  KEY/PNC@1D               entry_events=92    labeled=83    censored=7     no_half_life=2     future_not_clean=0
-  C/PRU@1D                 entry_events=34    labeled=24    censored=6     no_half_life=4     future_not_clean=0
-  AIG/PFG@1D               entry_events=44    labeled=33    censored=1     no_half_life=10    future_not_clean=0
-  C/PFG@1D                 entry_events=39    labeled=25    censored=6     no_half_life=8     future_not_clean=0
-  FITB/PRU@1D              entry_events=47    labeled=34    censored=6     no_half_life=7     future_not_clean=0
-  AIG/WFC@1D               entry_events=135   labeled=118   censored=13    no_half_life=4     future_not_clean=0
-  HBAN/PRU@1D              entry_events=39    labeled=35    censored=2     no_half_life=2     future_not_clean=0
-  C/RJF@1D                 entry_events=133   labeled=129   censored=1     no_half_life=3     future_not_clean=0
-  PCAR/PFG@1D              entry_events=54    labeled=46    censored=2     no_half_life=6     future_not_clean=0
-  HIG/KMX@1D               entry_events=58    labeled=53    censored=3     no_half_life=2     future_not_clean=0
-  PFG/TT@1D                entry_events=52    labeled=35    censored=7     no_half_life=10    future_not_clean=0
-  AIG/RTX@1D               entry_events=115   labeled=105   censored=7     no_half_life=3     future_not_clean=0
-  PH/ROK@1D                entry_events=105   labeled=98    censored=4     no_half_life=3     future_not_clean=0
-  UAA/UA@1D                entry_events=32    labeled=26    censored=4     no_half_life=2     future_not_clean=0
-  AIG/GPC@1D               entry_events=71    labeled=62    censored=4     no_half_life=5     future_not_clean=0
-  KEY/TROW@1D              entry_events=93    labeled=85    censored=6     no_half_life=2     future_not_clean=0
-  AIG/PPG@1D               entry_events=101   labeled=92    censored=6     no_half_life=3     future_not_clean=0
-  AIG/TT@1D                entry_events=118   labeled=111   censored=4     no_half_life=3     future_not_clean=0
-  AMP/C@1D                 entry_events=31    labeled=26    censored=3     no_half_life=2     future_not_clean=0
-  C/HON@1D                 entry_events=109   labeled=105   censored=3     no_half_life=1     future_not_clean=0
-  ADBE/CME@1D              entry_events=36    labeled=29    censored=7     no_half_life=0     future_not_clean=0
-  ADBE/CRM@1D              entry_events=42    labeled=36    censored=1     no_half_life=5     future_not_clean=0
-  KEY/PCAR@1D              entry_events=127   labeled=119   censored=5     no_half_life=3     future_not_clean=0
-  AIG/ZION@1D              entry_events=225   labeled=219   censored=5     no_half_life=1     future_not_clean=0
-  BLK/C@1D                 entry_events=35    labeled=26    censored=5     no_half_life=4     future_not_clean=0
-  FITB/RJF@1D              entry_events=111   labeled=103   censored=7     no_half_life=1     future_not_clean=0
-  CRM/MA@1D                entry_events=37    labeled=28    censored=3     no_half_life=6     future_not_clean=0
-  AVY/HOG@1D               entry_events=83    labeled=78    censored=4     no_half_life=1     future_not_clean=0
-  CB/EMR@1D                entry_events=53    labeled=40    censored=7     no_half_life=6     future_not_clean=0
-  DAL/KEY@1D               entry_events=55    labeled=36    censored=11    no_half_life=8     future_not_clean=0
-  FIS/ICE@1D               entry_events=36    labeled=28    censored=4     no_half_life=4     future_not_clean=0
-  GOOGL/ICE@1D             entry_events=27    labeled=22    censored=5     no_half_life=0     future_not_clean=0
-  C/UNM@1D                 entry_events=85    labeled=77    censored=1     no_half_life=7     future_not_clean=0
-  ICE/SPGI@1D              entry_events=40    labeled=34    censored=4     no_half_life=2     future_not_clean=0
-  MGM/PRU@1D               entry_events=43    labeled=36    censored=4     no_half_life=3     future_not_clean=0
-  DHR/IFF@1D               entry_events=69    labeled=58    censored=10    no_half_life=1     future_not_clean=0
-  MTB/TEL@1D               entry_events=32    labeled=21    censored=10    no_half_life=1     future_not_clean=0
-  HBAN/RJF@1D              entry_events=87    labeled=82    censored=5     no_half_life=0     future_not_clean=0
-  AIZ/HBAN@1D              entry_events=39    labeled=32    censored=2     no_half_life=5     future_not_clean=0
-  DIS/SNA@1D               entry_events=145   labeled=138   censored=5     no_half_life=2     future_not_clean=0
-  BBWI/MAC@1D              entry_events=72    labeled=55    censored=8     no_half_life=9     future_not_clean=0
-  MTB/TXT@1D               entry_events=68    labeled=61    censored=4     no_half_life=3     future_not_clean=0
-  HBAN/PLD@1D              entry_events=54    labeled=46    censored=3     no_half_life=5     future_not_clean=0
-  DIS/WFC@1D               entry_events=124   labeled=117   censored=5     no_half_life=2     future_not_clean=0
-  HIG/RCL@1D               entry_events=65    labeled=50    censored=9     no_half_life=6     future_not_clean=0
-  BKR/MET@1D               entry_events=40    labeled=32    censored=3     no_half_life=5     future_not_clean=0
-  MGM/PH@1D                entry_events=55    labeled=49    censored=2     no_half_life=4     future_not_clean=0
-  HD/TRV@1D                entry_events=75    labeled=69    censored=4     no_half_life=2     future_not_clean=0
-  MGM/TT@1D                entry_events=63    labeled=52    censored=6     no_half_life=5     future_not_clean=0
-  BLK/HIG@1D               entry_events=39    labeled=35    censored=3     no_half_life=1     future_not_clean=0
-  D/UPS@1D                 entry_events=44    labeled=29    censored=6     no_half_life=9     future_not_clean=0
-  CDNS/KLAC@1D             entry_events=140   labeled=136   censored=4     no_half_life=0     future_not_clean=0
-  MTD/SWK@1D               entry_events=47    labeled=33    censored=6     no_half_life=8     future_not_clean=0
-  MGM/PCAR@1D              entry_events=113   labeled=101   censored=9     no_half_life=3     future_not_clean=0
-  MGM/ROK@1D               entry_events=63    labeled=58    censored=3     no_half_life=2     future_not_clean=0
-  ACN/HD@1D                entry_events=48    labeled=45    censored=1     no_half_life=2     future_not_clean=0
-  A/C@1D                   entry_events=43    labeled=37    censored=3     no_half_life=3     future_not_clean=0
-  ADI/MTD@1D               entry_events=55    labeled=46    censored=2     no_half_life=7     future_not_clean=0
-  ARE/RSG@1D               entry_events=43    labeled=38    censored=5     no_half_life=0     future_not_clean=0
-  PHM/TER@1D               entry_events=106   labeled=95    censored=7     no_half_life=4     future_not_clean=0
-  CLX/PEP@1D               entry_events=141   labeled=137   censored=3     no_half_life=1     future_not_clean=0
-  CB/MDLZ@1D               entry_events=37    labeled=31    censored=5     no_half_life=1     future_not_clean=0
-  CCI/CMCSA@1D             entry_events=52    labeled=50    censored=2     no_half_life=0     future_not_clean=0
-  EOG/PRU@1D               entry_events=46    labeled=32    censored=6     no_half_life=8     future_not_clean=0
-  CB/KMB@1D                entry_events=57    labeled=45    censored=9     no_half_life=3     future_not_clean=0
-  BA/C@1D                  entry_events=75    labeled=73    censored=2     no_half_life=0     future_not_clean=0
-  C/RHI@1D                 entry_events=176   labeled=168   censored=6     no_half_life=2     future_not_clean=0
-  HBAN/ROK@1D              entry_events=71    labeled=64    censored=4     no_half_life=3     future_not_clean=0
-  JPM/LHX@1D               entry_events=92    labeled=89    censored=1     no_half_life=2     future_not_clean=0
-  KMB/TRV@1D               entry_events=65    labeled=63    censored=1     no_half_life=1     future_not_clean=0
-  LNC/MGM@1D               entry_events=83    labeled=76    censored=4     no_half_life=3     future_not_clean=0
-  SWK/WAT@1D               entry_events=48    labeled=39    censored=2     no_half_life=7     future_not_clean=0
-  MGM/RTX@1D               entry_events=59    labeled=49    censored=8     no_half_life=2     future_not_clean=0
-  LMT/TXT@1D               entry_events=138   labeled=133   censored=5     no_half_life=0     future_not_clean=0
-  AMT/CMS@1D               entry_events=52    labeled=44    censored=3     no_half_life=5     future_not_clean=0
-  A/ZION@1D                entry_events=34    labeled=29    censored=4     no_half_life=1     future_not_clean=0
-  CCI/UPS@1D               entry_events=36    labeled=31    censored=5     no_half_life=0     future_not_clean=0
-  CCI/DHI@1D               entry_events=60    labeled=53    censored=4     no_half_life=3     future_not_clean=0
-  COF/SRE@1D               entry_events=47    labeled=36    censored=4     no_half_life=7     future_not_clean=0
-  APA/SO@1D                entry_events=104   labeled=92    censored=9     no_half_life=3     future_not_clean=0
-  MDLZ/SNA@1D              entry_events=44    labeled=30    censored=10    no_half_life=4     future_not_clean=0
-  LH/SWK@1D                entry_events=68    labeled=57    censored=4     no_half_life=7     future_not_clean=0
-  MGM/UNM@1D               entry_events=67    labeled=59    censored=4     no_half_life=4     future_not_clean=0
-  C/NUE@1D                 entry_events=118   labeled=111   censored=4     no_half_life=3     future_not_clean=0
-  MHK/RVTY@1D              entry_events=59    labeled=56    censored=1     no_half_life=2     future_not_clean=0
-  SYK/WM@1D                entry_events=74    labeled=65    censored=5     no_half_life=4     future_not_clean=0
-  AMT/DTE@1D               entry_events=51    labeled=37    censored=11    no_half_life=3     future_not_clean=0
-  CCI/EBAY@1D              entry_events=45    labeled=35    censored=6     no_half_life=4     future_not_clean=0
-  AIZ/GOOGL@1D             entry_events=38    labeled=28    censored=3     no_half_life=7     future_not_clean=0
-  EOG/LNC@1D               entry_events=74    labeled=69    censored=4     no_half_life=1     future_not_clean=0
-  ADI/WAT@1D               entry_events=48    labeled=38    censored=5     no_half_life=5     future_not_clean=0
-  PEP/TRV@1D               entry_events=96    labeled=83    censored=13    no_half_life=0     future_not_clean=0
-  AMT/DUK@1D               entry_events=41    labeled=36    censored=4     no_half_life=1     future_not_clean=0
-  AIG/HON@1D               entry_events=84    labeled=75    censored=6     no_half_life=3     future_not_clean=0
-  CME/SYK@1D               entry_events=32    labeled=26    censored=5     no_half_life=1     future_not_clean=0
-  EMN/GRMN@1D              entry_events=53    labeled=40    censored=5     no_half_life=8     future_not_clean=0
-  BLK/LH@1D                entry_events=49    labeled=36    censored=8     no_half_life=5     future_not_clean=0
-  AON/KEY@1D               entry_events=78    labeled=74    censored=2     no_half_life=2     future_not_clean=0
-  AFL/SNPS@1D              entry_events=54    labeled=52    censored=2     no_half_life=0     future_not_clean=0
-  AON/C@1D                 entry_events=82    labeled=74    censored=4     no_half_life=4     future_not_clean=0
-  LH/WAT@1D                entry_events=46    labeled=37    censored=4     no_half_life=5     future_not_clean=0
-  A/HBAN@1D                entry_events=57    labeled=54    censored=2     no_half_life=1     future_not_clean=0
-  MHK/STZ@1D               entry_events=72    labeled=64    censored=7     no_half_life=1     future_not_clean=0
-  MC/NCLH@1h               entry_events=27    labeled=22    censored=3     no_half_life=2     future_not_clean=0
-  SPY/VOO@1h               entry_events=38    labeled=16    censored=5     no_half_life=17    future_not_clean=0
-  COLB/RF@1h               entry_events=27    labeled=20    censored=2     no_half_life=5     future_not_clean=0
-  GGG/ITW@1h               entry_events=29    labeled=25    censored=3     no_half_life=1     future_not_clean=0
-  COLB/FITB@1h             entry_events=27    labeled=23    censored=3     no_half_life=1     future_not_clean=0
-  DXCM/QQQ@1h              entry_events=28    labeled=19    censored=5     no_half_life=4     future_not_clean=0
-  DV/VTOL@4h               entry_events=4     labeled=1     censored=2     no_half_life=0     future_not_clean=1
-  GBCI/SSB@4h              entry_events=2     labeled=1     censored=0     no_half_life=0     future_not_clean=1
-  KEY/RF@4h                entry_events=0     labeled=0     censored=0     no_half_life=0     future_not_clean=0
-  CMS/PPL@4h               entry_events=1     labeled=0     censored=0     no_half_life=0     future_not_clean=1
-  SPY/VOO@4h               entry_events=0     labeled=0     censored=0     no_half_life=0     future_not_clean=0
-  CFG/COLB@4h              entry_events=1     labeled=0     censored=0     no_half_life=0     future_not_clean=1
+  AMP/RUSHA@1D             entry_events=18    labeled=15    censored=3     no_half_life=0     future_not_clean=0
+  OVV/DO@1D                entry_events=15    labeled=11    censored=0     no_half_life=0     future_not_clean=0
+  CATY/FRBA@1D             entry_events=30    labeled=25    censored=4     no_half_life=0     future_not_clean=0
+  HSBC/GVKEY015509_06W@1D  entry_events=105   labeled=97    censored=0     no_half_life=0     future_not_clean=0
+  HWC/FRBA@1D              entry_events=30    labeled=22    censored=6     no_half_life=0     future_not_clean=0
+  OGN/PERMNO78892@1D       entry_events=5     labeled=0     censored=0     no_half_life=5     future_not_clean=0
+  OVV/PERMNO82298@1D       entry_events=15    labeled=11    censored=0     no_half_life=0     future_not_clean=0
+  ALTG/FBM@1D              entry_events=8     labeled=8     censored=0     no_half_life=0     future_not_clean=0
+  AISP/GVKEY239599_01W@1D  entry_events=1     labeled=0     censored=0     no_half_life=1     future_not_clean=0
+  CSII/GVKEY355506_01W@1D  entry_events=2     labeled=0     censored=0     no_half_life=2     future_not_clean=0
+  AGCB/LEAP@1D             entry_events=4     labeled=3     censored=0     no_half_life=0     future_not_clean=0
+  ARGO/MEGL@1D             entry_events=12    labeled=11    censored=0     no_half_life=0     future_not_clean=0
+  ATXG/KNBE@1D             entry_events=5     labeled=0     censored=0     no_half_life=5     future_not_clean=0
+  CLAS/MSAI@1D             entry_events=3     labeled=0     censored=0     no_half_life=3     future_not_clean=0
+  CVON/PERMNO91600@1D      entry_events=3     labeled=0     censored=0     no_half_life=3     future_not_clean=0
+  GVKEY101930_01W/GVKEY355506_01W@1D entry_events=4     labeled=0     censored=0     no_half_life=4     future_not_clean=0
+  FNLC/JMSB@1D             entry_events=10    labeled=10    censored=0     no_half_life=0     future_not_clean=0
+  GBNK/SRCE@1D             entry_events=11    labeled=8     censored=0     no_half_life=0     future_not_clean=0
+  GVKEY201229_01W/GVKEY248104_01W@1D entry_events=23    labeled=16    censored=7     no_half_life=0     future_not_clean=0
+  GVKEY204176_01W/GVKEY355326_01W@1D entry_events=4     labeled=0     censored=0     no_half_life=4     future_not_clean=0
+  GVKEY242580_01W/GVKEY325818_01W@1D entry_events=5     labeled=0     censored=0     no_half_life=5     future_not_clean=0
+  GVKEY227396_01W/LLAP@1D  entry_events=3     labeled=0     censored=0     no_half_life=3     future_not_clean=0
+  GVKEY223055_02W/PWM@1D   entry_events=5     labeled=0     censored=0     no_half_life=5     future_not_clean=0
+  GVKEY248220_01W/GVKEY329260_01W@1D entry_events=20    labeled=0     censored=0     no_half_life=20    future_not_clean=0
+  GVKEY259160_01W/LDTC@1D  entry_events=0     labeled=0     censored=0     no_half_life=0     future_not_clean=0
+  GVKEY284837_01W/XBP@1D   entry_events=3     labeled=0     censored=0     no_half_life=3     future_not_clean=0
+  GVKEY327794_01W/GVKEY346377_01W@1D entry_events=5     labeled=0     censored=0     no_half_life=5     future_not_clean=0
+  KVUE/KMB@3m              entry_events=138   labeled=0     censored=0     no_half_life=138   future_not_clean=0 perm_robust=True
+  PNC/ZION@4h              entry_events=1     labeled=0     censored=0     no_half_life=0     future_not_clean=1 perm_robust=True
 
 === label_distribution (label_scheme=binary, this is what training/the MIN_CLASS_SAMPLES gate sees) ===
-  not_converged: 7516
-  converged: 5058
+  not_converged: 161
+  converged: 76
 
 === granular_label_distribution (always the full 4-class outcome, regardless of label_scheme) ===
-  diverge_further: 4402
-  no_move: 3114
-  weak_converge: 2579
-  strong_converge: 2479
+  no_move: 87
+  diverge_further: 74
+  weak_converge: 39
+  strong_converge: 37
 
 === notes ===
-  Trained: n_train=7544 n_test=2516 test_accuracy=52.58%
-  Conformal: n_cal=2514 avg_set_size=1.77 empirical_coverage=91.26%
+  Trained: n_train=142 n_test=48 test_accuracy=56.25%
+  Conformal: n_cal=47 avg_set_size=1.94 empirical_coverage=97.92%
   Model persisted → C:\Users\RossW\Projects\CAMARF\output\ml\model_stage1.pkl
 
 === pairs_skipped ===
-  KEY/RF@4h: zero labeled entry events
-  CMS/PPL@4h: zero labeled entry events
-  SPY/VOO@4h: zero labeled entry events
-  CFG/COLB@4h: zero labeled entry events
+  OGN/PERMNO78892@1D: zero labeled entry events
+  AISP/GVKEY239599_01W@1D: zero labeled entry events
+  CSII/GVKEY355506_01W@1D: zero labeled entry events
+  ATXG/KNBE@1D: zero labeled entry events
+  CLAS/MSAI@1D: zero labeled entry events
+  CVON/PERMNO91600@1D: zero labeled entry events
+  GVKEY101930_01W/GVKEY355506_01W@1D: zero labeled entry events
+  GVKEY204176_01W/GVKEY355326_01W@1D: zero labeled entry events
+  GVKEY242580_01W/GVKEY325818_01W@1D: zero labeled entry events
+  GVKEY227396_01W/LLAP@1D: zero labeled entry events
+  GVKEY223055_02W/PWM@1D: zero labeled entry events
+  GVKEY248220_01W/GVKEY329260_01W@1D: zero labeled entry events
+  GVKEY259160_01W/LDTC@1D: zero labeled entry events
+  GVKEY284837_01W/XBP@1D: zero labeled entry events
+  GVKEY327794_01W/GVKEY346377_01W@1D: zero labeled entry events
+  KVUE/KMB@3m: zero labeled entry events
+  PNC/ZION@4h: zero labeled entry events
 
 === end ===

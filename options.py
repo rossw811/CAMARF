@@ -8,10 +8,18 @@ CBOE free API delayed only"). Built now per Ross's explicit request to do
 the best possible version without paid data, after confirming directly
 (not assumed) what's actually available for free:
 
-  - yfinance's live option_chain() DOES include a real impliedVolatility
-    column — but only for the CURRENT moment's listed contracts. There is
-    no way to pull yfinance's historical IV time series for free; this is
-    a genuine, confirmed data-source limitation, not a code gap.
+  - yfinance's live option_chain() includes an impliedVolatility column for
+    the CURRENT moment's listed contracts, but there is no way to pull a
+    historical IV time series for free; this is a genuine, confirmed
+    data-source limitation, not a code gap.
+  - CORRECTION (2026-09-07, research/risk_neutral_density.py): the live
+    impliedVolatility column itself is NOT reliable, checked directly
+    against a real chain — deep-ITM strikes read a degenerate 1e-05
+    placeholder rather than a solved value, and the OTM side showed an
+    implausible exact-doubling staircase, not a real smile. Any live-chain
+    consumer should derive its own IV via Black-Scholes inversion against a
+    real transaction price (mid(bid, ask), falling back to lastPrice when
+    bid/ask aren't live), not trust this column at face value.
   - CBOE's free API is delayed-only, unsuitable for the kind of precise
     entry/exit timing CAMARF's backtests need.
 
@@ -91,6 +99,103 @@ def black_scholes_call(S: float, K: float, T: float, sigma: float, r: float = 0.
     return float(S * norm.cdf(d1) - K * np.exp(-r * T) * norm.cdf(d2))
 
 
+def black_scholes_delta(S: float, K: float, T: float, sigma: float, r: float = 0.0,
+                          option_type: str = "call") -> float:
+    """Standard Black-Scholes delta. At/after expiry (T<=0), delta collapses to the option's
+    intrinsic-value indicator (1.0/0.0 for a call, 0.0/-1.0 for a put) rather than an
+    undefined N(d1) — matches how a real option actually behaves at expiry, not a NaN."""
+    if T <= 0 or sigma <= 0 or S <= 0 or K <= 0:
+        if option_type == "call":
+            return 1.0 if S > K else 0.0
+        return -1.0 if S < K else 0.0
+    d1 = (np.log(S / K) + (r + 0.5 * sigma ** 2) * T) / (sigma * np.sqrt(T))
+    return float(norm.cdf(d1)) if option_type == "call" else float(norm.cdf(d1) - 1.0)
+
+
+def black_scholes_gamma(S: float, K: float, T: float, sigma: float, r: float = 0.0) -> float:
+    """Standard Black-Scholes gamma -- identical for calls and puts (both have the same
+    curvature of delta with respect to the underlying)."""
+    if T <= 0 or sigma <= 0 or S <= 0 or K <= 0:
+        return 0.0
+    d1 = (np.log(S / K) + (r + 0.5 * sigma ** 2) * T) / (sigma * np.sqrt(T))
+    return float(norm.pdf(d1) / (S * sigma * np.sqrt(T)))
+
+
+def black_scholes_vega(S: float, K: float, T: float, sigma: float, r: float = 0.0) -> float:
+    """Standard Black-Scholes vega (sensitivity to a 1.00 = 100-percentage-point change in
+    sigma; divide by 100 for the conventional 'per 1 vol point' quoting convention) --
+    identical for calls and puts."""
+    if T <= 0 or sigma <= 0 or S <= 0 or K <= 0:
+        return 0.0
+    d1 = (np.log(S / K) + (r + 0.5 * sigma ** 2) * T) / (sigma * np.sqrt(T))
+    return float(S * norm.pdf(d1) * np.sqrt(T))
+
+
+def black_scholes_theta(S: float, K: float, T: float, sigma: float, r: float = 0.0,
+                          option_type: str = "call") -> float:
+    """Standard Black-Scholes theta, in dollars per YEAR (divide by 365 for the conventional
+    'per calendar day' quoting convention)."""
+    if T <= 0 or sigma <= 0 or S <= 0 or K <= 0:
+        return 0.0
+    d1 = (np.log(S / K) + (r + 0.5 * sigma ** 2) * T) / (sigma * np.sqrt(T))
+    d2 = d1 - sigma * np.sqrt(T)
+    term1 = -(S * norm.pdf(d1) * sigma) / (2 * np.sqrt(T))
+    if option_type == "call":
+        term2 = -r * K * np.exp(-r * T) * norm.cdf(d2)
+    else:
+        term2 = r * K * np.exp(-r * T) * norm.cdf(-d2)
+    return float(term1 + term2)
+
+
+def black_scholes_greeks(S: float, K: float, T: float, sigma: float, r: float = 0.0,
+                           option_type: str = "call") -> dict:
+    """All four Greeks at once, matching the same (S, K, T, sigma, r, option_type) call shape
+    as the individual functions above -- convenience wrapper, no new computation."""
+    return {
+        "delta": black_scholes_delta(S, K, T, sigma, r, option_type),
+        "gamma": black_scholes_gamma(S, K, T, sigma, r),
+        "vega": black_scholes_vega(S, K, T, sigma, r),
+        "theta": black_scholes_theta(S, K, T, sigma, r, option_type),
+    }
+
+
+def black_scholes_greeks_vectorized(S, K, T: float, sigma, r: float = 0.0,
+                                      option_type: str = "call") -> dict:
+    """Array-input version of black_scholes_greeks -- same formulas, vectorized over S/sigma
+    (T and r stay scalar, matching every current caller's fixed-tenor/zero-rate use case).
+    Invalid elements (S<=0, K<=0, sigma<=0, T<=0) produce NaN rather than raising, so a caller
+    can run this over a full daily time series with occasional bad/missing data points without
+    per-row filtering first. Currently CALL-only (delta collapses correctly for calls at
+    T<=0/sigma<=0 -- 1.0 if ITM else 0.0 -- but put support isn't needed by any vectorized
+    caller yet; add it if one arises rather than guessing at the right degenerate behavior now)."""
+    if option_type != "call":
+        raise NotImplementedError("black_scholes_greeks_vectorized currently supports "
+                                   "option_type='call' only -- no vectorized caller needs puts yet.")
+    S = np.asarray(S, dtype=float)
+    K = np.asarray(K, dtype=float)
+    sigma = np.asarray(sigma, dtype=float)
+    valid = (S > 0) & (K > 0) & (sigma > 0) & (T > 0)
+    d1 = np.full_like(S, np.nan)
+    d2 = np.full_like(S, np.nan)
+    with np.errstate(invalid="ignore", divide="ignore"):
+        d1[valid] = (np.log(S[valid] / K[valid]) + (r + 0.5 * sigma[valid] ** 2) * T) / (sigma[valid] * np.sqrt(T))
+        d2[valid] = d1[valid] - sigma[valid] * np.sqrt(T)
+
+    delta = np.full_like(S, np.nan)
+    gamma = np.full_like(S, np.nan)
+    vega = np.full_like(S, np.nan)
+    theta = np.full_like(S, np.nan)
+
+    delta[valid] = norm.cdf(d1[valid])
+    gamma[valid] = norm.pdf(d1[valid]) / (S[valid] * sigma[valid] * np.sqrt(T))
+    vega[valid] = S[valid] * norm.pdf(d1[valid]) * np.sqrt(T)
+    theta[valid] = (
+        -(S[valid] * norm.pdf(d1[valid]) * sigma[valid]) / (2 * np.sqrt(T))
+        - r * K[valid] * np.exp(-r * T) * norm.cdf(d2[valid])
+    )
+    return {"delta": delta, "gamma": gamma, "vega": vega, "theta": theta}
+
+
 def realized_vol_proxy(close: pd.Series, window: int = _REALIZED_VOL_WINDOW) -> pd.Series:
     """Rolling annualized realized vol — the explicit IV proxy this module
     uses (see module docstring for the known variance-risk-premium bias)."""
@@ -99,15 +204,54 @@ def realized_vol_proxy(close: pd.Series, window: int = _REALIZED_VOL_WINDOW) -> 
 
 
 def load_price_series(symbol: str) -> "pd.Series | None":
-    path = os.path.join(_CACHE_DIR, f"{symbol}_1day.parquet")
-    if not os.path.exists(path):
-        return None
-    df = pd.read_parquet(path)
-    if "close" not in df.columns:
-        return None
-    close = df["close"].dropna()
-    close.index = pd.to_datetime(close.index)
-    return close
+    """Real coverage bug found and fixed live (2026-09-07/08, via research/asset_volatility_
+    profile.py's real result: only 11/55 confirmed-pair symbols got a valid price series): this
+    function only ever checked the yfinance-only `{symbol}_1day.parquet` cache, never
+    `output/cache/wrds/{symbol}_1D.parquet` -- silently violating this project's own "WRDS takes
+    complete priority over other providers of data" rule (CLAUDE.md) for every caller of this
+    function (options.py's own protective-overlay work, research/options_greeks_features.py,
+    research/asset_volatility_profile.py). 44/55 of the "missing" symbols in that Finding #54
+    result turned out to have real WRDS-cached data all along, just under a path/column this
+    function never looked at.
+
+    Fixed to check WRDS first (close_total_return -- CRSP total-return-adjusted, matching
+    research/beta_weighted_portfolio.py's own SPY loader), then IBKR's deep-history supplement
+    (ibkr_supplement_reader.py, native 1D bars where a supplement exists -- a small, ~92-symbol
+    confirmed-pair set, per universe_loader.py's own documented scope, not broad coverage).
+
+    Per Ross's explicit instruction (2026-09-08, "don't use yfinance, use wrds or ibkr"): the
+    yfinance-primary `{symbol}_1day.parquet` fallback this function used to have is REMOVED, not
+    just deprioritized. This is a real, deliberate coverage tradeoff, disclosed rather than
+    hidden: ~1,731 symbols in this project's cache only ever had yfinance daily data and now
+    return None here rather than falling back to it -- callers that need those symbols specifically
+    will see reduced coverage versus the WRDS+yfinance version of this function that existed
+    briefly earlier in this same session, not a bug, a deliberate scope narrowing."""
+    wrds_path = os.path.join(_CACHE_DIR, "wrds", f"{symbol}_1D.parquet")
+    if os.path.exists(wrds_path):
+        df = pd.read_parquet(wrds_path)
+        # 2026-09-08: Compustat Global international-listing files (GVKEY<n>
+        # symbols) have no 'close_total_return' column, only plain 'close' --
+        # this branch previously silently fell through to IBKR (and then
+        # returned None) for every such symbol despite its WRDS file existing
+        # on disk. Same fix applied to research/aligned_pair_loader.py's
+        # analogous fallback the same day.
+        col = "close_total_return" if "close_total_return" in df.columns else (
+            "close" if "close" in df.columns else None)
+        if col:
+            close = df[col].dropna()
+            close.index = pd.to_datetime(close.index)
+            if len(close) > 0:
+                return close
+
+    import ibkr_supplement_reader
+    ibkr_df = ibkr_supplement_reader.load_supplement(symbol, "1D")
+    if ibkr_df is not None and "close" in ibkr_df.columns:
+        close = ibkr_df["close"].dropna()
+        close.index = pd.to_datetime(close.index)
+        if len(close) > 0:
+            return close
+
+    return None
 
 
 def price_protective_overlay(symbol: str, entry_date, exit_date, n_shares: float, side: str) -> dict:
