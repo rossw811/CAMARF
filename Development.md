@@ -26654,3 +26654,85 @@ lead_lag.py` (5/5), `research/aligned_pair_loader.py`, `options.py`, `data_wrds.
 `research/pit_wfa_wrds_daily.py` (taken-trades persistence), `PAPER.md` (§7.19, §10),
 `PAPER_MAGNITUDE.md` (§4, §10, plus a third stale reference fixed), `docs/FINDINGS.md` (#61-64),
 `docs/HANDOFF.md`.
+
+## 2026-09-08 (continued): caveat/limitation search across both papers, then all three resulting
+tiers worked through; three real bugs found; one critical finding (pooled Sharpe's sign is not
+robust to weighting choice) that revises an earlier session claim
+
+Ross asked for a systematic search of every disclosed caveat/limitation across `PAPER.md`/
+`PAPER_MAGNITUDE.md`, with concrete counters for each, then "let's do all the tiers from a to c."
+Forked the search itself (reading both large papers end-to-end isn't worth keeping in the main
+session's context) — got back 20 items across three tiers (A: cheap/tractable now; B: real new
+work but feasible; C: structural, narrow-not-eliminate).
+
+**Tier A (5 items) — all genuinely done, turned out cheaper than expected in most cases:**
+- **§7.1 BH-vs-BY at full-universe scale**: `research/bh_vs_by_full_universe_1d.py` reuses the
+  already-computed 997,024-pair full-universe Pearson prefilter instead of redoing the actual
+  intractable O(n²) step. Two real bugs found via smoke-testing before the real run: a known
+  tz-naive/tz-aware crash (same fix already used in `pit_wfa_wrds_daily.py`), and a more
+  consequential one — `DataAligner.align_universe` silently produces per-symbol-length arrays
+  (real example: AA 2,304 rows from 2016 vs. DOW 1,698 rows from 2019), which `_eg_worker`'s own
+  try/except swallows as "not ok" rather than crashing loudly (5/200 usable in the smoke test).
+  Fixed by switching to `align_to_common_calendar` — the SAME fix this project already diagnosed
+  once, 2026-08-14, reused not rediscovered. Real result on 29,890/30,000 usable pairs: BH
+  confirms 35, BY confirms 23.
+- **§4 negative-backtest, 29-pair set**: `pit_wfa.py --variant both`, no code changes needed (the
+  script already re-derives pairs per fold). fold2_exp Sharpe +0.3486, fold2_roll -0.4548 — same
+  qualitative sign-disagreement pattern as before, now on the current universe.
+- **7 non-PIT-safe comparison arms**: turned out to be a pure re-run task — all 7 already had a
+  working `--pit-safe` flag from when the gap was first disclosed (§7.17). `levy_jump_diffusion`'s
+  0%-GapFlag-overlap finding robustly replicated at much larger scale; `inverse_polarity`'s
+  0-candidates honest negative also replicated.
+- **§5 survivorship confound**: `crisis_regime_survivorship_confound_test.py` — real, disclosed
+  scope limit (only 20.6% of the 638,095-pair universe is S&P-500-trackable at all), and within
+  that trackable slice, no significant confound (z=1.26, p=0.21).
+- **§4 regime-strength vs. PIT-confirmation**: `regime_strength_vs_pit_confirmation.py` — striking
+  result, all 16 overlapping pairs are "strong," zero moderate/weak (z=3.98, p=0.0001).
+- (Bonus, surfaced while scoping #1): **§5's residual-correlation-factor split under cluster-
+  robust treatment** — real scope-narrowing finding: only 44 of 929 confirmed pairs are BOTH
+  crisis-first AND episode-assignable (885 are calm-first, a different population than the
+  original 6.7% figure's base). On that 44-pair subset: 31.8% survives residual-correlation
+  adjustment, cluster-bootstrap 95% CI [11.6%, 46.4%] — wide, genuinely uncertain.
+
+**Tier B, items done:**
+- **§5 regime classifier robustness (credit spreads)**: `crisis_regime_credit_proxy_comparison.py`
+  reuses `macro.py`'s already-built `credit_regime_proxy` (BAA10Y-based) and `crisis_regime_
+  correlation_diagnostic.py`'s `build_pair_level_table` (cheap — only the regime label changes,
+  not the expensive windows computation). **Real robustness win**: wide (credit-stress) vs. tight
+  (calm) confirmation rates are 0.2038% vs. 0.0922%, z=7.45, p≈0 — SAME direction as the original
+  VIX-based result and even more statistically significant. Directly answers §10's own ask
+  ("would strengthen the claim beyond a single macro indicator").
+- **Price-target divergence, alternative hypothesis**: `price_target_convergence_timing_test.py`
+  tests whether divergence MAGNITUDE predicts convergence timing/genuine-exit rather than trade-
+  direction agreement (Finding #65's tested hypothesis). Another honest negative: no correlation
+  with hold_bars (r=-0.02, p=0.43), no difference in signal-exit rate by divergence magnitude
+  (z=-0.90, p=0.37).
+- Items #10 (jump-diffusion intraday), #11 (SPAC universe source), #12 (paid crowding/flow data)
+  are genuinely blocked — #10 on real data accumulation over calendar time, #11/#12 need external
+  data acquisition beyond what this session can do. Flagged, not faked.
+
+**Tier C — the most important finding of this whole pass, a real revision to earlier tonight's
+work:** built `pool_variant_equal_weighted()` in `pit_wfa_pooled_equity_curve.py` as the
+alternative pooling construction Tier C item #17 named (equal-weight each fold's own Sharpe
+regardless of calendar span, instead of the existing calendar-day-weighted splice). **Real
+result: −0.1302 (rolling) / −0.1431 (expanding) — the OPPOSITE SIGN from the +0.1845/+0.1285
+figure reported earlier tonight.** This is not a minor caveat on top of the earlier finding — it
+directly falsifies reading the earlier positive pooled Sharpe as any kind of resolution. Updated
+`PAPER_MAGNITUDE.md` §4/§10 in three places to state both numbers side by side and remove any
+language that could be read as the strategy being "unambiguously positive." The fold-to-fold sign
+disagreement remains the one honest headline; neither pooled construction should be quoted alone.
+Items #14/#18/#19/#20 (universe survivorship beyond S&P 500, tool-execution limits, the CVaR
+scope boundary, the WRDS reproducibility barrier) were checked against the fork's own quoted
+disclosure language and are already adequately stated — no action needed. Item #16 (the PIT
+screen's own present-day-cache-glob property) is a genuine, larger rebuild (a real historical
+universe reconstruction off CRSP's point-in-time security master) — scoped, not attempted this
+session given its size. Item #15 (commit-tagging discipline for headline numbers) — noted as a
+going-forward practice, not retroactively applied to every existing number.
+
+Files: `research/bh_vs_by_full_universe_1d.py`, `debug/_verify_bh_vs_by_full_universe_1d.py`
+(4/4), `research/crisis_regime_survivorship_confound_test.py`, `research/regime_strength_vs_
+pit_confirmation.py`, `research/residual_correlation_cluster_bootstrap_test.py`, `research/
+crisis_regime_credit_proxy_comparison.py`, `research/price_target_convergence_timing_test.py`,
+`research/pit_wfa_pooled_equity_curve.py` (equal-weighted alternative added),
+`output/backtest/pit_wfa_{fold_comparison,portfolio,pair_sets}.parquet` (29-pair re-run),
+`PAPER_MAGNITUDE.md` (§4/§10 sign-fragility update, three locations), `docs/FINDINGS.md` (#66).

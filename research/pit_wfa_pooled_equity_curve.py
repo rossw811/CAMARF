@@ -34,6 +34,7 @@ variants would require an arbitrary choice of which fold2 to use.
 import os
 import sys
 
+import numpy as np
 import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -83,6 +84,40 @@ def sharpe_from_daily_pnl_local(daily_pnl: pd.Series) -> float:
     return portfolio_math.sharpe_from_daily_pnl(daily_pnl, ann_factor=252.0)
 
 
+def pool_variant_equal_weighted(trades_df: pd.DataFrame, wfa_variant: str, fold_order: list) -> dict:
+    """Tier C item #17 (2026-09-08 caveat/limitation search): an
+    ALTERNATIVE, equally-defensible pooling construction to pool_variant's
+    calendar-day-weighted splice -- not a correction to it (that method's
+    own docstring already discloses the weighting property as a real,
+    disclosed feature, not a bug). Here, each fold's OWN Sharpe is
+    computed independently, then the folds are averaged with EQUAL
+    weight regardless of how many calendar days each one spans. This
+    answers a different question than pool_variant: "if each fold's
+    result counted equally regardless of its length, what would the
+    average look like" vs. pool_variant's "what does the full spliced
+    daily P&L sequence say." Genuinely different tradeoffs: equal-
+    weighting avoids letting a long, thin-trading fold dominate purely by
+    calendar span, but it also throws away real information about how
+    much evidence each fold actually contains (a fold's own Sharpe
+    computed on very few observations is noisier, and equal-weighting
+    treats that noisy estimate the same as a well-supported one)."""
+    fold_sharpes = []
+    for fold in fold_order:
+        fold_trades = trades_df[(trades_df["wfa_variant"] == wfa_variant) & (trades_df["fold"] == fold)]
+        daily = portfolio_math.daily_pnl_from_trades(fold_trades, pnl_col="actual_pnl")
+        s = sharpe_from_daily_pnl_local(daily)
+        fold_sharpes.append({"fold": fold, "n_trades": len(fold_trades), "n_daily_obs": len(daily), "sharpe": s})
+
+    valid = [f["sharpe"] for f in fold_sharpes if np.isfinite(f["sharpe"])]
+    equal_weighted_mean_sharpe = float(np.mean(valid)) if valid else float("nan")
+
+    return {
+        "wfa_variant": wfa_variant, "fold_order": fold_order, "per_fold": fold_sharpes,
+        "n_folds_valid": len(valid),
+        "equal_weighted_mean_sharpe": equal_weighted_mean_sharpe,
+    }
+
+
 def main():
     if not os.path.exists(_TRADES_PATH):
         print(f"ERROR: {_TRADES_PATH} not found -- run pit_wfa_wrds_daily.py "
@@ -108,8 +143,14 @@ def main():
         for f in r["per_fold"]:
             print(f"  {f['fold']}: {f['n_trades']} trades, {f['n_daily_obs']} daily obs, "
                   f"fold Sharpe={f['fold_sharpe']:.4f}, range={f['date_range']}")
-        print(f"  POOLED: {r['n_pooled_daily_obs']} daily obs, total P&L=${r['pooled_total_pnl']:,.2f}, "
-              f"Sharpe={r['pooled_sharpe']:.4f}")
+        print(f"  POOLED (calendar-day-weighted): {r['n_pooled_daily_obs']} daily obs, "
+              f"total P&L=${r['pooled_total_pnl']:,.2f}, Sharpe={r['pooled_sharpe']:.4f}")
+
+        r_eq = pool_variant_equal_weighted(trades_df, wfa_variant, fold_order)
+        print(f"  POOLED (equal-weighted-per-fold, alternative construction): "
+              f"mean Sharpe={r_eq['equal_weighted_mean_sharpe']:.4f} "
+              f"(fold Sharpes: {[round(f['sharpe'], 4) for f in r_eq['per_fold']]})")
+        r["equal_weighted_mean_sharpe"] = r_eq["equal_weighted_mean_sharpe"]
 
     if results:
         flat_rows = [{k: v for k, v in r.items() if k != "per_fold"} for r in results]

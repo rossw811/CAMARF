@@ -605,15 +605,17 @@ profitably traded the same pairs a backward-looking screen certifies —
 half these folds are still net negative), but it also does not deepen it
 into a stronger, more damning result than the smaller-scale table already
 showed. **A pooled-across-folds headline Sharpe was built 2026-09-08**
-(within each `wfa_variant` separately, not mixed across variants —
-+0.1845 rolling, +0.1285 expanding, both positive) via real equity-curve
-splicing (chronological concatenation, inter-fold calendar gap dropped
-rather than zero-filled) rather than a naive average of already-annualized
-ratios. Read with real caution: the splicing method weights by calendar
-days present in each fold's own daily series, not trade count, so the
-much longer-spanning `fold2_roll` (1996-2026, 10,988 daily observations)
-dominates the pooled figure over `fold1` (1946-1957, only 4,018) despite
-their opposite signs — full account and caveat in §4/§10.
+(within each `wfa_variant` separately, not mixed across variants) via
+real equity-curve splicing (chronological concatenation, inter-fold
+calendar gap dropped rather than zero-filled) rather than a naive average
+of already-annualized ratios. The calendar-day-weighted construction
+gives +0.1845 rolling / +0.1285 expanding (both positive); an equally
+defensible ALTERNATIVE construction — equal-weighting each fold's own
+Sharpe regardless of its calendar span — gives −0.1302 / −0.1431 (both
+negative), the opposite sign. **This is not a minor caveat: the pooled
+headline's sign itself is not robust to which defensible weighting
+scheme is used.** No single pooled number should be read as resolving
+the underlying fold-to-fold sign disagreement — full account in §4/§10.
 
 ---
 
@@ -1387,12 +1389,21 @@ single catch-all section, since each has a different scope:
   pooled mean/std regardless of the two folds' opposite signs
   (fold1 Sharpe −0.4779, fold2_roll Sharpe +0.2175). The positive pooled
   number is a real, correctly-computed consequence of this weighting, not
-  an artifact of a coding error — but it should not be read as "the
-  strategy is unambiguously positive across history," since that
-  conclusion rests on fold2 simply covering more calendar time, not on
-  fold2 being more representative or more reliable than fold1. The
-  fold-to-fold sign disagreement this section already reports remains the
-  more honest headline than the single pooled number alone.
+  an artifact of a coding error. **Confirmed decisively 2026-09-08 that
+  this is not just a caveat but a load-bearing choice**: an equally
+  defensible ALTERNATIVE construction — equal-weighting each fold's own
+  Sharpe regardless of its calendar span, via
+  `pool_variant_equal_weighted()` in the same script — gives **−0.1302**
+  (rolling) and **−0.1431** (expanding), the OPPOSITE SIGN from the
+  calendar-day-weighted figure above. The pooled headline's sign is not
+  robust to which defensible weighting scheme is chosen — this is not
+  "the strategy is unambiguously positive across history" under any
+  honest reading, since two reasonable pooling methods disagree on the
+  sign itself. The fold-to-fold sign disagreement this section already
+  reports remains the single most honest headline — the "positive pooled
+  Sharpe" number above should be read as one specific construction's
+  output, presented alongside its equal-weighted counterpart, never
+  alone.
   **Checked directly this session (2026-09-08), resolving
   the earlier "unverified" flag on this point**: the corrected-scale
   universe's WRDS core is NOT a raw present-day cache glob the way the
@@ -1604,17 +1615,28 @@ document.
   mid/small-cap still current-constituents-only — no equivalent
   point-in-time product exists for S&P 400/600 in this WRDS
   subscription). **DONE (pooled-Sharpe half), 2026-09-08** — see §4 for
-  the full result and its real, disclosed caveat (+0.1845 rolling,
-  +0.1285 expanding, both positive, but the pooling weights by calendar
-  days present per fold, not trade count, so a fold spanning more
-  history dominates the pooled figure regardless of the folds'
-  individually opposite signs — not a clean resolution of the underlying
-  sign disagreement).
-- Test whether §4 and §5 actually interact — does a pair's regime-context
-  signal (§5) predict whether it survives a genuine PIT re-screen (§4)?
-  Currently the two findings share a data pipeline and a thesis, not a
-  joint test; this is the most direct way to move "why one paper, not
-  two" from a thematic argument to an empirically demonstrated one.
+  the full result. Two defensible pooling constructions disagree even on
+  SIGN: calendar-day-weighted gives +0.1845 rolling / +0.1285 expanding;
+  equal-weighted-per-fold gives −0.1302 / −0.1431. Not a clean resolution
+  of the underlying sign disagreement — the opposite: direct confirmation
+  that no single pooled number should be trusted over the fold-to-fold
+  disagreement itself.
+- **DONE, 2026-09-08** — does a pair's regime-context signal (§5) predict
+  whether it survives a genuine PIT re-screen (§4)?
+  `research/pit_confirmation_vs_regime_interaction.py`
+  (`debug/_verify_pit_confirmation_vs_regime_interaction.py`, 8/8) joins
+  the two directly. Real result, striking but genuinely ambiguous: §5's
+  statistically-confirmed crisis-reappearance pairs are PIT-confirmed at
+  1.72% vs. 0.0003% for everything else (z=98.7, p≈0). Checked and
+  disclosed before trusting it: only 18 of §4's 320 PIT-confirmed pairs
+  even appear in §5's 638,095-pair universe (a real, low-power
+  constraint on the test, not hidden), and both screens likely select for
+  the SAME underlying property (genuine correlation/cointegration
+  strength) — so this may be two tests detecting one signal, not a novel
+  regime-conditioning insight. Read as real and positive, not as a clean
+  empirical demonstration of "why one paper, not two" — the honest next
+  step (not built) is testing whether the effect survives controlling for
+  raw correlation strength directly. Full account: Finding #65.
 
 ---
 

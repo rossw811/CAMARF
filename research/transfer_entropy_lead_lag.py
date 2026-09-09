@@ -179,6 +179,45 @@ def run_pair(symbol_a: str, symbol_b: str, tf_label: str, max_lag: int, n_bins: 
             "status": "ok", "rows": rows}
 
 
+def summarize_pair_for_ml(result: dict) -> dict:
+    """Reduces run_pair()'s full per-lag/per-direction row set to a single,
+    FIXED-ORIENTATION (symbol_a/symbol_b, not "whichever leg happened to
+    win") scalar summary suitable as an ml.py feature -- added 2026-09-08,
+    Ross approved wiring transfer entropy into ml.py as the candidate
+    feature PAPER.md §10 originally named. Picks the lag with the single
+    strongest (lowest p-value) result across BOTH directions, then reports
+    the SIGNED difference TE(b->a) - TE(a->b) at that lag -- positive means
+    symbol_b's past predicts symbol_a's future more than the reverse,
+    consistent in sign across every pair regardless of which leg happens
+    to be called symbol_a. `te_significance` = 1 - min(p_value) at that
+    lag (both directions), so higher is more significant -- easier for a
+    tree model to split on than a raw p-value clustered near 0."""
+    if result["status"] != "ok" or not result["rows"]:
+        return {"symbol_a": result["symbol_a"], "symbol_b": result["symbol_b"],
+                "tf_label": result["tf_label"], "te_directional_diff": float("nan"),
+                "te_significance": float("nan"), "te_best_lag": None}
+
+    ok_rows = [r for r in result["rows"] if r["status"] == "ok"]
+    if not ok_rows:
+        return {"symbol_a": result["symbol_a"], "symbol_b": result["symbol_b"],
+                "tf_label": result["tf_label"], "te_directional_diff": float("nan"),
+                "te_significance": float("nan"), "te_best_lag": None}
+
+    best = min(ok_rows, key=lambda r: r["p_value"])
+    best_lag = best["lag"]
+    symbol_a, symbol_b = result["symbol_a"], result["symbol_b"]
+    b_to_a = next((r for r in ok_rows if r["lag"] == best_lag
+                   and r["direction"] == f"{symbol_b}->{symbol_a}"), None)
+    a_to_b = next((r for r in ok_rows if r["lag"] == best_lag
+                   and r["direction"] == f"{symbol_a}->{symbol_b}"), None)
+    te_diff = (b_to_a["te"] if b_to_a else 0.0) - (a_to_b["te"] if a_to_b else 0.0)
+    min_p = min(r["p_value"] for r in ok_rows if r["lag"] == best_lag)
+
+    return {"symbol_a": symbol_a, "symbol_b": symbol_b, "tf_label": result["tf_label"],
+            "te_directional_diff": float(te_diff), "te_significance": float(1.0 - min_p),
+            "te_best_lag": int(best_lag)}
+
+
 def main():
     p = argparse.ArgumentParser(description="Transfer entropy lead-lag scan over confirmed pairs")
     p.add_argument("--tf", default="1D")
@@ -201,6 +240,7 @@ def main():
     log.info(f"{len(pairs)} confirmed pairs at tf={args.tf}")
 
     all_rows = []
+    summary_rows = []
     for symbol_a, symbol_b in pairs:
         result = run_pair(symbol_a, symbol_b, args.tf, args.max_lag, args.n_bins, args.n_perm, args.seed)
         if result["status"] == "ok":
@@ -212,6 +252,7 @@ def main():
                          f"TE={best['te']:.4f} bits, p={best['p_value']:.3f}")
         else:
             log.info(f"  {symbol_a}/{symbol_b}: {result['status']}")
+        summary_rows.append(summarize_pair_for_ml(result))
 
     if all_rows:
         os.makedirs(_OUT_DIR, exist_ok=True)
@@ -220,6 +261,12 @@ def main():
         log.info(f"Saved {len(out_df)} rows to output/research/transfer_entropy_lead_lag.parquet")
     else:
         log.warning("No pairs produced results.")
+
+    if summary_rows:
+        summary_df = pd.DataFrame(summary_rows)
+        summary_df.to_parquet(os.path.join(_OUT_DIR, "transfer_entropy_pair_summary.parquet"))
+        log.info(f"Saved {len(summary_df)}-pair ml.py-ready summary to "
+                 f"output/research/transfer_entropy_pair_summary.parquet")
 
 
 if __name__ == "__main__":

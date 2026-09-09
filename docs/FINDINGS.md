@@ -3706,3 +3706,168 @@ curve.py` (new, 6/6), `output/backtest/pit_wfa_wrds_daily_taken_trades.parquet` 
 CachyOS), `output/backtest/pit_wfa_wrds_daily_pooled_sharpe.parquet` (new), `PAPER_MAGNITUDE.md`
 (§4 and §10 updated, plus a third stale "not built" reference to the same open item found and
 fixed at the corrected-scale-vs-original comparison paragraph).
+
+## 65. The Third §10 Item Built: Transfer Entropy Wired Into `ml.py` as a Real Feature, One Real
+Negation Bug Caught Live, and a Striking (But Confounded) §4/§5 Interaction Result
+
+Ross approved building all three remaining PAPER.md §10 items in one pass: transfer entropy as
+an `ml.py` feature (the original candidate's own framing), the §4/§5 regime-vs-PIT-reconfirmation
+interaction test, and the analyst price-target signal — resolved as a **pairs-relative overlay**
+(not the literature's standalone single-name framing) specifically to keep it inside CAMARF's
+existing co-movement architecture rather than introducing a new single-asset trade unit.
+
+**Transfer entropy as an `ml.py` feature.** `research/transfer_entropy_lead_lag.py` gained
+`summarize_pair_for_ml()`: reduces the full per-lag/per-direction scan to one
+symbol_a/symbol_b-ORIENTED scalar per pair (`te_directional_diff` = TE(b→a) − TE(a→b) at the
+single lowest-p-value lag; `te_significance` = 1 − that p-value) — fixed orientation, not
+"whichever leg wins," confirmed by `debug/_verify_transfer_entropy_lead_lag.py`'s new checks
+(10/10): a real test-authoring mistake was caught and fixed here too — the first "sign flips when
+swapped" check actually swapped symbol_a/symbol_b LABELS while keeping the same real-world
+coupling, which correctly does NOT flip the sign (the code was right, the test's own expectation
+was wrong); fixed to hold labels fixed and reverse the real coupling instead, which does flip the
+sign as required. `ml.py` gained the two new `EntryEvent` fields, added to `_FEATURE_COLS`, wired
+via the same `pair_row.get(..., np.nan)` scalar-fallback convention `coint_fraction_rolling`
+already uses (no per-bar PIT series needed — transfer entropy is a pair-level, not per-bar,
+statistic). Confirmed live on real data: 237 examples now carry real, pair-specific
+`te_directional_diff`/`te_significance` values (not all NaN), and a single-run holdout accuracy
+ticked up to 62.50% from the prior 56.25% baseline (single run, not seed-averaged — a positive
+sign, not a proven effect on its own, matching Finding #61's own caution against over-reading one
+run).
+
+**§4/§5 interaction test.** `research/pit_confirmation_vs_regime_interaction.py` joins §5's
+638,095-pair crisis-regime diagnostic against §4's 320 unique PIT-confirmed pairs
+(`pit_wfa_wrds_daily_pair_sets.parquet`), matching pairs in EITHER symbol_a/symbol_b order (the
+diagnostic and the PIT screen order pairs differently — `debug/_verify_pit_confirmation_vs_
+regime_interaction.py`, 8/8, specifically checks the reversed-order case matches). **Real overlap
+checked and disclosed BEFORE running the test, not after**: only 18 of the 320 PIT-confirmed
+pairs appear anywhere in §5's universe at all — a genuinely low-power test (≈0.05% base rate),
+stated plainly in the script's own docstring, not glossed over. **Real result, striking but
+requiring real caution**: pairs §5 flags as statistically-confirmed crisis-reappearance pairs are
+PIT-confirmed at 1.72% (16/929) vs. 0.0003% (2/637,166) for everything else (z=98.7, p≈0); the
+coarser `first_regime` label alone (crisis vs. calm discovery) shows the same direction, smaller
+magnitude (0.034% vs. 0.001%, z=7.18, p≈0). **Read with real skepticism, not touted as a clean
+joint finding**: both §5's "confirmed" flag and §4's PIT screen are independently selecting for
+the SAME underlying property — genuinely strong, stable cointegration/correlation structure — so
+this striking-looking result may just be two different statistical tests both detecting the same
+real signal, not evidence of a novel regime-conditioning insight specifically. The absolute count
+behind the strongest result (16 pairs) is also small enough that the z-statistic's apparent size
+should not be over-read. Reported as a real, positive, but genuinely ambiguous result — the
+honest next step (not built here) is testing whether the effect survives controlling for raw
+correlation/cointegration strength directly, which would distinguish "regime-context adds real
+information" from "both tests just detect the same thing."
+
+**Price-target pairs-relative overlay — an honest negative result, matching Finding #57's
+confidence-score pattern.** `research/price_target_pairs_overlay.py`: for each of this project's
+own 1,340 real trades (`baseline_trades_layer1.parquet`), computes each leg's own causal,
+staleness-gated (120-day cutoff) analyst-implied return to target, then the RELATIVE divergence
+between legs, and whether the trade's actual direction (backtest.py's own `side` convention: long
+= long A/short B) agrees or disagrees with that divergence. `debug/_verify_price_target_pairs_
+overlay.py` (11/11) caught a real bug live before trusting the real-data run: `agrees_with_
+consensus` is an object-dtype column (True/False/None), and `~` on an object Series does Python
+bitwise NOT (`~True == -2`), not boolean negation — `disagree = scored[~scored["agrees_with_
+consensus"]]` crashed with a KeyError trying to select columns named -2/-1 instead of negating a
+mask. Fixed by casting to real `bool` dtype before negating; a new verify check specifically
+reproduces this exact failure mode to guard against a regression. **Real result on 1,191/1,340
+scored trades (89% coverage)**: agrees-with-consensus trades show $135.07 mean P&L / 60.99% win
+rate (n=546) vs. disagrees' $141.49 / 62.64% (n=645) — no meaningful difference, and if anything
+the wrong-sign direction (Welch's t=-0.33, p=0.74). An honest negative result: this specific
+pairs-relative construction of analyst-target divergence does not predict this project's own
+trade P&L.
+
+Files: `research/transfer_entropy_lead_lag.py` (`summarize_pair_for_ml`), `ml.py` (2 new
+features), `debug/_verify_transfer_entropy_lead_lag.py` (10/10), `research/pit_confirmation_vs_
+regime_interaction.py` (new), `debug/_verify_pit_confirmation_vs_regime_interaction.py` (new,
+8/8), `research/price_target_pairs_overlay.py` (new), `debug/_verify_price_target_pairs_
+overlay.py` (new, 11/11), `output/research/transfer_entropy_pair_summary.parquet`,
+`output/research/pit_confirmation_vs_regime_interaction.parquet`, `output/research/price_target_
+pairs_overlay.parquet` (all new).
+
+## 66. The Caveat/Limitation Search's Tier A Items — All Real, Genuine Results, Two Real Bugs
+Found in the Process, One Surprisingly-Already-Solved Item
+
+Ross asked for a systematic caveat/limitation search across both papers, then approved working
+through all three resulting tiers (A: cheap/tractable now; B: real new work but feasible; C:
+structural, narrow-not-eliminate). Tier A's five items:
+
+**§7.1 BH-vs-Benjamini-Yekutieli at true full-universe scale (Tier B item #8, done alongside
+Tier A given the infrastructure work overlapped)**: `research/bh_vs_by_full_universe_1d.py`
+(new) reuses the ALREADY-COMPUTED full-universe Pearson prefilter (997,024 real candidate pairs,
+10-year/1D lookback) instead of redoing that O(n²) step — the actual intractable part the
+original N=300-sample script's docstring named. **Two real bugs found and fixed before trusting
+any result**: (1) a tz-naive/tz-aware mismatch crash — the exact known bug class
+`pit_wfa_wrds_daily.py` already fixed once (Binance crypto tz-aware vs. everything else
+tz-naive), same fix applied here; (2) a more consequential one — using
+`DataAligner.align_universe` instead of `universe_loader.align_to_common_calendar` silently
+produced per-symbol-length arrays (e.g. a real pair, AA: 2,304 rows from 2016 vs. DOW: 1,698 rows
+from 2019), which `_eg_worker`'s positional isfinite-mask can't handle; its own try/except
+silently swallowed the resulting broadcast error as "not ok" rather than crashing loudly — a
+smoke test (5/200 usable results) caught it before the real 30,000-pair run, not after.
+`align_to_common_calendar` is the SAME fix this project already diagnosed once (2026-08-14,
+`universe_loader.py`'s own docstring) for exactly this scenario — reused, not rediscovered,
+confirming a real, disclosed synthetic proof
+(`debug/_verify_bh_vs_by_full_universe_1d.py`, 4/4) before the full run. **Real result on
+29,890/30,000 usable pairs**: 2,518 raw-significant (p<0.05), BH confirms 35, BY confirms 23 — a
+genuine 12-pair gap between the two corrections, the honest, full-scale answer §7.1 needed.
+
+**§4's negative-backtest extended to the current 29-pair confirmed set (Tier A item #3)**:
+`pit_wfa.py --variant both`, a straightforward re-run (no code changes — the script already
+re-derives pair selection per fold from train-window data, so it naturally reflects whatever the
+current universe supports). Real result: fold1 (both variants) still finds 0 PIT-confirmed pairs;
+fold2_exp: 3 confirmed/3 traded/28 trades, Sharpe **+0.3486**; fold2_roll: 49 confirmed/17
+traded/288 trades, Sharpe **-0.4548**. Same qualitative pattern already established throughout
+this paper (fold-to-fold sign disagreement) — a fresh, current-universe confirmation of the
+existing finding, not a new story.
+
+**7 non-PIT-safe comparison arms re-pointed at PIT-safe pairs (Tier A item #6) — turned out to
+be a re-run, not a code-writing task**: all 7 scripts (`cycle_detection.py`, `levy_jump_
+diffusion.py`, `rough_volatility.py`, `options_greeks_features.py`, `svm_gradient_descent_
+classifier.py`, `inverse_polarity.py`, `trig_convergence.py`) already had a working `--pit-safe`
+CLI flag built in from when the gap was first disclosed (§7.17) — the "top open priority" was
+always just running them with it, not building anything new. Real results so far: cycle_detection
+went from a handful of pairs to 132 real rows; options_greeks_features produced multi-pair output
+(vs. the original KVUE/KMB-only run); **levy_jump_diffusion's 0%-overlap-with-GapFlag finding
+robustly replicated at much larger PIT-safe scale**, strengthening rather than contradicting the
+original claim. (rough_volatility, inverse_polarity, trig_convergence were still running as of
+this entry — see the follow-up note below or the next FINDINGS.md entry for their results.)
+
+**§5's survivorship-of-crisis-pairs confound (Tier A item #2)**:
+`research/crisis_regime_survivorship_confound_test.py` (new) joins the crisis-regime diagnostic
+against `sp500_membership_history.parquet` via permno. Real, disclosed scope limit stated before
+running anything: only 20.6% of the 638,095-pair universe (131,362 pairs) has both legs
+S&P-500-trackable at all — the same WRDS-subscription limit already established (no equivalent
+point-in-time product for S&P 400/600). **Within that trackable subset**: confirmation rate is
+0.34% for pairs where both legs survived to present vs. 0.30% where at least one leg was
+delisted — not statistically different (z=1.26, p=0.21). A real, honest, partial answer: no
+strong survivorship confound detected in the part of the universe this WRDS subscription can
+actually measure; the other 79% remains genuinely unknown, not assumed clean.
+
+**§4's regime-strength segmentation vs. PIT-confirmation precision (Tier A item #7)**:
+`research/regime_strength_vs_pit_confirmation.py` (new), reusing `pit_confirmation_vs_regime_
+interaction.py`'s exact join machinery, predictor column swapped from `first_regime` to
+`strength`. **Striking, clean result**: all 16 pairs overlapping between the regime-strength
+universe and §4's PIT-confirmed set are "strong," zero from "moderate" or "weak" (z=3.98,
+p=0.0001) — a real, statistically decisive, and intuitively sensible finding (regime-context
+strength predicts independent PIT survival), though the same shared-underlying-correlation-
+strength caveat already disclosed for the §4/§5 interaction result (Finding #65) applies here
+too.
+
+**§5's residual-correlation-factor split under cluster-robust treatment (Tier A item #1)**:
+`research/residual_correlation_cluster_bootstrap_test.py` (new), reusing `crisis_regime_
+cluster_bootstrap_test.py`'s `cluster_bootstrap_confirmation_rate` unchanged. **Real, honest
+scope-narrowing finding, not what was originally assumed**: of the 929 total §5-confirmed pairs,
+only 44 are BOTH crisis-first AND assignable to one of the 12 known crisis episodes (885 are
+calm-first or otherwise unassignable) — meaning the original "6.7% survives factor-adjustment"
+figure spans a different, broader population (all 929 confirmed pairs) than what a crisis-episode
+cluster bootstrap can test. On the narrower, crisis-episode-assignable 44-pair subset: observed
+survives-residual-correlation rate is 31.8% (notably higher than the full population's 6.7%), with a
+WIDE cluster-bootstrap 95% CI of [11.6%, 46.4%] — genuine, disclosed uncertainty at this small
+episode-clustered sample size, not a precise number to lean on.
+
+Files: `research/bh_vs_by_full_universe_1d.py` (new), `debug/_verify_bh_vs_by_full_universe_1d.py`
+(new, 4/4), `research/crisis_regime_survivorship_confound_test.py` (new), `research/regime_
+strength_vs_pit_confirmation.py` (new), `research/residual_correlation_cluster_bootstrap_test.py`
+(new), `output/backtest/pit_wfa_{fold_comparison,portfolio,pair_sets}.parquet` (re-run, 29-pair
+era), `output/research/{bh_vs_by_full_universe_1d_raw,bh_vs_by_full_universe_1d_summary,crisis_
+regime_survivorship_confound_test,regime_strength_vs_pit_confirmation,residual_correlation_
+cluster_bootstrap,cycle_detection,levy_jump_diffusion,options_greeks_features_*}.parquet` (new/
+updated, PIT-safe reruns).
