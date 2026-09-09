@@ -1,0 +1,4 @@
+2026-09-08 14:30:57  INFO      === sequential_bootstrap_ml_comparison.py: AFML Ch.4 average-uniqueness / sequential-bootstrap comparison arm vs. ml.py's baseline sample weighting ===
+2026-09-08 14:31:06  INFO      237 labeled examples across 12 pairs
+2026-09-08 14:31:07  INFO      Result: {'status': 'ok', 'n_train': 142, 'n_val': 47, 'n_test': 48, 'n_classes': 2, 'avg_uniqueness_mean': 0.45708867569921896, 'avg_uniqueness_min': 0.09291885800150262, 'effective_n_train': 64.9065919492891, 'test_acc_baseline': 0.5625, 'test_acc_uniqueness_weighted': 0.5833333333333334, 'test_acc_sequential_bootstrap': 0.6666666666666666}
+2026-09-08 14:31:07  INFO      Saved to output/research/sequential_bootstrap_ml_comparison.parquet

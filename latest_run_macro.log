@@ -1,22 +1,15 @@
 === CAMARF macro.py ===
-date:        2026-09-01 20:07
+date:        2026-09-03 07:50
 runtime_min: 0.0
 
 === series ===
-  (none)
+  VIXCLS         rows=9567   source=fred
+  cot_es         rows=1506   source=cache
+  cot_nq         rows=238    source=cache
 
 === regime_distributions ===
-yield_curve: {'normal': 5986, 'steep': 2949, 'flat_inverted': 1224, nan: 86}
-credit: {nan: 9494, 'normal': 403, 'tight': 348}
-credit_proxy: {'normal': 4603, 'tight': 4277, 'wide': 1276, nan: 89}
-vix: {'normal': 4674, 'calm': 2957, 'elevated': 1247, nan: 1014, 'crisis': 353}
-vix_term_structure: {nan: 5530, 'deep_contango': 2780, 'contango': 1458, 'flat': 296, 'backwardation': 181}
-dollar: {nan: 5361, 'strong': 1906, 'neutral': 1772, 'weak': 1206}
-real_rate: {nan: 4585, 'low': 2029, 'high': 1820, 'normal': 1811}
-inflation_expectation: {nan: 4585, 'normal': 2300, 'high': 1746, 'low': 1614}
-recession: {'expansion': 9491, 'contraction': 754}
-recession_realtime: {'expansion': 8296, 'contraction_risk': 1746, nan: 203}
-cot_es: {'neutral': 5952, nan: 2960, 'crowded_short': 926, 'crowded_long': 407}
-cot_nq: {nan: 9100, 'neutral': 1096, 'crowded_long': 44, 'crowded_short': 5}
+vix: {'normal': 4677, 'calm': 2956, 'elevated': 1247, nan: 1014, 'crisis': 353}
+cot_es: {'neutral': 5954, nan: 2960, 'crowded_short': 926, 'crowded_long': 407}
+cot_nq: {nan: 9100, 'neutral': 1098, 'crowded_long': 44, 'crowded_short': 5}
 
 === end ===

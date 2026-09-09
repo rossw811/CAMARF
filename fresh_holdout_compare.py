@@ -85,8 +85,13 @@ def pair_based_split(holdout: pd.DataFrame, reserve_fraction: float = _PAIR_RESE
     reserved_pairs = set(all_pairs[::step][:n_reserve])
     dev_pairs = set(all_pairs) - reserved_pairs
 
-    reserved_trades = holdout[holdout.apply(lambda r: (r["symbol_a"], r["symbol_b"]) in reserved_pairs, axis=1)]
-    dev_trades = holdout[holdout.apply(lambda r: (r["symbol_a"], r["symbol_b"]) in dev_pairs, axis=1)]
+    # VECTORIZED (2026-09-02, optimization sweep): row-wise `.apply(lambda r: (r["symbol_a"],
+    # r["symbol_b"]) in reserved_pairs, axis=1)` built a full Series per row for a 2-tuple
+    # membership test; MultiIndex.isin does the same check as one vectorized pass.
+    pair_index = pd.MultiIndex.from_arrays([holdout["symbol_a"], holdout["symbol_b"]])
+    is_reserved_mask = pair_index.isin(reserved_pairs)
+    reserved_trades = holdout[is_reserved_mask]
+    dev_trades = holdout[~is_reserved_mask]
 
     sharpe_dev, n_dev, days_dev = _pooled_sharpe(dev_trades)
     sharpe_reserved, n_reserved, days_reserved = _pooled_sharpe(reserved_trades)
@@ -104,7 +109,9 @@ def combined_split(holdout: pd.DataFrame, fresh_fraction: float = _TIME_FRESH_FR
     reserved x fresh is the single cell no prior evaluation has touched by either axis."""
     p = pair_based_split(holdout, reserve_fraction)
     reserved_pairs = set(p["reserved_pairs"])
-    is_reserved = holdout.apply(lambda r: (r["symbol_a"], r["symbol_b"]) in reserved_pairs, axis=1)
+    # VECTORIZED (2026-09-02, optimization sweep): same fix as pair_based_split above --
+    # MultiIndex.isin instead of a row-wise `.apply` rebuilding the same membership test.
+    is_reserved = pd.MultiIndex.from_arrays([holdout["symbol_a"], holdout["symbol_b"]]).isin(reserved_pairs)
 
     start = holdout["entry_time"].min()
     end = holdout["entry_time"].max()

@@ -82,6 +82,57 @@ DIR_TO_LABEL = {
 }
 
 
+_WRDS_CACHE_DIR = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "output", "cache", "wrds")
+
+
+def _load_wrds_or_ibkr(symbol: str, tf_label: str):
+    """Fallback when `DataStore.load` (yfinance-cache-only) has nothing for
+    `symbol` -- added 2026-09-08 after finding this module's callers (this
+    project's whole family of research/*.py lead-lag/comparison scripts)
+    silently returned `no_data` for every WRDS-only symbol (PERMNO<n>
+    fallback tickers, GVKEY<n> international listings) even though this
+    project's own CLAUDE.md rule already states WRDS/CRSP is primary for
+    daily-and-coarser US equity/ETF, not yfinance -- the SAME class of gap
+    already found and fixed in `options.py:load_price_series()` this
+    session, here at the shared research-loader level instead of one
+    narrow caller. Returns a minimal DataFrame with a 'close' column and a
+    DatetimeIndex (sufficient for `DataAligner.align_universe` -- see this
+    module's own docstring: align_intraday computes gap_flag fresh from
+    the index, no other column required), or None if neither source has
+    the symbol. tf_label == "1D" checks WRDS (CRSP total-return-adjusted,
+    this project's stated 1D-primary source); any tf_label also tries the
+    IBKR intraday supplement (`ibkr_supplement_reader`, confirmed-pairs-
+    only, ~92-symbol scope)."""
+    if tf_label == "1D":
+        wrds_path = os.path.join(_WRDS_CACHE_DIR, f"{symbol}_1D.parquet")
+        if os.path.exists(wrds_path):
+            import pandas as pd
+            df = pd.read_parquet(wrds_path)
+            # CRSP US-equity files use 'close_total_return' (total-return-
+            # adjusted, this project's stated preferred column); Compustat
+            # Global international-listing files (GVKEY<n>_<w>W symbols)
+            # have no such column, only a plain 'close' -- found 2026-09-08
+            # when this fallback silently skipped every GVKEY-labeled
+            # symbol despite its cache file existing on disk, because only
+            # 'close_total_return' was checked. Prefer the total-return
+            # column when present; fall back to plain 'close' otherwise.
+            col = "close_total_return" if "close_total_return" in df.columns else (
+                "close" if "close" in df.columns else None)
+            if col:
+                close = df[col].dropna()
+                close.index = pd.to_datetime(close.index)
+                if len(close):
+                    return close.to_frame("close")
+
+    import ibkr_supplement_reader
+    ibkr_df = ibkr_supplement_reader.load_supplement(symbol, tf_label)
+    if ibkr_df is not None and "close" in ibkr_df.columns and len(ibkr_df):
+        return ibkr_df[["close"]]
+
+    return None
+
+
 def resolve_tf_results_dir(tf_dir):
     """output/results/{tf_dir} if it exists; otherwise the most recent
     output/results/{tf_dir}_stale_* archive directory. See
@@ -123,8 +174,15 @@ def load_aligned_pair(symbol_a, symbol_b, tf_label):
     DataAligner.align_universe together, exactly mirroring analysis.py's
     own Step 2. Returns (df_a, df_b), either of which may be None if that
     symbol has no cached data or fails alignment."""
+    # NOTE: `df or fallback` is NOT safe here -- a non-empty DataFrame's
+    # truth value is ambiguous (raises ValueError), so this must be an
+    # explicit None/empty check, not Python's `or`.
     df_a = DataStore.load(symbol_a, tf_label)
+    if df_a is None or df_a.empty:
+        df_a = _load_wrds_or_ibkr(symbol_a, tf_label)
     df_b = DataStore.load(symbol_b, tf_label)
+    if df_b is None or df_b.empty:
+        df_b = _load_wrds_or_ibkr(symbol_b, tf_label)
     return align_pair_dataframes(symbol_a, df_a, symbol_b, df_b, tf_label)
 
 
@@ -139,6 +197,8 @@ def load_aligned_symbols(symbols, tf_label):
     raw = {}
     for sym in symbols:
         df = DataStore.load(sym, tf_label)
+        if df is None or df.empty:
+            df = _load_wrds_or_ibkr(sym, tf_label)
         if df is not None and not df.empty:
             raw[sym] = df
     if not raw:

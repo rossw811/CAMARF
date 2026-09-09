@@ -1,2 +1,30 @@
-2026-07-27 15:19:26  INFO      Fetched 26 FX series from frb_all.fx_daily (1971-01-04 through 2025-02-07 -- STALE, see staleness warning)
-2026-07-27 15:19:26  INFO      --only-fx complete: 26 FX series saved to output/cache/wrds/FX_*_1D.parquet
+2026-09-02 20:19:09  INFO      CAMARF data_wrds.py -- 1538 US equity/ETF symbols targeted (bulk mode)
+2026-09-02 20:19:11  WARNING   resolve_permnos_bulk: 'BIO' is AMBIGUOUS -- 2 distinct permnos tied at the same namedt ([61508, 61516]) -- refusing to guess, excluded from result
+2026-09-02 20:19:11  WARNING   resolve_permnos_bulk: 'CWEN' is AMBIGUOUS -- 2 distinct permnos tied at the same namedt ([14030, 15332]) -- refusing to guess, excluded from result
+2026-09-02 20:19:12  WARNING   resolve_permnos_bulk: 'GEF' is AMBIGUOUS -- 2 distinct permnos tied at the same namedt ([83233, 83264]) -- refusing to guess, excluded from result
+2026-09-02 20:19:12  WARNING   resolve_permnos_bulk: 'LEN' is AMBIGUOUS -- 2 distinct permnos tied at the same namedt ([52708, 89731]) -- refusing to guess, excluded from result
+2026-09-02 20:19:12  WARNING   resolve_permnos_bulk: 'MKC' is AMBIGUOUS -- 2 distinct permnos tied at the same namedt ([52090, 89155]) -- refusing to guess, excluded from result
+2026-09-02 20:19:12  WARNING   resolve_permnos_bulk: 'STZ' is AMBIGUOUS -- 2 distinct permnos tied at the same namedt ([64899, 69796]) -- refusing to guess, excluded from result
+2026-09-02 20:19:12  WARNING   resolve_permnos_bulk: 'TAP' is AMBIGUOUS -- 2 distinct permnos tied at the same namedt ([59248, 90562]) -- refusing to guess, excluded from result
+2026-09-02 20:19:12  WARNING   resolve_permnos_bulk: 'UA' is AMBIGUOUS -- 2 distinct permnos tied at the same namedt ([15980, 90979]) -- refusing to guess, excluded from result
+2026-09-02 20:19:12  INFO      Resolved 1507/1538 symbols to PERMNOs (31 not found)
+2026-09-02 20:19:12  INFO      --only-delisted-sp500: skipping the main universe fetch (assumed already run), going straight to the survivorship-bias-fix pass.
+2026-09-02 20:19:13  INFO      S&P 500 membership history: 2084 spells, 1956 distinct permnos (503 currently active)
+2026-09-02 20:19:13  INFO      Survivorship-bias fix: 1340 historically-delisted S&P 500 permnos not covered by the ticker-based universe above -- fetching their full history.
+2026-09-02 20:19:14  WARNING     207 label collision(s) with an active ticker or another delisted permno's last-known ticker -- re-labeled as PERMNO<n> to avoid overwriting a live symbol's file
+2026-09-02 20:23:28  INFO        batch 0-200/1340: 200 symbols fetched
+2026-09-02 20:27:15  INFO        batch 200-400/1340: 200 symbols fetched
+2026-09-02 20:31:00  INFO        batch 400-600/1340: 200 symbols fetched
+2026-09-02 20:34:44  INFO        batch 600-800/1340: 200 symbols fetched
+2026-09-02 20:39:38  INFO        batch 800-1000/1340: 200 symbols fetched
+2026-09-02 20:43:08  INFO        batch 1000-1200/1340: 200 symbols fetched
+2026-09-02 20:45:37  INFO        batch 1200-1340/1340: 140 symbols fetched
+2026-09-02 20:45:47  INFO        monthly batch 0-200/1340: 200 symbols fetched
+2026-09-02 20:45:58  INFO        monthly batch 200-400/1340: 200 symbols fetched
+2026-09-02 20:46:08  INFO        monthly batch 400-600/1340: 200 symbols fetched
+2026-09-02 20:46:33  INFO        monthly batch 600-800/1340: 200 symbols fetched
+2026-09-02 20:46:50  INFO        monthly batch 800-1000/1340: 200 symbols fetched
+2026-09-02 20:47:02  INFO        monthly batch 1000-1200/1340: 200 symbols fetched
+2026-09-02 20:47:11  INFO        monthly batch 1200-1340/1340: 140 symbols fetched
+2026-09-02 20:47:11  INFO      Survivorship-bias fix complete in 28.0 min: 1340 delisted S&P 500 symbols fetched (daily+derived), 1340 (monthly)
+2026-09-02 20:47:11  INFO      ALL DONE in 28.0 min total. Timeframes written per symbol: 1D, 1M (native), 7D, 3M, 6M, 1Y (derived).

@@ -143,10 +143,16 @@ def main():
             confirmed = pd.read_parquet(pairs_path)
             confirmed_keys = set(zip(confirmed["symbol_a"], confirmed["symbol_b"]))
 
-        broken = candidates[
-            candidates["zivot_andrews_break"].notna()
-            & ~candidates.apply(lambda r: (r["symbol_a"], r["symbol_b"]) in confirmed_keys, axis=1)
-        ]
+        # VECTORIZED (2026-09-02, optimization sweep): the original row-wise
+        # `.apply(lambda r: (r["symbol_a"], r["symbol_b"]) in confirmed_keys, axis=1)`
+        # constructed a full pandas Series per row just to build a 2-tuple for a
+        # set-membership test. `confirmed_keys` is an ORDERED (symbol_a, symbol_b)
+        # tuple set (not a frozenset) -- MultiIndex.isin preserves that same
+        # order-sensitivity, unlike a symmetric frozenset-of-pairs check.
+        is_confirmed = pd.MultiIndex.from_arrays(
+            [candidates["symbol_a"], candidates["symbol_b"]]
+        ).isin(confirmed_keys)
+        broken = candidates[candidates["zivot_andrews_break"].notna() & ~is_confirmed]
         log.info("[%s] %d broken-and-excluded pairs to re-test", tf_dir, len(broken))
 
         for _, row in broken.iterrows():
