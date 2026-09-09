@@ -1,4 +1,23 @@
-01:06:20  INFO      Loaded 2 holdout trades, 2026-02-05 09:30:00 to 2026-02-05 09:30:00
-01:06:20  INFO      ======================================================================
-01:06:20  INFO      MECHANISM 1: TIME-BASED fresh slice (most recent 25% of holdout window)
-01:06:20  INFO      ======================================================================
+21:31:28  INFO      Loaded 2 holdout trades, 2026-08-10 09:30:00 to 2026-08-10 09:30:00
+21:31:28  INFO      ======================================================================
+21:31:28  INFO      MECHANISM 1: TIME-BASED fresh slice (most recent 25% of holdout window)
+21:31:28  INFO      ======================================================================
+21:31:28  INFO        Cutoff: 2026-08-10 09:30:00 (window 2026-08-10 09:30:00 to 2026-08-10 09:30:00)
+21:31:28  INFO        Already-examined portion: Sharpe=nan  n_trades=0  n_days=0
+21:31:28  INFO        FRESH portion:            Sharpe=nan  n_trades=2  n_days=1
+21:31:28  INFO      ======================================================================
+21:31:28  INFO      MECHANISM 2: PAIR-BASED reserve (~20% of confirmed pairs, deterministic selection)
+21:31:28  INFO      ======================================================================
+21:31:28  INFO        Reserved pairs (1): [('PNC', 'ZION')]
+21:31:28  INFO        Dev pairs (0): []
+21:31:28  INFO        Dev-pairs portion:      Sharpe=nan  n_trades=0  n_days=0
+21:31:28  INFO        RESERVED-pairs portion: Sharpe=nan  n_trades=2  n_days=1
+21:31:28  INFO      ======================================================================
+21:31:28  INFO      MECHANISM 3: COMBINED (both cuts simultaneously) -- PROPOSAL, not yet adopted
+21:31:28  INFO      ======================================================================
+21:31:28  INFO        NOTE: reserved_fresh is expected to be data-starved (reserved-pairs sample
+21:31:28  INFO        is already thin at 2 trades / 1 pairs) -- flagged before running, not after.
+21:31:28  INFO        dev_examined       Sharpe=nan  n_trades=0  n_days=0
+21:31:28  INFO        dev_fresh          Sharpe=nan  n_trades=0  n_days=0
+21:31:28  INFO        reserved_examined  Sharpe=nan  n_trades=0  n_days=0
+21:31:28  INFO        reserved_fresh     Sharpe=nan  n_trades=2  n_days=1

@@ -2,3 +2,24 @@
   n_total_candidates: 2
   n_dd_leg_candidates: 0
   dd_leg_fraction: 0.0
+  dd_pearson_corr_median: nan
+  dd_pearson_corr_min: nan
+  dd_pearson_corr_max: nan
+  non_dd_pearson_corr_median: 0.8562829724763521
+  dd_pvalue_median: nan
+  non_dd_pvalue_median: 2.910855417851915e-07
+  dd_thin_info_content_any_true: False
+
+=== BH vs. Benjamini-Yekutieli comparison (real 1h candidates) ===
+  m_total: 2
+  bh_confirmed: 2
+  by_confirmed: 2
+  by_confirmed_dd_leg: 0
+  by_confirmed_non_dd: 2
+  bh_confirmed_dd_leg: 0
+  bh_confirmed_non_dd: 2
+  m_non_dd_only: 2
+  bh_non_dd_only_confirmed: 2
+  bh_non_dd_only_confirmed_of_non_dd_candidates: 2
+
+Saved: output/research/bh_fdr_dependence_check.parquet

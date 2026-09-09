@@ -688,3 +688,814 @@
 2026-08-11 18:14:55  TIMEOUT r230_wrds_universal_lead_lag_scan after 45 min -- killing and moving on
 2026-08-11 18:14:56  ================ CAMARF overnight research runner finished ================
 2026-08-11 18:14:56  Stages completed: 244
+2026-08-23 20:39:49  ================ CAMARF overnight research runner started (workers=15, timeout=45min/stage, platform=linux) ================
+2026-08-23 20:41:23  Cache warm-up: read 90300 files (8.55 GB) from /home/rw/CAMARF/output/cache in 93.3s -- now resident in OS page cache for this run
+2026-08-23 20:41:23  START   00c_pit_wfa  ->  pit_wfa.py --workers 15
+2026-08-23 20:41:23  START   00_intraday_episodic_scan attempt 1/100  ->  research/intraday_episodic_scan.py --tf both --workers 15
+2026-08-23 20:41:34  DONE    00_intraday_episodic_scan in 0 min on attempt 1 (exit 0)
+2026-08-23 21:31:05  DONE    00c_pit_wfa in 49 min (exit 0)
+2026-08-23 21:31:05  START   00a_episodic_adapter  ->  research/episodic_pairs_adapter.py 
+2026-08-23 21:31:14  DONE    00a_episodic_adapter in 0 min (exit 0)
+2026-08-23 21:31:14  START   00b_ml_pit_safe  ->  ml.py --pit-safe
+2026-08-23 21:31:14  DONE    00b_ml_pit_safe in 0 min (exit 0)
+2026-08-23 21:31:14  Launching 13 backtest.py variants in parallel (up to 13 concurrent)
+2026-08-23 21:31:14  START   01_backtest_is  ->  backtest.py 
+2026-08-23 21:31:14  START   02_backtest_oos  ->  backtest.py --holdout
+2026-08-23 21:31:14  START   03_storm_session_edge  ->  backtest.py --holdout --storm-session-edge
+2026-08-23 21:31:14  START   04_storm_session_edge_postopen  ->  backtest.py --holdout --storm-session-edge-postopen
+2026-08-23 21:31:14  START   05_storm_mm_exec  ->  backtest.py --holdout --storm-mm-exec
+2026-08-23 21:31:14  START   06_storm_coint_frac  ->  backtest.py --holdout --storm-coint-frac
+2026-08-23 21:31:14  START   08_hub_weight  ->  backtest.py --holdout --hub-weight
+2026-08-23 21:31:14  START   07_storm_all  ->  backtest.py --holdout --storm-all
+2026-08-23 21:31:14  START   09_risk_parity  ->  backtest.py --holdout --risk-parity
+2026-08-23 21:31:14  START   11_neg_hedge  ->  backtest.py --holdout --neg-hedge
+2026-08-23 21:31:14  START   12_entryz15_is  ->  backtest.py --entry-z 1.5
+2026-08-23 21:31:14  START   10_pnl_cap  ->  backtest.py --holdout --pnl-cap
+2026-08-23 21:31:14  START   13_entryz15_oos  ->  backtest.py --holdout --entry-z 1.5
+2026-08-23 21:31:16  DONE    04_storm_session_edge_postopen in 0 min (exit 0)
+2026-08-23 21:31:16  DONE    03_storm_session_edge in 0 min (exit 0)
+2026-08-23 21:31:16  DONE    07_storm_all in 0 min (exit 0)
+2026-08-23 21:31:16  DONE    13_entryz15_oos in 0 min (exit 0)
+2026-08-23 21:31:16  DONE    05_storm_mm_exec in 0 min (exit 0)
+2026-08-23 21:31:16  DONE    06_storm_coint_frac in 0 min (exit 0)
+2026-08-23 21:31:16  DONE    02_backtest_oos in 0 min (exit 0)
+2026-08-23 21:31:16  DONE    11_neg_hedge in 0 min (exit 0)
+2026-08-23 21:31:16  DONE    08_hub_weight in 0 min (exit 0)
+2026-08-23 21:31:17  DONE    01_backtest_is in 0 min (exit 0)
+2026-08-23 21:31:17  DONE    12_entryz15_is in 0 min (exit 0)
+2026-08-23 21:31:17  DONE    10_pnl_cap in 0 min (exit 0)
+2026-08-23 21:31:17  DONE    09_risk_parity in 0 min (exit 0)
+2026-08-23 21:31:17  START   14_stats  ->  stats.py 
+2026-08-23 21:31:20  DONE    14_stats in 0 min (exit 0)
+2026-08-23 21:31:20  START   15_wfa  ->  wfa.py 
+2026-08-23 21:31:23  DONE    15_wfa in 0 min (exit 0)
+2026-08-23 21:31:23  START   16_distance  ->  distance.py 
+2026-08-23 21:31:24  DONE    16_distance in 0 min (exit 0)
+2026-08-23 21:31:24  START   17_sensitivity  ->  sensitivity.py 
+2026-08-23 21:31:24  DONE    17_sensitivity in 0 min (exit 0)
+2026-08-23 21:31:24  START   18_deflated_sharpe  ->  deflated_sharpe.py 
+2026-08-23 21:31:26  DONE    18_deflated_sharpe in 0 min (exit 0)
+2026-08-23 21:31:26  START   19_report  ->  report.py 
+2026-08-23 21:31:26  FAILED  19_report after 0 min (exit 1) - see /home/rw/CAMARF/logs/overnight/19_report.err.log
+2026-08-23 21:31:26  START   20_ml  ->  ml.py 
+2026-08-23 21:31:26  DONE    20_ml in 0 min (exit 0)
+2026-08-23 21:31:26  START   21_run_storm_grid  ->  run_storm_grid.py 
+2026-08-23 21:31:28  DONE    21_run_storm_grid in 0 min (exit 0)
+2026-08-23 21:31:28  START   22_fresh_holdout_compare  ->  fresh_holdout_compare.py 
+2026-08-23 21:31:28  DONE    22_fresh_holdout_compare in 0 min (exit 0)
+2026-08-23 21:31:28  START   23_absorption_ratio  ->  absorption_ratio.py 
+2026-08-23 21:31:29  DONE    23_absorption_ratio in 0 min (exit 0)
+2026-08-23 21:31:29  START   24_cvar  ->  cvar.py 
+2026-08-23 21:31:30  DONE    24_cvar in 0 min (exit 0)
+2026-08-23 21:31:30  START   25_decay_proxy  ->  decay_proxy.py 
+2026-08-23 21:31:30  DONE    25_decay_proxy in 0 min (exit 0)
+2026-08-23 21:31:30  START   26_portfolio_sim  ->  portfolio_sim.py 
+2026-08-23 21:31:31  DONE    26_portfolio_sim in 0 min (exit 0)
+2026-08-23 21:31:31  START   27_survivorship  ->  survivorship.py 
+2026-08-23 21:31:31  DONE    27_survivorship in 0 min (exit 0)
+2026-08-23 21:31:31  START   28_options  ->  options.py 
+2026-08-23 21:31:32  DONE    28_options in 0 min (exit 0)
+2026-08-23 21:31:32  START   29_gics  ->  gics.py 
+2026-08-23 21:31:38  DONE    29_gics in 0 min (exit 0)
+2026-08-23 21:31:38  START   30_reproduce  ->  reproduce.py --verify-only
+2026-08-23 21:31:38  DONE    30_reproduce in 0 min (exit 0)
+2026-08-23 21:31:38  START   31_run_verify_suite  ->  run_verify_suite.py 
+2026-08-23 21:37:20  FAILED  31_run_verify_suite after 5 min (exit 1) - see /home/rw/CAMARF/logs/overnight/31_run_verify_suite.err.log
+2026-08-23 21:37:20  START   r100__regime_features  ->  research/_regime_features.py 
+2026-08-23 21:37:22  DONE    r100__regime_features in 0 min (exit 0)
+2026-08-23 21:37:22  START   r101_adf_confirmatory_tier  ->  research/adf_confirmatory_tier.py 
+2026-08-23 21:37:23  DONE    r101_adf_confirmatory_tier in 0 min (exit 0)
+2026-08-23 21:37:23  START   r102_aligned_pair_loader  ->  research/aligned_pair_loader.py 
+2026-08-23 21:37:24  DONE    r102_aligned_pair_loader in 0 min (exit 0)
+2026-08-23 21:37:24  START   r103_annotate_symbol_metadata  ->  research/annotate_symbol_metadata.py 
+2026-08-23 21:37:24  DONE    r103_annotate_symbol_metadata in 0 min (exit 0)
+2026-08-23 21:37:24  START   r104_archetype_conditional_sizing  ->  research/archetype_conditional_sizing.py 
+2026-08-23 21:37:26  DONE    r104_archetype_conditional_sizing in 0 min (exit 0)
+2026-08-23 21:37:26  START   r105_audit_price_degeneracy  ->  research/audit_price_degeneracy.py 
+2026-08-23 21:37:30  DONE    r105_audit_price_degeneracy in 0 min (exit 0)
+2026-08-23 21:37:30  START   r106_bayesian_pair_confirmation  ->  research/bayesian_pair_confirmation.py 
+2026-08-23 21:37:31  DONE    r106_bayesian_pair_confirmation in 0 min (exit 0)
+2026-08-23 21:37:31  START   r107_bertram_ou_thresholds  ->  research/bertram_ou_thresholds.py 
+2026-08-23 21:37:37  DONE    r107_bertram_ou_thresholds in 0 min (exit 0)
+2026-08-23 21:37:37  START   r108_bh_fdr_dependence_check  ->  research/bh_fdr_dependence_check.py 
+2026-08-23 21:37:39  DONE    r108_bh_fdr_dependence_check in 0 min (exit 0)
+2026-08-23 21:37:39  START   r109_bh_vs_by_full_universe  ->  research/bh_vs_by_full_universe.py 
+2026-08-23 21:37:57  DONE    r109_bh_vs_by_full_universe in 0 min (exit 0)
+2026-08-23 21:37:57  START   r110_bias_budget  ->  research/bias_budget.py 
+2026-08-23 21:37:58  DONE    r110_bias_budget in 0 min (exit 0)
+2026-08-23 21:37:58  START   r111_big_move_lead_lag  ->  research/big_move_lead_lag.py 
+2026-08-24 08:09:47  ================ CAMARF overnight research runner started (workers=15, timeout=45min/stage, platform=linux) ================
+2026-08-24 08:13:05  Cache warm-up: read 90303 files (8.55 GB) from /home/rw/CAMARF/output/cache in 196.2s -- now resident in OS page cache for this run
+2026-08-24 08:13:05  SKIP    00_intraday_episodic_scan (already completed)
+2026-08-24 08:13:05  SKIP    00c_pit_wfa (already completed)
+2026-08-24 08:13:05  SKIP    00a_episodic_adapter (already completed)
+2026-08-24 08:13:05  SKIP    00b_ml_pit_safe (already completed)
+2026-08-24 08:13:05  SKIP    all 13 backtest.py variants already completed
+2026-08-24 08:13:05  SKIP    14_stats (already completed)
+2026-08-24 08:13:05  SKIP    15_wfa (already completed)
+2026-08-24 08:13:05  SKIP    16_distance (already completed)
+2026-08-24 08:13:05  SKIP    17_sensitivity (already completed)
+2026-08-24 08:13:05  SKIP    18_deflated_sharpe (already completed)
+2026-08-24 08:13:05  START   19_report  ->  report.py 
+2026-08-24 08:13:06  FAILED  19_report after 0 min (exit 1) - see /home/rw/CAMARF/logs/overnight/19_report.err.log
+2026-08-24 08:13:06  SKIP    20_ml (already completed)
+2026-08-24 08:13:06  SKIP    21_run_storm_grid (already completed)
+2026-08-24 08:13:06  SKIP    22_fresh_holdout_compare (already completed)
+2026-08-24 08:13:06  SKIP    23_absorption_ratio (already completed)
+2026-08-24 08:13:06  SKIP    24_cvar (already completed)
+2026-08-24 08:13:06  SKIP    25_decay_proxy (already completed)
+2026-08-24 08:13:06  SKIP    26_portfolio_sim (already completed)
+2026-08-24 08:13:06  SKIP    27_survivorship (already completed)
+2026-08-24 08:13:06  SKIP    28_options (already completed)
+2026-08-24 08:13:06  SKIP    29_gics (already completed)
+2026-08-24 08:13:06  SKIP    30_reproduce (already completed)
+2026-08-24 08:13:06  START   31_run_verify_suite  ->  run_verify_suite.py 
+2026-08-24 08:19:09  FAILED  31_run_verify_suite after 6 min (exit 1) - see /home/rw/CAMARF/logs/overnight/31_run_verify_suite.err.log
+2026-08-24 08:19:09  SKIP    r100__regime_features (already completed)
+2026-08-24 08:19:09  SKIP    r101_adf_confirmatory_tier (already completed)
+2026-08-24 08:19:09  SKIP    r102_aligned_pair_loader (already completed)
+2026-08-24 08:19:09  SKIP    r103_annotate_symbol_metadata (already completed)
+2026-08-24 08:19:09  SKIP    r104_archetype_conditional_sizing (already completed)
+2026-08-24 08:19:09  SKIP    r105_audit_price_degeneracy (already completed)
+2026-08-24 08:19:09  SKIP    r106_bayesian_pair_confirmation (already completed)
+2026-08-24 08:19:09  SKIP    r107_bertram_ou_thresholds (already completed)
+2026-08-24 08:19:09  SKIP    r108_bh_fdr_dependence_check (already completed)
+2026-08-24 08:19:09  SKIP    r109_bh_vs_by_full_universe (already completed)
+2026-08-24 08:19:09  SKIP    r110_bias_budget (already completed)
+2026-08-24 08:19:09  START   r111_big_move_lead_lag  ->  research/big_move_lead_lag.py 
+2026-08-24 09:20:49  ================ CAMARF overnight research runner started (workers=15, timeout=45min/stage, platform=linux) ================
+2026-08-24 09:20:52  Cache warm-up: read 90306 files (8.55 GB) from /home/rw/CAMARF/output/cache in 3.0s -- now resident in OS page cache for this run
+2026-08-24 09:20:52  SKIP    00_intraday_episodic_scan (already completed)
+2026-08-24 09:20:52  SKIP    00c_pit_wfa (already completed)
+2026-08-24 09:20:52  SKIP    00a_episodic_adapter (already completed)
+2026-08-24 09:20:52  SKIP    00b_ml_pit_safe (already completed)
+2026-08-24 09:20:52  SKIP    all 13 backtest.py variants already completed
+2026-08-24 09:20:52  SKIP    14_stats (already completed)
+2026-08-24 09:20:52  SKIP    15_wfa (already completed)
+2026-08-24 09:20:52  SKIP    16_distance (already completed)
+2026-08-24 09:20:52  SKIP    17_sensitivity (already completed)
+2026-08-24 09:20:52  SKIP    18_deflated_sharpe (already completed)
+2026-08-24 09:20:52  START   19_report  ->  report.py 
+2026-08-24 09:20:52  FAILED  19_report after 0 min (exit 1) - see /home/rw/CAMARF/logs/overnight/19_report.err.log
+2026-08-24 09:20:52  SKIP    20_ml (already completed)
+2026-08-24 09:20:52  SKIP    21_run_storm_grid (already completed)
+2026-08-24 09:20:52  SKIP    22_fresh_holdout_compare (already completed)
+2026-08-24 09:20:52  SKIP    23_absorption_ratio (already completed)
+2026-08-24 09:20:52  SKIP    24_cvar (already completed)
+2026-08-24 09:20:52  SKIP    25_decay_proxy (already completed)
+2026-08-24 09:20:52  SKIP    26_portfolio_sim (already completed)
+2026-08-24 09:20:52  SKIP    27_survivorship (already completed)
+2026-08-24 09:20:52  SKIP    28_options (already completed)
+2026-08-24 09:20:52  SKIP    29_gics (already completed)
+2026-08-24 09:20:52  SKIP    30_reproduce (already completed)
+2026-08-24 09:20:52  START   31_run_verify_suite  ->  run_verify_suite.py 
+2026-08-24 09:27:29  FAILED  31_run_verify_suite after 6 min (exit 1) - see /home/rw/CAMARF/logs/overnight/31_run_verify_suite.err.log
+2026-08-24 09:27:29  SKIP    r100__regime_features (already completed)
+2026-08-24 09:27:29  SKIP    r101_adf_confirmatory_tier (already completed)
+2026-08-24 09:27:29  SKIP    r102_aligned_pair_loader (already completed)
+2026-08-24 09:27:29  SKIP    r103_annotate_symbol_metadata (already completed)
+2026-08-24 09:27:29  SKIP    r104_archetype_conditional_sizing (already completed)
+2026-08-24 09:27:29  SKIP    r105_audit_price_degeneracy (already completed)
+2026-08-24 09:27:29  SKIP    r106_bayesian_pair_confirmation (already completed)
+2026-08-24 09:27:29  SKIP    r107_bertram_ou_thresholds (already completed)
+2026-08-24 09:27:29  SKIP    r108_bh_fdr_dependence_check (already completed)
+2026-08-24 09:27:29  SKIP    r109_bh_vs_by_full_universe (already completed)
+2026-08-24 09:27:29  SKIP    r110_bias_budget (already completed)
+2026-08-24 09:27:29  START   r111_big_move_lead_lag  ->  research/big_move_lead_lag.py 
+2026-08-24 09:27:31  DONE    r111_big_move_lead_lag in 0 min (exit 0)
+2026-08-24 09:27:31  START   r112_bounded_lookback_primary_screen  ->  research/bounded_lookback_primary_screen.py 
+2026-08-24 09:27:32  DONE    r112_bounded_lookback_primary_screen in 0 min (exit 0)
+2026-08-24 09:27:32  START   r113_breakout_vs_reversion  ->  research/breakout_vs_reversion.py 
+2026-08-24 09:27:34  DONE    r113_breakout_vs_reversion in 0 min (exit 0)
+2026-08-24 09:27:34  START   r114_bug_d45_decoupled_std_retest  ->  research/bug_d45_decoupled_std_retest.py 
+2026-08-24 09:27:34  DONE    r114_bug_d45_decoupled_std_retest in 0 min (exit 0)
+2026-08-24 09:27:34  START   r115_build_comparison_arm_pairs  ->  research/build_comparison_arm_pairs.py 
+2026-08-24 09:27:35  DONE    r115_build_comparison_arm_pairs in 0 min (exit 0)
+2026-08-24 09:27:35  START   r116_build_symbol_permno_map  ->  research/build_symbol_permno_map.py 
+2026-08-24 09:27:36  FAILED  r116_build_symbol_permno_map after 0 min (exit 1) - see /home/rw/CAMARF/logs/overnight/r116_build_symbol_permno_map.err.log
+2026-08-24 09:27:36  START   r117_build_wrds_supplementary_data  ->  research/build_wrds_supplementary_data.py 
+2026-08-24 09:27:36  FAILED  r117_build_wrds_supplementary_data after 0 min (exit 1) - see /home/rw/CAMARF/logs/overnight/r117_build_wrds_supplementary_data.err.log
+2026-08-24 09:27:36  START   r118_capital_sim_selection_mechanism  ->  research/capital_sim_selection_mechanism.py 
+2026-08-24 09:27:51  DONE    r118_capital_sim_selection_mechanism in 0 min (exit 0)
+2026-08-24 09:27:51  START   r119_caviar_dynamic_var  ->  research/caviar_dynamic_var.py 
+2026-08-24 09:27:52  DONE    r119_caviar_dynamic_var in 0 min (exit 0)
+2026-08-24 09:27:52  START   r120_ccp_variants  ->  research/ccp_variants.py 
+2026-08-24 09:27:52  FAILED  r120_ccp_variants after 0 min (exit 1) - see /home/rw/CAMARF/logs/overnight/r120_ccp_variants.err.log
+2026-08-24 09:27:52  START   r121_coint_frac_window_grid  ->  research/coint_frac_window_grid.py 
+2026-08-24 09:27:53  FAILED  r121_coint_frac_window_grid after 0 min (exit 1) - see /home/rw/CAMARF/logs/overnight/r121_coint_frac_window_grid.err.log
+2026-08-24 09:27:53  START   r122_cointegration_regime_segmentation  ->  research/cointegration_regime_segmentation.py 
+2026-08-24 09:29:16  DONE    r122_cointegration_regime_segmentation in 1 min (exit 0)
+2026-08-24 09:29:16  START   r123_comomentum  ->  research/comomentum.py 
+2026-08-24 09:29:16  DONE    r123_comomentum in 0 min (exit 0)
+2026-08-24 09:29:16  START   r124_comparison_arm_scaffold  ->  research/comparison_arm_scaffold.py 
+2026-08-24 09:29:17  DONE    r124_comparison_arm_scaffold in 0 min (exit 0)
+2026-08-24 09:29:17  START   r125_confirmatory_cointegration_check  ->  research/confirmatory_cointegration_check.py 
+2026-08-24 09:29:18  DONE    r125_confirmatory_cointegration_check in 0 min (exit 0)
+2026-08-24 09:29:18  START   r126_convex_portfolio_construction  ->  research/convex_portfolio_construction.py 
+2026-08-24 09:29:19  DONE    r126_convex_portfolio_construction in 0 min (exit 0)
+2026-08-24 09:29:19  START   r127_copula_pairs  ->  research/copula_pairs.py 
+2026-08-24 09:29:20  DONE    r127_copula_pairs in 0 min (exit 0)
+2026-08-24 09:29:20  START   r128_corporate_actions_audit  ->  research/corporate_actions_audit.py 
+2026-08-24 09:29:21  DONE    r128_corporate_actions_audit in 0 min (exit 0)
+2026-08-24 09:29:21  START   r129_cross_listing_lead_lag  ->  research/cross_listing_lead_lag.py 
+2026-08-24 09:29:41  DONE    r129_cross_listing_lead_lag in 0 min (exit 0)
+2026-08-24 09:29:41  START   r130_cross_session_leadlag  ->  research/cross_session_leadlag.py 
+2026-08-24 09:29:42  DONE    r130_cross_session_leadlag in 0 min (exit 0)
+2026-08-24 09:29:42  START   r131_cross_tf_break_divergence  ->  research/cross_tf_break_divergence.py 
+2026-08-24 09:29:45  DONE    r131_cross_tf_break_divergence in 0 min (exit 0)
+2026-08-24 09:29:45  START   r132_cross_tf_lead_lag_scan  ->  research/cross_tf_lead_lag_scan.py 
+2026-08-24 09:34:11  DONE    r132_cross_tf_lead_lag_scan in 4 min (exit 0)
+2026-08-24 09:34:11  START   r133_cross_timeframe_cointegration  ->  research/cross_timeframe_cointegration.py 
+2026-08-24 09:34:22  DONE    r133_cross_timeframe_cointegration in 0 min (exit 0)
+2026-08-24 09:34:22  START   r134_cross_timeframe_divergence  ->  research/cross_timeframe_divergence.py 
+2026-08-24 09:34:24  DONE    r134_cross_timeframe_divergence in 0 min (exit 0)
+2026-08-24 09:34:24  START   r135_cycle_detection  ->  research/cycle_detection.py 
+2026-08-24 09:34:26  DONE    r135_cycle_detection in 0 min (exit 0)
+2026-08-24 09:34:26  START   r136_data_contamination_scan  ->  research/data_contamination_scan.py 
+2026-08-24 09:53:07  DONE    r136_data_contamination_scan in 18 min (exit 0)
+2026-08-24 09:53:07  START   r137_dd_hub_effective_bets  ->  research/dd_hub_effective_bets.py 
+2026-08-24 09:53:08  DONE    r137_dd_hub_effective_bets in 0 min (exit 0)
+2026-08-24 09:53:08  START   r138_decoupling_analysis  ->  research/decoupling_analysis.py 
+2026-08-24 09:53:09  DONE    r138_decoupling_analysis in 0 min (exit 0)
+2026-08-24 09:53:09  START   r139_decoupling_backtest  ->  research/decoupling_backtest.py 
+2026-08-24 09:53:26  DONE    r139_decoupling_backtest in 0 min (exit 0)
+2026-08-24 09:53:26  START   r140_decoupling_contamination_crosscheck  ->  research/decoupling_contamination_crosscheck.py 
+2026-08-24 09:53:27  DONE    r140_decoupling_contamination_crosscheck in 0 min (exit 0)
+2026-08-24 09:53:27  START   r141_decoupling_requalification  ->  research/decoupling_requalification.py 
+2026-08-24 09:53:28  DONE    r141_decoupling_requalification in 0 min (exit 0)
+2026-08-24 09:53:28  START   r142_descriptive_check_concordance  ->  research/descriptive_check_concordance.py 
+2026-08-24 09:54:17  DONE    r142_descriptive_check_concordance in 0 min (exit 0)
+2026-08-24 09:54:17  START   r143_earnings_lead_lag  ->  research/earnings_lead_lag.py 
+2026-08-24 09:54:19  DONE    r143_earnings_lead_lag in 0 min (exit 0)
+2026-08-24 09:54:19  START   r144_earnings_structural_break_correlation  ->  research/earnings_structural_break_correlation.py 
+2026-08-24 09:54:24  DONE    r144_earnings_structural_break_correlation in 0 min (exit 0)
+2026-08-24 09:54:24  START   r145_eg_null_calibration_montecarlo  ->  research/eg_null_calibration_montecarlo.py 
+2026-08-24 09:54:46  DONE    r145_eg_null_calibration_montecarlo in 0 min (exit 0)
+2026-08-24 09:54:46  START   r146_eg_permutation_check  ->  research/eg_permutation_check.py 
+2026-08-24 09:55:01  DONE    r146_eg_permutation_check in 0 min (exit 0)
+2026-08-24 09:55:01  START   r147_eigenvalue_weighted_position_sizing  ->  research/eigenvalue_weighted_position_sizing.py 
+2026-08-24 09:55:02  DONE    r147_eigenvalue_weighted_position_sizing in 0 min (exit 0)
+2026-08-24 09:55:02  START   r148_episodic_duration_degree_usability  ->  research/episodic_duration_degree_usability.py 
+2026-08-24 09:55:27  DONE    r148_episodic_duration_degree_usability in 0 min (exit 0)
+2026-08-24 09:55:27  START   r149_episodic_pairs_adapter  ->  research/episodic_pairs_adapter.py 
+2026-08-24 09:55:36  DONE    r149_episodic_pairs_adapter in 0 min (exit 0)
+2026-08-24 09:55:36  START   r150_episodic_window_size_sweep  ->  research/episodic_window_size_sweep.py 
+2026-08-24 09:56:37  FAILED  r150_episodic_window_size_sweep after 1 min (exit 1) - see /home/rw/CAMARF/logs/overnight/r150_episodic_window_size_sweep.err.log
+2026-08-24 09:56:37  START   r151_era_decay_replication  ->  research/era_decay_replication.py 
+2026-08-24 09:56:37  DONE    r151_era_decay_replication in 0 min (exit 0)
+2026-08-24 09:56:37  START   r152_event_study_framework  ->  research/event_study_framework.py 
+2026-08-24 09:56:38  FAILED  r152_event_study_framework after 0 min (exit 2) - see /home/rw/CAMARF/logs/overnight/r152_event_study_framework.err.log
+2026-08-24 09:56:38  START   r153_ewma_zscore_comparison  ->  research/ewma_zscore_comparison.py 
+2026-08-24 09:56:38  DONE    r153_ewma_zscore_comparison in 0 min (exit 0)
+2026-08-24 09:56:38  START   r154_fama_french_risk_decomposition  ->  research/fama_french_risk_decomposition.py 
+2026-08-24 09:56:38  FAILED  r154_fama_french_risk_decomposition after 0 min (exit 2) - see /home/rw/CAMARF/logs/overnight/r154_fama_french_risk_decomposition.err.log
+2026-08-24 09:56:38  START   r155_fdr_method_comparison  ->  research/fdr_method_comparison.py 
+2026-08-24 09:57:03  DONE    r155_fdr_method_comparison in 0 min (exit 0)
+2026-08-24 09:57:03  START   r156_fill_timing_sensitivity  ->  research/fill_timing_sensitivity.py 
+2026-08-24 09:57:03  DONE    r156_fill_timing_sensitivity in 0 min (exit 0)
+2026-08-24 09:57:03  START   r157_filter_ablation  ->  research/filter_ablation.py 
+2026-08-24 09:57:07  DONE    r157_filter_ablation in 0 min (exit 0)
+2026-08-24 09:57:07  START   r158_filter_relevance_sweep_1h  ->  research/filter_relevance_sweep_1h.py 
+2026-08-24 09:57:21  DONE    r158_filter_relevance_sweep_1h in 0 min (exit 0)
+2026-08-24 09:57:21  START   r159_financial_turbulence_index  ->  research/financial_turbulence_index.py 
+2026-08-24 09:57:22  DONE    r159_financial_turbulence_index in 0 min (exit 0)
+2026-08-24 09:57:22  START   r160_follower_direction_validation  ->  research/follower_direction_validation.py 
+2026-08-24 09:57:23  DONE    r160_follower_direction_validation in 0 min (exit 0)
+2026-08-24 09:57:23  START   r161_full_universe_correlation_prefilter  ->  research/full_universe_correlation_prefilter.py 
+2026-08-24 10:10:38  DONE    r161_full_universe_correlation_prefilter in 13 min (exit 0)
+2026-08-24 10:10:38  START   r162_full_universe_eg_confirmation  ->  research/full_universe_eg_confirmation.py 
+2026-08-24 10:55:38  TIMEOUT r162_full_universe_eg_confirmation after 45 min -- killing and moving on
+2026-08-24 10:55:38  START   r163_full_us_market_price_fetch  ->  research/full_us_market_price_fetch.py 
+2026-08-24 11:01:12  ================ CAMARF overnight research runner started (workers=15, timeout=45min/stage, platform=linux) ================
+2026-08-24 11:01:15  Cache warm-up: read 90311 files (11.33 GB) from /home/rw/CAMARF/output/cache in 3.3s -- now resident in OS page cache for this run
+2026-08-24 11:01:15  SKIP    00_intraday_episodic_scan (already completed)
+2026-08-24 11:01:15  SKIP    00c_pit_wfa (already completed)
+2026-08-24 11:01:15  SKIP    00a_episodic_adapter (already completed)
+2026-08-24 11:01:15  SKIP    00b_ml_pit_safe (already completed)
+2026-08-24 11:01:15  SKIP    all 13 backtest.py variants already completed
+2026-08-24 11:01:15  SKIP    14_stats (already completed)
+2026-08-24 11:01:15  SKIP    15_wfa (already completed)
+2026-08-24 11:01:15  SKIP    16_distance (already completed)
+2026-08-24 11:01:15  SKIP    17_sensitivity (already completed)
+2026-08-24 11:01:15  SKIP    18_deflated_sharpe (already completed)
+2026-08-24 11:01:15  START   19_report  ->  report.py 
+2026-08-24 11:01:15  FAILED  19_report after 0 min (exit 1) - see /home/rw/CAMARF/logs/overnight/19_report.err.log
+2026-08-24 11:01:15  SKIP    20_ml (already completed)
+2026-08-24 11:01:15  SKIP    21_run_storm_grid (already completed)
+2026-08-24 11:01:15  SKIP    22_fresh_holdout_compare (already completed)
+2026-08-24 11:01:15  SKIP    23_absorption_ratio (already completed)
+2026-08-24 11:01:15  SKIP    24_cvar (already completed)
+2026-08-24 11:01:15  SKIP    25_decay_proxy (already completed)
+2026-08-24 11:01:15  SKIP    26_portfolio_sim (already completed)
+2026-08-24 11:01:15  SKIP    27_survivorship (already completed)
+2026-08-24 11:01:15  SKIP    28_options (already completed)
+2026-08-24 11:01:15  SKIP    29_gics (already completed)
+2026-08-24 11:01:15  SKIP    30_reproduce (already completed)
+2026-08-24 11:01:15  START   31_run_verify_suite  ->  run_verify_suite.py 
+2026-08-24 11:07:54  FAILED  31_run_verify_suite after 6 min (exit 1) - see /home/rw/CAMARF/logs/overnight/31_run_verify_suite.err.log
+2026-08-24 11:07:54  SKIP    r100__regime_features (already completed)
+2026-08-24 11:07:54  SKIP    r101_adf_confirmatory_tier (already completed)
+2026-08-24 11:07:54  SKIP    r102_aligned_pair_loader (already completed)
+2026-08-24 11:07:54  SKIP    r103_annotate_symbol_metadata (already completed)
+2026-08-24 11:07:54  SKIP    r104_archetype_conditional_sizing (already completed)
+2026-08-24 11:07:54  SKIP    r105_audit_price_degeneracy (already completed)
+2026-08-24 11:07:54  SKIP    r106_bayesian_pair_confirmation (already completed)
+2026-08-24 11:07:54  SKIP    r107_bertram_ou_thresholds (already completed)
+2026-08-24 11:07:54  SKIP    r108_bh_fdr_dependence_check (already completed)
+2026-08-24 11:07:54  SKIP    r109_bh_vs_by_full_universe (already completed)
+2026-08-24 11:07:54  SKIP    r110_bias_budget (already completed)
+2026-08-24 11:07:54  SKIP    r111_big_move_lead_lag (already completed)
+2026-08-24 11:07:54  SKIP    r112_bounded_lookback_primary_screen (already completed)
+2026-08-24 11:07:54  SKIP    r113_breakout_vs_reversion (already completed)
+2026-08-24 11:07:54  SKIP    r114_bug_d45_decoupled_std_retest (already completed)
+2026-08-24 11:07:54  SKIP    r115_build_comparison_arm_pairs (already completed)
+2026-08-24 11:07:54  START   r116_build_symbol_permno_map  ->  research/build_symbol_permno_map.py 
+2026-08-24 11:07:55  FAILED  r116_build_symbol_permno_map after 0 min (exit 1) - see /home/rw/CAMARF/logs/overnight/r116_build_symbol_permno_map.err.log
+2026-08-24 11:07:55  START   r117_build_wrds_supplementary_data  ->  research/build_wrds_supplementary_data.py 
+2026-08-24 11:07:56  FAILED  r117_build_wrds_supplementary_data after 0 min (exit 1) - see /home/rw/CAMARF/logs/overnight/r117_build_wrds_supplementary_data.err.log
+2026-08-24 11:07:56  SKIP    r118_capital_sim_selection_mechanism (already completed)
+2026-08-24 11:07:56  SKIP    r119_caviar_dynamic_var (already completed)
+2026-08-24 11:07:56  START   r120_ccp_variants  ->  research/ccp_variants.py 
+2026-08-24 11:07:56  FAILED  r120_ccp_variants after 0 min (exit 1) - see /home/rw/CAMARF/logs/overnight/r120_ccp_variants.err.log
+2026-08-24 11:07:56  START   r121_coint_frac_window_grid  ->  research/coint_frac_window_grid.py 
+2026-08-24 11:07:56  FAILED  r121_coint_frac_window_grid after 0 min (exit 1) - see /home/rw/CAMARF/logs/overnight/r121_coint_frac_window_grid.err.log
+2026-08-24 11:07:56  SKIP    r122_cointegration_regime_segmentation (already completed)
+2026-08-24 11:07:56  SKIP    r123_comomentum (already completed)
+2026-08-24 11:07:56  SKIP    r124_comparison_arm_scaffold (already completed)
+2026-08-24 11:07:56  SKIP    r125_confirmatory_cointegration_check (already completed)
+2026-08-24 11:07:56  SKIP    r126_convex_portfolio_construction (already completed)
+2026-08-24 11:07:56  SKIP    r127_copula_pairs (already completed)
+2026-08-24 11:07:56  SKIP    r128_corporate_actions_audit (already completed)
+2026-08-24 11:07:56  SKIP    r129_cross_listing_lead_lag (already completed)
+2026-08-24 11:07:56  SKIP    r130_cross_session_leadlag (already completed)
+2026-08-24 11:07:56  SKIP    r131_cross_tf_break_divergence (already completed)
+2026-08-24 11:07:56  SKIP    r132_cross_tf_lead_lag_scan (already completed)
+2026-08-24 11:07:56  SKIP    r133_cross_timeframe_cointegration (already completed)
+2026-08-24 11:07:56  SKIP    r134_cross_timeframe_divergence (already completed)
+2026-08-24 11:07:56  SKIP    r135_cycle_detection (already completed)
+2026-08-24 11:07:56  SKIP    r136_data_contamination_scan (already completed)
+2026-08-24 11:07:56  SKIP    r137_dd_hub_effective_bets (already completed)
+2026-08-24 11:07:56  SKIP    r138_decoupling_analysis (already completed)
+2026-08-24 11:07:56  SKIP    r139_decoupling_backtest (already completed)
+2026-08-24 11:07:56  SKIP    r140_decoupling_contamination_crosscheck (already completed)
+2026-08-24 11:07:56  SKIP    r141_decoupling_requalification (already completed)
+2026-08-24 11:07:56  SKIP    r142_descriptive_check_concordance (already completed)
+2026-08-24 11:07:56  SKIP    r143_earnings_lead_lag (already completed)
+2026-08-24 11:07:56  SKIP    r144_earnings_structural_break_correlation (already completed)
+2026-08-24 11:07:56  SKIP    r145_eg_null_calibration_montecarlo (already completed)
+2026-08-24 11:07:56  SKIP    r146_eg_permutation_check (already completed)
+2026-08-24 11:07:56  SKIP    r147_eigenvalue_weighted_position_sizing (already completed)
+2026-08-24 11:07:56  SKIP    r148_episodic_duration_degree_usability (already completed)
+2026-08-24 11:07:56  SKIP    r149_episodic_pairs_adapter (already completed)
+2026-08-24 11:07:56  START   r150_episodic_window_size_sweep  ->  research/episodic_window_size_sweep.py 
+2026-08-24 11:08:57  FAILED  r150_episodic_window_size_sweep after 1 min (exit 1) - see /home/rw/CAMARF/logs/overnight/r150_episodic_window_size_sweep.err.log
+2026-08-24 11:08:57  SKIP    r151_era_decay_replication (already completed)
+2026-08-24 11:08:57  START   r152_event_study_framework  ->  research/event_study_framework.py 
+2026-08-24 11:08:57  FAILED  r152_event_study_framework after 0 min (exit 2) - see /home/rw/CAMARF/logs/overnight/r152_event_study_framework.err.log
+2026-08-24 11:08:57  SKIP    r153_ewma_zscore_comparison (already completed)
+2026-08-24 11:08:57  START   r154_fama_french_risk_decomposition  ->  research/fama_french_risk_decomposition.py 
+2026-08-24 11:08:57  FAILED  r154_fama_french_risk_decomposition after 0 min (exit 2) - see /home/rw/CAMARF/logs/overnight/r154_fama_french_risk_decomposition.err.log
+2026-08-24 11:08:57  SKIP    r155_fdr_method_comparison (already completed)
+2026-08-24 11:08:57  SKIP    r156_fill_timing_sensitivity (already completed)
+2026-08-24 11:08:57  SKIP    r157_filter_ablation (already completed)
+2026-08-24 11:08:57  SKIP    r158_filter_relevance_sweep_1h (already completed)
+2026-08-24 11:08:57  SKIP    r159_financial_turbulence_index (already completed)
+2026-08-24 11:08:57  SKIP    r160_follower_direction_validation (already completed)
+2026-08-24 11:08:57  SKIP    r161_full_universe_correlation_prefilter (already completed)
+2026-08-24 11:08:57  START   r162_full_universe_eg_confirmation  ->  research/full_universe_eg_confirmation.py 
+2026-08-24 13:52:21  ================ CAMARF overnight research runner started (workers=15, timeout=45min/stage, platform=linux) ================
+2026-08-24 13:52:25  Cache warm-up: read 90315 files (13.98 GB) from /home/rw/CAMARF/output/cache in 3.6s -- now resident in OS page cache for this run
+2026-08-24 13:52:25  SKIP    00_intraday_episodic_scan (already completed)
+2026-08-24 13:52:25  SKIP    00c_pit_wfa (already completed)
+2026-08-24 13:52:25  SKIP    00a_episodic_adapter (already completed)
+2026-08-24 13:52:25  SKIP    00b_ml_pit_safe (already completed)
+2026-08-24 13:52:25  SKIP    all 13 backtest.py variants already completed
+2026-08-24 13:52:25  SKIP    14_stats (already completed)
+2026-08-24 13:52:25  SKIP    15_wfa (already completed)
+2026-08-24 13:52:25  SKIP    16_distance (already completed)
+2026-08-24 13:52:25  SKIP    17_sensitivity (already completed)
+2026-08-24 13:52:25  SKIP    18_deflated_sharpe (already completed)
+2026-08-24 13:52:25  START   19_report  ->  report.py 
+2026-08-24 13:52:25  FAILED  19_report after 0 min (exit 1) - see /home/rw/CAMARF/logs/overnight/19_report.err.log
+2026-08-24 13:52:25  SKIP    20_ml (already completed)
+2026-08-24 13:52:25  SKIP    21_run_storm_grid (already completed)
+2026-08-24 13:52:25  SKIP    22_fresh_holdout_compare (already completed)
+2026-08-24 13:52:25  SKIP    23_absorption_ratio (already completed)
+2026-08-24 13:52:25  SKIP    24_cvar (already completed)
+2026-08-24 13:52:25  SKIP    25_decay_proxy (already completed)
+2026-08-24 13:52:25  SKIP    26_portfolio_sim (already completed)
+2026-08-24 13:52:25  SKIP    27_survivorship (already completed)
+2026-08-24 13:52:25  SKIP    28_options (already completed)
+2026-08-24 13:52:25  SKIP    29_gics (already completed)
+2026-08-24 13:52:25  SKIP    30_reproduce (already completed)
+2026-08-24 13:52:25  START   31_run_verify_suite  ->  run_verify_suite.py 
+2026-08-24 13:59:05  FAILED  31_run_verify_suite after 6 min (exit 1) - see /home/rw/CAMARF/logs/overnight/31_run_verify_suite.err.log
+2026-08-24 13:59:05  SKIP    r100__regime_features (already completed)
+2026-08-24 13:59:05  SKIP    r101_adf_confirmatory_tier (already completed)
+2026-08-24 13:59:05  SKIP    r102_aligned_pair_loader (already completed)
+2026-08-24 13:59:05  SKIP    r103_annotate_symbol_metadata (already completed)
+2026-08-24 13:59:05  SKIP    r104_archetype_conditional_sizing (already completed)
+2026-08-24 13:59:05  SKIP    r105_audit_price_degeneracy (already completed)
+2026-08-24 13:59:05  SKIP    r106_bayesian_pair_confirmation (already completed)
+2026-08-24 13:59:05  SKIP    r107_bertram_ou_thresholds (already completed)
+2026-08-24 13:59:05  SKIP    r108_bh_fdr_dependence_check (already completed)
+2026-08-24 13:59:05  SKIP    r109_bh_vs_by_full_universe (already completed)
+2026-08-24 13:59:05  SKIP    r110_bias_budget (already completed)
+2026-08-24 13:59:05  SKIP    r111_big_move_lead_lag (already completed)
+2026-08-24 13:59:05  SKIP    r112_bounded_lookback_primary_screen (already completed)
+2026-08-24 13:59:05  SKIP    r113_breakout_vs_reversion (already completed)
+2026-08-24 13:59:05  SKIP    r114_bug_d45_decoupled_std_retest (already completed)
+2026-08-24 13:59:05  SKIP    r115_build_comparison_arm_pairs (already completed)
+2026-08-24 13:59:05  START   r116_build_symbol_permno_map  ->  research/build_symbol_permno_map.py 
+2026-08-24 13:59:06  FAILED  r116_build_symbol_permno_map after 0 min (exit 1) - see /home/rw/CAMARF/logs/overnight/r116_build_symbol_permno_map.err.log
+2026-08-24 13:59:06  START   r117_build_wrds_supplementary_data  ->  research/build_wrds_supplementary_data.py 
+2026-08-24 13:59:07  FAILED  r117_build_wrds_supplementary_data after 0 min (exit 1) - see /home/rw/CAMARF/logs/overnight/r117_build_wrds_supplementary_data.err.log
+2026-08-24 13:59:07  SKIP    r118_capital_sim_selection_mechanism (already completed)
+2026-08-24 13:59:07  SKIP    r119_caviar_dynamic_var (already completed)
+2026-08-24 13:59:07  START   r120_ccp_variants  ->  research/ccp_variants.py 
+2026-08-24 13:59:07  FAILED  r120_ccp_variants after 0 min (exit 1) - see /home/rw/CAMARF/logs/overnight/r120_ccp_variants.err.log
+2026-08-24 13:59:07  START   r121_coint_frac_window_grid  ->  research/coint_frac_window_grid.py 
+2026-08-24 13:59:08  FAILED  r121_coint_frac_window_grid after 0 min (exit 1) - see /home/rw/CAMARF/logs/overnight/r121_coint_frac_window_grid.err.log
+2026-08-24 13:59:08  SKIP    r122_cointegration_regime_segmentation (already completed)
+2026-08-24 13:59:08  SKIP    r123_comomentum (already completed)
+2026-08-24 13:59:08  SKIP    r124_comparison_arm_scaffold (already completed)
+2026-08-24 13:59:08  SKIP    r125_confirmatory_cointegration_check (already completed)
+2026-08-24 13:59:08  SKIP    r126_convex_portfolio_construction (already completed)
+2026-08-24 13:59:08  SKIP    r127_copula_pairs (already completed)
+2026-08-24 13:59:08  SKIP    r128_corporate_actions_audit (already completed)
+2026-08-24 13:59:08  SKIP    r129_cross_listing_lead_lag (already completed)
+2026-08-24 13:59:08  SKIP    r130_cross_session_leadlag (already completed)
+2026-08-24 13:59:08  SKIP    r131_cross_tf_break_divergence (already completed)
+2026-08-24 13:59:08  SKIP    r132_cross_tf_lead_lag_scan (already completed)
+2026-08-24 13:59:08  SKIP    r133_cross_timeframe_cointegration (already completed)
+2026-08-24 13:59:08  SKIP    r134_cross_timeframe_divergence (already completed)
+2026-08-24 13:59:08  SKIP    r135_cycle_detection (already completed)
+2026-08-24 13:59:08  SKIP    r136_data_contamination_scan (already completed)
+2026-08-24 13:59:08  SKIP    r137_dd_hub_effective_bets (already completed)
+2026-08-24 13:59:08  SKIP    r138_decoupling_analysis (already completed)
+2026-08-24 13:59:08  SKIP    r139_decoupling_backtest (already completed)
+2026-08-24 13:59:08  SKIP    r140_decoupling_contamination_crosscheck (already completed)
+2026-08-24 13:59:08  SKIP    r141_decoupling_requalification (already completed)
+2026-08-24 13:59:08  SKIP    r142_descriptive_check_concordance (already completed)
+2026-08-24 13:59:08  SKIP    r143_earnings_lead_lag (already completed)
+2026-08-24 13:59:08  SKIP    r144_earnings_structural_break_correlation (already completed)
+2026-08-24 13:59:08  SKIP    r145_eg_null_calibration_montecarlo (already completed)
+2026-08-24 13:59:08  SKIP    r146_eg_permutation_check (already completed)
+2026-08-24 13:59:08  SKIP    r147_eigenvalue_weighted_position_sizing (already completed)
+2026-08-24 13:59:08  SKIP    r148_episodic_duration_degree_usability (already completed)
+2026-08-24 13:59:08  SKIP    r149_episodic_pairs_adapter (already completed)
+2026-08-24 13:59:08  START   r150_episodic_window_size_sweep  ->  research/episodic_window_size_sweep.py 
+2026-08-24 14:00:08  FAILED  r150_episodic_window_size_sweep after 1 min (exit 1) - see /home/rw/CAMARF/logs/overnight/r150_episodic_window_size_sweep.err.log
+2026-08-24 14:00:08  SKIP    r151_era_decay_replication (already completed)
+2026-08-24 14:00:08  START   r152_event_study_framework  ->  research/event_study_framework.py 
+2026-08-24 14:00:08  FAILED  r152_event_study_framework after 0 min (exit 2) - see /home/rw/CAMARF/logs/overnight/r152_event_study_framework.err.log
+2026-08-24 14:00:08  SKIP    r153_ewma_zscore_comparison (already completed)
+2026-08-24 14:00:08  START   r154_fama_french_risk_decomposition  ->  research/fama_french_risk_decomposition.py 
+2026-08-24 14:00:09  FAILED  r154_fama_french_risk_decomposition after 0 min (exit 2) - see /home/rw/CAMARF/logs/overnight/r154_fama_french_risk_decomposition.err.log
+2026-08-24 14:00:09  SKIP    r155_fdr_method_comparison (already completed)
+2026-08-24 14:00:09  SKIP    r156_fill_timing_sensitivity (already completed)
+2026-08-24 14:00:09  SKIP    r157_filter_ablation (already completed)
+2026-08-24 14:00:09  SKIP    r158_filter_relevance_sweep_1h (already completed)
+2026-08-24 14:00:09  SKIP    r159_financial_turbulence_index (already completed)
+2026-08-24 14:00:09  SKIP    r160_follower_direction_validation (already completed)
+2026-08-24 14:00:09  SKIP    r161_full_universe_correlation_prefilter (already completed)
+2026-08-24 14:00:09  START   r162_full_universe_eg_confirmation  ->  research/full_universe_eg_confirmation.py 
+2026-08-24 14:48:26  DONE    r162_full_universe_eg_confirmation in 48 min (exit 0)
+2026-08-24 14:48:26  START   r163_full_us_market_price_fetch  ->  research/full_us_market_price_fetch.py 
+2026-08-24 14:55:59  FAILED  r163_full_us_market_price_fetch after 7 min (exit 1) - see /home/rw/CAMARF/logs/overnight/r163_full_us_market_price_fetch.err.log
+2026-08-24 14:55:59  START   r164_fundamental_pair_tagger  ->  research/fundamental_pair_tagger.py 
+2026-08-24 14:55:59  FAILED  r164_fundamental_pair_tagger after 0 min (exit 2) - see /home/rw/CAMARF/logs/overnight/r164_fundamental_pair_tagger.err.log
+2026-08-24 14:55:59  START   r165_gpu_batched_eg_fixed_lag  ->  research/gpu_batched_eg_fixed_lag.py 
+2026-08-24 14:56:02  DONE    r165_gpu_batched_eg_fixed_lag in 0 min (exit 0)
+2026-08-24 14:56:02  START   r166_graph_clustering  ->  research/graph_clustering.py 
+2026-08-24 14:56:02  FAILED  r166_graph_clustering after 0 min (exit 1) - see /home/rw/CAMARF/logs/overnight/r166_graph_clustering.err.log
+2026-08-24 14:56:02  START   r167_graphical_lasso_clusters  ->  research/graphical_lasso_clusters.py 
+2026-08-24 14:56:03  DONE    r167_graphical_lasso_clusters in 0 min (exit 0)
+2026-08-24 14:56:03  START   r168_grid_bootstrap_ar_ci  ->  research/grid_bootstrap_ar_ci.py 
+2026-08-24 14:56:13  DONE    r168_grid_bootstrap_ar_ci in 0 min (exit 0)
+2026-08-24 14:56:13  START   r169_hmm_gmm_regime_trade_features  ->  research/hmm_gmm_regime_trade_features.py 
+2026-08-24 14:56:15  DONE    r169_hmm_gmm_regime_trade_features in 0 min (exit 0)
+2026-08-24 14:56:15  START   r170_hmm_regime_detection  ->  research/hmm_regime_detection.py 
+2026-08-24 14:56:18  DONE    r170_hmm_regime_detection in 0 min (exit 0)
+2026-08-24 14:56:18  START   r171_hub_leg_stop_conditioning  ->  research/hub_leg_stop_conditioning.py 
+2026-08-24 14:56:19  DONE    r171_hub_leg_stop_conditioning in 0 min (exit 0)
+2026-08-24 14:56:19  START   r172_international_liquidity_filter  ->  research/international_liquidity_filter.py 
+2026-08-24 15:03:52  FAILED  r172_international_liquidity_filter after 7 min (exit 1) - see /home/rw/CAMARF/logs/overnight/r172_international_liquidity_filter.err.log
+2026-08-24 15:03:52  START   r173_intraday_episodic_scan  ->  research/intraday_episodic_scan.py 
+2026-08-24 15:03:59  DONE    r173_intraday_episodic_scan in 0 min (exit 0)
+2026-08-24 15:03:59  START   r174_intraday_episodic_window_sensitivity  ->  research/intraday_episodic_window_sensitivity.py 
+2026-08-24 15:04:04  DONE    r174_intraday_episodic_window_sensitivity in 0 min (exit 0)
+2026-08-24 15:04:04  START   r175_inverse_polarity  ->  research/inverse_polarity.py 
+2026-08-24 15:04:05  DONE    r175_inverse_polarity in 0 min (exit 0)
+2026-08-24 15:04:05  START   r176_investigate_price_degeneracy_cause  ->  research/investigate_price_degeneracy_cause.py 
+2026-08-24 15:04:06  DONE    r176_investigate_price_degeneracy_cause in 0 min (exit 0)
+2026-08-24 15:04:06  START   r177_jkp_factor_portfolio_construction  ->  research/jkp_factor_portfolio_construction.py 
+2026-08-24 15:04:40  DONE    r177_jkp_factor_portfolio_construction in 0 min (exit 0)
+2026-08-24 15:04:40  START   r178_jkp_raw_characteristic_regression  ->  research/jkp_raw_characteristic_regression.py 
+2026-08-24 15:04:41  DONE    r178_jkp_raw_characteristic_regression in 0 min (exit 0)
+2026-08-24 15:04:41  START   r179_jkp_thread_m_driver  ->  research/jkp_thread_m_driver.py 
+2026-08-24 15:04:43  FAILED  r179_jkp_thread_m_driver after 0 min (exit 1) - see /home/rw/CAMARF/logs/overnight/r179_jkp_thread_m_driver.err.log
+2026-08-24 15:04:43  START   r180_jump_diffusion_parameter_fit  ->  research/jump_diffusion_parameter_fit.py 
+2026-08-24 15:04:44  DONE    r180_jump_diffusion_parameter_fit in 0 min (exit 0)
+2026-08-24 15:04:44  START   r181_jump_diffusion_spread_analysis  ->  research/jump_diffusion_spread_analysis.py 
+2026-08-24 15:04:45  DONE    r181_jump_diffusion_spread_analysis in 0 min (exit 0)
+2026-08-24 15:04:45  START   r182_k_bahc_candidate_discovery  ->  research/k_bahc_candidate_discovery.py 
+2026-08-24 15:04:53  FAILED  r182_k_bahc_candidate_discovery after 0 min (exit 1) - see /home/rw/CAMARF/logs/overnight/r182_k_bahc_candidate_discovery.err.log
+2026-08-24 15:04:53  START   r183_k_bahc_covariance_cleaning  ->  research/k_bahc_covariance_cleaning.py 
+2026-08-24 15:04:55  DONE    r183_k_bahc_covariance_cleaning in 0 min (exit 0)
+2026-08-24 15:04:55  START   r184_kalman_slope_intercept  ->  research/kalman_slope_intercept.py 
+2026-08-24 15:04:57  DONE    r184_kalman_slope_intercept in 0 min (exit 0)
+2026-08-24 15:04:57  START   r185_lag_aware_cointegration_discovery  ->  research/lag_aware_cointegration_discovery.py 
+2026-08-24 15:05:07  DONE    r185_lag_aware_cointegration_discovery in 0 min (exit 0)
+2026-08-24 15:05:07  START   r186_lag_sweep_validation  ->  research/lag_sweep_validation.py 
+2026-08-24 15:50:07  TIMEOUT r186_lag_sweep_validation after 45 min -- killing and moving on
+2026-08-24 15:50:07  START   r187_lead_lag_permutation_check  ->  research/lead_lag_permutation_check.py 
+2026-08-24 15:50:08  DONE    r187_lead_lag_permutation_check in 0 min (exit 0)
+2026-08-24 15:50:08  START   r188_lead_lag_scan  ->  research/lead_lag_scan.py 
+2026-08-24 15:50:10  DONE    r188_lead_lag_scan in 0 min (exit 0)
+2026-08-24 15:50:10  START   r189_leg_level_early_exit  ->  research/leg_level_early_exit.py 
+2026-08-24 15:50:11  DONE    r189_leg_level_early_exit in 0 min (exit 0)
+2026-08-24 15:50:11  START   r190_levy_jump_diffusion  ->  research/levy_jump_diffusion.py 
+2026-08-24 15:50:13  DONE    r190_levy_jump_diffusion in 0 min (exit 0)
+2026-08-24 15:50:13  START   r191_liquidity_bar_masking  ->  research/liquidity_bar_masking.py 
+2026-08-24 15:50:18  DONE    r191_liquidity_bar_masking in 0 min (exit 0)
+2026-08-24 15:50:18  START   r192_liquidity_bar_vs_symbol_comparison  ->  research/liquidity_bar_vs_symbol_comparison.py 
+2026-08-24 15:50:31  DONE    r192_liquidity_bar_vs_symbol_comparison in 0 min (exit 0)
+2026-08-24 15:50:31  START   r193_liquidity_threshold_sensitivity  ->  research/liquidity_threshold_sensitivity.py 
+2026-08-24 15:50:32  DONE    r193_liquidity_threshold_sensitivity in 0 min (exit 0)
+2026-08-24 15:50:32  START   r194_lo2002_sharpe_correction  ->  research/lo2002_sharpe_correction.py 
+2026-08-24 15:50:32  FAILED  r194_lo2002_sharpe_correction after 0 min (exit 1) - see /home/rw/CAMARF/logs/overnight/r194_lo2002_sharpe_correction.err.log
+2026-08-24 15:50:32  START   r195_lstm_attention_architecture  ->  research/lstm_attention_architecture.py 
+2026-08-24 15:50:32  FAILED  r195_lstm_attention_architecture after 0 min (exit 1) - see /home/rw/CAMARF/logs/overnight/r195_lstm_attention_architecture.err.log
+2026-08-24 15:50:32  START   r196_market_wide_cointegration_decay  ->  research/market_wide_cointegration_decay.py 
+2026-08-24 16:35:32  TIMEOUT r196_market_wide_cointegration_decay after 45 min -- killing and moving on
+2026-08-24 16:35:32  START   r197_midas_cross_asset_lead_lag  ->  research/midas_cross_asset_lead_lag.py 
+2026-08-24 16:35:34  DONE    r197_midas_cross_asset_lead_lag in 0 min (exit 0)
+2026-08-24 16:35:34  START   r198_midas_feature  ->  research/midas_feature.py 
+2026-08-24 16:35:35  DONE    r198_midas_feature in 0 min (exit 0)
+2026-08-24 16:35:35  START   r199_ml_lookahead_selftest  ->  research/ml_lookahead_selftest.py 
+2026-08-24 16:35:39  DONE    r199_ml_lookahead_selftest in 0 min (exit 0)
+2026-08-24 16:35:39  START   r200_ml_model_comparison  ->  research/ml_model_comparison.py 
+2026-08-24 16:35:41  DONE    r200_ml_model_comparison in 0 min (exit 0)
+2026-08-24 16:35:41  START   r201_ml_stage2_ablation  ->  research/ml_stage2_ablation.py 
+2026-08-24 16:35:44  DONE    r201_ml_stage2_ablation in 0 min (exit 0)
+2026-08-24 16:35:44  START   r202_multiscale_entropy  ->  research/multiscale_entropy.py 
+2026-08-24 16:35:46  DONE    r202_multiscale_entropy in 0 min (exit 0)
+2026-08-24 16:35:46  START   r203_near_miss_lag_scan  ->  research/near_miss_lag_scan.py 
+2026-08-24 17:20:46  TIMEOUT r203_near_miss_lag_scan after 45 min -- killing and moving on
+2026-08-24 17:20:46  START   r204_network_momentum  ->  research/network_momentum.py 
+2026-08-24 17:20:48  DONE    r204_network_momentum in 0 min (exit 0)
+2026-08-24 17:20:48  START   r205_news_impact_asymmetry  ->  research/news_impact_asymmetry.py 
+2026-08-24 17:20:49  DONE    r205_news_impact_asymmetry in 0 min (exit 0)
+2026-08-24 17:20:49  START   r206_options_greeks_features  ->  research/options_greeks_features.py 
+2026-08-24 17:20:50  DONE    r206_options_greeks_features in 0 min (exit 0)
+2026-08-24 17:20:50  START   r207_pair_characteristics_analyzer  ->  research/pair_characteristics_analyzer.py 
+2026-08-24 17:20:51  DONE    r207_pair_characteristics_analyzer in 0 min (exit 0)
+2026-08-24 17:20:51  START   r208_pair_source  ->  research/pair_source.py 
+2026-08-24 17:20:51  DONE    r208_pair_source in 0 min (exit 0)
+2026-08-24 17:20:51  START   r209_parameter_sensitivity_phase2_interaction  ->  research/parameter_sensitivity_phase2_interaction.py 
+2026-08-24 17:21:13  DONE    r209_parameter_sensitivity_phase2_interaction in 0 min (exit 0)
+2026-08-24 17:21:13  START   r210_parameter_sensitivity_screen  ->  research/parameter_sensitivity_screen.py 
+2026-08-24 17:21:38  DONE    r210_parameter_sensitivity_screen in 0 min (exit 0)
+2026-08-24 17:21:38  START   r211_pdr_calmar_comparison  ->  research/pdr_calmar_comparison.py 
+2026-08-24 17:21:38  DONE    r211_pdr_calmar_comparison in 0 min (exit 0)
+2026-08-24 17:21:38  START   r212_pearson_threshold_sensitivity  ->  research/pearson_threshold_sensitivity.py 
+2026-08-24 17:22:05  DONE    r212_pearson_threshold_sensitivity in 0 min (exit 0)
+2026-08-24 17:22:05  START   r213_peer_correlation_contamination_check  ->  research/peer_correlation_contamination_check.py 
+2026-08-24 17:22:38  DONE    r213_peer_correlation_contamination_check in 0 min (exit 0)
+2026-08-24 17:22:38  START   r214_pit_pair_discovery  ->  research/pit_pair_discovery.py 
+2026-08-24 17:22:46  DONE    r214_pit_pair_discovery in 0 min (exit 0)
+2026-08-24 17:22:46  START   r215_pit_precision_by_regime_strength  ->  research/pit_precision_by_regime_strength.py 
+2026-08-24 17:22:54  DONE    r215_pit_precision_by_regime_strength in 0 min (exit 0)
+2026-08-24 17:22:54  START   r216_portfolio_effective_bets  ->  research/portfolio_effective_bets.py 
+2026-08-24 17:22:55  DONE    r216_portfolio_effective_bets in 0 min (exit 0)
+2026-08-24 17:22:55  START   r217_portfolio_position_sizing_correction  ->  research/portfolio_position_sizing_correction.py 
+2026-08-24 17:22:56  DONE    r217_portfolio_position_sizing_correction in 0 min (exit 0)
+2026-08-24 17:22:56  START   r218_predictability_optimizer  ->  research/predictability_optimizer.py 
+2026-08-24 17:22:56  DONE    r218_predictability_optimizer in 0 min (exit 0)
+2026-08-24 17:22:56  START   r219_price_degeneracy_root_cause  ->  research/price_degeneracy_root_cause.py 
+2026-08-24 17:22:57  DONE    r219_price_degeneracy_root_cause in 0 min (exit 0)
+2026-08-24 17:22:57  START   r220_price_density_screen  ->  research/price_density_screen.py 
+2026-08-24 17:22:58  DONE    r220_price_density_screen in 0 min (exit 0)
+2026-08-24 17:22:58  START   r221_quantile_regression_forest  ->  research/quantile_regression_forest.py 
+2026-08-24 17:22:59  DONE    r221_quantile_regression_forest in 0 min (exit 0)
+2026-08-24 17:22:59  START   r222_regime_age_at_entry_diagnostic  ->  research/regime_age_at_entry_diagnostic.py 
+2026-08-24 17:23:01  DONE    r222_regime_age_at_entry_diagnostic in 0 min (exit 0)
+2026-08-24 17:23:01  START   r223_regime_capital_reallocation_diagnostic  ->  research/regime_capital_reallocation_diagnostic.py 
+2026-08-24 17:23:16  DONE    r223_regime_capital_reallocation_diagnostic in 0 min (exit 0)
+2026-08-24 17:23:16  START   r224_regime_cluster_robustness_check  ->  research/regime_cluster_robustness_check.py 
+2026-08-24 17:23:18  DONE    r224_regime_cluster_robustness_check in 0 min (exit 0)
+2026-08-24 17:23:18  START   r225_regime_conditional_analysis  ->  research/regime_conditional_analysis.py 
+2026-08-24 17:23:22  DONE    r225_regime_conditional_analysis in 0 min (exit 0)
+2026-08-24 17:23:22  START   r226_regime_conditional_entry_gate  ->  research/regime_conditional_entry_gate.py 
+2026-08-24 17:23:23  DONE    r226_regime_conditional_entry_gate in 0 min (exit 0)
+2026-08-24 17:23:23  START   r227_reimers_trio_correction  ->  research/reimers_trio_correction.py 
+2026-08-24 17:23:24  DONE    r227_reimers_trio_correction in 0 min (exit 0)
+2026-08-24 17:23:24  START   r228_relational_regime_indicator  ->  research/relational_regime_indicator.py 
+2026-08-24 17:23:27  DONE    r228_relational_regime_indicator in 0 min (exit 0)
+2026-08-24 17:23:27  START   r229_return_smoothing_audit  ->  research/return_smoothing_audit.py 
+2026-08-24 17:23:27  DONE    r229_return_smoothing_audit in 0 min (exit 0)
+2026-08-24 17:23:27  START   r230_ridge_hedge_ratio_comparison  ->  research/ridge_hedge_ratio_comparison.py 
+2026-08-24 17:23:34  DONE    r230_ridge_hedge_ratio_comparison in 0 min (exit 0)
+2026-08-24 17:23:34  START   r231_rmt_feature_denoising  ->  research/rmt_feature_denoising.py 
+2026-08-24 17:23:36  DONE    r231_rmt_feature_denoising in 0 min (exit 0)
+2026-08-24 17:23:36  START   r232_rolling_adv_comparison  ->  research/rolling_adv_comparison.py 
+2026-08-24 17:25:46  FAILED  r232_rolling_adv_comparison after 2 min (exit 1) - see /home/rw/CAMARF/logs/overnight/r232_rolling_adv_comparison.err.log
+2026-08-24 17:25:46  START   r233_rough_volatility  ->  research/rough_volatility.py 
+2026-08-24 17:25:49  DONE    r233_rough_volatility in 0 min (exit 0)
+2026-08-24 17:25:49  START   r234_sample_entropy_spreads  ->  research/sample_entropy_spreads.py 
+2026-08-24 17:25:52  DONE    r234_sample_entropy_spreads in 0 min (exit 0)
+2026-08-24 17:25:52  START   r235_sector_restricted_fdr_rescan  ->  research/sector_restricted_fdr_rescan.py 
+2026-08-24 17:25:53  FAILED  r235_sector_restricted_fdr_rescan after 0 min (exit 1) - see /home/rw/CAMARF/logs/overnight/r235_sector_restricted_fdr_rescan.err.log
+2026-08-24 17:25:53  START   r236_sensitivity_research  ->  research/sensitivity_research.py 
+2026-08-24 17:30:27  DONE    r236_sensitivity_research in 4 min (exit 0)
+2026-08-24 17:30:27  START   r237_short_term_factor_alpha  ->  research/short_term_factor_alpha.py 
+2026-08-24 17:30:28  DONE    r237_short_term_factor_alpha in 0 min (exit 0)
+2026-08-24 17:30:28  START   r238_smoothing_comparison  ->  research/smoothing_comparison.py 
+2026-08-24 17:31:09  DONE    r238_smoothing_comparison in 0 min (exit 0)
+2026-08-24 17:31:09  START   r239_spread_construction  ->  research/spread_construction.py 
+2026-08-24 17:31:11  DONE    r239_spread_construction in 0 min (exit 0)
+2026-08-24 17:31:11  START   r240_stop_loss_correlation_caps  ->  research/stop_loss_correlation_caps.py 
+2026-08-24 17:31:11  DONE    r240_stop_loss_correlation_caps in 0 min (exit 0)
+2026-08-24 17:31:11  START   r241_strategy_risk_precision  ->  research/strategy_risk_precision.py 
+2026-08-24 17:31:12  FAILED  r241_strategy_risk_precision after 0 min (exit 1) - see /home/rw/CAMARF/logs/overnight/r241_strategy_risk_precision.err.log
+2026-08-24 17:31:12  START   r242_strategy_variation_comparison  ->  research/strategy_variation_comparison.py 
+2026-08-24 17:31:17  DONE    r242_strategy_variation_comparison in 0 min (exit 0)
+2026-08-24 17:31:17  START   r243_stress_test_replication  ->  research/stress_test_replication.py 
+2026-08-24 17:31:26  DONE    r243_stress_test_replication in 0 min (exit 0)
+2026-08-24 17:31:26  START   r244_structural_break_onset_detection  ->  research/structural_break_onset_detection.py 
+2026-08-24 17:31:28  DONE    r244_structural_break_onset_detection in 0 min (exit 0)
+2026-08-24 17:31:28  START   r245_svm_gradient_descent_classifier  ->  research/svm_gradient_descent_classifier.py 
+2026-08-24 17:31:30  DONE    r245_svm_gradient_descent_classifier in 0 min (exit 0)
+2026-08-24 17:31:30  START   r246_tail_dependence  ->  research/tail_dependence.py 
+2026-08-24 17:31:31  DONE    r246_tail_dependence in 0 min (exit 0)
+2026-08-24 17:31:31  START   r247_tail_dependence_deep  ->  research/tail_dependence_deep.py 
+2026-08-24 17:31:32  DONE    r247_tail_dependence_deep in 0 min (exit 0)
+2026-08-24 17:31:32  START   r248_tail_dependence_universe_screen  ->  research/tail_dependence_universe_screen.py 
+2026-08-24 17:31:39  DONE    r248_tail_dependence_universe_screen in 0 min (exit 0)
+2026-08-24 17:31:39  START   r249_thread_k_part2_fund_membership_fetch  ->  research/thread_k_part2_fund_membership_fetch.py 
+2026-08-24 17:39:11  FAILED  r249_thread_k_part2_fund_membership_fetch after 7 min (exit 1) - see /home/rw/CAMARF/logs/overnight/r249_thread_k_part2_fund_membership_fetch.err.log
+2026-08-24 17:39:11  START   r250_threshold_cointegration  ->  research/threshold_cointegration.py 
+2026-08-24 17:39:25  DONE    r250_threshold_cointegration in 0 min (exit 0)
+2026-08-24 17:39:25  START   r251_trend_dominance_diagnostic  ->  research/trend_dominance_diagnostic.py 
+2026-08-24 17:39:30  DONE    r251_trend_dominance_diagnostic in 0 min (exit 0)
+2026-08-24 17:39:30  START   r252_trig_convergence  ->  research/trig_convergence.py 
+2026-08-24 17:39:33  DONE    r252_trig_convergence in 0 min (exit 0)
+2026-08-24 17:39:33  START   r253_var_backtest_calibration  ->  research/var_backtest_calibration.py 
+2026-08-24 17:39:35  DONE    r253_var_backtest_calibration in 0 min (exit 0)
+2026-08-24 17:39:35  START   r254_variance_ratio_test  ->  research/variance_ratio_test.py 
+2026-08-24 17:39:36  DONE    r254_variance_ratio_test in 0 min (exit 0)
+2026-08-24 17:39:36  START   r255_vix_crisis_hl_robustness_check  ->  research/vix_crisis_hl_robustness_check.py 
+2026-08-24 17:39:46  DONE    r255_vix_crisis_hl_robustness_check in 0 min (exit 0)
+2026-08-24 17:39:46  START   r256_vol_swap_style_risk_estimate_comparison  ->  research/vol_swap_style_risk_estimate_comparison.py 
+2026-08-24 17:39:46  DONE    r256_vol_swap_style_risk_estimate_comparison in 0 min (exit 0)
+2026-08-24 17:39:46  START   r257_vol_targeting_and_drawdown_derisking  ->  research/vol_targeting_and_drawdown_derisking.py 
+2026-08-24 17:39:48  DONE    r257_vol_targeting_and_drawdown_derisking in 0 min (exit 0)
+2026-08-24 17:39:48  START   r258_wavelet_hurst_comparison  ->  research/wavelet_hurst_comparison.py 
+2026-08-24 17:39:49  DONE    r258_wavelet_hurst_comparison in 0 min (exit 0)
+2026-08-24 17:39:49  START   r259_weak_exogeneity_test  ->  research/weak_exogeneity_test.py 
+2026-08-24 17:39:51  DONE    r259_weak_exogeneity_test in 0 min (exit 0)
+2026-08-24 17:39:51  START   r260_wrds_capability_audit  ->  research/wrds_capability_audit.py 
+2026-08-24 17:39:52  FAILED  r260_wrds_capability_audit after 0 min (exit 1) - see /home/rw/CAMARF/logs/overnight/r260_wrds_capability_audit.err.log
+2026-08-24 17:39:52  START   r261_wrds_deep_history_episodic_scan  ->  research/wrds_deep_history_episodic_scan.py 
+2026-08-24 17:40:52  FAILED  r261_wrds_deep_history_episodic_scan after 1 min (exit 1) - see /home/rw/CAMARF/logs/overnight/r261_wrds_deep_history_episodic_scan.err.log
+2026-08-24 17:40:52  START   r262_wrds_global_index_universe_fetch  ->  research/wrds_global_index_universe_fetch.py 
+2026-08-24 17:48:25  FAILED  r262_wrds_global_index_universe_fetch after 7 min (exit 1) - see /home/rw/CAMARF/logs/overnight/r262_wrds_global_index_universe_fetch.err.log
+2026-08-24 17:48:25  START   r263_wrds_lead_lag_scan  ->  research/wrds_lead_lag_scan.py 
+2026-08-24 17:48:26  DONE    r263_wrds_lead_lag_scan in 0 min (exit 0)
+2026-08-24 17:48:26  START   r264_wrds_universal_lead_lag_scan  ->  research/wrds_universal_lead_lag_scan.py 
+2026-08-24 17:49:37  FAILED  r264_wrds_universal_lead_lag_scan after 1 min (exit 1) - see /home/rw/CAMARF/logs/overnight/r264_wrds_universal_lead_lag_scan.err.log
+2026-08-24 17:49:37  ================ CAMARF overnight research runner finished ================
+2026-08-24 17:49:37  Stages completed: 172
+2026-08-24 18:14:07  ================ CAMARF overnight research runner started (workers=15, timeout=45min/stage, platform=linux) ================
+2026-08-24 18:16:49  Cache warm-up: read 90321 files (25.37 GB) from /home/rw/CAMARF/output/cache in 161.7s -- now resident in OS page cache for this run
+2026-08-24 18:16:49  SKIP    00_intraday_episodic_scan (already completed)
+2026-08-24 18:16:49  SKIP    00c_pit_wfa (already completed)
+2026-08-24 18:16:49  SKIP    00a_episodic_adapter (already completed)
+2026-08-24 18:16:49  SKIP    00b_ml_pit_safe (already completed)
+2026-08-24 18:16:49  SKIP    all 13 backtest.py variants already completed
+2026-08-24 18:16:49  SKIP    14_stats (already completed)
+2026-08-24 18:16:49  SKIP    15_wfa (already completed)
+2026-08-24 18:16:49  SKIP    16_distance (already completed)
+2026-08-24 18:16:49  SKIP    17_sensitivity (already completed)
+2026-08-24 18:16:49  SKIP    18_deflated_sharpe (already completed)
+2026-08-24 18:16:49  START   19_report  ->  report.py 
+2026-08-24 18:16:49  FAILED  19_report after 0 min (exit 1) - see /home/rw/CAMARF/logs/overnight/19_report.err.log
+2026-08-24 18:16:49  SKIP    20_ml (already completed)
+2026-08-24 18:16:49  SKIP    21_run_storm_grid (already completed)
+2026-08-24 18:16:49  SKIP    22_fresh_holdout_compare (already completed)
+2026-08-24 18:16:49  SKIP    23_absorption_ratio (already completed)
+2026-08-24 18:16:49  SKIP    24_cvar (already completed)
+2026-08-24 18:16:49  SKIP    25_decay_proxy (already completed)
+2026-08-24 18:16:49  SKIP    26_portfolio_sim (already completed)
+2026-08-24 18:16:49  SKIP    27_survivorship (already completed)
+2026-08-24 18:16:49  SKIP    28_options (already completed)
+2026-08-24 18:16:49  SKIP    29_gics (already completed)
+2026-08-24 18:16:49  SKIP    30_reproduce (already completed)
+2026-08-24 18:16:49  START   31_run_verify_suite  ->  run_verify_suite.py 
+2026-08-24 18:24:25  FAILED  31_run_verify_suite after 7 min (exit 1) - see /home/rw/CAMARF/logs/overnight/31_run_verify_suite.err.log
+2026-08-24 18:24:25  START   r__regime_features  ->  research/_regime_features.py 
+2026-08-24 18:24:27  DONE    r__regime_features in 0 min (exit 0)
+2026-08-24 18:24:27  START   r_adf_confirmatory_tier  ->  research/adf_confirmatory_tier.py 
+2026-08-24 18:24:28  DONE    r_adf_confirmatory_tier in 0 min (exit 0)
+2026-08-24 18:24:28  START   r_aligned_pair_loader  ->  research/aligned_pair_loader.py 
+2026-08-24 18:24:29  DONE    r_aligned_pair_loader in 0 min (exit 0)
+2026-08-24 18:24:29  START   r_annotate_symbol_metadata  ->  research/annotate_symbol_metadata.py 
+2026-08-24 18:24:29  DONE    r_annotate_symbol_metadata in 0 min (exit 0)
+2026-08-24 18:24:29  START   r_archetype_conditional_sizing  ->  research/archetype_conditional_sizing.py 
+2026-08-24 18:24:31  FAILED  r_archetype_conditional_sizing after 0 min (exit 1) - see /home/rw/CAMARF/logs/overnight/r_archetype_conditional_sizing.err.log
+2026-08-24 18:24:31  START   r_audit_price_degeneracy  ->  research/audit_price_degeneracy.py 
+2026-08-24 18:24:49  DONE    r_audit_price_degeneracy in 0 min (exit 0)
+2026-08-24 18:24:49  START   r_bayesian_pair_confirmation  ->  research/bayesian_pair_confirmation.py 
+2026-08-24 18:24:50  DONE    r_bayesian_pair_confirmation in 0 min (exit 0)
+2026-08-24 18:24:50  START   r_bertram_ou_thresholds  ->  research/bertram_ou_thresholds.py 
+2026-08-24 18:24:56  DONE    r_bertram_ou_thresholds in 0 min (exit 0)
+2026-08-24 18:24:56  START   r_bh_fdr_dependence_check  ->  research/bh_fdr_dependence_check.py 
+2026-08-24 18:24:58  DONE    r_bh_fdr_dependence_check in 0 min (exit 0)
+2026-08-24 18:24:58  START   r_bh_vs_by_full_universe  ->  research/bh_vs_by_full_universe.py 
+2026-08-24 18:25:21  DONE    r_bh_vs_by_full_universe in 0 min (exit 0)
+2026-08-24 18:25:21  START   r_bias_budget  ->  research/bias_budget.py 
+2026-08-24 18:25:22  DONE    r_bias_budget in 0 min (exit 0)
+2026-08-24 18:25:22  START   r_big_move_lead_lag  ->  research/big_move_lead_lag.py 
+2026-08-24 18:25:23  DONE    r_big_move_lead_lag in 0 min (exit 0)
+2026-08-24 18:25:23  START   r_bounded_lookback_primary_screen  ->  research/bounded_lookback_primary_screen.py 
+2026-08-24 18:25:25  DONE    r_bounded_lookback_primary_screen in 0 min (exit 0)
+2026-08-24 18:25:25  START   r_breakout_vs_reversion  ->  research/breakout_vs_reversion.py 
+2026-08-24 18:25:27  DONE    r_breakout_vs_reversion in 0 min (exit 0)
+2026-08-24 18:25:27  START   r_bug_d45_decoupled_std_retest  ->  research/bug_d45_decoupled_std_retest.py 
+2026-08-24 18:25:27  DONE    r_bug_d45_decoupled_std_retest in 0 min (exit 0)
+2026-08-24 18:25:27  START   r_build_comparison_arm_pairs  ->  research/build_comparison_arm_pairs.py 
+2026-08-24 18:25:28  DONE    r_build_comparison_arm_pairs in 0 min (exit 0)
+2026-08-24 18:25:28  START   r_build_symbol_permno_map  ->  research/build_symbol_permno_map.py 
+2026-08-24 18:25:30  FAILED  r_build_symbol_permno_map after 0 min (exit 1) - see /home/rw/CAMARF/logs/overnight/r_build_symbol_permno_map.err.log
+2026-08-24 18:25:30  START   r_build_wrds_supplementary_data  ->  research/build_wrds_supplementary_data.py 
+2026-08-24 18:25:32  FAILED  r_build_wrds_supplementary_data after 0 min (exit 1) - see /home/rw/CAMARF/logs/overnight/r_build_wrds_supplementary_data.err.log
+2026-08-24 18:25:32  START   r_capital_sim_selection_mechanism  ->  research/capital_sim_selection_mechanism.py 
+2026-08-24 18:25:49  DONE    r_capital_sim_selection_mechanism in 0 min (exit 0)
+2026-08-24 18:25:49  START   r_caviar_dynamic_var  ->  research/caviar_dynamic_var.py 
+2026-08-24 18:25:50  DONE    r_caviar_dynamic_var in 0 min (exit 0)
+2026-08-24 18:25:50  START   r_ccp_variants  ->  research/ccp_variants.py 
+2026-08-24 18:25:50  FAILED  r_ccp_variants after 0 min (exit 1) - see /home/rw/CAMARF/logs/overnight/r_ccp_variants.err.log
+2026-08-24 18:25:50  START   r_coint_frac_window_grid  ->  research/coint_frac_window_grid.py 
+2026-08-24 18:25:51  DONE    r_coint_frac_window_grid in 0 min (exit 0)
+2026-08-24 18:25:51  START   r_cointegration_regime_segmentation  ->  research/cointegration_regime_segmentation.py 
+2026-08-24 18:27:18  DONE    r_cointegration_regime_segmentation in 1 min (exit 0)
+2026-08-24 18:27:18  START   r_comomentum  ->  research/comomentum.py 
+2026-08-24 18:27:19  DONE    r_comomentum in 0 min (exit 0)
+2026-08-24 18:27:19  START   r_comparison_arm_scaffold  ->  research/comparison_arm_scaffold.py 
+2026-08-24 18:27:19  DONE    r_comparison_arm_scaffold in 0 min (exit 0)
+2026-08-24 18:27:19  START   r_confirmatory_cointegration_check  ->  research/confirmatory_cointegration_check.py 
+2026-08-24 18:27:21  DONE    r_confirmatory_cointegration_check in 0 min (exit 0)
+2026-08-24 18:27:21  START   r_convex_portfolio_construction  ->  research/convex_portfolio_construction.py 
+2026-08-24 18:27:22  DONE    r_convex_portfolio_construction in 0 min (exit 0)
+2026-08-24 18:27:22  START   r_copula_pairs  ->  research/copula_pairs.py 
+2026-08-24 18:27:23  DONE    r_copula_pairs in 0 min (exit 0)
+2026-08-24 18:27:23  START   r_corporate_actions_audit  ->  research/corporate_actions_audit.py 
+2026-08-24 18:27:24  DONE    r_corporate_actions_audit in 0 min (exit 0)
+2026-08-24 18:27:24  START   r_cross_listing_lead_lag  ->  research/cross_listing_lead_lag.py 
+2026-08-24 18:27:51  DONE    r_cross_listing_lead_lag in 0 min (exit 0)
+2026-08-24 18:27:51  START   r_cross_session_leadlag  ->  research/cross_session_leadlag.py 
+2026-08-24 18:27:52  DONE    r_cross_session_leadlag in 0 min (exit 0)
+2026-08-24 18:27:52  START   r_cross_tf_break_divergence  ->  research/cross_tf_break_divergence.py 
+2026-08-24 18:27:56  DONE    r_cross_tf_break_divergence in 0 min (exit 0)
+2026-08-24 18:27:56  START   r_cross_tf_lead_lag_scan  ->  research/cross_tf_lead_lag_scan.py 
+2026-08-24 18:32:44  DONE    r_cross_tf_lead_lag_scan in 4 min (exit 0)
+2026-08-24 18:32:44  START   r_cross_timeframe_cointegration  ->  research/cross_timeframe_cointegration.py 
+2026-08-24 18:33:00  DONE    r_cross_timeframe_cointegration in 0 min (exit 0)
+2026-08-24 18:33:00  START   r_cross_timeframe_divergence  ->  research/cross_timeframe_divergence.py 
+2026-08-24 18:33:02  DONE    r_cross_timeframe_divergence in 0 min (exit 0)
+2026-08-24 18:33:02  START   r_cycle_detection  ->  research/cycle_detection.py 
+2026-08-24 18:33:05  DONE    r_cycle_detection in 0 min (exit 0)
+2026-08-24 18:33:05  START   r_data_contamination_scan  ->  research/data_contamination_scan.py 
+2026-08-24 19:09:26  DONE    r_data_contamination_scan in 36 min (exit 0)
+2026-08-24 19:09:26  START   r_dd_hub_effective_bets  ->  research/dd_hub_effective_bets.py 
+2026-08-24 19:09:27  DONE    r_dd_hub_effective_bets in 0 min (exit 0)
+2026-08-24 19:09:27  START   r_decay_rate_at_entry_diagnostic  ->  research/decay_rate_at_entry_diagnostic.py 
+2026-08-24 19:09:31  DONE    r_decay_rate_at_entry_diagnostic in 0 min (exit 0)
+2026-08-24 19:09:31  START   r_decay_rate_signals  ->  research/decay_rate_signals.py 
+2026-08-24 19:09:32  DONE    r_decay_rate_signals in 0 min (exit 0)
+2026-08-24 19:09:32  START   r_decoupling_analysis  ->  research/decoupling_analysis.py 
+2026-08-24 19:09:34  DONE    r_decoupling_analysis in 0 min (exit 0)
+2026-08-24 19:09:34  START   r_decoupling_backtest  ->  research/decoupling_backtest.py 
+2026-08-24 19:09:39  DONE    r_decoupling_backtest in 0 min (exit 0)
+2026-08-24 19:09:39  START   r_decoupling_contamination_crosscheck  ->  research/decoupling_contamination_crosscheck.py 
+2026-08-24 19:09:39  DONE    r_decoupling_contamination_crosscheck in 0 min (exit 0)
+2026-08-24 19:09:39  START   r_decoupling_requalification  ->  research/decoupling_requalification.py 
+2026-08-24 19:09:41  DONE    r_decoupling_requalification in 0 min (exit 0)
+2026-08-24 19:09:41  START   r_descriptive_check_concordance  ->  research/descriptive_check_concordance.py 
+2026-08-24 19:10:42  DONE    r_descriptive_check_concordance in 1 min (exit 0)
+2026-08-24 19:10:42  START   r_earnings_lead_lag  ->  research/earnings_lead_lag.py 
+2026-08-24 19:10:43  DONE    r_earnings_lead_lag in 0 min (exit 0)
+2026-08-24 19:10:43  START   r_earnings_structural_break_correlation  ->  research/earnings_structural_break_correlation.py 
+2026-08-24 19:10:47  DONE    r_earnings_structural_break_correlation in 0 min (exit 0)
+2026-08-24 19:10:47  START   r_eg_null_calibration_montecarlo  ->  research/eg_null_calibration_montecarlo.py 
+2026-08-24 19:11:15  DONE    r_eg_null_calibration_montecarlo in 0 min (exit 0)
+2026-08-24 19:11:15  START   r_eg_permutation_check  ->  research/eg_permutation_check.py 
+2026-08-24 19:11:32  DONE    r_eg_permutation_check in 0 min (exit 0)
+2026-08-24 19:11:32  START   r_eigenvalue_weighted_position_sizing  ->  research/eigenvalue_weighted_position_sizing.py 
+2026-08-24 19:11:33  DONE    r_eigenvalue_weighted_position_sizing in 0 min (exit 0)
+2026-08-24 19:11:33  START   r_episodic_duration_degree_usability  ->  research/episodic_duration_degree_usability.py 
+2026-08-24 19:12:04  DONE    r_episodic_duration_degree_usability in 0 min (exit 0)
+2026-08-24 19:12:04  START   r_episodic_pairs_adapter  ->  research/episodic_pairs_adapter.py 
+2026-08-24 19:12:14  DONE    r_episodic_pairs_adapter in 0 min (exit 0)
+2026-08-24 19:12:14  START   r_episodic_window_size_sweep  ->  research/episodic_window_size_sweep.py 

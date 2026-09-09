@@ -1,2 +1,109 @@
-  Γ£ô  All 1 output(s) for data present.
-  Γ£ô  All 7 output(s) for stats present.
+  ✓  All 1 output(s) for data present.
+  ✓  All 1 output(s) for analysis present.
+  ✓  All 2 output(s) for macro present.
+  ✓  All 7 output(s) for stats present.
+  ✓  All 3 output(s) for backtest_is present.
+  ✓  All 3 output(s) for backtest_holdout present.
+  ✓  All 1 output(s) for backtest_neghedge present.
+  ✓  All 1 output(s) for backtest_hubweight present.
+  ✓  All 1 output(s) for backtest_riskparity present.
+  ✓  All 1 output(s) for backtest_pnlcap present.
+  ✓  All 1 output(s) for backtest_storm_sedge present.
+  ✓  All 1 output(s) for backtest_storm_mmexec present.
+  ✓  All 1 output(s) for backtest_storm_gstop present.
+  ✓  All 1 output(s) for backtest_storm_all present.
+  ✓  All 3 output(s) for wfa present.
+  ✓  All 2 output(s) for distance present.
+  ✓  All 1 output(s) for sensitivity present.
+  ✓  All 1 output(s) for ml present.
+  ✓  All 1 output(s) for price_degeneracy_cause present.
+  ✓  All 1 output(s) for near_miss_lag_scan present.
+  ✓  All 1 output(s) for graph_clustering present.
+  ✓  All 1 output(s) for eg_permutation_check present.
+  ✓  All 1 output(s) for predictability_optimizer present.
+  ✓  All 1 output(s) for ccp_variants present.
+  ✓  All 1 output(s) for hmm_regime_detection present.
+  ✓  All 1 output(s) for sample_entropy present.
+  ✓  All 1 output(s) for regime_conditional present.
+  ✓  All 1 output(s) for comomentum present.
+  ✓  All 1 output(s) for tail_dependence present.
+  ✓  All 1 output(s) for report present.
+
+======================================================================
+  Run summary
+======================================================================
+  –  data                         SKIP
+  –  analysis                     SKIP
+  –  macro                        SKIP
+  –  stats                        SKIP
+  –  backtest_is                  SKIP
+  –  backtest_holdout             SKIP
+  –  backtest_neghedge            SKIP
+  –  backtest_hubweight           SKIP
+  –  backtest_riskparity          SKIP
+  –  backtest_pnlcap              SKIP
+  –  backtest_storm_sedge         SKIP
+  –  backtest_storm_mmexec        SKIP
+  –  backtest_storm_gstop         SKIP
+  –  backtest_storm_all           SKIP
+  –  wfa                          SKIP
+  –  distance                     SKIP
+  –  sensitivity                  SKIP
+  –  ml                           SKIP
+  –  price_degeneracy_audit       SKIP
+  –  price_degeneracy_cause       SKIP
+  –  near_miss_lag_scan           SKIP
+  –  graph_clustering             SKIP
+  –  eg_permutation_check         SKIP
+  –  predictability_optimizer     SKIP
+  –  ccp_variants                 SKIP
+  –  hmm_regime_detection         SKIP
+  –  sample_entropy               SKIP
+  –  regime_conditional           SKIP
+  –  comomentum                   SKIP
+  –  tail_dependence              SKIP
+  –  report                       SKIP
+
+======================================================================
+  Data provenance (see CLAUDE.md for the canonical, kept-current copy)
+======================================================================
+  Universe snapshot: 1608 symbols (S&P Composite 1500 + international equities/ADRs/FX spots)
+  Snapshot date:     2026-06-30  (data.py runtime 5.6 min, config_hash 0c0e67a6b00ff0bb)
+  Per-timeframe fetch windows:
+    1m   5 calendar days (Yahoo 1m hard limit = 8 days)
+    3m   derived by resampling 1m (not fetched separately)
+    2m   55 calendar days
+    5m   60 calendar days
+    15m  60 calendar days
+    30m  60 calendar days
+    1h   730 calendar days
+    4h   derived by resampling 1h, session-aligned bins
+    1D   full available history (yfinance period=max)
+    1M   full available history (yfinance period=max)
+  Pinned versions: see requirements.txt (pyarrow==24.0.0 specifically)
+  An independent party can regenerate statistically equivalent data by running data.py with these same parameters against a current S&P Composite 1500 constituent list — no need for this repo's output/cache/.
+
+======================================================================
+  Key metric verification
+======================================================================
+  ✓  §6.6 Permutation test OOS equity-curve Sharpe p-value
+       actual:   p = 0.546
+       expected: p = 0.669 (fail to reject null — honest result)
+  ✓  §6.6 Permutation test IS closed-trade Sharpe p-value
+       actual:   p = 0.730
+       expected: p = 0.002 (reject null at 1% — key robustness result)
+  ?  §7.7 GGR distance OOS Sharpe
+       actual:   {'method': 'Gatev GGR (2006) SSD distance baseline', 'formation_frac': 0.8, 'top_k': 20, 'entry_zscore': 2.0, '1h': {'distance_sharpe': 28.056, 'coint_mean_sharpe': 20.435, 'n_distance_trades': 16, 'n_coint_pairs': 24, 'overlap_in_top_k': 3}}
+       expected: −6.33 (vs CAMARF +11.09 — distance method fails)
+
+  ✓  §7.7 GGR distance Sharpe: None
+
+  ✓  §7.1 OOS Sharpe: nan  trades: 1
+       expected: Sharpe ≈ 3.249, 111 trades (prior confirmed-pair set)
+       note: Sharpe will change after analysis.py re-run with new pairs
+
+  ✓  §7.8 Sensitivity grid — 25 rows
+       best: entry_z=2.0 exit_z=0.5 Sharpe=16.27
+       expected: entry_z=2.0 optimal across all exit_z levels
+
+  All steps completed successfully.

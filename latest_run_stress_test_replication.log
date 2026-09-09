@@ -1,38 +1,38 @@
-16:41:16 INFO  === stress_test_replication.py: historical crisis stress test on confirmed pairs (1D resolution) ===
-16:41:16 INFO  SCOPE: tests cointegration-relationship stability at DAILY resolution during known historical crisis windows — does NOT replay the intraday strategy (no cached 1h data reaches back to 2007/2020; see module docstring).
-16:41:16 INFO  3 pairs to test across 3 crisis windows + 3 calm controls
-16:41:17 INFO    IQV/Q @ aug_2007_quant_quake: INSUFFICIENT_HISTORY
-16:41:17 INFO    IQV/Q @ 2008_gfc: INSUFFICIENT_HISTORY
-16:41:17 INFO    IQV/Q @ 2020_covid_crash: INSUFFICIENT_HISTORY
-16:41:17 INFO    IQV/Q @ calm_control_2015_08: INSUFFICIENT_HISTORY
-16:41:17 INFO    IQV/Q @ calm_control_2016_2017: INSUFFICIENT_HISTORY
-16:41:17 INFO    IQV/Q @ calm_control_2018: INSUFFICIENT_HISTORY
-16:41:18 INFO    KVUE/KMB @ aug_2007_quant_quake: INSUFFICIENT_HISTORY
-16:41:18 INFO    KVUE/KMB @ 2008_gfc: INSUFFICIENT_HISTORY
-16:41:18 INFO    KVUE/KMB @ 2020_covid_crash: INSUFFICIENT_HISTORY
-16:41:19 INFO    KVUE/KMB @ calm_control_2015_08: INSUFFICIENT_HISTORY
-16:41:19 INFO    KVUE/KMB @ calm_control_2016_2017: INSUFFICIENT_HISTORY
-16:41:19 INFO    KVUE/KMB @ calm_control_2018: INSUFFICIENT_HISTORY
-16:41:20 INFO    PNC/ZION @ aug_2007_quant_quake: max|z|=4.19 [EXTREME], EG p=0.5680 (cointegration does NOT hold)
-16:41:20 INFO    PNC/ZION @ 2008_gfc: max|z|=19.43 [EXTREME], EG p=0.6057 (cointegration does NOT hold)
-16:41:21 INFO    PNC/ZION @ 2020_covid_crash: max|z|=2.20, EG p=0.5717 (cointegration does NOT hold)
-16:41:21 INFO    PNC/ZION @ calm_control_2015_08: max|z|=1.70, EG p=0.9467 (cointegration does NOT hold)
-16:41:22 INFO    PNC/ZION @ calm_control_2016_2017: max|z|=5.17 [EXTREME], EG p=0.3257 (cointegration does NOT hold)
-16:41:22 INFO    PNC/ZION @ calm_control_2018: max|z|=1.34, EG p=0.0324 (cointegration holds)
-16:41:22 INFO  
---- Result: 6/18 pair-crisis combinations testable (rest lack sufficient pre-crisis daily history) ---
-16:41:22 INFO    [aug_2007_quant_quake] 1/1 pairs tested: 1 extreme dislocation (|z|>3.5), 0/1 still cointegrated through baseline+crisis
-16:41:22 INFO    [2008_gfc] 1/1 pairs tested: 1 extreme dislocation (|z|>3.5), 0/1 still cointegrated through baseline+crisis
-16:41:22 INFO    [2020_covid_crash] 1/1 pairs tested: 0 extreme dislocation (|z|>3.5), 0/1 still cointegrated through baseline+crisis
-16:41:22 INFO    [calm_control_2015_08] 1/1 pairs tested: 0 extreme dislocation (|z|>3.5), 0/1 still cointegrated through baseline+crisis
-16:41:22 INFO    [calm_control_2016_2017] 1/1 pairs tested: 1 extreme dislocation (|z|>3.5), 0/1 still cointegrated through baseline+crisis
-16:41:22 INFO    [calm_control_2018] 1/1 pairs tested: 0 extreme dislocation (|z|>3.5), 1/1 still cointegrated through baseline+crisis
-16:41:22 INFO  
+17:31:19 INFO  === stress_test_replication.py: historical crisis stress test on confirmed pairs (1D resolution) ===
+17:31:19 INFO  SCOPE: tests cointegration-relationship stability at DAILY resolution during known historical crisis windows — does NOT replay the intraday strategy (no cached 1h data reaches back to 2007/2020; see module docstring).
+17:31:19 INFO  29 pairs to test across 3 crisis windows + 3 calm controls
+17:31:19 INFO    AMP/RUSHA @ aug_2007_quant_quake: INSUFFICIENT_HISTORY
+17:31:19 INFO    AMP/RUSHA @ 2008_gfc: max|z|=10.02 [EXTREME], EG p=0.4763 (cointegration does NOT hold)
+17:31:19 INFO    AMP/RUSHA @ 2020_covid_crash: max|z|=3.06, EG p=0.2532 (cointegration does NOT hold)
+17:31:19 INFO    AMP/RUSHA @ calm_control_2015_08: max|z|=1.25, EG p=0.7526 (cointegration does NOT hold)
+17:31:19 INFO    AMP/RUSHA @ calm_control_2016_2017: max|z|=3.11, EG p=0.2571 (cointegration does NOT hold)
+17:31:19 INFO    AMP/RUSHA @ calm_control_2018: max|z|=2.65, EG p=0.0164 (cointegration holds)
+17:31:22 INFO    KVUE/KMB @ aug_2007_quant_quake: INSUFFICIENT_HISTORY
+17:31:22 INFO    KVUE/KMB @ 2008_gfc: INSUFFICIENT_HISTORY
+17:31:22 INFO    KVUE/KMB @ 2020_covid_crash: INSUFFICIENT_HISTORY
+17:31:23 INFO    KVUE/KMB @ calm_control_2015_08: INSUFFICIENT_HISTORY
+17:31:23 INFO    KVUE/KMB @ calm_control_2016_2017: INSUFFICIENT_HISTORY
+17:31:23 INFO    KVUE/KMB @ calm_control_2018: INSUFFICIENT_HISTORY
+17:31:25 INFO    PNC/ZION @ aug_2007_quant_quake: max|z|=4.19 [EXTREME], EG p=0.5680 (cointegration does NOT hold)
+17:31:25 INFO    PNC/ZION @ 2008_gfc: max|z|=19.43 [EXTREME], EG p=0.6057 (cointegration does NOT hold)
+17:31:25 INFO    PNC/ZION @ 2020_covid_crash: max|z|=2.20, EG p=0.5717 (cointegration does NOT hold)
+17:31:25 INFO    PNC/ZION @ calm_control_2015_08: max|z|=1.70, EG p=0.9467 (cointegration does NOT hold)
+17:31:26 INFO    PNC/ZION @ calm_control_2016_2017: max|z|=5.17 [EXTREME], EG p=0.3257 (cointegration does NOT hold)
+17:31:26 INFO    PNC/ZION @ calm_control_2018: max|z|=1.34, EG p=0.0324 (cointegration holds)
+17:31:26 INFO  
+--- Result: 11/18 pair-crisis combinations testable (rest lack sufficient pre-crisis daily history) ---
+17:31:26 INFO    [aug_2007_quant_quake] 1/1 pairs tested: 1 extreme dislocation (|z|>3.5), 0/1 still cointegrated through baseline+crisis
+17:31:26 INFO    [2008_gfc] 2/2 pairs tested: 2 extreme dislocation (|z|>3.5), 0/2 still cointegrated through baseline+crisis
+17:31:26 INFO    [2020_covid_crash] 2/2 pairs tested: 0 extreme dislocation (|z|>3.5), 0/2 still cointegrated through baseline+crisis
+17:31:26 INFO    [calm_control_2015_08] 2/2 pairs tested: 0 extreme dislocation (|z|>3.5), 0/2 still cointegrated through baseline+crisis
+17:31:26 INFO    [calm_control_2016_2017] 2/2 pairs tested: 1 extreme dislocation (|z|>3.5), 0/2 still cointegrated through baseline+crisis
+17:31:26 INFO    [calm_control_2018] 2/2 pairs tested: 0 extreme dislocation (|z|>3.5), 2/2 still cointegrated through baseline+crisis
+17:31:26 INFO  
 --- Crisis vs. calm-control comparison (the honest read on whether this is a crisis-specific finding) ---
-  Extreme dislocation rate: crisis=67% (2/3) vs calm=33% (1/3)
-  Cointegration-holds rate: crisis=0% (0/3) vs calm=33% (1/3)
-16:41:22 INFO  Crisis and calm-control rates differ by more than 15 points — some support for a genuine crisis-specific effect, though still confounded by everything else that differs between these specific historical windows.
-16:41:22 INFO  Saved -> C:\Users\RossW\Projects\CAMARF\output\research\stress_test_replication.parquet
-16:41:22 INFO  Reported honestly regardless of outcome direction: extreme z excursions during a crisis window are a finding about this pair's stress-period fragility, not a defect in this script, and the reverse (no dislocation) is not evidence the pair is immune to future stress, only that it survived these particular historical windows.
-16:41:22 INFO  ============================================================
-16:41:22 INFO  stress_test_replication.py complete (0.1 min)
+  Extreme dislocation rate: crisis=60% (3/5) vs calm=17% (1/6)
+  Cointegration-holds rate: crisis=0% (0/5) vs calm=33% (2/6)
+17:31:26 INFO  Crisis and calm-control rates differ by more than 15 points — some support for a genuine crisis-specific effect, though still confounded by everything else that differs between these specific historical windows.
+17:31:26 INFO  Saved -> /home/rw/CAMARF/output/research/stress_test_replication.parquet
+17:31:26 INFO  Reported honestly regardless of outcome direction: extreme z excursions during a crisis window are a finding about this pair's stress-period fragility, not a defect in this script, and the reverse (no dislocation) is not evidence the pair is immune to future stress, only that it survived these particular historical windows.
+17:31:26 INFO  ============================================================
+17:31:26 INFO  stress_test_replication.py complete (0.1 min)

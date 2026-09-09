@@ -1,4 +1,7 @@
 KVUE/KMB@3m: EG=True KPSS=False PO=True ADF=True (p=0.0000)  tier silver->gold  [TIER SHIFT]
-PNC/ZION@4h: EG=True KPSS=False PO=True ADF=True (p=0.0021)  tier silver->gold  [TIER SHIFT]
+PNC/ZION@4h: EG=True KPSS=False PO=True ADF=True (p=0.0001)  tier silver->gold  [TIER SHIFT]
 
 === Summary (2 pairs) ===
+ADF/PO agreement rate: 100.0%
+Pairs that would shift tier if ADF added as a 4th confirmatory test: 2/2
+Saved: output/research/adf_confirmatory_tier.parquet

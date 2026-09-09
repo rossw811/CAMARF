@@ -1,4 +1,9 @@
-2026-08-11 10:19:35  INFO      ======================================================================
-2026-08-11 10:19:35  INFO      CAMARF  ΓÇö  ml.py  ΓÇö  Spread Resolution Meta-Labeler
-2026-08-11 10:19:35  INFO      ======================================================================
-2026-08-11 10:20:08  WARNING   episodic_confirmed_pairs_adapter_output.parquet not found -- falling back to discover_pit_confirmed_pairs() (647 pairs), which has NO pair_row scalar fields of its own; every pair will need a pairs.parquet match below or be skipped, reproducing the original 707-pairs/0-examples gap.
+2026-08-23 21:31:14  INFO      ======================================================================
+2026-08-23 21:31:14  INFO      CAMARF  —  ml.py  —  Spread Resolution Meta-Labeler
+2026-08-23 21:31:14  INFO      ======================================================================
+2026-08-23 21:31:14  INFO      Using PIT-safe episodic pair discovery (adapter output): 182 pairs
+2026-08-23 21:31:14  INFO        Discovered 182 confirmed pairs with persisted spread series; 1 produced labeled examples, 181 skipped
+2026-08-23 21:31:14  INFO        Total labeled entry events: 2
+2026-08-23 21:31:14  WARNING     Insufficient data to train: 2 total examples across 1 classes (label_scheme=binary, min class count=2, need >=30/class per Config.ML.MIN_CLASS_SAMPLES). This is the expected, honest result tonight — most confirmed pairs are on intraday TFs whose history just started accumulating (see DEVELOPMENT.md's data.py append-switch, 2026-06-21). Re-run as more history accumulates.
+2026-08-23 21:31:14  INFO      Run summary → /home/rw/CAMARF/latest_run_ml.log
+2026-08-23 21:31:14  INFO      ======================================================================

@@ -1,0 +1,312 @@
+[PASS] debug/_verify_absorption_ratio.py (2.2s)
+[PASS] debug/_verify_adapter_stale_checkpoint_fix.py (1.6s)
+[PASS] debug/_verify_adf_confirmatory_tier.py (1.3s)
+[PASS] debug/_verify_adv_1day_fallback.py (0.3s)
+[PASS] debug/_verify_append_switch.py (0.7s)
+[PASS] debug/_verify_backtest_risk_parity_is_only_fit.py (0.9s)
+[PASS] debug/_verify_backtest_zero_z_filter_fix.py (0.3s)
+[PASS] debug/_verify_bayesian_pair_confirmation.py (0.9s)
+[PASS] debug/_verify_bertram_ou_thresholds.py (2.8s)
+[PASS] debug/_verify_bh_fdr_dependence_check.py (1.6s)
+[PASS] debug/_verify_bh_vs_by_full_universe.py (1.5s)
+[PASS] debug/_verify_big_move_lead_lag.py (1.5s)
+[PASS] debug/_verify_bounded_lookback_primary_screen.py (2.8s)
+[PASS] debug/_verify_bugD100_garch_stop_causal.py (0.3s)
+[PASS] debug/_verify_bugD101_position_sizing_circularity.py (1.8s)
+[PASS] debug/_verify_bugD102_coint_frac_sizing_fold_leakage.py (0.4s)
+[PASS] debug/_verify_bugD103_macro_publication_lag.py (0.6s)
+[PASS] debug/_verify_bugD105_wrds_universe_passed.py (0.0s)
+[PASS] debug/_verify_bugD99_pit_wfa_hurst_rs.py (2.0s)
+[PASS] debug/_verify_bug_d112_causal_candidacy.py (1.5s)
+[FAIL] debug/_verify_bug_d56_compose.py (0.8s)
+    A. neither flag:                    n_shares_a = None
+    Traceback (most recent call last):
+      File "/home/rw/CAMARF/debug/_verify_bug_d56_compose.py", line 119, in <module>
+        main()
+      File "/home/rw/CAMARF/debug/_verify_bug_d56_compose.py", line 85, in main
+        f"(expected ~= {n_baseline} * {COINT_FRAC} = {n_baseline * COINT_FRAC})")
+                                                      ~~~~~~~~~~~^~~~~~~~~~~~
+    TypeError: unsupported operand type(s) for *: 'NoneType' and 'float'
+[PASS] debug/_verify_bug_d57_naive_exchange_index.py (0.6s)
+[PASS] debug/_verify_bug_d58_survivorship_false_positive.py (0.8s)
+[PASS] debug/_verify_bug_d59_pooled_coint_sharpe.py (0.8s)
+[FAIL] debug/_verify_bug_d61_window_alignment.py (0.8s)
+    Traceback (most recent call last):
+      File "/home/rw/CAMARF/debug/_verify_bug_d61_window_alignment.py", line 195, in <module>
+        main()
+      File "/home/rw/CAMARF/debug/_verify_bug_d61_window_alignment.py", line 130, in main
+        assert len(trades_dense) > 0, "Synthetic dense pair produced no trades -- signal construction bug"
+               ^^^^^^^^^^^^^^^^^^^^^
+    AssertionError: Synthetic dense pair produced no trades -- signal construction bug
+[PASS] debug/_verify_bug_d62_sharpe_convention.py (0.3s)
+[PASS] debug/_verify_bug_d95_persistence_fix.py (1.5s)
+[PASS] debug/_verify_build_comparison_arm_pairs.py (0.3s)
+[PASS] debug/_verify_build_log_prices_bounded.py (1.5s)
+[PASS] debug/_verify_cf_carver_causal_scale_fix.py (0.1s)
+[PASS] debug/_verify_chunked_pearson_candidate_pairs.py (1.5s)
+[PASS] debug/_verify_chunked_pearson_matrix.py (3.8s)
+[PASS] debug/_verify_coint_frac_override.py (1.5s)
+[PASS] debug/_verify_coint_frac_window_grid.py (1.6s)
+[PASS] debug/_verify_cointegration_regime_segmentation.py (0.3s)
+[PASS] debug/_verify_comparison_arm_scaffold.py (0.3s)
+[PASS] debug/_verify_confirmatory_cointegration_check.py (1.5s)
+[PASS] debug/_verify_conformal_predictor.py (1.0s)
+[PASS] debug/_verify_copula_pairs.py (1.2s)
+[PASS] debug/_verify_cross_listing_lead_lag.py (1.7s)
+[PASS] debug/_verify_cross_session_leadlag.py (0.8s)
+[PASS] debug/_verify_cross_tf_break_divergence.py (1.5s)
+[PASS] debug/_verify_cross_tf_lead_lag_scan.py (1.7s)
+[PASS] debug/_verify_cross_timeframe_cointegration.py (1.6s)
+[PASS] debug/_verify_cvar.py (1.9s)
+[PASS] debug/_verify_cycle_detection.py (1.9s)
+[PASS] debug/_verify_data_contamination_scan.py (0.3s)
+[PASS] debug/_verify_data_crypto_binance.py (0.7s)
+[PASS] debug/_verify_data_wrds.py (16.7s)
+[PASS] debug/_verify_dd_cache_anomaly_fix.py (0.6s)
+[PASS] debug/_verify_dd_hub_asymmetric_drop_fix.py (0.3s)
+[PASS] debug/_verify_dd_hub_effective_bets.py (0.6s)
+[FAIL] debug/_verify_dead_constants_comparison_arms.py (0.8s)
+    FAILURES:
+      - Check 1: baseline (flag off) should produce a trade at the only entry-qualifying bar -- fixture needs adjustment
+      - Check 2: baseline (flag off) should hold to end-of-series (exit_reason='eod'), got no trade
+      - Check 2: flag ON should exit via 'real_corr_exit' when coint_fraction_rolling_t drops below CORR_EXIT_THRESHOLD, got no trade
+      - Check 3: baseline (flag off) should produce a trade at the only entry-qualifying bar -- fixture needs adjustment
+[PASS] debug/_verify_decay_proxy.py (0.3s)
+[PASS] debug/_verify_decoupling_analysis.py (1.0s)
+[PASS] debug/_verify_deflated_sharpe.py (0.7s)
+[PASS] debug/_verify_delisting_registry.py (0.6s)
+[PASS] debug/_verify_earnings.py (0.4s)
+[PASS] debug/_verify_earnings_lead_lag_seam_fix.py (1.6s)
+[FAIL] debug/_verify_eg_both_directions_fix.py (1.6s)
+      [FAIL] coint_pvalue_raw_ba matches known value (8.963e-04)
+      [PASS] coint_pvalue_raw == max(ab, ba), the conservative combination
+      [FAIL] coint_pvalue_raw is the WORSE (larger) of the two, not the better one
+    
+    === 3. A pair with insufficient overlap in one direction is dropped cleanly ===
+      [PASS] no crash on degenerate-overlap input
+      [PASS] degenerate pair produces 0 confirmed pairs (not a spurious single-direction pass)
+    
+    ============================================================
+    FAILURES: 1/2 check groups failed
+    2026-08-24 18:18:11  INFO        [1h] Running EG on 1 pairs, BOTH regression directions (workers=2, max_lag=10)...
+    2026-08-24 18:18:12  INFO        [1h] EG complete in 0.1s
+    2026-08-24 18:18:12  INFO        [1h] EG (both-directions, max-combined): tested=1, raw<0.05=1, FDR-adjusted<0.99=1
+    2026-08-24 18:18:12  INFO        [1h] Running EG on 1 pairs, BOTH regression directions (workers=2, max_lag=10)...
+    2026-08-24 18:18:12  INFO        [1h] EG complete in 0.0s
+[PASS] debug/_verify_eg_gap_classification_fix.py (1.4s)
+[PASS] debug/_verify_eg_null_calibration.py (2.8s)
+[PASS] debug/_verify_eg_permutation_mask_consistency_fix.py (1.5s)
+[PASS] debug/_verify_eigendecompose_gpu.py (3.9s)
+[PASS] debug/_verify_eigenvalue_weighted_position_sizing.py (0.8s)
+[PASS] debug/_verify_episodic_duration_degree_usability.py (1.4s)
+[PASS] debug/_verify_episodic_pairs_adapter.py (2.3s)
+[PASS] debug/_verify_episodic_pit_asof.py (1.4s)
+[PASS] debug/_verify_event_study_framework.py (0.3s)
+[PASS] debug/_verify_ewma_zscore_comparison.py (0.3s)
+[PASS] debug/_verify_exchange_aware_live_fetch.py (6.6s)
+[PASS] debug/_verify_exchange_aware_session.py (0.6s)
+[PASS] debug/_verify_fama_french_risk_decomposition.py (0.3s)
+[PASS] debug/_verify_fdr_method_comparison.py (1.4s)
+[PASS] debug/_verify_filter_funnel.py (1.4s)
+[PASS] debug/_verify_filter_structural_pairs.py (1.5s)
+[PASS] debug/_verify_flat_risk_pct_override.py (0.3s)
+[PASS] debug/_verify_follower_direction_validation_walkforward_fix.py (24.3s)
+[FAIL] debug/_verify_fresh_holdout_compare.py (0.3s)
+    Traceback (most recent call last):
+      File "/home/rw/CAMARF/debug/_verify_fresh_holdout_compare.py", line 108, in <module>
+        main()
+      File "/home/rw/CAMARF/debug/_verify_fresh_holdout_compare.py", line 53, in main
+        assert t["fresh"]["sharpe"] < t["already_examined"]["sharpe"], (
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    AssertionError: time_based_split should show the engineered fresh-period degradation (AAA_RESERVE's drop is large enough to pull the pooled fresh Sharpe down)
+[PASS] debug/_verify_full_crsp_security_master.py (0.3s)
+[PASS] debug/_verify_full_us_market_label_map.py (0.3s)
+[PASS] debug/_verify_fundamental_pair_tagger.py (0.3s)
+[PASS] debug/_verify_gpu_backend_vram_headroom.py (0.2s)
+[PASS] debug/_verify_gpu_batched_eg.py (2.2s)
+[PASS] debug/_verify_grid_bootstrap_ar_ci.py (5.7s)
+[PASS] debug/_verify_hmm_gmm_regime_features.py (1.4s)
+[PASS] debug/_verify_hrp_ledoit_wolf.py (1.5s)
+[PASS] debug/_verify_hrp_weights.py (0.7s)
+[PASS] debug/_verify_ibkr_merge_split_reconciliation.py (0.6s)
+[PASS] debug/_verify_ibkr_pagination.py (0.6s)
+[PASS] debug/_verify_ibkr_supplement_derived_tf.py (0.3s)
+[FAIL] debug/_verify_index_additions.py (0.5s)
+    Traceback (most recent call last):
+      File "/home/rw/CAMARF/debug/_verify_index_additions.py", line 72, in <module>
+        main()
+      File "/home/rw/CAMARF/debug/_verify_index_additions.py", line 36, in main
+        additions = build_additions(changes_df)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+      File "/home/rw/CAMARF/survivorship.py", line 275, in build_additions
+        out["added_date"] = pd.to_datetime(out["added_date"], errors="coerce")
+                                           ~~~^^^^^^^^^^^^^^
+      File "/home/rw/CAMARF/.venv/lib/python3.12/site-packages/pandas/core/frame.py", line 4378, in __getitem__
+        indexer = self.columns.get_loc(key)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^
+      File "/home/rw/CAMARF/.venv/lib/python3.12/site-packages/pandas/core/indexes/base.py", line 3648, in get_loc
+        raise KeyError(key) from err
+    KeyError: 'added_date'
+[PASS] debug/_verify_index_tracking_exclusion.py (1.4s)
+[PASS] debug/_verify_intraday_episodic_scan.py (1.7s)
+[PASS] debug/_verify_intraday_episodic_window_sensitivity.py (2.6s)
+[PASS] debug/_verify_inverse_polarity.py (1.4s)
+[PASS] debug/_verify_jkp_factor_portfolio_construction.py (0.4s)
+[PASS] debug/_verify_jkp_raw_characteristic_regression.py (2.3s)
+[PASS] debug/_verify_jkp_thread_m_driver.py (1.0s)
+[PASS] debug/_verify_jump_diffusion_fit.py (2.7s)
+[PASS] debug/_verify_jump_diffusion_gap_fix.py (0.6s)
+[PASS] debug/_verify_k_bahc_candidate_discovery.py (1.2s)
+[PASS] debug/_verify_kalman_slope_intercept.py (1.4s)
+[PASS] debug/_verify_lag_aware_coint_discovery.py (6.5s)
+[PASS] debug/_verify_lag_sweep_validation.py (2.0s)
+[PASS] debug/_verify_lead_lag_permutation_check.py (66.8s)
+[PASS] debug/_verify_lead_lag_scan.py (1.6s)
+[PASS] debug/_verify_levy_jump_diffusion.py (1.4s)
+[PASS] debug/_verify_liquidity_bar_masking.py (0.4s)
+[PASS] debug/_verify_liquidity_bar_vs_symbol_comparison.py (0.3s)
+[PASS] debug/_verify_liquidity_filter_currency_retry.py (20.3s)
+[PASS] debug/_verify_liquidity_threshold_sensitivity.py (0.3s)
+[FAIL] debug/_verify_lstm_attention_architecture.py (0.1s)
+    === 1. LSTM classifier ===
+    Traceback (most recent call last):
+      File "/home/rw/CAMARF/debug/_verify_lstm_attention_architecture.py", line 108, in <module>
+        main()
+      File "/home/rw/CAMARF/debug/_verify_lstm_attention_architecture.py", line 94, in main
+        verify_architecture("1. LSTM classifier", laa.build_lstm_classifier),
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+      File "/home/rw/CAMARF/debug/_verify_lstm_attention_architecture.py", line 52, in verify_architecture
+        model = builder(n_classes=2)
+                ^^^^^^^^^^^^^^^^^^^^
+      File "/home/rw/CAMARF/research/lstm_attention_architecture.py", line 93, in build_lstm_classifier
+        from tensorflow import keras
+    ModuleNotFoundError: No module named 'tensorflow'
+[FAIL] debug/_verify_macro_regimes.py (0.9s)
+    [PASS] credit_regime and credit_regime_proxy are distinct columns  
+    [PASS] cpi_days_stale resets to 0 periodically (not monotonic)  # of zero-reset days=474
+    [PASS] cpi_days_stale never exceeds one quarter (~63 trading days)  max=60.0
+    [PASS] 2008 GFC: recession_state_realtime hits contraction_risk  max sahm=1.53
+    [FAIL] 2020 COVID: recession_state_realtime hits contraction_risk  max sahm=0.27
+    [PASS] 2017-19 expansion: recession_state_realtime stays expansion (no false trigger)  
+    [PASS] 2022 Fed hiking: dollar_regime hits strong  max usd_index=128.5
+    [PASS] 2021 ZIRP: real_rate_regime hits low  min real_yield=-1.19
+    [PASS] 2023 hiking cycle: real_rate_regime hits high  max real_yield=2.52
+    [PASS] 2022 inflation surge: inflation_expectation_regime hits high  max breakeven=3.02
+    [PASS] 2020 deflation scare: inflation_expectation_regime hits low  min breakeven=0.50
+    [PASS] fed_funds_rate_days_stale is NaN before 1990 history starts (sanity: should be all non-NaN since FEDFUNDS starts 1954)  
+    
+    23/25 checks passed
+    2026-08-24 18:21:16  INFO      Run summary → /home/rw/CAMARF/latest_run_macro.log
+[PASS] debug/_verify_manifest_pruning.py (1.4s)
+[PASS] debug/_verify_membership_gate.py (1.4s)
+[PASS] debug/_verify_min_segment_calendar_fix.py (2.0s)
+[PASS] debug/_verify_ml_feature_lag.py (0.3s)
+[PASS] debug/_verify_ml_hedge_ratio_drift_pit.py (0.3s)
+[PASS] debug/_verify_ml_median_imputation_no_leakage.py (0.3s)
+[PASS] debug/_verify_ml_model_comparison.py (0.9s)
+[PASS] debug/_verify_ml_stage2_ablation.py (1.1s)
+[PASS] debug/_verify_near_miss_lag_scan.py (1.5s)
+[PASS] debug/_verify_news_impact_asymmetry.py (1.0s)
+[PASS] debug/_verify_options_greeks_features.py (0.8s)
+[PASS] debug/_verify_overnight_orchestrator_py.py (3.2s)
+[PASS] debug/_verify_pair_characteristics_analyzer.py (5.4s)
+[PASS] debug/_verify_pair_source.py (0.3s)
+[PASS] debug/_verify_pairwise_stats_low_memory.py (1.4s)
+[PASS] debug/_verify_pdr_calmar.py (0.3s)
+[PASS] debug/_verify_pearson_threshold_sensitivity.py (1.4s)
+[PASS] debug/_verify_persistence_filter.py (1.4s)
+[PASS] debug/_verify_pit_confidence_weights.py (0.7s)
+[PASS] debug/_verify_pit_pair_discovery.py (1.4s)
+[PASS] debug/_verify_pit_precision_by_regime_strength.py (1.4s)
+[FAIL] debug/_verify_pit_wfa.py (1.4s)
+    FAILURES:
+      - WITHINTRAIN pair (genuinely cointegrated within the train window) was NOT found — screen may be broken entirely, not just correctly point-in-time (a screen that finds nothing at all would trivially also pass the no-lookahead check above for the wrong reason).
+    2026-08-24 18:21:45  WARNING     [1h] UniverseFilter: no valid assets after filtering
+[PASS] debug/_verify_polars_universe_loader.py (77.5s)
+[PASS] debug/_verify_portfolio_math.py (0.3s)
+[PASS] debug/_verify_portfolio_sim.py (0.3s)
+[PASS] debug/_verify_predictability_optimizer_gap_fix.py (0.7s)
+[PASS] debug/_verify_predicted_degeneracy_risk.py (1.4s)
+[PASS] debug/_verify_regime_age_weights.py (0.7s)
+[PASS] debug/_verify_regime_conditional_adjustment.py (0.7s)
+[PASS] debug/_verify_regime_conditional_entry_gate.py (1.4s)
+[PASS] debug/_verify_reimers_trio_correction.py (1.0s)
+[PASS] debug/_verify_return_smoothing_audit.py (0.5s)
+[PASS] debug/_verify_ridge_hedge_ratio_comparison.py (1.5s)
+[PASS] debug/_verify_rmt_feature_denoising.py (1.4s)
+[PASS] debug/_verify_rolling_adv_comparison.py (0.3s)
+[PASS] debug/_verify_rolling_coint_batched.py (1.5s)
+[PASS] debug/_verify_rough_volatility.py (1.7s)
+[PASS] debug/_verify_run_storm_grid_sharpe_fix.py (0.8s)
+[PASS] debug/_verify_save_tf_results_return.py (1.4s)
+[PASS] debug/_verify_sector_restricted_fdr_rescan.py (1.5s)
+[PASS] debug/_verify_sensitivity_config_centralization.py (0.8s)
+[PASS] debug/_verify_short_term_factor_alpha.py (1.4s)
+[PASS] debug/_verify_spread_construction_consolidation.py (1.4s)
+[PASS] debug/_verify_sqrt_impact_cost.py (0.7s)
+[PASS] debug/_verify_stop_loss_correlation_caps.py (0.7s)
+[PASS] debug/_verify_strategy_risk_precision.py (0.3s)
+[PASS] debug/_verify_strategy_variation_comparison.py (1.4s)
+[FAIL] debug/_verify_stress_test_replication.py (1.4s)
+    Traceback (most recent call last):
+      File "/home/rw/CAMARF/debug/_verify_stress_test_replication.py", line 45, in <module>
+        import research.stress_test_replication as mod
+      File "/home/rw/CAMARF/research/stress_test_replication.py", line 68, in <module>
+        from aligned_pair_loader import load_aligned_pair
+    ModuleNotFoundError: No module named 'aligned_pair_loader'
+[PASS] debug/_verify_structural_break_onset_detection.py (1.6s)
+[PASS] debug/_verify_svm_gradient_descent_classifier.py (1.0s)
+[PASS] debug/_verify_tail_dependence_universe_screen.py (2.7s)
+[PASS] debug/_verify_threshold_cointegration.py (18.7s)
+[PASS] debug/_verify_trend_dominance_diagnostic.py (4.2s)
+[PASS] debug/_verify_trig_convergence.py (1.4s)
+[PASS] debug/_verify_universe_calendar_align_and_dedup.py (0.3s)
+[PASS] debug/_verify_universe_filter_chunked.py (1.5s)
+[PASS] debug/_verify_universe_loader.py (0.4s)
+[PASS] debug/_verify_universe_loader_memo_cache.py (0.4s)
+[PASS] debug/_verify_var_backtest_calibration.py (0.8s)
+[PASS] debug/_verify_variance_ratio_gap_fix.py (1.0s)
+[PASS] debug/_verify_variance_ratio_test.py (1.0s)
+[PASS] debug/_verify_vix_crisis_hl_robustness_check.py (1.0s)
+[PASS] debug/_verify_vol_swap_style_risk_estimate.py (0.3s)
+[PASS] debug/_verify_vol_targeting_causal_median_fix.py (0.3s)
+[PASS] debug/_verify_wavelet_hurst.py (1.4s)
+[PASS] debug/_verify_wfa_config_consistency.py (0.3s)
+[PASS] debug/_verify_window_sweep_specs.py (1.4s)
+[PASS] debug/_verify_wrds_deep_history_episodic_scan.py (4.4s)
+[FAIL] debug/_verify_wrds_global_fetch_retry.py (9.1s)
+        username = input("Enter your WRDS username [{}]:".format(uname))
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    EOFError: EOF when reading a line
+    
+    The above exception was the direct cause of the following exception:
+    
+    Traceback (most recent call last):
+      File "/home/rw/CAMARF/debug/_verify_wrds_global_fetch_retry.py", line 170, in <module>
+        main()
+      File "/home/rw/CAMARF/debug/_verify_wrds_global_fetch_retry.py", line 77, in main
+        result = fetch_mod._connect_with_retry(max_attempts=5, base_delay=0.01)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+      File "/home/rw/CAMARF/data_wrds.py", line 1549, in connect_with_retry_global
+        raise RuntimeError(f"Could not connect to WRDS after {max_attempts} attempts") from last_exc
+    RuntimeError: Could not connect to WRDS after 5 attempts
+[FAIL] debug/_verify_wrds_lead_lag_scan.py (1.5s)
+      [PASS] correlation at lag 0 is much weaker than at the true lag (lag0=-0.001 vs lag5=0.981)
+    
+    === 3. load_confirmed_pairs: parses Tier 1 (fdr_confirmed filter) and Tier 2/3 (pre-filtered) formats ===
+      [PASS] Tier 1: only fdr_confirmed==True rows included (2 of 3)
+      [PASS] Tier 2: all rows included (no filter column expected)
+      [FAIL] Tier 3 with no file present returns empty list, not a crash
+    
+    === 4. scan_pair: end-to-end on synthetic WRDS-cache-shaped data ===
+      [PASS] genuine lead-lag pair: no skip_reason (enough data)
+      [PASS] genuine lead-lag pair IS flagged (best_lag=8, expect 8)
+      [PASS] contemporaneous pair: no skip_reason (enough data)
+      [PASS] contemporaneous pair is NOT flagged (best_lag=0, expect 0)
+    
+    ============================================================
+    FAILURES: 1/4 check groups failed
+[PASS] debug/_verify_wrds_primary_wiring.py (0.6s)
+[PASS] debug/_verify_wrds_universal_lead_lag_scan.py (1.6s)
+============================================================
+174/186 passed, 12 FAILED

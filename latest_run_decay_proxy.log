@@ -1,3 +1,3 @@
-01:06:31 INFO  === decay_proxy.py: per-pair decay z-score (per-run diagnostic, not live) ===
-01:06:31 INFO    PNC/ZION             SKIP (insufficient trades: 10 < 40)
-01:06:31 WARNING  No pairs had enough trades to compute a decay z-score.
+21:31:30 INFO  === decay_proxy.py: per-pair decay z-score (per-run diagnostic, not live) ===
+21:31:30 INFO    PNC/ZION             SKIP (insufficient trades: 4 < 40)
+21:31:30 WARNING  No pairs had enough trades to compute a decay z-score.

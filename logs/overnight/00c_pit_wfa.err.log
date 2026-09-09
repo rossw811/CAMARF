@@ -1,4 +1,86 @@
-10:20:21 INFO  === pit_wfa.py: Point-In-Time Portfolio-Wide Walk-Forward Analysis (1h) ===
-2026-08-11 10:20:21  INFO      === pit_wfa.py: Point-In-Time Portfolio-Wide Walk-Forward Analysis (1h) ===
-10:20:21 INFO  Unlike wfa.py's semi-WFA, pair SELECTION itself is re-derived per fold using only train-window data ΓÇö see module docstring for exact scope.
-2026-08-11 10:20:21  INFO      Unlike wfa.py's semi-WFA, pair SELECTION itself is re-derived per fold using only train-window data ΓÇö see module docstring for exact scope.
+20:41:25 INFO  === pit_wfa.py: Point-In-Time Portfolio-Wide Walk-Forward Analysis (1h) ===
+2026-08-23 20:41:25  INFO      === pit_wfa.py: Point-In-Time Portfolio-Wide Walk-Forward Analysis (1h) ===
+20:41:25 INFO  Unlike wfa.py's semi-WFA, pair SELECTION itself is re-derived per fold using only train-window data — see module docstring for exact scope.
+2026-08-23 20:41:25  INFO      Unlike wfa.py's semi-WFA, pair SELECTION itself is re-derived per fold using only train-window data — see module docstring for exact scope.
+20:41:27 INFO  Universe: 1579 symbols with cached 1h data
+2026-08-23 20:41:27  INFO      Universe: 1579 symbols with cached 1h data
+20:41:27 INFO  Analysis window: [2023-07-13, 2026-08-14]
+2026-08-23 20:41:27  INFO      Analysis window: [2023-07-13, 2026-08-14]
+20:41:27 INFO  [expanding/fold1_exp] screening train window [2023-07-13, 2024-02-24] (point-in-time, no test-period data used)...
+2026-08-23 20:41:27  INFO      [expanding/fold1_exp] screening train window [2023-07-13, 2024-02-24] (point-in-time, no test-period data used)...
+2026-08-23 20:41:33  INFO        [1h] Computing 9×9 correlation matrices (Pearson + Spearman + rolling avg)...
+2026-08-23 20:41:33  INFO        [1h] Pearson 0.0s | Spearman 0.0s | RollingAvg 0.0s
+2026-08-23 20:41:33  INFO        [1h] Candidate pairs: 1 (0 cross-asset)  threshold |ρ| ≥ 0.40  [gold=1 silver=0 bronze=0]
+2026-08-23 20:41:33  INFO        [1h] Running EG on 1 pairs, BOTH regression directions (workers=15, max_lag=10)...
+2026-08-23 20:41:33  INFO        [1h] EG complete in 0.2s
+2026-08-23 20:41:33  INFO        [1h] EG (both-directions, max-combined): tested=1, raw<0.05=0, FDR-adjusted<0.05=0
+20:41:33 INFO  [expanding/fold1_exp] 0 pairs point-in-time confirmed (0.1 min)
+2026-08-23 20:41:33  INFO      [expanding/fold1_exp] 0 pairs point-in-time confirmed (0.1 min)
+20:41:33 INFO  [expanding/fold1_exp] backtest: 0 pairs traded, 0 trades, portfolio Sharpe=nan
+2026-08-23 20:41:33  INFO      [expanding/fold1_exp] backtest: 0 pairs traded, 0 trades, portfolio Sharpe=nan
+20:41:33 INFO  [expanding/fold1_exp] checkpoint saved (1 folds completed so far)
+2026-08-23 20:41:33  INFO      [expanding/fold1_exp] checkpoint saved (1 folds completed so far)
+20:41:33 INFO  [expanding/fold2_exp] screening train window [2023-07-13, 2025-01-27] (point-in-time, no test-period data used)...
+2026-08-23 20:41:33  INFO      [expanding/fold2_exp] screening train window [2023-07-13, 2025-01-27] (point-in-time, no test-period data used)...
+2026-08-23 20:41:40  INFO        [1h] Computing 1520×1520 correlation matrices (Pearson + Spearman + rolling avg)...
+2026-08-23 20:41:43  INFO        [1h] Pearson 0.8s | Spearman 0.9s | RollingAvg 1.5s
+2026-08-23 20:41:44  INFO        [1h] Candidate pairs: 31291 (0 cross-asset)  threshold |ρ| ≥ 0.40  [gold=15867 silver=11556 bronze=3868]
+2026-08-23 20:41:44  INFO        [1h] Running EG on 31291 pairs, BOTH regression directions (workers=15, max_lag=10)...
+2026-08-23 20:45:27  INFO        [1h] EG complete in 222.6s
+2026-08-23 20:45:27  INFO        [1h] EG (both-directions, max-combined): tested=18923, raw<0.05=1032, FDR-adjusted<0.05=16
+2026-08-23 20:45:27  INFO        [1h] Rolling coint on 16 pairs (window=252, step=21)...
+2026-08-23 20:45:27  INFO        [1h] Rolling coint complete in 0.3s
+20:45:58 INFO  [expanding/fold2_exp] 3 pairs point-in-time confirmed (4.4 min)
+2026-08-23 20:45:58  INFO      [expanding/fold2_exp] 3 pairs point-in-time confirmed (4.4 min)
+20:46:08 INFO  [expanding/fold2_exp] backtest: 3 pairs traded, 28 trades, portfolio Sharpe=0.3486
+2026-08-23 20:46:08  INFO      [expanding/fold2_exp] backtest: 3 pairs traded, 28 trades, portfolio Sharpe=0.3486
+20:46:08 INFO  [expanding/fold2_exp] checkpoint saved (2 folds completed so far)
+2026-08-23 20:46:08  INFO      [expanding/fold2_exp] checkpoint saved (2 folds completed so far)
+20:46:08 INFO  [rolling/fold1_roll] screening train window [2023-07-13, 2024-02-24] (point-in-time, no test-period data used)...
+2026-08-23 20:46:08  INFO      [rolling/fold1_roll] screening train window [2023-07-13, 2024-02-24] (point-in-time, no test-period data used)...
+2026-08-23 20:46:13  INFO        [1h] Computing 9×9 correlation matrices (Pearson + Spearman + rolling avg)...
+2026-08-23 20:46:13  INFO        [1h] Pearson 0.0s | Spearman 0.0s | RollingAvg 0.0s
+2026-08-23 20:46:13  INFO        [1h] Candidate pairs: 1 (0 cross-asset)  threshold |ρ| ≥ 0.40  [gold=1 silver=0 bronze=0]
+2026-08-23 20:46:13  INFO        [1h] Running EG on 1 pairs, BOTH regression directions (workers=15, max_lag=10)...
+2026-08-23 20:46:14  INFO        [1h] EG complete in 0.2s
+2026-08-23 20:46:14  INFO        [1h] EG (both-directions, max-combined): tested=1, raw<0.05=0, FDR-adjusted<0.05=0
+20:46:14 INFO  [rolling/fold1_roll] 0 pairs point-in-time confirmed (0.1 min)
+2026-08-23 20:46:14  INFO      [rolling/fold1_roll] 0 pairs point-in-time confirmed (0.1 min)
+20:46:14 INFO  [rolling/fold1_roll] backtest: 0 pairs traded, 0 trades, portfolio Sharpe=nan
+2026-08-23 20:46:14  INFO      [rolling/fold1_roll] backtest: 0 pairs traded, 0 trades, portfolio Sharpe=nan
+20:46:14 INFO  [rolling/fold1_roll] checkpoint saved (3 folds completed so far)
+2026-08-23 20:46:14  INFO      [rolling/fold1_roll] checkpoint saved (3 folds completed so far)
+20:46:14 INFO  [rolling/fold2_roll] screening train window [2025-01-27, 2025-09-10] (point-in-time, no test-period data used)...
+2026-08-23 20:46:14  INFO      [rolling/fold2_roll] screening train window [2025-01-27, 2025-09-10] (point-in-time, no test-period data used)...
+2026-08-23 20:46:19  INFO        [1h] Computing 1551×1551 correlation matrices (Pearson + Spearman + rolling avg)...
+2026-08-23 20:46:21  INFO        [1h] Pearson 0.5s | Spearman 0.4s | RollingAvg 1.4s
+2026-08-23 20:46:23  INFO        [1h] Candidate pairs: 419499 (0 cross-asset)  threshold |ρ| ≥ 0.40  [gold=46396 silver=103788 bronze=269315]
+2026-08-23 20:46:23  INFO        [1h] Running EG on 419499 pairs, BOTH regression directions (workers=15, max_lag=10)...
+2026-08-23 21:28:38  INFO        [1h] EG complete in 2534.6s
+2026-08-23 21:28:40  INFO        [1h] EG (both-directions, max-combined): tested=419497, raw<0.05=12898, FDR-adjusted<0.05=141
+2026-08-23 21:28:40  INFO        [1h] Rolling coint on 141 pairs (window=252, step=21)...
+2026-08-23 21:28:41  INFO        [1h] Rolling coint complete in 0.3s
+21:29:44 INFO  [rolling/fold2_roll] 49 pairs point-in-time confirmed (43.5 min)
+2026-08-23 21:29:44  INFO      [rolling/fold2_roll] 49 pairs point-in-time confirmed (43.5 min)
+21:31:04 INFO  [rolling/fold2_roll] backtest: 17 pairs traded, 288 trades, portfolio Sharpe=-0.4548
+2026-08-23 21:31:04  INFO      [rolling/fold2_roll] backtest: 17 pairs traded, 288 trades, portfolio Sharpe=-0.4548
+21:31:04 INFO  [rolling/fold2_roll] checkpoint saved (4 folds completed so far)
+2026-08-23 21:31:04  INFO      [rolling/fold2_roll] checkpoint saved (4 folds completed so far)
+21:31:04 INFO  
+wfa_variant       fold  n_pit_confirmed_pairs  n_pairs_with_trades  n_pairs  n_trades_total  total_pnl_portfolio  sharpe_portfolio  max_drawdown_portfolio max_concentration_pair  max_concentration_pct
+  expanding  fold1_exp                      0                    0      NaN             NaN                  NaN               NaN                     NaN                    NaN                    NaN
+  expanding  fold2_exp                      3                    3      3.0            28.0               123.52            0.3486                  136.78              MC/WAL@1h                 2.8235
+    rolling fold1_roll                      0                    0      NaN             NaN                  NaN               NaN                     NaN                    NaN                    NaN
+    rolling fold2_roll                     49                   17     17.0           288.0             -1044.93           -0.4548                 2056.16            MANH/RMD@1h                 0.7984
+2026-08-23 21:31:04  INFO      
+wfa_variant       fold  n_pit_confirmed_pairs  n_pairs_with_trades  n_pairs  n_trades_total  total_pnl_portfolio  sharpe_portfolio  max_drawdown_portfolio max_concentration_pair  max_concentration_pct
+  expanding  fold1_exp                      0                    0      NaN             NaN                  NaN               NaN                     NaN                    NaN                    NaN
+  expanding  fold2_exp                      3                    3      3.0            28.0               123.52            0.3486                  136.78              MC/WAL@1h                 2.8235
+    rolling fold1_roll                      0                    0      NaN             NaN                  NaN               NaN                     NaN                    NaN                    NaN
+    rolling fold2_roll                     49                   17     17.0           288.0             -1044.93           -0.4548                 2056.16            MANH/RMD@1h                 0.7984
+21:31:04 INFO  Saved -> output/backtest/pit_wfa_{fold_comparison,portfolio,pair_sets}.parquet
+2026-08-23 21:31:04  INFO      Saved -> output/backtest/pit_wfa_{fold_comparison,portfolio,pair_sets}.parquet
+21:31:04 INFO  ============================================================
+2026-08-23 21:31:04  INFO      ============================================================
+21:31:04 INFO  pit_wfa.py complete (49.7 min)
+2026-08-23 21:31:04  INFO      pit_wfa.py complete (49.7 min)

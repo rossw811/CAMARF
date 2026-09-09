@@ -1,4 +1,26 @@
 ======================================================================
-BIAS BUDGET ΓÇö consolidated ledger, not a single invented score
+BIAS BUDGET — consolidated ledger, not a single invented score
 ======================================================================
 
+1. Headline raw Sharpe: IS=0.7540  OOS=nan
+
+2. IS-OOS gap (direct overfitting signal): +nan% (OOS matches or exceeds IS — good sign)
+
+3. Deflated Sharpe Ratio (multiple-testing correction, n_trials=437):
+   IS: DSR=0.0000 (P(true Sharpe>0) after correcting for 437 tried configs), z=-15.66
+
+4. Garden-of-forking-paths exposure: OOS holdout examined 213 times across 154 distinct configs — HIGH, treat any single OOS number as one look among many, not a final verdict
+
+5. Skill-vs-luck corroboration (circular block bootstrap permutation test):
+   IS: realized=0.7549 perm_mean=0.7982 p=0.7299 (NOT significant at 5%)
+   OOS: realized=8.6519 perm_mean=9.4573 p=0.5460 (NOT significant at 5%)
+
+6. Structural biases already mitigated at the code level (not scored — why these don't need a haircut, not evidence they don't exist):
+   - Survivorship: 383 delist events excluded via survivorship.py's OOS truncation
+   - Hedge-ratio lookahead: point-in-time hedge_ratio_*_t series (analysis.py), not full-sample scalars
+   - Calendar-padding/DATA_GAP: GapFlag masking on every spread/correlation calc
+   - SPY/VOO structural pair: excluded from primary confirmed-pair set
+
+======================================================================
+HONEST SUMMARY (read the numbers above, not a synthetic composite):
+======================================================================
