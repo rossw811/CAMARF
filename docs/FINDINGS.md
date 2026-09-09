@@ -3823,12 +3823,15 @@ be a re-run, not a code-writing task**: all 7 scripts (`cycle_detection.py`, `le
 diffusion.py`, `rough_volatility.py`, `options_greeks_features.py`, `svm_gradient_descent_
 classifier.py`, `inverse_polarity.py`, `trig_convergence.py`) already had a working `--pit-safe`
 CLI flag built in from when the gap was first disclosed (§7.17) — the "top open priority" was
-always just running them with it, not building anything new. Real results so far: cycle_detection
+always just running them with it, not building anything new. All 7 completed: cycle_detection
 went from a handful of pairs to 132 real rows; options_greeks_features produced multi-pair output
 (vs. the original KVUE/KMB-only run); **levy_jump_diffusion's 0%-overlap-with-GapFlag finding
 robustly replicated at much larger PIT-safe scale**, strengthening rather than contradicting the
-original claim. (rough_volatility, inverse_polarity, trig_convergence were still running as of
-this entry — see the follow-up note below or the next FINDINGS.md entry for their results.)
+original claim; **inverse_polarity's honest negative (0 genuine polar-opposite candidates) also
+replicated** on the wider pair set; trig_convergence produced real multi-pair output (vs. the
+original small set); rough_volatility scaled from a handful of symbols to 1,858 real rows
+(`h_rs`/`h_dfa`/`h_wavelet` per symbol) — consistent with the original "mixed, window-dependent"
+characterization, not a reversal.
 
 **§5's survivorship-of-crisis-pairs confound (Tier A item #2)**:
 `research/crisis_regime_survivorship_confound_test.py` (new) joins the crisis-regime diagnostic
