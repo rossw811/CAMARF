@@ -74,6 +74,15 @@ class EntryEvent:
     half_life_trend_slope: float
     mean_reversion_speed: float
     hedge_ratio_drift: float
+    # 2026-09-08: transfer entropy, wired in as a candidate feature per
+    # PAPER.md §10's original framing ("useful both as a candidate ml.py
+    # feature and as a robustness check on hedge-ratio direction"), Ross
+    # approved. Symbol_a/symbol_b-oriented (see research/transfer_entropy_
+    # lead_lag.py:summarize_pair_for_ml) -- positive means symbol_b's past
+    # predicts symbol_a's future more than the reverse, consistent sign
+    # across every pair regardless of which leg is labeled which.
+    te_directional_diff: float
+    te_significance: float
 
 
 @dataclass
@@ -303,6 +312,12 @@ def _build_examples_for_pair(
         _hurst_feat = series["hurst_rs_t"].iloc[feat_pos] if _has_pit_hurst else np.nan
         if not np.isfinite(_hurst_feat):
             _hurst_feat = pair_row.get("hurst_rs", np.nan)
+        # Transfer entropy has no per-bar PIT series (it's an expensive,
+        # pair-level statistic computed once, not per-bar) -- always the
+        # scalar pair_row value, same convention as coint_fraction_rolling's
+        # own scalar fallback above.
+        _te_diff_feat = pair_row.get("te_directional_diff", np.nan)
+        _te_sig_feat = pair_row.get("te_significance", np.nan)
 
         events.append(
             EntryEvent(
@@ -322,6 +337,8 @@ def _build_examples_for_pair(
                 half_life_trend_slope=float(_hlslope_feat),
                 mean_reversion_speed=float(_meanrev_feat),
                 hedge_ratio_drift=float(hedge_drift),
+                te_directional_diff=float(_te_diff_feat),
+                te_significance=float(_te_sig_feat),
             )
         )
     perm_robust = pair_row.get("permutation_robust", None)
@@ -502,6 +519,19 @@ def build(min_class_samples: Optional[int] = None, pit_safe: bool = False) -> ML
     else:
         pairs = _discover_confirmed_pairs()
 
+    # Transfer entropy summary (2026-09-08, Ross approved): a separate
+    # table, not merged into pairs.parquet/the adapter output itself --
+    # research/transfer_entropy_lead_lag.py is a standalone comparison-arm
+    # script, not part of the production pairs-confirmation pipeline, so
+    # this stays a lookup-on-top rather than touching that pipeline. Empty
+    # DataFrame (not an error) when the script hasn't been run for the
+    # current pair set -- every pair simply falls back to NaN for these
+    # two features, same as any other missing-feature case already handled
+    # below via pair_row.get(..., np.nan).
+    _te_summary_path = os.path.join(_RESEARCH_DIR, "transfer_entropy_pair_summary.parquet")
+    _te_summary_df = (pd.read_parquet(_te_summary_path)
+                       if os.path.exists(_te_summary_path) else pd.DataFrame())
+
     all_events: List[EntryEvent] = []
     pairs_used: List[Tuple[str, str, str]] = []
     pairs_skipped: List[Tuple[str, str, str, str]] = []
@@ -529,6 +559,15 @@ def build(min_class_samples: Optional[int] = None, pit_safe: bool = False) -> ML
         if row is None:
             pairs_skipped.append((symbol_a, symbol_b, tf_label, "no pairs.parquet or adapter row found"))
             continue
+        if not _te_summary_df.empty:
+            _te_match = _te_summary_df[
+                (_te_summary_df["symbol_a"] == symbol_a) & (_te_summary_df["symbol_b"] == symbol_b)
+                & (_te_summary_df["tf_label"] == tf_label)
+            ]
+            if not _te_match.empty:
+                row = row.copy()
+                row["te_directional_diff"] = _te_match.iloc[0]["te_directional_diff"]
+                row["te_significance"] = _te_match.iloc[0]["te_significance"]
         # Skip BUG-D49 degenerate pairs: one/both legs have implausibly few
         # distinct close prices despite adequate dollar volume. Training on
         # these would teach the model to exploit pricing artifacts, not real
@@ -616,6 +655,8 @@ _FEATURE_COLS = [
     "half_life_trend_slope",
     "mean_reversion_speed",
     "hedge_ratio_drift",
+    "te_directional_diff",
+    "te_significance",
 ]
 
 

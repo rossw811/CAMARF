@@ -1,6 +1,6 @@
 === CAMARF ml.py ===
-date:        2026-09-08 14:31
-runtime_min: 0.1
+date:        2026-09-08 19:40
+runtime_min: 0.2
 
 === pairs ===
   AMP/RUSHA@1D             entry_events=18    labeled=15    censored=3     no_half_life=0     future_not_clean=0
@@ -44,7 +44,7 @@ runtime_min: 0.1
   strong_converge: 37
 
 === notes ===
-  Trained: n_train=142 n_test=48 test_accuracy=56.25%
+  Trained: n_train=142 n_test=48 test_accuracy=62.50%
   Conformal: n_cal=47 avg_set_size=1.94 empirical_coverage=97.92%
   Model persisted → C:\Users\RossW\Projects\CAMARF\output\ml\model_stage1.pkl
 

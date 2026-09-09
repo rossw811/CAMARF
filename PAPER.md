@@ -2867,29 +2867,36 @@ the actual reasoning, not just the name:
   by the synthetic proof before ever touching real data — see §7.19 and
   Finding #62. One real confirmed pair produced a working, significant
   result (AMP/RUSHA); the other 26 pairs currently checked are blocked by
-  a local price-data caching gap, not the method itself.
+  a local price-data caching gap, not the method itself. **Update,
+  2026-09-08**: the local-cache gap was found and fixed (a real,
+  structural bug, not just staleness — Finding #63), and transfer entropy
+  was wired into `ml.py` as a genuine feature (`te_directional_diff`,
+  `te_significance`), the exact use this candidate's own original entry
+  named. Full account: Finding #65.
 
-**Newly noted (2026-07-13), not yet discussed in depth or scoped —
-recorded per this project's standing practice of capturing an idea before
-it's lost, distinct from the two candidates above which have already had
-that discussion:** analyst price-target convergence arbitrage — trading
-the gap between sell-side consensus price targets and current market
-price as a mean-reversion signal, on the thesis that a target price acts
-as a slow-moving anchor and large divergences tend to close. This has
-real prior literature to ground a design discussion in, not just
-intuition (Brav & Lehavy, 2003, "An Empirical Analysis of Analysts'
-Target Prices: Short-term Informativeness and Long-term Dynamics,"
-*Journal of Finance*; Da & Schaumburg, 2011, "Relative Valuation and
-Analyst Target Price Forecasts," on target-price-implied returns as a
-predictor) — bibliographic-level only, not yet independently verified by
-direct source lookup the way this paper's other citations are (§2's
-verification standard). Real implementation cost, flagged rather than
-glossed over: needs a paid or scraped consensus-target data source
-CAMARF does not currently have (a genuine data-acquisition gap, not a
-methodology question), and the mechanism is a different asset-pricing
-claim than cross-sectional cointegration — worth its own design
-discussion on whether/how it fits this project's existing architecture
-before any build begins.
+**Analyst price-target convergence arbitrage — DONE, 2026-09-08.**
+Originally noted 2026-07-13 as blocked on "a paid or scraped consensus-
+target data source CAMARF does not currently have." Both blockers are
+now cleared: `data_wrds.py:fetch_ibes_price_targets()` confirmed IBES
+consensus price targets ARE accessible in this project's existing WRDS
+subscription (1,133,381 rows fetched, 10,316 permnos, 1999-2025), and the
+architecture question (this has real prior literature — Brav & Lehavy
+2003; Da & Schaumburg 2011 — grounding it as a STANDALONE single-name
+signal, a genuinely different asset-pricing claim than this project's
+cross-sectional cointegration thesis) was resolved as a **pairs-relative
+overlay** instead: within an existing confirmed pair, the relative
+divergence between each leg's own analyst-implied return to target,
+checked against whether it agrees or disagrees with the pair's actual
+trade direction — stays inside CAMARF's existing co-movement
+architecture rather than introducing a new single-asset trade unit.
+`research/price_target_pairs_overlay.py`
+(`debug/_verify_price_target_pairs_overlay.py`, 11/11, including a real
+object-dtype negation bug caught live) scored 1,191/1,340 of this
+project's own real trades. Honest negative result, matching this
+paper's own §7.17/§7.18 pattern: agrees-with-consensus trades show no
+meaningful P&L or win-rate advantage over disagrees-with-consensus ones
+(Welch's t=-0.33, p=0.74) — if anything the wrong-sign direction. Full
+account: Finding #65.
 
 The remaining academic-lens backlog was reviewed (2026-06-23) and
 most of it approved. Status, updated same day after building and
