@@ -1,0 +1,10 @@
+# Normalize line endings across platforms (Windows dev machine, CachyOS
+# Linux compute machine) -- added 2026-09-08 after discovering CachyOS's
+# checkout carries CRLF terminators on core .py files (analysis.py,
+# backtest.py, gpu_backend.py, universe_loader.py, pit_wfa.py) while the
+# committed history is LF, making `git diff` report the ENTIRE file as
+# changed (13,134 lines on analysis.py alone) even when real content
+# divergence was a small fraction of that. All text files normalize to
+# LF in the repository; git converts to the platform-native ending on
+# checkout only where core.autocrlf is configured to do so locally.
+* text=auto eol=lf
