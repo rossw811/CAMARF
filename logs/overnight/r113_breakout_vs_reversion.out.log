@@ -1,4 +1,18 @@
-LNT/VTR@1hr: MR n=76 win=1.00 total_pnl_z=204.07 | BO n=122 win=0.06 total_pnl_z=-142.54
-LNT/WELL@1hr: MR n=73 win=1.00 total_pnl_z=204.62 | BO n=123 win=0.06 total_pnl_z=-136.59
-AME/MAR@1hr: MR n=75 win=1.00 total_pnl_z=218.59 | BO n=135 win=0.09 total_pnl_z=-148.13
-CMS/DUK@1hr: MR n=74 win=1.00 total_pnl_z=199.22 | BO n=131 win=0.08 total_pnl_z=-146.11
+KVUE/KMB@1hr: MR n=79 win=1.00 total_pnl_z=244.95 | BO n=157 win=0.07 total_pnl_z=-166.10
+PNC/ZION@1hr: MR n=84 win=1.00 total_pnl_z=244.27 | BO n=136 win=0.04 total_pnl_z=-169.52
+
+Aggregate across 2 pairs:
+                n_pairs  total_trades  mean_win_rate  mean_total_pnl_z  pooled_sharpe_like
+strategy                                                                                  
+breakout              2           293       0.057091       -167.809209           -1.407231
+mean_reversion        2           163       1.000000        244.607315            2.959478
+
+Full results written to /home/rw/CAMARF/output/research/breakout_vs_reversion_1hr.parquet
+
+======================================================================
+Entry/exit combination sweep (4x4 mean-reversion, 4x4 breakout, pooled across 2 pairs):
+
+mean_reversion: best combination entry=3.0, exit=0.25 -> sharpe_like=3.900, n_trades=61, win_rate=1.000
+breakout: best combination entry=1.5, target_delta=0.5 -> sharpe_like=-0.630, n_trades=737, win_rate=0.202
+
+Sweep results written to /home/rw/CAMARF/output/research/breakout_vs_reversion_sweep_1hr.parquet

@@ -1,3 +1,46 @@
 Loaded 2 confirmed pairs across all TF dirs
 MM hedge map: 2 pairs
+
 Running 16 grid combinations...
+
+  SE=0 GS=0 MM=0 CF=0.00  =>  Sharpe=nan  PnL=$-5  n=1  WR=0.0%
+  SE=0 GS=0 MM=0 CF=0.10  =>  Sharpe=nan  PnL=$-5  n=1  WR=0.0%
+  SE=0 GS=0 MM=1 CF=0.00  =>  Sharpe=nan  PnL=$-5  n=1  WR=0.0%
+  SE=0 GS=0 MM=1 CF=0.10  =>  Sharpe=nan  PnL=$-5  n=1  WR=0.0%
+  SE=0 GS=1 MM=0 CF=0.00  =>  Sharpe=nan  PnL=$-5  n=1  WR=0.0%
+  SE=0 GS=1 MM=0 CF=0.10  =>  Sharpe=nan  PnL=$-5  n=1  WR=0.0%
+  SE=0 GS=1 MM=1 CF=0.00  =>  Sharpe=nan  PnL=$-5  n=1  WR=0.0%
+  SE=0 GS=1 MM=1 CF=0.10  =>  Sharpe=nan  PnL=$-5  n=1  WR=0.0%
+  SE=1 GS=0 MM=0 CF=0.00  =>  Sharpe=nan  PnL=$-5  n=1  WR=0.0%
+  SE=1 GS=0 MM=0 CF=0.10  =>  Sharpe=nan  PnL=$-5  n=1  WR=0.0%
+  SE=1 GS=0 MM=1 CF=0.00  =>  Sharpe=nan  PnL=$-5  n=1  WR=0.0%
+  SE=1 GS=0 MM=1 CF=0.10  =>  Sharpe=nan  PnL=$-5  n=1  WR=0.0%
+  SE=1 GS=1 MM=0 CF=0.00  =>  Sharpe=nan  PnL=$-5  n=1  WR=0.0%
+  SE=1 GS=1 MM=0 CF=0.10  =>  Sharpe=nan  PnL=$-5  n=1  WR=0.0%
+  SE=1 GS=1 MM=1 CF=0.00  =>  Sharpe=nan  PnL=$-5  n=1  WR=0.0%
+  SE=1 GS=1 MM=1 CF=0.10  =>  Sharpe=nan  PnL=$-5  n=1  WR=0.0%
+
+=== STORM GRID — RANKED BY SHARPE ===
+                 label  sharpe  total_pnl  n_trades  win_rate
+SE=0 GS=0 MM=0 CF=0.00     NaN      -4.73         1       0.0
+SE=0 GS=0 MM=0 CF=0.10     NaN      -4.73         1       0.0
+SE=0 GS=0 MM=1 CF=0.00     NaN      -5.28         1       0.0
+SE=0 GS=0 MM=1 CF=0.10     NaN      -5.28         1       0.0
+SE=0 GS=1 MM=0 CF=0.00     NaN      -4.73         1       0.0
+SE=0 GS=1 MM=0 CF=0.10     NaN      -4.73         1       0.0
+SE=0 GS=1 MM=1 CF=0.00     NaN      -5.28         1       0.0
+SE=0 GS=1 MM=1 CF=0.10     NaN      -5.28         1       0.0
+SE=1 GS=0 MM=0 CF=0.00     NaN      -4.73         1       0.0
+SE=1 GS=0 MM=0 CF=0.10     NaN      -4.73         1       0.0
+SE=1 GS=0 MM=1 CF=0.00     NaN      -5.28         1       0.0
+SE=1 GS=0 MM=1 CF=0.10     NaN      -5.28         1       0.0
+SE=1 GS=1 MM=0 CF=0.00     NaN      -4.73         1       0.0
+SE=1 GS=1 MM=0 CF=0.10     NaN      -4.73         1       0.0
+SE=1 GS=1 MM=1 CF=0.00     NaN      -5.28         1       0.0
+SE=1 GS=1 MM=1 CF=0.10     NaN      -5.28         1       0.0
+
+=== MARGINAL EFFECT OF EACH FACTOR (avg Sharpe delta) ===
+  session_edge               on=nan  off=nan  delta=+nan
+  garch_stop                 on=nan  off=nan  delta=+nan
+  mm_exec                    on=nan  off=nan  delta=+nan
+  coint_frac_thr=0.10        on=nan  off=nan  delta=+nan

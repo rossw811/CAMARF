@@ -1,15 +1,15 @@
 === CAMARF macro.py ===
-date:        2026-09-08 20:43
-runtime_min: 0.1
+date:        2026-09-02 13:45
+runtime_min: 0.0
 
 === series ===
-  BAA10Y         rows=10611  source=fred
-  cot_es         rows=1507   source=cftc
-  cot_nq         rows=239    source=cftc
+  VIXCLS         rows=9566   source=cache
+  cot_es         rows=1506   source=cache
+  cot_nq         rows=238    source=cache
 
 === regime_distributions ===
-credit_proxy: {'normal': 4603, 'tight': 4281, 'wide': 1276, nan: 89}
-cot_es: {'neutral': 5956, nan: 2960, 'crowded_short': 926, 'crowded_long': 407}
-cot_nq: {nan: 9100, 'neutral': 1100, 'crowded_long': 44, 'crowded_short': 5}
+vix: {'normal': 4676, 'calm': 2956, 'elevated': 1247, nan: 1014, 'crisis': 353}
+cot_es: {'neutral': 5953, nan: 2960, 'crowded_short': 926, 'crowded_long': 407}
+cot_nq: {nan: 9100, 'neutral': 1097, 'crowded_long': 44, 'crowded_short': 5}
 
 === end ===

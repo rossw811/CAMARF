@@ -1,43 +1,798 @@
-02:55:01 INFO  === cross_listing_lead_lag.py: does one exchange listing predict the SAME company's price on a different exchange listing? ===
-02:55:01 INFO  Found 36 companies with 2+ distinct exchange listings fetched
-02:55:01 INFO  36 cross-listing pairs to test
-02:55:02 INFO  ok    gvkey=010846 GVKEY010846_02W/GVKEY010846_16W: best_lag=0 corr*=0.719(n=6633) corr0=0.719(n=6633) lift=0.000
-02:55:03 INFO  ok    gvkey=015549 GVKEY015549_01W/GVKEY015549_03W: best_lag=0 corr*=0.668(n=4486) corr0=0.668(n=4486) lift=0.000
-02:55:06 INFO  FLAG  gvkey=015883 GVKEY015883_01W/GVKEY015883_02W: best_lag=-2 corr*=0.529(n=6575) corr0=0.172(n=6576) lift=0.357
-02:55:07 INFO  ok    gvkey=065248 GVKEY065248_01W/GVKEY065248_06W: best_lag=0 corr*=0.994(n=4864) corr0=0.994(n=4864) lift=0.000
-02:55:07 INFO  ok    gvkey=100010 GVKEY100010_01W/GVKEY100010_02W: best_lag=0 corr*=0.285(n=7441) corr0=0.285(n=7441) lift=0.000
-02:55:07 INFO  ok    gvkey=100022 GVKEY100022_01W/GVKEY100022_02W: best_lag=0 corr*=0.876(n=8488) corr0=0.876(n=8488) lift=0.000
-02:55:08 INFO  ok    gvkey=100037 GVKEY100037_01W/GVKEY100037_03W: best_lag=0 corr*=0.685(n=313) corr0=0.685(n=313) lift=0.000
-02:55:08 INFO  ok    gvkey=100042 GVKEY100042_01W/GVKEY100042_02W: best_lag=0 corr*=0.766(n=8920) corr0=0.766(n=8920) lift=0.000
-02:55:08 INFO  ok    gvkey=100737 GVKEY100737_01W/GVKEY100737_02W: best_lag=0 corr*=0.728(n=10095) corr0=0.728(n=10095) lift=0.000
-02:55:09 INFO  ok    gvkey=100746 GVKEY100746_04W/GVKEY100746_05W: best_lag=0 corr*=0.496(n=6642) corr0=0.496(n=6642) lift=0.000
-02:55:09 INFO  ok    gvkey=100953 GVKEY100953_01W/GVKEY100953_03W: best_lag=0 corr*=0.867(n=8362) corr0=0.867(n=8362) lift=0.000
-02:55:12 INFO  FLAG  gvkey=101017 GVKEY101017_01W/GVKEY101017_04W: best_lag=-1 corr*=0.478(n=7708) corr0=0.364(n=7709) lift=0.115
-02:55:13 INFO  ok    gvkey=101020 GVKEY101020_05W/GVKEY101020_06W: best_lag=0 corr*=0.827(n=7669) corr0=0.827(n=7669) lift=0.000
-02:55:13 INFO  ok    gvkey=101343 GVKEY101343_01W/GVKEY101343_03W: best_lag=0 corr*=0.697(n=9028) corr0=0.697(n=9028) lift=0.000
-02:55:13 INFO  ok    gvkey=101347 GVKEY101347_01W/GVKEY101347_03W: best_lag=0 corr*=0.919(n=8609) corr0=0.919(n=8609) lift=0.000
-02:55:14 INFO  ok    gvkey=101390 GVKEY101390_01W/GVKEY101390_02W: best_lag=0 corr*=0.491(n=8497) corr0=0.491(n=8497) lift=0.000
-02:55:14 INFO  ok    gvkey=101736 GVKEY101736_01W/GVKEY101736_03W: best_lag=0 corr*=0.655(n=7850) corr0=0.655(n=7850) lift=0.000
-02:55:15 INFO  ok    gvkey=101895 GVKEY101895_02W/GVKEY101895_03W: best_lag=0 corr*=0.576(n=8184) corr0=0.576(n=8184) lift=0.000
-02:55:15 INFO  ok    gvkey=101942 GVKEY101942_01W/GVKEY101942_02W: best_lag=0 corr*=0.868(n=7701) corr0=0.868(n=7701) lift=0.000
-02:55:15 INFO  ok    gvkey=101971 GVKEY101971_01W/GVKEY101971_02W: best_lag=0 corr*=0.659(n=6459) corr0=0.659(n=6459) lift=0.000
-02:55:16 INFO  ok    gvkey=102218 GVKEY102218_01W/GVKEY102218_02W: best_lag=0 corr*=0.681(n=4199) corr0=0.681(n=4199) lift=0.000
-02:55:16 INFO  ok    gvkey=102915 GVKEY102915_01W/GVKEY102915_02W: best_lag=0 corr*=0.953(n=8187) corr0=0.953(n=8187) lift=0.000
-02:55:16 INFO  ok    gvkey=103200 GVKEY103200_01W/GVKEY103200_02W: best_lag=0 corr*=0.705(n=8139) corr0=0.705(n=8139) lift=0.000
-02:55:17 INFO  ok    gvkey=103485 GVKEY103485_01W/GVKEY103485_02W: best_lag=0 corr*=0.337(n=7614) corr0=0.337(n=7614) lift=0.000
-02:55:17 INFO  ok    gvkey=103533 GVKEY103533_01W/GVKEY103533_03W: best_lag=0 corr*=0.721(n=7466) corr0=0.721(n=7466) lift=0.000
-02:55:17 INFO  ok    gvkey=105072 GVKEY105072_01W/GVKEY105072_02W: best_lag=0 corr*=0.073(n=6190) corr0=0.073(n=6190) lift=0.000
-02:55:18 INFO  ok    gvkey=200759 GVKEY200759_01W/GVKEY200759_02W: best_lag=0 corr*=0.564(n=7496) corr0=0.564(n=7496) lift=0.000
-02:55:18 INFO  ok    gvkey=208821 GVKEY208821_01W/GVKEY208821_02W: best_lag=0 corr*=0.508(n=7542) corr0=0.508(n=7542) lift=0.000
-02:55:18 INFO  ok    gvkey=210366 GVKEY210366_01W/GVKEY210366_02W: best_lag=0 corr*=0.071(n=6103) corr0=0.071(n=6103) lift=0.000
-02:55:19 INFO  ok    gvkey=211453 GVKEY211453_01W/GVKEY211453_02W: best_lag=0 corr*=0.921(n=7864) corr0=0.921(n=7864) lift=0.000
-02:55:19 INFO  ok    gvkey=220833 GVKEY220833_02W/GVKEY220833_05W: best_lag=0 corr*=0.976(n=6046) corr0=0.976(n=6046) lift=0.000
-02:55:19 INFO  ok    gvkey=221636 GVKEY221636_01W/GVKEY221636_03W: best_lag=0 corr*=0.623(n=2233) corr0=0.623(n=2233) lift=0.000
-02:55:20 INFO  ok    gvkey=242989 GVKEY242989_01W/GVKEY242989_02W: best_lag=0 corr*=0.154(n=4922) corr0=0.154(n=4922) lift=0.000
-02:55:20 INFO  ok    gvkey=277812 GVKEY277812_01W/GVKEY277812_02W: best_lag=0 corr*=0.822(n=3949) corr0=0.822(n=3949) lift=0.000
-02:55:20 INFO  ok    gvkey=278136 GVKEY278136_01W/GVKEY278136_02W: best_lag=0 corr*=0.653(n=4851) corr0=0.653(n=4851) lift=0.000
-02:55:21 INFO  ok    gvkey=324977 GVKEY324977_01W/GVKEY324977_02W: best_lag=0 corr*=0.230(n=2356) corr0=0.230(n=2356) lift=0.000
-02:55:21 INFO  === 36 cross-listing pairs tested ===
-02:55:21 INFO    2/36 show a non-zero best lag at all (before the min-lift gate)
-02:55:21 INFO    2/36 clear the >= 0.05 correlation-lift gate -- genuine candidates for real cross-time-zone information flow, not just contemporaneous arbitrage-enforced parity
-02:55:21 INFO  Saved -> output/research/cross_listing_lead_lag.parquet
+18:27:25 INFO  === cross_listing_lead_lag.py: does one exchange listing predict the SAME company's price on a different exchange listing? ===
+18:27:25 INFO  Found 592 companies with 2+ distinct exchange listings fetched
+18:27:25 INFO  791 cross-listing pairs to test
+18:27:25 INFO  ok    gvkey=001166 GVKEY001166_01W/GVKEY001166_02W: best_lag=0 corr*=0.566(n=6997) corr0=0.566(n=6997) lift=0.000
+18:27:25 INFO  ok    gvkey=004245 GVKEY004245_01W/GVKEY004245_02W: best_lag=0 corr*=0.819(n=3943) corr0=0.819(n=3943) lift=0.000
+18:27:25 INFO  ok    gvkey=005988 GVKEY005988_01W/GVKEY005988_03W: best_lag=0 corr*=0.793(n=2172) corr0=0.793(n=2172) lift=0.000
+18:27:25 INFO  SKIP gvkey=009267 GVKEY009267_01W/GVKEY009267_04W: insufficient overlapping return data at any lag (need >=30)
+18:27:25 INFO  ok    gvkey=010846 GVKEY010846_01W/GVKEY010846_02W: best_lag=0 corr*=0.826(n=6735) corr0=0.826(n=6735) lift=0.000
+18:27:25 INFO  ok    gvkey=010846 GVKEY010846_01W/GVKEY010846_16W: best_lag=0 corr*=0.606(n=7001) corr0=0.606(n=7001) lift=0.000
+18:27:25 INFO  ok    gvkey=010846 GVKEY010846_02W/GVKEY010846_16W: best_lag=0 corr*=0.719(n=6633) corr0=0.719(n=6633) lift=0.000
+18:27:25 INFO  ok    gvkey=011217 GVKEY011217_02W/GVKEY011217_03W: best_lag=0 corr*=0.578(n=1123) corr0=0.578(n=1123) lift=0.000
+18:27:25 INFO  ok    gvkey=011217 GVKEY011217_02W/GVKEY011217_04W: best_lag=0 corr*=0.904(n=9712) corr0=0.904(n=9712) lift=0.000
+18:27:25 INFO  ok    gvkey=011217 GVKEY011217_03W/GVKEY011217_04W: best_lag=0 corr*=0.872(n=1600) corr0=0.872(n=1600) lift=0.000
+18:27:25 INFO  ok    gvkey=012368 GVKEY012368_05W/GVKEY012368_07W: best_lag=0 corr*=0.861(n=9198) corr0=0.861(n=9198) lift=0.000
+18:27:25 INFO  ok    gvkey=012384 GVKEY012384_01W/GVKEY012384_04W: best_lag=0 corr*=0.946(n=5447) corr0=0.946(n=5447) lift=0.000
+18:27:25 INFO  ok    gvkey=013145 GVKEY013145_01W/GVKEY013145_04W: best_lag=0 corr*=0.961(n=4044) corr0=0.961(n=4044) lift=0.000
+18:27:25 INFO  FLAG  gvkey=013312 GVKEY013312_01W/GVKEY013312_03W: best_lag=-1 corr*=0.521(n=5362) corr0=0.415(n=5363) lift=0.106
+18:27:25 INFO  ok    gvkey=013312 GVKEY013312_01W/GVKEY013312_04W: best_lag=0 corr*=0.454(n=5363) corr0=0.454(n=5363) lift=0.000
+18:27:26 INFO  ok    gvkey=013312 GVKEY013312_03W/GVKEY013312_04W: best_lag=0 corr*=0.779(n=5363) corr0=0.779(n=5363) lift=0.000
+18:27:26 INFO  ok    gvkey=015172 GVKEY015172_01W/GVKEY015172_02W: best_lag=0 corr*=0.989(n=6850) corr0=0.989(n=6850) lift=0.000
+18:27:26 INFO  ok    gvkey=015362 GVKEY015362_01W/GVKEY015362_02W: best_lag=0 corr*=0.737(n=5373) corr0=0.737(n=5373) lift=0.000
+18:27:26 INFO  ok    gvkey=015444 GVKEY015444_01W/GVKEY015444_02W: best_lag=0 corr*=0.886(n=7468) corr0=0.886(n=7468) lift=0.000
+18:27:26 INFO  ok    gvkey=015482 GVKEY015482_01W/GVKEY015482_02W: best_lag=0 corr*=0.518(n=160) corr0=0.518(n=160) lift=0.000
+18:27:26 INFO  ok    gvkey=015496 GVKEY015496_01W/GVKEY015496_02W: best_lag=0 corr*=0.703(n=1421) corr0=0.703(n=1421) lift=0.000
+18:27:26 INFO  ok    gvkey=015508 GVKEY015508_01W/GVKEY015508_02W: best_lag=0 corr*=0.776(n=8777) corr0=0.776(n=8777) lift=0.000
+18:27:26 INFO  ok    gvkey=015509 GVKEY015509_02W/GVKEY015509_06W: best_lag=0 corr*=0.501(n=9341) corr0=0.501(n=9341) lift=0.000
+18:27:26 INFO  SKIP gvkey=015511 GVKEY015511_01W/GVKEY015511_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:26 INFO  SKIP gvkey=015512 GVKEY015512_02W/GVKEY015512_03W: insufficient overlapping return data at any lag (need >=30)
+18:27:26 INFO  ok    gvkey=015538 GVKEY015538_03W/GVKEY015538_08W: best_lag=0 corr*=0.955(n=2388) corr0=0.955(n=2388) lift=0.000
+18:27:26 INFO  ok    gvkey=015544 GVKEY015544_01W/GVKEY015544_02W: best_lag=0 corr*=0.531(n=4743) corr0=0.531(n=4743) lift=0.000
+18:27:26 INFO  ok    gvkey=015548 GVKEY015548_02W/GVKEY015548_03W: best_lag=0 corr*=0.461(n=1758) corr0=0.461(n=1758) lift=0.000
+18:27:26 INFO  ok    gvkey=015548 GVKEY015548_02W/GVKEY015548_04W: best_lag=0 corr*=0.578(n=1905) corr0=0.578(n=1905) lift=0.000
+18:27:26 INFO  ok    gvkey=015548 GVKEY015548_03W/GVKEY015548_04W: best_lag=0 corr*=0.654(n=2269) corr0=0.654(n=2269) lift=0.000
+18:27:26 INFO  ok    gvkey=015549 GVKEY015549_01W/GVKEY015549_03W: best_lag=0 corr*=0.668(n=4486) corr0=0.668(n=4486) lift=0.000
+18:27:26 INFO  ok    gvkey=015589 GVKEY015589_01W/GVKEY015589_02W: best_lag=0 corr*=0.988(n=2147) corr0=0.988(n=2147) lift=0.000
+18:27:26 INFO  FLAG  gvkey=015608 GVKEY015608_01W/GVKEY015608_02W: best_lag=1 corr*=0.128(n=671) corr0=0.064(n=673) lift=0.064
+18:27:26 INFO  FLAG  gvkey=015608 GVKEY015608_01W/GVKEY015608_04W: best_lag=-5 corr*=-0.167(n=117) corr0=-0.020(n=117) lift=0.148
+18:27:26 INFO  ok    gvkey=015608 GVKEY015608_02W/GVKEY015608_04W: best_lag=0 corr*=0.385(n=413) corr0=0.385(n=413) lift=0.000
+18:27:26 INFO  ok    gvkey=015632 GVKEY015632_01W/GVKEY015632_02W: best_lag=0 corr*=0.498(n=5334) corr0=0.498(n=5334) lift=0.000
+18:27:26 INFO  SKIP gvkey=015659 GVKEY015659_01W/GVKEY015659_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:26 INFO  ok    gvkey=015674 GVKEY015674_01W/GVKEY015674_02W: best_lag=0 corr*=0.616(n=2102) corr0=0.616(n=2102) lift=0.000
+18:27:26 INFO  ok    gvkey=015674 GVKEY015674_01W/GVKEY015674_03W: best_lag=0 corr*=0.599(n=1607) corr0=0.599(n=1607) lift=0.000
+18:27:26 INFO  ok    gvkey=015674 GVKEY015674_02W/GVKEY015674_03W: best_lag=0 corr*=0.678(n=1666) corr0=0.678(n=1666) lift=0.000
+18:27:26 INFO  ok    gvkey=015677 GVKEY015677_01W/GVKEY015677_02W: best_lag=0 corr*=0.470(n=2791) corr0=0.470(n=2791) lift=0.000
+18:27:26 INFO  SKIP gvkey=015681 GVKEY015681_01W/GVKEY015681_03W: insufficient overlapping return data at any lag (need >=30)
+18:27:26 INFO  ok    gvkey=015686 GVKEY015686_01W/GVKEY015686_02W: best_lag=0 corr*=0.583(n=2428) corr0=0.583(n=2428) lift=0.000
+18:27:26 INFO  ok    gvkey=015686 GVKEY015686_01W/GVKEY015686_03W: best_lag=0 corr*=0.283(n=1137) corr0=0.283(n=1137) lift=0.000
+18:27:26 INFO  ok    gvkey=015686 GVKEY015686_02W/GVKEY015686_03W: best_lag=0 corr*=0.325(n=1121) corr0=0.325(n=1121) lift=0.000
+18:27:26 INFO  ok    gvkey=015687 GVKEY015687_01W/GVKEY015687_02W: best_lag=0 corr*=0.524(n=942) corr0=0.524(n=942) lift=0.000
+18:27:27 INFO  ok    gvkey=015690 GVKEY015690_01W/GVKEY015690_03W: best_lag=0 corr*=0.381(n=1914) corr0=0.381(n=1914) lift=0.000
+18:27:27 INFO  FLAG  gvkey=015697 GVKEY015697_01W/GVKEY015697_02W: best_lag=1 corr*=0.373(n=1901) corr0=0.201(n=1900) lift=0.172
+18:27:27 INFO  ok    gvkey=015699 GVKEY015699_01W/GVKEY015699_02W: best_lag=0 corr*=0.780(n=180) corr0=0.780(n=180) lift=0.000
+18:27:27 INFO  ok    gvkey=015699 GVKEY015699_01W/GVKEY015699_03W: best_lag=0 corr*=0.928(n=8766) corr0=0.928(n=8766) lift=0.000
+18:27:27 INFO  ok    gvkey=015699 GVKEY015699_02W/GVKEY015699_03W: best_lag=0 corr*=0.799(n=246) corr0=0.799(n=246) lift=0.000
+18:27:27 INFO  ok    gvkey=015730 GVKEY015730_01W/GVKEY015730_02W: best_lag=0 corr*=0.985(n=5792) corr0=0.985(n=5792) lift=0.000
+18:27:27 INFO  ok    gvkey=015766 GVKEY015766_01W/GVKEY015766_02W: best_lag=0 corr*=0.549(n=878) corr0=0.549(n=878) lift=0.000
+18:27:27 INFO  SKIP gvkey=015779 GVKEY015779_01W/GVKEY015779_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:27 INFO  ok    gvkey=015785 GVKEY015785_01W/GVKEY015785_02W: best_lag=0 corr*=0.632(n=1553) corr0=0.632(n=1553) lift=0.000
+18:27:27 INFO  ok    gvkey=015785 GVKEY015785_01W/GVKEY015785_03W: best_lag=0 corr*=0.688(n=1778) corr0=0.688(n=1778) lift=0.000
+18:27:27 INFO  ok    gvkey=015785 GVKEY015785_02W/GVKEY015785_03W: best_lag=0 corr*=0.671(n=1035) corr0=0.671(n=1035) lift=0.000
+18:27:27 INFO  ok    gvkey=015788 GVKEY015788_01W/GVKEY015788_02W: best_lag=0 corr*=0.823(n=2322) corr0=0.823(n=2322) lift=0.000
+18:27:27 INFO  ok    gvkey=015788 GVKEY015788_01W/GVKEY015788_03W: best_lag=0 corr*=0.787(n=1521) corr0=0.787(n=1521) lift=0.000
+18:27:27 INFO  ok    gvkey=015788 GVKEY015788_02W/GVKEY015788_03W: best_lag=0 corr*=0.825(n=1602) corr0=0.825(n=1602) lift=0.000
+18:27:27 INFO  SKIP gvkey=015833 GVKEY015833_02W/GVKEY015833_04W: insufficient overlapping return data at any lag (need >=30)
+18:27:27 INFO  SKIP gvkey=015833 GVKEY015833_02W/GVKEY015833_90W: insufficient overlapping return data at any lag (need >=30)
+18:27:27 INFO  ok    gvkey=015833 GVKEY015833_04W/GVKEY015833_90W: best_lag=0 corr*=0.616(n=3081) corr0=0.616(n=3081) lift=0.000
+18:27:27 INFO  ok    gvkey=015862 GVKEY015862_01W/GVKEY015862_02W: best_lag=0 corr*=0.986(n=6039) corr0=0.986(n=6039) lift=0.000
+18:27:27 INFO  ok    gvkey=015866 GVKEY015866_03W/GVKEY015866_04W: best_lag=0 corr*=0.923(n=2225) corr0=0.923(n=2225) lift=0.000
+18:27:27 INFO  FLAG  gvkey=015883 GVKEY015883_01W/GVKEY015883_02W: best_lag=-2 corr*=0.529(n=6575) corr0=0.172(n=6576) lift=0.357
+18:27:27 INFO  ok    gvkey=015889 GVKEY015889_01W/GVKEY015889_03W: best_lag=0 corr*=0.710(n=6892) corr0=0.710(n=6892) lift=0.000
+18:27:27 INFO  SKIP gvkey=015889 GVKEY015889_01W/GVKEY015889_04W: insufficient overlapping return data at any lag (need >=30)
+18:27:27 INFO  SKIP gvkey=015889 GVKEY015889_03W/GVKEY015889_04W: insufficient overlapping return data at any lag (need >=30)
+18:27:27 INFO  SKIP gvkey=015934 GVKEY015934_01W/GVKEY015934_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:27 INFO  ok    gvkey=015934 GVKEY015934_01W/GVKEY015934_03W: best_lag=0 corr*=0.466(n=597) corr0=0.466(n=597) lift=0.000
+18:27:27 INFO  ok    gvkey=015934 GVKEY015934_02W/GVKEY015934_03W: best_lag=0 corr*=0.217(n=2463) corr0=0.217(n=2463) lift=0.000
+18:27:27 INFO  ok    gvkey=016264 GVKEY016264_01W/GVKEY016264_02W: best_lag=0 corr*=0.619(n=107) corr0=0.619(n=107) lift=0.000
+18:27:27 INFO  ok    gvkey=016308 GVKEY016308_01W/GVKEY016308_02W: best_lag=0 corr*=0.754(n=157) corr0=0.754(n=157) lift=0.000
+18:27:27 INFO  ok    gvkey=016331 GVKEY016331_01W/GVKEY016331_02W: best_lag=0 corr*=0.826(n=1121) corr0=0.826(n=1121) lift=0.000
+18:27:27 INFO  SKIP gvkey=016334 GVKEY016334_01W/GVKEY016334_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:27 INFO  ok    gvkey=016348 GVKEY016348_03W/GVKEY016348_05W: best_lag=0 corr*=0.173(n=282) corr0=0.173(n=282) lift=0.000
+18:27:28 INFO  ok    gvkey=016383 GVKEY016383_01W/GVKEY016383_02W: best_lag=0 corr*=0.990(n=1459) corr0=0.990(n=1459) lift=0.000
+18:27:28 INFO  SKIP gvkey=016383 GVKEY016383_01W/GVKEY016383_90W: insufficient overlapping return data at any lag (need >=30)
+18:27:28 INFO  FLAG  gvkey=016383 GVKEY016383_02W/GVKEY016383_90W: best_lag=1 corr*=0.776(n=1889) corr0=0.233(n=1889) lift=0.543
+18:27:28 INFO  ok    gvkey=016447 GVKEY016447_01W/GVKEY016447_06W: best_lag=0 corr*=0.368(n=3240) corr0=0.368(n=3240) lift=0.000
+18:27:28 INFO  ok    gvkey=016603 GVKEY016603_01W/GVKEY016603_02W: best_lag=0 corr*=0.380(n=1666) corr0=0.380(n=1666) lift=0.000
+18:27:28 INFO  ok    gvkey=016603 GVKEY016603_01W/GVKEY016603_03W: best_lag=0 corr*=0.498(n=1644) corr0=0.498(n=1644) lift=0.000
+18:27:28 INFO  ok    gvkey=016603 GVKEY016603_02W/GVKEY016603_03W: best_lag=0 corr*=0.729(n=1650) corr0=0.729(n=1650) lift=0.000
+18:27:28 INFO  ok    gvkey=017346 GVKEY017346_01W/GVKEY017346_03W: best_lag=0 corr*=0.811(n=1150) corr0=0.811(n=1150) lift=0.000
+18:27:28 INFO  ok    gvkey=017412 GVKEY017412_03W/GVKEY017412_04W: best_lag=0 corr*=0.871(n=3648) corr0=0.871(n=3648) lift=0.000
+18:27:28 INFO  ok    gvkey=017420 GVKEY017420_01W/GVKEY017420_02W: best_lag=0 corr*=0.944(n=9382) corr0=0.944(n=9382) lift=0.000
+18:27:28 INFO  ok    gvkey=018369 GVKEY018369_01W/GVKEY018369_02W: best_lag=0 corr*=0.518(n=2031) corr0=0.518(n=2031) lift=0.000
+18:27:28 INFO  ok    gvkey=018369 GVKEY018369_01W/GVKEY018369_04W: best_lag=0 corr*=0.321(n=1039) corr0=0.321(n=1039) lift=0.000
+18:27:28 INFO  ok    gvkey=018369 GVKEY018369_02W/GVKEY018369_04W: best_lag=3 corr*=0.115(n=562) corr0=0.104(n=561) lift=0.011
+18:27:28 INFO  SKIP gvkey=018957 GVKEY018957_01W/GVKEY018957_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:28 INFO  SKIP gvkey=019045 GVKEY019045_01W/GVKEY019045_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:28 INFO  SKIP gvkey=019083 GVKEY019083_01W/GVKEY019083_05W: insufficient overlapping return data at any lag (need >=30)
+18:27:28 INFO  ok    gvkey=019540 GVKEY019540_03W/GVKEY019540_04W: best_lag=0 corr*=0.993(n=3193) corr0=0.993(n=3193) lift=0.000
+18:27:28 INFO  FLAG  gvkey=019565 GVKEY019565_01W/GVKEY019565_15W: best_lag=1 corr*=0.596(n=7870) corr0=0.342(n=7869) lift=0.254
+18:27:28 INFO  ok    gvkey=019591 GVKEY019591_02W/GVKEY019591_03W: best_lag=0 corr*=0.765(n=2252) corr0=0.765(n=2252) lift=0.000
+18:27:28 INFO  FLAG  gvkey=019824 GVKEY019824_01W/GVKEY019824_03W: best_lag=1 corr*=0.375(n=5866) corr0=0.255(n=5866) lift=0.120
+18:27:28 INFO  SKIP gvkey=019846 GVKEY019846_01W/GVKEY019846_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:28 INFO  ok    gvkey=021388 GVKEY021388_01W/GVKEY021388_02W: best_lag=0 corr*=0.944(n=5986) corr0=0.944(n=5986) lift=0.000
+18:27:28 INFO  ok    gvkey=021388 GVKEY021388_01W/GVKEY021388_04W: best_lag=0 corr*=0.762(n=4301) corr0=0.762(n=4301) lift=0.000
+18:27:28 INFO  ok    gvkey=021388 GVKEY021388_02W/GVKEY021388_04W: best_lag=0 corr*=0.592(n=2421) corr0=0.592(n=2421) lift=0.000
+18:27:28 INFO  ok    gvkey=021472 GVKEY021472_01W/GVKEY021472_02W: best_lag=0 corr*=0.166(n=659) corr0=0.166(n=659) lift=0.000
+18:27:28 INFO  SKIP gvkey=023595 GVKEY023595_02W/GVKEY023595_03W: insufficient overlapping return data at any lag (need >=30)
+18:27:28 INFO  ok    gvkey=023671 GVKEY023671_01W/GVKEY023671_02W: best_lag=0 corr*=0.950(n=1834) corr0=0.950(n=1834) lift=0.000
+18:27:29 INFO  ok    gvkey=023671 GVKEY023671_01W/GVKEY023671_03W: best_lag=0 corr*=0.455(n=1110) corr0=0.455(n=1110) lift=0.000
+18:27:29 INFO  ok    gvkey=023671 GVKEY023671_01W/GVKEY023671_04W: best_lag=0 corr*=0.301(n=1093) corr0=0.301(n=1093) lift=0.000
+18:27:29 INFO  SKIP gvkey=023671 GVKEY023671_01W/GVKEY023671_06W: insufficient overlapping return data at any lag (need >=30)
+18:27:29 INFO  SKIP gvkey=023671 GVKEY023671_01W/GVKEY023671_08W: insufficient overlapping return data at any lag (need >=30)
+18:27:29 INFO  ok    gvkey=023671 GVKEY023671_01W/GVKEY023671_90W: best_lag=0 corr*=0.223(n=444) corr0=0.223(n=444) lift=0.000
+18:27:29 INFO  ok    gvkey=023671 GVKEY023671_02W/GVKEY023671_03W: best_lag=0 corr*=0.398(n=250) corr0=0.398(n=250) lift=0.000
+18:27:29 INFO  ok    gvkey=023671 GVKEY023671_02W/GVKEY023671_04W: best_lag=0 corr*=0.435(n=257) corr0=0.435(n=257) lift=0.000
+18:27:29 INFO  ok    gvkey=023671 GVKEY023671_02W/GVKEY023671_06W: best_lag=0 corr*=0.952(n=3686) corr0=0.952(n=3686) lift=0.000
+18:27:29 INFO  ok    gvkey=023671 GVKEY023671_02W/GVKEY023671_08W: best_lag=0 corr*=0.972(n=4825) corr0=0.972(n=4825) lift=0.000
+18:27:29 INFO  ok    gvkey=023671 GVKEY023671_02W/GVKEY023671_90W: best_lag=0 corr*=0.592(n=2481) corr0=0.592(n=2481) lift=0.000
+18:27:29 INFO  ok    gvkey=023671 GVKEY023671_03W/GVKEY023671_04W: best_lag=0 corr*=0.243(n=1164) corr0=0.243(n=1164) lift=0.000
+18:27:29 INFO  SKIP gvkey=023671 GVKEY023671_03W/GVKEY023671_06W: insufficient overlapping return data at any lag (need >=30)
+18:27:29 INFO  SKIP gvkey=023671 GVKEY023671_03W/GVKEY023671_08W: insufficient overlapping return data at any lag (need >=30)
+18:27:29 INFO  SKIP gvkey=023671 GVKEY023671_03W/GVKEY023671_90W: insufficient overlapping return data at any lag (need >=30)
+18:27:29 INFO  SKIP gvkey=023671 GVKEY023671_04W/GVKEY023671_06W: insufficient overlapping return data at any lag (need >=30)
+18:27:29 INFO  SKIP gvkey=023671 GVKEY023671_04W/GVKEY023671_08W: insufficient overlapping return data at any lag (need >=30)
+18:27:29 INFO  SKIP gvkey=023671 GVKEY023671_04W/GVKEY023671_90W: insufficient overlapping return data at any lag (need >=30)
+18:27:29 INFO  ok    gvkey=023671 GVKEY023671_06W/GVKEY023671_08W: best_lag=0 corr*=0.946(n=2640) corr0=0.946(n=2640) lift=0.000
+18:27:29 INFO  ok    gvkey=023671 GVKEY023671_06W/GVKEY023671_90W: best_lag=0 corr*=0.947(n=1047) corr0=0.947(n=1047) lift=0.000
+18:27:29 INFO  SKIP gvkey=023671 GVKEY023671_08W/GVKEY023671_90W: insufficient overlapping return data at any lag (need >=30)
+18:27:29 INFO  SKIP gvkey=023909 GVKEY023909_01W/GVKEY023909_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:29 INFO  ok    gvkey=024596 GVKEY024596_01W/GVKEY024596_02W: best_lag=0 corr*=0.948(n=2321) corr0=0.948(n=2321) lift=0.000
+18:27:29 INFO  SKIP gvkey=025022 GVKEY025022_01W/GVKEY025022_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:29 INFO  SKIP gvkey=025036 GVKEY025036_01W/GVKEY025036_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:29 INFO  ok    gvkey=025350 GVKEY025350_01W/GVKEY025350_02W: best_lag=0 corr*=0.698(n=1170) corr0=0.698(n=1170) lift=0.000
+18:27:29 INFO  ok    gvkey=025350 GVKEY025350_01W/GVKEY025350_04W: best_lag=0 corr*=0.466(n=275) corr0=0.466(n=275) lift=0.000
+18:27:29 INFO  ok    gvkey=025350 GVKEY025350_02W/GVKEY025350_04W: best_lag=0 corr*=0.969(n=490) corr0=0.969(n=490) lift=0.000
+18:27:29 INFO  FLAG  gvkey=025546 GVKEY025546_01W/GVKEY025546_02W: best_lag=-1 corr*=0.515(n=508) corr0=0.356(n=509) lift=0.159
+18:27:29 INFO  ok    gvkey=025648 GVKEY025648_03W/GVKEY025648_04W: best_lag=0 corr*=0.671(n=10120) corr0=0.671(n=10120) lift=0.000
+18:27:29 INFO  ok    gvkey=025714 GVKEY025714_01W/GVKEY025714_02W: best_lag=0 corr*=1.000(n=163) corr0=1.000(n=163) lift=0.000
+18:27:29 INFO  ok    gvkey=025888 GVKEY025888_01W/GVKEY025888_02W: best_lag=0 corr*=0.693(n=978) corr0=0.693(n=978) lift=0.000
+18:27:29 INFO  ok    gvkey=025903 GVKEY025903_01W/GVKEY025903_03W: best_lag=0 corr*=0.717(n=8511) corr0=0.717(n=8511) lift=0.000
+18:27:29 INFO  ok    gvkey=028272 GVKEY028272_01W/GVKEY028272_02W: best_lag=0 corr*=0.892(n=6921) corr0=0.892(n=6921) lift=0.000
+18:27:29 INFO  ok    gvkey=028838 GVKEY028838_01W/GVKEY028838_02W: best_lag=0 corr*=0.762(n=1955) corr0=0.762(n=1955) lift=0.000
+18:27:29 INFO  SKIP gvkey=030331 GVKEY030331_03W/GVKEY030331_04W: insufficient overlapping return data at any lag (need >=30)
+18:27:30 INFO  ok    gvkey=030452 GVKEY030452_01W/GVKEY030452_02W: best_lag=0 corr*=0.992(n=8445) corr0=0.992(n=8445) lift=0.000
+18:27:30 INFO  ok    gvkey=030462 GVKEY030462_02W/GVKEY030462_03W: best_lag=0 corr*=0.980(n=1968) corr0=0.980(n=1968) lift=0.000
+18:27:30 INFO  ok    gvkey=030483 GVKEY030483_01W/GVKEY030483_02W: best_lag=0 corr*=0.994(n=6694) corr0=0.994(n=6694) lift=0.000
+18:27:30 INFO  ok    gvkey=030581 GVKEY030581_01W/GVKEY030581_02W: best_lag=0 corr*=0.746(n=2583) corr0=0.746(n=2583) lift=0.000
+18:27:30 INFO  ok    gvkey=030677 GVKEY030677_02W/GVKEY030677_03W: best_lag=0 corr*=0.994(n=680) corr0=0.994(n=680) lift=0.000
+18:27:30 INFO  ok    gvkey=030677 GVKEY030677_02W/GVKEY030677_04W: best_lag=0 corr*=0.598(n=1328) corr0=0.598(n=1328) lift=0.000
+18:27:30 INFO  ok    gvkey=030677 GVKEY030677_03W/GVKEY030677_04W: best_lag=0 corr*=0.788(n=253) corr0=0.788(n=253) lift=0.000
+18:27:30 INFO  SKIP gvkey=030806 GVKEY030806_01W/GVKEY030806_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:30 INFO  SKIP gvkey=030923 GVKEY030923_01W/GVKEY030923_03W: insufficient overlapping return data at any lag (need >=30)
+18:27:30 INFO  ok    gvkey=030938 GVKEY030938_01W/GVKEY030938_02W: best_lag=0 corr*=0.705(n=1257) corr0=0.705(n=1257) lift=0.000
+18:27:30 INFO  ok    gvkey=030938 GVKEY030938_01W/GVKEY030938_03W: best_lag=0 corr*=0.773(n=976) corr0=0.773(n=976) lift=0.000
+18:27:30 INFO  ok    gvkey=030938 GVKEY030938_02W/GVKEY030938_03W: best_lag=0 corr*=0.887(n=2642) corr0=0.887(n=2642) lift=0.000
+18:27:30 INFO  SKIP gvkey=031072 GVKEY031072_01W/GVKEY031072_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:30 INFO  SKIP gvkey=031081 GVKEY031081_01W/GVKEY031081_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:30 INFO  SKIP gvkey=031087 GVKEY031087_01W/GVKEY031087_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:30 INFO  ok    gvkey=031142 GVKEY031142_01W/GVKEY031142_03W: best_lag=0 corr*=0.987(n=6775) corr0=0.987(n=6775) lift=0.000
+18:27:30 INFO  FLAG  gvkey=031205 GVKEY031205_01W/GVKEY031205_02W: best_lag=-3 corr*=-0.369(n=31) corr0=-0.050(n=32) lift=0.319
+18:27:30 INFO  SKIP gvkey=031207 GVKEY031207_01W/GVKEY031207_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:30 INFO  SKIP gvkey=061761 GVKEY061761_01W/GVKEY061761_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:30 INFO  ok    gvkey=062403 GVKEY062403_01W/GVKEY062403_02W: best_lag=0 corr*=0.568(n=1075) corr0=0.568(n=1075) lift=0.000
+18:27:30 INFO  ok    gvkey=062403 GVKEY062403_01W/GVKEY062403_04W: best_lag=0 corr*=0.808(n=6200) corr0=0.808(n=6200) lift=0.000
+18:27:30 INFO  SKIP gvkey=062403 GVKEY062403_02W/GVKEY062403_04W: insufficient overlapping return data at any lag (need >=30)
+18:27:30 INFO  ok    gvkey=063546 GVKEY063546_04W/GVKEY063546_06W: best_lag=0 corr*=0.630(n=1706) corr0=0.630(n=1706) lift=0.000
+18:27:30 INFO  ok    gvkey=063546 GVKEY063546_04W/GVKEY063546_08W: best_lag=0 corr*=0.997(n=4548) corr0=0.997(n=4548) lift=0.000
+18:27:30 INFO  SKIP gvkey=063546 GVKEY063546_06W/GVKEY063546_08W: insufficient overlapping return data at any lag (need >=30)
+18:27:30 INFO  FLAG  gvkey=063904 GVKEY063904_01W/GVKEY063904_02W: best_lag=6 corr*=0.961(n=2947) corr0=0.000(n=2945) lift=0.961
+18:27:30 INFO  ok    gvkey=064577 GVKEY064577_01W/GVKEY064577_02W: best_lag=-1 corr*=0.008(n=5517) corr0=0.001(n=5518) lift=0.007
+18:27:30 INFO  ok    gvkey=064577 GVKEY064577_01W/GVKEY064577_03W: best_lag=6 corr*=-0.007(n=5508) corr0=0.001(n=5508) lift=0.006
+18:27:30 INFO  ok    gvkey=064577 GVKEY064577_02W/GVKEY064577_03W: best_lag=0 corr*=0.974(n=7189) corr0=0.974(n=7189) lift=0.000
+18:27:30 INFO  ok    gvkey=064601 GVKEY064601_02W/GVKEY064601_03W: best_lag=0 corr*=0.367(n=1286) corr0=0.367(n=1286) lift=0.000
+18:27:30 INFO  ok    gvkey=065248 GVKEY065248_01W/GVKEY065248_03W: best_lag=0 corr*=0.996(n=331) corr0=0.996(n=331) lift=0.000
+18:27:30 INFO  ok    gvkey=065248 GVKEY065248_01W/GVKEY065248_04W: best_lag=0 corr*=0.936(n=186) corr0=0.936(n=186) lift=0.000
+18:27:30 INFO  ok    gvkey=065248 GVKEY065248_01W/GVKEY065248_06W: best_lag=0 corr*=0.994(n=4864) corr0=0.994(n=4864) lift=0.000
+18:27:30 INFO  ok    gvkey=065248 GVKEY065248_03W/GVKEY065248_04W: best_lag=0 corr*=0.933(n=186) corr0=0.933(n=186) lift=0.000
+18:27:31 INFO  SKIP gvkey=065248 GVKEY065248_03W/GVKEY065248_06W: insufficient overlapping return data at any lag (need >=30)
+18:27:31 INFO  SKIP gvkey=065248 GVKEY065248_04W/GVKEY065248_06W: insufficient overlapping return data at any lag (need >=30)
+18:27:31 INFO  ok    gvkey=066001 GVKEY066001_01W/GVKEY066001_03W: best_lag=0 corr*=0.614(n=4771) corr0=0.614(n=4771) lift=0.000
+18:27:31 INFO  ok    gvkey=100010 GVKEY100010_01W/GVKEY100010_02W: best_lag=0 corr*=0.285(n=7441) corr0=0.285(n=7441) lift=0.000
+18:27:31 INFO  ok    gvkey=100022 GVKEY100022_01W/GVKEY100022_02W: best_lag=0 corr*=0.876(n=8488) corr0=0.876(n=8488) lift=0.000
+18:27:31 INFO  ok    gvkey=100037 GVKEY100037_01W/GVKEY100037_03W: best_lag=0 corr*=0.685(n=313) corr0=0.685(n=313) lift=0.000
+18:27:31 INFO  ok    gvkey=100042 GVKEY100042_01W/GVKEY100042_02W: best_lag=0 corr*=0.766(n=8920) corr0=0.766(n=8920) lift=0.000
+18:27:31 INFO  ok    gvkey=100103 GVKEY100103_01W/GVKEY100103_02W: best_lag=0 corr*=0.716(n=2426) corr0=0.716(n=2426) lift=0.000
+18:27:31 INFO  ok    gvkey=100147 GVKEY100147_01W/GVKEY100147_02W: best_lag=0 corr*=0.724(n=5476) corr0=0.724(n=5476) lift=0.000
+18:27:31 INFO  SKIP gvkey=100192 GVKEY100192_02W/GVKEY100192_03W: insufficient overlapping return data at any lag (need >=30)
+18:27:31 INFO  SKIP gvkey=100194 GVKEY100194_01W/GVKEY100194_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:31 INFO  SKIP gvkey=100243 GVKEY100243_90W/GVKEY100243_92W: insufficient overlapping return data at any lag (need >=30)
+18:27:31 INFO  ok    gvkey=100297 GVKEY100297_01W/GVKEY100297_02W: best_lag=0 corr*=0.678(n=5516) corr0=0.678(n=5516) lift=0.000
+18:27:31 INFO  ok    gvkey=100312 GVKEY100312_01W/GVKEY100312_03W: best_lag=0 corr*=0.556(n=4062) corr0=0.556(n=4062) lift=0.000
+18:27:31 INFO  ok    gvkey=100323 GVKEY100323_01W/GVKEY100323_02W: best_lag=0 corr*=0.795(n=424) corr0=0.795(n=424) lift=0.000
+18:27:31 INFO  FLAG  gvkey=100367 GVKEY100367_01W/GVKEY100367_02W: best_lag=-10 corr*=-0.510(n=37) corr0=-0.102(n=37) lift=0.408
+18:27:31 INFO  ok    gvkey=100373 GVKEY100373_01W/GVKEY100373_02W: best_lag=0 corr*=0.435(n=2242) corr0=0.435(n=2242) lift=0.000
+18:27:31 INFO  ok    gvkey=100422 GVKEY100422_01W/GVKEY100422_02W: best_lag=0 corr*=0.640(n=1852) corr0=0.640(n=1852) lift=0.000
+18:27:31 INFO  ok    gvkey=100423 GVKEY100423_01W/GVKEY100423_03W: best_lag=0 corr*=0.719(n=1583) corr0=0.719(n=1583) lift=0.000
+18:27:31 INFO  ok    gvkey=100424 GVKEY100424_01W/GVKEY100424_02W: best_lag=0 corr*=0.749(n=537) corr0=0.749(n=537) lift=0.000
+18:27:31 INFO  SKIP gvkey=100424 GVKEY100424_01W/GVKEY100424_03W: insufficient overlapping return data at any lag (need >=30)
+18:27:31 INFO  SKIP gvkey=100424 GVKEY100424_02W/GVKEY100424_03W: insufficient overlapping return data at any lag (need >=30)
+18:27:31 INFO  ok    gvkey=100458 GVKEY100458_01W/GVKEY100458_02W: best_lag=0 corr*=0.265(n=979) corr0=0.265(n=979) lift=0.000
+18:27:31 INFO  ok    gvkey=100461 GVKEY100461_01W/GVKEY100461_02W: best_lag=0 corr*=0.759(n=832) corr0=0.759(n=832) lift=0.000
+18:27:31 INFO  ok    gvkey=100472 GVKEY100472_03W/GVKEY100472_04W: best_lag=0 corr*=0.677(n=4491) corr0=0.677(n=4491) lift=0.000
+18:27:31 INFO  ok    gvkey=100676 GVKEY100676_01W/GVKEY100676_05W: best_lag=0 corr*=0.949(n=2485) corr0=0.949(n=2485) lift=0.000
+18:27:31 INFO  ok    gvkey=100676 GVKEY100676_01W/GVKEY100676_06W: best_lag=0 corr*=0.833(n=40) corr0=0.833(n=40) lift=0.000
+18:27:31 INFO  ok    gvkey=100676 GVKEY100676_05W/GVKEY100676_06W: best_lag=0 corr*=0.382(n=40) corr0=0.382(n=40) lift=0.000
+18:27:32 INFO  ok    gvkey=100737 GVKEY100737_01W/GVKEY100737_02W: best_lag=0 corr*=0.728(n=10095) corr0=0.728(n=10095) lift=0.000
+18:27:32 INFO  ok    gvkey=100746 GVKEY100746_01W/GVKEY100746_02W: best_lag=0 corr*=0.622(n=2130) corr0=0.622(n=2130) lift=0.000
+18:27:32 INFO  SKIP gvkey=100746 GVKEY100746_01W/GVKEY100746_04W: insufficient overlapping return data at any lag (need >=30)
+18:27:32 INFO  SKIP gvkey=100746 GVKEY100746_01W/GVKEY100746_05W: insufficient overlapping return data at any lag (need >=30)
+18:27:32 INFO  SKIP gvkey=100746 GVKEY100746_02W/GVKEY100746_04W: insufficient overlapping return data at any lag (need >=30)
+18:27:32 INFO  SKIP gvkey=100746 GVKEY100746_02W/GVKEY100746_05W: insufficient overlapping return data at any lag (need >=30)
+18:27:32 INFO  ok    gvkey=100746 GVKEY100746_04W/GVKEY100746_05W: best_lag=0 corr*=0.496(n=6642) corr0=0.496(n=6642) lift=0.000
+18:27:32 INFO  ok    gvkey=100756 GVKEY100756_01W/GVKEY100756_02W: best_lag=0 corr*=0.344(n=111) corr0=0.344(n=111) lift=0.000
+18:27:32 INFO  ok    gvkey=100764 GVKEY100764_01W/GVKEY100764_02W: best_lag=0 corr*=0.696(n=2049) corr0=0.696(n=2049) lift=0.000
+18:27:32 INFO  ok    gvkey=100801 GVKEY100801_01W/GVKEY100801_03W: best_lag=0 corr*=0.679(n=7049) corr0=0.679(n=7049) lift=0.000
+18:27:32 INFO  ok    gvkey=100834 GVKEY100834_01W/GVKEY100834_02W: best_lag=0 corr*=0.789(n=2543) corr0=0.789(n=2543) lift=0.000
+18:27:32 INFO  ok    gvkey=100834 GVKEY100834_01W/GVKEY100834_03W: best_lag=0 corr*=0.777(n=1858) corr0=0.777(n=1858) lift=0.000
+18:27:32 INFO  ok    gvkey=100834 GVKEY100834_02W/GVKEY100834_03W: best_lag=0 corr*=0.758(n=1895) corr0=0.758(n=1895) lift=0.000
+18:27:32 INFO  FLAG  gvkey=100891 GVKEY100891_01W/GVKEY100891_02W: best_lag=2 corr*=-0.083(n=818) corr0=0.002(n=817) lift=0.081
+18:27:32 INFO  SKIP gvkey=100894 GVKEY100894_01W/GVKEY100894_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:32 INFO  ok    gvkey=100912 GVKEY100912_01W/GVKEY100912_02W: best_lag=0 corr*=0.770(n=1310) corr0=0.770(n=1310) lift=0.000
+18:27:32 INFO  ok    gvkey=100912 GVKEY100912_01W/GVKEY100912_03W: best_lag=0 corr*=0.731(n=779) corr0=0.731(n=779) lift=0.000
+18:27:32 INFO  ok    gvkey=100912 GVKEY100912_02W/GVKEY100912_03W: best_lag=0 corr*=0.850(n=2338) corr0=0.850(n=2338) lift=0.000
+18:27:32 INFO  ok    gvkey=100953 GVKEY100953_01W/GVKEY100953_03W: best_lag=0 corr*=0.867(n=8362) corr0=0.867(n=8362) lift=0.000
+18:27:32 INFO  ok    gvkey=100956 GVKEY100956_04W/GVKEY100956_07W: best_lag=0 corr*=0.451(n=5902) corr0=0.451(n=5902) lift=0.000
+18:27:32 INFO  ok    gvkey=100980 GVKEY100980_01W/GVKEY100980_02W: best_lag=0 corr*=0.796(n=1127) corr0=0.796(n=1127) lift=0.000
+18:27:32 INFO  ok    gvkey=100983 GVKEY100983_01W/GVKEY100983_02W: best_lag=0 corr*=0.750(n=2277) corr0=0.750(n=2277) lift=0.000
+18:27:32 INFO  FLAG  gvkey=101017 GVKEY101017_01W/GVKEY101017_04W: best_lag=-1 corr*=0.478(n=7708) corr0=0.364(n=7709) lift=0.115
+18:27:32 INFO  FLAG  gvkey=101018 GVKEY101018_01W/GVKEY101018_02W: best_lag=-1 corr*=0.301(n=453) corr0=0.215(n=453) lift=0.086
+18:27:33 INFO  ok    gvkey=101020 GVKEY101020_01W/GVKEY101020_02W: best_lag=0 corr*=0.405(n=1985) corr0=0.405(n=1985) lift=0.000
+18:27:33 INFO  ok    gvkey=101020 GVKEY101020_01W/GVKEY101020_03W: best_lag=0 corr*=0.294(n=1169) corr0=0.294(n=1169) lift=0.000
+18:27:33 INFO  SKIP gvkey=101020 GVKEY101020_01W/GVKEY101020_05W: insufficient overlapping return data at any lag (need >=30)
+18:27:33 INFO  SKIP gvkey=101020 GVKEY101020_01W/GVKEY101020_06W: insufficient overlapping return data at any lag (need >=30)
+18:27:33 INFO  SKIP gvkey=101020 GVKEY101020_01W/GVKEY101020_07W: insufficient overlapping return data at any lag (need >=30)
+18:27:33 INFO  SKIP gvkey=101020 GVKEY101020_01W/GVKEY101020_08W: insufficient overlapping return data at any lag (need >=30)
+18:27:33 INFO  ok    gvkey=101020 GVKEY101020_02W/GVKEY101020_03W: best_lag=0 corr*=0.234(n=1065) corr0=0.234(n=1065) lift=0.000
+18:27:33 INFO  SKIP gvkey=101020 GVKEY101020_02W/GVKEY101020_05W: insufficient overlapping return data at any lag (need >=30)
+18:27:33 INFO  SKIP gvkey=101020 GVKEY101020_02W/GVKEY101020_06W: insufficient overlapping return data at any lag (need >=30)
+18:27:33 INFO  SKIP gvkey=101020 GVKEY101020_02W/GVKEY101020_07W: insufficient overlapping return data at any lag (need >=30)
+18:27:33 INFO  SKIP gvkey=101020 GVKEY101020_02W/GVKEY101020_08W: insufficient overlapping return data at any lag (need >=30)
+18:27:33 INFO  SKIP gvkey=101020 GVKEY101020_03W/GVKEY101020_05W: insufficient overlapping return data at any lag (need >=30)
+18:27:33 INFO  SKIP gvkey=101020 GVKEY101020_03W/GVKEY101020_06W: insufficient overlapping return data at any lag (need >=30)
+18:27:33 INFO  SKIP gvkey=101020 GVKEY101020_03W/GVKEY101020_07W: insufficient overlapping return data at any lag (need >=30)
+18:27:33 INFO  SKIP gvkey=101020 GVKEY101020_03W/GVKEY101020_08W: insufficient overlapping return data at any lag (need >=30)
+18:27:33 INFO  ok    gvkey=101020 GVKEY101020_05W/GVKEY101020_06W: best_lag=0 corr*=0.827(n=7669) corr0=0.827(n=7669) lift=0.000
+18:27:33 INFO  ok    gvkey=101020 GVKEY101020_05W/GVKEY101020_07W: best_lag=0 corr*=0.677(n=7076) corr0=0.677(n=7076) lift=0.000
+18:27:33 INFO  ok    gvkey=101020 GVKEY101020_05W/GVKEY101020_08W: best_lag=0 corr*=0.524(n=7043) corr0=0.524(n=7043) lift=0.000
+18:27:33 INFO  ok    gvkey=101020 GVKEY101020_06W/GVKEY101020_07W: best_lag=0 corr*=0.502(n=7020) corr0=0.502(n=7020) lift=0.000
+18:27:33 INFO  ok    gvkey=101020 GVKEY101020_06W/GVKEY101020_08W: best_lag=0 corr*=0.506(n=6989) corr0=0.506(n=6989) lift=0.000
+18:27:33 INFO  ok    gvkey=101020 GVKEY101020_07W/GVKEY101020_08W: best_lag=0 corr*=0.759(n=7064) corr0=0.759(n=7064) lift=0.000
+18:27:33 INFO  ok    gvkey=101023 GVKEY101023_01W/GVKEY101023_02W: best_lag=0 corr*=0.204(n=683) corr0=0.204(n=683) lift=0.000
+18:27:33 INFO  ok    gvkey=101048 GVKEY101048_01W/GVKEY101048_02W: best_lag=0 corr*=0.721(n=1012) corr0=0.721(n=1012) lift=0.000
+18:27:33 INFO  ok    gvkey=101060 GVKEY101060_01W/GVKEY101060_02W: best_lag=0 corr*=0.679(n=1211) corr0=0.679(n=1211) lift=0.000
+18:27:33 INFO  SKIP gvkey=101074 GVKEY101074_01W/GVKEY101074_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:33 INFO  SKIP gvkey=101086 GVKEY101086_01W/GVKEY101086_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:33 INFO  ok    gvkey=101130 GVKEY101130_04W/GVKEY101130_05W: best_lag=0 corr*=0.680(n=9585) corr0=0.680(n=9585) lift=0.000
+18:27:34 INFO  SKIP gvkey=101130 GVKEY101130_04W/GVKEY101130_06W: insufficient overlapping return data at any lag (need >=30)
+18:27:34 INFO  SKIP gvkey=101130 GVKEY101130_05W/GVKEY101130_06W: insufficient overlapping return data at any lag (need >=30)
+18:27:34 INFO  ok    gvkey=101151 GVKEY101151_01W/GVKEY101151_03W: best_lag=0 corr*=0.912(n=1821) corr0=0.912(n=1821) lift=0.000
+18:27:34 INFO  ok    gvkey=101153 GVKEY101153_01W/GVKEY101153_02W: best_lag=0 corr*=0.442(n=1182) corr0=0.442(n=1182) lift=0.000
+18:27:34 INFO  SKIP gvkey=101180 GVKEY101180_02W/GVKEY101180_03W: insufficient overlapping return data at any lag (need >=30)
+18:27:34 INFO  SKIP gvkey=101206 GVKEY101206_02W/GVKEY101206_04W: insufficient overlapping return data at any lag (need >=30)
+18:27:34 INFO  ok    gvkey=101209 GVKEY101209_01W/GVKEY101209_02W: best_lag=0 corr*=0.823(n=2032) corr0=0.823(n=2032) lift=0.000
+18:27:34 INFO  ok    gvkey=101222 GVKEY101222_02W/GVKEY101222_03W: best_lag=0 corr*=0.212(n=1058) corr0=0.212(n=1058) lift=0.000
+18:27:34 INFO  ok    gvkey=101238 GVKEY101238_01W/GVKEY101238_02W: best_lag=0 corr*=0.281(n=5085) corr0=0.281(n=5085) lift=0.000
+18:27:34 INFO  ok    gvkey=101239 GVKEY101239_01W/GVKEY101239_02W: best_lag=0 corr*=0.539(n=3501) corr0=0.539(n=3501) lift=0.000
+18:27:34 INFO  ok    gvkey=101256 GVKEY101256_01W/GVKEY101256_02W: best_lag=0 corr*=0.739(n=5893) corr0=0.739(n=5893) lift=0.000
+18:27:34 INFO  SKIP gvkey=101276 GVKEY101276_02W/GVKEY101276_10W: insufficient overlapping return data at any lag (need >=30)
+18:27:34 INFO  SKIP gvkey=101276 GVKEY101276_02W/GVKEY101276_11W: insufficient overlapping return data at any lag (need >=30)
+18:27:34 INFO  ok    gvkey=101276 GVKEY101276_10W/GVKEY101276_11W: best_lag=0 corr*=0.997(n=1451) corr0=0.997(n=1451) lift=0.000
+18:27:34 INFO  ok    gvkey=101299 GVKEY101299_01W/GVKEY101299_02W: best_lag=0 corr*=0.507(n=1434) corr0=0.507(n=1434) lift=0.000
+18:27:34 INFO  ok    gvkey=101304 GVKEY101304_01W/GVKEY101304_02W: best_lag=0 corr*=0.458(n=3751) corr0=0.458(n=3751) lift=0.000
+18:27:34 INFO  ok    gvkey=101304 GVKEY101304_01W/GVKEY101304_04W: best_lag=0 corr*=0.932(n=1946) corr0=0.932(n=1946) lift=0.000
+18:27:34 INFO  SKIP gvkey=101304 GVKEY101304_02W/GVKEY101304_04W: insufficient overlapping return data at any lag (need >=30)
+18:27:34 INFO  ok    gvkey=101306 GVKEY101306_01W/GVKEY101306_03W: best_lag=0 corr*=0.516(n=3322) corr0=0.516(n=3322) lift=0.000
+18:27:34 INFO  ok    gvkey=101310 GVKEY101310_01W/GVKEY101310_04W: best_lag=0 corr*=0.693(n=3052) corr0=0.693(n=3052) lift=0.000
+18:27:34 INFO  ok    gvkey=101310 GVKEY101310_01W/GVKEY101310_05W: best_lag=0 corr*=1.000(n=2485) corr0=1.000(n=2485) lift=0.000
+18:27:34 INFO  ok    gvkey=101310 GVKEY101310_01W/GVKEY101310_06W: best_lag=0 corr*=0.634(n=1825) corr0=0.634(n=1825) lift=0.000
+18:27:34 INFO  ok    gvkey=101310 GVKEY101310_04W/GVKEY101310_05W: best_lag=0 corr*=0.627(n=2476) corr0=0.627(n=2476) lift=0.000
+18:27:34 INFO  ok    gvkey=101310 GVKEY101310_04W/GVKEY101310_06W: best_lag=0 corr*=0.637(n=1807) corr0=0.637(n=1807) lift=0.000
+18:27:34 INFO  ok    gvkey=101310 GVKEY101310_05W/GVKEY101310_06W: best_lag=0 corr*=0.642(n=1812) corr0=0.642(n=1812) lift=0.000
+18:27:34 INFO  ok    gvkey=101321 GVKEY101321_01W/GVKEY101321_02W: best_lag=0 corr*=0.600(n=1429) corr0=0.600(n=1429) lift=0.000
+18:27:34 INFO  ok    gvkey=101328 GVKEY101328_01W/GVKEY101328_02W: best_lag=0 corr*=0.570(n=2704) corr0=0.570(n=2704) lift=0.000
+18:27:34 INFO  ok    gvkey=101336 GVKEY101336_02W/GVKEY101336_03W: best_lag=0 corr*=0.157(n=1394) corr0=0.157(n=1394) lift=0.000
+18:27:34 INFO  ok    gvkey=101340 GVKEY101340_01W/GVKEY101340_03W: best_lag=0 corr*=0.437(n=2317) corr0=0.437(n=2317) lift=0.000
+18:27:34 INFO  ok    gvkey=101343 GVKEY101343_01W/GVKEY101343_03W: best_lag=0 corr*=0.697(n=9028) corr0=0.697(n=9028) lift=0.000
+18:27:34 INFO  ok    gvkey=101347 GVKEY101347_01W/GVKEY101347_03W: best_lag=0 corr*=0.919(n=8609) corr0=0.919(n=8609) lift=0.000
+18:27:34 INFO  ok    gvkey=101350 GVKEY101350_01W/GVKEY101350_02W: best_lag=0 corr*=0.194(n=4122) corr0=0.194(n=4122) lift=0.000
+18:27:34 INFO  ok    gvkey=101354 GVKEY101354_01W/GVKEY101354_02W: best_lag=0 corr*=0.538(n=2264) corr0=0.538(n=2264) lift=0.000
+18:27:35 INFO  ok    gvkey=101390 GVKEY101390_01W/GVKEY101390_02W: best_lag=0 corr*=0.491(n=8497) corr0=0.491(n=8497) lift=0.000
+18:27:35 INFO  ok    gvkey=101404 GVKEY101404_01W/GVKEY101404_02W: best_lag=0 corr*=0.655(n=5241) corr0=0.655(n=5241) lift=0.000
+18:27:35 INFO  ok    gvkey=101416 GVKEY101416_02W/GVKEY101416_04W: best_lag=0 corr*=0.349(n=143) corr0=0.349(n=143) lift=0.000
+18:27:35 INFO  ok    gvkey=101509 GVKEY101509_02W/GVKEY101509_03W: best_lag=0 corr*=0.666(n=1581) corr0=0.666(n=1581) lift=0.000
+18:27:35 INFO  ok    gvkey=101557 GVKEY101557_01W/GVKEY101557_02W: best_lag=0 corr*=0.778(n=4769) corr0=0.778(n=4769) lift=0.000
+18:27:35 INFO  ok    gvkey=101557 GVKEY101557_01W/GVKEY101557_03W: best_lag=0 corr*=0.427(n=292) corr0=0.427(n=292) lift=0.000
+18:27:35 INFO  ok    gvkey=101557 GVKEY101557_02W/GVKEY101557_03W: best_lag=0 corr*=0.531(n=304) corr0=0.531(n=304) lift=0.000
+18:27:35 INFO  ok    gvkey=101563 GVKEY101563_01W/GVKEY101563_02W: best_lag=0 corr*=0.322(n=150) corr0=0.322(n=150) lift=0.000
+18:27:35 INFO  ok    gvkey=101634 GVKEY101634_01W/GVKEY101634_02W: best_lag=0 corr*=0.342(n=6070) corr0=0.342(n=6070) lift=0.000
+18:27:35 INFO  ok    gvkey=101636 GVKEY101636_01W/GVKEY101636_02W: best_lag=0 corr*=0.462(n=2941) corr0=0.462(n=2941) lift=0.000
+18:27:35 INFO  ok    gvkey=101697 GVKEY101697_01W/GVKEY101697_02W: best_lag=0 corr*=0.756(n=2308) corr0=0.756(n=2308) lift=0.000
+18:27:35 INFO  ok    gvkey=101711 GVKEY101711_01W/GVKEY101711_02W: best_lag=0 corr*=0.255(n=269) corr0=0.255(n=269) lift=0.000
+18:27:35 INFO  ok    gvkey=101714 GVKEY101714_01W/GVKEY101714_03W: best_lag=0 corr*=0.295(n=861) corr0=0.295(n=861) lift=0.000
+18:27:35 INFO  ok    gvkey=101714 GVKEY101714_01W/GVKEY101714_04W: best_lag=0 corr*=0.769(n=2574) corr0=0.769(n=2574) lift=0.000
+18:27:35 INFO  ok    gvkey=101714 GVKEY101714_03W/GVKEY101714_04W: best_lag=0 corr*=0.182(n=739) corr0=0.182(n=739) lift=0.000
+18:27:35 INFO  ok    gvkey=101718 GVKEY101718_01W/GVKEY101718_02W: best_lag=0 corr*=0.564(n=1101) corr0=0.564(n=1101) lift=0.000
+18:27:35 INFO  SKIP gvkey=101718 GVKEY101718_01W/GVKEY101718_03W: insufficient overlapping return data at any lag (need >=30)
+18:27:35 INFO  SKIP gvkey=101718 GVKEY101718_02W/GVKEY101718_03W: insufficient overlapping return data at any lag (need >=30)
+18:27:35 INFO  ok    gvkey=101734 GVKEY101734_01W/GVKEY101734_02W: best_lag=0 corr*=0.305(n=371) corr0=0.305(n=371) lift=0.000
+18:27:35 INFO  ok    gvkey=101736 GVKEY101736_01W/GVKEY101736_03W: best_lag=0 corr*=0.655(n=7850) corr0=0.655(n=7850) lift=0.000
+18:27:35 INFO  ok    gvkey=101737 GVKEY101737_01W/GVKEY101737_02W: best_lag=0 corr*=0.304(n=1024) corr0=0.304(n=1024) lift=0.000
+18:27:35 INFO  ok    gvkey=101739 GVKEY101739_01W/GVKEY101739_03W: best_lag=0 corr*=0.574(n=2701) corr0=0.574(n=2701) lift=0.000
+18:27:35 INFO  SKIP gvkey=101740 GVKEY101740_01W/GVKEY101740_03W: insufficient overlapping return data at any lag (need >=30)
+18:27:35 INFO  ok    gvkey=101740 GVKEY101740_01W/GVKEY101740_04W: best_lag=0 corr*=0.151(n=510) corr0=0.151(n=510) lift=0.000
+18:27:35 INFO  ok    gvkey=101740 GVKEY101740_03W/GVKEY101740_04W: best_lag=0 corr*=0.590(n=276) corr0=0.590(n=276) lift=0.000
+18:27:35 INFO  SKIP gvkey=101742 GVKEY101742_01W/GVKEY101742_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:35 INFO  SKIP gvkey=101751 GVKEY101751_01W/GVKEY101751_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:35 INFO  ok    gvkey=101853 GVKEY101853_01W/GVKEY101853_02W: best_lag=0 corr*=0.442(n=829) corr0=0.442(n=829) lift=0.000
+18:27:35 INFO  SKIP gvkey=101866 GVKEY101866_01W/GVKEY101866_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:35 INFO  ok    gvkey=101895 GVKEY101895_02W/GVKEY101895_03W: best_lag=0 corr*=0.576(n=8184) corr0=0.576(n=8184) lift=0.000
+18:27:35 INFO  ok    gvkey=101942 GVKEY101942_01W/GVKEY101942_02W: best_lag=0 corr*=0.868(n=7701) corr0=0.868(n=7701) lift=0.000
+18:27:36 INFO  ok    gvkey=101971 GVKEY101971_01W/GVKEY101971_02W: best_lag=0 corr*=0.659(n=6459) corr0=0.659(n=6459) lift=0.000
+18:27:36 INFO  FLAG  gvkey=101992 GVKEY101992_01W/GVKEY101992_03W: best_lag=1 corr*=0.584(n=1686) corr0=0.399(n=1685) lift=0.185
+18:27:36 INFO  ok    gvkey=102014 GVKEY102014_01W/GVKEY102014_02W: best_lag=0 corr*=0.712(n=3321) corr0=0.712(n=3321) lift=0.000
+18:27:36 INFO  ok    gvkey=102017 GVKEY102017_04W/GVKEY102017_06W: best_lag=0 corr*=0.269(n=1971) corr0=0.269(n=1971) lift=0.000
+18:27:36 INFO  SKIP gvkey=102019 GVKEY102019_02W/GVKEY102019_03W: insufficient overlapping return data at any lag (need >=30)
+18:27:36 INFO  SKIP gvkey=102037 GVKEY102037_01W/GVKEY102037_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:36 INFO  SKIP gvkey=102050 GVKEY102050_01W/GVKEY102050_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:36 INFO  ok    gvkey=102062 GVKEY102062_01W/GVKEY102062_03W: best_lag=0 corr*=0.667(n=3417) corr0=0.667(n=3417) lift=0.000
+18:27:36 INFO  ok    gvkey=102071 GVKEY102071_02W/GVKEY102071_03W: best_lag=0 corr*=0.332(n=421) corr0=0.332(n=421) lift=0.000
+18:27:36 INFO  SKIP gvkey=102073 GVKEY102073_02W/GVKEY102073_03W: insufficient overlapping return data at any lag (need >=30)
+18:27:36 INFO  ok    gvkey=102138 GVKEY102138_01W/GVKEY102138_04W: best_lag=0 corr*=0.468(n=4476) corr0=0.468(n=4476) lift=0.000
+18:27:36 INFO  ok    gvkey=102159 GVKEY102159_01W/GVKEY102159_03W: best_lag=0 corr*=0.370(n=1257) corr0=0.370(n=1257) lift=0.000
+18:27:36 INFO  ok    gvkey=102172 GVKEY102172_01W/GVKEY102172_02W: best_lag=0 corr*=0.345(n=1772) corr0=0.345(n=1772) lift=0.000
+18:27:36 INFO  ok    gvkey=102201 GVKEY102201_01W/GVKEY102201_02W: best_lag=0 corr*=0.197(n=1710) corr0=0.197(n=1710) lift=0.000
+18:27:36 INFO  ok    gvkey=102218 GVKEY102218_01W/GVKEY102218_02W: best_lag=0 corr*=0.681(n=4199) corr0=0.681(n=4199) lift=0.000
+18:27:36 INFO  ok    gvkey=102225 GVKEY102225_01W/GVKEY102225_02W: best_lag=0 corr*=0.703(n=3064) corr0=0.703(n=3064) lift=0.000
+18:27:36 INFO  ok    gvkey=102225 GVKEY102225_01W/GVKEY102225_03W: best_lag=0 corr*=0.283(n=3450) corr0=0.283(n=3450) lift=0.000
+18:27:36 INFO  ok    gvkey=102225 GVKEY102225_02W/GVKEY102225_03W: best_lag=0 corr*=0.455(n=518) corr0=0.455(n=518) lift=0.000
+18:27:36 INFO  ok    gvkey=102234 GVKEY102234_01W/GVKEY102234_04W: best_lag=0 corr*=0.694(n=5593) corr0=0.694(n=5593) lift=0.000
+18:27:36 INFO  ok    gvkey=102250 GVKEY102250_01W/GVKEY102250_02W: best_lag=0 corr*=0.692(n=4437) corr0=0.692(n=4437) lift=0.000
+18:27:36 INFO  ok    gvkey=102281 GVKEY102281_01W/GVKEY102281_03W: best_lag=0 corr*=0.193(n=1762) corr0=0.193(n=1762) lift=0.000
+18:27:37 INFO  FLAG  gvkey=102301 GVKEY102301_01W/GVKEY102301_02W: best_lag=-1 corr*=0.235(n=549) corr0=0.154(n=549) lift=0.081
+18:27:37 INFO  ok    gvkey=102307 GVKEY102307_01W/GVKEY102307_05W: best_lag=0 corr*=0.801(n=3260) corr0=0.801(n=3260) lift=0.000
+18:27:37 INFO  ok    gvkey=102345 GVKEY102345_01W/GVKEY102345_02W: best_lag=0 corr*=1.000(n=111) corr0=1.000(n=111) lift=0.000
+18:27:37 INFO  ok    gvkey=102365 GVKEY102365_02W/GVKEY102365_03W: best_lag=0 corr*=0.479(n=1615) corr0=0.479(n=1615) lift=0.000
+18:27:37 INFO  ok    gvkey=102443 GVKEY102443_01W/GVKEY102443_02W: best_lag=0 corr*=0.255(n=1126) corr0=0.255(n=1126) lift=0.000
+18:27:37 INFO  ok    gvkey=102454 GVKEY102454_01W/GVKEY102454_11W: best_lag=0 corr*=0.484(n=32) corr0=0.484(n=32) lift=0.000
+18:27:37 INFO  ok    gvkey=102474 GVKEY102474_01W/GVKEY102474_02W: best_lag=0 corr*=0.206(n=262) corr0=0.206(n=262) lift=0.000
+18:27:37 INFO  ok    gvkey=102495 GVKEY102495_01W/GVKEY102495_02W: best_lag=0 corr*=0.430(n=1017) corr0=0.430(n=1017) lift=0.000
+18:27:37 INFO  ok    gvkey=102523 GVKEY102523_02W/GVKEY102523_03W: best_lag=0 corr*=0.997(n=2122) corr0=0.997(n=2122) lift=0.000
+18:27:37 INFO  ok    gvkey=102525 GVKEY102525_01W/GVKEY102525_02W: best_lag=0 corr*=0.312(n=628) corr0=0.312(n=628) lift=0.000
+18:27:37 INFO  FLAG  gvkey=102526 GVKEY102526_01W/GVKEY102526_02W: best_lag=-2 corr*=0.318(n=2407) corr0=0.106(n=2409) lift=0.212
+18:27:37 INFO  FLAG  gvkey=102546 GVKEY102546_01W/GVKEY102546_03W: best_lag=1 corr*=0.382(n=87) corr0=0.249(n=87) lift=0.133
+18:27:37 INFO  SKIP gvkey=102706 GVKEY102706_01W/GVKEY102706_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:37 INFO  ok    gvkey=102736 GVKEY102736_01W/GVKEY102736_02W: best_lag=0 corr*=0.348(n=604) corr0=0.348(n=604) lift=0.000
+18:27:37 INFO  SKIP gvkey=102736 GVKEY102736_01W/GVKEY102736_03W: insufficient overlapping return data at any lag (need >=30)
+18:27:37 INFO  SKIP gvkey=102736 GVKEY102736_02W/GVKEY102736_03W: insufficient overlapping return data at any lag (need >=30)
+18:27:37 INFO  SKIP gvkey=102782 GVKEY102782_01W/GVKEY102782_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:37 INFO  SKIP gvkey=102826 GVKEY102826_01W/GVKEY102826_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:37 INFO  SKIP gvkey=102832 GVKEY102832_01W/GVKEY102832_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:37 INFO  SKIP gvkey=102884 GVKEY102884_01W/GVKEY102884_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:37 INFO  ok    gvkey=102890 GVKEY102890_01W/GVKEY102890_02W: best_lag=0 corr*=0.410(n=93) corr0=0.410(n=93) lift=0.000
+18:27:37 INFO  ok    gvkey=102902 GVKEY102902_01W/GVKEY102902_03W: best_lag=0 corr*=0.713(n=7935) corr0=0.713(n=7935) lift=0.000
+18:27:37 INFO  ok    gvkey=102915 GVKEY102915_01W/GVKEY102915_02W: best_lag=0 corr*=0.953(n=8187) corr0=0.953(n=8187) lift=0.000
+18:27:37 INFO  SKIP gvkey=102933 GVKEY102933_01W/GVKEY102933_03W: insufficient overlapping return data at any lag (need >=30)
+18:27:37 INFO  ok    gvkey=102962 GVKEY102962_01W/GVKEY102962_02W: best_lag=0 corr*=0.872(n=89) corr0=0.872(n=89) lift=0.000
+18:27:37 INFO  ok    gvkey=102995 GVKEY102995_01W/GVKEY102995_02W: best_lag=0 corr*=0.179(n=1982) corr0=0.179(n=1982) lift=0.000
+18:27:37 INFO  ok    gvkey=103024 GVKEY103024_01W/GVKEY103024_02W: best_lag=0 corr*=0.635(n=1426) corr0=0.635(n=1426) lift=0.000
+18:27:37 INFO  ok    gvkey=103036 GVKEY103036_01W/GVKEY103036_03W: best_lag=0 corr*=0.864(n=8792) corr0=0.864(n=8792) lift=0.000
+18:27:37 INFO  ok    gvkey=103078 GVKEY103078_01W/GVKEY103078_02W: best_lag=0 corr*=0.820(n=3282) corr0=0.820(n=3282) lift=0.000
+18:27:37 INFO  SKIP gvkey=103114 GVKEY103114_01W/GVKEY103114_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:37 INFO  ok    gvkey=103159 GVKEY103159_01W/GVKEY103159_02W: best_lag=0 corr*=0.392(n=366) corr0=0.392(n=366) lift=0.000
+18:27:37 INFO  ok    gvkey=103193 GVKEY103193_01W/GVKEY103193_02W: best_lag=0 corr*=0.956(n=1425) corr0=0.956(n=1425) lift=0.000
+18:27:38 INFO  SKIP gvkey=103193 GVKEY103193_01W/GVKEY103193_03W: insufficient overlapping return data at any lag (need >=30)
+18:27:38 INFO  SKIP gvkey=103193 GVKEY103193_01W/GVKEY103193_06W: insufficient overlapping return data at any lag (need >=30)
+18:27:38 INFO  SKIP gvkey=103193 GVKEY103193_02W/GVKEY103193_03W: insufficient overlapping return data at any lag (need >=30)
+18:27:38 INFO  SKIP gvkey=103193 GVKEY103193_02W/GVKEY103193_06W: insufficient overlapping return data at any lag (need >=30)
+18:27:38 INFO  ok    gvkey=103193 GVKEY103193_03W/GVKEY103193_06W: best_lag=0 corr*=0.778(n=122) corr0=0.778(n=122) lift=0.000
+18:27:38 INFO  ok    gvkey=103200 GVKEY103200_01W/GVKEY103200_02W: best_lag=0 corr*=0.705(n=8139) corr0=0.705(n=8139) lift=0.000
+18:27:38 INFO  ok    gvkey=103212 GVKEY103212_01W/GVKEY103212_02W: best_lag=0 corr*=0.648(n=2361) corr0=0.648(n=2361) lift=0.000
+18:27:38 INFO  ok    gvkey=103248 GVKEY103248_01W/GVKEY103248_02W: best_lag=-7 corr*=-0.238(n=53) corr0=0.216(n=59) lift=0.021
+18:27:38 INFO  SKIP gvkey=103260 GVKEY103260_02W/GVKEY103260_03W: insufficient overlapping return data at any lag (need >=30)
+18:27:38 INFO  ok    gvkey=103269 GVKEY103269_01W/GVKEY103269_04W: best_lag=0 corr*=0.547(n=1469) corr0=0.547(n=1469) lift=0.000
+18:27:38 INFO  ok    gvkey=103289 GVKEY103289_03W/GVKEY103289_04W: best_lag=0 corr*=0.612(n=3029) corr0=0.612(n=3029) lift=0.000
+18:27:38 INFO  ok    gvkey=103292 GVKEY103292_03W/GVKEY103292_04W: best_lag=0 corr*=0.850(n=8375) corr0=0.850(n=8375) lift=0.000
+18:27:38 INFO  ok    gvkey=103299 GVKEY103299_01W/GVKEY103299_02W: best_lag=0 corr*=0.234(n=750) corr0=0.234(n=750) lift=0.000
+18:27:38 INFO  SKIP gvkey=103325 GVKEY103325_01W/GVKEY103325_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:38 INFO  ok    gvkey=103348 GVKEY103348_01W/GVKEY103348_02W: best_lag=0 corr*=0.495(n=2970) corr0=0.495(n=2970) lift=0.000
+18:27:38 INFO  ok    gvkey=103350 GVKEY103350_01W/GVKEY103350_02W: best_lag=0 corr*=0.705(n=2631) corr0=0.705(n=2631) lift=0.000
+18:27:38 INFO  ok    gvkey=103485 GVKEY103485_01W/GVKEY103485_02W: best_lag=0 corr*=0.337(n=7614) corr0=0.337(n=7614) lift=0.000
+18:27:38 INFO  ok    gvkey=103487 GVKEY103487_01W/GVKEY103487_02W: best_lag=0 corr*=0.931(n=2023) corr0=0.931(n=2023) lift=0.000
+18:27:38 INFO  ok    gvkey=103533 GVKEY103533_01W/GVKEY103533_02W: best_lag=0 corr*=0.484(n=634) corr0=0.484(n=634) lift=0.000
+18:27:38 INFO  ok    gvkey=103533 GVKEY103533_01W/GVKEY103533_03W: best_lag=0 corr*=0.721(n=7466) corr0=0.721(n=7466) lift=0.000
+18:27:38 INFO  SKIP gvkey=103533 GVKEY103533_02W/GVKEY103533_03W: insufficient overlapping return data at any lag (need >=30)
+18:27:38 INFO  ok    gvkey=103879 GVKEY103879_01W/GVKEY103879_02W: best_lag=0 corr*=0.533(n=560) corr0=0.533(n=560) lift=0.000
+18:27:38 INFO  ok    gvkey=104831 GVKEY104831_01W/GVKEY104831_02W: best_lag=0 corr*=0.781(n=7414) corr0=0.781(n=7414) lift=0.000
+18:27:38 INFO  SKIP gvkey=104831 GVKEY104831_01W/GVKEY104831_03W: insufficient overlapping return data at any lag (need >=30)
+18:27:38 INFO  SKIP gvkey=104831 GVKEY104831_02W/GVKEY104831_03W: insufficient overlapping return data at any lag (need >=30)
+18:27:38 INFO  ok    gvkey=104944 GVKEY104944_01W/GVKEY104944_02W: best_lag=0 corr*=0.836(n=431) corr0=0.836(n=431) lift=0.000
+18:27:38 INFO  ok    gvkey=104957 GVKEY104957_01W/GVKEY104957_02W: best_lag=0 corr*=0.906(n=3615) corr0=0.906(n=3615) lift=0.000
+18:27:38 INFO  ok    gvkey=104957 GVKEY104957_01W/GVKEY104957_03W: best_lag=0 corr*=0.183(n=1169) corr0=0.183(n=1169) lift=0.000
+18:27:38 INFO  ok    gvkey=104957 GVKEY104957_02W/GVKEY104957_03W: best_lag=0 corr*=0.213(n=1029) corr0=0.213(n=1029) lift=0.000
+18:27:38 INFO  ok    gvkey=105072 GVKEY105072_01W/GVKEY105072_02W: best_lag=0 corr*=0.073(n=6190) corr0=0.073(n=6190) lift=0.000
+18:27:38 INFO  ok    gvkey=105089 GVKEY105089_01W/GVKEY105089_02W: best_lag=0 corr*=0.984(n=1840) corr0=0.984(n=1840) lift=0.000
+18:27:38 INFO  ok    gvkey=105089 GVKEY105089_01W/GVKEY105089_03W: best_lag=0 corr*=0.838(n=1423) corr0=0.838(n=1423) lift=0.000
+18:27:38 INFO  SKIP gvkey=105089 GVKEY105089_01W/GVKEY105089_04W: insufficient overlapping return data at any lag (need >=30)
+18:27:39 INFO  ok    gvkey=105089 GVKEY105089_02W/GVKEY105089_03W: best_lag=0 corr*=0.890(n=1455) corr0=0.890(n=1455) lift=0.000
+18:27:39 INFO  SKIP gvkey=105089 GVKEY105089_02W/GVKEY105089_04W: insufficient overlapping return data at any lag (need >=30)
+18:27:39 INFO  SKIP gvkey=105089 GVKEY105089_03W/GVKEY105089_04W: insufficient overlapping return data at any lag (need >=30)
+18:27:39 INFO  ok    gvkey=105104 GVKEY105104_02W/GVKEY105104_03W: best_lag=0 corr*=0.982(n=2955) corr0=0.982(n=2955) lift=0.000
+18:27:39 INFO  ok    gvkey=105116 GVKEY105116_01W/GVKEY105116_02W: best_lag=0 corr*=0.370(n=3501) corr0=0.370(n=3501) lift=0.000
+18:27:39 INFO  ok    gvkey=105649 GVKEY105649_01W/GVKEY105649_02W: best_lag=0 corr*=-0.231(n=158) corr0=-0.231(n=158) lift=0.000
+18:27:39 INFO  FLAG  gvkey=111320 GVKEY111320_01W/GVKEY111320_02W: best_lag=4 corr*=-0.233(n=71) corr0=-0.063(n=71) lift=0.170
+18:27:39 INFO  ok    gvkey=122337 GVKEY122337_01W/GVKEY122337_02W: best_lag=0 corr*=0.811(n=48) corr0=0.811(n=48) lift=0.000
+18:27:39 INFO  ok    gvkey=124617 GVKEY124617_01W/GVKEY124617_02W: best_lag=0 corr*=0.695(n=2360) corr0=0.695(n=2360) lift=0.000
+18:27:39 INFO  ok    gvkey=144496 GVKEY144496_01W/GVKEY144496_02W: best_lag=0 corr*=0.777(n=2829) corr0=0.777(n=2829) lift=0.000
+18:27:39 INFO  ok    gvkey=144496 GVKEY144496_01W/GVKEY144496_03W: best_lag=0 corr*=0.619(n=1161) corr0=0.619(n=1161) lift=0.000
+18:27:39 INFO  ok    gvkey=144496 GVKEY144496_01W/GVKEY144496_09W: best_lag=0 corr*=0.930(n=195) corr0=0.930(n=195) lift=0.000
+18:27:39 INFO  ok    gvkey=144496 GVKEY144496_02W/GVKEY144496_03W: best_lag=0 corr*=0.761(n=1260) corr0=0.761(n=1260) lift=0.000
+18:27:39 INFO  SKIP gvkey=144496 GVKEY144496_02W/GVKEY144496_09W: insufficient overlapping return data at any lag (need >=30)
+18:27:39 INFO  SKIP gvkey=144496 GVKEY144496_03W/GVKEY144496_09W: insufficient overlapping return data at any lag (need >=30)
+18:27:39 INFO  ok    gvkey=164514 GVKEY164514_01W/GVKEY164514_02W: best_lag=0 corr*=0.374(n=2631) corr0=0.374(n=2631) lift=0.000
+18:27:39 INFO  ok    gvkey=200026 GVKEY200026_01W/GVKEY200026_02W: best_lag=0 corr*=0.456(n=114) corr0=0.456(n=114) lift=0.000
+18:27:39 INFO  ok    gvkey=200077 GVKEY200077_01W/GVKEY200077_02W: best_lag=0 corr*=0.574(n=390) corr0=0.574(n=390) lift=0.000
+18:27:39 INFO  ok    gvkey=200115 GVKEY200115_01W/GVKEY200115_02W: best_lag=0 corr*=0.833(n=856) corr0=0.833(n=856) lift=0.000
+18:27:39 INFO  ok    gvkey=200268 GVKEY200268_01W/GVKEY200268_02W: best_lag=0 corr*=0.478(n=469) corr0=0.478(n=469) lift=0.000
+18:27:39 INFO  SKIP gvkey=200295 GVKEY200295_01W/GVKEY200295_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:39 INFO  ok    gvkey=200433 GVKEY200433_01W/GVKEY200433_02W: best_lag=0 corr*=0.726(n=658) corr0=0.726(n=658) lift=0.000
+18:27:39 INFO  ok    gvkey=200449 GVKEY200449_01W/GVKEY200449_02W: best_lag=0 corr*=0.968(n=769) corr0=0.968(n=769) lift=0.000
+18:27:39 INFO  SKIP gvkey=200485 GVKEY200485_01W/GVKEY200485_03W: insufficient overlapping return data at any lag (need >=30)
+18:27:39 INFO  SKIP gvkey=200568 GVKEY200568_02W/GVKEY200568_06W: insufficient overlapping return data at any lag (need >=30)
+18:27:39 INFO  ok    gvkey=200592 GVKEY200592_01W/GVKEY200592_02W: best_lag=0 corr*=0.585(n=1153) corr0=0.585(n=1153) lift=0.000
+18:27:39 INFO  ok    gvkey=200596 GVKEY200596_01W/GVKEY200596_02W: best_lag=3 corr*=0.165(n=187) corr0=0.153(n=187) lift=0.013
+18:27:39 INFO  ok    gvkey=200596 GVKEY200596_01W/GVKEY200596_03W: best_lag=9 corr*=-0.149(n=187) corr0=0.121(n=188) lift=0.028
+18:27:39 INFO  FLAG  gvkey=200596 GVKEY200596_02W/GVKEY200596_03W: best_lag=1 corr*=-0.163(n=186) corr0=0.064(n=187) lift=0.099
+18:27:39 INFO  ok    gvkey=200690 GVKEY200690_01W/GVKEY200690_02W: best_lag=0 corr*=0.797(n=2394) corr0=0.797(n=2394) lift=0.000
+18:27:39 INFO  ok    gvkey=200719 GVKEY200719_01W/GVKEY200719_02W: best_lag=0 corr*=0.560(n=1908) corr0=0.560(n=1908) lift=0.000
+18:27:39 INFO  SKIP gvkey=200731 GVKEY200731_01W/GVKEY200731_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:39 INFO  ok    gvkey=200759 GVKEY200759_01W/GVKEY200759_02W: best_lag=0 corr*=0.564(n=7496) corr0=0.564(n=7496) lift=0.000
+18:27:40 INFO  ok    gvkey=200851 GVKEY200851_02W/GVKEY200851_03W: best_lag=0 corr*=0.225(n=513) corr0=0.225(n=513) lift=0.000
+18:27:40 INFO  ok    gvkey=200892 GVKEY200892_01W/GVKEY200892_02W: best_lag=0 corr*=0.509(n=399) corr0=0.509(n=399) lift=0.000
+18:27:40 INFO  ok    gvkey=200911 GVKEY200911_01W/GVKEY200911_02W: best_lag=0 corr*=0.588(n=1481) corr0=0.588(n=1481) lift=0.000
+18:27:40 INFO  FLAG  gvkey=201111 GVKEY201111_01W/GVKEY201111_02W: best_lag=-1 corr*=0.443(n=1745) corr0=0.332(n=1746) lift=0.111
+18:27:40 INFO  ok    gvkey=201140 GVKEY201140_03W/GVKEY201140_05W: best_lag=0 corr*=0.901(n=2164) corr0=0.901(n=2164) lift=0.000
+18:27:40 INFO  ok    gvkey=201140 GVKEY201140_03W/GVKEY201140_06W: best_lag=0 corr*=1.000(n=2173) corr0=1.000(n=2173) lift=0.000
+18:27:40 INFO  ok    gvkey=201140 GVKEY201140_05W/GVKEY201140_06W: best_lag=0 corr*=0.941(n=6424) corr0=0.941(n=6424) lift=0.000
+18:27:40 INFO  ok    gvkey=201192 GVKEY201192_01W/GVKEY201192_02W: best_lag=0 corr*=0.582(n=808) corr0=0.582(n=808) lift=0.000
+18:27:40 INFO  SKIP gvkey=201215 GVKEY201215_01W/GVKEY201215_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:40 INFO  ok    gvkey=201229 GVKEY201229_01W/GVKEY201229_02W: best_lag=0 corr*=0.531(n=8653) corr0=0.531(n=8653) lift=0.000
+18:27:40 INFO  ok    gvkey=201239 GVKEY201239_01W/GVKEY201239_02W: best_lag=0 corr*=0.524(n=589) corr0=0.524(n=589) lift=0.000
+18:27:40 INFO  FLAG  gvkey=201300 GVKEY201300_02W/GVKEY201300_03W: best_lag=-4 corr*=0.411(n=807) corr0=0.077(n=807) lift=0.334
+18:27:40 INFO  SKIP gvkey=201389 GVKEY201389_01W/GVKEY201389_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:40 INFO  ok    gvkey=201402 GVKEY201402_01W/GVKEY201402_02W: best_lag=0 corr*=0.603(n=2187) corr0=0.603(n=2187) lift=0.000
+18:27:40 INFO  SKIP gvkey=201525 GVKEY201525_01W/GVKEY201525_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:40 INFO  ok    gvkey=201739 GVKEY201739_02W/GVKEY201739_03W: best_lag=0 corr*=0.510(n=3307) corr0=0.510(n=3307) lift=0.000
+18:27:40 INFO  ok    gvkey=201752 GVKEY201752_01W/GVKEY201752_02W: best_lag=-10 corr*=-0.105(n=1146) corr0=0.073(n=1154) lift=0.032
+18:27:40 INFO  ok    gvkey=201792 GVKEY201792_01W/GVKEY201792_02W: best_lag=0 corr*=0.992(n=8365) corr0=0.992(n=8365) lift=0.000
+18:27:40 INFO  ok    gvkey=201792 GVKEY201792_01W/GVKEY201792_18W: best_lag=0 corr*=0.977(n=166) corr0=0.977(n=166) lift=0.000
+18:27:40 INFO  ok    gvkey=201792 GVKEY201792_02W/GVKEY201792_18W: best_lag=0 corr*=0.958(n=119) corr0=0.958(n=119) lift=0.000
+18:27:40 INFO  ok    gvkey=202086 GVKEY202086_01W/GVKEY202086_03W: best_lag=-8 corr*=-0.102(n=458) corr0=0.089(n=466) lift=0.013
+18:27:40 INFO  ok    gvkey=202206 GVKEY202206_01W/GVKEY202206_02W: best_lag=0 corr*=0.424(n=543) corr0=0.424(n=543) lift=0.000
+18:27:40 INFO  ok    gvkey=202293 GVKEY202293_01W/GVKEY202293_02W: best_lag=0 corr*=0.165(n=269) corr0=0.165(n=269) lift=0.000
+18:27:40 INFO  ok    gvkey=202293 GVKEY202293_01W/GVKEY202293_03W: best_lag=0 corr*=0.273(n=227) corr0=0.273(n=227) lift=0.000
+18:27:40 INFO  ok    gvkey=202293 GVKEY202293_02W/GVKEY202293_03W: best_lag=0 corr*=0.882(n=412) corr0=0.882(n=412) lift=0.000
+18:27:40 INFO  ok    gvkey=202305 GVKEY202305_01W/GVKEY202305_02W: best_lag=0 corr*=0.743(n=4387) corr0=0.743(n=4387) lift=0.000
+18:27:40 INFO  SKIP gvkey=202322 GVKEY202322_01W/GVKEY202322_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:41 INFO  SKIP gvkey=202375 GVKEY202375_02W/GVKEY202375_03W: insufficient overlapping return data at any lag (need >=30)
+18:27:41 INFO  SKIP gvkey=202426 GVKEY202426_01W/GVKEY202426_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:41 INFO  SKIP gvkey=202444 GVKEY202444_01W/GVKEY202444_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:41 INFO  SKIP gvkey=202480 GVKEY202480_01W/GVKEY202480_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:41 INFO  ok    gvkey=202515 GVKEY202515_01W/GVKEY202515_02W: best_lag=0 corr*=0.184(n=774) corr0=0.184(n=774) lift=0.000
+18:27:41 INFO  ok    gvkey=202515 GVKEY202515_01W/GVKEY202515_03W: best_lag=0 corr*=0.208(n=770) corr0=0.208(n=770) lift=0.000
+18:27:41 INFO  ok    gvkey=202515 GVKEY202515_02W/GVKEY202515_03W: best_lag=0 corr*=0.183(n=770) corr0=0.183(n=770) lift=0.000
+18:27:41 INFO  SKIP gvkey=202563 GVKEY202563_01W/GVKEY202563_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:41 INFO  ok    gvkey=202572 GVKEY202572_01W/GVKEY202572_02W: best_lag=0 corr*=0.779(n=1666) corr0=0.779(n=1666) lift=0.000
+18:27:41 INFO  ok    gvkey=202580 GVKEY202580_01W/GVKEY202580_02W: best_lag=0 corr*=0.397(n=3151) corr0=0.397(n=3151) lift=0.000
+18:27:41 INFO  ok    gvkey=202622 GVKEY202622_01W/GVKEY202622_02W: best_lag=0 corr*=0.083(n=4374) corr0=0.083(n=4374) lift=0.000
+18:27:41 INFO  ok    gvkey=202634 GVKEY202634_01W/GVKEY202634_02W: best_lag=0 corr*=0.604(n=8469) corr0=0.604(n=8469) lift=0.000
+18:27:41 INFO  ok    gvkey=202695 GVKEY202695_01W/GVKEY202695_02W: best_lag=0 corr*=0.781(n=693) corr0=0.781(n=693) lift=0.000
+18:27:41 INFO  SKIP gvkey=202727 GVKEY202727_01W/GVKEY202727_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:41 INFO  SKIP gvkey=202782 GVKEY202782_01W/GVKEY202782_03W: insufficient overlapping return data at any lag (need >=30)
+18:27:41 INFO  SKIP gvkey=202868 GVKEY202868_01W/GVKEY202868_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:41 INFO  SKIP gvkey=202937 GVKEY202937_01W/GVKEY202937_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:41 INFO  ok    gvkey=202952 GVKEY202952_02W/GVKEY202952_03W: best_lag=0 corr*=0.827(n=3229) corr0=0.827(n=3229) lift=0.000
+18:27:41 INFO  FLAG  gvkey=203030 GVKEY203030_01W/GVKEY203030_02W: best_lag=-1 corr*=-0.251(n=60) corr0=0.152(n=61) lift=0.099
+18:27:41 INFO  ok    gvkey=203037 GVKEY203037_01W/GVKEY203037_02W: best_lag=0 corr*=0.706(n=962) corr0=0.706(n=962) lift=0.000
+18:27:41 INFO  SKIP gvkey=203084 GVKEY203084_01W/GVKEY203084_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:41 INFO  ok    gvkey=203188 GVKEY203188_01W/GVKEY203188_02W: best_lag=0 corr*=0.483(n=2514) corr0=0.483(n=2514) lift=0.000
+18:27:41 INFO  SKIP gvkey=203209 GVKEY203209_01W/GVKEY203209_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:41 INFO  ok    gvkey=203493 GVKEY203493_01W/GVKEY203493_02W: best_lag=0 corr*=0.623(n=218) corr0=0.623(n=218) lift=0.000
+18:27:41 INFO  ok    gvkey=203496 GVKEY203496_01W/GVKEY203496_02W: best_lag=0 corr*=0.078(n=3172) corr0=0.078(n=3172) lift=0.000
+18:27:41 INFO  ok    gvkey=203557 GVKEY203557_01W/GVKEY203557_02W: best_lag=0 corr*=0.812(n=896) corr0=0.812(n=896) lift=0.000
+18:27:41 INFO  ok    gvkey=203572 GVKEY203572_01W/GVKEY203572_02W: best_lag=0 corr*=0.564(n=917) corr0=0.564(n=917) lift=0.000
+18:27:41 INFO  SKIP gvkey=203586 GVKEY203586_01W/GVKEY203586_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:41 INFO  ok    gvkey=203703 GVKEY203703_01W/GVKEY203703_02W: best_lag=0 corr*=0.452(n=2710) corr0=0.452(n=2710) lift=0.000
+18:27:41 INFO  ok    gvkey=203882 GVKEY203882_01W/GVKEY203882_02W: best_lag=0 corr*=0.888(n=219) corr0=0.888(n=219) lift=0.000
+18:27:41 INFO  ok    gvkey=203890 GVKEY203890_01W/GVKEY203890_02W: best_lag=0 corr*=0.849(n=3981) corr0=0.849(n=3981) lift=0.000
+18:27:42 INFO  ok    gvkey=203905 GVKEY203905_01W/GVKEY203905_02W: best_lag=0 corr*=0.583(n=874) corr0=0.583(n=874) lift=0.000
+18:27:42 INFO  ok    gvkey=203944 GVKEY203944_01W/GVKEY203944_02W: best_lag=0 corr*=0.593(n=6948) corr0=0.593(n=6948) lift=0.000
+18:27:42 INFO  SKIP gvkey=203972 GVKEY203972_01W/GVKEY203972_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:42 INFO  SKIP gvkey=204009 GVKEY204009_01W/GVKEY204009_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:42 INFO  SKIP gvkey=204127 GVKEY204127_01W/GVKEY204127_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:42 INFO  SKIP gvkey=204132 GVKEY204132_01W/GVKEY204132_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:42 INFO  SKIP gvkey=204170 GVKEY204170_01W/GVKEY204170_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:42 INFO  ok    gvkey=204198 GVKEY204198_01W/GVKEY204198_02W: best_lag=0 corr*=0.949(n=428) corr0=0.949(n=428) lift=0.000
+18:27:42 INFO  ok    gvkey=204198 GVKEY204198_01W/GVKEY204198_03W: best_lag=0 corr*=0.951(n=464) corr0=0.951(n=464) lift=0.000
+18:27:42 INFO  ok    gvkey=204198 GVKEY204198_02W/GVKEY204198_03W: best_lag=0 corr*=0.968(n=440) corr0=0.968(n=440) lift=0.000
+18:27:42 INFO  ok    gvkey=204671 GVKEY204671_01W/GVKEY204671_03W: best_lag=0 corr*=0.663(n=5033) corr0=0.663(n=5033) lift=0.000
+18:27:42 INFO  ok    gvkey=204827 GVKEY204827_01W/GVKEY204827_02W: best_lag=0 corr*=0.498(n=1028) corr0=0.498(n=1028) lift=0.000
+18:27:42 INFO  ok    gvkey=205019 GVKEY205019_01W/GVKEY205019_02W: best_lag=0 corr*=0.688(n=1934) corr0=0.688(n=1934) lift=0.000
+18:27:42 INFO  ok    gvkey=205148 GVKEY205148_01W/GVKEY205148_02W: best_lag=0 corr*=0.516(n=2633) corr0=0.516(n=2633) lift=0.000
+18:27:42 INFO  SKIP gvkey=205194 GVKEY205194_01W/GVKEY205194_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:42 INFO  SKIP gvkey=205827 GVKEY205827_01W/GVKEY205827_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:42 INFO  SKIP gvkey=206036 GVKEY206036_01W/GVKEY206036_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:42 INFO  SKIP gvkey=206145 GVKEY206145_01W/GVKEY206145_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:42 INFO  ok    gvkey=206165 GVKEY206165_01W/GVKEY206165_03W: best_lag=0 corr*=0.819(n=6762) corr0=0.819(n=6762) lift=0.000
+18:27:42 INFO  ok    gvkey=206298 GVKEY206298_01W/GVKEY206298_02W: best_lag=0 corr*=0.897(n=106) corr0=0.897(n=106) lift=0.000
+18:27:42 INFO  SKIP gvkey=206302 GVKEY206302_01W/GVKEY206302_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:42 INFO  ok    gvkey=206541 GVKEY206541_01W/GVKEY206541_02W: best_lag=0 corr*=0.894(n=41) corr0=0.894(n=41) lift=0.000
+18:27:42 INFO  SKIP gvkey=206710 GVKEY206710_01W/GVKEY206710_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:42 INFO  ok    gvkey=207018 GVKEY207018_01W/GVKEY207018_02W: best_lag=6 corr*=0.196(n=128) corr0=0.168(n=132) lift=0.028
+18:27:42 INFO  ok    gvkey=207018 GVKEY207018_01W/GVKEY207018_03W: best_lag=0 corr*=0.389(n=447) corr0=0.389(n=447) lift=0.000
+18:27:42 INFO  SKIP gvkey=207018 GVKEY207018_02W/GVKEY207018_03W: insufficient overlapping return data at any lag (need >=30)
+18:27:42 INFO  ok    gvkey=207096 GVKEY207096_01W/GVKEY207096_02W: best_lag=0 corr*=0.575(n=2754) corr0=0.575(n=2754) lift=0.000
+18:27:43 INFO  ok    gvkey=207173 GVKEY207173_01W/GVKEY207173_02W: best_lag=0 corr*=0.364(n=459) corr0=0.364(n=459) lift=0.000
+18:27:43 INFO  ok    gvkey=207175 GVKEY207175_01W/GVKEY207175_02W: best_lag=0 corr*=0.328(n=1926) corr0=0.328(n=1926) lift=0.000
+18:27:43 INFO  SKIP gvkey=208066 GVKEY208066_01W/GVKEY208066_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:43 INFO  ok    gvkey=208081 GVKEY208081_01W/GVKEY208081_02W: best_lag=0 corr*=0.607(n=1454) corr0=0.607(n=1454) lift=0.000
+18:27:43 INFO  ok    gvkey=208095 GVKEY208095_01W/GVKEY208095_90W: best_lag=0 corr*=0.499(n=3452) corr0=0.499(n=3452) lift=0.000
+18:27:43 INFO  ok    gvkey=208204 GVKEY208204_01W/GVKEY208204_02W: best_lag=0 corr*=0.254(n=2932) corr0=0.254(n=2932) lift=0.000
+18:27:43 INFO  SKIP gvkey=208215 GVKEY208215_01W/GVKEY208215_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:43 INFO  ok    gvkey=208224 GVKEY208224_01W/GVKEY208224_03W: best_lag=0 corr*=0.945(n=2715) corr0=0.945(n=2715) lift=0.000
+18:27:43 INFO  FLAG  gvkey=208226 GVKEY208226_01W/GVKEY208226_02W: best_lag=2 corr*=0.110(n=574) corr0=0.056(n=576) lift=0.054
+18:27:43 INFO  ok    gvkey=208380 GVKEY208380_01W/GVKEY208380_02W: best_lag=0 corr*=0.327(n=828) corr0=0.327(n=828) lift=0.000
+18:27:43 INFO  ok    gvkey=208448 GVKEY208448_03W/GVKEY208448_04W: best_lag=0 corr*=0.075(n=4673) corr0=0.075(n=4673) lift=0.000
+18:27:43 INFO  SKIP gvkey=208473 GVKEY208473_01W/GVKEY208473_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:43 INFO  SKIP gvkey=208504 GVKEY208504_01W/GVKEY208504_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:43 INFO  ok    gvkey=208672 GVKEY208672_01W/GVKEY208672_02W: best_lag=0 corr*=0.651(n=626) corr0=0.651(n=626) lift=0.000
+18:27:43 INFO  ok    gvkey=208751 GVKEY208751_01W/GVKEY208751_02W: best_lag=0 corr*=0.486(n=2448) corr0=0.486(n=2448) lift=0.000
+18:27:43 INFO  ok    gvkey=208752 GVKEY208752_01W/GVKEY208752_02W: best_lag=0 corr*=0.645(n=1958) corr0=0.645(n=1958) lift=0.000
+18:27:43 INFO  SKIP gvkey=208777 GVKEY208777_03W/GVKEY208777_04W: insufficient overlapping return data at any lag (need >=30)
+18:27:43 INFO  ok    gvkey=208821 GVKEY208821_01W/GVKEY208821_02W: best_lag=0 corr*=0.508(n=7542) corr0=0.508(n=7542) lift=0.000
+18:27:43 INFO  SKIP gvkey=209092 GVKEY209092_01W/GVKEY209092_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:43 INFO  ok    gvkey=209135 GVKEY209135_01W/GVKEY209135_02W: best_lag=0 corr*=0.409(n=756) corr0=0.409(n=756) lift=0.000
+18:27:43 INFO  ok    gvkey=209214 GVKEY209214_01W/GVKEY209214_02W: best_lag=0 corr*=0.797(n=5349) corr0=0.797(n=5349) lift=0.000
+18:27:43 INFO  ok    gvkey=209341 GVKEY209341_01W/GVKEY209341_02W: best_lag=0 corr*=0.736(n=621) corr0=0.736(n=621) lift=0.000
+18:27:43 INFO  ok    gvkey=209382 GVKEY209382_01W/GVKEY209382_02W: best_lag=0 corr*=0.954(n=6207) corr0=0.954(n=6207) lift=0.000
+18:27:43 INFO  ok    gvkey=209410 GVKEY209410_01W/GVKEY209410_02W: best_lag=0 corr*=0.362(n=338) corr0=0.362(n=338) lift=0.000
+18:27:43 INFO  ok    gvkey=209423 GVKEY209423_01W/GVKEY209423_02W: best_lag=0 corr*=0.463(n=3576) corr0=0.463(n=3576) lift=0.000
+18:27:43 INFO  FLAG  gvkey=209433 GVKEY209433_01W/GVKEY209433_02W: best_lag=-6 corr*=0.170(n=396) corr0=0.101(n=396) lift=0.070
+18:27:43 INFO  ok    gvkey=209464 GVKEY209464_01W/GVKEY209464_02W: best_lag=0 corr*=0.160(n=1959) corr0=0.160(n=1959) lift=0.000
+18:27:43 INFO  ok    gvkey=209477 GVKEY209477_01W/GVKEY209477_02W: best_lag=0 corr*=0.546(n=660) corr0=0.546(n=660) lift=0.000
+18:27:43 INFO  ok    gvkey=209581 GVKEY209581_01W/GVKEY209581_02W: best_lag=0 corr*=0.751(n=1174) corr0=0.751(n=1174) lift=0.000
+18:27:43 INFO  ok    gvkey=209607 GVKEY209607_01W/GVKEY209607_02W: best_lag=0 corr*=0.804(n=1881) corr0=0.804(n=1881) lift=0.000
+18:27:44 INFO  SKIP gvkey=209636 GVKEY209636_02W/GVKEY209636_03W: insufficient overlapping return data at any lag (need >=30)
+18:27:44 INFO  ok    gvkey=209828 GVKEY209828_01W/GVKEY209828_03W: best_lag=0 corr*=0.450(n=4161) corr0=0.450(n=4161) lift=0.000
+18:27:44 INFO  ok    gvkey=209985 GVKEY209985_01W/GVKEY209985_06W: best_lag=0 corr*=0.727(n=6196) corr0=0.727(n=6196) lift=0.000
+18:27:44 INFO  SKIP gvkey=210172 GVKEY210172_01W/GVKEY210172_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:44 INFO  ok    gvkey=210216 GVKEY210216_02W/GVKEY210216_03W: best_lag=0 corr*=0.543(n=5604) corr0=0.543(n=5604) lift=0.000
+18:27:44 INFO  ok    gvkey=210216 GVKEY210216_02W/GVKEY210216_04W: best_lag=0 corr*=0.980(n=372) corr0=0.980(n=372) lift=0.000
+18:27:44 INFO  ok    gvkey=210216 GVKEY210216_03W/GVKEY210216_04W: best_lag=0 corr*=0.550(n=361) corr0=0.550(n=361) lift=0.000
+18:27:44 INFO  ok    gvkey=210232 GVKEY210232_01W/GVKEY210232_02W: best_lag=1 corr*=0.256(n=2846) corr0=0.235(n=2846) lift=0.021
+18:27:44 INFO  ok    gvkey=210350 GVKEY210350_01W/GVKEY210350_02W: best_lag=0 corr*=0.316(n=3154) corr0=0.316(n=3154) lift=0.000
+18:27:44 INFO  ok    gvkey=210366 GVKEY210366_01W/GVKEY210366_02W: best_lag=0 corr*=0.071(n=6103) corr0=0.071(n=6103) lift=0.000
+18:27:44 INFO  ok    gvkey=210418 GVKEY210418_01W/GVKEY210418_02W: best_lag=0 corr*=0.611(n=2866) corr0=0.611(n=2866) lift=0.000
+18:27:44 INFO  ok    gvkey=210418 GVKEY210418_01W/GVKEY210418_03W: best_lag=0 corr*=0.684(n=1660) corr0=0.684(n=1660) lift=0.000
+18:27:44 INFO  ok    gvkey=210418 GVKEY210418_01W/GVKEY210418_05W: best_lag=0 corr*=0.847(n=9628) corr0=0.847(n=9628) lift=0.000
+18:27:44 INFO  ok    gvkey=210418 GVKEY210418_02W/GVKEY210418_03W: best_lag=0 corr*=0.542(n=1343) corr0=0.542(n=1343) lift=0.000
+18:27:44 INFO  ok    gvkey=210418 GVKEY210418_02W/GVKEY210418_05W: best_lag=0 corr*=0.326(n=2420) corr0=0.326(n=2420) lift=0.000
+18:27:44 INFO  ok    gvkey=210418 GVKEY210418_03W/GVKEY210418_05W: best_lag=0 corr*=0.246(n=1141) corr0=0.246(n=1141) lift=0.000
+18:27:44 INFO  ok    gvkey=210576 GVKEY210576_02W/GVKEY210576_03W: best_lag=0 corr*=0.711(n=269) corr0=0.711(n=269) lift=0.000
+18:27:44 INFO  ok    gvkey=210576 GVKEY210576_02W/GVKEY210576_04W: best_lag=0 corr*=0.781(n=954) corr0=0.781(n=954) lift=0.000
+18:27:44 INFO  SKIP gvkey=210576 GVKEY210576_03W/GVKEY210576_04W: insufficient overlapping return data at any lag (need >=30)
+18:27:44 INFO  ok    gvkey=210601 GVKEY210601_01W/GVKEY210601_02W: best_lag=0 corr*=0.181(n=606) corr0=0.181(n=606) lift=0.000
+18:27:44 INFO  FLAG  gvkey=210601 GVKEY210601_01W/GVKEY210601_03W: best_lag=-1 corr*=0.197(n=605) corr0=0.126(n=606) lift=0.071
+18:27:44 INFO  ok    gvkey=210601 GVKEY210601_02W/GVKEY210601_03W: best_lag=0 corr*=0.116(n=607) corr0=0.116(n=607) lift=0.000
+18:27:44 INFO  SKIP gvkey=210679 GVKEY210679_01W/GVKEY210679_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:44 INFO  SKIP gvkey=210869 GVKEY210869_01W/GVKEY210869_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:44 INFO  FLAG  gvkey=211419 GVKEY211419_01W/GVKEY211419_02W: best_lag=-1 corr*=0.662(n=1359) corr0=0.060(n=1359) lift=0.602
+18:27:44 INFO  ok    gvkey=211421 GVKEY211421_01W/GVKEY211421_02W: best_lag=0 corr*=0.351(n=5795) corr0=0.351(n=5795) lift=0.000
+18:27:44 INFO  SKIP gvkey=211437 GVKEY211437_01W/GVKEY211437_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:44 INFO  SKIP gvkey=211437 GVKEY211437_01W/GVKEY211437_03W: insufficient overlapping return data at any lag (need >=30)
+18:27:44 INFO  ok    gvkey=211437 GVKEY211437_02W/GVKEY211437_03W: best_lag=0 corr*=0.851(n=4310) corr0=0.851(n=4310) lift=0.000
+18:27:44 INFO  ok    gvkey=211453 GVKEY211453_01W/GVKEY211453_02W: best_lag=0 corr*=0.921(n=7864) corr0=0.921(n=7864) lift=0.000
+18:27:44 INFO  ok    gvkey=211768 GVKEY211768_01W/GVKEY211768_02W: best_lag=0 corr*=0.968(n=2741) corr0=0.968(n=2741) lift=0.000
+18:27:44 INFO  ok    gvkey=211768 GVKEY211768_01W/GVKEY211768_03W: best_lag=0 corr*=0.978(n=2230) corr0=0.978(n=2230) lift=0.000
+18:27:45 INFO  ok    gvkey=211768 GVKEY211768_02W/GVKEY211768_03W: best_lag=0 corr*=0.984(n=1793) corr0=0.984(n=1793) lift=0.000
+18:27:45 INFO  ok    gvkey=211835 GVKEY211835_01W/GVKEY211835_02W: best_lag=0 corr*=0.135(n=265) corr0=0.135(n=265) lift=0.000
+18:27:45 INFO  ok    gvkey=211870 GVKEY211870_01W/GVKEY211870_02W: best_lag=0 corr*=0.215(n=804) corr0=0.215(n=804) lift=0.000
+18:27:45 INFO  ok    gvkey=212167 GVKEY212167_01W/GVKEY212167_02W: best_lag=0 corr*=0.737(n=5973) corr0=0.737(n=5973) lift=0.000
+18:27:45 INFO  ok    gvkey=212315 GVKEY212315_01W/GVKEY212315_02W: best_lag=0 corr*=0.705(n=4297) corr0=0.705(n=4297) lift=0.000
+18:27:45 INFO  SKIP gvkey=212367 GVKEY212367_01W/GVKEY212367_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:45 INFO  ok    gvkey=212380 GVKEY212380_01W/GVKEY212380_02W: best_lag=0 corr*=0.076(n=4816) corr0=0.076(n=4816) lift=0.000
+18:27:45 INFO  FLAG  gvkey=212380 GVKEY212380_01W/GVKEY212380_04W: best_lag=-1 corr*=0.848(n=5686) corr0=0.022(n=5686) lift=0.826
+18:27:45 INFO  ok    gvkey=212380 GVKEY212380_02W/GVKEY212380_04W: best_lag=0 corr*=0.596(n=6318) corr0=0.596(n=6318) lift=0.000
+18:27:45 INFO  SKIP gvkey=212538 GVKEY212538_02W/GVKEY212538_04W: insufficient overlapping return data at any lag (need >=30)
+18:27:45 INFO  SKIP gvkey=212576 GVKEY212576_01W/GVKEY212576_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:45 INFO  ok    gvkey=212701 GVKEY212701_02W/GVKEY212701_03W: best_lag=0 corr*=0.582(n=600) corr0=0.582(n=600) lift=0.000
+18:27:45 INFO  ok    gvkey=212782 GVKEY212782_01W/GVKEY212782_02W: best_lag=0 corr*=0.686(n=4228) corr0=0.686(n=4228) lift=0.000
+18:27:45 INFO  SKIP gvkey=212825 GVKEY212825_01W/GVKEY212825_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:45 INFO  ok    gvkey=212826 GVKEY212826_01W/GVKEY212826_02W: best_lag=0 corr*=0.618(n=3004) corr0=0.618(n=3004) lift=0.000
+18:27:45 INFO  ok    gvkey=212894 GVKEY212894_01W/GVKEY212894_03W: best_lag=0 corr*=0.393(n=443) corr0=0.393(n=443) lift=0.000
+18:27:45 INFO  FLAG  gvkey=213083 GVKEY213083_01W/GVKEY213083_03W: best_lag=1 corr*=0.524(n=1185) corr0=0.281(n=1185) lift=0.243
+18:27:45 INFO  ok    gvkey=213112 GVKEY213112_01W/GVKEY213112_02W: best_lag=0 corr*=0.571(n=2264) corr0=0.571(n=2264) lift=0.000
+18:27:45 INFO  ok    gvkey=213288 GVKEY213288_02W/GVKEY213288_03W: best_lag=0 corr*=0.742(n=1416) corr0=0.742(n=1416) lift=0.000
+18:27:45 INFO  ok    gvkey=213532 GVKEY213532_01W/GVKEY213532_03W: best_lag=0 corr*=0.535(n=5507) corr0=0.535(n=5507) lift=0.000
+18:27:45 INFO  ok    gvkey=214527 GVKEY214527_01W/GVKEY214527_03W: best_lag=0 corr*=0.992(n=264) corr0=0.992(n=264) lift=0.000
+18:27:45 INFO  SKIP gvkey=214659 GVKEY214659_01W/GVKEY214659_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:45 INFO  ok    gvkey=214700 GVKEY214700_01W/GVKEY214700_02W: best_lag=0 corr*=0.700(n=785) corr0=0.700(n=785) lift=0.000
+18:27:45 INFO  ok    gvkey=214881 GVKEY214881_01W/GVKEY214881_02W: best_lag=0 corr*=0.884(n=6737) corr0=0.884(n=6737) lift=0.000
+18:27:45 INFO  ok    gvkey=214881 GVKEY214881_01W/GVKEY214881_06W: best_lag=0 corr*=0.958(n=2051) corr0=0.958(n=2051) lift=0.000
+18:27:45 INFO  ok    gvkey=214881 GVKEY214881_01W/GVKEY214881_90W: best_lag=0 corr*=0.925(n=4760) corr0=0.925(n=4760) lift=0.000
+18:27:46 INFO  ok    gvkey=214881 GVKEY214881_02W/GVKEY214881_06W: best_lag=0 corr*=0.950(n=2051) corr0=0.950(n=2051) lift=0.000
+18:27:46 INFO  ok    gvkey=214881 GVKEY214881_02W/GVKEY214881_90W: best_lag=0 corr*=0.920(n=4681) corr0=0.920(n=4681) lift=0.000
+18:27:46 INFO  SKIP gvkey=214881 GVKEY214881_06W/GVKEY214881_90W: insufficient overlapping return data at any lag (need >=30)
+18:27:46 INFO  SKIP gvkey=215620 GVKEY215620_01W/GVKEY215620_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:46 INFO  SKIP gvkey=216588 GVKEY216588_01W/GVKEY216588_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:46 INFO  ok    gvkey=216609 GVKEY216609_01W/GVKEY216609_07W: best_lag=0 corr*=0.555(n=31) corr0=0.555(n=31) lift=0.000
+18:27:46 INFO  FLAG  gvkey=217204 GVKEY217204_01W/GVKEY217204_02W: best_lag=4 corr*=0.413(n=31) corr0=-0.131(n=34) lift=0.281
+18:27:46 INFO  FLAG  gvkey=217868 GVKEY217868_02W/GVKEY217868_03W: best_lag=-1 corr*=0.391(n=2851) corr0=0.161(n=2852) lift=0.230
+18:27:46 INFO  ok    gvkey=217999 GVKEY217999_01W/GVKEY217999_02W: best_lag=0 corr*=0.746(n=5567) corr0=0.746(n=5567) lift=0.000
+18:27:46 INFO  ok    gvkey=220239 GVKEY220239_01W/GVKEY220239_02W: best_lag=0 corr*=0.352(n=2391) corr0=0.352(n=2391) lift=0.000
+18:27:46 INFO  ok    gvkey=220341 GVKEY220341_01W/GVKEY220341_02W: best_lag=0 corr*=0.345(n=2815) corr0=0.345(n=2815) lift=0.000
+18:27:46 INFO  ok    gvkey=220475 GVKEY220475_01W/GVKEY220475_03W: best_lag=0 corr*=0.960(n=3857) corr0=0.960(n=3857) lift=0.000
+18:27:46 INFO  FLAG  gvkey=220478 GVKEY220478_02W/GVKEY220478_03W: best_lag=-1 corr*=0.989(n=870) corr0=0.054(n=871) lift=0.935
+18:27:46 INFO  ok    gvkey=220479 GVKEY220479_01W/GVKEY220479_02W: best_lag=0 corr*=0.613(n=4050) corr0=0.613(n=4050) lift=0.000
+18:27:46 INFO  FLAG  gvkey=220495 GVKEY220495_01W/GVKEY220495_02W: best_lag=3 corr*=0.182(n=211) corr0=0.129(n=211) lift=0.053
+18:27:46 INFO  ok    gvkey=220496 GVKEY220496_01W/GVKEY220496_02W: best_lag=0 corr*=0.286(n=5540) corr0=0.286(n=5540) lift=0.000
+18:27:46 INFO  ok    gvkey=220579 GVKEY220579_01W/GVKEY220579_02W: best_lag=0 corr*=0.931(n=6090) corr0=0.931(n=6090) lift=0.000
+18:27:46 INFO  ok    gvkey=220833 GVKEY220833_01W/GVKEY220833_02W: best_lag=0 corr*=1.000(n=285) corr0=1.000(n=285) lift=0.000
+18:27:46 INFO  SKIP gvkey=220833 GVKEY220833_01W/GVKEY220833_04W: insufficient overlapping return data at any lag (need >=30)
+18:27:46 INFO  SKIP gvkey=220833 GVKEY220833_01W/GVKEY220833_05W: insufficient overlapping return data at any lag (need >=30)
+18:27:46 INFO  ok    gvkey=220833 GVKEY220833_02W/GVKEY220833_04W: best_lag=0 corr*=0.949(n=6331) corr0=0.949(n=6331) lift=0.000
+18:27:46 INFO  ok    gvkey=220833 GVKEY220833_02W/GVKEY220833_05W: best_lag=0 corr*=0.976(n=6046) corr0=0.976(n=6046) lift=0.000
+18:27:46 INFO  ok    gvkey=220833 GVKEY220833_04W/GVKEY220833_05W: best_lag=0 corr*=0.943(n=6036) corr0=0.943(n=6036) lift=0.000
+18:27:46 INFO  SKIP gvkey=220867 GVKEY220867_01W/GVKEY220867_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:46 INFO  SKIP gvkey=220940 GVKEY220940_01W/GVKEY220940_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:46 INFO  SKIP gvkey=221044 GVKEY221044_01W/GVKEY221044_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:46 INFO  SKIP gvkey=221128 GVKEY221128_01W/GVKEY221128_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:46 INFO  ok    gvkey=221222 GVKEY221222_01W/GVKEY221222_02W: best_lag=0 corr*=0.235(n=3372) corr0=0.235(n=3372) lift=0.000
+18:27:46 INFO  ok    gvkey=221261 GVKEY221261_01W/GVKEY221261_04W: best_lag=0 corr*=0.745(n=3465) corr0=0.745(n=3465) lift=0.000
+18:27:47 INFO  ok    gvkey=221636 GVKEY221636_01W/GVKEY221636_03W: best_lag=0 corr*=0.623(n=2233) corr0=0.623(n=2233) lift=0.000
+18:27:47 INFO  SKIP gvkey=221826 GVKEY221826_01W/GVKEY221826_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:47 INFO  ok    gvkey=222111 GVKEY222111_01W/GVKEY222111_02W: best_lag=0 corr*=0.968(n=8860) corr0=0.968(n=8860) lift=0.000
+18:27:47 INFO  ok    gvkey=222163 GVKEY222163_02W/GVKEY222163_03W: best_lag=0 corr*=0.199(n=7894) corr0=0.199(n=7894) lift=0.000
+18:27:47 INFO  SKIP gvkey=222237 GVKEY222237_02W/GVKEY222237_03W: insufficient overlapping return data at any lag (need >=30)
+18:27:47 INFO  ok    gvkey=222257 GVKEY222257_01W/GVKEY222257_02W: best_lag=0 corr*=0.987(n=1525) corr0=0.987(n=1525) lift=0.000
+18:27:47 INFO  SKIP gvkey=222301 GVKEY222301_01W/GVKEY222301_03W: insufficient overlapping return data at any lag (need >=30)
+18:27:47 INFO  ok    gvkey=222305 GVKEY222305_01W/GVKEY222305_02W: best_lag=0 corr*=0.694(n=3759) corr0=0.694(n=3759) lift=0.000
+18:27:47 INFO  ok    gvkey=222357 GVKEY222357_01W/GVKEY222357_02W: best_lag=0 corr*=0.978(n=7600) corr0=0.978(n=7600) lift=0.000
+18:27:47 INFO  ok    gvkey=222638 GVKEY222638_01W/GVKEY222638_02W: best_lag=0 corr*=0.968(n=3197) corr0=0.968(n=3197) lift=0.000
+18:27:47 INFO  ok    gvkey=222640 GVKEY222640_01W/GVKEY222640_02W: best_lag=0 corr*=0.975(n=2750) corr0=0.975(n=2750) lift=0.000
+18:27:47 INFO  ok    gvkey=222642 GVKEY222642_01W/GVKEY222642_02W: best_lag=0 corr*=0.982(n=3378) corr0=0.982(n=3378) lift=0.000
+18:27:47 INFO  ok    gvkey=222648 GVKEY222648_01W/GVKEY222648_02W: best_lag=0 corr*=0.979(n=5625) corr0=0.979(n=5625) lift=0.000
+18:27:47 INFO  ok    gvkey=222761 GVKEY222761_01W/GVKEY222761_02W: best_lag=0 corr*=0.716(n=6051) corr0=0.716(n=6051) lift=0.000
+18:27:47 INFO  ok    gvkey=223054 GVKEY223054_01W/GVKEY223054_02W: best_lag=0 corr*=0.541(n=1526) corr0=0.541(n=1526) lift=0.000
+18:27:47 INFO  ok    gvkey=223055 GVKEY223055_01W/GVKEY223055_02W: best_lag=0 corr*=0.981(n=1627) corr0=0.981(n=1627) lift=0.000
+18:27:47 INFO  SKIP gvkey=223150 GVKEY223150_01W/GVKEY223150_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:47 INFO  SKIP gvkey=223167 GVKEY223167_01W/GVKEY223167_04W: insufficient overlapping return data at any lag (need >=30)
+18:27:47 INFO  SKIP gvkey=224817 GVKEY224817_01W/GVKEY224817_03W: insufficient overlapping return data at any lag (need >=30)
+18:27:47 INFO  ok    gvkey=226137 GVKEY226137_01W/GVKEY226137_02W: best_lag=0 corr*=0.774(n=1333) corr0=0.774(n=1333) lift=0.000
+18:27:47 INFO  ok    gvkey=226737 GVKEY226737_01W/GVKEY226737_02W: best_lag=0 corr*=0.578(n=87) corr0=0.578(n=87) lift=0.000
+18:27:47 INFO  FLAG  gvkey=227256 GVKEY227256_01W/GVKEY227256_03W: best_lag=1 corr*=0.644(n=459) corr0=0.120(n=459) lift=0.524
+18:27:47 INFO  SKIP gvkey=227576 GVKEY227576_01W/GVKEY227576_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:47 INFO  ok    gvkey=227916 GVKEY227916_01W/GVKEY227916_02W: best_lag=0 corr*=0.245(n=6922) corr0=0.245(n=6922) lift=0.000
+18:27:47 INFO  ok    gvkey=227998 GVKEY227998_01W/GVKEY227998_02W: best_lag=0 corr*=0.978(n=276) corr0=0.978(n=276) lift=0.000
+18:27:47 INFO  ok    gvkey=228096 GVKEY228096_01W/GVKEY228096_02W: best_lag=0 corr*=0.702(n=1585) corr0=0.702(n=1585) lift=0.000
+18:27:47 INFO  SKIP gvkey=228636 GVKEY228636_01W/GVKEY228636_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:48 INFO  ok    gvkey=229039 GVKEY229039_01W/GVKEY229039_02W: best_lag=0 corr*=0.730(n=6920) corr0=0.730(n=6920) lift=0.000
+18:27:48 INFO  ok    gvkey=229039 GVKEY229039_01W/GVKEY229039_03W: best_lag=0 corr*=0.749(n=3153) corr0=0.749(n=3153) lift=0.000
+18:27:48 INFO  ok    gvkey=229039 GVKEY229039_02W/GVKEY229039_03W: best_lag=0 corr*=0.673(n=3145) corr0=0.673(n=3145) lift=0.000
+18:27:48 INFO  SKIP gvkey=229518 GVKEY229518_01W/GVKEY229518_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:48 INFO  ok    gvkey=230636 GVKEY230636_01W/GVKEY230636_02W: best_lag=0 corr*=0.815(n=4742) corr0=0.815(n=4742) lift=0.000
+18:27:48 INFO  SKIP gvkey=230896 GVKEY230896_01W/GVKEY230896_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:48 INFO  ok    gvkey=232317 GVKEY232317_01W/GVKEY232317_03W: best_lag=0 corr*=0.774(n=2049) corr0=0.774(n=2049) lift=0.000
+18:27:48 INFO  ok    gvkey=233038 GVKEY233038_01W/GVKEY233038_02W: best_lag=0 corr*=0.594(n=381) corr0=0.594(n=381) lift=0.000
+18:27:48 INFO  SKIP gvkey=234340 GVKEY234340_01W/GVKEY234340_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:48 INFO  ok    gvkey=235426 GVKEY235426_01W/GVKEY235426_02W: best_lag=0 corr*=0.592(n=6379) corr0=0.592(n=6379) lift=0.000
+18:27:48 INFO  SKIP gvkey=235636 GVKEY235636_01W/GVKEY235636_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:48 INFO  SKIP gvkey=235656 GVKEY235656_01W/GVKEY235656_03W: insufficient overlapping return data at any lag (need >=30)
+18:27:48 INFO  ok    gvkey=235661 GVKEY235661_01W/GVKEY235661_02W: best_lag=0 corr*=0.333(n=67) corr0=0.333(n=67) lift=0.000
+18:27:48 INFO  SKIP gvkey=238455 GVKEY238455_01W/GVKEY238455_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:48 INFO  ok    gvkey=238481 GVKEY238481_01W/GVKEY238481_02W: best_lag=0 corr*=0.969(n=651) corr0=0.969(n=651) lift=0.000
+18:27:48 INFO  SKIP gvkey=238516 GVKEY238516_01W/GVKEY238516_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:48 INFO  SKIP gvkey=241016 GVKEY241016_01W/GVKEY241016_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:48 INFO  SKIP gvkey=241714 GVKEY241714_01W/GVKEY241714_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:48 INFO  SKIP gvkey=241727 GVKEY241727_01W/GVKEY241727_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:48 INFO  ok    gvkey=242989 GVKEY242989_01W/GVKEY242989_02W: best_lag=0 corr*=0.154(n=4922) corr0=0.154(n=4922) lift=0.000
+18:27:48 INFO  ok    gvkey=243033 GVKEY243033_01W/GVKEY243033_02W: best_lag=0 corr*=0.996(n=4586) corr0=0.996(n=4586) lift=0.000
+18:27:48 INFO  ok    gvkey=243174 GVKEY243174_01W/GVKEY243174_02W: best_lag=0 corr*=0.843(n=5783) corr0=0.843(n=5783) lift=0.000
+18:27:48 INFO  ok    gvkey=243774 GVKEY243774_01W/GVKEY243774_02W: best_lag=0 corr*=0.649(n=146) corr0=0.649(n=146) lift=0.000
+18:27:48 INFO  ok    gvkey=243774 GVKEY243774_01W/GVKEY243774_03W: best_lag=0 corr*=0.838(n=207) corr0=0.838(n=207) lift=0.000
+18:27:48 INFO  SKIP gvkey=243774 GVKEY243774_02W/GVKEY243774_03W: insufficient overlapping return data at any lag (need >=30)
+18:27:48 INFO  ok    gvkey=245197 GVKEY245197_01W/GVKEY245197_03W: best_lag=0 corr*=0.325(n=923) corr0=0.325(n=923) lift=0.000
+18:27:48 INFO  SKIP gvkey=245197 GVKEY245197_01W/GVKEY245197_04W: insufficient overlapping return data at any lag (need >=30)
+18:27:48 INFO  SKIP gvkey=245197 GVKEY245197_03W/GVKEY245197_04W: insufficient overlapping return data at any lag (need >=30)
+18:27:48 INFO  ok    gvkey=245285 GVKEY245285_01W/GVKEY245285_02W: best_lag=0 corr*=0.086(n=2082) corr0=0.086(n=2082) lift=0.000
+18:27:49 INFO  ok    gvkey=245776 GVKEY245776_01W/GVKEY245776_02W: best_lag=0 corr*=0.561(n=91) corr0=0.561(n=91) lift=0.000
+18:27:49 INFO  SKIP gvkey=246009 GVKEY246009_01W/GVKEY246009_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:49 INFO  SKIP gvkey=246026 GVKEY246026_01W/GVKEY246026_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:49 INFO  SKIP gvkey=246498 GVKEY246498_01W/GVKEY246498_04W: insufficient overlapping return data at any lag (need >=30)
+18:27:49 INFO  ok    gvkey=246563 GVKEY246563_04W/GVKEY246563_05W: best_lag=0 corr*=0.474(n=495) corr0=0.474(n=495) lift=0.000
+18:27:49 INFO  SKIP gvkey=246762 GVKEY246762_01W/GVKEY246762_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:49 INFO  SKIP gvkey=247300 GVKEY247300_01W/GVKEY247300_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:49 INFO  FLAG  gvkey=247848 GVKEY247848_01W/GVKEY247848_02W: best_lag=-1 corr*=0.349(n=65) corr0=0.185(n=66) lift=0.164
+18:27:49 INFO  ok    gvkey=247970 GVKEY247970_01W/GVKEY247970_02W: best_lag=-5 corr*=0.272(n=32) corr0=0.233(n=36) lift=0.039
+18:27:49 INFO  SKIP gvkey=247970 GVKEY247970_01W/GVKEY247970_03W: insufficient overlapping return data at any lag (need >=30)
+18:27:49 INFO  SKIP gvkey=247970 GVKEY247970_02W/GVKEY247970_03W: insufficient overlapping return data at any lag (need >=30)
+18:27:49 INFO  ok    gvkey=248163 GVKEY248163_01W/GVKEY248163_02W: best_lag=0 corr*=0.201(n=975) corr0=0.201(n=975) lift=0.000
+18:27:49 INFO  SKIP gvkey=248182 GVKEY248182_01W/GVKEY248182_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:49 INFO  ok    gvkey=248978 GVKEY248978_01W/GVKEY248978_02W: best_lag=0 corr*=0.763(n=2339) corr0=0.763(n=2339) lift=0.000
+18:27:49 INFO  ok    gvkey=249113 GVKEY249113_01W/GVKEY249113_02W: best_lag=-6 corr*=-0.259(n=66) corr0=0.212(n=71) lift=0.047
+18:27:49 INFO  FLAG  gvkey=249113 GVKEY249113_01W/GVKEY249113_03W: best_lag=1 corr*=0.366(n=110) corr0=0.042(n=110) lift=0.325
+18:27:49 INFO  FLAG  gvkey=249113 GVKEY249113_02W/GVKEY249113_03W: best_lag=-1 corr*=-0.355(n=71) corr0=0.248(n=72) lift=0.107
+18:27:49 INFO  SKIP gvkey=249510 GVKEY249510_01W/GVKEY249510_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:49 INFO  SKIP gvkey=250283 GVKEY250283_01W/GVKEY250283_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:49 INFO  ok    gvkey=250339 GVKEY250339_01W/GVKEY250339_03W: best_lag=0 corr*=0.880(n=1447) corr0=0.880(n=1447) lift=0.000
+18:27:49 INFO  SKIP gvkey=250441 GVKEY250441_01W/GVKEY250441_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:49 INFO  ok    gvkey=250779 GVKEY250779_01W/GVKEY250779_02W: best_lag=0 corr*=0.855(n=2736) corr0=0.855(n=2736) lift=0.000
+18:27:49 INFO  SKIP gvkey=252268 GVKEY252268_01W/GVKEY252268_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:49 INFO  SKIP gvkey=253432 GVKEY253432_01W/GVKEY253432_03W: insufficient overlapping return data at any lag (need >=30)
+18:27:49 INFO  SKIP gvkey=254238 GVKEY254238_01W/GVKEY254238_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:49 INFO  ok    gvkey=256358 GVKEY256358_01W/GVKEY256358_02W: best_lag=0 corr*=0.597(n=910) corr0=0.597(n=910) lift=0.000
+18:27:49 INFO  ok    gvkey=257360 GVKEY257360_01W/GVKEY257360_02W: best_lag=0 corr*=0.422(n=924) corr0=0.422(n=924) lift=0.000
+18:27:49 INFO  SKIP gvkey=259239 GVKEY259239_01W/GVKEY259239_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:49 INFO  SKIP gvkey=259431 GVKEY259431_01W/GVKEY259431_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:49 INFO  SKIP gvkey=259440 GVKEY259440_01W/GVKEY259440_03W: insufficient overlapping return data at any lag (need >=30)
+18:27:49 INFO  FLAG  gvkey=259518 GVKEY259518_01W/GVKEY259518_91W: best_lag=1 corr*=0.340(n=5032) corr0=0.232(n=5032) lift=0.108
+18:27:49 INFO  SKIP gvkey=259839 GVKEY259839_01W/GVKEY259839_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:49 INFO  SKIP gvkey=259881 GVKEY259881_01W/GVKEY259881_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:50 INFO  ok    gvkey=267371 GVKEY267371_01W/GVKEY267371_11W: best_lag=0 corr*=0.964(n=160) corr0=0.964(n=160) lift=0.000
+18:27:50 INFO  ok    gvkey=269532 GVKEY269532_01W/GVKEY269532_02W: best_lag=0 corr*=0.568(n=3213) corr0=0.568(n=3213) lift=0.000
+18:27:50 INFO  ok    gvkey=270043 GVKEY270043_01W/GVKEY270043_02W: best_lag=0 corr*=0.389(n=3457) corr0=0.389(n=3457) lift=0.000
+18:27:50 INFO  ok    gvkey=270045 GVKEY270045_01W/GVKEY270045_02W: best_lag=0 corr*=0.482(n=3320) corr0=0.482(n=3320) lift=0.000
+18:27:50 INFO  ok    gvkey=270154 GVKEY270154_01W/GVKEY270154_02W: best_lag=0 corr*=0.756(n=695) corr0=0.756(n=695) lift=0.000
+18:27:50 INFO  ok    gvkey=270208 GVKEY270208_01W/GVKEY270208_02W: best_lag=0 corr*=0.267(n=1181) corr0=0.267(n=1181) lift=0.000
+18:27:50 INFO  SKIP gvkey=270243 GVKEY270243_01W/GVKEY270243_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:50 INFO  SKIP gvkey=270244 GVKEY270244_01W/GVKEY270244_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:50 INFO  SKIP gvkey=270544 GVKEY270544_01W/GVKEY270544_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:50 INFO  SKIP gvkey=271198 GVKEY271198_01W/GVKEY271198_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:50 INFO  FLAG  gvkey=271342 GVKEY271342_01W/GVKEY271342_05W: best_lag=-1 corr*=0.168(n=254) corr0=0.005(n=255) lift=0.164
+18:27:50 INFO  SKIP gvkey=271911 GVKEY271911_01W/GVKEY271911_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:50 INFO  SKIP gvkey=272236 GVKEY272236_01W/GVKEY272236_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:50 INFO  SKIP gvkey=272833 GVKEY272833_01W/GVKEY272833_04W: insufficient overlapping return data at any lag (need >=30)
+18:27:50 INFO  SKIP gvkey=272980 GVKEY272980_01W/GVKEY272980_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:50 INFO  SKIP gvkey=273131 GVKEY273131_01W/GVKEY273131_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:50 INFO  ok    gvkey=274101 GVKEY274101_01W/GVKEY274101_02W: best_lag=0 corr*=0.562(n=923) corr0=0.562(n=923) lift=0.000
+18:27:50 INFO  ok    gvkey=274904 GVKEY274904_03W/GVKEY274904_04W: best_lag=0 corr*=0.614(n=2340) corr0=0.614(n=2340) lift=0.000
+18:27:50 INFO  ok    gvkey=275289 GVKEY275289_01W/GVKEY275289_03W: best_lag=0 corr*=0.890(n=2965) corr0=0.890(n=2965) lift=0.000
+18:27:50 INFO  SKIP gvkey=275839 GVKEY275839_01W/GVKEY275839_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:50 INFO  SKIP gvkey=276580 GVKEY276580_01W/GVKEY276580_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:50 INFO  ok    gvkey=277812 GVKEY277812_01W/GVKEY277812_02W: best_lag=0 corr*=0.822(n=3949) corr0=0.822(n=3949) lift=0.000
+18:27:50 INFO  ok    gvkey=277978 GVKEY277978_01W/GVKEY277978_02W: best_lag=0 corr*=0.509(n=65) corr0=0.509(n=65) lift=0.000
+18:27:50 INFO  ok    gvkey=278136 GVKEY278136_01W/GVKEY278136_02W: best_lag=0 corr*=0.653(n=4851) corr0=0.653(n=4851) lift=0.000
+18:27:50 INFO  SKIP gvkey=278209 GVKEY278209_01W/GVKEY278209_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:50 INFO  SKIP gvkey=279134 GVKEY279134_01W/GVKEY279134_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:50 INFO  ok    gvkey=279415 GVKEY279415_01W/GVKEY279415_02W: best_lag=-10 corr*=-0.089(n=610) corr0=0.050(n=620) lift=0.039
+18:27:50 INFO  ok    gvkey=282447 GVKEY282447_01W/GVKEY282447_02W: best_lag=0 corr*=0.290(n=4859) corr0=0.290(n=4859) lift=0.000
+18:27:50 INFO  SKIP gvkey=282494 GVKEY282494_01W/GVKEY282494_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:50 INFO  ok    gvkey=284844 GVKEY284844_01W/GVKEY284844_02W: best_lag=0 corr*=0.870(n=1116) corr0=0.870(n=1116) lift=0.000
+18:27:50 INFO  ok    gvkey=285343 GVKEY285343_01W/GVKEY285343_02W: best_lag=0 corr*=0.202(n=2278) corr0=0.202(n=2278) lift=0.000
+18:27:50 INFO  ok    gvkey=285466 GVKEY285466_01W/GVKEY285466_02W: best_lag=0 corr*=0.627(n=774) corr0=0.627(n=774) lift=0.000
+18:27:50 INFO  ok    gvkey=285556 GVKEY285556_01W/GVKEY285556_03W: best_lag=0 corr*=0.842(n=3160) corr0=0.842(n=3160) lift=0.000
+18:27:50 INFO  SKIP gvkey=288552 GVKEY288552_01W/GVKEY288552_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:50 INFO  SKIP gvkey=288786 GVKEY288786_03W/GVKEY288786_09W: insufficient overlapping return data at any lag (need >=30)
+18:27:50 INFO  ok    gvkey=290081 GVKEY290081_01W/GVKEY290081_90W: best_lag=0 corr*=0.151(n=2360) corr0=0.151(n=2360) lift=0.000
+18:27:50 INFO  SKIP gvkey=292500 GVKEY292500_01W/GVKEY292500_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:50 INFO  ok    gvkey=292861 GVKEY292861_01W/GVKEY292861_02W: best_lag=0 corr*=0.070(n=2223) corr0=0.070(n=2223) lift=0.000
+18:27:51 INFO  ok    gvkey=293245 GVKEY293245_01W/GVKEY293245_02W: best_lag=0 corr*=0.709(n=4366) corr0=0.709(n=4366) lift=0.000
+18:27:51 INFO  ok    gvkey=293771 GVKEY293771_01W/GVKEY293771_02W: best_lag=0 corr*=0.343(n=3315) corr0=0.343(n=3315) lift=0.000
+18:27:51 INFO  ok    gvkey=294528 GVKEY294528_01W/GVKEY294528_02W: best_lag=0 corr*=0.516(n=3239) corr0=0.516(n=3239) lift=0.000
+18:27:51 INFO  ok    gvkey=295785 GVKEY295785_01W/GVKEY295785_02W: best_lag=0 corr*=0.562(n=1410) corr0=0.562(n=1410) lift=0.000
+18:27:51 INFO  SKIP gvkey=298251 GVKEY298251_01W/GVKEY298251_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:51 INFO  ok    gvkey=308388 GVKEY308388_01W/GVKEY308388_02W: best_lag=0 corr*=0.823(n=3840) corr0=0.823(n=3840) lift=0.000
+18:27:51 INFO  ok    gvkey=311319 GVKEY311319_01W/GVKEY311319_02W: best_lag=0 corr*=0.724(n=1891) corr0=0.724(n=1891) lift=0.000
+18:27:51 INFO  SKIP gvkey=314524 GVKEY314524_01W/GVKEY314524_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:51 INFO  ok    gvkey=314624 GVKEY314624_01W/GVKEY314624_02W: best_lag=0 corr*=0.546(n=3132) corr0=0.546(n=3132) lift=0.000
+18:27:51 INFO  ok    gvkey=315885 GVKEY315885_01W/GVKEY315885_02W: best_lag=0 corr*=0.632(n=2532) corr0=0.632(n=2532) lift=0.000
+18:27:51 INFO  ok    gvkey=315948 GVKEY315948_01W/GVKEY315948_02W: best_lag=0 corr*=0.570(n=2276) corr0=0.570(n=2276) lift=0.000
+18:27:51 INFO  ok    gvkey=317102 GVKEY317102_01W/GVKEY317102_02W: best_lag=0 corr*=0.991(n=1465) corr0=0.991(n=1465) lift=0.000
+18:27:51 INFO  ok    gvkey=317873 GVKEY317873_01W/GVKEY317873_02W: best_lag=0 corr*=0.725(n=3164) corr0=0.725(n=3164) lift=0.000
+18:27:51 INFO  SKIP gvkey=317891 GVKEY317891_01W/GVKEY317891_10W: insufficient overlapping return data at any lag (need >=30)
+18:27:51 INFO  ok    gvkey=318168 GVKEY318168_01W/GVKEY318168_02W: best_lag=0 corr*=0.507(n=3131) corr0=0.507(n=3131) lift=0.000
+18:27:51 INFO  ok    gvkey=318207 GVKEY318207_01W/GVKEY318207_02W: best_lag=0 corr*=0.780(n=1723) corr0=0.780(n=1723) lift=0.000
+18:27:51 INFO  ok    gvkey=318212 GVKEY318212_01W/GVKEY318212_02W: best_lag=0 corr*=0.669(n=1537) corr0=0.669(n=1537) lift=0.000
+18:27:51 INFO  SKIP gvkey=320158 GVKEY320158_01W/GVKEY320158_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:51 INFO  FLAG  gvkey=321217 GVKEY321217_01W/GVKEY321217_90W: best_lag=1 corr*=0.567(n=2258) corr0=0.437(n=2258) lift=0.129
+18:27:51 INFO  ok    gvkey=324727 GVKEY324727_01W/GVKEY324727_03W: best_lag=-10 corr*=0.302(n=34) corr0=0.284(n=44) lift=0.018
+18:27:51 INFO  ok    gvkey=324977 GVKEY324977_01W/GVKEY324977_02W: best_lag=0 corr*=0.230(n=2356) corr0=0.230(n=2356) lift=0.000
+18:27:51 INFO  ok    gvkey=327115 GVKEY327115_01W/GVKEY327115_03W: best_lag=0 corr*=0.954(n=760) corr0=0.954(n=760) lift=0.000
+18:27:51 INFO  SKIP gvkey=327547 GVKEY327547_90W/GVKEY327547_91W: insufficient overlapping return data at any lag (need >=30)
+18:27:51 INFO  ok    gvkey=331821 GVKEY331821_01W/GVKEY331821_02W: best_lag=0 corr*=0.917(n=141) corr0=0.917(n=141) lift=0.000
+18:27:51 INFO  SKIP gvkey=348971 GVKEY348971_01W/GVKEY348971_02W: insufficient overlapping return data at any lag (need >=30)
+18:27:51 INFO  ok    gvkey=350937 GVKEY350937_01W/GVKEY350937_02W: best_lag=0 corr*=0.477(n=1243) corr0=0.477(n=1243) lift=0.000
+18:27:51 INFO  ok    gvkey=369350 GVKEY369350_01W/GVKEY369350_02W: best_lag=0 corr*=0.977(n=176) corr0=0.977(n=176) lift=0.000
+18:27:51 INFO  === 563 cross-listing pairs tested ===
+18:27:51 INFO    55/563 show a non-zero best lag at all (before the min-lift gate)
+18:27:51 INFO    41/563 clear the >= 0.05 correlation-lift gate -- genuine candidates for real cross-time-zone information flow, not just contemporaneous arbitrage-enforced parity
+18:27:51 INFO  Saved -> output/research/cross_listing_lead_lag.parquet

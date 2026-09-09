@@ -1,4 +1,8 @@
-2026-08-04 01:06:14  INFO      ======================================================================
-2026-08-04 01:06:14  INFO      CAMARF  ΓÇö  ml.py  ΓÇö  Spread Resolution Meta-Labeler
-2026-08-04 01:06:14  INFO      ======================================================================
-2026-08-04 01:06:15  INFO        Discovered 3 confirmed pairs with persisted spread series; 1 produced labeled examples, 2 skipped
+2026-08-23 21:31:26  INFO      ======================================================================
+2026-08-23 21:31:26  INFO      CAMARF  —  ml.py  —  Spread Resolution Meta-Labeler
+2026-08-23 21:31:26  INFO      ======================================================================
+2026-08-23 21:31:26  INFO        Discovered 2 confirmed pairs with persisted spread series; 0 produced labeled examples, 2 skipped
+2026-08-23 21:31:26  INFO        Total labeled entry events: 0
+2026-08-23 21:31:26  WARNING     Insufficient data to train: 0 total examples across 0 classes (label_scheme=binary, min class count=0, need >=30/class per Config.ML.MIN_CLASS_SAMPLES). This is the expected, honest result tonight — most confirmed pairs are on intraday TFs whose history just started accumulating (see DEVELOPMENT.md's data.py append-switch, 2026-06-21). Re-run as more history accumulates.
+2026-08-23 21:31:26  INFO      Run summary → /home/rw/CAMARF/latest_run_ml.log
+2026-08-23 21:31:26  INFO      ======================================================================

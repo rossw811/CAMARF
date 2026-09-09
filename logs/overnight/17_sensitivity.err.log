@@ -1,4 +1,6 @@
-01:05:48 INFO  sensitivity.py ΓÇö parameter stability grid
-01:05:48 INFO  ============================================================
-01:05:48 INFO  
+21:31:24 INFO  sensitivity.py — parameter stability grid
+21:31:24 INFO  ============================================================
+21:31:24 INFO  
 --- Timeframe: 1h ---
+21:31:24 WARNING    No pairs found for 1h
+21:31:24 WARNING  No results generated.

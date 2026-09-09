@@ -1,5 +1,9 @@
-01:06:32  INFO      Replaying 10 trades, starting capital $100000, sizing=fixed
-01:06:32  INFO      === Result: account=$100000 sizing=fixed ===
-01:06:32  INFO        Trades taken: 10 / 10 (0 skipped, capital-constrained)
-01:06:32  INFO        Peak concurrent notional (committed): $62870
-01:06:32  INFO        Peak mark-to-market equity: $100986.61  |  Trough: $100000.00
+21:31:31  INFO      Replaying 4 trades, starting capital $100000, sizing=fixed
+21:31:31  INFO      === Result: account=$100000 sizing=fixed ===
+21:31:31  INFO        Trades taken: 4 / 4 (0 skipped, capital-constrained)
+21:31:31  INFO        Peak concurrent notional (committed): $62531
+21:31:31  INFO        Peak mark-to-market equity: $100412.83  |  Trough: $100000.00
+21:31:31  INFO        Original (unconstrained) total P&L: $402.49
+21:31:31  INFO        Actual (capital-constrained) total P&L: $402.49
+21:31:31  INFO        Final REALIZED equity: $100402.49 (started $100000)
+21:31:31  INFO        Portfolio Sharpe (actual, realized): 0.7540

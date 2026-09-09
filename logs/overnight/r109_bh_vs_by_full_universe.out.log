@@ -1,1 +1,25 @@
 Loading a real sample of 300 symbols (seed=20260713, forcing DD/MIDD inclusion for a decisive test after the pure-random draw happened to exclude both) from the cached 1h universe...
+  Loaded 300/300 requested symbols with usable 1h cache (full cached universe: 1579 symbols)
+Aligning via real production DataAligner.align_universe()...
+  Aligned: 300 symbols
+Running real production UniverseFilter (Pearson pre-filter, threshold=0.4)...
+  Pearson pre-filter: 44850 possible pairs -> 2691 candidates
+Running real EG test (_eg_worker, same code as production CointScanner.scan) on all 2691 candidates, capturing RAW p-values before any BH-FDR filtering...
+  EG complete: 1539/2691 usable results
+
+=== Real BH vs. Benjamini-Yekutieli, full (unfiltered-by-significance) sampled 1h universe ===
+  sample_n_symbols: 300
+  full_cached_universe_n_symbols: 1579
+  m_total_candidates: 1539
+  n_raw_significant_p_lt_05: 114
+  bh_confirmed: 0
+  by_confirmed: 0
+  bh_confirmed_dd_leg: 0
+  by_confirmed_dd_leg: 0
+  n_dd_leg_candidates: 0
+  bh_confirmed_midd_leg: 0
+  by_confirmed_midd_leg: 0
+  n_midd_leg_candidates: 5
+
+Saved: output/research/bh_vs_by_full_universe_raw.parquet
+Saved: output/research/bh_vs_by_full_universe_summary.parquet

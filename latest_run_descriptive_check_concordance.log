@@ -1,2 +1,21 @@
-13:41:47 INFO  === descriptive_check_concordance.py: do Hurst/half-life/ADF/permutation actually predict coint_fraction_rolling (production's own stability gate)? ===
-13:41:48 INFO  Loaded 11 (pair, tf) rows across all 12 timeframes' all_candidates.parquet (BUG-D95 fix makes this the full EG+FDR+price-degeneracy survivor population, not just the 2 final confirmed pairs)
+19:09:42 INFO  === descriptive_check_concordance.py: do Hurst/half-life/ADF/permutation actually predict coint_fraction_rolling (production's own stability gate)? ===
+19:09:42 INFO  Loaded 8 (pair, tf) rows across all 12 timeframes' all_candidates.parquet (BUG-D95 fix makes this the full EG+FDR+price-degeneracy survivor population, not just the 2 final confirmed pairs)
+19:09:46 INFO    PNC/ZION@1h: coint_frac=0.174 hurst_rs=0.542 half_life=30.633534987674217 adf_pval=3.7396147130428e-14 perm_pvalue=0.014925373134328358 (computed)
+19:09:49 INFO    SPY/VOO@1h: coint_frac=0.425 hurst_rs=0.558 half_life=13.854821073641574 adf_pval=5.489183229218068e-16 perm_pvalue=0.009950248756218905 (computed)
+19:10:04 INFO    CRM/NOW@1m: coint_frac=0.174 hurst_rs=0.577 half_life=47.33136820871371 adf_pval=5.703291439932783e-07 perm_pvalue=0.0845771144278607 (computed)
+19:10:18 INFO    SPY/VOO@1m: coint_frac=1.000 hurst_rs=0.540 half_life=28.58383838521699 adf_pval=2.1972509363829333e-07 perm_pvalue=0.08955223880597014 (computed)
+19:10:32 INFO    SPY/VOO@2m: coint_frac=1.000 hurst_rs=0.501 half_life=11.91338612117769 adf_pval=5.5491575531293626e-08 perm_pvalue=0.04477611940298507 (computed)
+19:10:36 INFO    KVUE/KMB@3m: coint_frac=0.877 hurst_rs=0.401 half_life=nan adf_pval=2.2210480342781036e-24 perm_pvalue=0.01990049751243781 (computed)
+19:10:39 INFO    PNC/ZION@4h: coint_frac=0.120 hurst_rs=0.759 half_life=83.32401708311694 adf_pval=8.206596947326215e-05 perm_pvalue=0.014925373134328358 (computed)
+19:10:41 INFO    SPY/VOO@4h: coint_frac=0.337 hurst_rs=0.730 half_life=40.7202657555291 adf_pval=9.360327971688937e-10 perm_pvalue=0.009950248756218905 (computed)
+19:10:41 INFO  
+19:10:41 INFO  === Concordance (Spearman rank correlation vs. coint_fraction_rolling, n=8) ===
+19:10:41 INFO  HONEST SCOPE: n=8 is thin -- point estimates only, no significance claims implied.
+19:10:41 INFO    hurst_rs              : n=8  spearman_rho=-0.783  p=0.022
+19:10:41 INFO    hurst_dfa             : n=8  spearman_rho=-0.663  p=0.073
+19:10:41 INFO    half_life_rolling     : n=7  spearman_rho=-0.873  p=0.010
+19:10:41 INFO    adf_pval              : n=8  spearman_rho=-0.349  p=0.396
+19:10:41 INFO    permutation_pvalue    : n=8  spearman_rho=0.396  p=0.331
+19:10:41 INFO  Saved -> output/research/descriptive_check_concordance.parquet
+19:10:41 INFO  ============================================================
+19:10:41 INFO  descriptive_check_concordance.py complete (1.0 min)

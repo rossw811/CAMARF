@@ -1,4 +1,7 @@
-2026-08-04 01:05:08  INFO      Survivorship exclusions loaded: 378 delist events
-2026-08-04 01:05:08  INFO      Hub weights: 2 pairs, range [1.000, 1.000], mean=1.000
-2026-08-04 01:05:08  INFO      [3m] 1 confirmed pairs
-2026-08-04 01:05:08  INFO      [4h] 1 confirmed pairs
+2026-08-23 21:31:16  INFO      Survivorship exclusions loaded: 383 delist events
+2026-08-23 21:31:16  INFO      Hub weights: 2 pairs, range [1.000, 1.000], mean=1.000
+2026-08-23 21:31:16  INFO      [3m] 1 confirmed pairs
+2026-08-23 21:31:16  INFO      [4h] 1 confirmed pairs
+2026-08-23 21:31:16  INFO        PNC/ZION@4h[ols] 1 trades | WR=0% | SR=nan | PnL=-4.73
+2026-08-23 21:31:16  INFO        PNC/ZION@4h[kalman] 1 trades | WR=0% | SR=nan | PnL=-5.61
+2026-08-23 21:31:16  INFO      Run summary → latest_run_backtest.log

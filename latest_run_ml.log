@@ -1,8 +1,10 @@
 === CAMARF ml.py ===
-date:        2026-09-08 19:40
-runtime_min: 0.2
+date:        2026-08-24 17:31
+runtime_min: 0.0
 
 === pairs ===
+  KVUE/KMB@3m              entry_events=138   labeled=0     censored=0     no_half_life=138   future_not_clean=0 perm_robust=True
+  PNC/ZION@4h              entry_events=1     labeled=0     censored=0     no_half_life=0     future_not_clean=1 perm_robust=True
   AMP/RUSHA@1D             entry_events=18    labeled=15    censored=3     no_half_life=0     future_not_clean=0
   OVV/DO@1D                entry_events=15    labeled=11    censored=0     no_half_life=0     future_not_clean=0
   CATY/FRBA@1D             entry_events=30    labeled=25    censored=4     no_half_life=0     future_not_clean=0
@@ -30,8 +32,6 @@ runtime_min: 0.2
   GVKEY259160_01W/LDTC@1D  entry_events=0     labeled=0     censored=0     no_half_life=0     future_not_clean=0
   GVKEY284837_01W/XBP@1D   entry_events=3     labeled=0     censored=0     no_half_life=3     future_not_clean=0
   GVKEY327794_01W/GVKEY346377_01W@1D entry_events=5     labeled=0     censored=0     no_half_life=5     future_not_clean=0
-  KVUE/KMB@3m              entry_events=138   labeled=0     censored=0     no_half_life=138   future_not_clean=0 perm_robust=True
-  PNC/ZION@4h              entry_events=1     labeled=0     censored=0     no_half_life=0     future_not_clean=1 perm_robust=True
 
 === label_distribution (label_scheme=binary, this is what training/the MIN_CLASS_SAMPLES gate sees) ===
   not_converged: 161
@@ -44,11 +44,13 @@ runtime_min: 0.2
   strong_converge: 37
 
 === notes ===
-  Trained: n_train=142 n_test=48 test_accuracy=62.50%
+  Trained: n_train=142 n_test=48 test_accuracy=56.25%
   Conformal: n_cal=47 avg_set_size=1.94 empirical_coverage=97.92%
-  Model persisted → C:\Users\RossW\Projects\CAMARF\output\ml\model_stage1.pkl
+  Model persisted → /home/rw/CAMARF/output/ml/model_stage1.pkl
 
 === pairs_skipped ===
+  KVUE/KMB@3m: zero labeled entry events
+  PNC/ZION@4h: zero labeled entry events
   OGN/PERMNO78892@1D: zero labeled entry events
   AISP/GVKEY239599_01W@1D: zero labeled entry events
   CSII/GVKEY355506_01W@1D: zero labeled entry events
@@ -64,7 +66,5 @@ runtime_min: 0.2
   GVKEY259160_01W/LDTC@1D: zero labeled entry events
   GVKEY284837_01W/XBP@1D: zero labeled entry events
   GVKEY327794_01W/GVKEY346377_01W@1D: zero labeled entry events
-  KVUE/KMB@3m: zero labeled entry events
-  PNC/ZION@4h: zero labeled entry events
 
 === end ===

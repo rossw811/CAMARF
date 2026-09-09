@@ -1,11 +1,37 @@
-02:04:11 INFO  === bayesian_pair_confirmation.py: continuously-updated Bayesian confidence, COMPARISON ARM ONLY (does not replace static EG+FDR confirmation) ===
-02:04:11 INFO  Loaded 3 confirmed pairs across all timeframes
-02:04:11 INFO  Loaded 2 OOS holdout trades across 1 unique pairs
-02:04:11 INFO    IQV/Q@1D: prior=0.990 [0.940, 1.000]  n_oos=0 (0 win/0 loss)  posterior=0.990 [0.940, 1.000]  shift=+0.000
-02:04:11 INFO    KVUE/KMB@3m: prior=0.990 [0.940, 1.000]  n_oos=0 (0 win/0 loss)  posterior=0.990 [0.940, 1.000]  shift=+0.000
-02:04:11 INFO    PNC/ZION@4h: prior=0.969 [0.860, 1.000]  n_oos=2 (2 win/0 loss)  posterior=0.974 [0.883, 1.000]  shift=+0.005
-02:04:11 INFO  
-02:04:11 INFO  === Summary: 3 pairs, 1 with at least 1 OOS trade ===
-02:04:11 INFO  Saved -> output/research/bayesian_pair_confirmation.parquet
-02:04:11 INFO  ============================================================
-02:04:11 INFO  bayesian_pair_confirmation.py complete (0.0 min)
+18:24:49 INFO  === bayesian_pair_confirmation.py: continuously-updated Bayesian confidence, COMPARISON ARM ONLY (does not replace static EG+FDR confirmation) ===
+18:24:49 INFO  Loaded 29 confirmed pairs across all timeframes
+18:24:49 INFO  Loaded 2 OOS holdout trades across 1 unique pairs
+18:24:49 INFO    AMP/RUSHA@1D: prior=0.990 [0.940, 1.000]  n_oos=0 (0 win/0 loss)  posterior=0.990 [0.940, 1.000]  shift=+0.000
+18:24:49 INFO    OVV/DO@1D: prior=0.990 [0.940, 1.000]  n_oos=0 (0 win/0 loss)  posterior=0.990 [0.940, 1.000]  shift=+0.000
+18:24:49 INFO    CATY/FRBA@1D: prior=0.990 [0.940, 1.000]  n_oos=0 (0 win/0 loss)  posterior=0.990 [0.940, 1.000]  shift=+0.000
+18:24:49 INFO    HSBC/GVKEY015509_06W@1D: prior=0.990 [0.940, 1.000]  n_oos=0 (0 win/0 loss)  posterior=0.990 [0.940, 1.000]  shift=+0.000
+18:24:49 INFO    HWC/FRBA@1D: prior=0.990 [0.940, 1.000]  n_oos=0 (0 win/0 loss)  posterior=0.990 [0.940, 1.000]  shift=+0.000
+18:24:49 INFO    OGN/PERMNO78892@1D: prior=0.990 [0.940, 1.000]  n_oos=0 (0 win/0 loss)  posterior=0.990 [0.940, 1.000]  shift=+0.000
+18:24:49 INFO    OVV/PERMNO82298@1D: prior=0.990 [0.940, 1.000]  n_oos=0 (0 win/0 loss)  posterior=0.990 [0.940, 1.000]  shift=+0.000
+18:24:49 INFO    ALTG/FBM@1D: prior=0.990 [0.940, 1.000]  n_oos=0 (0 win/0 loss)  posterior=0.990 [0.940, 1.000]  shift=+0.000
+18:24:49 INFO    AISP/GVKEY239599_01W@1D: prior=0.990 [0.940, 1.000]  n_oos=0 (0 win/0 loss)  posterior=0.990 [0.940, 1.000]  shift=+0.000
+18:24:49 INFO    CSII/GVKEY355506_01W@1D: prior=0.990 [0.940, 1.000]  n_oos=0 (0 win/0 loss)  posterior=0.990 [0.940, 1.000]  shift=+0.000
+18:24:49 INFO    AGCB/LEAP@1D: prior=0.990 [0.940, 1.000]  n_oos=0 (0 win/0 loss)  posterior=0.990 [0.940, 1.000]  shift=+0.000
+18:24:49 INFO    ARGO/MEGL@1D: prior=0.990 [0.940, 1.000]  n_oos=0 (0 win/0 loss)  posterior=0.990 [0.940, 1.000]  shift=+0.000
+18:24:49 INFO    ATXG/KNBE@1D: prior=0.990 [0.940, 1.000]  n_oos=0 (0 win/0 loss)  posterior=0.990 [0.940, 1.000]  shift=+0.000
+18:24:49 INFO    CLAS/MSAI@1D: prior=0.990 [0.940, 1.000]  n_oos=0 (0 win/0 loss)  posterior=0.990 [0.940, 1.000]  shift=+0.000
+18:24:49 INFO    CVON/PERMNO91600@1D: prior=0.990 [0.940, 1.000]  n_oos=0 (0 win/0 loss)  posterior=0.990 [0.940, 1.000]  shift=+0.000
+18:24:49 INFO    GVKEY101930_01W/GVKEY355506_01W@1D: prior=0.990 [0.940, 1.000]  n_oos=0 (0 win/0 loss)  posterior=0.990 [0.940, 1.000]  shift=+0.000
+18:24:49 INFO    FNLC/JMSB@1D: prior=0.990 [0.940, 1.000]  n_oos=0 (0 win/0 loss)  posterior=0.990 [0.940, 1.000]  shift=+0.000
+18:24:49 INFO    GBNK/SRCE@1D: prior=0.990 [0.940, 1.000]  n_oos=0 (0 win/0 loss)  posterior=0.990 [0.940, 1.000]  shift=+0.000
+18:24:49 INFO    GVKEY201229_01W/GVKEY248104_01W@1D: prior=0.990 [0.940, 1.000]  n_oos=0 (0 win/0 loss)  posterior=0.990 [0.940, 1.000]  shift=+0.000
+18:24:49 INFO    GVKEY204176_01W/GVKEY355326_01W@1D: prior=0.990 [0.940, 1.000]  n_oos=0 (0 win/0 loss)  posterior=0.990 [0.940, 1.000]  shift=+0.000
+18:24:49 INFO    GVKEY242580_01W/GVKEY325818_01W@1D: prior=0.990 [0.940, 1.000]  n_oos=0 (0 win/0 loss)  posterior=0.990 [0.940, 1.000]  shift=+0.000
+18:24:49 INFO    GVKEY227396_01W/LLAP@1D: prior=0.990 [0.940, 1.000]  n_oos=0 (0 win/0 loss)  posterior=0.990 [0.940, 1.000]  shift=+0.000
+18:24:49 INFO    GVKEY223055_02W/PWM@1D: prior=0.990 [0.940, 1.000]  n_oos=0 (0 win/0 loss)  posterior=0.990 [0.940, 1.000]  shift=+0.000
+18:24:49 INFO    GVKEY248220_01W/GVKEY329260_01W@1D: prior=0.990 [0.940, 1.000]  n_oos=0 (0 win/0 loss)  posterior=0.990 [0.940, 1.000]  shift=+0.000
+18:24:49 INFO    GVKEY259160_01W/LDTC@1D: prior=0.990 [0.940, 1.000]  n_oos=0 (0 win/0 loss)  posterior=0.990 [0.940, 1.000]  shift=+0.000
+18:24:49 INFO    GVKEY284837_01W/XBP@1D: prior=0.990 [0.940, 1.000]  n_oos=0 (0 win/0 loss)  posterior=0.990 [0.940, 1.000]  shift=+0.000
+18:24:49 INFO    GVKEY327794_01W/GVKEY346377_01W@1D: prior=0.990 [0.940, 1.000]  n_oos=0 (0 win/0 loss)  posterior=0.990 [0.940, 1.000]  shift=+0.000
+18:24:49 INFO    KVUE/KMB@3m: prior=0.990 [0.940, 1.000]  n_oos=0 (0 win/0 loss)  posterior=0.990 [0.940, 1.000]  shift=+0.000
+18:24:49 INFO    PNC/ZION@4h: prior=0.976 [0.883, 1.000]  n_oos=2 (0 win/2 loss)  posterior=0.813 [0.609, 0.957]  shift=-0.163
+18:24:49 INFO  
+18:24:49 INFO  === Summary: 29 pairs, 1 with at least 1 OOS trade ===
+18:24:49 INFO  Saved -> output/research/bayesian_pair_confirmation.parquet
+18:24:49 INFO  ============================================================
+18:24:49 INFO  bayesian_pair_confirmation.py complete (0.0 min)

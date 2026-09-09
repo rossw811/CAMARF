@@ -1,2 +1,2 @@
-13:41:37 INFO  === decoupling_contamination_crosscheck.py: task #70 ===
-13:41:37 WARNING  No 1hr all_candidates.parquet found (live or archived). Nothing to check.
+19:09:39 INFO  === decoupling_contamination_crosscheck.py: task #70 ===
+19:09:39 WARNING  No 1hr all_candidates.parquet found (live or archived). Nothing to check.

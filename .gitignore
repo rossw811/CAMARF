@@ -56,4 +56,4 @@ logs/archive/*.log
 !/latest_run_data_err.log
 !/near_miss_remaining.log
 latest_*_stdout.log
-latest_*_stderr.log
+latest_*_stderr.loglogs/*_auto_attempt*.log

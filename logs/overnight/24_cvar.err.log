@@ -1,4 +1,9 @@
-01:06:29 INFO  === cvar.py: Historical CVaR / Expected Shortfall (portfolio daily P&L) ===
-01:06:29 INFO    [layer1] in-sample baseline: VaR_95% = $-0.00, CVaR_95% (mean of worst 506/511 days) = $0.00
-01:06:29 INFO    [layer1] VaR_95% backtest: 0/481 exceedances (rate=0.000 vs expected 0.050), Kupiec p=n/a, Christoffersen-independence p=n/a, conditional-coverage p=n/a
-01:06:29 INFO    [layer1] in-sample baseline: VaR_99% = $-0.00, CVaR_99% (mean of worst 506/511 days) = $0.00
+21:31:30 INFO  === cvar.py: Historical CVaR / Expected Shortfall (portfolio daily P&L) ===
+21:31:30 INFO    [layer1] in-sample baseline: VaR_95% = $0.00, CVaR_95% (mean of worst 420/421 days) = $0.02
+21:31:30 INFO    [layer1] VaR_95% backtest: 1/391 exceedances (rate=0.003 vs expected 0.050), Kupiec p=0.000, Christoffersen-independence p=n/a, conditional-coverage p=n/a
+21:31:30 INFO    [layer1] in-sample baseline: VaR_99% = $-0.00, CVaR_99% (mean of worst 420/421 days) = $0.02
+21:31:30 INFO    [layer1] VaR_99% backtest: 1/391 exceedances (rate=0.003 vs expected 0.010), Kupiec p=0.078, Christoffersen-independence p=n/a, conditional-coverage p=n/a
+21:31:30 WARNING    [layer1_holdout] no usable trades at /home/rw/CAMARF/output/backtest/trades_layer1_holdout.parquet — skipping
+21:31:30 INFO  Saved => /home/rw/CAMARF/output/stats/cvar.json
+21:31:30 INFO  ============================================================
+21:31:30 INFO  cvar.py complete (0.0 min)
