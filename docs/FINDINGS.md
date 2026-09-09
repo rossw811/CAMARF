@@ -3874,3 +3874,63 @@ era), `output/research/{bh_vs_by_full_universe_1d_raw,bh_vs_by_full_universe_1d_
 regime_survivorship_confound_test,regime_strength_vs_pit_confirmation,residual_correlation_
 cluster_bootstrap,cycle_detection,levy_jump_diffusion,options_greeks_features_*}.parquet` (new/
 updated, PIT-safe reruns).
+
+## 67. Free Alternatives to Two "Paid Data" Blockers (SPAC Universe, Crowding Proxy), and a Real
+Git Reconciliation That Turned Out to Be Almost Entirely Cosmetic
+
+Ross asked to work the remaining "blocked" items from the caveat search, specifically: "if we
+can't [use paywalled data] can we scrape data or use related data?" Both Tier B items flagged as
+needing a paid source turned out to have real, free, government-mandated-disclosure alternatives
+— found by checking, not assumed.
+
+**§7.3's SPAC-regex limitation — `data_sec_edgar.py` (new)**: SEC EDGAR classifies blank-check
+companies under SIC code 6770, filterable directly via EDGAR's own free company-search endpoint
+— no paid tracker needed. **Real bug caught and fixed live**: SEC's own legacy `output=atom`
+endpoint has a confirmed, longstanding bug where the `<entry title>` and `<company-info name>`
+fields both contain the literal broken Perl stringification `ARRAY(0x...)` instead of the real
+company name — verified directly against a raw response, not assumed from documentation. Worked
+around by using only the reliable `<cik>` element from that feed, then getting real company names
+and tickers from SEC's separate, working `company_tickers.json` endpoint. A second bug (CIK
+representation mismatch — zero-padded string vs. plain int between the two sources) was caught
+via `debug/_verify_data_sec_edgar.py` (3/3) before trusting the join. **Real result**: 3,329
+distinct SIC=6770 companies found, 933 with a registered ticker. Cross-referenced against this
+project's own universe: the existing regex-based `spac_symbols.json` had only 23 symbols, of
+which just **1** overlaps with the new SEC-based list — the two approaches largely find
+*different* symbols (SEC's registered tickers often carry unit/warrant suffixes like `AACIU`/
+`AACIW` that don't match CRSP's own symbol convention, a real, disclosed mismatch, not glossed
+over). Checked directly for double-counting before reporting a coverage number: all 95 SEC-based
+tickers found in this project's universe map to 95 genuinely distinct base tickers, not
+unit/warrant duplicates of already-known symbols — a real, clean ~4x coverage improvement (95 vs.
+23), not an artifact.
+
+**Crowding/capacity-decay's "needs paid flow data" blocker — `data_finra.py` (new)**: FINRA
+publishes biweekly equity short interest per security, free, no authentication, covering ALL
+exchanges (confirmed directly against a live file — NYSE-listed "A"/Agilent and "AA"/Alcoa both
+present with real short-interest figures, despite the URL's `otcmarket` path component suggesting
+OTC-only coverage). `debug/_verify_data_finra.py` (5/5, mocked to avoid depending on live network
+access for the test itself) confirms the caching behavior. Real result: 22,482 securities in one
+settlement-date file, with `currentShortPositionQuantity`/`daysToCoverQuantity`/`changePercent`
+fields — a genuine, free crowding proxy. Neither this nor the SPAC list has been WIRED into any
+actual analysis yet this session (that's the natural next step, not done here) — both are
+confirmed-working, real data sources ready to use.
+
+**A large git-reconciliation scare that resolved to almost nothing real**: investigating
+CachyOS's ~115 "genuinely different" tracked files (flagged as a real risk in the prior entry)
+found the root cause was CRLF vs. LF line-ending representation, not real content divergence —
+`git diff analysis.py` showed 13,134 changed lines, but after adding `.gitattributes` (`* text=auto
+eol=lf`) and running `git add --renormalize .`, **every one of those files showed ZERO real
+diff**. The only genuine content was ~67 CachyOS-only Python scripts (GPU-backend/polars work,
+episodic-scan auto-restart tooling) that had simply never been committed, plus one real, small
+merge conflict (`options_greeks_features.py`, resolved by keeping the already-verified upstream
+dedup fix from earlier tonight) and a handful of tracked log files (resolved by taking CachyOS's
+own local state — low-stakes, informational only). Both machines are now on the identical commit
+(`9aae6b8e` at reconciliation time), confirmed via `git status` showing clean (non-log) on both
+sides — pushed via a properly-scoped bundle (`git bundle create ... origin/main..main`, not a
+bare `git bundle create ... main`, which the first attempt got wrong and produced a 3.5GB
+whole-history bundle instead of a ~99KB incremental one) since CachyOS has no GitHub push
+credentials configured.
+
+Files: `data_sec_edgar.py` (new), `debug/_verify_data_sec_edgar.py` (new, 3/3), `data_finra.py`
+(new), `debug/_verify_data_finra.py` (new, 5/5), `output/cache/sec_edgar/spac_universe_sic6770.
+parquet` (new), `output/cache/finra/short_interest_20260814.parquet` (new), `.gitattributes`
+(new), `.gitignore` (episodic-scan retry-log noise excluded).
