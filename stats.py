@@ -38,6 +38,7 @@ from scipy.stats import genpareto
 from sklearn.linear_model import HuberRegressor
 
 from config import Config
+from data import DataStore
 import portfolio_math
 
 warnings.filterwarnings("ignore", category=FutureWarning)
@@ -55,12 +56,16 @@ _RESULTS_DIR = os.path.join(_ROOT, "output", "results")
 _BACKTEST_DIR = os.path.join(_ROOT, "output", "backtest")
 _STATS_DIR = os.path.join(_ROOT, "output", "stats")
 
-# Maps tf_label (from pairs.parquet) → directory prefix used by analysis.py
-_TF_DIR_MAP: Dict[str, str] = {
-    "1m": "1min", "2m": "2min", "3m": "3min", "5m": "5min",
-    "15m": "15min", "30m": "30min", "1h": "1hr", "4h": "4hr",
-    "1d": "1day", "1W": "1W", "1M": "1M",
-}
+# Maps tf_label (from pairs.parquet) → directory/cache-file suffix. Was a
+# hand-maintained, drifted copy of DataStore._TF_SAFE (wrong key "1d" instead
+# of "1D", wrong entry "1W"/"1M" instead of "7D"->"7day"/"1M"->"1mo", and
+# missing "3M"/"6M" entirely) -- silently NaN'd run_robust_hedge_ratios()'s
+# Huber/MM estimators for every "1D"/"7D"/"3M"/"6M" pair (found via a
+# project-wide timeframe-label consistency audit, 2026-09-12; the "1D" case
+# alone was already disclosed in Development.md/HANDOFF.md, the "7D"/"3M"/
+# "6M" scope was not). Now a direct alias to the one canonical source of
+# truth instead of a second copy that can drift again.
+_TF_DIR_MAP: Dict[str, str] = DataStore._TF_SAFE
 
 # Slippage levels in basis points per execution (Phase 3 Monte Carlo)
 _SLIPPAGE_BPS = [0, 2, 5, 10, 20]
@@ -421,13 +426,10 @@ def run_robust_hedge_ratios(pairs: pd.DataFrame) -> pd.DataFrame:
         # Here we estimate the TIME SERIES regression instead: spread_t = α + β * t.
         # Better: read actual prices from cache to get true bivariate fit.
         cache_dir = os.path.join(_ROOT, "output", "cache")
-        # Cache filenames use IBKR bar size suffix (different from tf_label or dir prefix)
-        tf_cache = {
-            "1m": "1min", "2m": "2min", "3m": "3min", "5m": "5min",
-            "15m": "15min", "30m": "30min", "1h": "1hr",
-            "4h": "4hr", "1d": "1day", "1W": "1W", "1M": "1M",
-        }
-        ibkr_tf = tf_cache.get(tf, tf)
+        # Cache filenames use the same suffix DataStore._path() writes them
+        # with -- was a second, independently-drifted copy of the dict above
+        # (same 2026-09-12 audit finding), now the same single source of truth.
+        ibkr_tf = DataStore._TF_SAFE.get(tf, tf)
         cache_a = os.path.join(cache_dir, f"{a}_{ibkr_tf}.parquet")
         cache_b = os.path.join(cache_dir, f"{b}_{ibkr_tf}.parquet")
 

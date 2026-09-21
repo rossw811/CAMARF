@@ -1,15 +1,36 @@
 === CAMARF macro.py ===
-date:        2026-09-02 13:45
+date:        2026-09-21 08:42
 runtime_min: 0.0
 
 === series ===
-  VIXCLS         rows=9566   source=cache
-  cot_es         rows=1506   source=cache
-  cot_nq         rows=238    source=cache
+  T10Y2Y         rows=13124  source=cache
+  BAMLH0A0HYM2   rows=795    source=cache
+  VIXCLS         rows=9578   source=cache
+  VXVCLS         rows=4903   source=cache
+  DCOILWTICO     rows=10619  source=cache
+  BAA10Y         rows=10621  source=cache
+  DTWEXBGS       rows=5400   source=cache
+  DFII10         rows=6186   source=cache
+  T10YIE         rows=6187   source=cache
+  FEDFUNDS       rows=866    source=cache
+  CPIAUCSL       rows=956    source=cache
+  USREC          rows=2061   source=cache
+  UNRATE         rows=944    source=cache
+  cot_es         rows=1509   source=cache
+  cot_nq         rows=241    source=cache
 
 === regime_distributions ===
-vix: {'normal': 4676, 'calm': 2956, 'elevated': 1247, nan: 1014, 'crisis': 353}
-cot_es: {'neutral': 5953, nan: 2960, 'crowded_short': 926, 'crowded_long': 407}
-cot_nq: {nan: 9100, 'neutral': 1097, 'crowded_long': 44, 'crowded_short': 5}
+yield_curve: {'normal': 5999, 'steep': 2949, 'flat_inverted': 1224, nan: 86}
+credit: {nan: 9504, 'normal': 393, 'tight': 361}
+credit_proxy: {'normal': 4603, 'tight': 4290, 'wide': 1276, nan: 89}
+vix: {'normal': 4686, 'calm': 2958, 'elevated': 1247, nan: 1014, 'crisis': 353}
+vix_term_structure: {nan: 5530, 'deep_contango': 2793, 'contango': 1458, 'flat': 296, 'backwardation': 181}
+dollar: {nan: 5361, 'strong': 1906, 'neutral': 1772, 'weak': 1219}
+real_rate: {nan: 4585, 'low': 2029, 'high': 1833, 'normal': 1811}
+inflation_expectation: {nan: 4585, 'normal': 2308, 'high': 1751, 'low': 1614}
+recession: {'expansion': 9504, 'contraction': 754}
+recession_realtime: {'expansion': 8296, 'contraction_risk': 1746, nan: 216}
+cot_es: {'neutral': 5965, nan: 2960, 'crowded_short': 926, 'crowded_long': 407}
+cot_nq: {nan: 9100, 'neutral': 1109, 'crowded_long': 44, 'crowded_short': 5}
 
 === end ===

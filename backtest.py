@@ -527,6 +527,7 @@ class BacktestEngine:
         in_position = False
         current_trade: Optional[Trade] = None
         mae_val = mfe_val = 0.0
+        _n_skipped_no_half_life = 0  # trip-wire counter, see check after the loop below
 
         z_arr = df["z_rolling"].values
         spread_arr = df["spread"].values
@@ -568,6 +569,23 @@ class BacktestEngine:
         _regime_strength_gate = self.storm_flags.get("regime_strength_gate", False)
         _REGIME_STRENGTH_GATE_LOOKBACK = 10
         _REGIME_STRENGTH_MIN = 0.5
+
+        # STORM: squeeze_gate / momentum_gate / squeeze_momentum_gate (2026-09-15, Ross's direct
+        # instruction). Three separate comparison arms, tested independently and combined, not
+        # bundled into one flag -- matches this project's convention of comparing options rather
+        # than picking one. squeeze_gate requires BOTH legs to be in a volatility squeeze at
+        # entry (squeeze_indicator < 1.0, the standard TTM-squeeze convention -- BBand width
+        # below Keltner width). momentum_gate requires the cross-leg RSI-divergence's 5-bar
+        # velocity to AGREE with the trade direction the z-score implies: z>0 means
+        # symbol_a is relatively too high (short A / long B expected on reversion), which
+        # momentum confirms when rsi_diff_velocity < 0 (A's momentum cooling vs B); z<0 is the
+        # symmetric opposite. squeeze_momentum_gate requires both conditions together. Fail
+        # CLOSED (skip) when the underlying data is NaN/unavailable, same convention as every
+        # other STORM gate here -- an unconfirmable condition is never treated as a silent pass.
+        _squeeze_gate = self.storm_flags.get("squeeze_gate", False)
+        _momentum_gate = self.storm_flags.get("momentum_gate", False)
+        _squeeze_momentum_gate = self.storm_flags.get("squeeze_momentum_gate", False)
+        _SQUEEZE_THRESHOLD = 1.0
 
         # Thread Q Idea 1 Path C (2026-08-23): exit early if coint_fraction_rolling_t is
         # DECLINING SHARPLY over a short window -- a real, disclosed design simplification from
@@ -693,6 +711,24 @@ class BacktestEngine:
         _meanrev_t_arr = df["mean_reversion_speed_t"].values if "mean_reversion_speed_t" in df.columns else None
         _hurst_t_arr = df["hurst_rs_t"].values if "hurst_rs_t" in df.columns else None
 
+        # STORM: squeeze_gate / momentum_gate / squeeze_momentum_gate (2026-09-15,
+        # Ross's direct instruction after noticing the entry criterion has no
+        # volatility-squeeze or momentum confirmation). Columns added by
+        # research/squeeze_momentum_features.py -- an ADDITIVE augmentation of
+        # spread_series_*.parquet, computed fresh from the current DataStore
+        # cache (see that script's docstring for why the STALE
+        # features_{symbol}.parquet files analysis.py's VolumeStructure step
+        # already writes were not used directly: ~72-83% NaN, traced to an
+        # out-of-date, wider-than-current-cache date range, not a bug in the
+        # squeeze/RSI formula itself). Same _has_pit-style column-presence +
+        # per-bar-NaN fallback pattern as every other causal feature above --
+        # older spread_series files without these columns simply disable the
+        # gate rather than crash (fail-closed at read time, same as the
+        # regime_strength/decay_rate gates).
+        _sq_a_t_arr = df["squeeze_indicator_a_t"].values if "squeeze_indicator_a_t" in df.columns else None
+        _sq_b_t_arr = df["squeeze_indicator_b_t"].values if "squeeze_indicator_b_t" in df.columns else None
+        _rsi_diff_vel_t_arr = df["rsi_diff_velocity_t"].values if "rsi_diff_velocity_t" in df.columns else None
+
         # Thread Q decay-rate path (scoped 2026-08-24, Development.md): entry gate variant --
         # block entry when the relationship's decay-rate signal is NEGATIVE (weakening) right
         # now. Complementary to, NOT the same mechanism as, _regime_strength_gate above (that
@@ -771,6 +807,28 @@ class BacktestEngine:
                     continue
                 if self.cfg.ENTRY_ZSCORE_MAX is not None and abs(z) > self.cfg.ENTRY_ZSCORE_MAX:
                     continue
+                # STORM: squeeze_gate -- require BOTH legs in a volatility squeeze at entry.
+                # Fail closed on NaN (unresolved data or warmup bars), same convention as every
+                # other STORM gate.
+                if (_squeeze_gate or _squeeze_momentum_gate) and _sq_a_t_arr is not None and _sq_b_t_arr is not None:
+                    _sq_a_now, _sq_b_now = _sq_a_t_arr[i], _sq_b_t_arr[i]
+                    if not (np.isfinite(_sq_a_now) and np.isfinite(_sq_b_now)):
+                        continue
+                    if not (_sq_a_now < _SQUEEZE_THRESHOLD and _sq_b_now < _SQUEEZE_THRESHOLD):
+                        continue
+                elif _squeeze_gate or _squeeze_momentum_gate:
+                    continue  # gate requested but the columns aren't present -- fail closed
+                # STORM: momentum_gate -- require cross-leg RSI-divergence velocity to agree
+                # with the reversion direction z implies (z>0: short A/long B expected, momentum
+                # confirms when rsi_diff_velocity < 0; z<0 is the symmetric opposite).
+                if (_momentum_gate or _squeeze_momentum_gate) and _rsi_diff_vel_t_arr is not None:
+                    _rsi_vel_now = _rsi_diff_vel_t_arr[i]
+                    if not np.isfinite(_rsi_vel_now):
+                        continue
+                    if (z > 0 and _rsi_vel_now >= 0) or (z < 0 and _rsi_vel_now <= 0):
+                        continue
+                elif _momentum_gate or _squeeze_momentum_gate:
+                    continue  # gate requested but the column isn't present -- fail closed
                 # Thread Q Idea 1 Path B: regime-strength gate -- skip entry unless the
                 # relationship is both currently strong AND strengthening (not just currently
                 # above threshold, which alone wouldn't distinguish a stable regime from one
@@ -794,6 +852,7 @@ class BacktestEngine:
                         continue
                 hl_at_entry = hl if np.isfinite(hl) and hl >= self.cfg.MIN_HALF_LIFE_BARS else np.nan
                 if not np.isfinite(hl_at_entry):
+                    _n_skipped_no_half_life += 1
                     continue  # can't set max hold without half-life
                 # STORM: max_half_life_filter -- symmetric ceiling to the MIN_HALF_LIFE_BARS
                 # floor above (skip degenerately SLOW mean-reversion, same logic that already
@@ -1010,6 +1069,23 @@ class BacktestEngine:
             current_trade.exit_reason = "eod"
             self._close_trade(current_trade, mae_val, mfe_val)
             trades.append(current_trade)
+
+        # Trip-wire (2026-09-10, item #4 of the bug-catching plan, docs/HANDOFF.md):
+        # zero trades because EVERY entry attempt failed the half-life gate is
+        # exactly the shape of the 2026-09-10 bug (17/29 pairs in the production
+        # set silently never traded, traced to fit_pair's over-restrictive
+        # clean_mask, not a genuine data/signal limitation). A pair with valid
+        # spread/z data that never once clears this specific gate should be
+        # loud, not a silent 0-trade result indistinguishable from "no signal."
+        if len(trades) == 0 and _n_skipped_no_half_life > 0 and n >= 60:
+            log.warning(
+                "%s/%s@%s[%s]: 0 trades, every one of %d entry-eligible bars "
+                "skipped for a non-finite half-life at entry -- check fit_pair's "
+                "half_life_rolling upstream (analysis.py) before concluding this "
+                "pair genuinely has no tradeable signal; see CLAUDE.md's "
+                "2026-09-10 Working Style entry",
+                sym_a, sym_b, tf, hedge_method, _n_skipped_no_half_life,
+            )
 
         return trades
 
@@ -2235,6 +2311,24 @@ def main() -> None:
                         "bars falsely spike cointegration' mechanism does NOT hold on average for "
                         "this domestic universe -- kept as a fill-realism/signal-quality filter "
                         "for a different, still-real reason, see the engine's own inline comment.")
+    p.add_argument("--storm-squeeze-gate", action="store_true",
+                   help="STORM (added 2026-09-15, Ross's direct instruction): require BOTH legs "
+                        "in a volatility squeeze at entry (squeeze_indicator < 1.0, standard "
+                        "TTM-squeeze convention -- BBand width below Keltner width). Requires "
+                        "spread_series files augmented by research/squeeze_momentum_features.py; "
+                        "fails closed (no entries) if the columns are absent. Mutually testable "
+                        "alongside --storm-momentum-gate and --storm-squeeze-momentum-gate as "
+                        "three separate comparison arms, not meant to be combined manually.")
+    p.add_argument("--storm-momentum-gate", action="store_true",
+                   help="STORM (added 2026-09-15): require cross-leg RSI-divergence 5-bar "
+                        "velocity to agree with the reversion direction the entry z-score "
+                        "implies. Requires spread_series files augmented by "
+                        "research/squeeze_momentum_features.py; fails closed if absent.")
+    p.add_argument("--storm-squeeze-momentum-gate", action="store_true",
+                   help="STORM (added 2026-09-15): both --storm-squeeze-gate AND "
+                        "--storm-momentum-gate conditions required together, as its own single "
+                        "flag rather than passing both (keeps the 3 comparison arms cleanly "
+                        "separable in output filenames).")
     p.add_argument("--storm-session-edge", action="store_true",
                    help="STORM: skip pre-open entries (9:00-9:29 ET) and late-day (15:00+) (intraday only).")
     p.add_argument("--storm-session-edge-postopen", action="store_true",
@@ -2494,12 +2588,18 @@ def main() -> None:
         "decoupling_avoidance_exit": getattr(args, "storm_decoupling_avoidance_exit", False),
         "max_half_life_filter":    getattr(args, "storm_max_half_life_filter", False),
         "liquidity_bar_filter":    getattr(args, "storm_liquidity_bar_filter", False),
+        # Also not folded into --storm-all: 3 separate comparison arms added 2026-09-15
+        # (Ross's direct instruction), deliberately kept as independent flags rather than
+        # one combined gate so each can be tested/compared on its own.
+        "squeeze_gate":            getattr(args, "storm_squeeze_gate", False),
+        "momentum_gate":           getattr(args, "storm_momentum_gate", False),
+        "squeeze_momentum_gate":   getattr(args, "storm_squeeze_momentum_gate", False),
     }
     # STORM-flag suffixes on `label` (the rest of label was built above, before
     # storm_flags existed).
     if _storm_all:
         label += "_stormall"
-    elif any(storm_flags.values()):
+    elif any(v for k, v in storm_flags.items() if k != "decay_rate_gate_spec"):
         sfx = "_storm"
         if storm_flags.get("coint_frac_sizing"):     sfx += "_cfrac"
         if storm_flags.get("garch_stop"):            sfx += "_gstop"
@@ -2510,6 +2610,9 @@ def main() -> None:
         if storm_flags.get("real_corr_exit"):        sfx += "_realcorrexit"
         if storm_flags.get("max_half_life_filter"):  sfx += "_maxhlfilter"
         if storm_flags.get("liquidity_bar_filter"):  sfx += "_liqbarfilter"
+        if storm_flags.get("squeeze_gate"):          sfx += "_sqzgate"
+        if storm_flags.get("momentum_gate"):         sfx += "_momgate"
+        if storm_flags.get("squeeze_momentum_gate"): sfx += "_sqzmomgate"
         label += sfx
     if args.pairs_override:
         label += "_pairsoverride"
@@ -2638,6 +2741,12 @@ def main() -> None:
                   "final_equity=$%.2f sharpe=%.4f",
                   sim_result["n_taken"], len(trades_for_sim), sim_result["skipped_count"],
                   sim_result["peak_concurrent_notional"], sim_result["final_equity"], sim_sharpe)
+        if sim_result.get("n_kelly_fallback", 0) > 0:
+            log.info("  [capital_sim] Kelly fallback to flat_2pct (< 60 trade history): %d trades",
+                      sim_result["n_kelly_fallback"])
+        if sim_result.get("n_skipped_no_risk_estimate", 0) > 0:
+            log.info("  [capital_sim] Skipped, no causal risk estimate: %d trades",
+                      sim_result["n_skipped_no_risk_estimate"])
         _ccap_sfx = "_ccap" if args.concentration_cap else ""
         _lev_sfx = f"_levcap{str(args.leverage_cap).replace('.', 'p')}" if args.leverage_cap is not None else ""
         sim_label = f"{label}_capsim_{args.capital_sizing}_{int(args.capital_account_size)}{_ccap_sfx}{_lev_sfx}"
@@ -2652,6 +2761,12 @@ def main() -> None:
             "trough_mtm_equity": sim_result["trough_mtm_equity"],
             "final_equity": sim_result["final_equity"],
             "starting_capital": args.capital_account_size, "sizing_method": args.capital_sizing,
+            # 2026-09-20: previously computed by portfolio_sim.replay_portfolio() but never
+            # persisted here (only portfolio_sim.py's own standalone CLI logged them) -- had to
+            # be re-derived by hand from the raw trades file to explain the Tier1 sensitivity
+            # screen's Kelly-variant anomaly (see docs/HANDOFF.md, 2026-09-15 20:40 entry).
+            "n_kelly_fallback": sim_result.get("n_kelly_fallback", 0),
+            "n_skipped_no_risk_estimate": sim_result.get("n_skipped_no_risk_estimate", 0),
         }]).to_parquet(os.path.join(_OUT_DIR, f"portfolio_{sim_label}.parquet"), index=False)
         log.info("  [capital_sim] saved -> trades_%s.parquet, portfolio_%s.parquet",
                   sim_label, sim_label)

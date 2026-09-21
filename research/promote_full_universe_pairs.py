@@ -64,6 +64,7 @@ import pandas as pd
 
 from config import Config
 from analysis import CointScanner, AnalysisPipeline
+import data_wrds
 from universe_loader import (
     align_to_common_calendar, load_full_universe,
     filter_exact_correlation_duplicates, filter_structural_pairs,
@@ -101,23 +102,12 @@ def main():
                          "direction). Any candidate pair with either leg in this list is dropped.")
     args = p.parse_args()
 
-    # Known same-company share-class pairs not caught by filter_structural_pairs' hand-curated
-    # whitelist (that whitelist currently only covers GOOGL/GOOG-style cases) NOR by the WRDS
-    # ticker<->PERMNO check (WLY/WLYB are two genuinely distinct CRSP permnos -- real, separate
-    # securities that happen to be the same company's dual share classes, not a data-source alias
-    # collision the permno check would catch). Found by direct inspection of this script's own
-    # dry-run output, 2026-08-24 -- a real, disclosed, hand-verified exclusion, not guessed.
-    _KNOWN_SHARE_CLASS_PAIRS = {frozenset(("WLY", "WLYB")), frozenset(("MKC", "PERMNO89155"))}
-
-    # Manually-verified aliases the automated WRDS bulk resolution can't establish (its ticker is
-    # itself CRSP-ambiguous -- MKC ties between permnos 52090/89155, so resolve_permnos_bulk
-    # correctly refuses to guess). Resolved instead by DIRECT price-data comparison, 2026-08-24:
-    # MKC_1D.parquet and PERMNO52090_1D.parquet are BYTE-IDENTICAL (max abs close diff = 0.0
-    # across 13,373 matching rows, 1972-12-14 -> 2025-12-31) -- MKC's own cached data IS permno
-    # 52090's data. PERMNO89155 is a genuinely DIFFERENT security (starts 2001-09-17, real price
-    # differences up to $6.18) -- consistent with McCormick's real non-voting share class history
-    # (added to _KNOWN_SHARE_CLASS_PAIRS above, not treated as a duplicate-identity alias).
-    _MANUAL_VERIFIED_ALIASES = {"PERMNO52090": "MKC"}
+    # _KNOWN_SHARE_CLASS_PAIRS / _MANUAL_VERIFIED_ALIASES moved 2026-09-13 to data_wrds.py
+    # (KNOWN_SHARE_CLASS_PAIRS / MANUAL_VERIFIED_PERMNO_ALIASES) as the single source of
+    # truth, now that research/full_universe_correlation_prefilter.py also needs them for
+    # the same upstream canonicalization (backlog item #4, docs/HANDOFF.md). See that
+    # module's docstrings for the original 2026-08-24 discovery/verification detail.
+    _KNOWN_SHARE_CLASS_PAIRS = data_wrds.KNOWN_SHARE_CLASS_PAIRS
 
     if not os.path.exists(args.source):
         print(f"Source file not found: {args.source}")
@@ -188,37 +178,24 @@ def main():
     # self-pairs, and dedupes pairs that become identical after canonicalization.
     if not args.skip_wrds_check:
         all_syms_now = sorted(set(s for d in candidates_raw_dicts for s in (d["symbol_a"], d["symbol_b"])))
-        plain_syms = [s for s in all_syms_now if not s.startswith("PERMNO") and not s.startswith("GVKEY")]
-        permno_syms = {s for s in all_syms_now if s.startswith("PERMNO")}
-        canon = {}  # symbol -> canonical symbol (itself, unless it's a PERMNO alias of a real ticker)
+        # Canonicalization logic itself moved 2026-09-13 to data_wrds.resolve_symbol_
+        # canonicalization (backlog item #4) -- this script now calls the SAME shared
+        # function research/full_universe_correlation_prefilter.py uses upstream,
+        # rather than an independently-maintained copy.
         if args.alias_file:
-            # Precomputed on a machine WITH working WRDS credentials (data_wrds.resolve_permnos_bulk
-            # needs a live WRDS connection; a machine with only cached price data, no WRDS auth,
-            # can't run that query itself -- see this script's Development.md entry, 2026-08-24).
             print(f"WRDS ticker<->PERMNO check: using precomputed alias file {args.alias_file} "
                   f"(no live WRDS connection needed on this machine)")
-            with open(args.alias_file) as f:
-                precomputed = json.load(f)
-            for alias, ticker in precomputed.items():
-                if alias in permno_syms:
-                    canon[alias] = ticker
-                    print(f"  {alias} == {ticker} (same underlying security, from precomputed alias file)")
+            canon = data_wrds.resolve_symbol_canonicalization(
+                db=None, symbols=all_syms_now, alias_file=args.alias_file
+            )
         else:
-            from data_wrds import _connect, resolve_permnos_bulk
+            plain_syms = [s for s in all_syms_now if not s.startswith("PERMNO") and not s.startswith("GVKEY")]
             print(f"WRDS ticker<->PERMNO check: resolving {len(plain_syms)} plain tickers...")
-            db = _connect()
-            resolved = resolve_permnos_bulk(db, plain_syms)
+            db = data_wrds._connect()
+            canon = data_wrds.resolve_symbol_canonicalization(db=db, symbols=all_syms_now)
             db.close()
-            for ticker, permno in resolved.items():
-                alias = f"PERMNO{permno}"
-                if alias in permno_syms:
-                    canon[alias] = ticker
-                    print(f"  {alias} == {ticker} (same underlying security)")
-        for alias, ticker in _MANUAL_VERIFIED_ALIASES.items():
-            if alias in permno_syms and alias not in canon:
-                canon[alias] = ticker
-                print(f"  {alias} == {ticker} (same underlying security, manually verified "
-                      f"via direct price-data comparison -- WRDS ticker resolution was ambiguous)")
+        for alias, ticker in canon.items():
+            print(f"  {alias} == {ticker} (same underlying security)")
 
         def _canon(sym):
             return canon.get(sym, sym)
@@ -335,6 +312,26 @@ def main():
     if not confirmed_dicts:
         print("No pairs survived re-confirmation. Nothing to promote -- the original candidate "
               "list may have used a different fdr_alpha/max_lag than this run's defaults.")
+        return
+
+    # Minimum-overlap filter, added 2026-09-10 (same fix as research/full_universe_
+    # eg_confirmation.py, same day): CointScanner.scan() -> _eg_worker only enforces
+    # a hardcoded 60-bar floor, not this project's own declared Config.STATS.
+    # MIN_OVERLAP_BY_TF standard. This script promotes pairs directly into
+    # production, making this the single most consequential of the 6 CointScanner.
+    # scan() call sites missing this check.
+    _min_overlap = Config.STATS.MIN_OVERLAP_BY_TF.get(args.tf, 252)
+    _n_before_overlap = len(confirmed_dicts)
+    _thin = [c for c in confirmed_dicts if c.get("n_overlap", 0) < _min_overlap]
+    confirmed_dicts = [c for c in confirmed_dicts if c.get("n_overlap", 0) >= _min_overlap]
+    if _thin:
+        print(f"Overlap filter (tf={args.tf}, min={_min_overlap} days): dropped "
+              f"{len(_thin)}/{_n_before_overlap} pairs below this project's own "
+              f"MIN_OVERLAP_BY_TF standard: " +
+              ", ".join(f"{c['symbol_a']}/{c['symbol_b']} (n_overlap={c.get('n_overlap')})"
+                        for c in _thin))
+    if not confirmed_dicts:
+        print("All pairs dropped by the overlap filter. Nothing to promote.")
         return
 
     confirmed_dicts = CointScanner.rolling_fraction(

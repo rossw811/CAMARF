@@ -103,6 +103,35 @@ def gpu_has_headroom(min_free_gb: float = _DEFAULT_MIN_VRAM_FREE_GB) -> bool:
     return gpu_free_vram_gb() >= min_free_gb
 
 
+# 2026-09-21: real benchmark (debug/_bench_gpu_vs_cpu_correlation.py, CachyOS RTX 4080,
+# 8 sizes from N=500 to N=44,000, verified correct at every N<=8000 via np.allclose against
+# the CPU result, matching to atol=1e-6): GPU is SLOWER at N=500 (0.01x) but consistently
+# 2.0-2.8x FASTER at every N>=1000 tested, including full-universe scale (N=44,000: CPU
+# 395.9s vs GPU 187.3s). This supersedes the earlier, more conservative "N~2,000-4,000"
+# guidance in chunked_pearson_matrix's own docstring (an older, less granular benchmark) --
+# the real crossover is closer to N=1,000. Threshold set to 1500 anyway, not the observed
+# 1000 crossover exactly -- a small safety margin given kernel-launch/transfer overhead is
+# the failure mode at the boundary and real-world block sizes (chunked_pearson_matrix's own
+# default batch_size=1500) interact with it; not claimed as the precise optimum, re-tune
+# from a fresh benchmark if this ever matters enough to chase further.
+_AUTO_GPU_THRESHOLD_N = 1500
+
+
+def should_use_gpu(n: int, min_free_gb: float = _DEFAULT_MIN_VRAM_FREE_GB) -> bool:
+    """Single source of truth for 'is GPU worth it AND safe right now for an (n,n)-scale
+    job' -- callers pass this straight into use_gpu= instead of hardcoding True/False or
+    re-deriving the same three checks themselves. False whenever ANY of: n below the real,
+    benchmarked crossover; no CUDA device; insufficient free VRAM right now (checked fresh
+    here, not cached -- see gpu_has_headroom's own docstring on why that matters on a
+    shared GPU). Never raises -- a machine with no GPU at all (the Windows dev box) just
+    gets False unconditionally, zero cost, same fail-safe convention as get_array_module."""
+    if n < _AUTO_GPU_THRESHOLD_N:
+        return False
+    if not gpu_available():
+        return False
+    return gpu_has_headroom(min_free_gb)
+
+
 def get_array_module(use_gpu: bool = False, min_free_gb: float = _DEFAULT_MIN_VRAM_FREE_GB):
     """Returns numpy or cupy -- both expose a (near-)identical ndarray API,
     the standard "xp" idiom this module and its callers use throughout.

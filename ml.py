@@ -83,6 +83,17 @@ class EntryEvent:
     # across every pair regardless of which leg is labeled which.
     te_directional_diff: float
     te_significance: float
+    # 2026-09-15: squeeze/momentum, wired in per Ross's direct instruction
+    # after noticing backtest.py's entry criteria had no volatility-squeeze
+    # or price-momentum confirmation (see research/squeeze_momentum_features.py
+    # and backtest.py's squeeze_gate/momentum_gate/squeeze_momentum_gate STORM
+    # variants, same 2026-09-15 change). squeeze_min = min(squeeze_indicator_a,
+    # squeeze_indicator_b) -- the tighter leg's BBand/Keltner width ratio,
+    # <1.0 = squeeze; lower means both legs (or the tighter of the two) more
+    # compressed. rsi_diff_velocity = the same cross-leg RSI-divergence 5-bar
+    # velocity backtest.py's momentum_gate reads.
+    squeeze_min: float
+    rsi_diff_velocity: float
 
 
 @dataclass
@@ -250,6 +261,16 @@ def _build_examples_for_pair(
     _has_pit_hlslope = "half_life_trend_slope_t" in series.columns
     _has_pit_meanrev = "mean_reversion_speed_t" in series.columns
     _has_pit_hurst = "hurst_rs_t" in series.columns
+    # 2026-09-15: squeeze_indicator_a_t/b_t and rsi_diff_velocity_t, added to
+    # spread_series by research/squeeze_momentum_features.py -- same
+    # _has_pit-style presence check as every other causal per-bar feature
+    # above. No scalar-fallback pair_row equivalent exists for these (unlike
+    # coint_fraction_rolling etc., which have a whole-history scalar in
+    # pairs.parquet) -- older/un-augmented spread_series files simply leave
+    # these two ml.py features NaN for that pair's examples, same as transfer
+    # entropy's own "not always available" convention.
+    _has_pit_squeeze = "squeeze_indicator_a_t" in series.columns and "squeeze_indicator_b_t" in series.columns
+    _has_pit_rsi_diff_vel = "rsi_diff_velocity_t" in series.columns
 
     events: List[EntryEvent] = []
     n_censored = 0
@@ -318,6 +339,18 @@ def _build_examples_for_pair(
         # own scalar fallback above.
         _te_diff_feat = pair_row.get("te_directional_diff", np.nan)
         _te_sig_feat = pair_row.get("te_significance", np.nan)
+        # Squeeze/momentum, same feat_pos-staled convention as every other
+        # feature above -- what the model sees at "decision time," not the
+        # true entry bar when feature_lag != 0.
+        _squeeze_min_feat = np.nan
+        if _has_pit_squeeze:
+            _sq_a = series["squeeze_indicator_a_t"].iloc[feat_pos]
+            _sq_b = series["squeeze_indicator_b_t"].iloc[feat_pos]
+            if np.isfinite(_sq_a) and np.isfinite(_sq_b):
+                _squeeze_min_feat = min(_sq_a, _sq_b)
+        _rsi_diff_vel_feat = (
+            series["rsi_diff_velocity_t"].iloc[feat_pos] if _has_pit_rsi_diff_vel else np.nan
+        )
 
         events.append(
             EntryEvent(
@@ -339,6 +372,8 @@ def _build_examples_for_pair(
                 hedge_ratio_drift=float(hedge_drift),
                 te_directional_diff=float(_te_diff_feat),
                 te_significance=float(_te_sig_feat),
+                squeeze_min=float(_squeeze_min_feat),
+                rsi_diff_velocity=float(_rsi_diff_vel_feat),
             )
         )
     perm_robust = pair_row.get("permutation_robust", None)
@@ -373,6 +408,7 @@ _TF_SAFE = {
     "1M": "1mo",
     "3M": "3mo",
     "6M": "6mo",
+    "1Y": "1yr",
 }
 
 
@@ -657,7 +693,38 @@ _FEATURE_COLS = [
     "hedge_ratio_drift",
     "te_directional_diff",
     "te_significance",
+    "squeeze_min",
+    "rsi_diff_velocity",
 ]
+
+
+def _persist_model_with_history(payload: dict, model_dir: str) -> Tuple[str, str]:
+    """Saves `payload` to the canonical `model_dir/model_stage1.pkl` (the EXACT path
+    MLConditioner._load expects -- never rename or move this) AND a separate,
+    purely-additive timestamped copy under `model_dir/history/`.
+
+    2026-09-20: every prior run silently overwrote the canonical model_stage1.pkl
+    with no way to recover an earlier model or compare feature sets/metrics across
+    runs -- had to be worked around by hand comparing printed log metrics across two
+    runs earlier tonight (20:42 vs 22:31), since neither model file itself survived
+    to compare. Canonical path/behavior is completely unchanged by this addition --
+    MLConditioner._load still finds exactly what it always found.
+
+    Returns (canonical_path, archive_path)."""
+    import pickle
+
+    os.makedirs(model_dir, exist_ok=True)
+    pkl_path = os.path.join(model_dir, "model_stage1.pkl")
+    with open(pkl_path, "wb") as f:
+        pickle.dump(payload, f)
+
+    archive_dir = os.path.join(model_dir, "history")
+    os.makedirs(archive_dir, exist_ok=True)
+    archive_path = os.path.join(archive_dir, f"model_stage1_{time.strftime('%Y%m%dT%H%M%S')}.pkl")
+    with open(archive_path, "wb") as f:
+        pickle.dump(payload, f)
+
+    return pkl_path, archive_path
 
 
 class ConformalPredictor:
@@ -843,18 +910,19 @@ def _train_and_validate(result: MLResult, summary: MLRunSummary) -> None:
             "(Config.ML.VAL_PCT too small relative to current sample size)."
         )
 
-    # Persist model for Layer 2 backtest gate (MLConditioner._load expects this path)
-    import pickle
-    _pkl_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "output", "ml", "model_stage1.pkl")
-    os.makedirs(os.path.dirname(_pkl_path), exist_ok=True)
-    with open(_pkl_path, "wb") as _f:
-        pickle.dump({
-            "model": model,
-            "label_encoder": le,
-            "feature_names": _FEATURE_COLS,
-            "classes": list(le.classes_),
-        }, _f)
+    # Persist model for Layer 2 backtest gate (MLConditioner._load expects this EXACT path --
+    # never rename or move it) plus a purely-additive timestamped historical archive alongside
+    # it -- see _persist_model_with_history's own docstring for why.
+    _model_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "output", "ml")
+    _model_payload = {
+        "model": model,
+        "label_encoder": le,
+        "feature_names": _FEATURE_COLS,
+        "classes": list(le.classes_),
+    }
+    _pkl_path, _archive_path = _persist_model_with_history(_model_payload, _model_dir)
     log.info("  Model saved → %s", _pkl_path)
+    log.info("  Historical copy archived → %s", _archive_path)
     summary.note(f"Model persisted → {_pkl_path}")
 
 

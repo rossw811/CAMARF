@@ -388,8 +388,15 @@ class BiasAuditLog:
     @classmethod
     def save(cls, path: str) -> None:
         os.makedirs(os.path.dirname(path), exist_ok=True)
-        with open(path, "w", encoding="utf-8") as f:
+        # Atomic write (temp file + os.replace), not a direct open(path, "w") --
+        # same non-atomic-write bug class found and fixed in universe_loader.py's
+        # memo cache this session (2026-09-12/13): a concurrent reader (or a second
+        # analysis.py process, e.g. two --timeframes-scoped runs overnight) could
+        # see a truncated/partial JSON file mid-write otherwise.
+        tmp_path = f"{path}.tmp.{os.getpid()}"
+        with open(tmp_path, "w", encoding="utf-8") as f:
             json.dump([asdict(e) for e in cls._entries], f, indent=2)
+        os.replace(tmp_path, path)
         log.info(f"Bias audit log saved: {len(cls._entries)} entries → {path}")
 
 
@@ -1284,7 +1291,7 @@ class UniverseFilter:
             log.info(f"  [{tf_label}] Computing {n}×{n} Pearson correlation matrix only "
                       f"(pearson_only=True)...")
             t0 = time.time()
-            pearson = UniverseFilter.correlation_matrix(returns)
+            pearson = UniverseFilter.correlation_matrix(returns, use_gpu=gpu_backend.should_use_gpu(n))
             spearman = None
             rolling_avg = None
             dcor_mat = None
@@ -1295,7 +1302,7 @@ class UniverseFilter:
                 f"(Pearson + Spearman + rolling avg)..."
             )
             t0 = time.time()
-            pearson = UniverseFilter.correlation_matrix(returns)
+            pearson = UniverseFilter.correlation_matrix(returns, use_gpu=gpu_backend.should_use_gpu(n))
             t1 = time.time()
             spearman = UniverseFilter.spearman_matrix(returns)
             t2 = time.time()
@@ -2942,10 +2949,20 @@ class SpreadModel:
         s = spread[np.isfinite(spread)]
         if s.size < 30:
             return np.nan
+        # s_lag/s_now are s.size-1 elements by construction (lagged pairing) --
+        # a second "< 30" check here was an off-by-one bug (found 2026-09-12):
+        # it silently required s.size >= 31, one more than the documented/
+        # intended floor (Config.ANALYSIS.OU_WINDOW_MIN_BARS = 30) the check
+        # above already enforces, guaranteeing NaN at exactly window=30 --
+        # the size `_adaptive_window` clips UP to for the fastest, most
+        # attractive mean-reverting pairs (hl_full < 3.75 bars). Confirmed on
+        # real data: KVUE/KMB (3m, coint_fraction_rolling=0.877, hl_full=2.75)
+        # had individually-valid AR(1) fits (phi in [0.56, 1.04] across sampled
+        # windows) silently discarded by this exact check, producing 100%
+        # NaN half_life_rolling despite 4,781 real bars and a clearly
+        # mean-reverting process.
         s_lag = s[:-1]
         s_now = s[1:]
-        if s_lag.size < 30:
-            return np.nan
         # OLS: s_now = α + φ * s_lag
         s_lag_c = s_lag - s_lag.mean()
         s_now_c = s_now - s_now.mean()
@@ -3094,6 +3111,23 @@ class SpreadModel:
         z_real = SpreadModel.rolling_zscore(spread_real, mean_window)
         z_exp_real = SpreadModel.expanding_zscore(spread_real)
         hl_roll_real = SpreadModel.rolling_half_life(spread_real, window=mean_window)
+
+        # Trip-wire (2026-09-10, item #4 of the bug-catching plan, docs/HANDOFF.md):
+        # a column that should carry real signal silently degenerating to 100% NaN
+        # is exactly the shape of the half_life_rolling bug found this session
+        # (17/40 spread_series files affected, traced to clean_mask's strict
+        # gap_flag==NONE requirement excluding FILL/NO_ACTIVITY bars GapFlag's own
+        # docstring says should be included). Fail loud here, not three pipeline
+        # stages downstream as a silent zero-trades result.
+        if len(spread_real) >= 60 and not np.any(np.isfinite(hl_roll_real)):
+            log.warning(
+                "fit_pair: half_life_rolling is 100%% NaN despite %d real bars "
+                "(clean_mask kept %d/%d bars, %.1f%% dropped) -- likely an "
+                "over-restrictive clean_mask, not a genuine data limitation; see "
+                "CLAUDE.md's 2026-09-10 Working Style entry",
+                len(spread_real), len(spread_real), n,
+                100.0 * (1 - len(spread_real) / n) if n > 0 else 0.0,
+            )
 
         z_rolling = np.full(n, np.nan, dtype=float)
         z_expanding = np.full(n, np.nan, dtype=float)
@@ -4680,7 +4714,7 @@ class ThresholdCalibrator:
         returns, symbols, _ = UniverseFilter.build_returns_matrix(aligned_data)
         if returns.size == 0:
             return {}
-        corr = UniverseFilter.correlation_matrix(returns)
+        corr = UniverseFilter.correlation_matrix(returns, use_gpu=gpu_backend.should_use_gpu(len(symbols)))
 
         # Pre-build log-price map for EG worker
         log_prices = CointScanner._build_log_price_map(aligned_data, symbols)
@@ -5593,8 +5627,19 @@ class AnalysisPipeline:
 
         gap_flag_a = df_a["gap_flag"].values if "gap_flag" in df_a else None
         gap_flag_b = df_b["gap_flag"].values if "gap_flag" in df_b else None
+        # Was `== GapFlag.NONE` on both legs -- contradicted GapFlag's own documented
+        # semantics (data.py's GapFlag docstring: FILL/NO_ACTIVITY/HALT/SPARSE should all be
+        # INCLUDED in EG/corr-family calculations, only DATA_GAP excluded), matching the
+        # already-correct convention data.py's own _gap_aware_returns/_clean_close use
+        # (`exclude_flags=(GapFlag.DATA_GAP,)`). Found real-data proof, 2026-09-12 (systematic-
+        # debugging on the disclosed half_life_rolling-NaN bug): SPY/VOO at 4h has more FILL
+        # bars (2,392) than NONE bars (1,530) -- the strict mask silently discarded the
+        # majority of real trading data, understating both the compacted sample size AND
+        # producing a materially different half-life point estimate (hl_full 40.2 vs the
+        # correct 121.5, a >3x difference) from real data being thrown away, not a genuine
+        # data limitation.
         clean_mask = (
-            (gap_flag_a == GapFlag.NONE) & (gap_flag_b == GapFlag.NONE)
+            (gap_flag_a != GapFlag.DATA_GAP) & (gap_flag_b != GapFlag.DATA_GAP)
             if gap_flag_a is not None and gap_flag_b is not None
             else None
         )
@@ -5613,6 +5658,23 @@ class AnalysisPipeline:
         hl_roll = sm["half_life_rolling_median"]
         trend_slope = sm["half_life_trend_slope"]
         theta = sm["mean_reversion_speed"]
+
+        # Sparse-data exclusion (Ross's decision, 2026-09-12: "if rolling stats can't
+        # compute on a pair, it's not tradeable in practice" -- exclude outright rather
+        # than making rolling statistics adaptive). Root cause traced in a prior session
+        # (Development.md, GVKEY101930_01W/GVKEY355506_01W): a pair can pass EG's
+        # one-time full-sample test (which tolerates scattered real data fine, via
+        # longest_gap_respecting_segment) while having no single stretch of CONTIGUOUS
+        # real data long enough for any rolling window to produce output at all --
+        # `half_life_rolling_median` is NaN precisely when fit_pair's own internal
+        # rolling half-life series had zero finite values (see SpreadModel.fit_pair's
+        # trip-wire, same condition). Checked here, not deeper in the pipeline, so a
+        # pair this unusable is excluded before wasting Hurst/decay/eigenportfolio
+        # computation on it, and before it can ever reach a "confirmed" set anywhere
+        # downstream (every caller of _build_pair_result already treats None as
+        # exclude -- the same mechanism as the df_a/df_b-missing check above).
+        if not np.isfinite(hl_roll):
+            return None
 
         # Decay tests + Hurst exponent — masked to the SAME real-bars-only
         # positions SpreadModel.fit_pair used internally for its own rolling
@@ -5954,6 +6016,32 @@ class AnalysisPipeline:
             combined = combined[~combined.index.duplicated(keep="last")]
             return combined.sort_index()
 
+        def _load_main_close(symbol: str, tf: str) -> Optional[pd.DataFrame]:
+            """
+            WRDS-then-yfinance-cache fallback for this function's own "main"
+            price series, matching the pattern already established and
+            verified in options.py::load_price_series() and research/
+            aligned_pair_loader.py (2026-09-08). Added 2026-09-10: this
+            function's own DataStore.load() call was the same yfinance-cache-
+            only bug class as those two, just not yet fixed here -- confirmed
+            real via a live IBKR-supplement file count (539 files, including
+            1D pairs, not intraday-only as first assumed). WRDS-only symbols
+            (PERMNO<n>/GVKEY<n>) were silently dropped from this specific
+            deep-history re-test regardless of a real IBKR supplement existing
+            for them, no error, just a smaller pairs_to_test list than the
+            data actually supported.
+            """
+            wrds_path = os.path.join(Config.DATA.CACHE_DIR, "wrds", f"{symbol}_{tf}.parquet")
+            if os.path.exists(wrds_path):
+                wdf = pd.read_parquet(wrds_path)
+                col = "close_total_return" if "close_total_return" in wdf.columns else (
+                    "close" if "close" in wdf.columns else None)
+                if col:
+                    out = wdf[[col]].rename(columns={col: "close"}).dropna()
+                    if len(out) > 0:
+                        return out
+            return DataStore.load(symbol, tf)
+
         # Pass 1 (cheap, no process pool): figure out which pairs actually
         # have usable deep data and build their merged close-price series.
         deep_aligned: Dict[str, pd.DataFrame] = {}
@@ -5965,8 +6053,8 @@ class AnalysisPipeline:
             sup_b = load_supplement(p.symbol_b, tf_label)
             if sup_a is None and sup_b is None:
                 continue
-            main_a = DataStore.load(p.symbol_a, tf_label)
-            main_b = DataStore.load(p.symbol_b, tf_label)
+            main_a = _load_main_close(p.symbol_a, tf_label)
+            main_b = _load_main_close(p.symbol_b, tf_label)
             if main_a is None or main_b is None:
                 continue
 
@@ -6281,8 +6369,21 @@ class AnalysisPipeline:
             _manifest = {
                 _sym: _entry for _sym, _entry in _manifest.items() if _entry["tfs"]
             }
-            with open(_manifest_path, "w") as _f:
+            # Atomic write (temp file + os.replace) -- same non-atomic-write bug
+            # class found and fixed in universe_loader.py's memo cache this
+            # session, prevents a concurrent reader from seeing a truncated file.
+            # Does NOT fix the underlying read-modify-write race itself (two
+            # concurrent writers, e.g. two --timeframes-scoped analysis.py runs,
+            # can still each read the same starting state and the later write
+            # wins, silently dropping the other's TF update) -- that needs real
+            # file locking, a bigger design decision, not attempted here.
+            # Disclosed, not silently "fully fixed": don't run two analysis.py
+            # processes against the same confirmed_pairs_manifest.json path
+            # concurrently until that's addressed.
+            _tmp_manifest_path = f"{_manifest_path}.tmp.{os.getpid()}"
+            with open(_tmp_manifest_path, "w") as _f:
                 json.dump(_manifest, _f, indent=2)
+            os.replace(_tmp_manifest_path, _manifest_path)
         except Exception as _e:
             log.debug(f"Manifest write failed: {_e}")
 

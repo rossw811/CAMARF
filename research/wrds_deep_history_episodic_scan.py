@@ -45,11 +45,17 @@ docstring), disclosed rather than silently mixed with the US total-return
 series as if equivalent.
 
 Scope, stated honestly: only symbols with a fetched output/cache/wrds/
-*_1D.parquet file are included -- this is currently the ~1500 US equity/ETF
-universe (data_wrds.py's bulk fetch) plus whichever Compustat Global symbols
-have been manually resolved so far (7267.T, 8058.T only -- the rest of the
+*_1D.parquet file are included. This docstring's own scope claim went stale
+without being caught (fixed 2026-09-10, found via the yfinance-era-rules
+audit): it said "~1500 US equity/ETF universe," a pre-WRDS-bulk-fetch figure,
+when the real current scope has been ~43,662 symbols (of the ~44,700-symbol
+merged universe) since the full-universe bulk fetch landed. Kept here as a
+disclosed correction, not silently overwritten -- the ~1500 figure was
+genuinely accurate at an earlier point in this project's history, it just
+stopped being updated when the universe grew. Compustat Global international
+symbols manually resolved so far: 7267.T, 8058.T only -- the rest of the
 international universe needs the same one-by-one name+currency resolution,
-not yet done). NOT a claim of full-universe coverage.
+not yet done. NOT a claim of full-universe coverage.
 
 Verified against synthetic ground truth first:
 debug/_verify_wrds_deep_history_episodic_scan.py.

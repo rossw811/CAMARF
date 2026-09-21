@@ -145,13 +145,26 @@ _IBKR_FILE_SUFFIX = "_deep"
 # Sources with no entry for a given canonical label simply contribute
 # nothing for that timeframe (e.g. Binance has no "1D" entry -- it uses "1d").
 _YF_SUFFIX = {"1D": "1day", "1h": "1hr"}
-_WRDS_SUFFIX = {"1D": "1D"}  # WRDS caches (Thread K Part 1 + Thread I) are daily-only as fetched
+_WRDS_SUFFIX = {"1D": "1D", "7D": "7D", "3M": "3M", "6M": "6M", "1M": "1M", "1Y": "1Y"}
+# WRDS's raw cache (output/cache/wrds/, data_wrds.py) uses the canonical label itself as
+# the on-disk suffix for every timeframe it writes (1D native, 1M native monthly, 7D/3M/
+# 6M/1Y derived via resample_daily_to) -- unlike DataStore's merged cache, no Windows
+# case-collision renaming is needed here since WRDS never writes a "1m"-labeled file that
+# would collide with "1M" on a case-insensitive filesystem.
 _BINANCE_SUFFIX = {"1D": "1d", "1h": "1h"}
 # IBKR's real remaining value is intraday granularity (2026-08-14, Ross: "i'm fine with using
 # IBKR for the intraday data") -- confirmed directly against the real cache (539 files, 92
-# symbols): 1min/5min/15min/30min/1hr/4hr/1day all exist.
-_IBKR_SUFFIX = {"1D": "1day", "1h": "1hr", "4h": "4hr", "30min": "30min",
-                "15min": "15min", "5min": "5min", "1min": "1min"}
+# symbols): 1min/5min/15min/30min/1hr/4hr/1day all exist (2min/3min genuinely don't -- not a bug,
+# IBKR just never had those bar sizes fetched). Keys must be the CANONICAL Config.DATA.
+# TIMEFRAME_LABELS spellings ("1m"/"5m"/"15m"/"30m"), not IBKR's own on-disk suffix spelling
+# ("1min"/"5min"/...) -- found via a project-wide timeframe-label consistency audit, 2026-09-12:
+# the dict was keyed by the on-disk suffix itself, so `tf_label in _IBKR_SUFFIX` at every real
+# call site (which always passes a canonical label) was silently False for every minute
+# timeframe, meaning IBKR was never actually included for 1m/5m/15m/30m despite this project's
+# own standing claim that it's the intraday-depth source -- only 1D/1h/4h worked, purely because
+# those three canonical labels happen to collide with their own suffix spelling.
+_IBKR_SUFFIX = {"1D": "1day", "1h": "1hr", "4h": "4hr", "30m": "30min",
+                "15m": "15min", "5m": "5min", "1m": "1min"}
 
 # Consolidated-load memoization (added 2026-08-20, software optimization audit §6): an overnight
 # run sequence that calls load_full_universe() from multiple independent scripts back-to-back
@@ -509,8 +522,16 @@ def load_full_universe(tf_label: str = "1D", include_yfinance: bool = True,
         cache_path = _memo_cache_path(tf_label, include_yfinance, include_wrds,
                                        include_binance, include_ibkr, columns)
         if os.path.exists(cache_path):
-            with open(cache_path, "rb") as f:
-                return pickle.load(f)
+            try:
+                with open(cache_path, "rb") as f:
+                    return pickle.load(f)
+            except (EOFError, pickle.UnpicklingError) as e:
+                # Defense-in-depth alongside the atomic write above: a cache file
+                # written before this fix, or corrupted by any other means, should
+                # trigger a transparent rebuild, not crash every caller that happens
+                # to read it. Falls through to the normal recompute-and-cache path.
+                print(f"WARNING: memo cache read failed ({e}) for {cache_path} -- "
+                      f"rebuilding rather than crashing")
 
     merged = {}
     if include_yfinance and tf_label in _YF_SUFFIX:
@@ -524,6 +545,19 @@ def load_full_universe(tf_label: str = "1D", include_yfinance: bool = True,
 
     if use_memo_cache:
         os.makedirs(_MEMO_CACHE_DIR, exist_ok=True)
-        with open(cache_path, "wb") as f:
+        # Atomic write (temp file + os.replace), not a direct pickle.dump onto the
+        # real cache_path -- found live, 2026-09-12: two overnight scripts (research/
+        # overlap_threshold_pit_test.py and research/promote_full_universe_pairs.py)
+        # both called load_full_universe() with matching cache keys around the same
+        # time; one process's in-progress write (a plain truncate-then-write) left a
+        # partial/empty file that the other process's concurrent read caught mid-write,
+        # raising `EOFError: Ran out of input` from pickle.load. os.replace is atomic
+        # on both POSIX and Windows (same filesystem) -- a concurrent reader now always
+        # sees either the complete old file or the complete new one, never a partial
+        # write. tmp filename includes the PID so two concurrent writers for the SAME
+        # cache key don't clobber each other's temp file either.
+        tmp_path = f"{cache_path}.tmp.{os.getpid()}"
+        with open(tmp_path, "wb") as f:
             pickle.dump(merged, f, protocol=pickle.HIGHEST_PROTOCOL)
+        os.replace(tmp_path, cache_path)
     return merged

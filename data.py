@@ -122,6 +122,7 @@ class DataStore:
         "1M": "1mo",  # ← was "1M"; would collide with "1m" on Windows
         "3M": "3mo",  # quarterly (derived from 1D via QS resample)
         "6M": "6mo",  # semi-annual (derived from 1D via 2QS resample)
+        "1Y": "1yr",  # annual, WRDS/Compustat-only (derived from 1D via YS resample)
     }
 
     @staticmethod

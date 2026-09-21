@@ -77,6 +77,7 @@ def main():
         _write(scratch_wrds, "VERIFYWRDS_1D.parquet")
         _write(scratch_binance, "VERIFYBIN_1d.parquet")
         _write(scratch_ibkr, "VERIFYIBKR_1day_deep.parquet")  # real IBKR "_deep" convention
+        _write(scratch_ibkr, "VERIFYIBKRMIN_5min_deep.parquet")  # minute-TF "_deep" file
 
         # --- Checks 1-3: each source's symbol is loaded ---
         merged = load_full_universe("1D")
@@ -105,6 +106,31 @@ def main():
         if "VERIFYIBKR" in ibkr_off:
             failures.append("Check 5b: include_ibkr=False should exclude the IBKR symbol, "
                              "but it was still present")
+
+        # --- Check 6 (2026-09-12 timeframe-label audit regression): _IBKR_SUFFIX must be
+        # keyed by the CANONICAL Config.DATA.TIMEFRAME_LABELS spelling ("5m"), not IBKR's
+        # own on-disk suffix spelling ("5min") -- the bug this catches silently returned
+        # merged universes missing IBKR entirely for every minute timeframe, because
+        # `tf_label in _IBKR_SUFFIX` was checking a canonical "5m" against dict keys
+        # spelled "5min", always False. Only "1D"/"1h"/"4h" happened to pass before the
+        # fix, since those three canonical labels coincidentally equal their own suffix.
+        merged_5m = load_full_universe("5m")
+        if "VERIFYIBKRMIN" not in merged_5m:
+            failures.append(f"Check 6: IBKR minute-timeframe symbol VERIFYIBKRMIN not found "
+                             f"in merged universe for tf_label='5m' (default include_ibkr=True) "
+                             f"-- got keys: {list(merged_5m.keys())}")
+
+        # --- Check 7 (2026-09-12 audit): _WRDS_SUFFIX had ONLY a "1D" entry -- every
+        # OTHER WRDS-primary timeframe (7D/1M/3M/6M, all of which have real, populated
+        # cache files in output/cache/wrds/) silently loaded ZERO WRDS data via
+        # load_full_universe(), for any caller passing one of those tf_labels. Found
+        # while wiring in "1Y" (which needed the same fix), not part of the original
+        # naming-inconsistency audit.
+        _write(scratch_wrds, "VERIFYWRDS7D_7D.parquet")
+        merged_7d = load_full_universe("7D")
+        if "VERIFYWRDS7D" not in merged_7d:
+            failures.append(f"Check 7: WRDS-only symbol VERIFYWRDS7D not found in merged "
+                             f"universe for tf_label='7D' -- got keys: {list(merged_7d.keys())}")
     finally:
         universe_loader._YF_CACHE_DIR, universe_loader._WRDS_CACHE_DIR, \
             universe_loader._BINANCE_CACHE_DIR, universe_loader._IBKR_CACHE_DIR = orig
@@ -120,6 +146,10 @@ def main():
     print(f"  Check 4: selective source exclusion works")
     print(f"  Check 5: IBKR symbol loaded by default (correct '_deep' filename handling), "
           f"correctly excluded with include_ibkr=False")
+    print(f"  Check 6: IBKR minute-timeframe ('5m') symbol correctly loaded via canonical "
+          f"_IBKR_SUFFIX key (2026-09-12 regression check)")
+    print(f"  Check 7: WRDS non-1D timeframe ('7D') symbol correctly loaded (2026-09-12 "
+          f"regression check -- _WRDS_SUFFIX previously had only a '1D' entry)")
 
 
 if __name__ == "__main__":

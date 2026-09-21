@@ -70,6 +70,18 @@ def main():
                     help="Must match the --lookback-years the prefilter stage was run with -- "
                          "selects both the candidate chunk directory to read and the calendar "
                          "bound applied here (added 2026-08-15 for the 3y/5y/10y comparison)")
+    p.add_argument("--no-binance", action="store_true",
+                    help="Skip loading Binance crypto data (added 2026-09-10, RAM-constrained "
+                         "retry option: this script's candidate pairs are equity/ETF at 1D, "
+                         "Binance crypto contributes nothing to them, so this trims real memory "
+                         "for no result change -- default off, off means unchanged prior "
+                         "behavior for any caller that DOES need it, e.g. a future crypto-"
+                         "inclusive candidate list)")
+    p.add_argument("--no-ibkr", action="store_true",
+                    help="Skip loading IBKR's ~92-symbol confirmed-pair supplement (added "
+                         "2026-09-10, same RAM-constrained retry rationale as --no-binance -- "
+                         "IBKR's own documented scope is intraday-only, contributes nothing to "
+                         "a 1D run)")
     args = p.parse_args()
 
     # Must match full_universe_correlation_prefilter.py's own naming exactly: that script
@@ -99,7 +111,10 @@ def main():
 
     log.info(f"Loading full merged universe for tf={args.tf} (same source as the pre-filter stage)...")
     t0 = time.time()
-    aligned_data = load_full_universe(args.tf, columns=["close"])
+    aligned_data = load_full_universe(
+        args.tf, columns=["close"],
+        include_binance=not args.no_binance, include_ibkr=not args.no_ibkr,
+    )
     log.info(f"Loaded {len(aligned_data)} symbols in {time.time()-t0:.1f}s")
 
     log.info(f"Aligning all symbols to a shared calendar (lookback_years={args.lookback_years})...")
@@ -118,7 +133,36 @@ def main():
     elapsed = time.time() - t0
     log.info(f"EG/BH-FDR complete in {elapsed:.1f}s ({elapsed/60:.1f} min). "
              f"stats={stats}")
-    log.info(f"CONFIRMED: {len(confirmed)} pairs out of {len(candidate_pairs)} candidates tested")
+    log.info(f"CONFIRMED (pre-overlap-filter): {len(confirmed)} pairs out of "
+             f"{len(candidate_pairs)} candidates tested")
+
+    # Minimum-overlap filter, added 2026-09-10: CointScanner.scan() -> _eg_worker
+    # only enforces a hardcoded 60-bar floor (a data-availability guard, not a
+    # statistical-reliability standard), NOT this project's own declared
+    # Config.STATS.MIN_OVERLAP_BY_TF standard (252 real trading days for "1D",
+    # a full year) that UniverseFilter's correlation pre-filter enforces
+    # elsewhere in the pipeline. This script calls CointScanner.scan() directly,
+    # bypassing that pre-filter entirely, so nothing was enforcing the intended
+    # standard here. Found 2026-09-10: 8 of 27 confirmed 1D pairs had real
+    # overlap as low as 88-150 days -- a genuine sample-adequacy problem (a
+    # full-sample EG test on 88 days has very limited power to distinguish real
+    # cointegration from noise), not a code crash, so it produced no error to
+    # notice. Filtered here, not silently accepted as "confirmed."
+    _min_overlap = Config.STATS.MIN_OVERLAP_BY_TF.get(args.tf, 252)
+    if confirmed:
+        _n_before = len(confirmed)
+        _thin = [c for c in confirmed if c.get("n_overlap", 0) < _min_overlap]
+        confirmed = [c for c in confirmed if c.get("n_overlap", 0) >= _min_overlap]
+        if _thin:
+            log.warning(
+                f"Overlap filter (tf={args.tf}, min={_min_overlap} days): dropped "
+                f"{len(_thin)}/{_n_before} pairs with real overlap below this project's "
+                f"own MIN_OVERLAP_BY_TF standard: "
+                + ", ".join(f"{c['symbol_a']}/{c['symbol_b']} (n_overlap={c.get('n_overlap')})"
+                            for c in _thin)
+            )
+    log.info(f"CONFIRMED (after overlap filter): {len(confirmed)} pairs out of "
+             f"{len(candidate_pairs)} candidates tested")
 
     if confirmed:
         out_df = pd.DataFrame(confirmed)

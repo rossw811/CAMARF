@@ -95,6 +95,13 @@ def main():
                          "(added 2026-08-15, Ross: run the screen at 3y and 5y too for comparison)")
     p.add_argument("--limit", type=int, default=None,
                     help="Restrict to the first N symbols (alphabetical) -- for timing samples")
+    p.add_argument("--skip-wrds-check", action="store_true",
+                    help="Skip the WRDS ticker<->PERMNO self-pair/alias-duplicate dedup below "
+                         "-- not recommended, candidate pairs may include a security "
+                         "cointegrated with its own PERMNO alias.")
+    p.add_argument("--alias-file", default=None,
+                    help="Precomputed symbol-canonicalization JSON (data_wrds.resolve_symbol_"
+                         "canonicalization's own format) -- for a machine with no live WRDS auth.")
     args = p.parse_args()
 
     from config import Config
@@ -123,6 +130,47 @@ def main():
         symbols_subset = sorted(aligned_data.keys())[: args.limit]
         aligned_data = {s: aligned_data[s] for s in symbols_subset}
         log.info(f"--limit {args.limit}: restricted to {len(aligned_data)} symbols")
+
+    # WRDS ticker<->PERMNO self-pair/alias-duplicate dedup, pushed UPSTREAM here 2026-09-13
+    # (backlog item #4, docs/HANDOFF.md; Ross-approved) -- previously only applied at
+    # promotion time (research/promote_full_universe_pairs.py), on an already-small
+    # (dozens-of-pairs) candidate set. A PERMNO<n>-labeled symbol in the merged universe
+    # can be a literal alias of an already-present plain ticker (e.g. VRT itself IS
+    # permno 17987, so a "VRT/PERMNO17987" pair would be a security cointegrated with
+    # itself). Measured directly at full scale before wiring this in (2026-09-13): of
+    # 6,844 PERMNO-labeled symbols in the ~43,883-symbol universe, 2,210 (32%) are
+    # literal aliases of an already-present plain ticker -- real contamination, not a
+    # theoretical edge case, that would otherwise silently inflate the BH-FDR pool and
+    # waste EG compute on degenerate self-pairs across ~1M candidates. Deduping the
+    # SYMBOL set here (not just filtering candidate pairs after the fact) also directly
+    # shrinks the correlation stage's own O(N^2)-ish cost, not just the identity-
+    # correctness issue. Uses data_wrds.resolve_symbol_canonicalization, the SAME shared
+    # function research/promote_full_universe_pairs.py now calls too (was two
+    # independently-maintained copies before today).
+    if not args.skip_wrds_check:
+        import data_wrds
+        all_syms = list(aligned_data.keys())
+        log.info(f"WRDS ticker<->PERMNO canonicalization check on {len(all_syms)} symbols...")
+        t0 = time.time()
+        if args.alias_file:
+            canon = data_wrds.resolve_symbol_canonicalization(
+                db=None, symbols=all_syms, alias_file=args.alias_file
+            )
+        else:
+            db = data_wrds._connect()
+            canon = data_wrds.resolve_symbol_canonicalization(db=db, symbols=all_syms)
+            db.close()
+        if canon:
+            before_n = len(aligned_data)
+            aligned_data = {s: df for s, df in aligned_data.items() if s not in canon}
+            log.info(f"WRDS canonicalization: dropped {len(canon)} PERMNO-alias symbols "
+                     f"(each the same underlying security as an already-present plain ticker), "
+                     f"{before_n} -> {len(aligned_data)} symbols, in {time.time()-t0:.1f}s")
+        else:
+            log.info(f"WRDS canonicalization: no alias duplicates found ({time.time()-t0:.1f}s)")
+    else:
+        log.warning("WRDS canonicalization SKIPPED (--skip-wrds-check) -- candidate pairs may "
+                     "include self-pairs/alias-duplicates. Not recommended.")
 
     asset_class_map = {s: _asset_class_for(s, "") for s in aligned_data}
 

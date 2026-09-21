@@ -116,6 +116,33 @@ def main():
             print(f"FAIL: expected 2 distinct cache files after signature change, found {len(cache_files_after)}")
             failed += 1
 
+        # --- Test 5 (2026-09-12, real concurrency bug found live): a corrupted/truncated
+        # cache file (exactly what a concurrent writer's non-atomic write used to leave
+        # behind) must trigger a transparent rebuild, not crash the caller.
+        corrupt_cache_files = [f for f in os.listdir(memo_dir) if f.endswith(".pkl")]
+        corrupt_path = os.path.join(memo_dir, corrupt_cache_files[0])
+        with open(corrupt_path, "wb") as f:
+            f.write(b"")  # truncated/empty -- exactly what pickle.load raised EOFError on
+        result5 = universe_loader.load_full_universe(
+            tf_label="1D", include_wrds=False, include_binance=False, include_ibkr=False,
+            use_memo_cache=True)
+        if set(result5.keys()) >= {"AAA", "BBB"}:
+            print("PASS: corrupted cache file triggered a rebuild instead of crashing")
+            passed += 1
+        else:
+            print(f"FAIL: corrupted cache recovery returned {set(result5.keys())}")
+            failed += 1
+
+        # --- Test 6: after a normal write, no leftover .tmp.<pid> file remains (the atomic
+        # write's temp file must always be cleaned up by os.replace, never left dangling) ---
+        leftover_tmp = [f for f in os.listdir(memo_dir) if ".tmp." in f]
+        if not leftover_tmp:
+            print("PASS: no leftover .tmp.<pid> file after atomic write")
+            passed += 1
+        else:
+            print(f"FAIL: leftover temp file(s) found after write: {leftover_tmp}")
+            failed += 1
+
         # --- Test 4: use_memo_cache=False explicitly still bypasses the memo cache dir ---
         # (default flipped True 2026-08-23 after real production use -- this test now checks
         # the explicit opt-out still works, not the default itself)

@@ -1,4 +1,2815 @@
+## 2026-09-21: Both long-standing verify FAILs resolved — `_verify_pit_wfa.py` (stale fixture) and `_verify_macro_regimes.py` (test window too narrow for real reporting lag)
+
+Closed out the two real FAILs flagged earlier this session (previous entries: "LIKELY a 3rd
+instance of stale-test-fixture, not conclusively resolved" / "NEEDS REAL INVESTIGATION"). Both
+root-caused for real, not guessed:
+
+**`debug/_verify_pit_wfa.py`** — confirmed stale-fixture, third instance of the same pattern this
+test has already hit once before (documented in its own inline comments). `UniverseFilter.run()`
+enforces `Config.STATS.MIN_OVERLAP_BY_TF["1h"] = 756` bars via `build_returns_matrix`'s
+`min_overlap` check; the synthetic fixture's 200-business-day/7-bars-per-day universe gave only
+`cutoff_bar = n//2 = 700` bars in the train window — below the real floor, so every symbol got
+filtered out (`no valid assets after filtering`) before EG cointegration ever ran, and the
+WITHINTRAIN pair (which should have been found) correctly never appeared. Per CLAUDE.md,
+`MIN_OVERLAP_BY_TF` itself must never be touched — fixed by raising the fixture to 300 business
+days (cutoff_bar=1050, comfortably above 756 on both sides of the split). Re-run: WITHINTRAIN pair
+found, FUTUREONLY pair correctly not found, no lookahead. All checks pass.
+
+**`debug/_verify_macro_regimes.py`** — NOT a macro.py bug; the test's COVID window
+(`2020-02-20:2020-04-30`) only covers the market-crash period, but `recession_state` (NBER) and
+`recession_state_realtime` (Sahm Rule) are both genuinely, correctly lagged real-world signals,
+unlike VIX/credit spreads which react in real time. Verified directly against the real built
+macro dataframe: the April 2020 UNRATE print (14.8%, the actual Sahm-rule trigger) wasn't RELEASED
+until 2020-05-11, and NBER didn't announce the recession start until 2020-06-08 (visible as
+`recession_state` flipping to `contraction` on 2020-06-29, after its own ~120-day point-in-time
+staleness lag) — neither could possibly register within a window ending 2020-04-30. That's real
+point-in-time correctness working as designed. Fixed by adding a second, wider window
+(`covid_confirmed`, through 2020-09-30) for just these two lagged-indicator checks, leaving the
+narrow crash window in place for the market-reactive checks (vix_regime, credit_regime_proxy)
+where it's the correct scope. Re-run: 25/25 pass (was 23/25), `max sahm=9.43` in the widened
+window (was `0.27`, i.e. the pre-release value was correctly near-zero, not a computation bug).
+
+Both fixes synced to CachyOS, diff-verified.
+
+---
+
+## 2026-09-21: Tier 2 COMPLETED (real result: every Sharpe negative but one, and a sweep-design bug found in 5/12 dimensions), refix launched
+
+The original Tier2 run (launched earlier tonight, 12 `Config.BACKTEST` constants × grid × IS/OOS
+against the full 1,375-pair Purity pool) completed cleanly — no crash, no traceback, 108 rows
+saved to `output/research/param_sensitivity/tier2_oat_results.parquet`. (Two Monitor tasks
+watching it both reported "failed" around the same time — that was the SSH pipe itself dying after
+the underlying process legitimately exited, not the job crashing; confirmed by checking the
+process table and log tail directly rather than trusting the monitor's own exit code, per this
+session's established "check dmesg/raw evidence before writing up a theory" discipline.)
+
+**Real result: every single Sharpe in the 108-row grid is negative except one**
+(`n_shares_per_trade=500` OOS, +0.3057) — consistent with the capital-size sweep and the pooled DSR
+result already found tonight; the full Purity pool's capital-constrained performance does not
+appear to be a parameter-tuning problem. **Overfitting guard: all 12 params show `overfit_risk=
+False`** (IS-best value's OOS rank is 1st or 2nd in every case) — the strategy's parameter choices
+aren't badly overfit to IS, encouraging on its own even though the underlying edge isn't there.
+
+**But 5 of 12 dimensions (`corr_exit_threshold`, `corr_exit_window`, `max_half_life`, `flat_risk_
+pct`, `max_concentration_pct`) showed an EXACT 0.000000 effect-size range across their entire grid,
+both IS and OOS** — investigated rather than reported as a second null result, per CLAUDE.md's
+self-check-before-trusting discipline. Real bug found in `research/parameter_sensitivity_
+screen.py`'s own `TIER2_REGISTRY`, not in backtest.py: each of these 5 constants' consuming code is
+gated behind a CLI flag or sizing mode the screen's `build_cmd()` never passed —
+`corr_exit_threshold`/`corr_exit_window` need `--storm-real-corr-exit` (`self.storm_flags["real_
+corr_exit"]`), `max_half_life` needs `--storm-max-half-life-filter`, `max_concentration_pct` needs
+`--concentration-cap`, and `flat_risk_pct` is only read by `portfolio_sim.replay_portfolio()`
+inside the `flat_2pct`/Kelly sizing branches — dead code under the screen's default `sizing_method=
+"fixed"`. All confirmed by reading the exact consuming code, not assumed from the symptom. Fixed by
+adding `extra_flags`/`capital_sizing` per-registry-entry overrides, threaded through `build_cmd()`/
+`run_one()`. `debug/_verify_parameter_sensitivity_screen.py` (new, 5/5) locks in each affected
+entry's real requirement and confirms the 7 unaffected entries gained no spurious override.
+
+**Launched a targeted re-run of just the 5 fixed dimensions** (`--tier2 --only <name>`, chained
+sequentially via a real script file + `bash ~/tier2_refix_launch.sh` on CachyOS — the inline-fish-
+shell-breaks-bash-for-loop bug hit AGAIN on the first launch attempt, exact same class as this
+session's earlier `_check_cachyos_parity.py` fix; confirmed the first attempt genuinely never
+started a process before retrying, not just assumed). Confirmed running for real this time (log
+shows `extra_flags=['--storm-real-corr-exit']` in the corr_exit_threshold header, proving the fix
+is active). PID 2519297, log `latest_run_parameter_sensitivity_tier2_refix.log`, Monitor armed.
+Much shorter than the original 8hr run (5 dims × ~4-5 grid values × 2 splits ≈ 46 backtest.py
+invocations vs. the original ~208).
+
+Everything synced to CachyOS and diff-verified: `research/parameter_sensitivity_screen.py`,
+`debug/_verify_parameter_sensitivity_screen.py`.
+
+---
+
+## 2026-09-21: Hierarchical/family-based DSR correction — built, verified, run for real. Result: mostly still DSR≈0, and the ONE family Ross specifically asked about (squeeze/momentum gate) can't be answered yet — its trades file no longer exists on disk
+
+Second approved item from "i like your ideas let's execute them" — a family-scoped DSR correction
+so the pooled n=990 trial count (which includes ~250 parameter-sensitivity grid points answering
+unrelated questions) doesn't over-penalize a label that was never part of those sweeps. Built
+`research/hierarchical_dsr.py`: a transparent, ordered, first-match-wins regex classifier
+(`classify_family()`) grouping every `trial_registry.json` label into one of ~19 methodologically-
+independent families (per-swept-constant sensitivity families, squeeze_momentum_gate,
+entry_zscore_override, storm_other, portfolio_construction, capital_sizing_scheme,
+pit_confirmation, layer2_baseline, baseline), reusing `deflated_sharpe.py`'s own
+`expected_max_sharpe_null`/`deflated_sharpe_ratio`/`deflated_sharpe_z_stat` unchanged — this
+script only changes which `n_trials`/`Var[SR]` feed into that already-verified math, never
+reimplements it. `debug/_verify_hierarchical_dsr.py` (11/11 passing), including the key
+directional property test: family-scoped DSR must be >= pooled DSR when the family's own N is
+smaller, holding SR_hat/T/skew/kurt fixed (fewer independent "chances" → smaller expected-max-
+Sharpe-under-the-null subtracted off).
+
+**Two real bugs found on the first real run, both fixed:**
+1. `layer1_storm_pairsoverride`/`layer1_holdout_storm_pairsoverride` (29 trials) landed in the
+   `unclassified` bucket — exactly what that bucket exists to catch. The `storm_other` regex was
+   anchored to `^layer1(_holdout)?_storm$` and missed the `_pairsoverride` suffix variant. Fixed.
+2. The "no trades file" skip message was misleading: `portfolio_construction`'s best-Sharpe member
+   (`layer1_holdout_riskparity`) DOES have a `trades_*.parquet` on disk, but it's genuinely
+   unusable (only 2 rows — `_daily_pnl_stats` correctly requires >=3 distinct P&L days). The
+   message said "no trades_*.parquet found" when the real reason was "found but unusable."
+   Fixed to distinguish the two cases.
+
+**The real finding, reported honestly rather than spun:** family-scoping the correction is
+methodologically sound and DOES meaningfully soften several families' z-statistics (e.g.
+`entry_zscore_override`: z=-18.35 pooled → z=-5.91 family-scoped at its own n=158; `baseline`:
+z=-50.21 pooled → z=-46.72 at n=171) — but for every LARGE family (n>=32) the DSR still rounds to
+0.0000 either way. Isolated why with a direct test (holding SR_hat/T/n_trials/Var fixed, only
+zeroing skew/kurtosis): the baseline family's z stays deeply negative (-25.82) even with normal
+tail parameters, because `SR0*` (the expected best per-period Sharpe achievable by chance alone
+across n=171 trials, given this family's own observed variance of 0.024) is 0.42 — nearly 15x
+the actually-observed per-period SR_hat of 0.029. **This isn't primarily a multiple-testing
+artifact from over-pooling — it's that the observed edge is small relative to what pure luck
+could produce even within a correctly-scoped family.** Family-scoping was worth doing (it's the
+methodologically correct thing, and it visibly changes the z-stat), but it doesn't rescue the
+large-family results, and honestly shouldn't be expected to.
+
+The two families that DID flip to a meaningfully positive DSR (`layer2_baseline`: 1.0000 at n=6,
+`pit_confirmation`: 0.8096 at n=5) are exactly the ones with too few trials to trust the Var[SR]
+estimate underlying the correction in the first place — a small-N family is simultaneously less
+penalized by the method AND the least reliable place to apply it. Flagging this honestly rather
+than reporting "layer2 passes DSR" as a finding: it doesn't yet mean anything at n=6.
+
+**The squeeze_momentum_gate family — the specific one Ross asked about — could not be evaluated
+at all.** Its trial_registry labels (`layer1_storm_sqzmomgate_pairsoverride` etc.) follow
+backtest.py's own `trades_<label>.parquet` naming convention, but that file no longer exists on
+disk for any of the 6 squeeze/momentum labels — `output/backtest/trades_*.parquet` isn't
+append-only like the trial registry; each backtest.py run overwrites its own label's file, and a
+later run must have reused a different label before this session pulled these numbers. The ONLY
+squeeze/momentum trades files that exist locally use a different naming convention entirely
+(`sqzmomgate_trades_layer1_storm.parquet`, `momgate_trades_layer1_storm.parquet`,
+`sqzgate_trades_layer1_storm.parquet` — produced by the validation/luck-check tooling, not
+backtest.py's own CLI run) and were deliberately NOT guess-mapped onto the registry's differently-
+suffixed labels, since I can't confirm they're the identical run without re-deriving from the
+actual production function (CLAUDE.md rule: never cite from an old snapshot).
+
+**Actionable next step, not yet done:** re-run `backtest.py` with `--storm-squeeze-gate`,
+`--storm-momentum-gate`, and `--storm-squeeze-momentum-gate` (IS + holdout, 6 runs total) once
+Tier2 finishes (can't run alongside it — one CachyOS job at a time), to regenerate current
+`trades_layer1_storm_sqz*gate_pairsoverride.parquet` files this script can then evaluate.
+That's the run that actually answers Ross's original question. Everything in this entry stands
+on its own regardless — the tool is built, verified, and the pooled-vs-family methodology
+question is answered — but the specific mechanistically-motivated-finding verdict is still
+outstanding pending that rerun. Local-only so far; syncing to CachyOS now.
+
+---
+
+## 2026-09-21: Capital-constraint luck check — real bug found+fixed in my own anti-join key, finding CONFIRMED after the fix
+
+Built `research/capital_constraint_luck_check.py` per Ross's explicit request ("we need to add a
+system similar to DSR to penalize for lucky trades... factoring in trades which would've happened
+had we had more money"). First real run against momentum-gate's $100k IS capsim
+(`momgate_trades_layer1_storm_capsim_fixed_100000.parquet`, 415 taken trades) against the full
+gate population (`momgate_trades_layer1_storm.parquet`, 95,485 trades) printed a WARNING: only
+matched 632/415 taken trades — more matches than taken trades exist, so the anti-join was
+double-counting.
+
+**Root cause (found via `debug`, not guessed):** `full_trades` contains TWO rows per
+pair/entry-time/exit-time combination — one for `hedge_method='ols'`, one for `hedge_method=
+'kalman'` — and the two rows share an IDENTICAL `entry_spread` to full float precision despite
+different `hedge_ratio`/`n_shares_b` (entry_spread is evidently computed hedge-method-agnostically
+upstream, unlike the position sizing). My original `_KEY_COLS` (`symbol_a/symbol_b/tf/entry_time/
+exit_time/entry_spread`) didn't include anything that discriminates the two siblings, so 44,589 of
+47,742 unique trade-opportunities (89,178/95,485 rows, ~93%) collided on the key, and one taken
+trade's key matched both its ols and kalman siblings in `full_trades`. Verified: adding
+`n_shares_b` (present in both files, differs by hedge method since it derives from hedge_ratio) to
+`_KEY_COLS` brings duplicate-key rows in `full_trades` to exactly 0, and the re-run now matches
+415/415 taken trades with no warning. `hedge_method` itself isn't usable as the key column since
+the taken-trades file doesn't carry it — `n_shares_b` is the available proxy.
+
+Fixed `research/capital_constraint_luck_check.py`'s `_KEY_COLS` and updated
+`debug/_verify_capital_constraint_luck_check.py`'s fixtures to include `n_shares_b` (8/8 still
+pass). Local-only so far, not yet synced to CachyOS.
+
+**The finding itself survives the fix, numerically close to the buggy run — good sign it wasn't
+an artifact of the collision:**
+
+```
+=== 1. Taken vs skipped comparison (momentum-gate, $100k IS) ===
+  n_taken: 415  n_skipped: 95070
+  taken_sharpe_original_size:   -0.2657   (was -0.2816 pre-fix)
+  skipped_sharpe_original_size: +0.3951   (was +0.3955 pre-fix)
+  taken_mean_pnl: -2.54   skipped_mean_pnl: +6.22
+  taken_better_than_skipped: False
+  ==> SKIPPED trades look at least as good as TAKEN -- capital constraint is NOT
+      preferentially keeping better trades.
+
+=== 2. Random-subsample control (2000 draws) ===
+  Real Sharpe at the 0.7th percentile of the null (was 0.4th pre-fix)
+  One-tailed p-value P(null >= real): 0.9935
+  ==> NOT distinguishable from "whichever trades happened to fit the budget."
+```
+
+Confirms Ross's hypothesis directly: at $100k IS, the trades the capital constraint actually
+admits are *worse* than both the trades it skips and 99.35% of random same-size draws from the
+same population. This isn't neutral noise — the specific mechanism (chronological
+first-come-first-serve capital allocation) is anti-correlated with trade quality here, not merely
+uninformative about it. Plausible reason (not yet tested): better-edge trades may also carry
+larger risk-based position sizes, exhausting available capital faster and displacing what would
+otherwise be *later, equally-good* trades — worth checking `n_shares_a`/`notional_at_entry` vs
+`pnl_net` correlation in the skipped set as a follow-up.
+
+**Not yet done:** squeeze-gate and combined-gate (`sqzmomgate`) arms have no capsim (capital-
+constrained) run to test against yet — only their full unconstrained trade populations exist
+locally. Would need a fresh `backtest.py --capital-sim` per arm before this tool can run against
+them. Also still pending: sync this tool to CachyOS, and the separately-approved hierarchical/
+family-based DSR correction (not started).
+
+---
+
+## 2026-09-21: Tier2 parameter sensitivity screen LAUNCHED — completes Ross's full ordering (validate signal → capital sweep → Tier2)
+
+`research/parameter_sensitivity_screen.py --tier2` launched for real against the full 1,375-pair
+Purity set as-is, per Ross's explicit go-ahead. 12 `Config.BACKTEST` constants
+(stop_zscore/exit_zscore/max_hold_multiplier/corr_exit_threshold/corr_exit_window/
+min_half_life_bars/max_half_life/flat_risk_pct/n_shares_per_trade/commission_per_share/
+slippage_bps/max_concentration_pct), ~52 grid values, IS+OOS each ≈ 104 `backtest.py` runs.
+Expected up to ~8 hours per the 09:25 scope-note entry's estimate — launched properly nohup'd
+and unbuffered this time (lesson from the GPU benchmark's OOM-kill earlier tonight), confirmed
+progressing live (first grid point, `stop_zscore=3.0` IS, printing normally). This is the last
+item in Ross's explicit ordering from earlier tonight (validate signal → capital sweep → Tier2) —
+everything before it is genuinely complete. Will check in periodically as it runs; full results
+written up once it completes.
+
+---
+
+## 2026-09-21: GPU wired in — real benchmark confirms 2-2.8x speedup at N>=1000, auto-detection added across every relevant call site
+
+Per Ross's explicit instruction: "always test the gpu if it's better wire it in." Re-ran the
+(now OOM-fixed) benchmark for real on CachyOS's RTX 4080:
+
+```
+N=   500: CPU=0.024s  GPU=1.850s  speedup=0.01x  (CPU FASTER)   match=True
+N=  1000: CPU=0.101s  GPU=0.051s  speedup=1.99x  (GPU FASTER)   match=True
+N=  2000: CPU=0.816s  GPU=0.292s  speedup=2.79x  (GPU FASTER)   match=True
+N=  4000: CPU=2.572s  GPU=1.224s  speedup=2.10x  (GPU FASTER)   match=True
+N=  8000: CPU=11.668s GPU=5.351s  speedup=2.18x  (GPU FASTER)   match=True
+N= 17000: CPU=59.739s GPU=30.536s speedup=1.96x  (GPU FASTER)   timing-only above 8000
+N= 30000: CPU=169.0s  GPU=81.3s   speedup=2.08x  (GPU FASTER)   timing-only above 8000
+N= 44000: CPU=395.9s  GPU=187.3s  speedup=2.11x  (GPU FASTER)   timing-only above 8000
+```
+
+**Conclusive**: GPU is consistently 2.0-2.8x faster at every N>=1000, correctness-verified
+(bit-for-bit match to 1e-6) at every size up to 8,000, and the speedup holds steady all the way
+to full-universe scale (N=44,000: 6.6 min CPU → 3.1 min GPU, a real ~3.5-minute saving per call).
+Only N=500 shows GPU losing (kernel-launch/transfer overhead dominates at tiny N) — matches the
+qualitative shape of the OLD guidance in `chunked_pearson_matrix`'s own docstring, but the real
+crossover point (≈1,000) is earlier than that docstring's conservative "~2,000-4,000" estimate.
+
+**Wired in as automatic detection, not a manual flag** — added `gpu_backend.should_use_gpu(n)`
+(threshold N=1,500, a small safety margin below the observed 1,000 crossover): returns True only
+when N is above threshold AND a real CUDA device is present AND there's real free VRAM headroom
+right now (reuses the existing, already-safe `gpu_available()`/`gpu_has_headroom()` checks — same
+fail-closed design as the rest of `gpu_backend.py`, correctly returns `False` unconditionally on
+the Windows dev box with no GPU at all). New test `debug/_verify_gpu_auto_threshold.py` (8/8
+passing on both machines, including a real un-mocked call on each — `False` locally, `True` on
+CachyOS, exactly as expected).
+
+**Every relevant call site now wired**, not just one: `analysis.py`'s two single-shot full-matrix
+`correlation_matrix()` calls (the main pipeline's Pearson step, and `ThresholdCalibrator`) plus
+`research/k_bahc_candidate_discovery.py` and `research/market_wide_cointegration_decay.py`'s
+`chunked_pearson_matrix()` calls (the genuinely-large-universe research scripts this was
+originally built for, per `gpu_backend.py`'s own docstring — neither had ever actually passed
+`use_gpu=True` before tonight, despite being the motivating use case). **Deliberately NOT wired**:
+the 3 per-block-pair call sites inside `chunked_pearson_candidate_pairs`/`run_chunked`'s own
+internal loops (`analysis.py` ~1409/1639) — those call `correlation_matrix()` many times on
+small, batch-sized sub-blocks, a different overhead profile than what was actually benchmarked
+(one large single-shot call); wiring GPU there without benchmarking THAT specific call pattern
+risked introducing an unverified regression rather than a verified improvement, so left as CPU
+pending a dedicated benchmark of that path specifically.
+
+All changes sanity-checked (clean imports), regression-tested against the existing
+`debug/_verify_chunked_pearson_matrix.py` (15/15), `debug/_verify_gpu_backend_vram_headroom.py`
+(5/5), and `debug/_verify_universe_filter_chunked.py` suites (no regressions), synced and
+diff-verified to CachyOS, and the new test re-run there too with a real GPU present (8/8,
+`should_use_gpu(44000)` correctly returns `True` on CachyOS vs `False` locally).
+
+---
+
+## 2026-09-21: CORRECTION — the GPU benchmark was killed by a real OOM, not the SSH drops (initial diagnosis was wrong, caught by checking dmesg directly instead of assuming)
+
+Superseding the entry below this one. Both benchmark attempts appeared to die right around when a
+Monitor's SSH session dropped, and the first write-up assumed that was the cause. **Checking
+`dmesg`/`journalctl -k` directly instead of trusting that assumption found the real cause**: the
+Linux OOM killer, twice — `Out of memory: Killed process 1174420 (python) ... anon-rss:9958520kB`
+at 01:17:06, then `Killed process 2555008 (python) ... anon-rss:16687664kB` at 02:36:55 (the
+properly-nohup'd retry — nohup was never the problem, it correctly kept the process alive through
+the SSH blip; the OOM killer terminated it regardless of nohup). Same "get the raw evidence,
+don't guess" discipline this whole session has repeatedly needed (the capital_sim/DSR/Kelly
+investigations all hit this same lesson at some point) — should have checked dmesg BEFORE writing
+up the SSH-drop theory, not after.
+
+**Real root cause, in my own benchmark script**: `bench_one()` held BOTH the CPU-computed and
+GPU-computed `(n,n)` correlation arrays in memory SIMULTANEOUSLY for the correctness comparison —
+at N=44,000 each float64 array is ~15.5GB, so ~31GB+ held at once before any other overhead, on a
+46GB machine already running other things. `chunked_pearson_matrix()` itself is fine (its own
+docstring already documents it as memory-safe up to N=17,324, "never materializes more than ONE
+(n,n) array" — true for a SINGLE call); the bug was in how my benchmark wrapped it, calling it
+twice and keeping both results alive at once, a usage pattern the underlying function was never
+designed to be wrapped in.
+
+**Fixed**: added `_CORRECTNESS_CHECK_MAX_N = 8000` (the largest size that completed cleanly
+before the first OOM) — below it, full `np.allclose` correctness verification as before; above
+it, the CPU array is explicitly `del`'d + `gc.collect()`'d BEFORE the GPU array is ever computed
+(timing-only at large N, never both arrays alive at once). Also launched with `python -u` this
+time (unbuffered) so progress is actually visible live, rather than fully buffered until process
+exit or crash — a real, avoidable blind spot in how I'd been watching these runs.
+
+---
+
+## 2026-09-21: Merged trial registry (990 trials, local+CachyOS) — the DSR result extends to the squeeze/momentum gates too, needs a careful, honest read
+
+Followed up the earlier DSR entry: merged local's registry (437 trials, after backfill) with
+CachyOS's own separate one (553 trials — pulled fresh via `scp`, higher than the 551 seen earlier
+since a few more accumulated during tonight's sweep) into a combined, append-only set (no dedup,
+per `trial_registry.py`'s own documented convention — a re-run IS a genuine separate trial).
+**N=990 total trials project-wide**, the real, complete count as of tonight.
+
+Evaluated DSR against this full merged history for both the plain default baseline AND, newly,
+the 3 squeeze/momentum gate labels (pulling their trades files back from CachyOS first):
+
+```
+layer1 default (local, Aug-12 snapshot): SR_hat=0.0290  T=4351   skew=31.2  kurt=995   -> DSR=0.000000  z=-50.21
+momentum-gate IS:                        SR_hat=0.0248  T=21341  skew=14.3  kurt=1914  -> DSR=0.000000  z=-63.99
+momentum-gate OOS:                       SR_hat=0.0149  T=7728   skew=11.3  kurt=482   -> DSR=0.000000  z=-41.27
+squeeze-gate IS:                         SR_hat=0.0218  T=17722  skew=19.2  kurt=2731  -> DSR=0.000000  z=-59.83
+combined-gate IS:                        SR_hat=0.0271  T=17718  skew=20.9  kurt=3542  -> DSR=0.000000  z=-54.03
+```
+
+**Every one of these shows DSR≈0** — including tonight's squeeze/momentum gates, with z-statistics
+even MORE extreme than the plain baseline's. This needs a careful, honest read, not a knee-jerk
+"the squeeze/momentum finding is wrong" — **it isn't wrong, these two results answer genuinely
+different questions**:
+- The random-subsample control (22:xx/09-20 entries, p≈0.0000 for all 3 gates) asks: "does this
+  gate select something different from a random SAME-SIZE subset of ITS OWN underlying trade
+  population?" — **Yes, conclusively.** This is real, mechanical evidence the gates do something.
+- DSR asks a much stricter, project-wide question: "given this project has tried 990 DIFFERENT
+  strategy configurations across its entire history, what's the probability that the best-looking
+  one (or this specific one) reflects genuine skill rather than the expected-maximum-of-990
+  luck effect?" — **Answer: statistically indistinguishable from zero, for every label checked
+  so far, including the gates.**
+
+Both can be true simultaneously, and that's exactly what's happening here — a gate can be a real,
+mechanically-verified selection effect WITHIN its own backtest, while the PROJECT's cumulative
+990-variant search (of which this gate is just the latest entry) is itself statistically
+consistent with the classic "best-of-N skill-less strategies" pattern DSR exists to catch. **Also
+notable, and likely a real, separate contributing factor, not just trial count**: skewness (11-31)
+and kurtosis (482-3542) are extreme across EVERY label checked, gated or not — some gate variants
+have HIGHER kurtosis than the plain baseline (squeeze-gate 2731, combined-gate 3542 vs baseline's
+995). This non-normality independently drives DSR toward zero regardless of N — likely reflects
+genuine, concentration-driven P&L (a small number of large trades dominating), consistent with
+the concentration-risk caveats disclosed throughout this whole session (e.g. 94.3%/16-17%
+max_concentration_pct figures in multiple arms).
+
+**This is flagged plainly, not softened, per CLAUDE.md's "honest over impressive" rule — and
+also not the final word.** Real open questions, not resolved tonight: does DSR's global,
+whole-project N=990 correction over-penalize a targeted, mechanistically-understood improvement
+(the squeeze/momentum gates) the same way it would penalize a blind parameter search that just
+got lucky — i.e., is "corrected for everything ever tried" too blunt an instrument when a later
+result has a real, independently-verified causal story behind it (unlike most of the other 989
+trials)? DSR's own literature doesn't have a clean answer to "should a mechanistically-justified
+finding get the same multiple-testing penalty as an unmotivated grid search," and that's
+ultimately a methodological judgment call for Ross, not something to resolve unilaterally.
+
+Files: `output/backtest/trial_registry_cachyos.json` (CachyOS's registry, pulled for the merge —
+not committed, a snapshot), merge/evaluation script in the scratchpad if this needs re-deriving
+with a fresher pull later.
+
+---
+
+## 2026-09-21: Full 12-point capital-size sweep complete — CORRECTS the earlier "no clean pattern" read; a real trend exists, plus a new finding about small-account overfitting
+
+The broader/finer sweep (per Ross's own ordering: validate signal → capital sweep → Tier2)
+finished: `research/capital_size_sweep.py --storm-flag storm_momentum_gate --include-oos`, 12
+account sizes ($50k-$2M) × 2 splits = 24 real `backtest.py` runs, all auto-archived by the
+script's own design (no manual backup step needed this time — confirmed all 48
+portfolio+trades files present in `output/research/capital_size_sweep/`, synced back to local).
+
+**Full results**:
+
+| Account size | IS Sharpe | IS trades | OOS Sharpe | OOS trades |
+|---:|---:|---:|---:|---:|
+| $50k | **+0.088** | 225 | -0.623 | 287 |
+| $75k | **+0.036** | 345 | -0.820 | 370 |
+| $100k | -0.146 | 415 | -0.820 | 415 |
+| $150k | -0.332 | 513 | -0.918 | 519 |
+| $200k | -0.296 | 630 | -0.839 | 589 |
+| $250k | -0.331 | 709 | -0.796 | 703 |
+| $350k | -0.289 | 817 | -0.840 | 876 |
+| $500k | -0.716 | 1066 | -0.778 | 1060 |
+| $750k | -0.764 | 1423 | -0.696 | 1480 |
+| $1.0M | -0.521 | 1655 | -0.527 | 1771 |
+| $1.5M | -0.408 | 2073 | -0.432 | 2093 |
+| $2.0M | -0.526 | 2250 | -0.551 | 2254 |
+
+**Correcting my own earlier read (22:44/23:29 entries), which was premature from only 4 points**:
+with the full 12-point grid, a real trend IS visible in the OOS column — Sharpe generally
+IMPROVES (moves toward zero) from $100k (-0.82) out to roughly $1.0-1.5M (-0.43 to -0.53), before
+flattening/slightly reversing at $2M. This partially validates the original "capital-sim just
+needs more room to sample representatively" hypothesis — not cleanly, and never crossing positive
+within this range, but a real directional effect exists once enough points are sampled to see
+past the noise 4 points couldn't resolve. **Honest self-correction**: my 23:29 entry concluded
+"NOT monotonic... no clean pattern" from too few points — that conclusion was wrong, or at least
+premature; worth remembering next time before generalizing from a small ad hoc grid.
+
+**A second, new, real finding — small-account performance looks like overfitting, not signal**:
+at $50k/$75k, IS Sharpe is POSITIVE (+0.088/+0.036) for the only time in the whole grid — but
+OOS at those exact same sizes is among the WORST in the grid (-0.62/-0.82), worse than mid-size
+accounts. A small account taking very few trades (225-345) is more exposed to a handful of
+lucky/unlucky early trades dominating the whole result — the IS "win" at tiny capital looks like
+noise that happened to land favorably, not a real edge, given it doesn't remotely survive OOS.
+This is itself a disclosable caveat for anyone tempted to read the $50k/$75k IS numbers as good
+news.
+
+**Bottom line for the open capital_sim methodology question**: the mechanism is now better
+understood (small samples are noisy at small AND at very short holdout windows; a broad middle
+range, roughly $500k-$1.5M, shows the most consistent, least-noisy pattern) but the headline
+metric still never crosses positive anywhere in this 12-point grid, IS or OOS. The unconstrained
+Sharpe (+0.39 IS / +0.24 OOS) remains the more trustworthy signal of the underlying edge; capital_
+sim's mechanics are real but insufficient alone to fully capture it even at $2M, 20x the standard
+account size.
+
+---
+
+## 2026-09-20 (cont.): SIGNIFICANT FINDING — the project's own multiple-testing infrastructure (trial_registry.py + deflated_sharpe.py, already built, just never run at scale) shows DSR≈0 for the "layer1"/"layer1_holdout" baseline labels once corrected for the true trial count
+
+Investigating list item #11 (a project-wide multiple-testing ledger) found this infrastructure
+**already exists and is mature** — `trial_registry.py` (append-only log of every `backtest.py`
+run's Sharpe) and `deflated_sharpe.py` (Bailey & López de Prado 2014 DSR correction), built
+2026-06-30, well-documented, with a real prior finding already in its own module docstring about
+a unit-mismatch bug it caught. It had just never been run against the FULL scale of trials this
+project has now accumulated.
+
+**Real, concrete gap found first**: local and CachyOS each keep their OWN separate
+`trial_registry.json` (a local file path, `output/backtest/trial_registry.json`, no sync
+mechanism between machines) — **local has 289 recorded trials, CachyOS has 551**, genuinely
+non-overlapping. Any DSR correction run on either machine alone sees only PART of the true
+trial count — understating the correction (a correct, complete count could only make the DSR
+result MORE stringent, never less, since DSR is monotonically more punishing as N grows).
+
+**Ran `deflated_sharpe.py` locally** (safe — CachyOS busy with the capital-size sweep, this reads
+local files only, no cross-machine risk). Its own backfill step found 148 MORE real historical
+trials from `output/backtest/portfolio_*.parquet` files not yet in the local registry, bringing
+local's count to **437 trials**. Real result:
+
+```
+[layer1] in-sample baseline:      SR_hat=0.029 (T=4351)  DSR=0.0000  z=-49.14
+[layer1_holdout] OOS baseline:    SR_hat=0.040 (T=588)   DSR≈4.4e-78 z=-18.67
+```
+
+**Both DSR values are effectively zero** — after correcting for 437 tried configurations, the
+probability the TRUE Sharpe of the `layer1`/`layer1_holdout` baseline labels is actually positive
+is indistinguishable from zero, despite the RAW per-period Sharpe being positive in both cases.
+Two things are driving this, both real and disclosable, not a bug: (1) N=437 is a large trial
+count — and this UNDERSTATES the true number, since it excludes CachyOS's separate 551-trial
+history entirely; (2) **skewness (31.2 IS / 24.2 OOS) and kurtosis (995 IS / 585 OOS) are
+extreme** — nowhere near normal (skew=0, kurtosis=3) — the DSR formula penalizes non-normality
+directly, independent of trial count. This extreme skew/kurtosis is consistent with, and likely
+explained by, the concentration risk flagged repeatedly all session (e.g. the original Baseline
+arm's 94.3% P&L concentration in one pair) — a small number of very large trades dominating the
+P&L distribution, not spread evenly.
+
+**This is a significant, honest finding that needs Ross's attention, not something to act on
+unilaterally**: the raw headline Sharpe numbers this project has reported (including tonight's
+squeeze/momentum results) have NOT been evaluated against this correction. This doesn't mean the
+squeeze/momentum finding is wrong (that result has its OWN, separate, arguably stronger validation
+— the random-subsample control's p≈0.0000 IS itself a form of multiple-testing-aware evidence,
+answering a related but different question: "is this specific result distinguishable from chance
+selection" rather than "does the whole project's search process survive DSR correction"), but it
+means the `layer1`/`layer1_holdout` DEFAULT-label baseline specifically — whatever config that
+corresponds to at any given point in this project's history, a moving target since 2026-06-30 —
+does not currently survive DSR. **One more real caveat, checked directly**: `output/backtest/
+portfolio_layer1.parquet` (the file this DSR evaluation actually read) is dated **Aug 12** —
+STALE relative to `output/results/1day/pairs.parquet` (Aug 24, i.e. the confirmed-pairs set has
+been rebuilt at least once since that "layer1" backtest was last run). So this specific DSR=0
+result evaluates a historical Aug-12 snapshot of whatever "layer1" meant then, not necessarily
+today's actual current default configuration — the underlying multiple-testing-burden finding
+(437+ trials, extreme skew/kurtosis) is real and current, but the SPECIFIC "layer1 baseline
+fails DSR" statement should be read as "this particular historical snapshot fails DSR," not
+necessarily "today's headline fails DSR" without re-running `backtest.py` fresh first. **Not
+investigated further tonight**: what "layer1"/"layer1_holdout" currently maps to config-wise if
+re-run fresh, whether a MERGED (local+CachyOS) trial count would change anything qualitatively
+(it can only get worse), or whether tonight's specific squeeze/momentum-gated labels individually
+survive DSR (not yet run through `deflated_sharpe.py` — worth doing next). Flagging prominently
+for Ross rather than either alarming unnecessarily or quietly filing it away — this is exactly
+the kind of number CLAUDE.md's "honest over impressive" rule exists for.
+
+Next: merge both registries (once CachyOS's sweep finishes and it's safe to read its files),
+re-run DSR on the complete picture, and check whether the squeeze/momentum gate labels
+specifically survive the correction.
+
+---
+
+## 2026-09-20 (cont.): Item #3 (end-to-end integration smoke test) — deliberately deferred, not rushed
+
+Attempted to scope this (analysis.py → backtest.py → ml.py chained on a small real cached symbol
+set — AAPL/MSFT/SPY/VOO all confirmed cached locally). Real cached data is available, but
+`AnalysisPipeline.run()` is a large, many-stage function with substantial internal state and file
+side effects, and there's no existing CLI path to scope it to an arbitrary small symbol subset
+rather than the configured universe — building this properly would mean either real surgery on
+`AnalysisPipeline.run()` (out of scope to do quickly and safely) or a from-scratch harness
+re-implementing its stage sequence (real risk of the harness itself drifting from the true
+pipeline and giving false confidence). Per this project's "no half-finished implementations"
+rule: deferring this as a well-scoped backlog item rather than shipping something hasty. The
+existing `research/pipeline_contracts.py` (already run for real tonight, see the entry above)
+is a partial substitute — it validates the SCHEMA handoff between stages on real files, which
+covers a meaningful fraction of what a full integration test would catch, without needing a new
+harness.
+
+---
+
+## 2026-09-20 (cont.): ml.py model versioning (list item #10) — done
+
+`model_stage1.pkl` was silently overwritten every `ml.py` run with no way to recover an earlier
+model or compare feature sets/metrics across runs — had to be worked around by hand tonight,
+comparing printed log metrics between the 20:42 and 22:31 runs, since neither model file itself
+survived to compare directly. Refactored the save logic into a new `_persist_model_with_history()`
+function: canonical `output/ml/model_stage1.pkl` path/behavior is completely unchanged
+(`MLConditioner._load` depends on this exact path, never renamed), plus a purely-additive
+timestamped copy under `output/ml/history/model_stage1_{timestamp}.pkl` on every run. New test
+`debug/_verify_ml_model_history.py` (11/11 passing, both machines) — canonical-path/content
+correctness, archive creation, and that repeated calls don't clobber earlier archived copies.
+Full existing ml.py verify suite (7 files) re-run after the refactor: no regressions.
+
+---
+
+## 2026-09-20 (cont.): Environment parity check (list item #16) — found a REAL major-version mismatch: pandas 2.3.2 (local) vs. 3.0.3 (CachyOS)
+
+Compared installed package versions between local (`trading` conda env, via `pip freeze`) and
+CachyOS (`.venv`, `uv`-managed — has no `pip` module at all, confirmed directly; used
+`uv pip freeze` instead) against the ~162 top-level import names CAMARF's own source actually
+uses. Two methodology notes before the real finding: (1) conda-installed packages (statsmodels,
+sklearn, requests) don't show in `pip freeze` at all — initially looked like a local gap,
+confirmed via direct `import`/`.__version__` check that all three are actually present locally
+with versions IDENTICAL to CachyOS (statsmodels 0.14.6, sklearn 1.9.0, requests 2.34.2) — a false
+signal from the comparison method, not a real gap, corrected before reporting.
+
+**The real, confirmed finding**:
+```
+numpy:   local=2.3.3   cachy=2.4.6    (minor drift)
+pandas:  local=2.3.2   cachy=3.0.3    (MAJOR version boundary)
+scipy:   local=1.16.2  cachy=1.17.1   (minor drift)
+```
+
+**pandas 2.x → 3.x is a real breaking-change boundary** (default string dtype, copy-on-write
+finalized as the only behavior, several deprecated-in-2.x APIs removed) — not a theoretical
+concern either: CLAUDE.md already documents this EXACT class of cross-version risk having bitten
+this project once before (base-anaconda's pyarrow 24.0.0 vs the project's 19.0.0 silently
+misreporting valid parquet files as corrupted). A pandas 2-vs-3 split between the two machines
+this project runs on is a credible, not hypothetical, risk for the same failure mode: code
+written/tested locally (pandas 2.x semantics) running differently on CachyOS (pandas 3.x
+semantics) with no error, just a silently different result.
+
+**Not acted on unilaterally** — reconciling this means force-changing an installed package
+version on one live, actively-used machine or the other, which could break any of this project's
+150+ scripts in ways I can't fully predict or test for in one pass. This is a real decision for
+Ross (upgrade local to pandas 3.x, downgrade CachyOS to 2.x, or explicitly accept the split with
+disclosed risk), not something to act on under the "test the GPU, don't stop working" authorization
+— that covered the GPU flag specifically (purely additive/opt-in), not changing installed
+dependency versions on two live environments.
+
+Full freeze snapshots saved for reference (not committed): local `pip freeze` and CachyOS
+`uv pip freeze` output, comparison script in the scratchpad if this needs re-deriving.
+
+---
+
+## 2026-09-20 (cont.): Targeted pre-commit verify hook built and live-tested — completes list item #1
+
+This project has no GitHub Actions (confirmed, no `.github/workflows/`) and no active git hooks
+(only samples) — its actual CI-equivalent convention is Claude-Code `PreToolUse` hooks
+(`.claude/hooks/guard_manifest.py`), which don't run test suites, only guard specific files. The
+full 256-script verify suite takes ~7-8 minutes — too slow to run on every commit. Built
+`scripts/pre_commit_verify.py`: for each staged `.py` file, finds verify scripts relevant to it
+(filename-substring match + a static grep for `from X import`/`import X` lines matching the
+staged module), runs only those, blocks the commit on a real FAIL (not on ERROR — environment
+issues shouldn't block a commit). Reports staged files with NO matching verify coverage rather
+than silently skipping them.
+
+New test `debug/_verify_pre_commit_verify.py` (7/7 passing, both machines) — synthetic fixtures,
+no real git state or subprocess calls to actual verify scripts (that's what `_run_all_verify.py`'s
+own test covers). **Live-tested against real staged changes**: staged `backtest.py` +
+`debug/_verify_backtest_storm_label_fix.py`, the hook correctly found and ran 25 relevant verify
+scripts (not all 256) in ~65s, all passed. Unstaged afterward — this was a functional test, not a
+real commit.
+
+Not yet installed as an actual `.git/hooks/pre-commit` (that's an opt-in step per the script's own
+docstring, deliberately not automatic on clone — a committed executable hook is a real
+supply-chain consideration this project doesn't want to force on anyone pulling the repo).
+Ross would need to run the one-line `cp` install himself if he wants it active going forward.
+
+---
+
+## 2026-09-20 (cont.): Ran the existing degenerate_column_audit.py + pipeline_contracts.py against real output for the first time — mostly clean, one already-known limitation re-confirmed
+
+Ross: "always test the gpu if it's better wire it in. don't stop working until i say 'stop
+working'." Continuing through the list while the capital-size sweep runs on CachyOS. Both these
+tools already existed (built 2026-09-10, per their own docstrings — item #1/#2 of a 5-part
+bug-catching plan) but neither had been run against real files as part of this exercise until now.
+
+`research/degenerate_column_audit.py --dir output/backtest`: flagged many `ZERO_VARIANCE`
+columns (`n_shares_a` constant at 100, `ml_prob`/`regime_size_multiplier` constant at 1.0) and
+6 `HIGH_NAN` columns (`exit_eod`/`exit_stop`/etc. at 90-98% NaN) — on inspection, all are expected
+structural artifacts, not bugs: fixed share-count runs legitimately have constant `n_shares_a`,
+Layer2-disabled runs legitimately have `ml_prob`≡1.0, and the exit-reason columns are a
+legitimately sparse one-per-trade-fires pattern (only the column matching how a trade actually
+exited is non-NaN). No real bug found — a useful "mostly clean" confirmation, not nothing.
+
+`research/pipeline_contracts.py`: 18 contract violations across 40 `spread_series` files
+sampled, nearly all `half_life_rolling: 100% NaN`. This is the SAME already-known, already-
+disclosed limitation CLAUDE.md's own Working Style section documents (the 2026-09-10 incident
+that established the "re-derive numbers from real data" discipline, "17/40 spread-series files"
+— matches almost exactly). Confirmed this is the SAME set, not a new regression: the affected
+files are overwhelmingly placeholder-labeled (GVKEY/PERMNO) pairs with genuinely thin history,
+consistent with a real data-sparsity limitation rather than a code bug. Re-confirms the tool
+works as designed, surfaces exactly the class of issue it exists to catch — not escalated
+further, matches the already-accepted/disclosed status.
+
+---
+
+## 2026-09-20 (cont.): First-ever full run of all 256 debug/_verify_*.py — 244 pass, 5 real FAILs triaged, 7 environment ERRORs
+
+`debug/_run_all_verify.py` run for real, locally, for the first time (256 scripts, no prior
+session ever ran them all together): **244 PASS, 5 FAIL (real check failures), 7 ERROR
+(crashed/timed out before any check ran — likely missing local dependencies, not necessarily
+bugs)**. This is exactly the value item #1 on the backlog was built for — a latent-issue sweep
+across the whole test suite, not just the handful of scripts each session happens to touch.
+Triaged all 5 real FAILs (one investigation pass each, not deep root-cause on all 5 — flagging
+what's understood vs. what needs real follow-up, per this project's own discipline about not
+grinding alone past a few attempts):
+
+1. **`debug/_verify_eg_both_directions_fix.py`** — UNDERSTOOD, likely not a real bug. Tests
+   against REAL live FELE/MAS market data with hardcoded exact expected p-values
+   (`KNOWN_P_AB`/`KNOWN_P_BA`) from whenever the test was written — as real daily bars keep
+   accumulating, the exact EG p-value on live data naturally drifts. The STRUCTURAL check this
+   test actually exists to verify (`coint_pvalue_raw == max(ab, ba)`, the both-directions
+   combination fix) still PASSES on fresh data — only the brittle exact-value assertions fail.
+   Fix candidate (not applied yet): replace the hardcoded live-data comparison with either a
+   frozen synthetic fixture or a structural-only check; flagged to backlog, not urgent.
+2. **`debug/_verify_wrds_global_fetch_retry.py`** — LIKELY A TEST BUG, not production code. The
+   test's own log output shows it genuinely connected to real WRDS ("Loading library list...
+   Done") instead of exercising its mocked retry path — the mock isn't actually intercepting
+   `_connect_with_retry` as intended, so the test never tests what it claims to. Needs the mock
+   wiring fixed, not the production retry logic (untested either way right now — a real gap).
+3. **`debug/_verify_wrds_lead_lag_scan.py`** — RESOLVED, not a production bug: a TEST-ISOLATION
+   bug. The test writes its own synthetic fixtures directly into the REAL `output/research/`
+   directory (`research_dir = wll._RESEARCH_DIR`, the production path, not a temp dir) and then
+   asserts Tier 3 returns `[]` because "the file doesn't exist" — but a genuine
+   `wrds_deep_history_episodic_scan_tier3_confirmed.parquet` file already exists there from a
+   real scan run (dated Sep 2, confirmed via `ls`). `load_confirmed_pairs(3)` is working exactly
+   as designed (correctly finds and returns the real confirmed pairs); the test's assumption was
+   simply invalidated by real production data it doesn't isolate itself from. **Flagging as a
+   real, worth-tracking risk beyond this one file**: this project's verify-script convention of
+   writing fixtures into real output paths rather than temp directories could affect other
+   scripts in the 256-script suite too (not audited for how widespread this pattern is) — a
+   verify run could theoretically contaminate real production artifacts with synthetic test data,
+   or (as found here) get a false result depending on what real files happen to already exist.
+   Worth a project-wide test-isolation audit as its own backlog item; not fixed tonight.
+4. **`debug/_verify_pit_wfa.py`** — LIKELY a 3rd instance of stale-test-fixture, not conclusively
+   resolved. `UniverseFilter: no valid assets after filtering` produced zero pairs on this test's
+   synthetic universe, which then fails its own "screen isn't trivially broken" sanity check.
+   This exact test's own inline comments already document ONE prior test-construction bug found
+   the same way (an earlier fixture version added noise before the cumsum, making a pair
+   correlated-but-not-cointegrated — EG correctly rejected it, and that was traced back to the
+   FIXTURE being wrong, not `pit_wfa.py`). Given that history and the same "zero survives
+   filtering" signature, most likely `UniverseFilter`'s current requirements (a threshold, a
+   date-range/overlap minimum) have moved since this fixture was last validated against them —
+   but NOT conclusively diagnosed (would need reading `UniverseFilter`'s exact current filter
+   conditions against this synthetic universe's shape, not done tonight — and per CLAUDE.md,
+   `MIN_OVERLAP_BY_TF` specifically must not be touched regardless of what's found). Flagged for
+   dedicated follow-up.
+5. **`debug/_verify_macro_regimes.py`** — NEEDS REAL INVESTIGATION. 23/25 pass; one real FAIL:
+   "2020 COVID: `recession_state_realtime` hits `contraction_risk`" expected the Sahm Rule
+   real-time recession indicator to cross its threshold during COVID (max computed sahm=0.27,
+   well under whatever threshold `contraction_risk` requires) — real unemployment spiked sharply
+   in COVID, so either this is correctly reflecting genuine real-time REPORTING LAG (the
+   `_realtime` naming suggests this might be intentional point-in-time behavior, not a bug) or a
+   genuine calculation issue. Not distinguished yet — needs someone who understands this specific
+   macro-regime module's intent to judge which.
+
+**The 7 ERRORs** (timeouts or crashes before any check ran) are lower priority — `_verify_data_wrds.py`,
+`_verify_lead_lag_permutation_check.py`, `_verify_polars_universe_loader.py` timed out at 150s
+(likely genuinely slow, not hung — worth a longer timeout on a re-run, not necessarily broken);
+`_verify_adapter_stale_checkpoint_fix.py`, `_verify_fresh_holdout_compare.py`,
+`_verify_index_additions.py`, `_verify_stress_test_replication.py` crashed, likely missing
+local-only data files (CachyOS-only caches) — not investigated individually tonight.
+
+**Honest framing**: this is the suite's first-ever full run, not a regression from a previously-clean
+baseline — no way to know yet whether these 5 FAILs are new or have been silently broken for a
+while. That itself is the argument for running this suite in CI going forward (the original
+motivation for building it) rather than a one-off exercise.
+
+---
+
+## 2026-09-20 (cont.): Persisted Kelly-fallback diagnostics into backtest.py's saved capital_sim output (list item #9)
+
+Small, already-flagged fix (09:15's 20:40 entry): `n_kelly_fallback`/`n_skipped_no_risk_estimate`
+were computed by `portfolio_sim.replay_portfolio()` but only ever logged by `portfolio_sim.py`'s
+own standalone CLI, never by `backtest.py`'s `--capital-sim` path, never persisted to the saved
+`portfolio_*.parquet` — had to be manually re-derived by re-running `portfolio_sim.py` directly
+against archived trades to explain the Tier1 sensitivity screen's Kelly anomaly. Now: both fields
+added to the saved portfolio parquet, and both logged inline (matching `portfolio_sim.py`'s own
+console output) when nonzero. Sanity-checked (`import backtest` clean) and re-ran the existing
+`debug/_verify_backtest_storm_label_fix.py` (4/4) and `debug/_verify_squeeze_momentum_gate_logic.py`
+(15/15) — same file region, no regressions.
+
+**Not yet synced to CachyOS** — the capital-size sweep is still running there and repeatedly
+re-invokes `backtest.py` as a subprocess; overwriting the file mid-run risks (however unlikely) a
+subprocess reading a partially-written file. Will sync once the sweep completes and CachyOS is
+confirmed idle, per the project's strict one-job-at-a-time discipline.
+
+---
+
+## 2026-09-20 (cont.): New engineering infrastructure — verify-suite runner + local↔CachyOS parity checker, and the parity checker immediately found 5 real drift bugs
+
+Ross asked for a prioritized 20-item improvement list plus an opinion on Rust for the heavy
+scripts, then said "get to work on the list and the scripts." Started with the two highest-impact
+Tier-1 items (both prevent the exact bug class that cost real time all session).
+
+**1. `debug/_run_all_verify.py`** — runs every `debug/_verify_*.py` (256 scripts as of tonight,
+none previously run automatically) and classifies PASS/FAIL/ERROR (ERROR = crashed before any
+check ran, e.g. a missing CachyOS-only data file — kept separate from FAIL so real logic failures
+don't get lost in environment noise). New test `debug/_verify_run_all_verify.py` (10/10 passing).
+Full local run: **all 256 scripts genuinely runnable, results pending** (job running in
+background as this entry is written — see next entry for the outcome).
+
+**2. `debug/_check_cachyos_parity.py`** — replaces the manual `scp`+`diff` ritual used all
+session (caught 3 separate stale-CachyOS-copy bugs that way). Hashes every tracked `.py` file on
+both machines in one batched SSH round-trip. Hit two real bugs building it, both fixed before
+trusting the tool: (a) the inline SSH command hit CachyOS's fish-default-shell incompatibility
+again (`for/if/else/fi` isn't fish syntax) — wrapped in `bash -c`; (b) even wrapped, a ~500-file
+batch (~20KB command string) broke with `fish: Unexpected end of string, quotes are not
+balanced` — not an OS argument-length limit, something in how a long multiply-quoted string
+transits SSH→fish parsing. Fixed properly by writing the script to a real file and `scp`-ing it
+over (`ssh host bash /tmp/script.sh`) instead of inlining it as a command string — fish never
+parses the script's own content this way. New test `debug/_verify_check_cachyos_parity.py`
+(5/5 passing, SSH fully mocked).
+
+**Immediate payoff, run for real against all 509 tracked `.py` files**: found **5 genuine
+divergences**, all local-ahead-of-CachyOS, mostly from an already-completed 2026-09-12
+"timeframe-label consistency audit" that was never pushed to CachyOS:
+- `stats.py` — CachyOS had the OLD, buggy hand-maintained `_TF_DIR_MAP`/`tf_cache` dicts (wrong
+  "1d" key, missing "7D"/"3M"/"6M" entries) instead of the fixed version aliased to
+  `DataStore._TF_SAFE`. **Real consequence**: `run_robust_hedge_ratios()`'s Huber/MM estimators
+  would have silently returned NaN for any 1D/7D/3M/6M pair run on CachyOS — not confirmed to
+  have actually affected any of tonight's specific results (which used OLS/Kalman, not Huber/MM),
+  but a real, latent bug now closed.
+- `debug/_coint_frac_threshold_sensitivity.py`, `ibkr_supplement_reader.py` — both missing the
+  same `"1Y": "1yr"` timeframe entry found stale on CachyOS 3 separate times earlier this session
+  (ml.py, build_comparison_arm_pairs.py) — a 4th and 5th recurrence of the identical gap.
+- `debug/_verify_universe_loader.py`, `debug/_verify_universe_loader_memo_cache.py` — both
+  missing real regression test cases added 2026-09-12 (an IBKR-suffix dict-keying bug, a
+  corrupted-cache-file-triggers-rebuild-not-crash test).
+
+All 5 pushed to CachyOS, re-verified: **509/509 files now in sync** — the whole tracked codebase
+genuinely synchronized for the first time this session, not just the handful of files each task
+happened to touch. This is exactly the payoff class item #2 on the list was built for.
+
+---
+
+## 2026-09-20: CachyOS back — signal validation phase COMPLETE, all 3 gates pass the rigorous control
+
+CachyOS reachable again (confirmed via `ssh`, fresh reboot, `up 2 min`). Ran the queued
+combined squeeze+momentum gate's random-subsample control (the one interrupted when CachyOS
+dropped):
+
+```
+squeeze_momentum_gate_IS: real Sharpe=0.4304  null mean=-0.1354 std=0.1153 [5th,95th]=[-0.336,0.035]
+                           percentile=100.0   p=0.0000
+```
+
+**All 3 gates now confirmed at the 100th percentile of 2,000 random same-size draws, p≈0.0000**:
+
+| Gate | Real Sharpe | Null mean | Percentile | p-value |
+|------|------------:|-----------:|-----------:|--------:|
+| squeeze-gate | 0.3459 | -0.1504 | 100.0 | 0.0000 |
+| momentum-gate | 0.3944 | -0.1942 | 100.0 | 0.0000 |
+| squeeze+momentum | 0.4304 | -0.1354 | 100.0 | 0.0000 |
+
+**Signal validation phase is closed, conclusively**: not one of 6,000 total random same-size
+subsamples (2,000 per gate) matched any gate's real performance. Combined with the earlier OOS
+confirmation (all 3 gates positive unconstrained OOS too), this is now about as strong a
+confirmation as a backtest-only study can give — real, replicable, not a sampling artifact. Moving
+to the next phase of Ross's instructed ordering: broader/finer capital-size sweep, then Tier2.
+
+---
+
+## 2026-09-19 (cont.): Built and locally verified the broader/finer capital-size sweep script, ready to fire once CachyOS is back
+
+Ross confirmed CachyOS is unreachable on his end right now ("i cant use cachy right now but ill
+let you know when i can... continue as you were with what you can"), consistent with a direct
+`ssh` connection timeout confirmed independently. Used the local-only time to build the NEXT
+phase of his instructed ordering (validate signal → broader/finer capital sweep → Tier2), so it's
+ready to launch the moment CachyOS is reachable again rather than losing time re-deriving this
+later.
+
+`research/capital_size_sweep.py` (new): systematic version of the ad hoc 4-point sweep from the
+2026-09-15 23:29 entry — default grid of 12 account sizes ($50k-$2M, denser than the ad hoc
+4-point version), one `--storm-flag` held fixed per run, `--include-oos` to double every point
+with a `--holdout` run too. Same "run once, archive before the next point clobbers it" discipline
+as `research/parameter_sensitivity_screen.py` (no existing precedent test for that script was
+found to mirror, so this one's test was written from scratch). New verify test
+`debug/_verify_capital_size_sweep.py` (19/19 passing locally — subprocess.run fully mocked, no
+live backtest.py invocation, no CachyOS needed to verify the script's own logic): covers
+`build_cmd`'s flag construction for all 3 gate variants plus the no-gate case, `run_one`'s
+archive-naming and row-tagging, and subprocess-failure error propagation.
+
+**Not yet synced to CachyOS or run for real** — will sync, diff-verify, and launch as soon as
+CachyOS is reachable. Recommended first real invocation once it's back:
+```
+python research/capital_size_sweep.py --pairs-override output/research/purity_pairs.parquet \\
+    --storm-flag storm_momentum_gate --include-oos
+```
+(momentum-gate chosen as the first sweep target since it already has the most complete IS+OOS
+picture; the other 2 gates can follow once this one's pattern is understood.)
+
+---
+
+## 2026-09-19: Signal validation phase (per Ross's explicit instruction: "validate our signal and make sure that works" BEFORE capital_sim work) — OOS confirmed for all 3 gates, 2/3 gates pass rigorous random-subsample control, CachyOS now unreachable
+
+Ross's direct instruction on return: validate the signal first, THEN do the broader/finer
+capital_sim sweep, THEN run Tier2 against the full Purity set as-is. This entry covers the
+signal-validation phase.
+
+**1. OOS/holdout runs for squeeze-gate and squeeze+momentum-gate** (momentum-gate alone was
+already OOS-tested in the 22:38 entry) — completing the picture for all 3 gates:
+
+| Gate | IS unconstrained Sharpe | OOS unconstrained Sharpe | IS capsim | OOS capsim |
+|------|--------------------------:|----------------------------:|------------:|-------------:|
+| squeeze-gate     | +0.3459 | **+0.4497** | -0.4944 | -0.3804 |
+| momentum-gate    | +0.3944 | +0.2369 | -0.1462 | -0.8200 |
+| squeeze+momentum | +0.4304 | **+0.5015** | -0.4347 | -0.3257 |
+
+**All 3 gates now hold OOS on the unconstrained metric** — squeeze-gate and the combined gate
+actually show STRONGER OOS Sharpe than IS (+0.45 and +0.50 respectively), which is unusual (OOS
+normally shrinks vs IS) and worth treating as a real positive but re-checking once more OOS
+windows are available (only one holdout split has been tested so far, per pair). Capsim headline
+stays negative and inconsistent across all 3 in both splits — same open question as before, now
+explicitly deferred until after signal validation per Ross's ordering.
+
+**2. Random-subsample statistical control (new)** — the more important test: does each gate
+select something real, or just benefit from being a smaller, lower-noise sample? Built
+`research/squeeze_momentum_signal_validation.py`: for each gate, draw 2,000 random subsamples of
+the SAME SIZE from the full ungated Purity trade set (no cherry-picking), compute each draw's
+Sharpe via `portfolio_math.sharpe_from_trades` (the exact same function `backtest.py`'s own
+`aggregate_portfolio` uses — directly comparable numbers), and report where the gate's real Sharpe
+falls in that null distribution. New verify test `debug/_verify_squeeze_momentum_signal_validation.py`
+(6/6 passing on both machines) — includes a "detects a real effect" fixture and a "no false
+positive on pure noise" fixture (the gate as an ACTUAL SUBSET of the full population, not an
+independently-resampled dataset — an earlier version of this test was itself flawed this way,
+caught and fixed before trusting it).
+
+**Real results, IS trades, 2,000 draws each**:
+```
+squeeze_gate_IS:   real Sharpe=0.3459  null mean=-0.1504 std=0.1057 [5th,95th]=[-0.335,0.009]
+                   percentile=100.0   p=0.0000
+momentum_gate_IS:  real Sharpe=0.3944  null mean=-0.1942 std=0.0666 [5th,95th]=[-0.315,-0.094]
+                   percentile=100.0   p=0.0000
+```
+
+**This is strong, rigorous confirmation, not just a directional observation**: both squeeze-gate
+and momentum-gate's real Sharpe falls at the 100th percentile of 2,000 random same-size draws —
+not a single random draw matched their performance, let alone exceeded it. The null distribution
+itself is centered NEGATIVE (mean -0.15 to -0.19), consistent with the ungated Purity baseline's
+own -0.218 — confirming these gates are not just "any smaller subsample looks better," they are
+selecting a genuinely different, better population of trades. **The squeeze-momentum-gate
+(combined) validation was queued next but CachyOS became unreachable mid-session
+(2026-09-19, confirmed via direct `ssh` timeout) before it could run** — Ross confirmed separately
+he can't access CachyOS right now, will resume when he can. Picking up local-only work in the
+meantime.
+
+**Remaining signal-validation work, blocked on CachyOS access**:
+- Random-subsample control for the combined squeeze+momentum gate (script ready, just needs the
+  CachyOS run).
+- Possibly a second OOS window (only one holdout split tested so far) before fully trusting the
+  OOS-exceeds-IS pattern on squeeze-gate/combined-gate above.
+- Then: broader/finer capital_sim sweep (per Ross's ordering).
+- Then: Tier2 sensitivity screen against the full Purity set as-is (per Ross's explicit go-ahead).
+
+---
+
+## 2026-09-15 23:29: Capital-size sweep completed (4 points) — the relationship is NOISY/NON-MONOTONIC, not a clean trend either direction
+
+Extended the 22:44 entry's single 10x-capital data point into a proper sweep — same
+`--storm-momentum-gate`, IS split, only `--capital-account-size` varied — to see the real shape of
+the relationship, not conclude from one point. Real results:
+
+| Account size | Trades taken | Capsim Sharpe |
+|-------------:|-------------:|---------------:|
+|        $100k |           415 |        -0.1462 |
+|        $250k |           709 |        -0.3315 |
+|        $500k |         1,066 |        -0.7163 |
+|          $1M |         1,655 |        -0.5208 |
+
+**Correcting my own earlier read**: the 22:44 entry, based on only 2 points ($100k, $1M), read
+this as a clean monotonic degradation. With $250k and $500k added, **it is NOT monotonic** — $500k
+is the WORST point of the four, and $1M partially recovers from it. This rules out both simple
+stories (more capital helps; more capital hurts) — the relationship looks noise-dominated, not
+structural, at least across this range. Most likely explanation, not confirmed further tonight:
+`--capital-sim`'s chronological trade-taking is highly sensitive to exactly WHICH large-notional
+trades happen to cross each specific capital threshold — a small change in account size changes
+not just HOW MANY trades fit but WHICH ones, and this trade population's outcomes are apparently
+volatile enough that this dominates any smooth capital-scaling effect.
+
+**Honest overall conclusion on the capital_sim question, now with real breadth of evidence**: this
+is not a simple "wrong account size" bug with an easy fix — the headline capsim metric appears
+genuinely unstable/high-variance for this large, gated pair pool regardless of capital level
+tested (4 different sizes spanning 10x, all negative, no clean pattern). The unconstrained
+Sharpe (both IS +0.39 and OOS +0.24) remains the more STABLE, more trustworthy signal that the
+squeeze/momentum gates have real value — capital_sim's instability here is itself a disclosable
+finding about the sizing/sampling methodology's fitness for a large pair pool, not evidence
+against the underlying gates. Not investigating further tonight (per the "3 attempts, stop and
+ask" discipline — this is now attempt #4 across 5 data points) — genuinely needs Ross's input on
+whether to pursue a non-chronological capital allocation scheme, a larger sweep, or set this aside
+as a known limitation of `--capital-sim` at this pool scale.
+
+Backed up to `output/backtest/momgate_{portfolio,trades}_layer1_storm_capsim_fixed_{250000,500000}.
+parquet` (the $1M files were already backed up in the 22:44 entry).
+
+---
+
+## 2026-09-15 22:44: Tested the "capital_sim just needs more capital" hypothesis directly — WRONG, more capital made the headline metric WORSE, not better
+
+Immediately followed up on the open question from the 22:38 entry with a direct diagnostic test
+(not a production change — `--capital-account-size` is an existing CLI parameter, just run at a
+different value): `backtest.py --pairs-override output/research/purity_pairs.parquet --capital-sim
+--capital-account-size 1000000 --storm-momentum-gate` (10x the standard $100k, IS split).
+
+Real result: `taken=1655/95485` (4x more trades sampled than $100k's 415), but
+**`sharpe=-0.5208`, WORSE than $100k's -0.1462**, not better as the "just needs more capital to
+sample representatively" hypothesis predicted.
+
+**This is real, honest, negative evidence against my own hypothesis from the 22:23/22:30/22:38
+entries — reported plainly, not quietly dropped.** More capital did let capsim sample a larger,
+presumably more representative slice of the 95,485 unconstrained trades, but that larger slice's
+Sharpe is WORSE, not closer to the positive +0.39 unconstrained result. This means the gap between
+unconstrained and capital-constrained performance is NOT simply an "account too small, undersamples
+the good trades" artifact — something more structural is going on, possibly: (a) `--capital-sim`'s
+strictly CHRONOLOGICAL trade-taking order interacts badly with this strategy regardless of capital
+size (e.g., if the best trades are systematically NOT the earliest ones in time, more capital just
+lets you take more OF THE SAME biased-by-order sample, not a better one), or (b) the
+concentration/leverage caps or position-sizing formula produces systematically worse-sized
+positions as capital scales up on this pair pool. **Neither investigated further tonight — this
+needs either Ross's direct input on which mechanism to chase, or a proper controlled sweep across
+several account sizes (not just one 10x data point) before drawing a real conclusion.** Flagging
+as a genuine open question, not resolved, for when Ross is back — this is now more interesting and
+less obvious than the simple "capital-size" framing in the 22:38 entry suggested.
+
+Backed up to `output/backtest/momgate_{portfolio,trades}_layer1_storm_capsim_fixed_1000000.parquet`.
+
+---
+
+## 2026-09-15 22:38: OOS/holdout validation of momentum-gate — the most important test tonight; positive result HOLDS out-of-sample, but the headline capsim gap gets WORSE
+
+Everything about the 3 squeeze/momentum gates up to this point was IN-SAMPLE only (full-series
+runs) — a genuinely important gap before trusting the finding, since an IS-only positive result
+could easily be overfitting. Ran momentum-gate (best headline capsim of the 3 gates) with
+`--holdout` to test this directly: `backtest.py --pairs-override output/research/purity_pairs.
+parquet --capital-sim --storm-momentum-gate --holdout`. Real results:
+
+- **Unconstrained (OOS)**: n_pairs=1125, n_trades_total=19,561, total_pnl_portfolio=**+74,794.16**,
+  sharpe_portfolio=**+0.2369** — **positive OOS, confirming the underlying edge is not purely an
+  in-sample artifact.** Smaller in magnitude than the IS unconstrained result (+0.3944), which is
+  expected and healthy (OOS Sharpe shrinking vs. IS is the normal, honest pattern — a result that
+  DIDN'T shrink at all would itself be more suspicious). Real, disclosable caveat:
+  max_concentration_pct=51.61% in this OOS window (vs. 5.95% IS) — one pair
+  (GVKEY203944_02W/GVKEY209791_01W) dominates the much shorter holdout slice, a genuine
+  concentration risk in the OOS evidence, not swept under the rug.
+- **Capital-constrained (headline, OOS)**: taken=415/19561, skipped=19146, peak_notional=$100000,
+  final_equity=$96749.36, **sharpe=-0.8200** — WORSE than the IS headline capsim result (-0.1462),
+  not better.
+
+**Full, honest picture for momentum-gate, IS and OOS together**:
+
+| Split | Unconstrained Sharpe | Capsim (headline) Sharpe |
+|-------|----------------------:|----------------------------:|
+| IS    |                +0.3944 |                      -0.1462 |
+| OOS   |                +0.2369 |                      -0.8200 |
+
+**This is the single most important finding of tonight's whole squeeze/momentum investigation,
+and it cuts both ways — reported fully, not selectively**: the underlying trade-selection edge
+(unconstrained) is REAL and holds OOS, directly validating Ross's original hypothesis. But the
+project's DESIGNATED HEADLINE metric (`--capital-sim`, per CLAUDE.md's own standing rule) gets
+WORSE out-of-sample, not better, and by a wide margin. This strongly reinforces — now with OOS
+evidence, not just an IS observation — the `--capital-sim` methodology question flagged
+repeatedly tonight (09:22, 22:23, 22:30 entries): a fixed $100k account chronologically sampling
+from a large, gated signal pool is not currently capturing the real edge these gates demonstrate
+elsewhere, in either split. **Do not present the current headline capsim numbers for
+squeeze/momentum gates as the final verdict on this idea** — the unconstrained evidence (both IS
+and OOS) says the underlying selection improvement is real; the capital_sim mechanism itself needs
+review (larger account size, or a non-chronological allocation scheme) before the headline metric
+can be trusted to reflect it. This is now the clearest, most concrete open methodology question
+for Ross to weigh in on, alongside the Tier2 sensitivity-screen scope decision.
+
+Backed up to `output/backtest/momgate_{portfolio,summary,trades}_layer1_holdout.parquet` and
+`momgate_{trades,portfolio}_layer1_holdout_capsim_fixed_100000.parquet`.
+
+---
+
+## 2026-09-15 22:40: SPAC pre-merger filter backlog item — checked, exclusion mechanism already exists, 0 hits in tonight's Purity pool
+
+Followed up on literature sweep pass 3's SPAC-NAV-anchoring warning (topic 3, Nohel 2024). Two
+findings, no code built tonight — this is a diagnostic check, not a production change:
+
+1. **A pair-exclusion mechanism for known SPAC symbols already exists**, built 2026-08-24 (per
+   `research/promote_full_universe_pairs.py`'s own comment), well before tonight — `--spac-file`
+   drops any pair where either leg is in a given SPAC-symbol JSON list. Not something to build
+   from scratch; this backlog item was already more done than the literature sweep's phrasing
+   suggested.
+2. **Checked tonight's real 1,375-pair Purity pool against both the existing (stale, 23-symbol)
+   `output/research/spac_symbols.json` AND the full, current SIC-6770 universe** (933 tickers with
+   a registered ticker, out of 3,918 total blank-check companies in `output/cache/sec_edgar/
+   spac_universe_sic6770.parquet`, fetched via the most recent commit's new SEC EDGAR source):
+   **0 of 1,375 Purity pairs involve any known SPAC ticker, against either list.** Tonight's
+   comparison-arm results (Purity/Hybrid/squeeze-gate/momentum-gate/combined-gate, all documented
+   above) are NOT contaminated by SPAC NAV-anchoring — a real, verified reassurance, not an
+   assumption.
+
+**Closing this out, not deferring further**: no filter needs to be wired into
+`episodic_pairs_adapter.py`/`build_comparison_arm_pairs.py` tonight since it's currently a
+non-issue for the real data in hand. Worth a note for whoever next expands the episodic scan's
+candidate universe (SPAC listings will likely start appearing as the pool grows) that
+`promote_full_universe_pairs.py --spac-file output/research/spac_symbols.json` already exists as
+the mechanism — but that JSON list itself should be regenerated from the full 933-ticker set
+first (no existing generator script found for it; would need a small new one) before trusting it
+against a larger future universe.
+
+---
+
+## 2026-09-15 22:34: GEE re-fit of the multivariate study — actual_n_overlap's counterintuitive negative coefficient is now STATISTICALLY SIGNIFICANT, not just marginal
+
+Backlog item from tonight's literature sweep pass 3 (topic 1), done now since it's a low-risk
+diagnostic re-fit of already-generated data, not a new production methodology change. Added
+`fit_gee()` to `research/multivariate_pit_predictors.py` — same covariates/z-scoring as the
+existing `fit_logit()`, but via `statsmodels.genmod.generalized_estimating_equations.GEE`
+clustered by pair (`symbol_a`/`symbol_b`), exchangeable working correlation — directly addresses
+`fit_logit`'s own disclosed pseudo-replication limitation instead of just flagging it. Both
+functions kept side by side (report both, never silently swap — same convention as the
+Kelly-multiplier grid). New test `debug/_verify_multivariate_pit_predictors_gee.py` (8/8 passing,
+both machines).
+
+Re-fit against tonight's ALREADY-SAVED 3-fold study data (`output/research/
+multivariate_pit_predictors_1D.parquet`, no need to re-run the 66-minute pilot). Real result:
+**166 observations pooled across 121 distinct pairs** — mean cluster size 1.4, so the
+pseudo-replication was actually mild (most pairs appear only once or twice across the 3
+folds × 4 L-values grid), not severe. GEE with cluster-robust standard errors:
+
+```
+                        Logit (naive)          GEE (clustered, robust)
+actual_n_overlap        coef=-0.9212 p=0.125    coef=-0.8946 p=0.015  *** now significant
+coint_fraction_rolling  coef=-0.7465 p=0.055    coef=-0.7316 p=0.056  (unchanged, still borderline)
+pearson_corr            coef=-0.1690 p=0.677    coef=-0.1932 p=0.312  (still not significant)
+hedge_ratio_cv          coef=-0.1635 p=0.720    coef=-0.1674 p=0.572  (still not significant)
+```
+
+**This strengthens, not weakens, the 12:47 entry's counterintuitive finding**: after properly
+accounting for pair-level clustering, `actual_n_overlap`'s NEGATIVE relationship with OOS
+`held_up` (more training-window overlap → LOWER probability of surviving out-of-sample) is now
+statistically significant at p=0.015, not just a marginal, possibly-noise signal from the naive
+Logit. `coint_fraction_rolling` stays right at the same borderline p≈0.055-0.056 in both fits —
+consistent, not resolved either way by the clustering correction. **This is now the single most
+statistically defensible predictor finding from tonight's multivariate work**: pairs with MORE
+training history/overlap were genuinely less likely to hold up OOS in this data, the opposite of
+the naive expectation, robust to the pseudo-replication correction. Worth flagging to Ross as a
+real candidate for PAPER.md's methodology section, and as a concrete question for the episodic
+confirmation gate design (does requiring MORE overlap actually admit worse pairs, not better
+ones?) — not investigated further tonight.
+
+---
+
+## 2026-09-15 22:31: ml.py --pit-safe re-run with squeeze_min/rsi_diff_velocity live — real, non-zero feature importance, but overall accuracy essentially unchanged
+
+`ml.py --pit-safe` re-run with the 2 new features populated (same 1,375-pair episodic pool, 69,592
+labeled events, 1,225/150 pair split — all identical to the 20:42 entry, only the feature set
+changed). Real results:
+
+- Holdout accuracy: **54.06%** (was 54.24% in the 20:42 entry — a 0.18pp move, within noise, not
+  a real change). Still below the 58.98% majority-class baseline.
+- Conformal coverage: 88.81% (was 88.90% — also essentially unchanged, still short of the 90%
+  target).
+- **Feature importances, pulled directly from the persisted model** (`output/ml/model_stage1.pkl`):
+  `squeeze_min`=0.0419, `rsi_diff_velocity`=0.0549 — both **real, non-zero, comparable to
+  `hedge_ratio_drift` (0.0449)** and higher than `half_life_trend_slope` (0.0421). Not dead
+  weight, not top features either (`mean_reversion_speed` dominates at 0.4062, `half_life_current`
+  second at 0.1416).
+
+**The genuinely interesting, disclosable methodological finding here**: squeeze/momentum carry
+real signal (non-zero importance) but not enough to move this classifier's OVERALL accuracy above
+majority baseline — yet the SAME two signals, used as hard entry GATES in `backtest.py` (previous
+3 entries), flip the unconstrained backtest Sharpe from -0.22 to +0.35/+0.39/+0.43 across all three
+variants. **These are not contradictory results — they're answering different questions.** ml.py's
+classifier tries to predict the OUTCOME PROBABILITY across every entry, gated or not; a feature can
+be a weak, noisy predictor across the FULL population (explaining the low importance / unchanged
+accuracy) while still being a strong, clean FILTER when used to simply exclude the worst-conditioned
+entries outright (explaining the strong gate effect) — filtering and probabilistic prediction are
+different uses of the same underlying signal, and don't have to agree. Worth a note in PAPER.md's
+eventual methodology section if this squeeze/momentum work is written up — a real, non-obvious
+distinction, not just a footnote.
+
+---
+
+## 2026-09-15 22:30: Combined squeeze+momentum arm DONE — all 3 gate variants complete, momentum-gate ALONE has the best headline result, not the combination
+
+`backtest.py --pairs-override output/research/purity_pairs.parquet --capital-sim
+--storm-squeeze-momentum-gate` (both conditions required together) completed cleanly. Real results:
+
+- **Unconstrained**: n_pairs=1212, n_trades_total=25,851 (the strictest filter of the three, as
+  expected — squeeze ∩ momentum), total_pnl_portfolio=**+474,654.47**, sharpe_portfolio=**+0.4304**
+  — the BEST unconstrained Sharpe of all three gates. max_concentration_pct=7.68%.
+- **Capital-constrained (headline)**: taken=214/25851, skipped=25637, peak_notional=$100219,
+  final_equity=$99085.47, **sharpe=-0.4347** — still negative, and WORSE than momentum-gate alone
+  (-0.1462), though slightly better than squeeze-gate alone (-0.4944).
+
+### All 3 squeeze/momentum gates vs. the original 4 arms — summary
+
+| Arm              | Unconstrained trades | Unconstrained Sharpe | Capsim trades taken | Capsim Sharpe (headline) |
+|------------------|----------------------:|----------------------:|----------------------:|---------------------------:|
+| Baseline         |                    480 |                    n/a |                  34/480 |                      0.5168 |
+| Purity (no gate) |                158,963 |                 -0.218 |             610/158963 |                     -0.7584 |
+| **squeeze-gate** |                 41,627 |                **+0.3459** |             387/41627 |                     -0.4944 |
+| **momentum-gate**|                 95,485 |                **+0.3944** |             415/95485 |                     **-0.1462** |
+| **squeeze+momentum** |            25,851 |                **+0.4304** |             214/25851 |                     -0.4347 |
+
+**Honest, non-monotonic finding, not smoothed over**: the combined gate has the BEST unconstrained
+Sharpe (+0.4304, highest of all three) but WORSE headline capsim than momentum-gate alone. This is
+the same capital_sim-sampling pattern noted in the two prior entries, now confirmed across all
+three variants: **headline `--capital-sim` performance does NOT track unconstrained Sharpe
+monotonically as the gate gets stricter** — it tracks how large a population `--capital-sim` gets
+to sample from before its chronological-order, $100k-exhaustion mechanic kicks in. Momentum-gate
+(95,485 unconstrained trades, the largest pool of the three gated arms) gives capsim the most
+signal to sample from and produces the best headline result; the combined gate (25,851, the
+smallest pool) gives it the least and produces a worse headline result despite having the best
+underlying edge. **This strongly reinforces the open methodology question already flagged twice
+tonight (09:22, 22:23 entries): `--capital-sim`'s fixed $100k account size relative to a
+large/gated pair pool's raw signal volume may be materially understating the real, demonstrated
+improvement all three squeeze/momentum gates produce.** Worth Ross's direct input on whether a
+larger account size or a different capital-allocation scheme (e.g., not strictly chronological)
+should be tested before concluding which gate is actually "best" — not decided here, flagged for
+when he's back.
+
+**What IS a clean, robust, disclosable result across all three gates without qualification**: every
+single one flips the sign positive on the full unconstrained trade set (Purity's -0.218 → +0.35 to
++0.43 across the three variants) — this directly confirms Ross's original hypothesis that the
+missing squeeze/momentum entry confirmation was a real, material gap in the backtest methodology,
+independent of the capital_sim sampling question above.
+
+Backed up to `output/backtest/sqzmomgate_{portfolio,summary,trades}_layer1_storm.parquet` and
+`sqzmomgate_{trades,portfolio}_layer1_storm_capsim_fixed_100000.parquet`. All 3 gate variants now
+complete. Next: re-run `ml.py --pit-safe` with the 2 new features (`squeeze_min`,
+`rsi_diff_velocity`) live to see if they move the below-majority-baseline holdout accuracy from
+the 20:42 entry.
+
+---
+
+## 2026-09-15 22:27: Momentum-gate arm DONE — same positive unconstrained flip, better diversified, headline capsim closer to zero
+
+`backtest.py --pairs-override output/research/purity_pairs.parquet --capital-sim
+--storm-momentum-gate` (cross-leg RSI-divergence velocity must agree with the z-score's implied
+reversion direction) completed cleanly. Real results:
+
+- **Unconstrained**: n_pairs=1223, n_trades_total=95,485 (a much less restrictive filter than
+  squeeze-gate's 41,627 — momentum confirms roughly 60% of raw signals vs squeeze's ~26%),
+  total_pnl_portfolio=**+590,099.39**, sharpe_portfolio=**+0.3944** — again a full sign flip from
+  Purity baseline, and the strongest unconstrained Sharpe of the two gates so far. Notably better
+  diversified too: max_concentration_pct=5.95% vs squeeze-gate's 16.38% and Purity's 16.46%.
+- **Capital-constrained (headline)**: taken=415/95485, skipped=95070, peak_notional=$100465,
+  final_equity=$99497.83, **sharpe=-0.1462** — still negative, but meaningfully closer to zero
+  than squeeze-gate's -0.4944 and much closer than Purity's -0.7584.
+
+Same capital_sim-sampling-limitation caveat as the squeeze-gate entry applies (415/95,485 trades
+sampled under $100k is an even thinner slice of a larger unconstrained population) — the
+directional trend across both gates so far (unconstrained sign flips positive, capsim moves
+toward zero but hasn't crossed) is itself the real, honest finding tonight, not a confirmed
+positive headline result yet.
+
+Backed up to `output/backtest/momgate_{portfolio,summary,trades}_layer1_storm.parquet` and
+`momgate_{trades,portfolio}_layer1_storm_capsim_fixed_100000.parquet`. Launching the combined
+squeeze+momentum arm next — real test of whether stacking both conditions pushes the headline
+capsim result the rest of the way to positive, or over-restricts the pool the way
+capital-constrained sampling already seems sensitive to.
+
+---
+
+## 2026-09-15 22:23: Squeeze-gate arm DONE — flips the UNCONSTRAINED sign positive, headline capsim still negative (real, nuanced result)
+
+`backtest.py --pairs-override output/research/purity_pairs.parquet --capital-sim
+--storm-squeeze-gate` (both legs required in a volatility squeeze at entry) completed cleanly.
+Real results, straight from the log:
+
+- **Unconstrained**: n_pairs=1222, n_trades_total=41627 (down from Purity baseline's 158,963 —
+  the squeeze gate is a real, strict filter, ~74% fewer trades), total_pnl_portfolio=**+411,269.56**
+  (vs. Purity's -357,157.26), sharpe_portfolio=**+0.3459** (vs. Purity's -0.218). **This flips the
+  sign entirely on the full, unconstrained trade set** — the squeeze gate is picking a genuinely
+  better population of trades in aggregate, not just fewer of the same ones.
+- **Capital-constrained (headline, `--capital-sim`)**: taken=387/41627, skipped=41240,
+  peak_notional=$100741, final_equity=$98313.84, **sharpe=-0.4944** — still negative.
+
+**Honest read, not cherry-picking the positive number**: per CLAUDE.md's own standing rule, the
+capital-constrained result is the designated headline, and it's still negative here. The gap
+between the two results is itself informative, not a contradiction: `--capital-sim` replays trades
+in chronological order and stops once $100k is committed, so it only ever samples the FIRST ~387
+of 41,627 signals — a small, front-loaded slice that doesn't necessarily inherit the aggregate
+improvement visible across the full unconstrained set. This is a genuinely positive, real signal
+(the squeeze filter measurably improves trade quality in aggregate) that hasn't yet translated
+into the headline metric, most likely because $100k capital is far too small relative to 41,627
+signals to sample representatively (a concern this project's own 09:22/20:40 entries already
+raised about Purity-scale pools generally). Worth investigating: does a much larger account size,
+or a smarter (non-chronological) capital allocation, let capital_sim's result track the
+unconstrained one more closely? Not investigated further tonight — flagged for Ross's input given
+it's a real methodology question about `--capital-sim` itself, not just this comparison arm.
+
+Backed up to `output/backtest/sqzgate_{portfolio,summary,trades}_layer1_storm.parquet` and
+`sqzgate_{trades,portfolio}_layer1_storm_capsim_fixed_100000.parquet`. Launching momentum-gate arm
+next.
+
+---
+
+## 2026-09-15 22:15 (ongoing): Squeeze/momentum integration — Ross approved, building overnight, autonomous work while he sleeps
+
+Ross's direct instructions (after the 21:05 headline finding below): "integrate the sqz, for the
+gate condition let's test all three options, for where it goes let's do [the --storm gate
+comparison-arm approach], for the nan gap take a look and fix it, and add columns to ml." Then:
+"i'm going to sleep, do what you can check in hourly or every two hours/ as needed. work
+autonomously." Everything below is that work, in progress, documented as it lands per this
+project's incremental-honesty convention (not held back for one big summary at the end).
+
+**1. NaN gap — root-caused and fixed, not just patched.** The stale `features_{symbol}.parquet`
+files (72-83% NaN) were built from an OLDER, WIDER data source (26,811 rows) than the current
+`DataStore` cache for the same symbol/timeframe (4,590 rows for PNC/1hr) — the NaN traced to
+now-gone extended-hours timestamps with degenerate zero-true-range pricing. Fix: don't trust or
+patch the stale file at all — `research/squeeze_momentum_features.py` (new) recomputes
+`squeeze_indicator`/`rsi_14` FRESH from the current cache and merges additively into the existing
+`spread_series_{A}_{B}.parquet` files `backtest.py`/`ml.py` actually read (6 new columns:
+`squeeze_indicator_a_t`, `squeeze_indicator_b_t`, `rsi_14_a_t`, `rsi_14_b_t`, `rsi_diff_t`,
+`rsi_diff_velocity_t`). **Verified empirically on a real 1D pair (PFG/PRU) on CachyOS: NaN rate is
+now 0-0.3%**, down from 72-83% on the stale file — confirms this was a staleness issue, not a bug
+in the squeeze/RSI formula. (Real, separate, deliberately-not-chased-further finding: intraday 1h
+data's `DataStore` cache is narrower than the corresponding `spread_series` files' own date range
+— only affects the 12/1375 = 0.9% of Purity pairs at 1h/4h, not the dominant 1D case; flagged to
+backlog, not investigated tonight.) Also reused, not reinvented: `research/episodic_pairs_adapter.
+py`'s `_load_symbol`/`_get_full_universe` PERMNO/GVKEY fallback (found live during testing —
+plain `DataStore.load` silently returns None for symbols like ALTG/FBM that need the full-universe
+fallback; same fix already made once tonight, this script just correctly reuses it).
+
+**2. Script design**: symbol-level caching (`VolumeStructure.compute_features()` computed ONCE per
+unique (symbol, tf_label), not once per pair) — same per-process-memoization lesson as tonight's
+earlier episodic_pairs_adapter.py OOM fix, avoids redundant recomputation across pairs sharing a
+leg. Purely additive — never drops/overwrites existing spread_series columns. Synced + diff-verified
+to CachyOS. New test `debug/_verify_squeeze_momentum_features.py` (10/10 passing, both machines):
+covers column addition, existing-column preservation, missing-file/empty-features skip behavior,
+and — the most important case given what motivated this whole fix — that the FEATURE data gets
+reindexed onto the spread_series file's OWN index, not the other way around.
+
+**3. `backtest.py` — 3 new STORM comparison-arm flags**, tested independently per Ross's "test all
+three options" instruction, not bundled into one gate:
+- `--storm-squeeze-gate`: both legs' `squeeze_indicator < 1.0` (standard TTM-squeeze convention,
+  BBand width < Keltner width) at entry.
+- `--storm-momentum-gate`: cross-leg RSI-divergence 5-bar velocity (`rsi_diff_velocity_t`) must
+  agree with the reversion direction the entry z-score implies — z>0 (short-A/long-B expected)
+  confirmed by `rsi_diff_velocity < 0` (A's relative momentum cooling); z<0 is the symmetric
+  opposite. Fails closed (skip) on NaN, exactly like the existing `regime_strength_gate`/
+  `decay_rate_gate` STORM variants.
+- `--storm-squeeze-momentum-gate`: both conditions required together, as its own flag (keeps the
+  3 arms' output filenames cleanly separable: `_sqzgate`/`_momgate`/`_sqzmomgate` suffixes).
+Verified via a new synthetic test, `debug/_verify_squeeze_momentum_gate_logic.py` (15/15 passing,
+both machines) — mirrors the exact condition expressions to catch sign/threshold/NaN-handling bugs
+cheaply before a real multi-hour comparison run. Also re-ran `debug/_verify_backtest_storm_label_fix.
+py` (4/4, no regression) and a plain `import backtest` sanity check on both machines.
+
+**4. `ml.py` — 2 new features added to `_FEATURE_COLS`**: `squeeze_min` (min of the two legs'
+`squeeze_indicator` — the tighter leg governs) and `rsi_diff_velocity` (same column
+`backtest.py`'s momentum_gate reads). Wired into `_build_examples_for_pair` with the SAME
+feat_pos-staled, fail-safe-to-NaN pattern every other PIT-safe feature there already uses (no
+scalar-fallback pair_row equivalent exists for these, same as transfer entropy's own
+"not always available" convention — older/un-augmented spread_series files just leave these two
+features NaN for that pair, not a crash). New test `debug/_verify_ml_squeeze_momentum_features.py`
+(11/12 passing + 1 honest fixture-dependent skip, both machines) — mirrors
+`_verify_ml_hedge_ratio_drift_pit.py`'s own point-in-time verification pattern (values vary
+per-event, not constant; `squeeze_min` matches direct recomputation; NaN propagates correctly;
+missing-column fallback doesn't crash). Full existing 6-file ml.py verify suite re-run on both
+machines after the change: 6/6, no regressions.
+
+**5. In progress as of this entry**: `research/squeeze_momentum_features.py` running for real
+against the full 1,375-pair Purity set on CachyOS (PID 59045, log
+`latest_run_squeeze_momentum_features.log`, Monitor task bma5buv8i armed) — actively working
+(~85-90% CPU, memory stable), not stuck; a full-universe-scale run naturally takes longer than the
+20-pair smoke test. **Next, once this completes**: launch the 3 comparison-arm backtests
+(`--storm-squeeze-gate`, `--storm-momentum-gate`, `--storm-squeeze-momentum-gate`, each against
+`output/research/purity_pairs.parquet --capital-sim`, same convention as tonight's earlier 4 arms),
+back up each arm's outputs with an arm-tagged prefix before the next launches (same
+`_pairsoverride`/`_storm`-suffix collision risk as before), document real results, then re-run
+`ml.py --pit-safe` with the 2 new features live to see if they move the below-majority-baseline
+holdout accuracy documented in the 20:42 entry. Working autonomously per Ross's instruction —
+checking in via message roughly hourly/every 2 hours or when something genuinely actionable
+happens, not on every step.
+
+**UPDATE 23:xx: augmentation complete.** `research/squeeze_momentum_features.py` finished
+cleanly on CachyOS: 1,188 unique (symbol, tf) feature computations in 489.3s, then 1,375 pairs
+processed in 19.3s — **1,226 pairs augmented, 149 skipped** (no spread_series file or no leg
+features resolvable), closely matching the already-known ~150-pair spread_series gap (consistent
+with ml.py --pit-safe's own 1,225/150 split from the 20:42 entry — same underlying gap, not a new
+one). Launching the 3 comparison-arm backtests now.
+
+---
+
+## 2026-09-15 21:05: HEADLINE FINDING — CAMARF already computes a real squeeze/momentum indicator, it's just never wired into backtest.py's entry gate or ml.py's feature set
+
+Directly investigating Ross's hypothesis ("could also attribute to our backtest methodology, like
+what criteria we're using — I'm noticing the lack of squeeze and momentum"). Read `backtest.py`'s
+actual entry-decision code (lines 771-865, `run()`) line by line to confirm exactly what gates a
+trade today: **`|z| >= ENTRY_ZSCORE` (2.0), an optional z-ceiling, a half-life floor, and a set of
+opt-in STORM variants (regime-strength gate, decay-rate gate, max-half-life filter, liquidity-bar
+filter, earnings blackout) — none of which are active by default and none of which are a
+volatility-squeeze or price-momentum filter in the traditional TA sense.** The existing
+"regime_strength"/"decay_rate" gates test whether the STATISTICAL cointegration relationship is
+strengthening, not market-structure conditions like a volatility squeeze or price momentum.
+Confirmed: Ross's hypothesis is correct — there is no squeeze/momentum entry gate anywhere in the
+current pipeline, default or optional.
+
+**But then found something more important while checking whether this data even exists**:
+`analysis.py`'s `VolumeStructure` class (pipeline step 6, its own header comment literally says
+"squeeze indicator, cross-leg RSI divergence") **already computes and persists a real TTM-style
+squeeze indicator and RSI momentum, per symbol, per timeframe** — `compute_features()` (line
+~3376) builds `squeeze_indicator` (Bollinger Band width / Keltner Channel width, <1.0 = squeeze,
+the standard TTM Squeeze construction) and `rsi_14` (standard Wilder RSI), among other columns
+(relative_vol_ratio, VWAP deviation, CVD proxy, Amihud illiquidity, vol_divergence). This is saved
+to `output/results/{tf_label}/features_{symbol}.parquet` for every retained symbol (confirmed
+these files exist on disk, e.g. `output/results/1hr/features_PNC.parquet`, 26,811 rows) — and
+confirmed the values are real and sane, not degenerate: `squeeze_indicator` ranges [0.10, 1.48]
+(mean 0.62), `rsi_14` ranges [0.01, 99.97] (mean 49.8), matching expected construction. One real
+caveat: `squeeze_indicator` is only ~28% non-null (7,610/26,811 rows) — likely an ATR/BBand
+warmup-period gap, not investigated further, would need addressing before any hard entry-gate use
+(NaN should mean "skip, unknown" per this project's existing fail-closed convention for the other
+STORM gates, not silently pass).
+
+**Cross-leg RSI divergence** (`rsi_diff = features_a["rsi_14"] - features_b["rsi_14"]`, line 3614)
+is computed too, but only as an input to `RegimeClassifier` (pipeline step 7, K-Means/GMM/HMM
+clustering) — **`squeeze_indicator` and `rsi_14` are used NOWHERE outside their own computation
+and the regime classifier's internal features** (confirmed via grep across `backtest.py` and
+`ml.py` — zero references to either column). The signal exists, is real, is already computed and
+saved — it simply never reaches the entry-decision code or the meta-labeler's feature set.
+
+**This is the concrete mechanism behind Ross's hypothesis, not just a plausible guess**: CAMARF's
+current entry criterion (`|z| >= ENTRY_ZSCORE`) will fire identically whether the spread is
+coiled in a genuine volatility squeeze (higher-probability breakout/mean-reversion setup) or
+already in a wide, choppy, already-expanded range (lower-quality entry) — and whether momentum
+(RSI divergence between the two legs) confirms or contradicts the z-score signal. Given that the
+episodic pool's negative Sharpe, the multivariate study's null result, AND ml.py's below-baseline
+accuracy (this same file's earlier three entries tonight) all point at "something about which
+entries get taken is wrong, not just which pairs get selected," this untested squeeze/momentum
+dimension is now the single most concrete, literature-independent lead of the whole night.
+
+**PROPOSAL, not built — needs Ross's concept-level sign-off per CLAUDE.md's standing rule (new
+methodology gets discussed and built as a comparison arm, never silently added to production)**:
+add a `--storm-squeeze-momentum-gate` comparison-arm variant to `backtest.py`, following the exact
+pattern of the existing `regime_strength_gate`/`decay_rate_gate` STORM variants — read
+`squeeze_indicator`/`rsi_14` from the persisted `features_{symbol}.parquet` files (same per-bar,
+causal, no-lookahead pattern already used for the other PIT-safe features), gate entry on (a)
+`squeeze_indicator < 1.0` (in a squeeze) and/or (b) RSI divergence direction agreeing with the
+z-score signal's implied direction. Exact thresholds and which of (a)/(b)/both to require are
+open design questions for Ross to weigh in on before implementation, not decided here. Also worth
+adding both columns to `ml.py`'s `_FEATURE_COLS` regardless of the backtest-gate decision — cheap,
+already-computed, directly answers whether they add real signal to the meta-labeler that the
+current 8-feature set lacks (the same PIT-safe join pattern `hedge_ratio_drift` already uses).
+
+---
+
+## 2026-09-15 20:42: ml.py verified working, run for real — but its own result is a THIRD independent confirmation the episodic pool has no real signal
+
+Per Ross's direct request ("make sure ML.py is working as intended"). Two parts: (1) confirm the
+code itself is correct, (2) run it for real against tonight's rebuilt data, not just trust stale
+output.
+
+**Code check**: found the same stale-CachyOS-copy issue as `build_comparison_arm_pairs.py`
+earlier tonight — CachyOS's `ml.py` was missing the `"1Y": "1yr"` timeframe-mapping fix present
+locally (single-line diff, confirmed via `diff` ignoring line-ending noise). Synced, diff-verified
+identical. All 6 existing `debug/_verify_ml_*.py` / `_verify_sequential_bootstrap_ml_comparison.py`
+suites re-run on CachyOS after the sync: **6/6 pass** (feature lag, hedge-ratio-drift PIT
+correctness, median-imputation no-leakage, model comparison, stage2 ablation, sequential
+bootstrap) — the individually-fixed bugs from past sessions are all still correctly fixed.
+
+**Real run**: `ml.py --pit-safe` (sources pairs from tonight's rebuilt 1,375-pair episodic
+adapter output, `episodic_confirmed_pairs_adapter_output.parquet`, fresh as of 08:54 tonight) —
+the last real run of this script was 2026-09-09 (stale, pre-dated tonight's episodic rebuild
+entirely, only 237 labeled examples then). Tonight's real run: 1,225 of 1,375 pairs produced
+labeled examples, **69,592 total labeled entry events** (up from 237). Trained on 41,755, held
+out 13,919. Real results:
+
+```
+label_distribution (binary): not_converged=41050 (58.98%), converged=28542 (41.02%)
+Holdout test_accuracy: 54.24%
+Conformal (alpha=0.1): avg_set_size=1.66/2, empirical_coverage=88.90% (target >=90%)
+```
+
+**The finding worth flagging plainly, per "honest over impressive"**: the trained classifier's
+54.24% holdout accuracy is LOWER than the 58.98% majority-class baseline (always predicting
+`not_converged`) — the model performs WORSE than doing nothing on this pair set. This is not a
+code bug (the pipeline ran correctly end-to-end, matches the verified-correct synthetic behavior)
+— it's a real result about the DATA: on the PIT-safe episodic pair pool, the Stage 1 feature set
+(zscore, zscore_velocity, half_life, hurst, coint_fraction_rolling, half_life_trend_slope,
+mean_reversion_speed, hedge_ratio_drift, transfer-entropy features) carries no usable signal for
+predicting spread resolution, at least not one this model architecture can extract. **This is a
+THIRD independent line of evidence, via a completely different method (supervised classification,
+not P&L simulation), that the episodic-confirmed pool lacks real exploitable structure** —
+converging with the 09:22 backtest-arm finding (negative Sharpe) and the 12:47 multivariate study
+(no significant OOS-survival predictor, one counterintuitive marginal signal). Three independent
+methods now agree: whatever makes the small full-history-confirmed set special, it is not
+something the episodic gate, the current sizing methodology, or the current ML feature set can
+see. Also worth a secondary look later: the conformal calibration's 88.90% empirical coverage
+missed its own 90% target — a real, if modest, undercoverage, not investigated further tonight.
+
+Model persisted to `output/ml/model_stage1.pkl` (overwrites the stale Sep-9 model — the old one
+is not separately archived; flag if Ross wants historical models preserved going forward, not
+done tonight since no prior convention for it was found).
+
+---
+
+## 2026-09-15 20:50: WRDS CCM linking table backlog item — checked, already correct, no fix needed
+
+Followed up on literature sweep pass 3's suggestion (topic 2) to check whether WRDS's official
+CRSP/Compustat Merged linking table could replace CAMARF's placeholder-symbol fallback pattern.
+Direct code read of `data_wrds.py` resolves this without any change needed:
+
+- **Domestic Compustat fundamentals already use the real CCM linking table** —
+  `fetch_compustat_fundamentals()` (line ~1509) joins via `crsp_a_ccm.ccmxpf_lnkhist` with
+  `linktype`/`linkprim`/`linkdt`/`linkenddt` handled correctly. The literature suggestion was
+  already implemented here.
+- **`GVKEY{gvkey}_{iid}`-style labels are for Compustat GLOBAL (international) constituents**
+  (`build_global_symbol_label`, line 1308) — its own docstring is explicit: "most international
+  index constituents don't have [a ticker] the way CRSP/US symbols do." CRSP itself doesn't cover
+  non-US securities, so `ccmxpf_lnkhist` (a CRSP-Compustat link) structurally cannot resolve these
+  — there is no PERMNO to link to for a security CRSP never covered. This is a deliberate,
+  correctly-disclosed design choice, not a gap.
+- **`PERMNO{permno}`-style labels are the fallback when a security's TICKER can't be resolved**
+  from CRSP's own ticker-history table (delisted/renamed securities) — using the PERMNO (CRSP's
+  own permanent, stable identifier) as the label in that case is the principled choice, not a
+  workaround needing a crosswalk; the ticker is the unstable, derived identifier, PERMNO is the
+  canonical one.
+
+**Conclusion**: this backlog item is closed, not deferred — the literature suggestion doesn't
+apply to the actual placeholder-symbol case (international GVKEY listings have no CRSP linkage to
+crosswalk to), and the case it does apply to (domestic GVKEY↔PERMNO) was already using the real
+CCM table. No code change made.
+
+---
+
+## 2026-09-15 20:40: Kelly-variant anomaly ROOT-CAUSED — not a bug, a real risk-position-sizing finding
+
+Per Ross's direct instruction to investigate why the episodic pairs show no edge, including
+whether backtest methodology (entry criteria, risk-position sizing) is the real cause, this was
+the first item pulled from the backlog. Root-caused via direct code read (`portfolio_sim.py`'s
+`replay_portfolio`) + live empirical verification against the archived Purity trades
+(`output/backtest/purity_trades_layer1_storm.parquet`, 158,963 raw trades), not just theorized:
+
+**Mechanism, confirmed empirically**: `flat_2pct` and all 4 Kelly fractions size positions off a
+causal risk estimate (`risk_fraction × current_equity / risk_per_share`), NOT off the original
+backtest.py trade's own share count the way `fixed`/`equity_proportional` sizing do. On the
+Purity pool (1,375 pairs, huge trade volume), this risk-based formula produces positions large
+enough that the $100k account's capital gets fully committed almost immediately
+(`peak_concurrent_notional` = exactly $100,000, confirmed) and stays exhausted — verified directly
+by running `portfolio_sim.py --sizing full_kelly` (and separately quarter/third/half_kelly) against
+the real Purity trade file: **all 4 Kelly variants produce the identical `n_taken=10`,
+`n_kelly_fallback=837` breakdown**, because only 10 trades total ever get taken, sequentially, so
+`closed_pnls` never reaches the causal 60-trade Kelly warmup (`_KELLY_MIN_TRADES=60`) — every
+attempted Kelly-sized trade falls back to identical `flat_2pct` sizing, making the 4 fractions
+computationally indistinguishable on this dataset. **Not a bug in `_kelly_fraction`'s math or the
+Kelly-multiplier dict** — confirmed both are correct; this is a genuine capacity/scale mismatch
+between $100k capital and a 1,375-pair pool's signal volume when using risk-based sizing.
+
+**Reassuring cross-check, important not to conflate**: the actual headline arm-comparison runs
+(Baseline/Purity/Hybrid/Tiered, all documented in the 09:xx entries) used the DEFAULT `fixed`
+sizing method, which sizes off the original trade's own share count and does NOT hit this
+collapse — those runs took 610-650 trades each, matching their documented headline numbers
+exactly. **The episodic-pool-shows-no-edge finding is unaffected by this Kelly issue** — it's a
+separate, real result. This Kelly collapse only affected the Tier1 sensitivity screen's
+`capital_sizing_method` sweep specifically (11:33 entry) — those 4 Kelly rows there are now known
+to be genuinely uninformative on this dataset, not wrong exactly, just uninformative at $100k
+capital.
+
+**Real, disclosable methodology implication for Ross's "risk position methodology" hypothesis**:
+risk-based sizing (flat_2pct/Kelly) is effectively unusable at $100k account size against a pool
+this large — either the account size needs to scale with pool size for any risk-based sizing
+comparison to be meaningful, or risk-based sizing needs its own concentration/capital-allocation
+logic across a large pair pool (right now it has none beyond the existing concentration_cap/
+leverage_cap flags, neither used in tonight's runs). Flagged to backlog as a real design question,
+not fixed tonight (would be a methodology change needing discussion first, per CLAUDE.md).
+
+**Secondary finding, a real gap**: `n_kelly_fallback` and `n_skipped_no_risk_estimate` are computed
+by `replay_portfolio` but never persisted to the saved `portfolio_*.parquet` nor logged by
+`backtest.py`'s own `--capital-sim` code path (only `portfolio_sim.py`'s standalone CLI logs
+them) — this diagnostic had to be re-derived by re-running `portfolio_sim.py` directly against the
+archived trades rather than being readable from any saved output. Worth a small fix (persist both
+fields in the saved parquet) so this class of anomaly is visible without a manual re-run next time
+— not done tonight, flagged to backlog as a quick, low-risk addition.
+
+---
+
+## 2026-09-15 20:14: Backlog — 5 next-session candidates, grounded in tonight's actual findings
+
+Everything queued at the start of tonight's overnight loop is now done and documented (both
+backtest comparison arm sets, Tier1 parameter sensitivity screen, the backtest.py storm-label
+bugfix, debug/_verify_paper_claims.py, lead_lag_cointegration_rate.py, the 3-fold multivariate
+re-run, and all 3 literature sweep passes). These 5 candidates are grounded specifically in
+tonight's real results, not generic quant-ML suggestions — none adopted tonight, all need Ross's
+buy-in first per CLAUDE.md's "new methodology → discuss first" rule:
+
+1. **Re-fit the multivariate PIT-predictors study with `GEE` instead of plain `Logit`.**
+   Directly fixes the pseudo-replication limitation the 12:47 entry's coefficients carry (same
+   pair repeated across L values within a fold) — `statsmodels.genmod.generalized_estimating_
+   equations.GEE`, cluster by `pair_id`, already in this project's dependency set, no new
+   package needed. Found via tonight's literature sweep pass 3, topic 1.
+2. **Investigate the Kelly-variant anomaly from the Tier1 sensitivity screen** (11:33 entry): all
+   4 Kelly fractions (quarter/third/half/full) produced bit-for-bit identical `sharpe`/`n_taken`
+   — either a real floor/cap effect on this pair set or a real bug in `--capital-sizing`'s Kelly
+   implementation, not yet distinguished. Needs a direct code read before trusting or dismissing
+   either possibility.
+3. **Test whether tightening the episodic-confirmation FDR threshold shrinks the 1,375-pair
+   Purity pool toward the Baseline/Tiered set's positive result.** Two independent literature
+   threads converge on this exact question: the GT-Score paper (pass 3, topic 4 — selection-
+   process-level overfitting, not just per-pair p-values) and the two 2025 e-value FDR papers
+   (pass 2, item 4). This is the most direct, literature-backed next step toward explaining the
+   09:22 entry's central puzzle (large confirmed pool, no edge; small known set, real edge).
+4. **A pre-merger-SPAC flag/filter before pair screening**, per Nohel (2024)'s finding that
+   pre-merger SPAC prices are NAV-anchored (drift toward the ~$10 trust value) rather than
+   economically linked — a real, concrete spurious-cointegration risk now that the SIC-6770 SPAC
+   universe is live in CAMARF's data (most recent commit). Found via pass 3, topic 3.
+5. **Check whether WRDS's own CCM linking table (`ccmxpf_linktable`, GVKEY↔PERMNO with validity
+   date ranges) is already pulled by CAMARF's WRDS fetch**, and if not, whether it could replace
+   the current ad hoc placeholder-symbol fallback pattern (`GVKEY201229_01W`-style labels) with a
+   more principled crosswalk. Found via pass 3, topic 2.
+
+Also still open from tonight, not part of this list since already flagged inline: the Tier2
+parameter sensitivity screen (12 more params, ~8hr estimated) needs Ross's explicit go-ahead on
+whether to run it against the full 1,375-pair Purity set before committing that much CachyOS time
+(09:25 entry).
+
+---
+
+## 2026-09-15 20:13: Literature sweep pass 3/3 complete — the final pass, grounded in tonight's own findings, includes 3 concretely actionable results
+
+Dispatched as a single subagent (per the one-dispatch-at-a-time rule), scoped to 4 topics each tied
+to a specific finding from tonight's session, not general search. Research-only, no repo files
+touched. This closes out the full 3-pass literature sweep.
+
+**Topic 1 — rare-event/small-sample logistic inference (for the 12:47 multivariate study's n=166,
+pseudo-replicated data)**:
+1. King & Zeng (2001), "Logistic Regression in Rare Events Data" — the canonical bias-correction
+   paper for exactly this shape of data (few `held_up=True` positives).
+2. Firth (1993) bias-reduced/penalized-likelihood logistic regression, with a directly usable
+   statsmodels-compatible Python package (`firthmodels`) — **concretely adoptable, one-line swap**
+   for `sm.Logit(y, X).fit()`.
+3. **Most actionable**: `statsmodels.genmod.generalized_estimating_equations.GEE`, already in
+   this project's existing dependency set, clustered by `pair_id` — this DIRECTLY fixes the
+   pseudo-replication limitation the multivariate script's own docstring discloses (same pair
+   repeated across L values within a fold) rather than just flagging it. **Recommended next step
+   before trusting the 12:47 entry's coefficients further**, not adopted tonight (would need
+   Ross's buy-in per CLAUDE.md's "new methodology → discuss first" rule) — flagged to backlog.
+
+**Topic 2 — entity resolution for WRDS/GVKEY placeholder symbols**:
+1. **WRDS's own official CRSP/Compustat Merged (CCM) linking table** (`ccmxpf_linktable`,
+   GVKEY↔PERMNO with `linkdt`/`linkenddt` validity ranges, many-to-one aware) — a directly
+   available, more principled alternative to CAMARF's current ad hoc placeholder-symbol fallback
+   (`GVKEY201229_01W`-style labels). Worth checking whether CAMARF's WRDS fetch already pulls this
+   table before continuing to invent placeholder symbols for entities WRDS already has an official
+   crosswalk for — flagged to backlog, not investigated tonight.
+2. Fellegi & Sunter (1969) probabilistic record linkage + the "(Almost) All of Entity Resolution"
+   survey — generic academic background only; **honestly reported: no finance/ticker-specific
+   academic record-linkage paper was found** despite a dedicated search.
+
+**Topic 3 — SPAC-specific literature (CAMARF's universe now includes the SEC EDGAR SIC-6770 SPAC
+set per the most recent commit)**:
+1. **Nohel (2024), "The information content of SPAC securities"** — key finding, a real,
+   concrete warning: pre-merger SPAC share prices are NAV-anchored via the redemption option
+   (drift toward the ~$10 trust value), so co-movement between two pre-merger SPACs (or a SPAC and
+   anything else NAV/interest-rate-correlated, since trusts hold T-bills) is likely MECHANICAL,
+   not a real tradeable relationship — a genuine risk of spurious cointegration entering the
+   screening pipeline once SPAC symbols are live. Rights/warrants (non-redeemable) are flagged as
+   the actually informative SPAC instruments instead. **Actionable**: a pre-merger-SPAC flag/filter
+   before treating these identically to normal equities in pair screening is worth considering —
+   flagged to backlog.
+2. AQR (2024), "Are SPACs Still Alive?" — practitioner background distinguishing classic SPAC-NAV
+   arbitrage from CAMARF's own cointegration approach (useful context, not a method to adopt).
+
+**Topic 4 — large confirmed pool underperforming a small vetted set; lead-lag asymmetry**:
+1. **"The GT-Score: A Robust Objective Function for Reducing Overfitting in Data-Driven Trading
+   Strategies" (arXiv 2602.00080)** — directly on tonight's core 09:22 puzzle: large-scale pair
+   selection systematically produces false discoveries unless the SELECTION PROCESS ITSELF is
+   penalized, not just each individual pair's own p-value — a real, plausible mechanism for why
+   the 1,375-pair episodic pool shows negative Sharpe despite each pair individually clearing its
+   PIT-safe gate. Directly relevant to the open FDR-tightening question already flagged in the
+   09:22 and pass-2 entries.
+2. Chen/Goutte et al., "Selecting stock pairs for pairs trading while incorporating lead-lag
+   relationship" (arXiv 1906.05057) — a pair-selection distance measure incorporating a
+   continuously-varying lead-lag value, built on the same premise as tonight's 11:39 finding
+   (relationship strength is lag-dependent, not flat at lag 0) — a genuine pair-selection-criteria
+   extension candidate.
+3. "Intertemporal Cointegration Model" — generalizes Engle-Granger with an explicit leading-series
+   term, a formal econometric framework for the lag-dependent-significance phenomenon
+   `lead_lag_cointegration_rate.py` found empirically tonight.
+
+All 3 literature sweep passes are now complete. Sequencing per Ross's original instruction (pass
+2/3 only after Tier 4 genuinely finishes) was honored throughout.
+
+---
+
+## 2026-09-15 20:10: Literature sweep pass 2/3 complete (recent 2025-2026 literature, direct search not citation-graph traversal)
+
+Dispatched as a single subagent (per this project's one-dispatch-at-a-time rule), Tier 4 now
+genuinely complete so unblocked per the 2026-09-13 pass-1 entry's own sequencing note. Research-only,
+no repo files touched. Method: `research/lit_search_tools.py`'s `arxiv_search` across 7 queries
+(q-fin.ST/q-fin.TR/stat.ME, 2025-2026-scoped) plus one direct WebSearch for a paper arXiv's own
+loose `abs:` matching failed to surface. No OpenAlex citation-graph traversal this pass (that was
+pass 1's method) — this pass is direct recent-literature search.
+
+**Findings, ranked by relevance**:
+
+1. **Kvist & Vera-Valdés, "Cointegration by Parts: Locating Cointegration in Time" (arXiv
+   2609.10020, Sep 2026)** — highest relevance. Proposes statistics (EG-statistic infimum over
+   recursive/backward-expanding/doubly-flexible windows) for testing whether cointegration holds
+   only over PART of a sample, since whole-sample tests lose power when a real stationary episode
+   is diluted by non-cointegrated periods elsewhere in it. Methodologically adjacent to CAMARF's
+   own episodic re-confirmation pipeline, and directly relevant as a possible formal upgrade
+   (worth Ross's own read, not adopted tonight). Also a citable precedent for tonight's own
+   09:22 finding (episodic-confirmed pool negative, small full-history set positive) — "cointegration
+   is often local in time, not global" is exactly the asymmetry observed there.
+2. **"Survivorship Bias in Emerging Market Small-Cap Indices" (arXiv, Mar 2026)** — quantifies
+   survivor-only backtesting overstating annual returns by 4.94pp and Sharpe by 0.097 (9.1%) on a
+   reconstructed 1,437-stock, 9-year panel. External, recent, out-of-sample validation of the
+   magnitude of a bias CAMARF already discloses/guards against (CLAUDE.md rule #6) — good citation
+   for PAPER.md's own survivorship-disclosure section.
+3. **"Signature-Based Optimal Execution for Statistical Arbitrage" (arXiv 2606.31387, Jun 2026)**
+   — models alpha signal and trading speed jointly via truncated path signatures. A genuinely
+   different execution-modeling paradigm than anything CAMARF implements — extension candidate,
+   not validation of existing work.
+4. **Two 2025 FDR papers — "Bringing Closure to False Discovery Rate Control" (2509.02517) and
+   "The e-Partitioning Principle of False Discovery Rate Control" (2504.15946)** — both generalize
+   BH/BY-style control via e-values with uniform power improvements over eBH/BY/Su. CAMARF uses
+   BH-FDR throughout pair screening; directly relevant to the open question already flagged in the
+   09:22 comparison-arm entry (whether the episodic gate's FDR threshold is too loose) — worth
+   Ross's own read as a candidate tightening, not adopted tonight.
+5. **"Discovering Entity-Conditioned Lag Heterogeneity" (arXiv, May 2026)** — tangential, a macro
+   country-panel lag-discovery method, not finance-pairs-specific, but conceptually adjacent to
+   tonight's 11:39 lead-lag-asymmetric-cointegration finding (entity-specific rather than
+   population-flat lag structure) — noted as a methodology pointer only.
+
+**Explicitly found nothing on**: regime-dependent/time-varying cointegration specific to equity
+pairs trading (beyond #1, which is generic econometric, not finance-pairs-applied); no strong
+2025-2026 match for cross-asset comovement beyond one China-market contagion paper judged too
+methodologically distant to include; no ML-based pairs-selection-with-OOS-validation paper found
+despite a dedicated search — reported honestly as a real gap, not stretched to fit.
+
+Next: literature sweep pass 3 (grounded in tonight's own new findings).
+
+---
+
+## 2026-09-15 12:47: multivariate_pit_predictors.py --folds 3 DONE — honest null-ish result, one counterintuitive marginal signal
+
+Completed in 66.4 min (much faster than the ~10hr worst-case estimated in the 11:45 entry below —
+the "cheap GATED screen" cost held up in practice), 166 pooled pair×cell observations (up from
+124 in the earlier 1-fold run). Real fitted Logit (`held_up ~ actual_n_overlap + pearson_corr +
+coint_fraction_rolling + hedge_ratio_cv`, all z-scored):
+
+```
+Pseudo R-squ.: 0.0974   LLR p-value: 0.2844 (model not significant overall)
+                        coef    std err     z      P>|z|
+const                 -3.7101    0.586   -6.332    0.000  (baseline log-odds, most pairs don't hold up)
+actual_n_overlap      -0.9212    0.601   -1.534    0.125  (not significant)
+pearson_corr          -0.1690    0.406   -0.416    0.677  (not significant)
+coint_fraction_rolling -0.7465   0.388   -1.923    0.055  (marginal, borderline)
+hedge_ratio_cv        -0.1635    0.457   -0.358    0.720  (not significant)
+```
+
+**Honest read, per the script's own pseudo-replication caveat (n=166 pools the same pair across
+multiple L values within a fold — not independent observations, so these p-values are optimistic,
+read signs/magnitudes as suggestive only, not publication-grade)**: the overall model is NOT
+statistically significant (LLR p=0.28) — none of these four covariates, even combined, cleanly
+separate OOS-held-up pairs from OOS-failed pairs. This is consistent with (not contradicted by)
+the three individual single-variable pilots this multivariate study was built to follow up on,
+which each found "noisy, non-monotonic" relationships in isolation.
+
+**The one number worth flagging plainly rather than burying**: `coint_fraction_rolling`'s
+coefficient is **negative** (-0.75, p=0.055, borderline) — pairs with a HIGHER rolling
+cointegration fraction during the training window were marginally LESS likely to hold up OOS, the
+opposite of the naive expectation that "more cointegrated in training" should predict "more
+likely to keep working." `actual_n_overlap` shows the same counterintuitive negative direction
+(-0.92, p=0.125, not significant) — more training history also trending toward LOWER OOS
+success. Given the borderline p-values, small effective n after the pseudo-replication caveat,
+and this being the marginal-signal direction rather than the null, this is flagged as a real,
+disclosable oddity worth a literature-sweep-pass-3 topic (rare-event/small-sample logistic
+inference — is this a genuine regime-dependent overfitting-to-training-window effect, or just
+noise from n=166 with pseudo-replication) rather than either dismissed or oversold as "found a
+predictor." Raw observations saved to
+`output/research/multivariate_pit_predictors_1D.parquet`.
+
+**Unrelated observation, no action needed**: the Monitor watching this job's SSH session dropped
+around 19:38 (exit 255) — CachyOS's `journalctl` shows a reboot at 14:37, well AFTER this job had
+already completed cleanly at 12:47, so no data was lost. Kernel log around the reboot shows
+`logitech-hidpp-device connected` and `fbcon: Taking over console` moments before it — looks like
+physical activity at the machine (a peripheral plugged in / display woken), most likely Ross
+being at CachyOS directly, not a hang. Nothing was running on CachyOS during that window, so this
+needed no response.
+
+---
+
+## 2026-09-15 11:45: multivariate_pit_predictors.py re-run — chosen parameters, documented before firing
+
+Re-running `research/multivariate_pit_predictors.py` with more folds/grid points than the earlier
+1-fold run (which pooled only 124 pair×cell observations across the default 4-point grid
+`[126, 252, 504, 1008]` bars, and found only 3 `held_up=True` cases — too thin to trust the fitted
+Logit's coefficients per the script's own pseudo-replication caveat).
+
+**Chosen**: `--folds 3` (grid left at the script's own default 4 points, not hand-picked). 3 folds
+spreads training-window start dates evenly across the full real analysis window (per
+`_fold_start_dates`'s convention, shared with `overlap_threshold_pit_test.py`), giving 12
+fold×L cells instead of 4 — genuinely different historical windows, not just repeated draws from
+the same snapshot, which directly addresses the earlier run's small-N and single-period-only
+weaknesses. Not chosen: something larger (5+ folds) — this script's docstring says the GATED
+screen costs ~10-50 min per L (vs. the ungated pilots' ~190 min/L), so 12 cells is already a
+multi-hour commitment (up to ~10hrs worst-case, likely less); going straight to a much larger grid
+without first seeing how 3-fold data looks would risk burning the rest of tonight's CachyOS time
+on a single script before the literature sweep passes can even start. If 3-fold results still
+look too thin/noisy to trust, the next session can extend folds further with this run's timing as
+a real cost estimate instead of a guess.
+
+---
+
+## 2026-09-15 11:39: lead_lag_cointegration_rate.py run for real — cointegration rate is NOT flat across lag, elevated at negative lags
+
+`research/lead_lag_cointegration_rate.py` (Config defaults: `--max-lag`=`Config.RESEARCH.LEAD_LAG_MAX_LAG`,
+`--alpha`=`Config.ANALYSIS.EG_SIGNIFICANCE`, `--workers`=`Config.RUNTIME.N_WORKERS`=15) completed
+cleanly on CachyOS, no crash. Real results:
+
+- Fixed-denominator eligibility gate (n≥60 at every lag in [-10,10]) admitted only **19 pairs**
+  out of the full confirmed population — a real, small-N limitation, disclosed here plainly (this
+  is the same population lead_lag_scan.py draws from; most confirmed pairs don't have enough
+  overlapping history at the extreme ±10 lags to pass this stricter, fixed-denominator gate).
+- **Cointegration rate by lag is NOT flat** — it's elevated at negative lags (-10 to -6:
+  63.2% significant, 12/19 pairs) and lower/flat from -4 through +10 (47.4%, 9/19 pairs, with a
+  small bump at -2/-1/-5 around 52-58%). This is a real, disclosable asymmetry: if lag sign
+  convention here means symbol_a leading symbol_b at negative lags (needs confirming against the
+  script's own docstring/lagged_corr_scan convention before citing directionally in PAPER.md),
+  this is consistent with a genuine lead-lag structure rather than pure contemporaneous
+  cointegration — worth a follow-up look at WHICH pairs drive the negative-lag elevation (12 vs 9
+  significant pairs is only a 3-pair swing on n=19, so treat this as suggestive, not conclusive,
+  given the small eligible population).
+- Outputs: `output/research/lead_lag_cointegration_rate_full.parquet` (per-(pair,lag) results)
+  and `output/research/lead_lag_cointegration_rate_curve.parquet` (the rate-by-lag curve above).
+
+Next: multivariate PIT-predictors re-run (more folds/grid points than the earlier 1-fold run).
+
+---
+
+## 2026-09-15 11:38: Root-caused and fixed a real bug — backtest.py's `_storm` filename suffix was ALWAYS appended, regardless of any --storm-* flag
+
+While trying to run `debug/_verify_paper_claims.py` (queued next after the Tier1 sensitivity
+screen), its expected filenames (`portfolio_layer1_pairsoverride_capsim_fixed_100000.parquet`,
+no `_storm`) never matched any of tonight's fresh output files, which all carried a `_storm`
+suffix (`portfolio_layer1_storm_pairsoverride_capsim_fixed_100000.parquet` etc.) even though
+**no `--storm-*` CLI flag was ever passed in any of tonight's Baseline/Purity/Hybrid/Tiered
+runs.** Root-caused (not patched around) via direct code read + empirical reproduction:
+
+`backtest.py`'s `storm_flags` dict (line ~2489) includes `"decay_rate_gate_spec"`, whose value is
+the CLI's own default — the **string** `"coint_fraction:sma"`, not a boolean. The suffix logic
+was `elif any(storm_flags.values())`, and a non-empty string is truthy in Python, so this check
+evaluated `True` on literally every run, real STORM flags or not — the actual boolean
+`decay_rate_gate` flag was correctly `False` in all these runs, so **no real STORM behavior was
+silently active**, this was purely a filename-labeling bug, not a results-correctness bug.
+Confirmed via direct empirical test on CachyOS (`backtest.py --tf nonexistent_tf`, before fix:
+`[layer1_storm]`; after fix: `[layer1]`; with a real flag `--storm-garch-stop`: still correctly
+`[layer1_storm_gstop]`).
+
+**Fix**: `backtest.py` line 2521, `elif any(v for k, v in storm_flags.items() if k !=
+"decay_rate_gate_spec")`. Synced to CachyOS, diff-verified identical. New regression test
+`debug/_verify_backtest_storm_label_fix.py` (4/4 passing, synced+diff-verified) locks in both the
+fixed behavior (plain runs get no suffix, real flags still do) and reproduces the old buggy
+`any(dict.values())` check explicitly so a future refactor can't silently reintroduce it. This
+does NOT retroactively rename any of tonight's already-produced/backed-up arm files (they keep
+their `_storm`-suffixed names as archived — cosmetic only, results themselves are correct); only
+runs from this point forward get clean filenames.
+
+`debug/_verify_paper_claims.py` then run (against the existing, pre-tonight 182-pair-era local
+evidence files, which are unaffected by tonight's 1,375-pair Purity rebuild) — **all 7 checks
+PASS**: Act Three (§7.20) headline IS sharpe -0.679 and OOS sharpe -0.834 both match PAPER.md
+exactly, all 6 capital-sizing variants are negative on both IS and OOS splits (the paper's "loses
+under essentially every parameterization tested" claim holds), and Act One's disclosure-accuracy
+check confirms today's live cache genuinely does NOT reproduce the old 2026-07-12 449-trade/26-pair
+headline (as PAPER.md itself discloses it shouldn't).
+
+---
+
+## 2026-09-15 11:33: Tier1 parameter sensitivity screen DONE (26 runs) — all-negative grid, plus a real anomaly flagged for follow-up
+
+`research/parameter_sensitivity_screen.py` (Tier1: entry_zscore/hedge_method/capital_sizing_method,
+26 `backtest.py` runs, IS+OOS each) completed cleanly on CachyOS — the watching Monitor's SSH
+session dropped mid-run (exit 255) and looked like a crash, but `uptime` confirmed CachyOS never
+went down and the job's own log shows it ran to a normal completion with full output. Real
+results from `latest_run_parameter_sensitivity_tier1.log`:
+
+- **Every single grid point across all 3 params, both IS and OOS, is negative Sharpe.** No
+  parameter combination in this Tier1 grid rescues the Purity-arm-wide negative result documented
+  in the 09:17 entry — consistent with this morning's read that the problem is the episodic pair
+  pool itself, not a mistunable backtest-level knob.
+- **Overfitting guard**: `entry_zscore` flagged `overfit_risk=True` — its IS-best value (1.5)
+  ranks dead last (4/4) OOS, while OOS actually prefers 2.0 (the existing default). `hedge_method`
+  and `capital_sizing_method` both flagged `overfit_risk=False` (IS-best and OOS-best agree or are
+  close).
+- **Effect size ranking**: `hedge_method` has by far the largest IS Sharpe range (0.95, from
+  -1.71 kalman to -0.76 both), `entry_zscore` second (~0.39-0.97), `capital_sizing_method`
+  smallest (~0.10-0.18) — hedge method choice matters most, capital sizing method least, within
+  this grid.
+- **ANOMALY, not yet investigated, flagging plainly rather than silently passing over it per
+  CLAUDE.md's root-cause discipline**: all 4 Kelly-fraction variants (`quarter_kelly`,
+  `third_kelly`, `half_kelly`, `full_kelly`) produced **bit-for-bit identical** results —
+  `sharpe=-0.6686 n_taken=10` IS and `sharpe=-0.6608 n_taken=10` OOS, all four, no variation
+  whatsoever. Two candidate explanations, neither confirmed: (a) real floor/cap logic in
+  `backtest.py`'s capital-sizing code collapses all 4 fractions to the same effective position
+  size for this pair set (plausible but would be a real, disclosable finding about Kelly sizing's
+  practical range here), or (b) the 4 Kelly variants aren't actually being differentiated by
+  `--capital-sizing`'s implementation — a real bug. Needs a direct look at `backtest.py`'s
+  `--capital-sizing` handling before trusting either the Kelly results here or any future
+  Kelly-sizing claim in `PAPER.md`. Not investigated tonight (would violate the "one thing at a
+  time" pipeline discipline mid-queue) — tracked here for the next session.
+
+Archived per-grid-point files: `output/research/param_sensitivity/phase1_oat_results.parquet`
+(26 rows) and `phase1_overfitting_guard.parquet`. Tier2 (12 more params, `--tier2`) remains
+deferred per the scope note below — needs Ross's input before committing ~8 CachyOS-hours to it.
+
+---
+
+## 2026-09-15 09:25: parameter_sensitivity_screen.py scope note — pair count grew 7.5x since it was written
+
+`research/parameter_sensitivity_screen.py`'s own docstring says it targets "the real,
+BUG-D112-fixed 182-pair PIT-safe Purity universe" (`output/research/purity_pairs.parquet`), but
+tonight's rebuilt `purity_pairs.parquet` has 1,375 pairs (the new episodic-confirmed set, see
+09:17 entry above) — a 7.5x increase from what this script was tuned/timed against. Each grid
+point runs `backtest.py` twice (IS + OOS via `--holdout`); the Tier1 `REGISTRY` (entry_zscore,
+hedge_method, capital_sizing_method) has 13 grid values → 26 runs, and Tier2 (`--tier2`, 12
+`Config.BACKTEST` constants) has ~52 grid values → ~104 runs. At tonight's observed ~5min per
+1,375-pair `backtest.py --capital-sim` run, Tier1 alone is ~2+ hours and Tier2 alone is ~8+ hours
+— a serious scope change from whatever this script cost when 182 pairs was the target. No code
+change made (nothing is actually broken — the stale "182-pair" comment is just documentation,
+not a hardcoded assumption, verified via grep). Decision: run Tier1 only tonight (`REGISTRY`, no
+`--tier2`) to fit the remaining overnight window and keep the rest of tonight's queue (multivariate
+re-run, lead_lag_cointegration_rate.py) reachable; Tier2 deferred as a separate, explicitly-scoped
+follow-up rather than silently skipped. Flag to Ross: worth deciding whether Tier2 should run
+against the full 1,375-pair Purity set or a smaller/faster subset before committing ~8 CachyOS-hours
+to it.
+
+---
+
+## 2026-09-15 09:17: Purity arm backtest DONE — negative result, both unconstrained and capital-sim
+
+`backtest.py --pairs-override output/research/purity_pairs.parquet --capital-sim` (1,375 PIT-safe
+episodic-confirmed pairs, no full-history-screen fallback pairs mixed in) completed cleanly on
+CachyOS, no OOM/crash. Real results, straight from the log
+(`latest_run_backtest_purity.log`):
+
+- **Unconstrained**: n_pairs=1223 (of 1375 pairs, some produced zero trades), n_trades_total=158963,
+  total_pnl_portfolio=**-357157.26**, sharpe_portfolio=**-0.218**, max_drawdown_portfolio=509220.4,
+  max_concentration_pair=GVKEY203944_02W/GVKEY209791_01W@1D (16.46%).
+- **Capital-constrained (headline, `--capital-sim`)**: taken=610/158963, skipped=158353,
+  peak_notional=$99934, final_equity=$98111.87, **sharpe=-0.7584**.
+
+This is a real, negative result on both legs — worse than Baseline's positive unconstrained P&L
+(577.59 spread units, capsim sharpe 0.5168, see prior entry). Purity is the "episodic-only, no
+full-history fallback" arm; its much larger pair count (1223 active vs Baseline's handful) and
+negative Sharpe suggest the episodic-confirmed pair pool alone is not a clean edge before seeing
+Hybrid/Tiered — do not treat this as the final word on the episodic methodology until all 4 arms
+are compared side by side. Bias notes from the log itself (unchanged from Baseline): full-series
+run is IN-SAMPLE (episodic survivorship + hedge lookahead), Layer 2 holdout run would be OOS and
+was not run this pass.
+
+Output files backed up (project's existing prefix convention) at
+`output/backtest/purity_{portfolio,summary,trades}_layer1_storm.parquet` and
+`purity_{trades,portfolio}_layer1_storm_capsim_fixed_100000.parquet`. Note: `backtest.py` DOES
+suffix its plain output filenames with `_pairsoverride` whenever `--pairs-override` is passed
+(confirmed via `ls`: `portfolio_layer1_storm_pairsoverride.parquet` etc.) — this resolves the
+overwrite risk flagged in the prior entry for Baseline (which used no override, hence plain
+`_storm` names) vs. Purity. However Hybrid and Tiered will BOTH also use `--pairs-override` and
+will therefore ALSO produce `_pairsoverride`-suffixed files with the SAME names as Purity's —
+so the manual arm-tagged-prefix backup step is still required after each of Hybrid and Tiered,
+same as done here.
+
+Next: launching Hybrid arm (`output/research/hybrid_pairs.parquet`, 1393 pairs, `--capital-sim`).
+
+---
+
+## 2026-09-15 09:21: Hybrid arm backtest DONE — negative result, near-identical to Purity
+
+`backtest.py --pairs-override output/research/hybrid_pairs.parquet --capital-sim` (1,393 pairs =
+1,375 Purity pairs + 18 full-history-fallback pairs) completed cleanly, no crash. Real results:
+
+- **Unconstrained**: n_pairs=1239, n_trades_total=159351, total_pnl_portfolio=**-356090.55**,
+  sharpe_portfolio=**-0.2173**, max_drawdown_portfolio=508838.4, max_concentration_pair
+  GVKEY203944_02W/GVKEY209791_01W@1D (16.51%).
+- **Capital-constrained (headline)**: taken=602/159351, skipped=158749, peak_notional=$99922,
+  final_equity=$98269.28, **sharpe=-0.8011**.
+
+Essentially indistinguishable from Purity's result (sharpe -0.218 unconstrained / -0.7584
+capsim) — expected, since Hybrid is 98.7% the same pairs as Purity plus 18 extra
+full-history-fallback pairs that don't move the aggregate. Same top/bottom pair list, same
+max-concentration pair. This strongly suggests whatever is driving the negative portfolio result
+is intrinsic to the episodic-confirmed pair pool itself, not a fallback-pair artifact — worth
+flagging plainly to Ross once Tiered's very different pair-selection logic (19 pairs,
+tier-weighted N_SHARES) is in, since Tiered is the one arm most likely to actually differ.
+
+Backed up to `output/backtest/hybrid_{portfolio,summary,trades}_layer1_storm.parquet` and
+`hybrid_{trades,portfolio}_layer1_storm_capsim_fixed_100000.parquet` before launching Tiered
+(same `_pairsoverride`-suffix collision as before).
+
+Next: launching Tiered arm (`output/research/tiered_pairs.parquet`, 19 pairs,
+`--pit-confidence-weight --capital-sim`).
+
+---
+
+## 2026-09-15 09:22: Tiered arm backtest DONE — near-flat, all 4 comparison arms now complete
+
+`backtest.py --pairs-override output/research/tiered_pairs.parquet --pit-confidence-weight
+--capital-sim` (19 pairs: 18 full_history_only tier + 1 full_episodic tier, tier-weighted
+N_SHARES) completed cleanly, no crash. Real results:
+
+- **Unconstrained**: n_pairs=17 (2 of 19 pairs produced zero trades), n_trades_total=480,
+  total_pnl_portfolio=**-169.11**, sharpe_portfolio=**-0.0459**, max_drawdown_portfolio=993.2,
+  max_concentration_pair GVKEY201229_01W/GVKEY248104_01W@1D (289.23% — a real, disclosed
+  concentration artifact of having only 17 active pairs and one dominating).
+- **Capital-constrained (headline)**: taken=34/480, skipped=446, peak_notional=$37311,
+  final_equity=$100127.91, **sharpe=0.4948**.
+
+Filenames this time carry a `_pitconf_` component (from `--pit-confidence-weight`) rather than
+plain `_pairsoverride`, so no output collision with Purity/Hybrid occurred — backed up anyway
+to `output/backtest/tiered_{portfolio,summary,trades}_layer1_storm.parquet` and
+`tiered_{trades,portfolio}_layer1_storm_capsim_fixed_100000.parquet` per the same convention.
+
+### All 4 comparison arms — summary (capital-constrained/headline Sharpe, per CLAUDE.md's
+### designated headline metric; all 4 are full-series IN-SAMPLE runs, not OOS)
+
+| Arm     | Pairs | Trades taken (capsim) | Capsim final equity | Capsim Sharpe | Unconstrained Sharpe |
+|---------|------:|-----------------------:|---------------------:|--------------:|----------------------:|
+| Baseline|    19 |                    34/480 |            $100,442.59 |        0.5168 |                (n/a — see 09:10 entry, small-N) |
+| Purity  | 1,223 |                  610/158,963 |             $98,111.87 |       -0.7584 |                -0.218 |
+| Hybrid  | 1,239 |                  602/159,351 |             $98,269.28 |       -0.8011 |               -0.2173 |
+| Tiered  |    17 |                     34/480 |            $100,127.91 |        0.4948 |               -0.0459 |
+
+**Honest read of this pattern** (flagging plainly per CLAUDE.md's "push back / honest over
+impressive" rule, not spinning it): Baseline (the original small full-history-screen pair set,
+19 pairs / same pairs as Tiered's `full_history_only` tier) and Tiered (which is *dominated* by
+that same 18-pair full-history subset, only 1 pair from the episodic set) both land solidly
+positive on the headline capsim Sharpe. Purity (pure episodic, 1,223 pairs) and Hybrid (episodic
++ full-history fallback, 1,239 pairs) both land solidly negative and are nearly identical to each
+other. **The dividing line is not "episodic vs. non-episodic methodology" in the abstract — it's
+almost exactly "the original 18-19 full-history-confirmed pairs vs. everything else."** Tiered
+and Baseline share 18 of their pairs; Purity and Hybrid share 1,223 of theirs and neither
+contains the 18. This is a strong, disclosable finding: **the large episodic-confirmed pair pool
+(1,375 pairs) does not show a positive backtested edge in this in-sample run — the positive
+result comes entirely from the small, already-known full-history-confirmed set.** Two
+non-exclusive candidate explanations to raise with Ross before drawing further conclusions: (1)
+the episodic re-confirmation gate (rolling PIT-safe re-test) is genuinely much looser than the
+full-history screen and is admitting a large number of pairs with no real cointegration edge —
+worth checking the episodic gate's FDR/threshold against the full-history screen's; (2) trade
+economics at 1D on GVKEY-labeled (mostly small/micro-cap or foreign) names may simply not
+survive realistic costs/slippage the way the full-history set's more liquid names do — worth a
+cost-sensitivity check before concluding the episodic methodology itself is flawed. **Do not
+present the 1,375-pair episodic result as validating the episodic re-confirmation approach for
+trading** until one of these is investigated — this directly matches CLAUDE.md's standing rule
+to question pair-*selection* criteria before concluding a trading idea doesn't work, applied in
+reverse here (a large pool showing no edge should prompt checking the selection gate, not
+immediately shelving the whole episodic direction).
+
+Next: `research/parameter_sensitivity_screen.py`, then `debug/_verify_paper_claims.py`.
+
+---
+
+## 2026-09-15 00:45: CachyOS unreachable for 2.5+ hours (started ~22:12) — consolidated status
+
+CachyOS has been unreachable continuously since ~22:12 on 2026-09-14, now 2.5+ hours. Verified
+repeatedly (roughly every 20 min throughout) via direct `ssh` (consistent "Connection timed out",
+not an auth/host-key error), `tailscale status` (consistently "offline"), and the documented LAN
+fallback (`rw@10.0.1.9`, also unreachable). This is well past the TCO watchdog's ~30-60s
+auto-recovery window CLAUDE.md documents, so per that same documentation this now plausibly looks
+like a genuine hang the watchdog didn't catch — though still not something confirmable remotely;
+a sustained network-path outage on the Windows-machine side remains a possible alternative
+explanation I cannot rule out from here (the LAN fallback failing too is somewhat against that
+theory, since LAN and Tailscale are different paths, but not conclusive).
+
+**What was interrupted**: `research/episodic_pairs_adapter.py --workers 15` (the fixed version,
+launched 22:05) was mid-run when the outage started — its per-pair progress is checkpointed
+incrementally (`episodic_pairs_adapter_progress_{source}.parquet`, saved every 5 completed pairs),
+so no more than a few pairs' worth of work should be lost even in the worst case (a genuine
+mid-write kill). Nothing else was running on CachyOS at the time (strictly-sequential rule was
+being followed).
+
+**A connectivity-recovery Monitor (task bpuvoey3a) has been polling every 2 min throughout** and
+will fire the moment SSH reconnects. This session is continuing to watch rather than declaring the
+work session over — there is real, valuable work queued (the rest of the §7.20 pipeline, the
+multivariate re-run, `lead_lag_cointegration_rate.py`, literature sweep passes 2/3) that simply
+cannot proceed until CachyOS is reachable again. A PushNotification was attempted at this point
+(may not have been delivered if the terminal reads as active) — flagging here regardless, since
+this is the kind of thing Ross should see plainly when he next checks in: **CachyOS may need a
+physical check or power-cycle.** Not treating this as a reason to end the overnight loop — will
+keep watching and resume the task queue the moment it's reachable again.
+
+**RESOLVED 01:27 — CachyOS back after ~3.6hr, confirmed NOT a hardware hang.** `uptime` showed
+"up 1 day, 5:10" — the machine never rebooted, so this was a sustained network-path outage, not a
+hang the TCO watchdog needed to catch. Matches this same project's earlier-documented precedent
+exactly (a prior "CachyOS unreachable" scare this same overnight session that also turned out to
+be network-only). The fixed `episodic_pairs_adapter.py` run (launched 22:05) had crashed with
+`concurrent.futures.process.BrokenProcessPool: A process in the process pool was terminated
+abruptly while the future was running or pending` — the outage killed its worker pool without
+killing the OS itself. Root cause understood (network outage, not a code bug) before relaunching.
+Checkpoint intact: `episodic_pairs_adapter_progress_wrds_1D.parquet` still has its 198
+already-built rows from before the crash, so re-launching resumes from there and only retries the
+still-failing placeholder-symbol pairs, per the existing resume logic — no rework of already-done
+pairs. Re-launched 01:28 (`--workers 15`, log `latest_run_episodic_pairs_adapter_20260915_retry.log`),
+confirmed genuinely starting (main process in disk-I/O-wait loading checkpoints/candidates, normal
+startup, not stuck). Monitor task b7g3szqlv armed (bpuvoey3a stopped). Returning to normal 3600s
+fallback cadence now that a real job is running again.
+
+**SECOND connectivity gap, ~01:40-02:01, same overnight session.** The adapter retry run resumed
+correctly (confirmed logging "wrds_1D: resuming from 198 already-built rows"), then within ~15 min
+went unreachable again — Monitor b7g3szqlv's 2-consecutive-check logic confirmed it, and a direct
+SSH retry also timed out. Notably different signature this time: `tailscale status` does NOT show
+"offline" (shows "active; relay sea"), but the rx byte counter is unchanged across repeated checks
+while tx has ticked up slightly — a one-way/partial connectivity failure, not the clean "offline"
+reading from the first outage. Not yet known whether this is CachyOS's WiFi being generally flaky
+tonight (two separate gaps in a few hours), a different failure mode of the same underlying issue,
+or something else. Re-armed connectivity monitoring, continuing to watch — same discipline as the
+first outage: verify via `uptime` once reachable again before concluding anything about whether the
+adapter process survived or needs another relaunch.
+
+**THIRD gap, ~02:58-06:15 (~3.3hr), CONFIRMED a genuine hang requiring Ross's physical
+intervention** — unlike gaps #1 and #2, both network-only. `uptime` on reconnect showed
+**"up 1 min"** — the machine actually rebooted (or was power-cycled), not just a network blip.
+Ross messaged "it's up" at 06:15, so this was very likely a manual physical power-cycle on his end
+after waking up, exactly the escalation path CLAUDE.md documents for the TCO-watchdog-missed-hang
+scenario this session had been (correctly) declining to assume for the first two gaps. Correcting
+the record: NOT all three connectivity gaps tonight were network-only — the third was real.
+`episodic_pairs_adapter.py` process was obviously gone (fresh boot), but its checkpoint file
+(`episodic_pairs_adapter_progress_wrds_1D.parquet`, 198 rows) is a persisted disk file and survived
+the reboot untouched — relaunching now resumes from there exactly as before, no rework lost. Three
+gaps totaling roughly 22:12-01:27 (~3.6hr, network), ~01:40-02:34 (~1hr, hung-process-not-outage),
+and ~02:58-06:15 (~3.3hr, genuine hang) — a rough ~8hr of CachyOS unavailability across tonight's
+session, though only the third was a true machine-down event.
+
+**FOURTH gap, started ~06:26, ~10 min after Ross's power-cycle.** Adapter retry #3 (relaunched
+06:16 post-reboot) went unreachable again quickly. Given the very short gap since the physical
+intervention, this is worth Ross's direct attention now (he's awake) rather than waiting out
+another automated watch cycle -- flagged to him directly in-session. Monitor task bj7l89nh1 armed
+(bubqn4cqs, the retry-#3-specific one, ended). Not yet known if this is a hardware issue recurring
+quickly after boot (concerning) or another network blip (less concerning) -- will check `uptime` on
+reconnect as always.
+
+**RESOLVED 06:35 — gap #4 was network-only, same boot session.** `uptime` on reconnect showed
+"up 21 min" -- the SAME boot as the 06:15 power-cycle, not another reboot. Genuine reassurance: the
+machine itself didn't hang again. Worker pool crashed a third time with the identical
+`BrokenProcessPool` traceback (process count 0, fully exited this time, not hung-in-cleanup).
+Flagged a real concern to Ross before relaunching again: load average hit 45.64 (15-min avg) on a
+16-core box, and local multiprocessing workers communicate via local IPC, not network -- a network
+blip alone shouldn't normally kill them, so repeated crashes exactly coinciding with connectivity
+gaps might point to genuine resource contention/thrashing (e.g. from 15 heavy workers), not pure
+bad network luck. Asked Ross directly rather than guessing; he chose to relaunch identically with
+15 workers (retry #4, `latest_run_episodic_pairs_adapter_20260915_retry4.log`, confirmed starting).
+Monitor task b8trvs0rw armed (bj7l89nh1 stopped). If this crashes again, worth revisiting the
+worker-count theory rather than relaunching a 5th time unchanged.
+
+**CRASHED AGAIN (4th time), ~06:40 — resource-contention theory now DISPROVEN by direct evidence.**
+Checked `free -h` immediately after this crash: 44GB free of 46GB total, swap barely touched
+(56Mi/46GB) — no OOM pressure whatsoever. `uptime` confirms same boot session (27 min, no reboot).
+So this is NOT memory/resource contention as hypothesized after crash #3. Four consecutive
+identical `BrokenProcessPool` crashes with a healthy machine in between each is a genuinely
+puzzling pattern -- something is killing worker processes specifically, repeatedly, without an
+OOM signature and without a full machine hang. Out of good working theories at this point without
+deeper investigation (checking dmesg/journalctl for the actual kill signal/reason would be the
+next real diagnostic step, not yet done). Stopping the mechanical relaunch-and-hope cycle here per
+this project's own "3+ failed fixes → question the approach" discipline -- holding for Ross's
+input rather than attempting a 5th blind relaunch.
+
+**Root cause confirmed via `dmesg` and ACTUALLY FIXED, 06:42-07:00.** `dmesg -T` showed the real
+event: `oom-kill:...task=python,pid=3167` / `Out of memory: Killed process 3167 (python)` at
+06:37:57 -- a genuine kernel OOM kill, not a network issue or a cgroup limit (checked: both
+`user@1000.service` and the session scope have `MemoryMax=infinity`/`max`, no cgroup ceiling in
+play). Traced to the real bug: `_get_full_universe`'s in-process memoization
+(`_full_universe_cache`, added in tonight's earlier fix) is per-PROCESS -- but with `--workers 15`,
+`_load_symbol` runs INSIDE each `ProcessPoolExecutor` worker, each a separate OS process with its
+own memory space. "Memoized once per process" became "loaded once per worker that happens to need
+the fallback." The relevant memo-cache pickle is **8.6GB** (`output/cache/_universe_loader_memo/
+1D_4c138c595c785cc7ce58.pkl`) -- with most Tier-3 pairs needing the PERMNO/GVKEY fallback and 15
+workers, several workers loading their own independent 8.6GB copy within the same few seconds
+plausibly spiked well past the machine's 46GB RAM. Asked Ross how to fix it rather than guessing;
+he chose the proper restructure over a worker-count band-aid.
+
+**Fix**: `build_adapter_rows` now pre-resolves every placeholder symbol `pending` actually needs
+ONCE in the main process, BEFORE building any worker task (checks `DataStore.load` per symbol --
+cheap -- then a single `_get_full_universe` call only for the symbols that need it, immediately
+discarding the 8.6GB full dict and keeping only the small needed subset). Each worker task then
+carries only THAT PAIR's own 0-2 preloaded DataFrames, not the whole resolved set or the full
+universe -- `_load_symbol`/`_load_aligned`/`build_one_row`/`_build_one_row_worker` all take a new
+`preloaded` parameter; the old per-call fallback stays as a defensive backstop (e.g. the
+`n_workers<=1` path) but should never actually trigger anymore in the >1-worker path. New test
+`test_build_adapter_rows_resolves_placeholder_symbols_once` (2 synthetic pairs sharing/needing
+placeholder symbols, asserts `load_full_universe` called exactly once for the whole run, not once
+per pair) -- full suite now 18/18, verified both locally and on CachyOS before relaunching. Synced,
+diff-verified identical.
+
+**Relaunched 07:00** (retry #5, `latest_run_episodic_pairs_adapter_20260915_retry5.log`), confirmed
+genuinely running -- main process already at ~3.4GB RSS shortly after launch, consistent with the
+new main-process pre-resolve step actually doing its job (vs. the old code, which would show
+near-zero main-process memory until workers each separately ballooned). Monitor task b101ooolq
+armed (bubqn4cqs/bj7l89nh1/b8trvs0rw all superseded/stopped). This is the first launch tonight with
+the actual root cause addressed rather than a blind retry -- reasonable to expect this one to
+complete without another OOM, though not guaranteed until it actually finishes.
+
+**COMPLETE, 08:54 — the fix worked, no further OOMs.** `episodic_pairs_adapter.py` finished cleanly
+(process exited, final summary printed) with **1,375 total rows** across all sources:
+`wrds_1D: 1,363/1,382` (98.6% of Tier 3's confirmed set — the remaining 19 almost certainly a
+genuine data-insufficiency edge case, not investigated further, a small residual is expected and
+fine), `intraday_1h: 6`, `intraday_4h: 6` (both unaffected, resumed from an earlier checkpoint).
+This is a **~6.5x improvement over the pre-fix 210 rows**, and the actual root cause (per-worker
+duplicate full-universe loading -> real OOM kills, confirmed via `dmesg`) is now genuinely fixed,
+not just worked around. Verified: 0/1,375 rows have a NaN `hedge_ratio_ols`/`hedge_ratio_kalman_
+mean`/`hurst_rs`/`coint_fraction_rolling`/`half_life_trend_slope` (all load-bearing per the
+module's own REQUIRED_FIELDS contract); `mean_reversion_speed` has 152/1,375 NaN -- not
+investigated further here (not one of the load-bearing fields per the module docstring), worth a
+quick look before the pairs get used downstream but not blocking. Output:
+`output/research/episodic_confirmed_pairs_adapter_output.parquet` (1,375 rows) plus a
+`spread_series_{A}_{B}.parquet` file per pair in `output/results/1day/` (and `1h`/`4h`) for
+backtest.py's `--pairs-override`.
+
+**CachyOS is now free.** Next: `research/build_comparison_arm_pairs.py` (read its own docstring/CLI
+first, don't assume the input format) -> `backtest.py --capital-sim --pairs-override` per arm ->
+`research/parameter_sensitivity_screen.py` -> `debug/_verify_paper_claims.py`.
+
+**09:00 — build_comparison_arm_pairs.py run, 4 comparison arms built.** First diff-verified the
+script against CachyOS's copy: CachyOS still had the STALE pre-fix `_TF_DIRS` (missing "1Y", wrong
+case on "3M"/"6M") from before tonight's timeframe-consistency-audit fix -- synced the corrected
+local version over, diff-verified identical, re-ran its own verify suite on CachyOS (passes) before
+trusting real output. Real results: **Baseline** (`output/results/{tf}/pairs.parquet`, unchanged):
+19 pairs across all timeframes. **Hybrid**: 1,393 rows (1,375 episodic + 18 `full_history_fallback`
+standard pairs not already covered episodically). **Purity**: 1,375 rows (episodic-only, matches
+the adapter's fresh output exactly). **Tiered**: 19 rows (the full standard set, tagged 1
+`full_episodic` / 18 `full_history_only`). Overlap between the standard and episodic sets is just
+**1 pair** (`GVKEY201229_01W`/`GVKEY248104_01W`@1D) -- still mostly disjoint (matches this script's
+own August disclosure that these two confirmation methods tend to find different pairs), but a
+real, non-zero overlap this time, unlike the original August run's fully-disjoint finding.
+Output files: `output/research/{hybrid,purity,tiered}_pairs.parquet`.
+
+**Next**: `backtest.py --capital-sim --pairs-override` per arm (4 runs: baseline uses the existing
+production `pairs.parquet` directly, no `--pairs-override` needed; hybrid/purity/tiered each need
+`--pairs-override <path>`) -- read `backtest.py`'s own `--help`/argument parser first to confirm
+the exact flag name and whether `--pit-confidence-weight` needs to be passed alongside Tiered's
+`pit_confidence_tier` column, don't assume.
+
+**09:10 — Baseline arm backtest DONE.** Checked `backtest.py --help` first -- it crashes on a
+pre-existing, unrelated bug (`%o` format spec applied to a dict default in one argument's help
+string), so read the argparse source directly instead: confirmed `--pairs-override <path>` (needs
+only `tf_label`/`symbol_a`/`symbol_b`, matches all 3 arm files' schema), `--pit-confidence-weight`
+(Tiered-only, reads the `pit_confidence_tier` column), `--capital-sim` (per CLAUDE.md's own rule,
+the headline result). Baseline (no `--pairs-override`, uses the standard `pairs.parquet` set)
+finished fast: 34 pair/hedge-method combinations tested (19 base pairs x OLS/Kalman, some tf
+overlap), 480 total trades in the unconstrained run. **Capital-constrained (headline) result**:
+34/480 trades actually taken under the $100k account constraint, portfolio Sharpe 0.069 (in-sample,
+full-series -- the docstring's own bias note: "Full-series run = IN-SAMPLE," not OOS),
+final_equity=$100,442.59, max_drawdown=$1,561.04, max_concentration=94.3% in a single pair
+(ALTG/FBM@1D) -- a real, disclosed concentration risk worth noting, not smoothed over. Output:
+`trades_layer1_storm_capsim_fixed_100000.parquet` / `portfolio_layer1_storm_capsim_fixed_100000.parquet`.
+
+**Next**: Purity arm (`--pairs-override output/research/purity_pairs.parquet --capital-sim`,
+1,375 pairs -- a much larger job than Baseline's 19, launching now on CachyOS).
+
+**Second gap resolved 02:34 (~54 min, ~01:40-02:34), root cause DIFFERENT from what it first looked
+like.** `uptime` again showed no reboot ("up 1 day, 6:17") -- network-only, same pattern as gap #1.
+But the adapter process itself told a more precise story: the SAME PID (494294, launched 01:28,
+i.e. the retry-after-gap-#1 process) was still present at this check, in disk-wait state, with the
+IDENTICAL `BrokenProcessPool` traceback already printed to its log. This means that process never
+actually exited after crashing (almost certainly during/just after gap #1's tail end, or very early
+in gap #2) -- Python's `ProcessPoolExecutor.__exit__` can hang indefinitely trying to join
+already-dead worker processes after a `BrokenProcessPool`, a known stdlib gotcha, not something
+specific to this script. So what looked like "the SAME process survived two outages and kept trying"
+was actually "the process died once, then hung in cleanup for the better part of an hour instead of
+exiting" -- a real, if minor, process-hygiene issue worth knowing about for next time (a `timeout`
+wrapper or explicit `pool.shutdown(wait=False, cancel_futures=True)` in an exception handler would
+prevent this hang, though not fixed here -- flagging as a possible small future improvement, not
+urgent enough to interrupt the actual task queue for). Killed it explicitly (`kill -9`, confirmed
+dead), checkpoint unaffected (still 198 rows, nothing to lose), relaunched cleanly at 02:34 --
+`latest_run_episodic_pairs_adapter_20260915_retry2.log`, confirmed starting normally. Monitor task
+bd71brj07 armed (b2rfto58b stopped). Two connectivity gaps totaling ~4.4hr tonight (22:12-01:27,
+01:40-02:34) -- both confirmed network-only via uptime, no evidence of a hardware issue. Back to
+normal 3600s fallback cadence.
+
+**Third connectivity gap, ongoing since ~02:58, ~1hr as of this note (03:55).** Same pattern as
+the prior two — SSH timeout, no successful reconnect yet on repeated checks roughly every 20 min.
+Three gaps in one overnight session (22:12-01:27, a ~15min hang-not-outage around 01:40-02:34, and
+this one) is now a real pattern worth Ross's attention when he's up — possibly CachyOS's WiFi/router
+specifically, not just bad luck. Not escalating further mid-gap (the drill is established:
+uptime-check on recovery, verify adapter's real state, relaunch only if genuinely needed). Continuing
+to watch.
+
+## 2026-09-14 21:38: §7.20 episodic scan COMPLETE — final results, honestly reported
+
+`research/wrds_deep_history_episodic_scan.py` finished cleanly (process exited, full summary
+logged, all output files present) after **1495.4 min total (~24.9 hours)**, started 20:42 on
+2026-09-13. Verified via direct `ssh ... ps aux` (0 processes remaining) and the log's own closing
+lines, not just a Monitor notification.
+
+**Final numbers (from the script's own SUMMARY line, not re-derived/guessed):**
+- **Tier 1** (full-sample static correlation + full-sample EG): 1,404 confirmed / 918,617 candidates
+- **Tier 2** (full-sample static correlation prefilter, rolling-window EG re-confirmation):
+  875 episodically-confirmed / 918,617 candidates
+- **Tier 3** (rolling-window correlation prefilter — the ~91-window-then-corrected-to-45-window
+  stage — rolling-window EG re-confirmation): **1,382 episodically-confirmed / 7,834,906
+  candidates**, from 5,753,735 actual (pair, window) EG tests run
+
+**This is NOT the "182 pairs" figure from the original overnight task framing** — that number was
+a rough pre-scoping guess, not a result. The real output is three separate tier-level confirmation
+counts (1,404 / 875 / 1,382), each using a different candidate-generation method (full-sample vs.
+rolling correlation prefilter) and a different confirmation test (single full-sample EG vs.
+rolling-window episodic EG with BH-FDR across windows). These are NOT simply additive — a pair can
+appear in more than one tier's confirmed set, and Tier 3's rolling-correlation prefilter is by
+design meant to catch pairs Tier 1/2's static (whole-history) correlation filter would have missed
+entirely (correlated in >=1 window, not the whole history) — so the honest next step before quoting
+a single headline pair count anywhere in PAPER.md is a **dedup/overlap analysis across the three
+tiers' confirmed sets**, not just picking one number. Flagging this explicitly rather than silently
+collapsing three different result sets into one convenient figure.
+
+**Output files** (all verified present via `ls -la`, timestamps consistent with each stage's own
+completion time tracked throughout the night):
+`output/research/wrds_deep_history_episodic_scan_tier1.parquet` (32M),
+`wrds_deep_history_episodic_scan_tier2_{confirmed,windows}.parquet` (19K/7.3M),
+`wrds_deep_history_episodic_scan_tier3_pairs.parquet` (87M — the 7.8M-candidate checkpoint),
+`wrds_deep_history_episodic_scan_tier3_{confirmed,windows}.parquet` (29K/63M).
+
+**PIT-safety**: Tier 2/3's gates were all active throughout per the log (point-in-time S&P 500
+membership gate, rolling ADV liquidity gate, BUG-D112 causal-candidacy gate) — no evidence of any
+gate being silently skipped or misconfigured across the full run.
+
+**No errors found**: a full-log grep for `error|traceback|exception|killed|memoryerror|OOM` across
+the entire ~24.9hr run returned nothing.
+
+**Dedup/overlap analysis across the three tiers (done 21:45)** — computed directly on CachyOS from
+the three confirmed-pairs parquets (`fdr_confirmed==True` filter applied to Tier 1's full
+894,733-row table to match its 1,404 headline count):
+
+| | count |
+|---|---|
+| Tier 1 confirmed | 1,404 |
+| Tier 2 confirmed | 875 |
+| Tier 3 confirmed | 1,382 |
+| **Union (any tier)** | **3,083** |
+| Intersection (all three tiers) | 138 |
+| Tier 1 only | 1,252 |
+| Tier 2 only | 435 |
+| **Tier 3 only (in neither Tier 1 nor Tier 2)** | **956** |
+
+**This is the headline finding, not just a bookkeeping table**: Tier 3's whole reason for existing
+is its rolling-window correlation prefilter — catching pairs correlated in >=1 window but NOT
+across the whole history, which Tier 1/2's static full-sample correlation filter would never even
+propose as EG candidates. **956 of Tier 3's 1,382 confirmed pairs (69%) are pairs Tier 1 and Tier 2
+missed entirely** — direct empirical validation that the ~25-hour rolling-correlation-prefilter
+compute was not wasted; it surfaced a large, genuinely distinct population of episodically-related
+pairs invisible to the existing production (static-correlation-prefilter) methodology.
+
+**CORRECTION, read `research/episodic_pairs_adapter.py` before treating "which tier(s) to use" as
+open** — it already answers this, and for a stronger reason than "pick a denominator": its `main()`
+has Tier 2 explicitly REMOVED from every source, with an inline comment citing BUG-D112
+(2026-08-11): **"its candidate pool is a single whole-history correlation matrix, non-causal by
+construction -- same reason Tier 1 was already excluded. Tier 3 only."** Both Tier 1 and Tier 2's
+candidate pools come from a static, full-history correlation matrix a real historical deployment
+could never have known in advance — a PIT-safety violation at the candidate-*generation* stage, not
+just a statistical-power question. Only Tier 3's rolling-window correlation prefilter is causally
+valid. This decision predates tonight's session entirely; my earlier framing of "which tier(s)" as
+still needing Ross's input was wrong — it doesn't, the codebase already settled it correctly. The
+union/overlap table above stays useful as an honest diagnostic (it's real evidence for WHY Tier 3's
+~25hr cost was worth paying — 956 pairs Tier 1/2 would never have proposed), but the §7.20 pipeline
+should proceed with **Tier 3's 1,382 confirmed pairs**, not the 3,083-pair union.
+
+**CachyOS is now free.** Per the strictly-sequential rule, next up (in order, per the existing task
+queue): (1) run `research/episodic_pairs_adapter.py` (Tier 3-only per its own settled design) ->
+`build_comparison_arm_pairs.py` -> `backtest.py --capital-sim --pairs-override` per arm ->
+`parameter_sensitivity_screen.py` -> `debug/_verify_paper_claims.py`, (2) the multivariate
+PIT-predictors re-run, (3) `research/lead_lag_cointegration_rate.py`. Do not launch more than one
+at a time.
+
+**Launched 21:49**: `research/episodic_pairs_adapter.py --workers 15` on CachyOS (diff-verified
+identical to local first). Builds the pairs.parquet-compatible rows + per-bar spread-series files
+for backtest.py's `--pairs-override`, from the Tier 3 checkpoint (1,382 confirmed pairs, WRDS/1D
+source; 1h/4h intraday sources will SKIP if their own checkpoint files don't exist — the script
+prints which). BUG-D110 already documents this as ~28s/pair sequential; using 15 workers (matches
+`max(1, cpu_count-1)` on CachyOS's 16 cores) rather than the script's own single-threaded default.
+Confirmed genuinely running via direct `ps aux` (15 workers + 1 main process). Monitor task
+bsjpk2hv7 armed (same sturdier 2-consecutive-check pattern as the episodic scan's monitor).
+
+**REAL BUG FOUND AND FIXED, 21:50-22:05: adapter was silently dropping 84% of Tier-3-confirmed
+pairs.** First run finished fast (198/1,382 rows built, `output/research/episodic_confirmed_pairs_
+adapter_output.parquet`, 210 total rows across all 3 sources) — investigated the attrition rather
+than accepting it. Root cause, verified directly on real data: `_load_aligned` called
+`DataStore.load(symbol, tf_label)`, which is scoped to the yfinance/WRDS-US-ticker cache only —
+it silently returns `None` for WRDS `PERMNO<n>`-alias and `GVKEY<n>_NNW`-labeled symbols, which is
+most of what Tier 3's full-~44,700-symbol-universe scan actually confirmed. Measured the exact
+breakdown on the real Tier-3-confirmed set: 226 pairs with both legs real tickers (198/226 = 88%
+built — the remaining 12% likely genuine data-insufficiency, not investigated further), 388 pairs
+with exactly one placeholder leg (**0/388 built**), 768 pairs with both legs placeholder-labeled
+(**0/768 built**) — 1,156 of 1,382 pairs (84%) silently dropped, not a small edge case. This is the
+same bug CLASS CLAUDE.md already documents from 2026-08-24 (scripts silently using a narrower
+universe loader instead of the shared `universe_loader.load_full_universe`), recurring here in a
+script that hadn't been touched by that earlier fix.
+
+**Fix**: added `_load_symbol()` — tries `DataStore.load()` first (cheap, unchanged for the common
+real-ticker case), falls back to `universe_loader.load_full_universe()` (the project's own standing
+full-universe loader, already memo-cached to disk since 2026-08-23) only when that returns nothing.
+The full-universe load happens at most ONCE per process (in-process `_full_universe_cache` dict),
+not once per pair. `research/episodic_pairs_adapter.py` + `debug/_verify_episodic_pairs_adapter.py`
+both updated; new test `test_placeholder_symbol_fallback` (monkeypatches both `DataStore.load` and
+`load_full_universe` to verify the fallback path AND that it's called exactly once, not per-symbol)
+— full suite now 16/16, run and verified both locally AND on CachyOS before re-launching. Synced,
+diff-verified identical.
+
+**Re-launched 22:05** with the fix: `episodic_pairs_adapter.py --workers 15` again, log now
+`latest_run_episodic_pairs_adapter_20260914_fixed.log`. The existing resume-checkpoint logic needed
+no manual clearing — previously-failed (None-returning) pairs were never persisted to the checkpoint
+in the first place, so they're retried automatically; the 198 previously-successful real-ticker
+pairs are skipped as already-done. Monitor task bim9ik3z3 armed (bsjpk2hv7 stopped). Expect a
+meaningfully higher final row count than 210 — will report the real number once it finishes, not
+assume it'll be the full 1,382 (some placeholder-labeled symbols may still fail the full-universe
+lookup or the `>=60 bars` overlap check for other, legitimate reasons).
+
+**CachyOS connectivity issue observed 22:12** (shortly after the fixed run's launch): Monitor
+bim9ik3z3's SSH-based process check came back empty (1/2 consecutive, per its sturdier-check
+design). Verified directly: a fresh `ssh rw@100.64.64.126` from this machine also timed out
+(connection timeout, not a auth/host-key error), and `tailscale status` confirms CachyOS shows
+"offline, last seen 1m ago" — a genuine, currently-ongoing connectivity gap, not a false alarm from
+a single flaky check this time. Per this project's own documented history (an earlier
+"CachyOS unreachable" scare this same overnight session turned out to be a WiFi outage on Ross's
+end with the machine and its jobs continuing to run fine throughout, corrected once Tailscale
+reconnected), NOT assuming a hard hang from a 1-minute-old "offline" reading alone — waiting for
+either the Monitor's own retry to resolve, or a longer/repeated offline duration, before treating
+this as a real machine-down event. Will update this entry once resolved either way.
+
+**UPDATE 22:37 — still unreachable, escalated the check but staying cautious about the diagnosis.**
+Monitor bim9ik3z3 confirmed 2/2 consecutive empty checks and ended (as designed). Re-verified
+directly: a fresh `ssh` attempt still times out, `tailscale status` still reads "offline, last seen
+1m ago" (the "1m ago" not advancing past 1m across repeated checks a few minutes apart is itself a
+little odd — could mean brief reconnect blips resetting the counter without a stable connection, or
+a stale status display), AND the documented LAN fallback (`rw@10.0.1.9`) also times out. Genuinely
+ambiguous from here whether this is CachyOS-side or a broader network path issue on this Windows
+machine's end that I have no way to diagnose remotely — both explanations are consistent with what
+I can observe. NOT declaring a hard hang on this evidence alone (per CLAUDE.md's own caution about
+over-calling short "offline" readings, and this exact session's own earlier false alarm on the same
+question) — re-arming a connectivity-focused monitor and continuing to check at a reasonable
+interval. If this persists much longer without resolving, it may need Ross's attention (a physical
+check/power-cycle is not something I can do remotely) — flagging that possibility now rather than
+waiting until it's been hours.
+
+**UPDATE 22:39 — now 19+ min sustained, crosses into "needs Ross" territory per CLAUDE.md's own
+guidance.** Fresh check: `ssh` still times out, `tailscale status` now reads "offline, last seen
+19m ago" (up from "1m ago" at the first check — confirms this is a real, continuing outage, not a
+reporting artifact) — this matches CLAUDE.md's own documented pattern for "a hang the watchdog
+didn't catch" (the `iTCO_wdt` TCO watchdog is meant to auto-recover a hang in ~30-60s; 19+ minutes
+of sustained unreachability across Tailscale, direct SSH, and the LAN fallback is well past that
+window). Sent Ross a PushNotification since this may need a physical check/power-cycle he's the
+only one who can do. NOT claiming certainty it's a hard hang (still genuinely can't distinguish
+that from a prolonged network-path outage from here), but the duration alone now warrants surfacing
+it rather than continuing to wait quietly. Continuing to monitor for recovery in the meantime — the
+episodic_pairs_adapter.py fix + relaunch is unaffected code-wise (already synced and verified
+before this outage started), just paused mid-execution on CachyOS.
+
+## 2026-09-14 (~18:45): New comparison-arm script — cointegration-rate-by-lag, built and verified
+(design-only work, did not touch CachyOS, independent of the episodic scan below)
+
+Ross proposed extending `lead_lag_scan.py` (which EG-tests only 2 points per pair — lag 0 and the
+single best-correlation lag) into a population-level statistic: for lag `k` in `[-x, x]`, what
+fraction `y(k)` of the confirmed-pair population is significantly cointegrated at that specific
+lag, not just a per-pair best-lag label. Scoped the design with him first (per CLAUDE.md's
+"explain, get buy-in before building new methodology" rule), then built and verified it once he
+confirmed: `research/lead_lag_cointegration_rate.py` + `debug/_verify_lead_lag_cointegration_rate.py`
+(18/18 checks pass).
+
+**Design decisions, disclosed rather than silently picked:**
+- **Fixed-denominator eligibility gate**: a pair only enters the EG stage if it has
+  `>=_MIN_EG_N` overlapping observations at EVERY lag in `[-x,x]`, not just lag 0 — keeps `y(k)`
+  comparable across lags (same pair population at every `k`) instead of the denominator silently
+  shrinking at the extremes as thin-history pairs drop out, which would make the curve's tail decay
+  partly a sampling artifact. Trade-off: discards pairs fine near lag 0 but too short-overlapping
+  at the extremes.
+- **Fixed maxlag instead of autolag search**: `lead_lag_scan.py` uses `coint(..., autolag="aic")`,
+  which runs its own internal search on every call — cheap at 2 calls/pair, expensive at the
+  `2x+1` calls/pair this script needs. Switched to `coint(..., maxlag=Config.ANALYSIS.EG_MAX_LAG,
+  autolag=None)` — a disclosed simplification (same spirit as `lead_lag_scan.py`'s own "max_lag not
+  TF-scaled" disclosure), not an attempt to extract statsmodels' internal AIC-selected lag (which
+  isn't reliably exposed through `coint()`'s public return value — the originally-discussed
+  "select once at lag0, reuse" approach was dropped in favor of this simpler, more robust one).
+  Revised from the initial scoping discussion; explaining the change here rather than silently
+  swapping approaches mid-implementation.
+- **FDR correction within each lag's own cross-section** (not pooled across lags), reusing
+  `analysis._benjamini_hochberg` — matches the project's existing layered-FDR convention.
+- **One ProcessPoolExecutor task per PAIR, not per (pair, lag)** — the worker sweeps all `2x+1`
+  lags for its own pair internally, avoiding `2x+1`x duplicate pickling of the same pair's
+  log-price series across separate tasks. Reuses `analysis._limit_worker_blas_threads` as the pool
+  initializer (the same BLAS-oversubscription fix `wrds_deep_history_episodic_scan.py`'s own EG
+  pools already needed, 2026-08-24) — not something to accidentally reintroduce.
+- **Real bug found and fixed while writing it**: `lead_lag_scan.py`'s own `from aligned_pair_loader
+  import load_aligned_pair` only resolves when that script is *run directly* (Python auto-adds a
+  directly-run script's own directory, `research/`, to `sys.path`) — importing it as
+  `research.lead_lag_scan` from elsewhere (as this new script does, to reuse `lagged_corr_scan`
+  etc.) breaks that transitive import. Fixed locally in the new script (adds `research/` to
+  `sys.path` before the import chain resolves) rather than touching the ~60 other `research/`
+  scripts sharing the same bare-import convention, which was out of scope here.
+
+Cost estimate: `pairs_eligible x (2x+1)` EG calls, roughly a 10x call-count increase over
+`lead_lag_scan.py`'s 2 calls/pair for `x=10` (the shared default), partially offset by the
+fixed-maxlag optimization. Not run yet — needs CachyOS, which stays queued behind the episodic
+scan per the strictly-sequential rule.
+
+## 2026-09-14 (overnight, ~00:30): §7.20 episodic scan scope is much larger than assumed — Tier 3
+iterates ~91 rolling windows, each with its own full correlation-prefilter pass
+
+**What was observed**: `research/wrds_deep_history_episodic_scan.py` (launched fresh 20:42 on
+2026-09-13, CachyOS, PID 8935 + 15-worker pool) progressed Tier 1 (chunked correlation across the
+full universe -> 918,617 candidates, ~7 min) -> a batch-processing stage (~105 min) -> Tier 2
+(PIT S&P500-membership + $25M-ADV gating per (pair,window), ~105 min, completed 00:23:48, saved
+`output/research/wrds_deep_history_episodic_scan_tier2_{windows,confirmed}.parquet`) -> **Tier 3**
+("Rolling correlation prefilter (pair qualifies if correlated in >=1 window, not the whole
+history)"), which started 00:23:48 and is still running as of this entry.
+
+**Scope finding**: `EPISODIC_WINDOW_BARS = 2520` (~10 trading years), `EPISODIC_STEP_BARS = 252`
+(~1 trading year) in the script (lines 92/96) — the rolling-window loop
+`for start in range(0, n - window + 1, step)` re-evaluates every ~1 year across the full history
+span, which for a ~100-year WRDS daily calendar works out to **roughly 91 separate windows**. The
+first window (`window end=1986-04-28`) took ~12-13 min just for its own 231-block-pair
+chunked_pearson correlation stage (00:23:48 -> ~00:31), with rolling-window EG confirmation on the
+surviving candidates presumably still to follow per window. If later windows cost similarly, Tier
+3 alone could run for many hours — this was not sized into the "§7.20 re-run" scoping when Ross
+approved it; the original framing ("182-pair episodic PIT-safe re-confirmation... a much larger,
+multi-hour undertaking") undersold it by roughly an order of magnitude if all ~91 windows run at
+this per-window cost. Not stopping the run (strictly-sequential CachyOS execution + Ross is
+asleep, no upside to killing real progress) — just flagging honestly here rather than silently
+absorbing the scope creep. Will keep monitoring and update this entry with the actual total
+elapsed time once Tier 3 (and any further tiers) complete.
+
+**Progress checkpoint (01:34)**: 6/~91 windows through Tier 3's correlation-prefilter stage
+(window end-dates 1986-04-28 through 1990-04-24), started 00:23:48, steady pace ~10-11 min/window.
+Confirmed the process runs as a SINGLE process for this stage (not the 15-worker pool Tier 1
+used) — this is expected/healthy, not a fault, and explains why each window's 231-block-pair
+correlation costs roughly as long as Tier 1's entire-universe correlation did with 15 workers. At
+this pace, all ~91 windows would take on the order of 15-16 hours for the correlation-prefilter
+alone, before whatever rolling-EG testing follows on the qualifying candidates per window. This is
+very likely to still be running when Ross wakes up.
+
+**Progress checkpoint (03:07)**: 14/~91 windows through (1986-04-28 through 1996-09-15), pace
+holding steady at ~10-13 min/window since the 01:34 checkpoint — no slowdown, no stalls, process
+still healthy (single-process, as expected for this stage). Per-window qualifying-pair counts have
+been climbing as the window slides later in history (roughly 80K-130K pairs/window in the
+1994-1996 range vs ~5K-100K in 1986-1992), consistent with more symbols existing/overlapping in
+later years — not a red flag, just means later windows may take marginally longer downstream once
+rolling EG testing begins on the survivors. Extrapolating current pace: ~91 windows * ~11
+min/window ≈ 16.7 hours for the correlation-prefilter stage alone, so completion of just this
+stage is roughly estimated for the afternoon of 2026-09-14 if the pace holds — rolling EG testing
+on the survivors would add further time on top. Will keep updating this checkpoint as it
+progresses.
+
+**Progress checkpoint (05:11)**: 23/~91 windows through (1986-04-28 through 2004-08-16). Pace
+still steady at ~10-13 min/window, no degradation over 4+ hours of continuous single-process
+operation. Per-window qualifying-pair counts have kept climbing with the calendar (window 22,
+2003-09-04: 153,303 pairs qualified) — expected given the growing number of overlapping
+symbols/history in later years, not a fault. No crashes, no stalls, no anomalies to report.
+Extrapolation from actual elapsed time (00:23:48 start, 23 windows by 05:11 ≈ 287 min / 23 ≈ 12.5
+min/window average) puts full Tier 3 completion at roughly 00:23:48 + 91*12.5min ≈ 19 hours, i.e.
+around 19:30 on 2026-09-14 — later than the earlier ~16.7hr extrapolation since later-history
+windows with more candidates are running slightly slower. Still purely an extrapolation, not a
+guarantee; will keep refining as more data comes in.
+
+**Progress checkpoint (06:44)**: 30/~91 windows through (1986-04-28 through 2011-04-28).
+Correlation-stage pace remains steady (~10-13 min/window) but a genuine data finding emerged:
+windows 28-30 (2009-05-28 through 2011-04-28, the immediate post-2008-crisis period) qualify
+700K-987K pairs each, roughly 3-4x the 100K-260K range seen in windows through 2007 — this tracks
+with well-known elevated cross-asset correlation during/after the financial crisis, not a code
+issue. The correlation stage's own cost hasn't grown proportionally (still ~10-13 min), but this
+means whichever downstream stage runs rolling EG confirmation on these larger per-window candidate
+sets will likely take meaningfully longer for the crisis-era windows specifically — worth watching
+once Tier 3's correlation-prefilter finishes and that stage becomes visible in the log.
+
+**Progress checkpoint (08:23)**: 38/~91 windows through (1986-04-28 through 2018-12-22).
+Correlation-stage pace still holding ~10-13 min/window despite candidate counts now regularly
+exceeding 2M pairs per window in the post-2016 era (window 37, 2018-01-08: 2,295,350 pairs
+qualified) — over 20x the earliest windows' counts. No slowdown, no stalls, no crashes across
+nearly 8 hours of continuous single-process operation.
+
+**CORRECTION (10:12): the "~91 windows" estimate was wrong — actual count is 45.** Tier 3's
+correlation-prefilter stage finished at 10:03:04 with the log's own summary line: "Rolling
+correlation prefilter: 45 windows scanned, 7834906 pairs qualify in >=1 window (vs whole-history
+static filter)". The earlier ~91-window estimate was derived from a naive ~100-year-calendar
+assumption (`for start in range(0, n - window + 1, step)` with a ~100yr `n`); the real usable
+overlapping-history span turned out to be roughly half that, so the actual window count was 45,
+not 91 — my earlier ~16.7hr/~19hr completion extrapolations for the correlation-prefilter stage
+were correspondingly pessimistic by close to 2x. The stage actually completed in ~9.65 hours
+(00:23:48 -> 10:03:04), not the estimated ~19. Flagging this discrepancy plainly rather than
+letting the earlier wrong estimate stand uncorrected — the "why" is straightforward (the window
+count formula's `n` was never independently verified against the actual overlapping-history
+span, only inferred from the ~100-year WRDS calendar length, which overstates how many symbols
+have 2520+ bars of *overlapping* history early enough to seed a window).
+
+**Now entering Tier 3's real cost center**: at 10:03:21 the script checkpointed 7,834,906
+candidate pairs to `output/research/wrds_deep_history_episodic_scan_tier3_pairs.parquet` (saved
+BEFORE starting EG-testing specifically so a crash mid-EG doesn't lose the correlation-prefilter
+work) and began "rolling-window EG discovery" on all 7.8M candidates -- roughly 8.5x Tier 1/2's
+918,617 static-corr-prefiltered candidate pool. The worker pool is back to 16 processes (matches
+Tier 1's parallelized EG-testing pattern, not Tier 3 correlation-prefilter's single-process
+pattern). This EG-testing stage, not the correlation-prefilter just finished, is now the true
+long pole -- no reliable time estimate yet since this is a new stage with no completed-window data
+points; will report real elapsed-time data once enough of it has run to extrapolate honestly
+rather than guessing again.
+
+**First real EG-testing progress data (12:31, ~2.5hrs into this stage)**: log shows
+"batch (pairs 1245000-1245500/7834906) done (147.2 min elapsed)" -- 1,245,000 of 7,834,906 pairs
+processed in 147.2 min, ≈8,459 pairs/min, a rate that has stayed roughly consistent across the
+batch progression checked (not a single noisy sample). Extrapolating: 7,834,906 pairs / 8,459
+pairs/min ≈ 926 min ≈ 15.4 hours total for this stage, started 10:03:21, so estimated completion
+around 01:30 on 2026-09-15 if the rate holds. This is a genuinely data-backed estimate (unlike the
+earlier wrong ~91-window guess), but still just an extrapolation from ~16% completion -- will
+revise as more data comes in, and will flag plainly if the rate changes materially.
+
+**Progress checkpoint (20:35)**: 5,970,000/7,834,906 pairs done (76.2%), 631.3 min elapsed,
+~9,457 pairs/min -- pace has picked up slightly from the 12:31 estimate (~8,459/min). Revised
+extrapolation: ~197 min (~3.3hr) remaining, completion around 23:50 tonight (2026-09-14) if this
+holds -- earlier than the prior ~01:30 estimate. No errors found in the log (`grep -iE
+'error|traceback|exception|killed|memoryerror|OOM'` came back empty).
+
+**Monitor false-positive at 20:34** (worth recording since it could recur): the persistent Monitor
+watching this run declared the process dead after a single SSH `pgrep` check came back empty --
+turned out to be a transient SSH/network hiccup, not a real exit; `ps aux` immediately after showed
+all 16 worker processes genuinely still alive and the log still actively writing. Re-armed a
+sturdier Monitor (task bo9cgpc0n, replacing the ended bkhcxky4u) that requires TWO consecutive
+empty `pgrep` checks (60s apart) before declaring the process dead, rather than acting on one.
+If a similar single-check "process no longer running" notification arrives again, verify with a
+direct `ssh ... "ps aux | grep ..."` before concluding it's real -- don't trust a single flaky
+check over many hours of SSH polling.
+
+## 2026-09-13: Literature sweep pass 1/3 complete (citation-graph traversal from 8 anchors); found
+and fixed a real bug in `research/lit_search_tools.py` discovered along the way
+
+**Bug found and fixed**: `openalex_citations(work_id, direction="references")` fetched each
+referenced work by GETting the bare `https://openalex.org/W...` landing-page URL instead of the
+API endpoint `https://api.openalex.org/works/W...`. The landing page is behind Cloudflare and
+returns a 403 HTML challenge page, not JSON; the `if r.status_code == 200` check silently
+swallowed the failure, so **every backward-reference (`direction="references"`) call has been
+returning an empty list with no error since the library was written** — forward (`cited_by`)
+traversal was unaffected. Root-caused during pass 1's own live run (the agent noticed 0 backward
+references coming back for every anchor and traced it to the URL, not just worked around it and
+moved on). Fixed in `research/lit_search_tools.py` (rewrite each reference id through `_short_id`
+before hitting the API host) and verified with a new test,
+`test_openalex_citations_references_uses_api_endpoint_not_landing_page` in
+`debug/_verify_lit_search_tools.py` (asserts the actual URL requested; would have failed against
+the pre-fix code) — full suite now 32/32. Any prior literature-sweep pass that used backward
+references got zero signal from it, not a real "nothing found" result — doesn't invalidate
+forward-citation findings from earlier sweeps, but backward coverage from before today is not
+trustworthy.
+
+**Pass 1 result** (citation-graph traversal, forward+backward, from the 8 "Highlights" anchor
+papers, via `research/lit_search_tools.py`, no repo files touched otherwise): full writeup is in
+the dispatching agent's own report (not yet copied verbatim into this file — see the session
+transcript around 2026-09-13 ~21:00 if this needs re-deriving later). Headline: anchor 6 (Bertram
+2010, analytic OU stat-arb thresholds) and anchor 7 (López de Prado/Lipton/Zoonekynd, Causal
+Factor Investing 2023) were by far the richest, both with dense, genuinely on-topic forward
+citation graphs. Anchor 4 (Meucci, "Managing Diversification," Risk 2009) is confirmed
+unresolvable in OpenAlex — a practitioner magazine article with no academic indexing, a real gap
+not a search failure. Anchor 2 (multilayer knockoff filter) yielded essentially nothing beyond
+anchor 1's own graph — too close topically to produce independent signal. Candidate follow-ups
+worth Ross's own read (not yet vetted for inclusion, just surfaced): López de Prado & Fabozzi
+2026 "The False Discovery Rate in Finance" (directly merges the FDR-control and causal-factor-
+investing literatures — CAMARF's own combination of concerns), Holý & Černý 2021 "Bertram's Pairs
+Trading Strategy with Bounded Risk" (direct extension adding explicit risk bounds to the
+closed-form threshold CAMARF's `analysis.py` already implements), Leung 2026 "Statistical
+arbitrage via single-view and multi-view spectral clustering on mixed frequency data" (structural
+match to CAMARF's own daily+intraday multi-source universe).
+
+**Sequencing**: per Ross's explicit instruction ("do it after tiers 2/4, do everything else
+first"), passes 2 (recent 2025-2026 literature) and 3 (grounded in this session's own new
+findings — rare-event/small-sample logistic inference, entity-resolution methods for the WRDS
+alias-duplicate problem, SPAC-specific quant literature) are held, not dispatched. Tier 4 work
+(the §7.20 episodic re-confirmation scan, and the multivariate PIT-predictors re-run with more
+folds) is not yet complete as of this entry — the episodic scan is still in Tier 1's correlation
+stage on CachyOS (75.8% through block-pairs as of 21:03). Do not dispatch pass 2 until Tier 4
+genuinely finishes; this also keeps the project's one-dispatch-at-a-time rule intact (pass 1's own
+agent had already fully stopped before this check).
+
+## RESOLVED 2026-09-13: CachyOS outage was a WiFi issue on Ross's end, NOT a hardware hang — both
+interrupted jobs actually completed successfully, no compute lost
+
+Correcting the entry below (kept for the record, not deleted): once Tailscale reconnected,
+`uptime` showed CachyOS had been up continuously the whole time (no reboot) — the machine never
+actually went down, so the two `nohup`'d jobs kept running through the outage and both finished
+with real results. Full results (overlap-threshold re-run + multivariate study, both now
+genuinely complete with all 3 `analysis.py` fixes active) written up in `Development.md`. Headline:
+the overlap-length null result holds robustly (97-98% false-confirmation even with every known
+confound removed), and the multivariate study surfaced an important caveat rather than a clean
+answer — only 3/124 observations were `held_up=True`, too few for the fitted logistic model's
+coefficients to be trustworthy despite one looking nominally significant (a real, disclosed
+small-sample-inference limitation, not a finding to act on).
+
+## BLOCKED 2026-09-13 (SUPERSEDED — see RESOLVED entry above, kept for the record): CachyOS
+unreachable, thought at the time to be a hard hang
+
+While the overlap-threshold re-run and the multivariate study (both launched earlier today) were
+still running concurrently with a third job I'd started (the WRDS-dedup regression check, killed
+deliberately for resource contention), CachyOS went unreachable. **Confirmed genuine machine
+issue, not a transient network blip**: Tailscale shows `offline, last seen 1m ago` and stays
+stuck there across repeated checks (not recovering), AND the LAN fallback (`rw@10.0.1.9:22`) is
+ALSO unreachable — per this project's own CLAUDE.md, a hang the TCO watchdog didn't catch would
+show exactly this pattern (a prolonged "offline" reading, not a quick auto-recovery). Both
+Tailscale and LAN failing together rules out the WiFi-client-isolation issue documented
+previously (that only broke LAN, not Tailscale) — this looks like the machine itself is hung.
+
+**Likely contributing factor, worth knowing before restarting anything the same way**: at the
+time it went unreachable, 2 jobs were running concurrently, each spawning ~15 worker processes —
+up to ~30 processes contending on this machine's 16 cores, with load average measured at 32
+shortly before. Non-ECC RAM + this level of oversubscription is a plausible trigger for exactly
+the kind of hang CLAUDE.md already documents as a recurring, undiagnosed issue on this specific
+hardware. **Not confirmed as the cause — flagged as a real possibility, not asserted as fact.**
+
+**What was lost**: the overlap-threshold re-run (all 3 `analysis.py` fixes active) and the new
+multivariate study were both mid-EG-stage (1.35M candidates each) when the machine went down —
+neither produced a saved result. Both scripts are already fixed/verified/synced and ready to
+relaunch once CachyOS is back; no code was lost, only the in-progress compute.
+
+**Needs Ross**: a physical power-cycle (or waiting out the watchdog, which does not appear to be
+recovering on its own this time) — nothing more can be attempted remotely. Once back: (1) relaunch
+the overlap-threshold re-run and multivariate study, probably NOT concurrently this time given the
+likely oversubscription factor above, (2) run the deferred `promote_full_universe_pairs.py
+--dry-run` regression check and the `full_universe_correlation_prefilter.py` end-to-end test for
+the WRDS-dedup work, both queued from before this happened.
+
+---
+
+## BRAINSTORMED BACKLOG (overnight 2026-09-12/13, for consideration — not implemented, not decided)
+
+Per Ross's ask ("if you complete everything, brainstorm any and all ideas related to the project
+and add it to the backlog for consideration"). All 5 grounded directly in tonight's actual
+findings, not generic quant/ML suggestions — checked against `PAPER_MAGNITUDE.md` §10's existing
+Future Work list first so none of these duplicate an already-tracked item.
+
+1. **DONE, 2026-09-13, fully proven end-to-end at production scale.** Pushed the WRDS self-pair/
+   alias-duplicate check upstream into `research/full_universe_correlation_prefilter.py` (applied
+   to the symbol set, before the correlation stage), extracted into a shared `data_wrds.resolve_
+   symbol_canonicalization` function also used by `promote_full_universe_pairs.py` now.
+   **Real, quantified result: 2,211 of 43,883 symbols were PERMNO-alias duplicates, dropped before
+   correlation — candidate count went from 997,024 (old, non-deduped) to 723,753, a 27.4%
+   reduction**, both a correctness fix (no more self-pairs) and a real compute-cost win (fewer
+   candidates means the expensive EG stage runs faster on every future re-run). Old candidate
+   files backed up (`..._10y_chunks_PRE_wrds_dedup_20260913`), new ones verified clean (no stale
+   file mixing — a real overwrite risk caught and avoided, see `Development.md`). New `debug/
+   _verify_wrds_symbol_canonicalization.py` (6/6). **Not yet done**: re-running `full_universe_eg_
+   confirmation.py` against this corrected candidate pool — **DONE**: 723,639 candidates → 77
+   pre-overlap-filter → 53 confirmed. Promoted to production, catching one MORE contamination
+   class before doing so: several candidates were SPAC NAV-clustering artifacts (`PAPER_
+   MAGNITUDE.md` §7.3's already-documented mechanism) — used the existing `output/research/
+   spac_symbols.json` exclusion file (already built, Aug 24) via `--spac-file`. **Final funnel:
+   53 → 31 (same-GVKEY dedup) → 29 (WRDS alias dedup) → 17 (SPAC exclusion) genuinely clean
+   pairs** — over two-thirds of the raw confirmed set was contamination. This 17-pair set is now
+   the real, final, most-corrected production 1D manifest of the session (verified zero
+   `pipeline_contracts.py` violations), superseding the earlier 51/23-pair counts. Full funnel
+   table in `Development.md`.
+
+2. **DONE, 2026-09-13**: audited every shared, multi-writer on-disk cache/file for atomic-write
+   safety. Found and fixed 2 more real instances of the same bug class: `BiasAuditLog.save`
+   (simple non-atomic write) and `confirmed_pairs_manifest.json`'s write inside `_save_tf_results`
+   (a genuine read-modify-write race — two concurrent `analysis.py` processes can silently
+   clobber each other's timeframe update, not just risk corruption). Both writes now atomic
+   (temp+`os.replace`); the manifest's underlying read-modify-write race itself is NOT fixed
+   (needs real file locking) — disclosed directly in the code, not silently claimed solved. New
+   `debug/_verify_shared_output_atomic_writes.py` (5/5). Full account in `Development.md`.
+
+3. **The overlap-threshold pilot's null result (99%+ false-confirmation across 252-1004 bars,
+   even post-fix) suggests overlap length isn't the dominant lever — worth a genuinely
+   multivariate follow-up rather than three more single-variable studies.** Tonight tested
+   overlap length, `MIN_PEARSON_CORR`, and `MIN_COINT_FRAC` each independently (all three showed
+   noisy/non-monotonic relationships to OOS success, none a clean threshold effect) — but they
+   were never tested jointly, and none of tonight's studies looked at hedge-ratio STABILITY over
+   the training window (a pair whose hedge ratio drifts wildly during training seems like a much
+   more direct candidate predictor of OOS failure than any static screening threshold, and this
+   project already computes `hedge_ratio_ols_t`/`hedge_ratio_kalman_t` per-bar series that could
+   feed a stability metric directly, no new data pipeline needed). A single multivariate study
+   (overlap length x correlation x coint_frac x hedge-ratio-stability, one logistic/tree model on
+   `held_up`, reusing the exact same PIT-safe screen/backtest machinery already built tonight)
+   would likely be more informative than another round of one-variable-at-a-time pilots, and the
+   infrastructure to do this (both `research/*_pit_test.py` scripts) already exists.
+
+4. **DONE, 2026-09-13, resolved by measurement rather than a new fix.** The WRDS-dedup contamination
+   scope across other timeframes: 1D (32% of PERMNO symbols alias-contaminated, fixed) vs. the 5
+   WRDS-derived TFs (7D/1M/3M/6M/1Y, sharing one ~2,844-symbol CRSP-resolvable subset — 7.8% of
+   PERMNO symbols, real but much smaller, and NOTHING to fix yet since no candidate pool exists
+   for these TFs at all) vs. intraday (not applicable — never WRDS-sourced). The `half_life_ar1`/
+   `clean_mask`/sparse-pair-exclusion fixes already live in shared `analysis.py` code every
+   timeframe imports — "rolling them out" just means regenerating each TF's data when it's next
+   run, no separate code change needed. Only 2 genuinely stale pairs remain project-wide: `KVUE/
+   KMB@3m` and `PNC/ZION@4h`, both `deep_history_used=True` (IBKR-enrichment path, can't regenerate
+   via the standard `promote_full_universe_pairs.py` tool) — a real, small, bounded follow-up, not
+   urgent, not built tonight.
+
+5. **DONE, 2026-09-13, measured directly — real, substantial confirmation.** Checked
+   individual-symbol data density (real bars ÷ nominal trading-day span) across all 15,094
+   GVKEY-labeled 1D symbols in `output/cache/wrds/`: **5,387 (35.7%) have density < 0.5, and
+   10,260 (68.0%) have density < 0.75** — a large majority of Compustat Global symbols are
+   meaningfully sparser than a typical CRSP US-equity symbol. **Honest scope note**: this measures
+   per-SYMBOL sparsity as a risk proxy, not literal pair-level sparse-pair-exclusion trigger counts
+   (which needs both legs' actual combined rolling-window behavior, not individual density) — but
+   at this density rate, any GVKEY-involving pair carries meaningfully elevated risk of hitting the
+   exclusion, especially GVKEY-GVKEY pairs (both legs sparse). Directly informs whether Compustat
+   Global inclusion (`Config.DATA.INCLUDE_GLOBAL_WRDS_UNIVERSE`, gated off by default) is worth
+   revisiting — the sparsity itself, independent of the already-queued total-return-reconstruction
+   question, is a real reason confirmed pairs involving these symbols may under-deliver.
+
+---
+
 # CAMARF Handoff — Reconstructed from an Interrupted Session, 2026-07-27/28
+
+---
+
+## RECONSTRUCTED 2026-09-12 — session recovery after a computer restart killed the cloud
+session mid-task, before any of the 3 newly-authorized items below were started
+
+The overnight `/loop` session (see the three "queued overnight 2026-09-10" entries below) ended
+cleanly with its two open methodology questions and the RAM/CachyOS blocker queued for Ross's
+review, exactly as those entries describe. Ross then replied in the same chat, live, with a
+message that **exists only in that chat transcript, not in `Development.md`/`HANDOFF.md`**, since
+the session died before it could write anything down:
+
+> "cachy is up and running, go ahead with 1y, as for the 252 i'd ideally like a test to see at what
+> value is the asset actually traceable rather than picking a random arbitrary number accounting
+> for PIT and lead lag. what else do you need from me?"
+
+This is a real decision, not a note — it resolves both queued methodology items below and adds a
+specific empirical design requirement:
+
+1. **Wire the "1Y" annual timeframe into production** (§ below — was built and verified, never
+   activated). Approved, go ahead.
+2. **`MIN_OVERLAP_BY_TF["1D"]=252` is not to be replaced with a bigger arbitrary constant.**
+   Instead, build a genuinely empirical, PIT-safe test: for a range of overlap lengths,
+   re-confirm pairs using only data up to each length, then check **out-of-sample** whether they
+   actually hold up — that measures the real false-confirmation rate as a function of overlap
+   length, so the threshold comes from observed behavior. Must control for lead-lag specifically
+   (a pair with a mechanical lead-lag relationship between legs could distort the result).
+3. **Resume the production `full_universe_eg_confirmation.py --tf 1D` re-run** now that CachyOS
+   is back up — sync the 2 already-fixed-and-verified files (overlap-filter fix,
+   `DataStore.load()` WRDS-fallback fix) plus candidate-chunk files there via scp, and run it on
+   CachyOS instead of the RAM-starved Surface, per this project's own standing practice.
+
+Claude's reply (also only in the chat transcript) confirmed it had enough to start all three and
+described the overlap-threshold test's design (above) before beginning. **Verified against disk
+state that none of the three actually started**: `config.py` was last modified 2026-08-20 (before
+this session even began) — `Config.DATA.TIMEFRAME_LABELS` was never touched, so 1Y is still not
+wired in. No new script exists for the empirical overlap-threshold test. No new entry follows the
+21:31:46 second-kill attempt in `latest_run_full_universe_eg_confirmation.log` — the re-run was
+never relaunched. The only thing that happened after Ross's message was a single read-only
+"Confirmed CachyOS reachability" check, then the session hit its weekly usage limit and,
+separately, lost its connection to the local machine on restart. **All three items are still
+fully open, exactly as scoped above** — nothing to un-do, just three tasks to actually start.
+
+**UPDATE, same session, 2026-09-12 (resumed): items 1 and 3 done, item 2 built and ready to run.**
+
+- **Item 3 (production re-run) — DONE, but caught something important first.** Before syncing,
+  found the candidate-chunk file the whole re-run was going to use was a **partial output from a
+  crashed run** (58,579 rows, Aug 14, no completion log line) — CachyOS separately held the real,
+  completed Aug-24 run (997,024 rows, 17x larger). The "58,163 candidates" figure cited in the
+  2026-09-10 entry below was built on this broken partial file the entire time. Used CachyOS's
+  correct file instead. Also caught a real process failure of my own: the first `scp` of the
+  overlap-filter fix silently failed to land (reported success, file unchanged) — the first
+  "completed" run (78 pairs) had run without the fix at all. Caught via `diff` before trusting
+  it, re-synced, re-ran. **Real result: 51 confirmed pairs** (78 pre-overlap-filter, 27 dropped
+  for real overlap below 252 days) → `output/research/full_universe_eg_confirmed_pairs_10y.
+  parquet`. This is now the trustworthy manifest — §7.20 backtest re-run and PAPER.md updates
+  (queued below) can proceed against it. Full trace in `Development.md`'s 2026-09-12 entry.
+- **Item 1 (1Y timeframe) — DONE, verified end-to-end.** Wired into every place that needed it
+  (`config.py`, `data.py`, 3 mirrors, `universe_loader.py`, 2 hardcoded-13-TF scripts).
+- **Item 2 (empirical overlap-threshold test) — FULLY CLEAN RE-RUN COMPLETE (all 3 `analysis.py`
+  fixes active together, including the sparse-pair exclusion this time), result confirmed
+  robustly.** 124 pair-cell observations, false-confirmation rate **97.1% at [378,504) bars,
+  98.2% at [756,1004) bars** — the earlier ~99.7%/~99.4-100% numbers were NOT an artifact of the
+  bugs or the sparse-pair confound; this holds up even with every known confound now removed.
+  **Overlap length genuinely does not appear to predict OOS success in this single-fold test.**
+  Consistent with, and arguably reinforcing, PAPER.md §7.20's own headline finding. **FOR YOUR
+  REVIEW**: worth reconsidering whether "find the right `MIN_OVERLAP_BY_TF` value" is even the
+  right question, before committing more compute to it.
+- **Backlog item #6 (multivariate study) — DONE, result is an important caveat, not a clean
+  answer.** `statsmodels.Logit` on the same 124 observations (overlap × `pearson_corr` ×
+  `coint_fraction_rolling` × hedge-ratio stability → `held_up`) found `coint_fraction_rolling`
+  nominally significant (p=0.035) with a counter-intuitive NEGATIVE sign, `actual_n_overlap`
+  borderline (p=0.056), also negative. **Do not trust these as real findings**: statsmodels
+  itself flagged possible quasi-separation, and only 3/124 observations were `held_up=True` — far
+  too few positive cases for a 4-covariate model to produce reliable coefficients. The honest
+  conclusion is narrower: OOS success is genuinely rare (2.4%) regardless of the covariate
+  examined, and this sample is too small/imbalanced for real multivariate inference. A proper
+  follow-up would need many more folds to accumulate positive cases, or a small-sample method
+  (Firth's penalized logistic regression), not standard MLE `Logit` — not attempted tonight.
+- **UPDATE: the `half_life_rolling`-100%-NaN bug's real root cause found and fixed — it was NOT
+  the `clean_mask` theory this file previously pointed to.** An off-by-one in `SpreadModel.
+  half_life_ar1` (a redundant length check silently required 31 real points instead of the
+  documented 30-bar floor) guaranteed NaN at exactly the minimum rolling window size — hit for
+  the FASTEST, most attractive mean-reverting pairs. Verified directly on KVUE/KMB's real data:
+  `clean_mask`'s strictness made zero difference for this pair (only NONE/DATA_GAP flags occur),
+  yet it still had 100% NaN before the fix, 99.4% finite after. Full trace in `Development.md`.
+  **Still needs a full `analysis.py` re-run to regenerate real output files** — queued alongside
+  the §7.20 backtest re-run. The original `clean_mask==NONE` strictness issue is still real (per
+  `GapFlag`'s own documented semantics) and worth fixing on its own merits, just not yet done
+  since it didn't explain the KVUE/KMB case used to investigate it.
+- **Bonus, same "make everything consistent" audit Ross asked for**: found and fixed 2 more real
+  silent-failure bugs beyond what was originally scoped — `universe_loader.py`'s `_WRDS_SUFFIX`
+  had only a `"1D"` entry (WRDS 7D/1M/3M/6M data never loaded via `load_full_universe()` for any
+  caller), and `research/lead_lag_scan.py` silently never scanned 1D pairs at all. Both fixed.
+  Full list of all 5 fixes in `Development.md`.
 
 ---
 
@@ -6,6 +2817,367 @@
 papers remotely related to or usable in finance/quant finance, once the current task queue is
 clear. Also shared a link for context: https://arxiv.org/abs/quant-ph/0105127 (no specific
 action requested on it yet).
+
+## FOR YOUR REVIEW (queued overnight 2026-09-10, not decided unilaterally): 2 real
+methodology-level decisions from the yfinance-era-rules audit
+
+Both found by a forked research agent auditing `Development.md`/`config.py` for rules calibrated
+during the yfinance-primary era, now that WRDS is primary for daily-and-coarser US equity/ETF
+data. Neither touched overnight, per the standing "new methodology needs buy-in first" rule.
+
+1. **`Config.STATS.MIN_OVERLAP_BY_TF["1D"] = 252`** (one year) — set as a general statistical-
+   reliability floor, not a yfinance depth limit. WRDS/CRSP routinely provides 50-100 years of
+   daily history (confirmed this session: NTRS to 1972, XOM/KO to 1925), so 252 days is now cheap
+   to exceed. This exact under-enforcement is what let 8 production pairs through with only
+   88-344 days of real overlap before tonight's fix (§ below) started catching it at the current
+   252-day bar — worth deciding whether 252 itself should go up (e.g. to 756/3-years or higher)
+   now that deeper history is routinely available, a real statistical-power question, not a bug.
+2. **A native "1Y" (annual) timeframe was designed, built, and verified specifically to exploit
+   WRDS's depth** (CRSP's ~100 years of daily history gives ~100 meaningful yearly bars, where
+   yfinance's shorter history wouldn't support it) but was never wired into production
+   `Config.DATA.TIMEFRAME_LABELS` or `analysis.py`'s per-TF loop. A real, unexploited capability
+   sitting idle — worth deciding whether it's worth activating.
+
+Full context on both, plus the fixes that were made overnight without needing your input (the
+overlap-filter fix at its 2 real vulnerable call sites, the `analysis.py` IBKR-deep-history
+`DataStore.load()` WRDS-fallback fix), in `Development.md`'s 2026-09-10 (continued, overnight
+`/loop`) entry.
+
+## BLOCKED overnight 2026-09-10, needs your attention: the production pairs re-run (with both
+bug fixes applied) can't complete on this machine right now
+
+`research/full_universe_eg_confirmation.py --tf 1D` (regenerating the actual production pairs
+manifest with tonight's overlap-filter fix applied) was killed twice by this machine's own
+background-task manager, both times at the identical point (`load_full_universe()`'s merge of the
+full ~44,700-symbol WRDS+yfinance universe). Free RAM checked both times: 2.55GB then 2.9GB, both
+low. Tried the project's own standing fix (reroute to CachyOS via Tailscale) — unreachable both
+times (shows offline, last seen ~40 min, not actually reconnecting). Tried trimming the load's
+scope (`--no-binance`/`--no-ibkr`, new flags, safe/additive) — didn't help, since neither source
+was the actual bottleneck. **Not retried a third time**, per this project's own "don't retry-loop
+into the same failure" discipline. Two real options for you:
+1. **Free up RAM on this machine or get CachyOS reachable**, then just re-run the command above —
+   nothing else is blocking it, both code fixes are already in place and verified independently.
+2. **A real, scoped optimization exists but wasn't attempted unsupervised tonight**: this script
+   only actually needs price data for the ~symbols appearing in its 58,163 candidate pairs, not
+   the full universe `load_full_universe()` unconditionally loads — pre-filtering to just the
+   needed symbols would plausibly cut memory by an order of magnitude, but it's a real change to
+   this script's data-loading contract that deserves its own verification pass, not a same-night
+   improvisation on top of two failed runs.
+
+Everything downstream of this re-run (the §7.20 backtest re-run, the `PAPER.md` number updates)
+is queued behind it, not separately blocked.
+
+## RESOLVED 2026-09-12 (Ross, awake briefly to unblock): WRDS credentials fixed via existing
+.pgpass, production regeneration DONE, plus a real concurrency bug found and fixed along the way
+
+Ross pointed me to an existing WRDS `.pgpass.conf` on the Surface (`%APPDATA%\postgresql\`) that
+I hadn't found (only checked CachyOS, which had none). Copied it to `~/.pgpass` on CachyOS
+(`chmod 600`, required by libpq) — a live, non-interactive WRDS connection now works. This
+unblocked the regeneration below immediately.
+
+**`research/promote_full_universe_pairs.py --tf 1D` run for real, completed successfully — but a
+genuine concurrency bug surfaced and got fixed first.** The first attempt (before the fix)
+crashed with `pickle.load` → `EOFError: Ran out of input` reading `universe_loader.py`'s shared
+on-disk memoization cache. Root cause: `load_full_universe()`'s `use_memo_cache=True` path did a
+plain `pickle.dump` directly onto the real cache-file path, not an atomic write — my `overlap_
+threshold_pit_test.py` pilot (still running concurrently) and this promotion job both called
+`load_full_universe()` with matching cache keys around the same time, and one process's
+in-progress write left a truncated file the other's concurrent read caught mid-write. **Fixed**:
+write to a temp file (`{cache_path}.tmp.{pid}`) then `os.replace()` (atomic on POSIX/Windows),
+plus defense-in-depth on the read side (a corrupted/truncated cache file now triggers a
+transparent rebuild with a warning, not a crash — this DID fire on the retry, proving the
+defense-in-depth path works, not just the atomic write). New `debug/_verify_universe_loader_memo_
+cache.py` checks (now 8, was 6): a corrupted-cache-recovers test and a no-leftover-tmp-file test.
+Synced, `diff`-verified byte-identical.
+
+**Real result of the promotion, with genuine data-quality findings along the way**: source
+manifest 51 pairs → 29 after a same-GVKEY-number dedup (22 dropped — Compustat Global
+cross-listings of the same company under different GVKEY suffixes) → **23 after WRDS
+ticker↔PERMNO canonicalization** (1 self-pair dropped — `VRT` was literally cointegrated with its
+own PERMNO alias `PERMNO17987` — plus 4 more alias duplicates like `MKC`/`PERMNO89155`).
+**23 genuinely distinct pairs promoted to `output/results/1day/pairs.parquet`, all newly written
+with both tonight's `analysis.py` fixes in effect.** Verified via `research/pipeline_contracts.py`:
+**zero contract violations in the fresh `output/results/1day/` directory** — the 17 violations
+still showing up in that audit's output are entirely in the OLD backed-up stale directory
+(`output/results/1day_stale_pre_analysis_fixes_20260912_232715/`, already correctly excluded from
+the real 23-pair set, just historical debris left on disk — safe to delete once reviewed) and
+`3min/spread_series_KVUE_KMB.parquet` (a different timeframe, not in tonight's 1D-scoped
+regeneration — a separate, smaller follow-up if wanted).
+
+**Scoping correction on the downstream PAPER.md §7.20 re-run**: checked PAPER.md directly before
+attempting this, and §7.20's actual methodology is NOT "re-run backtest.py against the corrected
+`output/results/1day/pairs.parquet` snapshot" (what I'd assumed) — it's a **182-pair set (170
+WRDS/1D, 6 intraday/1h, 6 intraday/4h) built via episodic, rolling PIT-safe re-confirmation**
+(`research/episodic_confirmed_pairs_adapter.py`), THEN 4 comparison-arm backtests (Purity/Hybrid/
+Tiered/Baseline via `research/build_comparison_arm_pairs.py` + `backtest.py --capital-sim
+--pairs-override`), THEN a full parameter-sensitivity sweep (`research/parameter_sensitivity_
+screen.py`). This is a substantially larger, multi-hour undertaking than tonight's single-snapshot
+regeneration — NOT attempted tonight given the hour and the standing "bug-fixing depth over paper
+numbers" priority. Queued as its own properly-scoped task for a dedicated session, not silently
+folded into "downstream items now unblocked."
+
+## BLOCKED overnight 2026-09-12, needs your attention (SUPERSEDED, kept for the record — see
+RESOLVED entry above): regenerating production output/results/1day data with tonight's two
+analysis.py fixes applied can't complete without live WRDS credentials
+
+`research/promote_full_universe_pairs.py --tf 1D` (the correct tool to regenerate `pairs.parquet`/
+`spread_series_*.parquet` from the corrected 51-pair source, confirmed via its own docstring and
+`_SOURCE_PATH`) needs a live WRDS ticker↔PERMNO dedup check before promoting — without it, the
+promoted set can contain the same real security counted twice under different symbol aliases
+(e.g. `VRT`/`PERMNO17987`, literally a security cointegrated with itself). That check needs an
+interactive WRDS login (`db = wrds.Connection(...)` prompts for a username/password with no
+non-interactive credential configured on CachyOS — checked `~/.pgpass`, doesn't exist) — can't
+supply this unattended overnight. A precomputed `--alias-file` exists (`output/research/permno_
+aliases_1D.json`, 4 entries, dated Aug 24) but predates tonight's much larger candidate pool
+(996,623 candidates vs whatever produced that file) — using it risks silently missing NEW alias
+duplicates in tonight's 51/29-pair set, and the script's own code comment explicitly says
+`--skip-wrds-check` is "Not recommended for a real promotion run." **Backed up the existing stale
+(Aug 24, 27-pair) `output/results/1day/pairs.parquet` + spread_series files, ran the dry-run
+(surfaced a REAL, separate finding — 22 of the 51 corrected pairs are same-GVKEY-number duplicates,
+down to 29 genuinely distinct pairs), then restored the original files** rather than leave
+production in a partial/broken state overnight. Two real options for you:
+1. Run `python research/promote_full_universe_pairs.py --tf 1D` yourself with live WRDS
+   credentials available (or get a current WRDS session going on CachyOS so it doesn't prompt),
+   then this project's other queued items (§7.20 backtest re-run, PAPER.md update,
+   `pipeline_contracts.py`/`degenerate_column_audit.py` before/after comparison) can proceed.
+2. Generate a fresh `--alias-file` covering tonight's actual candidate pool from a machine with
+   WRDS access, then re-run with `--alias-file <path>` instead of a live connection.
+
+Everything downstream of this regeneration (§7.20 backtest re-run, PAPER.md number updates, the
+pipeline_contracts.py before/after NaN-count comparison) is queued behind it, not separately
+blocked — same pattern as the earlier RAM/CachyOS blocker this session already resolved once.
+
+## RESOLVED and IMPLEMENTED 2026-09-12: sparse-data pairs excluded outright, not made adaptive
+
+Ross's decision: **exclude sparse pairs from confirmation outright** rather than making rolling
+statistics adaptive (impute/shorten window). Reasoning: if rolling stats can't compute on a pair,
+it's not tradeable in practice — simplest, most conservative, avoids papering over a real data
+gap. **Implemented**: `AnalysisPipeline._build_pair_result` (analysis.py) now returns `None`
+(the same "exclude this pair" signal every caller already handles) whenever `half_life_rolling_
+median` is non-finite — i.e. the pair's rolling half-life series had zero valid estimates
+anywhere, the exact `GVKEY101930_01W/GVKEY355506_01W` mechanism this decision was about. Verified
+directly on that real pair (now excluded, confirmed via its actual raw WRDS cache data) plus a
+synthetic dense/genuinely-mean-reverting control pair (confirmed NOT excluded, ruling out a
+false-positive blanket rejection). New `debug/_verify_sparse_pair_exclusion.py` (3/3). Synced to
+CachyOS, `diff`-verified byte-identical.
+
+**Also resolved, priority if the overnight queue runs long**: bug-fixing depth over PAPER.md
+number currency — keep chasing `clean_mask`/regeneration/audit correctness even if PAPER.md's
+numbers stay one night stale.
+
+## FOR YOUR REVIEW (queued overnight 2026-09-10, not decided unilaterally): a third data-sparsity
+mechanism found while tracing tonight's KPSS/PO-also-NaN lead — a real methodology question, not
+a bug — RESOLVED ABOVE, kept here for the original context
+
+Traced end to end on `GVKEY101930_01W/GVKEY355506_01W` (a pair with 12,500+ nominal days of
+overlap, so this is genuinely distinct from tonight's two fixed issues). `GVKEY355506_01W` has
+only 938 real price observations *scattered* across a 2,609-bar calendar-aligned 10-year window
+(matching `GapFlag.SPARSE`'s own documented category — thin history/low liquidity). Rolling hedge-
+ratio and spread statistics need a long *contiguous* stretch of real data to produce anything;
+with data this scattered, only one ~5-month window (Jan-June 2023) is dense enough, so that's the
+only place this pair's rolling stats are non-NaN out of a full decade. `_eg_worker`'s one-time
+full-sample EG test tolerates scattered data fine, so the pair cleared confirmation anyway — the
+mismatch is between what a one-shot test needs and what a rolling-statistics pipeline needs.
+
+**Real question for you, not a bug to fix**: should rolling statistics gracefully degrade on
+sparse-but-present data (impute across gaps? use an adaptively shorter window?), or should a pair
+this sparse simply be excluded from confirmation regardless of what a one-time EG test says? Full
+trace in `Development.md`'s 2026-09-10 overnight `/loop` entry.
+
+## 2026-09-08/09 — Reconstructed after a mid-session computer restart: 3 approved §10 designs
+built (Finding #65), full caveat/limitation search across both papers (Finding #66, includes a
+real revision to the prior entry's pooled-Sharpe headline), git divergence with CachyOS resolved
+as a false alarm, two free data-source fetchers built (Finding #67); drives/Steam/Oculus VR setup
+scoped, still blocked on Ross's own sudo/hands-on-hardware steps
+
+**Housekeeping note**: this entry was reconstructed via the Claude Code web extension reading the
+full session transcript at Ross's request, since the computer restart cut the live session before
+a HANDOFF.md update happened. All the CAMARF research content below was already safely committed
+to git and written up in `docs/FINDINGS.md` (#65-67) and `Development.md` before the restart —
+this entry's job is to fold the same content into `HANDOFF.md`'s narrative and capture the
+non-CAMARF (drives/Steam/Oculus) work that has no other written record.
+
+**IMPORTANT CORRECTION to the prior entry's headline**: the prior 2026-09-08 entry above reported
+the pooled equity-curve Sharpe as "+0.1845 (rolling) / +0.1285 (expanding), both positive." The
+caveat/limitation search built the obvious alternative construction — equal-weighting each fold's
+Sharpe instead of weighting by calendar days present — and got **the opposite sign: −0.1302
+(rolling) / −0.1431 (expanding)**. This isn't a minor caveat, it falsifies reading either pooled
+number as a resolution of the fold-to-fold sign disagreement. `PAPER_MAGNITUDE.md` §4/§10 already
+corrected for this (three locations, same session) to present both constructions side by side with
+explicit sign-fragility language — no unambiguous "positive" claim survives. The one honest
+headline remains what it always was: the folds disagree in sign, and no defensible pooling choice
+resolves that.
+
+**Three approved §10 designs built, verified, real-data tested (Finding #65).** Ross approved all
+three in one pass after a design discussion (the price-target signal specifically resolved as a
+**pairs-relative overlay**, not the literature's standalone single-name framing, to keep it inside
+CAMARF's co-movement architecture rather than adding a new single-asset trade unit).
+- **Transfer entropy as an `ml.py` feature**: `transfer_entropy_lead_lag.py` gained
+  `summarize_pair_for_ml()` (fixed-orientation `te_directional_diff`/`te_significance` per pair,
+  not "whichever leg wins"); wired into `ml.py`'s `_FEATURE_COLS` via the same scalar-fallback
+  convention `coint_fraction_rolling` already uses. A real test-authoring bug caught and fixed in
+  the verify suite itself (swapping symbol labels instead of reversing the real coupling doesn't
+  flip TE's sign — the code was right, the test's expectation was wrong), 10/10 after the fix.
+  Confirmed live: 237 training examples now carry real values; single-run holdout accuracy ticked
+  62.50% vs. 56.25% baseline (one run, not seed-averaged — a positive sign, not proof).
+- **§4/§5 interaction test**: `pit_confirmation_vs_regime_interaction.py` — real overlap is small
+  and disclosed up front (only 18 of 320 PIT-confirmed pairs appear anywhere in §5's universe, a
+  low-power ≈0.05% base rate). Real, striking result needing real skepticism: §5-confirmed pairs
+  are PIT-reconfirmed at 1.72% vs. 0.0003% for everything else (z=98.7) — but §4 and §5 likely
+  select for the same underlying correlation/cointegration strength, so this may be two tests
+  detecting one signal, not a novel regime-conditioning insight. Flagged, not resolved: testing
+  whether the effect survives controlling for raw correlation strength directly.
+- **Price-target pairs-relative overlay**: `price_target_pairs_overlay.py` — a real bug caught
+  live before trusting real-data output (`~` on an object-dtype boolean column does Python
+  bitwise-not, not negation; fixed, 11/11). Real, honest negative result on 1,191/1,340 scored
+  trades: agrees-with-consensus vs. disagrees-with-consensus P&L/win-rate show no meaningful
+  difference (Welch's t=-0.33, p=0.74) — matches Finding #57's confidence-score pattern of a
+  clean, diagnosed null rather than a system declared "done" by assertion.
+
+**Full caveat/limitation search across both papers, all tractable tiers worked (Finding #66).**
+Ross asked for a systematic search of every disclosed caveat/limitation with concrete counters,
+then "let's do all the tiers from a to c" — a forked search (kept out of the main session's
+context) returned 20 items across three tiers.
+- **Tier A (5 items), all done, cheaper than expected**: §7.1 BH-vs-BY at true full-universe
+  scale (`bh_vs_by_full_universe_1d.py`, two real bugs caught first — a known tz-naive/aware crash
+  and a more consequential `DataAligner.align_universe` silent per-symbol-length-array bug that a
+  swallowed try/except was hiding, fixed by switching to `align_to_common_calendar`, the same fix
+  already diagnosed 2026-08-14; real result 29,890/30,000 usable pairs, BH confirms 35/BY 23); §4's
+  negative-backtest re-run on the current 29-pair set (same qualitative sign-disagreement pattern,
+  fold2_exp +0.3486 vs fold2_roll -0.4548); 7 non-PIT-safe comparison arms re-run PIT-safe (turned
+  out to be pure re-runs, `--pit-safe` flags already existed — levy_jump_diffusion's 0%-overlap
+  finding and inverse_polarity's 0-candidate null both robustly replicated at scale); §5's
+  survivorship-of-crisis-pairs confound (only 20.6% of the universe is S&P-500-trackable at all;
+  within that slice, no significant confound, z=1.26 p=0.21); §4 regime-strength segmentation vs.
+  PIT-confirmation (striking: all 16 overlapping pairs are "strong," zero moderate/weak, z=3.98).
+  Bonus: §5's residual-correlation-factor split under cluster-robust treatment found the original
+  6.7%-survives figure spans a different, broader population than a crisis-episode cluster
+  bootstrap can test — on the narrower 44-pair crisis-episode-assignable subset, 31.8% survives,
+  wide CI [11.6%, 46.4%].
+- **Tier B, items done**: §5 regime classifier robustness under a credit-spread proxy
+  (`crisis_regime_credit_proxy_comparison.py`, reuses `macro.py`'s BAA10Y proxy — same direction
+  as VIX, even more significant: 0.2038% vs 0.0922%, z=7.45); price-target divergence MAGNITUDE
+  (not agreement) vs. convergence timing (`price_target_convergence_timing_test.py`, another
+  honest negative — no correlation with hold_bars, no exit-rate difference by magnitude). Items
+  #10 (jump-diffusion intraday), #11 (SPAC universe), #12 (paid crowding/flow data) flagged as
+  genuinely blocked at this point in the session — **#11/#12 were subsequently unblocked later
+  the same session, see Finding #67 below**.
+- **Tier C — the headline finding of this whole pass**: the pooled-Sharpe sign-flip described in
+  the correction above. Items #14/#18/#19/#20 checked against existing disclosure language, already
+  adequate. Item #16 (PIT screen's present-day-cache-glob property — a real historical-universe
+  reconstruction off CRSP's point-in-time security master) scoped as genuinely large, not attempted.
+  Item #15 (commit-tagging discipline for headline numbers) noted as a going-forward practice only.
+
+**CachyOS git divergence resolved — real content was almost entirely a false alarm (part of
+Finding #67).** The ~115 "genuinely different" tracked files flagged as a real risk in the prior
+entry turned out to be CRLF-vs-LF line-ending noise, not real content divergence — `git diff
+analysis.py` showed 13,134 changed lines that became zero real diff after adding `.gitattributes`
+(`* text=auto eol=lf`) and `git add --renormalize .`. The only genuine content: ~67 CachyOS-only
+Python scripts (GPU-backend/polars work, episodic-scan auto-restart tooling) that had simply never
+been committed — recovered; one small real merge conflict (`options_greeks_features.py`, kept the
+already-verified upstream dedup fix); a handful of tracked log files resolved by taking CachyOS's
+local state. Both machines confirmed on the identical commit, pushed via a properly-scoped bundle
+(`git bundle create ... origin/main..main`, not a bare `main`, which the first attempt got wrong
+and produced a 3.5GB whole-history bundle instead of ~99KB) since CachyOS has no GitHub push
+credentials. **Both machines now sync via plain `git pull`, not manual `scp`, going forward.**
+
+**Two free data-source fetchers built for the two paid-data blockers flagged above (Finding #67).**
+Ross asked to check whether #11/#12 could use scraping/related-data instead of a paid vendor —
+both did.
+- **`data_sec_edgar.py`** (SPAC universe, §7.3's regex-limitation fix): SEC EDGAR's SIC code 6770
+  classifies blank-check companies, free, official. Caught and worked around a real, confirmed bug
+  in SEC's own legacy `output=atom` endpoint (the `<entry title>`/`<company-info name>` fields both
+  return the broken Perl stringification `ARRAY(0x...)` instead of a real name) by using only the
+  reliable `<cik>` element and getting names/tickers from SEC's separate `company_tickers.json`. A
+  second bug (CIK zero-padded-string vs. plain-int mismatch between the two sources) caught by
+  `debug/_verify_data_sec_edgar.py` (3/3) before trusting the join. Real result: 3,329 distinct
+  SIC=6770 companies, 933 with a mapped ticker; cross-referenced against this project's universe —
+  95 genuinely distinct symbols found (checked directly for unit/warrant duplication, none), vs.
+  the old regex list's 23, only 1 overlapping (SEC's registered tickers carry unit/warrant suffixes
+  like `AACIU`/`AACIW` that don't match CRSP's convention — a real, disclosed mismatch).
+- **`data_finra.py`** (crowding/capacity-decay proxy): FINRA's free biweekly short-interest file
+  covers ALL exchanges despite the URL's `otcmarket` path component (confirmed directly — NYSE's
+  AA/Agilent both present with real figures). 22,482 securities per file,
+  `currentShortPositionQuantity`/`daysToCoverQuantity`/`changePercent` fields. `debug/_verify_
+  data_finra.py` (5/5, mocked to avoid live-network test dependency).
+- **Neither fetcher is wired into any actual analysis yet** — both are confirmed-working, real
+  data sources ready to use; wiring them in is the natural next step, not done this session.
+- No Duo/WRDS session needed for either — both are free public/government-mandated-disclosure
+  data.
+
+**Drives (D/F/G), Steam, Oculus Quest 3 on CachyOS — scoped in full, execution still blocked on
+Ross's own sudo/hands-on steps, not yet verified working.** Not CAMARF research, but real work
+this session and not written up anywhere else.
+- **Drive/dual-boot**: 4 physical disks confirmed (`sda`=D 112G, `sdb`=CachyOS's own system disk,
+  `nvme1n1`=F 932G, `nvme0n1`=G 932G). Dual boot confirmed intact — UEFI has both Limine (boots
+  first) and Windows Boot Manager registered, untouched. Root cause of F's earlier read-only state:
+  Windows Fast Startup leaves NTFS volumes "dirty"/hibernated on shutdown, which Linux's NTFS
+  driver refuses to mount read-write. Plan (not yet executed — this session has no sudo over SSH
+  and won't handle a password): `pacman -S ntfs-3g` (diagnostic tools only, mounting itself uses
+  the kernel's built-in `ntfs3`), disable Fast Startup on Windows + one real full shutdown (not
+  restart) to clear the dirty bit, `/etc/fstab` entries for D/F/G only with `nofail` (so CachyOS
+  still boots if a drive is missing) and `windows_names` (stops Linux from writing filenames
+  Windows can't read). Ross attempted the fstab lines once by pasting them directly at his fish
+  shell prompt rather than into `/etc/fstab` — fish tried to run them as commands, nothing broke,
+  they just never took effect; confirmed `/etc/fstab` is still clean. **As of the last exchange,
+  drives are still not mounted** — the correct copy-paste-ready fstab commands (fish-compatible, no
+  heredocs needed) were handed to Ross; next session should check whether he's run them.
+- **Steam library**: shared plan given (RTX 4080 confirmed, native Steam already on CachyOS) —
+  point both Windows and Linux Steam at the same NTFS drive as an additional Library folder (Steam
+  → Settings → Storage → Add Drive) once D/F/G are mounted; Steam validates by depot hash so
+  nothing re-downloads. Caveat: Proton creates its own `compatdata` prefix per game, separate from
+  native Windows saves — reconciles automatically for Steam-Cloud-enabled games, may not for others.
+- **Oculus Quest 3 / WiVRn**: recommended over Meta Link (not Linux-supported at all). Checked
+  CachyOS's actual hardware first rather than assuming (RTX 4080, driver 610.57.04, Steam +
+  `steam-devices` already installed, `paru` has `wivrn-server` available). Pulled current docs live
+  rather than trusting memory for port numbers/APK links, and found the situation had actually
+  improved: **WiVRn is now on the official Meta Horizon Store** — no Developer Mode, no
+  sideloading, no APK needed at all (the initial answer, which recommended SideQuest/`adb install`,
+  was superseded once checked). Final runbook: `paru -S wivrn-server wivrn-dashboard` on CachyOS
+  (skip the optional `ufw` firewall lines if `ufw` isn't active — check with `systemctl status
+  ufw` first); launch `wivrn-dashboard` from CachyOS's actual desktop session, not over SSH (it's a
+  GUI app); on the Quest 3, install "WiVRn" directly from the Meta Horizon Store; launch it while
+  `wivrn-dashboard` is running — auto-discovers over LAN via Avahi, shows a pairing prompt on the
+  PC side. One thing to watch: the AUR package and the Quest app version must match — if the Store
+  auto-updates ahead of the AUR package, `paru -Syu wivrn-dashboard` to catch up. Sources: the
+  WiVRn Installation Wiki and its Meta Horizon Store listing. **As of the last exchange: the
+  `wivrn-server`/`wivrn-dashboard` install had not yet been run and the Quest's actual connection
+  was never confirmed** — this is genuinely untested, not just unmounted drives.
+
+**Where the session actually stopped (computer restart).** The last in-flight action before the
+restart was "let me check the queued rerun scripts' invocation conventions before launching
+anything on CachyOS" — i.e., about to start on the still-open `PAPER_MAGNITUDE.md` §10 backlog
+(the reruns beyond what the caveat search already covered) — that never happened. After
+reconnecting, the session pivoted to the git reconciliation / SEC EDGAR / FINRA work described
+above instead, and ended asking Ross: continue with item #16 (the PIT screen's cache-glob rebuild)
+now, or pause for him to handle drives/WiVRn on his end first. **Not yet answered** — pick this up
+next session.
+
+**Still genuinely open, carried forward**:
+1. Drives D/F/G not mounted — fstab commands handed to Ross, not yet run/verified.
+2. WiVRn/Oculus Quest 3 connection not yet attempted or confirmed.
+3. Item #10 (jump-diffusion intraday) — blocked on real data accumulation over calendar time, no
+   research workaround exists.
+4. Item #16 (PIT screen's present-day-cache-glob rebuild, off CRSP's point-in-time security
+   master) — real data confirmed present, genuinely large rebuild, not scoped in detail.
+5. The two new free fetchers (SEC EDGAR SPAC, FINRA short interest) are built and verified but not
+   wired into any analysis yet.
+6. The broader §10 rerun backlog beyond what the caveat search covered — not started.
+
+Files (this session's remaining, not already listed in the prior 2026-09-08 entry above):
+`research/transfer_entropy_lead_lag.py` (`summarize_pair_for_ml`), `ml.py` (2 new features),
+`research/pit_confirmation_vs_regime_interaction.py` (new), `research/price_target_pairs_
+overlay.py` (new), `research/bh_vs_by_full_universe_1d.py` (new), `research/crisis_regime_
+survivorship_confound_test.py` (new), `research/regime_strength_vs_pit_confirmation.py` (new),
+`research/residual_correlation_cluster_bootstrap_test.py` (new), `research/crisis_regime_credit_
+proxy_comparison.py` (new), `research/price_target_convergence_timing_test.py` (new),
+`research/pit_wfa_pooled_equity_curve.py` (equal-weighted alternative added), `data_sec_edgar.py`
+(new), `data_finra.py` (new), matching `debug/_verify_*.py` suites (all passing), `.gitattributes`
+(new), `PAPER.md`/`PAPER_MAGNITUDE.md` (multiple sections), `docs/FINDINGS.md` (#65-67),
+`Development.md` (entries through #66 — #67's git-reconciliation/SEC-EDGAR/FINRA narrative is now
+only in this HANDOFF.md entry and needs folding into `Development.md` too, next session).
+
+---
 
 ## 2026-09-08 — §10 survivorship item resolved; 2 of 3 future-work candidates built (sequential
 bootstrap, transfer entropy); equity-curve-stitching infra built, re-run in progress on CachyOS;

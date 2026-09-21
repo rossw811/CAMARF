@@ -88,29 +88,51 @@ TIER2_REGISTRY = [
      "grid": [0.0, 0.25, 0.5, 0.75], "baseline": 0.0},
     {"name": "max_hold_multiplier", "override_name": "MAX_HOLD_MULTIPLIER",
      "grid": [1.0, 1.5, 2.0, 3.0, 4.0], "baseline": 2.0},
+    # corr_exit_threshold/corr_exit_window: real bug found 2026-09-21 (Tier2's first real
+    # run showed EXACT 0.000000 effect-size across all 5 grid values, both IS and OOS --
+    # traced to backtest.py's own CORR_EXIT_THRESHOLD-consuming code being gated behind
+    # `self.storm_flags["real_corr_exit"]` (only set True by --storm-real-corr-exit), which
+    # this screen never passed. Not a backtest.py bug -- that gating is deliberate (see its
+    # own "STORM: real_corr_exit" comment) -- but sweeping these two constants WITHOUT the
+    # flag that makes them do anything was a real gap in this registry's own design.
     {"name": "corr_exit_threshold", "override_name": "CORR_EXIT_THRESHOLD",
-     "grid": [0.0, 0.10, 0.20, 0.30, 0.40], "baseline": 0.20},
+     "grid": [0.0, 0.10, 0.20, 0.30, 0.40], "baseline": 0.20,
+     "extra_flags": ["--storm-real-corr-exit"]},
     {"name": "corr_exit_window", "override_name": "CORR_EXIT_WINDOW",
-     "grid": [20, 40, 60, 90, 120], "baseline": 60},
+     "grid": [20, 40, 60, 90, 120], "baseline": 60,
+     "extra_flags": ["--storm-real-corr-exit"]},
     {"name": "min_half_life_bars", "override_name": "MIN_HALF_LIFE_BARS",
      "grid": [1, 3, 5, 10, 20], "baseline": 5},
+    # max_half_life: same class of bug -- gated behind
+    # self.storm_flags["max_half_life_filter"] (--storm-max-half-life-filter), not passed.
     {"name": "max_half_life", "override_name": "MAX_HALF_LIFE",
-     "grid": [20, 35, 50, 75, 100], "baseline": 50},
+     "grid": [20, 35, 50, 75, 100], "baseline": 50,
+     "extra_flags": ["--storm-max-half-life-filter"]},
+    # flat_risk_pct: different root cause, same symptom -- portfolio_sim.py's
+    # replay_portfolio() only reads flat_risk_pct inside the "flat_2pct"/Kelly sizing
+    # branches (line ~378); under sizing_method="fixed" (this registry's default) it's
+    # dead code by construction, confirmed by reading replay_portfolio directly. Needs
+    # capital_sizing="flat_2pct" for the swept value to have any path to matter.
     {"name": "flat_risk_pct", "override_name": "FLAT_RISK_PCT",
-     "grid": [0.01, 0.02, 0.03, 0.05], "baseline": 0.02},
+     "grid": [0.01, 0.02, 0.03, 0.05], "baseline": 0.02,
+     "capital_sizing": "flat_2pct"},
     {"name": "n_shares_per_trade", "override_name": "N_SHARES_PER_TRADE",
      "grid": [50, 100, 200, 500], "baseline": 100},
     {"name": "commission_per_share", "override_name": "COMMISSION_PER_SHARE",
      "grid": [0.0, 0.005, 0.01, 0.02], "baseline": 0.005},
     {"name": "slippage_bps", "override_name": "SLIPPAGE_BPS",
      "grid": [0, 5, 10, 20], "baseline": 5},
+    # max_concentration_pct: same class of bug -- concentration_cap is only passed to
+    # replay_portfolio() when args.concentration_cap is set (--concentration-cap), not
+    # passed by this screen.
     {"name": "max_concentration_pct", "override_name": "MAX_CONCENTRATION_PCT",
-     "grid": [0.10, 0.20, 0.35, 0.50], "baseline": 0.20},
+     "grid": [0.10, 0.20, 0.35, 0.50], "baseline": 0.20,
+     "extra_flags": ["--concentration-cap"]},
 ]
 
 
 def build_cmd(entry_z=None, hedge="both", capital_sizing="fixed",
-              account=100_000, holdout=False, override=None):
+              account=100_000, holdout=False, override=None, extra_flags=None):
     cmd = [
         _PYTHON, "backtest.py",
         "--pairs-override", _PAIRS_OVERRIDE,
@@ -125,11 +147,15 @@ def build_cmd(entry_z=None, hedge="both", capital_sizing="fixed",
         cmd += ["--entry-z", str(entry_z)]
     if override:
         cmd += ["--override"] + [f"{k}={v}" for k, v in override.items()]
+    if extra_flags:
+        cmd += list(extra_flags)
     return cmd
 
 
-def run_one(param_kwarg, value, holdout, timeout=1800, override_name=None):
-    kwargs = {"entry_z": None, "hedge": "both", "capital_sizing": "fixed"}
+def run_one(param_kwarg, value, holdout, timeout=1800, override_name=None,
+            extra_flags=None, capital_sizing="fixed"):
+    kwargs = {"entry_z": None, "hedge": "both", "capital_sizing": capital_sizing,
+              "extra_flags": extra_flags}
     if override_name:
         kwargs["override"] = {override_name: value}
     else:
@@ -186,13 +212,19 @@ def main():
         name = entry["name"]
         kwarg = entry.get("param_kwarg")
         override_name = entry.get("override_name")
+        extra_flags = entry.get("extra_flags")
+        entry_capital_sizing = entry.get("capital_sizing", "fixed")
         grid, baseline = entry["grid"], entry["baseline"]
-        print(f"\n=== {name} ({kwarg or override_name}) grid={grid} baseline={baseline!r} ===", flush=True)
+        print(f"\n=== {name} ({kwarg or override_name}) grid={grid} baseline={baseline!r}"
+              f"{' extra_flags=' + str(extra_flags) if extra_flags else ''}"
+              f"{' capital_sizing=' + entry_capital_sizing if entry_capital_sizing != 'fixed' else ''} ===",
+              flush=True)
         for value in grid:
             for holdout in (False, True):
                 split = "OOS" if holdout else "IS"
                 print(f"  {kwarg or override_name}={value!r} [{split}] ...", end=" ", flush=True)
-                row, err = run_one(kwarg, value, holdout, override_name=override_name)
+                row, err = run_one(kwarg, value, holdout, override_name=override_name,
+                                    extra_flags=extra_flags, capital_sizing=entry_capital_sizing)
                 if row is None:
                     print(f"FAILED: {err}")
                     all_rows.append({
