@@ -4140,6 +4140,38 @@ sensitivity_screen.py` (new, 5/5) locks in that each affected entry now declares
 requirement and that unaffected entries gained no spurious override. Re-run of just these 5
 dimensions (`--tier2 --only <name>`) queued, not yet run as of this writing.
 
+**Refix run completed same night: real results for all 5, one more dead-config bug found along
+the way.** `corr_exit_threshold`, now genuinely active (`--storm-real-corr-exit`), shows a massive
+real effect (IS range 7.31, OOS range 6.92) — but enabling the correlation-exit mechanism at ALL
+makes the result dramatically WORSE, not better: threshold=0.0 (effectively disabled) reproduces
+the original baseline (-0.76 IS / -0.48 OOS); every nonzero threshold is worse, bottoming at
+threshold=0.4 (-8.06 IS / -7.40 OOS), with `n_taken` jumping from 610 to 1,616 — consistent with
+the chattering-trades failure mode already documented in `backtest.py`'s own inline comments. The
+honest reading of this parameter, once actually tested, is "leave it off," not a tuning question.
+`corr_exit_window` turned out to be dead code for a DIFFERENT reason than the other 4 (not merely
+gated behind a missing flag — the mechanism IS active here) — `Config.BACKTEST.CORR_EXIT_WINDOW`
+is never read anywhere in `backtest.py`/`stats.py`/`analysis.py`; the `coint_fraction_rolling_t`
+values the exit check consumes come from `CointScanner.rolling_fraction()`, whose `window`
+parameter is hardcoded at 252, fully disconnected from this constant. Confirmed by 0.000000 effect
+size across the entire grid despite the mechanism genuinely firing. Deliberately NOT fixed — wiring
+it would change the rolling-fraction confirmation gate broadly (used elsewhere, not just this exit
+check), a real methodology decision, not a bandaid to apply unilaterally. `max_half_life` (now
+active via `--storm-max-half-life-filter`) shows real, non-monotonic sensitivity (U-shaped: both
+the tightest, 20 bars, and loosest, 100 bars, ends of the grid outperform the 35-50-bar middle),
+best at 100 on both splits, still every cell negative. `flat_risk_pct` (now active via
+`capital_sizing=flat_2pct`) collapses trade count to 9-19 (vs. 600+ under `fixed` sizing) — risk-
+based position sizing excludes nearly everything at this pool's actual risk profile.
+`FLAT_RISK_PCT=0.01` IS is the ONLY positive Sharpe in the entire Tier2 sweep (+0.2606), but its
+own OOS at the same setting is negative (-0.6210) on an n=14-19 sample — read honestly as noise,
+not a real result, despite being the one positive number in 108+ grid cells. `max_concentration_
+pct` (now active via `--concentration-cap`) shows a real but modest effect (IS range 0.20, OOS
+range 0.42), with IS-best (0.5) and OOS-best (0.2) disagreeing mildly (not flagged as overfit by
+the guard's own threshold). **Bottom line, full corrected Tier2 (all 12 dims now genuinely wired)**:
+every cell is negative except the one small-sample flat_risk_pct outlier — fixing the 5 dead
+dimensions made the original Tier2 conclusion MORE trustworthy, not less; it replaced 5
+uninformative flat lines with real (mostly more strongly negative once genuinely active)
+sensitivity, not a hidden positive result.
+
 **Two long-standing verify-suite FAILs, flagged in earlier sessions as unresolved, also
 root-caused and fixed the same night**: `debug/_verify_pit_wfa.py`'s synthetic fixture fell below
 the real `Config.STATS.MIN_OVERLAP_BY_TF["1h"]=756`-bar floor (fixture raised from 200 to 300

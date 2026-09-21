@@ -1,0 +1,112 @@
+
+=== corr_exit_threshold (CORR_EXIT_THRESHOLD) grid=[0.0, 0.1, 0.2, 0.3, 0.4] baseline=0.2 extra_flags=['--storm-real-corr-exit'] ===
+  CORR_EXIT_THRESHOLD=0.0 [IS] ... sharpe=-0.7584 n_taken=610
+  CORR_EXIT_THRESHOLD=0.0 [OOS] ... sharpe=-0.4839 n_taken=650
+  CORR_EXIT_THRESHOLD=0.1 [IS] ... sharpe=-4.2195 n_taken=955
+  CORR_EXIT_THRESHOLD=0.1 [OOS] ... sharpe=-4.3861 n_taken=987
+  CORR_EXIT_THRESHOLD=0.2 [IS] ... sharpe=-7.0884 n_taken=1291
+  CORR_EXIT_THRESHOLD=0.2 [OOS] ... sharpe=-6.9780 n_taken=1317
+  CORR_EXIT_THRESHOLD=0.3 [IS] ... sharpe=-7.1683 n_taken=1371
+  CORR_EXIT_THRESHOLD=0.3 [OOS] ... sharpe=-7.2132 n_taken=1432
+  CORR_EXIT_THRESHOLD=0.4 [IS] ... sharpe=-8.0648 n_taken=1616
+  CORR_EXIT_THRESHOLD=0.4 [OOS] ... sharpe=-7.4031 n_taken=1431
+
+=== Overfitting guard (IS-best value's OOS rank) ===
+  corr_exit_threshold: IS-best='0.0', OOS-best='0.0', IS-best's OOS rank=1/5, overfit_risk=False
+Overfitting guard saved -> /home/rw/CAMARF/output/research/param_sensitivity/tier2_overfitting_guard.parquet
+
+=== Effect size ranking (range of sharpe_portfolio across grid) ===
+              param split  sharpe_range  sharpe_min  sharpe_max
+corr_exit_threshold    IS      7.306372   -8.064801   -0.758429
+corr_exit_threshold   OOS      6.919222   -7.403101   -0.483880
+
+Saved -> /home/rw/CAMARF/output/research/param_sensitivity/tier2_oat_results.parquet (108 total rows)
+
+=== corr_exit_window (CORR_EXIT_WINDOW) grid=[20, 40, 60, 90, 120] baseline=60 extra_flags=['--storm-real-corr-exit'] ===
+  CORR_EXIT_WINDOW=20 [IS] ... sharpe=-7.0884 n_taken=1291
+  CORR_EXIT_WINDOW=20 [OOS] ... sharpe=-6.9780 n_taken=1317
+  CORR_EXIT_WINDOW=40 [IS] ... sharpe=-7.0884 n_taken=1291
+  CORR_EXIT_WINDOW=40 [OOS] ... sharpe=-6.9780 n_taken=1317
+  CORR_EXIT_WINDOW=60 [IS] ... sharpe=-7.0884 n_taken=1291
+  CORR_EXIT_WINDOW=60 [OOS] ... sharpe=-6.9780 n_taken=1317
+  CORR_EXIT_WINDOW=90 [IS] ... sharpe=-7.0884 n_taken=1291
+  CORR_EXIT_WINDOW=90 [OOS] ... sharpe=-6.9780 n_taken=1317
+  CORR_EXIT_WINDOW=120 [IS] ... sharpe=-7.0884 n_taken=1291
+  CORR_EXIT_WINDOW=120 [OOS] ... sharpe=-6.9780 n_taken=1317
+
+=== Overfitting guard (IS-best value's OOS rank) ===
+  corr_exit_window: IS-best='20', OOS-best='20', IS-best's OOS rank=1/5, overfit_risk=False
+Overfitting guard saved -> /home/rw/CAMARF/output/research/param_sensitivity/tier2_overfitting_guard.parquet
+
+=== Effect size ranking (range of sharpe_portfolio across grid) ===
+           param split  sharpe_range  sharpe_min  sharpe_max
+corr_exit_window    IS           0.0   -7.088367   -7.088367
+corr_exit_window   OOS           0.0   -6.977961   -6.977961
+
+Saved -> /home/rw/CAMARF/output/research/param_sensitivity/tier2_oat_results.parquet (108 total rows)
+
+=== max_half_life (MAX_HALF_LIFE) grid=[20, 35, 50, 75, 100] baseline=50 extra_flags=['--storm-max-half-life-filter'] ===
+  MAX_HALF_LIFE=20 [IS] ... sharpe=-0.8784 n_taken=368
+  MAX_HALF_LIFE=20 [OOS] ... sharpe=-1.6454 n_taken=311
+  MAX_HALF_LIFE=35 [IS] ... sharpe=-2.8016 n_taken=698
+  MAX_HALF_LIFE=35 [OOS] ... sharpe=-2.6981 n_taken=616
+  MAX_HALF_LIFE=50 [IS] ... sharpe=-2.4469 n_taken=712
+  MAX_HALF_LIFE=50 [OOS] ... sharpe=-2.1525 n_taken=611
+  MAX_HALF_LIFE=75 [IS] ... sharpe=-1.4041 n_taken=669
+  MAX_HALF_LIFE=75 [OOS] ... sharpe=-1.1865 n_taken=661
+  MAX_HALF_LIFE=100 [IS] ... sharpe=-0.8732 n_taken=683
+  MAX_HALF_LIFE=100 [OOS] ... sharpe=-0.8487 n_taken=670
+
+=== Overfitting guard (IS-best value's OOS rank) ===
+  max_half_life: IS-best='100', OOS-best='100', IS-best's OOS rank=1/5, overfit_risk=False
+Overfitting guard saved -> /home/rw/CAMARF/output/research/param_sensitivity/tier2_overfitting_guard.parquet
+
+=== Effect size ranking (range of sharpe_portfolio across grid) ===
+        param split  sharpe_range  sharpe_min  sharpe_max
+max_half_life    IS      1.928412   -2.801642   -0.873231
+max_half_life   OOS      1.849409   -2.698103   -0.848694
+
+Saved -> /home/rw/CAMARF/output/research/param_sensitivity/tier2_oat_results.parquet (108 total rows)
+
+=== flat_risk_pct (FLAT_RISK_PCT) grid=[0.01, 0.02, 0.03, 0.05] baseline=0.02 capital_sizing=flat_2pct ===
+  FLAT_RISK_PCT=0.01 [IS] ... sharpe=0.2606 n_taken=14
+  FLAT_RISK_PCT=0.01 [OOS] ... sharpe=-0.6210 n_taken=19
+  FLAT_RISK_PCT=0.02 [IS] ... sharpe=-0.6686 n_taken=10
+  FLAT_RISK_PCT=0.02 [OOS] ... sharpe=-0.6608 n_taken=10
+  FLAT_RISK_PCT=0.03 [IS] ... sharpe=-0.7301 n_taken=9
+  FLAT_RISK_PCT=0.03 [OOS] ... sharpe=-0.7216 n_taken=9
+  FLAT_RISK_PCT=0.05 [IS] ... sharpe=-0.8219 n_taken=9
+  FLAT_RISK_PCT=0.05 [OOS] ... sharpe=-0.8214 n_taken=9
+
+=== Overfitting guard (IS-best value's OOS rank) ===
+  flat_risk_pct: IS-best='0.01', OOS-best='0.01', IS-best's OOS rank=1/4, overfit_risk=False
+Overfitting guard saved -> /home/rw/CAMARF/output/research/param_sensitivity/tier2_overfitting_guard.parquet
+
+=== Effect size ranking (range of sharpe_portfolio across grid) ===
+        param split  sharpe_range  sharpe_min  sharpe_max
+flat_risk_pct    IS      1.082421   -0.821850    0.260571
+flat_risk_pct   OOS      0.200318   -0.821351   -0.621033
+
+Saved -> /home/rw/CAMARF/output/research/param_sensitivity/tier2_oat_results.parquet (108 total rows)
+
+=== max_concentration_pct (MAX_CONCENTRATION_PCT) grid=[0.1, 0.2, 0.35, 0.5] baseline=0.2 extra_flags=['--concentration-cap'] ===
+  MAX_CONCENTRATION_PCT=0.1 [IS] ... sharpe=-0.9544 n_taken=824
+  MAX_CONCENTRATION_PCT=0.1 [OOS] ... sharpe=-0.8353 n_taken=807
+  MAX_CONCENTRATION_PCT=0.2 [IS] ... sharpe=-0.7601 n_taken=646
+  MAX_CONCENTRATION_PCT=0.2 [OOS] ... sharpe=-0.4132 n_taken=656
+  MAX_CONCENTRATION_PCT=0.35 [IS] ... sharpe=-0.7756 n_taken=631
+  MAX_CONCENTRATION_PCT=0.35 [OOS] ... sharpe=-0.5250 n_taken=665
+  MAX_CONCENTRATION_PCT=0.5 [IS] ... sharpe=-0.7570 n_taken=620
+  MAX_CONCENTRATION_PCT=0.5 [OOS] ... sharpe=-0.4863 n_taken=663
+
+=== Overfitting guard (IS-best value's OOS rank) ===
+  max_concentration_pct: IS-best='0.5', OOS-best='0.2', IS-best's OOS rank=2/4, overfit_risk=False
+Overfitting guard saved -> /home/rw/CAMARF/output/research/param_sensitivity/tier2_overfitting_guard.parquet
+
+=== Effect size ranking (range of sharpe_portfolio across grid) ===
+                param split  sharpe_range  sharpe_min  sharpe_max
+max_concentration_pct    IS      0.197404   -0.954357   -0.756953
+max_concentration_pct   OOS      0.422076   -0.835313   -0.413237
+
+Saved -> /home/rw/CAMARF/output/research/param_sensitivity/tier2_oat_results.parquet (108 total rows)
+REFIX_ALL_DONE

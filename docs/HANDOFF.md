@@ -33,6 +33,65 @@ Both fixes synced to CachyOS, diff-verified.
 
 ---
 
+## 2026-09-21: Tier2 refix COMPLETE — real results for all 5 dimensions, one more dead-config bug found (corr_exit_window)
+
+The targeted 5-dimension re-run (`--tier2 --only <name>` × corr_exit_threshold, corr_exit_window,
+max_half_life, flat_risk_pct, max_concentration_pct) finished cleanly. Real numbers, per dimension:
+
+**`corr_exit_threshold`** (now genuinely active, `--storm-real-corr-exit` passed): massive real
+effect size (IS range 7.31, OOS range 6.92) — but the direction is bad news, not good. Sharpe at
+threshold=0.0 (effectively disabled, `cfrac < 0.0` never true) is -0.76/-0.48 (IS/OOS, matches the
+original Tier2 baseline exactly); every nonzero threshold is dramatically WORSE, bottoming at
+threshold=0.4: -8.06 IS / -7.40 OOS. `n_taken` jumps from 610 (baseline) to 1,616 at threshold=0.4
+— consistent with the chattering-trades failure mode already documented in `backtest.py`'s own
+inline comments (a real_corr_exit run without the hold_bars>5 debounce guard once produced 269,707
+trades vs. 146 baseline; the debounce guard is active here but clearly doesn't fully solve it at
+higher thresholds). **Real, if unwelcome, finding: enabling the correlation-exit mechanism at all
+makes the Purity-pool result meaningfully worse, not better** — IS-best is the disabled (0.0)
+setting, i.e. the honest answer this parameter contributes is "don't turn this on," not a tuning
+question.
+
+**`corr_exit_window`**: CONFIRMED dead code, a DIFFERENT root cause from the other 4 — not gated
+behind a missing flag (the exit mechanism IS active here, matching corr_exit_threshold=0.2's exact
+numbers), but `Config.BACKTEST.CORR_EXIT_WINDOW` is never actually read anywhere in `backtest.py`/
+`stats.py`/`analysis.py` (confirmed via grep — zero hits outside `config.py`'s own declaration and
+`parameter_sensitivity_screen.py`'s registry). The `coint_fraction_rolling_t` values `real_corr_
+exit` checks come from `CointScanner.rolling_fraction()`, whose `window` parameter defaults to a
+hardcoded `252`, completely disconnected from this config constant. **Not fixed** — wiring
+`CORR_EXIT_WINDOW` to `rolling_fraction()`'s window would change the rolling-fraction confirmation
+gate broadly, not just this exit check, which is a real methodology decision needing Ross's input
+before touching (per CLAUDE.md: "new methodology/architecture pattern -> explain it, get buy-in,
+before building"), not something to silently wire up. Flagged, not silently left unexplained.
+
+**`max_half_life`** (now genuinely active, `--storm-max-half-life-filter` passed): real, sizeable
+effect (IS range 1.93, OOS range 1.85), non-monotonic/U-shaped — tightest (20 bars) and loosest
+(100 bars) both outperform the middle of the grid (35-50 bars, near the 50-bar baseline), with
+100 the best on both IS and OOS (rank 1/5, no overfit flag). Still every cell negative.
+
+**`flat_risk_pct`** (now genuinely active, `capital_sizing=flat_2pct` instead of `fixed`): real
+effect, but trade count collapses to 9-19 total under risk-based sizing at this pool (vs. 600+
+under `fixed`) — risk-based position sizing excludes nearly everything at this pair pool's actual
+risk profile. **`FLAT_RISK_PCT=0.01` IS is the only positive Sharpe (+0.2606) anywhere in the
+entire Tier2 sweep**, but its own OOS at the identical setting is negative (-0.6210), and n=14-19
+trades is far too small a sample to read as a real result — flagged honestly as noise, not
+evidence of profitability, not a headline finding despite being the one positive number.
+
+**`max_concentration_pct`** (now genuinely active, `--concentration-cap` passed): real but modest
+effect (IS range 0.20, OOS range 0.42). IS-best (0.5, loosest cap) and OOS-best (0.2, tightest
+- 0.35/0.5 cap options) disagree (rank 2/4) — a mild inconsistency, not flagged as overfit_risk by
+the guard's own threshold, but worth noting rather than treating as a clean signal either way.
+
+**Bottom line across the full corrected Tier2 (12 dims, all now genuinely wired)**: every cell is
+negative except the one small-sample flat_risk_pct outlier. The original Tier2 finding stands and
+is now more trustworthy, not less — fixing 5 dead-parameter dimensions didn't surface a hidden
+positive result; it replaced 5 uninformative flat lines with real (still-negative, in 4/5 cases
+dramatically more negative once genuinely active) sensitivity.
+
+All output synced to CachyOS already (ran there); `output/research/param_sensitivity/tier2_oat_
+results.parquet` now reflects both the original 7 unaffected dims and the refixed 5.
+
+---
+
 ## 2026-09-21: Full 256+8-script verify suite re-run — 253/264 pass (was 244/256), 2 more real FAILs root-caused and fixed
 
 Ran `debug/_run_all_verify.py` in full after tonight's `pit_wfa`/`macro_regimes` fixes to confirm
