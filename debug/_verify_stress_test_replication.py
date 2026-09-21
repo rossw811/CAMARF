@@ -17,11 +17,33 @@ produce extreme_dislocation=True (max|z| far past the 3.5 threshold).
 Case 3 (insufficient history): baseline window shorter than the requested
 lookback should return status="INSUFFICIENT_HISTORY", not crash or silently
 proceed with too little data.
+
+FIXED 2026-09-21 (root-cause, not a bandaid; caught by _run_all_verify.py, 2 issues found in
+sequence): (1) missing `research/` on sys.path -- stress_test_replication.py does a bare `from
+aligned_pair_loader import load_aligned_pair`, which only resolves when research/ is directly on
+sys.path (fixed below). (2) The monkeypatch target itself was stale: this test used to patch
+`mod._load_log_close_1D`, a per-symbol-Series loader that no longer exists anywhere in
+stress_test_replication.py -- it now calls `load_aligned_pair(sym_a, sym_b, tf_label)` (from
+`aligned_pair_loader`, imported directly into this module's own namespace), which returns a
+(df_a, df_b) tuple of DataFrames with a "close" column, not bare Series. Since the fake was never
+actually being called, every real `stress_test_pair()` call fell through to a REAL `load_aligned_
+pair("A1", "B1", ...)` lookup for symbols that don't exist in any real cache, returned (None, None),
+and `stress_test_pair` correctly returned None for missing data -- which is what broke the test's
+own `r1["status"]` access (NoneType not subscriptable), not a bug in the production function.
+Fixed by patching `mod.load_aligned_pair` (the actual call-site name, which DOES live in this
+module's own namespace, unlike the WRDS-retry case fixed earlier tonight) and returning
+DataFrame-wrapped ("close" column) series matching the real contract.
 """
 import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# research/ itself must ALSO be on sys.path (not just importable as the `research` package
+# member below) -- stress_test_replication.py does a bare `from aligned_pair_loader import
+# load_aligned_pair`, which only resolves when run directly (auto-adds its own dir to
+# sys.path[0]) or when research/ is explicitly on sys.path, as here. Fixed 2026-09-21
+# (ModuleNotFoundError caught by _run_all_verify.py) -- not a bug in the production script.
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "research"))
 
 import numpy as np
 import pandas as pd
@@ -47,11 +69,14 @@ import research.stress_test_replication as mod
 _SERIES = {}
 
 
-def _fake_loader(symbol):
-    return _SERIES.get(symbol)
+def _fake_loader(symbol_a, symbol_b, tf_label):
+    s_a, s_b = _SERIES.get(symbol_a), _SERIES.get(symbol_b)
+    if s_a is None or s_b is None:
+        return None, None
+    return pd.DataFrame({"close": np.exp(s_a)}), pd.DataFrame({"close": np.exp(s_b)})
 
 
-mod._load_log_close_1D = _fake_loader
+mod.load_aligned_pair = _fake_loader
 
 # --- Case 1: no dislocation, genuine stationary cointegration throughout ---
 n_baseline = 560  # ~2 trading years + margin (business-day/calendar-year rounding)
