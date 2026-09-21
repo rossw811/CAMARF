@@ -67,7 +67,12 @@ def main():
     def fake_resume_path(source):
         return progress_path
 
-    def fake_build_one_row(sym_a, sym_b, tf_label, as_of_date, source, detail):
+    def fake_build_one_row(sym_a, sym_b, tf_label, as_of_date, source, detail, preloaded=None):
+        # preloaded added 2026-09-XX (real feature: pre-resolved placeholder-symbol DataFrames,
+        # avoids each worker re-loading the multi-GB full-universe fallback) -- this fake ignores
+        # it, same as it ignores as_of_date/source/detail, since it's testing the checkpoint-
+        # resume orchestration, not data loading. Fixed 2026-09-21 (TypeError caught by
+        # _run_all_verify.py: build_adapter_rows now always passes preloaded= as a kwarg).
         built_calls.append((sym_a, sym_b))
         return _fake_row(sym_a, sym_b, tf_label)
 
