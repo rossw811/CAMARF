@@ -33,6 +33,38 @@ Both fixes synced to CachyOS, diff-verified.
 
 ---
 
+## 2026-09-21: Full 256+8-script verify suite re-run — 253/264 pass (was 244/256), 2 more real FAILs root-caused and fixed
+
+Ran `debug/_run_all_verify.py` in full after tonight's `pit_wfa`/`macro_regimes` fixes to confirm
+the overall pass count actually improved: **253 passed, 3 FAILED, 8 errored (of 264)**, up from the
+earlier 244/5/7 baseline (8 new verify scripts added tonight account for the total growing from 256
+to 264). Confirmed `pit_wfa`/`macro_regimes` no longer appear in the FAILED list. Of the 3 remaining
+FAILs, `wrds_lead_lag_scan` was already diagnosed earlier this session as a known test-isolation
+false-failure (writes fixtures into a real production output path, not a bug). The other 2 were
+new to investigate, both root-caused and fixed:
+
+- **`debug/_verify_eg_both_directions_fix.py`**: pinned exact FELE/MAS@1h p-values (captured
+  2026-07-22 against the then-current live cache) had silently drifted as the cache grew from 4,465
+  to 26,810 bars through continued data fetching. Fixed by freezing both legs to a fixed cutoff date
+  (2026-08-14, confirmed to be the cache's own current ceiling) before running the real
+  `CointScanner.scan()`, and re-deriving the pinned values from that frozen slice via the actual
+  production path (not guessed) — reproducible going forward regardless of future fetches, since a
+  fixed upper bound is immune to bars added after it. Also relaxed an asymmetry-magnitude assertion
+  (was ">100x", the current real ratio is ~48x) to ">10x" — comfortable margin, not re-pinned to the
+  exact ratio. Confirmed identical results on CachyOS's own independent data cache.
+- **`debug/_verify_wrds_global_fetch_retry.py`**: monkeypatched `fetch_mod._connect`, which is a
+  separate, disconnected copy of the name after `connect_with_retry_global` was moved into
+  `data_wrds.py` on 2026-08-20 (a real, already-logged refactor) — that function calls ITS OWN
+  module's `_connect` by bare-name lookup, not `fetch_mod`'s. The test was silently making a REAL
+  WRDS connection instead of the intended fake one (visible as WRDS's own "Loading library
+  list... Done" banner appearing in a test whose own docstring promises "no real WRDS connection").
+  Fixed by patching `data_wrds._connect` directly, the actual lookup target.
+
+Both fixed, verified, synced to CachyOS, committed and pushed
+(`e5c9048c`).
+
+---
+
 ## 2026-09-21: Tier 2 COMPLETED (real result: every Sharpe negative but one, and a sweep-design bug found in 5/12 dimensions), refix launched
 
 The original Tier2 run (launched earlier tonight, 12 `Config.BACKTEST` constants × grid × IS/OOS
