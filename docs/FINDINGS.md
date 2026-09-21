@@ -4079,6 +4079,16 @@ with a larger real edge may also carry larger risk-based position sizes, exhaust
 capital faster and displacing what would otherwise be later, equally-good trades — chronological
 first-come-first-served capital allocation, not deliberate quality filtering.
 
+**Generalized to all 3 gates the same night, once the squeeze/momentum trades files were
+regenerated (see below)**: squeeze-gate (n_taken=387) and the combined squeeze+momentum gate
+(n_taken=214) both show the SAME pattern, more starkly than momentum-gate's own result — taken-
+subset Sharpe at the literal 0.0th percentile of 2,000 random same-size draws in both cases (not
+merely an outlier; the single most extreme value possible), `taken_better_than_skipped: False` in
+all 3. This is no longer a single-gate result that could plausibly be an artifact of momentum-
+gate's specific trade population — it generalizes across 3 independently-built gates, considerably
+strengthening the conclusion that `--capital-sim`'s chronological trade-admission is robustly, not
+coincidentally, picking a worse population than it skips.
+
 **2. `research/hierarchical_dsr.py`: does pooling all 990 trials into one DSR correction over-
 penalize labels that were never part of most of those trials?** Built a transparent, ordered,
 first-match-wins regex classifier grouping every `trial_registry.json` label into one of 19
