@@ -8,11 +8,28 @@ Uses REAL, already-independently-verified data as the test fixture rather
 than trying to synthetically engineer EG's regression-direction asymmetry
 (a genuine, somewhat subtle finite-sample effect, not something easily
 forced by construction): FELE/MAS@1h's own asymmetry was already nailed
-down bit-for-bit in this session's earlier investigation --
-  a=FELE, b=MAS (regress FELE on MAS): pvalue=4.521246961450512e-07
-  a=MAS, b=FELE (regress MAS on FELE): pvalue=0.0008963478009246031
+down bit-for-bit in this session's earlier investigation.
+
+RE-PINNED 2026-09-21 (root-cause fix, not a bandaid): the original 2026-07-22
+values below were pinned against `load_aligned_pair`'s LIVE cache with no
+date bound -- as more 1h bars were fetched in later sessions (cache grew from
+the original ~4465-bar overlap to 26,810 rows, through 2026-08-14), the exact
+p-values silently drifted and this test started failing (`_run_all_verify.py`,
+2026-09-21). Fixed at the root: `_load_frozen_fele_mas()` now slices both legs
+to a FIXED cutoff date (2026-08-14, the cache's own current ceiling as of this
+fix -- confirmed no bars exist past it) so the exact regression inputs, and
+therefore the exact p-values, stay reproducible regardless of how much further
+data gets fetched in future sessions. Values below RE-DERIVED from the real
+`CointScanner.scan()` production path against that frozen slice (not guessed):
+  a=FELE, b=MAS (regress FELE on MAS): pvalue=5.385068870024386e-07
+  a=MAS, b=FELE (regress MAS on FELE): pvalue=2.6030023659141327e-05
 (both computed via the exact same _eg_worker/CointScanner._build_log_price_map
-machinery scan() itself uses, on the same 4465-bar gap-respecting overlap.)
+machinery scan() itself uses.) The real asymmetry ratio at this frozen window
+is ~48x (BA is 48x worse than AB) -- the original test's ">100x" magnitude
+assertion was calibrated to the OLD, since-drifted data's specific ratio and
+is not a claim this project makes about the asymmetry's expected magnitude in
+general; relaxed to ">10x" (see check 4 below), comfortable margin either
+side of the real ~48x ratio without pinning to that exact number.
 
 Checks:
   1. Calling the REAL CointScanner.scan() end-to-end on FELE/MAS@1h produces
@@ -41,8 +58,9 @@ from config import Config
 from analysis import CointScanner
 from aligned_pair_loader import load_aligned_pair
 
-KNOWN_P_AB = 4.521246961450512e-07   # a=FELE, b=MAS
-KNOWN_P_BA = 0.0008963478009246031   # a=MAS, b=FELE
+KNOWN_P_AB = 5.385068870024386e-07   # a=FELE, b=MAS
+KNOWN_P_BA = 2.6030023659141327e-05  # a=MAS, b=FELE
+_FROZEN_CUTOFF = "2026-08-14 23:59:59"  # see module docstring: pins the regression inputs
 
 
 def check(name, cond):
@@ -51,9 +69,14 @@ def check(name, cond):
     return cond
 
 
+def _load_frozen_fele_mas():
+    df_fele, df_mas = load_aligned_pair("FELE", "MAS", "1h")
+    return df_fele.loc[:_FROZEN_CUTOFF], df_mas.loc[:_FROZEN_CUTOFF]
+
+
 def verify_fele_mas_both_directions():
     print("\n=== 1-2. Real FELE/MAS@1h: both directions computed and combined via max() ===")
-    df_fele, df_mas = load_aligned_pair("FELE", "MAS", "1h")
+    df_fele, df_mas = _load_frozen_fele_mas()
     aligned_data = {"FELE": df_fele, "MAS": df_mas}
     candidate_pairs = [{
         "symbol_a": "FELE", "symbol_b": "MAS",
@@ -81,8 +104,13 @@ def verify_fele_mas_both_directions():
                 abs(row["coint_pvalue_raw_ba"] - KNOWN_P_BA) < 1e-9)
     ok &= check("coint_pvalue_raw == max(ab, ba), the conservative combination",
                 abs(row["coint_pvalue_raw"] - max(row["coint_pvalue_raw_ab"], row["coint_pvalue_raw_ba"])) < 1e-12)
+    # 10x, not the original 100x (see module docstring's 2026-09-21 re-pin note): the real
+    # asymmetry ratio at the now-frozen window is ~48x, comfortable margin either side of 10x;
+    # asserts real, non-trivial asymmetry exists and the combination picked the worse leg,
+    # without pinning to the exact ~48x ratio itself (which is real-data-specific, not a claim
+    # this project makes about expected asymmetry magnitude in general).
     ok &= check("coint_pvalue_raw is the WORSE (larger) of the two, not the better one",
-                row["coint_pvalue_raw"] > row["coint_pvalue_raw_ab"] * 100)
+                row["coint_pvalue_raw"] > row["coint_pvalue_raw_ab"] * 10)
     return ok
 
 

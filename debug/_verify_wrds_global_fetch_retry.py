@@ -14,6 +14,23 @@ Checks, via monkeypatching (no real WRDS connection):
      the underlying `_connect` stops raising.
   4. Giving up after `max_retries` interrupted attempts raises, rather than
      silently returning as if successful.
+
+FIXED 2026-09-21 (root-cause, not a bandaid): checks 3+4 were monkeypatching
+`fetch_mod._connect`, which did nothing -- `connect_with_retry_global` (what
+`fetch_mod._connect_with_retry` is aliased to) was moved into `data_wrds.py`
+on 2026-08-20 (see `wrds_global_index_universe_fetch.py`'s own inline comment
+at that date) and calls ITS OWN module-level `_connect` by bare-name lookup
+within `data_wrds.py`'s globals, not `fetch_mod`'s. `fetch_mod._connect` is
+still a real, importable name (`from data_wrds import _connect, ...`), but
+patching it only rebinds a separate copy of that name in `fetch_mod`'s own
+namespace -- irrelevant to `data_wrds.connect_with_retry_global`'s internal
+calls. Caught by `_run_all_verify.py` (2026-09-21): the test was silently
+exercising a REAL WRDS connection instead of the fake one (visible as WRDS's
+own "Loading library list... Done" banner in the test's own output), which
+is also why this failure was worth fixing immediately rather than deferring
+-- an unintended live WRDS call inside a "no real WRDS connection" synthetic
+test. Fixed by patching `data_wrds._connect` (the actual lookup target)
+instead of `fetch_mod._connect`.
 """
 import os
 import sys
@@ -23,6 +40,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import pandas as pd
 
+import data_wrds
 import research.wrds_global_index_universe_fetch as fetch_mod
 
 
@@ -71,8 +89,8 @@ def main():
             raise ConnectionError("simulated drop")
         return _FakeDBWithTimeout("FAKE_DB")
 
-    orig_connect = fetch_mod._connect
-    fetch_mod._connect = flaky_connect_then_ok
+    orig_connect = data_wrds._connect
+    data_wrds._connect = flaky_connect_then_ok
     try:
         result = fetch_mod._connect_with_retry(max_attempts=5, base_delay=0.01)
         if result != _FakeDBWithTimeout("FAKE_DB"):
@@ -84,12 +102,12 @@ def main():
         if calls["n"] != 3:
             failures.append(f"_connect_with_retry should have taken exactly 3 attempts, took {calls['n']}")
     finally:
-        fetch_mod._connect = orig_connect
+        data_wrds._connect = orig_connect
 
     def always_fails():
         raise ConnectionError("permanent")
 
-    fetch_mod._connect = always_fails
+    data_wrds._connect = always_fails
     try:
         try:
             fetch_mod._connect_with_retry(max_attempts=2, base_delay=0.01)
@@ -97,7 +115,7 @@ def main():
         except RuntimeError:
             pass  # expected
     finally:
-        fetch_mod._connect = orig_connect
+        data_wrds._connect = orig_connect
 
     # --- Check 1+2: main()'s retry-and-resume loop ---
     tmpdir = tempfile.mkdtemp()
