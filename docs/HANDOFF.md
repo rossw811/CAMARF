@@ -33,6 +33,35 @@ Both fixes synced to CachyOS, diff-verified.
 
 ---
 
+## 2026-09-21: Backlog item #2 closed — the 2026-09-15 Kelly-variant anomaly root-caused (not a bug)
+
+Investigated the flagged-but-not-yet-resolved 2026-09-15 11:33 finding: all 4 Kelly-fraction
+sizing variants (`quarter_kelly`/`third_kelly`/`half_kelly`/`full_kelly`) produced bit-for-bit
+identical results (`sharpe=-0.6686 n_taken=10` IS, all four), with two candidate explanations
+flagged but not distinguished — a real floor/cap effect, or a real `--capital-sizing` bug.
+
+Read `portfolio_sim.py`'s `replay_portfolio()` directly: `_KELLY_MIN_TRADES = 60` (already
+documented, "Development.md's own documented convention"), and `_kelly_fraction()` returns NaN
+whenever `len(closed_pnls) < 60` — `closed_pnls` is a single PORTFOLIO-WIDE (not per-pair)
+causal history of closed trades, accumulated across the whole replay. When `f_star` is NaN, EVERY
+Kelly variant falls back identically to `risk_fraction = risk_pct` (flat 2%) — the
+`_KELLY_MULTS[sizing_method]` multiplier that's supposed to differentiate quarter/third/half/full
+never gets applied, because it lives in the branch that only runs when `f_star` IS finite.
+
+**Confirmed, not just plausible**: the original Tier1 entry's own n_taken=10 (IS) is far below the
+60-trade floor — Kelly could never activate for even one trade in that entire run, let alone
+enough to differentiate the 4 fraction multipliers. This exactly matches a pattern already
+observed independently tonight: the Tier2 refix's own `flat_risk_pct` sweep on this SAME pair
+pool showed n_taken=9-19 under risk-based sizing (vs. 600+ under `fixed`) — risk-based sizing
+structurally takes very few trades on this pool, both then and now. **Root cause confirmed:
+option (a) from the original entry (a real floor/cap effect), not option (b) (a bug)** — this is
+a genuine, disclosable finding about Kelly sizing's practical range on this pair pool (it never
+gets enough closed-trade history to differentiate its own fraction multipliers), not a defect in
+`--capital-sizing`'s implementation. No code change needed; closing the backlog item with this
+root-cause explanation documented.
+
+---
+
 ## 2026-09-21: 3 remaining verify-suite TIMEOUTs confirmed as expected slowness, not bugs — `_run_all_verify.py`'s ERROR classification needs a known-slow allowlist
 
 Closed out the last 3 of the full-suite run's 8 ERRORs (4 already fixed as real bugs earlier
