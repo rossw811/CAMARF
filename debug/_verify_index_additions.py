@@ -11,6 +11,16 @@ Checks:
      eligible" -- this function's job is just to report what's known).
   4. Malformed/junk rows (empty ticker, "N/A", overlong garbage) are
      dropped, not turned into spurious addition dates.
+
+FIXED 2026-09-21 (root-cause, not a bandaid; caught by `_run_all_verify.py`): the fixture used to
+mimic a raw "Changes to the list" scrape (date/added_ticker/removed_ticker/reason columns). That
+table stopped existing on Wikipedia's S&P 500 page entirely (a real, disclosed site-structure
+change found live 2026-08-11 -- see `fetch_current_constituents_with_dates()`'s own docstring,
+which explicitly says it REPLACES that original plan). `build_additions()` was updated the same
+day to match its new real producer's output contract -- (symbol, added_date) directly, sourced
+from the current-constituents table's own "Date added" column -- but this test's fixture was never
+updated, so every run since has raised KeyError('added_date') immediately. Rewritten to match the
+current, real contract.
 """
 import os
 import sys
@@ -25,15 +35,18 @@ from survivorship import build_additions, get_member_since_date
 def main():
     failures = []
 
-    changes_df = pd.DataFrame([
-        {"date": "March 1, 2015", "added_ticker": "AAAA", "removed_ticker": "", "reason": ""},
-        {"date": "June 1, 2010", "added_ticker": "BBBB", "removed_ticker": "", "reason": ""},
-        {"date": "January 1, 2020", "added_ticker": "BBBB", "removed_ticker": "", "reason": "re-added"},
-        {"date": "N/A", "added_ticker": "", "removed_ticker": "", "reason": ""},
-        {"date": "April 1, 2018", "added_ticker": "this-is-a-way-too-long-garbage-ticker", "removed_ticker": "", "reason": ""},
+    # (symbol, added_date) -- build_additions()'s real current contract, matching
+    # fetch_current_constituents_with_dates()'s output shape (see module docstring's
+    # 2026-09-21 fix note for why this isn't the old raw-changes-table schema).
+    constituents_df = pd.DataFrame([
+        {"symbol": "AAAA", "added_date": "March 1, 2015"},
+        {"symbol": "BBBB", "added_date": "June 1, 2010"},
+        {"symbol": "BBBB", "added_date": "January 1, 2020"},  # re-added later, earliest kept
+        {"symbol": "", "added_date": "N/A"},
+        {"symbol": "THIS-IS-A-WAY-TOO-LONG-GARBAGE-TICKER", "added_date": "April 1, 2018"},
     ])
 
-    additions = build_additions(changes_df)
+    additions = build_additions(constituents_df)
 
     # --- 1: single addition extracted correctly ---
     aaaa_date = get_member_since_date("AAAA", additions)
