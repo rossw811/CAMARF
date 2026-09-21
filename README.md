@@ -186,6 +186,18 @@ pairs**, not 29 — do not confuse this with the separate 182-pair *episodic* re
 which is a different methodology and a different file. Full account: `Development.md`'s
 2026-09-13 entries.
 
+**UPDATED 2026-09-14/15, reconciled 2026-09-21**: the 182-pair episodic set's own queued
+re-derivation above is now done. `research/wrds_deep_history_episodic_scan.py` re-run at corrected
+scale (same Tier-3-only, causally point-in-time-safe methodology, against the corrected candidate
+universe) produced **1,375 confirmed pairs** (`output/research/purity_pairs.parquet`), replacing
+the 182-pair number throughout this section — a scale correction, not a methodology change. The
+current, authoritative capital-constrained Purity-arm result on this rebuilt pool: unconstrained
+Sharpe **-0.218**, capital-constrained (`--capital-sim`, $100k fixed) Sharpe **-0.7584** —
+directionally the same conclusion as the 182-pair result above (negative, both legs) but not the
+same number; the 182-pair Sharpes (-0.679 IS / -0.834 OOS) quoted above are superseded. Full
+account: `docs/HANDOFF.md` 2026-09-14 21:38 and 2026-09-15 09:17/09:25 entries, `PAPER.md` §7.20's
+own correction note.
+
 ---
 
 ## Architecture — Non-Negotiable Rules

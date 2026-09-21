@@ -2688,10 +2688,31 @@ comparison_arm_pairs.py` (`purity_pairs.parquet`, `hybrid_pairs.parquet`, `tiere
 `research/parameter_sensitivity_screen.py`. Full account: `Development.md` Session 31 (2026-08-11/
 14), `docs/FINDINGS.md` #24-#25, `README.md`'s "Current Results" section.
 
+**SUPERSEDED, reconciled 2026-09-21 — flagged as outstanding in §7.21 below since 2026-09-15, now
+resolved.** The 182-pair number and the Purity/Hybrid/Tiered/Baseline table above are from the
+episodic scan as it stood 2026-08-11/14. On 2026-09-13/14, `research/wrds_deep_history_episodic_
+scan.py` was re-run at corrected scale (fixing the WRDS universe-undercount and PERMNO-ticker-alias
+bugs found and fixed the same week — 2,211 of 6,844 PERMNO-labeled symbols, 32%, turned out to be
+literal aliases of an already-present plain ticker, contaminating the earlier candidate pool this
+182-pair set was drawn from) — same Tier-3-only, causally point-in-time-safe methodology throughout
+(`research/episodic_pairs_adapter.py`'s existing, pre-dating-this-session decision to use only
+Tier 3's rolling-window correlation prefilter, never Tier 1/2's static full-history one), just
+against a larger, corrected candidate universe: 7,834,906 candidates vs. the original run's smaller
+scope, yielding 1,382 Tier-3-confirmed pairs (1,375 after the adapter's own filtering) in place of
+182. **This is a scale correction, not a methodology change** — the causal-validity argument this
+section makes is unaffected — but every Sharpe number in the table above is now stale. §7.21 below
+reports the CURRENT authoritative Purity-arm result on the rebuilt 1,375-pair pool (unconstrained
+Sharpe -0.218, capital-constrained -0.7584) — directionally the same conclusion (negative, both
+legs) but not numerically the same result, and citing the 182-pair table above as current would be
+wrong. Kept here for provenance, not deleted, per this document's own convention (§7.3.1). Full
+account: `docs/HANDOFF.md` 2026-09-14 21:38 and 2026-09-15 09:17/09:25 entries.
+
 ### 7.21 Squeeze/Momentum Entry Confirmation: a Found Methodology Gap, Validated with the
 Project's Strongest Statistical Evidence to Date [DRAFTED: 2026-09-20 — NOTE: built on a REBUILT,
-much larger Purity pool (1,375 pairs) than §7.20's own 182-pair number; reconciling the two pool
-sizes/vintages is itself outstanding, not yet done]
+much larger Purity pool (1,375 pairs) than §7.20's own 182-pair number; reconciled 2026-09-21, see
+the correction note at the end of §7.20 — same Tier-3-only causally-PIT-safe methodology, a scale
+correction (corrected candidate universe) not a methodology change; §7.20's 182-pair table is
+superseded, not this section's own 1,375-pair numbers]
 
 Ross asked directly whether the negative Purity-arm result above could reflect a backtest
 methodology gap rather than pair selection — specifically "the lack of squeeze and momentum" in
