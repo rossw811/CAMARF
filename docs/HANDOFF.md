@@ -33,6 +33,18 @@ Both fixes synced to CachyOS, diff-verified.
 
 ---
 
+## 2026-09-21: 3 more pre-existing FAILs (from before tonight) confirmed already resolved
+
+Checked the 3 stale-`ENTRY_ZSCORE`-fixture FAILs flagged as "not urgent, but real and unfixed" in
+an earlier session's own full-suite run (`_verify_bug_d56_compose.py`, `_verify_bug_d61_window_
+alignment.py`, `_verify_dead_constants_comparison_arms.py`, traced then to the 2026-08-20 ENTRY_
+ZSCORE update leaving fixtures stale). All 3 now pass cleanly (exit 0, no failures printed) — must
+have been fixed sometime between that entry and now (either earlier in tonight's session before
+compaction, or a prior session; not re-investigated further since there's nothing left to fix).
+No action needed; noting for the record so this doesn't get re-flagged as still-outstanding.
+
+---
+
 ## 2026-09-21: Backlog item #5 closed — CCM linking table check, premise didn't hold
 
 Investigated 2026-09-15 20:14's item #5: "check whether WRDS's own CCM linking table
