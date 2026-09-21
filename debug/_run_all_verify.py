@@ -37,6 +37,18 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _DEBUG_DIR = os.path.join(_ROOT, "debug")
 
+# Known-legitimately-slow scripts, each confirmed (2026-09-21, by running individually with a
+# generous timeout) to be genuinely expensive by design, not hung or broken -- without this,
+# every full-suite run reports them as ERROR (TIMEOUT) at the generic 120s default and each one
+# needs re-investigating from scratch to re-confirm the same "not a bug" conclusion. Override
+# value is the per-script timeout in seconds; still counted as ERROR if it exceeds even this.
+_KNOWN_SLOW_TIMEOUTS = {
+    "_verify_data_wrds.py": 180,                       # own docstring: deliberately makes 1 live WRDS connection
+    "_verify_polars_universe_loader.py": 300,           # 1996 checks across 133 real cache files
+    "_verify_lead_lag_permutation_check.py": 300,       # hundreds of real permutation draws
+    "_verify_wrds_deep_history_episodic_scan.py": 300,  # production-scale synthetic EG pipeline run
+}
+
 
 def discover_verify_scripts(pattern: str = None) -> list:
     files = sorted(glob.glob(os.path.join(_DEBUG_DIR, "_verify_*.py")))
@@ -103,16 +115,20 @@ def main():
 
     print(f"Running {len(scripts)} verify scripts (timeout={args.timeout}s, workers={args.workers})...\n")
 
+    def _timeout_for(path: str) -> int:
+        override = _KNOWN_SLOW_TIMEOUTS.get(os.path.basename(path))
+        return max(args.timeout, override) if override else args.timeout
+
     results = []
     t0 = time.time()
     if args.workers <= 1:
         for i, path in enumerate(scripts, 1):
-            r = run_one(path, args.timeout)
+            r = run_one(path, _timeout_for(path))
             results.append(r)
             print(f"[{i}/{len(scripts)}] {r['status']:5s} {r['name']} ({r['elapsed']:.1f}s)")
     else:
         with ThreadPoolExecutor(max_workers=args.workers) as pool:
-            futures = {pool.submit(run_one, path, args.timeout): path for path in scripts}
+            futures = {pool.submit(run_one, path, _timeout_for(path)): path for path in scripts}
             for i, fut in enumerate(as_completed(futures), 1):
                 r = fut.result()
                 results.append(r)

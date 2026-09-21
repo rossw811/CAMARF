@@ -33,6 +33,33 @@ Both fixes synced to CachyOS, diff-verified.
 
 ---
 
+## 2026-09-21: 3 remaining verify-suite TIMEOUTs confirmed as expected slowness, not bugs — `_run_all_verify.py`'s ERROR classification needs a known-slow allowlist
+
+Closed out the last 3 of the full-suite run's 8 ERRORs (4 already fixed as real bugs earlier
+tonight; `_verify_data_wrds.py`'s timeout is separately expected/disclosed — its own docstring
+says it deliberately makes one live WRDS connection). Ran the remaining 3 sequentially on
+CachyOS (they OOM-killed when run in parallel locally — only ~3.3GB free at the time; per this
+project's own standing rule, RAM-heavy work belongs on CachyOS, not the Surface, even when the
+Surface looks free) with a generous timeout instead of the batch runner's generic 120s:
+
+- **`_verify_polars_universe_loader.py`**: 1996/1996 checks passed (399 file×column combinations
+  across 133 real cache files) — genuinely thorough, not slow because of a bug.
+- **`_verify_lead_lag_permutation_check.py`**: ALL CHECKS PASSED (permutation-based look-elsewhere
+  correction, positive control + calibration check, each needing hundreds of real permutation
+  draws).
+- **`_verify_wrds_deep_history_episodic_scan.py`**: ALL CHECKS PASSED (7 checks, including a
+  synthetic rolling-window EG pipeline run at real production scale for the test's own ground-
+  truth claim).
+
+All 3 are legitimately expensive by design (large real-file counts, hundreds of permutation
+draws, production-scale synthetic runs) — none are bugs, none need fixing. Worth a small process
+fix, not done tonight: `debug/_run_all_verify.py`'s batch runner uses a flat 120s timeout for
+every script; a short allowlist of known-legitimately-slow scripts (these 3 plus `_verify_data_
+wrds.py`) with their own longer per-script timeout would stop them from appearing in the ERROR
+bucket every full-suite run and needing this same re-investigation each time.
+
+---
+
 ## 2026-09-21: Capital-constraint luck check run against all 3 gate arms — same finding, more strongly, every time
 
 Previously blocked pending item, closed the same night the missing squeeze/momentum trades files
