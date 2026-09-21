@@ -28,6 +28,21 @@ for Ross to make (matches this file's own "draft, don't apply without review" pu
 even drafting the replacement text is a bigger call than a markdown-currency sweep should make
 unilaterally), flagged here so it isn't lost, not resolved.
 
+**Addendum, 2026-09-13**: the 182-pair episodic set's own WRDS/1D input is now ALSO stale, for a
+new reason. The correlation-prefilter's WRDS ticker↔PERMNO self-pair/alias-duplicate check was
+moved upstream this session (into the correlation stage itself, not just at promotion time) —
+2,211 of 6,844 PERMNO-labeled symbols (32%) in the full universe turned out to be literal aliases
+of an already-present plain ticker, real contamination at the exact scale the episodic scan's own
+candidate pool draws from. Separately, two real bugs affecting spread/half-life computation
+(`SpreadModel.half_life_ar1`'s off-by-one, `SpreadModel.fit_pair`'s `clean_mask` semantics) and a
+new sparse-data-pairs exclusion rule were also fixed/added this session — all three plausibly
+affect which pairs the episodic scan would confirm and how their per-pair scalar fields compute.
+A full re-run of `research/wrds_deep_history_episodic_scan.py` (the actual source of `output/
+research/wrds_deep_history_episodic_scan_tier3_windows.parquet`, which `research/episodic_pairs_
+adapter.py` and downstream §7.20 both depend on) is the real fix, not a number edit — queued as
+its own effort, tracked here since it's the same "far larger revision than anything queued below"
+category this note already flags, just a new reason on top of the existing PIT-safe-pivot one.
+
 ---
 
 ## 1. §4.2.1 — add a methodological caveat to the Monte Carlo null-construction (Phase 12, STORM perspective 1/4)

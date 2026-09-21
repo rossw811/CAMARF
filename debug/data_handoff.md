@@ -85,7 +85,8 @@ result = builder.build()
 ## config.py — Key Parameters
 
 ```python
-Config.DATA.TIMEFRAME_LABELS  = ["1m","2m","3m","5m","15m","30m","1h","4h","8h","1D","7D","1M"]
+Config.DATA.TIMEFRAME_LABELS  = ["1m","2m","3m","5m","15m","30m","1h","4h","1D","7D","1M","3M","6M","1Y"]
+# ("8h" was removed -- no native yfinance interval, no analytical value. "3M"/"6M"/"1Y" added since.)
 Config.DATA.MIN_BARS_REQUIRED["1D"] = 100   # lowered for futures front-month
 Config.UNIVERSE.FUTURES       = ["ES","NQ","RTY","YM","ZN","ZB"]
 Config.UNIVERSE.COMMODITIES   = ["GC","SI","CL","NG","ZC","ZW","ZS","HG"]

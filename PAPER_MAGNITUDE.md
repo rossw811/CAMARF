@@ -1,50 +1,24 @@
 # The Discovery Event: Causal Validity and Regime Information in
 Statistical Arbitrage Pair Screening
 
-*(Reframed 2026-09-02, narrowing from the 7-finding "Unwarranted
-Confidence" draft below. Ross's direct approval: "i like the new rough
-title and the paper stuff... let's change paper to reflect [it]."
-Rationale: a paper built around two findings connected by one real
-mechanism is a stronger, more citable contribution than seven co-equal
-bug-fixes under a synthesis thesis, however honest that synthesis was.
-The throughline: a cointegration screen's output — "pair X is confirmed"
-— is conventionally treated as a static, timeless fact once a p-value
-clears threshold. This paper shows that's wrong in two complementary
-directions, on the same production-scale (~44,700-symbol) pipeline. §4
-shows the discovery event's TEMPORAL DIRECTION (backward-looking
-full-history vs. causal point-in-time) is a bias that must be corrected
-— a full-history screen certifies pairs a causal re-screen would not
-have found, and would not have profited from. §5 shows the discovery
-event's REGIME CONTEXT (the market conditions a pair was first found in)
-is a signal current practice discards — pairs first discovered in a
-crisis-VIX regime confirm at a significantly higher rate and persist
-across regime changes significantly more, not less, than calm-discovered
-pairs. Same underlying object — the discovery event — audited for
-causal validity in one case, mined for predictive information in the
-other. That symmetry is the paper's actual contribution: pair discovery
-is an event with a timestamp and a context, not a timeless fact, and
-both what it costs you to ignore that and what it can buy you are
-demonstrated on the same real pipeline. The other six findings from the
-earlier draft (multiple-testing discipline, episodic cointegration, SPAC
-contamination, jump-diffusion vs. data quality, the calendar-padding
-artifact, and complexity-only-earns-its-keep-when-it-fixes-a-specific-
-assumption) are real, verified, and kept — as supporting evidence that
-this same pipeline demands rigor at every stage, not just at discovery —
-see §7. See §1.4 for the two-pillar argument stated in full, and §6 for
-the reframed synthesis.)*
-
-*(Earlier titles, kept for provenance per this project's "document what
-was tried and reverted" discipline, not live: "Unwarranted Confidence:
-What You Were Entitled to Believe Less Than You Thought in
-Production-Scale Statistical Arbitrage Research" (2026-09-01 title, the
-7-co-equal-finding frame — see the archived structure notes throughout
-this document for what changed and why) / "When Does the Market Actually
-Cointegrate? A Point-in-Time-Safe, Multiple-Testing-Disciplined Account
-of Cross-Asset Arbitrage Structure at Full-Universe Scale" / "Seven Ways
-Naive Cointegration Screening Fails at Scale, and What Fixing Each One
-Reveals About Market Structure" / "Artifact Management, Not Signal
-Discovery: A Production-Scale Account of Statistical Arbitrage
-Screening.")*
+A cointegration screen's output ("pair X is confirmed") is
+conventionally treated as a static, timeless fact once a p-value clears
+threshold. This paper's primary contribution (§4) is a causal-validity
+result: a full-history screen certifies pairs a genuinely point-in-time
+(PIT) re-screen would not have found or profited from, so discovery
+*timing* is a bias current practice must correct for, not incidental
+metadata. A secondary, exploratory finding (§5) asks whether discovery
+*context* (the market regime a pair was first found in) is also
+informative; it is, for one of two sub-claims, once checked with
+cluster-robust rigor, but §6 also reports a later test (Finding #65)
+suggesting §4 and §5 may partly be detecting the same underlying
+correlation strength rather than two fully independent signals, an
+honest complication, not swept under the two-pillar framing an earlier
+draft used. §7 reports six further, independently-verified findings from
+the same production pipeline, supporting the paper's broader rigor claim
+without being part of its central contribution. Full revision history,
+prior titles, and the reasoning behind each reframing are kept for
+provenance in Appendix A, not in the main text.
 
 ---
 
@@ -93,47 +67,51 @@ think it deserves its own shorter paper but i like the novel angle."*
 
 Cross-asset statistical arbitrage research typically screens for
 cointegration using a single test and reports the surviving pair set as
-"confirmed" — a static, timeless fact about the pair, independent of
+"confirmed": a static, timeless fact about the pair, independent of
 when or how the screen was run. This paper argues that assumption is
 wrong, and provides evidence for that in two directions, using the same
 production screening methodology (a merged universe of ~44,700
 US-equity, ETF, crypto, forex, commodity, and futures symbols;
 correlation pre-filtering alone generates 638,095 candidate pairs across
 5,003,637 (pair, window) cointegration tests in the larger of the two
-runs). A pair's *discovery event* — the specific moment and market
-context in which it first clears a screen — carries information a
+runs). A pair's *discovery event* (the specific moment and market
+context in which it first clears a screen) carries information a
 binary confirmed/not-confirmed label discards, in two opposite practical
 directions.
 
-**First, the direction you look matters, and looking backward is a
-liability.** A genuinely point-in-time (PIT) re-screen of the same
+**Primary contribution: the direction you look matters, and looking
+backward is a liability.** A genuinely point-in-time (PIT) re-screen of the same
 universe, using only data a live deployment would actually have had,
 provides one directly-confirmed data point (a PIT-confirmed pair set that
 traded and lost money, −1.0121 Sharpe on 32 trades) plus a smaller,
 earlier, independently-run test finding zero overlap with the
 full-history-confirmed set at every checkpoint tried (Sharpe range −0.72
-to −1.04). A full-history screen — the field's standard practice —
+to −1.04). A full-history screen (the field's standard practice)
 silently certifies pairs whose apparent "confirmation" leaks information
 from after the point a real decision would have been made. This is not a
 claim that the pairs it finds are spurious; it is evidence that a
 causally-constrained observer would not have found or profited from the
 same pairs a backward-looking screen certifies. The canonical empirical
-pairs-trading literature (e.g. Gatev, Goetzmann & Rouwenhorst, 2006 —
+pairs-trading literature (e.g. Gatev, Goetzmann & Rouwenhorst, 2006,
 the field's seminal distance-method study, cited in full in
 `PAPER.md`'s shared bibliography) validates its trading rule
 out-of-sample but treats pair *selection* itself as a given input,
 computed once over the full available history rather than causally
-re-derived at each decision point — this paper tests discovery itself,
+re-derived at each decision point. This paper tests discovery itself,
 not just the rule applied to whatever pairs discovery already produced.
 This specific result is at the current ~1,576-symbol WRDS-primary
 universe; a second, corrected-scale re-run at the full ~43,883-symbol,
 daily-bar universe (§4) reaches the same genuinely mixed conclusion, not
 a scale-driven reversal in either direction.
 
-**Second, the market regime a pair is first discovered in is
-informative, not noise to be filtered out — real for one of two
-sub-claims, once checked with the rigor the first pass of this analysis
-lacked.** Among the full corrected-scale candidate pool, pairs whose
+**Secondary, exploratory finding: the market regime a pair is first
+discovered in is informative, not noise to be filtered out: real for
+one of two sub-claims, once checked with the rigor the first pass of
+this analysis lacked.** This finding is reported as suggestive evidence
+alongside the primary contribution above, not as a co-equal second
+pillar: §6 explains why, including a later test (Finding #65) raising
+the possibility that it detects overlap with the primary finding rather
+than an independent phenomenon. Among the full corrected-scale candidate pool, pairs whose
 first qualifying rolling-correlation window falls in a crisis-VIX regime
 are episodically BH-FDR-confirmed at roughly 1.7x the rate of
 calm-discovered pairs by a naive pooled two-proportion z-test (0.248%
@@ -141,7 +119,7 @@ vs. 0.146%; z=2.77, p=0.0056) that treats each of 11,715 crisis-first
 pairs as independent. **They are not**: crisis-VIX periods cluster into
 just 12 distinct historical episodes, and a cluster-robust bootstrap
 resampling at the episode level shows the true 95% confidence interval
-([0.02%, 0.40%]) comfortably contains calm's rate — this specific claim
+([0.02%, 0.40%]) comfortably contains calm's rate. This specific claim
 does not survive correct statistical treatment, even though the
 underlying concentration (93.1% of confirmations from 2 of 12 episodes)
 is independently confirmed real, not chance (binomial p=0.000006,
@@ -151,46 +129,59 @@ regime predicts confirmation." The second sub-claim fares better: pairs
 *persist* as a candidate across later, different-regime windows
 significantly more often than calm-discovered pairs (91.0% vs. 78.7%),
 and this survives the same cluster-robust bootstrap (95% CI [77.5%,
-96.3%], cluster-robust p=0.032) — weaker than the naive z=32.2 implied,
-but genuinely significant, and — contrary to the natural "transient
-panic correlation" null hypothesis — in the direction of persisting
+96.3%], cluster-robust p=0.032), weaker than the naive z=32.2 implied,
+but genuinely significant, and, contrary to the natural "transient
+panic correlation" null hypothesis, in the direction of persisting
 MORE, not less. A third sub-question (does confirmation *strength*
 differ by discovery regime) does not reach significance (Mann-Whitney
 p=0.196, underpowered at only 29 crisis-confirmed pairs). The
 confirmation-rate effect is also not a clean dose-response to market
 stress: the "elevated" VIX bucket sits slightly *below* calm and normal,
 with only the crisis extreme standing out. Of two named confounds for the persistence result that does survive, one
-— crisis-era factor co-movement — is now directly tested (§5): residual-
+(crisis-era factor co-movement) is now directly tested (§5): residual-
 izing each symbol's returns against SPY shows the effect is real in the
 6.7% of pairs whose correlation survives factor-adjustment, but most of
-the raw pooled effect sits in the factor-explained subset — the confound
-is real, not total. The second — survivorship of crisis-discovered pairs
-into the current-constituent universe — is not yet tested.
+the raw pooled effect sits in the factor-explained subset: the confound
+is real, not total. The second (survivorship of crisis-discovered pairs
+into the current-constituent universe) has since been tested (§7,
+Finding #66): within the 20.6% of the candidate universe this WRDS
+subscription can actually track point-in-time (no equivalent product
+exists for S&P 400/600), confirmation rate does not differ significantly
+by survivorship status (0.34% survived vs. 0.30% delisted, z=1.26,
+p=0.21), a real, honest, partial answer; the other 79% of the universe
+remains genuinely untested, not assumed clean.
 
-**The unifying claim**: a discovery event's timing and context are not
-incidental metadata a confirmed-pair label can safely discard. One face
-of this (temporal direction) is a bias current practice must correct
-for; the other (regime context) is a signal current practice is leaving
-on the table. Both are demonstrated using the same production screening
-methodology and statistical discipline (Benjamini-Hochberg correction
-across 10^5-10^6-scale hypothesis families, point-in-time-safe by
-construction), though at different universe scales, disclosed directly
-rather than implied to match (§1.2, §8). Six further findings from the
-same pipeline (multiple-testing discipline at scale, episodic
-cointegration as a market-structure property, SPAC microstructure
-contamination, return-jump risk invisible to existing data-quality
-checks, a purely mechanical 15.8σ artifact, and complexity earning its
-keep only when it fixes a specific false assumption) are reported as
-supporting evidence in §7 — real, verified findings from the same rigor
-discipline, but not the paper's central contribution.
+**The claim, stated with its actual weight.** A discovery event's timing
+is not incidental metadata a confirmed-pair label can safely discard.
+This is the paper's primary, best-evidenced contribution (§4). Discovery
+*context* (the regime a pair was first found in) is a plausible further
+source of information current practice leaves on the table, reported as
+a secondary, exploratory finding (§5) rather than a co-equal second
+pillar, because a direct test of the two findings' interaction
+(Finding #65, §6) found §4-confirmed and §5-confirmed pairs overlap far
+more than chance would predict: evidence the two screens may partly be
+detecting the same underlying correlation/cointegration strength, not
+two fully independent phenomena. Both findings are demonstrated using
+the same production screening methodology and statistical discipline
+(Benjamini-Hochberg correction across 10^5-10^6-scale hypothesis
+families, point-in-time-safe by construction), though at different
+universe scales, disclosed directly rather than implied to match (§1.2,
+§8). Six further findings from the same pipeline (multiple-testing
+discipline at scale, episodic cointegration as a market-structure
+property, SPAC microstructure contamination, return-jump risk invisible
+to existing data-quality checks, a purely mechanical 15.8σ artifact, and
+complexity earning its keep only when it fixes a specific false
+assumption) are reported as supporting evidence in §7: real, verified
+findings from the same rigor discipline, but not the paper's central
+contribution.
 
 ---
 
 ## 1. Introduction [DRAFTED]
 
 **1.1 Motivating question.** A cointegration screen produces a binary
-output per candidate pair: confirmed, or not. Conventional practice —
-this project's own earlier practice included — treats that output as a
+output per candidate pair: confirmed, or not. Conventional practice
+(this project's own earlier practice included) treats that output as a
 complete summary of what the screen found, discarding the *event* that
 produced it: when, in absolute calendar time and in market-regime terms,
 did this pair first clear the screen? This paper asks whether that
@@ -203,13 +194,13 @@ to overturn a pair set's profitability. Ignored in the other direction
 statistically significant predictive signal current practice simply
 throws away. CAMARF's own confirmed-pair count changed by an order of
 magnitude multiple times as successive rounds of methodology correction
-were applied (§3 below) — evidence, independent of either finding here,
+were applied (§3 below): evidence, independent of either finding here,
 that "confirmed" was never as stable a label as it is normally treated.
 
 **1.2 Why scale matters, and an honest caveat about which findings are
 actually at corrected scale as of this writing.** Both of this paper's
 central findings, and several of the six supporting ones (§7), are
-scale-dependent — they either do not appear, or appear too rarely to
+scale-dependent: they either do not appear, or appear too rarely to
 generalize from, at the ~1,500-2,000-symbol scale most of this project's
 own earlier sessions worked at (a scale later found to itself be a bug;
 see §2). §5's crisis-regime signal in particular only becomes visible
@@ -230,7 +221,7 @@ the process: the corrected-scale run crashed ~90 consecutive times on an
 unrelated memory bug in the episodic-scan checkpoint reconstruction (an
 end-of-run step that held 2-3x redundant copies of the checkpoint data
 in memory, never covered by an earlier, narrower fix to the same
-function) — root-caused and fixed, not just retried past. §5 and §7.2
+function), root-caused and fixed, not just retried past. §5 and §7.2
 below now report the corrected-scale real numbers (638,095 candidate
 pairs, 8.18% of regime spans ever cointegrated), not a placeholder; see
 §8 for the same disclosure restated at each affected finding.
@@ -249,18 +240,21 @@ biases and limitations directly, project-convention style, covering both
 headline findings and the supporting six. §9 is the relationship to the
 companion backtest paper. §10 is future work.
 
-**1.4 The two-pillar argument, previewed.** It is worth stating the full
-shape of the argument before the reader reaches either finding in detail,
-rather than only in the synthesis (§6) at the end.
+**1.4 The argument, previewed.** It is worth stating the full shape of
+the argument before the reader reaches either finding in detail, rather
+than only in the synthesis (§6) at the end. §4 is this paper's primary,
+best-evidenced contribution; §5 is a secondary, exploratory finding
+reported alongside it, not a co-equal second pillar: the reason for
+that asymmetry is stated plainly below, not deferred to §6.
 
-*The bias side (§4).* A full-history cointegration screen and a
+*The primary finding (§4).* A full-history cointegration screen and a
 genuinely point-in-time (PIT) re-screen of the *same* universe do not
 just disagree at the margins. Across four historical folds, only one
 provides direct evidence for the claim (a PIT-confirmed set that traded
 and lost money); two find no PIT-confirmed pairs at all (inconclusive,
 not evidence either way); the fourth (+0.25 Sharpe on 5 trades) is too
 thin to overturn anything. Read this as a directional, qualitative
-result, not a high-power statistical estimate — the honest claim is that
+result, not a high-power statistical estimate: the honest claim is that
 the PIT-discovered set did not resemble or outperform the full-history
 set at any tested cutoff, not a precise magnitude, and a real part of
 that claim's weight rests on a separate, earlier, independently-run test
@@ -271,16 +265,25 @@ discovered and profitably traded the same pairs a backward-looking
 screen certifies. The canonical pairs-trading literature (Gatev,
 Goetzmann & Rouwenhorst, 2006, cited above) treats pair *selection* as
 a given input, computed once over full available history, and validates
-only the trading rule causally — §4 is this paper's case for why
-discovery itself is worth testing the same way. This
+only the trading rule causally: §4 is this paper's case for why
+discovery itself is worth testing the same way. Mechanistically, this is
+the same failure mode Bailey, Borwein, López de Prado & Zhu (2014/2016)
+formalize as backtest overfitting via the Probability of Backtest
+Overfitting (PBO): a full-history screen is, in effect, selecting the
+best-performing candidates from a large search space using the full
+sample, the same selection-induced-outperformance mechanism PBO
+quantifies for strategy-configuration search specifically; §4 applies
+the same underlying concern one step earlier, to pair *discovery*
+itself rather than to picking among already-discovered candidates' own
+backtest variants. This
 result is at the current, smaller WRDS-primary universe scale; a second
 run at the corrected, full ~43,883-symbol WRDS-primary universe §5 also
-draws from (§4, §10) reaches the same genuinely mixed conclusion — 2 of 4
+draws from (§4, §10) reaches the same genuinely mixed conclusion: 2 of 4
 folds capital-constrained-positive, 2 negative, not a scale-driven
 reversal in either direction, with the largest, most substantive fold
 (1,533 raw trades) landing positive.
 
-*The signal side (§5).* The same production screening methodology,
+*The secondary finding (§5).* The same production screening methodology,
 applied at corrected scale, asked a different question of the same
 kind of discovery events: does the market regime a pair was *first
 discovered in* predict anything about its future behavior? For one of
@@ -296,7 +299,7 @@ the honest cluster-robust p=0.032 still clears significance), a pattern
 that replicates across nearly every distinct historical episode, not
 just one. Confirmation rate (crisis-discovered pairs confirm at ~1.7x
 the calm rate by a naive z=2.77, p=0.0056) does NOT survive the same
-cluster-robust check (95% CI comfortably contains calm's rate) — even
+cluster-robust check (95% CI comfortably contains calm's rate), even
 though the underlying concentration (93.1% of confirmations from 2 of
 12 episodes) is independently confirmed to be real and not chance
 (binomial p=0.000006), that concentration is itself the reason the
@@ -307,26 +310,37 @@ confirmation" claim. Of the two named confounds, one (crisis-era factor
 co-movement) is now directly tested: residualizing each symbol's returns
 against SPY shows the effect is real in the 6.7% of pairs whose
 correlation survives factor-adjustment, but most of the raw pooled
-effect sits in the factor-explained subset — the confound is real, not
-total. The second (survivorship of crisis-discovered pairs) is not yet
-ruled out for the persistence result that does hold up. Taken together, this is the
-opposite practical implication of §4: where §4 shows discovery timing
-must be corrected for, §5 shows discovery context is informative and
-worth investigating further, not that it should already be acted on.
+effect sits in the factor-explained subset: the confound is real, not
+total. The second (survivorship of crisis-discovered pairs) has since
+been tested (§7, Finding #66): no significant confound within the 20.6%
+of the universe trackable at all (z=1.26, p=0.21), the other 79%
+untested, not assumed clean. Taken by itself, this is the opposite
+practical implication of §4: where §4 shows discovery timing must be
+corrected for, §5 suggests discovery context may be informative and
+worth investigating further, not that it should already be acted on;
+"by itself" is doing real work in that sentence, per the next paragraph.
 
-*Why one paper, not two.* Both findings interrogate the same object —
-the discovery event, the specific moment and context in which a
-candidate pair first clears a screen — and both show that current
-practice's treatment of "confirmed" as a timeless, context-free label
-throws away real information. §4 and §5 are not two unrelated results
-placed in the same document; they are two tests of the same underlying
-claim, using the same screening methodology, with opposite practical
-prescriptions. That thematic symmetry is why this paper exists as one
-contribution rather than two — it is not, and this paper does not claim
-it to be, an empirically demonstrated interaction between the two
-findings (§10 lists testing that interaction directly as future work);
-the case for one paper rests on the shared underlying claim, not on
-having shown the two findings affect each other.
+*Why one paper, and why §5 is secondary rather than a second pillar.*
+Both findings interrogate the same object (the discovery event, the
+specific moment and context in which a candidate pair first clears a
+screen), and an earlier draft of this paper treated that thematic
+symmetry alone as sufficient reason to report them as two co-equal
+pillars of one contribution. §10's future-work list flagged the two
+findings' interaction as untested at that time; it has since been tested
+directly (`pit_confirmation_vs_regime_interaction.py`, Finding #65, §6),
+and the result complicates the symmetric framing rather than confirming
+it: §5-confirmed pairs are PIT-reconfirmed (§4's own criterion) at 1.72%
+versus 0.0003% for everything else (z=98.7), a striking overlap, but on
+only 18 of §4's 320 PIT-confirmed pairs, a genuinely low-power test, and
+both screens plausibly select for the same underlying correlation/
+cointegration strength rather than two independent phenomena. This paper
+therefore reports §4 as its primary, best-evidenced contribution and §5
+as a secondary, exploratory finding worth further investigation, not
+because §5's own results are weaker in isolation, but because its
+relationship to §4 is not yet cleanly independent, and a paper claiming
+two independent pillars should not rest on an untested assumption of
+independence that, once tested, turned out ambiguous. See §6 for the
+full account of what the interaction test showed and did not show.
 
 ---
 
@@ -420,9 +434,9 @@ This is the bias side of the paper's central argument (§1.4). A
 full-history cointegration screen looks backward across all available
 data, including data that would not have existed at the moment a real
 trading decision had to be made. If a pair's tradeable episode is itself
-transient — §7.2's episodic-cointegration finding, reused here as
+transient (§7.2's episodic-cointegration finding, reused here as
 reinforcing context, not a prerequisite this section's own result
-depends on — a backward-looking screen can certify a pair whose real
+depends on), a backward-looking screen can certify a pair whose real
 tradeable window has already closed, or has not yet opened. That is a
 causal problem, not a statistical one, and it is the one this section
 tests directly.
@@ -435,13 +449,13 @@ to that cutoff, exactly as a live deployment would have seen it, then
 backtested forward through the fold's test window with the unmodified
 `BacktestEngine`.
 
-**Result — a real, disclosed scale caveat before the table: this specific
+**Result: a real, disclosed scale caveat before the table: this specific
 4-fold run is on the current WRDS-primary universe at 1,576 symbols, NOT
 the corrected ~43,883-symbol scale §5 runs at (though not the same
-candidate-pair COUNT even at matching universe scale — see the
+candidate-pair COUNT even at matching universe scale; see the
 corrected-scale re-run below for why). §4 and §5 share the same
 methodology and screening pipeline, but this specific table is not (yet)
-at the same universe scale — a corrected-scale re-run, once this paper's
+at the same universe scale: a corrected-scale re-run, once this paper's
 single most important open item, now follows directly below this
 paragraph, not a detail to gloss
 over given how much §2 emphasizes exactly this kind of scale mismatch
@@ -455,20 +469,20 @@ elsewhere:**
 | rolling/fold2 | 1 | 5 | **+0.2547** |
 
 **Read the four folds as three different kinds of evidence, not one
-"3 of 4" count — conflating them would overstate what's shown.** Two
+"3 of 4" count: conflating them would overstate what's shown.** Two
 folds (expanding/fold1, rolling/fold1) found zero PIT-confirmed pairs at
 all: this is not evidence of lookahead bias costing money, it is an
-inconclusive result — with too little pre-cutoff history accumulated by
+inconclusive result (with too little pre-cutoff history accumulated by
 those early folds, the pipeline may simply not have had enough data to
 confirm anything yet, a data-availability limit, not a demonstration of
-the paper's causal-validity claim. Exactly one fold (expanding/fold2)
+the paper's causal-validity claim). Exactly one fold (expanding/fold2)
 provides real, direct evidence for that claim: a PIT-confirmed pair set
 that actually traded and lost money (32 trades, −1.0121 Sharpe). The
 fourth fold (rolling/fold2, +0.2547 Sharpe, 5 trades on `AUB/XHR@1h`) is
 reported honestly rather than omitted, but 5 trades cannot overturn
 anything either way. **The honest summary of this table alone: 1 of 4
 folds is real supporting evidence, 2 are inconclusive, 1 is a thin
-counter-example too small to weigh — a real but much thinner result than
+counter-example too small to weigh: a real but much thinner result than
 "3 of 4 folds negative" implies**, which is why the earlier, independently-
 run test below (pre-WRDS universe, a different and larger evidence base)
 matters for this finding's overall weight, not just this one table.
@@ -511,12 +525,12 @@ set live (`research/pit_wfa_trade_bootstrap.py`) surfaced a large,
 unexplained divergence: `expanding/fold2_exp` now finds 3 PIT-confirmed
 pairs (not 2) and 28 trades at Sharpe +0.3486 (not 32 trades, −1.0121);
 `rolling/fold2_roll` now finds 49 PIT-confirmed pairs (not 1) and 288
-trades at Sharpe −0.4548 (not 5 trades, +0.2547) — the same DIRECTION of
+trades at Sharpe −0.4548 (not 5 trades, +0.2547), the same DIRECTION of
 finding (one fold negative, mixed results overall) but materially
 different magnitudes. Checked directly before assuming either
 explanation: the cached universe size is essentially unchanged (1,576
 symbols at the original run vs. 1,579-1,580 today), and the fold cutoff
-dates themselves are nearly identical (within about a week — `pit_
+dates themselves are nearly identical (within about a week; `pit_
 wfa.py`'s folds are computed as percentages of the cache's [min, max]
 date range, which drifts slightly as new bars accumulate, but not nearly
 enough to explain a 1-to-49-pair jump on its own); the re-run script's
@@ -525,7 +539,7 @@ against `run_fold`'s and matches exactly, ruling out a bug in the
 re-derivation itself. **The most likely remaining explanation, not fully
 isolated to a specific commit**: the shared screening pipeline
 (`analysis.py`/`Config`) this test reuses has itself changed in the
-weeks between the original run and this session's re-run — this project
+weeks between the original run and this session's re-run: this project
 has had substantial, ongoing development on exactly those shared
 components in that window. This means §4's exact point estimates are not
 currently reproducible by simply re-running the script; they are
@@ -535,11 +549,11 @@ fact. **The table above is left as originally reported, not replaced by
 the new re-run's numbers, since the two are not answering the same
 question** (a fold defined by percentage-of-cache-window, re-screened
 under whatever the pipeline's code and cache happen to be on the day it's
-run, is not a frozen historical artifact) — but this reproducibility gap
+run, is not a frozen historical artifact), but this reproducibility gap
 is itself now a disclosed, real limitation of this finding (§8), not a
 silently-assumed non-issue.
 
-**The corrected-scale re-run, completed 2026-09-03/04 — this paper's own
+**The corrected-scale re-run, completed 2026-09-03/04: this paper's own
 stated single most important open item.** `research/pit_wfa_wrds_daily.py`
 (a new, standalone comparison-arm script; `pit_wfa.py` and the table above
 are unmodified, still cited as-is) re-runs this exact causal-validity test
@@ -549,9 +563,9 @@ difference from §5's own candidate-pair count worth naming precisely,
 not glossed over: §5's 638,095-candidate-pair figure is a single,
 full-history correlation-prefilter pass over that whole universe; each
 PIT fold here necessarily screens a smaller, cutoff-specific candidate
-pool instead — a genuinely point-in-time screen can only see the
+pool instead: a genuinely point-in-time screen can only see the
 universe as it existed up to that fold's own cutoff date, not the full
-present-day one — so no single shared candidate-pair count applies
+present-day one, so no single shared candidate-pair count applies
 across both sections' methods, only the same underlying merged universe
 source. Daily bars, not 1h, are the only way to reach this universe
 scale at all: WRDS/CRSP carries zero intraday data, disclosed throughout
@@ -571,12 +585,12 @@ this test's methodology.
 
 Per this project's own standing convention (portfolio-level, capital-
 constrained results are the reported headline over raw per-pair
-backtests — a real position-sizing decision was needed here too:
+backtests), a real position-sizing decision was needed here too:
 uncapped risk-based sizing initially took zero trades at any fold,
-a genuine capital-scale finding, not a bug — resolved by capping
+a genuine capital-scale finding, not a bug, resolved by capping
 per-position concentration at 20% of equity, this project's own
 already-declared but previously-unenforced convention, not a newly
-invented number):
+invented number:
 
 | Fold | PIT-Confirmed Pairs | Raw Trades | Capital-Constrained Trades Taken | Capital-Constrained Sharpe |
 |---|---|---|---|---|
@@ -585,12 +599,12 @@ invented number):
 | rolling/fold1 | 31 | 21 | 11 | **−0.4779** |
 | rolling/fold2 | 303 | 1,533 | 309 | **+0.2175** |
 
-(`rolling/fold1` matches `expanding/fold1` exactly by construction — both
+(`rolling/fold1` matches `expanding/fold1` exactly by construction: both
 variants share an identical fold-1 date range at this fold-fraction
 definition, not a coincidence or a bug.)
 
 **Read honestly, not resolved into a clean story either way**: at full
-scale, the causal-validity finding remains genuinely mixed — 2 of 4 folds
+scale, the causal-validity finding remains genuinely mixed: 2 of 4 folds
 capital-constrained-positive, 2 negative, the same qualitative pattern as
 the smaller-scale table above, not a scale-driven reversal in either
 direction. The one fold with a real, large sample (`rolling/fold2`,
@@ -601,7 +615,7 @@ portfolio Sharpe's sign (−0.2589 raw → +0.2175 capital-constrained),
 consistent with genuine downside-risk reduction rather than mere
 position filtering. This corrected-scale result does not overturn §4's
 central claim (a live, causal screen still would not have uniformly,
-profitably traded the same pairs a backward-looking screen certifies —
+profitably traded the same pairs a backward-looking screen certifies:
 half these folds are still net negative), but it also does not deepen it
 into a stronger, more damning result than the smaller-scale table already
 showed. **A pooled-across-folds headline Sharpe was built 2026-09-08**
@@ -610,12 +624,12 @@ real equity-curve splicing (chronological concatenation, inter-fold
 calendar gap dropped rather than zero-filled) rather than a naive average
 of already-annualized ratios. The calendar-day-weighted construction
 gives +0.1845 rolling / +0.1285 expanding (both positive); an equally
-defensible ALTERNATIVE construction — equal-weighting each fold's own
-Sharpe regardless of its calendar span — gives −0.1302 / −0.1431 (both
+defensible ALTERNATIVE construction (equal-weighting each fold's own
+Sharpe regardless of its calendar span) gives −0.1302 / −0.1431 (both
 negative), the opposite sign. **This is not a minor caveat: the pooled
 headline's sign itself is not robust to which defensible weighting
 scheme is used.** No single pooled number should be read as resolving
-the underlying fold-to-fold sign disagreement — full account in §4/§10.
+the underlying fold-to-fold sign disagreement: full account in §4/§10.
 
 ---
 
@@ -623,8 +637,8 @@ the underlying fold-to-fold sign disagreement — full account in §4/§10.
 
 This is the signal side of the paper's central argument (§1.4). If a
 pair's discovery *timing* can be a causal liability (§4), can a pair's
-discovery *context* — specifically, the market regime prevailing when it
-was first discovered — instead be a source of real, exploitable
+discovery *context* (specifically, the market regime prevailing when it
+was first discovered) instead be a source of real, exploitable
 information? This section shows yes, in a specific, statistically
 disciplined, and partially surprising way.
 
@@ -639,7 +653,7 @@ criteria or cointegration testing we should note that jump."* This
 section is the diagnostic that had to come first, deliberately not "pick
 a new correlation threshold and see if it helps" (which solves a
 hypothesized problem before confirming one exists, and risks reading as
-tuning the pipeline until an inconvenient finding goes away — the same
+tuning the pipeline until an inconvenient finding goes away, the same
 trap this project's own convention flags for backtest results): does the
 crisis-era correlation surge translate into systematically different
 downstream cointegration behavior at all?
@@ -650,7 +664,7 @@ pair's EARLIEST qualifying window is dated, and the VIX regime
 prevailing as of that date (calm <15 / normal [15,25) / elevated
 [25,35) / crisis ≥35, an already-existing production classification,
 `macro.py`'s `_classify_vix()`, not reinvented) is looked up
-point-in-time-safe — never a later VIX value than the pair's own
+point-in-time-safe: never a later VIX value than the pair's own
 discovery date. Three pre-registered sub-questions, reported regardless
 of direction: (1) does confirmation RATE differ by first-discovery
 regime; (2) does confirmation STRENGTH (among confirmed pairs, the
@@ -668,11 +682,11 @@ different-regime window) differ.
 | crisis | 11,715 | 29 | 0.248% | 91.00% |
 
 Confirmation counts sum exactly to the same 929 pairs Tier 3's own
-headline (§7.2, Finding #41) reports — a real internal-consistency check
+headline (§7.2, Finding #41) reports: a real internal-consistency check
 across two independently-run scripts sharing the same underlying data,
 not assumed. **929 is the episodic-confirmation count at Tier 3's
 correlation-prefilter scale, not the size of any deployable trading
-set — do not read it as an opportunity-set estimate.** After the
+set: do not read it as an opportunity-set estimate.** After the
 identity/structural/SPAC contamination filtering §7.3 describes (which
 excluded 23 of 78 raw whole-history candidates, ~29%, from a much
 smaller starting pool), CAMARF's actual production confirmed-pair count
@@ -682,7 +696,7 @@ any point across full available history at the correlation-prefilter
 stage, before any of the identity/contamination vetting a real
 promotion requires.
 
-1. **Confirmation rate — the naive pooled test is significant; the
+1. **Confirmation rate: the naive pooled test is significant; the
    cluster-robust test is NOT. Reported at the resolution that actually
    matters, not the one that looks best.** The pooled two-proportion
    z-test (crisis-first pairs confirm at ~1.7x the calm rate: 0.248% vs.
@@ -693,33 +707,33 @@ promotion requires.
    episodes, not 11,715 pairs). **Result: the cluster-robust 95%
    confidence interval for the crisis confirmation rate is [0.022%,
    0.398%], which comfortably CONTAINS calm's observed 0.146% rate**
-   (cluster-robust p-equivalent = 0.25 — 25% of episode-level bootstrap
+   (cluster-robust p-equivalent = 0.25: 25% of episode-level bootstrap
    resamples show a crisis rate at or below calm's, far from
    significant). The naive p=0.0056 is a real artifact of pretending 12
    correlated episodes are 11,715 independent trials; once corrected,
    this specific sub-claim does not hold up.
-2. **Persistence — significant under BOTH the naive and the
+2. **Persistence: significant under BOTH the naive and the
    cluster-robust test, though considerably weaker under the honest
    one.** Crisis-first pairs reappear as a candidate in a later,
    different-regime window far more often than calm-first pairs (91.0%
    vs. 78.7%). The naive pooled z-test (z=32.2, p≈0) overstates
    confidence the same way the confirmation-rate test did. The
    cluster-robust bootstrap (same episode-level resampling): 95% CI
-   [77.5%, 96.3%], cluster-robust p-equivalent = 0.032 — still under the
+   [77.5%, 96.3%], cluster-robust p-equivalent = 0.032, still under the
    conventional 0.05 threshold, but only barely, and an order of
    magnitude weaker than the naive z≈32 suggested. This is the
    counter-intuitive result the paper leans on: the natural null
    hypothesis is that crisis-era comovement is a transient panic
    artifact that should FAIL to persist once the crisis ends; the data
-   goes the other way, and — unlike confirmation rate — this survives
+   goes the other way, and (unlike confirmation rate) this survives
    proper cluster-level inference, even if only marginally.
-3. **Confirmation strength — not significant, reported honestly.** Among
+3. **Confirmation strength: not significant, reported honestly.** Among
    confirmed pairs, crisis-first pairs show a higher mean per-pair
    FDR-rejection fraction (0.288 vs. 0.223 for calm), but a Mann-Whitney U
    test (the right choice for a bounded [0,1] fraction, not obviously
    normal) finds this is not statistically significant (U=5119, p=0.196)
-   — almost certainly underpowered at only 29 crisis-confirmed pairs vs.
-   412 calm-confirmed. This sub-question is reported as directional, not
+   (almost certainly underpowered at only 29 crisis-confirmed pairs vs.
+   412 calm-confirmed). This sub-question is reported as directional, not
    a third confirmed effect alongside the first two.
 
 **A real nuance, disclosed rather than smoothed over: this is not a
@@ -734,11 +748,11 @@ stress-response curve. The analysis script
 this automatically rather than requiring a reader to notice it in the
 raw table.
 
-**Episode-clustering robustness check — the pooled p-values above almost
+**Episode-clustering robustness check: the pooled p-values above almost
 certainly overstate the effective sample size, and this section reports
 exactly how much once checked, not just flags the risk.** The pooled
 two-proportion z-tests treat each crisis-first pair as an independent
-draw, but crisis-VIX periods are not spread uniformly through history —
+draw, but crisis-VIX periods are not spread uniformly through history:
 they cluster into a handful of real historical episodes (2008-09 GFC,
 2020 COVID, etc.), and pairs discovered within the same episode share a
 common cause (the same market-wide shock), not independent discovery
@@ -746,7 +760,7 @@ events. `research/crisis_regime_episode_clustering_check.py` (verified
 first, `debug/_verify_crisis_regime_episode_clustering_check.py`, 11/11
 checks) groups the 11,715 crisis-first pairs into distinct episodes (a
 new episode starts whenever 3+ consecutive months pass with no new
-crisis-first pair — a fixed, disclosed rule, not tuned after seeing the
+crisis-first pair, a fixed, disclosed rule, not tuned after seeing the
 result) and re-examines both effects at the episode level:
 
 | episode | dates | n_pairs | confirmation_rate | reappearance_rate |
@@ -760,8 +774,8 @@ result) and re-examines both effects at the episode level:
 episodes, not 11,715 independent trials.** Only 4 of those 12 episodes
 produced ANY confirmed pair, and the top 2 (2008-09 GFC and the 2011
 debt-ceiling/EU crisis) alone account for 27 of 29 crisis confirmations
-(93.1%). Notably, the 2020 COVID crash — the other episode explicitly
-named in this section's own motivating observation — produced 2,329
+(93.1%). Notably, the 2020 COVID crash (the other episode explicitly
+named in this section's own motivating observation) produced 2,329
 crisis-first candidate pairs but only 1 confirmation (0.04%), barely
 above the calm-period rate.
 
@@ -779,8 +793,8 @@ draw Monte Carlo simulation of the same null (observed max-2-episode
 share of 93.1% vs. a null mean of 59.4% and a null 95th percentile of
 72.4%; p=0.00002). **Both reject the null decisively: the concentration
 is real, not a chance artifact of a small episode count.** Something
-specific to the 2008-09 and 2011 episodes — not merely "these episodes
-happened to be large" — is driving the confirmation-rate pattern.
+specific to the 2008-09 and 2011 episodes (not merely "these episodes
+happened to be large") is driving the confirmation-rate pattern.
 
 **But "the concentration is real" and "the pooled confirmation-rate test
 is valid" are different claims, and only the first survives.** A
@@ -793,27 +807,27 @@ that actually holds up, is: something genuinely unusual happened in
 2008-09 and 2011 specifically (confirmed significant), but that does NOT
 translate into a general, statistically supportable claim that
 crisis-VIX discovery predicts confirmation (the cluster-robust test for
-that broader claim is not significant).** These are not in tension —
+that broader claim is not significant).** These are not in tension:
 they're answers to two different questions (episode-level: is 2008-09
 special? vs. pooled-crisis-level: does crisis generally predict
 confirmation?) that this paper originally conflated into one number.
 
 The persistence/reappearance effect fares much better under the same
-episode-level scrutiny: excluding the 2 most recent episodes (2024, 2025
-— too little subsequent history has elapsed to observe reappearance
+episode-level scrutiny: excluding the 2 most recent episodes (2024, 2025;
+too little subsequent history has elapsed to observe reappearance
 yet, a real right-censoring risk, not a weaker effect) reappearance rate
 ranges 84%-100% (median 95.6%) across every remaining episode, including
-ones with zero confirmations — a consistent, broadly-replicated pattern
+ones with zero confirmations, a consistent, broadly-replicated pattern
 across nearly the entire 1998-2022 span, not concentrated the way
 confirmation rate is, and (above) the ONLY one of the two sub-effects
 that survives a formal cluster-robust significance test, even if
 marginally. **This is why §1.4/§6 lean on persistence, not confirmation
-rate, as this finding's defensible pillar** — confirmation rate is now
+rate, as this finding's defensible pillar**: confirmation rate is now
 reported as a real, statistically-confirmed episode-specific curiosity
 (2008-09/2011), not as general evidence for the discovery-regime-as-
 signal thesis this paper's throughline depends on.
 
-**Confounds — one now decisively split (partly real, partly a factor
+**Confounds: one now decisively split (partly real, partly a factor
 artifact), one still untested.** Two alternative explanations could
 produce the same pooled pattern without requiring "discovery regime
 carries information" specifically. First, market-wide factor
@@ -827,7 +841,7 @@ persistence, independent of any genuine pairwise economic relationship.
 verified first, `debug/_verify_residual_correlation_factor_test.py`,
 15/15 checks): each of 5,700 unique symbols across 638,095 candidate
 pairs was regressed against SPY once, and correlation was recomputed on
-the OLS residual — the direct version of the same-sector proxy test
+the OLS residual, the direct version of the same-sector proxy test
 below, isolating co-movement that survives removing the shared market
 factor entirely rather than inferring it from sector membership. Result:
 the crisis-regime reappearance gap is **real but only partly a factor
@@ -836,13 +850,13 @@ artifact**. Of the 638,095 pairs, 42,715 (6.7%) still clear
 that subset, crisis reappearance is still elevated (88.26% vs. calm's
 78.41%, n=1,559 crisis / 14,555 calm, z=9.13). But most of the raw
 effect by pair count and by z sits in the factor-explained subset
-(91.42% vs. 78.67%, n=10,156 crisis / 267,099 calm, z=31.05) — the
+(91.42% vs. 78.67%, n=10,156 crisis / 267,099 calm, z=31.05): the
 Forbes-Rigobon confound is real, it just isn't the whole story. Both
 z-tests here are naive pooled pair-level tests of the same kind
 Finding #43's cluster-robust episode bootstrap showed overstates
 significance for the confirmation-rate metric specifically (the
 reappearance-rate metric measured here weakly survived that
-cluster-robust test at p=0.032, not p≈0) — a cluster-robust rerun on
+cluster-robust test at p=0.032, not p≈0): a cluster-robust rerun on
 both subgroups is the natural next check before this split is treated
 as more than preliminary. A second, independent proxy for the same
 question (`research/crisis_regime_same_sector_test.py`, verified first,
@@ -854,32 +868,40 @@ to co-move beyond a generic factor) and cross-sector pairs. It does not.
 Restricted to the S&P 1500 (GICS tags cover only ~10% of Tier 3's full
 candidate pool, a real, disclosed coverage limit) and excluding the 2
 most recent episodes (2024/2025; GICS's current-constituent-snapshot
-nature disproportionately captures recent, right-censored discoveries —
-checked directly: 53% of GICS-tagged crisis-first pairs were from those
+nature disproportionately captures recent, right-censored discoveries:
+checked directly, 53% of GICS-tagged crisis-first pairs were from those
 2 episodes alone before this exclusion, which flipped the result's
 direction entirely until corrected for): same-sector pairs show NO
 significant crisis-vs-calm reappearance gap (93.3% vs. 92.1%, n=75
 crisis pairs, p=0.69), while cross-sector pairs show a real one (99.4%
-vs. 94.1%, n=359, p=0.000018) — consistent with, not against, the
+vs. 94.1%, n=359, p=0.000018), consistent with, not against, the
 residual-correlation result above (cross-sector pairs picking up more
 systemic co-movement during crisis; same-sector pairs already correlated
 for real reasons, with less room for a factor to add anything). Second,
 survivorship: a pair "discovered" in 2008 or 2020 necessarily
 involves two symbols that both still exist in the current-constituent
-universe this paper's data draws from (§8) — crisis-discovered pairs are
+universe this paper's data draws from (§8): crisis-discovered pairs are
 conditioned on having survived to today, a systematically different
 population than an unconditional draw from that era's full universe.
-This confound remains untested here (a delisted-securities fetch that
-would partially address it was run this session, §8, but has not yet
-been joined back into this specific analysis).
+This has since been tested (Finding #66,
+`research/crisis_regime_survivorship_confound_test.py`, joining the
+delisted-securities fetch against `sp500_membership_history.parquet` via
+permno): within the 20.6% of the 638,095-pair universe both legs are
+S&P-500-trackable at all (the same WRDS-subscription limit named
+throughout this paper; no equivalent point-in-time product for S&P
+400/600), confirmation rate does not differ significantly by
+survivorship status (0.34% both-survived vs. 0.30% at-least-one-delisted,
+z=1.26, p=0.21): no strong confound detected in the measurable slice;
+the other 79% of the universe remains genuinely untested, not assumed
+clean. See §8 for the same disclosure at the section level.
 
 **Two further robustness checks, both run this session.** The
 episode-clustering gap rule (3 consecutive months with no new crisis-
 first pair starts a new episode) is a fixed, disclosed choice, not tuned
-after seeing the result — checked directly by re-running the episode
-count and top-2 concentration share at 1, 2, 4, and 6-month alternatives:
+after seeing the result: checked directly by re-running the episode
+count and top-2 concentration share at 1, 2, 4, and 6-month alternatives,
 the concentration share is identical (0.931) at every choice, and the
-episode count only varies mildly (11-13) — the finding does not depend
+episode count only varies mildly (11-13); the finding does not depend
 on the specific threshold chosen. Separately,
 `research/regime_strength_vs_discovery_regime_test.py` (verified first,
 `debug/_verify_regime_strength_vs_discovery_regime_test.py`, 8/8 checks)
@@ -887,7 +909,7 @@ tested a third possible throughline connection: does a pair's
 cointegration-regime STRENGTH (strong/moderate/weak, §7.2) correlate with
 its discovery regime? Across the 56,003 pairs with both a genuine coint
 span and a recorded discovery regime, a chi-square test of independence
-found no relationship (χ²=6.70, dof=6, p=0.349) — reported as a real,
+found no relationship (χ²=6.70, dof=6, p=0.349), reported as a real,
 tested null result, not a positive finding to force. Discovery regime
 predicts a pair's PERSISTENCE as a candidate; it does not predict the
 eventual STRENGTH of its cointegration once genuinely confirmed. These
@@ -904,29 +926,29 @@ as are the episode-clustering check
 concentration-significance test
 (`debug/_verify_crisis_regime_concentration_significance_test.py`, 7/7),
 and the cluster bootstrap
-(`debug/_verify_crisis_regime_cluster_bootstrap_test.py`, 7/7) — every
+(`debug/_verify_crisis_regime_cluster_bootstrap_test.py`, 7/7): every
 number in this section traces to a script verified against synthetic
 ground truth before being trusted on the real 638,095-pair data. A
 related, prior finding (`research/stress_test_replication.py`,
-`docs/HANDOFF.md`) asked a different, downstream question — "of pairs
+`docs/HANDOFF.md`) asked a different, downstream question ("of pairs
 ALREADY past screening, does an existing cointegration relationship
-survive a crisis differently than a calm period" — and found no (~8% vs.
+survive a crisis differently than a calm period") and found no (~8% vs.
 9%, roughly the same). This section asks the question upstream of that:
 does the raw candidate-pool ENTRY POINT itself differ systematically by
 discovery regime. The two results are not in tension; they describe
 different pipeline stages.
 
 **What this tells us, and what it does not.** This is not evidence that
-crisis-VIX periods *cause* cointegration, and — after the episode-
-clustering check above — the confirmation-rate half of this finding is
+crisis-VIX periods *cause* cointegration, and, after the episode-
+clustering check above, the confirmation-rate half of this finding is
 better read as "the 2008-09 and 2011 crises specifically produced
 unusually durable candidate pairs" than "crisis conditions generally
 predict confirmation." The persistence/reappearance half is the
 stronger, more broadly-replicated claim. Taken together, conditional on
 a pair having already cleared the correlation prefilter, the regime it
 first cleared that filter in carries real predictive information about
-its downstream behavior that current practice — treating "confirmed" as
-a context-free label — simply discards, though the two confounds above
+its downstream behavior that current practice (treating "confirmed" as
+a context-free label) simply discards, though the two confounds above
 mean this should be read as suggestive evidence for that claim, not a
 closed case. Whether this information should become a production
 entry-criteria adjustment, a confidence-weighting signal, or is better
@@ -937,40 +959,68 @@ opportunity) exists before tuning a fix for it.
 
 ---
 
-## 6. Synthesis: The Discovery Event [DRAFTED, reframed 2026-09-02]
+## 6. Synthesis: The Discovery Event [DRAFTED, re-weighted 2026-09-09]
 
 §4 and §5 ask two different questions of the same underlying object: the
 DISCOVERY EVENT, the specific moment and market context in which a
-candidate pair first clears a cointegration screen. Read separately,
-they are two unrelated findings that happen to share a data pipeline.
-Read together, against the question that motivates this whole paper
-(does a screen's "confirmed" output mean what a naive reading assumes it
-means?), they support one claim from two directions at once.
+candidate pair first clears a cointegration screen. An earlier draft of
+this paper reported them as two symmetric, co-equal pillars of one
+contribution on the strength of that shared object alone. This section
+now reports something the earlier draft could not: a direct empirical
+test of whether the two findings actually behave independently, and the
+answer is real, positive, and genuinely complicating, not a clean
+confirmation of the symmetric framing.
 
-**The unifying claim.** A discovery event carries information a binary
-confirmed/not-confirmed test outcome discards, and current practice —
-including this project's own earlier practice — discards it by treating
-"confirmed" as a static, timeless label rather than a dated,
-context-bearing event. §4 shows this in the direction of BIAS: discovery's
-TEMPORAL relationship to the moment a real decision must be made
-(backward-looking vs. causal) determines whether the certified pair set
-would actually have been discoverable, and profitable, by a live
-deployment. §5 shows this in the direction of SIGNAL: discovery's
-MARKET-REGIME context is informative about a pair's future persistence
-— confirmed under a cluster-robust test that properly accounts for
+**The primary claim (§4).** A discovery event carries information a
+binary confirmed/not-confirmed test outcome discards, and current
+practice (including this project's own earlier practice) discards it
+by treating "confirmed" as a static, timeless label rather than a dated,
+context-bearing event. §4 shows this in the direction of BIAS:
+discovery's TEMPORAL relationship to the moment a real decision must be
+made (backward-looking vs. causal) determines whether the certified pair
+set would actually have been discoverable, and profitable, by a live
+deployment. This is the paper's best-evidenced, central contribution.
+
+**The secondary claim (§5), and what testing its independence from §4
+actually showed.** §5 shows a second, complementary direction: discovery's
+MARKET-REGIME context is informative about a pair's future persistence,
+confirmed under a cluster-robust test that properly accounts for
 crisis-VIX periods clustering into a handful of real historical episodes
 rather than thousands of independent draws; a related sub-claim
 (confirmation rate) does NOT survive the same cluster-robust check, even
 though the underlying episode concentration behind it is independently
-confirmed real, not chance. Neither finding is a restatement of the
-other, and the two point in opposite practical directions — one says
-"subtract this," the other says
-"investigate this further" — which is what makes them one contribution:
-both are instances of the same missing variable (discovery context),
-using the same production screening methodology and statistical
-discipline throughout, though §4 and §5 are run at different universe
-scales (§1.2, §8) and the two findings' interaction has not itself been
-empirically tested (§10).
+confirmed real, not chance. An earlier draft read §4 and §5 as pointing
+in opposite practical directions: one says "subtract this," the other
+says "investigate this further", and treated that as sufficient reason
+to call them one contribution. §10's future-work list flagged the
+obvious next check (does one finding predict the other, empirically, not
+just thematically) as untested; `pit_confirmation_vs_regime_interaction.py`
+(Finding #65) has since run it directly, joining §5's 638,095-pair
+crisis-regime diagnostic against §4's 320 PIT-confirmed pairs. **Real
+result: §5-confirmed pairs are PIT-reconfirmed at 1.72% (16/929) versus
+0.0003% (2/637,166) for everything else (z=98.7, p≈0)**, but on only 18
+of §4's 320 PIT-confirmed pairs overlapping with §5's universe at all
+(≈0.05% base rate, a genuinely low-power test, disclosed before the test
+was run, not after), and both screens plausibly select for the SAME
+underlying property (genuine correlation/cointegration strength)
+rather than two independent phenomena responding to different aspects of
+the discovery event. **Read plainly: this is evidence against the
+symmetric "two independent pillars" framing an earlier draft used, not
+evidence for it.** It does not undermine §5's own within-finding results
+(the persistence effect still holds up under cluster-robust testing on
+its own terms), but it means §5 cannot be presented as a free-standing
+second pillar with the same evidentiary weight as §4: its relationship
+to §4 is real, strong, and not yet disentangled from shared correlation
+strength. §7.7 (added 2026-09-09, Finding #66's follow-up to Finding #65
+in the caveat search) found the same pattern again, independently: all
+16 pairs overlapping between the regime-strength universe and §4's
+PIT-confirmed set are "strong," zero "moderate"/"weak" (z=3.98,
+p=0.0001), a second, independent confirmation that regime-context
+strength and PIT-survivability move together, not apart. This paper
+therefore reports §4 as its primary contribution and §5 as a real,
+positive, but secondary and exploratory finding, an honest downgrade
+from the earlier symmetric framing, made because the evidence changed,
+not because §5's own numbers got weaker.
 
 **Why this matters beyond CAMARF, stated as a testable hypothesis, not
 an established fact.** The canonical pairs-trading literature (Gatev,
@@ -983,7 +1033,7 @@ causal discipline normally reserved for the trading rule.
 §5 shows that discovery, treated as a dated event rather than a
 filtered-out preprocessing artifact, is a plausible source of real
 signal most pipelines never look for because they never retain the
-information needed to look — plausible, not proven beyond this
+information needed to look: plausible, not proven beyond this
 pipeline, since the episode-clustering and confound checks in §5 mean
 the signal claim is narrower than a first read of the headline p-values
 suggests. Both claims are testable in principle on any pipeline that
@@ -999,7 +1049,7 @@ scale, episodic cointegration as a market-structure property, SPAC
 microstructure contamination, return-jump risk invisible to existing
 data-quality checks, a purely mechanical 15.8σ artifact, and complexity
 earning its keep only when it corrects a specific false assumption).
-None of the six is about the discovery event specifically — they are
+None of the six is about the discovery event specifically: they are
 evidence that this same pipeline demands rigor at every OTHER stage too,
 not just at discovery, and one in particular (§7.2's episodic-
 cointegration finding) directly motivates why §4's causal-validity
@@ -1011,9 +1061,9 @@ two-finding discovery-event thesis this paper is centrally built around.
 **The thesis restated, plainly.** A cointegration screen's "confirmed"
 output is not a fact about the pair. It is a fact about a specific test,
 run at a specific time, against a specific candidate pool, in a specific
-market regime. §4 and §5 provide evidence that two of those specifics —
-WHEN the test was run relative to a real decision, and WHAT REGIME
-prevailed when the pair first qualified — are not incidental. They
+market regime. §4 and §5 provide evidence that two of those specifics
+(WHEN the test was run relative to a real decision, and WHAT REGIME
+prevailed when the pair first qualified) are not incidental. They
 change whether the "confirmed" label would have been earned by a causal
 observer (§4, directly demonstrated on one fold, suggestively on more),
 and, once checked with cluster-robust rigor rather than a naive pooled
@@ -1034,7 +1084,7 @@ The six findings below are real, independently-verified results from the
 same production pipeline, reported because they reinforce the paper's
 broader credibility claim (a pipeline this thoroughly audited is
 trustworthy specifically because every stage, not just discovery, has
-been checked this way) — not because each is individually as novel as
+been checked this way), not because each is individually as novel as
 §4 or §5. Each retains its own honest scope/limitation statement inline,
 per this project's standing discipline of never deferring a caveat to a
 single catch-all section.
@@ -1066,16 +1116,41 @@ extended in `research/bh_vs_by_full_universe.py`) is the honest test of
 whether BH's independence-ish assumption is doing real work here: BY
 makes no assumption about dependence structure among the tests (a
 real concern for cointegration tests on overlapping windows and
-correlated assets) and is provably more conservative. **Disclosed
-incompleteness, stated directly rather than smoothed over**: the most
-recent run of this specific comparison (`bh_vs_by_full_universe.py`) used
-a disclosed N=300-symbol random sample from a since-corrected loader (the
-§2 universe-undercount bug applied to this script too, fixed this
-session but not yet re-run against the real ~44,700-symbol population as
-of this writing). Re-running it against the corrected universe is a
-named, tracked pending task (§10), not a silently-abandoned one. This
-paper does not report a full-scale BH-vs-BY split until that re-run
-exists.
+correlated assets) and is provably more conservative. **Full-scale
+result, 2026-09-09 (Finding #66)**: the original comparison
+(`bh_fdr_dependence_check.py`) used a disclosed N=300-symbol random
+sample from a since-corrected loader (the §2 universe-undercount bug
+applied to this script too). `research/bh_vs_by_full_universe_1d.py`
+reuses the already-computed full-universe Pearson prefilter (997,024
+real candidate pairs, 10-year/1D lookback) instead of redoing the actual
+intractable O(n²) correlation step: the honest full-scale answer this
+section previously lacked. Two real bugs were caught and fixed before
+trusting the result: a known tz-naive/tz-aware crash (the same fix
+already used in §4's `pit_wfa_wrds_daily.py`), and a more consequential
+one: `DataAligner.align_universe` silently produces per-symbol-length
+arrays for pairs with different history lengths, which the EG worker's
+own try/except swallowed as "not ok" rather than crashing loudly (caught
+by a smoke test showing only 5/200 usable results, not by the full run
+failing outright). Fixed by switching to `align_to_common_calendar`, a
+fix this project had already diagnosed once before, 2026-08-14, reused
+rather than rediscovered. **Real result on 29,890/30,000 usable pairs:
+2,518 raw-significant (p<0.05), BH confirms 35, BY confirms 23**, a
+genuine 12-pair gap between the two corrections, the honest, full-scale
+answer this section needed. BY's more conservative rejection set is
+~66% the size of BH's at this real scale, a concrete, quantified cost of
+BH's independence-ish assumption rather than an abstract caveat.
+
+**Scale disclosure, matching this section's own established convention (§7.2 below)**: the
+997,024-candidate figure this result is built on is now itself stale. 2026-09-13 (same session as
+§7's own SPAC-contamination finding): the correlation-prefilter's WRDS ticker↔PERMNO self-pair/
+alias-duplicate check was moved upstream, into the correlation stage itself — 2,211 of 6,844
+PERMNO-labeled symbols (32%) turned out to be literal aliases of an already-present plain ticker,
+a real contamination source at exactly the scale this comparison operates on. The corrected
+candidate pool is **723,753** (27.4% smaller). This BH-vs-BY comparison has NOT been re-run
+against the corrected pool — the 35/23 confirmed counts above may shift, and self-pairs among the
+2,518 raw-significant candidates (a security trivially "cointegrated" with its own alias, p≈0)
+could plausibly have inflated the raw-significant count independent of the BH/BY correction
+question itself. Flagged for re-derivation, not silently left implying the current pool is clean.
 
 **What this pillar contributes as a literature critique, stated plainly.**
 Cross-asset cointegration papers that report "N significant pairs" from a
@@ -1088,6 +1163,34 @@ access to that paper's own candidate-pool accounting. It is a testable,
 quantified standard this project proposes and holds itself to, stated as
 a methodological recommendation rather than an accusation.
 
+**A second, distinct instance of the same discipline: correcting the strategy-SELECTION Sharpe,
+not the pair-discovery p-values [DRAFTED: 2026-09-21]**. Everything above corrects for how many
+cointegration TESTS were run to certify a pair set. A separate multiple-testing problem sits one
+layer up: how many backtest CONFIGURATIONS were tried before reporting a headline Sharpe. The
+project's `trial_registry.json` (append-only, merged local + CachyOS, 990 recorded trials) applies
+the Deflated Sharpe Ratio (Bailey & López de Prado 2014) to this question, and the pooled result is
+stark: DSR=0.0000 (z as low as -63.99) across every label checked, baseline included. Pooling all
+990 trials into one correction is itself methodologically questionable, though, for the same reason
+BH assumes something about test independence that BY does not need to: roughly 250 of those 990
+trials are pure parameter-sensitivity grid sweeps (STOP_ZSCORE, EXIT_ZSCORE, and 10 other
+constants), each answering a different, unrelated question from any single label being evaluated,
+and inflating that label's own "chances tried" count. A hierarchical, family-scoped correction
+(`research/hierarchical_dsr.py`, classifying trials into 19 methodologically-independent families
+via a transparent, disclosed regex classifier, then computing DSR per-family against that family's
+own N and empirical Var[SR] rather than the pooled 990) tests whether that over-pooling was doing
+real work. **Honest result: mostly not.** Family-scoping softens several z-statistics substantially
+(the entry-zscore-override family: z=-18.35 pooled to z=-5.91 at its own n=158) but the qualitative
+verdict (DSR≈0.0000) survives for every family with enough trials (n>=32) to trust the correction in
+the first place — confirmed directly by holding SR_hat/T/skew/kurtosis fixed and showing the
+z-statistic stays deeply negative even under normal tail parameters, because the expected best
+per-period Sharpe achievable by chance alone within that family's own observed variance already
+exceeds the actually-observed SR_hat by an order of magnitude. This is the same lesson as this
+section's BH-vs-BY result, arrived at independently at a different layer of the pipeline: a more
+methodologically careful multiple-testing correction is worth doing and does change the numbers,
+but it is not a substitute for the underlying effect being large enough to survive correction in
+the first place, and should never be reached for only when the cruder correction gives an
+inconvenient answer. Full account: `docs/FINDINGS.md` #69.
+
 ### 7.2 Cointegration Is Episodic, Not a Persistent Property
 
 **Scale disclosure, stated here rather than only in §1.2/§8**: this
@@ -1098,7 +1201,7 @@ scan.py`, plus `research/cointegration_regime_segmentation.py` for the
 span segmentation itself) completed 2026-09-02**, after also fixing a
 second, unrelated bug that had caused ~90 consecutive crash-restarts (a
 2-3x memory-redundant checkpoint reconstruction step, root-caused and
-fixed, not just retried past — see Finding #41). The numbers below are
+fixed, not just retried past; see Finding #41). The numbers below are
 the real, corrected-scale result.
 
 Segmenting each of the 638,095 candidate pairs' full available history
@@ -1112,7 +1215,7 @@ hysteresis rule in §3) produces:
 
 **Only 8.18% of all detected regime spans across the full candidate
 universe are ever genuinely cointegrated** (56,536 of 691,213 total
-spans) at any point in their history — close to, but a real, measured
+spans) at any point in their history: close to, but a real, measured
 change from, the earlier stale-scale figure of 9.2%, not simply
 reconfirmed. Of the cointegrated spans, strength splits almost exactly
 evenly by construction: strong=18,827, moderate=18,883, weak=18,826. This
@@ -1345,6 +1448,30 @@ building a more complex method, the diagnostic question is "does the
 simpler version's specific assumption actually hold here," not "is the
 simpler version too crude" in the abstract.
 
+### 7.7 Regime-Context Strength Predicts PIT-Confirmation, A Second,
+Independent Confirmation That §4 and §5 Overlap [added 2026-09-09,
+Finding #66]
+
+§10's future-work list originally asked whether a pair's regime-context
+STRENGTH (§5's own strong/moderate/weak classification, distinct from
+crisis-vs-calm timing) predicts whether it survives a genuine PIT
+re-screen (§4), flagged as "not yet asked of the data." It has since
+been asked directly: `research/regime_strength_vs_pit_confirmation.py`
+reuses `pit_confirmation_vs_regime_interaction.py`'s exact join
+machinery with the predictor column swapped from `first_regime` to
+`strength`. **Real, decisive result: all 16 pairs overlapping between
+the regime-strength universe and §4's PIT-confirmed set are classified
+"strong," zero from "moderate" or "weak" (z=3.98, p=0.0001).** Read
+together with §6's account of Finding #65 (the crisis-vs-calm timing
+overlap), this is a second, methodologically independent test (a
+different predictor variable, same underlying join) reaching the same
+conclusion: §5's regime-context measurements and §4's PIT-survivability
+measurements move together. This strengthens the case that §4 and §5 are
+detecting overlapping signal (consistent with §6) and is reported here,
+not folded silently into §5 or §6, so a reader can see both independent
+confirmations of the same complication rather than one result doing
+double duty.
+
 ---
 
 ## 8. Honest Limitations and Biases, Stated Directly [DRAFTED]
@@ -1357,20 +1484,20 @@ single catch-all section, since each has a different scope:
   symbol/1h result is directional/qualitative (4 folds, only 2 with any
   trades, ~37 trades total), not a high-power estimate. **Now re-run at
   the corrected ~43,883-symbol WRDS-primary universe** (`research/
-  pit_wfa_wrds_daily.py`, §4's own text) — each PIT fold's own candidate-
+  pit_wfa_wrds_daily.py`, §4's own text): each PIT fold's own candidate-
   pair count is smaller and cutoff-specific, not a single shared figure
   with §5's full-history 638,095-pair count (§4 itself states this
-  precisely) — necessarily at
+  precisely), necessarily at
   daily, not 1h, granularity, since WRDS/CRSP carries no intraday data at
   all (§2); this was checked directly, not assumed, before building the
   new script. The corrected-scale result is likewise directional (4
   folds, 2 capital-constrained-positive, 2 negative) and does not resolve
   the causal-validity question into either a cleaner confirmation or a
-  cleaner refutation than the original table already showed — the largest,
+  cleaner refutation than the original table already showed: the largest,
   most statistically substantive fold (1,533 raw trades) is positive, but
   half of all four folds across both the original and corrected-scale
   tables remain net negative. **Pooled headline Sharpe built 2026-09-08**
-  (design agreed with Ross beforehand — arithmetic-pooled across the fold
+  (design agreed with Ross beforehand: arithmetic-pooled across the fold
   boundary, no capital compounding; the inter-fold calendar gap dropped,
   not zero-filled, since zero-filling untested time would dilute
   volatility with days this project has zero evidence about;
@@ -1378,42 +1505,42 @@ single catch-all section, since each has a different scope:
   count, per `research/pit_wfa_pooled_equity_curve.py`,
   `debug/_verify_pit_wfa_pooled_equity_curve.py`, 6/6 checks): pooled
   Sharpe is **+0.1845** (rolling variant, fold1_roll→fold2_roll spliced)
-  and **+0.1285** (expanding variant, fold1_exp→fold2_exp spliced) — both
+  and **+0.1285** (expanding variant, fold1_exp→fold2_exp spliced), both
   positive. **Read with real caution, not as a clean resolution**: the
   synthetic verification suite also confirmed a genuine, disclosed
-  property of this pooling method — it weights by **calendar days
+  property of this pooling method: it weights by **calendar days
   present in each fold's own daily-zero-filled series, not by trade
   count**. Fold1 (11 trades) spans 1946–1957 (4,018 daily observations);
-  fold2_roll (309 trades) spans 1996–2026 (10,988 daily observations) —
+  fold2_roll (309 trades) spans 1996–2026 (10,988 daily observations):
   fold2's ~3× longer daily-observation count means it dominates the
   pooled mean/std regardless of the two folds' opposite signs
   (fold1 Sharpe −0.4779, fold2_roll Sharpe +0.2175). The positive pooled
   number is a real, correctly-computed consequence of this weighting, not
   an artifact of a coding error. **Confirmed decisively 2026-09-08 that
   this is not just a caveat but a load-bearing choice**: an equally
-  defensible ALTERNATIVE construction — equal-weighting each fold's own
+  defensible ALTERNATIVE construction (equal-weighting each fold's own
   Sharpe regardless of its calendar span, via
-  `pool_variant_equal_weighted()` in the same script — gives **−0.1302**
+  `pool_variant_equal_weighted()` in the same script) gives **−0.1302**
   (rolling) and **−0.1431** (expanding), the OPPOSITE SIGN from the
   calendar-day-weighted figure above. The pooled headline's sign is not
-  robust to which defensible weighting scheme is chosen — this is not
+  robust to which defensible weighting scheme is chosen: this is not
   "the strategy is unambiguously positive across history" under any
   honest reading, since two reasonable pooling methods disagree on the
   sign itself. The fold-to-fold sign disagreement this section already
-  reports remains the single most honest headline — the "positive pooled
+  reports remains the single most honest headline: the "positive pooled
   Sharpe" number above should be read as one specific construction's
   output, presented alongside its equal-weighted counterpart, never
   alone.
   **Checked directly this session (2026-09-08), resolving
   the earlier "unverified" flag on this point**: the corrected-scale
   universe's WRDS core is NOT a raw present-day cache glob the way the
-  original 1h table's universe is (below) — `data_wrds.py`'s
+  original 1h table's universe is (below): `data_wrds.py`'s
   `_get_universe_us_equity_etf_symbols()` starts from `UniverseBuilder`'s
   current S&P 1500 + ETF constituent list (survivorship-biased on its
   own), but a dedicated pass then fetches every historically-delisted
   S&P 500 member CRSP's own point-in-time membership table
   (`crsp_a_indexes.dsp500list_v2`) names and today's Wikipedia-scraped
-  table misses — 1,956 permnos have EVER been S&P 500 members against
+  table misses: 1,956 permnos have EVER been S&P 500 members against
   503 today, so this recovers roughly 74% of the large-cap layer's
   historical membership that a naive current-constituents scrape would
   silently drop. The fix is real but explicitly partial, disclosed in
@@ -1423,12 +1550,12 @@ single catch-all section, since each has a different scope:
   the same current-constituents-only Wikipedia-scrape approach as
   before, with the same survivorship bias, undiminished. Net effect:
   survivorship bias in the corrected-scale universe is reduced, not
-  eliminated, and reduced unevenly across cap tiers — large-cap history
+  eliminated, and reduced unevenly across cap tiers: large-cap history
   is mostly recovered, mid/small-cap history is not. **A sharper
   version of the "Universe-wide" survivorship disclosure below, specific
   to this finding, not just generic**: `pit_wfa.py`'s PIT re-screen at
   each historical cutoff draws its candidate pool from every symbol with
-  a currently-cached `output/cache/*_1hr.parquet` file — a direct,
+  a currently-cached `output/cache/*_1hr.parquet` file: a direct,
   present-day cache glob, not a reconstructed as-of-that-date universe
   (confirmed by reading the code directly this session, correcting an
   earlier, inaccurate draft of this disclosure that named
@@ -1436,14 +1563,14 @@ single catch-all section, since each has a different scope:
   and would have been screenable at a 2015 cutoff but is no longer
   cached today is invisible to every one of the 4 folds. This means even
   the "causally-constrained" screen in §4 still benefits from hindsight
-  about which symbols mattered enough to still be cached today — the
+  about which symbols mattered enough to still be cached today: the
   true live-deployment gap between a full-history screen and a genuinely
   causal one could be larger than this section reports, not smaller,
   since a fully PIT-safe universe reconstruction would remove even more
   information §4's test currently still has access to. **A second,
   separate reproducibility gap, found live this session**: re-deriving
   each fold's confirmed-pair set today does not reproduce the original
-  table's counts (§4's own text) — the cached universe size and fold
+  table's counts (§4's own text): the cached universe size and fold
   cutoff dates are both nearly unchanged, so the most likely explanation
   is that the shared screening pipeline (`analysis.py`/`Config`) itself
   has changed in the weeks since the original run. §4's point estimates
@@ -1453,17 +1580,17 @@ single catch-all section, since each has a different scope:
   z-tests treat each crisis-first pair as an independent trial; checked
   directly (`research/crisis_regime_episode_clustering_check.py` plus a
   cluster bootstrap, `research/crisis_regime_cluster_bootstrap_test.py`),
-  this does not hold — the 11,715 crisis-first pairs cluster into just 12
+  this does not hold: the 11,715 crisis-first pairs cluster into just 12
   distinct historical episodes. The confirmation-rate claim does NOT
   survive cluster-robust re-testing (95% CI comfortably contains calm's
   rate, cluster-robust p=0.25) even though the underlying 2-of-12-episode
   concentration behind it is independently confirmed real, not chance
   (`research/crisis_regime_concentration_significance_test.py`; binomial
-  p=0.000006, Monte Carlo p=0.00002) — something genuinely unusual
+  p=0.000006, Monte Carlo p=0.00002): something genuinely unusual
   happened in 2008-09 and 2011, but it is not evidence that crisis
   conditions generally predict confirmation. Persistence DOES survive
   cluster-robust re-testing (95% CI [77.5%, 96.3%], cluster-robust
-  p=0.032 — significant, but an order of magnitude weaker than the naive
+  p=0.032, significant, but an order of magnitude weaker than the naive
   z=32.2 implied) and is not immune to two named confounds, one now
   directly tested. Crisis-era factor co-movement (Forbes & Rigobon,
   2002; Longin & Solnik, 2001) was tested directly via residualized
@@ -1471,37 +1598,60 @@ single catch-all section, since each has a different scope:
   reappearance gap survives factor-adjustment in the 6.7% of pairs whose
   correlation is genuinely not factor-driven (88.26% vs. 78.41%, z=9.13),
   but most of the raw pooled effect sits in the factor-explained subset
-  (91.42% vs. 78.67%, z=31.05) — the confound is real, not total; these
+  (91.42% vs. 78.67%, z=31.05): the confound is real, not total; these
   z-values are naive pooled tests, not yet re-verified cluster-robust.
   Survivorship of crisis-discovered pairs into the current-constituent
-  universe remains untested. Confirmation STRENGTH is not statistically significant at
+  universe has since been tested (Finding #66,
+  `research/crisis_regime_survivorship_confound_test.py`): within the
+  20.6% of the universe trackable point-in-time at all (no equivalent
+  product exists for S&P 400/600 in this WRDS subscription), no
+  significant confound (0.34% vs. 0.30% confirmation rate, z=1.26,
+  p=0.21), a real, honest, partial answer; the other 79% remains
+  genuinely untested, not assumed clean. **Most important limitation,
+  added 2026-09-09**: §5's relationship to §4 is not independence-tested
+  and not assumed independent: the opposite. A direct test (Finding #65,
+  §6) found §5-confirmed pairs are PIT-reconfirmed (§4's criterion) at
+  1.72% vs. 0.0003% for non-§5-confirmed pairs (z=98.7), and a second,
+  independent test on a different predictor (§7.7, regime-context
+  STRENGTH rather than crisis timing) found the identical pattern (all 16
+  overlapping pairs "strong," z=3.98). Both screens plausibly detect the
+  same underlying correlation/cointegration strength. This paper reports
+  §5 as a secondary, exploratory finding specifically because of this,
+  not because §5's own within-finding statistics are weak, but because a
+  reader should not treat §4 and §5 as two independent lines of evidence
+  for a broader "discovery context matters" claim without this caveat.
+  Confirmation STRENGTH is not statistically significant at
   all (Mann-Whitney p=0.196, underpowered at only 29 crisis-confirmed
-  pairs) — reported as directional, not folded into the headline claim.
+  pairs), reported as directional, not folded into the headline claim.
   The regime classification uses VIX alone (`macro.py`'s existing
-  calm/normal/elevated/crisis buckets); this paper does not claim the
-  same pattern would hold under a different regime proxy (credit
-  spreads, realized-vol regime, etc.) — untested, a named future-work
-  item (§10). The confirmation-rate effect is NOT a clean dose-response
-  across regime severity (§5's own disclosed non-monotonicity) — the
+  calm/normal/elevated/crisis buckets); a credit-spread alternative
+  (BAA10Y-based) has since been tested and shows the same direction, more
+  significantly (0.2038% vs. 0.0922%, z=7.45, Finding #66,
+  `research/crisis_regime_credit_proxy_comparison.py`), a real
+  robustness win, though realized-volatility regime remains untested. The confirmation-rate effect is NOT a clean dose-response
+  across regime severity (§5's own disclosed non-monotonicity): the
   finding is specifically a crisis-extreme effect, and should not be
   generalized to "more stress predicts more cointegration." This finding
   is observational/descriptive; it does not test whether acting on it
   (e.g. regime-conditional entry-criteria weighting) would improve any
-  downstream trading outcome — a deliberate, disclosed scope boundary
+  downstream trading outcome, a deliberate, disclosed scope boundary
   (§10), not yet crossed into "pick a new threshold" territory this
   project's own convention flags as risky before confirming the
   underlying pattern is real.
-- **§7.1 (BH-FDR)**: the BH-vs-BY comparison's most current numbers are
-  from a disclosed N=300 sample of a since-corrected universe loader, not
-  yet re-run at full ~44,700-symbol scale. This paper does not claim a
-  resolved BH-vs-BY verdict until that re-run exists (tracked, §10).
+- **§7.1 (BH-FDR)**: the original N=300-sample comparison has since been
+  re-run at full scale (Finding #66, 2026-09-09): 29,890/30,000 usable
+  pairs, BH confirms 35, BY confirms 23. Two real bugs (a tz-aware crash,
+  a silent per-symbol-length-array alignment failure) were caught and
+  fixed before trusting this number: see §7.1's own text for the full
+  account. This closes the item §10 previously tracked as this paper's
+  single most important open re-run.
 - **§7.2 (episodic cointegration)**: this finding, along with §7.1's
   candidate-pair count, was originally reported at a stale
   158,849-candidate-pair figure, dated 2026-08-13, predating the §2
   universe-undercount fix (found and fixed 2026-08-24) by eleven days.
   **The corrected-scale re-run completed 2026-09-02** (638,095 candidate
-  pairs; see Finding #41 for the real root-cause fix that unblocked it)
-  — §7.1 and §7.2 now report that real, corrected-scale result, not a
+  pairs; see Finding #41 for the real root-cause fix that unblocked it):
+  §7.1 and §7.2 now report that real, corrected-scale result, not a
   placeholder.
 - **§7.2/§4 (regime segmentation / negative backtest)**: both are
   daily/hourly-scale findings on the current WRDS-primary or
@@ -1530,7 +1680,7 @@ single catch-all section, since each has a different scope:
   convention, not corrected away) for all findings in this paper.
 - **Reproducibility, a real practical barrier not previously stated**:
   §4, §5, and §7.1-§7.3 depend on WRDS/CRSP data, a paywalled
-  institutional subscription — an independent researcher without WRDS
+  institutional subscription: an independent researcher without WRDS
   access cannot reproduce those sections from the data sources named
   here, only the yfinance-sourced portions of the pipeline (§7.4's
   jump-diffusion result, §7.5's calendar-padding derivation) are
@@ -1561,67 +1711,82 @@ document.
 
 ## 10. Future Work [OUTLINED]
 
-- Re-run `bh_vs_by_full_universe.py` against the corrected
-  ~44,700-symbol universe (§7.1's disclosed pending item). This is the
-  single most important open item before this paper's §7.1 claim can be
-  considered scale-complete.
-- Extend §4's negative-backtest test to the current 29-pair confirmed set
-  (post-§7.3 promotion); the existing result predates this session's
-  full-universe promotion.
+- **DONE, 2026-09-09**: re-run the BH-vs-BY comparison at full corrected
+  scale, this paper's previously-declared single most important open
+  item. `research/bh_vs_by_full_universe_1d.py`, 29,890/30,000 usable
+  pairs, BH confirms 35, BY confirms 23. Full account: §7.1, Finding #66.
+- **DONE**: extend §4's negative-backtest test to the current 29-pair
+  confirmed set. `pit_wfa.py --variant both`, no code changes needed (the
+  script is deterministic and re-derives pairs per fold from train-window
+  data). **These are the same fold2_exp (+0.3486, 3 pairs, 28 trades) and
+  fold2_roll (−0.4548, 49 pairs, 288 trades) numbers §4's own
+  "reproducibility gap" paragraph already reports from its 2026-09-02
+  re-derivation**: confirmed here (2026-09-08, Finding #66) as stable
+  under a second, independent re-run rather than a one-off artifact, not
+  a new discovery. Same qualitative sign-disagreement pattern as the
+  original table throughout.
 - Extend §7.4's jump-diffusion PIT-safe result to intraday granularity,
   once enough PIT-safe intraday pairs exist to clear the
   200-clean-returns filter.
 - A more exhaustive SPAC/NAV-clustering taxonomy (§7.3), covering naming
   conventions the current regex misses (e.g. the Social Capital
   Hedosophia family).
-- Connect §7.2's regime-strength segmentation to §4's PIT-confirmation
-  precision: does a pair's regime strength (strong/moderate/weak,
-  §7.2) predict whether it survives a genuine point-in-time re-screen?
-  Not yet asked of the data.
-- Test whether §5's regime-conditional confirmation/persistence pattern
-  holds under a different regime proxy (credit spreads, realized-
-  volatility regime) rather than VIX alone — would strengthen the claim
-  beyond a single macro indicator.
+- **DONE, 2026-09-09**: does a pair's regime strength (strong/moderate/
+  weak) predict whether it survives a genuine point-in-time re-screen?
+  `research/regime_strength_vs_pit_confirmation.py`. Real, decisive
+  result (§7.7): all 16 overlapping pairs are "strong," zero moderate/
+  weak (z=3.98, p=0.0001), a second, independent confirmation of §6's
+  Finding #65 result that §4 and §5 likely overlap. Full account:
+  Finding #66.
+- **DONE, 2026-09-08**: does §5's regime-conditional confirmation
+  pattern hold under a different regime proxy (credit spreads) rather
+  than VIX alone? `research/crisis_regime_credit_proxy_comparison.py`
+  reuses `macro.py`'s BAA10Y-based `credit_regime_proxy`. Real robustness
+  win: wide (credit-stress) vs. tight (calm) confirmation rates are
+  0.2038% vs. 0.0922%, z=7.45, p≈0, SAME direction as the VIX-based
+  result and even more statistically significant, directly strengthening
+  the claim beyond a single macro indicator as hoped. Full account:
+  Finding #66.
 - Test whether §5's finding, if acted on (e.g. as a regime-conditional
   confidence weight on newly-discovered candidates), actually improves
-  any downstream trading outcome — deliberately not attempted in this
+  any downstream trading outcome, deliberately not attempted in this
   paper (§8), the natural next step once the descriptive pattern itself
   is established, which is this paper's own contribution.
-- **DONE** — the market-wide-factor-co-movement confound named in §5's
+- **DONE**: the market-wide-factor-co-movement confound named in §5's
   episode-clustering robustness check: `research/residual_correlation_
   factor_test.py` regressed each of 5,700 unique symbols against SPY and
   tested crisis-vs-calm reappearance on the residual (factor-adjusted)
   correlation. Real, decisive answer (§5, §8): the effect is real in the
   6.7% of pairs whose correlation survives factor-adjustment, but most
-  of the raw pooled effect sits in the factor-explained subset — the
+  of the raw pooled effect sits in the factor-explained subset: the
   confound is real, not total. Still open: whether it holds on a
   look-back-limited universe snapshot that does not condition on
   surviving to the present (mitigating, not eliminating, the
-  survivorship concern) — not yet tested.
-- **DONE** — re-running §4's PIT-lookahead test at the corrected
+  survivorship concern), not yet tested.
+- **DONE**: re-running §4's PIT-lookahead test at the corrected
   ~43,883-symbol WRDS-primary universe §5 also draws from (each PIT
   fold's own candidate-pair count is smaller and cutoff-specific, not
-  §5's shared 638,095-pair full-history figure — §4 states this
+  §5's shared 638,095-pair full-history figure; §4 states this
   precisely): `research/pit_wfa_wrds_daily.py`, at daily (not 1h)
   granularity since WRDS/CRSP has no intraday data. Real result (§4):
   still genuinely
   mixed (2 of 4 folds capital-constrained-positive, 2 negative), the
   same qualitative pattern the original 1,576-symbol/1h table already
-  showed — corrected scale did not resolve the causal-validity finding
-  into a cleaner story either way. **DONE (survivorship half)** — checked
+  showed: corrected scale did not resolve the causal-validity finding
+  into a cleaner story either way. **DONE (survivorship half)**: checked
   directly (§4): the corrected-scale universe's survivorship bias is
   reduced but not eliminated, and unevenly across cap tiers (large-cap
   history ~74% recovered via a dedicated delisted-S&P-500 fetch pass,
-  mid/small-cap still current-constituents-only — no equivalent
+  mid/small-cap still current-constituents-only; no equivalent
   point-in-time product exists for S&P 400/600 in this WRDS
-  subscription). **DONE (pooled-Sharpe half), 2026-09-08** — see §4 for
+  subscription). **DONE (pooled-Sharpe half), 2026-09-08**: see §4 for
   the full result. Two defensible pooling constructions disagree even on
   SIGN: calendar-day-weighted gives +0.1845 rolling / +0.1285 expanding;
   equal-weighted-per-fold gives −0.1302 / −0.1431. Not a clean resolution
-  of the underlying sign disagreement — the opposite: direct confirmation
+  of the underlying sign disagreement: the opposite, direct confirmation
   that no single pooled number should be trusted over the fold-to-fold
   disagreement itself.
-- **DONE, 2026-09-08** — does a pair's regime-context signal (§5) predict
+- **DONE, 2026-09-08**: does a pair's regime-context signal (§5) predict
   whether it survives a genuine PIT re-screen (§4)?
   `research/pit_confirmation_vs_regime_interaction.py`
   (`debug/_verify_pit_confirmation_vs_regime_interaction.py`, 8/8) joins
@@ -1632,9 +1797,9 @@ document.
   even appear in §5's 638,095-pair universe (a real, low-power
   constraint on the test, not hidden), and both screens likely select for
   the SAME underlying property (genuine correlation/cointegration
-  strength) — so this may be two tests detecting one signal, not a novel
+  strength), so this may be two tests detecting one signal, not a novel
   regime-conditioning insight. Read as real and positive, not as a clean
-  empirical demonstration of "why one paper, not two" — the honest next
+  empirical demonstration of "why one paper, not two": the honest next
   step (not built) is testing whether the effect survives controlling for
   raw correlation strength directly. Full account: Finding #65.
 
@@ -1646,9 +1811,19 @@ Shared bibliography with `PAPER.md` §2; see that section for full
 sourcing status of each citation (Engle-Granger, Benjamini-Hochberg/
 Yekutieli, Lee & Mykland 2008, Meucci, Grinold-Kahn).
 
+**A third citation added 2026-09-10, not shared with `PAPER.md`**, cited
+in §1.4/§4 as the closest existing literature match to §4's causal-
+discovery-timing mechanism, found via a targeted literature sweep that
+also checked and rejected two other candidates (Invariant Causal
+Prediction, Causal Factor Investing) as thematically adjacent but not
+precisely on-point: Bailey, D. H., Borwein, J., López de Prado, M., &
+Zhu, Q. J. (2014/2016). "The Probability of Backtest Overfitting."
+*Journal of Computational Finance*, 20(4), 39-69. DOI:
+10.21314/jcf.2016.322.
+
 **Two citations added 2026-09-02, not shared with `PAPER.md`**, both cited
 in §5 as named confounds for the crisis-regime finding (one, factor
-co-movement, since directly tested — §5; the other, survivorship, still
+co-movement, since directly tested: §5; the other, survivorship, still
 open), per an adversarial review of this paper that found the original
 draft engaged
 with none of the correlation-breakdown-in-crises literature despite
@@ -1673,3 +1848,61 @@ more concrete claim the analogy does not add precision to. Verified
 against the actual paper, not a secondary summary, before it was ever
 cited; see `docs/research/RQM_CONCEPTUAL_LENS_2026-09-01.md` for the
 full verification.
+
+---
+
+## Appendix A: Revision History and Prior Titles
+
+*(Relocated 2026-09-09 from the title block, per the mfe-portfolio
+council reviewer's 2026-09-02 finding that "2 full paragraphs of
+title-block changelog before the abstract even starts" reads as an
+engineering audit log, not a paper. Content unchanged, moved verbatim,
+per this project's "document what was tried and reverted" discipline:
+nothing here is deleted, only relocated out of the reader's path to the
+Abstract. This session also re-weighted the paper's internal framing
+from a symmetric "two-pillar" argument to a primary (§4) + secondary
+(§5) structure; see §1.4 and §6 for the current framing, and Finding
+#65/`docs/HANDOFF.md`'s 2026-09-08/09 entry for why: a later test found
+§4 and §5 may detect overlapping signal rather than being fully
+independent, which the original symmetric framing did not anticipate.)*
+
+**Reframed 2026-09-02, narrowing from the 7-finding "Unwarranted
+Confidence" draft.** Ross's direct approval: "i like the new rough title
+and the paper stuff... let's change paper to reflect [it]." Rationale: a
+paper built around two findings connected by one real mechanism is a
+stronger, more citable contribution than seven co-equal bug-fixes under
+a synthesis thesis, however honest that synthesis was. The throughline:
+a cointegration screen's output ("pair X is confirmed") is
+conventionally treated as a static, timeless fact once a p-value clears
+threshold. This paper shows that's wrong in two complementary
+directions, on the same production-scale (~44,700-symbol) pipeline. §4
+shows the discovery event's TEMPORAL DIRECTION (backward-looking
+full-history vs. causal point-in-time) is a bias that must be corrected:
+a full-history screen certifies pairs a causal re-screen would not
+have found, and would not have profited from. §5 shows the discovery
+event's REGIME CONTEXT (the market conditions a pair was first found in)
+is a signal current practice discards: pairs first discovered in a
+crisis-VIX regime confirm at a significantly higher rate and persist
+across regime changes significantly more, not less, than calm-discovered
+pairs. Same underlying object (the discovery event) audited for
+causal validity in one case, mined for predictive information in the
+other. That symmetry was, at the time, treated as the paper's actual
+contribution; see the note above for why this session revised that to a
+primary/secondary structure instead. The other six findings from the
+earlier draft (multiple-testing discipline, episodic cointegration, SPAC
+contamination, jump-diffusion vs. data quality, the calendar-padding
+artifact, and complexity-only-earns-its-keep-when-it-fixes-a-specific-
+assumption) are real, verified, and kept, as supporting evidence that
+this same pipeline demands rigor at every stage, not just at discovery:
+see §7.
+
+**Earlier titles, kept for provenance, not live:** "Unwarranted
+Confidence: What You Were Entitled to Believe Less Than You Thought in
+Production-Scale Statistical Arbitrage Research" (2026-09-01 title, the
+7-co-equal-finding frame) / "When Does the Market Actually Cointegrate?
+A Point-in-Time-Safe, Multiple-Testing-Disciplined Account of
+Cross-Asset Arbitrage Structure at Full-Universe Scale" / "Seven Ways
+Naive Cointegration Screening Fails at Scale, and What Fixing Each One
+Reveals About Market Structure" / "Artifact Management, Not Signal
+Discovery: A Production-Scale Account of Statistical Arbitrage
+Screening."

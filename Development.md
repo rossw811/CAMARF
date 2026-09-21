@@ -26655,6 +26655,57 @@ lead_lag.py` (5/5), `research/aligned_pair_loader.py`, `options.py`, `data_wrds.
 `PAPER_MAGNITUDE.md` (§4, §10, plus a third stale reference fixed), `docs/FINDINGS.md` (#61-64),
 `docs/HANDOFF.md`.
 
+## 2026-09-08 (continued): the third §10 backlog item built — all three approved designs
+(transfer entropy as an `ml.py` feature, §4/§5 regime-vs-PIT interaction test, analyst price-target
+pairs-relative overlay) built, verified, real-data tested in one pass (Finding #65)
+
+**Reconstructed after a mid-session computer restart** (see `docs/HANDOFF.md`'s 2026-09-08/09
+entry for the full narrative reconstruction, including the non-CAMARF drives/Steam/Oculus work
+that has no home in this file). Ross approved all three remaining `PAPER.md` §10 candidates in one
+design pass, with the price-target signal specifically resolved as a **pairs-relative overlay**
+(not the literature's standalone single-name framing) to keep it inside CAMARF's co-movement
+architecture rather than adding a new single-asset trade unit.
+
+**Transfer entropy as an `ml.py` feature.** `transfer_entropy_lead_lag.py` gained
+`summarize_pair_for_ml()`: fixed-orientation `te_directional_diff` (TE(b→a) − TE(a→b) at the
+single lowest-p-value lag) / `te_significance` per pair, wired into `ml.py`'s `_FEATURE_COLS` via
+the same scalar-fallback convention `coint_fraction_rolling` already uses (transfer entropy is
+pair-level, not per-bar, so no PIT series needed). A real test-authoring bug caught and fixed in
+the verify suite itself: the first "sign flips when swapped" check swapped symbol_a/symbol_b
+LABELS while keeping the same real-world coupling, which correctly does NOT flip TE's sign — the
+code was right, the test's own expectation was wrong; fixed to hold labels fixed and reverse the
+real coupling instead, 10/10. Confirmed live: 237 training examples now carry real values, and a
+single-run holdout accuracy ticked 62.50% vs. the prior 56.25% baseline (one run, not
+seed-averaged — a positive sign, not proof on its own).
+
+**§4/§5 interaction test.** `pit_confirmation_vs_regime_interaction.py` joins §5's 638,095-pair
+crisis-regime diagnostic against §4's 320 unique PIT-confirmed pairs. Real overlap checked and
+disclosed BEFORE running the test, not after: only 18 of the 320 PIT-confirmed pairs appear
+anywhere in §5's universe at all (≈0.05% base rate, genuinely low power). Real, striking result
+needing real skepticism: §5-confirmed pairs are PIT-reconfirmed at 1.72% (16/929) vs. 0.0003%
+(2/637,166) for everything else (z=98.7) — but §5's "confirmed" flag and §4's PIT screen likely
+select for the SAME underlying correlation/cointegration strength, so this may be two tests
+detecting one signal rather than a novel regime-conditioning insight. The honest next step, not
+built here: test whether the effect survives controlling for raw correlation strength directly.
+
+**Price-target pairs-relative overlay — an honest negative, matching Finding #57's pattern.**
+`price_target_pairs_overlay.py` computes each of 1,340 real trades' legs' causal, staleness-gated
+(120-day cutoff) analyst-implied return to target, the relative divergence between legs, and
+whether the trade's actual direction agrees or disagrees with that divergence. A real bug caught
+live by the verify suite (11/11) before trusting real-data output: `agrees_with_consensus` is an
+object-dtype column (True/False/None), and `~` on an object Series does Python bitwise NOT
+(`~True == -2`), not boolean negation — fixed by casting to real `bool` before negating. Real
+result on 1,191/1,340 scored trades (89% coverage): agrees-with-consensus $135.07 mean P&L/60.99%
+win rate (n=546) vs. disagrees' $141.49/62.64% (n=645) — no meaningful difference, wrong-sign
+direction if anything (Welch's t=-0.33, p=0.74).
+
+Files: `research/transfer_entropy_lead_lag.py` (`summarize_pair_for_ml`), `ml.py` (2 new
+features), `debug/_verify_transfer_entropy_lead_lag.py` (10/10), `research/pit_confirmation_vs_
+regime_interaction.py` (new), `debug/_verify_pit_confirmation_vs_regime_interaction.py` (new,
+8/8), `research/price_target_pairs_overlay.py` (new), `debug/_verify_price_target_pairs_
+overlay.py` (new, 11/11), `PAPER.md` (transfer-entropy-as-feature addendum, price-target item),
+`docs/FINDINGS.md` (#65).
+
 ## 2026-09-08 (continued): caveat/limitation search across both papers, then all three resulting
 tiers worked through; three real bugs found; one critical finding (pooled Sharpe's sign is not
 robust to weighting choice) that revises an earlier session claim
@@ -26736,3 +26787,1396 @@ crisis_regime_credit_proxy_comparison.py`, `research/price_target_convergence_ti
 `research/pit_wfa_pooled_equity_curve.py` (equal-weighted alternative added),
 `output/backtest/pit_wfa_{fold_comparison,portfolio,pair_sets}.parquet` (29-pair re-run),
 `PAPER_MAGNITUDE.md` (§4/§10 sign-fragility update, three locations), `docs/FINDINGS.md` (#66).
+
+## 2026-09-08/09 (continued, after a mid-session computer restart): CachyOS git divergence
+resolved as an almost-entirely-cosmetic false alarm; two free data-source fetchers built for the
+two paid-data blockers the caveat search had just flagged as genuinely blocked (Finding #67)
+
+**Reconstructed via the Claude Code web extension reading the full session transcript**, since a
+computer restart cut the live session before this got written up on the first pass — see
+`docs/HANDOFF.md`'s 2026-09-08/09 entry for the full reconstruction narrative, including the
+non-CAMARF drives/Steam/Oculus work that belongs there, not here.
+
+**CachyOS's ~115 "genuinely different" tracked files (flagged as a real risk two entries above)
+turned out to be almost entirely CRLF-vs-LF line-ending noise, not real content divergence.** `git
+diff analysis.py` showed 13,134 changed lines; after adding `.gitattributes` (`* text=auto
+eol=lf`) and running `git add --renormalize .`, every one of those files showed ZERO real diff.
+The only genuine content underneath: ~67 CachyOS-only Python scripts (GPU-backend/polars work,
+episodic-scan auto-restart tooling) that had simply never been committed — recovered; one small
+real merge conflict (`options_greeks_features.py`, resolved by keeping the already-verified
+upstream dedup fix from earlier the same night); a handful of tracked log files resolved by taking
+CachyOS's own local state (low-stakes, informational only). Both machines confirmed on the
+identical commit via `git status` showing clean (non-log) on both sides — pushed via a
+properly-scoped bundle (`git bundle create ... origin/main..main`, not a bare `... main`, which the
+first attempt got wrong and produced a 3.5GB whole-history bundle instead of ~99KB) since CachyOS
+has no GitHub push credentials configured. **Both machines now sync via plain `git pull`, not
+manual `scp`, going forward** — closes the housekeeping item flagged repeatedly across the last
+several entries.
+
+**Two free alternatives to items #11/#12, which the immediately-prior caveat-search entry had just
+flagged as genuinely blocked.** Ross asked whether scraping/related-free-data could substitute for
+the paid sources named in those items — both did, found by checking, not assumed.
+- **`data_sec_edgar.py`** (SPAC universe, §7.3's regex-limitation fix): SEC EDGAR's SIC code 6770
+  classifies blank-check companies, free, official, no vendor. Caught and worked around a real,
+  confirmed bug in SEC's own legacy `output=atom` endpoint (the `<entry title>`/`<company-info
+  name>` fields both return the broken Perl stringification `ARRAY(0x...)` instead of a real name,
+  verified directly against a raw response) by using only the reliable `<cik>` element and pulling
+  real names/tickers from SEC's separate, working `company_tickers.json`. A second bug (CIK
+  zero-padded-string vs. plain-int mismatch between the two sources) caught by `debug/_verify_
+  data_sec_edgar.py` (3/3) before trusting the join. Real result: 3,329 distinct SIC=6770
+  companies, 933 with a mapped ticker; cross-referenced against this project's universe — 95
+  genuinely distinct symbols found (checked directly for unit/warrant duplication, none), vs. the
+  old regex list's 23, only 1 overlapping (SEC's registered tickers carry unit/warrant suffixes
+  like `AACIU`/`AACIW` that don't match CRSP's symbol convention — a real, disclosed mismatch, not
+  glossed over).
+- **`data_finra.py`** (crowding/capacity-decay proxy): FINRA's free biweekly short-interest file
+  covers ALL exchanges despite the URL's `otcmarket` path component (confirmed directly against a
+  live file — NYSE's AA/Agilent present with real figures). 22,482 securities per settlement-date
+  file, with `currentShortPositionQuantity`/`daysToCoverQuantity`/`changePercent` fields — a
+  genuine, free crowding proxy. `debug/_verify_data_finra.py` (5/5, mocked to avoid depending on
+  live network access for the test itself).
+- **Neither fetcher is wired into any actual analysis yet** — both are confirmed-working, real
+  data sources ready to use; wiring them in is the natural next step, not done this session. No
+  Duo/WRDS session needed for either — both are free public/government-mandated-disclosure data.
+
+**Where this line of work actually stopped.** The last in-flight action before the computer
+restart was checking the queued rerun scripts' invocation conventions, about to start on the
+broader `PAPER_MAGNITUDE.md` §10 rerun backlog beyond what the caveat search already covered —
+that never happened. After reconnecting, the session pivoted to the git reconciliation and the two
+fetchers above instead, and ended asking Ross whether to continue with item #16 (the PIT screen's
+cache-glob rebuild) or pause for him to handle drives/WiVRn on his end — not yet answered as of
+this entry.
+
+Files: `data_sec_edgar.py` (new), `debug/_verify_data_sec_edgar.py` (new, 3/3), `data_finra.py`
+(new), `debug/_verify_data_finra.py` (new, 5/5), `.gitattributes` (new), `.gitignore`
+(episodic-scan retry-log noise excluded), `output/cache/sec_edgar/spac_universe_sic6770.parquet`
+(new), `output/cache/finra/short_interest_20260814.parquet` (new), `docs/FINDINGS.md` (#67),
+`docs/HANDOFF.md`.
+
+## Session 2026-09-10 — Both papers honed toward a PhD/arXiv-level bar; PAPER.md reframed
+around a three-act throughline (honest negative headline); a systemic, real bug found in
+`analysis.py`'s half-life pipeline and traced to a precise root cause; a 5-part bug-catching
+toolkit built, verified, and run
+
+### Part 1: PAPER_MAGNITUDE.md and PAPER.md honing, humanizer pass, and claim verification
+
+Ross asked to hone both papers toward genuine PhD/arXiv quality with a clear throughline, run
+`humanizer` (Wikipedia's Signs-of-AI-Writing discipline) on both fully, and verify every claim
+against real data rather than trust prose. All done, not partially:
+
+**`PAPER_MAGNITUDE.md`**: re-anchored around §4 (causal PIT discovery-timing bias) as the primary,
+best-evidenced contribution, with §5 (crisis-regime signal) explicitly reframed as secondary/
+exploratory, because Finding #65's interaction test (§6) found §4- and §5-confirmed pairs overlap
+far more than chance (z=98.7) — evidence the two screens may detect the same underlying
+correlation strength, not two independent phenomena. New §7.7 added (a second, independent
+confirmation of the same overlap via regime-strength rather than crisis-timing, z=3.98). ~90 lines
+of title-block changelog relocated to a new Appendix A (the concrete complaint an earlier
+mfe-portfolio council review made). Added the PBO citation (Bailey, Borwein, López de Prado & Zhu,
+2014/2016, "The Probability of Backtest Overfitting") to §1.4/References, the closest literature
+match to §4's actual causal-discovery-timing mechanism, found via a dedicated literature sweep
+that also correctly rejected two originally-flagged candidates (Invariant Causal Prediction,
+Causal Factor Investing) as thematically adjacent but not precisely on-point.
+
+**Humanizer pass, both papers**: 190 em-dashes removed from `PAPER_MAGNITUDE.md`, 549 from
+`PAPER.md` (via two sequential subagent dispatches, per the project's one-sweep-at-a-time rule),
+verified independently after each (0 remaining, all legitimate en-dash year-ranges preserved, no
+numeric content altered). A leftover UTF-8 BOM stripped from `PAPER.md`.
+
+**Claim verification, not trusted from memory**: `debug/_verify_paper_magnitude_claims.py` (new,
+37/37 checks) and `debug/_verify_paper_claims.py` (new, 5/5 checks plus a 6-sizing-variant
+robustness sweep) re-read the actual `output/{research,backtest}/*.parquet` files behind every
+headline number in both papers and assert the papers' stated figures match. Every check passed —
+both papers' numbers are real, not hallucinated. One near-miss caught and corrected: a `§`
+character that looked corrupted in one output field was confirmed via raw UTF-8 bytes to be a
+console-rendering artifact, not real data corruption, before it could be "fixed" unnecessarily.
+
+### Part 2: `PAPER.md` reframed around a three-act throughline, with a real, honest negative
+headline
+
+Per Ross's explicit direction ("three-act reframe, negative result as headline"), `PAPER.md`'s
+Title, Framing decision, and Abstract were rewritten around: (1) the durability-vs-currency
+diagnostic and its concrete demonstration (kept, largely unchanged); (2) applying that diagnostic's
+own logic honestly to a genuinely point-in-time-safe discovery process; (3) the honest result —
+**the production strategy loses money** when discovered the way a live deployment actually would
+have to discover it. New §7.20 written, presenting the already-computed (2026-08-14, Session 31)
+182-pair PIT-safe Purity/Hybrid/Tiered/Baseline backtest: Purity IS Sharpe **−0.679**, OOS
+**−0.834**, capital-constrained, robust across a full parameter sweep (every OOS cell negative,
+range −1.150 to −0.179). This was not new compute — it had been sitting in `README.md`'s "Current
+Results" section for weeks without being promoted into `PAPER.md`'s own narrative; promoting it as
+the paper's actual headline, rather than a disclosed footnote, is what changed this session.
+
+**Then Ross raised a further, sharper standard: nothing pre-WRDS should be considered for writing
+in this paper.** This reopened §4.2's core demonstration (NTRS/STT, SHW/UNP), which predates
+WRDS-primary sourcing entirely. Re-derived on real WRDS/CRSP `close_total_return` data
+(`research/durability_vs_currency_wrds.py`, new, reusing `analysis.py`'s own production
+`_eg_worker` unmodified): **NTRS/STT replicates cleanly** (full-sample EG p≈0.00005, last-5-years
+p=0.561, the same clean pattern). **SHW/UNP does NOT replicate as cleanly** (full-sample p=0.061,
+last-5-years p=0.054, both borderline) — reported honestly as a real, disclosed price-adjustment-
+convention sensitivity (CRSP total-return-adjusted vs. yfinance's own adjusted-close handle
+dividends/corporate actions differently over a 50+-year window), not forced to fit or quietly
+dropped. NTRS/STT alone, checked against three negative controls (XOM/CVX, JPM/BAC, KO/PEP, none
+of which show the pattern on either window), is sufficient for the underlying claim. §4.2.1's
+Monte Carlo calibration flagged explicitly as still pre-WRDS and not yet re-derived (a real, scoped
+open item, not silently carried forward as validated).
+
+### Part 3: "Replicate every pre-WRDS claim" — real re-derivations, a real infrastructure gap
+found, and a much bigger, systemic bug uncovered along the way
+
+Ross then asked to replicate every pre-WRDS claim across the paper, not just §4.2. §6.1
+(cointegration tiers) re-run via `stats.py`'s own production `run_confirmatory_cointegration()`
+against the actual current 29-pair WRDS-primary production manifest: real, striking reversal from
+the old pre-WRDS 17-gold/8-silver/0-bronze result to **0 gold/2 silver/27 bronze** — disclosed as a
+different, less-curated population (27@1D from the full-universe cascade vs. the old curated 1h
+set), not a data-quality regression.
+
+**§6.2 (hedge ratios) attempted, found a real pre-existing infrastructure bug instead of a clean
+re-derivation**: `stats.py`'s `run_robust_hedge_ratios()` reconstructs raw prices via a cache-path
+lookup keyed to old IBKR/yfinance timeframe naming (`"1d"` → `"1day"`), which doesn't recognize
+WRDS's own `"1D"` label — silently NaN's Huber/MM estimates for all 27 WRDS-daily pairs. Disclosed
+in the paper as an open item, not worked around.
+
+**§6.3 (EVT tail risk) required running the first-ever full backtest against the current 29-pair
+production set** (none existed). Building the `--pairs-override` file correctly took two self-
+caught mistakes: first, stripping the override to 3 identifier columns silently zeroed every pair
+(the engine reads hedge-ratio/coint-fraction fields as scalar fallbacks directly off each pair
+row — fixed by using the full 41-column `pairs.parquet` schema); second, the actual output landed
+in an unexpectedly `_storm`-suffixed file (traced to a separate, real, cosmetic bug: `storm_flags`
+dict's `decay_rate_gate_spec` defaults to a non-empty string, poisoning `any(storm_flags.values())`
+into always-true even with zero STORM flags requested — verified before trusting, not assumed).
+Real result once corrected: only 12 of 29 pairs generate any trade at all (IS Sharpe 0.2389, 290
+trades; OOS Sharpe 0.3143, 24 trades) — a much thinner population than the old curated set.
+
+**Ross pushed back on the thinness finding as likely a bug, not a real result — correctly.** Direct
+investigation confirmed it: `half_life_rolling` is **100% NaN for every one of the 17 non-trading
+pairs**, including KVUE/KMB, a real, long-actively-traded pair with abundant valid price and
+z-score data. Manually reconstructing KVUE/KMB's spread with the real hedge ratio gave valid,
+mean-reverting AR(1) phi (0.77–0.92) across every one of 10 rolling windows spanning the full
+series — proving the underlying data supports a healthy half-life estimate, so the 100%-NaN
+production output is a real bug, not thin data. **Root cause fully isolated**: calling the real
+`SpreadModel.fit_pair()` with `clean_mask=None` (skip gap-filtering) and the real rolling hedge-
+ratio series produces a healthy result (4530/4781 finite half-life estimates); the real cached file
+(which uses the actual `clean_mask = gap_flag_a==NONE & gap_flag_b==NONE`) is 100% NaN. **The
+`GapFlag` class's own docstring states `FILL`/`NO_ACTIVITY` bars should be included in EG/
+correlation-type calculations** ("NONE → include in all calculations... FILL → include in EG/corr...
+NO_ACTIVITY → include in corr"), but `analysis.py`'s `clean_mask` requires the strictest flag
+(`NONE`) on both legs, excluding them anyway — collapsing the real-bar sample for any pair with
+real-world fills/quiet intervals/halts on either leg, common for newly-listed or moderately thin
+tickers (explains why the bug concentrates in the GVKEY/PERMNO-tagged full-universe-cascade pairs,
+and also hits an actively-traded name like KVUE/KMB whenever it has any such bars). Confirmed via
+`research/pipeline_contracts.py` (built this session, see Part 4) across all 40 real
+`spread_series_*.parquet` files project-wide: **17/40 (42.5%) affected**, exactly matching the 17
+silently-non-trading pairs — not a one-off, a systemic pipeline issue. Not fixed this session
+(fixing `clean_mask`'s semantics is a real, separate change needing its own careful verification,
+out of scope for a claims-replication and bug-detection sweep) — precisely diagnosed and flagged,
+with a trip-wire installed (Part 4) so it can never again fail silently.
+
+### Part 4: A 5-part bug-catching plan, all 5 built and verified, per Ross's explicit request
+after the half-life bug ("we must divise a plan on how we're gonna catch every bug intra and
+inter script... let's get them all implemented")
+
+1. **Degenerate-output auditor** (`research/degenerate_column_audit.py`, new,
+   `debug/_verify_degenerate_column_audit.py`, 13/13). Scans real output parquet files for
+   all-NaN, all-zero, zero-variance, or suspiciously-high-NaN-rate numeric columns (with a
+   precise, regex-based allowlist for legitimate rolling-window warm-up columns, distinct from
+   a genuine 100%-NaN bug, which is always flagged regardless of allowlist). Run against
+   `output/research`: confirmed the hedge-ratio/EVT NaN patterns already found, and surfaced a
+   new lead (KPSS/PO test statistics in the tier-comparison output are also NaN for the same
+   27-pair cohort, not yet separately traced).
+2. **Schema/contract validator** (`research/pipeline_contracts.py`, new,
+   `debug/_verify_pipeline_contracts.py`, 8/8). Defines the expected schema for the artifact
+   types that caused three real bugs this session (pairs-override files, spread_series files,
+   trades files) and validates real files against it at the boundary between scripts. Run against
+   all 40 real `spread_series_*.parquet` files: the result that proved the half-life bug is
+   systemic (17/40, 42.5%), not isolated.
+3. **Synthetic end-to-end pipeline test** (`debug/_verify_pipeline_end_to_end_synthetic.py`, new,
+   5/5). Five synthetic securities with an exactly-known OU half-life, run through the REAL
+   `SpreadModel.fit_pair()` (not reimplemented), specifically reproducing the bug mechanism: a
+   pair with ~40% `FILL`-flagged bars on each leg loses 65% of its data under the strict
+   NONE-only `clean_mask` (705/2000 bars kept) vs. a permissive NONE+FILL mask (2000/2000 kept),
+   directly demonstrating the real-world failure shape on controlled, known-truth data. This is
+   the one test class that would have caught the actual bug — no per-function synthetic test in
+   the existing 232-file `debug/_verify_*.py` suite exercises `fit_pair`'s real-data output being
+   correctly consumed downstream the way a real pipeline run does.
+4. **Trip-wires added to production code** (minimal, additive-only `log.warning` calls, no
+   computation changed): `analysis.py`'s `SpreadModel.fit_pair()` now warns if
+   `half_life_rolling` comes out 100% NaN despite >=60 real bars; `backtest.py`'s
+   `BacktestEngine.run()` now warns if a pair produces zero trades because every entry attempt
+   failed the half-life gate specifically. Both verified live-firing on the real KVUE/KMB case
+   after the edit (`WARNING:backtest:KVUE/KMB@3m[ols]: 0 trades, every one of 126 entry-eligible
+   bars skipped for a non-finite half-life...`), and the existing `debug/_verify_backtest_*.py`
+   suites (hurst-none-fix, zero-z-filter-fix, risk-parity-is-only-fit) re-run clean afterward to
+   confirm no regression.
+5. **Standing policy** written into `CLAUDE.md`'s Working Style section: never cite a paper number
+   from memory or an old snapshot; re-derive it from real data via the actual production function;
+   run the degenerate-output auditor and contract validator as part of that, not just the
+   function's own isolated synthetic verify test.
+
+### Still open, explicitly flagged, not silently dropped
+
+- **The `clean_mask` fix itself** (loosening `analysis.py`'s gap-flag requirement to match
+  `GapFlag`'s own documented NONE/FILL/NO_ACTIVITY semantics) is diagnosed, not applied — a real,
+  separate change that would need its own verification pass (does loosening it change any
+  currently-correct pair's behavior?) before touching production. Doing so would likely restore
+  trading capability to some or all of the 17 currently-silent pairs in the production set,
+  materially changing §6-§7's WRDS-era replication results — a real, potentially significant
+  follow-up, flagged for a dedicated session.
+- The KPSS/PO-also-NaN lead from the degenerate-output auditor's §6.1 run (item #1 above) is
+  very likely the same root cause, not separately confirmed.
+- §4.2.1's Monte Carlo calibration, and the bulk of §5/§6.4-6.8/§7.1-7.16's other pre-WRDS claims,
+  remain un-replicated — real, large remaining scope, explicitly not attempted further this
+  session given the size (comparable to redoing this project's entire original empirical
+  buildout on WRDS data).
+- The stats.py `"1D"`/`"1d"` cache-path bug (§6.2) and the `decay_rate_gate_spec` non-boolean-
+  default `_storm`-filename bug are both diagnosed, disclosed in the paper/this entry, and not
+  fixed — real, separate, scoped code changes.
+
+Files: `research/durability_vs_currency_wrds.py` (new), `research/degenerate_column_audit.py`
+(new), `debug/_verify_degenerate_column_audit.py` (new, 13/13), `research/pipeline_contracts.py`
+(new), `debug/_verify_pipeline_contracts.py` (new, 8/8),
+`debug/_verify_pipeline_end_to_end_synthetic.py` (new, 5/5), `debug/_verify_paper_magnitude_claims.py`
+(new, 37/37), `debug/_verify_paper_claims.py` (new, 5/5 + robustness sweep), `analysis.py`
+(trip-wire added to `SpreadModel.fit_pair`), `backtest.py` (trip-wire added to
+`BacktestEngine.run`), `CLAUDE.md` (new Working Style entry), `PAPER.md` (Title, Framing decision,
+Abstract, §4.2/§4.2.1, §5 notice, §6.1, §6.2, §6.3, new §7.20), `PAPER_MAGNITUDE.md` (Title/front
+matter, Abstract, §1.4, §6, new §7.7, §8, §10, new Appendix A, References), `docs/HANDOFF.md`.
+
+## Session 2026-09-10 (continued, overnight /loop): the minimum-overlap gap fixed at its two real
+production-facing call sites (of 6 checked), an independent yfinance-era-rules audit run, and a
+production re-run of `full_universe_eg_confirmation.py` launched with both fixes applied
+
+**The overlap-adequacy problem (found via manual inspection just before this entry, Ross's own
+instinct that thin-overlap pairs "can't reliably give a significant value") traced to a precise,
+narrow root cause and fixed at exactly the right place.** `CointScanner.scan()` -> `_eg_worker`
+only enforces a hardcoded 60-bar floor, not this project's own declared
+`Config.STATS.MIN_OVERLAP_BY_TF["1D"] = 252` (a full year) standard that `UniverseFilter.run()`'s
+`build_returns_matrix()` enforces elsewhere. Checked all 6 scripts calling `CointScanner.scan()`
+(or `_eg_worker` directly) project-wide: **only 2 are actually vulnerable** —
+`research/full_universe_eg_confirmation.py` and `research/promote_full_universe_pairs.py`, both of
+which build their candidate list from a pre-computed chunk file that bypasses `UniverseFilter.run()`
+entirely. The other 4 (`pit_wfa.py`, `research/pit_wfa_wrds_daily.py`,
+`research/bh_vs_by_full_universe.py`, `research/fdr_method_comparison.py`) all route through
+`UniverseFilter.run()`/`build_returns_matrix()` first and are already correctly gated — confirmed by
+reading each, not assumed from the shared `CointScanner.scan()` call pattern alone. Both vulnerable
+scripts fixed with the same post-scan filter (drop any confirmed pair whose real `n_overlap` is
+below `MIN_OVERLAP_BY_TF[tf]`, fail-closed if `n_overlap` is missing, log a `WARNING` naming every
+dropped pair) — new `debug/_verify_full_universe_eg_confirmation_overlap_filter.py` (9/9, includes
+the real AISP/GVKEY239599_01W case as a named regression test).
+
+**A second, independent real bug found and fixed while re-tracing this same territory**:
+`analysis.py`'s `_enrich_with_deep_history()` (the IBKR-deep-history episodic re-test) calls the
+raw `DataStore.load()` for its own "main" price series — the same yfinance-cache-only bug class
+already fixed twice this session in `options.py`/`research/aligned_pair_loader.py`, not yet fixed
+here. Confirmed consequential, not theoretical: 539 real IBKR supplement files exist on disk,
+including `*_1day_deep.parquet` ones, so this path is genuinely active for 1D pairs, not
+intraday-only as first assumed. Fixed with the same WRDS-then-yfinance-cache fallback pattern
+(`_load_main_close()`, new helper, matching `options.py::load_price_series()`'s exact
+column-selection convention).
+
+**Ross's follow-up ask, addressed with a scoped delegation, not a blind agent handoff**: reconsider
+every rule/threshold that was calibrated in the yfinance-primary era now that WRDS is primary. A
+forked research-only agent audited `Development.md`/`config.py` and returned 5 concrete
+re-evaluation candidates, the two most significant: (1) `MIN_OVERLAP_BY_TF["1D"]=252` was set as a
+general "≥1 year" statistical standard, not a yfinance depth limit, and may be too low now that
+WRDS/CRSP routinely provides 50-100 years of daily history (confirmed the same session:
+NTRS to 1972, XOM/KO to 1925) — the exact gap that let 8 thin-overlap pairs through; (2) a native
+"1Y" (annual) timeframe was designed, built, and verified specifically to exploit WRDS's depth, but
+never wired into production `Config.DATA.TIMEFRAME_LABELS`. Both are real, explicit methodology-
+level decisions, not mechanical fixes — per Ross's own standing instruction and this project's
+"new methodology needs buy-in first" rule (applies under autonomous/overnight operation too), **NOT
+touched this session** — queued in `docs/HANDOFF.md` for his own review, not decided unilaterally
+overnight.
+
+**Production re-run launched** (background, `/loop` overnight session):
+`research/full_universe_eg_confirmation.py --tf 1D --lookback-years 10` with both fixes applied,
+regenerating the actual production pairs manifest `PAPER.md` §7.20 and `PAPER_MAGNITUDE.md` both
+depend on. 58,163 real candidate pairs to test (post-dedup, post-structural-filter) — a genuinely
+long-running job, still in progress as of this entry. Once it completes: re-run §7.20's backtest
+(Purity/Hybrid/Tiered/Baseline + parameter sweep) against the corrected manifest, re-verify via
+`debug/_verify_paper_claims.py`, update `PAPER.md`'s §7.20 numbers to match (not a framing change,
+the already-approved section just needs its numbers refreshed against the corrected pair set).
+
+**Bug-sweep tools extended, no new critical findings**: `research/degenerate_column_audit.py` run
+against `output/stats` and `output/backtest` (the `*pairsoverride*` subset) — everything found is
+expected (fixed-sizing config constants, a not-yet-wired ML-gate placeholder column, ordinary
+exit-reason distributions). A genuine negative result: the half-life-NaN bug class does not appear
+to have a sibling elsewhere in these two directories.
+
+Files: `research/full_universe_eg_confirmation.py` (overlap filter), `research/promote_full_
+universe_pairs.py` (overlap filter), `analysis.py` (`_load_main_close` WRDS fallback in
+`_enrich_with_deep_history`), `debug/_verify_full_universe_eg_confirmation_overlap_filter.py`
+(new, 9/9), `docs/HANDOFF.md` (yfinance-era-rules candidates queued for review).
+
+**Update, same overnight `/loop`: the first re-run attempt was killed, real cause found (not a
+code bug), retried with a genuine memory-scope reduction, not a blind retry.** The background
+`full_universe_eg_confirmation.py --tf 1D` run got killed mid-`load_full_universe()`, no output
+produced. Checked before retrying, per this project's own "verify before trusting" discipline
+rather than assuming a transient blip: free RAM was 2.55GB (`Get-CimInstance
+Win32_OperatingSystem`), consistent with this exact known failure class ("expect existing OOM
+guards to trip on the full-universe correlation matrix on a lower-RAM machine," CLAUDE.md). Tried
+the project's own standing fix first (reroute to CachyOS) — unreachable (`tailscale status`:
+offline, last seen 40 min). Rather than blind-retry into the same likely OOM, added two new,
+narrow, additive CLI flags to `full_universe_eg_confirmation.py` (`--no-binance`, `--no-ibkr`,
+default off = unchanged prior behavior for any other caller): this script's candidates are 1D
+equity/ETF only, so Binance crypto and IBKR's intraday-only supplement contribute nothing to the
+result but do cost real memory to load and merge. Relaunched with both flags set. Not yet confirmed
+whether this was sufficient to avoid a second OOM as of this entry — next wakeup checks the
+result before deciding whether to try further scope reduction or flag this as a genuine
+CachyOS-required blocker for Ross's morning attention.
+
+Files (this update): `research/full_universe_eg_confirmation.py` (`--no-binance`/`--no-ibkr`
+flags, new).
+
+**Update, same overnight `/loop`: second attempt also killed, at the identical point, ruling out
+the tried fix. Stopping per the loop's own pre-set instruction not to retry a third time blindly.**
+The `--no-binance`/`--no-ibkr`-trimmed retry died at the exact same log line
+("Loading full merged universe for tf=1D...") as the first attempt — proof the bottleneck is the
+core WRDS+yfinance merge across the full ~44,700-symbol universe itself, not the Binance/IBKR
+portions trimming addressed. Free RAM checked again before giving up: 2.9GB, still low; CachyOS
+checked again: still offline (Tailscale, 42 min). **This is a genuine environment blocker, not a
+code bug** — flagged in `docs/HANDOFF.md` for Ross's morning attention rather than attempted a
+third time. **A real, scoped fix exists, flagged but not attempted tonight** (too large a change
+to make unsupervised, low-confidence without testing): `full_universe_eg_confirmation.py` only
+actually needs price data for the ~symbols appearing in its 58,163 candidate pairs, not the full
+~44,700-symbol universe `load_full_universe()` unconditionally loads — pre-filtering the load to
+just the needed symbols (a real set intersection against `candidate_pairs`) would plausibly cut
+memory by an order of magnitude, but changes this script's data-loading contract and needs its own
+verification before trusting, not a same-night improvisation on top of an already-failed run.
+Pivoting the rest of this `/loop` iteration to other list items that don't need this load.
+
+**Item #5 (regression check) done, clean.** Re-ran every `debug/_verify_*.py` suite touching a
+file edited tonight (`analysis.py`'s `SpreadModel`, `backtest.py`'s `BacktestEngine.run`, the two
+overlap-filter scripts, plus the 4 new suites built tonight): 7 suites, all clean, no regressions.
+
+**Item #4 continued: the §6.1 KPSS/PO-also-NaN lead (flagged, not traced, in the earlier
+degenerate-column-audit run) turned out to be a THIRD real mechanism, distinct from both the
+`clean_mask` bug and the short-overlap-window issue.** Traced end to end on
+`GVKEY101930_01W/GVKEY355506_01W` (12,545+ nominal days of overlap, so neither Mechanism A nor B
+explains it). `stats.py::_load_spread_series()` itself is fine (correctly excludes only true
+`DATA_GAP=4` bars, not `FILL`/`NO_ACTIVITY`/`HALT` — unlike `analysis.py`'s `clean_mask`, this
+loader already matches `GapFlag`'s own documented semantics). `align_to_common_calendar()` is also
+fine, checked directly (correctly preserves 1783/938 valid rows for each leg within the 10-year
+window). **The real cause: `GVKEY355506_01W` has only 938 real observations *scattered* across a
+2,609-bar calendar-aligned window** (genuine data sparsity, matching `GapFlag.SPARSE`'s own
+documented category: "thin history, new listing, low liquidity period" — its raw WRDS cache has
+only 939 total rows despite a nominal 1984-2026 index span). `HedgeRatioEstimator`'s rolling
+hedge-ratio estimation and `SpreadModel`'s rolling z-score/half-life need a long *contiguous* run
+of real data to produce output at all; with data this scattered, the only stretch dense enough is
+one ~5-month window (Jan-June 2023), so that's the only place `spread`/`z_rolling`/`half_life_
+rolling` are non-NaN, out of the full 10-year span. `_eg_worker`'s one-time full-sample test
+tolerates scattered data fine via `longest_gap_respecting_segment` (hence this pair cleared EG
+confirmation at all, unrelated to today's overlap-count fix); rolling statistics don't. **This is
+a genuine methodology question, not a fixable bug, and was NOT touched tonight**: should rolling
+statistics gracefully degrade on sparse-but-present data (impute across gaps? shorten the window
+adaptively? something else?), or should a pair this sparse simply be excluded regardless of what
+EG's one-time test says? Flagged in `docs/HANDOFF.md` for Ross's own methodology call, not decided
+unilaterally.
+
+**Overnight `/loop` closing out — RAM/CachyOS still blocked, no new path forward, stopping rather
+than polling with no new information.** Checked again at this wakeup: CachyOS still offline
+(Tailscale, now 1h+), free RAM still ~3.0GB. One more safe, quick task done before stopping: the
+yfinance-era-rules audit's stale-docstring finding (`research/wrds_deep_history_episodic_scan.py`
+claiming "~1500 US equity/ETF universe," a pre-WRDS-bulk-fetch figure) fixed, disclosed as a
+correction rather than silently overwritten, existing `debug/_verify_wrds_deep_history_episodic_
+scan.py` suite re-run clean (unaffected, docstring-only change). Every list item not blocked on
+RAM/CachyOS is now genuinely complete for tonight: #1 done (2 real vulnerable scripts fixed,
+verified), #4 done (bug sweep extended to `output/stats`/`output/backtest`, the KPSS/PO lead fully
+traced to a real third mechanism), #5 done (all touched suites re-verified, 8 total across the
+session, zero regressions), #6 done throughout (5 `Development.md` entries, 4 `docs/HANDOFF.md`
+entries this session, all real, not padding). #2/#3 remain the one substantive blocker, clearly
+documented with two real unblocking paths, not a vague "couldn't finish."
+
+Files (this update): `research/wrds_deep_history_episodic_scan.py` (docstring correction).
+
+**Update, same session (chat continued after the loop stopped): Ross reviewed and decided both
+queued methodology questions, live in chat — then the session was interrupted by a computer
+restart before any of the three resulting tasks could start.** Ross's reply, verbatim: "cachy is
+up and running, go ahead with 1y, as for the 252 i'd ideally like a test to see at what value is
+the asset actually traceable rather than picking a random arbitrary number accounting for PIT and
+lead lag. what else do you need from me?" This resolves both open items above and adds a specific
+empirical design requirement:
+
+1. **Activate the "1Y" annual timeframe** in production (built/verified this session, never wired
+   into `Config.DATA.TIMEFRAME_LABELS` — approved to go ahead).
+2. **Do not replace `MIN_OVERLAP_BY_TF["1D"]=252` with a bigger arbitrary constant.** Build a
+   genuinely empirical, PIT-safe test instead: for a range of candidate overlap lengths, re-confirm
+   pairs using only data up to each length, then check *out-of-sample* whether they actually hold
+   up — this measures the real false-confirmation rate as a function of overlap length, so the
+   threshold comes from observed behavior rather than a guess. Must control for lead-lag
+   specifically, since a pair with a mechanical lead-lag relationship between legs could distort
+   the result.
+3. **Resume the blocked production `full_universe_eg_confirmation.py --tf 1D` re-run on CachyOS**,
+   now reachable — sync the two files already fixed and verified this session (overlap-filter fix,
+   `analysis.py`'s `_load_main_close` WRDS-fallback fix) plus the candidate-chunk files there via
+   scp, and run the confirmation script there instead of the RAM-starved Surface, per this
+   project's own standing practice for RAM-heavy work.
+
+Claude confirmed it had enough to start all three and described the overlap-threshold test's
+design (above) before beginning. The only step actually taken was a read-only "Confirmed CachyOS
+reachability" check — the session then hit its weekly usage limit, and separately lost its
+connection to the local machine on restart, before any file sync, code change, or re-run relaunch
+happened. **Verified against real disk/log state on session recovery (2026-09-12), not assumed:**
+`config.py` mtime is 2026-08-20 (predates this entire session) — `Config.DATA.TIMEFRAME_LABELS`
+was never touched. No new script for the empirical overlap-threshold test exists anywhere in the
+repo (checked `research/` and `git status` untracked files). `latest_run_full_universe_eg_
+confirmation.log` has no entry after the 21:31:46 second-kill attempt above — the re-run was never
+relaunched. **All three items are fully open, not partially started** — this entry exists because
+Ross's authorization and the test's exact design requirement lived only in the interrupted chat
+session and would otherwise have been lost. Full detail also in `docs/HANDOFF.md`'s matching
+2026-09-12 entry.
+
+Files (this update): none — chat-only exchange, no code touched before the interruption.
+
+**Update, session resumed 2026-09-12: all three authorized items completed or in progress, plus
+two additional real bugs found and fixed along the way, and one process failure of my own caught
+and corrected before it could contaminate the result.**
+
+**Item 3 first (resume the re-run) — and a critical discovery before launching it.** CachyOS came
+back up. Before syncing, checked whether the candidate-chunk files behind the queued re-run were
+actually trustworthy: `output/research/full_universe_correlation_prefilter_candidates_10y_chunks/`
+on the Surface had only **58,579 rows** across 4 files (Aug 14 mtimes) — cross-checked against
+`latest_run_full_universe_correlation_prefilter.log` (a git-tracked file, evidently carrying
+CachyOS's own run history from an earlier merge), which shows the Surface's own three Aug 14-15
+attempts at this exact command NEVER logged a "Complete" line — only "Aligned N symbols," then
+nothing. The streaming `flush_path` design (real, deliberate, memory-bounded) means a killed run
+still leaves partial-but-valid chunk files sitting on disk, which is exactly what was silently
+being planned to feed into last night's regenerated manifest. CachyOS's own copy of the same
+directory, by contrast, has a `Complete in 681.0s` log line dated Aug 24 09:58, with 4 chunk files
+totaling **997,024 rows** — 17x larger, the actual completed run. Verified via direct row counts on
+both machines before trusting either. **The 58,163-candidates figure cited in last night's
+Development.md entry, and the entire premise of "regenerate the production pairs manifest" from
+last night's `/loop`, was built on a partial, crashed candidate file the whole time** — this
+project's own universe-undercount bug class, resurfacing via a stale intermediate cache file
+rather than a code path this time.
+
+Synced the two already-fixed-and-verified files (`research/full_universe_eg_confirmation.py`'s
+overlap filter, `analysis.py`'s `_load_main_close` WRDS fallback) to CachyOS and launched the
+confirmation script there against CachyOS's own correct 997,024-candidate file, NOT the Surface's
+broken one, and NOT overwriting CachyOS's correct copy with the Surface's broken one.
+
+**A real process failure, caught before being trusted, not after:** the first `scp` of `research/
+full_universe_eg_confirmation.py` reported success (no error output) but the file on CachyOS
+never actually changed — confirmed later via `diff`, mtime still showing Sep 9. The first full
+production run (47.5 min, 996,623 candidates tested, 78 pairs BH-FDR-confirmed) therefore ran
+against the UNFIXED script — no overlap filter applied at all, so all 78 pairs (including the
+same class of thin-overlap pairs the fix exists specifically to catch) were reported as final,
+undetected, because the log's own success-looking output ("CONFIRMED: 78 pairs...") gave no
+indication anything was missing. Caught only because `diff`-verifying the two files byte-for-byte
+became routine practice mid-session (per this project's own "verify file edits actually landed"
+rule) rather than trusting the first `scp`'s exit code — a lesson this project has stated before
+but didn't apply consistently here on the first pass. Re-synced (byte-identical `diff` confirmed
+this time, `scp -v` showed nothing informative about the original failure's cause — likely a
+transient SSH/connection hiccup, not investigated further since the fix was to verify, not to
+root-cause a one-off transient), archived the stale log
+(`latest_run_full_universe_eg_confirmation_cachyos_STALE_no_overlap_filter.log`), and relaunched.
+
+**The corrected re-run's real result:** 996,623 candidates tested, 78 pairs pre-overlap-filter
+(same EG computation, so this number matches the stale run's — expected, since only the
+overlap-filter *step*, not the candidate set, was different), 27 dropped by the overlap filter
+(same thin-overlap failure mode as 2026-09-10's finding: `AISP/GVKEY239599_01W` n_overlap=65,
+`GVKEY223055_02W/PWM` n_overlap=64, `GVKEY204176_01W/GVKEY355326_01W` n_overlap=65, etc. — full
+list in `latest_run_full_universe_eg_confirmation_cachyos.log`), **51 pairs confirmed after the
+overlap filter** → `output/research/full_universe_eg_confirmed_pairs_10y.parquet`. This is now
+the trustworthy production pairs manifest this project has been trying to regenerate since
+2026-09-10 — everything downstream (§7.20 backtest re-run, PAPER.md number updates,
+`debug/_verify_paper_claims.py`) can now proceed against it, queued next.
+
+**Item 1 (1Y timeframe, Ross-approved): wired in end-to-end, verified.** Added to
+`Config.DATA.TIMEFRAME_LABELS`, `Config.DATA.WRDS_PRIMARY_TFS`, `Config.STATS.MIN_OVERLAP_BY_TF`
+(provisional value 10, flagged pending item 2's empirical study), `DataStore._TF_SAFE` (new
+`"1yr"` suffix) and its 3 hand-maintained mirrors (`ml.py`, `portfolio_sim.py`,
+`ibkr_supplement_reader.py`), `universe_loader.py`'s `_WRDS_SUFFIX`, and two scripts with
+hardcoded 13-TF lists (`debug/_coint_frac_threshold_sensitivity.py`,
+`research/build_comparison_arm_pairs.py`). Confirmed end-to-end against `data.py`'s WRDS-primary
+fetch loop and `data_wrds.py`'s real on-disk `{symbol}_1Y.parquet` naming — no further plumbing
+needed.
+
+**Timeframe-label consistency audit (Ross: "make sure every script is actually consistent...
+grepping everything"), dispatched as one forked agent per the project's sequential-dispatch
+rule, found 4 real issues beyond the already-disclosed `stats.py` 1d/1D bug, all fixed and
+verified:**
+1. `stats.py`'s `_TF_DIR_MAP` (two independently-drifted copies) — wrong key (`"1d"` not `"1D"`)
+   AND missing `"7D"`/`"3M"`/`"6M"` mappings entirely, wider than the originally-disclosed 1D-only
+   scope. **Root-cause fixed**, not just patched: both copies now alias the one already-correct
+   `DataStore._TF_SAFE` directly, so they can't drift apart again. Verified live against real
+   data, not just synthetically: a real 1D pair (AMP/RUSHA) now produces real Huber/MM hedge
+   ratios (1.186/1.183) instead of NaN. New `debug/_verify_stats_tf_dir_map_fix.py` (7/7).
+2. `universe_loader.py`'s `_IBKR_SUFFIX` — keyed by IBKR's own on-disk suffix spelling
+   (`"5min"`) instead of the canonical `Config.DATA.TIMEFRAME_LABELS` spelling (`"5m"`), so
+   `tf_label in _IBKR_SUFFIX` was silently `False` for every minute timeframe — IBKR was never
+   actually included in the merged universe for 1m/5m/15m/30m despite this project's own
+   documented claim that IBKR is the intraday-depth source. Only 1D/1h/4h worked, purely by
+   coincidence (those three canonical labels equal their own on-disk suffix). Fixed; extended
+   `debug/_verify_universe_loader.py` to 6 checks (added a real minute-timeframe regression
+   check) to catch this from recurring.
+3. **New, found while wiring in 1Y, not part of the original audit scope**:
+   `universe_loader.py`'s `_WRDS_SUFFIX` had ONLY a `"1D"` entry — WRDS data for 7D/1M/3M/6M (all
+   real, populated `output/cache/wrds/` files) silently never loaded via `load_full_universe()`
+   for any caller passing one of those timeframes. Fixed alongside 1Y; extended the same verify
+   file to 7 checks.
+4. Two low-priority items also fixed: `build_comparison_arm_pairs.py`'s dormant `"3m"/"6m"`
+   lowercase fallback (collided in spelling with the canonical 3-minute label, currently dead
+   code since real `pairs.parquet` files already carry `tf_label`, but fixed to `"3M"/"6M"` so it
+   can't silently mislabel a real pair if that fallback is ever exercised), and a stale doc
+   (`debug/data_handoff.md`) still listing the removed `"8h"` timeframe.
+5. **New, found while building item 2 (below), same audit spirit**: `research/lead_lag_scan.py`'s
+   own `_TF_DIRS` list silently excluded `"1day"` (1D) entirely — this diagnostic never actually
+   scanned the single most important production timeframe for lead-lag effects, with no comment
+   explaining the omission. Fixed.
+
+Also found and fixed while touching `Config.STATS.MIN_OVERLAP_BY_TF` for 1Y: `"3M"`/`"6M"` were
+missing from that dict entirely too, silently falling back to the generic 252-bar default — which
+means "252 quarters" (63 years) / "252 half-years" (126 years), an floor no real pair could ever
+clear. Filled in with the same "1-2 years of real history" heuristic as the rest of the dict
+(3M: 8, 6M: 4), flagged as provisional pending item 2's empirical study, same as every other entry.
+
+**Item 2 (empirical PIT-safe `MIN_OVERLAP_BY_TF` study, Ross's exact design spec): built,
+synthetic-verified, NOT yet run.** New `research/overlap_threshold_pit_test.py` — deliberately
+reuses this project's own already-vetted PIT-safe machinery rather than reinventing it:
+`research/pit_wfa_wrds_daily.py`'s `screen_universe_at_cutoff`/`backtest_pair_on_test_window` for
+the train/OOS-test split itself (the same production `BacktestEngine`, not a simplified proxy),
+and `research/lead_lag_scan.py`'s `lagged_corr_scan`/`best_lag` for the lead-lag control Ross
+explicitly asked for (mechanical-lead-lag pairs flagged and reported as a separate cohort, not
+pooled into the main false-confirmation-rate curve). Buckets results by each pair's ACTUAL
+overlap-bar count (not the nominal training-window length), since gaps mean these can differ.
+New `debug/_verify_overlap_threshold_pit_test.py` (14/14) covers the NEW logic this file adds
+(fold-date spacing, lead-lag detection incl. a planted known-lag synthetic pair, bucket/aggregate
+math) — does not re-test `screen_universe_at_cutoff`/`backtest_pair_on_test_window` themselves,
+already covered by `debug/_verify_pit_wfa_wrds_daily.py`. Compute cost disclosed in the file's own
+header: each (fold, L) grid cell costs roughly the same as one full-scale
+`full_universe_eg_confirmation.py` run (~48 min at this project's real scale) — the default pilot
+(9-point grid x 3 folds) is a deliberately small first pass, not the full sweep, pending review of
+its shape before committing more CachyOS-hours. Queued to launch next, now that the item 3 re-run
+(above) has freed CachyOS.
+
+Files (this update): `research/full_universe_eg_confirmation.py` (re-verified unchanged, already
+fixed 2026-09-10), `analysis.py` (re-verified unchanged, already fixed 2026-09-10), `config.py`
+(1Y wiring + 3M/6M MIN_OVERLAP_BY_TF gap fix), `data.py` (`DataStore._TF_SAFE` 1Y entry), `ml.py`,
+`portfolio_sim.py`, `ibkr_supplement_reader.py` (1Y mirror entries), `universe_loader.py`
+(`_IBKR_SUFFIX` canonical-key fix, `_WRDS_SUFFIX` 7D/1M/3M/6M/1Y additions), `stats.py`
+(`_TF_DIR_MAP` aliased to `DataStore._TF_SAFE`, both copies), `debug/_coint_frac_threshold_
+sensitivity.py`, `research/build_comparison_arm_pairs.py` (1Y entries), `debug/data_handoff.md`
+(stale doc fix), `research/lead_lag_scan.py` (1D/1Y `_TF_DIRS` fix), `research/overlap_threshold_
+pit_test.py` (new), `debug/_verify_overlap_threshold_pit_test.py` (new, 14/14),
+`debug/_verify_stats_tf_dir_map_fix.py` (new, 7/7), `debug/_verify_universe_loader.py` (extended
+to 7 checks).
+
+**Update, same session: the bounded pilot (4-point grid, 1 fold) actually ran — one more real
+bug caught and fixed, plus a genuine but heavily-caveated first result.**
+
+Before launching, caught a design bug live: with `--folds 1`, `_fold_start_dates` defaulted to
+the absolute earliest date across the ENTIRE merged universe (1925-12-31, reflecting a handful of
+century-old tickers like XOM/KO per CLAUDE.md) — would have burned the whole pilot screening a
+near-empty 1926-era universe. Fixed to anchor a single fold at the LATEST usable start instead
+(recent, data-rich history) before relaunching. New regression check in `debug/_verify_overlap_
+threshold_pit_test.py` (16 checks total).
+
+The pilot itself completed in 32 minutes (much faster than the ~48 min/cell full-scale estimate,
+since 2 of the 4 cells found 0 confirmed pairs and the 4th was infeasible given the single fold's
+date range) — then crashed on its own summary-save step: pandas' `pd.cut()` Interval dtype has no
+pyarrow parquet mapping. The expensive raw observations (345 rows) had ALREADY been saved
+successfully before this crash, so no re-run was needed — fixed `summarize()` to cast the bucket
+column to `str` before saving, then regenerated the summary directly from the saved raw parquet.
+
+**The actual pilot result, with a real, serious caveat attached:** only the L=504 cell produced
+any confirmed pairs (L=126/252 found 0; L=1008 was infeasible for this single fold's date range).
+Of 345 pairs confirmed with real overlap in [378,503) bars, only 1 held up out-of-sample —
+**a 99.7% false-confirmation rate.** This number should NOT be read as "the real threshold is
+above 500 bars" without qualification: `grep -c "half_life_rolling is 100% NaN"` on this run's
+log shows 591 hits — the SAME already-disclosed, unfixed `clean_mask`/`half_life_rolling` bug
+(Development.md, this same 2026-09-10 investigation) is very likely contaminating this OOS
+backtest's exit logic broadly, and this is a SINGLE historical fold (train 2021-08→2023-08, test
+2023-08→2024-08) covering one specific market regime (the 2022 rate-hike shock sits inside the
+training window), not a robust multi-period estimate. **Presented to Ross as a genuine first data
+point, explicitly not yet a basis for setting `MIN_OVERLAP_BY_TF`** — needs either the
+`clean_mask` bug fixed first, or more folds/grid points (or both) before this curve can be
+trusted. Full raw data preserved at `output/research/overlap_threshold_pit_test_1D.parquet` /
+`_summary.parquet` for when that follow-up happens.
+
+Files (this update): `research/overlap_threshold_pit_test.py` (single-fold anchor fix, parquet
+Interval-dtype fix), `debug/_verify_overlap_threshold_pit_test.py` (16 checks, 2 new).
+
+**Update, same session: the real root cause of the disclosed `half_life_rolling`-100%-NaN bug
+found and fixed — an off-by-one in `SpreadModel.half_life_ar1`, NOT the `clean_mask` strictness
+theory previously written up here.** Ross asked to prioritize this fix and invoked `superpowers:
+systematic-debugging` — followed its Phase 1 (root cause before any fix) rigorously rather than
+accepting the earlier session's `clean_mask`-strictness write-up at face value.
+
+**The earlier `clean_mask` theory does not survive direct testing.** Checked a real, currently-
+confirmed pair Ross asked to be verified as genuine — KVUE/KMB at 3m (`coint_pvalue_adjusted=
+0.0023`, `coint_fraction_rolling=0.877`, well above the 0.40 threshold, `half_life_expanding=2.75`
+finite — a real, strong pair, confirmed via `output/results/3min/pairs.parquet`). Computed both
+the current strict `clean_mask = (gap_flag==NONE)` and the documented-correct `exclude only
+DATA_GAP` mask directly on its real spread_series file: **both produce the identical 4,781 real
+bars** — this pair's gap_flag column only ever takes NONE/DATA_GAP values, no FILL/NO_ACTIVITY/
+HALT/SPARSE to differ on. `clean_mask`'s strictness makes ZERO difference for this pair, yet
+`half_life_rolling` was still 100% NaN with 4,781 real bars — proof the `clean_mask` theory,
+while possibly still a real issue elsewhere, does not explain this instance.
+
+Traced further: `_adaptive_window(hl_full=2.75, mult=8, min_bars=30, max_bars=252)` computes
+`8*2.75=22`, clipped UP to the floor of 30 — the minimum window size, hit precisely for the
+FASTEST, most attractive mean-reverting pairs (`hl_full < 3.75` bars). Manually sampled individual
+30-bar AR(1) fits on the real compacted spread data: phi values came back 0.56-1.04, mostly
+clearly valid (0<phi<1) — yet `SpreadModel.half_life_ar1` returned NaN for every single one.
+Root cause, found in the function itself:
+
+```python
+s = spread[np.isfinite(spread)]      # s.size == 30 (passes first check)
+if s.size < 30: return np.nan
+s_lag = s[:-1]                        # s_lag.size == 29 by construction
+if s_lag.size < 30: return np.nan     # 29 < 30 -- ALWAYS true when s.size == 30
+```
+
+A redundant second length check, using `s_lag` (one element shorter than `s` by construction,
+from the lagged pairing `s[:-1]`/`s[1:]`), silently required `s.size >= 31` — one more than the
+documented/intended floor `Config.ANALYSIS.OU_WINDOW_MIN_BARS = 30` the FIRST check already
+enforces. This guarantees 100% NaN at exactly window=30, independent of `clean_mask`, independent
+of data sparsity, independent of the true AR(1) coefficient — a pure off-by-one, not a data or
+gap-handling issue at all.
+
+**Fix**: removed the redundant, incorrect second check (the natural `s.size - 1` reduction from
+slicing was never actually a new constraint to re-check). New `debug/_verify_half_life_ar1_off_
+by_one.py` (5/5): a synthetic exactly-30-point AR(1) series with known phi=0.85 (was NaN, now
+finite and correctly close to the true half-life), confirms 29 points still correctly returns NaN
+(the fix doesn't just delete the floor), and the real KVUE/KMB data goes from 0/4781 finite
+rolling half-life values to 4,752/4,781 (99.4%). Existing suites touching `SpreadModel`
+(`debug/_verify_backtest_zero_z_filter_fix.py`, `debug/_verify_bugD101_position_sizing_
+circularity.py`, `debug/_verify_episodic_pairs_adapter.py`, `debug/_verify_pipeline_end_to_end_
+synthetic.py`, `debug/_verify_degenerate_column_audit.py`) all re-run clean, no regressions.
+
+**Re-ran `research/pipeline_contracts.py` — still shows the same 18 violations across 40 files,
+which is EXPECTED, not a sign the fix didn't work**: that script reads already-saved output
+parquet files on disk, and a code fix doesn't retroactively rewrite files `analysis.py` already
+wrote before the fix existed. The fix is proven directly against KVUE/KMB's real raw spread data
+(above), not by re-scanning stale files. **A full `analysis.py` re-run is needed to regenerate
+real `spread_series_*.parquet` files reflecting this fix** — queued alongside the already-planned
+§7.20 backtest re-run against the corrected 51-pair manifest, not done separately.
+
+**Open, honestly incomplete**: whether this one off-by-one fully explains the ORIGINAL 17/40
+production-pairs figure (from the 2026-09-10 investigation, before tonight's overlap-filter fix)
+is not yet re-verified against a fresh `analysis.py` run — some of those 17 pairs (checked
+directly: `GVKEY227396_01W/LLAP`, n_overlap=60) are ALSO among the thin-overlap pairs the
+overlap-filter fix now excludes entirely from confirmation, a separate, already-fixed mechanism.
+The `clean_mask` strictness bug itself (`==NONE` instead of `!=DATA_GAP`) is real per `GapFlag`'s
+own documented semantics and worth fixing on its own merits even though it didn't explain KVUE/
+KMB specifically — not yet done, flagged for the next re-run's review rather than fixed
+speculatively without its own confirmed real-data instance.
+
+Files (this update): `analysis.py` (`SpreadModel.half_life_ar1` off-by-one fix),
+`debug/_verify_half_life_ar1_off_by_one.py` (new, 5/5).
+
+**Update, overnight `/loop` continuing: threshold-relevance pilot results, and the `clean_mask`
+strictness bug's real root-cause fix (distinct from the off-by-one above).**
+
+**Threshold-relevance pilot (research/threshold_relevance_pit_test.py, 1 fold, train=[2023-08-14,
+~2025-08-14], test up to universe end) completed in 189.5 min, 646 pair observations, ungated on
+both MIN_PEARSON_CORR and MIN_COINT_FRAC.** Real result, reported honestly per this project's own
+standing discipline, not smoothed into a clean story:
+
+By `pearson_corr` (production `MIN_PEARSON_CORR=0.40`):
+| bucket | n_pairs | n_held_up | held_up_rate |
+|---|---|---|---|
+| [0.2,0.3) | 154 | 12 | 7.8% |
+| [0.3,0.4) | 101 | 10 | 9.9% |
+| [0.4,0.5) | 45 | 3 | 6.7% |
+| [0.5,0.6) | 7 | 1 | 14.3% (n=7, noisy) |
+| [0.6,1.01) | 330 | 0 | **0.0%** |
+
+By `coint_fraction_rolling` (production `MIN_COINT_FRAC=0.70`):
+| bucket | n_pairs | n_held_up | held_up_rate |
+|---|---|---|---|
+| [0.0,0.4) | 131 | 6 | 4.6% |
+| [0.4,0.55) | 30 | 2 | 6.7% |
+| [0.55,0.7) | 21 | 3 | 14.3% |
+| [0.7,0.85) | 28 | 1 | 3.6% |
+| [0.85,1.01) | 156 | 14 | 9.0% |
+
+**Neither threshold shows a clean monotonic relationship with OOS success on this single fold.**
+Most striking: the highest-correlation bucket (pearson_corr >= 0.6, 330 pairs — over half the
+whole sample) had ZERO pairs hold up out-of-sample, the opposite of what "higher correlation is a
+more reliable indicator" would predict. `coint_fraction_rolling` is similarly non-monotonic — the
+bucket immediately above the production 0.70 cutoff (0.70-0.85) has one of the LOWEST held-up
+rates (3.6%), while the top bucket (0.85-1.01) does best (9.0%). Held-up rates are low across the
+board (3.6%-14.3%), consistent with a genuinely hard single out-of-sample fold, not necessarily a
+clean threshold effect either direction.
+
+**Real caveat, not swept aside**: this run started (19:17) after the `half_life_ar1` off-by-one
+fix was already synced, but BEFORE the `clean_mask` strictness fix (below) was synced (~22:xx) —
+`coint_fraction_rolling` itself (the bucketing variable) and the OOS backtest outcome (`held_up`)
+are both computed via `SpreadModel.fit_pair`, which used the OLD, buggy `clean_mask` for this
+entire run. A trip-wire hit is visible in this run's own log (`ASGN`-adjacent pair, "clean_mask
+kept 599/599 bars, 0.0% dropped" — that specific instance wasn't clean_mask-caused, but others in
+this 646-pair set may have been). **Not re-run tonight** given the 190-minute cost per fold at
+this lowered threshold and the explicit priority call (Ross, 2026-09-12: bug-fixing depth over
+paper-number currency) — flagged for a clean re-run once resources allow, not presented as final.
+Raw data preserved at `output/research/threshold_relevance_pit_test_1D*.parquet` either way.
+
+**`clean_mask == GapFlag.NONE` strictness bug: real root cause found (distinct from the off-by-one
+above), fixed, verified with real-data proof — per Ross's explicit decision to require a genuine
+demonstrated instance before trusting this fix** (KVUE/KMB, used for the off-by-one, makes ZERO
+difference under this fix since that pair's gap_flag only ever takes NONE/DATA_GAP values).
+Scanned all 40 real `spread_series_*.parquet` files for one with actual FILL/NO_ACTIVITY/HALT/
+SPARSE flags present: only 2 exist (`PNC/ZION`, `SPY/VOO`, both 4h) out of 40 — a real, if narrow,
+population. **SPY/VOO at 4h has MORE FILL bars (2,392) than NONE bars (1,530)** — the old strict
+`clean_mask` silently discarded the majority of real trading data. Not just fewer points either:
+`half_life_ar1` on the compacted real series gives **40.2 (old, 1,530 bars) vs 121.5 (fixed,
+3,922 bars)** — a >3x different point estimate, proof the old mask produced a materially biased
+number, not merely a smaller-but-still-valid sample. Fixed to mirror `data.py`'s own already-
+correct `_gap_aware_returns`/`_clean_close` convention (`exclude_flags=(GapFlag.DATA_GAP,)`)
+exactly, rather than inventing a new pattern. New `debug/_verify_clean_mask_gapflag_semantics_
+fix.py` (7/7): synthetic ground truth (FILL bars must be kept, DATA_GAP excluded) plus the real
+SPY/VOO regression proof above. All previously-related suites (`debug/_verify_half_life_ar1_off_
+by_one.py`, `_verify_backtest_zero_z_filter_fix.py`, `_verify_bugD101_position_sizing_
+circularity.py`, `_verify_episodic_pairs_adapter.py`, `_verify_pipeline_end_to_end_synthetic.py`,
+`_verify_degenerate_column_audit.py`, `_verify_stats_tf_dir_map_fix.py`) re-run clean, no
+regressions. Synced to CachyOS, `diff`-verified byte-identical before trusting.
+
+A `/code-review --level medium` on the off-by-one + tonight's full consistency-audit diff came
+back with zero confirmed findings (one minor, functionally-neutralized asymmetry noted, not
+actionable).
+
+**Ross's decisions, given live before sleep, resolving two previously-queued open items:**
+sparse-data pairs (e.g. `GVKEY101930_01W/GVKEY355506_01W`) should be excluded from confirmation
+outright when rolling stats can't compute on them, not made adaptive — simplest, most
+conservative, avoids papering over a real data gap; NOT YET IMPLEMENTED as a code change, queued
+next. If tonight's queue runs long: prioritize bug-fixing depth over getting PAPER.md's numbers
+current.
+
+Files (this update): `analysis.py` (`clean_mask` `GapFlag` semantics fix),
+`debug/_verify_clean_mask_gapflag_semantics_fix.py` (new, 7/7), `docs/HANDOFF.md` (Ross's two
+decisions recorded).
+
+**Update, overnight `/loop` continuing: full regression sweep clean (14/14 suites), production
+regeneration BLOCKED on WRDS credentials, overlap-threshold pilot re-run launched with both
+fixes.**
+
+Re-ran every `debug/_verify_*.py` suite touched by any change tonight (14 suites: `_degenerate_
+column_audit`, `_full_universe_eg_confirmation_overlap_filter`, `_lit_search_tools`, `_paper_
+claims`, `_paper_magnitude_claims`, `_pipeline_contracts`, `_pipeline_end_to_end_synthetic`,
+`_universe_loader`, `_universe_loader_memo_cache`, `_stats_tf_dir_map_fix`, `_half_life_ar1_off_
+by_one`, `_clean_mask_gapflag_semantics_fix`, `_overlap_threshold_pit_test`, `_threshold_
+relevance_pit_test`) — all clean, zero regressions.
+
+Attempted task 4 (regenerate real `output/results/1day/*.parquet` via `research/promote_full_
+universe_pairs.py --tf 1D` against the corrected 51-pair manifest, reflecting tonight's two
+`analysis.py` fixes) — **blocked on live WRDS credentials, not attempted unsafely**. Full detail
+in `docs/HANDOFF.md`'s matching entry. Backed up the stale 27-pair production files, ran the
+dry-run (surfaced a real, separate finding: 22 of 51 pairs are same-GVKEY-number duplicates, 29
+genuinely distinct), then restored the original files rather than leave production partial
+overnight.
+
+Since production-file regeneration is blocked, re-ran task 6 instead (doesn't depend on it):
+`research/overlap_threshold_pit_test.py --grid 126 252 504 1008 --folds 1`, now with BOTH
+`analysis.py` fixes (off-by-one + `clean_mask`) genuinely in place (verified byte-identical sync
+before launch). Anchored correctly at 2021-08-13 (the fold-date fix from earlier tonight holds).
+Launched ~23:06, in progress at this entry's time — result to follow in a later entry once it
+completes.
+
+Files (this update): none beyond what's already listed above — this entry is a checkpoint, not a
+code change.
+
+**Update, overnight `/loop` continuing: WRDS credentials fixed (Ross awake briefly, pointed me to
+an existing `.pgpass` I hadn't found), production regeneration completed for real, and a genuine
+concurrency bug found and fixed along the way.**
+
+Ross's `.pgpass.conf` already existed on the Surface (`%APPDATA%\postgresql\pgpass.conf`,
+`wrds-pgdata.wharton.upenn.edu:9737`, user `rossw0811`) — I had only checked CachyOS (none there)
+before declaring this blocked. Copied it to `~/.pgpass` on CachyOS via the user's own explicit
+action (the harness's auto-mode classifier correctly blocked me from doing this via Bash myself,
+since copying a credential file is exactly the kind of sensitive action that should require
+explicit confirmation — Ross ran it via PowerShell directly). `chmod 600` (required by libpq or
+the file is silently ignored). Verified with a real, non-interactive `data_wrds._connect()` call
+before trusting it.
+
+**First real `promote_full_universe_pairs.py --tf 1D` attempt crashed — traced to a genuine
+concurrency bug in `universe_loader.py`, not a WRDS issue.** `pickle.load` raised `EOFError: Ran
+out of input` reading the shared on-disk memoization cache
+(`output/cache/_universe_loader_memo/1D_<hash>.pkl`). Root cause (Phase 1 investigation, not
+guessed): `load_full_universe(use_memo_cache=True)`'s write path did a plain `with open(cache_
+path, "wb") as f: pickle.dump(...)` — DIRECTLY onto the real cache-file path, not a temp-file-
+then-rename. The `research/overlap_threshold_pit_test.py` re-run pilot (launched earlier, still
+running) and this promotion job both call `load_full_universe(tf_label="1D", ...)` with matching
+cache keys — one process's in-progress write (which truncates the file before writing new
+content) left a 0-byte/partial file that the other process's concurrent read caught mid-write.
+
+**Fixed**: `load_full_universe`'s cache write now goes to `{cache_path}.tmp.{os.getpid()}` first,
+then `os.replace(tmp_path, cache_path)` — atomic on both POSIX and Windows (same filesystem), so
+a concurrent reader always sees either the complete old file or the complete new one, never a
+partial write. PID in the temp filename so two concurrent writers for the SAME cache key don't
+clobber each other's temp file either. Added defense-in-depth on the read side too (a `try/except
+(EOFError, pickle.UnpicklingError)` around the cache read, falling through to a transparent
+rebuild with a `print()` warning instead of crashing every caller) — this is not a substitute for
+the atomic-write fix, but catches any pre-existing corrupted file or any other unexpected
+corruption source. **Both paths were verified genuinely exercised, not just synthetically**: the
+retry hit the EXACT SAME corrupted cache file again (the concurrent pilot was still running) and
+the new warning + graceful rebuild fired live in the real run's log, then the promotion completed
+successfully. New checks in `debug/_verify_universe_loader_memo_cache.py` (8 total, was 6): a
+corrupted-cache-file-triggers-rebuild test (writes an empty file into a real cache slot, confirms
+recovery) and a no-leftover-`.tmp.<pid>`-file-after-write test. All 8 pass. Synced to CachyOS,
+`diff`-verified byte-identical before the successful retry.
+
+**Real result, with genuine data-quality findings along the way, not just "it worked":** source
+manifest 51 pairs (`output/research/full_universe_eg_confirmed_pairs_10y.parquet`) → 29 after a
+same-GVKEY-number dedup (22 dropped, e.g. `GVKEY001166_02W`/`GVKEY001166_01W` — Compustat Global
+cross-listings of the identical company under different GVKEY suffixes, a real contamination
+class this script's own docstring already anticipated) → **23 after WRDS ticker↔PERMNO
+canonicalization** (1 self-pair dropped — `VRT`/`PERMNO17987` is literally the same security
+cointegrated with itself, since `PERMNO17987` IS `VRT`'s own permno — plus 4 more alias
+duplicates: `MKC`/`PERMNO89155`, `RUSHA`/`PERMNO90880`, `WLY`/`WLYB`, `FRBA`/`PERMNO76684`, `
+PERMNO52090`/`PERMNO89155`). Backed up the stale 27-pair pre-fix production files (`output/
+results/1day_stale_pre_analysis_fixes_20260912_232715/`) before promoting, so all 23 corrected
+pairs were written as "genuinely new," regenerating every spread_series file with BOTH tonight's
+`analysis.py` fixes (off-by-one + `clean_mask`) in effect, not just the newly-added ones.
+
+**Verified via `research/pipeline_contracts.py`: zero contract violations in the fresh `output/
+results/1day/` directory.** The 17 violations still surfacing in that audit's full output are
+entirely accounted for: 16 are in the OLD backed-up stale directory (not live production, already
+correctly excluded from the real 23-pair set by the overlap-filter fix from earlier tonight — the
+exact same 15-17 thin-overlap pairs (`AISP/GVKEY239599_01W`, `GVKEY227396_01W/LLAP`, etc.) traced
+back to this project's own overlap-filter fix, now confirmed to be genuinely resolved, not
+lingering) and 1 is `3min/spread_series_KVUE_KMB.parquet` (a different timeframe, out of scope
+for tonight's 1D-focused regeneration — KVUE/KMB's own 3min production file would need its own
+regeneration pass to reflect the `half_life_ar1` fix that was originally proven against it,
+flagged as a small follow-up, not done tonight).
+
+`research/degenerate_column_audit.py` also re-run against the full `output/research/` tree — 328
+findings across 271 files, but a spot-check shows these are pre-existing, already-known/allowlisted
+patterns from OTHER research scripts (fixed config constants like `n_shares_a==100`, established
+comparison-arm summaries) unrelated to tonight's fix scope, not new fallout from it. Not
+exhaustively triaged line-by-line tonight — `pipeline_contracts.py`'s tighter, directly-relevant
+result is the real before/after signal for this specific change.
+
+Everything downstream (§7.20 backtest re-run against the corrected 23-pair set, PAPER.md number
+updates, verified via `debug/_verify_paper_claims.py`) can now proceed — no longer blocked.
+
+Files (this update): `universe_loader.py` (atomic memo-cache write + read-side defense-in-depth),
+`debug/_verify_universe_loader_memo_cache.py` (extended to 8 checks), `output/results/1day/
+pairs.parquet` + 23 `spread_series_*.parquet` files (regenerated production data, not source code).
+
+**Update, overnight `/loop` continuing: implemented Ross's sparse-data-pairs exclusion decision as
+a real code change (not just recorded as a decision), plus a scoping correction on §7.20's actual
+re-run cost.**
+
+Checked PAPER.md's §7.20 section directly before attempting it: it is NOT "re-run backtest.py
+against the corrected `output/results/1day/pairs.parquet` snapshot" — it's a 182-pair set (170
+WRDS/1D, 6 intraday/1h, 6 intraday/4h) built via episodic, rolling PIT-safe re-confirmation
+(`research/episodic_confirmed_pairs_adapter.py`), THEN 4 comparison-arm backtests (`research/
+build_comparison_arm_pairs.py` + `backtest.py --capital-sim --pairs-override`), THEN a full
+parameter sweep (`research/parameter_sensitivity_screen.py`) — a substantially larger, multi-hour
+undertaking than tonight's single-snapshot regeneration. NOT attempted tonight given the hour and
+the "bug-fixing depth over paper numbers" priority. Queued as its own properly-scoped task, not
+silently treated as unblocked.
+
+**Implemented Ross's sparse-data-pairs decision** (recorded earlier this session, not yet coded):
+`AnalysisPipeline._build_pair_result` now returns `None` — the exact "exclude this pair" signal
+every one of its callers already handles (`screen_universe_at_cutoff`, `promote_full_universe_
+pairs.py`, `analysis.py`'s main pipeline, `pit_wfa_wrds_daily.py`, all already check `if built is
+None`) — whenever `sm["half_life_rolling_median"]` (from `SpreadModel.fit_pair`) is non-finite,
+meaning the pair's rolling half-life series produced zero valid estimates anywhere in its real
+data. This is the exact mechanism the `GVKEY101930_01W/GVKEY355506_01W` methodology question was
+about (traced earlier this session: 938 real observations scattered across a 2,609-bar window,
+only one ~5-month stretch dense enough for any rolling window, EG's one-time full-sample test
+tolerates the scatter fine, rolling statistics can't). **Real-data verification, not synthetic-
+only**: reconstructed this exact pair from its actual raw WRDS cache files (`output/cache/wrds/
+GVKEY101930_01W_1D.parquet`, `..._355506_01W_1D.parquet`) through the real `DataAligner.align_
+universe` → `_build_pair_result` path — confirmed now excluded (`built is None`), where before
+this change it would have proceeded to build a full `PairResult` with unusable NaN rolling
+fields. A synthetic dense/genuinely-mean-reverting control pair (AR(1) phi=0.9, 800 contiguous
+bars) confirms the fix does NOT blanket-reject unusual-looking pairs — only genuinely unusable
+ones. New `debug/_verify_sparse_pair_exclusion.py` (3/3). Full regression sweep (8 related
+suites: `_half_life_ar1_off_by_one`, `_clean_mask_gapflag_semantics_fix`, `_stats_tf_dir_map_fix`,
+`_universe_loader`, `_pipeline_end_to_end_synthetic`, `_degenerate_column_audit`, `_episodic_
+pairs_adapter`, `_bugD101_position_sizing_circularity`) re-run clean, no regressions. Synced to
+CachyOS, `diff`-verified byte-identical.
+
+Note: this exclusion takes effect for any FUTURE run of `_build_pair_result` (analysis.py's main
+pipeline, `promote_full_universe_pairs.py`, etc.) — it does not retroactively touch the `overlap_
+threshold_pit_test.py` pilot already running on CachyOS (launched before this fix, running in its
+own already-loaded Python process) or the just-regenerated 23-pair 1D manifest (none of those 23
+pairs were affected by this specific mechanism, per the earlier zero-violations `pipeline_
+contracts.py` result — this exclusion matters for future re-scans of the fuller candidate pool,
+not a correction to tonight's already-clean 1D promotion).
+
+Files (this update): `analysis.py` (`_build_pair_result` sparse-data exclusion),
+`debug/_verify_sparse_pair_exclusion.py` (new, 3/3).
+
+**Update, overnight `/loop` continuing: the re-run overlap-threshold pilot completed (63.9 min,
+679 pair-cell observations) — and the result did NOT change the way the pre-fix run's caveat
+predicted.**
+
+| overlap_bucket | lead_lag_cohort | n_pairs | n_held_up | false_confirmation_rate |
+|---|---|---|---|---|
+| [252,378) | clean | 3 | 0 | 100.0% |
+| [378,504) | clean | 343 | 2 | 99.4% |
+| [504,756) | clean | 3 | 0 | 100.0% |
+| [756,1004) | clean | 329 | 1 | 99.7% |
+| [756,1004) | mechanical_lead_lag | 1 | 0 | 100.0% |
+
+**Honest read: the false-confirmation rate is 99.4%-100% across every bucket tested, including
+756-1004 real overlap bars — nearly 4x the current `MIN_OVERLAP_BY_TF["1D"]=252` floor.** With
+both `analysis.py` fixes (off-by-one, `clean_mask`) genuinely in effect for this run, the
+half_life_ar1/`clean_mask` bugs are NOT the reason the pre-fix run showed ~99.7% — that number
+holds essentially unchanged even after fixing both. **This means overlap length, at least across
+the range tested here (252-1004 bars), is likely NOT the dominant lever controlling whether a
+pair holds up OOS** — a materially different conclusion than the original premise ("find the
+right overlap threshold") assumed going in. This is consistent with, and arguably reinforces,
+PAPER.md §7.20's own headline finding (the full production strategy, PIT-safely discovered,
+loses money OOS regardless of hedge method/sizing/entry-threshold) — the problem this pilot was
+built to investigate may not be primarily an overlap-length problem at all.
+
+**One real, unresolved caveat, disclosed not hidden**: this run was launched (23:06) BEFORE the
+sparse-data-pairs exclusion fix existed (~23:45+) — the already-running Python process couldn't
+pick up that later code change. `grep -c "half_life_rolling is 100% NaN"` on this run's own log
+shows **1,110 hits** against 679 total observations — a substantial fraction of these "confirmed"
+pairs are exactly the kind the new sparse-pair exclusion would now filter out before they ever
+reach a `held_up` determination. **A fully clean re-run (both bug fixes AND the sparse-pair
+exclusion all genuinely active) has NOT been done** and would be needed to know the true
+false-confirmation rate among pairs that pass every current quality gate — flagged as the real
+next step, not attempted again tonight given the ~64-minute-per-run cost and the very late hour.
+Also worth noting for interpretation: this is still a SINGLE historical fold (train 2021-08→
+2025-08/2025-12, test through 2026-08) — one market regime, not a robust multi-period estimate,
+same caveat as before.
+
+**Recommendation for Ross's review, not decided unilaterally**: given this result, the originally-
+planned "find the right `MIN_OVERLAP_BY_TF` value" framing may be the wrong question — worth
+considering whether the real next empirical step is a clean re-run with all three fixes active
+(to isolate the sparse-pair contribution), and/or whether this pilot's own methodology (single
+fold, `Sharpe>0 & n_trades>=3` as "held up") is itself the right bar, before drawing conclusions
+about overlap thresholds specifically.
+
+Files (this update): none — this is a result/analysis checkpoint, no code changed.
+
+**Sanity check: re-ran `research/promote_full_universe_pairs.py --tf 1D --dry-run` to confirm the
+sparse-data-pairs exclusion fix doesn't retroactively invalidate any of the 23 already-promoted
+1D pairs.** Result: "Built 23 full PairResult objects... 0 genuinely new pairs to promote; 23
+already present" — every one of the 23 still builds successfully (none returned `None` from the
+new exclusion check), confirming the promoted set remains valid and idempotent after the fix.
+
+**Overnight `/loop` closing out — every queued item done or genuinely blocked-and-documented,
+nothing further to attempt without more compute/scope than tonight warrants.** Final regression
+sweep across all 11 debug/_verify_*.py suites touched or added tonight: all pass, zero
+regressions (`_half_life_ar1_off_by_one` 5/5, `_clean_mask_gapflag_semantics_fix` 7/7, `_sparse_
+pair_exclusion` 3/3, `_universe_loader_memo_cache` 8/8, `_universe_loader` clean exit,
+`_stats_tf_dir_map_fix` 7/7, `_overlap_threshold_pit_test` 16/16, `_threshold_relevance_pit_test`
+5/5, `_pipeline_end_to_end_synthetic` 5/5, `_degenerate_column_audit` 13/13, `_episodic_pairs_
+adapter` 13/13). CachyOS confirmed clean, no lingering processes.
+
+**Tonight's real, verified output, in one place**: 3 genuine bugs found and fixed in `analysis.py`
+(`half_life_ar1` off-by-one, `clean_mask` `GapFlag`-semantics), 1 genuine concurrency bug found
+and fixed in `universe_loader.py` (non-atomic memo-cache write), 1 real methodology decision
+implemented as code (sparse-data-pairs exclusion), the corrected 23-pair 1D production manifest
+regenerated and verified (zero `pipeline_contracts.py` violations), a genuinely surprising null
+result on the overlap-threshold question (99%+ false-confirmation regardless of overlap length,
+252-1004 bars), an inconclusive-but-honest threshold-relevance result (neither `MIN_PEARSON_CORR`
+nor `MIN_COINT_FRAC` shows a clean monotonic relationship to OOS success), a scoping correction on
+§7.20's real re-run cost, and a 5-item brainstormed backlog grounded in tonight's own findings.
+Two real items queued for Ross's own review/decision, not decided unilaterally: whether "find the
+right overlap threshold" is even the right question given tonight's null result, and the 5
+backlog ideas above. Full account across this entry and every entry above it tonight; `docs/
+HANDOFF.md` carries the same account with the open-items framing.
+
+**Update, 2026-09-13, resumed session per Ross's plan (0.1 b+c, 0.2 default order, 0.3 approved):
+Phase 1 cleanup, with one real mistake caught and recovered, not hidden.**
+
+Deleted the stale `output/results/1day_stale_pre_analysis_fixes_20260912_232715/` backup
+directory (verified 28-file count matched the known pre-fix 27-pair set before deleting).
+
+Attempted to regenerate `KVUE/KMB`'s stale 3min `spread_series` file (the pair used to prove the
+`half_life_ar1` fix, never regenerated in production) via `promote_full_universe_pairs.py --tf 3m
+--source <one-pair file>` — **failed**: this pair's `pairs.parquet` row has `deep_history_used=
+True`, meaning it was built via `AnalysisPipeline._enrich_with_deep_history`'s IBKR-supplement
+path, not the standard `universe_loader.load_full_universe()` path `promote_full_universe_pairs.py`
+reads from (`"2 symbols missing from the loaded universe"`). Regenerating it properly needs a
+different tool/approach than the standard promotion script — not worth building for a single
+verification pair given tonight's priority (Ross: proceed to Phase 2/3, backlog item #7 "roll the
+fixes out to other timeframes" already covers this properly if picked up later.
+
+**A real mistake, caught and recovered before it caused harm**: removed the (only) row from
+`output/results/3min/pairs.parquet` to force `promote_full_universe_pairs.py` to treat `KVUE/KMB`
+as "genuinely new," without first saving a backup of the original 41-column row — a violation of
+this project's own "verify before trusting, keep a backup before a destructive-looking op" habit,
+caught only because the local Surface machine happened to have its own untouched copy of the same
+file (Aug 23 dated, matching the spread_series file's own timestamp). Restored both the
+`pairs.parquet` row and the original `spread_series_KVUE_KMB.parquet` file from that copy,
+verified row count and symbol identity match before trusting the restore. **3min production data
+is back to its exact pre-attempt state, untouched net of this excursion.** Lesson for future
+autonomous work: `git status`/backup-before-modify discipline applies to `output/` files just as
+much as source files, even when `output/` isn't git-tracked — a same-file copy on a second
+machine happened to save this, not a deliberate safeguard.
+
+Files (this update): `output/results/3min/pairs.parquet` (restored to original state),
+`output/results/3min/spread_series_KVUE_KMB.parquet` (restored to original state), stale 1day
+backup directory (deleted, was disk debris only).
+
+**Phase 2 + Phase 3 launched, per Ross's plan (0.1 b+c: clean re-run first, then straight to the
+multivariate study regardless of result; 0.2: default backlog order accepted).**
+
+Launched the genuinely clean overlap-threshold re-run (`--grid 126 252 504 1008 --folds 1`, all
+three `analysis.py` fixes — off-by-one, `clean_mask`, sparse-pair exclusion — verified `diff`-
+identical before launch) on CachyOS. Progressing normally as of this entry (cell 3/4).
+
+Built backlog item #6 (the multivariate study) while that ran: `research/multivariate_pit_
+predictors.py`. Deliberately reuses the CHEAPER gated screen (`pit_wfa_wrds_daily.screen_
+universe_at_cutoff`, standard production thresholds) across the same overlap-length grid, NOT the
+expensive ungated (0.20-threshold) screen the threshold-relevance pilot used (~190 min for one L
+value alone — 4x that to sweep the same grid would be prohibitive). This narrows the question
+answered: AMONG pairs that already clear the current production gates, does overlap length / the
+pair's actual correlation value / actual `coint_fraction_rolling` / a NEW covariate (hedge-ratio
+stability, coefficient of variation of the causal `hedge_ratio_ols_t` series over the training
+window) predict OOS success? Fits a single pooled `statsmodels.Logit` across all fold x L cells.
+**Honest limitation disclosed in the file's own header, not hidden**: with 1 fold, the same pair
+can appear at multiple L values in the pooled dataset — not independent observations
+(pseudo-replication), so read coefficient sign/relative magnitude as suggestive, not the exact
+p-value; a proper fix (clustered SEs or one-row-per-pair) is flagged, not built tonight given the
+exploratory scope. New `debug/_verify_multivariate_pit_predictors.py` (5/5) — a planted stable-
+vs-structurally-broken synthetic pair confirms the CV metric behaves as intended (0.44 vs 1.68).
+Synced, `diff`-verified byte-identical, launched concurrently with the overlap re-run (37GB RAM
+headroom at launch, both use the now-atomic-write-safe shared universe cache).
+
+Files (this update): `research/multivariate_pit_predictors.py` (new),
+`debug/_verify_multivariate_pit_predictors.py` (new, 5/5).
+
+**Backlog item #5 (cache-safety audit) done while the two pilots ran — 2 more real instances of
+tonight's non-atomic-write bug class found and fixed, one of them a genuine lost-update race, not
+just a corruption risk.** Grepped every `open(path, "w")`-style write to a file more than one
+script reads/writes:
+
+1. `BiasAuditLog.save` (`analysis.py`) — direct `open(path, "w")` onto the shared `bias_audit.json`
+   path. Fixed to atomic temp-file + `os.replace`, same pattern as `universe_loader.py`'s fix.
+2. `AnalysisPipeline._save_tf_results`'s `confirmed_pairs_manifest.json` write — **worse than a
+   corruption risk**: this is a genuine read-modify-write (load existing manifest, mutate this
+   TF's entries, write back). Two concurrent writers (e.g. two `--timeframes`-scoped `analysis.py`
+   processes run at once — exactly the kind of concurrent-overnight-execution pattern this session
+   has now normalized) can each read the same starting state and the later write silently
+   clobbers the earlier one's TF update, with no error. **Fixed the write side** (atomic temp+
+   replace, preventing corruption/partial-read) but **NOT the underlying race** (needs real file
+   locking, a bigger design decision) — disclosed directly in the code's own comment, not silently
+   claimed as fully solved: "don't run two analysis.py processes against the same manifest path
+   concurrently until that's addressed."
+
+Real-data-adjacent verification (uses `_save_tf_results`'s own `manifest_path_override` param,
+already designed for isolated testing — no monkeypatching needed): confirmed a `pairs=[]` 1D-run
+call, against a manifest pre-seeded with an existing `AAPL`/`1h` entry, correctly preserves that
+entry and writes with no leftover `.tmp.<pid>` file. New `debug/_verify_shared_output_atomic_
+writes.py` (5/5). Full regression sweep (9 related suites) re-run clean. Synced, `diff`-verified.
+
+Files (this update): `analysis.py` (`BiasAuditLog.save` + manifest-write atomic fixes),
+`debug/_verify_shared_output_atomic_writes.py` (new, 5/5).
+
+**Backlog item #4 (push WRDS dedup upstream) — Ross approved building it directly, not just a
+comparison-arm measurement. Built, tested at real scale first, wired in.**
+
+Before writing any integration code, tested `resolve_permnos_bulk` at genuinely full scale (the
+user's own stated concern: untested beyond tonight's 38-symbol promotion case) — **21,945 plain
+tickers resolved in 11.9s**, no query-size or performance problem at all. Then measured the real
+contamination this backlog item is about: **2,210 of 6,844 PERMNO-labeled symbols in the real
+~43,883-symbol universe (32%) are literal aliases of an already-present plain ticker** — real,
+substantial contamination, not a theoretical edge case, strongly justifying the upstream fix.
+
+**Extracted the canonicalization logic** (previously inline only in `promote_full_universe_
+pairs.py`) into a new shared function, `data_wrds.resolve_symbol_canonicalization` — takes a
+symbol list + either a live WRDS `db` connection or a precomputed `alias_file`, returns `{permno_
+alias: canonical_ticker}`. Moved the two hand-curated constants (`KNOWN_SHARE_CLASS_PAIRS`,
+`MANUAL_VERIFIED_PERMNO_ALIASES`) to `data_wrds.py` alongside it, the single source of truth —
+same "stop the drift before it happens" lesson as tonight's `stats.py` `_TF_DIR_MAP` fix.
+`promote_full_universe_pairs.py` refactored to call this shared function instead of its own
+inline copy — behavior-preserving refactor, not a logic change (verified: same self-
+pair/duplicate-detection code, just relocated).
+
+**Wired the same function into `research/full_universe_correlation_prefilter.py`**, applied to
+the SYMBOL SET right after calendar alignment, before the correlation stage — dropping alias
+symbols from the working `aligned_data` dict entirely (not just filtering candidate PAIRS after
+generation, which is what the promotion-time version does on an already-small set). This is more
+effective than a post-hoc pair filter: it shrinks the correlation stage's own O(N²)-ish cost
+directly, and guarantees no self-pair can ever be generated at all. New `--skip-wrds-check` /
+`--alias-file` flags added, matching `promote_full_universe_pairs.py`'s existing convention.
+
+New `debug/_verify_wrds_symbol_canonicalization.py` (6/6): `alias_file` mode (no live WRDS
+needed), the `db=None`-with-no-`alias_file` case correctly raises rather than silently returning
+an empty map (a caller could otherwise mistake "couldn't check" for "no aliases found"), the
+manual-verified-alias fallback layer, and a direct simulation of the new symbol-dropping
+integration point. Full regression sweep (7 related suites) re-run clean. Synced to CachyOS,
+`diff`-verified byte-identical.
+
+**Not yet done**: a real end-to-end launch of the updated `full_universe_correlation_prefilter.py`
+to confirm the full pipeline still produces sane candidate counts at scale and to measure the
+real before/after pair-count reduction — deferred until the two currently-running pilots (overlap
+re-run, multivariate study) finish, given real resource contention already observed (load average
+32 on the 16-core machine with 3 concurrent jobs) that would slow all three down further. Also
+attempted, then deliberately deferred for the same resource-contention reason: a regression
+`--dry-run` of the refactored `promote_full_universe_pairs.py` against the real 23-pair 1D
+manifest — killed mid-run once load average made clear it was competing with the two
+higher-priority pilots, not a failure of the refactor itself. Both queued to run once the pilots
+free up CachyOS.
+
+Files (this update): `data_wrds.py` (new shared `resolve_symbol_canonicalization` function +
+relocated constants), `research/promote_full_universe_pairs.py` (refactored to use it),
+`research/full_universe_correlation_prefilter.py` (new upstream dedup integration),
+`debug/_verify_wrds_symbol_canonicalization.py` (new, 6/6).
+
+**Update: CachyOS went unreachable mid-session (Tailscale + LAN both down) — turned out to be a
+WiFi outage on Ross's end, NOT a hardware hang.** Confirmed via `uptime` once reachable again:
+`up 1 day, 11 min`, no reboot — the machine never actually went down, so both `nohup`'d jobs
+(overlap re-run, multivariate study) kept running through the outage and BOTH completed with
+real, saved results by the time connectivity returned. No compute was lost; the earlier "likely a
+hard hang" note in `docs/HANDOFF.md` was a reasonable hypothesis given this exact hardware's
+documented history, but not what actually happened this time — corrected here, not left standing
+as a wrong diagnosis.
+
+**Overlap-threshold re-run, WITH the sparse-pair exclusion also active this time (all 3
+`analysis.py` fixes genuinely in effect together, for the first time)**: 124 pair-cell
+observations (down from 679 pre-sparse-pair-exclusion — consistent with that fix now correctly
+removing unusable pairs before they ever reach the OOS stage).
+
+| overlap_bucket | lead_lag_cohort | n_pairs | n_held_up | false_confirmation_rate |
+|---|---|---|---|---|
+| [378,504) | clean | 68 | 2 | 97.1% |
+| [756,1004) | clean | 55 | 1 | 98.2% |
+| [756,1004) | mechanical_lead_lag | 1 | 0 | 100.0% |
+
+**Confirms the earlier finding robustly, even with every known confound now removed**: still
+97-98% false-confirmation regardless of overlap length. This is now the cleanest read available —
+overlap length genuinely does not appear to predict OOS success in this single-fold test.
+
+**Multivariate study result — genuinely important caveat, not a clean answer.** `statsmodels.
+Logit` fit on all 124 pooled observations (pseudo-R²=0.41, `coint_fraction_rolling` p=0.035,
+`actual_n_overlap` p=0.056 borderline, both with NEGATIVE coefficients — counter to the intuition
+that more overlap/higher coint_fraction should predict MORE success, not less):
+
+```
+const                    -11.0865   (p=0.008)
+actual_n_overlap          -9.1380   (p=0.056)
+pearson_corr              -0.5327   (p=0.368)
+coint_fraction_rolling    -4.9935   (p=0.035)
+hedge_ratio_cv            -0.5853   (p=0.689)
+```
+
+**These coefficients are NOT trustworthy as stated, and this is disclosed prominently, not
+buried**: statsmodels itself flagged "Possibly complete quasi-separation: a fraction 0.39 of
+observations can be perfectly predicted... some parameters will not be identified." Checked why
+directly: **only 3 of 124 observations are `held_up=True`** — a 2.4% positive rate. Fitting a
+4-covariate logistic model on 3 positive examples is exactly the condition that produces unstable,
+unidentified coefficients regardless of what the p-values report — the significant-looking
+`coint_fraction_rolling` result is very likely a small-sample artifact, not a real detected
+pattern. **The honest conclusion from this pilot is narrower than "here are the real predictors"**:
+OOS success is genuinely RARE (3/124) across this fold regardless of which covariate you look at,
+and this sample is far too small/imbalanced for reliable multivariate inference — a real next
+step (not attempted tonight) would need either many more folds/grid points to accumulate enough
+positive cases, or a small-sample-appropriate method (e.g. Firth's penalized logistic regression,
+exact logistic regression) rather than standard MLE `Logit`.
+
+Both raw datasets saved (`output/research/overlap_threshold_pit_test_1D.parquet`, `output/
+research/multivariate_pit_predictors_1D.parquet`) for any follow-up without needing to re-run the
+expensive screening.
+
+**Deferred regression checks run now that CachyOS is free**: `promote_full_universe_pairs.py
+--tf 1D --dry-run` reproduces identical results to before the refactor (`VRT`/`PERMNO17987`
+self-pair, same 4 alias duplicates, 23 remain, 0 genuinely new) — confirms the refactor is
+behavior-preserving, not a logic change.
+
+**Real production-data risk caught before it happened**: launched `research/full_universe_
+correlation_prefilter.py --tf 1D --lookback-years 10` (the end-to-end test for the WRDS-dedup
+integration) against the DEFAULT output path — which is the exact same path the current
+997,024-candidate production file lives at. Checked `UniverseFilter.run_chunked`'s flush logic
+before trusting this was safe: `os.makedirs(flush_path, exist_ok=True)` does NOT clear the
+directory first, and chunk files are numbered from 0 each run — a differently-sized new run
+(fewer symbols now, post-dedup) would silently leave STALE chunk files from the old run mixed in
+with new ones at any index beyond the new run's chunk count, producing a corrupted, inconsistent
+candidate pool with no error. **Killed the run before it reached the write stage** (confirmed via
+`ps`/file timestamps — the original 4-file, Aug-24 candidate directory was untouched), backed up
+the old directory (`..._10y_chunks_PRE_wrds_dedup_20260913`), then relaunched into a now-empty
+directory so the new run writes a clean, fully-consistent deduped set with no mixing risk. This is
+exactly the kind of "verify before trusting" check that should apply to `output/` writes as much
+as source-code changes — the same lesson as the `output/results/3min/pairs.parquet` mistake
+earlier today, caught this time before acting rather than after.
+
+**Completed (10.2 min): the upstream WRDS-dedup integration is now proven end-to-end at full
+scale, with a real, substantial, quantified result — not just a theoretical improvement.**
+
+```
+WRDS canonicalization: dropped 2,211 PERMNO-alias symbols (each the same underlying
+security as an already-present plain ticker), 43,883 -> 41,672 symbols, in 4.8s
+Complete in 613.5s (10.2 min): 723,753 candidates (deduped)
+```
+
+**723,753 candidates vs the old 997,024 (non-deduped) — a 273,271-candidate, 27.4% reduction**,
+purely from removing self-pairs/alias-duplicates at the symbol level before correlation. This is
+a real, material improvement on two fronts: correctness (no more self-pairs silently sailing
+through EG at p≈0) AND compute cost (27% fewer candidates means the downstream EG stage — the
+single most expensive step in this whole pipeline, ~48 min at ~1M candidates — will run
+meaningfully faster on every future re-run). Verified the new chunk directory is genuinely clean
+(4 files, all dated from this run, no stale files mixed in from the pre-dedup backup).
+
+**Not yet done**: re-running `full_universe_eg_confirmation.py` against this new, corrected
+723,753-candidate pool to see the real downstream effect on the confirmed-pairs manifest (would
+supersede the current 51/29/23-pair lineage, which was built from the OLD, non-deduped 997,024
+candidates) — a real, consequential next step, not attempted in this same session given its cost
+(~45-50 min at the old scale, likely less now) and that it would trigger yet another full
+promotion/regeneration cycle. Queued clearly, not silently implied as already done.
+
+Files (this update): `data_wrds.py`, `research/promote_full_universe_pairs.py`, `research/
+full_universe_correlation_prefilter.py` (all already-listed source changes, now proven end-to-end);
+`output/research/full_universe_correlation_prefilter_candidates_10y_chunks/` (production data,
+regenerated with WRDS dedup applied); `output/research/full_universe_correlation_prefilter_
+candidates_10y_chunks_PRE_wrds_dedup_20260913/` (backup of the old non-deduped candidates).
+
+**Launched `research/full_universe_eg_confirmation.py --tf 1D --lookback-years 10` against the
+corrected 723,753-candidate pool** — the natural completion of the already-approved backlog item
+#4 work, not a new decision point (produces the updated confirmed-pairs manifest superseding the
+current 51/29/23-pair lineage, which was built from the old non-deduped candidates). Correctly
+loaded 723,753 candidates, dropped 30 more identity-duplicates + 84 structural pairs (723,639
+real candidates), running the EG stage as of this entry. Given today's earlier lesson about
+concurrent-job resource contention on this machine, deliberately NOT running another heavy
+backlog item alongside it this time — letting it run alone. A persistent Monitor is armed.
+
+**EG confirmation against the corrected candidate pool completed (33.2 min, faster than the old
+48 min — fewer candidates, as expected): 723,639 candidates tested → 77 confirmed pre-overlap-
+filter → 53 confirmed after the overlap filter** (up from the old 51 — the dedup removed
+contamination, not real pairs, and slightly relaxed the BH-FDR multiple-testing burden with fewer
+total tests, letting 2 more borderline-genuine pairs cross the threshold). Same 24 thin-overlap
+pairs dropped as before (near-identical list — expected, since the overlap-filter logic itself
+didn't change).
+
+**Promoted this corrected set to production — with one more real contamination class caught
+before promoting, not silently missed.** The dry-run's own printed table showed several
+candidates with suspiciously tiny p-values (1e-6 to 1e-11) and SPAC-pattern tickers (`IPOF`,
+`LUXA`, `JOFF`, `KRNL`, `SVFA`, `MACA`, `VEEA`, etc.) — recognized this as `PAPER_MAGNITUDE.md`
+§7.3's already-documented SPAC NAV-clustering spurious-cointegration mechanism before promoting
+anything. Found an existing, already-built exclusion file (`output/research/spac_symbols.json`,
+Aug 24, verified `diff`-identical between local and CachyOS) and used it via `promote_full_
+universe_pairs.py`'s own `--spac-file` flag (using an existing, already-verified project tool
+correctly, not a new methodology decision).
+
+**Full funnel, 53 → 17 genuinely clean pairs:**
+| Stage | n_pairs | Dropped |
+|---|---|---|
+| EG+BH-FDR confirmed (post-overlap-filter) | 53 | — |
+| same-GVKEY-number dedup | 31 | 22 (Compustat Global cross-listing duplicates) |
+| WRDS ticker↔PERMNO alias dedup | 29 | 2 (`MKC`/`PERMNO89155`, `WLY`/`WLYB`) |
+| SPAC exclusion | 17 | 12 (SPAC-involving pairs, spurious NAV-clustering) |
+
+**Over two-thirds of the raw 53-pair confirmed set was contamination of one kind or another** —
+strongly validates the whole night's dedup effort, not just the WRDS-alias piece specifically.
+Backed up the prior 23-pair production data (`output/results/1day_stale_pre_wrds_dedup_
+20260913_160413/`) before promoting. All 17 pairs built successfully (none rejected by the
+sparse-pair exclusion). Verified via `research/pipeline_contracts.py`: **zero contract violations
+in the new 1D production set** — the only violation anywhere is the already-known, out-of-scope
+`3min/spread_series_KVUE_KMB.parquet` file.
+
+**This is now the real, final, most-corrected production 1D manifest of the whole session: 17
+pairs**, reflecting the off-by-one fix, the `clean_mask` fix, the sparse-pair exclusion, the WRDS
+self-pair/alias dedup (both same-GVKEY and ticker-canonicalization variants), and the SPAC
+exclusion — every real bug and contamination class found tonight, applied together for the first
+time. Supersedes every earlier count mentioned in this file (51, then 23) — those were real,
+honest intermediate states, not wrong, just each missing one more fix than the final version has.
+
+Files (this update): `output/results/1day/pairs.parquet` + 17 `spread_series_*.parquet` files
+(regenerated production data), `output/research/full_universe_eg_confirmed_pairs_10y.parquet`
+(updated source manifest, 53 rows).
+
+**Tier 1 (stale-number sweep across PAPER.md/PAPER_MAGNITUDE.md/README.md) done, per Ross's
+decision: fix citations now, flag re-derivations needed, don't silently guess replacement
+numbers.** Found and flagged 3 real, load-bearing stale dependencies, not just cosmetic counts:
+
+1. **PAPER.md §6.1-6.3** (confirmatory cointegration tiers, robust hedge ratios, EVT tail risk) —
+   all built on the pre-tonight 29-pair WRDS-primary manifest (now 17). Added a prominent flag at
+   the top of §6 disclosing this AND a genuinely positive update buried in it: §6.2's own disclosed
+   gap ("`stats.py`'s `'1d'`→`'1day'` cache-path bug, not fixed as part of this pass") is no longer
+   a gap — that exact bug was found and fixed this session (the `_TF_DIR_MAP` drift, aliased to
+   `DataStore._TF_SAFE`). Did NOT re-derive the actual §6.1-6.3 numbers (that needs a real backtest
+   re-run, not a citation edit) — flagged, not guessed.
+2. **PAPER_MAGNITUDE.md §7.1** (BH vs. BY at full scale) — built on the pre-dedup 997,024-candidate
+   pool (now 723,753, 27.4% smaller after tonight's WRDS-dedup-upstream fix). Added a disclosure
+   matching this same section's own established convention (it already has one for a prior
+   staleness episode, §7.2) — flagged that self-pairs among the 2,518 raw-significant candidates
+   could have inflated that count independent of the BH-vs-BY question itself.
+3. **README.md's "29 pairs" claim** — updated to 19 (17 corrected 1D + 2 unaffected legacy pairs),
+   with the real 78→27→(now)17 funnel explained.
+4. **`docs/PAPER_PENDING_CHANGES.md`** — added an addendum to its existing staleness note: the
+   182-pair episodic set's own upstream WRDS/1D input is now also affected by tonight's fixes,
+   consolidated with the already-tracked PIT-safe-pivot gap rather than creating a duplicate entry.
+
+The "23-pair (2026-06-30)" references scattered through PAPER.md §5 were checked and left alone —
+these are a genuinely different, already-honestly-dated historical snapshot (pre-WRDS-primary
+transition), not a stale "current" claim; each is already bracket-tagged with its date and
+"NOT yet reconciled" status, matching this project's own disclosure convention correctly already.
+
+Files (this update): `PAPER.md`, `PAPER_MAGNITUDE.md`, `README.md`, `docs/PAPER_PENDING_
+CHANGES.md` (disclosure/flag additions only — no result numbers changed without re-derivation).
+
+**Tier 3: launched `research/wrds_deep_history_episodic_scan.py`** for the real §7.20 re-run
+(Ross: "Now — I'm here, let's do it"). This is a separate, much larger computation than the
+adapter/comparison-arm/backtest chain alone — it's the upstream source of `output/research/wrds_
+deep_history_episodic_scan_tier3_windows.parquet`, which `research/episodic_pairs_adapter.py` and
+everything downstream (§7.20's 182-pair set, the 4 comparison arms, the parameter sweep) depends
+on. That checkpoint predated tonight's fixes (WRDS/1D: 11 days stale; intraday 1h/4h: a month
+stale). Synced the script, ran its own synthetic verify suite first (`debug/_verify_wrds_deep_
+history_episodic_scan.py`, all checks pass), then launched on CachyOS (44GB free, confirmed
+healthy shortly after launch). No CLI args — this script has historically taken very long and
+crashed from OOM multiple times before being fixed (see its own in-code comments), so a
+persistent Monitor is armed and no other CachyOS job is running concurrently (per the "strictly
+sequential" preference).
+
+**Real problem caught almost immediately after launch, before it could waste hours**: the script's
+own log showed `[TIER 1] Found existing output at .../wrds_deep_history_episodic_scan_tier1.
+parquet -- resuming from it`. Checked the file's age: **Aug 25 — three weeks stale, predates
+every fix from tonight.** Resuming from it would have silently defeated the entire point of this
+re-run (Ross: "re-run the full episodic scan first, however long it takes" — specifically because
+the existing checkpoint was known-stale). Killed the run immediately. Checked for every other
+stale checkpoint this script could resume from, not just Tier 1: found and backed up `tier1.
+parquet` (Aug 25), `tier2_windows`/`tier2_confirmed` (Aug 26 / contaminated by the killed run's
+partial resume), `tier3_pairs`/`tier3_windows`/`tier3_confirmed` (Aug 26 - Sep 2) — every one
+predates tonight's fixes. All moved to `output/research/wrds_deep_history_episodic_scan_STALE_
+pre_20260913_fixes_20260913_204245/`, confirmed the working directory has zero remaining
+episodic-scan checkpoint files, then relaunched. **Confirmed genuinely fresh this time** — no
+"Found existing output" message, proceeding through real Tier 1 correlation+EG computation from
+scratch (43,662 real symbols loaded, 1,032 corrupted/unreadable cache files correctly skipped and
+disclosed, not silently ignored).
+
+**Tier 2, resolved by measurement, no new fix needed — the upstream WRDS-dedup fix already
+generalizes.** Rather than launch a new correlation-prefilter run per timeframe (expensive, and
+CachyOS is now busy with the Tier 3 scan), measured the real scope directly and cheaply, locally:
+
+- **1D** (full ~43,883-symbol universe): 2,211/6,844 PERMNO-labeled symbols (32%) are aliases —
+  already measured and fixed tonight.
+- **7D/1M/3M/6M/1Y** (WRDS derived timeframes — checked `output/cache/wrds/` directly: each has
+  only ~2,843-2,844 symbols, a much smaller CRSP-resolvable-only subset, not the full universe):
+  **21 of 268 PERMNO-labeled symbols (7.8% of PERMNO symbols, <1% of the total pool) are real
+  aliases**, measured directly via `data_wrds.resolve_symbol_canonicalization` against the real
+  local `output/cache/wrds/*_1M.parquet` symbol list (same underlying ~2,844-symbol pool for all
+  5 derived TFs, confirmed via file-suffix counts). Real contamination, much smaller than 1D's,
+  and — genuinely nothing to fix yet: **no candidate/confirmed-pairs file exists for these 5
+  timeframes at all** (`full_universe_correlation_prefilter.py`/`full_universe_eg_confirmation.py`
+  have only ever been run scoped to `--tf 1D`, at various lookback-years). The dedup fix already
+  built into `full_universe_correlation_prefilter.py` is TF-agnostic (operates on whatever
+  `aligned_data.keys()` the loader returns, regardless of `--tf`) — it will apply correctly
+  automatically whenever any of these 5 timeframes' candidate discovery is ever actually run for
+  the first time. No code change needed.
+- **Intraday (1m-4h)**: not applicable at all — confirmed via `universe_loader.py`'s own
+  `_WRDS_SUFFIX = {"1D","7D","3M","6M","1M","1Y"}`, no intraday timeframe is ever WRDS-sourced.
+  This contamination class simply doesn't exist for intraday data (yfinance/IBKR/Binance symbols
+  have no PERMNO-alias concept).
+
+**Backlog #7 (roll the `analysis.py` fixes to other timeframes) is now similarly resolved by the
+same finding**: since no other-timeframe candidate pool exists yet to regenerate, there's nothing
+to "roll out" beyond what's already true — `half_life_ar1`/`clean_mask`/sparse-pair-exclusion all
+live in shared `analysis.py` code every timeframe's pipeline already imports, so they're already
+"rolled out" the moment any timeframe's data gets (re)generated. The only genuinely stale
+non-1D production data remaining is `KVUE/KMB@3m` and, checked directly (confirmed same `deep_
+history_used=True` limitation), `PNC/ZION@4h` — both Aug-dated, both predate tonight's fixes, both
+can't regenerate via the standard `promote_full_universe_pairs.py` tool since they're built via
+`AnalysisPipeline._enrich_with_deep_history`'s IBKR-supplement path, not the standard `universe_
+loader.load_full_universe()` path that tool reads from. A real, bounded follow-up (2 pairs total,
+not urgent) — needs its own small IBKR-deep-history-aware regeneration approach, not built tonight.
+
+**Backlog #8 (quantify the sparse-pair exclusion's GVKEY footprint) — done, real result.** Measured
+data density (real bars ÷ nominal trading-day span) across all 15,094 GVKEY-labeled 1D symbols in
+`output/cache/wrds/`: **5,387 (35.7%) have density < 0.5, 10,260 (68.0%) have density < 0.75** —
+GVKEY-labeled (Compustat Global) symbols are meaningfully sparser than typical CRSP US-equity
+symbols at a substantial, not marginal, rate. Honest scope disclosed: this is a per-symbol proxy,
+not a literal count of pairs the sparse-pair exclusion would trigger for (that needs actual
+two-leg rolling-window behavior, more compute than this quick local check) — but at this rate,
+any GVKEY-involving pair, especially GVKEY-GVKEY pairs, carries real elevated exclusion risk. A
+genuine, quantified reason (independent of the already-queued total-return-reconstruction
+question) to reconsider whether `Config.DATA.INCLUDE_GLOBAL_WRDS_UNIVERSE`'s default-off gating
+is still the right call, or whether it's fine as-is precisely because these symbols self-select
+out via the sparse-pair exclusion regardless.

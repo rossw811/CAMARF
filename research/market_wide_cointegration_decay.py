@@ -50,6 +50,7 @@ import pandas as pd
 from analysis import UniverseFilter, _eg_worker, _benjamini_hochberg
 from config import Config
 from universe_loader import load_full_universe
+import gpu_backend
 
 log_time = lambda: time.strftime("%Y-%m-%d %H:%M:%S")
 
@@ -94,7 +95,9 @@ def run_era(symbols, price_data, start, end, min_bars=500):
     returns = aligned.diff().to_numpy().T  # (n_symbols, n_bars), matches chunked_pearson_matrix's contract
     era_symbols = list(aligned.columns)
 
-    corr = UniverseFilter.chunked_pearson_matrix(returns, batch_size=1500)
+    corr = UniverseFilter.chunked_pearson_matrix(
+        returns, batch_size=1500, use_gpu=gpu_backend.should_use_gpu(returns.shape[0])
+    )
     n = corr.shape[0]
     iu, ju = np.triu_indices(n, k=1)
     mask = np.abs(corr[iu, ju]) >= CORR_THRESHOLD

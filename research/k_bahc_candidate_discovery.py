@@ -79,6 +79,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from config import Config
 from analysis import UniverseFilter, _eg_worker, _benjamini_hochberg, CointScanner
+import gpu_backend
 from k_bahc_covariance_cleaning import clean_correlation_matrix
 from universe_loader import align_to_common_calendar, load_full_universe
 
@@ -236,6 +237,7 @@ def main():
               len(symbols), len(symbols))
     pearson = UniverseFilter.chunked_pearson_matrix(
         returns, batch_size=1500, progress_every=20, progress_label=f"[{tf_label}] ",
+        use_gpu=gpu_backend.should_use_gpu(len(symbols)),
     )
     finite_mask = np.isfinite(pearson) & ~np.eye(len(symbols), dtype=bool)
     n_candidates = int(np.sum((np.abs(pearson) >= threshold) & finite_mask)) // 2

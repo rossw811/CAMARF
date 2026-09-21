@@ -56,3 +56,11 @@
 2026-08-24 14:48:25,837  INFO      EG/BH-FDR complete in 2777.8s (46.3 min). stats={'n_tested': 993187, 'n_passed_raw': 34213, 'n_passed_fdr': 78, 'fdr_alpha': 0.05}
 2026-08-24 14:48:25,837  INFO      CONFIRMED: 78 pairs out of 996623 candidates tested
 2026-08-24 14:48:25,841  INFO      Saved 78 confirmed pairs -> output/research/full_universe_eg_confirmed_pairs_10y.parquet
+2026-09-10 21:27:32,095  INFO      Loaded 58579 candidate pairs from 4 chunk files in output/research/full_universe_correlation_prefilter_candidates_10y_chunks
+2026-09-10 21:27:32,135  INFO      Dedup (|pearson_corr|>=0.999999): dropped 332 identity-duplicate candidates, 58247 real candidates remain
+2026-09-10 21:27:32,295  INFO      Structural-pair filter (index-tracking/share-class/GVKEY-cross-listing): dropped 84 candidates, 58163 real candidates remain
+2026-09-10 21:27:32,296  INFO      Loading full merged universe for tf=1D (same source as the pre-filter stage)...
+2026-09-10 21:31:46,001  INFO      Loaded 58579 candidate pairs from 4 chunk files in output/research/full_universe_correlation_prefilter_candidates_10y_chunks
+2026-09-10 21:31:46,025  INFO      Dedup (|pearson_corr|>=0.999999): dropped 332 identity-duplicate candidates, 58247 real candidates remain
+2026-09-10 21:31:46,157  INFO      Structural-pair filter (index-tracking/share-class/GVKEY-cross-listing): dropped 84 candidates, 58163 real candidates remain
+2026-09-10 21:31:46,158  INFO      Loading full merged universe for tf=1D (same source as the pre-filter stage)...

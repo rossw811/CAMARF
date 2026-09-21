@@ -71,7 +71,7 @@ _SHARED_SCALAR_FIELDS = [
 _TF_DIRS = [
     ("1min", "1min"), ("2min", "2min"), ("3min", "3min"), ("5min", "5min"),
     ("15min", "15min"), ("30min", "30min"), ("1hr", "1h"), ("4hr", "4h"),
-    ("1day", "1D"), ("7day", "7D"), ("1mo", "1M"), ("3mo", "3m"), ("6mo", "6m"),
+    ("1day", "1D"), ("7day", "7D"), ("1mo", "1M"), ("3mo", "3M"), ("6mo", "6M"), ("1yr", "1Y"),
 ]
 
 

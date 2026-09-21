@@ -170,10 +170,21 @@ this one is the standard static full-sample screen, just finally run against the
 ~44,700-symbol universe instead of a narrow undercounted one) found 78 raw candidates; a real,
 multi-round data-integrity vetting (structural/GVKEY duplicates, WRDS ticker/PERMNO aliases, and
 a newly-characterized SPAC NAV-clustering contamination class — see `PAPER_MAGNITUDE.md` §7)
-narrowed this to 27, promoted into `output/results/1day/pairs.parquet`. Combined with the
-pre-existing `KVUE/KMB@3m`/`PNC/ZION@4h`, CAMARF's production confirmed-pair manifest
-(`research/pair_source.py`) is now **29 pairs**, not 3 — do not confuse this with the separate
-182-pair *episodic* research set above, which is a different methodology and a different file.
+narrowed this to 27, promoted into `output/results/1day/pairs.parquet`.
+
+**UPDATED 2026-09-13**: this 27/29-pair figure is superseded. The correlation-prefilter's own WRDS
+ticker↔PERMNO self-pair/alias-duplicate check (previously applied only at promotion time, on an
+already-small candidate list) was moved upstream into the correlation stage itself, catching 2,211
+alias symbols (32% of all PERMNO-labeled symbols in the ~43,883-symbol universe) BEFORE
+correlation — a real, substantial contamination source, not a theoretical one. The re-derived 1D
+production manifest, with every same-night fix applied (candidate dedup, `MIN_OVERLAP_BY_TF`
+overlap filter, WRDS alias dedup, SPAC exclusion), is now **17 pairs**. Combined with the
+pre-existing `KVUE/KMB@3m`/`PNC/ZION@4h` (unaffected by this specific fix, a separate timeframe/
+process), CAMARF's production confirmed-pair manifest (`research/pair_source.py`) is now **19
+pairs**, not 29 — do not confuse this with the separate 182-pair *episodic* research set above
+(itself now also queued for re-derivation against the corrected candidate pool, not yet done),
+which is a different methodology and a different file. Full account: `Development.md`'s
+2026-09-13 entries.
 
 ---
 

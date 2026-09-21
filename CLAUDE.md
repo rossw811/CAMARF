@@ -116,6 +116,16 @@ catch, not just a network issue.
 - **Before running a new pipeline stage or research script, self-check it against known bug
   classes first** (lookahead, in-sample circularity, gap-masking, survivorship) — don't wait
   for a dedicated audit to catch it after the fact.
+- **Never cite a number in a paper from memory or an old snapshot — re-derive it from the real
+  data via the actual production function first.** Established 2026-09-10 after this exact
+  discipline caught a real, systemic bug (`half_life_rolling` 100% NaN across 17/40 spread-series
+  files, silently zeroing every trade for those pairs, found only because a paper-claim
+  replication pass compared a traded pair against a non-traded one by hand). Run
+  `research/degenerate_column_audit.py` (scans real outputs for all-NaN/all-zero/zero-variance
+  columns) and `research/pipeline_contracts.py` (validates intermediate artifact schemas at the
+  boundary between scripts) as part of that re-derivation, not just the specific function's own
+  `debug/_verify_*.py`, which tests the function in isolation on synthetic input and would not
+  have caught this.
 - **Avoid hardcoding — derive values, don't fix them.** Worker/thread counts from
   `os.cpu_count()`, window/threshold constants from an actual empirical test of what produces a
   valid result, not a number that "seemed right" once. When you fix one hardcoded value, check

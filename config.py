@@ -69,8 +69,8 @@ class DataConfig:
         "1M",
     ]
 
-    # Human-readable labels used throughout the analysis pipeline (14 TFs — superset
-    # of IBKR's TIMEFRAMES; includes 7D/3M/6M which IBKR names differently or
+    # Human-readable labels used throughout the analysis pipeline (15 TFs — superset
+    # of IBKR's TIMEFRAMES; includes 7D/3M/6M/1Y which IBKR names differently or
     # doesn't expose as standalone bar sizes)
     TIMEFRAME_LABELS: List[str] = [
         "1m",
@@ -86,6 +86,11 @@ class DataConfig:
         "1M",
         "3M",
         "6M",
+        # "1Y" (2026-09-12, Ross-approved): annual bars, WRDS/Compustat-only (CRSP's
+        # ~100yr daily history gives ~100 meaningful yearly bars; yfinance's shorter
+        # depth wouldn't support it). Built in data_wrds.py's _RESAMPLE_RULES months
+        # ago but never wired into production until now.
+        "1Y",
     ]
 
     # WRDS-primary routing (2026-08-01, docs/HANDOFF.md's WRDS-replacement
@@ -101,7 +106,7 @@ class DataConfig:
     # already established for data_ibkr.py/ibkr_supplement_reader.py) --
     # never a merged live fetch path, per CLAUDE.md rule 2.
     WRDS_PRIMARY_ASSET_CLASSES: set = {"equity", "etf"}
-    WRDS_PRIMARY_TFS: set = {"1D", "7D", "1M", "3M", "6M"}
+    WRDS_PRIMARY_TFS: set = {"1D", "7D", "1M", "3M", "6M", "1Y"}
 
     # Compustat Global international universe (Thread I, 2026-08-12/13) -- the
     # "separate reconciliation problem not solved here" flagged above IS now
@@ -844,6 +849,19 @@ class StatsConfig:
     #   1h:  ~730 days available → 756 bars ≈ 18 months
     #   4h:  ~730 days → 252 bars ≈ 5 months
     #   1D:  full history → 252 bars ≈ 1 year
+    #
+    # "3M"/"6M" were entirely MISSING from this dict until 2026-09-12 (found while
+    # wiring in "1Y", same timeframe-label consistency audit that found the stats.py/
+    # universe_loader.py bugs) -- every 3M/6M candidate silently fell back to the
+    # generic `Config.STATS.MIN_OVERLAP_BY_TF.get(tf, 252)` default of 252 bars,
+    # which means "252 quarters" (63 years) / "252 half-years" (126 years) -- an
+    # absurdly restrictive floor no real pair could ever clear, effectively
+    # excluding 3M/6M from ever passing the overlap filter at all. Filled in with
+    # the same "require ~1-2 years of real history" heuristic used for 7D/1M above,
+    # not re-derived from data -- like every other entry here, still provisional
+    # pending the empirical PIT-safe overlap-threshold study (Ross, 2026-09-12:
+    # "i'd ideally like a test to see at what value is the asset actually
+    # traceable... rather than picking a random arbitrary number").
     MIN_OVERLAP_BY_TF: Dict[str, int] = {
         "1m":  1260,
         "2m":  1260,
@@ -856,6 +874,13 @@ class StatsConfig:
         "1D":  252,
         "7D":  52,
         "1M":  24,
+        "3M":  8,   # 2 years of quarterly bars
+        "6M":  4,   # 2 years of half-year bars
+        # "1Y" (new 2026-09-12): a decade of annual bars -- a rough floor, not
+        # empirically derived. WRDS's ~100yr history could support far more; this
+        # is exactly the question the empirical overlap-threshold study will answer
+        # for every TF in this dict, 1Y included, not just 1D's long-disputed 252.
+        "1Y":  10,
     }
 
     # KS test

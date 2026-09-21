@@ -81,6 +81,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from analysis import AnalysisPipeline, CointScanner
 from config import Config
 from data import DataAligner, DataStore
+import universe_loader
 from research.pit_pair_discovery import (
     discover_pit_confirmed_pairs_with_detail,
     _DEFAULT_CHECKPOINT_PATHS,
@@ -100,15 +101,73 @@ def _tf_dir(tf_label: str) -> str:
     return DataStore._TF_SAFE.get(tf_label, tf_label.lower())
 
 
-def _load_aligned(sym_a: str, sym_b: str, tf_label: str, as_of_date=None):
-    """Loads both symbols' cached data, optionally truncated to
+_full_universe_cache: dict = {}
+
+
+def _get_full_universe(tf_label: str) -> dict:
+    """Lazily loads and memoizes (in-process) universe_loader.load_full_universe
+    for `tf_label`, ONCE per process regardless of how many pairs call this --
+    load_full_universe's own on-disk memo cache (use_memo_cache=True, default
+    since 2026-08-23) makes even the first call cheap if a prior script already
+    built it this run. See _load_aligned's docstring for why this fallback
+    exists at all."""
+    if tf_label not in _full_universe_cache:
+        _full_universe_cache[tf_label] = universe_loader.load_full_universe(
+            tf_label=tf_label, use_memo_cache=True
+        )
+    return _full_universe_cache[tf_label]
+
+
+def _load_symbol(symbol: str, tf_label: str, preloaded: dict = None):
+    """DataStore.load(symbol, tf_label) first (BUG found 2026-09-14: cheap,
+    but scoped to the yfinance/WRDS-US-ticker cache only -- it silently
+    returns None for the PERMNO<n>-alias and GVKEY<n>_NNW-labeled symbols
+    Tier 3's episodic scan draws from the full ~44,700-symbol WRDS-merged
+    universe, per CLAUDE.md's own standing direction to use that universe
+    "everywhere a script can". Verified directly: of 1,382 real Tier-3-
+    confirmed pairs, 0/388 with exactly one placeholder-labeled leg and
+    0/768 with both legs placeholder-labeled built successfully before this
+    fix -- 84% of the confirmed set was being silently dropped, not a small
+    edge case.
+
+    `preloaded` (added 2026-09-15, BUG found live on CachyOS): an optional
+    {symbol: DataFrame} map of ALREADY-RESOLVED placeholder symbols, checked
+    BEFORE falling back to _get_full_universe. This exists because
+    _get_full_universe's in-process memoization is per-PROCESS, not
+    per-worker-pool -- when this function runs inside a ProcessPoolExecutor
+    worker (build_adapter_rows' n_workers>1 path), each worker is a SEPARATE
+    OS process with its own memory, so "memoized once per process" became
+    "loaded once per worker that happens to need it." Confirmed as the real
+    cause of 4 consecutive `BrokenProcessPool`/OOM-killer crashes on CachyOS
+    (dmesg: `Out of memory: Killed process ... (python)`) -- the full-universe
+    memo-cache pickle is 8.6GB; with most Tier-3 pairs needing this fallback
+    and 15 workers, several workers loading their own independent 8.6GB copy
+    within the same few seconds spiked well past the machine's 46GB RAM.
+    build_adapter_rows now resolves every NEEDED placeholder symbol ONCE in
+    the main process before dispatching any worker tasks, and passes only
+    that small subset dict into each task -- no worker should ever need to
+    call _get_full_universe itself anymore, but the fallback stays as a
+    defensive backstop (e.g. the n_workers<=1 path, or a symbol missed by
+    the pre-resolve step) rather than being removed outright."""
+    if preloaded is not None and symbol in preloaded:
+        return preloaded[symbol]
+    df = DataStore.load(symbol, tf_label)
+    if df is not None and not df.empty:
+        return df
+    full_universe = _get_full_universe(tf_label)
+    return full_universe.get(symbol)
+
+
+def _load_aligned(sym_a: str, sym_b: str, tf_label: str, as_of_date=None, preloaded: dict = None):
+    """Loads both symbols' cached data (see _load_symbol for the PERMNO/GVKEY
+    fallback and what `preloaded` is for), optionally truncated to
     `as_of_date`, and aligns them via DataAligner.align_universe
     (drop_data_gap_rows=True -- the single-pair/real-timestamp-join
-    convention pit_wfa.py::backtest_pair_on_test_window already
-    established, not the cross-symbol dense-matrix default). Returns None
-    if either symbol is missing or there's too little overlap to bother."""
-    df_a = DataStore.load(sym_a, tf_label)
-    df_b = DataStore.load(sym_b, tf_label)
+    convention pit_wfa.py::backtest_pair_on_test_window already established,
+    not the cross-symbol dense-matrix default). Returns None if either
+    symbol is missing or there's too little overlap to bother."""
+    df_a = _load_symbol(sym_a, tf_label, preloaded=preloaded)
+    df_b = _load_symbol(sym_b, tf_label, preloaded=preloaded)
     if df_a is None or df_b is None or df_a.empty or df_b.empty:
         return None
     if as_of_date is not None:
@@ -160,11 +219,15 @@ def write_spread_series(sym_a: str, sym_b: str, tf_label: str, per_bar: dict) ->
     return out_path
 
 
-def build_one_row(sym_a: str, sym_b: str, tf_label: str, as_of_date, source: str, detail: dict):
+def build_one_row(sym_a: str, sym_b: str, tf_label: str, as_of_date, source: str, detail: dict,
+                   preloaded: dict = None):
     """Returns a dict row (or None if data is insufficient) following the
     module's stated contract. `detail` is the confirmation-detail dict
-    from discover_pit_confirmed_pairs_with_detail (n_windows_tested etc.)."""
-    train_aligned = _load_aligned(sym_a, sym_b, tf_label, as_of_date=as_of_date)
+    from discover_pit_confirmed_pairs_with_detail (n_windows_tested etc.).
+    `preloaded`: see _load_symbol's docstring -- pre-resolved placeholder-
+    symbol DataFrames, avoids each worker independently re-loading the
+    multi-GB full-universe fallback."""
+    train_aligned = _load_aligned(sym_a, sym_b, tf_label, as_of_date=as_of_date, preloaded=preloaded)
     if train_aligned is None:
         return None
     # coint_fraction_rolling is NOT computed inside _build_pair_result --
@@ -182,7 +245,7 @@ def build_one_row(sym_a: str, sym_b: str, tf_label: str, as_of_date, source: str
         return None
     train_result, _train_per_bar = train_built
 
-    full_aligned = _load_aligned(sym_a, sym_b, tf_label, as_of_date=None)
+    full_aligned = _load_aligned(sym_a, sym_b, tf_label, as_of_date=None, preloaded=preloaded)
     if full_aligned is None:
         return None
     full_built = AnalysisPipeline._build_pair_result(
@@ -209,8 +272,8 @@ def build_one_row(sym_a: str, sym_b: str, tf_label: str, as_of_date, source: str
 
 
 def _build_one_row_worker(args):
-    sym_a, sym_b, tf_label, as_of_date, source, detail = args
-    return build_one_row(sym_a, sym_b, tf_label, as_of_date, source, detail)
+    sym_a, sym_b, tf_label, as_of_date, source, detail, preloaded = args
+    return build_one_row(sym_a, sym_b, tf_label, as_of_date, source, detail, preloaded=preloaded)
 
 
 def _resume_checkpoint_path(source: str) -> str:
@@ -268,9 +331,37 @@ def build_adapter_rows(
 
     pending = [d for d in details if (d["symbol_a"], d["symbol_b"]) not in done_keys]
 
+    # Pre-resolve ALL placeholder-labeled (PERMNO<n>/GVKEY<n>_NNW) symbols
+    # needed by `pending` ONCE, in this (main) process, before any worker
+    # task is built -- see _load_symbol's docstring for the real OOM this
+    # fixes: _get_full_universe's memoization is per-PROCESS, so without
+    # this pre-resolve step, multiple ProcessPoolExecutor workers each
+    # independently loading their own 8.6GB copy of the full-universe cache
+    # near-simultaneously blew past CachyOS's 46GB RAM (confirmed via dmesg
+    # OOM-killer log, 2026-09-15). DataStore.load is cheap (the whole reason
+    # placeholder symbols need a fallback at all is that it's scoped to the
+    # real-ticker cache), so checking every pending symbol here costs little;
+    # only the (hopefully rare, but currently common for Tier 3) subset that
+    # DataStore.load can't resolve triggers the expensive full-universe read,
+    # and only ONCE regardless of how many pairs/workers need it.
+    needed_symbols = set()
+    for d in pending:
+        for sym in (d["symbol_a"], d["symbol_b"]):
+            df = DataStore.load(sym, tf_label)
+            if df is None or df.empty:
+                needed_symbols.add(sym)
+    preloaded = {}
+    if needed_symbols:
+        print(f"{source}: pre-resolving {len(needed_symbols)} placeholder-labeled symbols via "
+              f"the full-universe loader (ONCE, main process) before dispatching any worker tasks")
+        full_universe = _get_full_universe(tf_label)
+        preloaded = {s: full_universe[s] for s in needed_symbols if s in full_universe}
+        del full_universe  # free the 8.6GB dict immediately, keep only the small needed subset
+
     if n_workers <= 1:
         for d in pending:
-            row = build_one_row(d["symbol_a"], d["symbol_b"], tf_label, as_of_date, source, d)
+            row = build_one_row(d["symbol_a"], d["symbol_b"], tf_label, as_of_date, source, d,
+                                 preloaded=preloaded)
             if row is not None:
                 rows.append(row)
                 _save_progress(progress_path, rows)
@@ -283,7 +374,16 @@ def build_adapter_rows(
     # WRDS/1D pairs alone took ~28s/pair, ~5 hours sequential). Each worker
     # calls CointScanner.rolling_fraction with n_workers=1 internally
     # (build_one_row's own call) to avoid nested pool spawning.
-    tasks = [(d["symbol_a"], d["symbol_b"], tf_label, as_of_date, source, d) for d in pending]
+    #
+    # Each task carries only THAT PAIR's own preloaded symbols (0-2 small
+    # DataFrames), not the full `preloaded` dict -- deliberately, so a task
+    # submission's pickle size stays proportional to what one pair actually
+    # needs, not to how many placeholder symbols exist across the whole run.
+    tasks = [
+        (d["symbol_a"], d["symbol_b"], tf_label, as_of_date, source, d,
+         {s: preloaded[s] for s in (d["symbol_a"], d["symbol_b"]) if s in preloaded})
+        for d in pending
+    ]
     completed_since_save = 0
     with ProcessPoolExecutor(max_workers=n_workers) as pool:
         futures = {pool.submit(_build_one_row_worker, t): t for t in tasks}

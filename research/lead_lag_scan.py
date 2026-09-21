@@ -70,13 +70,18 @@ from analysis import Config
 from data import _clean_close, _gap_aware_returns
 
 _TF_DIRS = [
-    "1min", "2min", "3min", "5min", "15min", "30min", "1hr", "4hr",
-    "7day", "1mo", "3mo", "6mo",
+    # "1day" (1D) was MISSING here until 2026-09-12 (found while building the
+    # empirical overlap-threshold PIT test, same timeframe-label consistency
+    # audit that found the stats.py/universe_loader.py bugs) -- this script
+    # silently never scanned the single most important production timeframe
+    # for lead-lag effects, with no comment or flag explaining the omission.
+    "1min", "2min", "3min", "5min", "15min", "30min", "1hr", "4hr", "1day",
+    "7day", "1mo", "3mo", "6mo", "1yr",
 ]
 _DIR_TO_LABEL = {
     "1min": "1m", "2min": "2m", "3min": "3m", "5min": "5m", "15min": "15m",
-    "30min": "30m", "1hr": "1h", "4hr": "4h", "7day": "7D", "1mo": "1M",
-    "3mo": "3M", "6mo": "6M",
+    "30min": "30m", "1hr": "1h", "4hr": "4h", "1day": "1D", "7day": "7D",
+    "1mo": "1M", "3mo": "3M", "6mo": "6M", "1yr": "1Y",
 }
 
 _MIN_CORR_N = 30

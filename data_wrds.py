@@ -84,6 +84,7 @@ Output
 """
 import argparse
 import glob
+import json
 import logging
 import os
 import re
@@ -206,6 +207,76 @@ def resolve_permnos_bulk(db, tickers: List[str], as_of_date: Optional[str] = Non
                         f"namedt ({sorted(int(p) for p in distinct_permnos)}) -- "
                         f"refusing to guess, excluded from result")
     return result
+
+
+# Manually verified aliases WRDS's own ticker resolution can't disambiguate on its
+# own (genuinely CRSP-ambiguous ticker, confirmed via direct price-data comparison
+# instead) -- found 2026-08-24, `research/promote_full_universe_pairs.py`. Kept here,
+# the single source of truth, now that both that script and `research/full_universe_
+# correlation_prefilter.py` (2026-09-13) canonicalize symbols via this module.
+MANUAL_VERIFIED_PERMNO_ALIASES: Dict[str, str] = {"PERMNO52090": "MKC"}
+
+# Known same-company share-class pairs (voting/non-voting, etc.) that are real,
+# economically distinct pairs, NOT identity duplicates -- must not be caught by the
+# self-pair/alias-duplicate logic below even after canonicalization maps one leg's
+# PERMNO alias onto the other's ticker.
+KNOWN_SHARE_CLASS_PAIRS = {frozenset(("WLY", "WLYB")), frozenset(("MKC", "PERMNO89155"))}
+
+
+def resolve_symbol_canonicalization(
+    db,
+    symbols: List[str],
+    alias_file: Optional[str] = None,
+) -> Dict[str, str]:
+    """
+    Returns {permno_alias_symbol: canonical_ticker} for every "PERMNO<n>"-labeled
+    symbol in `symbols` that is a literal alias of an already-present plain ticker
+    ALSO in `symbols` -- e.g. a merged universe can carry both "VRT" and
+    "PERMNO17987" as separate symbols when PERMNO17987 IS VRT's own permno, making
+    any pair built from them a security cointegrated with itself under an alias.
+    Symbols not present as a key in the returned dict are already canonical --
+    callers should treat those as-is, not require an explicit self-mapping.
+
+    Extracted 2026-09-13 (backlog item #4, docs/HANDOFF.md, Ross-approved) from
+    `research/promote_full_universe_pairs.py`'s original inline version (2026-08-24)
+    into this single shared location, so `full_universe_correlation_prefilter.py`
+    can dedupe symbols BEFORE the expensive correlation/EG stages (preventing
+    self-pairs and alias-duplicates from ever being generated, not just filtering
+    them out of an already-small candidate list afterward), while `promote_full_
+    universe_pairs.py` keeps using the identical logic rather than a second,
+    independently-maintained copy (the exact kind of drift tonight's `stats.py`
+    `_TF_DIR_MAP` bug came from).
+
+    `db=None` requires `alias_file` (a machine with only cached price data, no WRDS
+    auth, can't run `resolve_permnos_bulk` itself -- same constraint the original
+    version had).
+    """
+    all_syms_now = sorted(set(symbols))
+    plain_syms = [s for s in all_syms_now if not s.startswith("PERMNO") and not s.startswith("GVKEY")]
+    permno_syms = {s for s in all_syms_now if s.startswith("PERMNO")}
+    canon: Dict[str, str] = {}
+
+    if alias_file:
+        with open(alias_file) as f:
+            precomputed = json.load(f)
+        for alias, ticker in precomputed.items():
+            if alias in permno_syms:
+                canon[alias] = ticker
+    elif db is not None:
+        resolved = resolve_permnos_bulk(db, plain_syms)
+        for ticker, permno in resolved.items():
+            alias = f"PERMNO{permno}"
+            if alias in permno_syms:
+                canon[alias] = ticker
+    else:
+        raise ValueError("resolve_symbol_canonicalization needs either a live WRDS "
+                          "connection (db=...) or a precomputed alias_file, not neither.")
+
+    for alias, ticker in MANUAL_VERIFIED_PERMNO_ALIASES.items():
+        if alias in permno_syms and alias not in canon:
+            canon[alias] = ticker
+
+    return canon
 
 
 def fetch_symbols_bulk(db, permno_by_symbol: Dict[str, int], start: Optional[str] = None,

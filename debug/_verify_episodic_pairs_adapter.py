@@ -44,6 +44,53 @@ def check(name, cond):
     return cond
 
 
+def test_placeholder_symbol_fallback():
+    """BUG found 2026-09-14: DataStore.load() returns None for WRDS
+    PERMNO<n>-alias / GVKEY<n>_NNW-labeled symbols (only covers the
+    yfinance/WRDS-US-ticker cache), silently dropping 84% of real Tier-3
+    episodic-confirmed pairs. Fixed via a fallback to
+    universe_loader.load_full_universe in _load_symbol. Verified here
+    without touching real disk/network: monkeypatch BOTH DataStore.load
+    (returns None, simulating the real failure) and
+    universe_loader.load_full_universe (returns a fake full-universe dict
+    containing the placeholder symbol) -- adapter._load_aligned must
+    successfully build via the fallback path."""
+    df_a, df_b, dates, cutoff_date = make_pre_post_cutoff_pair()
+    fake_universe = {"GVKEY000001_01W": df_a, "PERMNO99999": df_b}
+    calls = {"n": 0}
+
+    def fake_load_none(symbol, tf_label):
+        return None
+
+    def fake_load_full_universe(tf_label, use_memo_cache=True):
+        calls["n"] += 1
+        return fake_universe
+
+    orig_ds_load = adapter.DataStore.load
+    orig_full_universe = adapter.universe_loader.load_full_universe
+    adapter.DataStore.load = staticmethod(fake_load_none)
+    adapter.universe_loader.load_full_universe = fake_load_full_universe
+    adapter._full_universe_cache.clear()
+
+    results = []
+    try:
+        print("\n=== 4. Placeholder-symbol (PERMNO/GVKEY) fallback to load_full_universe ===")
+        aligned = adapter._load_aligned("GVKEY000001_01W", "PERMNO99999", "1h", as_of_date=None)
+        results.append(check("fallback path builds a real aligned result", aligned is not None))
+        results.append(check("load_full_universe called exactly once (memoized, not per-symbol)",
+                              calls["n"] == 1))
+        # A second call for the SAME tf_label must reuse the in-process cache,
+        # not call load_full_universe again.
+        adapter._load_aligned("GVKEY000001_01W", "PERMNO99999", "1h", as_of_date=None)
+        results.append(check("second call reuses the in-process cache (still exactly 1 call)",
+                              calls["n"] == 1))
+    finally:
+        adapter.DataStore.load = orig_ds_load
+        adapter.universe_loader.load_full_universe = orig_full_universe
+        adapter._full_universe_cache.clear()
+    return results
+
+
 def make_pre_post_cutoff_pair(n_pre=300, n_post=300, seed=0):
     """Two symbols that are UNRELATED (independent random walks) up to the
     cutoff, then become strongly cointegrated (shared stochastic trend)
@@ -155,9 +202,86 @@ def main():
         data_mod.DataStore.load = original_load
         adapter.DataStore.load = original_load
 
+    results.extend(test_placeholder_symbol_fallback())
+    results.extend(test_build_adapter_rows_resolves_placeholder_symbols_once())
+
     n_pass = sum(results)
     print(f"\n{n_pass}/{len(results)} checks passed")
     return n_pass == len(results)
+
+
+def test_build_adapter_rows_resolves_placeholder_symbols_once():
+    """BUG found live on CachyOS 2026-09-15: with n_workers>1, each
+    ProcessPoolExecutor worker independently called _get_full_universe
+    (per-PROCESS memoization, not per-pool), so multiple workers loading
+    their own 8.6GB copy of the full-universe cache near-simultaneously
+    OOM-killed the machine (confirmed via dmesg). Fix: build_adapter_rows
+    now pre-resolves every NEEDED placeholder symbol ONCE in the main
+    process before building any task, passing only each pair's own small
+    subset into its task. Verified here (n_workers=1, so the fix's
+    single-call invariant is exercised without needing to also mock a real
+    process pool) with TWO pairs that share a placeholder symbol -- if the
+    old per-call-site behavior were still in effect, resolving it while
+    building each pair's task would call load_full_universe multiple times;
+    the fix must call it exactly once for the whole run regardless of how
+    many pairs need it."""
+    df_a, df_b, dates, cutoff_date = make_pre_post_cutoff_pair(seed=2)
+    df_c, df_d, _, _ = make_pre_post_cutoff_pair(seed=3)
+    real_cache = {"REALA": df_a, "PERMNO88888": df_b, "REALC": df_c}
+    fake_universe = {"PERMNO88888": df_b, "GVKEY000002_01W": df_d}
+    calls = {"n": 0}
+
+    def fake_load(symbol, tf_label):
+        return real_cache.get(symbol).copy() if symbol in real_cache else None
+
+    def fake_load_full_universe(tf_label, use_memo_cache=True):
+        calls["n"] += 1
+        return fake_universe
+
+    def fake_discover(as_of_date, alpha, min_windows_confirmed, checkpoint_paths):
+        return [
+            {"symbol_a": "REALA", "symbol_b": "PERMNO88888",
+             "n_windows_tested": 1, "n_windows_fdr_rejected": 1},
+            {"symbol_a": "REALC", "symbol_b": "GVKEY000002_01W",
+             "n_windows_tested": 1, "n_windows_fdr_rejected": 1},
+        ]
+
+    orig_ds_load = adapter.DataStore.load
+    orig_full_universe = adapter.universe_loader.load_full_universe
+    orig_discover = adapter.discover_pit_confirmed_pairs_with_detail
+    orig_out_dir = adapter._OUT_DIR
+    orig_results_dir = adapter._RESULTS_DIR
+    tmp_dir = tempfile.mkdtemp()
+    adapter.DataStore.load = staticmethod(fake_load)
+    adapter.universe_loader.load_full_universe = fake_load_full_universe
+    adapter.discover_pit_confirmed_pairs_with_detail = fake_discover
+    adapter._OUT_DIR = tmp_dir
+    adapter._RESULTS_DIR = tmp_dir
+    adapter._full_universe_cache.clear()
+
+    results = []
+    try:
+        print("\n=== 5. build_adapter_rows pre-resolves placeholder symbols ONCE, not per-pair ===")
+        df_out = adapter.build_adapter_rows(
+            "test_source", "1h", checkpoint_paths=(), as_of_date=dates[-1], n_workers=1,
+        )
+        print(f"    load_full_universe call count: {calls['n']}")
+        results.append(check(
+            "load_full_universe called exactly once across 2 pairs needing placeholder symbols",
+            calls["n"] == 1,
+        ))
+        print(f"    rows built: {len(df_out)}")
+        results.append(check("at least one row built despite placeholder symbols involved",
+                              len(df_out) >= 1))
+    finally:
+        adapter.DataStore.load = orig_ds_load
+        adapter.universe_loader.load_full_universe = orig_full_universe
+        adapter.discover_pit_confirmed_pairs_with_detail = orig_discover
+        adapter._OUT_DIR = orig_out_dir
+        adapter._RESULTS_DIR = orig_results_dir
+        adapter._full_universe_cache.clear()
+        shutil.rmtree(tmp_dir, ignore_errors=True)
+    return results
 
 
 if __name__ == "__main__":

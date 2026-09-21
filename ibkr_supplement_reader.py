@@ -32,6 +32,7 @@ _TF_SAFE: dict = {
     "1M": "1mo",
     "3M": "3mo",
     "6M": "6mo",
+    "1Y": "1yr",
 }
 
 SUPPLEMENT_DIR = os.path.join(

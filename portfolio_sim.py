@@ -66,6 +66,7 @@ _RESULTS_DIR = os.path.join(_ROOT, "output", "results")
 _TF_SAFE = {
     "1m": "1min", "2m": "2min", "3m": "3min", "5m": "5min", "15m": "15min", "30m": "30min",
     "1h": "1hr", "4h": "4hr", "1D": "1day", "7D": "7day", "1M": "1mo", "3M": "3mo", "6M": "6mo",
+    "1Y": "1yr",
 }
 
 _price_cache = {}

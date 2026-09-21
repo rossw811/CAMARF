@@ -39,9 +39,24 @@ check(
     (covid["vix_regime"] == "crisis").any(),
     f"max vix={covid['vix_close'].max()}",
 )
+# recession_state (NBER) and recession_state_realtime (Sahm Rule) both use
+# genuinely, correctly lagged real-world data -- NOT market-reactive like
+# VIX or credit spreads. Root-caused 2026-09-21 (was previously flagged as
+# "needs real investigation" in HANDOFF.md): the April 2020 UNRATE print
+# (14.8%, the actual Sahm-rule trigger) wasn't RELEASED until 2020-05-11,
+# and NBER didn't officially announce the recession start until 2020-06-08
+# (visible here as recession_state flipping on 2020-06-29, after its own
+# ~120-day point-in-time staleness lag). Neither could possibly register
+# within a window that ends 2020-04-30 -- that's real point-in-time
+# correctness working as designed, not a macro.py bug. A separate, wider
+# window covers the genuine (lagged) confirmation instead of the market
+# panic itself; the narrow `covid` window above stays as-is for the
+# market-reactive checks (vix_regime, credit_regime_proxy) where it's the
+# right scope.
+covid_confirmed = df.loc["2020-02-20":"2020-09-30"]
 check(
     "2020 COVID: recession_state hits contraction",
-    (covid["recession_state"] == "contraction").any(),
+    (covid_confirmed["recession_state"] == "contraction").any(),
 )
 
 # 2022 yield curve inversion
@@ -154,8 +169,8 @@ check(
 )
 check(
     "2020 COVID: recession_state_realtime hits contraction_risk",
-    (covid["recession_state_realtime"] == "contraction_risk").any(),
-    f"max sahm={covid['sahm_indicator'].max():.2f}",
+    (covid_confirmed["recession_state_realtime"] == "contraction_risk").any(),
+    f"max sahm={covid_confirmed['sahm_indicator'].max():.2f}",
 )
 stable_2017_19 = df.loc["2017-01-01":"2019-06-30"]
 check(

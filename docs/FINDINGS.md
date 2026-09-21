@@ -3934,3 +3934,224 @@ Files: `data_sec_edgar.py` (new), `debug/_verify_data_sec_edgar.py` (new, 3/3), 
 (new), `debug/_verify_data_finra.py` (new, 5/5), `output/cache/sec_edgar/spac_universe_sic6770.
 parquet` (new), `output/cache/finra/short_interest_20260814.parquet` (new), `.gitattributes`
 (new), `.gitignore` (episodic-scan retry-log noise excluded).
+
+---
+
+## 68. Squeeze/Momentum Entry Confirmation — a Missing Entry Criterion Found, Built as 3 Gated
+Comparison Arms, and Validated with the Strongest Statistical Evidence in the Project [2026-09-15/20]
+
+**Motivating question, from Ross directly**: after the episodic-confirmed pair pool (1,375
+pairs, §7.20/PAPER.md) showed a negative capital-constrained Sharpe despite each pair
+individually clearing its own PIT-safe confirmation gate, Ross asked whether the problem could
+be backtest METHODOLOGY rather than pair selection — specifically, "the lack of squeeze and
+momentum" in the entry criteria. Investigated directly rather than assumed: read `backtest.py`'s
+actual entry-decision code line by line. Confirmed the entry gate is, and always had been, purely
+`|z_rolling| >= ENTRY_ZSCORE` plus a half-life floor and a set of opt-in STORM variants (regime-
+strength gate, decay-rate gate) that test the STATISTICAL cointegration relationship's trend, not
+market-structure conditions. No volatility-squeeze or price-momentum confirmation existed
+anywhere, default or optional.
+
+**A second discovery while checking whether this data even existed**: `analysis.py`'s
+`VolumeStructure` class (pipeline step 6) already computes a real TTM-style squeeze indicator
+(Bollinger Band width / Keltner Channel width, <1.0 = squeeze) and RSI-14 momentum, per symbol,
+per timeframe — its own module docstring literally lists "squeeze indicator, cross-leg RSI
+divergence" among its outputs. These are saved to `output/results/{tf}/features_{symbol}.
+parquet` for every retained symbol, but grep across the entire codebase found **zero references**
+to either column outside their own computation and `RegimeClassifier`'s internal feature set. The
+signal was real, computed, and persisted — it simply never reached the entry-decision code or the
+`ml.py` meta-labeler's feature set. This is the concrete mechanism behind Ross's hypothesis, not
+a speculative gap.
+
+**A real data-quality detour, resolved**: the saved `features_{symbol}.parquet` files were found
+to be ~72-83% NaN on `squeeze_indicator` for a sample symbol (PNC/1hr) — traced to the file being
+STALE (26,811 rows spanning a much wider, now-gone extended-hours date range vs. the current
+`DataStore` cache's 4,590 rows for the same symbol/timeframe), not a bug in the squeeze/RSI
+formula itself. Fix: `research/squeeze_momentum_features.py` (new) recomputes both indicators
+FRESH from the current `DataStore` cache and merges them additively into the existing
+`spread_series_{A}_{B}.parquet` files `backtest.py`/`ml.py` actually read — sidesteps the
+staleness entirely. Verified empirically on a real 1D pair (PFG/PRU): NaN rate dropped to
+0-0.3%. Run for real against all 1,375 Purity pairs: 1,226 augmented, 149 skipped (matches the
+pool's already-known ~150-pair spread_series-file gap, not a new issue).
+
+**Built as 3 independently-testable `backtest.py` STORM comparison arms**, per Ross's explicit
+"test all three options" instruction, not one bundled gate:
+- `--storm-squeeze-gate`: both legs' `squeeze_indicator < 1.0` at entry.
+- `--storm-momentum-gate`: cross-leg RSI-divergence 5-bar velocity must agree with the reversion
+  direction the entry z-score implies (z>0 confirmed by the divergence velocity being negative —
+  the higher leg's relative momentum cooling — and the symmetric opposite for z<0).
+- `--storm-squeeze-momentum-gate`: both conditions together.
+
+**Results, against the 1,375-pair Purity pool (the same pool that showed -0.218 unconstrained /
+-0.7584 capital-constrained Sharpe ungated)**:
+
+| Gate | IS unconstrained | OOS unconstrained | IS capsim | OOS capsim |
+|------|-------------------:|---------------------:|------------:|-------------:|
+| squeeze-gate      | +0.3459 | +0.4497 | -0.4944 | -0.3804 |
+| momentum-gate     | +0.3944 | +0.2369 | -0.1462 | -0.8200 |
+| squeeze+momentum  | +0.4304 | +0.5015 | -0.4347 | -0.3257 |
+
+**All 3 gates flip the unconstrained Sharpe from negative to positive, and all 3 hold positive
+out-of-sample** — squeeze-gate and the combined gate actually show a STRONGER OOS Sharpe than IS
+(unusual; only one holdout window has been tested per gate so far, flagged as worth re-checking
+across more windows before treating that specific pattern as reliable). The capital-constrained
+headline metric stays negative across all 6 (gate × split) combinations and does not track the
+unconstrained result cleanly — see the open methodology question below.
+
+**The strongest statistical evidence in this project to date that a result is real, not sampling
+luck**: built `research/squeeze_momentum_signal_validation.py`, a random-subsample control. For
+each gate, drew 2,000 random subsamples of the exact same trade COUNT from the full ungated
+Purity trade set (no cherry-picking which trades — pure size-matching) and computed each draw's
+Sharpe via `portfolio_math.sharpe_from_trades` (the identical function `backtest.py`'s own
+`aggregate_portfolio` uses, so every number is directly comparable to the real backtest runs, not
+a separately-invented metric). **All 3 gates' real Sharpe landed at the 100.0th percentile of
+2,000 random same-size draws each — p≈0.0000 for all three, not one of 6,000 total random draws
+matched any gate's real performance.** The null distributions themselves were centered negative
+(means -0.14 to -0.19), matching the ungated baseline — direct proof these gates select a
+genuinely different, better population of trades, not merely a smaller, lower-variance sample of
+the same one.
+
+**Two real, unresolved open questions, not glossed over**:
+1. **The capital-constrained headline metric doesn't track the demonstrated edge.** A direct test
+   of "does more capital fix it" was NEGATIVE — a controlled sweep across 4 account sizes
+   ($100k/$250k/$500k/$1M) on momentum-gate showed a noisy, non-monotonic relationship (Sharpe
+   -0.15/-0.33/-0.72/-0.52), not a clean trend in either direction. Most likely mechanism (not
+   confirmed): `--capital-sim`'s strictly chronological trade-taking may be structurally
+   mismatched with a large, gated signal pool regardless of account size — which specific trades
+   get sampled may matter more than how many. A broader/finer sweep (`research/
+   capital_size_sweep.py`, built, 12-point grid, ready) was queued next per Ross's own explicit
+   ordering (validate signal → capital sweep → the Tier2 parameter screen).
+2. **`ml.py`'s classifier does NOT improve from adding these features.** `squeeze_min`/
+   `rsi_diff_velocity` were added to `ml.py`'s `_FEATURE_COLS` (both get real, non-zero
+   permutation importance — 0.042/0.055, comparable to `hedge_ratio_drift`'s 0.045) but overall
+   holdout accuracy on the episodic pool barely moved (54.24%→54.06%, still below the 58.98%
+   majority-class baseline). Read as informative, not contradictory: a signal can be a strong hard
+   FILTER (exclude the worst-conditioned entries entirely) while being too weak a PREDICTOR to
+   move a classifier trained across the full, ungated population — filtering and probabilistic
+   prediction are different uses of the same underlying signal and don't have to agree.
+
+Files: `research/squeeze_momentum_features.py` (new), `research/squeeze_momentum_signal_validation.
+py` (new), `research/capital_size_sweep.py` (new, not yet run for real as of this writing),
+`backtest.py` (3 new STORM flags + gate logic), `ml.py` (2 new `_FEATURE_COLS` entries),
+`debug/_verify_squeeze_momentum_features.py` (new, 10/10), `debug/_verify_squeeze_momentum_gate_
+logic.py` (new, 15/15), `debug/_verify_ml_squeeze_momentum_features.py` (new, 11/12 + 1 honest
+fixture-dependent skip), `debug/_verify_squeeze_momentum_signal_validation.py` (new, 6/6),
+`debug/_verify_capital_size_sweep.py` (new, 19/19). Full run-by-run numbers and dates in
+`docs/HANDOFF.md`'s 2026-09-15/16/19/20 entries.
+
+## 69. Capital-Constraint Luck Check, Hierarchical DSR, and Tier 2 Completion — a Genuine "Chosen
+Trades Are Worse Than Skipped" Result, a DSR Correction That Mostly Doesn't Change the Verdict, and
+a Real Sweep-Design Bug Found in the Same Parameter Screen It Was Diagnosing [2026-09-21]
+
+**Motivating request, from Ross directly**: responding to #68's still-negative capital-constrained
+Sharpe despite the unconstrained squeeze/momentum edge, and to the pooled-N=990 Deflated Sharpe
+Ratio result showing 0.0000 across every checked label (`trial_registry.json`, merged local +
+CachyOS): *"i don't think the mechanistically-motivated finding should be penalized but i want
+your thoughts... for the small account overfitting we need to add a system similar to DSR to
+penalize for lucky trades... factoring in trades which would've happened had we had more
+money... let me hear your thoughts."* Two systems approved and built in response ("i like your
+ideas let's execute them"), plus a third, unrelated item (the Tier 2 sensitivity screen launched
+the same night) that surfaced its own real bug while being investigated.
+
+**1. `research/capital_constraint_luck_check.py`: does `--capital-sim` preferentially admit
+better trades, or just whichever ones fit the budget?** Two real, complementary checks: (a) recover
+the SKIPPED trade set as the anti-join between a gate's full unconstrained trade population and its
+own capsim taken-trades file, compare taken-vs-skipped Sharpe/mean P&L on the SAME original-size
+P&L basis; (b) reuse #68's random-subsample-control machinery to test whether the taken subset's
+Sharpe is a statistical outlier vs. random same-size draws from the full pool.
+
+A real bug was found and fixed on the FIRST real run, before trusting the result: the anti-join key
+(`symbol_a/symbol_b/tf/entry_time/exit_time/entry_spread`) matched 632 rows against 415 taken
+trades — more matches than trades exist. Root cause: `full_trades` contains TWO rows per real
+pair/entry/exit opportunity, one per `hedge_method` (`ols`/`kalman`), sharing an IDENTICAL
+`entry_spread` to full float precision (computed upstream independent of hedge method) despite
+different `hedge_ratio`/`n_shares_b` — so every taken trade's key matched both its ols and kalman
+siblings for ~93% of the population (89,178/95,485 rows collided). Fixed by adding `n_shares_b`
+(present in both files, differs by hedge method) to the key — confirmed 0 remaining collisions,
+re-run matched the expected 415/415.
+
+**Result, momentum-gate $100k IS, survived the fix nearly unchanged (a good sign it wasn't an
+artifact of the collision)**: taken-trade Sharpe -0.2657 vs. skipped-trade Sharpe +0.3951 (`taken_
+better_than_skipped: False`); the taken subset sits at the 0.7th percentile of 2,000 random
+same-size draws (one-tailed p=0.9935). **The capital constraint is not merely uninformative about
+trade quality here — it's mildly anti-correlated with it**, admitting a subset that's worse than
+both what it skipped and 99.35% of random chance. A plausible (not yet tested) mechanism: trades
+with a larger real edge may also carry larger risk-based position sizes, exhausting available
+capital faster and displacing what would otherwise be later, equally-good trades — chronological
+first-come-first-served capital allocation, not deliberate quality filtering.
+
+**2. `research/hierarchical_dsr.py`: does pooling all 990 trials into one DSR correction over-
+penalize labels that were never part of most of those trials?** Built a transparent, ordered,
+first-match-wins regex classifier grouping every `trial_registry.json` label into one of 19
+methodologically-independent families (per-swept-constant sensitivity families, squeeze_momentum_
+gate, entry_zscore_override, storm_other, portfolio_construction, capital_sizing_scheme,
+pit_confirmation, layer2_baseline, baseline) — e.g. the ~250 parameter-sensitivity grid points
+answering "is the result sensitive to STOP_ZSCORE" shouldn't inflate the "chances tried" count for
+a label that was never part of that sweep. Reuses `deflated_sharpe.py`'s own math functions
+unchanged; only the `n_trials`/`Var[SR]` feeding into them changes.
+
+The first real run caught two of its own bugs before being trusted: 29 trials (`layer1_storm_
+pairsoverride`/`_holdout` variants) fell into the disclosed `unclassified` bucket because the
+`storm_other` regex was missing a suffix variant (fixed); and a "no trades file found" message was
+actually printed for a file that DID exist but had only 2 rows, too few for a daily P&L series
+(message text fixed to distinguish the two cases, not a logic bug).
+
+**The honest result: family-scoping is methodologically sound and visibly softens several
+z-statistics (e.g. `entry_zscore_override`: z=-18.35 pooled to z=-5.91 at its own n=158), but for
+every family with n>=32 the DSR still rounds to 0.0000 either way.** Isolated why with a direct
+test holding SR_hat/T/skew/kurtosis fixed: even with normal tail parameters, `baseline`'s
+z-statistic stays deeply negative (-25.82 vs -46.77 real) because `SR0*` (the expected best
+per-period Sharpe achievable by chance alone across n=171 trials at that family's own observed
+variance) is 0.42 — nearly 15x the actually-observed per-period SR_hat of 0.029. **This is mostly
+NOT a multiple-testing artifact from over-pooling; the observed edge is small relative to what
+pure luck could produce even within a correctly-scoped family.** The two families that DID flip to
+a materially positive DSR (`layer2_baseline`: 1.0000 at n=6; `pit_confirmation`: 0.8096 at n=5) are
+exactly the ones with too few trials to trust the underlying Var[SR] estimate — flagged as not yet
+meaning anything, not reported as a pass.
+
+**The specific family Ross asked about — squeeze_momentum_gate — could not be evaluated at all**:
+its trial-registry labels follow `backtest.py`'s own `trades_<label>.parquet` naming convention,
+but that file no longer exists on disk for any of the 6 squeeze/momentum labels (per-run trades
+files are overwritten, unlike the append-only trial registry, and a later run must have reused a
+different label). The only squeeze/momentum trades files that exist locally
+(`sqzmomgate_trades_layer1_storm.parquet` etc.) use a different naming convention from a different
+tool and were deliberately not guess-mapped onto the registry's labels. Outstanding: re-run
+`backtest.py` with the 3 squeeze/momentum STORM flags (IS + holdout, 6 runs) to regenerate the
+files this script needs.
+
+**3. Tier 2 parameter sensitivity screen (12 `Config.BACKTEST` constants × grid × IS/OOS, full
+1,375-pair Purity pool, ~8hr run) completed cleanly — but 5 of 12 dimensions showed an EXACT
+0.000000 effect-size range across their entire grid, both IS and OOS, which was investigated
+rather than reported as a genuine null.** Every single Sharpe in the completed 108-row grid was
+negative except one (`n_shares_per_trade=500` OOS, +0.3057) — already a striking result on its own
+— but the zero-effect dimensions turned out to be a real bug in the sweep script's own design, not
+a second independent confirmation of "nothing matters here." Traced each to backtest.py/portfolio_
+sim.py directly: `corr_exit_threshold`/`corr_exit_window`'s consuming code is gated behind `self.
+storm_flags["real_corr_exit"]` (`--storm-real-corr-exit`, never passed by the screen);
+`max_half_life`'s behind `storm_flags["max_half_life_filter"]` (`--storm-max-half-life-filter`,
+never passed); `max_concentration_pct`'s `concentration_cap` kwarg is only populated when `args.
+concentration_cap` is set (`--concentration-cap`, never passed); and `flat_risk_pct` is only read
+by `portfolio_sim.replay_portfolio()` inside the `flat_2pct`/Kelly sizing branches — genuinely dead
+code under the screen's default `sizing_method="fixed"`. None of these are backtest.py bugs (the
+gating is deliberate, documented, correct); the bug is that `research/parameter_sensitivity_
+screen.py`'s `TIER2_REGISTRY` swept 5 constants under conditions where they were structurally
+guaranteed to do nothing. Fixed by adding `extra_flags`/`capital_sizing` per-entry overrides to the
+registry and threading them through `build_cmd()`/`run_one()`; `debug/_verify_parameter_
+sensitivity_screen.py` (new, 5/5) locks in that each affected entry now declares its real
+requirement and that unaffected entries gained no spurious override. Re-run of just these 5
+dimensions (`--tier2 --only <name>`) queued, not yet run as of this writing.
+
+**Two long-standing verify-suite FAILs, flagged in earlier sessions as unresolved, also
+root-caused and fixed the same night**: `debug/_verify_pit_wfa.py`'s synthetic fixture fell below
+the real `Config.STATS.MIN_OVERLAP_BY_TF["1h"]=756`-bar floor (fixture raised from 200 to 300
+business days; `MIN_OVERLAP_BY_TF` itself untouched per CLAUDE.md); `debug/_verify_macro_regimes.
+py`'s COVID window (`2020-02-20:2020-04-30`) was too narrow to see `recession_state`/`recession_
+state_realtime`, both genuinely lagged real-world signals (April 2020's UNRATE print wasn't
+released until 2020-05-11; NBER didn't announce the recession start until 2020-06-08) — fixed with
+a second, wider confirmation window for just those two checks. Both now pass fully (11/11 and
+25/25 respectively).
+
+Files: `research/capital_constraint_luck_check.py` (new), `research/hierarchical_dsr.py` (new),
+`debug/_verify_capital_constraint_luck_check.py` (new, 8/8), `debug/_verify_hierarchical_dsr.py`
+(new, 11/11), `debug/_verify_parameter_sensitivity_screen.py` (new, 5/5), `research/parameter_
+sensitivity_screen.py` (TIER2_REGISTRY fix), `debug/_verify_pit_wfa.py` (fixed), `debug/_verify_
+macro_regimes.py` (fixed). Full run-by-run numbers in `docs/HANDOFF.md`'s 2026-09-21 entries.

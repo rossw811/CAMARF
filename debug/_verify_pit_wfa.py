@@ -52,9 +52,19 @@ def main():
         failures.append(f"test_end mismatch: {fold['test_end']} != {expected_test_end}")
 
     # --- 2. No-lookahead invariant ---
-    # Build a business-hourly index spanning ~200 business days (enough for
-    # a meaningful train/test split at 1h granularity), 9:30-15:30 ET, 7 bars/day.
-    dates = pd.bdate_range("2023-01-02", periods=200, freq="B")
+    # Build a business-hourly index spanning ~300 business days, 9:30-15:30 ET,
+    # 7 bars/day -- 300 was raised from an earlier 200 (2026-09-21 root-cause
+    # fix): Config.STATS.MIN_OVERLAP_BY_TF["1h"] = 756 bars is the real
+    # production floor UniverseFilter.run() enforces via build_returns_matrix's
+    # min_overlap check; at 200 business days the train-window half (cutoff_bar
+    # = n//2 = 700 bars) fell BELOW that floor, so every symbol got filtered out
+    # ("no valid assets after filtering") before EG cointegration ever ran --
+    # this was a stale test fixture, not a pit_wfa.py bug (MIN_OVERLAP_BY_TF
+    # itself must never be changed per CLAUDE.md; only the fixture's bar count
+    # needed to grow to comfortably clear whatever the real threshold currently
+    # is). 300 business days -> cutoff_bar=1050, well above 756 on both sides
+    # of the split.
+    dates = pd.bdate_range("2023-01-02", periods=300, freq="B")
     hours = pd.timedelta_range("9:30:00", "15:30:00", freq="1h")
     idx = pd.DatetimeIndex(sorted(d + h for d in dates for h in hours))
     n = len(idx)
