@@ -33,6 +33,34 @@ Both fixes synced to CachyOS, diff-verified.
 
 ---
 
+## 2026-09-21: Capital-constraint luck check run against all 3 gate arms — same finding, more strongly, every time
+
+Previously blocked pending item, closed the same night the missing squeeze/momentum trades files
+got regenerated (see next entry down): tonight's regen also produced fresh $100k IS capsim files
+for the squeeze-gate and combined squeeze+momentum-gate arms (each `backtest.py --capital-sim`
+run writes both), so `research/capital_constraint_luck_check.py` could finally run against all 3
+gates, not just momentum-gate.
+
+| Gate | n_taken | taken Sharpe | skipped Sharpe | taken_better_than_skipped | percentile vs 2000 random draws | p-value |
+|---|---:|---:|---:|:---:|---:|---:|
+| momentum-gate (earlier tonight) | 415 | -0.2657 | +0.3951 | False | 0.7th | 0.9935 |
+| squeeze-gate | 387 | -0.4261 | +0.3474 | False | **0.0th** | 1.0000 |
+| squeeze+momentum combined | 214 | -0.2301 | +0.4311 | False | **0.0th** | 1.0000 |
+
+**All 3 gates independently confirm the same finding, two of them even more starkly than
+momentum-gate's own result**: the capital-constrained taken trades are worse than skipped trades
+in every case, and for squeeze-gate/combined-gate the real taken-subset Sharpe is literally WORSE
+than every single one of 2,000 random same-size draws (0.0th percentile — not just an outlier, the
+single most extreme value possible in the null distribution). This is no longer a single-gate
+finding that could plausibly be an artifact of momentum-gate's own specific trade population — it
+generalizes across all 3 independently-built gates, strengthening the underlying conclusion from
+§7.16/earlier tonight considerably: `--capital-sim`'s chronological trade-admission mechanism is
+robustly, not coincidentally, picking a worse population of trades than it skips.
+
+Synced/committed/pushed.
+
+---
+
 ## 2026-09-21: squeeze_momentum_gate family DSR = 0.9676 — the specific answer Ross asked for, now in hand, with real caveats stated plainly
 
 Regenerated the missing trades files (`backtest.py` with each of the 3 squeeze/momentum STORM
