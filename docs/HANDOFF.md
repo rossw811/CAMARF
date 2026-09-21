@@ -33,6 +33,32 @@ Both fixes synced to CachyOS, diff-verified.
 
 ---
 
+## 2026-09-21: Backlog item #5 closed — CCM linking table check, premise didn't hold
+
+Investigated 2026-09-15 20:14's item #5: "check whether WRDS's own CCM linking table
+(`ccmxpf_linktable`) is already pulled, and if not, whether it could replace the current ad hoc
+placeholder-symbol fallback pattern (`GVKEY201229_01W`-style labels) with a more principled
+crosswalk."
+
+**First half already true, confirmed by reading the code**: `data_wrds.py::fetch_compustat_
+fundamentals` already queries `crsp_a_ccm.ccmxpf_lnkhist` directly (with `linkdt`/`linkenddt`
+validity ranges, `linktype in ('LU','LC')`, `linkprim in ('P','C')`) to join CRSP PERMNOs to
+Compustat GVKEYs for US fundamentals — this table is already in active production use, not
+missing.
+
+**Second half's premise doesn't hold, once the actual code is read rather than assumed from the
+label's appearance**: `GVKEY{gvkey}_{iid}`-style labels (`build_global_symbol_label()`) are used
+ONLY for Compustat GLOBAL (international) index constituents, and its own docstring is explicit
+about why — "most international index constituents don't have one [a natural ticker] the way
+CRSP/US symbols do." The CCM linking table bridges CRSP↔Compustat specifically for US securities;
+international Compustat Global constituents have no CRSP PERMNO at all (CRSP is US-only), so
+there is no crosswalk for CCM to provide here. **This isn't an ad hoc fallback standing in for a
+missing principled crosswalk — it's the correct, deliberate terminal identifier for constituents
+that structurally have no ticker equivalent.** No fix needed; closing with this honest, premise-
+corrected conclusion rather than building something against a mistaken assumption.
+
+---
+
 ## 2026-09-21: Backlog item #2 closed — the 2026-09-15 Kelly-variant anomaly root-caused (not a bug)
 
 Investigated the flagged-but-not-yet-resolved 2026-09-15 11:33 finding: all 4 Kelly-fraction
