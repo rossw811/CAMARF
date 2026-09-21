@@ -4108,15 +4108,38 @@ a materially positive DSR (`layer2_baseline`: 1.0000 at n=6; `pit_confirmation`:
 exactly the ones with too few trials to trust the underlying Var[SR] estimate — flagged as not yet
 meaning anything, not reported as a pass.
 
-**The specific family Ross asked about — squeeze_momentum_gate — could not be evaluated at all**:
+**The specific family Ross asked about — squeeze_momentum_gate — could not be evaluated at first**:
 its trial-registry labels follow `backtest.py`'s own `trades_<label>.parquet` naming convention,
-but that file no longer exists on disk for any of the 6 squeeze/momentum labels (per-run trades
+but that file no longer existed on disk for any of the 6 squeeze/momentum labels (per-run trades
 files are overwritten, unlike the append-only trial registry, and a later run must have reused a
-different label). The only squeeze/momentum trades files that exist locally
-(`sqzmomgate_trades_layer1_storm.parquet` etc.) use a different naming convention from a different
-tool and were deliberately not guess-mapped onto the registry's labels. Outstanding: re-run
-`backtest.py` with the 3 squeeze/momentum STORM flags (IS + holdout, 6 runs) to regenerate the
-files this script needs.
+different label). Regenerated the same night: re-ran `backtest.py` with all 3 squeeze/momentum
+STORM flags (IS + holdout, 6 runs, replicating the exact original commands from Finding #68) to
+rebuild the missing files, then re-ran `hierarchical_dsr.py` against the refreshed trial registry
+(1,150 merged trials, up from 990 — the Tier2 refix's 46 new runs plus these 6 both landed in it).
+
+**Result: `squeeze_momentum_gate` family-scoped DSR = 0.9676 (z=1.85), n_trials=39 (6 distinct
+labels), Var[SR]=0.000030 — roughly 800x LOWER cross-trial variance than the baseline family's
+0.024, meaning squeeze/momentum trials are consistently similar to each other rather than
+scattered.** Pooled against all 1,150 trials, the identical label still shows DSR=0.0000
+(z=-37.94), essentially unchanged from the pre-refresh pooled number. This is the first family in
+the entire investigation where family-scoping flips the qualitative verdict at a trial count large
+enough to trust (n=39, unlike the earlier n=5-6 cases already flagged as statistically
+meaningless). Evaluated label: `layer1_holdout_storm_sqzmomgate_pairsoverride` — genuinely
+out-of-sample, SR_hat=0.0316 per-period (T=7,645 days), consistent with Finding #68's already-
+recorded OOS unconstrained annualized Sharpe of +0.5015 for this exact label.
+
+**What this does and doesn't mean, stated plainly — the signal, not the tradeable strategy**:
+DSR=0.9676 says the squeeze/momentum gate's UNCONSTRAINED trade-selection edge is very likely
+real, not a lucky draw among the "chances" this specific, narrowly-scoped family represents. It
+does NOT mean the capital-constrained strategy is profitable — every one of the 3 gates'
+`--capital-sim` headline Sharpes documented above is still negative, and the capital-constraint
+luck check (this same night, Finding #69's own capital_constraint_luck_check.py section) found the
+capital-allocation mechanism actively picks WORSE trades than it skips. Both findings stand
+together, not in contradiction: a statistically real underlying signal (now with genuine DSR
+support, not just the random-subsample-control p≈0.0000 result already in hand) that the current
+capital-allocation mechanism doesn't yet capture profitably. Open question this raises, not yet
+investigated: would a non-chronological capital-allocation scheme let the edge actually surface in
+the capital-constrained result?
 
 **3. Tier 2 parameter sensitivity screen (12 `Config.BACKTEST` constants × grid × IS/OOS, full
 1,375-pair Purity pool, ~8hr run) completed cleanly — but 5 of 12 dimensions showed an EXACT
