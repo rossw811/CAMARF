@@ -33,6 +33,37 @@ Both fixes synced to CachyOS, diff-verified.
 
 ---
 
+## 2026-09-21: Full verify suite, final tally — 252/254 pass (was 244/256 at the start of tonight)
+
+Re-ran the complete suite on CachyOS (ran it locally twice tonight and both got OOM-killed —
+only ~3.3GB free on the Surface at the time; moved to CachyOS per this project's own standing
+RAM-heavy-work rule rather than keep fighting local memory). **252 passed, 1 FAILED, 1 errored (of
+254 total)** — both remaining items understood, neither a real bug:
+
+- **`_verify_wrds_lead_lag_scan.py` FAIL**: the already-diagnosed test-isolation false-failure
+  from earlier this session — writes synthetic fixtures directly into the real `output/research/`
+  production path and asserts on a state a genuine prior scan's real output contaminates. Stable,
+  known, not touched.
+- **`_verify_lstm_attention_architecture.py` ERROR**: genuine missing dependency —
+  `ModuleNotFoundError: No module named 'tensorflow'`, confirmed by running it directly. Correctly
+  classified as an environment issue, not a logic bug, by the batch runner's own ERROR/FAIL split.
+  Not installed tonight — pulling in a new deep-learning framework is a real environment change,
+  not a code fix, and this project's own working-style rule (new methodology needs buy-in before
+  building) extends naturally to "install the framework it needs." Flagged, not silently left
+  unexplained: if `research/lstm_attention_architecture.py` is meant to be active/tested going
+  forward, `pip install tensorflow` (or the CUDA-enabled build, given the RTX 4080) into the venv
+  is the actual fix, pending a decision on whether this research direction is still live.
+
+**Every other real bug found in tonight's multiple full-suite passes is now fixed**: `pit_wfa`,
+`macro_regimes`, `eg_both_directions_fix`, `wrds_global_fetch_retry`, `fresh_holdout_compare`,
+`index_additions`, `stress_test_replication`, `adapter_stale_checkpoint_fix` — 8 real, root-caused
+fixes across the night, plus 3 confirmed-expected-slowness scripts (now with their own longer
+timeout via `_run_all_verify.py`'s new known-slow allowlist) and 3 more pre-existing fixture FAILs
+confirmed already resolved before tonight. This is very likely the healthiest this suite has been
+since it was first assembled.
+
+---
+
 ## 2026-09-21: 3 more pre-existing FAILs (from before tonight) confirmed already resolved
 
 Checked the 3 stale-`ENTRY_ZSCORE`-fixture FAILs flagged as "not urgent, but real and unfixed" in
