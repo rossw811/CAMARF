@@ -2747,20 +2747,28 @@ taken trades show Sharpe -0.27 vs. skipped trades' +0.40, and the taken subset s
 0.7th percentile of 2,000 random same-size draws from the same pool — mildly anti-correlated with
 quality, not merely uninformative about it (a real key-collision bug in the first draft of this
 check was found and fixed before trusting the result; the finding survived the fix numerically
-unchanged). **(2)** Built a hierarchical, family-scoped correction to the pooled-N=990 Deflated
-Sharpe Ratio result (§7.21's context: DSR=0.0000 across every checked label), classifying trials
-into 19 methodologically-independent families instead of one pool. Honest result: scoping softens
-several z-statistics substantially but doesn't flip the qualitative verdict for any family with
-enough trials to trust — the observed edge is small relative to what chance alone could produce
-even within a correctly-scoped family, not primarily an artifact of over-pooling. The one family
-this was built to answer for, squeeze_momentum_gate, could not be evaluated: its trades file no
-longer exists on disk under the trial registry's own naming convention, an outstanding re-run, not
-a result. **(3)** The Tier 2 parameter sensitivity screen (12 constants × grid × IS/OOS against the
-full 1,375-pair Purity pool) completed with every Sharpe negative except one — but 5 of 12
-dimensions showed an exact-zero effect size that traced back to a real bug in the sweep script
-itself (each of the 5 swept constants is gated behind a CLI flag or sizing mode the screen never
-passed, confirmed by reading the consuming code directly, not assumed): fixed, verified, re-run of
-just those 5 dimensions queued.
+unchanged). **(2)** Built a hierarchical, family-scoped correction to the pooled Deflated Sharpe
+Ratio result (§7.21's context: DSR=0.0000 across every checked label), classifying trials into 20
+methodologically-independent families instead of one pool. For most families the correction
+softens several z-statistics substantially but doesn't flip the qualitative verdict — the observed
+edge is small relative to what chance alone could produce even within a correctly-scoped family,
+not primarily an artifact of over-pooling. The one family this was built to answer for,
+`squeeze_momentum_gate`, needed its trades file regenerated first (a real re-run, not a result, on
+its own — see below), but once evaluated shows **family-scoped DSR = 0.9676 (z=1.85) at n=39
+trials**, against the same label's pooled DSR of 0.0000 (z=-37.94) — the first family in this
+investigation where the correction flips the conclusion at a trial count large enough to trust.
+Read narrowly and correctly: this says the gate's unconstrained trade-selection edge is
+statistically real, not that the capital-constrained strategy is profitable — every gate's
+`--capital-sim` headline Sharpe is still negative (see §7.21), a separate, still-unresolved
+problem, not a contradiction of this result. **(3)** The Tier 2 parameter sensitivity screen (12
+constants × grid × IS/OOS against the full 1,375-pair Purity pool) completed with every Sharpe
+negative except one small-sample outlier — but 5 of 12 dimensions initially showed an exact-zero
+effect size that traced back to a real bug in the sweep script itself (4 of the 5 swept constants
+were gated behind a CLI flag the screen never passed; the 5th, `corr_exit_window`, turned out to be
+genuinely dead config — never read anywhere in the codebase, a design gap flagged for Ross's input
+rather than silently wired up). Fixed, verified, and re-run for real: once genuinely active, the
+correlation-exit mechanism makes results dramatically WORSE (not better), and the fully-corrected
+12-dimension grid's conclusion is unchanged and now more trustworthy, not less.
 
 Full account: `docs/FINDINGS.md` #69, `docs/HANDOFF.md` 2026-09-21 entries.
 

@@ -1175,21 +1175,29 @@ BH assumes something about test independence that BY does not need to: roughly 2
 trials are pure parameter-sensitivity grid sweeps (STOP_ZSCORE, EXIT_ZSCORE, and 10 other
 constants), each answering a different, unrelated question from any single label being evaluated,
 and inflating that label's own "chances tried" count. A hierarchical, family-scoped correction
-(`research/hierarchical_dsr.py`, classifying trials into 19 methodologically-independent families
+(`research/hierarchical_dsr.py`, classifying trials into 20 methodologically-independent families
 via a transparent, disclosed regex classifier, then computing DSR per-family against that family's
-own N and empirical Var[SR] rather than the pooled 990) tests whether that over-pooling was doing
-real work. **Honest result: mostly not.** Family-scoping softens several z-statistics substantially
-(the entry-zscore-override family: z=-18.35 pooled to z=-5.91 at its own n=158) but the qualitative
-verdict (DSR≈0.0000) survives for every family with enough trials (n>=32) to trust the correction in
-the first place — confirmed directly by holding SR_hat/T/skew/kurtosis fixed and showing the
-z-statistic stays deeply negative even under normal tail parameters, because the expected best
-per-period Sharpe achievable by chance alone within that family's own observed variance already
-exceeds the actually-observed SR_hat by an order of magnitude. This is the same lesson as this
-section's BH-vs-BY result, arrived at independently at a different layer of the pipeline: a more
-methodologically careful multiple-testing correction is worth doing and does change the numbers,
-but it is not a substitute for the underlying effect being large enough to survive correction in
-the first place, and should never be reached for only when the cruder correction gives an
-inconvenient answer. Full account: `docs/FINDINGS.md` #69.
+own N and empirical Var[SR] rather than the pooled total) tests whether that over-pooling was doing
+real work. **Honest result: mostly not, with one real, important exception.** Family-scoping
+softens several z-statistics substantially (the entry-zscore-override family: z=-18.35 pooled to
+z=-5.91 at its own n=158) but the qualitative verdict (DSR≈0.0000) survives for most families with
+enough trials (n>=32) to trust the correction — confirmed directly by holding SR_hat/T/skew/
+kurtosis fixed and showing the z-statistic stays deeply negative even under normal tail parameters,
+because the expected best per-period Sharpe achievable by chance alone within that family's own
+observed variance already exceeds the actually-observed SR_hat by an order of magnitude. **The
+exception: the squeeze/momentum-gate family (this project's own PAPER.md, the companion backtest
+paper, §7.21/§7.22), n=39 trials, shows family-scoped DSR = 0.9676 (z=1.85) against the identical
+label's pooled DSR of 0.0000 (z=-37.94)** — the only family in this investigation where the
+correction flips the conclusion at a trial count large enough to trust the underlying variance
+estimate. Read narrowly: this is evidence the gate's UNCONSTRAINED trade-selection edge is
+statistically real, not that the capital-constrained strategy built on it is profitable (it
+currently isn't — PAPER.md §7.22's own capital-constraint-luck-check finding). This is the same
+lesson as this section's BH-vs-BY result,
+arrived at independently at a different layer of the pipeline: a more methodologically careful
+multiple-testing correction is worth doing and does change the numbers — usually not enough to
+flip a weak result, but occasionally enough to reveal that a specific, narrowly-scoped finding
+really was being drowned out by unrelated trials, not the same as fishing for the answer you want.
+Full account: `docs/FINDINGS.md` #69.
 
 ### 7.2 Cointegration Is Episodic, Not a Persistent Property
 

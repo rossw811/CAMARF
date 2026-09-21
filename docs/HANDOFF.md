@@ -33,6 +33,50 @@ Both fixes synced to CachyOS, diff-verified.
 
 ---
 
+## 2026-09-21: squeeze_momentum_gate family DSR = 0.9676 — the specific answer Ross asked for, now in hand, with real caveats stated plainly
+
+Regenerated the missing trades files (`backtest.py` with each of the 3 squeeze/momentum STORM
+flags, IS + holdout, 6 runs, replicating the exact original commands from FINDINGS.md #68) so
+`hierarchical_dsr.py` could finally evaluate the ONE family Ross specifically asked about back
+when this whole DSR investigation started. Pulled the fresh trades files + updated CachyOS trial
+registry (now 713 CachyOS + 437 local = 1,150 merged trials, up from 990 — the Tier2 refix's 46
+new runs plus tonight's 6 squeeze/momentum runs both landed in the registry) and re-ran.
+
+**Result: `squeeze_momentum_gate` family-scoped DSR = 0.9676 (z=1.85), against its own n=39
+trials (6 distinct labels) and Var[SR]=0.000030 — a MUCH lower cross-trial variance than any
+other family (baseline's is 0.024, ~800x larger), meaning the squeeze/momentum trials are
+consistently similar to each other, not wildly scattered.** Pooled against all 1,150 trials, the
+same label still shows DSR=0.0000 (z=-37.94) — the pooled number hasn't meaningfully changed from
+before. This is the FIRST family in this whole investigation where the family-scoped correction
+actually flips the qualitative conclusion at a trial count large enough to trust (n=39, not the
+earlier n=5-6 cases already flagged as too small to mean anything). Evaluated label:
+`layer1_holdout_storm_sqzmomgate_pairsoverride` (the OOS/holdout split of the combined
+squeeze+momentum gate — genuinely out-of-sample, not an in-sample number), SR_hat=0.0316 per-period
+(T=7645 days), matching FINDINGS.md #68's already-recorded OOS unconstrained annualized Sharpe of
++0.5015 for this exact label — internally consistent with prior real numbers, not a new,
+disconnected result.
+
+**What this does and does not mean, stated plainly (per CLAUDE.md's "honest over impressive"
+rule) — this is about the SIGNAL, not the TRADEABLE STRATEGY:** DSR=0.9676 says the squeeze/
+momentum gate's UNCONSTRAINED trade-selection edge is very likely real, not a lucky draw among
+however many "chances" this specific, narrowly-scoped family of trials represents. It does NOT
+mean the capital-constrained strategy is profitable — §7.16/§7.21's own findings stand unchanged:
+every one of the 3 gates' `--capital-sim` headline Sharpes is still negative (squeeze -0.49/-0.38,
+momentum -0.15/-0.82, combined -0.43/-0.33, IS/OOS), and the capital-constraint luck check
+(2026-09-21, earlier tonight) found the capital-constrained mechanism actively picks WORSE trades
+than it skips. The honest synthesis: the underlying signal this gate identifies is statistically
+real (now with real DSR support, not just the earlier random-subsample-control p≈0.0000 result),
+but the current capital-allocation mechanism doesn't yet capture it profitably — two separate,
+both-real findings, not a contradiction. A meaningful next question this raises, not yet
+investigated: does a DIFFERENT capital-allocation scheme (one that doesn't chronologically
+first-come-first-serve, given the luck-check's own finding) let the squeeze/momentum edge actually
+show up in the capital-constrained result?
+
+Synced/committed/pushed. `output/stats/hierarchical_dsr.json` updated with the full 20-family
+current result.
+
+---
+
 ## 2026-09-21: Tier2 refix COMPLETE — real results for all 5 dimensions, one more dead-config bug found (corr_exit_window)
 
 The targeted 5-dimension re-run (`--tier2 --only <name>` × corr_exit_threshold, corr_exit_window,
