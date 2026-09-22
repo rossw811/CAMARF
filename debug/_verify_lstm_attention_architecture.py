@@ -53,10 +53,28 @@ def verify_architecture(name, builder):
     ok = check("model compiles without error", model is not None)
     preds = model.predict(X, verbose=0)
     ok &= check("output batch dimension matches input", preds.shape[0] == X.shape[0])
+    # Real bug, found 2026-09-21 (research/lstm_attention_training.py's first actual training
+    # run): this check was MISSING despite the module docstring above claiming the binary case
+    # was verified as "a single sigmoid unit" -- predict() alone never surfaced it (sigmoid
+    # values are in [0,1] regardless of unit count), only fit() against a 1D integer target did,
+    # which this file never called. Both the shape assertion and a real fit() call are added now.
+    ok &= check("binary output is a SINGLE sigmoid unit, shape (batch, 1) not (batch, n_classes)",
+                preds.shape == (X.shape[0], 1), )
     ok &= check("no NaN in output", not np.isnan(preds).any())
     ok &= check("no Inf in output", not np.isinf(preds).any())
     ok &= check("all output values in [0, 1] (valid probabilities)",
                 bool(np.all(preds >= 0) and np.all(preds <= 1)))
+
+    # A real fit() call, not just predict() -- this is exactly what the 2026-09-21 bug needed to
+    # be caught: predict() alone is silent about a target/output rank mismatch that only
+    # surfaces inside the loss function at fit() time.
+    y = np.array([0, 1, 0, 1, 0, 1])
+    try:
+        model.fit(X, y, epochs=1, batch_size=6, verbose=0)
+        ok &= check("model.fit() runs without a target/output rank mismatch", True)
+    except Exception as e:
+        ok &= check("model.fit() runs without a target/output rank mismatch", False)
+        print(f"    fit() raised: {type(e).__name__}: {e}")
     return ok
 
 
