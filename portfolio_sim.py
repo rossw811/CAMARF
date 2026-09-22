@@ -288,11 +288,21 @@ def _kelly_fraction(closed_pnls: list) -> float:
     return max(0.0, f_star)
 
 
-def _reorder_for_quality_admission(trades: pd.DataFrame, quality_col: str, batch_freq: str) -> pd.DataFrame:
+def _reorder_for_quality_admission(trades: pd.DataFrame, quality_col: str, batch_freq: str,
+                                    quality_ascending: bool = False) -> pd.DataFrame:
     """Reorders an already entry_time-sorted trades DataFrame so that, WITHIN each `batch_freq`
     time bucket (e.g. calendar day), trades are admitted best-quality-first instead of
     first-come-first-served -- batches themselves stay in ascending chronological order, only
     the ORDER WITHIN each batch changes.
+
+    quality_ascending (added 2026-09-21, same night, after the first real run): default False
+    admits the LARGEST |quality_col| first. Found empirically NOT to be the right direction for
+    `entry_z` specifically -- corr(|entry_z|, pnl_net) is NEGATIVE across all 3 real STORM gates
+    tested (-0.03 to -0.04), and a quartile breakdown shows the SMALLEST |entry_z| quartiles
+    outperform the LARGEST ones consistently, gate to gate. Pass quality_ascending=True to admit
+    the SMALLEST |quality_col| first instead when the caller's own data confirms that's the
+    empirically correct direction for their chosen quality_col -- never assume "bigger signal =
+    better trade" without checking, which is exactly the assumption that turned out wrong here.
 
     Added 2026-09-21, directly testing whether replay_portfolio's existing strictly-chronological
     admission is WHY the capital-constrained result underperforms (research/capital_constraint_
@@ -317,7 +327,7 @@ def _reorder_for_quality_admission(trades: pd.DataFrame, quality_col: str, batch
     out = trades.copy()
     out["_batch"] = out["entry_time"].dt.floor(batch_freq)
     out["_quality_abs"] = out[quality_col].abs()
-    out = out.sort_values(["_batch", "_quality_abs"], ascending=[True, False])
+    out = out.sort_values(["_batch", "_quality_abs"], ascending=[True, quality_ascending])
     return out.drop(columns=["_batch", "_quality_abs"])
 
 
@@ -331,6 +341,7 @@ def replay_portfolio(
     leverage_cap: float = None,
     quality_admission_col: str = None,
     quality_admission_batch_freq: str = "D",
+    quality_admission_ascending: bool = False,
 ) -> dict:
     """
     Event-driven, capital-constrained, mark-to-market replay of an already-generated trade list.
@@ -364,7 +375,8 @@ def replay_portfolio(
     trades = trades_df.sort_values("entry_time").copy()
     trades["notional_at_entry"] = trades.apply(lambda t: notional_at_entry(t), axis=1)
     if quality_admission_col is not None:
-        trades = _reorder_for_quality_admission(trades, quality_admission_col, quality_admission_batch_freq)
+        trades = _reorder_for_quality_admission(trades, quality_admission_col, quality_admission_batch_freq,
+                                                 quality_admission_ascending)
     records = trades.to_dict("records")
 
     realized_equity = starting_capital

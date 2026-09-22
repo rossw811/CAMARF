@@ -300,6 +300,17 @@ def main():
         failures.append("quality_admission: default (quality_admission_col=None) call must be "
                          "byte-identical in taken order to the pre-existing call signature")
 
+    # quality_admission_ascending=True (added same night as the base feature, after the real
+    # gate comparison found |entry_z| was NEGATIVELY correlated with outcome): admits the
+    # SMALLEST |entry_z| first instead of the largest -- WEAK (1.6) should now win over STRONG
+    # (3.2) within the same batch, the opposite of the descending-default case above.
+    result_ascending = replay_portfolio(trades_q, starting_capital=20_500, sizing_method="fixed",
+                                         quality_admission_col="entry_z", quality_admission_ascending=True)
+    taken_ascending = set(zip(result_ascending["taken"]["symbol_a"], result_ascending["taken"]["symbol_b"]))
+    if not (("WEAK", "X") in taken_ascending and ("STRONG", "X") not in taken_ascending):
+        failures.append(f"quality_admission (ascending=True): expected WEAK (smaller |entry_z|) "
+                         f"to be admitted over STRONG within the same batch, got taken={taken_ascending}")
+
     print()
     if failures:
         print("FAILURES:")
