@@ -4220,3 +4220,57 @@ Files: `research/capital_constraint_luck_check.py` (new), `research/hierarchical
 (new, 11/11), `debug/_verify_parameter_sensitivity_screen.py` (new, 5/5), `research/parameter_
 sensitivity_screen.py` (TIER2_REGISTRY fix), `debug/_verify_pit_wfa.py` (fixed), `debug/_verify_
 macro_regimes.py` (fixed). Full run-by-run numbers in `docs/HANDOFF.md`'s 2026-09-21 entries.
+
+## 70. Tightening the Episodic-Confirmation FDR Threshold Does NOT Improve Backtest Performance —
+Backlog Item #3 Closed With a Real Negative Result [2026-09-21]
+
+**Motivating question**, carried over from the 2026-09-15 backlog list (two independent
+literature threads — the GT-Score selection-process-overfitting paper and two 2025 e-value FDR
+papers — converged on it): does tightening `episodic_bhfdr_confirm`'s BH-FDR alpha (currently
+0.05) shrink the 1,375-pair Purity pool toward the small, historically-positive Baseline/Tiered
+set's result?
+
+**First, a cheap way to test it was found**: the ~25-hour cost of `wrds_deep_history_episodic_
+scan.py` is entirely in candidate generation and per-window EG p-value computation (Tier 3); the
+final BH-FDR confirmation is a cheap, independent function (`episodic_bhfdr_confirm`) over
+already-computed p-values, already saved (`wrds_deep_history_episodic_scan_tier3_windows.
+parquet`, 5,003,637 rows). `research/fdr_threshold_sensitivity.py` (new) re-applies the
+correction at several alphas directly against that saved data — no re-scan needed. Real result on
+the 1D Tier-3-only subset: alpha=0.05 → 929 confirmed pairs; 0.02 → 535 (42% shrinkage); 0.01 →
+360 (61%); 0.005 → 279 (70%); 0.001 → 180 (81%) — a real, substantial, monotonic shrinkage,
+confirming the premise's first half directly.
+
+**Second, does the shrunk pool actually perform better?** Added `--alpha`/`--out-suffix` CLI
+flags to `research/episodic_pairs_adapter.py` (both already-accepted parameters of `build_
+adapter_rows`, just not exposed on the CLI before), rebuilt the full 3-source (1D+1h+4h) pool at
+alpha=0.01 (598 pairs: 592 WRDS/1D, 4 intraday/4h, 2 intraday/1h), and ran a real `backtest.py
+--capital-sim` IS+OOS pass against it.
+
+**Real result: NO, and the capital-constrained metric got measurably WORSE, not better.**
+
+| Metric | alpha=0.05 (1,375 pairs) | alpha=0.01 (598 pairs) |
+|---|---:|---:|
+| IS unconstrained Sharpe | -0.218 | -0.203 |
+| IS capital-constrained Sharpe | -0.7584 | **-1.4682** |
+| IS capsim n_taken | 610 | 648 |
+
+Unconstrained Sharpe stayed essentially flat (-0.218 → -0.203) despite the pool shrinking 2.3x —
+BH-FDR tightening removed borderline-significant pairs roughly uniformly, not disproportionately
+removing the WORSE ones. The capital-constrained metric got notably worse at the tighter
+threshold, directionally consistent with (not proof of) the same night's capital-constraint
+luck-check finding: a smaller pool with a similar per-pair quality distribution but fewer total
+trading opportunities gives the chronological-first-come capital allocation even less room to
+land on whatever good trades exist.
+
+**Backlog item #3 closed with a real, honest negative answer**: tightening the FDR threshold is
+not a viable fix for the Purity pool's negative capital-constrained result — a materially smaller,
+more statistically confident pool performs the same or worse, not better. This rules out the
+GT-Score-style "loose threshold admits diluting noise" hypothesis specifically; the e-value FDR
+papers' alternative correction method remains untested but is now a lower, not higher, priority
+follow-up given this result.
+
+Files: `research/fdr_threshold_sensitivity.py` (new), `debug/_verify_fdr_threshold_sensitivity.py`
+(new, 4/4), `research/episodic_pairs_adapter.py` (`--alpha`/`--out-suffix` CLI flags added),
+`output/research/episodic_confirmed_pairs_adapter_output_alpha01.parquet`,
+`output/backtest/latest_run_backtest_purity_alpha01.log`. Full account: `docs/HANDOFF.md`'s
+2026-09-21 entries.

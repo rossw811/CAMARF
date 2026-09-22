@@ -2772,6 +2772,15 @@ correlation-exit mechanism makes results dramatically WORSE (not better), and th
 
 Full account: `docs/FINDINGS.md` #69, `docs/HANDOFF.md` 2026-09-21 entries.
 
+**Follow-up, same night: does tightening the episodic-confirmation FDR threshold help?** No.
+Rebuilt the Purity pool at alpha=0.01 (598 pairs, down from 1,375 at alpha=0.05 — a real,
+substantial 61% shrinkage at the 1D level, confirmed cheaply by re-applying the BH-FDR correction
+to already-computed p-values, no 25-hour re-scan needed) and re-ran the capital-sim backtest.
+Unconstrained Sharpe stayed essentially flat (-0.203 vs. -0.218); the capital-constrained metric
+got measurably WORSE (-1.4682 vs. -0.7584 IS), not better. A materially smaller, more
+statistically confident pool does not rescue this result — ruling out "too many marginal pairs
+diluting a good core" as the explanation. Full account: `docs/FINDINGS.md` #70.
+
 ## 8. Bias Documentation [OUTLINED, one bias drafted in detail]
 
 Pull directly from `BiasAuditLog` (`output/results/bias_audit.json`,

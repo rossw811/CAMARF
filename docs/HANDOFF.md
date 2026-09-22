@@ -33,6 +33,47 @@ Both fixes synced to CachyOS, diff-verified.
 
 ---
 
+## 2026-09-21: Backlog item #3 CLOSED — tighter FDR threshold does NOT improve performance (real, negative result)
+
+Completed the tighter-pool backtest (alpha=0.01, 598 pairs — 592 WRDS/1D, 4 intraday/4h, 2
+intraday/1h — vs. alpha=0.05's 1,375-pair production pool). **Real result: tightening the FDR
+threshold does not push performance toward the Baseline/Tiered positive result — if anything, the
+capital-constrained headline metric got WORSE:**
+
+| Metric | alpha=0.05 (1,375 pairs, production) | alpha=0.01 (598 pairs) |
+|---|---:|---:|
+| IS unconstrained Sharpe | -0.218 | -0.203 |
+| IS capital-constrained (`--capital-sim`) Sharpe | -0.7584 | **-1.4682** |
+| IS capsim n_taken | 610 | 648 |
+| OOS unconstrained Sharpe | (not directly comparable, different run) | -0.5235 |
+| OOS capital-constrained Sharpe | (not directly comparable) | -0.5942 |
+
+The unconstrained Sharpe is essentially flat between the two thresholds (-0.218 vs -0.203) — the
+pool shrinking 2.3x (1,375 → 598) didn't meaningfully change the AVERAGE quality of the confirmed
+pairs, consistent with BH-FDR tightening removing borderline-significant pairs roughly uniformly
+rather than disproportionately removing bad ones. The capital-constrained metric, though, got
+NOTABLY worse at the tighter threshold (-1.4682 vs -0.7584) — directionally consistent with (not
+proof of, but not contradicting either) the same night's capital-constraint luck-check finding:
+the capital-sim mechanism doesn't preferentially admit good trades, so a smaller pool with a
+similar per-pair quality distribution but fewer total trading opportunities gives the
+chronological-first-come allocation less room to find ANY of the good trades that do exist,
+plausibly making the luck-of-the-draw problem worse, not better.
+
+**Backlog item #3 is now closed with a real, honest answer**: tightening the FDR threshold is not
+a viable lever for fixing the Purity pool's negative capital-constrained result. The underlying
+problem is not "too many marginal pairs diluting a good core" — a materially smaller, more
+statistically confident pool performs the same or worse. This rules out one of the two literature-
+motivated hypotheses from the original 2026-09-15 backlog entry (GT-Score-style selection-process
+overfitting via a loose threshold); the e-value FDR papers' alternative correction method remains
+untested but this result makes it a lower-priority follow-up, not a more urgent one.
+
+Files: `research/fdr_threshold_sensitivity.py`, `episodic_pairs_adapter.py --alpha/--out-suffix`,
+`output/research/episodic_confirmed_pairs_adapter_output_alpha01.parquet` (598 rows),
+`output/backtest/latest_run_backtest_purity_alpha01.log`. Not synced as production files (kept
+suffixed, alongside the production `purity_pairs.parquet`, per the sensitivity-test convention).
+
+---
+
 ## 2026-09-21: Backlog item #3 — FDR-threshold sensitivity, real shrinkage confirmed cheaply (no 25hr re-scan needed), tighter pool build launched
 
 Ross gave blanket go-ahead on all previously-blocked decisions. Started with backlog item #3
