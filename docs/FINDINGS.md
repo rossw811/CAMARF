@@ -4403,11 +4403,22 @@ capital-constrained strategy is suddenly profitable, and AUC 0.55-0.61 is "modes
 discrimination by typical rubrics — a real, usable signal, not a breakthrough. Stated honestly in
 both directions: neither oversold now, nor wrongly dismissed as null before.
 
+**Follow-up, same day: does recalibrating the decision threshold (instead of the naive 0.5
+default) actually improve usable accuracy, now that real AUC is confirmed?** Added `_youden_
+optimal_threshold()` to `ml.py` (maximizes `tpr - fpr` on the validation split only, never the
+final test split). Real result: naive 0.5 threshold gives 54.49% accuracy; the Youden's-J-optimal
+threshold (0.5147, barely different from 0.5) gives 53.45% — marginally WORSE, not better. Honest
+read: with AUC=0.6075 (modest, not strong), the ROC curve has no sharp elbow far from the diagonal
+to exploit — a near-0.5 optimal threshold is exactly what a modest-AUC classifier should produce,
+confirmed rather than assumed. A real, disclosed negative result: recalibration is now built and
+tested for future use, but doesn't help on this model at this AUC level.
+
 Files: `research/lstm_attention_training.py` (new; AUC-ROC added 2026-09-22),
-`research/lstm_attention_architecture.py` (binary output-head bug fixed), `ml.py` (AUC-ROC added
-to `_train_and_validate`, 2026-09-22), `debug/_verify_lstm_attention_training.py` (new, 15/15
-after the AUC checks were added), `debug/_verify_lstm_attention_architecture.py` (fixed, now
-asserts shape + calls `fit()`), `output/research/lstm_attention_training_results.json`,
+`research/lstm_attention_architecture.py` (binary output-head bug fixed), `ml.py` (AUC-ROC and
+`_youden_optimal_threshold` added to `_train_and_validate`, 2026-09-22), `debug/_verify_lstm_
+attention_training.py` (new, 15/15 after the AUC checks were added), `debug/_verify_lstm_
+attention_architecture.py` (fixed, now asserts shape + calls `fit()`), `debug/_verify_ml_
+threshold_recalibration.py` (new, 5/5), `output/research/lstm_attention_training_results.json`,
 `output/ml/model_stage1.pkl`. Full account: `docs/HANDOFF.md`'s 2026-09-21/22 entries.
 
 ## 73. Quality-Ranked Capital Admission Beats Chronological FIFO in 6/6 Real Cases — a Substantial
@@ -4468,12 +4479,23 @@ which direction to use in advance. This does not invalidate the individual backt
 on its own. The honest current state: a real, repeatable, substantial effect worth taking
 seriously, not yet a solved allocation mechanism.
 
-**Real next steps, not yet done**: batch-composition analysis (does the winning direction track
-trade density per batch, not the quality metric's sign?), a non-daily `batch_freq`, a different
+**Update, 2026-09-22: re-ran `capital_constraint_luck_check.py` against each gate's winning
+direction — real, substantial, uneven improvement, not a wash and not fully solved.** Squeeze-gate
+(ascending) is FULLY fixed: taken now beats skipped (0.4297 vs 0.3444 Sharpe) and sits at the
+100th percentile of 2,000 random draws (was 0.0th under chronological). Combined-gate (descending)
+is MOSTLY fixed: taken is now a real, significant positive outlier vs. random (99.7th percentile,
+p=0.0035, was 0.0th/p=1.0000), though still narrowly below skipped's own Sharpe. Momentum-gate
+(descending) is PARTIALLY fixed: moved from the 0.7th percentile (worse than nearly all random
+draws) to the 49.1th (indistinguishable from chance) — no longer actively harmful, not yet
+positively selective either. Confirms the mechanism is demonstrably changing WHICH trades get
+admitted, not just moving the aggregate Sharpe number around by coincidence — to varying degrees
+per gate, honestly reported as such. Full account: `docs/HANDOFF.md`'s 2026-09-22 entry.
+
+**Real next steps, still not done**: batch-composition analysis (does the winning direction track
+trade density per batch, not the quality metric's sign?), a non-daily `batch_freq`, and a different
 quality proxy (`coint_fraction_rolling`, `squeeze_min`) now that `entry_z` alone doesn't explain
-the per-gate split, and re-running `capital_constraint_luck_check.py` against the winning-direction
-results to confirm the underlying taken-vs-skipped finding actually flips, not just the headline
-Sharpe number.
+the per-gate split — particularly worth trying for momentum-gate specifically, given it's the one
+gate quality-ranking only partially fixed.
 
 Files: `portfolio_sim.py` (`quality_admission_col`/`quality_admission_batch_freq`/`quality_
 admission_ascending`, all opt-in), `backtest.py` (3 new CLI flags), `debug/_verify_portfolio_

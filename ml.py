@@ -162,6 +162,18 @@ def _find_entry_events(
     return z_rolling.index[crossed.fillna(False)]
 
 
+def _youden_optimal_threshold(y_true, probs_positive_class) -> float:
+    """Returns the probability threshold maximizing Youden's J statistic (tpr - fpr) on the
+    given (y_true, predicted-probability) pair -- the standard binary-classification recipe for
+    picking a decision threshold from a model's ROC curve instead of the naive 0.5 default.
+    Factored out of _train_and_validate (2026-09-22) so it can be unit-tested directly against
+    hand-constructed probability arrays with an analytically known answer, not only end-to-end
+    through a real XGBoost fit."""
+    from sklearn.metrics import roc_curve
+    fpr, tpr, thresholds = roc_curve(y_true, probs_positive_class)
+    return float(thresholds[np.argmax(tpr - fpr)])
+
+
 # =============================================================================
 # TRAINING EXAMPLE CONSTRUCTION
 # =============================================================================
@@ -878,22 +890,46 @@ def _train_and_validate(result: MLResult, summary: MLRunSummary) -> None:
         log.warning(f"  AUC-ROC undefined on this holdout split: {e}")
         test_auc = float("nan")
 
+    # Threshold recalibration (added 2026-09-22, same AUC-motivated pass): the default 0.5
+    # probability threshold is what made this model look like it had "no signal" on raw accuracy
+    # (2026-09-21) despite real AUC-ROC. Finds the threshold that maximizes Youden's J
+    # (tpr - fpr) on the VAL split only (X_val/y_val, already carved out by the chronological
+    # split below, previously used only for conformal calibration) -- never on X_test, which
+    # would leak the final evaluation split into the very threshold being evaluated on it.
+    # Binary-only for now (matches this project's current Config.ML.LABEL_SCHEME="binary");
+    # multiclass reports NaN rather than silently picking an arbitrary one-vs-rest threshold.
+    # Core selection logic factored into _youden_optimal_threshold() (below) so
+    # debug/_verify_ml_threshold_recalibration.py can test it directly against hand-constructed
+    # probability arrays with an analytically known answer, not only end-to-end through XGBoost.
+    recalibrated_threshold = float("nan")
+    recalibrated_test_acc = float("nan")
+    if n_classes <= 2 and len(X_val) > 0 and len(set(y_val)) > 1:
+        probs_val = model.predict_proba(X_val)[:, 1]
+        recalibrated_threshold = _youden_optimal_threshold(y_val, probs_val)
+        recalibrated_preds = (probs_test[:, 1] >= recalibrated_threshold).astype(int)
+        recalibrated_test_acc = float(np.mean(recalibrated_preds == y_test))
+
     result.model = model
     result.holdout_report = {
         "n_train": len(X_train),
         "n_test": len(X_test),
         "test_accuracy": test_acc,
         "test_auc_roc": test_auc,
+        "recalibrated_threshold": recalibrated_threshold,
+        "recalibrated_test_accuracy": recalibrated_test_acc,
         "classes": list(le.classes_),
     }
     result.feature_importance = importance
     log.info(
         f"  Trained on {len(X_train)} examples, holdout accuracy on "
-        f"{len(X_test)} examples: {test_acc:.2%}, AUC-ROC: {test_auc:.4f}"
+        f"{len(X_test)} examples: {test_acc:.2%} (0.5 threshold), AUC-ROC: {test_auc:.4f}, "
+        f"recalibrated accuracy: {recalibrated_test_acc:.2%} (threshold={recalibrated_threshold:.4f}, "
+        f"chosen on val split via Youden's J)"
     )
     summary.note(
         f"Trained: n_train={len(X_train)} n_test={len(X_test)} "
-        f"test_accuracy={test_acc:.2%} test_auc_roc={test_auc:.4f}"
+        f"test_accuracy={test_acc:.2%} test_auc_roc={test_auc:.4f} "
+        f"recalibrated_test_accuracy={recalibrated_test_acc:.2%}"
     )
 
     # Conformal calibration uses the val slice (train_end:val_end) that the
