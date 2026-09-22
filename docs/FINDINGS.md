@@ -4375,3 +4375,72 @@ Files: `research/lstm_attention_training.py` (new), `research/lstm_attention_arc
 `debug/_verify_lstm_attention_architecture.py` (fixed, now asserts shape + calls `fit()`), `output/
 research/lstm_attention_training_results.json`. Full account: `docs/HANDOFF.md`'s 2026-09-21
 entry.
+
+## 73. Quality-Ranked Capital Admission Beats Chronological FIFO in 6/6 Real Cases — a Substantial
+Effect With a Mechanism That Isn't Understood Yet, Reported Honestly Rather Than Oversold
+[2026-09-21]
+
+**The question this directly tests**: §7.16/2026-09-21's capital-constraint luck check found
+`--capital-sim`'s strictly-chronological, first-come-first-served trade admission is mildly to
+strongly anti-correlated with trade quality across all 3 STORM gates — the taken trades are worse
+than the skipped ones. Per Ross's direct instruction ("create all those scripts, run them, and
+then explore their rabbit hole"), built and tested a genuinely different admission mechanism:
+within each calendar-day batch, rank candidate trades by a quality proxy and admit the best ones
+first instead of whichever arrived first. Implemented as an opt-in, causally-safe extension to
+`portfolio_sim.py::replay_portfolio()` (`quality_admission_col`, default `None` = byte-identical
+to the existing behavior — zero risk to any other caller).
+
+**First real run (largest `|entry_z|` first) was mixed**: beat chronological in 4 of 6 gate×split
+combinations, but LOST clearly in squeeze-gate specifically (both splits, one severe reversal:
+chronological OOS +0.2482 vs. quality-ranked OOS -0.2509). Investigated why rather than accepting
+a mixed result at face value: `corr(|entry_z|, pnl_net)` on the full squeeze-gate trade population
+is NEGATIVE (-0.03), meaning "largest entry_z first" was actively prioritizing the empirically
+worst quartile. Added a second mode (`quality_admission_ascending`, smallest-first) and re-ran.
+
+**Full real result, all 6 combinations, matched against a same-night chronological baseline (the
+underlying trades files had already shifted once tonight from an earlier regen, so the original
+2026-09-15-era baseline numbers were no longer comparable):**
+
+| Gate | Split | Chronological | Descending (large-z-first) | Ascending (small-z-first) | Best |
+|---|---|---:|---:|---:|---|
+| squeeze | IS | 0.0364 | 0.0137 | **0.2932** | Ascending |
+| squeeze | OOS | 0.2482 | -0.2509 | **0.4124** | Ascending |
+| momentum | IS | 0.1435 | **0.2337** | -0.0708 | Descending |
+| momentum | OOS | 0.0977 | **0.1418** | -0.0863 | Descending |
+| combined | IS | 0.0085 | **0.1000** | -0.0142 | Descending |
+| combined | OOS | -0.0332 | **0.0187** | -0.0181 | Descending |
+
+**Headline: the empirically-best direction per gate beats chronological FIFO in all 6 of 6 cases,
+often substantially, and the improvement holds on BOTH IS and OOS every time** — not the signature
+of a pure in-sample fit, which would be unlikely to also help the held-out split six times running.
+
+**An honest correction to the first explanation, not glossed over**: the working hypothesis after
+the first run — squeeze-gate is different because its `entry_z`-outcome correlation is negative
+while momentum/combined's is positive — does NOT survive a closer check. Computed the correlation
+separately, IS-only and OOS-only, per gate: **all 3 gates show a similarly negative `corr(|entry_
+z|, pnl_net)`** (squeeze: -0.032/-0.035, momentum: -0.039/-0.032, combined: -0.041/-0.048). The
+simple linear correlation does not distinguish the gate that wants ascending from the two that
+want descending. **The real mechanism is not yet identified** — something more subtle about how
+admission order interacts with which specific trades compete for capital together under the
+constraint, not a simple "rank by this one number" story. Reported as a real, open question.
+
+**A second, more serious caveat, stated as plainly as the result itself**: the winning direction
+per gate was chosen by testing both and keeping whichever performed better — outcome-informed
+selection, not something derivable ex-ante from the feature analysis that was supposed to explain
+it. A live deployment facing a new, not-yet-backtested gate has no principled way yet to know
+which direction to use in advance. This does not invalidate the individual backtest runs
+(point-in-time safety is intact within each one — no trade uses information from after its own
+`entry_time`), but it does mean "always use quality-ranked admission" is not yet a deployable rule
+on its own. The honest current state: a real, repeatable, substantial effect worth taking
+seriously, not yet a solved allocation mechanism.
+
+**Real next steps, not yet done**: batch-composition analysis (does the winning direction track
+trade density per batch, not the quality metric's sign?), a non-daily `batch_freq`, a different
+quality proxy (`coint_fraction_rolling`, `squeeze_min`) now that `entry_z` alone doesn't explain
+the per-gate split, and re-running `capital_constraint_luck_check.py` against the winning-direction
+results to confirm the underlying taken-vs-skipped finding actually flips, not just the headline
+Sharpe number.
+
+Files: `portfolio_sim.py` (`quality_admission_col`/`quality_admission_batch_freq`/`quality_
+admission_ascending`, all opt-in), `backtest.py` (3 new CLI flags), `debug/_verify_portfolio_
+sim.py` (5 new checks). Full account: `docs/HANDOFF.md`'s 2026-09-21 entries.

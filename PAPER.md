@@ -2781,6 +2781,16 @@ got measurably WORSE (-1.4682 vs. -0.7584 IS), not better. A materially smaller,
 statistically confident pool does not rescue this result — ruling out "too many marginal pairs
 diluting a good core" as the explanation. Full account: `docs/FINDINGS.md` #70.
 
+**Follow-up, same night: does a different capital-allocation mechanism fix what §7.16's luck
+check found?** Built a quality-ranked admission mode (rank candidate trades within each day by a
+quality proxy, admit the best first, instead of strict first-come-first-served) and tested it
+against all 3 STORM gates. Real result: the empirically-best ranking direction per gate beats
+chronological admission in 6 of 6 (gate × IS/OOS) cases, often substantially, holding on both IS
+and OOS. But the mechanism isn't understood yet — the working hypothesis (entry-z correlation
+explains which direction each gate wants) does not survive a closer check, and the winning
+direction per gate was chosen by testing both, not derived ex-ante — a real, repeatable effect,
+not yet a deployable allocation rule. Full account: `docs/FINDINGS.md` #73.
+
 ## 8. Bias Documentation [OUTLINED, one bias drafted in detail]
 
 Pull directly from `BiasAuditLog` (`output/results/bias_audit.json`,

@@ -33,6 +33,75 @@ Both fixes synced to CachyOS, diff-verified.
 
 ---
 
+## 2026-09-21: Quality-ranked capital admission beats chronological FIFO in 6/6 cases — a real, substantial effect, but the mechanism isn't understood yet and the direction-selection process has its own real caveat
+
+Per Ross's direct instruction ("create all those scripts, run them, and then explore their rabbit
+hole and see what it shows up") — the capital-allocation redesign (built earlier tonight, see
+above) was run for real against all 3 STORM gates, IS+OOS, in 3 configurations: chronological
+(existing, unchanged), quality-ranked descending (largest `|entry_z|` first), and quality-ranked
+ascending (smallest `|entry_z|` first, added after the first real run's result prompted checking
+whether the ranking direction itself was right).
+
+**Full real result, all 6 (gate × split) combinations, matched to the SAME current trade
+population within each row (re-ran the chronological baseline same-night to avoid comparing
+against a stale earlier number — the underlying trades files had already been regenerated once
+tonight for the DSR work):**
+
+| Gate | Split | Chronological | Descending (large-z-first) | Ascending (small-z-first) | Best |
+|---|---|---:|---:|---:|---|
+| squeeze | IS | 0.0364 | 0.0137 | **0.2932** | Ascending |
+| squeeze | OOS | 0.2482 | -0.2509 | **0.4124** | Ascending |
+| momentum | IS | 0.1435 | **0.2337** | -0.0708 | Descending |
+| momentum | OOS | 0.0977 | **0.1418** | -0.0863 | Descending |
+| combined | IS | 0.0085 | **0.1000** | -0.0142 | Descending |
+| combined | OOS | -0.0332 | **0.0187** | -0.0181 | Descending |
+
+**Headline: taking the empirically-best direction per gate, quality-ranked admission beats
+chronological FIFO in ALL 6 of 6 cases, often substantially — and the improvement holds on BOTH
+IS and OOS in every case, not just IS.** This is a real, not obviously spurious, effect: a pure
+in-sample overfit would be unlikely to also improve the held-out split every single time.
+
+**A necessary, honest correction to my own first explanation, not glossed over**: I initially
+attributed squeeze-gate's ascending-preference to `corr(|entry_z|, pnl_net)` being negative for
+that gate specifically. Checked more carefully (IS-only and OOS-only, separately, per gate) and
+found **all 3 gates show a similarly negative correlation** (squeeze: -0.032/-0.035,
+momentum: -0.039/-0.032, combined: -0.041/-0.048, IS/OOS respectively) — the simple linear
+correlation does NOT distinguish squeeze-gate (which wants ascending) from momentum/combined-gate
+(which want descending). **The real mechanism driving which direction wins is NOT simply "which
+quartile of `entry_z` has the better average P&L" — it's something more subtle about how admission
+ORDER interacts with which specific trades compete for capital together under the constraint,
+not yet identified.** Reported honestly as an open question, not forced into a clean story the
+data doesn't actually support.
+
+**A second, more serious caveat, stated plainly**: the admission DIRECTION per gate was chosen by
+running BOTH and keeping whichever performed better — this is itself a form of outcome-informed
+selection, not something derivable ex-ante from a principled feature analysis (the correlation
+check that was supposed to explain it doesn't). A live deployment facing a NEW, not-yet-backtested
+gate would have no principled way to know which direction to use in advance. This doesn't
+invalidate the result (both directions were tested identically, PIT-safety within each individual
+backtest run is intact — no trade uses information from after its own entry_time), but it does
+mean "always use quality-ranked admission" is not yet a deployable rule on its own; "figure out
+which direction, and why, before trusting this on a pair set that hasn't already been tested both
+ways" is the honest current state.
+
+**Not yet done, real next steps**: (1) investigate the actual mechanism (batch composition
+analysis: does squeeze-gate cluster more trades per day than momentum-gate? does the winning
+direction correlate with trade DENSITY per batch rather than the quality metric's own sign?), (2)
+try a different `batch_freq` (weekly instead of daily) to see if the effect is robust to that
+choice, (3) try a different quality proxy entirely (`coint_fraction_rolling`, `squeeze_min`) now
+that `entry_z` alone doesn't cleanly explain the per-gate direction, (4) re-run
+`capital_constraint_luck_check.py` against the WINNING-direction quality-ranked results to confirm
+the taken-vs-skipped luck-check finding actually flips (taken trades should now look at least as
+good as skipped ones, if this mechanism is genuinely fixing the problem `capital_constraint_luck_
+check.py` found, not just moving the number around).
+
+Files: `portfolio_sim.py` (`quality_admission_col`/`quality_admission_batch_freq`/
+`quality_admission_ascending`), `backtest.py` (3 new CLI flags), `debug/_verify_portfolio_sim.py`
+(5 new checks). Logs: `latest_run_quality_admission.log` (descending), `latest_run_quality_
+admission_ascending.log`, `latest_run_chrono_rematch.log` (matched baseline).
+
+---
+
 ## 2026-09-21: LSTM/attention trained for real — a 4th independent method, same honest null result; a real architecture bug found and fixed along the way
 
 Per Ross's direct green light ("we can try the lstm as we have more data now"), built the actual
