@@ -407,6 +407,18 @@ def main():
                          help="Parallel worker processes for the per-pair build "
                               "(BUG-D110: single-threaded, ~28s/pair, hours for "
                               "647+ pairs). Each pair's build is independent.")
+    parser.add_argument("--alpha", type=float, default=0.05,
+                         help="BH-FDR alpha for episodic confirmation (default 0.05, the "
+                              "production value). Added 2026-09-21 for research/"
+                              "fdr_threshold_sensitivity.py's backlog item #3: reuses the "
+                              "already-computed Tier 3 (pair, window) p-values -- no expensive "
+                              "rescan needed to test a tighter threshold, since build_adapter_"
+                              "rows()/discover_pit_confirmed_pairs_with_detail() already accept "
+                              "alpha as a plain parameter.")
+    parser.add_argument("--out-suffix", default="",
+                         help="Appended to the output filename (e.g. '_alpha01') so a "
+                              "sensitivity run doesn't overwrite the production "
+                              "episodic_confirmed_pairs_adapter_output.parquet.")
     args = parser.parse_args()
 
     # Tier 2 REMOVED from every source (BUG-D112, 2026-08-11): its candidate
@@ -427,8 +439,10 @@ def main():
         if not existing:
             print(f"SKIP {source}: no checkpoint files found at {checkpoint_paths}")
             continue
-        df = build_adapter_rows(source, tf_label, checkpoint_paths=checkpoint_paths, n_workers=args.workers)
-        print(f"{source}@{tf_label}: {len(df)} rows built")
+        run_source = source + args.out_suffix  # distinct checkpoint file when alpha != production
+        df = build_adapter_rows(run_source, tf_label, checkpoint_paths=checkpoint_paths,
+                                 alpha=args.alpha, n_workers=args.workers)
+        print(f"{source}@{tf_label} (alpha={args.alpha}): {len(df)} rows built")
         all_rows.append(df)
 
     if not all_rows:
@@ -437,7 +451,7 @@ def main():
 
     combined = pd.concat(all_rows, ignore_index=True)
     os.makedirs(_OUT_DIR, exist_ok=True)
-    out_path = os.path.join(_OUT_DIR, "episodic_confirmed_pairs_adapter_output.parquet")
+    out_path = os.path.join(_OUT_DIR, f"episodic_confirmed_pairs_adapter_output{args.out_suffix}.parquet")
     combined.to_parquet(out_path)
     print(f"Wrote {out_path} ({len(combined)} total rows)")
     return combined
