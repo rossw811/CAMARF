@@ -1,10 +1,10 @@
 ## 2026-09-22: Backlog — 4 items noted per Ross's explicit request, none executed yet ("just note those for now")
 
-1. **"Arxivisual"-type artifact** — Ross's own term, ambiguous as given; my best-guess reading is
-   a visual/graphical-abstract-style artifact summarizing the paper (a one-page infographic of the
+1. **"Arxivisual"-type artifact** — CONFIRMED 2026-09-22 (Ross: "the visual is correct"): a
+   visual/graphical-abstract-style artifact summarizing the paper (a one-page infographic of the
    core methodology + headline finding, the kind some arXiv papers ship alongside the PDF, or a
-   project landing page). Needs a quick confirmation of what Ross actually means before building
-   anything — not assumed and built on a guess.
+   project landing page). Scope/format still not decided (static image? interactive page? which
+   findings headline it?) — not started, per "just note those for now."
 2. **An audit is required before treating the paper as arXiv-ready.** Not scoped yet — likely
    needs: every headline number re-verified against current code/data (not cited from memory or an
    old snapshot, per this project's own standing rule), full citation/reference check, a read for
