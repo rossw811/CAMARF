@@ -33,6 +33,42 @@ Both fixes synced to CachyOS, diff-verified.
 
 ---
 
+## 2026-09-21: Backlog item #3 — FDR-threshold sensitivity, real shrinkage confirmed cheaply (no 25hr re-scan needed), tighter pool build launched
+
+Ross gave blanket go-ahead on all previously-blocked decisions. Started with backlog item #3
+("test whether tightening the episodic-confirmation FDR threshold shrinks the 1,375-pair Purity
+pool toward the Baseline/Tiered set's positive result").
+
+**Root insight before building anything**: the ~25-hour cost in `wrds_deep_history_episodic_
+scan.py` is entirely in candidate generation + per-window EG p-value computation (Tier 3); the
+FINAL BH-FDR confirmation step (`episodic_bhfdr_confirm`) is a cheap, independent function over
+already-computed p-values, already saved to `output/research/wrds_deep_history_episodic_scan_
+tier3_windows.parquet` (5,003,637 rows). Testing a tighter alpha needed NO re-scan at all — built
+`research/fdr_threshold_sensitivity.py` (new, `debug/_verify_fdr_threshold_sensitivity.py` 4/4)
+to re-apply the correction at several alphas directly against the saved data.
+
+**Real result, 1D Tier-3-only subset**: alpha=0.05 (current production) → 929 confirmed pairs;
+0.02 → 535 (42% shrinkage); 0.01 → 360 (61%); 0.005 → 279 (70%); 0.001 → 180 (81%). **Tightening
+the threshold shrinks the pool substantially and monotonically** — directly confirms the first
+half of the backlog question. (929 vs. the production 1,375-pair total reflects that the full
+pool combines 3 sources — 1D + 1h + 4h intraday — while this sensitivity check used the 1D-only
+windows file, by far the dominant source per the original 182-pair breakdown's 170/6/6 split; not
+a discrepancy, a known scope difference.)
+
+**Next step, launched**: does the SHRUNK pool's actual backtest performance improve toward
+Baseline/Tiered's positive result, or does it stay negative? Added `--alpha`/`--out-suffix` CLI
+flags to `research/episodic_pairs_adapter.py` (both already-accepted parameters of `build_adapter_
+rows`/`discover_pit_confirmed_pairs_with_detail`, just not exposed on the CLI before — zero-risk
+addition, defaults preserve the exact original production behavior, `debug/_verify_episodic_
+pairs_adapter.py` still 18/18). Launched a real rebuild at alpha=0.01 (360-pair expected pool,
+12 workers) on CachyOS, writing to a suffixed output path so the production `purity_pairs.parquet`
+and its checkpoint are untouched. Once complete: run `research/build_comparison_arm_pairs.py`
+equivalent + `backtest.py --capital-sim` against the tighter pool and report the real Sharpe.
+
+Synced/committed/pushed.
+
+---
+
 ## 2026-09-21: CachyOS parity re-check — 12 files from an earlier session synced, now 558/558 in sync
 
 Ran `debug/_check_cachyos_parity.py` as a closing sanity pass given how much moved tonight. Found
