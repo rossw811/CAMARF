@@ -28180,3 +28180,217 @@ genuine, quantified reason (independent of the already-queued total-return-recon
 question) to reconsider whether `Config.DATA.INCLUDE_GLOBAL_WRDS_UNIVERSE`'s default-off gating
 is still the right call, or whether it's fine as-is precisely because these symbols self-select
 out via the sparse-pair exclusion regardless.
+
+---
+
+## Session 2026-09-13/14 — WRDS universe-undercount and PERMNO-alias contamination fixed at
+scale; episodic scan rebuilt at corrected scope, 182→1,375-pair Purity pool
+
+**Two real, compounding contamination sources found and fixed in the correlation-prefilter
+stage**, both affecting every full-universe script downstream: (1) the WRDS-merged universe was
+silently undercounting real symbols (root cause and exact fix folded into the corrected-scale
+episodic re-scan below, full account in `docs/HANDOFF.md`'s 2026-09-13 entries); (2) the
+correlation-prefilter's own WRDS ticker↔PERMNO self-pair/alias-duplicate check, previously applied
+only at promotion time on an already-small candidate list, was moved upstream into the correlation
+stage itself — **2,211 of 6,844 PERMNO-labeled symbols (32%) turned out to be literal aliases of
+an already-present plain ticker**, a real, substantial contamination source at exactly the scale
+the project's full-universe candidate generation operates on, not a theoretical edge case.
+
+**`wrds_deep_history_episodic_scan.py` (Tier 3, the causally-PIT-safe rolling-correlation-prefilter
++ rolling-window EG + joint BH-FDR methodology) was re-run at the corrected scale**: 1495.4 min
+(~24.9 hours), 7,834,906 candidates, 5,003,637 actual (pair, window) EG tests, producing **1,382
+Tier-3-confirmed pairs** (1,375 after the adapter's own filtering), replacing the earlier
+182-pair count this project's headline PAPER.md §7.20 result had been built on. **This is a scale
+correction, not a methodology change** — the same Tier-3-only, causally point-in-time-safe
+discovery process throughout (Tier 1/2's static full-history correlation prefilter remains
+excluded per BUG-D112's standing decision) — but every downstream Sharpe number computed against
+the old 182-pair pool became stale the moment this landed, a genuine reconciliation debt that sat
+undocumented in PAPER.md until 2026-09-21 (see below).
+
+**Real backtest against the rebuilt pool, all 4 comparison arms**: Purity (episodic-only, 1,375
+pairs): unconstrained Sharpe -0.218, capital-constrained (`--capital-sim`, $100k fixed) -0.7584.
+Hybrid (episodic + 3 standard-screen pairs): similarly negative. Tiered/Baseline (standard
+full-history screen): +1.417 IS / +0.630 OOS, but this outperformance is a capital-efficiency
+artifact of which pairs trade at all under fixed-notional sizing, not evidence the standard
+discovery process (PIT-unsafe) actually works — all 3 standard pairs share one confidence tier at
+this snapshot, so PIT-confidence weighting degenerates to unweighted. The only two arms that
+actually answer the causal-discovery question, Purity and Hybrid, are both negative, IS and OOS.
+
+**`parameter_sensitivity_screen.py`'s own docstring scope note** (added, not silently left stale):
+the script was tuned/timed against the original 182-pair target; at 1,375 pairs each grid point's
+`backtest.py --capital-sim` run costs ~5 min, making Tier1 (26 runs) ~2+ hours and Tier2 (~104
+runs) ~8+ hours — a real, disclosed scope change from what the script cost when written, not a
+bug. Tier1 (entry_zscore/hedge_method/capital_sizing) run to completion the same session: every
+grid point, both splits, negative Sharpe — confirms the negative result isn't a tunable-parameter
+artifact. **One real anomaly flagged, not yet investigated at the time**: all 4 Kelly-fraction
+sizing variants produced bit-for-bit identical output (root-caused and closed 2026-09-21, see
+below — `_KELLY_MIN_TRADES=60` portfolio-wide floor never reached on this pool's risk-based-sizing
+trade count, not a bug).
+
+**A real production bug found and fixed the same session**: `backtest.py`'s `_storm` filename
+suffix was ALWAYS appended to output labels regardless of whether any `--storm-*` flag was
+actually passed — every non-STORM run's output silently carried a misleading `_storm` tag.
+Root-caused to a truthiness check that didn't exclude one non-boolean, string-valued STORM flag
+key (`decay_rate_gate_spec`) from the "any STORM flag set" test. Fixed, regression-tested.
+
+Files: `research/wrds_deep_history_episodic_scan.py` (corrected-scale run), `research/episodic_
+pairs_adapter.py`, `research/build_comparison_arm_pairs.py`, `research/parameter_sensitivity_
+screen.py` (Tier1 run + scope note), `backtest.py` (`_storm` suffix fix). Full account: `docs/
+HANDOFF.md`'s 2026-09-13 through 09-15 09:25 entries, `docs/FINDINGS.md` #24-25.
+
+---
+
+## Session 2026-09-15/16 — Squeeze/momentum entry-gate methodology gap found, built, and
+validated with the project's strongest statistical evidence to date; capital-size sweep; GPU wired
+in; new engineering infrastructure (verify-suite runner, CachyOS parity checker)
+
+**Ross asked directly whether the Purity pool's negative result could reflect a backtest
+methodology gap rather than pair selection** — specifically "the lack of squeeze and momentum" in
+the entry criteria. Confirmed directly by reading the code: `backtest.py`'s entry gate was purely
+`|z_rolling| >= ENTRY_ZSCORE`; no volatility-squeeze or price-momentum confirmation existed
+anywhere, default or optional. A real TTM-style squeeze indicator and RSI momentum were already
+computed by `analysis.py`'s `VolumeStructure` step but never reached the entry-decision code or
+`ml.py`'s feature set — a real signal, computed and persisted, that simply never got wired in. A
+data-quality detour along the way: the saved per-symbol feature files were found ~72-83% NaN on
+`squeeze_indicator` for a sample symbol, traced to a STALE file (a much wider, now-gone
+extended-hours date range vs. the current `DataStore` cache) rather than a formula bug — fixed by
+recomputing fresh from the current cache and merging additively into `spread_series_*.parquet`.
+
+**Built as 3 independently-testable STORM comparison arms** (`--storm-squeeze-gate`,
+`--storm-momentum-gate`, `--storm-squeeze-momentum-gate`), per Ross's explicit "test all three
+options" instruction, against the rebuilt 1,375-pair Purity pool. **All 3 flip the unconstrained
+Sharpe from the pool's own -0.218 to +0.35/+0.39/+0.43 (IS) and +0.45/+0.24/+0.50 (OOS)** — real,
+out-of-sample-confirmed. Validated with a random-subsample control (2,000 size-matched random
+draws per gate from the ungated pool): **all 3 gates' real Sharpe landed at the 100th percentile,
+p≈0.0000** — this project's strongest statistical evidence to date that a result is a genuine
+selection effect, not sampling variance. The capital-constrained headline metric did NOT track
+this improvement (stayed negative across all 6 gate×split combinations) — flagged as the open
+question this whole investigation thread would eventually chase down (resolved 2026-09-21, see
+below: the capital-sim mechanism itself doesn't preferentially admit good trades, confirmed via a
+dedicated luck-check tool, independent of the squeeze/momentum finding's own validity).
+
+**Capital-size sweep, built and run for real** (`research/capital_size_sweep.py`, 12-point grid,
+$50k-$2M, IS+OOS): corrected an earlier premature 4-point "no pattern" reading — OOS Sharpe
+actually trends from -0.82 at $100k toward -0.43 at $1-1.5M, a real, monotonic-ish improvement
+with account size, while small accounts ($50k/$75k) show the classic overfitting signature
+(positive IS, worst OOS of the whole grid).
+
+**GPU acceleration tested and wired in for real**, per Ross's standing "always test the GPU, if
+it's better wire it in" instruction. Real benchmark on CachyOS's RTX 4080 (after fixing a genuine
+OOM in the benchmark script itself — holding both CPU and GPU (n,n) result arrays simultaneously
+for correctness comparison blew past available RAM at N=44,000; fixed with an 8,000-row
+correctness-check ceiling, timing-only above it): **consistently 2.0-2.8x faster at every N>=1000**
+(full-universe scale, N=44,000: 6.6 min CPU → 3.1 min GPU), correctness-verified bit-for-bit up to
+N=8,000. Wired in as automatic detection (`gpu_backend.should_use_gpu(n)`, auto-enables above
+N=1,500 with a VRAM-headroom check), not a manual flag — into every large one-shot correlation
+call site (`analysis.py`'s main Pearson step, `ThresholdCalibrator`, plus the two
+`k_bahc_candidate_discovery.py`/`market_wide_cointegration_decay.py` scripts that were this
+module's own originally-stated motivating use case but had never actually passed `use_gpu=True`
+before). Deliberately NOT wired into per-block-pair calls inside chunked-correlation inner loops
+(different, unbenchmarked overhead profile).
+
+**New engineering infrastructure, immediate real payoff**: `debug/_run_all_verify.py` (runs all
+`debug/_verify_*.py` scripts, classifies PASS/FAIL/ERROR) and `debug/_check_cachyos_parity.py`
+(hashes every tracked `.py` file on both machines in one batched SSH round-trip, replacing the
+manual `scp`+`diff` ritual). The parity checker's first real run found **5 genuine local-ahead-of-
+CachyOS divergences**, the most consequential a stale `stats.py` on CachyOS still carrying the OLD,
+buggy hand-maintained `_TF_DIR_MAP` — would have silently NaN'd any Huber/MM hedge-ratio estimator
+run on CachyOS for 1D/7D/3M/6M pairs. All 5 fixed, 509/509 tracked files confirmed in sync — the
+first time the whole tracked codebase had been genuinely synchronized this session, not just
+whichever files each task happened to touch.
+
+Files: `research/squeeze_momentum_features.py`, `research/squeeze_momentum_signal_validation.py`,
+`research/capital_size_sweep.py`, `backtest.py` (3 new STORM flags), `ml.py` (2 new feature
+columns), `gpu_backend.py` (`should_use_gpu`), `analysis.py`/`research/k_bahc_candidate_
+discovery.py`/`research/market_wide_cointegration_decay.py` (GPU wiring), `debug/_run_all_
+verify.py` (new), `debug/_check_cachyos_parity.py` (new), plus matching `debug/_verify_*.py`
+suites for every new script. Full account: `docs/FINDINGS.md` #68, `docs/HANDOFF.md`'s
+2026-09-15/16/19/20 entries.
+
+---
+
+## Session 2026-09-20/21 — Hierarchical DSR, capital-constraint luck check, Tier2 fully wired
+and re-run, squeeze/momentum DSR resolved (0.9676), FDR-threshold sensitivity closed, 10 real
+verify-suite bugs fixed, CONTRIBUTING.md rewritten
+
+**Two systems Ross explicitly requested, both built and run for real**, in response to "i don't
+think the mechanistically-motivated finding should be penalized but i want your thoughts... for
+the small account overfitting we need to add a system similar to DSR to penalize for lucky
+trades... let me hear your thoughts" — met with a substantive proposal (not a blanket agreement),
+approved with "i like your ideas let's execute them":
+
+1. **`research/capital_constraint_luck_check.py`** — tests whether `--capital-sim`'s chronological
+   trade admission preferentially keeps better trades. A real key-collision bug found and fixed on
+   the first real run first (the anti-join key didn't discriminate `hedge_method` siblings sharing
+   an identical `entry_spread`), then run against all 3 gate arms: **every one shows the taken
+   trades are WORSE than the skipped ones** (momentum-gate: taken Sharpe -0.27 vs skipped +0.40,
+   0.7th percentile of 2,000 random draws; squeeze-gate and the combined gate: taken Sharpe at the
+   literal 0.0th percentile — worse than every one of 2,000 random same-size draws). Not merely
+   uninformative about trade quality — mildly to strongly anti-correlated with it, and confirmed
+   across 3 independently-built gates, not a single-gate artifact.
+
+2. **`research/hierarchical_dsr.py`** — a family-scoped Deflated Sharpe Ratio correction, since the
+   pooled trial-registry DSR (990, later 1,150 trials) showed 0.0000 across every label checked,
+   including ~250 unrelated parameter-sensitivity grid points inflating any single label's
+   "chances tried" count. Classifies trials into 20 methodologically-independent families via a
+   transparent regex classifier. **Honest result: mostly doesn't flip the verdict** (the observed
+   edge is small relative to what chance alone could produce even within a correctly-scoped
+   family, not primarily a pooling artifact) — **except for `squeeze_momentum_gate`, once its
+   missing trades files were regenerated: family-scoped DSR = 0.9676 (z=1.85) at n=39 trials,
+   against the same label's pooled DSR of 0.0000 (z=-37.94)** — the one family in the whole
+   investigation where the correction flips the conclusion at a trial count large enough to trust.
+   Read narrowly: the gate's UNCONSTRAINED trade-selection edge is statistically real; this does
+   NOT mean the capital-constrained strategy is profitable (item 1 above stands unchanged) — two
+   separate, both-real findings, not a contradiction. This is the concrete answer to Ross's
+   original question.
+
+**Tier2 parameter sensitivity screen (the last item in Ross's explicit ordering: validate signal →
+capital-allocation sweep → parameter sensitivity screen) completed and, after a real bug fix,
+fully re-run.** Every Sharpe across the 12-constant × grid × IS/OOS grid came back negative except
+one small-sample outlier — but 5 of 12 dimensions initially showed an exact-zero effect size,
+traced to a real bug in the SWEEP SCRIPT (not `backtest.py`): each of the 5 swept constants is
+gated behind a CLI flag or sizing mode the sweep never passed (4 of 5 needed a `--storm-*`/
+`--concentration-cap` flag; the 5th, `corr_exit_window`, turned out to be genuinely dead config —
+never read anywhere in the codebase at all, a design gap flagged for Ross's input rather than
+silently wired up). Fixed, verified, re-run: `corr_exit_threshold`, once genuinely active, makes
+results dramatically WORSE (baseline -0.76/-0.48 → -8.06/-7.40 at the loosest setting), consistent
+with the project's own documented correlation-exit chattering-trades failure mode.
+
+**Backlog item #3 (does tightening the episodic-confirmation FDR threshold help?) closed with a
+real negative result.** Found that the ~25-hour scan cost is entirely in candidate generation, not
+the final BH-FDR confirmation step (a cheap, independent function over already-saved p-values) —
+no re-scan needed to test a tighter alpha. Real result: tightening from 0.05 to 0.01 shrinks the
+1D pool 61% (929→360 confirmed pairs), but a real rebuild+backtest at the tighter threshold left
+unconstrained Sharpe essentially flat (-0.218→-0.203) and made the capital-constrained metric
+measurably WORSE (-0.7584→-1.4682 IS) — ruling out "too many marginal pairs diluting a good core"
+as the explanation for the negative result.
+
+**A real, methodical pass through the verify suite found and fixed 10 genuine bugs** (not counting
+3 more already-fixed-before-this-session and 3 confirmed-expected-slowness scripts): `_verify_
+pit_wfa.py` and `_verify_macro_regimes.py` (stale synthetic fixtures, root-caused not guessed),
+`_verify_eg_both_directions_fix.py` (pinned real-data p-values drifted as the underlying cache
+grew — re-pinned against a frozen date cutoff), `_verify_wrds_global_fetch_retry.py` (monkeypatch
+target moved to a different module in an earlier refactor, silently making a real WRDS connection
+instead of the intended fake), `_verify_fresh_holdout_compare.py` (a pooled-aggregate CLT-
+diversification effect masked an engineered single-pair signal — needed a separate fixture),
+`_verify_index_additions.py` and `_verify_stress_test_replication.py` (fixtures never updated
+after real upstream refactors), `_verify_adapter_stale_checkpoint_fix.py` (fake missing a real new
+kwarg). Full local↔CachyOS suite: **252/254 pass** (was 244/256 at the session's start), both
+remainders understood (a known test-isolation false-failure, a genuine missing-tensorflow
+dependency not installed pending a decision on that research direction). Also reconciled `PAPER.md`
+§7.20's stale 182-pair table against §7.21's rebuilt 1,375-pair numbers (flagged as outstanding
+since 09-15, resolved with a correction note, old table kept for provenance).
+
+**`CONTRIBUTING.md` rewritten into a comprehensive script-by-script guide**, per Ross's explicit
+request, covering all ~510 scripts in the codebase (19 core pipeline scripts with full hand-
+written detail; auto-generated tables for the 222 `research/`, 32 `debug/` utility, and 19 other
+root-level scripts, extracted programmatically from each script's own module docstring via the
+new `scripts/_build_contributing.py` generator, re-run after adding/removing scripts rather than
+hand-maintained).
+
+Files: `research/capital_constraint_luck_check.py` (new), `research/hierarchical_dsr.py` (new),
+`research/fdr_threshold_sensitivity.py` (new), `research/episodic_pairs_adapter.py` (`--alpha`/
+`--out-suffix` CLI flags), `research/parameter_sensitivity_screen.py` (TIER2_REGISTRY fix),
+`CONTRIBUTING.md` (rewritten), `scripts/_build_contributing.py` (new), 10 fixed `debug/_verify_
+*.py` scripts, `PAPER.md` §7.20-7.22, `PAPER_MAGNITUDE.md` §7.1. Full account: `docs/FINDINGS.md`
+#69-70, `docs/HANDOFF.md`'s full 2026-09-21 entry set.
