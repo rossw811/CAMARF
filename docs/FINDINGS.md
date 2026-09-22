@@ -4318,3 +4318,60 @@ but a real, strengthened finding, not a weaker one than originally reported.
 Files: `research/multivariate_pit_predictors.py` (no changes — `fit_gee()` already existed),
 `output/research/multivariate_pit_predictors_1D.parquet`. Full account: `docs/HANDOFF.md`'s
 2026-09-21 entry.
+
+## 72. LSTM/Attention Trained for Real — a Fourth Independent Method Converges on the Same Honest
+Null Result; a Real Binary-Output-Head Bug Found and Fixed Along the Way [2026-09-21]
+
+**The unblocking condition, finally met.** `research/lstm_attention_architecture.py` was built
+2026-07-22 as an architecture-only exercise, deliberately never trained, per Ross's own direct
+instruction ("add the architecture for LSTM/attention but don't use it in actual backtesting") and
+its own stated blocking condition: revisit once the confirmed-pair set is "large enough that a
+train/test split has a realistic chance of generalizing." At the time: 24 labeled examples across
+3 pairs. As of tonight: 74,732 labeled entry events across 1,301 of 1,375 episodic-confirmed
+pairs. Ross's own words unblocking it: "we can try the lstm as we have more data now."
+
+**Built `research/lstm_attention_training.py`**, reusing `ml.build(pit_safe=True)` directly for
+the real event list (entry_time, label, pair identity) — no relabeling, full parity with the
+existing XGBoost study. The only genuinely new thing tested: a 20-bar lookback SEQUENCE of
+`z_rolling`/`half_life_rolling` ending at each event's own `entry_time` (sourced from that pair's
+own `spread_series_*.parquet`, events with insufficient pre-entry history dropped, not padded),
+instead of a static feature snapshot — the one question a sequence model can ask that a plain
+classifier structurally cannot: is there TEMPORAL structure in the trajectory leading up to a
+signal that predicts its outcome, beyond a single snapshot value.
+
+**A real bug found the first time this architecture was ever actually trained** (previously
+`predict()`-tested only, by design): both `build_lstm_classifier`/`build_attention_classifier`
+used `Dense(n_classes, sigmoid)` for the binary case — 2 independent sigmoid units instead of 1,
+a target/output rank mismatch that only surfaces at `fit()` time against a 1D integer target. The
+original synthetic verify script's own docstring claimed the single-sigmoid-unit shape was
+checked; the actual assertion was never written — only value range on `predict()` output, which
+stays valid (sigmoid outputs are always in [0,1]) regardless of unit count. Fixed both architecture
+functions to `Dense(1, sigmoid)`; the verify script fixed to assert the real output shape AND
+call `fit()` for real, not just `predict()` — closing the exact gap that let this slip through.
+
+**Real training run, completed in 2.0 minutes total**: 74,145 sequences (1,301 pairs; 587 dropped
+for insufficient lookback history), 44,487 train / 14,829 val / 14,829 test, same chronological
+split convention as `ml.py`.
+
+| Model | Holdout accuracy | Majority baseline | Verdict |
+|---|---:|---:|---|
+| LSTM | 53.97% | 60.29% | does NOT beat baseline |
+| Attention | 53.94% | 60.29% | does NOT beat baseline |
+| (reference) static-feature XGBoost, 2026-09-15 | 54.24% | 58.98% | does NOT beat baseline |
+
+**A fourth independent method now converges on the same honest null result.** P&L backtest Sharpe
+(negative), the multivariate GEE study (no significant OOS-survival predictor beyond the one
+counterintuitive `actual_n_overlap` signal, Finding #71), static-feature XGBoost (below majority
+baseline), and now sequence LSTM/attention (also below majority baseline) all agree: whatever made
+the small, historically-positive full-history-confirmed set special is not visible to the
+episodic-confirmed pool's z-score/half-life trajectory at this feature set — snapshot or sequence.
+The LSTM/attention result specifically closes off "the signal is temporal, not a static snapshot"
+as the missing ingredient, the one genuinely new question this architecture could ask that the
+prior three methods structurally could not. Reported honestly as a real, now well-triangulated
+negative result, not a failed exercise — per this project's own "honest over impressive" rule.
+
+Files: `research/lstm_attention_training.py` (new), `research/lstm_attention_architecture.py`
+(binary output-head bug fixed), `debug/_verify_lstm_attention_training.py` (new, 13/13),
+`debug/_verify_lstm_attention_architecture.py` (fixed, now asserts shape + calls `fit()`), `output/
+research/lstm_attention_training_results.json`. Full account: `docs/HANDOFF.md`'s 2026-09-21
+entry.

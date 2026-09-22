@@ -33,6 +33,58 @@ Both fixes synced to CachyOS, diff-verified.
 
 ---
 
+## 2026-09-21: LSTM/attention trained for real — a 4th independent method, same honest null result; a real architecture bug found and fixed along the way
+
+Per Ross's direct green light ("we can try the lstm as we have more data now"), built the actual
+training run `research/lstm_attention_architecture.py` was deliberately built to wait for (2026-
+07-22: "add the architecture for LSTM/attention but don't use it in actual backtesting," unblocked
+only once the confirmed-pair set was "large enough that a train/test split has a realistic chance
+of generalizing" — 24 examples then). `research/lstm_attention_training.py` (new) reuses `ml.
+build(pit_safe=True)` directly for the real event list (no relabeling), builds a 20-bar lookback
+sequence of `z_rolling`/`half_life_rolling` ending at each event's own `entry_time` from that
+pair's `spread_series_*.parquet` (dropping, not padding, events with insufficient history), and
+trains both architectures with the same chronological 60/20/20 split `ml.py` itself uses.
+
+**A real bug found the first time this architecture was ever actually trained** (not just
+`predict()`-tested, which is all the original synthetic verify suite did): both `build_lstm_
+classifier`/`build_attention_classifier` used `Dense(n_classes, sigmoid)` for the binary case — 2
+independent sigmoid outputs instead of 1, causing a target/output rank mismatch at `fit()` time.
+The original verify script's own docstring claimed the single-sigmoid-unit shape was checked; the
+actual test never asserted it, only checked value range on `predict()` output (valid regardless of
+unit count). Fixed both to `Dense(1, sigmoid)`; verify script fixed to assert the real shape and
+call `fit()` for real. `tensorflow` (2.21.0, CPU — cuDNN version mismatch blocks GPU on CachyOS,
+not chased further given how tiny these models are) installed via `uv pip install --python
+.venv/bin/python tensorflow`.
+
+**Real training run: 74,145 sequences (1,301 pairs, up slightly from 74,732 raw labeled examples
+— 587 dropped for insufficient pre-entry history), 44,487 train / 14,829 val / 14,829 test,
+completed in 2.0 minutes total.** Both architectures land essentially at chance-adjacent
+performance, BELOW the majority-class baseline:
+
+| Model | Holdout accuracy | Majority baseline | Verdict |
+|---|---:|---:|---|
+| LSTM | 53.97% | 60.29% | does NOT beat baseline |
+| Attention | 53.94% | 60.29% | does NOT beat baseline |
+| (for reference) static-feature XGBoost, 2026-09-15 | 54.24% | 58.98% | does NOT beat baseline |
+
+**This is now a FOURTH independent method (P&L backtest Sharpe, multivariate GEE study, static-
+feature XGBoost, sequence LSTM/attention) converging on the same honest conclusion**: whatever
+makes the small, historically-positive full-history-confirmed set special, it is not something
+visible to the episodic-confirmed pool's z-score/half-life trajectory — snapshot OR sequence — at
+this feature set. The LSTM/attention result specifically rules out "the signal is temporal/
+sequential, not a static snapshot" as the missing ingredient; that was the one genuinely new
+question this architecture could ask that the prior 3 methods couldn't, and the answer is still
+no. Not a failure of the exercise — a real, now well-triangulated negative result, reported
+honestly per "honest over impressive."
+
+Files: `research/lstm_attention_training.py` (new), `research/lstm_attention_architecture.py`
+(binary output-head bug fixed), `debug/_verify_lstm_attention_training.py` (new, 13/13),
+`debug/_verify_lstm_attention_architecture.py` (fixed, now asserts shape + calls `fit()`, all
+checks pass), `output/research/lstm_attention_training_results.json`,
+`latest_run_lstm_attention_training.log`.
+
+---
+
 ## 2026-09-21: tensorflow-install question closed — `lstm_attention_architecture.py` is deliberately dormant, not blocked
 
 Checked whether `_verify_lstm_attention_architecture.py`'s missing-tensorflow ERROR was worth

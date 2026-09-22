@@ -288,6 +288,39 @@ def _kelly_fraction(closed_pnls: list) -> float:
     return max(0.0, f_star)
 
 
+def _reorder_for_quality_admission(trades: pd.DataFrame, quality_col: str, batch_freq: str) -> pd.DataFrame:
+    """Reorders an already entry_time-sorted trades DataFrame so that, WITHIN each `batch_freq`
+    time bucket (e.g. calendar day), trades are admitted best-quality-first instead of
+    first-come-first-served -- batches themselves stay in ascending chronological order, only
+    the ORDER WITHIN each batch changes.
+
+    Added 2026-09-21, directly testing whether replay_portfolio's existing strictly-chronological
+    admission is WHY the capital-constrained result underperforms (research/capital_constraint_
+    luck_check.py, same date: found taken trades are worse than skipped trades across all 3
+    STORM gates, at or below the 0.7th percentile of random same-size draws -- i.e. the current
+    FIFO mechanism is not merely uninformative about quality, it's mildly anti-correlated with
+    it). `quality_col` must be a column already present in `trades_df` and known causally AT the
+    trade's own entry_time (e.g. `entry_z` -- the entry signal's own strength, already used
+    elsewhere in this file for risk sizing) -- never a column that could leak future information.
+
+    Causal safety: reordering trades WITHIN a `batch_freq` bucket does not violate point-in-time
+    safety as long as replay_portfolio's own per-trade logic (settle-by-exit_time, mark-to-market,
+    capital availability) only ever compares against each trade's OWN entry_time value -- which it
+    does (confirmed by reading the loop directly, not assumed) -- rather than relying on strict
+    monotonic iteration order. A trade admitted "out of chronological order" within the same
+    `batch_freq` window is exactly what a real trader checking a batch of overnight signals each
+    morning and prioritizing the strongest ones would do -- not a lookahead into later signals.
+    """
+    if quality_col not in trades.columns:
+        raise ValueError(f"quality_col={quality_col!r} not present in trades_df columns: "
+                          f"{list(trades.columns)}")
+    out = trades.copy()
+    out["_batch"] = out["entry_time"].dt.floor(batch_freq)
+    out["_quality_abs"] = out[quality_col].abs()
+    out = out.sort_values(["_batch", "_quality_abs"], ascending=[True, False])
+    return out.drop(columns=["_batch", "_quality_abs"])
+
+
 def replay_portfolio(
     trades_df: pd.DataFrame,
     starting_capital: float,
@@ -296,6 +329,8 @@ def replay_portfolio(
     flat_risk_pct: float = None,
     concentration_cap: float = None,
     leverage_cap: float = None,
+    quality_admission_col: str = None,
+    quality_admission_batch_freq: str = "D",
 ) -> dict:
     """
     Event-driven, capital-constrained, mark-to-market replay of an already-generated trade list.
@@ -316,10 +351,20 @@ def replay_portfolio(
     default value, producing a measured zero effect that was actually a wiring gap, not a genuine
     null result. Callers that want an override must now pass it explicitly; the default (None)
     preserves the original module-level-constant behavior for every other existing caller.
+
+    quality_admission_col / quality_admission_batch_freq (added 2026-09-21): default None
+    preserves the EXACT original strictly-chronological, first-come-first-served admission order
+    -- zero behavior change for every existing caller. When quality_admission_col names a column
+    present in trades_df (e.g. "entry_z"), trades within each quality_admission_batch_freq time
+    bucket (default "D", one calendar day) are admitted best-|quality_admission_col|-first instead
+    of by raw arrival order -- see _reorder_for_quality_admission's own docstring for the causal-
+    safety argument and the real capital_constraint_luck_check.py finding this directly tests.
     """
     risk_pct = flat_risk_pct if flat_risk_pct is not None else _FLAT_RISK_PCT
     trades = trades_df.sort_values("entry_time").copy()
     trades["notional_at_entry"] = trades.apply(lambda t: notional_at_entry(t), axis=1)
+    if quality_admission_col is not None:
+        trades = _reorder_for_quality_admission(trades, quality_admission_col, quality_admission_batch_freq)
     records = trades.to_dict("records")
 
     realized_equity = starting_capital

@@ -2400,6 +2400,18 @@ def main() -> None:
                         "matches the UCITS commitment-approach / '40 Act Section 18 asset-coverage "
                         "convention. E.g. --leverage-cap 1.0 = no leverage (gross exposure never "
                         "exceeds 100% of equity). None (default) = no cap, unchanged behavior.")
+    p.add_argument("--quality-admission-col", default=None,
+                   help="Added 2026-09-21, directly testing research/capital_constraint_luck_"
+                        "check.py's finding that --capital-sim's strictly-chronological trade "
+                        "admission is mildly anti-correlated with trade quality, not just "
+                        "uninformative. Names a trades column (e.g. 'entry_z') to admit trades "
+                        "best-|value|-first WITHIN each --quality-admission-batch-freq time "
+                        "bucket, instead of raw arrival order. None (default) = unchanged "
+                        "strictly-chronological behavior.")
+    p.add_argument("--quality-admission-batch-freq", default="D",
+                   help="Pandas offset alias for --quality-admission-col's re-ranking bucket "
+                        "(default 'D' = one calendar day). Only meaningful when "
+                        "--quality-admission-col is set.")
     args = p.parse_args()
 
     _pairs_override_df: Optional[pd.DataFrame] = None
@@ -2735,6 +2747,8 @@ def main() -> None:
             flat_risk_pct=_backtest_cfg.FLAT_RISK_PCT,
             concentration_cap=_backtest_cfg.MAX_CONCENTRATION_PCT if args.concentration_cap else None,
             leverage_cap=args.leverage_cap,
+            quality_admission_col=args.quality_admission_col,
+            quality_admission_batch_freq=args.quality_admission_batch_freq,
         )
         sim_sharpe = portfolio_sim.portfolio_sharpe_from_replay(sim_result)
         log.info("  [capital_sim] taken=%d/%d skipped=%d peak_notional=$%.0f "
