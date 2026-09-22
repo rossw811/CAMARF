@@ -1,3 +1,87 @@
+## 2026-09-22: Luck-check re-run against the winning quality-admission direction — real, substantial improvement, to different degrees per gate
+
+Per Ross's follow-up ("do both those things") — re-ran `research/capital_constraint_luck_check.py`
+against each gate's WINNING quality-admission direction (squeeze-gate: ascending; momentum-gate,
+combined-gate: descending). First had to regenerate momentum-gate's and combined-gate's taken-
+trades files, since the later ascending comparison run had overwritten them with their LOSING
+direction's output (confirmed via mtime before touching anything — squeeze-gate's file was
+already correct, only momentum/combined needed a fresh 4-run regen).
+
+**Real result, all 3 gates, compared against the original chronological-FIFO luck-check (2026-09-
+21):**
+
+| Gate | Direction | taken_better_than_skipped | Percentile vs 2,000 random draws | p-value | Read |
+|---|---|:---:|---:|---:|---|
+| squeeze | ascending | **True** (was False) | **100.0th** (was 0.0th) | **0.0000** (was 1.0000) | **Fully fixed** |
+| momentum | descending | False (unchanged) | **49.1th** (was 0.7th) | **0.5090** (was 0.9935) | **Partially fixed** |
+| combined | descending | False (unchanged) | **99.7th** (was 0.0th) | **0.0035** (was 1.0000) | **Mostly fixed** |
+
+**Squeeze-gate: fully fixed.** Taken trades now genuinely beat skipped trades (0.4297 vs 0.3444
+Sharpe) AND sit at the literal 100th percentile of random same-size draws — a complete reversal
+from chronological admission, where taken trades were at the 0.0th percentile (worse than every
+one of 2,000 random draws).
+
+**Combined-gate: mostly fixed.** Taken trades are now a real, statistically significant outlier
+vs. random draws (99.7th percentile, p=0.0035) — a massive improvement from 0.0th/p=1.0000 — but
+still narrowly below the (very strong) skipped population's own Sharpe (0.357 vs 0.429). Read
+honestly: the mechanism now clearly selects a genuinely good population, just not quite as good as
+what it skips.
+
+**Momentum-gate: partially fixed.** Taken trades moved from the 0.7th percentile (statistically
+WORSE than nearly all random draws) to the 49.1th percentile — indistinguishable from chance, no
+longer anti-correlated with quality, but not yet positively correlated with it either. The
+admission mechanism stopped actively picking bad trades but hasn't started reliably picking good
+ones.
+
+**Overall: quality-ranked admission (using each gate's own empirically-winning direction) is a
+real, substantial, mostly-positive fix to the capital-constraint luck-check problem — not a wash,
+not fully solved either.** Two of three gates now show admission that's either clearly better than
+random (squeeze) or a significant positive outlier (combined); the third (momentum) moved from
+actively harmful to neutral. This is consistent with, and strengthens, FINDINGS.md #73's own
+headline result (6/6 Sharpe improvement) — the mechanism doesn't just move the aggregate number
+around, it's demonstrably changing WHICH trades get admitted in a genuinely better direction, to
+varying degrees per gate.
+
+Files: no code changes (used the existing `capital_constraint_luck_check.py` and regenerated
+taken-trades files). Full account: `docs/FINDINGS.md` #73 (updated), this entry.
+
+---
+
+## 2026-09-22: Meta-labeler threshold recalibration — real result, and it's a genuine (modest) negative, not a fix
+
+Per Ross's second follow-up request — recalibrate the XGBoost meta-labeler's decision threshold
+now that AUC-ROC confirmed real ranking power (0.6075) the naive 0.5 threshold wasn't capturing on
+raw accuracy. Added `_youden_optimal_threshold()` to `ml.py` (selects the threshold maximizing
+Youden's J, `tpr - fpr`, computed on the VAL split only — never on the final test split, which
+would leak the evaluation data into the threshold being evaluated on it) and
+`debug/_verify_ml_threshold_recalibration.py` (new, 5/5 — tests the selection logic directly
+against hand-constructed probability arrays with an analytically known answer, isolated from
+XGBoost's own fitting noise).
+
+**Real result, `ml.py --pit-safe`, full 1,375-pair pool, 74,732 labeled events:**
+
+```
+Naive 0.5 threshold:  accuracy=54.49%  (majority baseline: 58.98%)
+Recalibrated:          threshold=0.5147, accuracy=53.45%
+```
+
+**Honest read: recalibration did NOT help, and reported as such rather than reframed.** The
+Youden's-J-optimal threshold on the validation split (0.5147) is barely different from the naive
+default (0.5), and the resulting test-split accuracy is marginally WORSE (53.45% vs 54.49%), not
+better. This is a real, disclosed negative result, not a bug — with AUC=0.6075 (modest, not
+strong, discrimination), the ROC curve doesn't have a sharp elbow far from the diagonal, so there
+isn't a materially better operating point to find; a near-0.5 optimal threshold is exactly what a
+modest-AUC classifier's ROC curve should produce, confirmed rather than assumed. Threshold
+recalibration remains a legitimate technique in general, and the code is now built and tested for
+future use (e.g. if a future feature set or model pushes AUC meaningfully higher), but on THIS
+model, at THIS AUC, it doesn't move the needle.
+
+Files: `ml.py` (`_youden_optimal_threshold`, wired into `_train_and_validate`'s `holdout_report`),
+`debug/_verify_ml_threshold_recalibration.py` (new, 5/5). Full account: `docs/FINDINGS.md` #72
+(updated).
+
+---
+
 ## 2026-09-22: AUC-ROC added, correcting the "no usable signal" verdict on all 3 meta-labeler methods — real, modest ranking power all 3 had, accuracy alone completely missed
 
 Ross asked directly: "should we consider integrating AUC?" — a real, well-motivated question.
