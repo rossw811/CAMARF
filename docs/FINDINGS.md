@@ -4274,3 +4274,47 @@ Files: `research/fdr_threshold_sensitivity.py` (new), `debug/_verify_fdr_thresho
 `output/research/episodic_confirmed_pairs_adapter_output_alpha01.parquet`,
 `output/backtest/latest_run_backtest_purity_alpha01.log`. Full account: `docs/HANDOFF.md`'s
 2026-09-21 entries.
+
+## 71. GEE Refit of the Multivariate PIT-Predictors Study — Pseudo-Replication Correction
+Strengthens, Not Weakens, the "More Overlap → Lower OOS Success" Finding [2026-09-21]
+
+**Backlog item #1** (2026-09-15 20:14 entry): the multivariate PIT-predictors study's own plain
+`Logit` fit (`held_up ~ actual_n_overlap + pearson_corr + coint_fraction_rolling + hedge_ratio_cv`,
+n=166 pooled pair×L-value observations) carried a disclosed pseudo-replication caveat — the same
+pair appears at multiple `L` values within a fold, so its observations aren't independent, making
+the reported p-values optimistic. Literature sweep pass 3 (2026-09-15) identified `statsmodels`'
+GEE (Generalized Estimating Equations, cluster by `pair_id`, exchangeable working correlation) as
+the standard fix, already in this project's dependency set.
+
+**Found already built** (`research/multivariate_pit_predictors.py::fit_gee()`, wired into
+`main()`) but never actually run and reported — the one real pilot run on record (2026-09-15
+12:47) only surfaced the plain Logit output. Ran `fit_gee()` directly against the already-saved
+real observations (`output/research/multivariate_pit_predictors_1D.parquet`, no need to re-run
+the expensive backtest-pilot step) and reported both fits side by side.
+
+**Real result — the correction goes the unusual direction**: fixing pseudo-replication normally
+SHRINKS inflated significance (treating correlated observations as independent usually overstates
+confidence); here `actual_n_overlap`'s effect instead got MORE significant under proper clustering
+(121 distinct pairs, mean cluster size 1.4):
+
+| Covariate | Logit (naive) | GEE (clustered) |
+|---|---:|---:|
+| `actual_n_overlap` | coef=-0.921, p=0.125 | coef=-0.895, **p=0.015** |
+| `coint_fraction_rolling` | coef=-0.747, p=0.055 | coef=-0.732, p=0.056 |
+| `pearson_corr` | p=0.677 | p=0.312 |
+| `hedge_ratio_cv` | p=0.720 | p=0.572 |
+
+**The counterintuitive direction survives and strengthens**: pairs with MORE training-window
+overlap (`actual_n_overlap`) and a HIGHER rolling cointegration fraction during training are
+associated with LOWER, not higher, odds of holding up OOS — the opposite of the naive "more
+history/more cointegrated in training should mean more reliable" expectation. This is no longer
+adequately explained away as a pseudo-replication artifact at this sample size; a properly
+clustered model finds the same direction with a tighter, now-significant confidence interval on
+the overlap term specifically. Real caveats stated plainly: n=166 across 121 pairs is still a
+small sample for a 4-covariate model, and this is a single, not-yet-replicated study — worth a
+follow-up literature check on small-sample/rare-event GEE inference before treating it as settled,
+but a real, strengthened finding, not a weaker one than originally reported.
+
+Files: `research/multivariate_pit_predictors.py` (no changes — `fit_gee()` already existed),
+`output/research/multivariate_pit_predictors_1D.parquet`. Full account: `docs/HANDOFF.md`'s
+2026-09-21 entry.
