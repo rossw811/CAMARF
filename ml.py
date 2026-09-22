@@ -803,6 +803,7 @@ def _train_and_validate(result: MLResult, summary: MLRunSummary) -> None:
     """
     import xgboost as xgb
     from sklearn.inspection import permutation_importance
+    from sklearn.metrics import roc_auc_score
     from sklearn.preprocessing import LabelEncoder
     from sklearn.utils.class_weight import compute_sample_weight
 
@@ -858,21 +859,41 @@ def _train_and_validate(result: MLResult, summary: MLRunSummary) -> None:
     perm = permutation_importance(model, X_test, y_test, n_repeats=20, random_state=0)
     importance = dict(zip(_FEATURE_COLS, perm.importances_mean.tolist()))
 
+    # AUC-ROC (added 2026-09-22, Ross's direct question -- a real gap: this study has only ever
+    # reported raw accuracy against a majority-class baseline, which is a weak test under real
+    # class imbalance (58.98%/41.02% here). A model can score BELOW that baseline on accuracy
+    # while still having genuine ranking power (AUC > 0.5, informative predicted probabilities
+    # even if the default 0.5 threshold picks the wrong label more often than "always guess
+    # majority"), or vice versa -- accuracy alone can't distinguish "no signal" from "signal,
+    # miscalibrated threshold." predict_proba is already computed elsewhere in this file (conformal
+    # calibration); reusing the same model, no new dependency.
+    probs_test = model.predict_proba(X_test)
+    try:
+        if n_classes <= 2:
+            test_auc = float(roc_auc_score(y_test, probs_test[:, 1]))
+        else:
+            test_auc = float(roc_auc_score(y_test, probs_test, multi_class="ovr", average="macro"))
+    except ValueError as e:
+        # e.g. only one class present in y_test -- AUC undefined, not a crash
+        log.warning(f"  AUC-ROC undefined on this holdout split: {e}")
+        test_auc = float("nan")
+
     result.model = model
     result.holdout_report = {
         "n_train": len(X_train),
         "n_test": len(X_test),
         "test_accuracy": test_acc,
+        "test_auc_roc": test_auc,
         "classes": list(le.classes_),
     }
     result.feature_importance = importance
     log.info(
         f"  Trained on {len(X_train)} examples, holdout accuracy on "
-        f"{len(X_test)} examples: {test_acc:.2%}"
+        f"{len(X_test)} examples: {test_acc:.2%}, AUC-ROC: {test_auc:.4f}"
     )
     summary.note(
         f"Trained: n_train={len(X_train)} n_test={len(X_test)} "
-        f"test_accuracy={test_acc:.2%}"
+        f"test_accuracy={test_acc:.2%} test_auc_roc={test_auc:.4f}"
     )
 
     # Conformal calibration uses the val slice (train_end:val_end) that the

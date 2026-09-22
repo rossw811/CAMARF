@@ -131,9 +131,11 @@ def test_end_to_end_training():
     r = _train_and_eval("lstm_smoke", build_lstm_classifier, X_train, y_train, X_val, y_val,
                          X_test, y_test, lookback_bars=20)
     check("end_to_end.lstm_returns_valid_accuracy", 0.0 <= r["test_accuracy"] <= 1.0, r["test_accuracy"])
+    check("end_to_end.lstm_returns_valid_auc", 0.0 <= r["test_auc_roc"] <= 1.0, r["test_auc_roc"])
     r2 = _train_and_eval("attention_smoke", build_attention_classifier, X_train, y_train, X_val, y_val,
                           X_test, y_test, lookback_bars=20)
     check("end_to_end.attention_returns_valid_accuracy", 0.0 <= r2["test_accuracy"] <= 1.0, r2["test_accuracy"])
+    check("end_to_end.attention_returns_valid_auc", 0.0 <= r2["test_auc_roc"] <= 1.0, r2["test_auc_roc"])
 
 
 def main():
