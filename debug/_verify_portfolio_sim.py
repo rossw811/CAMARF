@@ -256,6 +256,50 @@ def main():
 
     portfolio_sim.causal_rolling_std_at_entry = None  # unset mock
 
+    # --- Case N: quality-ranked admission (added 2026-09-21) -- within the SAME batch (day),
+    # capital-constrained: default chronological order admits whichever trade arrived first;
+    # quality_admission_col="entry_z" should instead admit the trade with the LARGER |entry_z|,
+    # even though it arrives second within that same day. Capital sized so the SECOND-admitted
+    # trade of the pair gets size_scale = $500/$20,000 = 0.025, below min_size_scale's 0.05
+    # floor -- fully skipped, not partially sized -- so exactly one of WEAK/STRONG is taken,
+    # a clean win/lose test rather than a partial-sizing one.
+    trades_q = pd.DataFrame([
+        trade("WEAK", "X", "2026-03-01 09:00", "2026-03-05", 100, 100, 500.0, entry_z=1.6),
+        trade("STRONG", "X", "2026-03-01 10:00", "2026-03-05", 100, 100, 500.0, entry_z=3.2),
+        # A later-day trade with an even stronger signal must NOT jump the earlier batch --
+        # batch boundaries (calendar day) are respected, not a global re-ranking.
+        trade("LATER", "X", "2026-03-02 09:00", "2026-03-05", 100, 100, 500.0, entry_z=9.0),
+    ])
+    result_chrono = replay_portfolio(trades_q, starting_capital=20_500, sizing_method="fixed")
+    taken_chrono = set(zip(result_chrono["taken"]["symbol_a"], result_chrono["taken"]["symbol_b"]))
+    if not (("WEAK", "X") in taken_chrono and ("STRONG", "X") not in taken_chrono):
+        failures.append(f"quality_admission (default None): expected chronological order to admit "
+                         f"WEAK (arrives first) not STRONG, got taken={taken_chrono}")
+
+    result_quality = replay_portfolio(trades_q, starting_capital=20_500, sizing_method="fixed",
+                                       quality_admission_col="entry_z")
+    taken_quality = set(zip(result_quality["taken"]["symbol_a"], result_quality["taken"]["symbol_b"]))
+    if not (("STRONG", "X") in taken_quality and ("WEAK", "X") not in taken_quality):
+        failures.append(f"quality_admission (entry_z-ranked): expected STRONG (larger |entry_z|) "
+                         f"to be admitted over WEAK within the same batch, got taken={taken_quality}")
+    # LATER (next calendar day) has the HIGHEST entry_z of all three (9.0) -- if quality-ranking
+    # were a GLOBAL re-sort rather than scoped to each batch, LATER would win the one admitted
+    # slot over STRONG (3.2). It must NOT: STRONG's position (opened day 1) is still committed
+    # through LATER's own entry_time (both exit 2026-03-05), leaving only $500 available on day
+    # 2 -- below the size_scale floor. Confirms reordering is genuinely per-batch, not a
+    # lookahead across the whole trade sequence.
+    if ("LATER", "X") in taken_quality:
+        failures.append(f"quality_admission: LATER must NOT be admitted ahead of STRONG's earlier "
+                         f"batch despite its higher entry_z -- reordering must be scoped to each "
+                         f"batch_freq bucket, not a global quality sort, got taken={taken_quality}")
+
+    # Regression safety: quality_admission_col=None must produce IDENTICAL taken-set/order to
+    # calling replay_portfolio with no knowledge of the new parameters at all.
+    result_baseline = replay_portfolio(trades_q, starting_capital=20_500, sizing_method="fixed")
+    if list(result_baseline["taken"]["symbol_a"]) != list(result_chrono["taken"]["symbol_a"]):
+        failures.append("quality_admission: default (quality_admission_col=None) call must be "
+                         "byte-identical in taken order to the pre-existing call signature")
+
     print()
     if failures:
         print("FAILURES:")
