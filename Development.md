@@ -28394,3 +28394,95 @@ Files: `research/capital_constraint_luck_check.py` (new), `research/hierarchical
 `CONTRIBUTING.md` (rewritten), `scripts/_build_contributing.py` (new), 10 fixed `debug/_verify_
 *.py` scripts, `PAPER.md` §7.20-7.22, `PAPER_MAGNITUDE.md` §7.1. Full account: `docs/FINDINGS.md`
 #69-70, `docs/HANDOFF.md`'s full 2026-09-21 entry set.
+
+---
+
+## Session 2026-09-21 (late)/09-22 — LSTM/attention trained for real (with a genuine metric
+correction), a substantial capital-allocation fix found and confirmed, backlog fully closed
+
+**Backlog items #1/#3/#4 and the tensorflow-install question, all closed the same night** (Ross:
+"as for all the my decisions i give you the go ahead"). #3 (does tightening the episodic-
+confirmation FDR threshold help?): real negative result — cheaply testable without a 25-hour
+re-scan (the BH-FDR confirmation step is independent of the expensive candidate-generation stage),
+tightening from alpha=0.05 to 0.01 shrinks the pool 61% (1D level) but leaves unconstrained Sharpe
+flat and makes the capital-constrained metric measurably WORSE (-1.4682 vs -0.7584 IS) — rules out
+"too many marginal pairs diluting a good core." #1 (GEE refit): found already built but never
+actually run — ran it against the real saved data, and pseudo-replication correction STRENGTHENS,
+not weakens, the counterintuitive "more training overlap → lower OOS success" finding (p=0.125 →
+p=0.015). #4 (SPAC pre-merger filter) and the tensorflow question: both confirmed already resolved
+(a blanket SPAC exclusion already exists and affects 0 current pairs either way; `lstm_attention_
+architecture.py` was deliberately built dormant per Ross's own 2026-07-22 instruction, not
+installing tensorflow to "activate" something explicitly meant to stay inactive — until Ross
+himself reversed that call the next session, see below).
+
+**LSTM/attention trained for real, the moment Ross reversed his own earlier instruction**
+("we can try the lstm as we have more data now" — true: 24 labeled examples in July, 69,592+ now).
+Built `research/lstm_attention_training.py`, reusing `ml.build(pit_safe=True)` directly (same
+events/labels as the existing XGBoost study, only the input representation differs: a 20-bar
+lookback sequence of `z_rolling`/`half_life_rolling` instead of a static snapshot). Found and
+fixed a real bug the first time this architecture was ever actually trained (not just
+`predict()`-tested by design): both `build_lstm_classifier`/`build_attention_classifier` used 2
+independent sigmoid units instead of 1 for the binary case, a target/output rank mismatch that
+only surfaces at `fit()` time — the original verify script's own docstring claimed this shape was
+checked, but the actual assertion was never written. Initial real result (accuracy only): both
+LSTM and attention scored BELOW the majority-class baseline, read as "a fourth independent method
+converges on the same honest null result" alongside the P&L backtest, the GEE study, and static-
+feature XGBoost.
+
+**That conclusion was wrong — corrected the next morning, same session, after Ross asked "should
+we consider integrating AUC?"** A real, well-motivated question: every meta-labeler evaluation to
+date used ONLY raw accuracy against a majority-class baseline, a weak test under real class
+imbalance. Added AUC-ROC to both studies (reusing each model's own already-computed probability
+output, no new dependency) and re-ran: XGBoost AUC=0.6075, LSTM AUC=0.5897, attention AUC=0.5516 —
+**all three show real, meaningfully-above-random ranking power**, despite all three losing on raw
+accuracy. The "no usable signal" verdict was an artifact of the metric, not a true reading of the
+data — corrected in place in `docs/FINDINGS.md` #72 (original wrong claim struck through, not
+deleted). Secondary result: static-feature XGBoost's AUC beats both sequence models — the
+"temporal structure beyond a snapshot" hypothesis the architecture was built to test is not
+supported. Followed up with Youden's-J threshold recalibration (selected on the validation split
+only, never leaking into the final test evaluation): a real, honest NEGATIVE result — the
+recalibrated threshold (0.5147) barely differs from the naive 0.5 default, and accuracy is
+marginally worse (53.45% vs 54.49%) — AUC=0.6075 is modest enough that the ROC curve has no sharp
+elbow to exploit. Built and verified for future use regardless.
+
+**The most substantial finding of this stretch: quality-ranked capital admission, replacing
+`--capital-sim`'s strict chronological FIFO, fixes a large share of the capital-constraint problem
+this whole investigation thread has been chasing since 2026-09-21's capital-constraint luck check.**
+Built `portfolio_sim.py::replay_portfolio()`'s opt-in `quality_admission_col` (rank candidate
+trades within each calendar-day batch by a quality proxy, admit best-first instead of
+first-come-first-served — causally safe, since batches stay chronological and the settle/mark-to-
+market logic only ever compares against each trade's own `entry_time`). First real run (largest
+`entry_z` first) was mixed: beat chronological in 4/6 gate×split cases, lost clearly on
+squeeze-gate. Investigated rather than accepted: `corr(|entry_z|, pnl_net)` turned out NEGATIVE
+across ALL 3 gates (not just squeeze), so "largest first" was empirically backwards; added an
+ascending mode and re-ran. **Full corrected result: the empirically-best direction per gate beats
+chronological in 6/6 cases** (squeeze wants ascending, momentum/combined want descending), holding
+on both IS and OOS every time — not the signature of a pure in-sample fit. Honest, non-oversold
+caveats stated plainly: the real mechanism explaining WHY different gates want different
+directions isn't identified (the correlation story doesn't survive a closer per-gate check), and
+the winning direction was chosen by testing both, not derived ex-ante — a real, repeatable effect,
+not yet a deployable rule for an untested gate.
+
+**Confirmed, not just asserted, the same day**: re-ran `capital_constraint_luck_check.py` against
+each gate's winning direction (after first discovering and fixing a real data hazard — the later
+ascending comparison run had silently overwritten momentum-gate's and combined-gate's winning-
+direction taken-trades files with their losing-direction output; caught by checking file mtimes
+before trusting anything, not assumed). Real, uneven improvement: squeeze-gate fully fixed (taken
+now beats skipped, 100th percentile vs. 2,000 random draws, was 0.0th under chronological);
+combined-gate mostly fixed (99.7th percentile, was 0.0th, though still narrowly below skipped's
+own Sharpe); momentum-gate partially fixed (49.1th percentile — neutral, no longer actively
+harmful, was 0.7th). Confirms the mechanism is demonstrably changing WHICH trades get admitted in
+a genuinely better direction, not just moving an aggregate number around by coincidence.
+
+**`CONTRIBUTING.md` rewritten into a comprehensive script-by-script guide** (previous session's
+entry already covers this in detail) and both Development.md and `docs/HANDOFF.md` kept current
+throughout, incrementally, not batched at the end.
+
+Files: `research/lstm_attention_training.py` (new), `research/lstm_attention_architecture.py`
+(binary output-head bug fixed), `ml.py` (AUC-ROC + Youden's-J threshold recalibration added),
+`portfolio_sim.py` (`quality_admission_col`/`quality_admission_batch_freq`/`quality_admission_
+ascending`, all opt-in, zero behavior change by default), `backtest.py` (3 new CLI flags),
+`research/fdr_threshold_sensitivity.py` (new), `research/episodic_pairs_adapter.py` (`--alpha`/
+`--out-suffix`), 6 new `debug/_verify_*.py` suites. Full account: `docs/FINDINGS.md` #70-73 (#72
+and #73 both corrected/updated in place as the picture sharpened), `docs/HANDOFF.md`'s full
+2026-09-21 (late)/09-22 entry set.
