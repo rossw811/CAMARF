@@ -4319,8 +4319,9 @@ Files: `research/multivariate_pit_predictors.py` (no changes — `fit_gee()` alr
 `output/research/multivariate_pit_predictors_1D.parquet`. Full account: `docs/HANDOFF.md`'s
 2026-09-21 entry.
 
-## 72. LSTM/Attention Trained for Real — a Fourth Independent Method Converges on the Same Honest
-Null Result; a Real Binary-Output-Head Bug Found and Fixed Along the Way [2026-09-21]
+## 72. LSTM/Attention Trained for Real — Initially Read as a Null Result, CORRECTED 2026-09-22:
+AUC-ROC Reveals Real, Modest Ranking Power in All 3 Methods That Accuracy Alone Missed; a Real
+Binary-Output-Head Bug Found and Fixed Along the Way [2026-09-21, corrected 2026-09-22]
 
 **The unblocking condition, finally met.** `research/lstm_attention_architecture.py` was built
 2026-07-22 as an architecture-only exercise, deliberately never trained, per Ross's own direct
@@ -4359,22 +4360,55 @@ split convention as `ml.py`.
 | Attention | 53.94% | 60.29% | does NOT beat baseline |
 | (reference) static-feature XGBoost, 2026-09-15 | 54.24% | 58.98% | does NOT beat baseline |
 
-**A fourth independent method now converges on the same honest null result.** P&L backtest Sharpe
-(negative), the multivariate GEE study (no significant OOS-survival predictor beyond the one
-counterintuitive `actual_n_overlap` signal, Finding #71), static-feature XGBoost (below majority
-baseline), and now sequence LSTM/attention (also below majority baseline) all agree: whatever made
-the small, historically-positive full-history-confirmed set special is not visible to the
-episodic-confirmed pool's z-score/half-life trajectory at this feature set — snapshot or sequence.
-The LSTM/attention result specifically closes off "the signal is temporal, not a static snapshot"
-as the missing ingredient, the one genuinely new question this architecture could ask that the
-prior three methods structurally could not. Reported honestly as a real, now well-triangulated
-negative result, not a failed exercise — per this project's own "honest over impressive" rule.
+~~A fourth independent method now converges on the same honest null result... whatever made the
+small, historically-positive full-history-confirmed set special is not visible to the episodic-
+confirmed pool's z-score/half-life trajectory at this feature set — snapshot or sequence.~~
 
-Files: `research/lstm_attention_training.py` (new), `research/lstm_attention_architecture.py`
-(binary output-head bug fixed), `debug/_verify_lstm_attention_training.py` (new, 13/13),
-`debug/_verify_lstm_attention_architecture.py` (fixed, now asserts shape + calls `fit()`), `output/
-research/lstm_attention_training_results.json`. Full account: `docs/HANDOFF.md`'s 2026-09-21
-entry.
+**CORRECTION, 2026-09-22, same night — this conclusion was wrong, based on an incomplete metric.**
+Ross asked directly: "should we consider integrating AUC?" — a real gap this whole comparison had:
+accuracy against a majority-class baseline is a weak, potentially misleading test under real class
+imbalance (58.98%/41.02% here). A model can score BELOW that baseline on raw accuracy while still
+having genuine ranking power in its predicted probabilities — accuracy only reflects the default
+0.5 threshold, not what the model actually knows. Added AUC-ROC to both `ml.py::_train_and_
+validate` and `lstm_attention_training.py::_train_and_eval` (reusing each model's own already-
+computed `predict_proba`/sigmoid output — no new model, no new dependency) and re-ran all three
+for real:
+
+| Model | Holdout accuracy | AUC-ROC | Read |
+|---|---:|---:|---|
+| XGBoost (static features) | 54.49% | **0.6075** | real, modest ranking power |
+| LSTM (sequence) | 53.43% | **0.5897** | real, modest ranking power |
+| Attention (sequence) | 52.77% | **0.5516** | real, modest ranking power |
+
+**All three show meaningful ranking power (AUC noticeably above 0.5), despite all three losing on
+raw accuracy.** The "no usable signal" verdict above was an artifact of the metric, not the data —
+this feature set DOES carry real, non-trivial predictive information; it just doesn't clear a
+0.5-probability threshold often enough to beat "always guess the majority class" on discrete
+accuracy. This is consistent with, not contradicted by, Finding #71's own GEE result (`actual_n_
+overlap` is a real, now-significant predictor once pseudo-replication is corrected) — both point
+the same direction: real signal, modest in magnitude, previously undersold by the wrong lens.
+
+**A genuinely informative secondary result, not just a correction**: XGBoost's AUC (0.6075) is the
+BEST of the three, not the worst — the sequence models (LSTM 0.5897, attention 0.5516) did NOT
+improve on the static snapshot, and attention specifically is the weakest of the three. The
+"temporal structure beyond a static snapshot" hypothesis this architecture was built to test is
+NOT supported by this result — static features extract at least as much signal as the 20-bar
+z_rolling/half_life_rolling trajectory does, with this feature set and these architectures.
+
+**Honest scope of what this does and doesn't change**: this is real evidence for building a
+meta-labeler on this feature set — recalibrating the decision threshold (rather than the naive
+0.5 default) or using the probability output directly (e.g. only taking the top-N% most-confident
+predictions) is now a legitimate next step, not previously supported. It does NOT mean the
+capital-constrained strategy is suddenly profitable, and AUC 0.55-0.61 is "modest," not "strong,"
+discrimination by typical rubrics — a real, usable signal, not a breakthrough. Stated honestly in
+both directions: neither oversold now, nor wrongly dismissed as null before.
+
+Files: `research/lstm_attention_training.py` (new; AUC-ROC added 2026-09-22),
+`research/lstm_attention_architecture.py` (binary output-head bug fixed), `ml.py` (AUC-ROC added
+to `_train_and_validate`, 2026-09-22), `debug/_verify_lstm_attention_training.py` (new, 15/15
+after the AUC checks were added), `debug/_verify_lstm_attention_architecture.py` (fixed, now
+asserts shape + calls `fit()`), `output/research/lstm_attention_training_results.json`,
+`output/ml/model_stage1.pkl`. Full account: `docs/HANDOFF.md`'s 2026-09-21/22 entries.
 
 ## 73. Quality-Ranked Capital Admission Beats Chronological FIFO in 6/6 Real Cases — a Substantial
 Effect With a Mechanism That Isn't Understood Yet, Reported Honestly Rather Than Oversold

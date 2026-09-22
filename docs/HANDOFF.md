@@ -1,3 +1,47 @@
+## 2026-09-22: AUC-ROC added, correcting the "no usable signal" verdict on all 3 meta-labeler methods — real, modest ranking power all 3 had, accuracy alone completely missed
+
+Ross asked directly: "should we consider integrating AUC?" — a real, well-motivated question.
+Every meta-labeler evaluation in this project to date (XGBoost's own `ml.py` study, and last
+night's real LSTM/attention training run) reported ONLY raw holdout accuracy against a majority-
+class baseline. That's a weak test under real class imbalance (58.98%/41.02% here): a model can
+score BELOW the majority baseline on discrete accuracy while its underlying predicted
+probabilities still carry genuine ranking information — accuracy only reflects the default 0.5
+threshold, not what the model actually knows.
+
+**Added AUC-ROC to both studies** (`ml.py::_train_and_validate`, `research/lstm_attention_
+training.py::_train_and_eval`) — reusing each model's own already-computed `predict_proba`/sigmoid
+output, no new model, no new dependency (`sklearn.metrics.roc_auc_score`). Re-ran all three for
+real (`ml.py --pit-safe` + `lstm_attention_training.py`, ~2 min total on CachyOS):
+
+| Model | Holdout accuracy | AUC-ROC |
+|---|---:|---:|
+| XGBoost (static features) | 54.49% | **0.6075** |
+| LSTM (sequence) | 53.43% | **0.5897** |
+| Attention (sequence) | 52.77% | **0.5516** |
+
+**All 3 show real, meaningfully-above-random ranking power, despite all 3 losing on raw accuracy
+against the majority baseline.** This directly corrects last night's own FINDINGS.md #72
+conclusion ("a fourth independent method converges on the same honest null result") — that
+conclusion was an artifact of the metric, not a true reading of the data. Corrected in place (with
+the original wrong claim struck through, not deleted, per this project's own provenance
+convention), not silently overwritten.
+
+**A genuinely useful secondary result, not just a correction**: XGBoost's static-feature AUC
+(0.6075) beats BOTH sequence models (LSTM 0.5897, attention 0.5516) — the "temporal structure
+beyond a snapshot" hypothesis the LSTM/attention architecture was built to test is NOT supported;
+static features extract at least as much signal as the 20-bar sequence does here.
+
+**Scope, stated honestly**: AUC 0.55-0.61 is modest discrimination by typical rubrics, not strong
+— real and usable (recalibrating the decision threshold or taking only the most-confident
+predictions is now a legitimate next step), not a breakthrough, and doesn't by itself make the
+capital-constrained strategy profitable. Neither oversold now nor wrongly dismissed as null
+before.
+
+Files: `ml.py`, `research/lstm_attention_training.py`, `debug/_verify_lstm_attention_training.py`
+(15/15 after 4 new AUC checks), `docs/FINDINGS.md` #72 (corrected in place).
+
+---
+
 ## 2026-09-21: Both long-standing verify FAILs resolved — `_verify_pit_wfa.py` (stale fixture) and `_verify_macro_regimes.py` (test window too narrow for real reporting lag)
 
 Closed out the two real FAILs flagged earlier this session (previous entries: "LIKELY a 3rd

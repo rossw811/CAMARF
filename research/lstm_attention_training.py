@@ -158,6 +158,8 @@ def _normalize(X_train, *others):
 def _train_and_eval(name, build_fn, X_train, y_train, X_val, y_val, X_test, y_test, lookback_bars):
     from sklearn.utils.class_weight import compute_sample_weight
 
+    from sklearn.metrics import roc_auc_score
+
     model = build_fn(n_classes=2, lookback_bars=lookback_bars, n_features=N_FEATURES)
     sample_weight = compute_sample_weight("balanced", y_train)
     t0 = time.time()
@@ -168,10 +170,25 @@ def _train_and_eval(name, build_fn, X_train, y_train, X_val, y_val, X_test, y_te
     fit_min = (time.time() - t0) / 60
     test_loss, test_acc = model.evaluate(X_test, y_test, verbose=0)
     majority_baseline = max(np.mean(y_test == 0), np.mean(y_test == 1))
+
+    # AUC-ROC (added 2026-09-22, Ross's direct question -- accuracy against a majority-class
+    # baseline is a weak test under real class imbalance: a model can lose on accuracy while
+    # still having genuine ranking power, or vice versa. The sigmoid output IS the positive-class
+    # probability directly (single-unit binary head, see lstm_attention_architecture.py's own
+    # 2026-09-21 fix), no extra inference pass needed.
+    probs_test = model.predict(X_test, verbose=0).ravel()
+    try:
+        test_auc = float(roc_auc_score(y_test, probs_test))
+    except ValueError as e:
+        log.warning(f"[{name}] AUC-ROC undefined on this holdout split: {e}")
+        test_auc = float("nan")
+
     log.info(f"[{name}] trained in {fit_min:.1f} min, holdout accuracy={test_acc:.4f} "
              f"(majority baseline={majority_baseline:.4f}, "
-             f"{'BEATS' if test_acc > majority_baseline else 'does NOT beat'} baseline)")
+             f"{'BEATS' if test_acc > majority_baseline else 'does NOT beat'} baseline), "
+             f"AUC-ROC={test_auc:.4f}")
     return {"name": name, "test_accuracy": float(test_acc), "test_loss": float(test_loss),
+            "test_auc_roc": test_auc,
             "majority_baseline": float(majority_baseline), "fit_minutes": fit_min,
             "n_train": len(y_train), "n_val": len(y_val), "n_test": len(y_test)}
 
@@ -242,7 +259,11 @@ def main():
     log.info(f"Prior static-feature XGBoost (2026-09-15 real run): 0.5424 (BELOW majority baseline)")
     for r in results:
         verdict = "BEATS" if r["test_accuracy"] > r["majority_baseline"] else "does NOT beat"
-        log.info(f"{r['name']}: holdout accuracy={r['test_accuracy']:.4f} ({verdict} majority baseline)")
+        auc_read = ("no ranking power" if abs(r["test_auc_roc"] - 0.5) < 0.02
+                    else "some real ranking power" if r["test_auc_roc"] > 0.5
+                    else "worse than random ranking")
+        log.info(f"{r['name']}: holdout accuracy={r['test_accuracy']:.4f} ({verdict} majority "
+                 f"baseline), AUC-ROC={r['test_auc_roc']:.4f} ({auc_read})")
 
     runtime = (time.time() - t0) / 60
     log.info(f"\nlstm_attention_training.py complete ({runtime:.1f} min total)")
