@@ -33,6 +33,43 @@ Both fixes synced to CachyOS, diff-verified.
 
 ---
 
+## 2026-09-21: Backlog item #1 CLOSED — GEE refit already built, just needed to be run and reported; real result strengthens, not weakens, the earlier "more overlap → lower OOS success" oddity
+
+Checked backlog item #1 ("re-fit the multivariate PIT-predictors study with GEE instead of plain
+Logit"): the GEE fit (`fit_gee()`, `pair_id`-clustered, exchangeable working correlation,
+`statsmodels.genmod.generalized_estimating_equations.GEE`) was **already built and wired into
+`main()`** — someone (likely earlier this session, before the last compaction) already implemented
+it, but the only real run on record (2026-09-15 12:47) only reported the plain Logit output. Ran
+`fit_gee()` directly against the already-saved real observations
+(`output/research/multivariate_pit_predictors_1D.parquet`, 166 pair×cell rows, no need to re-run
+the expensive `run_pilot()` backtest step) — pulled from CachyOS, run locally in seconds.
+
+**Real result: GEE clustering (121 distinct pairs, mean cluster size 1.4) tightens standard
+errors and flips `actual_n_overlap` from non-significant to significant**:
+
+| Covariate | Logit (naive, pseudo-replicated) | GEE (clustered by pair) |
+|---|---:|---:|
+| `actual_n_overlap` | coef=-0.921, p=0.125 (not sig.) | coef=-0.895, **p=0.015 (significant)** |
+| `coint_fraction_rolling` | coef=-0.747, p=0.055 (borderline) | coef=-0.732, p=0.056 (still borderline) |
+| `pearson_corr` | p=0.677 | p=0.312 (still not sig.) |
+| `hedge_ratio_cv` | p=0.720 | p=0.572 (still not sig.) |
+
+**This is the opposite of what fixing pseudo-replication usually does** — inflated significance
+from treating correlated pooled observations as independent usually SHRINKS once corrected;
+here `actual_n_overlap`'s effect held up and became MORE significant under proper clustering. The
+2026-09-15 entry's original "counterintuitive" read — more training history correlates with LOWER
+OOS success, the opposite of the naive "more cointegrated-in-training should mean more reliable"
+expectation — is no longer just a marginal/noisy signal at this sample size; it survives the
+correction its own disclosed limitation called for. Still real caveats: n=166 pooled observations
+across only 121 pairs is a small sample for a 4-covariate model, and this remains a single-study,
+not-yet-replicated result. Worth a literature-sweep follow-up (rare-event/small-sample GEE
+inference) before treating it as settled, but it's a stronger finding than it was reported as
+2026-09-15, not a weaker one.
+
+No new files — the tool already existed. Documented for the first time.
+
+---
+
 ## 2026-09-21: Backlog item #3 CLOSED — tighter FDR threshold does NOT improve performance (real, negative result)
 
 Completed the tighter-pool backtest (alpha=0.01, 598 pairs — 592 WRDS/1D, 4 intraday/4h, 2
