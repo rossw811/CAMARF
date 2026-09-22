@@ -2412,6 +2412,12 @@ def main() -> None:
                    help="Pandas offset alias for --quality-admission-col's re-ranking bucket "
                         "(default 'D' = one calendar day). Only meaningful when "
                         "--quality-admission-col is set.")
+    p.add_argument("--quality-admission-ascending", action="store_true",
+                   help="Admit the SMALLEST |--quality-admission-col| first instead of the "
+                        "largest. Added same night as the flag itself: corr(|entry_z|, pnl_net) "
+                        "turned out NEGATIVE across all 3 real STORM gates tested -- the largest-"
+                        "first default was empirically backwards for entry_z specifically. Only "
+                        "meaningful when --quality-admission-col is set.")
     args = p.parse_args()
 
     _pairs_override_df: Optional[pd.DataFrame] = None
@@ -2749,6 +2755,7 @@ def main() -> None:
             leverage_cap=args.leverage_cap,
             quality_admission_col=args.quality_admission_col,
             quality_admission_batch_freq=args.quality_admission_batch_freq,
+            quality_admission_ascending=args.quality_admission_ascending,
         )
         sim_sharpe = portfolio_sim.portfolio_sharpe_from_replay(sim_result)
         log.info("  [capital_sim] taken=%d/%d skipped=%d peak_notional=$%.0f "
