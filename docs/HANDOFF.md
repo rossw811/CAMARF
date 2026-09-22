@@ -1,3 +1,31 @@
+## 2026-09-22: Backlog — 4 items noted per Ross's explicit request, none executed yet ("just note those for now")
+
+1. **"Arxivisual"-type artifact** — Ross's own term, ambiguous as given; my best-guess reading is
+   a visual/graphical-abstract-style artifact summarizing the paper (a one-page infographic of the
+   core methodology + headline finding, the kind some arXiv papers ship alongside the PDF, or a
+   project landing page). Needs a quick confirmation of what Ross actually means before building
+   anything — not assumed and built on a guess.
+2. **An audit is required before treating the paper as arXiv-ready.** Not scoped yet — likely
+   needs: every headline number re-verified against current code/data (not cited from memory or an
+   old snapshot, per this project's own standing rule), full citation/reference check, a read for
+   internal consistency now that `PAPER.md`/`PAPER_MAGNITUDE.md` have grown substantially this
+   session (§7.20-7.22 added/corrected, multiple in-place corrections), and a check against
+   whatever arXiv's own formatting/submission requirements are (q-fin category conventions).
+3. **Another author-concept-artifact backlog pass** — matching this project's existing "author
+   concept backlog" convention (`Development.md` Sessions 26-27 and later), generating a fresh
+   round of candidate research directions grounded in what's actually been found this session
+   (squeeze/momentum DSR result, the capital-allocation fix, the AUC correction), not a generic
+   restatement of the same old list.
+4. **Comparative pass against other arXiv papers in the same field** — what does CAMARF do that's
+   genuinely novel vs. already-published cross-asset/pairs-trading/statistical-arbitrage work on
+   arXiv, and what's worth adopting from them. Directly feeds into item #2 (an honest "how does
+   this compare to the literature" section is part of what makes a paper arXiv-ready) and item #3
+   (comparative reading is a real source of new concept-backlog candidates, not just validation).
+
+None of these four are started — logged here per Ross's explicit "just note those for now."
+
+---
+
 ## 2026-09-22: Luck-check re-run against the winning quality-admission direction — real, substantial improvement, to different degrees per gate
 
 Per Ross's follow-up ("do both those things") — re-ran `research/capital_constraint_luck_check.py`
