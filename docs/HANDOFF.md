@@ -33,6 +33,23 @@ Both fixes synced to CachyOS, diff-verified.
 
 ---
 
+## 2026-09-21: tensorflow-install question closed — `lstm_attention_architecture.py` is deliberately dormant, not blocked
+
+Checked whether `_verify_lstm_attention_architecture.py`'s missing-tensorflow ERROR was worth
+resolving by installing the dependency. Found the real answer in `Development.md` (2026-07-22
+entry): this script was built "per Ross's direct request ('add the architecture for LSTM/
+attention but don't use it in actual backtesting')" — a deliberately dormant, architecture-only
+reference implementation (proves two `tf.keras` architectures compile and produce correctly-shaped
+output), explicitly never meant to be trained or wired into a real backtest. **Not installing
+tensorflow** — doing so to "activate" this component would work against Ross's own stated
+instruction, not fulfill a blocked decision. The verify script's ERROR is expected, disclosed, and
+correctly classified by `_run_all_verify.py` as an environment gap, not a bug needing a fix.
+Backlog item #4 (SPAC pre-merger filter) was also checked and found already closed on 2026-09-15
+23:40 — an exclusion mechanism already exists and 0 of the current Purity pool's pairs are
+SPAC-involved either way; no further action needed.
+
+---
+
 ## 2026-09-21: Backlog item #1 CLOSED — GEE refit already built, just needed to be run and reported; real result strengthens, not weakens, the earlier "more overlap → lower OOS success" oddity
 
 Checked backlog item #1 ("re-fit the multivariate PIT-predictors study with GEE instead of plain
