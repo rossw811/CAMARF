@@ -33,6 +33,18 @@ Both fixes synced to CachyOS, diff-verified.
 
 ---
 
+## 2026-09-21: CachyOS parity re-check — 12 files from an earlier session synced, now 558/558 in sync
+
+Ran `debug/_check_cachyos_parity.py` as a closing sanity pass given how much moved tonight. Found
+12 files (10 `debug/_verify_*.py` + 2 `research/*.py`, all pre-existing from an earlier session,
+not anything touched tonight) that were never pushed to CachyOS. Synced all 12, spot-checked 2
+(`_verify_degenerate_column_audit.py` 13/13, `_verify_stats_tf_dir_map_fix.py` 7/7) run directly
+on CachyOS to confirm they actually work there, not just that the bytes match. Re-ran the parity
+checker: **558/558 tracked files now in sync** — the whole tracked codebase genuinely
+synchronized, not just tonight's own touched files.
+
+---
+
 ## 2026-09-21: Full verify suite, final tally — 252/254 pass (was 244/256 at the start of tonight)
 
 Re-ran the complete suite on CachyOS (ran it locally twice tonight and both got OOM-killed —
