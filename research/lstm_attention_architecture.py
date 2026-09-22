@@ -96,7 +96,15 @@ def build_lstm_classifier(n_classes: int, lookback_bars: int = DEFAULT_LOOKBACK_
     inputs = keras.Input(shape=(lookback_bars, n_features), name="windowed_features")
     x = layers.LSTM(16, return_sequences=False)(inputs)
     x = layers.Dropout(0.3)(x)  # meaningful only once real training is responsible; harmless now
-    outputs = layers.Dense(n_classes, activation="softmax" if n_classes > 2 else "sigmoid")(x)
+    # n_classes<=2 -> a SINGLE sigmoid unit (binary probability of the positive class), matching
+    # binary_crossentropy's expected (batch,) integer-target shape -- NOT Dense(n_classes,
+    # sigmoid), which would produce 2 independent sigmoid outputs and a rank mismatch at fit()
+    # time (n_classes,2) vs targets (n,). Real bug, found 2026-09-21 the first time this
+    # architecture was actually trained (research/lstm_attention_training.py) -- the original
+    # "verified against synthetic ground truth only" check never called fit(), only predict(),
+    # so a value-range check on the output passed while the shape itself was wrong; see
+    # debug/_verify_lstm_attention_architecture.py's corresponding fix.
+    outputs = layers.Dense(n_classes if n_classes > 2 else 1, activation="softmax" if n_classes > 2 else "sigmoid")(x)
 
     model = keras.Model(inputs, outputs, name="lstm_meta_labeler")
     model.compile(
@@ -125,7 +133,9 @@ def build_attention_classifier(n_classes: int, lookback_bars: int = DEFAULT_LOOK
     x = layers.Add()([x, attn_out])  # residual connection
     x = layers.LayerNormalization()(x)
     x = layers.GlobalAveragePooling1D()(x)
-    outputs = layers.Dense(n_classes, activation="softmax" if n_classes > 2 else "sigmoid")(x)
+    # n_classes<=2 -> single sigmoid unit -- see build_lstm_classifier's matching comment for the
+    # real bug this fixes (2026-09-21).
+    outputs = layers.Dense(n_classes if n_classes > 2 else 1, activation="softmax" if n_classes > 2 else "sigmoid")(x)
 
     model = keras.Model(inputs, outputs, name="attention_meta_labeler")
     model.compile(
