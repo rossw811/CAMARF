@@ -267,3 +267,22 @@ the full context stays in `Development.md`.
   them. Verified: re-ran the real `flat_2pct` capsim test before/after and confirmed byte-identical
   output (`taken=11/32793, sharpe=-0.4757`) -- the fix removes the drift risk without changing
   current behavior, exactly as intended.
+- **BUG-D114** (2026-09-21): `research/lstm_attention_architecture.py`'s `build_lstm_classifier`/
+  `build_attention_classifier` used `Dense(n_classes, activation="sigmoid")` for the binary case --
+  2 independent sigmoid units instead of 1, causing a target/output rank mismatch at `.fit()` time
+  (`ValueError: Arguments target and output must have the same rank`). The existing verify script's
+  docstring falsely claimed the single-sigmoid-unit shape was already checked; it never asserted
+  output shape or called `.fit()`. Fixed to `Dense(n_classes if n_classes > 2 else 1, ...)` in both
+  functions; `debug/_verify_lstm_attention_architecture.py` now asserts output shape `(batch, 1)`
+  and does a real `.fit()` call. Development.md, "Session 2026-09-21 (late)/09-22".
+- **Metric-choice near-miss, not a code bug but logged for the process lesson** (2026-09-21/22):
+  the LSTM/attention real-training run (`research/lstm_attention_training.py`) was initially
+  reported as "a 4th independent method confirms the same honest null result" using raw accuracy
+  vs. a majority-class baseline alone -- no script in the project had ever computed AUC-ROC
+  anywhere. Ross's direct question ("should we consider integrating AUC?") surfaced that all 3
+  methods (XGBoost, LSTM, attention) actually show real, meaningfully-above-random ranking power
+  despite losing on accuracy. Corrected in place in `docs/FINDINGS.md` #72 (struck through, not
+  deleted, per this project's correction convention) rather than appended as a new entry. AUC-ROC
+  now computed in both `ml.py::_train_and_validate` and `research/lstm_attention_training.py`. No
+  code defect -- the gap was a missing evaluation metric across the whole project, not a wrong
+  calculation.

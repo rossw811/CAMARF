@@ -198,6 +198,25 @@ same number; the 182-pair Sharpes (-0.679 IS / -0.834 OOS) quoted above are supe
 account: `docs/HANDOFF.md` 2026-09-14 21:38 and 2026-09-15 09:17/09:25 entries, `PAPER.md` §7.20's
 own correction note.
 
+**UPDATED 2026-09-15/21 — the negative capital-constrained result above is real, but it is not
+the whole story.** A found methodology gap (`backtest.py`'s entry gate had no volatility-squeeze
+or price-momentum confirmation) was built as 3 STORM comparison arms and validated with this
+project's strongest statistical evidence to date: all 3 gates flip the UNCONSTRAINED Sharpe
+positive (squeeze/momentum/combined: +0.35/+0.39/+0.43 IS, all confirmed OOS too), and a random-
+subsample control puts all 3 gates' real Sharpe at the 100th percentile of 2,000 draws (p≈0.0000).
+**A hierarchical, family-scoped Deflated Sharpe Ratio correction confirms this is not a multiple-
+testing artifact**: the squeeze/momentum-gate family's own DSR is 0.9676 (n=39 trials), against a
+pooled-DSR of 0.0000 across the same trial registry — the one family in this project's whole DSR
+investigation where a proper correction flips the verdict. **This does not, on its own, make the
+capital-constrained strategy profitable** — a dedicated luck-check tool found `--capital-sim`'s
+strictly-chronological trade admission was actively picking WORSE trades than it skipped, across
+all 3 gates. Replacing chronological admission with a quality-ranked scheme (rank candidate trades
+within each day, admit the best first, using each gate's own empirically-best ranking direction)
+fixed a real, substantial share of this: squeeze-gate's capital-constrained result is now a
+genuine positive outlier vs. random chance (was the single worst possible outcome), combined-gate
+similarly so, momentum-gate moved from actively harmful to neutral. Full account: `docs/
+FINDINGS.md` #68-#69, #73, `PAPER.md` §7.21-§7.22.
+
 ---
 
 ## Architecture — Non-Negotiable Rules
