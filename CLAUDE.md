@@ -96,7 +96,10 @@ last-seen before assuming a hang. LAN fallback: `rw@10.0.1.9` (IP as of 2026-08-
 has also shown recurring hard hangs with no diagnosable cause (non-ECC RAM, no EDAC/thermal trail) —
 an Intel TCO watchdog (`iTCO_wdt`) is armed so a hang auto-recovers in ~30-60s instead of needing a
 physical power-cycle; a prolonged Tailscale "offline" reading may mean a hang the watchdog didn't
-catch, not just a network issue.
+catch, not just a network issue. **CachyOS has no `pip` binary — `.venv/bin/pip` does not exist
+there.** Its Fish shell is also incompatible with inline bash syntax (write the script to a file,
+`scp` it over, `ssh host bash script.sh`). Use `uv pip install --python .venv/bin/python <package>`
+for any new dependency (confirmed 2026-09-21 installing `tensorflow` for the LSTM/attention work).
 
 ## Working Style
 

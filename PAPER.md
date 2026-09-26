@@ -2054,7 +2054,7 @@ the OOS Sharpe gain (+0.10) is small relative to the increased IS→OOS degradat
 Re-evaluate z=1.5 once ≥6 months of OOS history is available to confirm stability
 of the decay differential.
 
-### 7.10 Layer 2: ML Gate [DEFERRED: insufficient training data]
+### 7.10 Layer 2: ML Gate [UPDATED 2026-09-21/22: training data no longer insufficient — real result now in hand]
 
 Layer 2 adds a P(converge) ≥ 0.60 threshold from a trained XGBoost meta-labeler
 (ml.py Stage 1). As of 2026-06-30, training cannot proceed across the 23-pair set:
@@ -2082,6 +2082,29 @@ reliable finding at this sample size: `hurst_exponent`/`mean_reversion_speed` (�
 `mean_reversion_speed` (0.85) all show substantial redundancy, suggesting the 8-feature Stage-1
 set could likely be consolidated once more labeled examples accumulate past the ML gate's own
 30-per-class threshold and this check is re-run with real statistical power.
+
+**Update, 2026-09-21/22 — the "insufficient data" deferral above is resolved; a real, if modest,
+result is now in hand.** The episodic-confirmed pool's growth (182 → 1,375 pairs, §7.20/§7.21)
+carried the labeled-example count with it: `ml.py --pit-safe` now produces **74,732 labeled entry
+events across 1,301 pairs** (up from 24), comfortably clearing the training-viability bar this
+section was waiting on. A real XGBoost Stage-1 fit (chronological 60/20/20 split, 44,839 train /
+14,947 test) initially looked like a null result on accuracy alone (54.49%, below the 58.98%
+majority-class baseline) — but accuracy against a majority baseline is a weak test under this
+real class imbalance, and **AUC-ROC on the same holdout is 0.6075**, meaningfully above random.
+The model has real, if modest, ranking power the accuracy comparison alone could not see. A
+sequence-model comparison (20-bar LSTM/attention over the same pair's `z_rolling`/`half_life_
+rolling` trajectory, `research/lstm_attention_training.py`, unblocked the same week per Ross's own
+"we can try the lstm as we have more data now") found the same pattern (LSTM AUC=0.5897, attention
+AUC=0.5516) but did NOT improve on the static snapshot — the sequence models' AUC is lower than
+XGBoost's, not higher, so the "maybe the missing signal is temporal, not a snapshot" hypothesis is
+not supported by this comparison. A follow-up attempt to recalibrate the decision threshold
+(Youden's J, selected on the validation split only) found, honestly, that it does not help here
+either (53.45% vs. the naive threshold's 54.49%) — AUC 0.61 is modest enough that the ROC curve
+has no sharp elbow to exploit. **Net honest read**: Layer 2 is no longer data-blocked, and there is
+real, non-trivial predictive signal in the Stage-1 feature set — modest in magnitude, not yet
+translated into a usable accuracy gain via either sequence modeling or threshold tuning, and not
+yet shown to make the capital-constrained strategy more profitable. Full account: `docs/
+FINDINGS.md` #72.
 
 ### 7.11 Filter-Ablation Funnel and Era-Decay Replication [DRAFTED: 2026-06-30]
 
