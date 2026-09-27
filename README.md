@@ -1,5 +1,18 @@
 # CAMARF — Cross-Asset Co-Movement Arbitrage Research Framework
 
+> **⚠ RESULTS UNDER REVISION — 2026-09-26.** A full code, citation and consistency audit found
+> confirmed defects that invalidate every P&L-derived number in this document (Sharpe, DSR,
+> capital-sim, luck check, quality admission), several pair-discovery results, and a number of
+> statistical claims. Headline numbers below are **retained only for provenance and must not be
+> cited** until re-derived. Details, finding IDs and the claim-by-claim verdicts:
+> `docs/CODE_REVIEW_2026-09-26.md`, `docs/CONSISTENCY_AUDIT_2026-09-26.md` (MUST-WITHDRAW /
+> MUST-QUALIFY table), `docs/CITATION_AUDIT_2026-09-26.md`, `docs/DEV_OPEN_ITEMS_LEDGER_2026-09-26.md`.
+> Most consequential: backtest gross P&L includes rolling-hedge-ratio drift (on a real 2,062-trade
+> sample, recorded gross +31,865 vs −983 with the hedge ratio held at entry), mixes log-spread units
+> with dollar costs, and double-counts OLS/Kalman copies; pairs with different history start dates
+> were never cointegration-tested in `analysis.py`'s main path; Compustat Global legs are in local
+> currency; the "PIT-safe" Purity pool is selected using windows up to its build date.
+
 **Author:** Ross W.
 **Status:** Active research, mid-pivot. The production pipeline (data → analysis → ML →
 backtest → statistical validation → walk-forward → report) runs end-to-end, but the
