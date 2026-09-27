@@ -28550,3 +28550,23 @@ luck check (depend on broken P&L).
 trades exit after <= 1 bar, 99.9% of those by stop, 96.8% of those entered at |z| >= STOP_ZSCORE 3.5. The entry rule
 has no upper bound, so two-thirds of trades are immediate stop-outs. To be evaluated as an entry-cap comparison arm
 in the P&L rebuild.
+
+**Step 3 completed (2026-09-27) — meta-label capital-sim metric (`research/meta_label_capital_sim.py`, verify 8/8;
+`portfolio_sim.replay_portfolio(pnl_mode="dollar")`, verify 7/7).** ml.py's events (|z| crossings of 1.5) are not
+the strategy's trades (entries at 3.0), so the pre-declared "filtered-trade capital-sim Sharpe" was implemented as AFML
+meta-labeling of the backtest's OWN entries: label = profitable in dollars (pnl_dollar.py), features = ml.py's set
+minus TE, read at each trade's entry bar; purged + embargoed chronological split; admit P >= 0.5; $100k fixed-size
+replay in dollar mode (new: dollar notional + mark-to-market at real leg prices — the legacy replay's
+unrealized_pnl() marked (spread - entry_spread) x shares, a third instance of B2). Dataset: gate IS trade files, OLS,
+1D, USD-only (7,392 / 3,176 / 1,932 trades; profitable rate 0.41-0.42). The dollar-replay test's first hand-computed
+expectation was wrong (forgot that available capital includes the open position's own MTM) — corrected in the test.
+Result, 24 trials: meta-label AUC 0.47-0.54 for every (gate, model) — no ranking power for trade profitability.
+Capital-sim Sharpe differences range -0.19 to +0.59 in both directions; the largest (KNN) admit only 63-85 of
+348-1,349 test trades; momentum-gate MLP admitted 1 trade. Consistent with noise; nothing survives 24 trials.
+Conclusion: the ~0.61 AUC of the z-convergence meta-labeler (step 3 part 1) does not transfer to predicting the
+dollar profitability of the strategy's actual entries. Not yet included: GVKEY pairs (pending FX), and the 1,647
+WRDS files restored on CachyOS after this run (they were unreadable during it).
+
+**D16 fixed (2026-09-27).** The 1,647 zero-byte WRDS files on CachyOS moved to
+`output/cache/_wrds_truncated_backup_20260927/` and replaced with the intact Surface copies (tar over ssh);
+CachyOS now 0 empty of 59,021; spot hash matches.

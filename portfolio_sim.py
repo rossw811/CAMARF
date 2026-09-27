@@ -254,6 +254,24 @@ def unrealized_pnl(pos: dict, ts: pd.Timestamp) -> float:
     return direction * (current_spread - pos["entry_spread"]) * pos["n_shares_a"] * pos["size_scale"]
 
 
+def unrealized_pnl_dollar(pos: dict, ts: pd.Timestamp) -> float:
+    """Dollar mark-to-market for pnl_mode="dollar" (2026-09-27): side * N_a * scale *
+    (r_a(ts) - beta_entry * r_b(ts)), legs at real total-return prices at-or-before ts (pnl_dollar.py
+    convention). unrealized_pnl() above marks (spread - entry_spread) * shares, which carries the
+    rolling-beta drift and log-unit mixing of code-review B2/B3."""
+    import pnl_dollar
+    A, B = pnl_dollar.load_daily_prices(pos["symbol_a"]), pnl_dollar.load_daily_prices(pos["symbol_b"])
+    if A is None or B is None:
+        return 0.0
+    a, b = pnl_dollar._at_or_before(A, ts), pnl_dollar._at_or_before(B, ts)
+    if a is None or b is None or not (np.isfinite(a["tr"]) and np.isfinite(b["tr"])):
+        return 0.0
+    r_a = a["tr"] / pos["tr_a_entry"] - 1.0
+    r_b = b["tr"] / pos["tr_b_entry"] - 1.0
+    direction = 1.0 if pos["side"] == "long" else -1.0
+    return direction * pos["N_a"] * pos["size_scale"] * (r_a - pos["beta"] * r_b)
+
+
 _KELLY_MIN_TRADES = 60  # Development.md's own documented convention: Kelly estimate unreliable
                         # below 60 realized trades -- a bias, not silently corrected away
                         # (CLAUDE.md rule 6). Below this, Kelly methods fall back to flat_2pct.
@@ -345,6 +363,7 @@ def replay_portfolio(
     leverage_cap: float = None,
     quality_admission_col: str = None,
     quality_admission_ascending: bool = False,
+    pnl_mode: str = "legacy",
 ) -> dict:
     """
     Event-driven, capital-constrained, mark-to-market replay of an already-generated trade list.
@@ -376,7 +395,32 @@ def replay_portfolio(
     """
     risk_pct = flat_risk_pct if flat_risk_pct is not None else _FLAT_RISK_PCT
     trades = trades_df.sort_values("entry_time").copy()
-    trades["notional_at_entry"] = trades.apply(lambda t: notional_at_entry(t), axis=1)
+    # pnl_mode="dollar" (2026-09-27; code review B2/B3): notional and P&L come from pnl_dollar.py's
+    # columns and open positions are marked at real leg prices. "legacy" (default) is unchanged.
+    if pnl_mode == "dollar":
+        if sizing_method not in ("fixed", "equity_proportional"):
+            raise ValueError("pnl_mode='dollar' supports sizing_method 'fixed'/'equity_proportional' only "
+                             "(the risk-based sizers use a spread-unit stop distance)")
+        need = ("notional_dollar_entry", "pnl_dollar_net", "hedge_ratio")
+        missing = [c for c in need if c not in trades.columns]
+        if missing or not np.all(np.isfinite(trades["pnl_dollar_net"].to_numpy(float))):
+            raise ValueError(f"pnl_mode='dollar' needs finite {need} (run pnl_dollar.add_dollar_pnl and keep "
+                             f"status=='ok' rows); missing={missing}")
+        import pnl_dollar
+        trades["notional_at_entry"] = trades["notional_dollar_entry"].astype(float)
+        trades["pnl_net"] = trades["pnl_dollar_net"].astype(float)
+        tr_a, tr_b = [], []
+        for t in trades.itertuples():
+            A, B = pnl_dollar.load_daily_prices(t.symbol_a), pnl_dollar.load_daily_prices(t.symbol_b)
+            a = pnl_dollar._at_or_before(A, t.entry_time) if A is not None else None
+            b = pnl_dollar._at_or_before(B, t.entry_time) if B is not None else None
+            tr_a.append(a["tr"] if a is not None else np.nan)
+            tr_b.append(b["tr"] if b is not None else np.nan)
+        trades["_tr_a_entry"], trades["_tr_b_entry"] = tr_a, tr_b
+    elif pnl_mode == "legacy":
+        trades["notional_at_entry"] = trades.apply(lambda t: notional_at_entry(t), axis=1)
+    else:
+        raise ValueError(f"unknown pnl_mode {pnl_mode!r}")
     if quality_admission_col is not None:
         trades = _reorder_for_quality_admission(trades, quality_admission_col, quality_admission_ascending)
     records = trades.to_dict("records")
@@ -415,7 +459,8 @@ def replay_portfolio(
         open_positions = still_open
 
         # 2. Mark remaining open positions to market at this timestamp.
-        mtm_unrealized = sum(unrealized_pnl(pos, entry_time) for pos in open_positions)
+        mtm_unrealized = sum((unrealized_pnl_dollar if pnl_mode == "dollar" else unrealized_pnl)(pos, entry_time)
+                             for pos in open_positions)
         current_equity = realized_equity + mtm_unrealized
         peak_mtm_equity = max(peak_mtm_equity, current_equity)
         trough_mtm_equity = min(trough_mtm_equity, current_equity)
@@ -505,6 +550,8 @@ def replay_portfolio(
             "symbol_a": t["symbol_a"], "symbol_b": t["symbol_b"], "tf": t["tf"],
             "entry_spread": t["entry_spread"], "side": t["side"], "n_shares_a": t["n_shares_a"],
             "size_scale": size_scale, "original_pnl_net": t["pnl_net"],
+            **({"N_a": t["notional_at_entry"] / (1.0 + abs(float(t["hedge_ratio"]))), "beta": float(t["hedge_ratio"]),
+                "tr_a_entry": t["_tr_a_entry"], "tr_b_entry": t["_tr_b_entry"]} if pnl_mode == "dollar" else {}),
         })
         peak_concurrent_notional = max(peak_concurrent_notional, committed_now + actual_notional)
         taken.append({**t, "actual_notional": actual_notional, "actual_pnl": actual_pnl,
