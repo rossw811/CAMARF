@@ -30,12 +30,18 @@ structure, predictable at statistically significant rates via multiclass ML.
 
 1. **`data.py` fetches, `analysis.py` analyzes — never reversed.** `analysis.py` always calls
    `builder.build(connect=False)`, never touches IBKR/yfinance directly.
-2. **yfinance is primary daily fetch.** WRDS/CRSP is primary for daily-and-coarser US
-   equity/ETF (CRSP total-return-adjusted, Compustat Global fallback). `data_ibkr.py` is a
-   separate, manual, supplemental deep-history fetch for confirmed pairs only — never merge its
-   fetching into `data.py`'s path (see DEVELOPMENT.md Session 5-7 for why). IBKR's cache is,
-   however, the only source in this project for real intraday depth (1m–4h) and is used for
-   discovery via `universe_loader.py` (`include_ibkr=True`). IBKR has zero forex/commodity data.
+2. **WRDS has priority over yfinance and IBKR** (Ross, 2026-09-27). For daily-and-coarser data,
+   WRDS/CRSP (Compustat Global for international) wins every symbol collision:
+   `universe_loader.load_full_universe` merges WRDS last, and the episodic adapter builds spreads
+   from CRSP `close_total_return`, the series discovery tests. yfinance fills only symbols WRDS
+   doesn't cover (and is the daily *fetch* tool in `data.py`). Caveat, still open: the loader's
+   `columns=["close"]` path reads WRDS *price-only* `close`, not total return (code review U4),
+   and Compustat Global prices are in local currency until the FX conversion lands (R1.1).
+   **IBKR deep history is off by default** (`include_ibkr=False`): it exists only for previously
+   confirmed pairs' symbols, so using it in discovery makes data depth depend on earlier results.
+   It may only be used as a separately labelled side arm on a symbol set declared in advance.
+   `data_ibkr.py` stays a separate, manual fetch — never merge it into `data.py`'s path
+   (DEVELOPMENT.md Sessions 5-7). IBKR has zero forex/commodity data.
 3. **GapFlag governs all gap handling.** DATA_GAP (>5 consecutive missing bars) is masked to
    NaN via `_gap_aware_returns()`/`_clean_close()` — never forward-filled into a correlation or
    cointegration calc. `_clean_close()` returns `np.ndarray`, not `pd.Series` — wrap with
