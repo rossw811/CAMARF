@@ -525,3 +525,19 @@ equity median flat days 10.8% → 2.9%; files >20% flat 544 → 46; forex 100% N
 history; decision for Ross).
 Churn-loop arms built (`--storm-directional-stop`, `--storm-reentry-rearm`, default off; `--entry-z-max` existing):
 `_verify_churn_fix_arms.py` 5/5 (fixture first drafted too steep to show repeated churn — corrected).
+
+**Churn-loop and dead-code-pathway comparison arms (2026-09-27; `research/churn_arms_eval.py`).** Momentum gate,
+Purity pool, OLS, dollar P&L on USD-only legs, business-day Sharpe; 7 arms × IS/OOS = 14 trials.
+| Arm | IS net / gross | OOS net / gross | mechanism check |
+|---|---|---|---|
+| base | −0.408 / −0.191 | −0.296 / −0.125 | 68% entries past stop, 39% favourable stops, 35% re-entry churn |
+| entry cap 3.5 | −0.278 / −0.196 | −0.278 / −0.215 | entries past stop → 0% |
+| directional stop | −0.278 / −0.150 | +0.039 / +0.133 | favourable stops → 0% |
+| re-entry re-arm | −0.140 / −0.065 | −0.082 / −0.021 | re-entry churn → 0% |
+| all three | −0.168 / −0.100 | −0.159 / −0.103 | all three patterns → 0% |
+| real_corr_exit (flag rule) | −0.737 / −0.157 | −0.207 / +0.249 | fires 8,779 / 2,089 times |
+| decoupling_avoidance_exit | −0.405 / −0.188 | −0.296 / −0.125 | fires 14 / 0 times — effectively a no-op |
+Each fix removes exactly the defect it targets and cuts losses by up to two-thirds, but no arm is profitable in-sample
+even before costs; the one positive number (directional stop OOS +0.039) is 1 of 14 trials and not evidence.
+`corr_exit` (default rule) remains structurally unreachable — its intent is covered by `real_corr_exit`; `data_gap`
+force-close becomes testable only once gap flags survive into spread files (B1/D-series).
