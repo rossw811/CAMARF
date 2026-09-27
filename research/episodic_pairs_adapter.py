@@ -163,7 +163,10 @@ def _load_symbol(symbol: str, tf_label: str, preloaded: dict = None):
                     _w = _w.copy()
                     _w["close"] = _w["close_total_return"]
                 if not _w.empty:
-                    return _w.drop(columns=[c for c in ("close_total_return",) if c in _w.columns])
+                    _w = _w.drop(columns=[c for c in ("close_total_return",) if c in _w.columns])
+                    # WRDS parquet uses nullable dtypes (pd.NA); downstream numpy code (VolumeStructure)
+                    # raises "boolean value of NA is ambiguous" on them -- normalise to float64 / NaN.
+                    return _w.apply(pd.to_numeric, errors="coerce").astype("float64")
             except Exception:
                 pass  # unreadable WRDS file -> fall through to the other sources, not a crash
     if preloaded is not None and symbol in preloaded:

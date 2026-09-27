@@ -44,6 +44,17 @@ def main():
         a = ad._load_symbol("BOTH", "1D")
         check("wrds_first_total_return", a is not None and float(a["close"].iloc[0]) == 12.5,
               f"close={None if a is None else a['close'].iloc[0]}")
+        # WRDS files use pandas NULLABLE dtypes (pd.NA): VolumeStructure raised "boolean value of NA is
+        # ambiguous" on 1,670 real leg loads, so the squeeze/momentum gate silently failed closed (2026-09-27).
+        nl = pd.DataFrame({"open": pd.array([10.0] * 79 + [None], dtype="Float64"),
+                           "high": pd.array([10.0] * 80, dtype="Float64"), "low": pd.array([10.0] * 80, dtype="Float64"),
+                           "close": pd.array([10.0] * 80, dtype="Float64"),
+                           "close_total_return": pd.array([12.0] * 79 + [None], dtype="Float64"),
+                           "volume": pd.array([1] * 80, dtype="Int64")}, index=idx)
+        nl.to_parquet(os.path.join(wrds_dir, "NULLABLE_1D.parquet"))
+        n = ad._load_symbol("NULLABLE", "1D")
+        check("nullable_dtypes_become_float64", n is not None and all(str(d) == "float64" for d in n.dtypes)
+              and not any(v is pd.NA for v in n["close"].tolist()), f"dtypes={None if n is None else n.dtypes.to_dict()}")
         b = ad._load_symbol("YFONLY", "1D")
         check("yfinance_fallback", b is not None and float(b["close"].iloc[0]) == 9.0,
               f"close={None if b is None else b['close'].iloc[0]}")
