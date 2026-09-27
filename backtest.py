@@ -613,6 +613,11 @@ class BacktestEngine:
         _directional_stop = self.storm_flags.get("directional_stop", False)
         _reentry_rearm = self.storm_flags.get("reentry_rearm", False)
         _armed = True
+        # Point-in-time pair eligibility (2026-09-27, Design 2; code review S3): a pairs-override row
+        # may carry `eligible_from` = the end date of the window that confirmed the pair. No entry
+        # before it -- the pair could not have been known to be confirmed yet. Absent/NaT = legacy.
+        _eligible_from = pd.to_datetime(pair_row.get("eligible_from", pd.NaT)) if hasattr(pair_row, "get") else pd.NaT
+        _eligible_from = None if pd.isna(_eligible_from) else _eligible_from
         _rolling_z_std = None
         _hist_z_std_arr = None
         if _garch_stop:
@@ -814,6 +819,8 @@ class BacktestEngine:
                     if not (bool(_liquid_a.iloc[i]) and bool(_liquid_b.iloc[i])):
                         continue
 
+                if _eligible_from is not None and ts < _eligible_from:
+                    continue
                 if _reentry_rearm and not _armed:
                     if abs(z) < self.cfg.ENTRY_ZSCORE:
                         _armed = True  # spread reset below the entry band -- pair may re-enter later
