@@ -100,10 +100,10 @@ def verify_load_universe_wrapper_calls_loader_correctly():
         ok = check("tf_label='1D' passed through", kwargs.get("tf_label") == "1D")
         ok &= check("include_wrds=True (WRDS is in the merge, wins on collision by the "
                     "loader's own documented order)", kwargs.get("include_wrds") is True)
-        ok &= check("include_yfinance/include_binance/include_ibkr all True (gap-filling "
-                    "sources stay included, they just never override WRDS)",
+        ok &= check("include_yfinance/include_binance True (gap-filling, never override WRDS); "
+                    "include_ibkr False (2026-09-27 WRDS-priority rule: IBKR deep = side arm only)",
                     kwargs.get("include_yfinance") is True and kwargs.get("include_binance") is True
-                    and kwargs.get("include_ibkr") is True)
+                    and kwargs.get("include_ibkr") is False)
     return ok
 
 

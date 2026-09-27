@@ -97,11 +97,15 @@ def main():
             failures.append(f"Check 4: WRDS/Binance/IBKR symbols should be EXCLUDED when their "
                              f"flags are False, got keys: {list(yf_only.keys())}")
 
-        # --- Check 5: IBKR symbol loaded by default, correctly using its "_deep" filename
-        # convention (a different naming pattern from every other source) ---
-        if "VERIFYIBKR" not in merged:
-            failures.append(f"Check 5: IBKR-only symbol VERIFYIBKR not found in merged universe "
-                             f"(default include_ibkr=True) -- got keys: {list(merged.keys())}")
+        # --- Check 5: IBKR symbol loaded when REQUESTED, using its "_deep" filename convention.
+        # Default changed to include_ibkr=False on 2026-09-27 (WRDS-priority rule, code review U5:
+        # IBKR deep history exists only for previously confirmed pairs' symbols) -- the default must
+        # now EXCLUDE it; the explicit side-arm flag must still load it. ---
+        if "VERIFYIBKR" in merged:
+            failures.append("Check 5: default load must EXCLUDE the IBKR-only symbol (include_ibkr=False default)")
+        ibkr_on = load_full_universe("1D", include_ibkr=True)
+        if "VERIFYIBKR" not in ibkr_on:
+            failures.append(f"Check 5: include_ibkr=True must load the IBKR-only symbol -- got keys: {list(ibkr_on.keys())}")
         ibkr_off = load_full_universe("1D", include_ibkr=False)
         if "VERIFYIBKR" in ibkr_off:
             failures.append("Check 5b: include_ibkr=False should exclude the IBKR symbol, "
@@ -114,10 +118,10 @@ def main():
         # `tf_label in _IBKR_SUFFIX` was checking a canonical "5m" against dict keys
         # spelled "5min", always False. Only "1D"/"1h"/"4h" happened to pass before the
         # fix, since those three canonical labels coincidentally equal their own suffix.
-        merged_5m = load_full_universe("5m")
+        merged_5m = load_full_universe("5m", include_ibkr=True)
         if "VERIFYIBKRMIN" not in merged_5m:
             failures.append(f"Check 6: IBKR minute-timeframe symbol VERIFYIBKRMIN not found "
-                             f"in merged universe for tf_label='5m' (default include_ibkr=True) "
+                             f"in merged universe for tf_label='5m' (include_ibkr=True) "
                              f"-- got keys: {list(merged_5m.keys())}")
 
         # --- Check 7 (2026-09-12 audit): _WRDS_SUFFIX had ONLY a "1D" entry -- every

@@ -102,7 +102,7 @@ def load_universe_wrds_daily(columns=None) -> Dict[str, pd.DataFrame]:
     import universe_loader
     universe = universe_loader.load_full_universe(
         tf_label=_TF_LABEL, include_yfinance=True, include_wrds=True,
-        include_binance=True, include_ibkr=True, columns=columns,
+        include_binance=True, include_ibkr=False, columns=columns,  # WRDS-priority rule 2026-09-27: IBKR deep = side arm only
     )
     for sym, df in universe.items():
         if df is not None and not df.empty and df.index.tz is not None:

@@ -96,7 +96,7 @@ def main():
 
     all_symbols = sorted(set(state_symbols["not_coint"]) | set(state_symbols["coint"]))
     universe = universe_loader.load_full_universe(
-        tf_label="1D", include_yfinance=True, include_wrds=True, include_binance=True, include_ibkr=True,
+        tf_label="1D", include_yfinance=True, include_wrds=True, include_binance=True, include_ibkr=False,  # 2026-09-27 rule
         columns=["close"],
     )
     close = {}
