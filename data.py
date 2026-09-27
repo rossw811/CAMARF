@@ -1733,7 +1733,12 @@ class DataCleaner:
         # daily files). Removed 2026-09-26, code review D1; debug/_verify_liquidity_filter_no_
         # fabrication.py.
 
-        min_bars = Config.DATA.MIN_BARS_REQUIRED.get(tf_label, 100)
+        # Timeframes without an explicit MIN_BARS_REQUIRED entry derive their floor from
+        # MIN_OVERLAP_BY_TF (a symbol can never meet the overlap floor with fewer bars) instead of
+        # a flat 100 -- code review C13, 2026-09-26: 3M/6M/1Y fell back to 100 bars (25/50/100
+        # years), rejecting nearly every symbol at those WRDS-primary timeframes.
+        min_bars = Config.DATA.MIN_BARS_REQUIRED.get(
+            tf_label, Config.STATS.MIN_OVERLAP_BY_TF.get(tf_label, 100))
         if len(df) < min_bars:
             return None, QualityReport(
                 symbol,
@@ -2433,7 +2438,9 @@ class YFinanceFeed:
                 pass
 
         # Cache the attempt label that worked (if it was a fallback, not the primary)
-        if worked_period and _attempts and worked_period != _attempts[0][0]:
+        # _attempts is a list of period strings; [0][0] compared against its first CHARACTER, so
+        # every working period was cached and pinned (code review D15, 2026-09-26).
+        if worked_period and _attempts and worked_period != _attempts[0]:
             try:
                 DataStore.save(_pkey, "meta", pd.DataFrame([{"period": worked_period}]))
             except Exception:
@@ -5568,6 +5575,7 @@ class UniverseBuilder:
     _SP500_CACHE = os.path.join(
         os.path.dirname(__file__), "output", "cache", "sp500_tickers.json"
     )
+    _SP500_MIN_VALID = 400  # a real S&P 500 list is ~503; smaller => failed/truncated fetch
 
     @staticmethod
     def _fetch_sp_index_wikipedia(
@@ -5689,6 +5697,13 @@ class UniverseBuilder:
 
     @staticmethod
     def _save_sp500_cache(tickers):
+        # Guard lives HERE so no caller can bypass it (code review D14, 2026-09-26: the Wikipedia
+        # path saved with no size check, so an empty/truncated scrape could overwrite the last good
+        # cache -- CLAUDE.md "never cache an empty constituent-fetch result").
+        if not tickers or len(tickers) <= UniverseBuilder._SP500_MIN_VALID:
+            log.warning(f"S&P 500: refusing to cache {len(tickers or [])} tickers "
+                        f"(<= {UniverseBuilder._SP500_MIN_VALID}); keeping the existing cache")
+            return
         try:
             Config.ensure_dirs()
             with open(UniverseBuilder._SP500_CACHE, "w") as f:
@@ -5706,7 +5721,7 @@ class UniverseBuilder:
                 try:
                     with open(cache) as f:
                         tickers = json.load(f)
-                    if len(tickers) > 400:
+                    if len(tickers) > UniverseBuilder._SP500_MIN_VALID:
                         log.info(
                             f"S&P 500: {len(tickers)} tickers from cache ({age_h:.1f}h old)"
                         )
@@ -5745,7 +5760,7 @@ class UniverseBuilder:
                 for t in tickers
                 if str(t).strip() not in ("", "nan", "-")
             ]
-            if len(tickers) > 400:
+            if len(tickers) > UniverseBuilder._SP500_MIN_VALID:
                 log.info(f"S&P 500: {len(tickers)} tickers from iShares IVV")
                 UniverseBuilder._save_sp500_cache(tickers)
                 return tickers
@@ -5764,7 +5779,7 @@ class UniverseBuilder:
             try:
                 with open(cache) as f:
                     stale_tickers = json.load(f)
-                if len(stale_tickers) > 400:
+                if len(stale_tickers) > UniverseBuilder._SP500_MIN_VALID:
                     stale_age_h = (time.time() - os.path.getmtime(cache)) / 3600
                     log.warning(
                         f"S&P 500: both live sources failed. Using stale "

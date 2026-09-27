@@ -1180,8 +1180,9 @@ def run_halflife_stationarity(pairs: pd.DataFrame) -> pd.DataFrame:
                 za_result = zivot_andrews(hl.values, trim=0.15, regression="c", autolag="AIC")
                 rec["hl_za_stat"] = round(float(za_result[0]), 4)
                 rec["hl_za_pval"] = round(float(za_result[1]), 4)
-                # za_result[4] is baselag; za_result[3] is the break index
-                break_idx = int(za_result[3]) if len(za_result) > 3 else None
+                # statsmodels returns (zastat, pvalue, cvdict, baselag, bpidx): index 4 is the break,
+                # index 3 the lag count (fixed 2026-09-26, code review S7 -- this read index 3).
+                break_idx = int(za_result[4]) if len(za_result) > 4 else None
                 if break_idx is not None and break_idx < len(hl):
                     rec["hl_za_breakdate"] = str(hl.index[break_idx])
                 rec["hl_stationary"] = bool(za_result[1] < 0.10)
