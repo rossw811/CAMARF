@@ -32,8 +32,9 @@ import pandas as pd
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 _OUT = os.path.join("output", "research", "strategy_search")
-POOLS = {"pit_k1": os.path.join("output", "research", "purity_pairs_pit_k1.parquet"),
-         "pit_k2": os.path.join("output", "research", "purity_pairs_pit_k2.parquet")}
+# Pre-registration Amendment 1: identity-pair-free pools
+POOLS = {"pit_k1": os.path.join("output", "research", "purity_pairs_pit_k1_clean.parquet"),
+         "pit_k2": os.path.join("output", "research", "purity_pairs_pit_k2_clean.parquet")}
 SPLITS = (0.5, 0.6, 0.7, 0.8)
 N_FOLDS = 4
 EMBARGO_PCT = 0.01
