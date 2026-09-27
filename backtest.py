@@ -530,6 +530,12 @@ class BacktestEngine:
         current_trade: Optional[Trade] = None
         mae_val = mfe_val = 0.0
         _n_skipped_no_half_life = 0  # trip-wire counter, see check after the loop below
+        # Split by cause (2026-09-27): the single counter lumped a genuinely NaN half-life (the
+        # 2026-09-10 bug shape) together with a FINITE half-life below MIN_HALF_LIFE_BARS (a pair
+        # that reverts too fast to trade, e.g. two share classes of one company: half-lives 0.2-4
+        # days) and warned 'non-finite' for both, pointing at a non-existent upstream bug.
+        _n_skipped_hl_nan = 0
+        _n_skipped_hl_below_floor = 0
 
         z_arr = df["z_rolling"].values
         spread_arr = df["spread"].values
@@ -875,6 +881,10 @@ class BacktestEngine:
                 hl_at_entry = hl if np.isfinite(hl) and hl >= self.cfg.MIN_HALF_LIFE_BARS else np.nan
                 if not np.isfinite(hl_at_entry):
                     _n_skipped_no_half_life += 1
+                    if np.isfinite(hl):
+                        _n_skipped_hl_below_floor += 1  # finite but reverts too fast to trade
+                    else:
+                        _n_skipped_hl_nan += 1  # genuinely missing half-life (2026-09-10 bug shape)
                     continue  # can't set max hold without half-life
                 # STORM: max_half_life_filter -- symmetric ceiling to the MIN_HALF_LIFE_BARS
                 # floor above (skip degenerately SLOW mean-reversion, same logic that already
@@ -1101,14 +1111,20 @@ class BacktestEngine:
         # clean_mask, not a genuine data/signal limitation). A pair with valid
         # spread/z data that never once clears this specific gate should be
         # loud, not a silent 0-trade result indistinguishable from "no signal."
-        if len(trades) == 0 and _n_skipped_no_half_life > 0 and n >= 60:
+        if len(trades) == 0 and _n_skipped_hl_nan > 0 and n >= 60:
             log.warning(
-                "%s/%s@%s[%s]: 0 trades, every one of %d entry-eligible bars "
-                "skipped for a non-finite half-life at entry -- check fit_pair's "
-                "half_life_rolling upstream (analysis.py) before concluding this "
-                "pair genuinely has no tradeable signal; see CLAUDE.md's "
-                "2026-09-10 Working Style entry",
-                sym_a, sym_b, tf, hedge_method, _n_skipped_no_half_life,
+                "%s/%s@%s[%s]: 0 trades; %d entry-eligible bars had a NaN half-life at entry "
+                "(%d more were finite but below MIN_HALF_LIFE_BARS=%s) -- check fit_pair's "
+                "half_life_rolling upstream (analysis.py) before concluding this pair has no "
+                "tradeable signal; see CLAUDE.md's 2026-09-10 Working Style entry",
+                sym_a, sym_b, tf, hedge_method, _n_skipped_hl_nan, _n_skipped_hl_below_floor,
+                self.cfg.MIN_HALF_LIFE_BARS,
+            )
+        elif len(trades) == 0 and _n_skipped_hl_below_floor > 0:
+            log.info(
+                "%s/%s@%s[%s]: 0 trades -- all %d entry-eligible bars had a finite half-life "
+                "below MIN_HALF_LIFE_BARS=%s (reverts too fast to trade; not a data bug)",
+                sym_a, sym_b, tf, hedge_method, _n_skipped_hl_below_floor, self.cfg.MIN_HALF_LIFE_BARS,
             )
 
         return trades

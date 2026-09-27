@@ -149,6 +149,23 @@ def _load_symbol(symbol: str, tf_label: str, preloaded: dict = None):
     call _get_full_universe itself anymore, but the fallback stays as a
     defensive backstop (e.g. the n_workers<=1 path, or a symbol missed by
     the pre-resolve step) rather than being removed outright."""
+    # WRDS first for daily-and-coarser TFs (2026-09-27, Ross: "prioritize wrds over yfinance"; code review
+    # R1.4): the Tier-3 discovery scan tested CRSP close_total_return, so the traded spread must be built
+    # from the same series -- not yfinance's adjusted close. yfinance is only a fallback for symbols WRDS
+    # does not cover.
+    if tf_label in Config.DATA.WRDS_PRIMARY_TFS:
+        import universe_loader as _ul
+        _wp = os.path.join(_ul._WRDS_CACHE_DIR, f"{symbol}_{tf_label}.parquet")
+        if os.path.exists(_wp) and os.path.getsize(_wp) > 0:
+            try:
+                _w = pd.read_parquet(_wp)
+                if "close_total_return" in _w.columns and _w["close_total_return"].notna().any():
+                    _w = _w.copy()
+                    _w["close"] = _w["close_total_return"]
+                if not _w.empty:
+                    return _w.drop(columns=[c for c in ("close_total_return",) if c in _w.columns])
+            except Exception:
+                pass  # unreadable WRDS file -> fall through to the other sources, not a crash
     if preloaded is not None and symbol in preloaded:
         return preloaded[symbol]
     df = DataStore.load(symbol, tf_label)

@@ -193,8 +193,13 @@ def _dir_signature(directory: str) -> tuple:
     return (n, max_mtime)
 
 
-def _memo_cache_path(tf_label, include_yfinance, include_wrds, include_binance, include_ibkr, columns):
-    sig_parts = [tf_label]
+# Bumped whenever the merge semantics change, so a memo built under older semantics is never served back
+# (code review U6: the key covered file counts/mtimes and arguments but not the loader logic).
+_LOADER_VERSION = "2026-09-27-wrds-priority"
+
+
+def _memo_signature(tf_label, include_yfinance, include_wrds, include_binance, include_ibkr, columns):
+    sig_parts = [tf_label, ("loader_version", _LOADER_VERSION)]
     if include_yfinance:
         sig_parts.append(("yf", _dir_signature(_YF_CACHE_DIR)))
     if include_wrds:
@@ -204,6 +209,11 @@ def _memo_cache_path(tf_label, include_yfinance, include_wrds, include_binance, 
     if include_ibkr:
         sig_parts.append(("ibkr", _dir_signature(_IBKR_CACHE_DIR)))
     sig_parts.append(("cols", tuple(sorted(columns)) if columns else None))
+    return sig_parts
+
+
+def _memo_cache_path(tf_label, include_yfinance, include_wrds, include_binance, include_ibkr, columns):
+    sig_parts = _memo_signature(tf_label, include_yfinance, include_wrds, include_binance, include_ibkr, columns)
     key = hashlib.sha1(repr(sig_parts).encode()).hexdigest()[:20]
     return os.path.join(_MEMO_CACHE_DIR, f"{tf_label}_{key}.pkl")
 
@@ -473,7 +483,7 @@ def filter_structural_pairs(candidate_pairs: list, gvkey_cross_listing_threshold
 
 def load_full_universe(tf_label: str = "1D", include_yfinance: bool = True,
                         include_wrds: bool = True, include_binance: bool = True,
-                        include_ibkr: bool = True, columns=None,
+                        include_ibkr: bool = False, columns=None,
                         use_memo_cache: bool = True) -> dict:
     """Merges every real price-data source for `tf_label` into one
     {symbol: DataFrame} dict. Later sources win on a symbol collision (WRDS,
@@ -533,15 +543,19 @@ def load_full_universe(tf_label: str = "1D", include_yfinance: bool = True,
                 print(f"WARNING: memo cache read failed ({e}) for {cache_path} -- "
                       f"rebuilding rather than crashing")
 
+    # Source priority (2026-09-27, Ross: "let's priority wrds over ibkr"; code review U5): later updates win,
+    # so WRDS is merged LAST and wins every collision. IBKR deep history exists only for previously CONFIRMED
+    # pairs' symbols (selection-dependent depth), so it is OFF by default and, when a pre-declared side arm
+    # turns it on, it can only ADD symbols WRDS does not cover -- never override a WRDS series.
     merged = {}
     if include_yfinance and tf_label in _YF_SUFFIX:
         merged.update(_load_dir(_YF_CACHE_DIR, _YF_SUFFIX[tf_label], columns=columns))
-    if include_wrds and tf_label in _WRDS_SUFFIX:
-        merged.update(_load_dir(_WRDS_CACHE_DIR, _WRDS_SUFFIX[tf_label], columns=columns))
     if include_binance and tf_label in _BINANCE_SUFFIX:
         merged.update(_load_dir(_BINANCE_CACHE_DIR, _BINANCE_SUFFIX[tf_label], columns=columns))
     if include_ibkr and tf_label in _IBKR_SUFFIX:
         merged.update(_load_ibkr_dir(_IBKR_CACHE_DIR, _IBKR_SUFFIX[tf_label], columns=columns))
+    if include_wrds and tf_label in _WRDS_SUFFIX:
+        merged.update(_load_dir(_WRDS_CACHE_DIR, _WRDS_SUFFIX[tf_label], columns=columns))
 
     if use_memo_cache:
         os.makedirs(_MEMO_CACHE_DIR, exist_ok=True)
