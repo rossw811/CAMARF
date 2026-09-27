@@ -1,3 +1,58 @@
+## 2026-09-27 (afternoon): RESUME HERE — current state, in-flight jobs, next steps (supersedes the "Needs you" list below)
+
+**Standing rule from Ross (2026-09-27):** treat every earlier claim, summary and "FIXED" label as UNVERIFIED until
+re-checked against code or real data, whoever wrote it; extra scrutiny for the 77 commits trailered "Claude
+Sonnet" (62 Sonnet 5, 15 Sonnet 4.6). Most history has no model trailer, so attribution is incomplete. Every
+confirmed bug this session was caught by checking code/data, not write-ups.
+
+**Decisions Ross made today (all implemented unless noted):** fix order data → A1 → Purity rebuild → P&L →
+re-derive; dollar P&L; USD conversion of Compustat Global legs; min-windows rule (k=2 arm); purged CV; Design 1
+(pre-registered search, holdout splits 50/60/70/80 all reported) and Design 2 (point-in-time eligible_from);
+**WRDS has priority over yfinance and IBKR**; IBKR deep history = pre-declared side arm only (CLAUDE.md rule 2
+rewritten); paper edits to follow the search results (proposals in docs/PAPER_SCRUTINY_2026-09-27.md);
+churn fixes stay comparison arms, not defaults; push commits.
+
+**Done today (all committed + pushed; details in docs/CODE_REVIEW_2026-09-26.md "Post-review updates"):**
+- WRDS priority: `universe_loader` merges WRDS last, `include_ibkr=False` default, memo version key; adapter
+  builds spreads from CRSP `close_total_return` first.
+- One label per security: `universe_loader.dedupe_identical_series` (default on; also in
+  `wrds_deep_history_episodic_scan.load_wrds_universe`) — **529 duplicate labels** across 44,694 WRDS symbols
+  (ticker + own PERMNO alias; GVKEY duplicates of .T listings, e.g. GVKEY005691_01W = 7267.T).
+- **110 of the 1,375 Purity "pairs" were one security vs itself** (identical returns on 100% of days) → clean
+  pools `purity_pairs_pit_k1_clean` (1,265) and `_k2_clean` (167). Every earlier Purity result included them.
+- Point-in-time eligibility (`research/purity_pit_eligibility.py`, backtest `eligible_from` gate): k=1 median
+  eligible_from 2018-07-11 — most pairs were previously traded long before they could have been known.
+- Pool spread series regenerated from CRSP total return (`research/regenerate_pool_spread_series.py`;
+  backups `output/results/_spread_backup_20260927*/` on CachyOS; originals in the first folder).
+- IBKR 1h/4h deep history rebuilt clean for the pool's 19 intraday symbols; recent yfinance 1h/4h rebuilt
+  (VTOL 1h flat bars 84% → 1.7%); backups `output/cache/_intraday_backup_20260927/`; synced to CachyOS.
+- "NaN half-life" warning was mislabelled (finite half-life below MIN_HALF_LIFE_BARS, e.g. share classes);
+  split by cause.
+- Pre-registration `docs/PREREGISTRATION_STRATEGY_SEARCH_2026-09-27.md` + Amendment 1 (clean pools), both
+  pushed BEFORE any search result. First search launch aborted unevaluated (stale spreads); outputs set aside
+  in `output/research/strategy_search_ABORTED_stale_spreads_20260927/` — never read.
+- FX scope: `output/research/gvkey_currency_history_pool.parquet` (CachyOS) — all 764 pool GVKEY legs have
+  curcdd history; **73 changed currency** (FRF/DEM/ESP/ITL/NLG/GRD → EUR, TRL → TRY).
+
+**In flight on CachyOS (check first):**
+1. `research/squeeze_momentum_features.py --pairs-file output/research/purity_pairs_pit_k1_clean.parquet`
+   (log `latest_run_squeeze_features_clean.log`) — restores gate columns to the regenerated spread files.
+   (Its documented `--workers` flag does not exist — docstring is wrong.)
+2. THEN launch the search: `nohup .venv/bin/python -u research/strategy_search.py run --workers 8 >
+   latest_run_strategy_search_run.log 2>&1 &`, then `... strategy_search.py eval` (splits/folds/DSR/PBO; verdict
+   per the pre-registered success criterion). USD-only legs until FX lands (disclosed in the prereg).
+3. Then: draft PAPER.md / PAPER_MAGNITUDE.md edits from PAPER_SCRUTINY + search results, for Ross's approval.
+
+**Open, in order:** FX conversion per row (needs legacy-currency FX history — not cached; FRED DEX* series for
+DEM/FRF/etc. pre-1999 + fixed euro conversion rates; PLN/TRY/HUF/CZK have no cached series; check GBP pence);
+U4 (loader `columns=["close"]` reads price-only WRDS close); re-run discovery (episodic scan) with dedupe +
+USD prices; D5 (4h overnight gaps flagged FILL); D11/U2 (crypto intraday UTC labelled ET); U3 (weekend NaN rows
+blank Monday returns); M7 (CPI/FEDFUNDS lag); ~20 research `align_universe` call sites to review for A1; 12
+intraday pairs' spreads to regenerate on the clean 1h/4h data; backlog: re-evaluate everything available in our
+WRDS subscription (Ross, 2026-09-27).
+
+---
+
 ## 2026-09-26/27: Full audit + overnight fixes — READ FIRST (everything committed; nothing pushed)
 
 **Audit plan (steps 1–4): complete.** `docs/CODE_REVIEW_2026-09-26.md` (~190 findings, every confirmed one checked
