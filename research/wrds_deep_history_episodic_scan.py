@@ -190,6 +190,14 @@ def load_wrds_universe():
     log.info(f"Loaded {len(out)} symbols from output/cache/wrds/: "
              f"{len(used_total_return)} total-return-adjusted (CRSP), "
              f"{len(used_split_only)} split-only-adjusted (Compustat Global, disclosed)")
+    # One label per security (2026-09-27): the cache holds some securities twice (ticker + its own
+    # PERMNO alias, or two tickers with identical series) -- 110 pool "pairs" were a stock vs itself.
+    from universe_loader import dedupe_identical_series
+    _kept, _removed = dedupe_identical_series({k: v.to_frame("close") for k, v in out.items()})
+    out = {k: out[k] for k in _kept}
+    used_split_only = used_split_only & set(out)
+    log.info(f"Removed {len(_removed)} duplicate-security labels (identical return series): "
+             f"{list(_removed.items())[:10]}{'...' if len(_removed) > 10 else ''}")
     if skipped_unreadable:
         log.warning(f"Skipped {len(skipped_unreadable)} unreadable/corrupted cache files "
                     f"(0-byte or otherwise unparseable) -- re-fetch needed via live WRDS access, "

@@ -195,7 +195,7 @@ def _dir_signature(directory: str) -> tuple:
 
 # Bumped whenever the merge semantics change, so a memo built under older semantics is never served back
 # (code review U6: the key covered file counts/mtimes and arguments but not the loader logic).
-_LOADER_VERSION = "2026-09-27-wrds-priority"
+_LOADER_VERSION = "2026-09-27-wrds-priority-dedupe"
 
 
 def _memo_signature(tf_label, include_yfinance, include_wrds, include_binance, include_ibkr, columns):
@@ -481,10 +481,60 @@ def filter_structural_pairs(candidate_pairs: list, gvkey_cross_listing_threshold
     return kept, dropped
 
 
+def _label_rank(sym: str) -> int:
+    s = str(sym)
+    return 2 if s.startswith("GVKEY") else 1 if s.startswith("PERMNO") else 0
+
+
+def dedupe_identical_series(frames: dict, window: int = 60, tol: float = 1e-9):
+    """Keep ONE label per security (2026-09-27; root cause of 110 identity 'pairs' in the Purity pool --
+    the WRDS cache holds some securities under two labels, e.g. a ticker and its own PERMNO<n> alias
+    (COST / PERMNO87055), or two tickers with identical series (UAA / UA), and discovery confirmed each
+    such stock against itself).
+
+    Two symbols are the same security when their log returns are identical (|diff| <= tol) on their
+    whole overlap (>= `window` bars). Candidates are bucketed by their last `window` (date, return)
+    values, then confirmed on the full overlap. Keeper preference: plain ticker > PERMNO alias > GVKEY
+    label, then longer history, then name. Returns (kept_frames, removed {dropped_symbol: kept_symbol})."""
+    import numpy as np
+    rets, buckets = {}, {}
+    for sym, df in frames.items():
+        if df is None or "close" not in df.columns:
+            continue
+        c = df["close"].astype(float)
+        c = c[c > 0].dropna()
+        r = np.log(c).diff().dropna()
+        if len(r) < window:
+            continue
+        rets[sym] = r
+        tail = r.iloc[-window:]
+        key = (tuple(tail.index.astype("int64")), tuple(np.round(tail.to_numpy(), 9)))
+        buckets.setdefault(key, []).append(sym)
+    removed = {}
+    for syms in buckets.values():
+        if len(syms) < 2:
+            continue
+        syms = sorted(syms, key=lambda x: (_label_rank(x), -len(rets[x]), str(x)))
+        keepers = []
+        for sym in syms:
+            dup_of = None
+            for k in keepers:
+                a, b = rets[sym].align(rets[k], join="inner")
+                if len(a) >= window and float(np.max(np.abs(a.to_numpy() - b.to_numpy()))) <= tol:
+                    dup_of = k
+                    break
+            if dup_of is None:
+                keepers.append(sym)
+            else:
+                removed[sym] = dup_of
+    kept = {k: v for k, v in frames.items() if k not in removed}
+    return kept, removed
+
+
 def load_full_universe(tf_label: str = "1D", include_yfinance: bool = True,
                         include_wrds: bool = True, include_binance: bool = True,
                         include_ibkr: bool = False, columns=None,
-                        use_memo_cache: bool = True) -> dict:
+                        use_memo_cache: bool = True, dedupe: bool = True) -> dict:
     """Merges every real price-data source for `tf_label` into one
     {symbol: DataFrame} dict. Later sources win on a symbol collision (WRDS,
     then Binance, then IBKR override yfinance) -- real collisions are
@@ -528,6 +578,8 @@ def load_full_universe(tf_label: str = "1D", include_yfinance: bool = True,
     tens of thousands of individual parquet files. New/changed source files are
     detected via the signature and transparently trigger a rebuild, not a stale
     read."""
+    if not dedupe:
+        use_memo_cache = False  # memo key covers the deduped default only; never serve it to dedupe=False
     if use_memo_cache:
         cache_path = _memo_cache_path(tf_label, include_yfinance, include_wrds,
                                        include_binance, include_ibkr, columns)
@@ -556,6 +608,12 @@ def load_full_universe(tf_label: str = "1D", include_yfinance: bool = True,
         merged.update(_load_ibkr_dir(_IBKR_CACHE_DIR, _IBKR_SUFFIX[tf_label], columns=columns))
     if include_wrds and tf_label in _WRDS_SUFFIX:
         merged.update(_load_dir(_WRDS_CACHE_DIR, _WRDS_SUFFIX[tf_label], columns=columns))
+    # One label per security (2026-09-27): drop labels whose return series is identical to another's
+    # (ticker + own PERMNO alias, or two tickers with identical data) -- see dedupe_identical_series.
+    if dedupe and (columns is None or "close" in columns):
+        merged, _removed = dedupe_identical_series(merged)
+        if _removed:
+            print(f"universe_loader: removed {len(_removed)} duplicate-security labels for {tf_label}")
 
     if use_memo_cache:
         os.makedirs(_MEMO_CACHE_DIR, exist_ok=True)
