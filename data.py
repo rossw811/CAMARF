@@ -1484,6 +1484,34 @@ def compute_canonical_cutoff(tf_label: str) -> Optional[pd.Timestamp]:
         return last_complete_open
 
 
+def _ceil_slot_minutes(mins_since_open: float, bar_mins: int, session_len_min: int) -> Optional[int]:
+    """Minutes-after-open of the grid slot a bar starting `mins_since_open` after the session open is
+    labelled with, or None to drop it. CEILING onto the grid, so a label is never earlier than the
+    bar's real start (no lookahead); the final PARTIAL session slot is valid (390-min session: 1h
+    slots 09:30..15:30, 4h slots 09:30 and 13:30). A bar starting after the last slot opens can only
+    be placed earlier than it happened, so it is dropped (only arises for finer-than-TF input, which
+    should be resampled, not snapped). Code review D3/D4, 2026-09-26: the old round()-to-nearest plus
+    clamp-to-last-full-slot stamped bars up to one bar EARLY and collided/dropped bars."""
+    n_slots = -(-session_len_min // bar_mins)  # ceil
+    k = int(np.ceil(round(mins_since_open, 6) / bar_mins))
+    if k >= n_slots:
+        return None
+    return k * bar_mins
+
+
+def _merge_snapped_duplicates(df: pd.DataFrame) -> pd.DataFrame:
+    """Bars that land on the same slot are MERGED (first open, max high, min low, last close,
+    summed volume; last value for any other column) instead of dropping all but one."""
+    if not df.index.duplicated().any():
+        return df.sort_index()
+    df = df.sort_index(kind="mergesort")
+    agg = {c: "last" for c in df.columns}
+    for c, f in (("open", "first"), ("high", "max"), ("low", "min"), ("close", "last"), ("volume", "sum")):
+        if c in df.columns:
+            agg[c] = f
+    return df.groupby(level=0, sort=True).agg(agg)
+
+
 def snap_timestamps(
     df: pd.DataFrame,
     tf_label: str,
@@ -1589,10 +1617,10 @@ def snap_timestamps(
             if local_ts < day_open or local_ts >= day_close:
                 return None  # outside this exchange's own session — drop
             mins_since_open = (local_ts - day_open).total_seconds() / 60
-            nearest_bar = round(mins_since_open / bar_mins) * bar_mins
-            n_bars_in_session = (sess_close_min - sess_open_min) // bar_mins
-            nearest_bar = min(nearest_bar, (n_bars_in_session - 1) * bar_mins)
-            snapped_local = day_open + pd.Timedelta(minutes=nearest_bar)
+            slot = _ceil_slot_minutes(mins_since_open, bar_mins, sess_close_min - sess_open_min)
+            if slot is None:
+                return None
+            snapped_local = day_open + pd.Timedelta(minutes=slot)
             # Return the ET-naive timestamp at the SAME offset-into-session
             # as the snapped local time, keeping the ET output index the
             # function's stated contract — anchor to this row's own
@@ -1604,9 +1632,7 @@ def snap_timestamps(
         valid = [t is not None for t in new_idx]
         df = df[valid].copy()
         df.index = pd.DatetimeIndex([t for t in new_idx if t is not None])
-        df = df[~df.index.duplicated(keep="last")]
-        df.sort_index(inplace=True)
-        return df
+        return _merge_snapped_duplicates(df)
 
     # Step 2: snap each timestamp to the nearest session bar open
     def _snap(ts: pd.Timestamp) -> Optional[pd.Timestamp]:
@@ -1617,18 +1643,8 @@ def snap_timestamps(
             return None  # outside session — drop
 
         mins_since_open = (ts - day_open).total_seconds() / 60
-        # Round to nearest bar boundary
-        nearest_bar = round(mins_since_open / bar_mins) * bar_mins
-        snapped = day_open + pd.Timedelta(minutes=nearest_bar)
-
-        # Clamp to session
-        last_open = day_open + pd.Timedelta(
-            minutes=((_SESSION_CLOSE_MIN - _SESSION_OPEN_MIN) // bar_mins - 1)
-            * bar_mins
-        )
-        if snapped > last_open:
-            snapped = last_open
-        return snapped
+        slot = _ceil_slot_minutes(mins_since_open, bar_mins, _SESSION_CLOSE_MIN - _SESSION_OPEN_MIN)
+        return None if slot is None else day_open + pd.Timedelta(minutes=slot)
 
     new_idx = [_snap(ts) for ts in df.index]
     valid = [t is not None for t in new_idx]
@@ -1636,10 +1652,7 @@ def snap_timestamps(
     df = df[valid].copy()
     df.index = pd.DatetimeIndex([t for t in new_idx if t is not None])
 
-    # Drop duplicates that arose from snapping (keep last — most recent data wins)
-    df = df[~df.index.duplicated(keep="last")]
-    df.sort_index(inplace=True)
-    return df
+    return _merge_snapped_duplicates(df)
 
 
 def truncate_to_cutoff(

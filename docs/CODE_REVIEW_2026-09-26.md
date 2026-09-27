@@ -496,3 +496,10 @@ entry from `MIN_OVERLAP_BY_TF` (3M/6M/1Y: 8/4/10) instead of a flat 100; `_verif
 S7 FIXED — Zivot–Andrews break index read from tuple index 4; `_verify_za_breakdate_index.py` 1/2 → 2/2 (statsmodels
 ordering confirmed on a planted break). D15 FIXED by code reading only (`_attempts[0][0]` → `_attempts[0]`; inside a
 live yfinance fetch — no unit test, disclosed). D16 FIXED (restore, see Development.md). Stats/data verify suite: 11/11.
+D3/D4 FIXED (2026-09-27) — `snap_timestamps` now CEILS each bar onto the session grid (a label can never be
+earlier than the bar's real start → no lookahead by construction), keeps the final partial session slot (1h
+09:30..15:30; 4h 09:30 and 13:30), and MERGES colliding bars (first open / max high / min low / last close /
+summed volume) instead of keeping one. `_verify_snap_timestamps_no_lookahead.py` 0/7 → 7/7 (first draft's collision
+case encoded the old rounding and was corrected). All 4 snap_timestamps verify scripts pass. A bar starting after
+the last slot opens is dropped (only occurs for finer-than-TF input). Intraday caches on disk were written with the
+old snapping → regenerate with the data re-fetch.
