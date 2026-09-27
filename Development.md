@@ -28522,7 +28522,7 @@ CachyOS only and silently skipped by universe_loader (D16).
    clean() correctly drops) — corrected in the test. On-disk yfinance cache still to be re-fetched (needs D2).
 
 **Step 3 — ML comparison (`research/ml_model_comparison_purged.py`, verify 21/21).** 74,732 events (1,301 pairs),
-10 features (TE excluded, R4.10), 9 models x {positional, purged + 1% embargo} = 18 trials, hyper-parameters fixed up
+10 features (TE excluded, R4.10), 8 models x {positional, purged + 1% embargo} = 16 trials (corrected 2026-09-27 from "9 models / 18 trials" -- the trials log records 16), hyper-parameters fixed up
 front. Primary metric pre-declared: purged test AUC with date-clustered bootstrap 90% CI. Purged results: Random Forest
 0.6085 [0.6001, 0.6164], XGBoost 0.6067 [0.5983, 0.6153], MLP 0.6033, LightGBM 0.6024 (paired diff vs XGBoost
 -0.0043 [-0.0079, -0.0008]), RBF-SVM 0.5744, KNN 0.5709, L1/L2 logistic 0.557. Tree ensembles and the MLP are
