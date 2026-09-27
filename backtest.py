@@ -2405,13 +2405,10 @@ def main() -> None:
                         "check.py's finding that --capital-sim's strictly-chronological trade "
                         "admission is mildly anti-correlated with trade quality, not just "
                         "uninformative. Names a trades column (e.g. 'entry_z') to admit trades "
-                        "best-|value|-first WITHIN each --quality-admission-batch-freq time "
-                        "bucket, instead of raw arrival order. None (default) = unchanged "
+                        "best-|value|-first among trades sharing an identical entry_time "
+                        "(simultaneously-known signals only -- distinct timestamps stay "
+                        "chronological), instead of raw row order. None (default) = unchanged "
                         "strictly-chronological behavior.")
-    p.add_argument("--quality-admission-batch-freq", default="D",
-                   help="Pandas offset alias for --quality-admission-col's re-ranking bucket "
-                        "(default 'D' = one calendar day). Only meaningful when "
-                        "--quality-admission-col is set.")
     p.add_argument("--quality-admission-ascending", action="store_true",
                    help="Admit the SMALLEST |--quality-admission-col| first instead of the "
                         "largest. Added same night as the flag itself: corr(|entry_z|, pnl_net) "
@@ -2754,7 +2751,6 @@ def main() -> None:
             concentration_cap=_backtest_cfg.MAX_CONCENTRATION_PCT if args.concentration_cap else None,
             leverage_cap=args.leverage_cap,
             quality_admission_col=args.quality_admission_col,
-            quality_admission_batch_freq=args.quality_admission_batch_freq,
             quality_admission_ascending=args.quality_admission_ascending,
         )
         sim_sharpe = portfolio_sim.portfolio_sharpe_from_replay(sim_result)

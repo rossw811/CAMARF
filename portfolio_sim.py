@@ -288,12 +288,11 @@ def _kelly_fraction(closed_pnls: list) -> float:
     return max(0.0, f_star)
 
 
-def _reorder_for_quality_admission(trades: pd.DataFrame, quality_col: str, batch_freq: str,
+def _reorder_for_quality_admission(trades: pd.DataFrame, quality_col: str,
                                     quality_ascending: bool = False) -> pd.DataFrame:
-    """Reorders an already entry_time-sorted trades DataFrame so that, WITHIN each `batch_freq`
-    time bucket (e.g. calendar day), trades are admitted best-quality-first instead of
-    first-come-first-served -- batches themselves stay in ascending chronological order, only
-    the ORDER WITHIN each batch changes.
+    """Reorders an already entry_time-sorted trades DataFrame so that, among trades sharing an
+    IDENTICAL entry_time, trades are admitted best-quality-first instead of in raw row order --
+    distinct timestamps always stay in strict chronological order.
 
     quality_ascending (added 2026-09-21, same night, after the first real run): default False
     admits the LARGEST |quality_col| first. Found empirically NOT to be the right direction for
@@ -313,22 +312,25 @@ def _reorder_for_quality_admission(trades: pd.DataFrame, quality_col: str, batch
     trade's own entry_time (e.g. `entry_z` -- the entry signal's own strength, already used
     elsewhere in this file for risk sizing) -- never a column that could leak future information.
 
-    Causal safety: reordering trades WITHIN a `batch_freq` bucket does not violate point-in-time
-    safety as long as replay_portfolio's own per-trade logic (settle-by-exit_time, mark-to-market,
-    capital availability) only ever compares against each trade's OWN entry_time value -- which it
-    does (confirmed by reading the loop directly, not assumed) -- rather than relying on strict
-    monotonic iteration order. A trade admitted "out of chronological order" within the same
-    `batch_freq` window is exactly what a real trader checking a batch of overnight signals each
-    morning and prioritizing the strongest ones would do -- not a lookahead into later signals.
+    Causal safety: only trades with an identical entry_time are re-ranked, because only those
+    signals are simultaneously known. CORRECTED 2026-09-26 (code review): the original version
+    re-ranked within a calendar-day `batch_freq` bucket and claimed replay_portfolio's loop only
+    compares against each trade's own entry_time. It does not -- settling a closed position
+    (step 1) is irreversible shared state, so processing a 10:00 trade before a 09:00 one (a)
+    let the 10:00 signal take capital before it existed and (b) settled positions exiting between
+    09:00 and 10:00 into the 09:00 trade's equity/available capital/Kelly history. Real exposure
+    on the 2026-09-21 STORM gate runs was small (>99.8% of trades are 1D bars, which share one
+    timestamp per day), but nonzero -- see debug/_verify_portfolio_sim.py Case N2. A daily batch
+    of overnight signals is still re-ranked exactly as intended, since those share a timestamp.
     """
     if quality_col not in trades.columns:
         raise ValueError(f"quality_col={quality_col!r} not present in trades_df columns: "
                           f"{list(trades.columns)}")
     out = trades.copy()
-    out["_batch"] = out["entry_time"].dt.floor(batch_freq)
     out["_quality_abs"] = out[quality_col].abs()
-    out = out.sort_values(["_batch", "_quality_abs"], ascending=[True, quality_ascending])
-    return out.drop(columns=["_batch", "_quality_abs"])
+    out = out.sort_values(["entry_time", "_quality_abs"], ascending=[True, quality_ascending],
+                          kind="mergesort")
+    return out.drop(columns=["_quality_abs"])
 
 
 def replay_portfolio(
@@ -340,7 +342,6 @@ def replay_portfolio(
     concentration_cap: float = None,
     leverage_cap: float = None,
     quality_admission_col: str = None,
-    quality_admission_batch_freq: str = "D",
     quality_admission_ascending: bool = False,
 ) -> dict:
     """
@@ -363,20 +364,19 @@ def replay_portfolio(
     null result. Callers that want an override must now pass it explicitly; the default (None)
     preserves the original module-level-constant behavior for every other existing caller.
 
-    quality_admission_col / quality_admission_batch_freq (added 2026-09-21): default None
-    preserves the EXACT original strictly-chronological, first-come-first-served admission order
-    -- zero behavior change for every existing caller. When quality_admission_col names a column
-    present in trades_df (e.g. "entry_z"), trades within each quality_admission_batch_freq time
-    bucket (default "D", one calendar day) are admitted best-|quality_admission_col|-first instead
-    of by raw arrival order -- see _reorder_for_quality_admission's own docstring for the causal-
+    quality_admission_col (added 2026-09-21): default None preserves the EXACT original
+    strictly-chronological, first-come-first-served admission order -- zero behavior change for
+    every existing caller. When quality_admission_col names a column present in trades_df (e.g.
+    "entry_z"), trades sharing an identical entry_time are admitted best-|quality_admission_col|-
+    first instead of by raw row order (the day-bucket quality_admission_batch_freq parameter was
+    removed 2026-09-26: re-ranking across distinct timestamps is a lookahead) -- see _reorder_for_quality_admission's own docstring for the causal-
     safety argument and the real capital_constraint_luck_check.py finding this directly tests.
     """
     risk_pct = flat_risk_pct if flat_risk_pct is not None else _FLAT_RISK_PCT
     trades = trades_df.sort_values("entry_time").copy()
     trades["notional_at_entry"] = trades.apply(lambda t: notional_at_entry(t), axis=1)
     if quality_admission_col is not None:
-        trades = _reorder_for_quality_admission(trades, quality_admission_col, quality_admission_batch_freq,
-                                                 quality_admission_ascending)
+        trades = _reorder_for_quality_admission(trades, quality_admission_col, quality_admission_ascending)
     records = trades.to_dict("records")
 
     realized_equity = starting_capital
