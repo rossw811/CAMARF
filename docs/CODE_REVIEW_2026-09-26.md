@@ -487,3 +487,12 @@ MAX_HOLD_MULTIPLIER 2.0, MIN_HALF_LIFE_BARS 5).
 - **Stale documentation:** backtest.py module docstring and `--entry-z` help both state ENTRY_ZSCORE = 2.0; actual 3.0.
 Fix candidates (comparison arms, not silent changes): ENTRY_ZSCORE_MAX < STOP_ZSCORE; direction-aware stop
 (stop only on adverse |z| widening beyond entry); re-entry cooldown after a stop.
+
+
+**Small data-layer / stats fixes (2026-09-27), each with a failing-then-passing test unless noted:**
+D14 FIXED — size guard moved INTO `_save_sp500_cache` (single `_SP500_MIN_VALID = 400` constant replacing three
+literals); `_verify_sp500_cache_guard.py` 1/3 → 3/3. C13 FIXED — `clean()` derives a missing `MIN_BARS_REQUIRED`
+entry from `MIN_OVERLAP_BY_TF` (3M/6M/1Y: 8/4/10) instead of a flat 100; `_verify_min_bars_long_tfs.py` 3/6 → 6/6.
+S7 FIXED — Zivot–Andrews break index read from tuple index 4; `_verify_za_breakdate_index.py` 1/2 → 2/2 (statsmodels
+ordering confirmed on a planted break). D15 FIXED by code reading only (`_attempts[0][0]` → `_attempts[0]`; inside a
+live yfinance fetch — no unit test, disclosed). D16 FIXED (restore, see Development.md). Stats/data verify suite: 11/11.
