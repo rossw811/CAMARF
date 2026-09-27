@@ -54,3 +54,14 @@ full table, including the best-looking holdout numbers labelled as not significa
 Full per-configuration table (development score, fold Sharpes, holdout Sharpe, n trades) for all 432 trials × 4
 splits; the selected configuration per split/pool; DSR; PBO; the rank of the selected configuration on the
 holdout among all configurations.
+
+## Amendment 1 (2026-09-27, before ANY search result was evaluated)
+The first launch was stopped at 140/432 runs with nothing evaluated (partial outputs set aside unread in
+`output/research/strategy_search_ABORTED_stale_spreads_20260927/`), because the pool's spread series had been
+built from the pre-fix yfinance cache (D1/D2) instead of CRSP total return. After regenerating them from WRDS
+(`research/regenerate_pool_spread_series.py`), 110 pool "pairs" turned out to be one security under two labels
+(identical daily returns on 100% of days, e.g. COST / PERMNO87055) — not pairs. Changes, made before any
+result exists:
+- Pools become `purity_pairs_pit_k1_clean` (1,265 pairs) and `purity_pairs_pit_k2_clean` (167 pairs).
+- N for the DSR is 2 × 216 = 432 as before (same grid, same number of pool arms).
+Nothing else changes.
