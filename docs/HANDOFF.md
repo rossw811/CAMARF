@@ -1,3 +1,34 @@
+## 2026-09-26/27: Full audit + overnight fixes — READ FIRST (everything committed; nothing pushed)
+
+**Audit plan (steps 1–4): complete.** `docs/CODE_REVIEW_2026-09-26.md` (~190 findings, every confirmed one checked
+against code/real data; "Post-review updates" at the end), `docs/DEV_OPEN_ITEMS_LEDGER_2026-09-26.md`,
+`docs/CITATION_AUDIT_2026-09-26.md`, `docs/CONSISTENCY_AUDIT_2026-09-26.md`, and — for your approval, papers NOT edited
+— `docs/PAPER_SCRUTINY_2026-09-27.md` (284 claims: 44 stand, 109 qualify, 115 withdraw, 8 replace-now, 8 unverified;
+proposed revised abstracts in its §6). README/PAPER/PAPER_MAGNITUDE carry a results-under-revision notice.
+
+**Headline, corrected accounting:** marked at real leg prices with the hedge fixed at entry (pnl_dollar.py), every
+previously positive gate Sharpe is negative in-sample, before costs too; out-of-sample ≈ 0 at best. ML: purged AUC ≈
+0.61 predicts z-convergence (holds up), but meta-labeling the strategy's own trades for dollar profitability is AUC
+≈ 0.5 (24 trials). Churn-loop fixes (entry cap / directional stop / re-arm) cut losses up to two-thirds but create
+no in-sample edge.
+
+**Fixed tonight (test-first):** quality-admission lookahead; Youden scoring; P1 business-day Sharpe (11 copies → 1);
+D1 liquidity-filter fabrication; D2 refresh; D3/D4 snapping lookahead; D14; D15; C13; S7; D16 (CachyOS WRDS files
+restored); A1 + BH denominator; dollar-mode capital replay. yfinance DAILY cache regenerated (originals backed up in
+`output/cache/_yf_daily_backup_20260927/` on both machines).
+
+**Needs you:**
+1. FX conversion of Compustat Global legs: 492 of the pool's 764 GVKEY legs have no currency in the saved map →
+   new WRDS `curcdd` queries (may trigger Duo); PLN/TRY/HUF/CZK have no FX series; check GBP pence quoting.
+2. Intraday caches carry D1/D3/D4 contamination but their older history can't be re-downloaded — keep, flag, or
+   rebuild from IBKR?
+3. Approve/amend the PAPER_SCRUTINY proposals before any paper edit.
+4. Purity rebuild with a real point-in-time cutoff + a min-windows rule (81% of pairs rest on one window).
+5. Promote any churn fix to a default? (Recommendation: no single arm is evidence; decide after the rebuild.)
+6. Push to remote? (all commits local.)
+
+---
+
 ## 2026-09-22: Backlog — 4 items noted per Ross's explicit request, none executed yet ("just note those for now")
 
 1. **"Arxivisual"-type artifact** — CONFIRMED 2026-09-22 (Ross: "the visual is correct"): a
