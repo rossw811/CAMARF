@@ -93,7 +93,7 @@ cache time (D1, D8) before alignment sees them, 4h overnight gaps fall under the
 
 | # | Line | Sev | Finding | Status |
 |---|---|---|---|---|
-| D1 | 1874 / 2198 | **Critical** | `_liquidity_filter` NaNs prices on bars under $1M dollar volume, then forward-fills; flagged NONE downstream. Every ticker passed as asset class "equity", so forex (volume 0) is wiped. | **CONFIRMED on real cache:** EUR.USD / GBP.USD / AUD.USD 1day = 100% NaN close. Across 1,697 yfinance 1day files, median zero-change-close fraction 9.4%; 573 files >20%, 82 files >50% — fake flat bars entering correlation/EG/ML as clean data. Not yet checked: WRDS cache (`output/cache/wrds/`) — if it bypasses `_liquidity_filter`, the Purity pool is less exposed. |
+| D1 | 1874 / 2198 | **Critical — FIXED 2026-09-26 (code); cache re-fetch pending** | `_liquidity_filter` NaNs prices on bars under $1M dollar volume, then forward-fills; flagged NONE downstream. Every ticker passed as asset class "equity", so forex (volume 0) is wiped. | **CONFIRMED on real cache:** EUR.USD / GBP.USD / AUD.USD 1day = 100% NaN close. Across 1,697 yfinance 1day files, median zero-change-close fraction 9.4%; 573 files >20%, 82 files >50% — fake flat bars entering correlation/EG/ML as clean data. Not yet checked: WRDS cache (`output/cache/wrds/`) — if it bypasses `_liquidity_filter`, the Purity pool is less exposed. |
 | D2 | 2136 / 2107 / 5101 | High | Daily incremental refresh never runs (freshness check inverted), would be rejected by MIN_BARS and would overwrite full cache if it did; logs "updated" anyway. | **CONFIRMED on real cache:** 227 of 300 yfinance 1day files end 2026-06-17 (DataAligner run earlier today also reported range ending 2026-06-17). |
 | D3 | 1625 | High (lookahead) | 4h `snap_timestamps` allows one bar/session; 13:30 bar overwrites 9:30. | **CONFIRMED (repro):** 2 bars in → 1 out, stamped 09:30 carrying the 13:30 bar's close — a 4h lookahead on every 4h bar from IBKR / yfinance-fallback paths. |
 | D4 | 1621 | High (lookahead + loss) | Banker's rounding collides on-the-hour IBKR bars; yfinance 15:30 bar clamped onto 14:30. | **CONFIRMED (repro):** IBKR 1h 6 → 4 bars (11:00, 13:00 lost); yfinance 1h 7 → 6 bars with 14:30 stamp carrying the 15:30 close (up to 90 min lookahead). Feeds primary 1h cache and 4h resample. |
@@ -420,3 +420,31 @@ White Reality Check p-values (line 458); strength-vs-PIT "independent survival" 
 crisis persistence gap (R3.1) and sector test (R3.7 outcome-driven asymmetric censoring); news-impact
 "symmetric design validated" (R8.1); network-momentum "genuine incremental edge" (R8.3); grid-bootstrap
 "every CI below 1" (R6.5); EG null "elevated FP rate" (R6.3); every Sharpe/DSR/capital-sim number (B2–B4, P1).
+
+
+---
+
+## Post-review updates (2026-09-26/27)
+
+**D1 FIXED (code).** `DataCleaner._liquidity_filter` and its call removed from `data.py`; `clean()` no longer
+rewrites observed prices. `debug/_verify_liquidity_filter_no_fabrication.py`: 4/4 with the fix, 0/4 on the pre-fix
+code (intraday closes kept 0% -> 100%; low-volume daily bars exact; zero-volume daily 0% -> 100% non-NaN). First run
+had a fixture flaw (bdate_range includes NYSE holidays that `clean()` correctly drops) — fixed in the test, not the
+module. Data-layer verify suite: 6/6 pass; `_verify_data_wrds.py` timed out at 600s (documented live-WRDS slow
+script, HANDOFF:557; doesn't touch this path). **The on-disk yfinance cache still contains the fabricated bars
+until re-fetched** (blocked on D2 — the refresh never runs). The Purity pipeline reads raw `output/cache/wrds/` via
+`universe_loader`, which never passed through `clean()`, so it was not exposed to D1.
+
+**R2.3 measured (step 3, `research/ml_model_comparison_purged.py`).** Purging + a 1% (~214-day) embargo, with the
+TE features excluded (R4.10), changes XGBoost's test AUC from 0.6062 (positional) to 0.6067 (purged). The label-
+overlap leakage R2.3 describes is real in the code but did not materially inflate the AUC; the 09-22 AUC (0.6075)
+survives both purging and removal of the lookahead TE features. R2.3 stays open as a code fix (ml.py itself still
+splits positionally), but its measured effect on the headline AUC is ~0.
+
+**B16 NEW, CONFIRMED on real data.** Entry has no upper |z| bound while STOP_ZSCORE = 3.5, so a trade can open
+already past its own stop. Momentum-gate 1D OLS trades (24,047): **65.5% exit after <= 1 bar, 99.9% of those via
+`stop`, 96.8% of those entered with |entry_z| >= 3.5** (vs 12.7% among longer trades). Two-thirds of all trades are
+immediate stop-outs; every trade-level statistic (win rate, hold time, P&L distribution) is dominated by them. The
+underlying fact was noted 2026-07-12 (portfolio_sim.py comment, "45% of real trades enter with |entry_z| >=
+STOP_ZSCORE") but its consequence was not. `--entry-z-max` exists; to be evaluated as a comparison arm in the P&L
+rebuild, not changed silently.

@@ -28486,3 +28486,67 @@ ascending`, all opt-in, zero behavior change by default), `backtest.py` (3 new C
 `--out-suffix`), 6 new `debug/_verify_*.py` suites. Full account: `docs/FINDINGS.md` #70-73 (#72
 and #73 both corrected/updated in place as the picture sharpened), `docs/HANDOFF.md`'s full
 2026-09-21 (late)/09-22 entry set.
+
+## Session 2026-09-26/27 — Full audit (code review, open-item ledger, citation + consistency audits), step-3 ML/distribution study, first data-layer fix
+
+**Scope and outputs.** Ross-approved four-step audit plan. Outputs, all committed: `docs/CODE_REVIEW_2026-09-26.md`
+(11 core modules + all 60 PAPER-cited research scripts; ~190 findings, each CONFIRMED only after an independent code
+read and/or real-data measurement), `docs/DEV_OPEN_ITEMS_LEDGER_2026-09-26.md` (712 marker hits in this file -> 192
+items: 56 OPEN, 13 NEEDS-ROSS, 28 SUPERSEDED-BY-AUDIT, 86 DONE with cited evidence, 9 OBSOLETE; 12 statements here
+contradicted by current code), `docs/CITATION_AUDIT_2026-09-26.md` (74 works; 0 fabricated, 9 misattributed, 5
+overstated; PAPER.md:252 "All citations were verified" alongside 19 [TBD] entries), `docs/CONSISTENCY_AUDIT_
+2026-09-26.md` (69 claims: 34 MUST-WITHDRAW, 30 MUST-QUALIFY; 16/18 CLAUDE.md rules currently violated). A
+results-under-revision notice now heads README.md, PAPER.md and PAPER_MAGNITUDE.md. Ross signed off (2026-09-26) on
+the fix order (data layer -> A1 -> Purity rebuild with a real PIT cutoff -> P&L -> re-derive) and on the four
+methodology choices (dollar P&L, USD conversion of Compustat Global legs, a min-windows rule for Purity, purged/
+embargoed CV) — each to be built as a comparison arm first.
+
+**Result-invalidating findings (details and IDs in the review ledger).** Backtest gross P&L includes rolling-beta
+drift (B2: 2,062 real momentum-gate trades, reconstruction exact: recorded gross +31,865 vs -983 with beta held at
+entry; 49% of trades flip sign), mixes log-spread units with dollar costs (B3), and double-counts OLS/Kalman copies
+(B4: 95,485 rows, 50,896 distinct). `analysis.py`'s EG never runs on pairs whose histories start on different dates
+(A1: reproduced on real AAPL/MSFT/ABNB; also excluded from BH m). Purity pairs are selected with windows up to the
+build date (S3). Compustat Global prices are local currency, no FX (R1.1; 498/929 confirmed pairs). 81% of confirmed
+pairs rest on one window, pair-level FDR bound 9.1% (R1.6). The White "Reality Check" bootstrap is not demeaned (S5).
+The DSR trial registry is double-merged, 1,150 records / 570 unique (R2.1). 1,647 WRDS cache files are truncated on
+CachyOS only and silently skipped by universe_loader (D16).
+
+**Fixed and verified this session (failing test first, passing after):**
+1. `portfolio_sim.py` quality-ranked admission lookahead (re-rank only identical entry_time; `batch_freq` removed).
+   The original Case N fixture asserted the lookahead as correct. Re-run: momentum IS 0.2337 -> 0.1499, combined IS
+   0.1000 -> 0.0357; the 09-22 luck-check verdicts do not survive (all still on broken P&L).
+2. `ml.py` Youden-threshold scoring: balanced accuracy added (57.72% at 0.5 vs 57.64% recalibrated — the "does not
+   help" conclusion holds on the correct metric); `inf` threshold -> NaN.
+3. `data.py` D1: the per-bar liquidity filter (daily $1M threshold applied per bar, NaN + ffill) removed. Test 4/4
+   with the fix, 0/4 on the old code. First test run failed on a FIXTURE flaw (bdate_range includes NYSE holidays that
+   clean() correctly drops) — corrected in the test. On-disk yfinance cache still to be re-fetched (needs D2).
+
+**Step 3 — ML comparison (`research/ml_model_comparison_purged.py`, verify 21/21).** 74,732 events (1,301 pairs),
+10 features (TE excluded, R4.10), 9 models x {positional, purged + 1% embargo} = 18 trials, hyper-parameters fixed up
+front. Primary metric pre-declared: purged test AUC with date-clustered bootstrap 90% CI. Purged results: Random Forest
+0.6085 [0.6001, 0.6164], XGBoost 0.6067 [0.5983, 0.6153], MLP 0.6033, LightGBM 0.6024 (paired diff vs XGBoost
+-0.0043 [-0.0079, -0.0008]), RBF-SVM 0.5744, KNN 0.5709, L1/L2 logistic 0.557. Tree ensembles and the MLP are
+statistically indistinguishable from XGBoost; SVM/KNN/logistic are significantly worse (diff CIs exclude 0) —
+nonlinear interactions carry the signal. Purging moved XGBoost 0.6062 -> 0.6067: the R2.3 leakage did not inflate
+the AUC. Accuracy stays below the 60.4% majority baseline for every model except the MLP (class-balanced weighting;
+AUC is the metric). Second primary metric (capital-sim Sharpe of model-filtered trades) DEFERRED until B2-B4 are
+fixed. Provisional: upstream data/discovery findings still open. Side effect disclosed: the run's ml.build()
+retrained and re-saved `output/ml/model_stage1.pkl` on CachyOS (identical metrics; prior model archived in history/).
+
+**Step 3 — distribution fits (`research/distribution_fits.py`, verify 16/16).** First synthetic run failed 15/16: on
+homogeneous binomial data BIC preferred beta-binomial because the unbounded (a,b) MLE drifted to ~1e12, where
+scipy's betabinom.logpmf loses precision and overstated the log-likelihood by 27 units — fixed by a (mean, rho)
+parametrization with rho >= 1e-6 and the binomial-limit bound. Real (momentum-gate 1D OLS trades; ML events):
+entries per business day overdispersed (mean 1.90, var 5.15) -> negative binomial (r ~ 1.05) >> Poisson (entries
+cluster; an iid same-size null like the luck check's is misspecified, cf. R2.6); hold_bars lognormal best, negative
+binomial >> geometric (exit hazard not constant); half-life at entry lognormal best (KS D 0.041), Weibull c 0.61;
+z_future - z_entry Student-t (df ~ 7.3) best, Cauchy worst (heavy but finite-variance tails); per-pair convergence
+beta-binomial >> binomial (LR 495, p ~ 1e-110; mean 0.40, rho 0.012 — genuine pair-level heterogeneity). All GOF
+p-values sit at the 1/201 floor with n = 5,000 subsamples: every family is rejected in absolute terms, as expected
+at this n; the rankings are the informative part. Deferred: P&L/spread-return fits and the exact hypergeometric
+luck check (depend on broken P&L).
+
+**B16 (new, confirmed).** Found while checking the hold-time fit's median of 1 bar: 65.5% of momentum-gate 1D
+trades exit after <= 1 bar, 99.9% of those by stop, 96.8% of those entered at |z| >= STOP_ZSCORE 3.5. The entry rule
+has no upper bound, so two-thirds of trades are immediate stop-outs. To be evaluated as an entry-cap comparison arm
+in the P&L rebuild.
