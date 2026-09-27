@@ -52,6 +52,8 @@ import sys
 import numpy as np
 import pandas as pd
 
+
+import portfolio_math  # single source of truth for daily P&L (code review P1)
 from config import Config
 
 log = logging.getLogger("portfolio_sim")
@@ -548,8 +550,7 @@ def portfolio_sharpe_from_replay(result: dict) -> float:
     if len(taken) == 0:
         return float("nan")
     exit_time = pd.to_datetime(taken["exit_time"])
-    s = pd.Series(taken["actual_pnl"].values, index=pd.DatetimeIndex(exit_time)).sort_index()
-    daily = s.resample("1D").sum()
+    daily = portfolio_math.daily_pnl_from_exits(exit_time, taken["actual_pnl"].values)  # business days, code review P1 (was calendar-day resample + sqrt(252))
     if len(daily) < 5 or daily.std() == 0:
         return float("nan")
     return float(daily.mean() / daily.std() * np.sqrt(252))
@@ -605,8 +606,7 @@ def calmar_from_replay(result: dict) -> float:
     if len(taken) == 0:
         return float("nan")
     exit_time = pd.to_datetime(taken["exit_time"])
-    s = pd.Series(taken["actual_pnl"].to_numpy(), index=pd.DatetimeIndex(exit_time)).sort_index()
-    daily = s.resample("1D").sum()
+    daily = portfolio_math.daily_pnl_from_exits(exit_time, taken["actual_pnl"].to_numpy())  # business days, code review P1 (was calendar-day resample + sqrt(252))
     if len(daily) < 5:
         return float("nan")
     starting_capital = result["starting_capital"]

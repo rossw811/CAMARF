@@ -67,7 +67,8 @@ def _daily_pnl_series(all_trades: list) -> pd.Series:
         [t.pnl_net for t in sorted_trades],
         index=[t.exit_time or t.entry_time for t in sorted_trades],
     )
-    return pnl_series.resample("1D").sum()
+    import portfolio_math
+    return portfolio_math.daily_pnl_from_exits(pnl_series.index, pnl_series.to_numpy())  # business days, code review P1
 
 
 def bootstrap_portfolio_sharpe(all_trades: list, n_boot: int = 5000,

@@ -23,8 +23,9 @@ from portfolio_math import daily_pnl_from_trades, sharpe_from_trades
 
 
 def _make_gappy_trades() -> pd.DataFrame:
-    # 5 trades over a 20-day span, clustered in the first week, then one
-    # trade 19 days later -- 15 zero-P&L calendar days in between.
+    # 5 trades over Thu 2026-01-01 .. Tue 2026-01-20, clustered in the first week (two of them on
+    # Sat/Sun 01-03/01-04), then one trade on 01-20. Business-day convention (code review P1,
+    # 2026-09-26): 14 business days; weekend exits book to Fri 01-02 -> 3 non-zero days, 11 zero.
     exit_times = pd.to_datetime([
         "2026-01-01", "2026-01-02", "2026-01-03", "2026-01-04", "2026-01-20",
     ])
@@ -44,10 +45,13 @@ def _old_groupby_sharpe(trades: pd.DataFrame) -> float:
 
 
 def _reference_resample_sharpe(trades: pd.DataFrame) -> float:
-    """Independent hand-written reference for the correct convention."""
-    s = pd.Series(trades["pnl_net"].values,
-                   index=pd.DatetimeIndex(pd.to_datetime(trades["exit_time"]))).sort_index()
-    daily = s.resample("1D").sum()
+    """Independent hand-written reference for the correct convention: business days, weekend
+    exits booked to the preceding Friday, zero-filled (was calendar-day resample("1D") -- the P1
+    bug this module fixed 2026-09-26)."""
+    d = pd.to_datetime(trades["exit_time"]).dt.normalize()
+    d = d - pd.to_timedelta((d.dt.dayofweek - 4).clip(lower=0), unit="D")
+    s = pd.Series(trades["pnl_net"].values, index=pd.DatetimeIndex(d)).groupby(level=0).sum()
+    daily = s.reindex(pd.bdate_range(s.index.min(), s.index.max()), fill_value=0.0)
     if len(daily) < 5 or daily.std() == 0:
         return float("nan")
     return float(daily.mean() / daily.std() * np.sqrt(252))
@@ -57,15 +61,15 @@ def main() -> None:
     failures = []
     trades = _make_gappy_trades()
 
-    # 1. Zero-fill correctness: 20-day span (Jan 1 - Jan 20 inclusive) => 20 rows.
+    # 1. Zero-fill correctness: Jan 1 - Jan 20 2026 inclusive = 14 business days => 14 rows.
     daily = daily_pnl_from_trades(trades)
-    if len(daily) != 20:
-        failures.append(f"expected 20 zero-filled calendar days, got {len(daily)}")
+    if len(daily) != 14:
+        failures.append(f"expected 14 zero-filled business days, got {len(daily)}")
     if daily.sum() != sum([100.0, -50.0, 75.0, -20.0, 30.0]):
         failures.append(f"zero-filled series total P&L mismatch: {daily.sum()}")
     n_zero_days = (daily == 0.0).sum()
-    if n_zero_days != 15:
-        failures.append(f"expected 15 zero-P&L days, got {n_zero_days}")
+    if n_zero_days != 11:
+        failures.append(f"expected 11 zero-P&L business days, got {n_zero_days}")
 
     # 2. Module output matches the independent hand-written reference exactly.
     module_sharpe = sharpe_from_trades(trades)

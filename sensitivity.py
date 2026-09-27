@@ -28,6 +28,8 @@ from typing import List, Dict, Any, Optional
 import numpy as np
 import pandas as pd
 
+
+import portfolio_math  # single source of truth for daily P&L (code review P1)
 warnings.filterwarnings("ignore")
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
@@ -154,8 +156,7 @@ def _portfolio_sharpe(trades: list) -> float:
     if not exit_times:
         return float("nan")
     pnl = [t.pnl_net for t in trades if t.exit_time is not None]
-    s = pd.Series(pnl, index=pd.DatetimeIndex(pd.to_datetime(exit_times))).sort_index()
-    daily = s.resample("1D").sum()
+    daily = portfolio_math.daily_pnl_from_exits(exit_times, pnl)  # business days, code review P1 (was calendar-day resample + sqrt(252))
     if len(daily) < 5 or daily.std() == 0:
         return float("nan")
     return float(daily.mean() / daily.std() * np.sqrt(252))
