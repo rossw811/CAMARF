@@ -1484,6 +1484,20 @@ def compute_canonical_cutoff(tf_label: str) -> Optional[pd.Timestamp]:
         return last_complete_open
 
 
+def _to_yf_ticker(symbol: str, asset_class: str) -> str:
+    """IBKR/config symbol -> yfinance ticker. Module level (was nested in UniverseBuilder.build) so
+    the cache re-fetch tool uses the identical mapping instead of a drifting copy."""
+    if asset_class == "crypto":
+        return f"{symbol}-USD"
+    elif asset_class == "forex":
+        # yfinance uses EURUSD=X format; config stores "EUR.USD" — remove dot, add =X
+        return symbol.replace(".", "") + "=X"
+    elif asset_class == "fx_spot":
+        return symbol  # already yfinance format, e.g. "GBPUSD=X"
+    # equity, equity_intl, etf: pass through; intl suffixes (.L, .T, .HK) are native yfinance
+    return symbol.replace(" ", "-")  # BRK B -> BRK-B
+
+
 def _ceil_slot_minutes(mins_since_open: float, bar_mins: int, session_len_min: int) -> Optional[int]:
     """Minutes-after-open of the grid slot a bar starting `mins_since_open` after the session open is
     labelled with, or None to drop it. CEILING onto the grid, so a label is never earlier than the
@@ -4026,19 +4040,7 @@ class UniverseBuilder:
         # Equities + crypto. Fast bulk download, no rate limits.
         # Crypto uses "BTC-USD" yfinance format.
         # ---------------------------------------------------------------
-        def to_yf_ticker(symbol: str, asset_class: str) -> str:
-            if asset_class == "crypto":
-                return f"{symbol}-USD"
-            elif asset_class == "forex":
-                # yfinance uses EURUSD=X format
-                # Our config stores "EUR.USD" — remove dot, add =X
-                return symbol.replace(".", "") + "=X"
-            elif asset_class == "fx_spot":
-                # FX spot rates already in yfinance format: "GBPUSD=X"
-                return symbol
-            # equity, equity_intl, etf: pass through as-is
-            # International suffixes (.L, .T, .HK) are native yfinance format
-            return symbol.replace(" ", "-")  # BRK B → BRK-B
+        to_yf_ticker = _to_yf_ticker  # module level so other tools reuse the SAME mapping
 
         # yfinance handles: equities (incl. international), crypto, forex, ETFs, FX spots
         # IBKR handles: commodities, futures, and all intraday

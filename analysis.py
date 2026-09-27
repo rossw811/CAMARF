@@ -1697,6 +1697,67 @@ class UniverseFilter:
 # =============================================================================
 
 
+def _combine_eg_directions(candidate_pairs, results):
+    """Combine per-direction EG results into one BH hypothesis per candidate pair.
+
+    both directions ok        -> p = max(p_ab, p_ba) (conservative; unchanged rule)
+    any direction CRASHED     -> the pair enters BH with p = 1.0: the test was attempted, so it
+                                 belongs in m, it just cannot be confirmed
+    insufficient overlap only -> excluded (never a real test) but COUNTED
+    Code review A1/S2 (2026-09-26): previously only fully-successful pairs were kept, so every
+    crashed test (e.g. the A1 broadcast error) silently left m and loosened every BH threshold.
+    Returns (combined, counts)."""
+    by_key: Dict[frozenset, List[Dict[str, Any]]] = {}
+    for r in results:
+        by_key.setdefault(frozenset((r["symbol_a"], r["symbol_b"])), []).append(r)
+    combined, n_crash, n_insuff = [], 0, 0
+    for p in candidate_pairs:
+        rs = by_key.get(frozenset((p["symbol_a"], p["symbol_b"])), [])
+        fwd = next((r for r in rs if r["symbol_a"] == p["symbol_a"]), None)
+        rev = next((r for r in rs if r["symbol_a"] == p["symbol_b"]), None)
+        errs = [r.get("error", "") for r in (fwd, rev) if r is not None and not r.get("ok")]
+        if fwd is not None and rev is not None and fwd.get("ok") and rev.get("ok"):
+            combined.append({
+                "symbol_a": p["symbol_a"], "symbol_b": p["symbol_b"],
+                "pvalue": max(fwd["pvalue"], rev["pvalue"]),
+                "pvalue_ab": float(fwd["pvalue"]), "pvalue_ba": float(rev["pvalue"]),
+                # hedge ratio / n_overlap from the forward (a-on-b) direction: downstream spread
+                # construction needs one canonical direction
+                "hedge_ratio": fwd["hedge_ratio"], "n_overlap": fwd["n_overlap"],
+            })
+        elif any(e and e != "insufficient_overlap" for e in errs):
+            n_crash += 1
+            combined.append({"symbol_a": p["symbol_a"], "symbol_b": p["symbol_b"], "pvalue": 1.0,
+                             "pvalue_ab": 1.0, "pvalue_ba": 1.0, "hedge_ratio": float("nan"),
+                             "n_overlap": 0, "eg_failed": "; ".join(e for e in errs if e)})
+        else:
+            n_insuff += 1
+    counts = {"n_tested": len(combined), "n_crashed_counted_p1": n_crash,
+              "n_insufficient_overlap_excluded": n_insuff}
+    return combined, counts
+
+
+def align_to_common_index(aligned: Dict[str, pd.DataFrame]) -> Dict[str, pd.DataFrame]:
+    """Reindex every aligned frame onto the UNION of all their timestamps -- no forward-fill, a
+    missing bar stays NaN -- so every positional consumer (_build_log_price_map -> _eg_worker's
+    isfinite mask, rolling coint, Johansen, _build_pair_result, build_returns_matrix) sees arrays whose
+    row i is the same timestamp for every symbol.
+
+    Code review A1 (2026-09-26): DataAligner.align_universe trims each asset to its own first valid
+    date, so arrays had different lengths; _eg_worker raised a broadcast ValueError that it returned as
+    ok=False, and every pair whose histories start on different dates was silently never EG-tested
+    (and left out of BH's m). Reproduced on real AAPL/MSFT/ABNB. Same construction as
+    universe_loader.load_full_universe's canonical-index reindex. debug/_verify_eg_common_index_a1.py."""
+    frames = {k: v for k, v in aligned.items() if v is not None and len(v)}
+    if not frames:
+        return aligned
+    union = frames[next(iter(frames))].index
+    for v in frames.values():
+        union = union.union(v.index)
+    union = union.sort_values()
+    return {k: v[~v.index.duplicated(keep="last")].reindex(union) for k, v in frames.items()}
+
+
 def _eg_worker(args: Tuple[str, str, np.ndarray, np.ndarray, int, str]) -> Dict[str, Any]:
     """
     Worker run inside ProcessPoolExecutor. Must be top-level (picklable).
@@ -2043,36 +2104,10 @@ class CointScanner:
                 results.append(r)
         log.info(f"  [{tf_label}] EG complete in {time.time()-t0:.1f}s")
 
-        # Combine the two directions per pair: max() of the two p-values
-        # (conservative — see class docstring for why not min()/either).
-        ok_results = [r for r in results if r.get("ok")]
-        by_key: Dict[frozenset, List[Dict[str, Any]]] = {}
-        for r in ok_results:
-            by_key.setdefault(frozenset((r["symbol_a"], r["symbol_b"])), []).append(r)
-
-        combined = []
-        for p in candidate_pairs:
-            key = frozenset((p["symbol_a"], p["symbol_b"]))
-            rs = by_key.get(key)
-            if not rs or len(rs) < 2:
-                continue  # one or both directions failed / insufficient overlap
-            fwd = next((r for r in rs if r["symbol_a"] == p["symbol_a"]), None)
-            rev = next((r for r in rs if r["symbol_a"] == p["symbol_b"]), None)
-            if fwd is None or rev is None:
-                continue
-            combined.append({
-                "symbol_a": p["symbol_a"],
-                "symbol_b": p["symbol_b"],
-                "pvalue": max(fwd["pvalue"], rev["pvalue"]),
-                "pvalue_ab": float(fwd["pvalue"]),
-                "pvalue_ba": float(rev["pvalue"]),
-                # Hedge ratio/n_overlap reported from the forward (a-on-b)
-                # direction only — downstream spread construction needs a
-                # single canonical direction, unlike the significance
-                # decision above, which deliberately doesn't pick one.
-                "hedge_ratio": fwd["hedge_ratio"],
-                "n_overlap": fwd["n_overlap"],
-            })
+        # Combine the two directions per pair (max p, conservative -- see class docstring) and
+        # keep crashed tests in BH's m (code review A1/S2) -- see _combine_eg_directions.
+        combined, _bh_counts = _combine_eg_directions(candidate_pairs, results)
+        log.info(f"  [{tf_label}] EG BH family: {_bh_counts}")
 
         if not combined:
             return [], {"n_tested": len(results), "n_passed_raw": 0, "n_passed_fdr": 0}
@@ -5291,7 +5326,9 @@ class AnalysisPipeline:
         if not aligned:
             log.warning(f"  [{tf_label}] alignment failed — skipping TF")
             return [], [], [], [], {}
-        log.info(f"  [{tf_label}] aligned: {len(aligned)} assets")
+        aligned = align_to_common_index(aligned)  # A1: one shared timestamp per row, no ffill
+        log.info(f"  [{tf_label}] aligned: {len(aligned)} assets on a common index of "
+                 f"{len(next(iter(aligned.values()))) if aligned else 0} bars")
 
         BiasAuditLog.record(
             bias_type="lookahead",
