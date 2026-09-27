@@ -6,7 +6,7 @@ COMPARISON ARM ONLY. Nothing here feeds backtest.py's MLConditioner.
 What it does
 ------------
 Re-runs the meta-labeler model comparison at the current event count (ml.build(pit_safe=True),
-~74k labeled entry events) across nine classifiers on the IDENTICAL features/labels:
+~74k labeled entry events) across eight classifiers on the IDENTICAL features/labels:
 XGBoost (ml.py's own hyper-parameters), LightGBM, L2 and L1 logistic regression, Random Forest,
 k-nearest neighbours, MLP, and an RBF-kernel SVM.
 
