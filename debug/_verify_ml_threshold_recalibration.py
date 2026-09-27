@@ -95,7 +95,19 @@ def test_no_signal_returns_a_threshold_near_chance():
           acc < majority + 0.10, f"threshold={t:.4f} acc={acc:.4f} majority_baseline={majority:.4f}")
 
 
+def test_inverted_ranking_returns_nan_not_inf():
+    # Added 2026-09-26 (code review): sklearn>=1.3's roc_curve puts thresholds[0]=inf, where
+    # tpr-fpr=0. If the model ranks BACKWARDS (every positive scored below every negative), J<=0
+    # everywhere, argmax lands on index 0, and the old code returned inf -- predicting class 0 for
+    # every row and reporting the class-0 base rate as a "recalibrated accuracy". Must be NaN.
+    y = np.array([0] * 50 + [1] * 50)
+    probs = np.concatenate([np.linspace(0.6, 0.9, 50), np.linspace(0.1, 0.4, 50)])
+    t = _youden_optimal_threshold(y, probs)
+    check("inverted_ranking.returns_nan_not_inf", np.isnan(t), f"threshold={t}")
+
+
 if __name__ == "__main__":
+    test_inverted_ranking_returns_nan_not_inf()
     test_perfect_separation_finds_the_true_gap()
     test_recalibration_beats_naive_0p5_on_a_shifted_distribution()
     test_no_signal_returns_a_threshold_near_chance()

@@ -168,10 +168,18 @@ def _youden_optimal_threshold(y_true, probs_positive_class) -> float:
     picking a decision threshold from a model's ROC curve instead of the naive 0.5 default.
     Factored out of _train_and_validate (2026-09-22) so it can be unit-tested directly against
     hand-constructed probability arrays with an analytically known answer, not only end-to-end
-    through a real XGBoost fit."""
+    through a real XGBoost fit.
+
+    Returns NaN when no threshold beats chance (best J <= 0, i.e. no or inverted ranking power on
+    this split) -- fixed 2026-09-26 (code review): sklearn>=1.3's roc_curve puts thresholds[0]=inf
+    at J=0, so argmax used to return inf in exactly that case, silently predicting one class."""
     from sklearn.metrics import roc_curve
     fpr, tpr, thresholds = roc_curve(y_true, probs_positive_class)
-    return float(thresholds[np.argmax(tpr - fpr)])
+    j = tpr - fpr
+    best = int(np.argmax(j))
+    if j[best] <= 0 or not np.isfinite(thresholds[best]):
+        return float("nan")
+    return float(thresholds[best])
 
 
 # =============================================================================
@@ -901,13 +909,26 @@ def _train_and_validate(result: MLResult, summary: MLRunSummary) -> None:
     # Core selection logic factored into _youden_optimal_threshold() (below) so
     # debug/_verify_ml_threshold_recalibration.py can test it directly against hand-constructed
     # probability arrays with an analytically known answer, not only end-to-end through XGBoost.
+    # Balanced accuracy (mean of per-class recall) added 2026-09-26 (code review): Youden's J =
+    # tpr - fpr = 2*balanced_accuracy - 1 on the val split, so the J-optimal threshold must be
+    # judged on balanced accuracy. Judging it by raw accuracy under the 59/41 class imbalance
+    # penalizes it by construction (it predicts the minority class more often), which is what
+    # the 2026-09-22 "recalibration did not help" verdict actually measured.
+    from sklearn.metrics import balanced_accuracy_score
+    test_bal_acc = float("nan")
     recalibrated_threshold = float("nan")
     recalibrated_test_acc = float("nan")
+    recalibrated_test_bal_acc = float("nan")
+    if n_classes <= 2 and len(set(y_test)) > 1:
+        test_bal_acc = float(balanced_accuracy_score(y_test, np.argmax(probs_test, axis=1)))
     if n_classes <= 2 and len(X_val) > 0 and len(set(y_val)) > 1:
         probs_val = model.predict_proba(X_val)[:, 1]
         recalibrated_threshold = _youden_optimal_threshold(y_val, probs_val)
-        recalibrated_preds = (probs_test[:, 1] >= recalibrated_threshold).astype(int)
-        recalibrated_test_acc = float(np.mean(recalibrated_preds == y_test))
+        if np.isfinite(recalibrated_threshold):
+            recalibrated_preds = (probs_test[:, 1] >= recalibrated_threshold).astype(int)
+            recalibrated_test_acc = float(np.mean(recalibrated_preds == y_test))
+            if len(set(y_test)) > 1:
+                recalibrated_test_bal_acc = float(balanced_accuracy_score(y_test, recalibrated_preds))
 
     result.model = model
     result.holdout_report = {
@@ -915,8 +936,10 @@ def _train_and_validate(result: MLResult, summary: MLRunSummary) -> None:
         "n_test": len(X_test),
         "test_accuracy": test_acc,
         "test_auc_roc": test_auc,
+        "test_balanced_accuracy": test_bal_acc,
         "recalibrated_threshold": recalibrated_threshold,
         "recalibrated_test_accuracy": recalibrated_test_acc,
+        "recalibrated_test_balanced_accuracy": recalibrated_test_bal_acc,
         "classes": list(le.classes_),
     }
     result.feature_importance = importance
@@ -924,12 +947,15 @@ def _train_and_validate(result: MLResult, summary: MLRunSummary) -> None:
         f"  Trained on {len(X_train)} examples, holdout accuracy on "
         f"{len(X_test)} examples: {test_acc:.2%} (0.5 threshold), AUC-ROC: {test_auc:.4f}, "
         f"recalibrated accuracy: {recalibrated_test_acc:.2%} (threshold={recalibrated_threshold:.4f}, "
-        f"chosen on val split via Youden's J)"
+        f"chosen on val split via Youden's J); balanced accuracy: {test_bal_acc:.2%} (0.5) vs "
+        f"{recalibrated_test_bal_acc:.2%} (recalibrated)"
     )
     summary.note(
         f"Trained: n_train={len(X_train)} n_test={len(X_test)} "
         f"test_accuracy={test_acc:.2%} test_auc_roc={test_auc:.4f} "
-        f"recalibrated_test_accuracy={recalibrated_test_acc:.2%}"
+        f"recalibrated_test_accuracy={recalibrated_test_acc:.2%} "
+        f"test_balanced_accuracy={test_bal_acc:.2%} "
+        f"recalibrated_test_balanced_accuracy={recalibrated_test_bal_acc:.2%}"
     )
 
     # Conformal calibration uses the val slice (train_end:val_end) that the
