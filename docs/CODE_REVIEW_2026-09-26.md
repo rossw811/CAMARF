@@ -471,3 +471,19 @@ Real result, OLS trades, USD-only pairs (~31% of trades), business-day Sharpe:
 Every positive gate Sharpe was produced by the accounting (B2/B3). In-sample every gate loses money before costs;
 out-of-sample momentum loses and squeeze/combined are ≈ 0. Not yet covered: GVKEY pairs (69% of trades, pending
 USD conversion), the capital-constrained replay on dollar P&L, and the data-layer fixes still open.
+
+**Rule-invariant audit (2026-09-27, `research/strategy_rule_invariants.py`, verify 11/11).** Every backtest.py
+rule checked against all 101,700 trades in the six current gate files (Config: ENTRY 3.0, STOP 3.5, EXIT 0.0,
+MAX_HOLD_MULTIPLIER 2.0, MIN_HALF_LIFE_BARS 5).
+- **Mechanically correct, 0 violations:** entry threshold, side vs z sign, stop level reached on every stop, signal
+  exits crossed, max-hold at its limit, no overlapping positions per pair, half-life floor, and every squeeze /
+  momentum gate decision re-checked at the actual entry bar from the spread files (47,628 entries, 0 violations).
+- **B16 quantified — enter/stop/re-enter churn loop (design defects, code does what it says):**
+  I2 entries at or past the stop 54–68% of trades; S1 stopped after a FAVORABLE move 32–40% (stop is `abs(z) >=
+  STOP`, not direction-aware, so any entry at/over the stop is stopped next bar whichever way z moves); S3 re-entry
+  within 1 bar of a stop 19–38%; S2 overshoot-through-zero recorded as a stop: 0–7 trades (rare).
+- **Dead default rules:** `corr_exit` never fired in 101,700 trades — structurally impossible (needs |z| > 2|entry_z|
+  ≥ 6, checked after the |z| ≥ 3.5 stop; its comment says 2.5×, code 2.0×). `data_gap` never fired (B1).
+- **Stale documentation:** backtest.py module docstring and `--entry-z` help both state ENTRY_ZSCORE = 2.0; actual 3.0.
+Fix candidates (comparison arms, not silent changes): ENTRY_ZSCORE_MAX < STOP_ZSCORE; direction-aware stop
+(stop only on adverse |z| widening beyond entry); re-entry cooldown after a stop.
