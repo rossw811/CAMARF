@@ -1695,7 +1695,11 @@ class DataCleaner:
         tf_label: str,
         tf_ibkr: str,
         source: str = "ibkr",
+        min_bars_override: Optional[int] = None,
     ) -> Tuple[Optional[pd.DataFrame], QualityReport]:
+        # min_bars_override: for an INCREMENTAL recent slice (D2 fix) that is merged into an
+        # existing full history -- the minimum-history check applies to the merged series, not
+        # to the ~21-bar slice itself.
 
         original_bars = len(df)
         roll_dates: List[str] = []
@@ -1752,6 +1756,8 @@ class DataCleaner:
         # years), rejecting nearly every symbol at those WRDS-primary timeframes.
         min_bars = Config.DATA.MIN_BARS_REQUIRED.get(
             tf_label, Config.STATS.MIN_OVERLAP_BY_TF.get(tf_label, 100))
+        if min_bars_override is not None:
+            min_bars = min_bars_override
         if len(df) < min_bars:
             return None, QualityReport(
                 symbol,
@@ -2006,7 +2012,13 @@ class YFinanceFeed:
         chunk_size: int = 50,
         yf_tickers: List[str] = None,
         period: str = None,  # override max_period (e.g. "1mo" for incremental)
+        incremental: bool = False,
     ) -> Dict[str, Dict[str, Optional[pd.DataFrame]]]:
+        # incremental=True (code review D2, 2026-09-26): download even when a cache file exists,
+        # accept a short recent slice, return ONLY 1D, and never DataStore.save() -- the caller
+        # merges via DataStore.append() and re-derives 7D/1M from the merged full history.
+        # Previously the exists-only cache check returned the old file without downloading, and a
+        # real download would have overwritten the full history with the slice.
         """
         Download full history for a list of tickers using yfinance.
 
@@ -2045,19 +2057,24 @@ class YFinanceFeed:
 
             for yf_interval, tf_label, max_period in YFinanceFeed._YF_INTERVALS:
                 _period = period if period is not None else max_period
+                if incremental and tf_label != "1D":
+                    continue
                 chunk_data = YFinanceFeed._download_chunk(
                     chunk_ibkr,
                     yf_interval,
                     tf_label,
                     _period,
                     yf_tickers=chunk_yf,
+                    force=incremental,
+                    min_bars_override=1 if incremental else None,
                 )
                 for symbol, df in chunk_data.items():
                     if symbol not in results:
                         results[symbol] = {}
                     results[symbol][tf_label] = df
-                    # Derive 7D and 1M from 1D by resampling
-                    if tf_label == "1D" and df is not None:
+                    # Derive 7D and 1M from 1D by resampling (not for an incremental slice --
+                    # the caller re-derives them from the MERGED history)
+                    if tf_label == "1D" and df is not None and not incremental:
                         derived = YFinanceFeed._resample_from_daily(df)
                         for derived_tf, derived_df in derived.items():
                             results[symbol][derived_tf] = derived_df
@@ -2072,6 +2089,8 @@ class YFinanceFeed:
                 log.info(f"  Retrying {len(failed)} failed tickers individually")
                 for ibkr_sym, yf_sym in failed:
                     for yf_interval, tf_label, max_period in YFinanceFeed._YF_INTERVALS:
+                        if incremental and tf_label != "1D":
+                            continue
                         try:
                             _period = period if period is not None else max_period
                             import contextlib, io
@@ -2098,20 +2117,22 @@ class YFinanceFeed:
                                     tf_label,
                                     tf_label,
                                     source="yfinance",
+                                    min_bars_override=1 if incremental else None,
                                 )
                                 if ibkr_sym not in results:
                                     results[ibkr_sym] = {}
                                 results[ibkr_sym][tf_label] = cleaned
-                                # Derive 7D and 1M from 1D in retry path too
-                                if tf_label == "1D" and cleaned is not None:
+                                # Derive 7D and 1M from 1D in retry path too (full fetch only)
+                                if tf_label == "1D" and cleaned is not None and not incremental:
                                     derived = YFinanceFeed._resample_from_daily(cleaned)
                                     for derived_tf, derived_df in derived.items():
                                         results[ibkr_sym][derived_tf] = derived_df
                         except Exception:
                             pass
 
-            # Cache daily/weekly/monthly — intraday handled separately by IBKR
-            for ibkr_sym in chunk_ibkr:
+            # Cache daily/weekly/monthly — intraday handled separately by IBKR.
+            # Never for an incremental slice: saving it would REPLACE the full history (D2).
+            for ibkr_sym in ([] if incremental else chunk_ibkr):
                 sym_data = results.get(ibkr_sym, {})
                 for tf_lbl, df in sym_data.items():
                     if df is not None:
@@ -2126,9 +2147,12 @@ class YFinanceFeed:
         tf_label: str,
         max_period: str,
         yf_tickers: List[str] = None,
+        force: bool = False,
+        min_bars_override: Optional[int] = None,
     ) -> Dict[str, Optional[pd.DataFrame]]:
         """
         Download one interval for a chunk of tickers using yf.download().
+        force: skip the cache check and download every ticker (incremental refresh, D2).
         Returns {ibkr_symbol: cleaned_DataFrame}.
 
         yf_tickers: pre-converted yfinance format (e.g. BRK-B, BTC-USD).
@@ -2144,7 +2168,7 @@ class YFinanceFeed:
         uncached_pairs = [
             (ibkr, yf)
             for ibkr, yf in zip(tickers, yf_tickers)
-            if not DataStore.is_fresh(
+            if force or not DataStore.is_fresh(
                 ibkr, tf_label, max_age_hours=DataStore.intraday_max_age_hours(tf_label)
             )
         ]
@@ -2206,7 +2230,8 @@ class YFinanceFeed:
                     df_raw = raw.copy()
 
                 cleaned, report = DataCleaner.clean(
-                    df_raw, ibkr_ticker, "equity", tf_label, tf_label
+                    df_raw, ibkr_ticker, "equity", tf_label, tf_label,
+                    min_bars_override=min_bars_override,
                 )
                 result[ibkr_ticker] = cleaned
                 if not report.passed:
@@ -4216,6 +4241,7 @@ class UniverseBuilder:
                     chunk_size=Config.DATA.YF_CHUNK_SIZE,
                     yf_tickers=yf_list,
                     period="1mo",  # last 30 calendar days
+                    incremental=True,
                 )
                 n_refreshed = 0
                 for symbol, asset_class in stale_yf:
@@ -4225,6 +4251,11 @@ class UniverseBuilder:
                         combined = DataStore.append(symbol, "1D", new_df)
                         if combined is not None:
                             all_data[f"{symbol}_1D"] = combined
+                            # re-derive 7D/1M from the MERGED full history (D2)
+                            for _dtf, _ddf in YFinanceFeed._resample_from_daily(combined).items():
+                                if _ddf is not None:
+                                    DataStore.save(symbol, _dtf, _ddf)
+                                    all_data[f"{symbol}_{_dtf}"] = _ddf
                             yf_daily_done.add(symbol)
                             n_refreshed += 1
                     else:

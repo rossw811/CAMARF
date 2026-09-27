@@ -503,3 +503,11 @@ summed volume) instead of keeping one. `_verify_snap_timestamps_no_lookahead.py`
 case encoded the old rounding and was corrected). All 4 snap_timestamps verify scripts pass. A bar starting after
 the last slot opens is dropped (only occurs for finer-than-TF input). Intraday caches on disk were written with the
 old snapping → regenerate with the data re-fetch.
+D2 FIXED (2026-09-27) — three stacked defects in the daily incremental refresh: (a) the exists-only cache check
+returned the OLD file without downloading (demonstrated: legacy call made 0 daily download calls and returned the
+2026-06-17 cache), (b) a real 1-month slice would fail the 100-bar minimum, (c) get_equity_history then
+`DataStore.save()`d its result, which would have REPLACED each full history (and its 7D/1M) with the slice.
+`get_equity_history(..., incremental=True)`: forces the download, accepts the slice (`clean(min_bars_override=1)`),
+returns 1D only and never saves; the caller merges via `DataStore.append` and re-derives 7D/1M from the merged
+history. `_verify_daily_incremental_refresh.py` 4/4 (338 → 347 rows, last bar 06-17 → 06-30, cache untouched by the
+fetch); data-layer verify suite 13/13. The yfinance cache re-fetch itself is still to run.
