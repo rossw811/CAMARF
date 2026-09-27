@@ -1726,8 +1726,12 @@ class DataCleaner:
         if asset_class in ("futures", "commodity"):
             df, roll_dates = DataCleaner._roll_adjust(df)
 
-        if asset_class == "equity":
-            df = DataCleaner._liquidity_filter(df)
+        # Liquidity is a universe-admission decision (analysis.py's ADV filter), never a reason
+        # to rewrite observed prices. The former _liquidity_filter NaN'd every bar whose PER-BAR
+        # dollar volume was under the DAILY $1M MIN_DOLLAR_VOLUME and forward-filled, fabricating
+        # copies of earlier bars (nearly every 1m bar of a mid-cap; 100% of zero-volume forex
+        # daily files). Removed 2026-09-26, code review D1; debug/_verify_liquidity_filter_no_
+        # fabrication.py.
 
         min_bars = Config.DATA.MIN_BARS_REQUIRED.get(tf_label, 100)
         if len(df) < min_bars:
@@ -1869,17 +1873,6 @@ class DataCleaner:
             df.iloc[:loc, df.columns.get_loc("low")] *= ratio
             df.iloc[:loc, df.columns.get_loc("close")] *= ratio
         return df, roll_dates
-
-    @staticmethod
-    def _liquidity_filter(df: pd.DataFrame) -> pd.DataFrame:
-        if "volume" not in df.columns:
-            return df
-        df = df.copy()
-        dollar_vol = df["close"] * df["volume"]
-        illiquid = dollar_vol < Config.DATA.MIN_DOLLAR_VOLUME
-        df.loc[illiquid, ["open", "high", "low", "close"]] = np.nan
-        df = df.ffill()
-        return df
 
 
 # =============================================================================

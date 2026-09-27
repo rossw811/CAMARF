@@ -94,6 +94,11 @@ class EntryEvent:
     # velocity backtest.py's momentum_gate reads.
     squeeze_min: float
     rsi_diff_velocity: float
+    # 2026-09-26 (code review R2.3): timestamp of the bar the label is read from
+    # (entry bar + horizon_bars). Needed to PURGE training events whose label window
+    # overlaps a later split (AFML ch.7). Defaulted so every existing constructor/
+    # consumer is unaffected.
+    label_end_time: Optional[pd.Timestamp] = None
 
 
 @dataclass
@@ -379,6 +384,7 @@ def _build_examples_for_pair(
                 tf_label=tf_label,
                 entry_time=t,
                 horizon_bars=horizon,
+                label_end_time=series.index[future_pos],
                 z_entry=z_entry,
                 z_future=z_future,
                 label=_classify_outcome(z_entry, z_future),
