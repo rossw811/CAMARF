@@ -261,6 +261,10 @@ def screen_universe_at_cutoff(
     )
     if not aligned:
         return []
+    # Code review A1/S1 (2026-09-26): per-symbol grids differ in span; put every symbol on one
+    # shared timestamp index (no ffill) before any positional pair computation.
+    from analysis import align_to_common_index
+    aligned = align_to_common_index(aligned)
 
     uf_raw = UniverseFilter.run(
         aligned, {}, threshold=Config.UNIVERSE.MIN_PEARSON_CORR,

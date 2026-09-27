@@ -604,6 +604,15 @@ class BacktestEngine:
 
         # STORM: pre-compute rolling z-score volatility for garch_stop variant
         _garch_stop = self.storm_flags.get("garch_stop", False)
+        # Churn-loop comparison arms (2026-09-27; code review B16 + rule-invariant audit). Default
+        # OFF = legacy. directional_stop: stop only once |z| >= stop AND |z| has widened beyond
+        # |entry_z| (moved against the position) -- the legacy abs(z) >= stop fires on the very next
+        # bar for any entry already past the stop, even when z moved favourably (32-40% of real
+        # trades). reentry_rearm: after a stop, require |z| to fall back below ENTRY_ZSCORE before
+        # the pair can re-enter (19-38% of real trades re-entered within 1 bar of a stop).
+        _directional_stop = self.storm_flags.get("directional_stop", False)
+        _reentry_rearm = self.storm_flags.get("reentry_rearm", False)
+        _armed = True
         _rolling_z_std = None
         _hist_z_std_arr = None
         if _garch_stop:
@@ -805,6 +814,10 @@ class BacktestEngine:
                     if not (bool(_liquid_a.iloc[i]) and bool(_liquid_b.iloc[i])):
                         continue
 
+                if _reentry_rearm and not _armed:
+                    if abs(z) < self.cfg.ENTRY_ZSCORE:
+                        _armed = True  # spread reset below the entry band -- pair may re-enter later
+                    continue
                 if abs(z) < self.cfg.ENTRY_ZSCORE:
                     continue
                 if self.cfg.ENTRY_ZSCORE_MAX is not None and abs(z) > self.cfg.ENTRY_ZSCORE_MAX:
@@ -1005,7 +1018,7 @@ class BacktestEngine:
                         _effective_stop = min(_effective_stop, 3.0)
 
                 # 1. Stop loss: spread widened further
-                if abs(z) >= _effective_stop:
+                if abs(z) >= _effective_stop and (not _directional_stop or abs(z) > abs(current_trade.entry_z)):
                     exit_reason = "stop"
 
                 # 2. Signal exit: z crossed toward zero past EXIT_ZSCORE
@@ -1054,6 +1067,8 @@ class BacktestEngine:
                             exit_reason = "decoupling_avoidance_exit"
 
                 if exit_reason:
+                    if _reentry_rearm and exit_reason == "stop":
+                        _armed = False
                     current_trade.exit_time = ts
                     current_trade.exit_z = z
                     current_trade.exit_spread = spread
@@ -2326,6 +2341,12 @@ def main() -> None:
                         "velocity to agree with the reversion direction the entry z-score "
                         "implies. Requires spread_series files augmented by "
                         "research/squeeze_momentum_features.py; fails closed if absent.")
+    p.add_argument("--storm-directional-stop", action="store_true",
+                   help="Churn-loop arm (2026-09-27): stop only when |z| >= STOP_ZSCORE AND |z| has "
+                        "widened beyond |entry_z|. Default off (legacy abs(z) >= stop).")
+    p.add_argument("--storm-reentry-rearm", action="store_true",
+                   help="Churn-loop arm (2026-09-27): after a stop, no re-entry on the pair until |z| "
+                        "has fallen back below ENTRY_ZSCORE. Default off.")
     p.add_argument("--storm-squeeze-momentum-gate", action="store_true",
                    help="STORM (added 2026-09-15): both --storm-squeeze-gate AND "
                         "--storm-momentum-gate conditions required together, as its own single "
@@ -2611,6 +2632,8 @@ def main() -> None:
         "squeeze_gate":            getattr(args, "storm_squeeze_gate", False),
         "momentum_gate":           getattr(args, "storm_momentum_gate", False),
         "squeeze_momentum_gate":   getattr(args, "storm_squeeze_momentum_gate", False),
+        "directional_stop":        getattr(args, "storm_directional_stop", False),
+        "reentry_rearm":           getattr(args, "storm_reentry_rearm", False),
     }
     # STORM-flag suffixes on `label` (the rest of label was built above, before
     # storm_flags existed).
@@ -2630,6 +2653,8 @@ def main() -> None:
         if storm_flags.get("squeeze_gate"):          sfx += "_sqzgate"
         if storm_flags.get("momentum_gate"):         sfx += "_momgate"
         if storm_flags.get("squeeze_momentum_gate"): sfx += "_sqzmomgate"
+        if storm_flags.get("directional_stop"):      sfx += "_dirstop"
+        if storm_flags.get("reentry_rearm"):         sfx += "_rearm"
         label += sfx
     if args.pairs_override:
         label += "_pairsoverride"

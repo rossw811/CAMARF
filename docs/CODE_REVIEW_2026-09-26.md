@@ -511,3 +511,17 @@ returned the OLD file without downloading (demonstrated: legacy call made 0 dail
 returns 1D only and never saves; the caller merges via `DataStore.append` and re-derives 7D/1M from the merged
 history. `_verify_daily_incremental_refresh.py` 4/4 (338 → 347 rows, last bar 06-17 → 06-30, cache untouched by the
 fetch); data-layer verify suite 13/13. The yfinance cache re-fetch itself is still to run.
+A1 FIXED (2026-09-27) — `analysis.align_to_common_index()` reindexes every aligned frame onto the union timestamp
+index (no forward-fill) right after `DataAligner.align_universe` in `analysis._run_one_tf` and `pit_wfa`'s screen
+(S1). `_verify_eg_common_index_a1.py` 6/6 (cointegrated synthetic pair with different listing dates: EG runs, p≈0,
+n_overlap exact); real AAPL/MSFT/ABNB now tested (ok=True, overlaps 10,144 / 1,385). BH denominator:
+`_combine_eg_directions` keeps CRASHED tests in m with p=1 and counts/logs insufficient-overlap pairs
+(`_verify_eg_bh_denominator.py` 5/5). Regression suite over every verify script touching EG/alignment/pit_wfa: 35/36,
+the 1 failure a stale calendar-day expectation from the P1 fix (Fri+weekend → 1 business day), corrected.
+Research-script `align_universe` call sites (~20) NOT changed — each to be reviewed case by case.
+yfinance DAILY cache regenerated (D1+D2): 1,641/1,645 symbols (4 restored: CWEN-A, HLX, LEG, UNI — no Yahoo data);
+equity median flat days 10.8% → 2.9%; files >20% flat 544 → 46; forex 100% NaN → real series; history to
+2026-09-27. Originals in `output/cache/_yf_daily_backup_20260927/`. Intraday caches NOT touched (irreplaceable
+history; decision for Ross).
+Churn-loop arms built (`--storm-directional-stop`, `--storm-reentry-rearm`, default off; `--entry-z-max` existing):
+`_verify_churn_fix_arms.py` 5/5 (fixture first drafted too steep to show repeated churn — corrected).

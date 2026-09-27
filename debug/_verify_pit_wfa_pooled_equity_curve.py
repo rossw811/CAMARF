@@ -45,8 +45,10 @@ print(result)
 n_f1 = result["per_fold"][0]["n_daily_obs"]
 n_f2 = result["per_fold"][1]["n_daily_obs"]
 check("fold1's daily-obs count matches its own 3-day span (Jan 3-5, 2000)", n_f1 == 3)
-check("fold2's daily-obs count matches its own 3-day span (Jan 3-5, 2020), NOT the 20-year gap",
-      n_f2 == 3)
+# Business-day convention (code review P1, 2026-09-26): Jan 3-5 2020 is Fri/Sat/Sun, so the weekend exits
+# book to Friday -> ONE business day (the check still guards against spanning the 20-year gap).
+check("fold2's daily-obs count matches its own span (Fri Jan 3 2020 + weekend -> 1 business day), NOT the 20-year gap",
+      n_f2 == 1)
 
 # --- 2. Pooled daily-obs count is the SUM of the two folds' own spans, NOT the full calendar range ---
 # A zero-filled 20-year gap would add ~7300 extra days; dropping it means pooled == n_f1 + n_f2.
