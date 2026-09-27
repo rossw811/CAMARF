@@ -47,7 +47,8 @@ def daily_pnl_from_trades(path: str) -> pd.Series:
         sorted_trades["pnl_net"].values,
         index=sorted_trades["exit_time"].fillna(sorted_trades["entry_time"]),
     )
-    return pnl_series.resample("1D").sum()
+    import portfolio_math
+    return portfolio_math.daily_pnl_from_exits(pnl_series.index, pnl_series.to_numpy())  # business days, code review P1
 
 
 def sample_acf(x: np.ndarray, max_lag: int) -> np.ndarray:

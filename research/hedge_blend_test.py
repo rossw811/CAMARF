@@ -54,8 +54,8 @@ def pair_strategy_daily_returns(trades: pd.DataFrame, starting_capital: float) -
     backtest.py:aggregate_portfolio()'s own daily-bucketing convention but converted to a
     percentage return series (dollar P&L / starting_capital) so it can be blended with the
     hedge basket's own percentage-return series on a like-for-like basis."""
-    pnl = pd.Series(trades["pnl_net"].values, index=pd.to_datetime(trades["exit_time"].fillna(trades["entry_time"])))
-    daily_pnl = pnl.sort_index().resample("1D").sum()
+    import portfolio_math
+    daily_pnl = portfolio_math.daily_pnl_from_exits(pd.to_datetime(trades["exit_time"].fillna(trades["entry_time"])), trades["pnl_net"].values)  # business days, code review P1
     return daily_pnl / starting_capital
 
 

@@ -448,3 +448,26 @@ immediate stop-outs; every trade-level statistic (win rate, hold time, P&L distr
 underlying fact was noted 2026-07-12 (portfolio_sim.py comment, "45% of real trades enter with |entry_z| >=
 STOP_ZSCORE") but its consequence was not. `--entry-z-max` exists; to be evaluated as a comparison arm in the P&L
 rebuild, not changed silently.
+
+**B2/B3 comparison arm built and run (2026-09-27).** `pnl_dollar.py` (verify 12/12, incl. hand-computed cases and a
+penny-stock fixed-notional case) marks both legs at real prices with the hedge fixed at entry:
+gross = side · N_a · (r_a − β_entry · r_b), total-return legs, dollar costs; GVKEY (local-currency) legs → status
+`non_usd_leg` (not a number) until the USD conversion is built. Three real trades recomputed by hand from the raw
+WRDS files match the module to the cent; one of them (KMB/PERMNO79057) made +$52.98 while the old P&L booked −3.71.
+Default sizing is fixed dollar notional per trade, because fixed 100 shares at split-adjusted prices makes early trades
+negligible (AMAT 1991 adjusted $0.42 → a $42 position) — found in that hand check.
+
+Real result, OLS trades, USD-only pairs (~31% of trades), business-day Sharpe:
+
+| Gate / split | old pnl_net | dollar net | dollar gross | immediate-stop share (B16) | gross excl. B16 |
+|---|---|---|---|---|---|
+| momentum IS | +0.132 | **−0.408** | −0.191 | 65% | −0.119 |
+| squeeze IS | +0.474 | **−0.386** | −0.227 | 60% | −0.191 |
+| combined IS | +0.721 | **−0.354** | −0.248 | 53% | −0.219 |
+| momentum OOS | −0.184 | **−0.296** | −0.125 | 66% | −0.157 |
+| squeeze OOS | +0.667 | **−0.078** | +0.003 | 61% | +0.031 |
+| combined OOS | +0.601 | **−0.005** | +0.048 | 51% | +0.079 |
+
+Every positive gate Sharpe was produced by the accounting (B2/B3). In-sample every gate loses money before costs;
+out-of-sample momentum loses and squeeze/combined are ≈ 0. Not yet covered: GVKEY pairs (69% of trades, pending
+USD conversion), the capital-constrained replay on dollar P&L, and the data-layer fixes still open.

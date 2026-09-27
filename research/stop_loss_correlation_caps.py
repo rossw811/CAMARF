@@ -52,8 +52,8 @@ def _correct_portfolio_sharpe(trades: list) -> float:
     if not exit_times:
         return float("nan")
     pnl = [t.pnl_net for t in trades if t.exit_time is not None]
-    s = pd.Series(pnl, index=pd.DatetimeIndex(exit_times)).sort_index()
-    daily = s.resample("1D").sum()
+    import portfolio_math
+    daily = portfolio_math.daily_pnl_from_exits(exit_times, pnl)  # business days, code review P1
     if len(daily) < 5 or daily.std() == 0:
         return float("nan")
     return float(daily.mean() / daily.std() * np.sqrt(252))
@@ -237,8 +237,8 @@ def _reweighted_sharpe(trades: pd.DataFrame, weights: Dict[str, float]) -> float
     t["w"] = t["pair_key"].map(weights).fillna(1.0)
     t["weighted_pnl"] = t["pnl_net"] * t["w"]
     t["exit_time"] = pd.to_datetime(t["exit_time"])
-    s = pd.Series(t["weighted_pnl"].values, index=pd.DatetimeIndex(t["exit_time"])).sort_index()
-    daily = s.resample("1D").sum()
+    import portfolio_math
+    daily = portfolio_math.daily_pnl_from_exits(t["exit_time"], t["weighted_pnl"].values)  # business days, code review P1
     if len(daily) < 5 or daily.std() == 0:
         return float("nan")
     return float(daily.mean() / daily.std() * np.sqrt(252))

@@ -31,21 +31,40 @@ import numpy as np
 import pandas as pd
 
 
-def daily_pnl_from_exits(exit_times, pnl_values) -> pd.Series:
-    """Zero-filled daily P&L series from trade-level exit times + P&L values."""
+def daily_pnl_from_exits(exit_times, pnl_values, start=None, end=None) -> pd.Series:
+    """Zero-filled BUSINESS-day P&L series from trade-level exit times + P&L values.
+
+    Business days (Mon-Fri), matching sharpe_from_daily_pnl's sqrt(252) annualization. Fixed
+    2026-09-26 (code review P1): this used resample("1D") -- calendar days, inserting Saturday/
+    Sunday zeros that shrink the mean and the variance per row and bias every Sharpe built on it
+    -- and zero-filled only from the first to the last exit. Pass `start`/`end` (the evaluation
+    window, e.g. a WFA fold's test window) to zero-fill genuine no-trade days at the edges too
+    (R5.1). A weekend exit (24/7 assets) is booked on the preceding business day."""
     exit_times = list(exit_times)
-    if len(exit_times) == 0:
-        return pd.Series(dtype=float)
-    s = pd.Series(list(pnl_values), index=pd.DatetimeIndex(pd.to_datetime(exit_times))).sort_index()
-    return s.resample("1D").sum()
+    idx = pd.DatetimeIndex(pd.to_datetime(exit_times)) if exit_times else pd.DatetimeIndex([])
+    s = pd.Series(list(pnl_values), index=idx, dtype=float).sort_index()
+    if len(s):
+        days = s.index.normalize()
+        wkend = days.dayofweek >= 5
+        days = days.where(~wkend, days - pd.to_timedelta(days.dayofweek - 4, unit="D"))
+        s = s.groupby(days).sum()
+    if start is None and end is None:
+        if len(s) == 0:
+            return pd.Series(dtype=float)
+        start, end = s.index.min(), s.index.max()
+    start = pd.Timestamp(start).normalize() if start is not None else s.index.min()
+    end = pd.Timestamp(end).normalize() if end is not None else s.index.max()
+    grid = pd.bdate_range(start, end)
+    return s.reindex(grid, fill_value=0.0).astype(float)
 
 
-def daily_pnl_from_trades(trades: pd.DataFrame, pnl_col: str = "pnl_net") -> pd.Series:
+def daily_pnl_from_trades(trades: pd.DataFrame, pnl_col: str = "pnl_net", start=None, end=None) -> pd.Series:
     """Same as daily_pnl_from_exits, reading a trades DataFrame with an
     'exit_time' column and pnl_col (defaults to 'pnl_net')."""
     if trades is None or len(trades) == 0:
-        return pd.Series(dtype=float)
-    return daily_pnl_from_exits(trades["exit_time"], trades[pnl_col])
+        return pd.Series(dtype=float) if start is None or end is None else \
+            pd.Series(0.0, index=pd.bdate_range(pd.Timestamp(start).normalize(), pd.Timestamp(end).normalize()))
+    return daily_pnl_from_exits(trades["exit_time"], trades[pnl_col], start=start, end=end)
 
 
 def sharpe_from_daily_pnl(daily_pnl: pd.Series, min_days: int = 5, ann_factor: float = 252.0) -> float:

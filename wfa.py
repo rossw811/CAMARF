@@ -43,6 +43,8 @@ from typing import Dict, List, Optional, Tuple
 import numpy as np
 import pandas as pd
 
+
+import portfolio_math  # single source of truth for daily P&L (code review P1)
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from config import Config
@@ -384,7 +386,7 @@ def _portfolio_stats(all_trades: List[WFATrade]) -> Dict:
         [t.pnl_net for t in all_trades],
         index=[t.exit_time for t in all_trades],
     ).sort_index()
-    daily = pnl_s.resample("1D").sum()
+    daily = portfolio_math.daily_pnl_from_exits(pnl_s.index, pnl_s.to_numpy())  # business days, code review P1 (was calendar-day resample + sqrt(252))
     sharpe = float((daily.mean() / daily.std() * np.sqrt(252))
                    if daily.std() > 0 else np.nan)
     cum = daily.cumsum()

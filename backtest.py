@@ -54,6 +54,8 @@ from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
+
+import portfolio_math  # single source of truth for daily P&L (code review P1)
 from scipy.cluster.hierarchy import linkage
 from scipy.spatial.distance import squareform
 
@@ -1243,7 +1245,7 @@ def aggregate_portfolio(
     )
 
     # Portfolio-level Sharpe (daily P&L aggregation across all pairs)
-    daily_pnl = pnl_series.resample("1D").sum()
+    daily_pnl = portfolio_math.daily_pnl_from_exits(pnl_series.index, pnl_series.to_numpy())  # business days, code review P1 (was calendar-day resample + sqrt(252))
     sharpe_port = (daily_pnl.mean() / daily_pnl.std() * np.sqrt(252)
                    if daily_pnl.std() > 0 else np.nan)
 

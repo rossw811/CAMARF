@@ -51,8 +51,8 @@ def pooled_daily_sharpe(pnl: pd.Series, exit_times: pd.Series, entry_times: pd.S
     exit_time (falling back to entry_time when exit_time is null), resample("1D").sum()
     (fills non-trading days with 0, unlike a plain groupby(date)), then mean/std*sqrt(252)."""
     idx = exit_times.where(exit_times.notna(), entry_times)
-    s = pd.Series(pnl.values, index=pd.DatetimeIndex(idx)).sort_index()
-    daily = s.resample("1D").sum()
+    import portfolio_math
+    daily = portfolio_math.daily_pnl_from_exits(idx, pnl.values)  # business days, code review P1
     if daily.std() == 0 or len(daily) == 0:
         return float("nan")
     return float(daily.mean() / daily.std() * np.sqrt(252))
