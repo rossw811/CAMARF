@@ -28570,3 +28570,21 @@ WRDS files restored on CachyOS after this run (they were unreadable during it).
 **D16 fixed (2026-09-27).** The 1,647 zero-byte WRDS files on CachyOS moved to
 `output/cache/_wrds_truncated_backup_20260927/` and replaced with the intact Surface copies (tar over ssh);
 CachyOS now 0 empty of 59,021; spot hash matches.
+
+**Pre-registered strategy search (Design 1) — result, 2026-09-27.** Pre-registration
+`docs/PREREGISTRATION_STRATEGY_SEARCH_2026-09-27.md` (+ Amendment 1, clean pools), both pushed before any result.
+432 trials (216 configs × {pit_k1_clean 1,265 pairs, pit_k2_clean 167 pairs}), OLS, dollar P&L, USD-only legs,
+point-in-time eligible_from, $100k capital-sim, four calendar holdout splits. Outputs:
+`output/research/strategy_search/{summary,all_trials}.parquet`, `latest_run_strategy_search_eval.log`.
+**Verdict: no robust signal in either pool** — the pre-registered criterion (holdout > 0, DSR ≥ 0.95, PBO < 0.20
+in every split) fails in all 8 pool×split cells.
+- k1 selected-config holdout Sharpes by split 50/60/70/80: −0.25, +0.70, +0.58, −1.17 (holdout ranks 159, 2, 3,
+  214 of 216); DSR 0.03 / 0.08 / 0.83 / 0.001; PBO 0.82 / 0.47 / 0.61 / 0.40.
+- k2: −0.16, −0.34, +0.45, +1.19 (ranks 124.5, 177, 24.5, 7.5); DSR ≤ 0.03 everywhere; PBO 0.31–0.56.
+- Selected configuration changes in every split. Descriptively (not significant): all four k1 selections use
+  the wider 4.5 stop and none uses the momentum gate.
+- Exploratory, NOT evidence (post-hoc, and the four holdouts are nested — the 80% holdout lies inside all the
+  others): 20 k1 and 65 k2 configurations have positive holdout Sharpe in all four splits; median holdout
+  Sharpe ≤ 0 in 7 of 8 cells.
+Caveats: USD-only legs (FX pending); spreads rebuilt from CRSP total return but discovery itself not yet re-run
+with the dedupe/USD fixes; capital-sim on dollar P&L.
