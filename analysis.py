@@ -278,6 +278,11 @@ class PairResult:
     coint_pvalue_raw_ab: Optional[float] = None  # OLS(A on B) direction
     coint_pvalue_raw_ba: Optional[float] = None  # OLS(B on A) direction
 
+    # Why coint_fraction_rolling is what it is (A6/S10, 2026-09-28): "ok", "insufficient_history",
+    # "no_valid_windows", "not_computed", or "error: ...". A NaN fraction is kept by the stability filter ONLY
+    # when the history is too short to test; a crashed or never-computed test is excluded (coint_frac_decision).
+    coint_fraction_status: str = ""
+
 
 @dataclass
 class TrioResult:
@@ -1924,6 +1929,7 @@ def _rolling_coint_worker(
                 "symbol_b": sym_b,
                 "fraction": np.nan,
                 "n_windows": 0,
+                "status": "insufficient_history",
             }
         # Batched (2026-08-23, replaces a per-window coint() loop -- see
         # _batched_eg_fixed_lag_tstat's docstring; same fixed-lag EG test, 94.9x faster at
@@ -1947,13 +1953,16 @@ def _rolling_coint_worker(
             "symbol_b": sym_b,
             "fraction": float(frac),
             "n_windows": int(n_windows),
+            "status": "ok" if n_windows > 0 else "no_valid_windows",
         }
-    except Exception:
+    except Exception as e:
+        # A6/S10 (2026-09-28): a crash used to return an unlabelled NaN, which the coint_frac filter KEPT.
         return {
             "symbol_a": sym_a,
             "symbol_b": sym_b,
             "fraction": np.nan,
             "n_windows": 0,
+            "status": f"error: {type(e).__name__}: {e}"[:200],
         }
 
 
@@ -2302,16 +2311,18 @@ class CointScanner:
             f"(window={window}, step={step})..."
         )
         t0 = time.time()
-        fracs = {}
+        fracs, statuses = {}, {}
         with ProcessPoolExecutor(max_workers=n_workers, initializer=_limit_worker_blas_threads) as pool:
             for r in pool.map(_rolling_coint_worker, tasks, chunksize=20):
                 fracs[(r["symbol_a"], r["symbol_b"])] = r["fraction"]
+                statuses[(r["symbol_a"], r["symbol_b"])] = r.get("status", "")
         log.info(f"  [{tf_label}] Rolling coint complete in {time.time()-t0:.1f}s")
 
         # Attach fractions back to confirmed pairs
         for p in confirmed_pairs:
             key = (p["symbol_a"], p["symbol_b"])
             p["coint_fraction_rolling"] = float(fracs.get(key, np.nan))
+            p["coint_fraction_status"] = statuses.get(key, "not_computed")  # no task = log prices unavailable
 
         return confirmed_pairs
 
@@ -5832,6 +5843,7 @@ class AnalysisPipeline:
             ),
             coint_pvalue_adjusted=float(pd_meta.get("coint_pvalue_adjusted", np.nan)),
             coint_fraction_rolling=float(pd_meta.get("coint_fraction_rolling", np.nan)),
+            coint_fraction_status=str(pd_meta.get("coint_fraction_status", "")),
             hedge_ratio_ols=(
                 float(hr["ols_point"]) if np.isfinite(hr["ols_point"]) else np.nan
             ),
@@ -6202,6 +6214,21 @@ class AnalysisPipeline:
     _MIN_BARS_FOR_SECONDARY_EVIDENCE = 3 * 252
 
     @staticmethod
+    def coint_frac_decision(p) -> str:
+        """The coint_fraction stability filter, in ONE place (analysis._save_tf_results and pit_wfa used two copies).
+        Returns "pass", "override" (secondary evidence), "untestable_kept" (history too short for one rolling
+        window -- kept and counted), or "excluded" (below threshold without override, or a crashed / never
+        computed / all-invalid test). A6/S10 (2026-09-28): every NaN used to pass, including crashed tests."""
+        thr = Config.UNIVERSE.MIN_COINT_FRAC  # no silent default (the copies defaulted to 0.40; config is 0.70)
+        cf = getattr(p, "coint_fraction_rolling", np.nan)
+        cf = np.nan if cf is None else float(cf)
+        if np.isfinite(cf):
+            if cf >= thr:
+                return "pass"
+            return "override" if AnalysisPipeline.passes_coint_frac_secondary_evidence(p) else "excluded"
+        return "untestable_kept" if getattr(p, "coint_fraction_status", "") == "insufficient_history" else "excluded"
+
+    @staticmethod
     def passes_coint_frac_secondary_evidence(p: PairResult) -> bool:
         """
         True if a pair below Config.UNIVERSE.MIN_COINT_FRAC should be kept
@@ -6323,20 +6350,21 @@ class AnalysisPipeline:
         # answers a different question (how strong is the reversion, given
         # it's happening) already gated separately via passes_ml_gate, not
         # whether the relationship itself is stable over time.
-        _MIN_COINT_FRAC = getattr(Config.UNIVERSE, "MIN_COINT_FRAC", 0.40)
+        _MIN_COINT_FRAC = Config.UNIVERSE.MIN_COINT_FRAC
 
         _n_before = len(discovered_pairs)
         _n_override = 0
         _kept = []
+        _decisions = {}
         for p in discovered_pairs:
-            cf = getattr(p, "coint_fraction_rolling", np.nan)
-            if not np.isfinite(cf) or cf >= _MIN_COINT_FRAC:
-                _kept.append(p)
-            elif AnalysisPipeline.passes_coint_frac_secondary_evidence(p):
+            dec = AnalysisPipeline.coint_frac_decision(p)  # shared with pit_wfa (A6/S10)
+            _decisions[dec] = _decisions.get(dec, 0) + 1
+            if dec == "override":
                 p.coint_frac_secondary_override = True
-                _kept.append(p)
                 _n_override += 1
-            # else: excluded
+            if dec != "excluded":
+                _kept.append(p)
+        log.info(f"  [{tf_label}] coint_frac filter decisions: {_decisions}")
         discovered_pairs = _kept
         if funnel is not None:
             funnel.record("coint_frac_threshold_pairs", _n_before, len(discovered_pairs))

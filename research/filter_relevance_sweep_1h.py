@@ -95,8 +95,10 @@ def analyze_pair(sym_a, sym_b):
         return {"symbol_a": sym_a, "symbol_b": sym_b, "status": "build_pair_result_failed"}
     pair_result, per_bar = built
 
-    min_coint_frac = getattr(Config.UNIVERSE, "MIN_COINT_FRAC", 0.70)
-    passes_coint_frac = (not np.isfinite(coint_frac)) or coint_frac >= min_coint_frac
+    # shared decision (A6/S10, 2026-09-28): NaN passes only when the history was too short to test
+    pair_result.coint_fraction_rolling = coint_frac
+    pair_result.coint_fraction_status = rc_result.get("status", "")
+    passes_coint_frac = AnalysisPipeline.coint_frac_decision(pair_result) in ("pass", "untestable_kept")
     passes_secondary = AnalysisPipeline.passes_coint_frac_secondary_evidence(pair_result)
 
     spread_df = pd.DataFrame({
