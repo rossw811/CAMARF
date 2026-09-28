@@ -195,7 +195,7 @@ def _dir_signature(directory: str) -> tuple:
 
 # Bumped whenever the merge semantics change, so a memo built under older semantics is never served back
 # (code review U6: the key covered file counts/mtimes and arguments but not the loader logic).
-_LOADER_VERSION = "2026-09-27-wrds-priority-dedupe"
+_LOADER_VERSION = "2026-09-27-wrds-priority-dedupe-tr"
 
 
 def _memo_signature(tf_label, include_yfinance, include_wrds, include_binance, include_ibkr, columns):
@@ -277,9 +277,24 @@ def _read_one(cache_dir: str, filename: str, sym: str, columns=None):
     return sym, None
 
 
-def _load_dir(cache_dir: str, suffix: str, columns=None) -> dict:
+def _use_total_return(df):
+    """WRDS: `close` := close_total_return where present (code review U4 -- discovery tests CRSP total
+    return; price-only close carries ex-dividend drops), then normalise nullable dtypes (pd.NA) to
+    float64 (they broke downstream numpy code, 2026-09-27)."""
+    if "close_total_return" in df.columns:
+        tr = df["close_total_return"]
+        if tr.notna().any():
+            df = df.copy()
+            df["close"] = tr
+        df = df.drop(columns=["close_total_return"])
+    return df.apply(pd.to_numeric, errors="coerce").astype("float64")
+
+
+def _load_dir(cache_dir: str, suffix: str, columns=None, total_return: bool = False) -> dict:
     if not suffix or not os.path.isdir(cache_dir):
         return {}
+    if total_return and columns is not None and "close" in columns and "close_total_return" not in columns:
+        columns = list(columns) + ["close_total_return"]  # a file lacking it falls back to a full read
     file_suffix = f"_{suffix}.parquet"
     candidates = [
         (f, f[: -len(file_suffix)]) for f in os.listdir(cache_dir) if f.endswith(file_suffix)
@@ -607,7 +622,8 @@ def load_full_universe(tf_label: str = "1D", include_yfinance: bool = True,
     if include_ibkr and tf_label in _IBKR_SUFFIX:
         merged.update(_load_ibkr_dir(_IBKR_CACHE_DIR, _IBKR_SUFFIX[tf_label], columns=columns))
     if include_wrds and tf_label in _WRDS_SUFFIX:
-        merged.update(_load_dir(_WRDS_CACHE_DIR, _WRDS_SUFFIX[tf_label], columns=columns))
+        merged.update({k: _use_total_return(v) for k, v in
+                       _load_dir(_WRDS_CACHE_DIR, _WRDS_SUFFIX[tf_label], columns=columns, total_return=True).items()})
     # One label per security (2026-09-27): drop labels whose return series is identical to another's
     # (ticker + own PERMNO alias, or two tickers with identical data) -- see dedupe_identical_series.
     if dedupe and (columns is None or "close" in columns):
