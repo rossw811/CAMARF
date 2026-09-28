@@ -81,7 +81,10 @@ What changes, and why (all fixes committed before this amendment; details in doc
   `research/clean_pool_identity_pairs.py`); no additional filtering or selection. Their sizes are reported as found.
 - **Legs:** all legs priced in USD — CRSP legs as before, Compustat Global legs via `close_usd`. A trade whose legs
   lack a USD price at entry or exit is excluded and the count is reported (in the first pass ~69% of trades were
-  excluded as non-USD).
+  excluded as non-USD). **Disclosed accounting asymmetry:** CRSP legs are total return (dividends included),
+  Compustat Global legs are split-adjusted PRICE only (Compustat's `trfd` total-return factor has not been verified
+  against real dividend events, data_wrds.py) — a pair with a Compustat leg omits that leg's dividends. If `trfd`
+  is verified and applied before the second pass runs, this note is replaced by a dated addendum saying so.
 - **Intraday discovery** runs without IBKR deep history (`include_ibkr=False`, Ross 2026-09-27), so 1h/4h pairs rest
   on yfinance's ~730-day intraday history only.
 Unchanged: grid (216 configurations), both pool arms, N = 432 for the DSR, the four calendar splits and 1% embargo,
