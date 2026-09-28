@@ -93,7 +93,22 @@ def build_full_market_label_map(master_df: pd.DataFrame) -> dict:
     # ALL permnos, regardless of whether they have a usable ticker -- a
     # null-ticker permno must still get fetched, just under a PERMNO<n>
     # fallback label, not silently dropped from the universe entirely.
-    all_permnos = list(last_known_raw.keys())
+    # ORDER MATTERS (code review D17, 2026-09-27): build_delisted_label_map gives a contested ticker to the FIRST
+    # permno it sees. Permnos used to arrive in ascending (= oldest-first) order, so the OLDEST holder of a
+    # reused ticker claimed it -- 2,719 of 4,327 shared tickers, incl. 707 whose most recent holder is listed
+    # today (label "A" held a pre-1999 company, not Agilent). The ticker now goes to its MOST RECENT holder:
+    # currently-listed first, then latest name-end date; older holders get PERMNO<n>.
+    recency = master_df.groupby("permno").agg(_cur=("is_current", "max"), _end=("nameenddt", "max"))
+    # Share classes can share a ticker (WSO: permnos 46068 / 66376); among equally recent holders the one whose
+    # trading symbol IS the ticker wins (v2 master only; the legacy master has no tradingsymbol column).
+    if "tradingsymbol" in master_df.columns:
+        last_row = master_df.sort_values("namedt").groupby("permno").last()
+        sym_match = (last_row["tradingsymbol"] == last_row["ticker"]).to_dict()
+    else:
+        sym_match = {}
+    all_permnos = sorted(last_known_raw.keys(),
+                         key=lambda p: (not bool(recency.at[p, "_cur"]), -pd.Timestamp(recency.at[p, "_end"]).value,
+                                        not sym_match.get(p, False), p))
     # Real bug caught on the actual run (2026-08-13): some CRSP tickers are
     # genuinely None/NaN (not a missing dict key -- a real null value for
     # that permno). build_delisted_label_map's `.get(p, default)` fallback

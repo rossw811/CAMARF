@@ -416,14 +416,27 @@ class COTFeed:
     disk cache keyed as "cot_{contract_key}" under "weekly" frequency.
     """
 
-    # Contract filter strings (market_and_exchange_names field in CFTC data).
-    # Verified 2026-06-27 against 6dca-aqww (Legacy Futures Only).
-    # ES: "E-MINI S&P 500 - CHICAGO MERCANTILE EXCHANGE" (prefix match)
-    # NQ: "NASDAQ MINI - CHICAGO MERCANTILE EXCHANGE" (renamed; old "E-MINI NASDAQ 100" is pre-2000)
-    CONTRACTS: Dict[str, str] = {
-        "ES": "E-MINI S&P 500",
-        "NQ": "NASDAQ MINI",
+    # EXACT market_and_exchange_names per contract, in chronological order (code review M12, 2026-09-27). CFTC
+    # renamed the E-mini contracts; the former NQ prefix "NASDAQ MINI" matched only the 2022+ name, so NQ positioning
+    # silently started 2022-02-08 (242 weeks) instead of 1999 -- the 2000-2022 name is "NASDAQ-100 STOCK INDEX (MINI)".
+    # Names and date ranges queried from 6dca-aqww 2026-09-27; they do not overlap in time (checked at fetch).
+    CONTRACTS: Dict[str, List[str]] = {
+        "ES": ["E-MINI S&P 500 STOCK INDEX - INTERNATIONAL MONETARY MARKET",      # 1997-09 .. 2000-08
+               "E-MINI S&P 500 STOCK INDEX - CHICAGO MERCANTILE EXCHANGE",        # 2000-08 .. 2022-02
+               "E-MINI S&P 500 - CHICAGO MERCANTILE EXCHANGE"],                   # 2022-02 ..
+        "NQ": ["E-MINI NASDAQ 100 STOCK INDEX - INTERNATIONAL MONETARY MARKET",   # 1999-06 .. 1999-12
+               "NASDAQ-100 STOCK INDEX (MINI) - INTERNATIONAL MONETARY MARKET",   # 1999-12 .. 2000-08
+               "NASDAQ-100 STOCK INDEX (MINI) - CHICAGO MERCANTILE EXCHANGE",     # 2000-08 .. 2022-02
+               "NASDAQ MINI - CHICAGO MERCANTILE EXCHANGE"],                      # 2022-02 ..
     }
+
+    @staticmethod
+    def _where_clause(contract_key: str) -> str:
+        names = COTFeed.CONTRACTS.get(contract_key)
+        if not names:
+            raise KeyError(f"COTFeed: no contract names for {contract_key!r}")
+        quoted = ",".join("'" + n.replace("'", "''") + "'" for n in names)
+        return f"market_and_exchange_names in ({quoted})"
 
     # CFTC Socrata API — public, no key.
     # Dataset 6dca-aqww: Legacy Futures Only (COT) report via publicreporting.cftc.gov.
@@ -461,9 +474,8 @@ class COTFeed:
             COTFeed._SESSION_CACHE[contract_key] = cached
             return cached
 
-        name_filter = COTFeed.CONTRACTS.get(contract_key, contract_key)
         params = {
-            "$where": f"market_and_exchange_names like '{name_filter}%'",
+            "$where": COTFeed._where_clause(contract_key),
             "$select": "report_date_as_yyyy_mm_dd,noncomm_positions_long_all,"
                        "noncomm_positions_short_all,open_interest_all",
             "$order": "report_date_as_yyyy_mm_dd ASC",
@@ -486,12 +498,17 @@ class COTFeed:
                             "open_interest_all"):
                     df[col] = pd.to_numeric(df[col], errors="coerce")
                 df = df.set_index("date").sort_index()
+                if df.index.duplicated().any():   # two contract names on one report date would double-count
+                    raise ValueError(f"COT {contract_key}: {int(df.index.duplicated().sum())} report dates appear "
+                                     f"under more than one contract name -- names overlap, fix CONTRACTS")
                 oi = df["open_interest_all"].replace(0, np.nan)
                 df["net_spec_pct"] = (
                     df["noncomm_positions_long_all"] - df["noncomm_positions_short_all"]
                 ) / oi
                 fresh = df[["net_spec_pct"]]
                 break
+            except ValueError:
+                raise  # overlapping contract names (M12 guard) -- a data-definition error, not a transient one
             except Exception as e:
                 log.debug(f"COT fetch error ({contract_key}, attempt {attempt+1}): {e}")
                 time.sleep(Config.MACRO.FETCH_RETRY_DELAY_SEC)
