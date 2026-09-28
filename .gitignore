@@ -18,7 +18,9 @@ id_rsa.*
 # than tracking multi-GB binary parquet in git history. latest_run_*.log
 # summaries at repo root are small, curated, and intentionally still tracked
 # (the pattern below matches the raw stdout/stderr dumps, NOT that file).
-output/
+# output/* (not output/) so the lineage manifests -- small JSON change records, see lineage.py -- can be tracked.
+output/*
+!output/lineage/
 
 # graphify-out/: the interactive chart + report ARE tracked (graph.html,
 # graph_standalone.html, graph.json, GRAPH_REPORT.md, manifest.json) so the
