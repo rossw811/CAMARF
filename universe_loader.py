@@ -134,9 +134,12 @@ _IO_WORKERS = 32  # raised from 16 (2026-08-23) -- benchmarked (noisy, contended
 # jumping straight to 128
 
 _YF_CACHE_DIR = Config.DATA.CACHE_DIR
-_WRDS_CACHE_DIR = os.path.join("output", "cache", "wrds")
-_BINANCE_CACHE_DIR = os.path.join("output", "cache", "binance")
-_IBKR_CACHE_DIR = os.path.join("output", "cache", "ibkr_supplement")
+# Anchored to this module's location (code review U1, 2026-09-26): relative paths made a run from any other
+# working directory silently load only the yfinance universe (~1,700 of ~44,700 symbols) and memoize it.
+_ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
+_WRDS_CACHE_DIR = os.path.join(_ROOT_DIR, "output", "cache", "wrds")
+_BINANCE_CACHE_DIR = os.path.join(_ROOT_DIR, "output", "cache", "binance")
+_IBKR_CACHE_DIR = os.path.join(_ROOT_DIR, "output", "cache", "ibkr_supplement")
 # IBKR files are named "{symbol}_{suffix}_deep.parquet", not "{symbol}_{suffix}.parquet"
 # like every other source -- handled via _ibkr_deep_suffix below, not the shared _load_dir.
 _IBKR_FILE_SUFFIX = "_deep"
@@ -174,7 +177,7 @@ _IBKR_SUFFIX = {"1D": "1day", "1h": "1hr", "4h": "4hr", "30m": "30min",
 # cheap per-source-directory signature (file count + max mtime, stat-only -- no content hashing)
 # so a cache built before a fresh data.py/data_wrds.py run is never silently reused after new
 # files land; it's invalidated and rebuilt instead, transparently, the next time it's requested.
-_MEMO_CACHE_DIR = os.path.join("output", "cache", "_universe_loader_memo")
+_MEMO_CACHE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "output", "cache", "_universe_loader_memo")
 
 
 def _dir_signature(directory: str) -> tuple:
@@ -636,8 +639,13 @@ def load_full_universe(tf_label: str = "1D", include_yfinance: bool = True,
     if include_ibkr and tf_label in _IBKR_SUFFIX:
         merged.update(_load_ibkr_dir(_IBKR_CACHE_DIR, _IBKR_SUFFIX[tf_label], columns=columns))
     if include_wrds and tf_label in _WRDS_SUFFIX:
-        merged.update({k: _use_total_return(v) for k, v in
-                       _load_dir(_WRDS_CACHE_DIR, _WRDS_SUFFIX[tf_label], columns=columns, total_return=True).items()})
+        _wrds = _load_dir(_WRDS_CACHE_DIR, _WRDS_SUFFIX[tf_label], columns=columns, total_return=True)
+        # Universe-size guard (CLAUDE.md: a silent shrink was caught once already): WRDS requested for a
+        # TF it covers but ZERO files loaded means a wrong/missing cache dir, not an empty market.
+        if not _wrds:
+            raise RuntimeError(f"universe_loader: include_wrds=True for {tf_label} but 0 WRDS files loaded from "
+                               f"{_WRDS_CACHE_DIR} -- refusing to return a silently shrunken universe")
+        merged.update({k: _use_total_return(v) for k, v in _wrds.items()})
     # One label per security (2026-09-27): drop labels whose return series is identical to another's
     # (ticker + own PERMNO alias, or two tickers with identical data) -- see dedupe_identical_series.
     if dedupe and (columns is None or "close" in columns):
