@@ -676,8 +676,12 @@ currencies, incl. legacy) being fetched; ADR real-data check pending.
 - **D19 NEW — 3,256 WRDS 1D files with no valid price.** All 3,256 permnos have rows in `dsf_v2`; spot checks
   (FRME, AMSC) show clean trade prices, while the cached files hold ~450-800 all-NaN rows — remnants of an earlier
   broken fetch. Being refetched (backups `output/cache/wrds/_backup_empty_refetch_20260927/`). 2,758 of the permnos
-  have `dlyprc` but no `dlyclose` over their whole history — whether they stay empty after the refetch decides a
-  D18-linked question (use |dlyprc| with a quote flag, or exclude).
+  have `dlyprc` but no `dlyclose` over their whole history. **Refetch result:** 498 recovered with valid prices (median
+  996 rows); the 2,758 still without a close are ALL Nasdaq securities that ended by 1992 (median 1985, first 1972) —
+  pre-1992 Nasdaq reported bid/ask quotes only, so CRSP holds a quote midpoint and no trade close. **Kept excluded
+  and disclosed:** early Nasdaq small caps (1972-1992) are absent from the deep-history universe (a coverage bias for
+  pre-1993 windows). Using |dlyprc| is the standard CRSP convention but would put quote-midpoint-only series into the
+  universe — decide together with D18.
 - **D18 NEW, OPEN (for the sweep) — trade prices vs quote midpoints.** CRSP `dlyclose` is null on no-trade days, but
   `dlyret` (→ `close_total_return`) uses the bid/ask midpoint there. The loader prefers `close_total_return`, so for
   illiquid names it mixes midpoint moves into a series other paths treat as trades (Watsco B: 17 trades/yr, a TR value

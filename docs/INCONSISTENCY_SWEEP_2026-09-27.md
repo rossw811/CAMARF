@@ -43,3 +43,39 @@ negligible.
 (percent) vs percent thresholds; VIX level vs 15/25/35; VXV/VIX ratio vs 0.95/1.00/1.10; COT net spec (fraction of
 OI, −0.51..0.61) vs −0.10/0.15; Sahm (pp, max 9.43 in 2020) vs 0.5. Known, documented limit: HY OAS only 752 days
 (keyless FRED cap), so `credit_regime` is never "wide".
+
+**C4-1 FIXED — WFA fold Sharpe annualized per-TRADE P&L by √(bars/year).** `wfa._fold_metrics` still had the bug
+`backtest.compute_metrics` fixed on 2026-09-04 (the fix was never propagated): a per-trade series treated as a per-bar
+series. Monthly trades on a 1D pair read 4.10 instead of 0.91 (~4.5× high); the 4h entry also used 252 bars/year
+instead of 2×252. One implementation now: `portfolio_math.trade_frequency_sharpe` (√(trades/year) over first entry ..
+last exit), used by both. Test `_verify_wfa_trade_sharpe.py` 0/3 → 3/3 (backtest and WFA agree); existing
+`_verify_compute_metrics_sharpe_annualization_fix.py` 5/5. **Every WFA fold Sharpe produced before this is wrong.**
+
+**C6-1 FIXED — WFA silently used stale spreads.** `wfa._load_spread` fell back to `output/results/<tf>_stale/` when the
+current spread file was missing. Now current-only; a stale file is logged and skipped. Test 1/2 → 2/2. (No `_stale`
+directories exist on the Surface; CachyOS to be checked.)
+
+**C6-2 SURFACED — legacy capital-sim charged zero notional for legs with no price.** `portfolio_sim.notional_at_entry`
+prices legs from a registered series or the yfinance 1h cache; most WRDS-only symbols have neither, so in
+`pnl_mode="legacy"` such trades were silently skipped (both legs missing) or under-charged capital (one leg). The
+current dollar mode takes notional from `pnl_dollar` and is unaffected. Legacy behaviour kept (its results are being
+withdrawn per PAPER_SCRUTINY) but the count is now logged and returned (`n_missing_leg_price`). Replay suites pass.
+
+**C4-2 OPEN — research EG p-values differ from production's.** `eg_permutation_check._eg_pvalue`,
+`lead_lag_scan._eg_pvalue`, `smoothing_comparison._eg_pvalue` test `a[isfinite(a)&isfinite(b)]` — splicing across
+genuine data gaps (production's `_eg_worker` keeps the longest gap-free run, BUG-D77) — and one direction only
+(production combines both). `eg_permutation_check` backs a PAPER.md claim (line ~3290), `lead_lag_scan` FINDINGS
+#27-area claims. Fix: route through the production EG path; re-derive the affected numbers.
+
+**M-1 OPEN (methodology, for Ross) — non-like-for-like null in `trend_dominance_diagnostic.leg_corrected_pvalue`.**
+The real pair's EG statistic is computed on contemporaneous, date-aligned data; the null distribution comes from
+random partners right-aligned by COUNT after dropping NaNs (non-contemporaneous by design). The real statistic shares
+the market factor, the null does not, so the correction is biased. Same design in `eg_null_calibration_montecarlo`,
+where it is the intended null ("unrelated and non-contemporaneous") — worth stating that it is not the
+"unrelated but contemporaneous" null a reader might assume.
+
+**Checked, disclosed — full-sample OLS spreads.** `research/spread_construction.full_sample_ols_spread` (non-causal
+hedge ratio) is used by 5 research scripts; its docstring and every caller state it is not point-in-time.
+
+**Stale test fixed — `_verify_pdr_calmar.py`.** Expected Calmar used 9 calendar days (pre-P1); the business-day basis
+gives 6 days (Saturday exit booked Friday), matching the code's 5,317.26. Expectation now derived, not hard-coded.
