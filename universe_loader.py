@@ -407,6 +407,12 @@ def align_to_common_calendar(merged: dict, lookback_years: int = 10) -> dict:
     cutoff = all_dates.max() - np.timedelta64(int(lookback_years * 365.25), "D")
     all_dates = all_dates[all_dates >= cutoff]
     canonical_index = pd.DatetimeIndex(all_dates)
+    # DAILY calendar excludes Saturday/Sunday (code review U3, 2026-09-26): crypto's weekend bars added
+    # weekend rows that are NaN for every equity, and np.diff log returns then made every equity Monday
+    # return NaN (~20% of daily returns, incl. all weekend-news moves). Crypto's weekend move folds into
+    # Monday's close-to-close return. Intraday grids are unaffected (they are not all-midnight).
+    if len(canonical_index) and (canonical_index.hour == 0).all() and (canonical_index.minute == 0).all():
+        canonical_index = canonical_index[canonical_index.dayofweek < 5]
 
     out = {}
     for sym, df in merged.items():
