@@ -541,3 +541,15 @@ Each fix removes exactly the defect it targets and cuts losses by up to two-thir
 even before costs; the one positive number (directional stop OOS +0.039) is 1 of 14 trials and not evidence.
 `corr_exit` (default rule) remains structurally unreachable — its intent is covered by `real_corr_exit`; `data_gap`
 force-close becomes testable only once gap flags survive into spread files (B1/D-series).
+
+**Data-layer round 2 (2026-09-27):** U4 FIXED (loader uses CRSP close_total_return, float64; test 2/6 → 6/6).
+D5 FIXED — `align_intraday` masks closed-market rows (non-crypto: missing rows at a time of day the asset never
+trades → DATA_GAP), so a 4h weeknight is no longer FILL (test: 56 overnight FILL rows → 62 DATA_GAP; crypto
+unaffected; 24-script gap/alignment suite passes). U2 FIXED — `align_to_common_calendar` converts tz-aware
+intraday stamps to ET before dropping the tz (Binance 14:30 UTC → 10:30 ET), daily keeps its date (test 1/4 →
+4/4 incl. existing calendar/loader suites). **D11 NOT changed, by design for now:** `data._standardize` strips tz
+without converting, but `snap_timestamps`' BUG-D57 fix relies on that (a naive index for an exchange-suffixed
+symbol is treated as that exchange's local time); converting there would silently break .L/.T/.HK intraday.
+Needs a coordinated redesign of both functions; current pool exposure nil (intraday pairs are US equities, ET).
+FX: `fx_convert.py` (8/8 hand-computed) built; per-listing currency periods + Compustat daily rates (205
+currencies, incl. legacy) being fetched; ADR real-data check pending.

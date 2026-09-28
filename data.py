@@ -1308,6 +1308,15 @@ class DataAligner:
                         GapFlag.DATA_GAP if run_len > _MAX_FILL_BARS else GapFlag.FILL
                     )
 
+                # Closed-market rows (code review D5, 2026-09-26): for a non-crypto asset, a missing
+                # grid row at a time of day the asset NEVER trades is the market being closed, not
+                # missing data. The run-length rule alone flagged a 4h weeknight (exactly 4 missing
+                # bars) as FILL and forward-filled it into correlation/EG. Mask those rows instead.
+                if not is_crypto_asset:
+                    _tod = df_aligned.index.hour * 60 + df_aligned.index.minute
+                    _traded_tods = set(np.asarray(_tod)[~missing_bool])
+                    _closed = missing_bool & ~np.isin(np.asarray(_tod), list(_traded_tods))
+                    gap_flag = np.where(_closed, GapFlag.DATA_GAP, gap_flag).astype(gap_flag.dtype)
                 df_aligned["gap_flag"] = gap_flag
                 df_aligned["is_gap"] = missing_bool
 
