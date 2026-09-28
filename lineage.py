@@ -90,12 +90,14 @@ class Stage:
             if i in self.lin._stages:
                 ups[i] = self.lin._stages[i].seed()
             else:
-                paths[i] = fingerprint(self._abs(i))
-        code = {c: fingerprint(self._abs(c)) for c in self.code}
+                paths[i] = self.lin._fp(self._abs(i))
+        code = {c: self.lin._fp(self._abs(c)) for c in self.code}
         return {"upstream": ups, "inputs": paths, "code": code, "params": self.params}
 
     def seed(self) -> str:
-        return _sha(json.dumps(self.parts(), sort_keys=True).encode())
+        if self.name not in self.lin._seed_cache:
+            self.lin._seed_cache[self.name] = _sha(json.dumps(self.parts(), sort_keys=True).encode())
+        return self.lin._seed_cache[self.name]
 
     def manifest(self) -> Optional[dict]:
         p = os.path.join(self.lin.manifest_dir, f"{self.name}.json")
@@ -105,6 +107,7 @@ class Stage:
             return json.load(f)
 
     def status(self) -> dict:
+        self.lin._clear_if_top()
         m, now = self.manifest(), self.parts()
         seed = _sha(json.dumps(now, sort_keys=True).encode())
         if m is None:
@@ -120,11 +123,17 @@ class Stage:
         if old.get("params") != now["params"]:
             reasons.append("params changed")
         for o, fp in m.get("outputs", {}).items():
-            if fingerprint(self._abs(o)) != fp:
+            if self.lin._fp(self._abs(o)) != fp:
                 reasons.append(f"output changed since recorded: {o}")
         for u in self.inputs:
-            if u in self.lin._stages and not self.lin._stages[u].status()["up_to_date"]:
-                reasons.append(f"upstream stale: {u}")
+            if u in self.lin._stages:
+                self.lin._depth += 1
+                try:
+                    stale = not self.lin._stages[u].status()["up_to_date"]
+                finally:
+                    self.lin._depth -= 1
+                if stale:
+                    reasons.append(f"upstream stale: {u}")
         return {"up_to_date": not reasons, "seed": seed, "recorded_seed": m.get("seed"), "reason": "; ".join(reasons)}
 
     @property
@@ -133,6 +142,7 @@ class Stage:
 
     def record(self) -> dict:
         """Call after a successful run: writes the manifest (previous one moved to history/)."""
+        self.lin._fp_cache.clear(); self.lin._seed_cache.clear()  # outputs were just written -- fingerprint afresh
         os.makedirs(os.path.join(self.lin.manifest_dir, "history"), exist_ok=True)
         p = os.path.join(self.lin.manifest_dir, f"{self.name}.json")
         if os.path.exists(p):
@@ -154,13 +164,32 @@ class Lineage:
         self.root = root
         self.manifest_dir = manifest_dir or os.path.join(root, "output", "lineage")
         self._stages: Dict[str, Stage] = {}
+        # memo for ONE status/record call (a DAG shares inputs; recomputing each directory fingerprint per downstream
+        # stage took minutes); cleared at the start of every top-level call so results are never stale
+        self._fp_cache: Dict[str, str] = {}
+        self._seed_cache: Dict[str, str] = {}
+        self._depth = 0
+
+    def _fp(self, path: str) -> str:
+        if path not in self._fp_cache:
+            self._fp_cache[path] = fingerprint(path)
+        return self._fp_cache[path]
+
+    def _clear_if_top(self) -> None:
+        if self._depth == 0:
+            self._fp_cache.clear(); self._seed_cache.clear()
 
     def stage(self, name: str, code: List[str], inputs: List[str] = (), outputs: List[str] = (),
               params: Optional[dict] = None) -> Stage:
         return Stage(self, name, code, list(inputs), list(outputs), params)
 
     def status(self) -> Dict[str, dict]:
-        return {n: s.status() for n, s in self._stages.items()}
+        self._fp_cache.clear(); self._seed_cache.clear()
+        self._depth += 1  # keep one memo across the whole DAG pass
+        try:
+            return {n: s.status() for n, s in self._stages.items()}
+        finally:
+            self._depth -= 1
 
 
 def _load_recorded(lin: Lineage) -> None:
