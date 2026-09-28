@@ -686,3 +686,8 @@ currencies, incl. legacy) being fetched; ADR real-data check pending.
   `dlyret` (→ `close_total_return`) uses the bid/ask midpoint there. The loader prefers `close_total_return`, so for
   illiquid names it mixes midpoint moves into a series other paths treat as trades (Watsco B: 17 trades/yr, a TR value
   every day).
+- **R1.1 FX conversion APPLIED (Surface, 2026-09-28 00:03).** `research/apply_fx_to_wrds_global.py` over the 15,195
+  Compustat Global labels: 15,093 converted (`close_usd` added), 101 had no file, 1 had no currency periods; median
+  USD coverage of rows 100%, 14 files < 90% covered. Null-currency periods (22,370 across 12,856 gvkeys, many one-day
+  1984 stubs) convert to NaN, never to an unconverted local price. Report
+  `output/research/apply_fx_to_wrds_global_report.parquet`. ADR real-data check still pending.

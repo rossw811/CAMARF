@@ -249,3 +249,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+    if "eval" in sys.argv[1:]:  # lineage: the stage is complete once the pre-registered evaluation has run
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        from pipeline_stages import stage
+        stage("strategy_search").record()

@@ -292,3 +292,8 @@ def main():
 
 if __name__ == "__main__":
     main()
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    from pipeline_stages import stage  # lineage: record each timeframe this run produced
+    _tf = sys.argv[sys.argv.index("--tf") + 1] if "--tf" in sys.argv else "1h"
+    for _t in (("1h", "4h") if _tf == "both" else (_tf,)):
+        stage(f"intraday_scan_{_t}").record()
