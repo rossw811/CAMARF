@@ -267,6 +267,26 @@ def run_scan(tf_label: str, window_config_name: str, workers: int = 6, tier3_thr
     return results
 
 
+def _guard_stale_resume(tf_label):
+    """Lineage guard (2026-09-28): this scan SKIPS any tier whose output exists and resumes its own checkpoints, so
+    a re-run on changed data silently reused old tiers. Refuse unless the stage is up to date; `--fresh` moves this
+    timeframe's outputs and checkpoints (only its own) to a timestamped backup."""
+    import glob
+    from research.pipeline_stages import stage
+    st = stage(f"intraday_scan_{tf_label}").status()
+    existing = glob.glob(os.path.join(_OUT_DIR, f"intraday_episodic_scan_{tf_label}_tier*.parquet")) +         glob.glob(os.path.join(_OUT_DIR, f"checkpoint_intraday_{tf_label}_*"))
+    if not existing or st["up_to_date"]:
+        return
+    if "--fresh" not in sys.argv:
+        raise SystemExit(f"lineage: {len(existing)} intraday {tf_label} outputs/checkpoints are STALE "
+                         f"({st['reason'][:200]}) -- re-run with --fresh to back them up and start clean")
+    bk = os.path.join(_OUT_DIR, f"_intraday_{tf_label}_backup_{time.strftime('%Y%m%d_%H%M%S')}")
+    os.makedirs(bk, exist_ok=True)
+    for p in existing:
+        os.replace(p, os.path.join(bk, os.path.basename(p)))
+    log.info(f"lineage: --fresh -- moved {len(existing)} stale {tf_label} outputs/checkpoints to {bk}")
+
+
 def main():
     _setup_logging()
     parser = argparse.ArgumentParser()
@@ -275,6 +295,7 @@ def main():
                          default="fixed_min_overlap_2x",
                          help="Default is Step 1's empirically most stable config (CV=0.0 on real data).")
     parser.add_argument("--workers", type=int, default=6)
+    parser.add_argument("--fresh", action="store_true", help="back up stale outputs/checkpoints and start clean")
     parser.add_argument("--tier3-threshold", type=float, default=0.80,
                          help="Rolling correlation prefilter threshold for Tier 3, stricter than "
                               "Tier 2's static Config.UNIVERSE.MIN_PEARSON_CORR=0.40 by design -- "
@@ -284,6 +305,8 @@ def main():
     args = parser.parse_args()
 
     tfs = ["1h", "4h"] if args.tf == "both" else [args.tf]
+    for tf_label in tfs:
+        _guard_stale_resume(tf_label)
     t0 = time.time()
     for tf_label in tfs:
         run_scan(tf_label, args.window_config, workers=args.workers, tier3_threshold=args.tier3_threshold)

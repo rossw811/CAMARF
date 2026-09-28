@@ -35,8 +35,9 @@ def _declare(lin: Lineage) -> Lineage:
                        ("tier1", "tier2_windows", "tier2_confirmed", "tier3_pairs", "tier3_windows", "tier3_confirmed")],
               params={"lookback_years": 50})
     for tf in ("1h", "4h"):
-        lin.stage(f"intraday_scan_{tf}", code=["research/intraday_episodic_scan.py"] + _CORE,
-                  inputs=["output/cache"],
+        lin.stage(f"intraday_scan_{tf}", code=["research/intraday_episodic_scan.py",
+                                               "research/wrds_deep_history_episodic_scan.py"] + _CORE,
+                  inputs=["output/cache", "output/research/intraday_cache_coverage.parquet"],
                   outputs=[f"{_R}/intraday_episodic_scan_{tf}_tier3_windows.parquet"], params={"tf": tf})
     lin.stage("adapter", code=["research/episodic_pairs_adapter.py"] + _CORE,
               inputs=["episodic_scan", "intraday_scan_1h", "intraday_scan_4h"],
