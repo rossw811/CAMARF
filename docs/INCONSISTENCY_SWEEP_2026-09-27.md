@@ -87,3 +87,14 @@ hedge ratio) is used by 5 research scripts; its docstring and every caller state
 
 **Stale test fixed — `_verify_pdr_calmar.py`.** Expected Calmar used 9 calendar days (pre-P1); the business-day basis
 gives 6 days (Saturday exit booked Friday), matching the code's 5,317.26. Expectation now derived, not hard-coded.
+
+**C1-3 FIXED — loader dedupe could not see an alias whose history ends earlier.** `dedupe_identical_series` bucketed
+symbols by their LAST 60 (date, return) values, so a same-security label with a shorter history (a delisted PERMNO
+alias) was never compared and discovery could pair it with itself. Now bucketed by the first AND last 60 values;
+an alias sharing neither end is caught by the new pair-level check `research/clean_pool_identity_pairs.py`, which
+replaces the ad-hoc `clean_pools.py` (it read a side-effect file of the spread regeneration) and decides identity
+from the data (≥99% identical daily returns over ≥60 common days). Tests: `_verify_clean_pool_identity_pairs.py` 4/4
+(the loader-miss check failed before the fix), `_verify_dedupe_identical_series.py` 5/5.
+
+**C0-1 (minor) — `DEVELOPMENT.md` vs `Development.md`.** Git tracks `Development.md`; CLAUDE.md and other docs say
+`DEVELOPMENT.md` — resolves on Windows, not on case-sensitive CachyOS.

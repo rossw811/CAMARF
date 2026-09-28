@@ -199,7 +199,7 @@ def _dir_signature(directory: str) -> tuple:
 
 # Bumped whenever the merge semantics change, so a memo built under older semantics is never served back
 # (code review U6: the key covered file counts/mtimes and arguments but not the loader logic).
-_LOADER_VERSION = "2026-09-27-wrds-priority-dedupe-tr-usd-d16-labels-d17-disjoint"
+_LOADER_VERSION = "2026-09-27-wrds-priority-dedupe-headtail-tr-usd-d16-labels-d17-disjoint"
 
 
 def _memo_signature(tf_label, include_yfinance, include_wrds, include_binance, include_ibkr, columns):
@@ -543,11 +543,16 @@ def dedupe_identical_series(frames: dict, window: int = 60, tol: float = 1e-9):
         if len(r) < window:
             continue
         rets[sym] = r
-        tail = r.iloc[-window:]
-        key = (tuple(tail.index.astype("int64")), tuple(np.round(tail.to_numpy(), 9)))
-        buckets.setdefault(key, []).append(sym)
+        # Bucket by BOTH the first and the last `window` (date, return) values (inconsistency sweep 2026-09-27):
+        # tail-only buckets never compared an alias whose history ENDS earlier (a delisted PERMNO alias), so
+        # discovery could pair it against its own security. An alias sharing neither end is left to the pair-level
+        # check (research/clean_pool_identity_pairs.py).
+        for part in (r.iloc[:window], r.iloc[-window:]):
+            key = (tuple(part.index.astype("int64")), tuple(np.round(part.to_numpy(), 9)))
+            buckets.setdefault(key, []).append(sym)
     removed = {}
     for syms in buckets.values():
+        syms = [s for s in dict.fromkeys(syms) if s not in removed]
         if len(syms) < 2:
             continue
         syms = sorted(syms, key=lambda x: (_label_rank(x), -len(rets[x]), str(x)))
