@@ -79,7 +79,11 @@ def load_daily_prices(symbol: str) -> Optional[pd.DataFrame]:
             continue
         if "close_usd" in d.columns and d["close_usd"].notna().any():
             px = d["close_usd"]
-            tr = px
+            # 2026-09-28: USD total return from Compustat's verified trfd factor when present
+            # (research/apply_trfd_total_return.py) -- before, returns came from the price-only close_usd, so a
+            # Compustat leg's dividends never reached the P&L while CRSP legs' did.
+            tr = d["close_total_return"] if "close_total_return" in d.columns and \
+                d["close_total_return"].notna().any() else px
             usd = True
         else:
             px = d["close"]
