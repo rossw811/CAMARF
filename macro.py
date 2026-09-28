@@ -543,12 +543,15 @@ def _stale_days(reindexed: pd.Series) -> pd.Series:
 # actually released to the public. Currently dormant (nothing consumes
 # macro.build()'s output into RegimeConditioner live today), but would
 # silently activate the moment it is. Approximate real-world publication
-# lags (reference-period end to public release), NOT a precise release
+# lags, measured FROM FRED's period-START stamp (YYYY-MM-01) -- corrected 2026-09-27 (code review M7): these
+# were once described as 'reference-period end to public release' but were always ADDED to the start stamp,
+# so CPI (+15d) was visible ~4 weeks early and FEDFUNDS (+5d) before most of its averaged days. Fixed lags
+# still miss irregular releases (e.g. Oct-2013 shutdown); ALFRED vintages (M11) are the exact fix. NOT a precise release
 # calendar -- documented per-series, not derived from a live BLS/Fed
 # schedule feed:
 _MONTHLY_PUBLICATION_LAG_DAYS: Dict[str, int] = {
-    "fed_funds_rate": 5,      # FEDFUNDS: FRED posts within the first few business days of the following month
-    "cpi": 15,                # CPIAUCSL: BLS CPI release ~mid-month following the reference month
+    "fed_funds_rate": 33,     # FEDFUNDS monthly AVERAGE, stamped at the period START; published early next month (e.g. Jan avg 2020-02-03)
+    "cpi": 46,                # CPIAUCSL stamped at the period START; BLS releases ~10th-15th of the next month (Jan 2020 -> 2020-02-13)
     "unemployment_rate": 40,  # UNRATE: BLS Employment Situation report, ~first Friday of the following month (~5-6 weeks)
     "sahm_indicator": 40,     # derived directly from unemployment_rate -- same real-world availability lag
     # USREC: NBER recession-dating committee announcements are irregular,
