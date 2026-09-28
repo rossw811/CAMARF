@@ -330,6 +330,17 @@ def _load_ibkr_dir(cache_dir: str, suffix: str, columns=None) -> dict:
     return out
 
 
+def _to_et_naive(idx: pd.DatetimeIndex) -> pd.DatetimeIndex:
+    """tz-aware -> ET-naive (project convention). Intraday stamps are CONVERTED to America/New_York before
+    the tz is dropped (code review U2: a bare tz_localize(None) left Binance UTC bars on UTC clock time, 4-5h
+    off equity ET bars); daily stamps (all midnight in their own tz) just drop the tz and keep their date."""
+    if getattr(idx, "tz", None) is None:
+        return idx
+    if (idx.hour == 0).all() and (idx.minute == 0).all():
+        return idx.tz_localize(None)
+    return idx.tz_convert("America/New_York").tz_localize(None)
+
+
 def align_to_common_calendar(merged: dict, lookback_years: int = 10) -> dict:
     """
     Reindexes every symbol's DataFrame in `merged` onto ONE shared
@@ -387,10 +398,7 @@ def align_to_common_calendar(merged: dict, lookback_years: int = 10) -> dict:
     for sym, df in merged.items():
         if df is None or df.empty:
             continue
-        idx = df.index
-        if getattr(idx, "tz", None) is not None:
-            idx = idx.tz_localize(None)
-        idx_arrays.append(idx.values)
+        idx_arrays.append(_to_et_naive(df.index).values)
 
     if not idx_arrays:
         return merged
@@ -406,7 +414,7 @@ def align_to_common_calendar(merged: dict, lookback_years: int = 10) -> dict:
             continue
         if df.index.tz is not None:
             df = df.copy()
-            df.index = df.index.tz_localize(None)
+            df.index = _to_et_naive(df.index)
         reindexed = df[~df.index.duplicated(keep="last")].reindex(canonical_index)
         out[sym] = reindexed
     return out
