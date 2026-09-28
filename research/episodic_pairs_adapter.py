@@ -159,11 +159,14 @@ def _load_symbol(symbol: str, tf_label: str, preloaded: dict = None):
         if os.path.exists(_wp) and os.path.getsize(_wp) > 0:
             try:
                 _w = pd.read_parquet(_wp)
-                if "close_total_return" in _w.columns and _w["close_total_return"].notna().any():
-                    _w = _w.copy()
-                    _w["close"] = _w["close_total_return"]
+                # CRSP total return (US) > close_usd (Compustat Global in USD, R1.1) > plain close
+                for _col in ("close_total_return", "close_usd"):
+                    if _col in _w.columns and _w[_col].notna().any():
+                        _w = _w.copy()
+                        _w["close"] = _w[_col]
+                        break
                 if not _w.empty:
-                    _w = _w.drop(columns=[c for c in ("close_total_return",) if c in _w.columns])
+                    _w = _w.drop(columns=[c for c in ("close_total_return", "close_usd") if c in _w.columns])
                     # WRDS parquet uses nullable dtypes (pd.NA); downstream numpy code (VolumeStructure)
                     # raises "boolean value of NA is ambiguous" on them -- normalise to float64 / NaN.
                     return _w.apply(pd.to_numeric, errors="coerce").astype("float64")

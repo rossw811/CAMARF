@@ -67,6 +67,8 @@ def load_daily_prices(symbol: str) -> Optional[pd.DataFrame]:
     out = None
     for path, tr_col in ((os.path.join(_WRDS_DIR, f"{symbol}_1D.parquet"), "close_total_return"),
                          (os.path.join(_YF_DIR, f"{symbol}_1day.parquet"), None)):
+        # Compustat Global files carry close_usd once research/apply_fx_to_wrds_global.py has run (R1.1):
+        # both price level and return series then come from the USD column.
         if not os.path.exists(path) or os.path.getsize(path) == 0:
             continue
         try:
@@ -75,11 +77,20 @@ def load_daily_prices(symbol: str) -> Optional[pd.DataFrame]:
             continue
         if "close" not in d.columns:
             continue
-        tr = d[tr_col] if tr_col and tr_col in d.columns else d["close"]
-        out = pd.DataFrame({"close": d["close"].astype(float), "tr": tr.astype(float)})
+        if "close_usd" in d.columns and d["close_usd"].notna().any():
+            px = d["close_usd"]
+            tr = px
+            usd = True
+        else:
+            px = d["close"]
+            tr = d[tr_col] if tr_col and tr_col in d.columns else d["close"]
+            usd = is_usd_symbol(symbol)
+        out = pd.DataFrame({"close": pd.to_numeric(px, errors="coerce").astype(float),
+                            "tr": pd.to_numeric(tr, errors="coerce").astype(float)})
         out.index = pd.to_datetime(out.index).tz_localize(None).normalize() if getattr(out.index, "tz", None) \
             else pd.to_datetime(out.index).normalize()
         out = out[~out.index.duplicated(keep="last")].sort_index()
+        out.attrs["usd"] = usd
         break
     _cache[symbol] = out
     return out
@@ -105,12 +116,15 @@ def add_dollar_pnl(trades: pd.DataFrame, commission_per_share: float = None, sli
     for i, t in enumerate(out.itertuples(index=False)):
         if str(t.tf) != "1D":
             status[i] = "intraday"; continue
-        if not (is_usd_symbol(t.symbol_a) and is_usd_symbol(t.symbol_b)):
-            status[i] = "non_usd_leg"; continue
         beta = float(t.hedge_ratio)
         if not np.isfinite(beta):
             status[i] = "bad_hedge"; continue
         A, B = loader(t.symbol_a), loader(t.symbol_b)
+        # A leg is usable only if its price series is in USD: a US listing, or a Compustat Global listing
+        # converted via close_usd (frame attrs set by load_daily_prices; name rule as the fallback).
+        _usd = lambda F, sym: F.attrs.get("usd", is_usd_symbol(sym)) if F is not None else is_usd_symbol(sym)
+        if not (_usd(A, t.symbol_a) and _usd(B, t.symbol_b)):
+            status[i] = "non_usd_leg"; continue
         if A is None or B is None or pd.isna(t.exit_time):
             status[i] = "missing_price"; continue
         ae, ax, be, bx = (_at_or_before(A, t.entry_time), _at_or_before(A, t.exit_time),

@@ -91,6 +91,27 @@ def main():
           f"{r5['pnl_dollar_status']}")
     check("input_frame_not_mutated", trades.equals(before) and "pnl_dollar_net" not in trades.columns)
 
+    # Compustat Global leg that HAS been converted to USD (close_usd, R1.1) must now be priced, not rejected.
+    import tempfile, shutil
+    tmp = tempfile.mkdtemp(prefix="pnl_usd_")
+    orig_dir = pnl_dollar._WRDS_DIR
+    try:
+        pnl_dollar._WRDS_DIR = tmp
+        pnl_dollar._cache.clear()
+        ix = pd.bdate_range("2026-03-02", periods=5)
+        pd.DataFrame({"close": [1500.0] * 5, "close_usd": [10.0, 10.0, 10.0, 10.0, 11.0]}, index=ix).to_parquet(
+            os.path.join(tmp, "GVKEY000009_01W_1D.parquet"))
+        pd.DataFrame({"close": [40.0] * 5, "close_total_return": [40.0] * 5}, index=ix).to_parquet(
+            os.path.join(tmp, "USDLEG_1D.parquet"))
+        g = pnl_dollar.add_dollar_pnl(pd.DataFrame([dict(base, symbol_a="GVKEY000009_01W", symbol_b="USDLEG", hedge_ratio=0.5)]),
+                                      commission_per_share=0.0, slippage_bps=0.0)
+        check("usd_converted_global_leg_priced", g.iloc[0]["pnl_dollar_status"] == "ok"
+              and abs(g.iloc[0]["pnl_dollar_gross"] - 1000.0) < 1e-6, f"{g.iloc[0][['pnl_dollar_status', 'pnl_dollar_gross']].to_dict()}")
+    finally:
+        pnl_dollar._WRDS_DIR = orig_dir
+        pnl_dollar._cache.clear()
+        shutil.rmtree(tmp, ignore_errors=True)
+
     print()
     print(f"{len(PASS)}/{len(PASS) + len(FAIL)} checks passed")
     if FAIL:

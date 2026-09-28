@@ -43,6 +43,13 @@ def main():
                       "volume": pd.array([1] * 80, dtype="Int64")}, index=idx).to_parquet(os.path.join(d["wrds"], "TR_1D.parquet"))
         pd.DataFrame({"close": [20.0 + i * 0.02 for i in range(80)], "volume": 1.0}, index=idx).to_parquet(
             os.path.join(d["wrds"], "NOTR_1D.parquet"))
+        # Compustat Global file converted to USD (R1.1): close_usd must be used when there is no total return.
+        pd.DataFrame({"close": [1500.0 + i for i in range(80)], "close_usd": [10.0 + i * 0.01 for i in range(80)],
+                      "volume": 1.0}, index=idx).to_parquet(os.path.join(d["wrds"], "GVKEY000009_01W_1D.parquet"))
+        for cols in (None, ["close"]):
+            mg = ul.load_full_universe("1D", columns=cols, use_memo_cache=False, dedupe=False)
+            check(f"close_usd_used(columns={cols})", abs(float(mg["GVKEY000009_01W"]["close"].iloc[0]) - 10.0) < 1e-12,
+                  f"close={mg['GVKEY000009_01W']['close'].iloc[0]}")
         for cols in (None, ["close"]):
             m = ul.load_full_universe("1D", columns=cols, use_memo_cache=False, dedupe=False)
             check(f"total_return_used(columns={cols})", abs(float(m["TR"]["close"].iloc[0]) - 12.0) < 1e-12,

@@ -55,6 +55,11 @@ def main():
         n = ad._load_symbol("NULLABLE", "1D")
         check("nullable_dtypes_become_float64", n is not None and all(str(d) == "float64" for d in n.dtypes)
               and not any(v is pd.NA for v in n["close"].tolist()), f"dtypes={None if n is None else n.dtypes.to_dict()}")
+        pd.DataFrame({"open": 1500.0, "high": 1500.0, "low": 1500.0, "close": 1500.0, "close_usd": 10.0,
+                      "volume": 1e6}, index=idx).to_parquet(os.path.join(wrds_dir, "GVKEY000009_01W_1D.parquet"))
+        g = ad._load_symbol("GVKEY000009_01W", "1D")
+        check("close_usd_used_for_global", g is not None and float(g["close"].iloc[0]) == 10.0,
+              f"close={None if g is None else g['close'].iloc[0]}")
         b = ad._load_symbol("YFONLY", "1D")
         check("yfinance_fallback", b is not None and float(b["close"].iloc[0]) == 9.0,
               f"close={None if b is None else b['close'].iloc[0]}")

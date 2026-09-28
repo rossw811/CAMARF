@@ -198,7 +198,7 @@ def _dir_signature(directory: str) -> tuple:
 
 # Bumped whenever the merge semantics change, so a memo built under older semantics is never served back
 # (code review U6: the key covered file counts/mtimes and arguments but not the loader logic).
-_LOADER_VERSION = "2026-09-27-wrds-priority-dedupe-tr"
+_LOADER_VERSION = "2026-09-27-wrds-priority-dedupe-tr-usd"
 
 
 def _memo_signature(tf_label, include_yfinance, include_wrds, include_binance, include_ibkr, columns):
@@ -284,20 +284,23 @@ def _use_total_return(df):
     """WRDS: `close` := close_total_return where present (code review U4 -- discovery tests CRSP total
     return; price-only close carries ex-dividend drops), then normalise nullable dtypes (pd.NA) to
     float64 (they broke downstream numpy code, 2026-09-27)."""
-    if "close_total_return" in df.columns:
-        tr = df["close_total_return"]
-        if tr.notna().any():
+    # Priority: CRSP close_total_return (US, USD) > close_usd (Compustat Global converted to USD by
+    # research/apply_fx_to_wrds_global.py, code review R1.1) > plain close.
+    for col in ("close_total_return", "close_usd"):
+        if col in df.columns and df[col].notna().any():
             df = df.copy()
-            df["close"] = tr
-        df = df.drop(columns=["close_total_return"])
+            df["close"] = df[col]
+            break
+    df = df.drop(columns=[c for c in ("close_total_return", "close_usd") if c in df.columns])
     return df.apply(pd.to_numeric, errors="coerce").astype("float64")
 
 
 def _load_dir(cache_dir: str, suffix: str, columns=None, total_return: bool = False) -> dict:
     if not suffix or not os.path.isdir(cache_dir):
         return {}
-    if total_return and columns is not None and "close" in columns and "close_total_return" not in columns:
-        columns = list(columns) + ["close_total_return"]  # a file lacking it falls back to a full read
+    if total_return and columns is not None and "close" in columns:
+        # a file lacking either column falls back to a full read in _read_one
+        columns = list(columns) + [c for c in ("close_total_return", "close_usd") if c not in columns]
     file_suffix = f"_{suffix}.parquet"
     candidates = [
         (f, f[: -len(file_suffix)]) for f in os.listdir(cache_dir) if f.endswith(file_suffix)
