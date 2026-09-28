@@ -28588,3 +28588,33 @@ in every split) fails in all 8 pool×split cells.
   Sharpe ≤ 0 in 7 of 8 cells.
 Caveats: USD-only legs (FX pending); spreads rebuilt from CRSP total return but discovery itself not yet re-run
 with the dedupe/USD fixes; capital-sim on dollar P&L.
+
+## 2026-09-27 (night) — Seed/lineage system for dependent scripts (Ross's idea; design + minimal build)
+
+**Ross:** "for every script that depends on another i want to set up a seed system that builds on the previous script
+and it like adds on to that seed and if nothing changes then the section doesn't change either ... track changes and
+make sure nothing gets lost in translation."
+
+**Why it's worth it (evidence from this project):** the first pre-registered search launch ran on stale spreads;
+cached files outlived the code that wrote them (D13 stamps, D16/D17 labels, D19 corrupt files); two scripts wrote the
+same file names; WFA silently fell back to `_stale` spreads. Each was found by hand. A lineage record makes "is this
+output current with its inputs and code?" a mechanical check.
+
+**Design (content-addressed lineage — the idea behind Make/DVC):**
+- `lineage.py`. Each stage declares `name`, its `code` files, `params`, `inputs` (upstream stage names and/or paths)
+  and `outputs` (paths).
+- **Seed** = hash(upstream stages' seeds + fingerprints of input paths + code-file hashes + params). A seed changes
+  exactly when anything upstream of it changes — Ross's "adds on to that seed".
+- After a successful run the stage writes `output/lineage/<stage>.json`: seed, parts of the seed, output
+  fingerprints, git commit, time. Previous manifests are kept (`output/lineage/history/`) so every change is traceable.
+- **Up to date** = recorded seed equals the seed recomputed now AND the outputs' fingerprints still match what was
+  written (catches outputs edited or overwritten by another script). Otherwise **stale**, and every downstream stage
+  is stale too.
+- Fingerprints: content hash (sha256) for files; for large directories (the 44k-file WRDS cache) a hash of the sorted
+  (name, size, mtime) listing — cheap, and any rewrite changes mtime. Trade-off stated, not hidden.
+- `python lineage.py status` prints the DAG with up-to-date / stale and the reason (which part of the seed changed);
+  `python lineage.py diff <stage>` shows old vs new seed parts.
+- Scripts opt in with a small wrapper; nothing is skipped automatically unless the caller asks (`if st.up_to_date and
+  not args.force: exit`), so adoption can't silently suppress a run.
+**Rollout:** first the chain about to be re-run (caches → episodic discovery → pools → PIT eligibility → spreads →
+strategy search), then other scripts as they are touched. Complements `research/pipeline_contracts.py` (schema checks).
