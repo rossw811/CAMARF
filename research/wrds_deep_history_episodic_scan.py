@@ -1091,7 +1091,10 @@ def _scan_lineage():
 def _guard_stale_resume(stage):
     """Refuse to RESUME from outputs/checkpoints that were produced against different inputs or code (2026-09-27:
     the scan silently resumed from an existing Tier 1 file). `--fresh` moves them to a timestamped backup first."""
-    existing = [p for p in _SCAN_OUTPUTS if os.path.exists(p)] + glob.glob(os.path.join(_OUT_DIR, "checkpoint_*"))
+    # only THIS scan's checkpoints (the intraday scan's checkpoint_intraday_* may belong to a run in progress)
+    existing = [p for p in _SCAN_OUTPUTS if os.path.exists(p)] + [
+        p for cid in ("tier1_fullsample", "tier2_rolling", "tier3_rolling")
+        for p in glob.glob(os.path.join(_OUT_DIR, f"checkpoint_{cid}*"))]
     if not existing:
         return
     st = stage.status()
