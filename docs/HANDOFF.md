@@ -4,11 +4,13 @@
 ("Data-layer round 3", "2026-09-28 updates"), docs/INCONSISTENCY_SWEEP_2026-09-27.md ("2026-09-28 additions"),
 Development.md (session 2026-09-27/28 summary), docs/SCRUTINY_WHAT_HELD_UP_2026-09-28.md, prereg Amendment 2.
 
-**Still running when work stopped (left running — both write only their own outputs; stop them if wanted):**
-1. **WRDS job 11 on the Surface** (`research/wrds_session_server.py`, queue file `output/wrds_jobs/queue/11_fetch_trfd_global.py`):
-   Compustat `trfd` for 15,195 global listings → `output/cache/wrds/_trfd/` (1,862 files at 08:01, ~100/min,
-   resumable — skips files already written). Stop: create `output/wrds_jobs/STOP` (between jobs) or kill the
-   python process running wrds_session_server.py (the job resumes on restart).
+**Background jobs at the stop point:**
+1. **WRDS job 11 — NOT running (correction, 08:35):** it FAILED at 07:59 — WRDS closed the connection mid-query
+   (`server closed the connection unexpectedly`, log `output/wrds_jobs/failed/11_fetch_trfd_global.py.log`) — and
+   the session server then stopped at 08:31 because reconnecting needs a new Duo approval. 1,862 of 15,195 `trfd`
+   files were written to `output/cache/wrds/_trfd/`. To resume: move the job file from `output/wrds_jobs/failed/`
+   back to `output/wrds_jobs/queue/` and start `research/wrds_session_server.py` (approve the Duo push); the job
+   skips files already written. Consider smaller batches (e.g. 200 gvkeys) if disconnects recur.
 2. **Intraday episodic scan on CachyOS** (`research/intraday_episodic_scan.py --tf both --fresh --workers 14`, log
    `latest_run_intraday_episodic_scan.log`): 1h Tier 2 at 35,000/83,086 pairs at 08:00, then 1h Tier 3, then 4h.
    Stop: `pkill -f intraday_episodic_scan` on CachyOS; a later run needs `--fresh` (lineage guard).
