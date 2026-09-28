@@ -24,7 +24,6 @@ _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, _ROOT)
 sys.path.insert(0, os.path.join(_ROOT, "research"))
 
-from lineage import Lineage
 
 _R = os.path.join(_ROOT, "output", "research")
 MIN_COMMON, SHARE, TOL = 60, 0.99, 1e-9
@@ -47,15 +46,8 @@ def _log_returns(df):
 
 def main():
     from episodic_pairs_adapter import _load_symbol
-    lin = Lineage()
-    up = lin.stage("pit_eligibility", code=["research/purity_pit_eligibility.py"],
-                   inputs=["output/research/purity_pairs.parquet"],
-                   outputs=[f"output/research/purity_pairs_pit_k{k}.parquet" for k in (1, 2)])
-    st = lin.stage("clean_pools", code=["research/clean_pool_identity_pairs.py", "research/episodic_pairs_adapter.py"],
-                   inputs=["pit_eligibility"],
-                   outputs=[f"output/research/purity_pairs_pit_k{k}_clean.parquet" for k in (1, 2)] +
-                           ["output/research/clean_pool_identity_pairs_report.parquet"],
-                   params={"min_common": MIN_COMMON, "share": SHARE, "tol": TOL})
+    from pipeline_stages import stage
+    st = stage("clean_pools")
     cache, rows = {}, []
     for k in (1, 2):
         P = pd.read_parquet(os.path.join(_R, f"purity_pairs_pit_k{k}.parquet"))
@@ -76,7 +68,7 @@ def main():
         print(f"k={k}: {len(P)} -> {len(C)} (removed {len(P) - len(C)} identity pairs)")
     pd.DataFrame(rows).to_parquet(os.path.join(_R, "clean_pool_identity_pairs_report.parquet"))
     st.record()
-    print(f"lineage: recorded 'clean_pools' (upstream pit_eligibility up to date: {up.up_to_date})")
+    print("lineage: recorded 'clean_pools'")
 
 
 if __name__ == "__main__":

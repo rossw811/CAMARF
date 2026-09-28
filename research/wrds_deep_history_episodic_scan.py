@@ -1083,17 +1083,9 @@ _SCAN_OUTPUTS = [os.path.join(_OUT_DIR, f"wrds_deep_history_episodic_scan_{n}.pa
 
 
 def _scan_lineage():
-    """Seed/lineage stage for this scan (lineage.py). Inputs: the WRDS cache and the S&P membership/permno maps;
-    code: this file and every module its results depend on."""
-    from lineage import Lineage
-    rel = lambda p: os.path.relpath(p, _ROOT)
-    return Lineage().stage(
-        "episodic_scan",
-        code=[rel(__file__), "analysis.py", "universe_loader.py", "config.py", "data_wrds.py", "stats.py",
-              "research/rolling_adv_comparison.py"],
-        inputs=["output/cache/wrds"],
-        outputs=[rel(p) for p in _SCAN_OUTPUTS],
-        params={"lookback_years": 50, "min_pearson": Config.UNIVERSE.MIN_PEARSON_CORR})
+    """Seed/lineage stage for this scan -- declared once, with the whole chain, in research/pipeline_stages.py."""
+    from research.pipeline_stages import stage
+    return stage("episodic_scan")
 
 
 def _guard_stale_resume(stage):
