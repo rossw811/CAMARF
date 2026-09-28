@@ -1,3 +1,37 @@
+## 2026-09-27 (night): RESUME HERE — data layer round 3 done; D17 relabel applied; overnight plan (supersedes below)
+
+**Ross, 2026-09-27 night:** "i like the plan let's do all of it"; blanket sign-off on fixes ("i sign off on any other
+fixes you must perform"); "fix the mixing" (D16); wants a systematic inconsistency sweep across every script and a
+look at what in the scrutiny actually succeeded / merits a deeper dive. Do WRDS work while a session is open.
+
+**Committed + pushed (eaec5799):** D7, D8, D9, D10, D12, D13, D16, M8/M9, C14-C16, A1 research follow-ups — see
+docs/CODE_REVIEW_2026-09-26.md "Data-layer round 3". Cache migrations applied on the SURFACE only: D13 restamp
+(21,136 files), D16 namespaced labels (225 files; crypto "<SYM>-USD", futures/commodities "<SYM>=F"), futures refetch
+(26/27 incl. PL=F after the D8 trim rule; DX=F does not exist on Yahoo).
+
+**Uncommitted at time of writing:** D17 (label map by recency + v2 security master; relabel script; loader
+disjoint-source rule; tests `_verify_full_market_label_recency.py` 3/3, `_verify_loader_disjoint_sources.py` 3/3).
+WRDS cache relabel APPLIED on the Surface (backups `output/cache/wrds/_backup_d17_20260927/`, old map kept as
+`full_us_market_label_map_pre_d17.parquet`).
+
+**WRDS session server** (`research/wrds_session_server.py`, running on the Surface since 22:21): one open connection,
+keepalive, runs job files dropped in `output/wrds_jobs/queue/` (logs in `done/`/`failed/`, status `server.log`,
+stop = create `output/wrds_jobs/STOP`). Jobs: 01 v2 names/WSO (done), 02 v2 security master (done), 03 fetch 1,859
+mapped labels with no file, 04 diagnose 3,257 WRDS files with no valid close, 05 WRDS library inventory.
+
+**CachyOS:** checkout is ~1 week behind with ~800 uncommitted files (mostly scp'd copies). Plan, AFTER the FX fetch
+(`fx_fetch.py`, log `latest_run_fx_fetch.log`) finishes: snapshot everything to a LOCAL branch
+`cachyos-local-snapshot-20260927` (never pushed), check out main, pull, then run the D13/D16/D17 migrations there
+(or sync the Surface WRDS/yf caches), then `research/apply_fx_to_wrds_global.py` + ADR check.
+
+**Overnight plan (in order):** finish D17 (derive 7D/3M/6M/1Y for new labels; re-run yf/WRDS identity check;
+commit) → CachyOS sync + migrations + FX → systematic inconsistency sweep (labels, units, calendars, silent
+fallbacks, duplicated logic; D18 trade-vs-midpoint is the first entry) → scrutiny "what held up" + deeper-dive list →
+discovery re-run → PIT pools → pre-registered search (second labelled pass) → paper redraft for Ross's approval.
+**Open for Ross (not blocking):** futures roll handling from contract calendars (D9 disclosure).
+
+---
+
 ## 2026-09-27 (afternoon): RESUME HERE — current state, in-flight jobs, next steps (supersedes the "Needs you" list below)
 
 **Standing rule from Ross (2026-09-27):** treat every earlier claim, summary and "FIXED" label as UNVERIFIED until

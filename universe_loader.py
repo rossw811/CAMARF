@@ -199,7 +199,7 @@ def _dir_signature(directory: str) -> tuple:
 
 # Bumped whenever the merge semantics change, so a memo built under older semantics is never served back
 # (code review U6: the key covered file counts/mtimes and arguments but not the loader logic).
-_LOADER_VERSION = "2026-09-27-wrds-priority-dedupe-tr-usd-d16-labels"
+_LOADER_VERSION = "2026-09-27-wrds-priority-dedupe-tr-usd-d16-labels-d17-disjoint"
 
 
 def _memo_signature(tf_label, include_yfinance, include_wrds, include_binance, include_ibkr, columns):
@@ -652,6 +652,21 @@ def load_full_universe(tf_label: str = "1D", include_yfinance: bool = True,
         if not _wrds:
             raise RuntimeError(f"universe_loader: include_wrds=True for {tf_label} but 0 WRDS files loaded from "
                                f"{_WRDS_CACHE_DIR} -- refusing to return a silently shrunken universe")
+        # D17 (2026-09-27): a WRDS series that ends before the same-label non-WRDS series begins, or more than a
+        # year before it ends, is a different security (CRSP ends 2025-12-31; e.g. VSNT = old Versant 1996-2012 vs the 2026 Versant spin in yfinance).
+        # The newer listing keeps the ticker; the WRDS series stays in the universe under its PERMNO<n> label.
+        _lm_path = os.path.join(_WRDS_CACHE_DIR, "full_us_market_label_map.parquet")
+        _permno_of = {}
+        if os.path.exists(_lm_path):
+            _lm = pd.read_parquet(_lm_path)
+            _permno_of = dict(zip(_lm["label"], _lm["permno"]))
+        for k in [k for k in _wrds if k in merged and k in _permno_of]:
+            w, o = _wrds[k], merged[k]
+            # different securities if the WRDS series ends before the other begins, or ends > 1 year before the
+            # other ends (a delisted security cannot still be trading; CRSP's own data end is < 1 year old)
+            if len(w) and len(o) and (w.index.max() < o.index.min()
+                                      or w.index.max() < o.index.max() - pd.Timedelta(days=365)):
+                _wrds[f"PERMNO{int(_permno_of[k])}"] = _wrds.pop(k)
         merged.update({k: _use_total_return(v) for k, v in _wrds.items()})
     # One label per security (2026-09-27): drop labels whose return series is identical to another's
     # (ticker + own PERMNO alias, or two tickers with identical data) -- see dedupe_identical_series.

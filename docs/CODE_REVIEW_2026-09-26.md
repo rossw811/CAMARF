@@ -638,9 +638,47 @@ currencies, incl. legacy) being fetched; ADR real-data check pending.
   its START, which is exactly "every window of the kept span meets the threshold". Test 1/4 → 5/5. Effect on the WRDS
   files data.py cleans (production function): 3/1,490 equities rejected, 402 trimmed (median 17% of rows, median 35
   years kept), ETFs 0 rejected / 1 trimmed. `DataCleaner` is not on the research-loader/pool path.
-- **D17 NEW, OPEN — WRDS files under a current ticker holding a different security.** The 3 D8 rejections exposed it:
+- **D17 NEW → FIXED 2026-09-27 — WRDS files under a current ticker holding a different security.** The 3 D8 rejections exposed it:
   WRDS `TPC` is a 1992-2000 company (today's TPC = Tutor Perini), `VSNT` 1996-2012 (today = Versant, 2025 spin),
   `WSO` 86-94% missing recently (likely the Class B line). Across all 1,573 labels in both yfinance and WRDS, 43
   (2.7%) disagree (no overlap, or <80% daily-return agreement on the last 250 common days) — e.g. SNDK (old SanDisk,
   to 2016), BBBY, P (Pandora), BLD (1929-1968), KW (1925-1973). WRDS wins label collisions (loader) and is primary in
-  data.py, so these replace the current company. Root cause and fix: next.
+  data.py, so these replace the current company.
+  **Root cause:** `research/full_us_market_price_fetch.build_full_market_label_map` gave a reused ticker to the FIRST
+  permno `build_delisted_label_map` saw, and permnos arrived oldest-first: 2,719 of 4,327 reused tickers went to an
+  older holder, 707 of them displacing a company listed today (label `A` → a pre-1999 company, not Agilent; `AAP`,
+  ...). S&P names mostly survived only because data_wrds.py's S&P path (active-permno resolution) had written those
+  files first and the full-market fetch skipped existing labels. Second cause: the legacy `stocknames` master is
+  frozen at 2024-12-31, so 2025 listings (SanDisk's 2025 spin = SNDK today, Beyond = BBBY, Qnity = Q) were unknown.
+  **Fix:** most recent holder claims the ticker (currently listed first, then latest name-end, then the share class
+  whose trading symbol is the ticker); security master rebuilt from CIZ v2 `stksecurityinfohist` (30,256 permnos,
+  current to 2025-12-31, superset of legacy 29,366). Test `_verify_full_market_label_recency.py` 1/3 → 3/3.
+  **Cache relabel** (`research/relabel_wrds_by_recency_d17.py`, dry-run first; file identity from CONTENT because files
+  don't carry a permno and two scripts write the same names): a file is identified when its first..last date lies
+  inside exactly one candidate permno's listing span (tie-break: the span of that permno's spell under THIS ticker).
+  Three dry runs corrected the rule — span IoU left 6,651 files (incl. AAPL) unidentified because fetches start after
+  listing; current securities' open spells have NaT end dates that max() skipped (AAPL's span "ended" 2007);
+  a current company's permno span can contain a dead company's period (TPC). Applied in two passes (legacy master:
+  4,603 labels moved; v2 master: 448 more), 1,184 duplicate files and 14 stale files (unidentifiable, under a
+  currently-listed owner's ticker but ending >1 year before data end, e.g. TPC 1992-2000) set aside in
+  `output/cache/wrds/_backup_d17_20260927/`; nothing deleted; pre-fix label map kept as
+  `full_us_market_label_map_pre_d17.parquet`. 1,859 mapped labels had no file — all fetched (0 empty) through the
+  persistent WRDS session (`research/wrds_session_server.py`); coarse files derived for 31 universe labels (124 files)
+  and their native CRSP monthly fetched. yfinance↔WRDS identity mismatches: 43 → 19.
+  Watsco: permno 46068 (86% "missing") is the Class B line trading ~17 days/yr — genuine; WSO now → 66376 (Class A).
+  **Post-data-end listings** (VSNT = Versant 2026 spin; CRSP ends 2025-12-31): the dead company legitimately keeps the
+  WRDS label, but the loader must not let it shadow the current yfinance series. **Loader rule (fixed):** when a WRDS
+  series ends before the same-label yfinance series begins, or more than a year before it ends (a delisted security
+  cannot still be trading; CRSP's own data end is < 1 year old), yfinance keeps the ticker and the WRDS series stays
+  in the universe under its PERMNO<n> label (`_verify_loader_disjoint_sources.py` 4/4). **Residual, open:** 6 labels
+  where both sources are current but daily returns disagree (FOSL, INCR, CALY, NKTR, SCOR, SPWR — 2024-25 ticker
+  transitions / corporate actions); case-by-case.
+- **D19 NEW — 3,256 WRDS 1D files with no valid price.** All 3,256 permnos have rows in `dsf_v2`; spot checks
+  (FRME, AMSC) show clean trade prices, while the cached files hold ~450-800 all-NaN rows — remnants of an earlier
+  broken fetch. Being refetched (backups `output/cache/wrds/_backup_empty_refetch_20260927/`). 2,758 of the permnos
+  have `dlyprc` but no `dlyclose` over their whole history — whether they stay empty after the refetch decides a
+  D18-linked question (use |dlyprc| with a quote flag, or exclude).
+- **D18 NEW, OPEN (for the sweep) — trade prices vs quote midpoints.** CRSP `dlyclose` is null on no-trade days, but
+  `dlyret` (→ `close_total_return`) uses the bid/ask midpoint there. The loader prefers `close_total_return`, so for
+  illiquid names it mixes midpoint moves into a series other paths treat as trades (Watsco B: 17 trades/yr, a TR value
+  every day).
