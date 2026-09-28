@@ -58,6 +58,7 @@ import pandas as pd
 import pyarrow.parquet as pq
 
 from config import Config
+from instrument_labels import instrument_label
 
 try:
     import polars as pl
@@ -128,7 +129,7 @@ def _pandas_index_col(path: str):
 # dominates at this file count; parallelizing the I/O (these are I/O-bound
 # reads, not CPU-bound, so threads -- not processes -- are the right tool, no
 # GIL contention concern for file I/O) is the real fix, not a workaround.
-_IO_WORKERS = 32  # raised from 16 (2026-08-23) -- benchmarked (noisy, contended with a
+_IO_WORKERS = min(32, (os.cpu_count() or 1) * 4)  # C16 (2026-09-27): derived, capped at the benchmarked 32; was a literal 32, raised from 16 (2026-08-23) -- benchmarked (noisy, contended with a
 # concurrent analysis.py run, not a clean isolated number) at 16/32/64/128 on the real
 # 30,586-file cache; a conservative bump given the signal wasn't clean enough to justify
 # jumping straight to 128
@@ -198,7 +199,7 @@ def _dir_signature(directory: str) -> tuple:
 
 # Bumped whenever the merge semantics change, so a memo built under older semantics is never served back
 # (code review U6: the key covered file counts/mtimes and arguments but not the loader logic).
-_LOADER_VERSION = "2026-09-27-wrds-priority-dedupe-tr-usd"
+_LOADER_VERSION = "2026-09-27-wrds-priority-dedupe-tr-usd-d16-labels"
 
 
 def _memo_signature(tf_label, include_yfinance, include_wrds, include_binance, include_ibkr, columns):
@@ -638,7 +639,10 @@ def load_full_universe(tf_label: str = "1D", include_yfinance: bool = True,
     if include_yfinance and tf_label in _YF_SUFFIX:
         merged.update(_load_dir(_YF_CACHE_DIR, _YF_SUFFIX[tf_label], columns=columns))
     if include_binance and tf_label in _BINANCE_SUFFIX:
-        merged.update(_load_dir(_BINANCE_CACHE_DIR, _BINANCE_SUFFIX[tf_label], columns=columns))
+        # D16 (2026-09-27): Binance files are named by root symbol (BTC_1d); label them "BTC-USD" like data.py so
+        # e.g. Litecoin is no longer shadowed by the LTC Properties stock merged later from WRDS.
+        merged.update({instrument_label(k, "crypto"): v for k, v in
+                       _load_dir(_BINANCE_CACHE_DIR, _BINANCE_SUFFIX[tf_label], columns=columns).items()})
     if include_ibkr and tf_label in _IBKR_SUFFIX:
         merged.update(_load_ibkr_dir(_IBKR_CACHE_DIR, _IBKR_SUFFIX[tf_label], columns=columns))
     if include_wrds and tf_label in _WRDS_SUFFIX:

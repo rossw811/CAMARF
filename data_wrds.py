@@ -98,6 +98,7 @@ import pandas as pd
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from config import Config
+from period_bars import resample_to_period_end, restamp_to_period_end
 
 warnings.filterwarnings("ignore")
 
@@ -399,7 +400,7 @@ def fetch_monthly_bulk(db, permno_by_symbol: Dict[str, int], start: Optional[str
                 "volume": g["mthvol"],
             })
             n_in_batch += 1
-            yield sym, df
+            yield sym, restamp_to_period_end(df, "1M")  # D13: CRSP stamps last trading day -> calendar month end
         log.info(f"  monthly batch {i}-{i+len(batch)}/{len(permnos)}: {n_in_batch} symbols fetched")
 
 
@@ -580,34 +581,20 @@ def fetch_symbol(db, symbol: str, start: Optional[str] = None) -> Optional[pd.Da
 # places: Config.STATS.MIN_OVERLAP_BY_TF, the DataStore._TF_SAFE mapping,
 # etc.) flagged here rather than silently done as a side effect of this file.
 
-_RESAMPLE_RULES = {
-    # (rule, label, closed) -- identical to data.py's _resample_from_daily
-    "7D": ("W-FRI", "right", "right"),
-    "3M": ("QS", "left", "left"),
-    "6M": ("2QS", "left", "left"),
-    "1Y": ("YS", "left", "left"),  # NEW -- year-start stamp, same convention family
-}
+# D13 (2026-09-27): stamps are the calendar END of each period (period_bars.py), shared with data.py. 3M/6M/1Y
+# used to be stamped at period start ("QS"/"2QS"/"YS") while carrying the period-end close -- lookahead.
+_RESAMPLE_RULES = {tf: "period_end" for tf in ("7D", "3M", "6M", "1Y")}
 
 
 def resample_daily_to(df: pd.DataFrame, tf_label: str) -> Optional[pd.DataFrame]:
-    """Resamples a data_wrds daily OHLCV(+close_total_return) DataFrame to
-    7D/3M/6M/1Y, matching data.py's own _resample_from_daily conventions
-    exactly (same rule/label/closed per TF, same agg functions, same
-    empty-period drop). Returns None for unrecognized tf_label rather than
-    silently guessing a rule."""
+    """Resamples a data_wrds daily OHLCV(+close_total_return/close_usd) DataFrame to 7D/3M/6M/1Y bars stamped at
+    calendar period end (period_bars.resample_to_period_end -- the same function data.py uses). Returns None for
+    an unrecognized tf_label rather than silently guessing a rule."""
     if tf_label not in _RESAMPLE_RULES:
         log.warning(f"resample_daily_to: no rule defined for '{tf_label}' "
                     f"(known: {list(_RESAMPLE_RULES)})")
         return None
-    rule, lbl, closed = _RESAMPLE_RULES[tf_label]
-    agg = {"open": "first", "high": "max", "low": "min", "close": "last", "volume": "sum"}
-    if "close_total_return" in df.columns:
-        agg["close_total_return"] = "last"
-    agg = {k: v for k, v in agg.items() if k in df.columns}
-    resampled = df.resample(rule, label=lbl, closed=closed).agg(agg)
-    resampled = resampled.dropna(subset=["close"])
-    resampled = resampled[resampled["close"] > 0]
-    return resampled
+    return resample_to_period_end(df, tf_label)
 
 
 def fetch_symbol_monthly_native(db, symbol: str, start: Optional[str] = None) -> Optional[pd.DataFrame]:
@@ -657,7 +644,7 @@ def fetch_symbol_monthly_native(db, symbol: str, start: Optional[str] = None) ->
         "volume": df["mthvol"],
     })
     out.index.name = None
-    return out
+    return restamp_to_period_end(out, "1M")  # D13: calendar month end, same as every other source
 
 
 # =============================================================================

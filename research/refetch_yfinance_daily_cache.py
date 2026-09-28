@@ -16,6 +16,9 @@ Safety: each symbol's 1D/7D/1M files are MOVED (not deleted) to a dated backup d
 new download fails for a symbol, its originals are moved back. Every symbol's old-vs-new row count,
 last bar and zero-change-close fraction are written to output/research/refetch_yfinance_daily_report.parquet.
 
+2026-09-27: `--classes futures,commodity` regenerates the 27 yfinance =F files written through the removed
+_roll_adjust (code review D9), which roughly doubled every >5% daily move.
+
 Usage (project root):
     python research/refetch_yfinance_daily_cache.py --sample 25     # first, a checked sample
     python research/refetch_yfinance_daily_cache.py                 # then the full universe
@@ -35,7 +38,7 @@ from config import Config
 from data import DataStore, UniverseBuilder, YFinanceFeed, _to_yf_ticker
 
 _YF_CLASSES = ("equity", "equity_intl", "crypto", "forex", "etf", "fx_spot")
-_TFS = ("1D", "7D", "1M")
+_TFS = ("1D", "7D", "1M", "3M", "6M")  # 3M/6M added 2026-09-27 (D13: all derived TFs re-derived together)
 
 
 def _stats(df):
@@ -49,12 +52,18 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--sample", type=int, default=None)
     ap.add_argument("--chunk-size", type=int, default=Config.DATA.YF_CHUNK_SIZE)
+    ap.add_argument("--classes", default=",".join(_YF_CLASSES),
+                    help="comma-separated asset classes; e.g. 'futures,commodity' for the D9 refetch "
+                         "(those files were written with the inverted >5%% 'roll adjustment')")
+    ap.add_argument("--include-missing", action="store_true",
+                    help="also fetch symbols with no cached 1D file (12 of 27 futures/commodities had none)")
     args = ap.parse_args()
 
     raw = UniverseBuilder()._build_raw_list()
     excl = UniverseBuilder.load_exclusions()
-    assets = sorted({(s, c) for s, c in raw if s not in excl and c in _YF_CLASSES})
-    assets = [(s, c) for s, c in assets if os.path.exists(DataStore._path(s, "1D"))]
+    assets = sorted({(s, c) for s, c in raw if s not in excl and c in set(args.classes.split(","))})
+    if not args.include_missing:
+        assets = [(s, c) for s, c in assets if os.path.exists(DataStore._path(s, "1D"))]
     if args.sample:
         assets = assets[:args.sample]
     backup = os.path.join(Config.DATA.CACHE_DIR, f"_yf_daily_backup_{time.strftime('%Y%m%d')}")

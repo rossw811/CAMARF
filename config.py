@@ -608,8 +608,9 @@ class MLConfig:
     }
 
     # Entry threshold used ONLY for generating ml.py training examples —
-    # deliberately separate from Config.ANALYSIS.OU_ZSCORE_ENTRY (2.0), which
-    # remains the live/production entry signal. Lower here on purpose so the
+    # deliberately separate from the backtest entry threshold (Config.BACKTEST.ENTRY_ZSCORE = 3.0 since
+    # 2026-08-17; Config.ANALYSIS.OU_ZSCORE_ENTRY = 2.0 only flags divergence events in analysis.py --
+    # code review C14, 2026-09-27: this comment used to call 2.0 the live/production entry signal). Lower here on purpose so the
     # meta-labeler sees a broader range of divergence outcomes while data is
     # scarce (standard Lopez de Prado meta-labeling practice: train broader
     # than you trade). Revisit this value once there's enough volume to
@@ -783,8 +784,10 @@ class BacktestConfig:
     ML_GO_THRESHOLD = 0.60        # P(converge) >= this to allow entry under ML gate
     REGIME_HARD_FILTER = False    # hard-reject entries in unfavorable regimes
     REGIME_SIZING = "binary"      # "binary" | "continuous" | "none"
-    # binary: normal size in favorable, 0 in unfavorable
-    # continuous: size = n_shares × hl_ratio_weight (lower hl_ratio → larger size)
+    # binary: 1.5x size in favorable regimes (backwardation/flat VIX term structure, flat_inverted curve),
+    #         1.0x otherwise -- unfavorable entries are rejected only by REGIME_HARD_FILTER, not by sizing
+    # continuous: size = 1/hl_ratio clipped to [0.5, 2.0] (lower hl_ratio -> larger size)
+    # (code review C15, 2026-09-27: the binary comment used to say "normal / 0", which the code never did)
     UNFAVORABLE_VIX_TS = {"contango"}       # vix_term_structure values to reject
     UNFAVORABLE_YIELD = {"normal"}           # yield_curve_regime values to reject
 
@@ -1080,8 +1083,9 @@ class ResearchConfig:
     2026-07-20 "config centralization" entry for what's covered here vs.
     what remains as future work across the ~90 research/ scripts.
     """
-    # Matches production's ENTRY_ZSCORE/EXIT_ZSCORE (config.py's own
-    # BacktestConfig, above) — kept as separate named constants here rather
+    # NOT production's values: BacktestConfig.ENTRY_ZSCORE is 3.0 (raised from 2.0 on 2026-08-17);
+    # ENTRY_Z below stays 2.0, the pre-change research convention (code review C14, 2026-09-27: this
+    # comment used to say these matched production). Kept as separate named constants here rather
     # than pointing research scripts at BacktestConfig directly, since
     # research scripts intentionally use FIXED single values for a simple
     # comparison, not production's own (possibly overridden) live config.
