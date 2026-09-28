@@ -52,7 +52,7 @@ def main():
         df["close_usd"] = usd.to_numpy()
         df.to_parquet(path + ".tmp")
         os.replace(path + ".tmp", path)
-        stats.append((r.label, "ok", float(usd.notna().mean()), ",".join(sorted(g["curcdd"].astype(str).unique()))))
+        stats.append((r.label, "ok", float(usd.notna().mean()), ",".join(sorted(g["curcdd"].dropna().astype(str).unique()))))
         if i % 1000 == 0:
             print(f"{i}/{len(rows)} ({time.time() - t0:.0f}s)", flush=True)
     S = pd.DataFrame(stats, columns=["label", "status", "usd_coverage", "currencies"])

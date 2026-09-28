@@ -397,6 +397,7 @@ def replay_portfolio(
     trades = trades_df.sort_values("entry_time").copy()
     # pnl_mode="dollar" (2026-09-27; code review B2/B3): notional and P&L come from pnl_dollar.py's
     # columns and open positions are marked at real leg prices. "legacy" (default) is unchanged.
+    n_missing_leg_price = 0
     if pnl_mode == "dollar":
         if sizing_method not in ("fixed", "equity_proportional"):
             raise ValueError("pnl_mode='dollar' supports sizing_method 'fixed'/'equity_proportional' only "
@@ -419,6 +420,15 @@ def replay_portfolio(
         trades["_tr_a_entry"], trades["_tr_b_entry"] = tr_a, tr_b
     elif pnl_mode == "legacy":
         trades["notional_at_entry"] = trades.apply(lambda t: notional_at_entry(t), axis=1)
+        # Inconsistency sweep 2026-09-27: notional_at_entry treats a leg with no price (no registered series and no
+        # yfinance 1h file -- true for most WRDS-only symbols) as 0 notional, so such trades were silently skipped or
+        # under-charged capital. Behaviour unchanged (legacy); the count is now reported.
+        _pa = trades.apply(lambda t: get_price_at(t["symbol_a"], t["entry_time"]), axis=1)
+        _pb = trades.apply(lambda t: get_price_at(t["symbol_b"], t["entry_time"]), axis=1)
+        n_missing_leg_price = int((~np.isfinite(_pa.astype(float)) | ~np.isfinite(_pb.astype(float))).sum())
+        if n_missing_leg_price:
+            log.warning("replay_portfolio(legacy): %d/%d trades have a leg with no price -> notional understated or "
+                        "zero (trade skipped); use pnl_mode='dollar'", n_missing_leg_price, len(trades))
     else:
         raise ValueError(f"unknown pnl_mode {pnl_mode!r}")
     if quality_admission_col is not None:
@@ -571,6 +581,7 @@ def replay_portfolio(
         "n_taken": len(taken_df),
         "n_kelly_fallback": n_kelly_fallback,
         "n_skipped_no_risk_estimate": n_skipped_no_risk_estimate,
+        "n_missing_leg_price": n_missing_leg_price,
         "final_equity": realized_equity,
         "equity_curve": equity_curve_df,
         "peak_concurrent_notional": peak_concurrent_notional,

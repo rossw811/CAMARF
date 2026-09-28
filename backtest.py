@@ -1212,15 +1212,10 @@ def compute_metrics(trades: List[Trade], tf: str, sym_a: str, sym_b: str,
     # nothing else in this project remotely resembles. Fixed to use the trade sequence's own
     # observed frequency: sqrt(n_trades / years_covered), matching how many independent trade
     # observations actually occurred, not how many bars existed in the underlying data.
-    exit_times = [t.exit_time for t in trades if t.exit_time is not None]
-    entry_times = [t.entry_time for t in trades if t.entry_time is not None]
-    if entry_times and exit_times:
-        years_covered = (max(exit_times) - min(entry_times)).total_seconds() / (365.25 * 86400)
-    else:
-        years_covered = np.nan
-    trades_per_year = (n / years_covered) if years_covered and years_covered > 0 else np.nan
-    sharpe = (pnl.mean() / pnl.std() * np.sqrt(trades_per_year)) if pnl.std() > 0 and \
-        np.isfinite(trades_per_year) and trades_per_year > 0 else np.nan
+    # Single implementation shared with wfa._fold_metrics (inconsistency sweep 2026-09-27).
+    import portfolio_math
+    sharpe = portfolio_math.trade_frequency_sharpe(pnl, [t.entry_time for t in trades],
+                                                   [t.exit_time for t in trades])
 
     # Drawdown
     cum = np.cumsum(pnl)

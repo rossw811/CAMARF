@@ -71,12 +71,13 @@ def main():
         failures.append(f"Case 1: expected PDR={expected_pdr:.6f}, got {pdr1:.6f}")
 
     # Calmar reference computed independently via the same formula, not by calling the function
-    # under test -- daily P&L series spans 2026-01-02 (first exit) to 2026-01-10 (last exit) = 9
-    # calendar days once resampled; annualizing a 16% total return over a 9-day window produces a
+    # under test -- daily P&L series spans 2026-01-02 (first exit) to 2026-01-10 (last exit); annualizing a 16% total return over a 9-day window produces a
     # large number by construction (compounding), not a bug -- this case verifies the FORMULA is
     # implemented correctly, not that the resulting magnitude "looks realistic."
     total_return = 116_000 / 100_000 - 1.0  # 0.16
-    n_years = 9 / 252.0
+    # 2026-09-27: the daily P&L basis is BUSINESS days since the P1 fix (portfolio_math.daily_pnl_from_exits); the
+    # original expectation used 9 calendar days. Exits Jan 2 .. Jan 10 (Sat, booked on Fri Jan 9) = 6 business days.
+    n_years = len(pd.bdate_range("2026-01-02", "2026-01-09")) / 252.0
     expected_ann_return = (1.0 + total_return) ** (1.0 / n_years) - 1.0
     expected_calmar = expected_ann_return / expected_dd
     calmar1 = calmar_from_replay(r1)

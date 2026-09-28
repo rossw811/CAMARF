@@ -177,3 +177,20 @@ def m2_ratio(daily_pnl: pd.Series, benchmark_daily_returns: pd.Series, starting_
         return float("nan")
     benchmark_vol_annualized = float(benchmark_daily_returns.std() * np.sqrt(ann_factor))
     return float(sharpe * benchmark_vol_annualized)
+
+
+def trade_frequency_sharpe(pnl, entry_times, exit_times) -> float:
+    """Annualized Sharpe of a per-TRADE P&L sequence: mean/std * sqrt(trades per year), the trade frequency observed
+    over first entry .. last exit. A per-trade series is not a per-bar series, so sqrt(bars_per_year) is wrong unless a
+    trade closes on every bar (backtest.compute_metrics' 2026-09-04 fix; wfa._fold_metrics still used bars/year until
+    the 2026-09-27 inconsistency sweep -- this is now the single implementation for both). NaN if < 2 trades, zero
+    dispersion or no time span."""
+    pnl = np.asarray(pnl, dtype=float)
+    ent = [t for t in entry_times if t is not None]
+    ext = [t for t in exit_times if t is not None]
+    if len(pnl) < 2 or not ent or not ext or pnl.std() == 0:
+        return float("nan")
+    years = (pd.Timestamp(max(ext)) - pd.Timestamp(min(ent))).total_seconds() / (365.25 * 86400)
+    if not np.isfinite(years) or years <= 0:
+        return float("nan")
+    return float(pnl.mean() / pnl.std() * np.sqrt(len(pnl) / years))

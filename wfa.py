@@ -111,14 +111,17 @@ def _load_spread(sym_a: str, sym_b: str, tf_label: str) -> Optional[pd.DataFrame
     tf_dir = _TF_MAP.get(tf_label, ("",))[0]
     if not tf_dir:
         return None
-    stale_dir = tf_dir + "_stale"
-    for d in [tf_dir, stale_dir]:
-        p = os.path.join(_ROOT, "output", "results", d,
-                         f"spread_series_{sym_a}_{sym_b}.parquet")
-        if os.path.exists(p):
-            df = pd.read_parquet(p)
-            if {"spread"}.issubset(df.columns):
-                return df
+    # Inconsistency sweep 2026-09-27: this silently fell back to output/results/<tf>_stale/ when the current spread
+    # file was missing, so WFA could run on superseded spreads with no trace. Current directory only; a stale file
+    # is reported, never used.
+    p = os.path.join(_ROOT, "output", "results", tf_dir, f"spread_series_{sym_a}_{sym_b}.parquet")
+    if os.path.exists(p):
+        df = pd.read_parquet(p)
+        if {"spread"}.issubset(df.columns):
+            return df
+    stale = os.path.join(_ROOT, "output", "results", tf_dir + "_stale", f"spread_series_{sym_a}_{sym_b}.parquet")
+    if os.path.exists(stale):
+        log.warning("WFA: %s/%s@%s has only a STALE spread file (%s) -- skipped, not used", sym_a, sym_b, tf_label, stale)
     return None
 
 
@@ -363,8 +366,10 @@ def _fold_metrics(trades: List[WFATrade], tf_label: str) -> Dict:
     n = len(pnl)
     wins = pnl[pnl > 0]
     losses = pnl[pnl <= 0]
-    bpy = _TF_MAP.get(tf_label, ("", 252))[1]
-    sharpe = (pnl.mean() / pnl.std() * np.sqrt(bpy)) if pnl.std() > 0 and n > 1 else np.nan
+    # Inconsistency sweep 2026-09-27: was pnl.mean()/pnl.std()*sqrt(bars_per_year) -- per-TRADE P&L annualized as if
+    # it were per-BAR (the bug backtest.compute_metrics fixed 2026-09-04; a monthly-trade 1D pair read ~4.5x too high).
+    import portfolio_math
+    sharpe = portfolio_math.trade_frequency_sharpe(pnl, [t.entry_time for t in trades], [t.exit_time for t in trades])
     cum = np.cumsum(pnl)
     max_dd = float((np.maximum.accumulate(cum) - cum).max()) if n > 0 else 0.0
     return {
