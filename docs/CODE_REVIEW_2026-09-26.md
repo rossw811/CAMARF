@@ -691,3 +691,9 @@ currencies, incl. legacy) being fetched; ADR real-data check pending.
   USD coverage of rows 100%, 14 files < 90% covered. Null-currency periods (22,370 across 12,856 gvkeys, many one-day
   1984 stubs) convert to NaN, never to an unconverted local price. Report
   `output/research/apply_fx_to_wrds_global_report.parquet`. ADR real-data check still pending.
+  **ADR real-data check (2026-09-28):** USD-converted Compustat listing vs its US ADR (CRSP), last 250 common days,
+  median ADR/USD-price ratio vs the ADR share ratio: HSBC London 5.03 and HK line 5.05 (5), BP 6.00 (6), Shell 2.01
+  (2), AstraZeneca London 0.50 / Stockholm 0.50 (0.5), Honda 3.00 (3), Toyota 10.0 (10), Sony 0.97 (1) — all with
+  tight IQRs, so no pence/pounds or minor-unit scaling error and the SEK/JPY/HKD conversions are right. Daily-return
+  correlation 0.4-0.8 (asynchronous closes across time zones, expected). **Residual, open:** Unilever 1.089 vs 1.0 — a
+  persistent ~9% gap to explain (share line or ADR ratio).
