@@ -179,3 +179,6 @@ def main():
 
 if __name__ == "__main__":
     main()
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    from pipeline_stages import stage
+    stage("comparison_arms").record()  # lineage (research/pipeline_stages.py)

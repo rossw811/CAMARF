@@ -423,6 +423,37 @@ def build_adapter_rows(
     return pd.DataFrame(rows)
 
 
+def _lineage_guard(args):
+    """2026-09-27 (lineage): refuse to (a) resume from progress files written against different inputs/code, or
+    (b) consume an upstream scan output that is stale -- the adapter used to resume silently and to use whatever
+    tier-3 window files happened to exist. `--fresh` backs progress files up; `--allow-stale-upstream` is explicit."""
+    import glob
+    import time as _time
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    from pipeline_stages import pipeline
+    lin = pipeline()
+    status = lin.status()
+    if not args.out_suffix:
+        prog = [p for p in glob.glob(os.path.join(_OUT_DIR, "episodic_pairs_adapter_progress_*.parquet"))
+                if "_alpha" not in os.path.basename(p)]
+        if prog and not status["adapter"]["up_to_date"]:
+            if not args.fresh:
+                raise SystemExit(f"lineage: {len(prog)} adapter progress files are STALE "
+                                 f"({status['adapter']['reason'][:200]}) -- re-run with --fresh to back them up")
+            bk = os.path.join(_OUT_DIR, f"_adapter_progress_backup_{_time.strftime('%Y%m%d_%H%M%S')}")
+            os.makedirs(bk, exist_ok=True)
+            for p in prog:
+                os.replace(p, os.path.join(bk, os.path.basename(p)))
+            print(f"lineage: --fresh -- moved {len(prog)} progress files to {bk}")
+    for up in ("episodic_scan", "intraday_scan_1h", "intraday_scan_4h"):
+        outs = lin._stages[up].outputs
+        if any(os.path.exists(os.path.join(_ROOT, o)) for o in outs) and not status[up]["up_to_date"]:
+            msg = f"lineage: upstream '{up}' output exists but is STALE ({status[up]['reason'][:160]})"
+            if not args.allow_stale_upstream:
+                raise SystemExit(msg + " -- re-run it first, or pass --allow-stale-upstream")
+            print("WARNING " + msg + " -- used anyway (--allow-stale-upstream)")
+
+
 def main():
     import argparse
     parser = argparse.ArgumentParser()
@@ -442,7 +473,12 @@ def main():
                          help="Appended to the output filename (e.g. '_alpha01') so a "
                               "sensitivity run doesn't overwrite the production "
                               "episodic_confirmed_pairs_adapter_output.parquet.")
+    parser.add_argument("--fresh", action="store_true",
+                         help="move stale resume-progress files to a backup and start clean (lineage)")
+    parser.add_argument("--allow-stale-upstream", action="store_true",
+                         help="build even if an upstream scan's output is older than its inputs/code (logged)")
     args = parser.parse_args()
+    _lineage_guard(args)
 
     # Tier 2 REMOVED from every source (BUG-D112, 2026-08-11): its candidate
     # pool is a single whole-history correlation matrix, non-causal by
@@ -482,3 +518,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+    if "--out-suffix" not in " ".join(sys.argv):  # lineage: only the canonical output is the chain's 'adapter' stage
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        from pipeline_stages import stage
+        stage("adapter").record()
