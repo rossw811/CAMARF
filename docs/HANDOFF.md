@@ -1,3 +1,36 @@
+## 2026-09-28 (early morning): RESUME HERE (supersedes the 09-27 night entry below)
+
+**Done since the night entry (all committed + pushed; latest commits 0c1d1a43 .. 7d9c17ca):**
+- D17 fixed end to end: label map by most recent holder + CIZ v2 security master; WRDS cache relabelled by content
+  (backups `output/cache/wrds/_backup_d17_20260927/`); 1,859 current holders fetched; loader keeps a dead WRDS
+  security under PERMNO<n> when a live yfinance series owns the ticker. yf/WRDS identity mismatches 43 → 19.
+- D19: 3,256 corrupt WRDS files refetched — 498 recovered; 2,758 pre-1992 Nasdaq quote-only securities excluded
+  (disclosed). M12: NQ COT history restored to 1999. FX (R1.1) applied to 15,093 global files; ADR check passes
+  (HSBC 5.03, BP 6.00, SHEL 2.01, AZN 0.50, HMC 3.00, TM 10.0, SONY 0.97; Unilever 1.089 open).
+- Sweep (`docs/INCONSISTENCY_SWEEP_2026-09-27.md`): WFA fold Sharpe mis-annualized (fixed, shared helper); WFA
+  stale-spread fallback removed; legacy capital-sim missing prices surfaced; loader dedupe head+tail buckets;
+  COT prefix truncation; open: C4-2 research EG p-values (plan written), M-1 null construction (for Ross).
+- Seed/lineage system (Ross's idea): `lineage.py` + `research/pipeline_stages.py` (whole chain declared once);
+  every chain script records its stage; the episodic scan and the adapter refuse to resume from stale outputs
+  (`--fresh` backs them up). `python research/pipeline_stages.py` prints chain status.
+- `docs/SCRUTINY_WHAT_HELD_UP_2026-09-28.md`: what survived + ranked deeper-dive proposals (for Ross).
+
+**In flight:** Surface → CachyOS sync of `output/cache/wrds` (tar over ssh; CachyOS's old copy set aside as
+`output/cache/_wrds_pre_sync_20260928`). Then on CachyOS: `python research/migrate_instrument_labels_d16.py --apply`
+(renames its own intraday crypto/futures files), then stream the Surface yfinance daily/coarse + namespaced files
+(list `$TMP/yf_sync_list.txt` = 8,830 files), then launch discovery:
+`research/wrds_deep_history_episodic_scan.py --fresh` (~20-27 h), then `intraday_episodic_scan.py --tf both`, then
+adapter `--fresh` → build_comparison_arm_pairs → purity_pit_eligibility → clean_pool_identity_pairs →
+regenerate_pool_spread_series → squeeze_momentum_features → strategy_search (needs a prereg amendment for the
+rebuilt pools BEFORE any result is read). Intraday discovery now runs without IBKR depth (include_ibkr=False),
+a direct consequence of the WRDS-priority decision.
+
+**WRDS session server** still running on the Surface (`output/wrds_jobs/`; stop = create `output/wrds_jobs/STOP`).
+
+**Open for Ross:** futures roll handling (D9); D18 quote-midpoint series; M-1 null construction; deeper-dive order.
+
+---
+
 ## 2026-09-27 (night): RESUME HERE — data layer round 3 done; D17 relabel applied; overnight plan (supersedes below)
 
 **Ross, 2026-09-27 night:** "i like the plan let's do all of it"; blanket sign-off on fixes ("i sign off on any other
