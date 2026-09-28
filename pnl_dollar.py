@@ -36,6 +36,7 @@ Scope limits, returned as an explicit per-trade status rather than a number:
 The original pnl_gross / pnl_cost / pnl_net columns are left untouched (comparison arm).
 Verified against hand-computed cases: debug/_verify_pnl_dollar.py.
 """
+import logging
 import os
 import re
 from typing import Callable, Optional
@@ -44,6 +45,8 @@ import numpy as np
 import pandas as pd
 
 from config import Config
+
+log = logging.getLogger("pnl_dollar")
 
 _WRDS_DIR = os.path.join("output", "cache", "wrds")
 _YF_DIR = Config.DATA.CACHE_DIR
@@ -57,6 +60,9 @@ def is_usd_symbol(symbol: str) -> bool:
         return False
     m = re.search(r"\.([A-Z0-9]+)$", s)
     return not (m and m.group(1) not in _SHARE_CLASS)
+
+
+READ_FAILURES: dict = {}  # {path: error} for price files that could not be read
 
 
 def load_daily_prices(symbol: str) -> Optional[pd.DataFrame]:
@@ -73,7 +79,11 @@ def load_daily_prices(symbol: str) -> Optional[pd.DataFrame]:
             continue
         try:
             d = pd.read_parquet(path)
-        except Exception:
+        except Exception as e:
+            # Inconsistency sweep 2026-09-28: an unreadable WRDS file used to switch this leg to the yfinance
+            # source silently. Fallback kept, but recorded and logged.
+            READ_FAILURES[path] = f"{type(e).__name__}: {e}"[:200]
+            log.warning("pnl_dollar: %s unreadable (%s) -- trying the next source", path, READ_FAILURES[path])
             continue
         if "close" not in d.columns:
             continue
