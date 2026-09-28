@@ -78,6 +78,9 @@ def main():
         f1 = lineage.fingerprint(d)
         time.sleep(0.02); w(os.path.join(d, "x.parquet"), "22")
         check("dir_fingerprint_changes", lineage.fingerprint(d) != f1)
+        f2 = lineage.fingerprint(d)
+        os.makedirs(os.path.join(d, "_backup_x")); w(os.path.join(d, "_backup_x", "old.parquet"), "0")
+        check("backup_subdir_ignored", lineage.fingerprint(d) == f2)
     finally:
         shutil.rmtree(root, ignore_errors=True)
     print(); print(f"{len(PASS)}/{len(PASS) + len(FAIL)} checks passed")

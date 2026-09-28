@@ -1078,9 +1078,49 @@ def episodic_bhfdr_confirm_asof(flat_pvalue_rows, alpha, as_of_date, min_windows
     return confirmed
 
 
+_SCAN_OUTPUTS = [os.path.join(_OUT_DIR, f"wrds_deep_history_episodic_scan_{n}.parquet")
+                 for n in ("tier1", "tier2_windows", "tier2_confirmed", "tier3_pairs", "tier3_windows", "tier3_confirmed")]
+
+
+def _scan_lineage():
+    """Seed/lineage stage for this scan (lineage.py). Inputs: the WRDS cache and the S&P membership/permno maps;
+    code: this file and every module its results depend on."""
+    from lineage import Lineage
+    rel = lambda p: os.path.relpath(p, _ROOT)
+    return Lineage().stage(
+        "episodic_scan",
+        code=[rel(__file__), "analysis.py", "universe_loader.py", "config.py", "data_wrds.py", "stats.py",
+              "research/rolling_adv_comparison.py"],
+        inputs=["output/cache/wrds"],
+        outputs=[rel(p) for p in _SCAN_OUTPUTS],
+        params={"lookback_years": 50, "min_pearson": Config.UNIVERSE.MIN_PEARSON_CORR})
+
+
+def _guard_stale_resume(stage):
+    """Refuse to RESUME from outputs/checkpoints that were produced against different inputs or code (2026-09-27:
+    the scan silently resumed from an existing Tier 1 file). `--fresh` moves them to a timestamped backup first."""
+    existing = [p for p in _SCAN_OUTPUTS if os.path.exists(p)] + glob.glob(os.path.join(_OUT_DIR, "checkpoint_*"))
+    if not existing:
+        return
+    st = stage.status()
+    if st["up_to_date"]:
+        log.info("lineage: existing outputs are up to date with inputs and code -- resuming is safe")
+        return
+    if "--fresh" not in sys.argv:
+        raise SystemExit(f"lineage: {len(existing)} existing outputs/checkpoints are STALE ({st['reason'][:300]}) -- "
+                         f"refusing to resume. Re-run with --fresh to move them to a backup and start clean.")
+    bk = os.path.join(_OUT_DIR, f"_episodic_scan_backup_{time.strftime('%Y%m%d_%H%M%S')}")
+    os.makedirs(bk, exist_ok=True)
+    for p in existing:
+        os.replace(p, os.path.join(bk, os.path.basename(p)))
+    log.info(f"lineage: --fresh -- moved {len(existing)} stale outputs/checkpoints to {bk}")
+
+
 def main():
     _setup_logging()
     t0 = time.time()
+    _stage = _scan_lineage()
+    _guard_stale_resume(_stage)
     log.info("=== wrds_deep_history_episodic_scan.py: does WRDS's much deeper daily history "
               "reveal cointegrated pairs yfinance's own 1D scan (0 confirmed) lacked the "
               "depth/quality to detect? ===")
@@ -1370,6 +1410,8 @@ def main():
              f"Tier 2 (rolling EG, static corr) episodic-confirmed={len(tier2_confirmed)} of {len(pairs)} pairs | "
              f"Tier 3 (rolling EG, rolling corr) episodic-confirmed={len(tier3_confirmed)} of {len(tier3_pairs)} pairs")
     log.info(f"wrds_deep_history_episodic_scan.py complete ({runtime:.1f} min)")
+    _stage.record()  # lineage: seed + output fingerprints (output/lineage/episodic_scan.json)
+    log.info("lineage: recorded stage 'episodic_scan'")
 
 
 if __name__ == "__main__":

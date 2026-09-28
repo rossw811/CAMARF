@@ -1681,6 +1681,21 @@ class UniverseFilter:
 # =============================================================================
 
 
+def eg_pvalue_pair(log_a, log_b, max_lag: int, tf_label: str) -> Tuple[Optional[float], int]:
+    """Production EG p-value for ONE pair of positionally aligned log-price arrays: both directions through
+    _eg_worker (longest gap-free run, BUG-D77) combined by _combine_eg_directions' rule (max of the two).
+    Returns (pvalue or None if untestable/crashed, n_overlap of the forward direction).
+    Inconsistency sweep 2026-09-27 (C4-2): three research scripts re-implemented EG as a one-direction test on
+    a[isfinite(a)&isfinite(b)] -- splicing across genuine gaps -- so their p-values were not production's."""
+    a, b = np.asarray(log_a, float), np.asarray(log_b, float)
+    fwd = _eg_worker(("A", "B", a, b, max_lag, tf_label))
+    rev = _eg_worker(("B", "A", b, a, max_lag, tf_label))
+    n = int(fwd.get("n_overlap", 0) or 0)
+    if fwd.get("ok") and rev.get("ok"):
+        return float(max(fwd["pvalue"], rev["pvalue"])), n
+    return None, n
+
+
 def _combine_eg_directions(candidate_pairs, results):
     """Combine per-direction EG results into one BH hypothesis per candidate pair.
 
