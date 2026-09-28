@@ -14,7 +14,7 @@ Nothing is skipped automatically: a script decides (`if st.up_to_date and not ar
 
 Fingerprints: sha256 of a file's content; for a directory, sha256 of its sorted (relative path, size, mtime_ns)
 listing -- cheap for the 44k-file WRDS cache, and any rewrite changes mtime (a same-size, same-mtime edit would be
-missed; stated, not hidden).
+missed; stated, not hidden). "_"-prefixed subdirectories (backups/staging by project convention) are excluded.
 
 Usage in a script:
     from lineage import Lineage
@@ -49,7 +49,10 @@ def fingerprint(path: str) -> str:
         return "f:" + h.hexdigest()
     if os.path.isdir(path):
         rows = []
-        for dp, _dn, fn in os.walk(path):
+        for dp, dn, fn in os.walk(path):
+            # project convention: "_"-prefixed subdirectories are backups/staging (e.g. _backup_d17_20260927),
+            # not data -- excluded so making a backup does not mark the whole cache as changed
+            dn[:] = [d for d in dn if not d.startswith("_")]
             for n in fn:
                 p = os.path.join(dp, n)
                 try:

@@ -65,7 +65,15 @@ withdrawn per PAPER_SCRUTINY) but the count is now logged and returned (`n_missi
 `lead_lag_scan._eg_pvalue`, `smoothing_comparison._eg_pvalue` test `a[isfinite(a)&isfinite(b)]` — splicing across
 genuine data gaps (production's `_eg_worker` keeps the longest gap-free run, BUG-D77) — and one direction only
 (production combines both). `eg_permutation_check` backs a PAPER.md claim (line ~3290), `lead_lag_scan` FINDINGS
-#27-area claims. Fix: route through the production EG path; re-derive the affected numbers.
+#27-area claims. **Scope is wider than three copies:** `lead_lag_scan._eg_pvalue` is imported by
+`cross_timeframe_divergence`, `lag_sweep_validation`, `lead_lag_permutation_check`, `cross_tf_lead_lag_scan` (and
+`eg_permutation_check._eg_pvalue` by `descriptive_check_concordance`). **Not swapped in place, deliberately:** the
+permutation scripts compact real and null draws to ONE fixed overlap mask so both have the same N (a documented
+2026-07-20 fix); replacing only the real p-value with production's gap-aware two-direction value would break that
+like-for-like design. **Plan:** `analysis.eg_pvalue_pair` (added; production's `_eg_worker` both directions, max rule)
+is the single API. Non-permutation callers switch to it passing NaN-preserving arrays + tf_label; permutation callers
+first select production's gap-free segment, then run real and every null draw on that segment in both directions.
+Re-derive and compare old vs new numbers for each affected finding before any is cited.
 
 **M-1 OPEN (methodology, for Ross) — non-like-for-like null in `trend_dominance_diagnostic.leg_corrected_pvalue`.**
 The real pair's EG statistic is computed on contemporaneous, date-aligned data; the null distribution comes from
