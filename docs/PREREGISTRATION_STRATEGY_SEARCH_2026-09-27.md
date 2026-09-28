@@ -65,3 +65,24 @@ result exists:
 - Pools become `purity_pairs_pit_k1_clean` (1,265 pairs) and `purity_pairs_pit_k2_clean` (167 pairs).
 - N for the DSR is 2 × 216 = 432 as before (same grid, same number of pool arms).
 Nothing else changes.
+
+## Amendment 2 (2026-09-28, before ANY result of the second pass exists)
+This is the "separate, labelled pass" promised under *Data and accounting* (re-run once FX conversion lands). It is
+run with the FIRST pass's outcome already known ("no robust signal found" in all 8 pool×split cells, Development.md
+2026-09-27) — disclosed here, and both passes are reported side by side.
+What changes, and why (all fixes committed before this amendment; details in docs/CODE_REVIEW_2026-09-26.md
+"Data-layer round 3" and docs/INCONSISTENCY_SWEEP_2026-09-27.md):
+- **Discovery is re-run from scratch** on the corrected data: coarse-bar stamps (D13), cross-asset labels (D16),
+  WRDS ticker → security identity (D17: 2,719 reused tickers had been assigned to their oldest holder), corrupt
+  WRDS files refetched (D19), loader dedupe that now also catches shorter-history aliases, FX-converted Compustat
+  Global prices (R1.1). The chain is recorded with lineage (`research/pipeline_stages.py`) and no stage may resume
+  from outputs made on the old data.
+- **Pools are exactly what the re-run chain produces** (`purity_pairs_pit_k{1,2}_clean.parquet` from
+  `research/clean_pool_identity_pairs.py`); no additional filtering or selection. Their sizes are reported as found.
+- **Legs:** all legs priced in USD — CRSP legs as before, Compustat Global legs via `close_usd`. A trade whose legs
+  lack a USD price at entry or exit is excluded and the count is reported (in the first pass ~69% of trades were
+  excluded as non-USD).
+- **Intraday discovery** runs without IBKR deep history (`include_ibkr=False`, Ross 2026-09-27), so 1h/4h pairs rest
+  on yfinance's ~730-day intraday history only.
+Unchanged: grid (216 configurations), both pool arms, N = 432 for the DSR, the four calendar splits and 1% embargo,
+the median-of-four-folds selection rule, PBO via CSCV (16 blocks), and the success criterion.
