@@ -564,6 +564,43 @@ _MONTHLY_PUBLICATION_LAG_DAYS: Dict[str, int] = {
 }
 
 
+# Point-in-time availability of daily/weekly macro values (code review M8 + M9, 2026-09-27). RegimeConditioner
+# reads `macro.index <= entry date`, so a value must not sit on a trading day before it was public. Each value is
+# mapped to its RELEASE date and becomes visible on the first trading day STRICTLY AFTER that release:
+#   "daily"      FRED daily series: VIX close is 16:15 ET (after the equity close); H.15 yields, ICE BofA spreads,
+#                EIA WTI and the TIPS/breakeven series publish the next business day -> usable at t+1.
+#   "weekly_h10" DTWEXBGS (usd_index): the Fed's H.10 is released on Monday for the PRIOR week, so each daily
+#                value is public the Monday after its week -> usable Tuesday. Was visible up to ~a week early.
+#   "cot"        CFTC COT: as-of Tuesday, released Friday 15:30 ET -> usable the following Monday. Was indexed on
+#                the as-of Tuesday (3 days early). Holiday weeks release a day or two later still (disclosed; the
+#                API carries no release timestamp).
+_DAILY_RELEASE_KIND: Dict[str, str] = {"usd_index": "weekly_h10"}
+
+
+def _release_dates(idx: pd.DatetimeIndex, kind: str) -> pd.DatetimeIndex:
+    idx = pd.DatetimeIndex(idx).normalize()
+    if kind == "daily":
+        return idx
+    if kind == "weekly_h10":
+        return idx + pd.to_timedelta(7 - idx.weekday, unit="D")   # Monday of the following week
+    if kind == "cot":
+        return idx + pd.Timedelta(days=3)                          # Tuesday as-of -> Friday release
+    raise ValueError(f"_release_dates: unknown release kind {kind!r}")
+
+
+def _release_available(s: pd.Series, master_idx: pd.DatetimeIndex, kind: str) -> pd.Series:
+    """Series on master_idx where each value appears on the first trading day strictly after its release and is
+    forward-filled until the next one (FRED's holiday/missing prints hold the last released value)."""
+    s = s.dropna().sort_index()
+    if s.empty:
+        return pd.Series(np.nan, index=master_idx)
+    pos = master_idx.searchsorted(_release_dates(s.index, kind), side="right")
+    keep = pos < len(master_idx)
+    avail = pd.Series(s.to_numpy()[keep], index=master_idx[pos[keep]])
+    avail = avail[~avail.index.duplicated(keep="last")]
+    return avail.reindex(master_idx).ffill()
+
+
 def _align_to_trading_calendar(
     daily_native: Dict[str, pd.Series],
     monthly_native: Dict[str, pd.Series],
@@ -605,7 +642,7 @@ def _align_to_trading_calendar(
     out = pd.DataFrame(index=master_idx)
 
     for name, s in daily_native.items():
-        out[name] = s.sort_index().reindex(master_idx, method="ffill")
+        out[name] = _release_available(s, master_idx, _DAILY_RELEASE_KIND.get(name, "daily"))  # M9
 
     for name, s in monthly_native.items():
         s_sorted = s.sort_index()
@@ -814,8 +851,8 @@ def build(
         )
 
     # CFTC COT: net speculative positioning for ES and NQ futures.
-    # Weekly release (every Friday evening); forward-filled to daily via
-    # the daily-native path (COT is treated as a daily series for alignment
+    # Weekly release (Friday 15:30 ET for the Tuesday as-of date; visible from the next trading day, M8);
+    # forward-filled to daily via the daily-native path (COT is treated as a daily series for alignment
     # purposes — the last-known-weekly value holds until the next release,
     # which is correct and expected, not a gap). Fetched independently of
     # the FRED path: COTFeed hits CFTC's Socrata API.
@@ -824,7 +861,7 @@ def build(
         if cot_df is not None and not cot_df.empty and "net_spec_pct" in cot_df.columns:
             col_raw = f"cot_{cot_contract.lower()}_net_spec"
             col_regime = f"cot_{cot_contract.lower()}_regime"
-            aligned_cot = cot_df["net_spec_pct"].sort_index().reindex(master_idx, method="ffill")
+            aligned_cot = _release_available(cot_df["net_spec_pct"], master_idx, "cot")  # M8: Friday release
             wide[col_raw] = aligned_cot
             wide[col_regime] = _classify_cot_net_spec(aligned_cot)
 

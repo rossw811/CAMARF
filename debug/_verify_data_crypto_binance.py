@@ -56,7 +56,7 @@ def test_agrees_with_yfinance_within_tolerance():
     df_binance = pd.read_parquet(binance_path)
     df_binance.index = df_binance.index.tz_localize(None) if df_binance.index.tz is not None else df_binance.index
 
-    df_yf = DataStore.load("BTC", "1D")  # CAMARF's internal symbol convention drops the "-USD" suffix
+    df_yf = DataStore.load("BTC-USD", "1D")  # D16 (2026-09-27): crypto labels are namespaced "<SYM>-USD"
     if df_yf is None or df_yf.empty:
         print("SKIPPED: no cached yfinance BTC daily data on this machine to cross-check against.")
         return

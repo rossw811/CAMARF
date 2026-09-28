@@ -39,6 +39,8 @@ nest_asyncio.apply()
 import ib_insync as ibi
 
 from config import Config
+from period_bars import resample_to_period_end
+from instrument_labels import instrument_label, root_symbol
 
 warnings.filterwarnings("ignore", category=FutureWarning)
 
@@ -413,6 +415,22 @@ class DataStore:
 
     _SPLIT_GAP_TOLERANCE = 0.15  # matches this project's established single-bar anomaly threshold
 
+    _BASIS_MIN_OVERLAP = 3        # overlapping bars needed to measure a basis change
+    _BASIS_CONSISTENCY_TOL = 1e-3  # |r_i / median - 1| within this for a row to agree with the median
+    _BASIS_CONSISTENT_FRAC = 0.8   # share of overlap rows that must agree
+
+    @staticmethod
+    def _consistent_ratio(new_vals: pd.Series, old_vals: pd.Series) -> Optional[float]:
+        """Median of new/old over rows where both are positive, or None when the rows do not agree on one ratio."""
+        n, o = new_vals.astype(float).to_numpy(), old_vals.astype(float).to_numpy()
+        ok = np.isfinite(n) & np.isfinite(o) & (n > 0) & (o > 0)
+        if ok.sum() < DataStore._BASIS_MIN_OVERLAP:
+            return None
+        r = n[ok] / o[ok]
+        med = float(np.median(r))
+        agree = np.abs(r / med - 1.0) <= DataStore._BASIS_CONSISTENCY_TOL
+        return med if agree.mean() >= DataStore._BASIS_CONSISTENT_FRAC else None
+
     @staticmethod
     def _reconcile_split_adjustment(
         symbol: str, existing: pd.DataFrame, new_df: pd.DataFrame
@@ -453,6 +471,32 @@ class DataStore:
         ):
             return existing
 
+        # Code review D12 (2026-09-27): when the two frames share timestamps (an incremental refresh overlaps the
+        # cache), measure the basis change on those SAME bars. A ratio that is constant across the overlap can
+        # only be an adjustment change (a real move cannot re-price an already-closed bar) -- this reconciles
+        # dividend basis shifts (yfinance auto_adjust, ~0.5-2%, under the gap tolerance) as well as splits. The
+        # former check compared existing's LAST close with new_df's FIRST close -- two different dates, so an
+        # overlapping refresh mixed a month of real returns into the "ratio". debug/_verify_append_basis_reconcile.py
+        overlap = existing.index.intersection(new_df.index)
+        if len(overlap) >= DataStore._BASIS_MIN_OVERLAP:
+            px_ratio = DataStore._consistent_ratio(new_df.loc[overlap, "close"], existing.loc[overlap, "close"])
+            if px_ratio is None:
+                return existing  # overlap disagrees inconsistently (revised bars) -- not a basis change
+            vol_ratio = None
+            if "volume" in existing.columns and "volume" in new_df.columns:
+                vol_ratio = DataStore._consistent_ratio(new_df.loc[overlap, "volume"], existing.loc[overlap, "volume"])
+            if abs(px_ratio - 1.0) < 1e-9 and (vol_ratio is None or abs(vol_ratio - 1.0) < 1e-9):
+                return existing
+            existing = existing.copy()
+            price_cols = [c for c in ("open", "high", "low", "close", "vwap") if c in existing.columns]
+            existing[price_cols] = existing[price_cols] * px_ratio
+            if vol_ratio is not None:
+                existing["volume"] = existing["volume"] * vol_ratio
+            log.info(f"  {symbol}: reconciled adjustment basis on {len(overlap)} overlapping bars "
+                     f"(price x{px_ratio:.6f}, volume x{vol_ratio if vol_ratio is not None else 1.0:.6f})")
+            return existing
+
+        # No overlap: the only evidence is the adjacent-bar gap, validated against the recorded split history.
         last_existing_close = existing["close"].iloc[-1]
         first_new_close = new_df["close"].iloc[0]
         if (
@@ -1273,17 +1317,21 @@ class DataAligner:
                 _span_min = (df.index.max() - df.index.min()).total_seconds() / 60
                 _expected_rows = int(_span_min / _fmin) + 1
 
+                _grid_start = df.index.min()
                 if _expected_rows > _MAX_REINDEX:
-                    log.debug(
-                        f"  align_intraday: {symbol} expected {_expected_rows} rows "
-                        f"at freq={freq} — OOM guard, using raw"
+                    # Code review D7 (2026-09-26): this guard used to return the RAW index with every flag
+                    # NONE -- off the uniform grid build_returns_matrix's row-count join relies on, and with
+                    # overnight jumps unmasked. Keep the grid; drop only the OLDEST history that doesn't fit.
+                    _grid_start = df.index.max() - pd.Timedelta(minutes=_fmin * (_MAX_REINDEX - 1))
+                    log.warning(
+                        f"  align_intraday: {symbol} needs {_expected_rows} grid rows at freq={freq} "
+                        f"(cap {_MAX_REINDEX}) — keeping the most recent {_MAX_REINDEX} grid rows "
+                        f"from {_grid_start}; {int((df.index < _grid_start).sum())} older bars dropped"
                     )
-                    df["gap_flag"] = np.zeros(len(df), dtype=np.int8)
-                    df["is_gap"] = False
-                    aligned[symbol] = df.dropna(subset=["close"])
-                    continue
+                    df = df[df.index >= _grid_start]
+                    _grid_start = df.index.min()
 
-                full_idx = pd.date_range(df.index.min(), df.index.max(), freq=freq)
+                full_idx = pd.date_range(_grid_start, df.index.max(), freq=freq)
                 df_aligned = df.reindex(full_idx)
                 missing = df_aligned["close"].isna()
 
@@ -1503,8 +1551,11 @@ def compute_canonical_cutoff(tf_label: str) -> Optional[pd.Timestamp]:
 def _to_yf_ticker(symbol: str, asset_class: str) -> str:
     """IBKR/config symbol -> yfinance ticker. Module level (was nested in UniverseBuilder.build) so
     the cache re-fetch tool uses the identical mapping instead of a drifting copy."""
-    if asset_class == "crypto":
-        return f"{symbol}-USD"
+    if asset_class in ("crypto", "futures", "commodity"):
+        # D16 (2026-09-27): labels are namespaced ("BTC-USD", "ES=F"); instrument_label is idempotent, so a bare
+        # config symbol maps the same way. Futures/commodities had NO branch here -- a daily fetch of "ES" got
+        # Eversource Energy stock, not the E-mini.
+        return instrument_label(symbol, asset_class)
     elif asset_class == "forex":
         # yfinance uses EURUSD=X format; config stores "EUR.USD" — remove dot, add =X
         return symbol.replace(".", "") + "=X"
@@ -1715,7 +1766,6 @@ class DataCleaner:
     """
 
     _REQUIRED_COLS = {"open", "high", "low", "close", "volume", "average"}
-    _NYSE_CALENDAR = None
 
     @staticmethod
     def clean(
@@ -1753,7 +1803,7 @@ class DataCleaner:
 
         df = df[~df.index.duplicated(keep="last")]
 
-        df, gap_count, missing_pct = DataCleaner._fill_gaps(df, tf_ibkr)
+        df, gap_count, missing_pct = DataCleaner._measure_missing(df, tf_ibkr, asset_class)
         if missing_pct > Config.DATA.MAX_MISSING_PCT:
             return None, QualityReport(
                 symbol,
@@ -1770,8 +1820,12 @@ class DataCleaner:
                 source=source,
             )
 
-        if asset_class in ("futures", "commodity"):
-            df, roll_dates = DataCleaner._roll_adjust(df)
+        # Futures/commodity prices are no longer "roll-adjusted" here (code review D9, 2026-09-27). The former
+        # _roll_adjust treated ANY >5% close-to-close move as a roll, and its ratio was inverted (before/after
+        # applied to earlier prices), so each such move was roughly DOUBLED, not removed: 41 real ES days
+        # (2008-10-13, March 2020), 311 CL and 894 NG days on raw yfinance =F history. yfinance =F series are
+        # unadjusted front-month; genuine roll gaps remain in them (disclosed; roll handling from real contract
+        # calendars is an open methodology item). debug/_verify_futures_no_magnitude_roll_adjust.py.
 
         # Liquidity is a universe-admission decision (analysis.py's ADV filter), never a reason
         # to rewrite observed prices. The former _liquidity_filter NaN'd every bar whose PER-BAR
@@ -1853,80 +1907,49 @@ class DataCleaner:
         return df
 
     @staticmethod
-    def _get_nyse_sessions(start: str, end: str) -> pd.DatetimeIndex:
-        if DataCleaner._NYSE_CALENDAR is None:
-            DataCleaner._NYSE_CALENDAR = mcal.get_calendar("NYSE")
-        schedule = DataCleaner._NYSE_CALENDAR.schedule(start_date=start, end_date=end)
-        return mcal.date_range(schedule, frequency="1D").normalize().tz_localize(None)
-
-    @staticmethod
-    def _fill_gaps(
+    def _measure_missing(
         df: pd.DataFrame,
         tf_ibkr: str,
+        asset_class: str,
     ) -> Tuple[pd.DataFrame, int, float]:
-
-        INTRADAY = {
-            "1 min",
-            "2 mins",
-            "3 mins",
-            "5 mins",
-            "15 mins",
-            "30 mins",
-            "1 hour",
-            "4 hours",
-        }
-
-        if tf_ibkr in INTRADAY:
-            df = df.ffill()
-            if "volume" in df.columns:
-                df["volume"] = df["volume"].fillna(0)
-            return df, 0, 0.0
-
-        if tf_ibkr == "1 day":
-            try:
-                start = df.index.min().strftime("%Y-%m-%d")
-                end = df.index.max().strftime("%Y-%m-%d")
-                expected_idx = DataCleaner._get_nyse_sessions(start, end)
-                df.index = df.index.normalize()
-                gap_count = max(0, len(expected_idx) - len(df))
-                missing_pct = gap_count / max(len(expected_idx), 1)
-                df = df.reindex(expected_idx)
-                df = df.ffill()
-                if "volume" in df.columns:
-                    df["volume"] = df["volume"].fillna(0)
-                return df, gap_count, missing_pct
-            except Exception:
-                return df, 0, 0.0
-
-        # Weekly / Monthly — no reindexing
-        df = df.ffill()
+        """
+        Measure -- never fill -- missing daily bars (code review D8, 2026-09-27). Replaces _fill_gaps, which for
+        IBKR "1 day" bars reindexed onto NYSE sessions and forward-filled BEFORE the cache write (fabricated bars
+        of any run length stored as real -- invisible to GapFlag downstream, CLAUDE.md rule 3 -- and every crypto
+        weekend bar dropped), while yfinance/WRDS callers pass tf_ibkr = tf_label ("1D"), which matched no branch,
+        so missing_pct was always 0 and MAX_MISSING_PCT never applied to them.
+        Daily ("1 day" or "1D"): missing share of the asset's own calendar -- every calendar day for crypto,
+        weekdays otherwise (US holidays count as ~3.6% missing, as the MAX_MISSING_PCT note in config.py assumes)
+        -- over the span kept after dropping history that precedes the last unreliable window (see below). Other timeframes: not measured here (DataAligner classifies
+        intraday gaps on its grid). A NaN volume on a real bar is set to 0; no rows are ever added.
+        debug/_verify_cleaner_no_cache_ffill.py.
+        """
         if "volume" in df.columns:
             df["volume"] = df["volume"].fillna(0)
-        return df, 0, 0.0
-
-    @staticmethod
-    def _roll_adjust(
-        df: pd.DataFrame,
-    ) -> Tuple[pd.DataFrame, List[str]]:
-        roll_dates: List[str] = []
-        df = df.copy()
-        returns = df["close"].pct_change().abs()
-        roll_idx = returns[returns > 0.05].index
-        for roll_date in roll_idx:
-            roll_dates.append(str(roll_date.date()))
-            loc = df.index.get_loc(roll_date)
-            if loc == 0:
-                continue
-            price_before = df["close"].iloc[loc - 1]
-            price_after = df["close"].iloc[loc]
-            if price_after == 0:
-                continue
-            ratio = price_before / price_after
-            df.iloc[:loc, df.columns.get_loc("open")] *= ratio
-            df.iloc[:loc, df.columns.get_loc("high")] *= ratio
-            df.iloc[:loc, df.columns.get_loc("low")] *= ratio
-            df.iloc[:loc, df.columns.get_loc("close")] *= ratio
-        return df, roll_dates
+        if tf_ibkr not in ("1 day", "1D") or len(df) < 2:
+            return df, 0, 0.0
+        days = df.index.normalize().unique()
+        cal = pd.date_range(days.min(), days.max(), freq="D" if asset_class == "crypto" else "B")
+        miss = pd.Series(~cal.isin(days), index=cal, dtype=float)
+        # Keep the longest RECENT span that meets MAX_MISSING_PCT in every window of the minimum analysis span
+        # (MIN_OVERLAP_BY_TF["1D"] bars): history before the last unreliable window is dropped, not the asset.
+        # A lifetime share rejected e.g. PL=F whole (2002-2009 Yahoo hole, ~3.4% missing since 2010) while a
+        # recent-only share would keep a sparse stretch that downstream FILL forward-fills. If the most recent
+        # window is itself unreliable, its share is returned (-> rejected). Rows are only ever dropped.
+        win = int(Config.STATS.MIN_OVERLAP_BY_TF.get("1D", 252))
+        if len(cal) >= win:
+            roll = miss.rolling(win).mean()
+            bad = roll > Config.DATA.MAX_MISSING_PCT
+            if bad.any():
+                if bad.iloc[-1]:
+                    return df, int(miss.sum()), float(roll.iloc[-1])
+                # The kept span [s, end] contains exactly the windows STARTING at or after s, so s is one bar
+                # after the START of the last unreliable window (window ending at position e starts at e-win+1).
+                s_pos = int(np.flatnonzero(bad.to_numpy())[-1]) - win + 2
+                start = cal[s_pos]
+                df = df[df.index.normalize() >= start]
+                miss = miss[miss.index >= start]
+        return df, int(miss.sum()), float(miss.mean())
 
 
 # =============================================================================
@@ -2018,17 +2041,11 @@ class YFinanceFeed:
         # Only aggregate columns that exist
         agg = {k: v for k, v in agg.items() if k in df_1d.columns}
 
-        for tf_label, rule, lbl, cls_ in [
-            ("7D", "W-FRI", "right", "right"),  # stamp = Friday (week close)
-            ("1M", "MS", "left", "left"),  # stamp = first trading day of month
-            ("3M", "QS", "left", "left"),  # stamp = first trading day of quarter
-            ("6M", "2QS", "left", "left"),  # stamp = first day of each half-year
-        ]:
+        # D13 (2026-09-27): every coarse bar is stamped at the calendar END of its period (period_bars.py).
+        # 1M/3M/6M used to be stamped at period start ("MS"/"QS"/"2QS") while carrying the period-end close.
+        for tf_label in ("7D", "1M", "3M", "6M"):
             try:
-                resampled = df_1d.resample(rule, label=lbl, closed=cls_).agg(agg)
-                # Drop empty periods (weeks/months with no trading days)
-                resampled = resampled.dropna(subset=["close"])
-                resampled = resampled[resampled["close"] > 0]
+                resampled = resample_to_period_end(df_1d, tf_label, agg)
                 resampled["is_gap"] = False
                 out[tf_label] = resampled
             except Exception as e:
@@ -2347,15 +2364,8 @@ class YFinanceFeed:
         needs_resample = tf_label in YFinanceFeed._YF_RESAMPLE_RULES
         source_tag = "yfinance_resampled" if needs_resample else "yfinance"
 
-        # Build yfinance ticker format
-        if asset_class == "crypto":
-            yf_sym = f"{symbol}-USD"
-        elif asset_class == "forex":
-            yf_sym = symbol.replace(".", "") + "=X"
-        elif asset_class in ("futures", "commodity"):
-            yf_sym = f"{symbol}=F"  # GC → GC=F, NQ → NQ=F, ZN → ZN=F
-        else:
-            yf_sym = symbol.replace(" ", "-")
+        # Build yfinance ticker format -- the one shared mapping (D16: was a drifting copy of _to_yf_ticker)
+        yf_sym = _to_yf_ticker(symbol, asset_class)
 
         # Load cached working period for this ticker/interval
         _pkey = f"yf_period_{symbol.replace(' ','_')}_{yf_interval}"
@@ -2849,6 +2859,8 @@ class IBKRFeed:
     # ------------------------------------------------------------------
 
     def _build_contract(self, symbol: str, asset_class: str) -> Optional[ibi.Contract]:
+        if asset_class in ("crypto", "futures", "commodity"):
+            symbol = root_symbol(symbol)  # D16: labels are "BTC-USD"/"ES=F"; IBKR contracts use the root
         try:
             if asset_class == "equity":
                 return ibi.Stock(symbol, "SMART", "USD")
@@ -3241,6 +3253,8 @@ class IBKRFeed:
                     symbol, asset_class, tf_label
                 )
                 if yf_df is not None:
+                    yf_df = snap_timestamps(yf_df, tf_label, "yfinance", symbol=symbol)  # D10
+                if yf_df is not None and not yf_df.empty:
                     DataStore.append(symbol, tf_label, yf_df)
                     log.info(f"  ✓ yfinance {symbol} {tf_label} → {len(yf_df)} bars")
                     # Don't reset consecutive_fails — IBKR is still failing
@@ -3264,6 +3278,8 @@ class IBKRFeed:
                     symbol, asset_class, tf_label
                 )
                 if yf_df is not None:
+                    yf_df = snap_timestamps(yf_df, tf_label, "yfinance", symbol=symbol)  # D10
+                if yf_df is not None and not yf_df.empty:
                     DataStore.append(symbol, tf_label, yf_df)
                     log.info(
                         f"  ✓ yfinance (1-bar fallback) {symbol} {tf_label} → {len(yf_df)} bars"
@@ -3273,6 +3289,14 @@ class IBKRFeed:
         cleaned, report = DataCleaner.clean(
             raw_bars, symbol, asset_class, tf_label, tf_ibkr, source="ibkr"
         )
+        # Code review D10 (2026-09-27): snap BEFORE the cache write. The request is useRTH=False, and the
+        # unsnapped bars (extended hours, off-grid stamps) used to be persisted here; only one of five callers
+        # snapped afterwards. debug/_verify_ibkr_cache_snapped.py.
+        if cleaned is not None:
+            cleaned = snap_timestamps(cleaned, tf_label, "ibkr", symbol=symbol)
+            if cleaned is None or cleaned.empty:
+                log.warning(f"Dropped  {symbol} {tf_label}  →  no session bars after snapping")
+                return None
         if cleaned is not None:
             DataStore.append(symbol, tf_label, cleaned)
             log.info(
@@ -3479,8 +3503,9 @@ class IBKRFeed:
             return result
 
         # Derive 7D and 1M from daily (no depth loss)
-        result["7D"] = IBKRFeed._resample(df_1d, "W-FRI")
-        result["1M"] = IBKRFeed._resample(df_1d, "1ME")
+        # D13: same calendar-period-end stamps as every other source (period_bars.py)
+        result["7D"] = resample_to_period_end(df_1d, "7D") if df_1d is not None and not df_1d.empty else None
+        result["1M"] = resample_to_period_end(df_1d, "1M") if df_1d is not None and not df_1d.empty else None
 
         # Fetch all intraday
         intraday = self.get_intraday(symbol, asset_class)
@@ -4714,8 +4739,8 @@ class UniverseBuilder:
                             excluded.append((symbol, asset_class, "no_daily_data"))
                             continue
                         all_data[f"{symbol}_1D"] = df_1d
-                        df_7d = IBKRFeed._resample(df_1d, "W-FRI")
-                        df_1m_res = IBKRFeed._resample(df_1d, "1ME")
+                        df_7d = resample_to_period_end(df_1d, "7D")  # D13: shared period-end stamps
+                        df_1m_res = resample_to_period_end(df_1d, "1M")
                         if df_7d is not None:
                             all_data[f"{symbol}_7D"] = df_7d
                         if df_1m_res is not None:
@@ -5250,14 +5275,16 @@ class UniverseBuilder:
 
         for ticker in self._fetch_sp500_tickers():
             add(ticker, "equity")
+        # D16 (2026-09-27): crypto/futures/commodity labels are namespaced (instrument_labels.py) -- CL/ES/CC/LTC
+        # are also stock tickers and the bare labels made the two instruments share one cache file.
         for sym in Config.UNIVERSE.CRYPTO:
-            add(sym, "crypto")
+            add(instrument_label(sym, "crypto"), "crypto")
         for sym in Config.UNIVERSE.FOREX:
             add(sym, "forex")
         for sym in Config.UNIVERSE.COMMODITIES:
-            add(sym, "commodity")
+            add(instrument_label(sym, "commodity"), "commodity")
         for sym in Config.UNIVERSE.FUTURES:
-            add(sym, "futures")
+            add(instrument_label(sym, "futures"), "futures")
         # ETFs: QQQ, IWM, SPY, VOO, GLD, SLV, USO
         for sym in Config.UNIVERSE.ETFS:
             add(sym, "etf")

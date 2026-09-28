@@ -99,13 +99,13 @@ cache time (D1, D8) before alignment sees them, 4h overnight gaps fall under the
 | D4 | 1621 | High (lookahead + loss) | Banker's rounding collides on-the-hour IBKR bars; yfinance 15:30 bar clamped onto 14:30. | **CONFIRMED (repro):** IBKR 1h 6 → 4 bars (11:00, 13:00 lost); yfinance 1h 7 → 6 bars with 14:30 stamp carrying the 15:30 close (up to 90 min lookahead). Feeds primary 1h cache and 4h resample. |
 | D5 | 1298 | High | 4h weeknight gap = 4 bars ≤ `_MAX_FILL_BARS` → FILL, forward-filled into EG/corr (inflates n and ADF significance). | UNVERIFIED (reviewer repro: 32/68 rows fake FILL) |
 | D6 | 1171 | Med | `align_daily` >50% gap exclusion measured after ffill → never fires; SPARSE never set. | UNVERIFIED |
-| D7 | 1269 | Med | Intraday OOM guard returns raw index with all flags NONE. | UNVERIFIED |
-| D8 | 1835 | Med | Cache-time ffill of IBKR daily; `tf_ibkr=tf_label` disables MAX_MISSING_PCT for non-IBKR sources. | UNVERIFIED |
-| D9 | 1856 | Med | `_roll_adjust` treats any >5% move as a roll, flattening real futures moves. | UNVERIFIED |
-| D10 | 3209 | Med | Raw unsnapped extended-hours IBKR bars written to cache before snapping. | UNVERIFIED |
+| D7 | 1269 | Med | Intraday OOM guard returns raw index with all flags NONE. | **CONFIRMED + FIXED 2026-09-27** (round 3) |
+| D8 | 1835 | Med | Cache-time ffill of IBKR daily; `tf_ibkr=tf_label` disables MAX_MISSING_PCT for non-IBKR sources. | **CONFIRMED + FIXED 2026-09-27** (round 3) |
+| D9 | 1856 | Med | `_roll_adjust` treats any >5% move as a roll, flattening real futures moves. | **CONFIRMED + FIXED 2026-09-27** (round 3) |
+| D10 | 3209 | Med | Raw unsnapped extended-hours IBKR bars written to cache before snapping. | **CONFIRMED + FIXED 2026-09-27** (round 3) |
 | D11 | 1789 | High | `_standardize` drops tz without converting to ET; yfinance crypto intraday stored as UTC clock time. | UNVERIFIED |
-| D12 | 456 | Med | Split reconciliation compares different dates; dividend seams never reconciled. | UNVERIFIED |
-| D13 | 1976 | Med (lookahead) | 1M/3M/6M bars stamped period-start with period-end close. | UNVERIFIED |
+| D12 | 456 | Med | Split reconciliation compares different dates; dividend seams never reconciled. | **CONFIRMED + FIXED 2026-09-27** (round 3) |
+| D13 | 1976 | Med (lookahead) | 1M/3M/6M bars stamped period-start with period-end close. | **CONFIRMED + FIXED 2026-09-27** (round 3) |
 | D14 | 5738 | Med | Wikipedia S&P 500 result cached without size check (violates CLAUDE.md "never cache empty"). | **CONFIRMED** by code (`_save_sp500_cache(tickers)` directly after parse, no length guard). |
 | D15 | 2443 | Low | `_attempts[0][0]` compares first character; working period always cached and pinned. | **CONFIRMED** by code (`_attempts` is a list of period strings, line 2321). |
 
@@ -167,15 +167,15 @@ CachyOS run since mid-August has silently used ~2.8% fewer WRDS symbols than the
 | U5 | universe_loader.py:166, 543–544 | Med | IBKR "1D" overrides WRDS daily for 90 symbols (the previously confirmed-pair set) → selection-dependent deeper history (e.g. 7267.T from 2000 vs 2023). | UNVERIFIED |
 | U6 | universe_loader.py:196–208 | Med | Memo key excludes loader code version; stale memos survive code fixes; never cleaned (Surface: 20 GB across 50 pickles in `output/cache/_universe_loader_memo`). | UNVERIFIED |
 | M7 | macro.py:549–552, 608–618 | High (PIT) | Lags documented as "from reference-period end" but added to FRED's start-of-month stamp → CPI (+15d) visible ~4 weeks early; FEDFUNDS (+5d) visible before its month ends. Should be ~45d / ~33d. | **CONFIRMED** by code. |
-| M8 | macro.py:484, 824 | High (PIT) | COT indexed on Tuesday as-of date; published Friday → 3 days early. | UNVERIFIED |
-| M9 | macro.py:604–605 + backtest.py:270 | Med-High | Daily FRED series unlagged; same-day VIX close (16:15 ET) used at day-t entry; DTWEXBGS weekly (up to ~1 week leak). Overlaps B13. | UNVERIFIED |
+| M8 | macro.py:484, 824 | High (PIT) | COT indexed on Tuesday as-of date; published Friday → 3 days early. | **CONFIRMED + FIXED 2026-09-27** (round 3) |
+| M9 | macro.py:604–605 + backtest.py:270 | Med-High | Daily FRED series unlagged; same-day VIX close (16:15 ET) used at day-t entry; DTWEXBGS weekly (up to ~1 week leak). Overlaps B13. | **CONFIRMED + FIXED 2026-09-27** (round 3) |
 | M10 | macro.py:560, 265–276 | Med | USREC 120-day shift < real NBER lags (4–15+ months); latest-vintage backfill. | UNVERIFIED |
 | M11 | macro.py:279–297, 761–771 | Med | Sahm from latest-vintage UNRATE (annual seasonal revisions); no ALFRED vintages; docstring claims live-knowable. | UNVERIFIED |
 | M12 | macro.py:604–605 | Low-Med | Daily series ffilled to today with no limit/staleness flag. | UNVERIFIED |
 | C13 | config.py:145–183 + data.py:1732 | High | `MIN_BARS_REQUIRED` lacks 3M/6M/1Y (all in `WRDS_PRIMARY_TFS`) → `.get(tf, 100)` demands 25/50/100 years → nearly every symbol rejected at those TFs. Same bug previously fixed in `MIN_OVERLAP_BY_TF`. | **CONFIRMED** by code. |
-| C14 | config.py:610–617, 1083–1088 | Low-Med | Comments call `OU_ZSCORE_ENTRY`=2.0 / `ResearchConfig.ENTRY_Z`=2.0 "production"; actual `BacktestConfig.ENTRY_ZSCORE`=3.0. | UNVERIFIED |
-| C15 | config.py:785–787 + backtest.py:315–321 | Low | `REGIME_SIZING` comments disagree with code (1.5x/1.0x, not normal/0). Latent (Layer 2 off). | UNVERIFIED |
-| C16 | universe_loader.py:131 | Low | `_IO_WORKERS = 32` hardcoded (project rule: derive from `os.cpu_count()`). | UNVERIFIED |
+| C14 | config.py:610–617, 1083–1088 | Low-Med | Comments call `OU_ZSCORE_ENTRY`=2.0 / `ResearchConfig.ENTRY_Z`=2.0 "production"; actual `BacktestConfig.ENTRY_ZSCORE`=3.0. | **CONFIRMED + FIXED 2026-09-27** (round 3) |
+| C15 | config.py:785–787 + backtest.py:315–321 | Low | `REGIME_SIZING` comments disagree with code (1.5x/1.0x, not normal/0). Latent (Layer 2 off). | **CONFIRMED + FIXED 2026-09-27** (round 3) |
+| C16 | universe_loader.py:131 | Low | `_IO_WORKERS = 32` hardcoded (project rule: derive from `os.cpu_count()`). | **CONFIRMED + FIXED 2026-09-27** (round 3) |
 
 ---
 
@@ -553,3 +553,94 @@ symbol is treated as that exchange's local time); converting there would silentl
 Needs a coordinated redesign of both functions; current pool exposure nil (intraday pairs are US equities, ET).
 FX: `fx_convert.py` (8/8 hand-computed) built; per-listing currency periods + Compustat daily rates (205
 currencies, incl. legacy) being fetched; ADR real-data check pending.
+
+**Data-layer round 3 (2026-09-27).** Every fix: failing test first, then the fix, then the related suites.
+- **D13 FIXED** — 1M/3M/6M (data.py) and 3M/6M/1Y (data_wrds.py) bars were stamped at period START carrying the
+  period-END close (real case: a 6M bar dated 2023-01-01 held the 2023-06-30 close; old 2QS bins were even anchored
+  Apr/Oct on a March-start series). New `period_bars.py`: every coarse bar stamped at the CALENDAR period end
+  (Friday, month/quarter end, Jun-30/Dec-31, Dec-31), shared by data.py, data_wrds.py and both IBKR derivations;
+  WRDS native CRSP monthly (last trading day) restamped to month end so equity and 24/7 crypto share stamps. Test
+  25/25 (`_verify_period_end_stamps.py`); WRDS verify (live) passes. Caches migrated
+  (`research/restamp_coarse_bars_d13.py`): 21,136 files (yf 7D/1M/3M/6M ×1,718 + 12 new; WRDS 7D/3M/6M/1Y ×2,843,
+  native 1M ×2,844), originals in `output/cache/_backup_d13_20260927/`; all 21,136 re-checked period-end stamped.
+- **D7 FIXED** — `align_intraday`'s OOM guard returned the raw index with every flag NONE (off-grid, overnight jumps
+  unmasked). Now keeps the grid and drops only the oldest history beyond `_MAX_REINDEX` rows (warning logged).
+  Test 2/4 → 4/4.
+- **D9 FIXED (worse than logged)** — `_roll_adjust` treated any >5% futures/commodity move as a roll AND its ratio was
+  inverted, so each such move was roughly DOUBLED (synthetic +12% → +25.7%). Raw yfinance =F history: 41 ES days
+  (2008-10-13 +14%, March 2020), 311 CL, 894 NG, 22 GC, 204 KC; ZN 0 (real equity-index/bond roll gaps are <1%, so
+  the rule never caught an actual roll). Removed; cleaning no longer rewrites futures prices. **Disclosed bias:**
+  yfinance =F series are unadjusted front-month, genuine roll gaps remain. **Open methodology item for Ross:** roll
+  handling from real contract calendars. The 27 cached futures/commodity daily files were written with the doubling
+  and need a refetch. Test 0/3 → 3/3.
+- **D10 FIXED** — `IBKRFeed.get_bars` (useRTH=False) cached cleaned-but-unsnapped bars (extended hours, off-grid);
+  only 1 of 5 callers snapped afterwards; its yfinance fallbacks were cached unsnapped too. Now snaps before every
+  cache write (snap verified idempotent at 1h/15m/4h/1D). Test 1/3 → 3/3 (2,560 cached bars incl. 04:00-19:00 → 960
+  session bars).
+- **D12 FIXED** — append-seam reconciliation compared existing's LAST close with new_df's FIRST close (different dates;
+  an overlapping 1mo refresh mixed a month of returns into the "ratio"), and yfinance auto_adjust's dividend basis
+  shifts (under the 15% tolerance) were never reconciled. Now measured on overlapping timestamps (median new/old,
+  applied only when ≥80% of overlap rows agree within 0.1%; separate volume ratio); the recorded-split check kept
+  for the no-overlap case. Test 3/6 → 6/6; BUG-D65 and IBKR-merge split suites still pass.
+- **M8 + M9 FIXED** — COT was visible on its Tuesday as-of date (released Friday); daily FRED series had no lag
+  (RegimeConditioner's `index <= entry date` saw same-day VIX close, 16:15 ET); DTWEXBGS (H.10, released Monday for
+  the prior week) visible up to a week early. `macro._release_available`: visible the first trading day strictly
+  after release (daily: next day; DTWEXBGS: Tuesday after the following Monday; COT: Monday after Friday). Old code
+  confirmed same-day on the same inputs. Test `_verify_macro_daily_cot_availability.py` 4/4; M7 test still 4/4.
+  Latent (Layer 2 off). Holiday-week COT releases can still be 1-2 days later than modelled (disclosed).
+- **C14/C15** comments corrected (production entry z = 3.0; binary regime sizing is 1.5×/1.0×). **C16** `_IO_WORKERS`
+  derived from `os.cpu_count()` (capped at the benchmarked 32).
+- **A1 follow-up, research call sites.** (1) `UniverseFilter.build_returns_matrix` LEFT-padded per-symbol returns (assumes
+  a common END bar): a symbol ending earlier (delisted, stale) was shifted against all others — identical-return legs
+  measured corr 0.0011. Now aligned on real timestamps (union index, no fill); identical output for common-index input
+  (production path). Test 1/3 → 3/3. (2) `CointScanner.scan`/`rolling_fraction` now reindex their candidate symbols to
+  one shared index themselves (fast path: no copy when already shared). Direct callers `research/pit_wfa_wrds_daily.py`
+  and `research/threshold_relevance_pit_test.py` skipped that step — on the old code a cointegrated pair with
+  different listing dates was tested but never confirmed; now confirmed (test 1/3 → 4/4). **Results previously
+  produced by those two scripts under-tested such pairs and must be re-run before being cited.** Pair-level callers
+  (episodic_pairs_adapter — the Purity source —, pit_wfa_episodic, decoupling_backtest, aligned_pair_loader,
+  confirmatory_cointegration_check, ridge) already intersect indices: unaffected. Correlation-matrix callers
+  (cross_tf_lead_lag_scan, cross_timeframe_cointegration, k_bahc, inverse_polarity, structural_break_onset,
+  near_miss_lag_scan, bh_vs_by_full_universe) are fixed by (1).
+- **D16 NEW → FIXED 2026-09-27 (Ross: "fix the mixing") — cross-asset-class symbol collisions.** Found while preparing the D9 futures
+  refetch. (a) `DataStore` keys cache files by symbol only, and 4 universe symbols exist in two classes: CL
+  (Colgate / crude), ES (Eversource / E-mini), CC (Chemours / cocoa), LTC (LTC Properties / Litecoin); whichever
+  wrote last owns the file — today `ES_1day`/`CL_1day`/`CC_1day` are the stocks (ES last close 63.67, not ~6,500).
+  (b) `universe_loader` merges WRDS last, so Binance Litecoin (`binance/LTC_1d`, 44.16) is shadowed by LTC
+  Properties. (c) `_to_yf_ticker` has no futures/commodity branch (the intraday path appends `=F`), so a daily
+  futures fetch downloads the same-named stock. 12 of 27 futures/commodity symbols have no daily file at all; the
+  rest are short (2020+ or 2025+). Pool exposure checked: k1 has 2 ES pairs (APA/ES, ES/PERMNO75341) built from
+  WRDS — Eversource, the intended instrument; k2 none.
+  **Fix:** `instrument_labels.py` — crypto labelled `<SYM>-USD`, futures/commodities `<SYM>=F` (Yahoo's own tickers;
+  equities/ETFs/intl/forex unchanged). Applied where labels are born (`UniverseBuilder._build_raw_list`), in
+  `_to_yf_ticker` (now the single mapping; the intraday fallback's drifting copy removed), in `_build_contract`
+  (IBKR uses the root), and to Binance labels in `universe_loader` (loader version bumped). Side effect fixed:
+  `_is_crypto` (suffix-based) now recognises every crypto label — bare labels got equity gap handling wherever the
+  class map was not passed. Test `_verify_instrument_labels_no_collision.py` 2/9 → 9/9. Cache migration
+  (`research/migrate_instrument_labels_d16.py`, dry-run first; the ownership rule was corrected twice on the dry-run
+  table — full-history level test broke on decades of dividend adjustment, Pearson corr on glitch days; final rule:
+  recent-250-day return agreement, level gap as a loose bound, coarse files follow their 1day file): all 52 files
+  under CL/ES/CC/LTC are the stocks and stay; 225 crypto/futures/commodity files moved to namespaced names
+  (backups in `output/cache/_backup_d16_20260927/`). Note: 27 crypto/futures roots also exist as (mostly historical)
+  WRDS stock tickers (BTC, SOL, GC, NG, ZN, ...); in the loader these now stay separate labels.
+  **D9 refetch done:** `refetch_yfinance_daily_cache.py --classes futures,commodity --include-missing` — 25/27
+  regenerated with ~26 years each (12 had no file, the rest 2020+/2025+); ES=F last 7,773.5 with 2008-10-13 +14.1%
+  and 2020-03-16 −10.4% intact (not doubled). DX=F does not exist on Yahoo; PL=F is rejected by the new D8 gate
+  (12.9% missing over its life: a 2002-2009 Yahoo hole, ~3.4% since 2010) — see D8.
+- **D8 FIXED** — `_fill_gaps` reindexed IBKR "1 day" bars onto NYSE sessions and forward-filled before the cache write
+  (fabricated bars of any length stored as real; crypto weekends dropped), and yfinance/WRDS callers pass "1D", which
+  matched no branch, so `MAX_MISSING_PCT` never applied to them. Replaced by `_measure_missing`: never adds rows;
+  missing share against the asset's own calendar (all days crypto, weekdays otherwise); history before the last
+  252-bar (MIN_OVERLAP_BY_TF["1D"]) window above the threshold is dropped, not the asset; a currently-unreliable
+  asset is rejected. The rule was chosen on real data: lifetime missing share >10% for 0/1,730 yfinance files but
+  11,103/40,462 WRDS files (illiquid names, foreign holidays) and it rejected PL=F whole (2002-2009 Yahoo hole, 3.4%
+  since 2010); my first trim cut after the last bad window's END (dropped ~10 clean months) — corrected to one bar after
+  its START, which is exactly "every window of the kept span meets the threshold". Test 1/4 → 5/5. Effect on the WRDS
+  files data.py cleans (production function): 3/1,490 equities rejected, 402 trimmed (median 17% of rows, median 35
+  years kept), ETFs 0 rejected / 1 trimmed. `DataCleaner` is not on the research-loader/pool path.
+- **D17 NEW, OPEN — WRDS files under a current ticker holding a different security.** The 3 D8 rejections exposed it:
+  WRDS `TPC` is a 1992-2000 company (today's TPC = Tutor Perini), `VSNT` 1996-2012 (today = Versant, 2025 spin),
+  `WSO` 86-94% missing recently (likely the Class B line). Across all 1,573 labels in both yfinance and WRDS, 43
+  (2.7%) disagree (no overlap, or <80% daily-return agreement on the last 250 common days) — e.g. SNDK (old SanDisk,
+  to 2016), BBBY, P (Pandora), BLD (1929-1968), KW (1925-1973). WRDS wins label collisions (loader) and is primary in
+  data.py, so these replace the current company. Root cause and fix: next.

@@ -689,21 +689,19 @@ class UniverseFilter:
         Stack aligned 'close' columns into an (N_assets × T_bars) matrix
         of log returns. Drop assets with fewer than min_overlap non-NaN bars.
 
-        IMPORTANT: align_daily trims each asset to its own first_valid_index,
-        so assets have DIFFERENT lengths (AAPL from 1980 = 11,500 bars;
-        ABNB from 2020 = 1,500 bars). We must NOT require equal lengths.
+        Symbols are aligned on their REAL timestamps: the matrix columns are the union of every kept
+        symbol's index (last _MAX_COLS timestamps), each symbol reindexed onto it with no fill, so column j
+        is the same bar for every row and a missing bar is NaN (pairwise-complete correlation masks it).
+        Returns (returns, symbols, column_index).
 
-        Strategy:
-          1. Collect all close arrays regardless of length.
-          2. Cap each at _MAX_COLS bars from the right (memory guard).
-          3. Pad shorter series with NaN at the BEGINNING so all have the
-             same width in the stacked matrix.
-          4. The pairwise-complete correlation code already masks NaN, so only
-             the overlapping period between two assets contributes to their
-             correlation — no spurious signal from the padding.
+        A1 follow-up (2026-09-27): this used to LEFT-pad each symbol's return array to a common width, which
+        assumes every symbol ENDS on the same bar. align_universe returns per-symbol spans, so a symbol that
+        ended earlier (a delisted WRDS name, a stale cache file) was shifted against every other symbol --
+        identical-return legs measured corr ~0. Identical to the old output when the inputs already share one
+        index (analysis.py/pit_wfa after align_to_common_index). debug/_verify_returns_matrix_timestamp_aligned.py.
         """
         symbols = []
-        ret_list = []
+        ret_series = []
         for sym, df in aligned_data.items():
             if df is None or df.empty or "close" not in df.columns:
                 continue
@@ -713,35 +711,21 @@ class UniverseFilter:
             if valid < min_overlap:
                 continue
             symbols.append(sym)
-            # Gap-aware (fixed 2026-06-20): was computing log returns
-            # directly off raw "close" here, with zero GapFlag masking —
-            # contradicting CLAUDE.md's "never silently forward-fill a
-            # DATA_GAP bar into a correlation calculation" rule. A bar that
-            # forward-fills across a >5-bar gap produces one artificially
-            # large return when the real price resumes; gap_aware_returns
-            # masks exactly that return to NaN (DATA_GAP only — FILL and
-            # NO_ACTIVITY bars are left as genuine zero-ish returns).
-            ret_list.append(gap_aware_returns(df))
+            # Gap-aware (fixed 2026-06-20): log returns with DATA_GAP-crossing returns masked to NaN
+            # (CLAUDE.md rule 3) -- FILL and NO_ACTIVITY bars are left as genuine zero-ish returns.
+            r = pd.Series(np.asarray(gap_aware_returns(df), dtype=float), index=df.index)
+            ret_series.append(r[~r.index.duplicated(keep="last")])
 
-        if not ret_list:
+        if not ret_series:
             return np.empty((0, 0)), [], pd.DatetimeIndex([])
 
-        # Cap each series at _MAX_COLS from the right to bound memory
+        # Union of timestamps, capped at _MAX_COLS from the right to bound memory
         _MAX_COLS = 50_000
-        ret_list = [r[-_MAX_COLS:] if len(r) > _MAX_COLS else r for r in ret_list]
-
-        # Pad shorter series with NaN at the beginning so all are same width.
-        # NaN prefix does not contribute to pairwise correlations.
-        max_len = max(len(r) for r in ret_list)
-        returns = np.array(
-            [
-                np.concatenate([np.full(max_len - len(r), np.nan), r.astype(float)])
-                for r in ret_list
-            ],
-            dtype=float,
-        )  # (N, max_len)
-        # First bar of each padded prefix is NaN — correct
-        # First actual bar of each series is NaN (no prior price) — correct
+        union = ret_series[0].index
+        for r in ret_series[1:]:
+            union = union.union(r.index)
+        union = union.sort_values()[-_MAX_COLS:]
+        returns = np.vstack([r.reindex(union).to_numpy(dtype=float) for r in ret_series])  # (N, T)
 
         # Filter assets with insufficient finite return bars
         valid_counts = np.sum(np.isfinite(returns), axis=1)
@@ -751,7 +735,7 @@ class UniverseFilter:
 
         returns_kept = returns[keep_idx]
         symbols_kept = [symbols[i] for i in keep_idx]
-        return returns_kept, symbols_kept, pd.DatetimeIndex([])
+        return returns_kept, symbols_kept, pd.DatetimeIndex(union)
 
     @staticmethod
     def _vectorized_pairwise_stats(x: np.ndarray, low_memory: bool = False,
@@ -1751,6 +1735,9 @@ def align_to_common_index(aligned: Dict[str, pd.DataFrame]) -> Dict[str, pd.Data
     frames = {k: v for k, v in aligned.items() if v is not None and len(v)}
     if not frames:
         return aligned
+    first = frames[next(iter(frames))].index
+    if first.is_unique and all(v.index.equals(first) for v in frames.values()):
+        return frames  # already one shared index (e.g. called again after analysis._run_one_tf) -- no copy
     union = frames[next(iter(frames))].index
     for v in frames.values():
         union = union.union(v.index)
@@ -2053,6 +2040,12 @@ class CointScanner:
             log.error("  statsmodels not available — cannot run cointegration tests")
             return [], {}
 
+        # A1 guard (2026-09-27): EG pairs arrays by POSITION, so the candidate symbols must share one index.
+        # analysis.py/pit_wfa already reindex; research callers (pit_wfa_wrds_daily, threshold_relevance_pit_test)
+        # passed align_universe's per-symbol spans straight in. No-op when the index is already shared.
+        _need = {p["symbol_a"] for p in candidate_pairs} | {p["symbol_b"] for p in candidate_pairs}
+        aligned_data = align_to_common_index({s: aligned_data[s] for s in _need if s in aligned_data})
+
         fdr_alpha = fdr_alpha if fdr_alpha is not None else Config.STATS.FDR_ALPHA
         max_lag = max_lag if max_lag is not None else Config.ANALYSIS.EG_MAX_LAG
         n_workers = n_workers if n_workers is not None else Config.RUNTIME.N_WORKERS
@@ -2244,6 +2237,9 @@ class CointScanner:
         n_workers = n_workers if n_workers is not None else Config.RUNTIME.N_WORKERS
         if not _STATSMODELS_AVAILABLE or not confirmed_pairs:
             return confirmed_pairs
+        # A1 guard (2026-09-27): same as scan -- positional rolling EG needs one shared index per pair set.
+        _need = {p["symbol_a"] for p in confirmed_pairs} | {p["symbol_b"] for p in confirmed_pairs}
+        aligned_data = align_to_common_index({s: aligned_data[s] for s in _need if s in aligned_data})
 
         # Adjust window for shallow TFs — if we don't have at least 2*window
         # bars on any pair, downscale or skip
