@@ -1168,8 +1168,15 @@ class DataAligner:
             # reflects only the asset's actual trading history — not the
             # pre-IPO void. Without this, a 2013 IPO has 79% "gap rate"
             # on a 1962-present calendar and gets excluded incorrectly.
-            missing_trimmed = df_aligned["close"].isna()
-            gap_pct = float(missing_trimmed.mean()) if len(missing_trimmed) > 0 else 0.0
+            # Code review D6 (2026-09-26): measured on the FORWARD-FILLED close this was always ~0 and
+            # the gate never fired. Use the PRE-fill missing mask over the asset's real trading history
+            # (first to last real bar). The post-last-real-bar tail is deliberately KEPT (already flagged
+            # DATA_GAP, masked by _clean_close): trimming it would break callers that right-align arrays by
+            # position (build_returns_matrix, code review A9) for every delisted stock.
+            _real = pd.Series(~missing_bool, index=master_idx)
+            _last_real = _real[_real].index.max() if _real.any() else None
+            _hist = ~_real.loc[first_valid:_last_real] if _last_real is not None else pd.Series(dtype=bool)
+            gap_pct = float(_hist.mean()) if len(_hist) > 0 else 0.0
             if gap_pct > 0.50:
                 log.warning(f"DataAligner: {symbol} {gap_pct:.1%} gap rate — excluded")
                 continue
