@@ -370,14 +370,29 @@ class MLConditioner:
         """Return P(converge). If disabled or model unavailable, return 1.0 (pass-through)."""
         if not self.enabled or self._model is None:
             return 1.0
+        # Inconsistency sweep 2026-09-28: any exception used to return 1.0 ("allow"), and a feature column the model
+        # expects but the caller does not provide raised KeyError -> 1.0, so a broken gate silently let every entry
+        # through. Missing features are now recorded and warned about once (still zero-filled, visibly); errors
+        # fail CLOSED (0.0 -> gated out) and are counted. debug/_verify_ml_gate_fail_closed.py.
+        missing = [f for f in self._features if f not in features]
+        if missing:
+            seen = self.__dict__.setdefault("missing_features", set())
+            new = set(missing) - seen
+            if new:
+                seen.update(new)
+                log.warning("MLConditioner: model features not provided by the caller (zero-filled): %s", sorted(new))
         try:
-            X = pd.DataFrame([features])[self._features].fillna(0.0)
+            X = pd.DataFrame([features]).reindex(columns=self._features).fillna(0.0)
             probs = self._model.predict_proba(X)[0]
             if self._converge_indices:
                 return float(sum(probs[i] for i in self._converge_indices))
             return float(probs[0])
-        except Exception:
-            return 1.0
+        except Exception as e:
+            self.n_predict_errors = getattr(self, "n_predict_errors", 0) + 1
+            if self.n_predict_errors <= 5:
+                log.warning("MLConditioner: predict failed (%s: %s) -- gate fails CLOSED (entry blocked)",
+                            type(e).__name__, e)
+            return 0.0
 
 
 # ---------------------------------------------------------------------------

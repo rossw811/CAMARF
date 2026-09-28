@@ -296,6 +296,17 @@ def _use_total_return(df):
     return df.apply(pd.to_numeric, errors="coerce").astype("float64")
 
 
+LAST_DROPPED: dict = {}  # {(cache_dir, suffix): [symbols whose file was unreadable / had no usable close]}
+
+
+def _report_dropped(cache_dir: str, suffix: str, dropped: list, n_candidates: int) -> None:
+    """Inconsistency sweep 2026-09-28: unreadable or empty files used to vanish from the universe silently."""
+    LAST_DROPPED[(cache_dir, suffix)] = sorted(dropped)
+    if dropped:
+        print(f"universe_loader: {len(dropped)}/{n_candidates} {suffix} files in {os.path.basename(cache_dir)} "
+              f"unreadable or without a usable close -- dropped (e.g. {sorted(dropped)[:5]})")
+
+
 def _load_dir(cache_dir: str, suffix: str, columns=None, total_return: bool = False) -> dict:
     if not suffix or not os.path.isdir(cache_dir):
         return {}
@@ -306,13 +317,16 @@ def _load_dir(cache_dir: str, suffix: str, columns=None, total_return: bool = Fa
     candidates = [
         (f, f[: -len(file_suffix)]) for f in os.listdir(cache_dir) if f.endswith(file_suffix)
     ]
-    out = {}
+    out, dropped = {}, []
     with ThreadPoolExecutor(max_workers=_IO_WORKERS) as ex:
         futures = [ex.submit(_read_one, cache_dir, f, sym, columns) for f, sym in candidates]
         for fut in as_completed(futures):
             sym, df = fut.result()
             if df is not None:
                 out[sym] = df
+            else:
+                dropped.append(sym)
+    _report_dropped(cache_dir, suffix, dropped, len(candidates))
     return out
 
 
@@ -327,13 +341,16 @@ def _load_ibkr_dir(cache_dir: str, suffix: str, columns=None) -> dict:
     candidates = [
         (f, f[: -len(file_suffix)]) for f in os.listdir(cache_dir) if f.endswith(file_suffix)
     ]
-    out = {}
+    out, dropped = {}, []
     with ThreadPoolExecutor(max_workers=_IO_WORKERS) as ex:
         futures = [ex.submit(_read_one, cache_dir, f, sym, columns) for f, sym in candidates]
         for fut in as_completed(futures):
             sym, df = fut.result()
             if df is not None:
                 out[sym] = df
+            else:
+                dropped.append(sym)
+    _report_dropped(cache_dir, suffix, dropped, len(candidates))
     return out
 
 
