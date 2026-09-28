@@ -109,6 +109,17 @@ for any new dependency (confirmed 2026-09-21 installing `tensorflow` for the LST
 
 ## Working Style
 
+- **Verification loop (maker ≠ checker) — Ross, 2026-09-27.** Nothing is "done", "fixed" or "confirmed"
+  until it passes all of: (1) **reproduce first** — a test that fails on the old code and passes on the
+  new, both runs shown; (2) **real-data check** — re-derive the claimed effect from real outputs, not only
+  a synthetic test; (3) **independent check** for anything headline-level or paper-bound — a *separate*
+  agent (e.g. `adversarial-reviewer`) tries to break the claim; it checks, it does not do the work;
+  (4) **evidence travels with the claim** — file:line, commit, output path; no evidence, not done.
+  Treat every summary as unverified until checked — sub-agent reports, earlier sessions' write-ups and
+  "FIXED" labels alike, whichever model produced them (2026-09-26/27: review agents cited out-of-range
+  line numbers, checked the wrong machine, and inherited a wrong model count). Use sub-agents for
+  independent review, broad searches and read-only audits (one at a time, per the rule below), not as
+  the default way to do the work.
 - **New methodology, metric, or architecture pattern → explain it, get Ross's buy-in, before
   building.** This is his thesis; he directs every methodological choice. Applies even under
   autonomous/auto-mode operation — pause on concept-level decisions specifically.
