@@ -192,14 +192,8 @@ def screen_universe_at_cutoff(
         and not CrossAssetTagger._is_index_tracking_pair(p.symbol_a, p.symbol_b)
     ]
 
-    min_coint_frac = getattr(Config.UNIVERSE, "MIN_COINT_FRAC", 0.40)
-    confirmed = []
-    for p in pair_results:
-        cf = getattr(p, "coint_fraction_rolling", np.nan)
-        if not np.isfinite(cf) or cf >= min_coint_frac:
-            confirmed.append(p)
-        elif AnalysisPipeline.passes_coint_frac_secondary_evidence(p):
-            confirmed.append(p)
+    # shared decision (A6/S10, 2026-09-28): crashed / never-computed rolling tests no longer pass
+    confirmed = [p for p in pair_results if AnalysisPipeline.coint_frac_decision(p) != "excluded"]
     return confirmed
 
 

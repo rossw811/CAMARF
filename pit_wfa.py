@@ -303,14 +303,8 @@ def screen_universe_at_cutoff(
 
     # coint_frac threshold + secondary-evidence override — identical logic
     # to _save_tf_results(), reused directly rather than reimplemented.
-    min_coint_frac = getattr(Config.UNIVERSE, "MIN_COINT_FRAC", 0.40)
-    confirmed = []
-    for p in pair_results:
-        cf = getattr(p, "coint_fraction_rolling", np.nan)
-        if not np.isfinite(cf) or cf >= min_coint_frac:
-            confirmed.append(p)
-        elif AnalysisPipeline.passes_coint_frac_secondary_evidence(p):
-            confirmed.append(p)
+    # one shared decision (A6/S10, 2026-09-28): a crashed / never-computed rolling test no longer passes
+    confirmed = [p for p in pair_results if AnalysisPipeline.coint_frac_decision(p) != "excluded"]
     return confirmed
 
 
