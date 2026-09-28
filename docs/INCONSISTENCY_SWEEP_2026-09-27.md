@@ -98,3 +98,40 @@ from the data (≥99% identical daily returns over ≥60 common days). Tests: `_
 
 **C0-1 (minor) — `DEVELOPMENT.md` vs `Development.md`.** Git tracks `Development.md`; CLAUDE.md and other docs say
 `DEVELOPMENT.md` — resolves on Windows, not on case-sensitive CachyOS.
+
+## 2026-09-28 additions
+
+**C6 audit — silent broad `except` handlers.** AST scan of 13 production modules: 62 broad handlers that neither log
+nor re-raise (data.py 26, analysis.py 18, stats.py 6, universe_loader 4, ml 3, portfolio_sim 2, backtest/pnl_dollar/
+data_wrds 1 each). 36 in result-affecting modules triaged by context; most are benign (cleanup, optional model fits,
+worker results that carry an error field, ADV → NaN which correctly excludes). Fixed:
+- **A6/S10 FIXED — crashed rolling-cointegration tests passed the stability filter.** `coint_fraction` NaN meant
+  three things (history too short, worker crashed, pair never computed) and the filter kept every NaN. Worker now
+  reports a status; one shared `AnalysisPipeline.coint_frac_decision` (was duplicated in analysis.py, pit_wfa.py and
+  two research scripts, with a silent `getattr(..., 0.40)` default vs config 0.70) keeps NaN only for insufficient
+  history and logs decision counts. Test `_verify_coint_frac_nan_status.py` 0/10 → 10/10; pit_wfa suites pass.
+- **ML gate FIXED — `MLConditioner.predict_prob` returned 1.0 ("allow") on any error**, including a missing feature
+  column (KeyError), so a broken Layer-2 gate silently let every entry through (NaN would too: `NaN < thr` is False).
+  Now fails CLOSED (0.0), counts errors, warns once per missing feature. Test 1/3 → 3/3. Latent (Layer 2 off).
+- **Surfaced (behaviour kept, now visible):** `universe_loader` reports files dropped as unreadable / without a usable
+  close (`LAST_DROPPED`); `pnl_dollar` logs and records unreadable price files before falling to the next source
+  (`READ_FAILURES`).
+- **Open (lower impact, logged here):** `analysis._apply_research_screen_flags` (research-screen files unreadable →
+  flags silently not applied); `stats._load_spread_series/_load_spread_df` (skip unreadable → try next directory);
+  `stats.run_permutation_test` (unreadable portfolio file → comparison Sharpe stays default); data.py's 26 handlers
+  not yet triaged.
+
+**Checked, consistent — category 5 (constants shadowing config) in production modules.** wfa.py and portfolio_sim.py
+read strategy parameters from `Config.BACKTEST`; wfa's `MIN_HALF_LIFE = 2` is a documented numerical clip. Open:
+`intraday_episodic_scan.py --workers` default is a hardcoded 6 (passed explicitly as cores−2 on CachyOS).
+
+**Compustat total return (closes the D18-adjacent asymmetry for global legs).** `trfd` verified on real data (HSBC,
+Toyota, BP 2024-25: exact dividend on every ex-date, identical to price return to 2e-16 otherwise, captures HSBC's
+2024-05 special dividend that `divd` omits). `research/apply_trfd_total_return.py` + `pnl_dollar` returns from
+`close_total_return` (test 3/4 → 4/4). Fetch in progress (WRDS job 11); apply not yet run.
+
+**Intraday depth — checked, consistent.** All ~1,580 1h/4h files on CachyOS start 2023-07-24..08-03: uniform
+yfinance accumulation, no selection-dependent IBKR depth.
+
+**Found while fixing:** Git-Bash/Python batch lists written on Windows carry CRLF (tar "Cannot stat ...\r"); PowerShell
+5.1 `Set-Content -Encoding utf8` writes a BOM that breaks `exec` of a job file. Both caught before any effect.

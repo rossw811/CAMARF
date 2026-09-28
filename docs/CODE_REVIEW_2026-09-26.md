@@ -73,7 +73,7 @@ PAPER.md edit. ML labels (z-based convergence) believed unaffected — to be ver
 | A3 | 5620 | High | `_build_pair_result` builds `log_a/log_b` from raw forward-filled `close`, not `clean_close` → rolling β/Kalman/coint-fraction computed across DATA_GAP bars. | UNVERIFIED (note B1: persisted files contain no DATA_GAP flags at all — related, needs one investigation) |
 | A4 | 3106 | Med | `mean_window` derived from full-sample half-life → "causal" z_rolling window depends on future bars. | UNVERIFIED |
 | A5 | 6190 | High | Secondary-evidence override uses dense-grid `n_bars`; ZA/CUSUM return None on short real series, read as "no break". | UNVERIFIED |
-| A6 | 6285 | Med | NaN `coint_fraction_rolling` pairs pass the episodic filter unchecked; window sized off the first pair. | UNVERIFIED |
+| A6 | 6285 | Med | NaN `coint_fraction_rolling` pairs pass the episodic filter unchecked; window sized off the first pair. | **CONFIRMED + FIXED 2026-09-28** (shared coint_frac_decision) |
 | A7 | 4159 | Med | Andrews sup-F: 8.85 critical value (1 param) applied to F=W/2 with 2 params; break date off by one. | UNVERIFIED |
 | A8 | 4195 | Low | CUSUM pointwise ±2√t band → near-certain crossing on long series (LIL). | UNVERIFIED |
 | A9 | 735 | Med | `build_returns_matrix` right-aligns by position; intraday series ending at different timestamps are offset. | UNVERIFIED |
@@ -141,7 +141,7 @@ non-excess kurtosis, √(T−1), per-period units).
 | S6 | stats.py:270 / :263 | Med | Phillips-Ouliaris proxy = PhillipsPerron on estimated residuals with univariate DF critical values (reviewer sim: 25.7% rejection at nominal 10% on independent random walks); KPSS same issue (needs Shin 1994). Inflates gold/silver tiers. `arch.unitroot.cointegration.phillips_ouliaris` available. | UNVERIFIED (reviewer ran simulation) |
 | S8 | stats.py:1153 | Med | AR(1)/ZA on overlapping, forward-filled `half_life_rolling` → ρ≈1 by construction; `hl_stationary` not inferential. | UNVERIFIED |
 | S9 | stats.py:601 | Med | `_build_daily_pnl` groups by exit date without zero-filling (BUG-D62/D64 class) → Phase 3 pooled Sharpe inflated. | UNVERIFIED |
-| S10 | pit_wfa.py:305 | Med | NaN `coint_fraction_rolling` auto-passes the MIN_COINT_FRAC gate (same class as A6). | UNVERIFIED |
+| S10 | pit_wfa.py:305 | Med | NaN `coint_fraction_rolling` auto-passes the MIN_COINT_FRAC gate (same class as A6). | **CONFIRMED + FIXED 2026-09-28** (shared coint_frac_decision) |
 | S11 | deflated_sharpe.py:173/230 | Med | N and Var[SR] count only backtest.py trials; pit_wfa folds (`pit_wfa_portfolio.parquet` doesn't match `portfolio_*`), capital-sim and research variants never recorded; DSR never computed for the capital-sim headline. | UNVERIFIED |
 | S12 | deflated_sharpe.py:244 | Low | Append-only registry counts identical reruns as trials; pools IS and holdout Sharpes. | UNVERIFIED |
 | S13 | stats.py:821/839 | Low | Phase 2 bootstrap annualizes per-trade P&L with √252. | UNVERIFIED |
@@ -697,3 +697,8 @@ currencies, incl. legacy) being fetched; ADR real-data check pending.
   tight IQRs, so no pence/pounds or minor-unit scaling error and the SEK/JPY/HKD conversions are right. Daily-return
   correlation 0.4-0.8 (asynchronous closes across time zones, expected). **Residual, open:** Unilever 1.089 vs 1.0 — a
   persistent ~9% gap to explain (share line or ADR ratio).
+
+**2026-09-28 updates.** A6/S10 CONFIRMED + FIXED (crashed / never-computed rolling-coint tests passed the coint_frac
+filter; details in docs/INCONSISTENCY_SWEEP_2026-09-27.md "2026-09-28 additions"). ML gate fails closed. Compustat
+`trfd` total return verified and implemented (apply pending the fetch). Loader/pnl_dollar silent drops surfaced.
+Lineage guards now cover the intraday scan; the 1D scan's `--fresh` only moves its own checkpoints.

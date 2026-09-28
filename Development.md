@@ -28618,3 +28618,31 @@ output current with its inputs and code?" a mechanical check.
   not args.force: exit`), so adoption can't silently suppress a run.
 **Rollout:** first the chain about to be re-run (caches → episodic discovery → pools → PIT eligibility → spreads →
 strategy search), then other scripts as they are touched. Complements `research/pipeline_contracts.py` (schema checks).
+
+## Session 2026-09-27 (night) / 09-28 — data layer round 3, identity fixes, sweep, lineage (summary; full detail in
+## docs/CODE_REVIEW_2026-09-26.md "Data-layer round 3" + "2026-09-28 updates", docs/INCONSISTENCY_SWEEP_2026-09-27.md)
+
+**Fixed (each with a failing-first debug/_verify_* test):** D7 (intraday OOM guard off-grid), D8 (cache-time ffill;
+MAX_MISSING_PCT never applied to yfinance/WRDS; reliable-span trim), D9 (inverted ">5% roll" adjustment doubled real
+futures moves; removed; futures refetched), D10 (IBKR bars cached unsnapped), D12 (append basis measured on different
+dates; dividend seams), D13 (coarse bars stamped at period start with period-end close; 21,136 files restamped),
+D16 (ES/CL/CC/LTC stock vs futures/crypto label collisions; `<SYM>=F` / `<SYM>-USD`), D17 (2,719 reused CRSP tickers
+assigned to their OLDEST holder; CIZ v2 master; cache relabelled by content; 1,859 current holders fetched; loader
+keeps a dead WRDS security under PERMNO<n> when a live yfinance series owns the ticker), D19 (3,256 corrupt WRDS files;
+498 recovered; 2,758 pre-1992 Nasdaq quote-only securities excluded and disclosed), M8/M9 (macro release lags),
+M12 (NQ COT truncated to 2022 by a prefix match), A1 follow-ups (build_returns_matrix timestamp-aligned; scan guards),
+WFA fold Sharpe mis-annualized (shared trade-frequency Sharpe), WFA stale-spread fallback, loader dedupe head+tail,
+A6/S10 (crashed rolling-coint tests passed the filter), ML gate fail-closed, C14-C16.
+**Tried and corrected on the way (rule 8):** D8 trim first cut at the last bad window's END (dropped ~10 clean months)
+→ START; D17 relabel identification took three dry runs (span IoU missed partial fetches; NaT current end dates;
+permno spans containing another company's period); D16 ownership rule twice (lifetime level test broken by dividend
+adjustment; Pearson dominated by glitch days); a COT gap test assumed ≤3 weeks everywhere (1998 source gaps); the
+WRDS tuple-IN query never returned (switched to indexed gvkey IN); CRLF batch lists; BOM in a job file.
+**Verified on real data:** FX conversion (ADR ratios HSBC 5.03, BP 6.00, SHEL 2.01, AZN 0.50, HMC 3.00, TM 10.0);
+Compustat `trfd` total return (exact dividends; HSBC special dividend captured); intraday depth uniform (no IBKR bias).
+**Built:** `lineage.py` + `research/pipeline_stages.py` (Ross's seed system; scans/adapter refuse stale resume),
+`research/wrds_session_server.py` (one WRDS connection, queued jobs), `research/clean_pool_identity_pairs.py`,
+`research/apply_trfd_total_return.py`. **Docs:** docs/SCRUTINY_WHAT_HELD_UP_2026-09-28.md (what survived + ranked
+deeper dives, for Ross), prereg Amendment 2 (second labelled pass; committed before any result).
+**Open for Ross:** futures roll method (D9); D18 quote-midpoint series; M-1 null construction; deeper-dive order;
+C4-2 research EG p-value plan; Unilever ADR ratio 1.089.

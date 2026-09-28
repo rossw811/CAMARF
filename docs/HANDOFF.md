@@ -1,3 +1,39 @@
+## 2026-09-28 08:00 — STOPPED at Ross's request ("stop work entirely after this and then update all related documents"). RESUME HERE.
+
+**All code and docs committed + pushed** (latest: 516c9a10 + this doc commit). Details: docs/CODE_REVIEW_2026-09-26.md
+("Data-layer round 3", "2026-09-28 updates"), docs/INCONSISTENCY_SWEEP_2026-09-27.md ("2026-09-28 additions"),
+Development.md (session 2026-09-27/28 summary), docs/SCRUTINY_WHAT_HELD_UP_2026-09-28.md, prereg Amendment 2.
+
+**Still running when work stopped (left running — both write only their own outputs; stop them if wanted):**
+1. **WRDS job 11 on the Surface** (`research/wrds_session_server.py`, queue file `output/wrds_jobs/queue/11_fetch_trfd_global.py`):
+   Compustat `trfd` for 15,195 global listings → `output/cache/wrds/_trfd/` (1,862 files at 08:01, ~100/min,
+   resumable — skips files already written). Stop: create `output/wrds_jobs/STOP` (between jobs) or kill the
+   python process running wrds_session_server.py (the job resumes on restart).
+2. **Intraday episodic scan on CachyOS** (`research/intraday_episodic_scan.py --tf both --fresh --workers 14`, log
+   `latest_run_intraday_episodic_scan.log`): 1h Tier 2 at 35,000/83,086 pairs at 08:00, then 1h Tier 3, then 4h.
+   Stop: `pkill -f intraday_episodic_scan` on CachyOS; a later run needs `--fresh` (lineage guard).
+
+**Caches:** Surface = source of truth. CachyOS synced and verified (WRDS 59,824 files identical sizes + hash spot
+checks; yfinance daily/coarse + namespaced files 0 mismatches; D16 migration applied there). CachyOS's pre-sync WRDS
+copy kept at `output/cache/_wrds_pre_sync_20260928`. CachyOS repo on main; its old working state is the LOCAL branch
+`cachyos-local-snapshot-20260927` (never pushed).
+
+**Next steps, in order (none started):**
+1. When job 11 finishes: `python research/apply_trfd_total_return.py` (on CachyOS after copying `_trfd/`, or on the
+   Surface then re-sync the 15k global files) — adds USD `close_total_return` to Compustat listings; then drop the
+   price-only disclosure in prereg Amendment 2 via a dated addendum.
+2. Launch 1D discovery on CachyOS: `research/wrds_deep_history_episodic_scan.py --fresh` (~20-27 h).
+3. Then adapter `--fresh` → build_comparison_arm_pairs → purity_pit_eligibility → clean_pool_identity_pairs →
+   regenerate_pool_spread_series → squeeze_momentum_features → strategy_search run/eval (second labelled pass).
+   `python research/pipeline_stages.py` shows chain status.
+4. Sweep leftovers: C4-2 research EG p-values (plan in the sweep doc), data.py's 26 silent handlers, the three
+   lower-impact C6 items, Unilever ADR ratio.
+
+**Decisions waiting for Ross:** deeper-dive order (docs/SCRUTINY_WHAT_HELD_UP_2026-09-28.md); futures roll method
+(D9); D18 quote-midpoint series (and the 2,758 pre-1992 Nasdaq quote-only securities); M-1 null construction.
+
+---
+
 ## 2026-09-28 (early morning): RESUME HERE (supersedes the 09-27 night entry below)
 
 **Done since the night entry (all committed + pushed; latest commits 0c1d1a43 .. 7d9c17ca):**
