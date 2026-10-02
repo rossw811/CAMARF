@@ -41,6 +41,22 @@
   re-derivation CORRECTED C-001: NTRS/STT sample is 10,098 days from 1985-12-03, not 13,373 from 1972
   (script counted calendar rows); p-values reproduce exactly. PAPER.md:130-137 needs the fix.
 
+### Progress 2026-10-02 (later)
+- **Futures roll test: NOT RUN (free-data rule).** IBKR (Gateway up) lists E-mini contracts expiring only from
+  2025-09-19 on — at most ~1 year of expired contracts vs ~26 years of history; yfinance has no individual contracts;
+  WRDS has only a 100-contract Datastream sample. Futures stay unadjusted front-month, disclosed.
+- **D18: Ross approved 2 discovery runs** — primary `--d18 exclude` (CRSP no-trade/midpoint days masked; quote-only
+  series skipped) and sensitivity `--d18 include` (both kept). Quote-only pre-1992 Nasdaq series go to
+  `output/cache/wrds/_quote_only/` so no other consumer reads them.
+- **1D scan price-basis fix:** Compustat Global legs entered discovery as LOCAL-currency split-only close; now the
+  shared priority close_total_return (USD) > close_usd > close (commit dacd3b07; test 5/5).
+- **trfd fetch moved to CachyOS** (Surface memory) — runner `debug/_tmp_run_trfd_job.py`, log
+  `latest_run_trfd_fetch.log`; ~150 gvkeys / 150 s, done ~12:00.
+- **Unattended chain on CachyOS** (`debug/_tmp_chain.sh`, log `latest_run_chain.log`): waits for trfd → applies
+  trfd total return → fetches quote-only series → 1D discovery primary (`--fresh --d18 exclude`) → sensitivity
+  (`--fresh --d18 include`). Each step stops the chain on failure. CachyOS is now ahead of the Surface (trfd TR,
+  quote-only files): sync CachyOS → Surface before using these caches on the Surface.
+
 ### Work queue (in order)
 1. Futures roll adjustment: build + failing-first test + comparison vs unadjusted (yfinance =F, free contract data).
 2. Resume trfd fetch (smaller batches) → `research/apply_trfd_total_return.py` → sync → dated addendum to Amendment 2.
