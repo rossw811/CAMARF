@@ -29,6 +29,18 @@
   `output/cache/wrds/_trfd/`; resumable (job file in `output/wrds_jobs/failed/`; needs a Duo approval to reconnect).
 - Caches: Surface = source of truth; CachyOS synced/verified 09-28.
 
+### Progress 2026-10-02
+- **Futures roll — no free source found yet:** yfinance serves no individual contracts (all 404); WRDS has only a
+  Datastream futures SAMPLE (100 contracts, mostly 2006 European). Remaining free route: IBKR expired-contract history
+  on Ross's account — needs IB Gateway running (was down: all API ports refused). If IBKR needs a paid subscription,
+  the roll test is not run (free-data rule).
+- **Asked Ross:** D18 arms scope — 2 discovery runs (both excluded = primary, Ross's lean; both included =
+  sensitivity) instead of 4 (~20-27 h each).
+- **trfd fetch resumed** (job 13, 150-gvkey batches, ~3.5 h from 08:18).
+- **Claims registry started** (docs/CLAIMS_REGISTRY.md) + `.github/ISSUE_TEMPLATE/find_a_hole.md`. First
+  re-derivation CORRECTED C-001: NTRS/STT sample is 10,098 days from 1985-12-03, not 13,373 from 1972
+  (script counted calendar rows); p-values reproduce exactly. PAPER.md:130-137 needs the fix.
+
 ### Work queue (in order)
 1. Futures roll adjustment: build + failing-first test + comparison vs unadjusted (yfinance =F, free contract data).
 2. Resume trfd fetch (smaller batches) → `research/apply_trfd_total_return.py` → sync → dated addendum to Amendment 2.
