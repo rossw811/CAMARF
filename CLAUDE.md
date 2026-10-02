@@ -19,10 +19,6 @@ shared one) was about, and the standing rule going forward. Also spans crypto/fo
 futures/ETFs. Built by Ross, sole developer, partly to support MFE applications (Baruch, Berkeley,
 Columbia) — the codebase is both the research project and the thesis.
 
-A connected but separate project: a live NQ/ES futures pairs-trading system (Goldbach levels,
-FVGs, digital root timing, "17→71" lead-lag signal). Directional, not mean-reversion. Separate
-codebase and session log — shares conventions with CAMARF, don't conflate the two.
-
 **Thesis:** cross-asset co-movement exhibits regime-dependent, volatility-normalized arbitrage
 structure, predictable at statistically significant rates via multiclass ML.
 
@@ -80,8 +76,9 @@ structure, predictable at statistically significant rates via multiclass ML.
   incident once already.
 - **Verify file edits actually landed** — grep for a unique string or diff after any edit;
   don't trust a tool call succeeded without a positive-content check.
-- **CFTC COT dataset ID is `6dca-aqww`**, not `jun7-7nt5`. Contract prefixes: `"E-MINI S&P 500"`
-  (ES), `"NASDAQ MINI"` (NQ). Use `requests.get(url, params=dict)`, never hand-encode the URL.
+- **CFTC COT dataset ID is `6dca-aqww`**, not `jun7-7nt5`. Contracts are matched by EXACT, chronological
+  name lists in `macro.COTFeed.CONTRACTS` (CFTC renamed the E-mini contracts; a prefix match truncated
+  Nasdaq history to 2022 — M12). Use `requests.get(url, params=dict)`, never hand-encode the URL.
 - **`ibkr_supplement_reader.py`, not `data_ibkr.py`, for reads** — `analysis.py`/other consumers
   import the read-only reader (no `ib_insync` dependency), never `data_ibkr.py` directly.
 
@@ -108,6 +105,12 @@ there.** Its Fish shell is also incompatible with inline bash syntax (write the 
 for any new dependency (confirmed 2026-09-21 installing `tensorflow` for the LSTM/attention work).
 
 ## Working Style
+
+- **Open to scrutiny, and we close every hole found (Ross, 2026-10-02).** The goal is a process outsiders
+  are invited to attack: every claim traceable (claims registry, lineage seeds, exact data/params), every
+  known limitation published, every reported hole verified, fixed or disclosed, and logged with its outcome.
+- **Free data only (Ross, 2026-10-02).** No paid data subscriptions; use what WRDS already provides plus free
+  sources (yfinance, FRED, CFTC, Binance, forward-recorded live data).
 
 - **Verification loop (maker ≠ checker) — Ross, 2026-09-27.** Nothing is "done", "fixed" or "confirmed"
   until it passes all of: (1) **reproduce first** — a test that fails on the old code and passes on the
