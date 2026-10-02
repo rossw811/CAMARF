@@ -33,7 +33,14 @@ def _declare(lin: Lineage) -> Lineage:
               + _CORE, inputs=["output/cache/wrds"],
               outputs=[f"{_R}/wrds_deep_history_episodic_scan_{n}.parquet" for n in
                        ("tier1", "tier2_windows", "tier2_confirmed", "tier3_pairs", "tier3_windows", "tier3_confirmed")],
-              params={"lookback_years": 50})
+              params={"lookback_years": 50, "d18_arm": "exclude"})
+    # D18 sensitivity arm (Ross 2026-10-02): same scan with CRSP midpoint days and quote-only files INCLUDED
+    lin.stage("episodic_scan_d18incl",
+              code=["research/wrds_deep_history_episodic_scan.py", "data_wrds.py", "research/rolling_adv_comparison.py"]
+              + _CORE, inputs=["output/cache/wrds", "output/cache/wrds/_quote_only"],
+              outputs=[f"{_R}/wrds_deep_history_episodic_scan_{n}_d18incl.parquet" for n in
+                       ("tier1", "tier2_windows", "tier2_confirmed", "tier3_pairs", "tier3_windows", "tier3_confirmed")],
+              params={"lookback_years": 50, "d18_arm": "include"})
     for tf in ("1h", "4h"):
         lin.stage(f"intraday_scan_{tf}", code=["research/intraday_episodic_scan.py",
                                                "research/wrds_deep_history_episodic_scan.py"] + _CORE,

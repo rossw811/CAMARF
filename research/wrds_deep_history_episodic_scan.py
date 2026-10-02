@@ -159,16 +159,29 @@ def _build_member_permno_cache(membership_df, window_end_dates) -> dict:
     return {d: sp500_members_asof(membership_df, d) for d in set(window_end_dates)}
 
 
-def load_wrds_universe():
-    """Loads every fetched output/cache/wrds/*_1D.parquet file. Returns
-    {symbol: close_series} using close_total_return where available (CRSP),
-    falling back to split-only close otherwise (Compustat Global, not yet
-    total-return-adjusted -- logged explicitly, not silently blended in)."""
+def load_wrds_universe(d18_arm: str = "exclude"):
+    """Loads every fetched output/cache/wrds/*_1D.parquet file. Returns {symbol: price_series}.
+
+    Price basis (2026-10-02): the same priority as universe_loader -- close_total_return (CRSP; Compustat Global
+    once research/apply_trfd_total_return.py has run, USD) > close_usd (Compustat Global, USD) > close. Compustat
+    Global used to enter as split-only LOCAL-currency close while spreads and P&L are USD.
+
+    d18_arm (Ross 2026-10-02 -- test both; he leans "use neither"):
+      "exclude" (primary): CRSP no-trade days -- close NaN while close_total_return moved, i.e. a bid/ask-midpoint
+                return -- are masked to NaN; files flagged quote_only (pre-1992 Nasdaq, |dlyprc| series) are skipped.
+      "include" (sensitivity): both kept."""
+    if d18_arm not in ("exclude", "include"):
+        raise ValueError(f"d18_arm must be 'exclude' or 'include', got {d18_arm!r}")
+    n_masked_days, n_quote_only_skipped = 0, 0
     out = {}
     used_total_return = set()
     used_split_only = set()
     skipped_unreadable = []
-    for f in sorted(glob.glob(os.path.join(_WRDS_CACHE_DIR, "*_1D.parquet"))):
+    files = sorted(glob.glob(os.path.join(_WRDS_CACHE_DIR, "*_1D.parquet")))
+    if d18_arm == "include":
+        # pre-1992 Nasdaq quote-only series (|dlyprc|) live in their own folder so no other consumer reads them
+        files += sorted(glob.glob(os.path.join(_WRDS_CACHE_DIR, "_quote_only", "*_1D.parquet")))
+    for f in files:
         sym = os.path.basename(f)[: -len("_1D.parquet")]
         # Found live 2026-08-24: 1032/44694 WRDS cache files are 0-byte (an interrupted bulk
         # fetch during an earlier session crash left partial/empty files) -- a single corrupted
@@ -181,12 +194,25 @@ def load_wrds_universe():
         except Exception as e:
             skipped_unreadable.append(sym)
             continue
+        if "quote_only" in df.columns and bool(df["quote_only"].fillna(False).any()) and d18_arm == "exclude":
+            n_quote_only_skipped += 1
+            continue
         if "close_total_return" in df.columns and df["close_total_return"].notna().any():
-            out[sym] = df["close_total_return"]
+            px = df["close_total_return"].astype("float64")
+            if d18_arm == "exclude" and "close" in df.columns and not sym.startswith("GVKEY"):
+                no_trade = df["close"].isna() & px.notna()
+                n_masked_days += int(no_trade.sum())
+                px = px.mask(no_trade)
+            out[sym] = px
             used_total_return.add(sym)
-        else:
-            out[sym] = df["close"]
+        elif "close_usd" in df.columns and df["close_usd"].notna().any():
+            out[sym] = df["close_usd"].astype("float64")
             used_split_only.add(sym)
+        else:
+            out[sym] = df["close"].astype("float64")
+            used_split_only.add(sym)
+    log.info(f"D18 arm '{d18_arm}': {n_masked_days} CRSP no-trade (midpoint) days masked, "
+             f"{n_quote_only_skipped} quote-only files skipped")
     log.info(f"Loaded {len(out)} symbols from output/cache/wrds/: "
              f"{len(used_total_return)} total-return-adjusted (CRSP), "
              f"{len(used_split_only)} split-only-adjusted (Compustat Global, disclosed)")
@@ -1078,14 +1104,21 @@ def episodic_bhfdr_confirm_asof(flat_pvalue_rows, alpha, as_of_date, min_windows
     return confirmed
 
 
-_SCAN_OUTPUTS = [os.path.join(_OUT_DIR, f"wrds_deep_history_episodic_scan_{n}.parquet")
+# D18 arm (Ross 2026-10-02): `--d18 include` runs the sensitivity arm into separate outputs/checkpoints/lineage
+# stage; the default "exclude" is the primary arm and keeps the original file names.
+_D18_ARM = sys.argv[sys.argv.index("--d18") + 1] if "--d18" in sys.argv else "exclude"
+if _D18_ARM not in ("exclude", "include"):
+    raise SystemExit(f"--d18 must be 'exclude' or 'include', got {_D18_ARM!r}")
+_ARM_SUFFIX = "" if _D18_ARM == "exclude" else "_d18incl"
+
+_SCAN_OUTPUTS = [os.path.join(_OUT_DIR, f"wrds_deep_history_episodic_scan_{n}{_ARM_SUFFIX}.parquet")
                  for n in ("tier1", "tier2_windows", "tier2_confirmed", "tier3_pairs", "tier3_windows", "tier3_confirmed")]
 
 
 def _scan_lineage():
     """Seed/lineage stage for this scan -- declared once, with the whole chain, in research/pipeline_stages.py."""
     from research.pipeline_stages import stage
-    return stage("episodic_scan")
+    return stage("episodic_scan" + _ARM_SUFFIX)
 
 
 def _guard_stale_resume(stage):
@@ -1094,7 +1127,7 @@ def _guard_stale_resume(stage):
     # only THIS scan's checkpoints (the intraday scan's checkpoint_intraday_* may belong to a run in progress)
     existing = [p for p in _SCAN_OUTPUTS if os.path.exists(p)] + [
         p for cid in ("tier1_fullsample", "tier2_rolling", "tier3_rolling")
-        for p in glob.glob(os.path.join(_OUT_DIR, f"checkpoint_{cid}*"))]
+        for p in glob.glob(os.path.join(_OUT_DIR, f"checkpoint_{cid}{_ARM_SUFFIX}*"))]
     if not existing:
         return
     st = stage.status()
@@ -1120,7 +1153,7 @@ def main():
               "reveal cointegrated pairs yfinance's own 1D scan (0 confirmed) lacked the "
               "depth/quality to detect? ===")
 
-    close_by_symbol, split_only_symbols = load_wrds_universe()
+    close_by_symbol, split_only_symbols = load_wrds_universe(d18_arm=_D18_ARM)
     if len(close_by_symbol) < 10:
         log.warning("Fewer than 10 symbols loaded -- aborting. Run data_wrds.py's full-universe "
                     "fetch first.")
@@ -1190,13 +1223,13 @@ def main():
     # 3rd launch, but a later mem_guard floor breach DURING TIER 2 killed the whole process --
     # main() has no "skip a tier whose output already exists" check, so a naive relaunch would
     # have silently redone all 4h34m of already-completed, already-saved Tier 1 work before ever
-    # reaching Tier 2's own within-tier checkpoint (checkpoint_id="tier2_rolling", which DOES
+    # reaching Tier 2's own within-tier checkpoint (checkpoint_id="tier2_rolling" + _ARM_SUFFIX, which DOES
     # resume correctly -- this gap was specifically the missing ACROSS-tier equivalent). Only
     # symbol_a/symbol_b/pearson_corr are ever read from `pairs` by any downstream code (confirmed
     # via grep) -- Tier 1's own saved output already carries exactly those three columns, so
     # reconstructing `pairs` from it is lossless. Delete the output file first to force a genuine
     # from-scratch Tier 1 re-run.
-    _tier1_output_path = os.path.join(_OUT_DIR, "wrds_deep_history_episodic_scan_tier1.parquet")
+    _tier1_output_path = os.path.join(_OUT_DIR, f"wrds_deep_history_episodic_scan_tier1{_ARM_SUFFIX}.parquet")
     if os.path.exists(_tier1_output_path):
         log.info(f"[TIER 1] Found existing output at {_tier1_output_path} -- resuming from it "
                  f"instead of re-running correlation+EG from scratch. Delete this file first to "
@@ -1225,7 +1258,7 @@ def main():
             return
 
         results = run_full_sample_eg_pool(pairs, log_price_df, Config.ANALYSIS.EG_MAX_LAG,
-                                           checkpoint_id="tier1_fullsample")
+                                           checkpoint_id="tier1_fullsample" + _ARM_SUFFIX)
         clear_checkpoint("tier1_fullsample")
 
         ok_results = [r for r in results if r.get("ok")]
@@ -1287,7 +1320,7 @@ def main():
 
         os.makedirs(_OUT_DIR, exist_ok=True)
         pd.DataFrame(rows).to_parquet(
-            os.path.join(_OUT_DIR, "wrds_deep_history_episodic_scan_tier1.parquet"), index=False
+            os.path.join(_OUT_DIR, f"wrds_deep_history_episodic_scan_tier1{_ARM_SUFFIX}.parquet"), index=False
         )
         log.info(f"[TIER 1] Saved -> output/research/wrds_deep_history_episodic_scan_tier1.parquet "
                  f"({len(rows)} candidate pairs, {n_confirmed} full-sample confirmed)")
@@ -1304,7 +1337,7 @@ def main():
     # EG-testing, crashed and forced a relaunch, even though Tier 2 itself had already completed
     # and saved cleanly each time. Only `tier2_flat` (raw pvalue rows) needs to survive --
     # `episodic_bhfdr_confirm` is cheap to recompute from it, not worth caching separately.
-    _tier2_windows_path = os.path.join(_OUT_DIR, "wrds_deep_history_episodic_scan_tier2_windows.parquet")
+    _tier2_windows_path = os.path.join(_OUT_DIR, f"wrds_deep_history_episodic_scan_tier2_windows{_ARM_SUFFIX}.parquet")
     if os.path.exists(_tier2_windows_path):
         log.info(f"[TIER 2] Found existing output at {_tier2_windows_path} -- resuming from it "
                  f"instead of re-running rolling EG from scratch. Delete this file first to force "
@@ -1314,7 +1347,7 @@ def main():
         log.info(f"[TIER 2] Rolling-window EG discovery on the SAME {len(pairs)} static-corr-prefiltered "
                  f"candidate pairs as Tier 1 -- no full-sample EG gate.")
         tier2_flat = run_rolling_eg_pool(pairs, log_price_df, Config.ANALYSIS.EG_MAX_LAG,
-                                          adv_by_symbol=adv_by_symbol, checkpoint_id="tier2_rolling",
+                                          adv_by_symbol=adv_by_symbol, checkpoint_id="tier2_rolling" + _ARM_SUFFIX,
                                           membership_df=membership_df, permno_by_symbol=permno_by_symbol)
         clear_checkpoint("tier2_rolling")
         os.makedirs(_OUT_DIR, exist_ok=True)
@@ -1327,7 +1360,7 @@ def main():
                  f"{r['n_windows_fdr_rejected']}/{r['n_windows_tested']} windows FDR-rejected, "
                  f"min_adj_p={r['min_adjusted_pvalue']:.3e}")
     pd.DataFrame(tier2_confirmed).to_parquet(
-        os.path.join(_OUT_DIR, "wrds_deep_history_episodic_scan_tier2_confirmed.parquet"), index=False
+        os.path.join(_OUT_DIR, f"wrds_deep_history_episodic_scan_tier2_confirmed{_ARM_SUFFIX}.parquet"), index=False
     )
     log.info(f"[TIER 2] Saved -> output/research/wrds_deep_history_episodic_scan_tier2_{{windows,confirmed}}.parquet")
 
@@ -1346,7 +1379,7 @@ def main():
     # a few hours earlier tonight; this phase did not, and paid for it). Fixed the same way: save
     # `tier3_pairs` to its own checkpoint file immediately after computing it, and skip
     # recomputation on a future relaunch if that file already exists.
-    _tier3_pairs_path = os.path.join(_OUT_DIR, "wrds_deep_history_episodic_scan_tier3_pairs.parquet")
+    _tier3_pairs_path = os.path.join(_OUT_DIR, f"wrds_deep_history_episodic_scan_tier3_pairs{_ARM_SUFFIX}.parquet")
     if os.path.exists(_tier3_pairs_path):
         log.info(f"[TIER 3] Found existing candidate-pairs cache at {_tier3_pairs_path} -- "
                  f"resuming from it instead of re-running the multi-hour rolling correlation "
@@ -1381,7 +1414,7 @@ def main():
     del returns
     gc.collect()
     tier3_flat = run_rolling_eg_pool(tier3_pairs, log_price_df, Config.ANALYSIS.EG_MAX_LAG,
-                                      adv_by_symbol=adv_by_symbol, checkpoint_id="tier3_rolling",
+                                      adv_by_symbol=adv_by_symbol, checkpoint_id="tier3_rolling" + _ARM_SUFFIX,
                                       membership_df=membership_df, permno_by_symbol=permno_by_symbol)
     clear_checkpoint("tier3_rolling")
     tier3_confirmed = episodic_bhfdr_confirm(tier3_flat, Config.STATS.FDR_ALPHA)
@@ -1392,10 +1425,10 @@ def main():
                  f"{r['n_windows_fdr_rejected']}/{r['n_windows_tested']} windows FDR-rejected, "
                  f"min_adj_p={r['min_adjusted_pvalue']:.3e}")
     pd.DataFrame(tier3_flat).to_parquet(
-        os.path.join(_OUT_DIR, "wrds_deep_history_episodic_scan_tier3_windows.parquet"), index=False
+        os.path.join(_OUT_DIR, f"wrds_deep_history_episodic_scan_tier3_windows{_ARM_SUFFIX}.parquet"), index=False
     )
     pd.DataFrame(tier3_confirmed).to_parquet(
-        os.path.join(_OUT_DIR, "wrds_deep_history_episodic_scan_tier3_confirmed.parquet"), index=False
+        os.path.join(_OUT_DIR, f"wrds_deep_history_episodic_scan_tier3_confirmed{_ARM_SUFFIX}.parquet"), index=False
     )
     log.info(f"[TIER 3] Saved -> output/research/wrds_deep_history_episodic_scan_tier3_{{windows,confirmed}}.parquet")
 
