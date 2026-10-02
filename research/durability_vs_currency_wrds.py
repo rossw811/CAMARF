@@ -38,8 +38,13 @@ def run_pair(sym_a, sym_b):
     a_aligned = a_series.loc[common]
     b_aligned = b_series.loc[common]
 
-    full_start, full_end = common.min(), common.max()
-    n_full = len(common)
+    # 2026-10-02 (claims registry re-derivation): n and the start date used to count CALENDAR ROWS, including the
+    # years before either leg has a price (NaN) -- NTRS/STT reported "13,373 obs since 1972" when the legs only
+    # overlap from 1985-12-03 (~10,100 obs). Report the days on which BOTH legs have a value; EG itself (via
+    # _eg_worker) already used only valid data, so the p-values were unaffected.
+    both = a_aligned.notna() & b_aligned.notna() & np.isfinite(a_aligned) & np.isfinite(b_aligned)
+    full_start, full_end = common[both.to_numpy()].min(), common[both.to_numpy()].max()
+    n_full = int(both.sum())
 
     r_full = _eg_worker((sym_a, sym_b, a_aligned.values, b_aligned.values, None, "1D"))
 
