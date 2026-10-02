@@ -1,3 +1,45 @@
+## 2026-10-02: RESUME HERE (supersedes every entry below)
+
+### Ross's decisions (2026-10-02)
+- **Scrutiny:** the repo is public. Invite outsiders to attack the process and close every hole found: claims registry,
+  public errata/limitations log, "find a hole" intake (verify → fix or disclose → log outcome). Principle in CLAUDE.md.
+- **Free data only.** Use what WRDS already provides + free sources. **If free data can't support a test, don't run it.**
+  → No options-contract tests (only OptionMetrics *sample*). **No order-book work at all** (no free depth history
+  today; no forward recording).
+- **Do not reference the separate futures system** (removed from CLAUDE.md).
+- **Futures roll:** build roll adjustment from contract calendars and test it FIRST, as a comparison arm vs
+  the current unadjusted yfinance front-month.
+- **D18 quote-midpoint series:** test both ways, (a) illiquid names' midpoint-based returns and (b) the 2,758 pre-1992
+  Nasdaq quote-only securities — included vs excluded. Ross leans "use neither"; decide from the results.
+- **M-1 null:** add a same-dates null (random partners on aligned dates) next to the current date-scrambled null;
+  report both.
+- **Approved plan order:** discovery re-run + second pre-registered pass → process paper + claims registry (start now,
+  independent of results) → Hawkes clustered null (comparison arm) → TAQ-sample cost model (only if the free sample
+  supports it) → paper trading only if a signal survives.
+- Process paper framing: "what it takes for an AI-assisted quant pipeline to produce trustworthy results" —
+  failure-class taxonomy with measured effects, the protocol that caught them, honest AI-assistance accounting.
+
+### State
+- All code/docs committed + pushed (latest 45c58cb8). Ledgers: docs/CODE_REVIEW_2026-09-26.md,
+  docs/INCONSISTENCY_SWEEP_2026-09-27.md, Development.md, docs/SCRUTINY_WHAT_HELD_UP_2026-09-28.md, prereg Amendment 2.
+- **Intraday discovery DONE** (CachyOS, 09-28, no IBKR depth): 1h 1,539 symbols, 83,086 candidates, 287,170 window
+  tests → **6** confirmed; 4h 1,421 symbols → **0** confirmed (earlier pool had 12 intraday pairs with IBKR depth).
+  Lineage stages `intraday_scan_1h/4h` recorded on CachyOS (manifests not yet committed).
+- **Compustat trfd fetch (WRDS job 11) FAILED** 09-28 07:59 (WRDS closed the connection): 1,862/15,195 files in
+  `output/cache/wrds/_trfd/`; resumable (job file in `output/wrds_jobs/failed/`; needs a Duo approval to reconnect).
+- Caches: Surface = source of truth; CachyOS synced/verified 09-28.
+
+### Work queue (in order)
+1. Futures roll adjustment: build + failing-first test + comparison vs unadjusted (yfinance =F, free contract data).
+2. Resume trfd fetch (smaller batches) → `research/apply_trfd_total_return.py` → sync → dated addendum to Amendment 2.
+3. D18 sensitivity arms (illiquid midpoint names; pre-1992 Nasdaq) — declared before results.
+4. 1D discovery `wrds_deep_history_episodic_scan.py --fresh` (CachyOS, ~20-27 h) → adapter → pools → spreads →
+   squeeze → strategy_search second pass. M-1 same-dates null alongside.
+5. Process paper + claims registry (in parallel with 4). Then Hawkes null, TAQ-sample cost-model feasibility.
+6. Sweep leftovers: C4-2 research EG p-values, data.py's 26 silent handlers, lower-impact C6 items, Unilever ADR ratio.
+
+---
+
 ## 2026-09-28 08:00 — STOPPED at Ross's request ("stop work entirely after this and then update all related documents"). RESUME HERE.
 
 **All code and docs committed + pushed** (latest: 516c9a10 + this doc commit). Details: docs/CODE_REVIEW_2026-09-26.md
