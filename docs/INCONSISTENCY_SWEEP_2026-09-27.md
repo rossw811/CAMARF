@@ -135,3 +135,9 @@ yfinance accumulation, no selection-dependent IBKR depth.
 
 **Found while fixing:** Git-Bash/Python batch lists written on Windows carry CRLF (tar "Cannot stat ...\r"); PowerShell
 5.1 `Set-Content -Encoding utf8` writes a BOM that breaks `exec` of a job file. Both caught before any effect.
+
+**2026-10-02 — C-001 corrected (found by the first claims-registry re-derivation).** `research/durability_vs_currency_wrds.py`
+reported `n` and the start date from CALENDAR ROWS, including years in which neither stock has a price: NTRS/STT
+"13,373 obs since 1972" is really 10,098 overlapping days from 1985-12-03; JPM/BAC 11,741 from 1979. The EG test
+itself used only valid data (p-values unchanged: 0.000046 / 0.561). PAPER.md:130-137 must be updated; the 09-27
+scrutiny had marked this claim STANDS — the re-derivation rule (re-run, don't copy) is what caught it.
