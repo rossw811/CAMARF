@@ -113,7 +113,7 @@ copy kept at `output/cache/_wrds_pre_sync_20260928`. CachyOS repo on main; its o
   (backups `output/cache/wrds/_backup_d17_20260927/`); 1,859 current holders fetched; loader keeps a dead WRDS
   security under PERMNO<n> when a live yfinance series owns the ticker. yf/WRDS identity mismatches 43 → 19.
 - D19: 3,256 corrupt WRDS files refetched — 498 recovered; 2,758 pre-1992 Nasdaq quote-only securities excluded
-  (disclosed). M12: NQ COT history restored to 1999. FX (R1.1) applied to 15,093 global files; ADR check passes
+  (disclosed). M13 (first mislabelled M12): NQ COT history restored to 1999. FX (R1.1) applied to 15,093 global files; ADR check passes
   (HSBC 5.03, BP 6.00, SHEL 2.01, AZN 0.50, HMC 3.00, TM 10.0, SONY 0.97; Unilever 1.089 open).
 - Sweep (`docs/INCONSISTENCY_SWEEP_2026-09-27.md`): WFA fold Sharpe mis-annualized (fixed, shared helper); WFA
   stale-spread fallback removed; legacy capital-sim missing prices surfaced; loader dedupe head+tail buckets;

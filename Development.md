@@ -28630,7 +28630,7 @@ D16 (ES/CL/CC/LTC stock vs futures/crypto label collisions; `<SYM>=F` / `<SYM>-U
 assigned to their OLDEST holder; CIZ v2 master; cache relabelled by content; 1,859 current holders fetched; loader
 keeps a dead WRDS security under PERMNO<n> when a live yfinance series owns the ticker), D19 (3,256 corrupt WRDS files;
 498 recovered; 2,758 pre-1992 Nasdaq quote-only securities excluded and disclosed), M8/M9 (macro release lags),
-M12 (NQ COT truncated to 2022 by a prefix match), A1 follow-ups (build_returns_matrix timestamp-aligned; scan guards),
+M13 (NQ COT truncated to 2022 by a prefix match), A1 follow-ups (build_returns_matrix timestamp-aligned; scan guards),
 WFA fold Sharpe mis-annualized (shared trade-frequency Sharpe), WFA stale-spread fallback, loader dedupe head+tail,
 A6/S10 (crashed rolling-coint tests passed the filter), ML gate fail-closed, C14-C16.
 **Tried and corrected on the way (rule 8):** D8 trim first cut at the last bad window's END (dropped ~10 clean months)

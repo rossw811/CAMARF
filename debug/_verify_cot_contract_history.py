@@ -1,5 +1,5 @@
 """
-Regression test for code-review finding M12 (2026-09-27): COTFeed matched contracts by name PREFIX. CFTC renamed the
+Regression test for finding M13 (inconsistency sweep 2026-09-27; first labelled "M12", which was already the ID of a different review finding): COTFeed matched contracts by name PREFIX. CFTC renamed the
 E-mini Nasdaq-100 contract ("E-MINI NASDAQ 100 STOCK INDEX" 1999, "NASDAQ-100 STOCK INDEX (MINI)" 1999-2022,
 "NASDAQ MINI" 2022-), so the prefix "NASDAQ MINI" silently limited NQ positioning to 2022-02-08 onward (242 weeks
 instead of ~1,420). Fix: exact chronological name lists per contract + a duplicate-report-date guard that fails loudly.
