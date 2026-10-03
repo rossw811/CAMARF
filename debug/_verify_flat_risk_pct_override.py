@@ -30,6 +30,10 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import pandas as pd
 
 import portfolio_sim
+# B2/B3 (2026-10-03): replay_portfolio now defaults to dollar P&L. This test checks replay MECHANICS on synthetic
+# spread-unit trades, not P&L validity, so it asks for the legacy basis explicitly.
+import functools as _ft
+portfolio_sim.replay_portfolio = _ft.partial(portfolio_sim.replay_portfolio, pnl_mode="legacy")
 
 
 def _make_single_trade():

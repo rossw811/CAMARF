@@ -17,6 +17,10 @@ import pandas as pd
 
 import portfolio_sim
 from portfolio_sim import replay_portfolio
+# B2/B3 (2026-10-03): replay_portfolio now defaults to dollar P&L. This test checks replay MECHANICS on synthetic
+# spread-unit trades, not P&L validity, so it asks for the legacy basis explicitly.
+import functools as _ft
+replay_portfolio = _ft.partial(replay_portfolio, pnl_mode="legacy")
 
 # Fixed synthetic prices: $100/share for every leg, every symbol -- makes notional = n_shares * 100
 # trivial to hand-verify.

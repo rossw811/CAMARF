@@ -35,7 +35,8 @@ Bias audit (per Development.md BiasAuditLog):
   HEDGE RATIO LOOKAHEAD: OLS hedge ratio estimated on the full sample → lookahead
   bias (strategy wouldn't have known this at entry time). Kalman mean is the
   average of a roll-forward calibrated filter — still some lookahead in the mean,
-  but far less than OLS. Both exposed via HEDGE_METHOD = "both". Reported per-method.
+  but far less than OLS. Default --hedge ols; Kalman is a separate arm (--hedge kalman, own output label), never
+  pooled with OLS (code review B4, 2026-10-03: "both" emitted near-duplicate trades treated as independent).
 
   HOLDOUT: last HOLDOUT_PCT (20%) of each pair's history is chronologically reserved.
   Layer 1 full-series run is labeled IS. Layer 2 runs holdout only.
@@ -62,7 +63,7 @@ from scipy.spatial.distance import squareform
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from config import Config
-from data import GapFlag
+from data import GapFlag, _MAX_FILL_BARS
 
 warnings.filterwarnings("ignore")
 
@@ -146,6 +147,45 @@ class Trade:
     yield_regime: str = ""
     comomentum_at_entry: float = np.nan
     regime_size_multiplier: float = 1.0  # 1.0 = unmodified by regime sizing
+    # P&L basis (B2/B3, Ross 2026-10-03: dollar P&L is the default everywhere). "dollar" = pnl_gross/cost/net are
+    # dollars from pnl_dollar.py (position fixed at entry, legs marked at real total-return prices); the engine's
+    # spread-unit values are kept in pnl_legacy_*. "legacy_known_wrong" = --legacy-pnl (reproducing old numbers only).
+    pnl_basis: str = "spread_units_unconverted"
+    pnl_legacy_gross: float = np.nan
+    pnl_legacy_cost: float = np.nan
+    pnl_legacy_net: float = np.nan
+    notional_dollar_entry: float = np.nan
+
+
+def apply_pnl_basis(trades: List["Trade"], legacy: bool = False) -> Tuple[List["Trade"], Dict[str, int]]:
+    """B2/B3 (code review 2026-09-26; Ross 2026-10-03: "dollar P&L the default everywhere; legacy only behind an
+    explicit flag, labelled known-wrong"). The engine books spread-unit P&L with a hedge ratio re-estimated every bar
+    -- on 2,062 real trades the beta drift was ALL of the positive gross P&L -- in log units mixed with dollar costs.
+    Default: every trade is re-marked in dollars by pnl_dollar.add_dollar_pnl; trades it cannot price (intraday,
+    a leg with no USD price, missing prices, bad hedge) are DROPPED and counted by reason -- never silently kept at
+    the wrong value. legacy=True keeps the spread-unit numbers, labelled known-wrong.
+    Returns (kept trades, {status: n dropped}). debug/_verify_backtest_dollar_pnl_default.py"""
+    if legacy:
+        for t in trades:
+            t.pnl_basis = "legacy_known_wrong"
+        return trades, {}
+    if not trades:
+        return trades, {}
+    import pnl_dollar
+    D = pnl_dollar.add_dollar_pnl(pd.DataFrame([{k: getattr(t, k) for k in (
+        "tf", "symbol_a", "symbol_b", "hedge_ratio", "entry_time", "exit_time", "side", "n_shares_a")} for t in trades]))
+    kept, dropped = [], {}
+    for t, r in zip(trades, D.itertuples(index=False)):
+        if r.pnl_dollar_status != "ok":
+            dropped[r.pnl_dollar_status] = dropped.get(r.pnl_dollar_status, 0) + 1
+            continue
+        t.pnl_legacy_gross, t.pnl_legacy_cost, t.pnl_legacy_net = t.pnl_gross, t.pnl_cost, t.pnl_net
+        t.pnl_gross, t.pnl_cost, t.pnl_net = (float(r.pnl_dollar_gross), float(r.pnl_dollar_cost),
+                                               float(r.pnl_dollar_net))
+        t.notional_dollar_entry = float(r.notional_dollar_entry)
+        t.pnl_basis = "dollar"
+        kept.append(t)
+    return kept, dropped
 
 
 # ---------------------------------------------------------------------------
@@ -518,6 +558,20 @@ class BacktestEngine:
         df = spread_df.dropna(subset=["z_rolling", "spread"]).copy()
         if len(df) < 60:
             return []
+        # B1 (code review 2026-09-26; fixed 2026-10-03, bug recheck T14): the dropna above removes every row of a data
+        # outage, so the loop's old flag-based `data_gap` exit could never fire and positions were carried straight
+        # across outages (real data: 25 of 27 saved 1-day spread files have >5-bar holes, all with gap flags None).
+        # Flags can't be the trigger anyway: deep-history files carry none, and on intraday 24/7 grids DATA_GAP also
+        # marks every night/weekend. Rule = data.py's DATA_GAP definition (> _MAX_FILL_BARS missing) counted in
+        # BUSINESS DAYS with no valid bar, so closures are never outages; the position exits at the FIRST valid bar
+        # after the hole (closing before it would need to know the gap was coming). Not caught: an intraday outage
+        # shorter than one trading day. debug/_verify_backtest_data_gap_exit.py
+        _d = df.index.tz_localize(None) if getattr(df.index, "tz", None) is not None else df.index
+        _days = _d.normalize().values.astype("datetime64[D]")
+        _missing_days = np.zeros(len(_days), dtype=int)
+        if len(_days) > 1:
+            _missing_days[1:] = np.maximum(np.busday_count(_days[:-1] + 1, _days[1:]), 0)
+        df["_gap_before"] = _missing_days > _MAX_FILL_BARS
 
         # Holdout split (chronological)
         if holdout_only:
@@ -791,9 +845,7 @@ class BacktestEngine:
                 _decay_rate_gate_arr = decay_rate_series(_dr_raw, _dr_smoothing) * decay_rate_direction(_dr_signal)
 
         # Rolling correlation for structural breakdown exit
-        _default_flags = pd.Series(0, index=df.index)
-        gap_a = df.get("gap_flag_a", _default_flags).fillna(0).astype(int).values
-        gap_b = df.get("gap_flag_b", _default_flags).fillna(0).astype(int).values
+        gap_before_arr = df["_gap_before"].to_numpy()
 
         for i in range(n):
             z = z_arr[i]
@@ -804,10 +856,10 @@ class BacktestEngine:
             if not np.isfinite(z) or not np.isfinite(spread):
                 continue
 
-            # Skip bars with DATA_GAP on either leg
-            if int(gap_a[i]) == int(GapFlag.DATA_GAP) or int(gap_b[i]) == int(GapFlag.DATA_GAP):
+            # B1: a data outage (see `_gap_before` above) closes an open position at the first valid bar after it;
+            # no new entry on that bar (the rolling statistics have just jumped a hole).
+            if gap_before_arr[i]:
                 if in_position:
-                    # Force close at this bar (gap invalidates position)
                     current_trade.exit_time = ts
                     current_trade.exit_z = z
                     current_trade.exit_spread = spread
@@ -2153,6 +2205,7 @@ def _run_all_pairs(
     """
     all_trades: List[Trade] = []
     all_metrics: List[Dict] = []
+    _pnl_dropped: Dict[str, int] = {}
 
     for tf_dir, tf_label in _TF_DIRS:
         if args.tf and tf_label != args.tf:
@@ -2222,6 +2275,9 @@ def _run_all_pairs(
             for hm in hedge_methods:
                 trades = engine.run(row, spread_df, hm, holdout_only=holdout_only,
                                     is_only=is_only, oos_end_date=_oos_end)
+                trades, _dropped = apply_pnl_basis(trades, legacy=getattr(args, "legacy_pnl", False))
+                for _k, _v in _dropped.items():
+                    _pnl_dropped[_k] = _pnl_dropped.get(_k, 0) + _v
                 if not trades:
                     continue
                 all_trades.extend(trades)
@@ -2237,6 +2293,12 @@ def _run_all_pairs(
                                  sym_a, sym_b, tf_label, hm, n_trades, wr * 100,
                                  sr if np.isfinite(sr) else float("nan"), pnl)
 
+    if _pnl_dropped:
+        log.warning("dollar P&L: %d trades dropped as unpriceable %s (intraday dollar marking not built; "
+                    "--legacy-pnl shows the known-wrong spread-unit numbers)", sum(_pnl_dropped.values()), _pnl_dropped)
+    if getattr(args, "legacy_pnl", False):
+        log.warning("--legacy-pnl: P&L is in SPREAD UNITS with a drifting hedge ratio -- KNOWN WRONG (code review "
+                    "B2/B3); use only to reproduce old numbers")
     return all_trades, all_metrics
 
 
@@ -2247,8 +2309,12 @@ def main() -> None:
     p = argparse.ArgumentParser(description="CAMARF backtest.py — Layer 1 event-driven baseline")
     p.add_argument("--tf", default=None,
                    help="Run only this TF label (e.g. 1h). Default: all.")
-    p.add_argument("--hedge", choices=["ols", "kalman", "both"], default="both",
-                   help="Hedge ratio method. Default: both (runs OLS + Kalman separately).")
+    # B4 (code review 2026-09-26; Ross 2026-10-03): "both" emitted near-duplicate OLS and Kalman copies of every trade
+    # (momgate IS: 95,485 rows, 50,896 distinct) that the portfolio, trial registry and capital-sim then treated as
+    # independent. Removed: OLS is the default; Kalman is its own arm (`--hedge kalman`, output label `_kalman`),
+    # never pooled with OLS.
+    p.add_argument("--hedge", choices=["ols", "kalman"], default="ols",
+                   help="Hedge ratio method (default: ols). kalman = separate arm, own output label; never pooled.")
     p.add_argument("--holdout", action="store_true",
                    help="Run on hold-out slice only (last 20%% of each pair).")
     p.add_argument("--layer2", action="store_true",
@@ -2299,6 +2365,10 @@ def main() -> None:
                         "instead of standing alone -- requires --regime-age-sizing also be set. "
                         "Comparison arm for whether age + decay-rate together beat either "
                         "signal alone.")
+    p.add_argument("--legacy-pnl", action="store_true",
+                   help="KNOWN WRONG (code review B2/B3): book P&L in spread units with a hedge ratio re-estimated "
+                        "every bar, as before 2026-10-03. Only to reproduce old numbers. Default: dollar P&L "
+                        "(pnl_dollar.py); unpriceable trades (intraday, no USD price) are dropped and counted.")
     p.add_argument("--pnl-cap", action="store_true",
                    help="Cap each pair's cumulative P&L at IS mean pair P&L. "
                         "Requires trades_layer1.parquet (IS run first).")
@@ -2455,7 +2525,7 @@ def main() -> None:
                         "combined) at this multiple of current equity in --capital-sim's replay -- "
                         "matches the UCITS commitment-approach / '40 Act Section 18 asset-coverage "
                         "convention. E.g. --leverage-cap 1.0 = no leverage (gross exposure never "
-                        "exceeds 100% of equity). None (default) = no cap, unchanged behavior.")
+                        "exceeds 100%% of equity). None (default) = no cap, unchanged behavior.")
     p.add_argument("--quality-admission-col", default=None,
                    help="Added 2026-09-21, directly testing research/capital_constraint_luck_"
                         "check.py's finding that --capital-sim's strictly-chronological trade "
@@ -2515,9 +2585,12 @@ def main() -> None:
     # previously computed AFTER the engine/weights below) so the IS-only
     # weight-fitting pass introduced by BUG-D76 (2026-07-20) has everything
     # it needs before engine construction.
-    hedge_methods = (["ols", "kalman"] if args.hedge == "both"
-                     else [args.hedge])
+    hedge_methods = [args.hedge]
     label = "layer2" if layer2 else "layer1"
+    if args.hedge == "kalman":
+        label += "_kalman"          # B4: own arm, never written over (or pooled with) the OLS results
+    if args.legacy_pnl:
+        label += "_legacypnl"       # B2/B3: known-wrong P&L never overwrites the dollar results
     if args.holdout:
         label += "_holdout"
     if args.neg_hedge:
@@ -2802,6 +2875,8 @@ def main() -> None:
             "entry_spread": t.entry_spread, "entry_z": t.entry_z, "side": t.side,
             "half_life_at_entry": t.half_life_at_entry,
             "n_shares_a": t.n_shares_a, "n_shares_b": t.n_shares_b, "pnl_net": t.pnl_net,
+            "hedge_ratio": t.hedge_ratio, "notional_dollar_entry": t.notional_dollar_entry,
+            "pnl_dollar_net": t.pnl_net if t.pnl_basis == "dollar" else np.nan,
         } for t in all_trades])
         log.info("--capital-sim: replaying %d trades, account=$%.0f, sizing=%s",
                   len(trades_for_sim), args.capital_account_size, args.capital_sizing)
@@ -2812,6 +2887,7 @@ def main() -> None:
             leverage_cap=args.leverage_cap,
             quality_admission_col=args.quality_admission_col,
             quality_admission_ascending=args.quality_admission_ascending,
+            pnl_mode="legacy" if args.legacy_pnl else "dollar",   # B2/B3: dollar unless --legacy-pnl
         )
         sim_sharpe = portfolio_sim.portfolio_sharpe_from_replay(sim_result)
         log.info("  [capital_sim] taken=%d/%d skipped=%d peak_notional=$%.0f "
