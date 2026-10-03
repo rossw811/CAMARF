@@ -416,7 +416,7 @@ class COTFeed:
     disk cache keyed as "cot_{contract_key}" under "weekly" frequency.
     """
 
-    # EXACT market_and_exchange_names per contract, in chronological order (code review M12, 2026-09-27). CFTC
+    # EXACT market_and_exchange_names per contract, in chronological order (inconsistency sweep M13, 2026-09-27). CFTC
     # renamed the E-mini contracts; the former NQ prefix "NASDAQ MINI" matched only the 2022+ name, so NQ positioning
     # silently started 2022-02-08 (242 weeks) instead of 1999 -- the 2000-2022 name is "NASDAQ-100 STOCK INDEX (MINI)".
     # Names and date ranges queried from 6dca-aqww 2026-09-27; they do not overlap in time (checked at fetch).
@@ -508,7 +508,7 @@ class COTFeed:
                 fresh = df[["net_spec_pct"]]
                 break
             except ValueError:
-                raise  # overlapping contract names (M12 guard) -- a data-definition error, not a transient one
+                raise  # overlapping contract names (M13 guard) -- a data-definition error, not a transient one
             except Exception as e:
                 log.debug(f"COT fetch error ({contract_key}, attempt {attempt+1}): {e}")
                 time.sleep(Config.MACRO.FETCH_RETRY_DELAY_SEC)

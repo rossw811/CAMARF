@@ -14,12 +14,12 @@ kept too, so the sweep's coverage is visible. Fixes follow the project rules (fa
 | 3 | Calendars and time | D13, M8/M9, U2/U3 fixed; weekend-exit booking (S1) |
 | 4 | Duplicated logic that has drifted | Sharpe: consistent after P1; `_eg_pvalue`, `build_spread_z`, `load_log_close`, `_load_spread` pending |
 | 5 | Constants shadowing config | pending |
-| 6 | Silent fallbacks | M12 retry loop swallowed errors (fixed for the new guard); systematic grep pending |
+| 6 | Silent fallbacks | M13 retry loop swallowed errors (fixed for the new guard); systematic grep pending |
 | 7 | Price column semantics (close / close_total_return / close_usd) | D18 open |
 
 ## Findings
 
-**M12 FIXED — CFTC COT E-mini Nasdaq history truncated to 2022.** `macro.COTFeed` matched contracts by name prefix.
+**M13 FIXED (first published here as "M12", an ID already used by a different review finding — renamed 2026-10-03) — CFTC COT E-mini Nasdaq history truncated to 2022.** `macro.COTFeed` matched contracts by name prefix.
 CFTC renamed the contract ("E-MINI NASDAQ 100 STOCK INDEX" 1999; "NASDAQ-100 STOCK INDEX (MINI)" 1999-2022 at IMM
 then CME; "NASDAQ MINI" 2022-), and the prefix "NASDAQ MINI" matched only the last: NQ positioning began 2022-02-08
 (242 weeks) instead of 1999-06-29 (1,422 weeks). ES was complete (its three names share the prefix; 0 duplicate

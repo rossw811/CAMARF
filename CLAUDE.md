@@ -78,7 +78,7 @@ structure, predictable at statistically significant rates via multiclass ML.
   don't trust a tool call succeeded without a positive-content check.
 - **CFTC COT dataset ID is `6dca-aqww`**, not `jun7-7nt5`. Contracts are matched by EXACT, chronological
   name lists in `macro.COTFeed.CONTRACTS` (CFTC renamed the E-mini contracts; a prefix match truncated
-  Nasdaq history to 2022 — M12). Use `requests.get(url, params=dict)`, never hand-encode the URL.
+  Nasdaq history to 2022 — M13). Use `requests.get(url, params=dict)`, never hand-encode the URL.
 - **`ibkr_supplement_reader.py`, not `data_ibkr.py`, for reads** — `analysis.py`/other consumers
   import the read-only reader (no `ib_insync` dependency), never `data_ibkr.py` directly.
 
