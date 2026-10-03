@@ -1,310 +1,310 @@
-id,source,doc_status,n_tests,verify_scripts,in_bug_log_index,first_line,last_line,n_mentions,recheck_verdict
-A1,CODE_REVIEW ledger,fixed,5,_verify_eg_bh_denominator.py;_verify_eg_common_index_a1.py;_verify_returns_matrix_timestamp_aligned.py;_verify_scan_guard_direct_callers.py;_verify_stress_test_replication.py,,,,1,
-A10,CODE_REVIEW ledger,unverified,0,,,,,1,
-A11,CODE_REVIEW ledger,unverified,0,,,,,1,
-A12,CODE_REVIEW ledger,unverified,0,,,,,1,
-A13,CODE_REVIEW ledger,unverified,0,,,,,1,
-A14,CODE_REVIEW ledger,unverified,0,,,,,1,
-A2,CODE_REVIEW ledger,confirmed-open,0,,,,,1,
-A3,CODE_REVIEW ledger,unverified,0,,,,,1,
-A4,CODE_REVIEW ledger,unverified,0,,,,,1,
-A5,CODE_REVIEW ledger,unverified,0,,,,,1,
-A6,CODE_REVIEW ledger,fixed,1,_verify_coint_frac_nan_status.py,,,,1,
-A7,CODE_REVIEW ledger,unverified,0,,,,,1,
-A8,CODE_REVIEW ledger,unverified,0,,,,,1,
-A9,CODE_REVIEW ledger,unverified,1,_verify_align_daily_gap_gate.py,,,,1,
-B1,CODE_REVIEW ledger,confirmed-open,1,_verify_stress_test_replication.py,,,,1,
-B10,CODE_REVIEW ledger,confirmed-open,0,,,,,1,
-B11,CODE_REVIEW ledger,fixed,0,,,,,1,
-B12,CODE_REVIEW ledger,fixed,0,,,,,1,
-B13,CODE_REVIEW ledger,confirmed-open,0,,,,,1,
-B14,CODE_REVIEW ledger,confirmed-open,0,,,,,1,
-B15,CODE_REVIEW ledger,confirmed-open,0,,,,,1,
-B2,CODE_REVIEW ledger,fixed,2,_verify_pnl_dollar.py;_verify_portfolio_sim_dollar.py,,,,1,
-B3,CODE_REVIEW ledger,confirmed-open,1,_verify_pnl_dollar.py,,,,1,
-B4,CODE_REVIEW ledger,confirmed-open,0,,,,,1,
-B5,CODE_REVIEW ledger,confirmed-open,0,,,,,1,
-B6,CODE_REVIEW ledger,confirmed-open,0,,,,,1,
-B7,CODE_REVIEW ledger,confirmed-open,0,,,,,1,
-B8,CODE_REVIEW ledger,confirmed-open,0,,,,,1,
-B9,CODE_REVIEW ledger,,0,,,,,1,
-BUG-A01,Development.md,,0,,False,182,10869,4,
-BUG-A02,Development.md,,0,,False,184,184,1,
-BUG-A03,Development.md,fixed,0,,False,186,1207,3,
-BUG-A04,Development.md,,0,,False,188,188,1,
-BUG-A05,Development.md,,0,,False,190,190,1,
-BUG-A06,Development.md,,0,,False,192,192,1,
-BUG-A07,Development.md,,0,,False,1493,1493,1,
-BUG-A08,Development.md,,0,,False,1813,1813,1,
-BUG-A09,Development.md,confirmed-open,0,,False,1821,1979,2,
-BUG-A10,Development.md,fixed,0,,False,1873,1964,2,
-BUG-A11,Development.md,,0,,False,1877,1965,2,
-BUG-A12,Development.md,fixed,0,,False,2250,2380,3,
-BUG-A13,Development.md,,0,,False,3337,3337,1,
-BUG-A14,Development.md,fixed,0,,False,3387,5854,3,
-BUG-D01,Development.md,fixed,0,,False,152,11102,5,
-BUG-D02,Development.md,fixed,0,,False,154,1178,2,
-BUG-D03,Development.md,,0,,False,156,156,1,
-BUG-D04,Development.md,,0,,False,158,158,1,
-BUG-D05,Development.md,,0,,False,160,160,1,
-BUG-D06,Development.md,,0,,False,162,162,1,
-BUG-D07,Development.md,,0,,False,164,164,1,
-BUG-D08,Development.md,,0,,False,166,166,1,
-BUG-D09,Development.md,,0,,False,168,168,1,
-BUG-D10,Development.md,,0,,False,170,170,1,
-BUG-D100,Development.md,,2,_verify_bugD100_garch_stop_causal.py;_verify_bugD101_position_sizing_circularity.py,True,19945,19945,1,
-BUG-D101,Development.md,,3,_verify_bugD101_position_sizing_circularity.py;_verify_bugD102_coint_frac_sizing_fold_leakage.py;_verify_wrds_primary_wiring.py,True,19966,23994,2,
-BUG-D102,Development.md,,1,_verify_bugD102_coint_frac_sizing_fold_leakage.py,True,20021,20074,2,
-BUG-D103,Development.md,,1,_verify_bugD103_macro_publication_lag.py,True,20038,21826,2,
-BUG-D105,Development.md,confirmed-open,1,_verify_bugD105_wrds_universe_passed.py,False,20144,20387,7,
-BUG-D106,Development.md,fixed,0,,True,20530,21664,5,
-BUG-D107,Development.md,open,0,,True,21600,21849,2,
-BUG-D108,Development.md,,0,,True,21591,21591,1,
-BUG-D11,Development.md,,0,,False,172,1184,2,
-BUG-D110,Development.md,,0,,True,21581,21581,1,
-BUG-D111,Development.md,,0,,True,21643,21643,1,
-BUG-D112,Development.md,fixed,2,_verify_adapter_stale_checkpoint_fix.py;_verify_bug_d112_causal_candidacy.py,True,21568,28206,27,
-BUG-D113,Development.md,,0,,True,22307,22307,1,
-BUG-D12,Development.md,,0,,False,174,1184,2,
-BUG-D13,Development.md,,0,,False,176,1184,2,
-BUG-D14,Development.md,,0,,False,178,1184,2,
-BUG-D15,Development.md,,0,,False,1487,1487,1,
-BUG-D16,Development.md,,0,,False,1809,1809,1,
-BUG-D17,Development.md,,0,,False,1817,1817,1,
-BUG-D18,Development.md,fixed,0,,False,1857,1960,2,
-BUG-D19,Development.md,fixed,0,,False,1861,1961,2,
-BUG-D20,Development.md,fixed,0,,False,1865,1962,2,
-BUG-D21,Development.md,fixed,0,,False,1869,1963,2,
-BUG-D22,Development.md,confirmed-open,0,,False,212,10847,4,
-BUG-D23,Development.md,,0,,False,2258,2368,2,
-BUG-D24,Development.md,fixed,0,,False,2515,3163,4,
-BUG-D25,Development.md,fixed,0,,False,2528,2669,2,
-BUG-D26,Development.md,fixed,0,,False,2537,2671,3,
-BUG-D27,Development.md,reverted,0,,False,2545,2577,3,
-BUG-D28,Development.md,fixed,0,,False,2550,2674,4,
-BUG-D29,Development.md,fixed,0,,False,2574,2677,2,
-BUG-D30,Development.md,fixed,0,,False,2586,2680,3,
-BUG-D31,Development.md,confirmed-open,0,,False,36,10870,16,
-BUG-D32,Development.md,fixed,0,,False,37,5866,8,
-BUG-D33,Development.md,fixed,0,,False,3176,3176,1,
-BUG-D34,Development.md,,0,,False,3231,3231,1,
-BUG-D35,Development.md,,0,,False,3244,3244,1,
-BUG-D36,Development.md,,0,,False,3260,5862,3,
-BUG-D37,Development.md,confirmed-open,0,,False,3285,5866,4,
-BUG-D38,Development.md,,0,,False,3301,3301,1,
-BUG-D39,Development.md,,0,,False,3316,3316,1,
-BUG-D40,Development.md,,0,,False,3350,3350,1,
-BUG-D41,Development.md,,0,,False,3371,3371,1,
-BUG-D42,Development.md,confirmed-open,0,,False,2137,5568,11,
-BUG-D43,Development.md,,0,,False,3823,3843,2,
-BUG-D44,Development.md,open,0,,False,3859,3918,2,
-BUG-D45,Development.md,reverted,1,_verify_ewma_zscore_comparison.py,False,294,22501,24,
-BUG-D46,Development.md,fixed,0,,False,4016,5568,18,
-BUG-D47,Development.md,confirmed-open,0,,False,4201,4370,4,
-BUG-D48,Development.md,confirmed-open,0,,False,4334,14322,2,
-BUG-D49,Development.md,confirmed-open,0,,False,739,18905,41,
-BUG-D50,Development.md,confirmed-open,0,,False,6279,21788,3,
-BUG-D51,Development.md,,0,,False,6429,6439,2,
-BUG-D52,Development.md,fixed,0,,False,7608,10873,5,
-BUG-D53,Development.md,,0,,False,9605,9605,1,
-BUG-D54,Development.md,,0,,False,10078,10078,1,
-BUG-D55,Development.md,fixed,0,,False,10117,11296,5,
-BUG-D56,Development.md,fixed,1,_verify_bug_d56_compose.py,False,10196,12029,6,
-BUG-D57,Development.md,confirmed-open,1,_verify_bug_d57_naive_exchange_index.py,False,11119,12608,11,
-BUG-D58,Development.md,confirmed-open,1,_verify_bug_d58_survivorship_false_positive.py,False,11322,12641,7,
-BUG-D59,Development.md,fixed,1,_verify_bug_d59_pooled_coint_sharpe.py,True,11378,18790,12,
-BUG-D60,Development.md,fixed,1,_verify_portfolio_sim.py,False,11562,26291,8,
-BUG-D61,Development.md,confirmed-open,1,_verify_bug_d61_window_alignment.py,False,11848,12616,9,
-BUG-D62,Development.md,confirmed-open,3,_verify_bug_d62_sharpe_convention.py;_verify_portfolio_math.py;_verify_run_storm_grid_sharpe_fix.py,True,12092,26037,16,
-BUG-D63,Development.md,confirmed-open,3,_verify_bug_d95_persistence_fix.py;_verify_manifest_pruning.py;_verify_save_tf_results_return.py,False,13335,18281,5,
-BUG-D64,Development.md,fixed,0,,False,13667,16972,3,
-BUG-D65,Development.md,fixed,3,_verify_data_contamination_scan.py;_verify_dd_cache_anomaly_fix.py;_verify_ibkr_merge_split_reconciliation.py,True,13694,25239,41,
-BUG-D66,Development.md,,0,,True,14013,15713,4,
-BUG-D67,Development.md,open,0,,True,14399,17531,4,
-BUG-D68,Development.md,confirmed-open,2,_verify_coint_frac_override.py;_verify_save_tf_results_return.py,True,14476,16686,14,
-BUG-D69,Development.md,fixed,2,_verify_bugD99_pit_wfa_hurst_rs.py;_verify_episodic_pairs_adapter.py,True,14518,23994,8,
-BUG-D70,Development.md,confirmed-open,2,_verify_ibkr_pagination.py;_verify_run_storm_grid_sharpe_fix.py,True,14765,17184,9,
-BUG-D71,Development.md,fixed,1,_verify_sensitivity_config_centralization.py,True,17131,22311,6,
-BUG-D72,Development.md,confirmed-open,0,,True,17173,18094,2,
-BUG-D73,Development.md,fixed,0,,True,17195,17195,1,
-BUG-D74,Development.md,fixed,0,,True,17224,17543,3,
-BUG-D75,Development.md,,0,,True,17260,17260,1,
-BUG-D76,Development.md,,1,_verify_backtest_risk_parity_is_only_fit.py,True,17285,23910,4,
-BUG-D77,Development.md,confirmed-open,1,_verify_eg_gap_classification_fix.py,True,17344,19183,8,
-BUG-D78,Development.md,,0,,True,17540,17540,1,
-BUG-D79,Development.md,,0,,True,17555,17555,1,
-BUG-D80,Development.md,,0,,True,17574,17574,1,
-BUG-D81,Development.md,fixed,0,,True,17596,17677,3,
-BUG-D82,Development.md,,0,,True,17612,17612,1,
-BUG-D83,Development.md,,0,,True,17637,17637,1,
-BUG-D84,Development.md,,0,,True,17654,17654,1,
-BUG-D85,Development.md,,0,,True,17670,17670,1,
-BUG-D86,Development.md,,0,,True,17682,17682,1,
-BUG-D87,Development.md,,0,,True,17692,17692,1,
-BUG-D88,Development.md,,0,,True,17721,17723,2,
-BUG-D89,Development.md,fixed,0,,True,17735,19952,2,
-BUG-D90,Development.md,,0,,True,17823,17823,1,
-BUG-D91,Development.md,,0,,True,17843,18438,2,
-BUG-D92,Development.md,,0,,True,17856,17856,1,
-BUG-D93,Development.md,fixed,0,,True,17866,18197,2,
-BUG-D94,Development.md,,0,,True,19179,19183,2,
-BUG-D95,Development.md,confirmed-open,1,_verify_bug_d95_persistence_fix.py,True,18170,18754,7,
-BUG-D96,Development.md,confirmed-open,1,_verify_adv_1day_fallback.py,True,18549,19168,11,
-BUG-D97,Development.md,,0,,True,18886,18910,2,
-BUG-D98,Development.md,,0,,False,19173,19173,1,
-BUG-D99,Development.md,confirmed-open,4,_verify_bugD101_position_sizing_circularity.py;_verify_bugD99_pit_wfa_hurst_rs.py;_verify_cycle_detection.py;_verify_inverse_polarity.py,True,19929,20935,4,
-C13,CODE_REVIEW ledger,fixed,1,_verify_min_bars_long_tfs.py,,,,1,
-C14,CODE_REVIEW ledger,fixed,0,,,,,1,
-C15,CODE_REVIEW ledger,fixed,0,,,,,1,
-C16,CODE_REVIEW ledger,fixed,0,,,,,1,
-D1,CODE_REVIEW ledger,fixed,3,_verify_futures_no_magnitude_roll_adjust.py;_verify_liquidity_filter_no_fabrication.py;_verify_loader_timezones.py,,,,1,
-D10,CODE_REVIEW ledger,fixed,1,_verify_ibkr_cache_snapped.py,,,,1,
-D11,CODE_REVIEW ledger,unverified,0,,,,,1,
-D12,CODE_REVIEW ledger,fixed,1,_verify_append_basis_reconcile.py,,,,1,
-D13,CODE_REVIEW ledger,fixed,1,_verify_period_end_stamps.py,,,,1,
-D14,CODE_REVIEW ledger,fixed,1,_verify_sp500_cache_guard.py,,,,1,
-D15,CODE_REVIEW ledger,fixed,0,,,,,1,
-D2,CODE_REVIEW ledger,fixed,2,_verify_daily_incremental_refresh.py;_verify_loader_timezones.py,,,,1,
-D3,CODE_REVIEW ledger,fixed,1,_verify_snap_timestamps_no_lookahead.py,,,,1,
-D4,CODE_REVIEW ledger,fixed,1,_verify_snap_timestamps_no_lookahead.py,,,,1,
-D5,CODE_REVIEW ledger,fixed,1,_verify_intraday_closed_market_gaps.py,,,,1,
-D6,CODE_REVIEW ledger,unverified,1,_verify_align_daily_gap_gate.py,,,,1,
-D7,CODE_REVIEW ledger,fixed,1,_verify_intraday_oom_guard_grid.py,,,,1,
-D8,CODE_REVIEW ledger,fixed,1,_verify_cleaner_no_cache_ffill.py,,,,1,
-D9,CODE_REVIEW ledger,fixed,1,_verify_futures_no_magnitude_roll_adjust.py,,,,1,
-M10,CODE_REVIEW ledger,unverified,0,,,,,1,
-M11,CODE_REVIEW ledger,unverified,0,,,,,1,
-M12,CODE_REVIEW ledger,unverified,1,_verify_cot_contract_history.py,,,,1,
-M7,CODE_REVIEW ledger,fixed,2,_verify_macro_daily_cot_availability.py;_verify_macro_release_lags.py,,,,1,
-M8,CODE_REVIEW ledger,fixed,1,_verify_macro_daily_cot_availability.py,,,,1,
-M9,CODE_REVIEW ledger,fixed,1,_verify_macro_daily_cot_availability.py,,,,1,
-R1.1,CODE_REVIEW ledger,fixed,2,_verify_fx_convert.py;_verify_loader_wrds_total_return.py,,,,1,
-R1.10,CODE_REVIEW ledger,unverified,0,,,,,1,
-R1.11,CODE_REVIEW ledger,unverified,0,,,,,1,
-R1.12,CODE_REVIEW ledger,unverified,0,,,,,1,
-R1.13,CODE_REVIEW ledger,unverified,0,,,,,1,
-R1.14,CODE_REVIEW ledger,unverified,0,,,,,1,
-R1.15,CODE_REVIEW ledger,unverified,1,_verify_purity_pit_eligibility.py,,,,1,
-R1.2,CODE_REVIEW ledger,unverified,0,,,,,1,
-R1.3,CODE_REVIEW ledger,unverified,0,,,,,1,
-R1.4,CODE_REVIEW ledger,unverified,1,_verify_adapter_wrds_first.py,,,,1,
-R1.5,CODE_REVIEW ledger,unverified,0,,,,,1,
-R1.6,CODE_REVIEW ledger,confirmed-open,0,,,,,1,
-R1.7,CODE_REVIEW ledger,unverified,0,,,,,1,
-R1.8,CODE_REVIEW ledger,unverified,0,,,,,1,
-R1.9,CODE_REVIEW ledger,unverified,0,,,,,1,
-R2.1,CODE_REVIEW ledger,confirmed-open,0,,,,,1,
-R2.10,CODE_REVIEW ledger,unverified,0,,,,,1,
-R2.11,CODE_REVIEW ledger,unverified,0,,,,,1,
-R2.12,CODE_REVIEW ledger,unverified,0,,,,,1,
-R2.13,CODE_REVIEW ledger,unverified,0,,,,,1,
-R2.2,CODE_REVIEW ledger,confirmed-open,0,,,,,1,
-R2.3,CODE_REVIEW ledger,confirmed-open,0,,,,,1,
-R2.4,CODE_REVIEW ledger,unverified,0,,,,,1,
-R2.5,CODE_REVIEW ledger,unverified,0,,,,,1,
-R2.6,CODE_REVIEW ledger,unverified,0,,,,,1,
-R2.7,CODE_REVIEW ledger,unverified,0,,,,,1,
-R2.8,CODE_REVIEW ledger,unverified,0,,,,,1,
-R2.9,CODE_REVIEW ledger,unverified,0,,,,,1,
-R3.1,CODE_REVIEW ledger,confirmed-open,0,,,,,1,
-R3.10,CODE_REVIEW ledger,unverified,0,,,,,1,
-R3.11,CODE_REVIEW ledger,unverified,0,,,,,1,
-R3.12,CODE_REVIEW ledger,unverified,0,,,,,1,
-R3.13,CODE_REVIEW ledger,unverified,0,,,,,1,
-R3.2,CODE_REVIEW ledger,unverified,0,,,,,1,
-R3.3,CODE_REVIEW ledger,unverified,0,,,,,1,
-R3.4,CODE_REVIEW ledger,unverified,0,,,,,1,
-R3.5,CODE_REVIEW ledger,unverified,0,,,,,1,
-R3.6,CODE_REVIEW ledger,unverified,0,,,,,1,
-R3.7,CODE_REVIEW ledger,confirmed-open,0,,,,,1,
-R3.8,CODE_REVIEW ledger,unverified,0,,,,,1,
-R3.9,CODE_REVIEW ledger,unverified,0,,,,,1,
-R4.1,CODE_REVIEW ledger,unverified,0,,,,,1,
-R4.10,CODE_REVIEW ledger,confirmed-open,0,,,,,1,
-R4.11,CODE_REVIEW ledger,unverified,0,,,,,1,
-R4.2,CODE_REVIEW ledger,confirmed-open,0,,,,,1,
-R4.3,CODE_REVIEW ledger,unverified,0,,,,,1,
-R4.4,CODE_REVIEW ledger,confirmed-open,0,,,,,1,
-R4.5,CODE_REVIEW ledger,unverified,0,,,,,1,
-R4.6,CODE_REVIEW ledger,unverified,0,,,,,1,
-R4.7,CODE_REVIEW ledger,unverified,0,,,,,1,
-R4.8,CODE_REVIEW ledger,unverified,0,,,,,1,
-R4.9,CODE_REVIEW ledger,unverified,0,,,,,1,
-R5.1,CODE_REVIEW ledger,fixed,1,_verify_portfolio_math_business_days.py,,,,1,
-R5.10,CODE_REVIEW ledger,unverified,0,,,,,1,
-R5.11,CODE_REVIEW ledger,unverified,0,,,,,1,
-R5.2,CODE_REVIEW ledger,confirmed-open,0,,,,,1,
-R5.3,CODE_REVIEW ledger,confirmed-open,0,,,,,1,
-R5.4,CODE_REVIEW ledger,unverified,0,,,,,1,
-R5.5,CODE_REVIEW ledger,unverified,0,,,,,1,
-R5.6,CODE_REVIEW ledger,unverified,0,,,,,1,
-R5.7,CODE_REVIEW ledger,unverified,0,,,,,1,
-R5.8,CODE_REVIEW ledger,unverified,0,,,,,1,
-R5.9,CODE_REVIEW ledger,unverified,0,,,,,1,
-R6.10,CODE_REVIEW ledger,unverified,0,,,,,1,
-R6.11,CODE_REVIEW ledger,unverified,0,,,,,1,
-R6.12,CODE_REVIEW ledger,unverified,0,,,,,1,
-R6.2,CODE_REVIEW ledger,confirmed-open,0,,,,,1,
-R6.3,CODE_REVIEW ledger,confirmed-open,0,,,,,1,
-R6.4,CODE_REVIEW ledger,unverified,0,,,,,1,
-R6.5,CODE_REVIEW ledger,confirmed-open,0,,,,,1,
-R6.6,CODE_REVIEW ledger,unverified,0,,,,,1,
-R6.7,CODE_REVIEW ledger,unverified,0,,,,,1,
-R6.8,CODE_REVIEW ledger,unverified,0,,,,,1,
-R6.9,CODE_REVIEW ledger,unverified,0,,,,,1,
-R7.1,CODE_REVIEW ledger,confirmed-open,0,,,,,1,
-R7.10,CODE_REVIEW ledger,unverified,0,,,,,1,
-R7.11,CODE_REVIEW ledger,unverified,0,,,,,1,
-R7.12,CODE_REVIEW ledger,unverified,0,,,,,1,
-R7.13,CODE_REVIEW ledger,unverified,0,,,,,1,
-R7.14,CODE_REVIEW ledger,unverified,0,,,,,1,
-R7.15,CODE_REVIEW ledger,unverified,0,,,,,1,
-R7.2,CODE_REVIEW ledger,unverified,0,,,,,1,
-R7.3,CODE_REVIEW ledger,confirmed-open,0,,,,,1,
-R7.4,CODE_REVIEW ledger,unverified,0,,,,,1,
-R7.5,CODE_REVIEW ledger,unverified,0,,,,,1,
-R7.6,CODE_REVIEW ledger,unverified,0,,,,,1,
-R7.7,CODE_REVIEW ledger,unverified,0,,,,,1,
-R7.8,CODE_REVIEW ledger,unverified,0,,,,,1,
-R7.9,CODE_REVIEW ledger,unverified,0,,,,,1,
-R8.1,CODE_REVIEW ledger,withdrawn,0,,,,,1,
-R8.10,CODE_REVIEW ledger,unverified,0,,,,,1,
-R8.12,CODE_REVIEW ledger,unverified,0,,,,,1,
-R8.13,CODE_REVIEW ledger,unverified,0,,,,,1,
-R8.2,CODE_REVIEW ledger,unverified,0,,,,,1,
-R8.3,CODE_REVIEW ledger,confirmed-open,0,,,,,1,
-R8.4,CODE_REVIEW ledger,confirmed-open,0,,,,,1,
-R8.5,CODE_REVIEW ledger,unverified,0,,,,,1,
-R8.6,CODE_REVIEW ledger,unverified,0,,,,,1,
-R8.7,CODE_REVIEW ledger,unverified,0,,,,,1,
-R8.8,CODE_REVIEW ledger,unverified,0,,,,,1,
-R8.9,CODE_REVIEW ledger,unverified,0,,,,,1,
-S1,CODE_REVIEW ledger,confirmed-open,2,_verify_diversification_basket_test.py;_verify_near_miss_lag_scan.py,,,,1,
-S10,CODE_REVIEW ledger,fixed,1,_verify_coint_frac_nan_status.py,,,,1,
-S11,CODE_REVIEW ledger,unverified,0,,,,,1,
-S12,CODE_REVIEW ledger,unverified,0,,,,,1,
-S13,CODE_REVIEW ledger,unverified,0,,,,,1,
-S14,CODE_REVIEW ledger,unverified,0,,,,,1,
-S2,CODE_REVIEW ledger,fixed,3,_verify_diversification_basket_test.py;_verify_eg_bh_denominator.py;_verify_near_miss_lag_scan.py,,,,1,
-S3,CODE_REVIEW ledger,confirmed-open,2,_verify_eligible_from_gate.py;_verify_near_miss_lag_scan.py,,,,1,
-S4,CODE_REVIEW ledger,unverified,0,,,,,1,
-S5,CODE_REVIEW ledger,confirmed-open,0,,,,,1,
-S6,CODE_REVIEW ledger,unverified,0,,,,,1,
-S7,CODE_REVIEW ledger,fixed,1,_verify_za_breakdate_index.py,,,,1,
-S8,CODE_REVIEW ledger,unverified,0,,,,,1,
-S9,CODE_REVIEW ledger,unverified,0,,,,,1,
-SWEEP-A6/S10,INCONSISTENCY_SWEEP,fixed,1,_verify_coint_frac_nan_status.py,,,,1,
-SWEEP-C1-3,INCONSISTENCY_SWEEP,fixed,0,,,,,1,
-SWEEP-C4-1,INCONSISTENCY_SWEEP,fixed,0,,,,,1,
-SWEEP-C4-2,INCONSISTENCY_SWEEP,open,0,,,,,1,
-SWEEP-C6-1,INCONSISTENCY_SWEEP,fixed,0,,,,,1,
-SWEEP-C6-2,INCONSISTENCY_SWEEP,surfaced,0,,,,,1,
-SWEEP-M-1,INCONSISTENCY_SWEEP,open,0,,,,,1,
-SWEEP-M13,INCONSISTENCY_SWEEP,fixed,1,_verify_cot_contract_history.py,,,,1,
-SWEEP-S1,INCONSISTENCY_SWEEP,open,2,_verify_diversification_basket_test.py;_verify_near_miss_lag_scan.py,,,,1,
-U1,CODE_REVIEW ledger,fixed,1,_verify_loader_cwd_independent.py,,,,1,
-U2,CODE_REVIEW ledger,fixed,1,_verify_loader_timezones.py,,,,1,
-U3,CODE_REVIEW ledger,unverified,1,_verify_calendar_no_weekend_rows.py,,,,1,
-U4,CODE_REVIEW ledger,fixed,1,_verify_loader_wrds_total_return.py,,,,1,
-U5,CODE_REVIEW ledger,unverified,1,_verify_wrds_priority_over_ibkr.py,,,,1,
-U6,CODE_REVIEW ledger,unverified,1,_verify_wrds_priority_over_ibkr.py,,,,1,
+id,source,doc_status,n_tests,verify_scripts,in_bug_log_index,first_line,last_line,n_mentions,recheck_verdict,verify_scripts_by_content
+A1,CODE_REVIEW ledger,fixed,5,_verify_eg_bh_denominator.py;_verify_eg_common_index_a1.py;_verify_returns_matrix_timestamp_aligned.py;_verify_scan_guard_direct_callers.py;_verify_stress_test_replication.py,,,,1,,
+A10,CODE_REVIEW ledger,unverified,0,,,,,1,,
+A11,CODE_REVIEW ledger,unverified,0,,,,,1,,
+A12,CODE_REVIEW ledger,unverified,0,,,,,1,,
+A13,CODE_REVIEW ledger,unverified,0,,,,,1,,
+A14,CODE_REVIEW ledger,unverified,0,,,,,1,,
+A2,CODE_REVIEW ledger,confirmed-open,0,,,,,1,,
+A3,CODE_REVIEW ledger,unverified,0,,,,,1,,
+A4,CODE_REVIEW ledger,unverified,0,,,,,1,,
+A5,CODE_REVIEW ledger,unverified,0,,,,,1,,
+A6,CODE_REVIEW ledger,fixed,1,_verify_coint_frac_nan_status.py,,,,1,,
+A7,CODE_REVIEW ledger,unverified,0,,,,,1,,
+A8,CODE_REVIEW ledger,unverified,0,,,,,1,,
+A9,CODE_REVIEW ledger,unverified,1,_verify_align_daily_gap_gate.py,,,,1,,
+B1,CODE_REVIEW ledger,confirmed-open,1,_verify_stress_test_replication.py,,,,1,,
+B10,CODE_REVIEW ledger,confirmed-open,0,,,,,1,,
+B11,CODE_REVIEW ledger,fixed,0,,,,,1,,
+B12,CODE_REVIEW ledger,fixed,0,,,,,1,,_verify_hrp_ledoit_wolf.py;_verify_ml_gate_fail_closed.py;_verify_squeeze_momentum_features.py;_verify_wrds_lead_lag_scan.py
+B13,CODE_REVIEW ledger,confirmed-open,0,,,,,1,,
+B14,CODE_REVIEW ledger,confirmed-open,0,,,,,1,,
+B15,CODE_REVIEW ledger,confirmed-open,0,,,,,1,,
+B2,CODE_REVIEW ledger,fixed,2,_verify_pnl_dollar.py;_verify_portfolio_sim_dollar.py,,,,1,,
+B3,CODE_REVIEW ledger,confirmed-open,1,_verify_pnl_dollar.py,,,,1,,
+B4,CODE_REVIEW ledger,confirmed-open,0,,,,,1,,
+B5,CODE_REVIEW ledger,confirmed-open,0,,,,,1,,
+B6,CODE_REVIEW ledger,confirmed-open,0,,,,,1,,
+B7,CODE_REVIEW ledger,confirmed-open,0,,,,,1,,
+B8,CODE_REVIEW ledger,confirmed-open,0,,,,,1,,
+B9,CODE_REVIEW ledger,,0,,,,,1,,
+BUG-A01,Development.md,,0,,False,182,10869,4,,_verify_absorption_ratio.py;_verify_adapter_stale_checkpoint_fix.py;_verify_adapter_wrds_first.py;_verify_adf_confirmatory_tier.py;_verify_adv_1day_fallback.py;_verify_align_daily_gap_gate.py
+BUG-A02,Development.md,,0,,False,184,184,1,,_verify_absorption_ratio.py;_verify_adapter_stale_checkpoint_fix.py;_verify_adapter_wrds_first.py;_verify_adf_confirmatory_tier.py;_verify_adv_1day_fallback.py;_verify_align_daily_gap_gate.py
+BUG-A03,Development.md,fixed,0,,False,186,1207,3,,_verify_absorption_ratio.py;_verify_adapter_stale_checkpoint_fix.py;_verify_adapter_wrds_first.py;_verify_adf_confirmatory_tier.py;_verify_adv_1day_fallback.py;_verify_align_daily_gap_gate.py
+BUG-A04,Development.md,,0,,False,188,188,1,,_verify_absorption_ratio.py;_verify_adapter_stale_checkpoint_fix.py;_verify_adapter_wrds_first.py;_verify_adf_confirmatory_tier.py;_verify_adv_1day_fallback.py;_verify_align_daily_gap_gate.py
+BUG-A05,Development.md,,0,,False,190,190,1,,_verify_absorption_ratio.py;_verify_adapter_stale_checkpoint_fix.py;_verify_adapter_wrds_first.py;_verify_adf_confirmatory_tier.py;_verify_adv_1day_fallback.py;_verify_align_daily_gap_gate.py
+BUG-A06,Development.md,,0,,False,192,192,1,,_verify_absorption_ratio.py;_verify_adapter_stale_checkpoint_fix.py;_verify_adapter_wrds_first.py;_verify_adf_confirmatory_tier.py;_verify_adv_1day_fallback.py;_verify_align_daily_gap_gate.py
+BUG-A07,Development.md,,0,,False,1493,1493,1,,_verify_adf_confirmatory_tier.py;_verify_append_basis_reconcile.py;_verify_append_switch.py;_verify_asset_volatility_profile.py;_verify_backtest_overfitting_detector.py;_verify_backtest_risk_parity_is_only_fit.py
+BUG-A08,Development.md,,0,,False,1813,1813,1,,_verify_adapter_wrds_first.py;_verify_adf_confirmatory_tier.py;_verify_adv_1day_fallback.py;_verify_append_basis_reconcile.py;_verify_backtest_hurst_none_fix.py;_verify_backtest_risk_parity_is_only_fit.py
+BUG-A09,Development.md,confirmed-open,0,,False,1821,1979,2,,_verify_absorption_ratio.py;_verify_adapter_stale_checkpoint_fix.py;_verify_adapter_wrds_first.py;_verify_adf_confirmatory_tier.py;_verify_adv_1day_fallback.py;_verify_align_daily_gap_gate.py
+BUG-A10,Development.md,fixed,0,,False,1873,1964,2,,_verify_absorption_ratio.py;_verify_adapter_stale_checkpoint_fix.py;_verify_adapter_wrds_first.py;_verify_adf_confirmatory_tier.py;_verify_adv_1day_fallback.py;_verify_align_daily_gap_gate.py
+BUG-A11,Development.md,,0,,False,1877,1965,2,,_verify_absorption_ratio.py;_verify_adapter_stale_checkpoint_fix.py;_verify_adapter_wrds_first.py;_verify_adf_confirmatory_tier.py;_verify_adv_1day_fallback.py;_verify_align_daily_gap_gate.py
+BUG-A12,Development.md,fixed,0,,False,2250,2380,3,,_verify_absorption_ratio.py;_verify_adapter_stale_checkpoint_fix.py;_verify_adapter_wrds_first.py;_verify_adf_confirmatory_tier.py;_verify_adv_1day_fallback.py;_verify_align_daily_gap_gate.py
+BUG-A13,Development.md,,0,,False,3337,3337,1,,_verify_absorption_ratio.py;_verify_adapter_stale_checkpoint_fix.py;_verify_adapter_wrds_first.py;_verify_adf_confirmatory_tier.py;_verify_adv_1day_fallback.py;_verify_align_daily_gap_gate.py
+BUG-A14,Development.md,fixed,0,,False,3387,5854,3,,_verify_adv_1day_fallback.py;_verify_backtest_zero_z_filter_fix.py;_verify_bh_vs_by_full_universe.py;_verify_bh_vs_by_full_universe_1d.py;_verify_bugD101_position_sizing_circularity.py;_verify_bugD105_wrds_universe_passed.py
+BUG-D01,Development.md,fixed,0,,False,152,11102,5,,_verify_absorption_ratio.py;_verify_adapter_wrds_first.py;_verify_adv_1day_fallback.py;_verify_append_switch.py;_verify_asset_volatility_profile.py;_verify_backtest_overfitting_detector.py
+BUG-D02,Development.md,fixed,0,,False,154,1178,2,,_verify_absorption_ratio.py;_verify_adapter_wrds_first.py;_verify_adv_1day_fallback.py;_verify_append_switch.py;_verify_asset_volatility_profile.py;_verify_backtest_overfitting_detector.py
+BUG-D03,Development.md,,0,,False,156,156,1,,_verify_absorption_ratio.py;_verify_adapter_wrds_first.py;_verify_adv_1day_fallback.py;_verify_append_switch.py;_verify_asset_volatility_profile.py;_verify_backtest_overfitting_detector.py
+BUG-D04,Development.md,,0,,False,158,158,1,,_verify_adv_1day_fallback.py;_verify_backtest_zero_z_filter_fix.py;_verify_bh_vs_by_full_universe.py;_verify_bh_vs_by_full_universe_1d.py;_verify_bugD101_position_sizing_circularity.py;_verify_bugD105_wrds_universe_passed.py
+BUG-D05,Development.md,,0,,False,160,160,1,,_verify_adv_1day_fallback.py;_verify_backtest_zero_z_filter_fix.py;_verify_bh_vs_by_full_universe.py;_verify_bh_vs_by_full_universe_1d.py;_verify_bugD101_position_sizing_circularity.py;_verify_bugD105_wrds_universe_passed.py
+BUG-D06,Development.md,,0,,False,162,162,1,,_verify_adv_1day_fallback.py;_verify_backtest_zero_z_filter_fix.py;_verify_bh_vs_by_full_universe.py;_verify_bh_vs_by_full_universe_1d.py;_verify_bugD101_position_sizing_circularity.py;_verify_bugD105_wrds_universe_passed.py
+BUG-D07,Development.md,,0,,False,164,164,1,,_verify_adv_1day_fallback.py;_verify_backtest_zero_z_filter_fix.py;_verify_bh_vs_by_full_universe.py;_verify_bh_vs_by_full_universe_1d.py;_verify_bugD101_position_sizing_circularity.py;_verify_bugD105_wrds_universe_passed.py
+BUG-D08,Development.md,,0,,False,166,166,1,,_verify_adv_1day_fallback.py;_verify_backtest_zero_z_filter_fix.py;_verify_bh_vs_by_full_universe.py;_verify_bh_vs_by_full_universe_1d.py;_verify_bugD101_position_sizing_circularity.py;_verify_bugD105_wrds_universe_passed.py
+BUG-D09,Development.md,,0,,False,168,168,1,,_verify_absorption_ratio.py;_verify_adapter_stale_checkpoint_fix.py;_verify_adapter_wrds_first.py;_verify_adf_confirmatory_tier.py;_verify_adv_1day_fallback.py;_verify_align_daily_gap_gate.py
+BUG-D10,Development.md,,0,,False,170,170,1,,_verify_absorption_ratio.py;_verify_adapter_stale_checkpoint_fix.py;_verify_adapter_wrds_first.py;_verify_adf_confirmatory_tier.py;_verify_adv_1day_fallback.py;_verify_align_daily_gap_gate.py
+BUG-D100,Development.md,,2,_verify_bugD100_garch_stop_causal.py;_verify_bugD101_position_sizing_circularity.py,True,19945,19945,1,,
+BUG-D101,Development.md,,3,_verify_bugD101_position_sizing_circularity.py;_verify_bugD102_coint_frac_sizing_fold_leakage.py;_verify_wrds_primary_wiring.py,True,19966,23994,2,,
+BUG-D102,Development.md,,1,_verify_bugD102_coint_frac_sizing_fold_leakage.py,True,20021,20074,2,,
+BUG-D103,Development.md,,1,_verify_bugD103_macro_publication_lag.py,True,20038,21826,2,,
+BUG-D105,Development.md,confirmed-open,1,_verify_bugD105_wrds_universe_passed.py,False,20144,20387,7,,
+BUG-D106,Development.md,fixed,0,,True,20530,21664,5,,_verify_absorption_ratio.py;_verify_adapter_stale_checkpoint_fix.py;_verify_adapter_wrds_first.py;_verify_adf_confirmatory_tier.py;_verify_adv_1day_fallback.py;_verify_align_daily_gap_gate.py
+BUG-D107,Development.md,open,0,,True,21600,21849,2,,_verify_backtest_hurst_none_fix.py;_verify_backtest_risk_parity_is_only_fit.py;_verify_backtest_storm_label_fix.py;_verify_backtest_zero_z_filter_fix.py;_verify_bugD100_garch_stop_causal.py;_verify_bugD101_position_sizing_circularity.py
+BUG-D108,Development.md,,0,,True,21591,21591,1,,_verify_backtest_hurst_none_fix.py;_verify_backtest_risk_parity_is_only_fit.py;_verify_backtest_storm_label_fix.py;_verify_backtest_zero_z_filter_fix.py;_verify_bugD100_garch_stop_causal.py;_verify_bugD101_position_sizing_circularity.py
+BUG-D11,Development.md,,0,,False,172,1184,2,,_verify_absorption_ratio.py;_verify_adapter_stale_checkpoint_fix.py;_verify_adapter_wrds_first.py;_verify_adf_confirmatory_tier.py;_verify_adv_1day_fallback.py;_verify_align_daily_gap_gate.py
+BUG-D110,Development.md,,0,,True,21581,21581,1,,_verify_adapter_stale_checkpoint_fix.py;_verify_adapter_wrds_first.py;_verify_backtest_hurst_none_fix.py;_verify_backtest_risk_parity_is_only_fit.py;_verify_backtest_storm_label_fix.py;_verify_backtest_zero_z_filter_fix.py
+BUG-D111,Development.md,,0,,True,21643,21643,1,,_verify_build_log_prices_bounded.py;_verify_confirmatory_cointegration_check.py;_verify_data_crypto_binance.py;_verify_dd_hub_asymmetric_drop_fix.py;_verify_persistence_filter.py;_verify_ridge_hedge_ratio_comparison.py
+BUG-D112,Development.md,fixed,2,_verify_adapter_stale_checkpoint_fix.py;_verify_bug_d112_causal_candidacy.py,True,21568,28206,27,,
+BUG-D113,Development.md,,0,,True,22307,22307,1,,_verify_absorption_ratio.py;_verify_adapter_stale_checkpoint_fix.py;_verify_adapter_wrds_first.py;_verify_adf_confirmatory_tier.py;_verify_adv_1day_fallback.py;_verify_align_daily_gap_gate.py
+BUG-D12,Development.md,,0,,False,174,1184,2,,_verify_absorption_ratio.py;_verify_adapter_stale_checkpoint_fix.py;_verify_adapter_wrds_first.py;_verify_adf_confirmatory_tier.py;_verify_adv_1day_fallback.py;_verify_align_daily_gap_gate.py
+BUG-D13,Development.md,,0,,False,176,1184,2,,_verify_absorption_ratio.py;_verify_adapter_stale_checkpoint_fix.py;_verify_adapter_wrds_first.py;_verify_adf_confirmatory_tier.py;_verify_adv_1day_fallback.py;_verify_align_daily_gap_gate.py
+BUG-D14,Development.md,,0,,False,178,1184,2,,_verify_absorption_ratio.py;_verify_adapter_stale_checkpoint_fix.py;_verify_adapter_wrds_first.py;_verify_adf_confirmatory_tier.py;_verify_adv_1day_fallback.py;_verify_align_daily_gap_gate.py
+BUG-D15,Development.md,,0,,False,1487,1487,1,,_verify_adapter_wrds_first.py;_verify_adf_confirmatory_tier.py;_verify_append_basis_reconcile.py;_verify_append_switch.py;_verify_asset_volatility_profile.py;_verify_backtest_overfitting_detector.py
+BUG-D16,Development.md,,0,,False,1809,1809,1,,_verify_adapter_wrds_first.py;_verify_adv_1day_fallback.py;_verify_append_basis_reconcile.py;_verify_backtest_risk_parity_is_only_fit.py;_verify_backtest_zero_z_filter_fix.py;_verify_bh_vs_by_full_universe.py
+BUG-D17,Development.md,,0,,False,1817,1817,1,,_verify_absorption_ratio.py;_verify_adapter_stale_checkpoint_fix.py;_verify_adapter_wrds_first.py;_verify_adf_confirmatory_tier.py;_verify_adv_1day_fallback.py;_verify_align_daily_gap_gate.py
+BUG-D18,Development.md,fixed,0,,False,1857,1960,2,,_verify_absorption_ratio.py;_verify_adapter_stale_checkpoint_fix.py;_verify_adapter_wrds_first.py;_verify_adf_confirmatory_tier.py;_verify_adv_1day_fallback.py;_verify_align_daily_gap_gate.py
+BUG-D19,Development.md,fixed,0,,False,1861,1961,2,,_verify_absorption_ratio.py;_verify_adapter_stale_checkpoint_fix.py;_verify_adapter_wrds_first.py;_verify_adf_confirmatory_tier.py;_verify_adv_1day_fallback.py;_verify_align_daily_gap_gate.py
+BUG-D20,Development.md,fixed,0,,False,1865,1962,2,,_verify_absorption_ratio.py;_verify_adapter_stale_checkpoint_fix.py;_verify_adapter_wrds_first.py;_verify_adf_confirmatory_tier.py;_verify_adv_1day_fallback.py;_verify_align_daily_gap_gate.py
+BUG-D21,Development.md,fixed,0,,False,1869,1963,2,,_verify_absorption_ratio.py;_verify_adapter_stale_checkpoint_fix.py;_verify_adapter_wrds_first.py;_verify_adf_confirmatory_tier.py;_verify_adv_1day_fallback.py;_verify_align_daily_gap_gate.py
+BUG-D22,Development.md,confirmed-open,0,,False,212,10847,4,,_verify_absorption_ratio.py;_verify_adapter_stale_checkpoint_fix.py;_verify_adapter_wrds_first.py;_verify_adf_confirmatory_tier.py;_verify_adv_1day_fallback.py;_verify_align_daily_gap_gate.py
+BUG-D23,Development.md,,0,,False,2258,2368,2,,_verify_absorption_ratio.py;_verify_adapter_stale_checkpoint_fix.py;_verify_adapter_wrds_first.py;_verify_adf_confirmatory_tier.py;_verify_adv_1day_fallback.py;_verify_align_daily_gap_gate.py
+BUG-D24,Development.md,fixed,0,,False,2515,3163,4,,_verify_bug_d62_sharpe_convention.py;_verify_check_cachyos_parity.py;_verify_cleaner_no_cache_ffill.py;_verify_crisis_regime_cluster_bootstrap_test.py;_verify_cross_listing_lead_lag.py;_verify_dead_constants_comparison_arms.py
+BUG-D25,Development.md,fixed,0,,False,2528,2669,2,,_verify_align_daily_gap_gate.py;_verify_asset_volatility_profile.py;_verify_backtest_overfitting_detector.py;_verify_beta_weighted_portfolio.py;_verify_bh_vs_by_full_universe_1d.py;_verify_bounded_lookback_primary_screen.py
+BUG-D26,Development.md,fixed,0,,False,2537,2671,3,,_verify_align_daily_gap_gate.py;_verify_asset_volatility_profile.py;_verify_backtest_overfitting_detector.py;_verify_beta_weighted_portfolio.py;_verify_bh_vs_by_full_universe_1d.py;_verify_bounded_lookback_primary_screen.py
+BUG-D27,Development.md,reverted,0,,False,2545,2577,3,,_verify_align_daily_gap_gate.py;_verify_asset_volatility_profile.py;_verify_backtest_overfitting_detector.py;_verify_beta_weighted_portfolio.py;_verify_bh_vs_by_full_universe_1d.py;_verify_bounded_lookback_primary_screen.py
+BUG-D28,Development.md,fixed,0,,False,2550,2674,4,,_verify_align_daily_gap_gate.py;_verify_asset_volatility_profile.py;_verify_backtest_overfitting_detector.py;_verify_beta_weighted_portfolio.py;_verify_bh_vs_by_full_universe_1d.py;_verify_bounded_lookback_primary_screen.py
+BUG-D29,Development.md,fixed,0,,False,2574,2677,2,,_verify_absorption_ratio.py;_verify_adapter_stale_checkpoint_fix.py;_verify_adapter_wrds_first.py;_verify_adf_confirmatory_tier.py;_verify_align_daily_gap_gate.py;_verify_append_basis_reconcile.py
+BUG-D30,Development.md,fixed,0,,False,2586,2680,3,,_verify_align_daily_gap_gate.py;_verify_asset_volatility_profile.py;_verify_backtest_overfitting_detector.py;_verify_beta_weighted_portfolio.py;_verify_bh_vs_by_full_universe_1d.py;_verify_bounded_lookback_primary_screen.py
+BUG-D31,Development.md,confirmed-open,0,,False,36,10870,16,,
+BUG-D32,Development.md,fixed,0,,False,37,5866,8,,
+BUG-D33,Development.md,fixed,0,,False,3176,3176,1,,_verify_absorption_ratio.py;_verify_adapter_stale_checkpoint_fix.py;_verify_adapter_wrds_first.py;_verify_adf_confirmatory_tier.py;_verify_adv_1day_fallback.py;_verify_align_daily_gap_gate.py
+BUG-D34,Development.md,,0,,False,3231,3231,1,,_verify_absorption_ratio.py;_verify_adapter_stale_checkpoint_fix.py;_verify_adapter_wrds_first.py;_verify_adf_confirmatory_tier.py;_verify_adv_1day_fallback.py;_verify_align_daily_gap_gate.py
+BUG-D35,Development.md,,0,,False,3244,3244,1,,_verify_absorption_ratio.py;_verify_adapter_stale_checkpoint_fix.py;_verify_adapter_wrds_first.py;_verify_adf_confirmatory_tier.py;_verify_adv_1day_fallback.py;_verify_align_daily_gap_gate.py
+BUG-D36,Development.md,,0,,False,3260,5862,3,,_verify_adapter_wrds_first.py;_verify_append_basis_reconcile.py;_verify_backtest_risk_parity_is_only_fit.py;_verify_bugD101_position_sizing_circularity.py;_verify_bug_d56_compose.py;_verify_bug_d61_window_alignment.py
+BUG-D37,Development.md,confirmed-open,0,,False,3285,5866,4,,_verify_append_switch.py;_verify_bug_d62_sharpe_convention.py;_verify_cleaner_no_cache_ffill.py;_verify_coint_frac_override.py;_verify_cointegration_regime_segmentation.py;_verify_crisis_regime_cluster_bootstrap_test.py
+BUG-D38,Development.md,,0,,False,3301,3301,1,,_verify_adapter_stale_checkpoint_fix.py;_verify_adv_1day_fallback.py;_verify_backtest_zero_z_filter_fix.py;_verify_bh_vs_by_full_universe.py;_verify_bh_vs_by_full_universe_1d.py;_verify_bugD101_position_sizing_circularity.py
+BUG-D39,Development.md,,0,,False,3316,3316,1,,_verify_adapter_stale_checkpoint_fix.py;_verify_adv_1day_fallback.py;_verify_backtest_zero_z_filter_fix.py;_verify_bh_vs_by_full_universe.py;_verify_bh_vs_by_full_universe_1d.py;_verify_bugD101_position_sizing_circularity.py
+BUG-D40,Development.md,,0,,False,3350,3350,1,,_verify_absorption_ratio.py;_verify_adapter_stale_checkpoint_fix.py;_verify_adapter_wrds_first.py;_verify_adf_confirmatory_tier.py;_verify_adv_1day_fallback.py;_verify_align_daily_gap_gate.py
+BUG-D41,Development.md,,0,,False,3371,3371,1,,_verify_absorption_ratio.py;_verify_adapter_stale_checkpoint_fix.py;_verify_adapter_wrds_first.py;_verify_adf_confirmatory_tier.py;_verify_adv_1day_fallback.py;_verify_align_daily_gap_gate.py
+BUG-D42,Development.md,confirmed-open,0,,False,2137,5568,11,,_verify_adv_1day_fallback.py;_verify_backtest_hurst_none_fix.py;_verify_backtest_risk_parity_is_only_fit.py;_verify_backtest_storm_label_fix.py;_verify_backtest_zero_z_filter_fix.py;_verify_bh_vs_by_full_universe.py
+BUG-D43,Development.md,,0,,False,3823,3843,2,,_verify_backtest_hurst_none_fix.py;_verify_coint_frac_nan_status.py;_verify_dd_cache_anomaly_fix.py;_verify_ibkr_merge_split_reconciliation.py;_verify_liquidity_filter_no_fabrication.py;_verify_min_bars_long_tfs.py
+BUG-D44,Development.md,open,0,,False,3859,3918,2,,_verify_absorption_ratio.py;_verify_adapter_stale_checkpoint_fix.py;_verify_adapter_wrds_first.py;_verify_adf_confirmatory_tier.py;_verify_adv_1day_fallback.py;_verify_align_daily_gap_gate.py
+BUG-D45,Development.md,reverted,1,_verify_ewma_zscore_comparison.py,False,294,22501,24,,
+BUG-D46,Development.md,fixed,0,,False,4016,5568,18,,_verify_adf_confirmatory_tier.py;_verify_backtest_hurst_none_fix.py;_verify_backtest_risk_parity_is_only_fit.py;_verify_backtest_storm_label_fix.py;_verify_backtest_zero_z_filter_fix.py;_verify_bh_vs_by_full_universe_1d.py
+BUG-D47,Development.md,confirmed-open,0,,False,4201,4370,4,,_verify_lstm_attention_architecture.py;_verify_ml_gate_fail_closed.py;_verify_ml_threshold_recalibration.py;_verify_trend_dominance_diagnostic.py
+BUG-D48,Development.md,confirmed-open,0,,False,4334,14322,2,,_verify_ibkr_merge_split_reconciliation.py;_verify_manifest_pruning.py
+BUG-D49,Development.md,confirmed-open,0,,False,739,18905,41,,_verify_backtest_hurst_none_fix.py;_verify_backtest_risk_parity_is_only_fit.py;_verify_backtest_storm_label_fix.py;_verify_backtest_zero_z_filter_fix.py;_verify_bugD100_garch_stop_causal.py;_verify_bugD101_position_sizing_circularity.py
+BUG-D50,Development.md,confirmed-open,0,,False,6279,21788,3,,_verify_bugD103_macro_publication_lag.py;_verify_cot_contract_history.py;_verify_data_contamination_scan.py;_verify_hmm_gmm_regime_features.py;_verify_macro_daily_cot_availability.py;_verify_macro_regimes.py
+BUG-D51,Development.md,,0,,False,6429,6439,2,,_verify_align_daily_gap_gate.py;_verify_backtest_zero_z_filter_fix.py;_verify_bugD101_position_sizing_circularity.py;_verify_bug_d61_window_alignment.py;_verify_clean_mask_gapflag_semantics_fix.py;_verify_cleaner_no_cache_ffill.py
+BUG-D52,Development.md,fixed,0,,False,7608,10873,5,,_verify_adapter_wrds_first.py;_verify_adv_1day_fallback.py;_verify_append_basis_reconcile.py;_verify_backtest_risk_parity_is_only_fit.py;_verify_backtest_zero_z_filter_fix.py;_verify_bh_vs_by_full_universe.py
+BUG-D53,Development.md,,0,,False,9605,9605,1,,_verify_adf_confirmatory_tier.py;_verify_bugD102_coint_frac_sizing_fold_leakage.py;_verify_coint_strength_series_builder.py;_verify_copula_pairs.py;_verify_cvar.py;_verify_decoupling_meta_analysis.py
+BUG-D54,Development.md,,0,,False,10078,10078,1,,_verify_dd_hub_asymmetric_drop_fix.py;_verify_dd_hub_effective_bets.py;_verify_decoupling_analysis.py;_verify_stop_loss_correlation_caps.py;_verify_threshold_cointegration.py;_verify_variance_ratio_gap_fix.py
+BUG-D55,Development.md,fixed,0,,False,10117,11296,5,,_verify_adf_confirmatory_tier.py;_verify_backtest_zero_z_filter_fix.py;_verify_bugD102_coint_frac_sizing_fold_leakage.py;_verify_bug_d61_window_alignment.py;_verify_cleaner_no_cache_ffill.py;_verify_coint_strength_series_builder.py
+BUG-D56,Development.md,fixed,1,_verify_bug_d56_compose.py,False,10196,12029,6,,
+BUG-D57,Development.md,confirmed-open,1,_verify_bug_d57_naive_exchange_index.py,False,11119,12608,11,,
+BUG-D58,Development.md,confirmed-open,1,_verify_bug_d58_survivorship_false_positive.py,False,11322,12641,7,,
+BUG-D59,Development.md,fixed,1,_verify_bug_d59_pooled_coint_sharpe.py,True,11378,18790,12,,
+BUG-D60,Development.md,fixed,1,_verify_portfolio_sim.py,False,11562,26291,8,,
+BUG-D61,Development.md,confirmed-open,1,_verify_bug_d61_window_alignment.py,False,11848,12616,9,,
+BUG-D62,Development.md,confirmed-open,3,_verify_bug_d62_sharpe_convention.py;_verify_portfolio_math.py;_verify_run_storm_grid_sharpe_fix.py,True,12092,26037,16,,
+BUG-D63,Development.md,confirmed-open,3,_verify_bug_d95_persistence_fix.py;_verify_manifest_pruning.py;_verify_save_tf_results_return.py,False,13335,18281,5,,
+BUG-D64,Development.md,fixed,0,,False,13667,16972,3,,_verify_adv_1day_fallback.py;_verify_backtest_hurst_none_fix.py;_verify_backtest_risk_parity_is_only_fit.py;_verify_backtest_storm_label_fix.py;_verify_backtest_zero_z_filter_fix.py;_verify_bertram_ou_thresholds.py
+BUG-D65,Development.md,fixed,3,_verify_data_contamination_scan.py;_verify_dd_cache_anomaly_fix.py;_verify_ibkr_merge_split_reconciliation.py,True,13694,25239,41,,
+BUG-D66,Development.md,,0,,True,14013,15713,4,,_verify_data_contamination_scan.py
+BUG-D67,Development.md,open,0,,True,14399,17531,4,,_verify_absorption_ratio.py;_verify_adapter_stale_checkpoint_fix.py;_verify_adapter_wrds_first.py;_verify_adf_confirmatory_tier.py;_verify_adv_1day_fallback.py;_verify_align_daily_gap_gate.py
+BUG-D68,Development.md,confirmed-open,2,_verify_coint_frac_override.py;_verify_save_tf_results_return.py,True,14476,16686,14,,
+BUG-D69,Development.md,fixed,2,_verify_bugD99_pit_wfa_hurst_rs.py;_verify_episodic_pairs_adapter.py,True,14518,23994,8,,
+BUG-D70,Development.md,confirmed-open,2,_verify_ibkr_pagination.py;_verify_run_storm_grid_sharpe_fix.py,True,14765,17184,9,,
+BUG-D71,Development.md,fixed,1,_verify_sensitivity_config_centralization.py,True,17131,22311,6,,
+BUG-D72,Development.md,confirmed-open,0,,True,17173,18094,2,,_verify_adv_1day_fallback.py;_verify_backtest_hurst_none_fix.py;_verify_backtest_risk_parity_is_only_fit.py;_verify_backtest_storm_label_fix.py;_verify_backtest_zero_z_filter_fix.py;_verify_bugD100_garch_stop_causal.py
+BUG-D73,Development.md,fixed,0,,True,17195,17195,1,,_verify_absorption_ratio.py;_verify_adapter_stale_checkpoint_fix.py;_verify_adapter_wrds_first.py;_verify_adf_confirmatory_tier.py;_verify_align_daily_gap_gate.py;_verify_append_basis_reconcile.py
+BUG-D74,Development.md,fixed,0,,True,17224,17543,3,,_verify_adv_1day_fallback.py;_verify_backtest_hurst_none_fix.py;_verify_backtest_risk_parity_is_only_fit.py;_verify_backtest_storm_label_fix.py;_verify_backtest_zero_z_filter_fix.py;_verify_bh_vs_by_full_universe.py
+BUG-D75,Development.md,,0,,True,17260,17260,1,,_verify_append_basis_reconcile.py;_verify_bugD101_position_sizing_circularity.py;_verify_bug_d61_window_alignment.py;_verify_conformal_predictor.py;_verify_data_crypto_binance.py;_verify_hrp_ledoit_wolf.py
+BUG-D76,Development.md,,1,_verify_backtest_risk_parity_is_only_fit.py,True,17285,23910,4,,
+BUG-D77,Development.md,confirmed-open,1,_verify_eg_gap_classification_fix.py,True,17344,19183,8,,
+BUG-D78,Development.md,,0,,True,17540,17540,1,,_verify_adv_1day_fallback.py;_verify_backtest_hurst_none_fix.py;_verify_backtest_risk_parity_is_only_fit.py;_verify_backtest_storm_label_fix.py;_verify_backtest_zero_z_filter_fix.py;_verify_bh_vs_by_full_universe.py
+BUG-D79,Development.md,,0,,True,17555,17555,1,,_verify_big_move_lead_lag.py;_verify_cf_carver_causal_scale_fix.py;_verify_coint_decay_rate_signal_test.py;_verify_decoupling_analysis.py;_verify_earnings_lead_lag_seam_fix.py;_verify_eg_gap_classification_fix.py
+BUG-D80,Development.md,,0,,True,17574,17574,1,,_verify_comparison_arm_scaffold.py;_verify_follower_direction_validation_walkforward_fix.py;_verify_jump_diffusion_fit.py;_verify_jump_diffusion_gap_fix.py
+BUG-D81,Development.md,fixed,0,,True,17596,17677,3,,_verify_absorption_ratio.py;_verify_adapter_stale_checkpoint_fix.py;_verify_adapter_wrds_first.py;_verify_adf_confirmatory_tier.py;_verify_adv_1day_fallback.py;_verify_align_daily_gap_gate.py
+BUG-D82,Development.md,,0,,True,17612,17612,1,,_verify_absorption_ratio.py;_verify_adapter_stale_checkpoint_fix.py;_verify_adapter_wrds_first.py;_verify_adf_confirmatory_tier.py;_verify_adv_1day_fallback.py;_verify_align_daily_gap_gate.py
+BUG-D83,Development.md,,0,,True,17637,17637,1,,_verify_hrp_ledoit_wolf.py;_verify_squeeze_momentum_features.py;_verify_variance_ratio_gap_fix.py;_verify_variance_ratio_test.py;_verify_wrds_lead_lag_scan.py
+BUG-D84,Development.md,,0,,True,17654,17654,1,,_verify_hrp_ledoit_wolf.py;_verify_news_impact_asymmetry.py;_verify_squeeze_momentum_features.py;_verify_threshold_cointegration.py;_verify_wrds_lead_lag_scan.py
+BUG-D85,Development.md,,0,,True,17670,17670,1,,_verify_bh_vs_by_full_universe_1d.py;_verify_data_contamination_scan.py;_verify_dd_hub_asymmetric_drop_fix.py;_verify_dd_hub_effective_bets.py;_verify_eg_common_index_a1.py;_verify_news_impact_asymmetry.py
+BUG-D86,Development.md,,0,,True,17682,17682,1,,_verify_backtest_zero_z_filter_fix.py;_verify_bh_vs_by_full_universe_1d.py;_verify_bug_d61_window_alignment.py;_verify_cleaner_no_cache_ffill.py;_verify_confidence_score_allocation.py;_verify_data_contamination_scan.py
+BUG-D87,Development.md,,0,,True,17692,17692,1,,_verify_backtest_zero_z_filter_fix.py;_verify_big_move_lead_lag.py;_verify_bug_d61_window_alignment.py;_verify_cleaner_no_cache_ffill.py;_verify_confidence_score_allocation.py;_verify_data_crypto_binance.py
+BUG-D88,Development.md,,0,,True,17721,17723,2,,_verify_append_basis_reconcile.py;_verify_backtest_hurst_none_fix.py;_verify_backtest_risk_parity_is_only_fit.py;_verify_backtest_storm_label_fix.py;_verify_backtest_zero_z_filter_fix.py;_verify_bugD100_garch_stop_causal.py
+BUG-D89,Development.md,fixed,0,,True,17735,19952,2,,_verify_backtest_hurst_none_fix.py;_verify_backtest_risk_parity_is_only_fit.py;_verify_backtest_storm_label_fix.py;_verify_backtest_zero_z_filter_fix.py;_verify_bugD100_garch_stop_causal.py;_verify_bugD101_position_sizing_circularity.py
+BUG-D90,Development.md,,0,,True,17823,17823,1,,_verify_absorption_ratio.py;_verify_adapter_stale_checkpoint_fix.py;_verify_adapter_wrds_first.py;_verify_adf_confirmatory_tier.py;_verify_adv_1day_fallback.py;_verify_align_daily_gap_gate.py
+BUG-D91,Development.md,,0,,True,17843,18438,2,,_verify_eg_permutation_mask_consistency_fix.py;_verify_short_term_factor_alpha.py;_verify_trend_dominance_diagnostic.py
+BUG-D92,Development.md,,0,,True,17856,17856,1,,_verify_bh_vs_by_full_universe_1d.py;_verify_bugD100_garch_stop_causal.py;_verify_bugD99_pit_wfa_hurst_rs.py;_verify_calendar_no_weekend_rows.py;_verify_clean_mask_gapflag_semantics_fix.py;_verify_coint_frac_nan_status.py
+BUG-D93,Development.md,fixed,0,,True,17866,18197,2,,_verify_bh_vs_by_full_universe_1d.py;_verify_bugD100_garch_stop_causal.py;_verify_bugD99_pit_wfa_hurst_rs.py;_verify_calendar_no_weekend_rows.py;_verify_clean_mask_gapflag_semantics_fix.py;_verify_coint_frac_nan_status.py
+BUG-D94,Development.md,,0,,True,19179,19183,2,,_verify_adv_1day_fallback.py;_verify_backtest_zero_z_filter_fix.py;_verify_bh_vs_by_full_universe.py;_verify_bh_vs_by_full_universe_1d.py;_verify_bugD101_position_sizing_circularity.py;_verify_bugD105_wrds_universe_passed.py
+BUG-D95,Development.md,confirmed-open,1,_verify_bug_d95_persistence_fix.py,True,18170,18754,7,,
+BUG-D96,Development.md,confirmed-open,1,_verify_adv_1day_fallback.py,True,18549,19168,11,,
+BUG-D97,Development.md,,0,,True,18886,18910,2,,_verify_adv_1day_fallback.py;_verify_backtest_zero_z_filter_fix.py;_verify_bh_vs_by_full_universe.py;_verify_bh_vs_by_full_universe_1d.py;_verify_bugD101_position_sizing_circularity.py;_verify_bugD105_wrds_universe_passed.py
+BUG-D98,Development.md,,0,,False,19173,19173,1,,_verify_adv_1day_fallback.py;_verify_backtest_zero_z_filter_fix.py;_verify_bh_vs_by_full_universe.py;_verify_bh_vs_by_full_universe_1d.py;_verify_bugD101_position_sizing_circularity.py;_verify_bugD105_wrds_universe_passed.py
+BUG-D99,Development.md,confirmed-open,4,_verify_bugD101_position_sizing_circularity.py;_verify_bugD99_pit_wfa_hurst_rs.py;_verify_cycle_detection.py;_verify_inverse_polarity.py,True,19929,20935,4,,
+C13,CODE_REVIEW ledger,fixed,1,_verify_min_bars_long_tfs.py,,,,1,,
+C14,CODE_REVIEW ledger,fixed,0,,,,,1,,_verify_adapter_wrds_first.py;_verify_append_basis_reconcile.py;_verify_backtest_risk_parity_is_only_fit.py;_verify_bugD101_position_sizing_circularity.py;_verify_bug_d56_compose.py;_verify_bug_d61_window_alignment.py
+C15,CODE_REVIEW ledger,fixed,0,,,,,1,,_verify_adapter_wrds_first.py;_verify_append_basis_reconcile.py;_verify_backtest_hurst_none_fix.py;_verify_backtest_risk_parity_is_only_fit.py;_verify_backtest_storm_label_fix.py;_verify_backtest_zero_z_filter_fix.py
+C16,CODE_REVIEW ledger,fixed,0,,,,,1,,_verify_adapter_wrds_first.py;_verify_bh_vs_by_full_universe_1d.py;_verify_calendar_no_weekend_rows.py;_verify_clean_pool_identity_pairs.py;_verify_dedupe_identical_series.py;_verify_episodic_pairs_adapter.py
+D1,CODE_REVIEW ledger,fixed,3,_verify_futures_no_magnitude_roll_adjust.py;_verify_liquidity_filter_no_fabrication.py;_verify_loader_timezones.py,,,,1,,
+D10,CODE_REVIEW ledger,fixed,1,_verify_ibkr_cache_snapped.py,,,,1,,
+D11,CODE_REVIEW ledger,unverified,0,,,,,1,,
+D12,CODE_REVIEW ledger,fixed,1,_verify_append_basis_reconcile.py,,,,1,,
+D13,CODE_REVIEW ledger,fixed,1,_verify_period_end_stamps.py,,,,1,,
+D14,CODE_REVIEW ledger,fixed,1,_verify_sp500_cache_guard.py,,,,1,,
+D15,CODE_REVIEW ledger,fixed,0,,,,,1,,
+D2,CODE_REVIEW ledger,fixed,2,_verify_daily_incremental_refresh.py;_verify_loader_timezones.py,,,,1,,
+D3,CODE_REVIEW ledger,fixed,1,_verify_snap_timestamps_no_lookahead.py,,,,1,,
+D4,CODE_REVIEW ledger,fixed,1,_verify_snap_timestamps_no_lookahead.py,,,,1,,
+D5,CODE_REVIEW ledger,fixed,1,_verify_intraday_closed_market_gaps.py,,,,1,,
+D6,CODE_REVIEW ledger,unverified,1,_verify_align_daily_gap_gate.py,,,,1,,
+D7,CODE_REVIEW ledger,fixed,1,_verify_intraday_oom_guard_grid.py,,,,1,,
+D8,CODE_REVIEW ledger,fixed,1,_verify_cleaner_no_cache_ffill.py,,,,1,,
+D9,CODE_REVIEW ledger,fixed,1,_verify_futures_no_magnitude_roll_adjust.py,,,,1,,
+M10,CODE_REVIEW ledger,unverified,0,,,,,1,,_verify_bugD103_macro_publication_lag.py;_verify_cot_contract_history.py;_verify_data_contamination_scan.py;_verify_hmm_gmm_regime_features.py;_verify_macro_daily_cot_availability.py;_verify_macro_regimes.py
+M11,CODE_REVIEW ledger,unverified,0,,,,,1,,_verify_bugD103_macro_publication_lag.py;_verify_cot_contract_history.py;_verify_data_contamination_scan.py;_verify_hmm_gmm_regime_features.py;_verify_macro_daily_cot_availability.py;_verify_macro_regimes.py
+M12,CODE_REVIEW ledger,unverified,1,_verify_cot_contract_history.py,,,,1,,
+M7,CODE_REVIEW ledger,fixed,2,_verify_macro_daily_cot_availability.py;_verify_macro_release_lags.py,,,,1,,
+M8,CODE_REVIEW ledger,fixed,1,_verify_macro_daily_cot_availability.py,,,,1,,
+M9,CODE_REVIEW ledger,fixed,1,_verify_macro_daily_cot_availability.py,,,,1,,
+R1.1,CODE_REVIEW ledger,fixed,2,_verify_fx_convert.py;_verify_loader_wrds_total_return.py,,,,1,,
+R1.10,CODE_REVIEW ledger,unverified,0,,,,,1,,_verify_intraday_episodic_scan.py
+R1.11,CODE_REVIEW ledger,unverified,0,,,,,1,,_verify_bh_vs_by_full_universe_1d.py
+R1.12,CODE_REVIEW ledger,unverified,0,,,,,1,,_verify_backtest_hurst_none_fix.py;_verify_episodic_pairs_adapter.py;_verify_instrument_labels_no_collision.py;_verify_loader_cwd_independent.py;_verify_loader_disjoint_sources.py;_verify_loader_wrds_total_return.py
+R1.13,CODE_REVIEW ledger,unverified,0,,,,,1,,_verify_backtest_hurst_none_fix.py;_verify_overlap_threshold_pit_test.py;_verify_pit_wfa_pooled_equity_curve.py;_verify_pit_wfa_wrds_daily.py;_verify_pit_wfa_wrds_daily_merge_and_save.py;_verify_portfolio_sim_external_series_fix.py
+R1.14,CODE_REVIEW ledger,unverified,0,,,,,1,,_verify_adapter_stale_checkpoint_fix.py;_verify_adapter_wrds_first.py;_verify_bug_d112_causal_candidacy.py;_verify_episodic_pairs_adapter.py
+R1.15,CODE_REVIEW ledger,unverified,1,_verify_purity_pit_eligibility.py,,,,1,,
+R1.2,CODE_REVIEW ledger,unverified,0,,,,,1,,_verify_bug_d112_causal_candidacy.py;_verify_build_log_prices_bounded.py;_verify_chunked_pearson_candidate_pairs.py;_verify_episodic_pit_asof.py;_verify_fdr_threshold_sensitivity.py;_verify_intraday_episodic_scan.py
+R1.3,CODE_REVIEW ledger,unverified,0,,,,,1,,_verify_bug_d112_causal_candidacy.py;_verify_build_log_prices_bounded.py;_verify_chunked_pearson_candidate_pairs.py;_verify_episodic_pit_asof.py;_verify_fdr_threshold_sensitivity.py;_verify_intraday_episodic_scan.py
+R1.4,CODE_REVIEW ledger,unverified,1,_verify_adapter_wrds_first.py,,,,1,,
+R1.5,CODE_REVIEW ledger,unverified,0,,,,,1,,_verify_bug_d112_causal_candidacy.py;_verify_build_log_prices_bounded.py;_verify_chunked_pearson_candidate_pairs.py;_verify_data_wrds.py;_verify_episodic_pit_asof.py;_verify_fdr_threshold_sensitivity.py
+R1.6,CODE_REVIEW ledger,confirmed-open,0,,,,,1,,_verify_bug_d112_causal_candidacy.py;_verify_build_log_prices_bounded.py;_verify_chunked_pearson_candidate_pairs.py;_verify_episodic_pit_asof.py;_verify_fdr_threshold_sensitivity.py;_verify_intraday_episodic_scan.py
+R1.7,CODE_REVIEW ledger,unverified,0,,,,,1,,_verify_bug_d112_causal_candidacy.py;_verify_build_log_prices_bounded.py;_verify_chunked_pearson_candidate_pairs.py;_verify_episodic_pit_asof.py;_verify_fdr_threshold_sensitivity.py;_verify_intraday_episodic_scan.py
+R1.8,CODE_REVIEW ledger,unverified,0,,,,,1,,_verify_bug_d112_causal_candidacy.py;_verify_build_log_prices_bounded.py;_verify_chunked_pearson_candidate_pairs.py;_verify_episodic_pit_asof.py;_verify_fdr_threshold_sensitivity.py;_verify_intraday_episodic_scan.py
+R1.9,CODE_REVIEW ledger,unverified,0,,,,,1,,_verify_intraday_episodic_scan.py
+R2.1,CODE_REVIEW ledger,confirmed-open,0,,,,,1,,_verify_deflated_sharpe.py;_verify_hierarchical_dsr.py;_verify_portfolio_math.py
+R2.10,CODE_REVIEW ledger,unverified,0,,,,,1,,_verify_parameter_sensitivity_screen.py
+R2.11,CODE_REVIEW ledger,unverified,0,,,,,1,,_verify_lstm_attention_architecture.py;_verify_lstm_attention_training.py
+R2.12,CODE_REVIEW ledger,unverified,0,,,,,1,,_verify_capital_constraint_luck_check.py
+R2.13,CODE_REVIEW ledger,unverified,0,,,,,1,,_verify_capital_size_sweep.py
+R2.2,CODE_REVIEW ledger,confirmed-open,0,,,,,1,,_verify_hierarchical_dsr.py;_verify_parameter_sensitivity_screen.py
+R2.3,CODE_REVIEW ledger,confirmed-open,0,,,,,1,,_verify_bugD101_position_sizing_circularity.py;_verify_conformal_predictor.py;_verify_lstm_attention_architecture.py;_verify_lstm_attention_training.py;_verify_ml_feature_lag.py;_verify_ml_hedge_ratio_drift_pit.py
+R2.4,CODE_REVIEW ledger,unverified,0,,,,,1,,_verify_hierarchical_dsr.py
+R2.5,CODE_REVIEW ledger,unverified,0,,,,,1,,_verify_hierarchical_dsr.py
+R2.6,CODE_REVIEW ledger,unverified,0,,,,,1,,_verify_capital_constraint_luck_check.py
+R2.7,CODE_REVIEW ledger,unverified,0,,,,,1,,_verify_capital_constraint_luck_check.py
+R2.8,CODE_REVIEW ledger,unverified,0,,,,,1,,_verify_cf_carver_causal_scale_fix.py;_verify_coint_decay_rate_signal_test.py;_verify_decoupling_analysis.py;_verify_earnings_lead_lag_seam_fix.py;_verify_eg_gap_classification_fix.py;_verify_eg_permutation_mask_consistency_fix.py
+R2.9,CODE_REVIEW ledger,unverified,0,,,,,1,,_verify_lstm_attention_architecture.py;_verify_lstm_attention_training.py
+R3.1,CODE_REVIEW ledger,confirmed-open,0,,,,,1,,_verify_crisis_regime_correlation_diagnostic.py
+R3.10,CODE_REVIEW ledger,unverified,0,,,,,1,,
+R3.11,CODE_REVIEW ledger,unverified,0,,,,,1,,
+R3.12,CODE_REVIEW ledger,unverified,0,,,,,1,,
+R3.13,CODE_REVIEW ledger,unverified,0,,,,,1,,
+R3.2,CODE_REVIEW ledger,unverified,0,,,,,1,,
+R3.3,CODE_REVIEW ledger,unverified,0,,,,,1,,
+R3.4,CODE_REVIEW ledger,unverified,0,,,,,1,,
+R3.5,CODE_REVIEW ledger,unverified,0,,,,,1,,
+R3.6,CODE_REVIEW ledger,unverified,0,,,,,1,,
+R3.7,CODE_REVIEW ledger,confirmed-open,0,,,,,1,,_verify_crisis_regime_same_sector_test.py
+R3.8,CODE_REVIEW ledger,unverified,0,,,,,1,,
+R3.9,CODE_REVIEW ledger,unverified,0,,,,,1,,
+R4.1,CODE_REVIEW ledger,unverified,0,,,,,1,,
+R4.10,CODE_REVIEW ledger,confirmed-open,0,,,,,1,,_verify_bugD101_position_sizing_circularity.py;_verify_conformal_predictor.py;_verify_lstm_attention_architecture.py;_verify_lstm_attention_training.py;_verify_ml_feature_lag.py;_verify_ml_hedge_ratio_drift_pit.py
+R4.11,CODE_REVIEW ledger,unverified,0,,,,,1,,_verify_regime_strength_vs_discovery_regime_test.py
+R4.2,CODE_REVIEW ledger,confirmed-open,0,,,,,1,,_verify_paper_magnitude_claims.py;_verify_pit_confirmation_vs_regime_interaction.py
+R4.3,CODE_REVIEW ledger,unverified,0,,,,,1,,_verify_residual_correlation_factor_test.py
+R4.4,CODE_REVIEW ledger,confirmed-open,0,,,,,1,,
+R4.5,CODE_REVIEW ledger,unverified,0,,,,,1,,
+R4.6,CODE_REVIEW ledger,unverified,0,,,,,1,,_verify_sequential_bootstrap_ml_comparison.py
+R4.7,CODE_REVIEW ledger,unverified,0,,,,,1,,_verify_sequential_bootstrap_ml_comparison.py
+R4.8,CODE_REVIEW ledger,unverified,0,,,,,1,,_verify_backtest_zero_z_filter_fix.py;_verify_bug_d61_window_alignment.py;_verify_cleaner_no_cache_ffill.py;_verify_confidence_score_allocation.py;_verify_data_crypto_binance.py;_verify_dd_hub_asymmetric_drop_fix.py
+R4.9,CODE_REVIEW ledger,unverified,0,,,,,1,,_verify_transfer_entropy_lead_lag.py
+R5.1,CODE_REVIEW ledger,fixed,1,_verify_portfolio_math_business_days.py,,,,1,,
+R5.10,CODE_REVIEW ledger,unverified,0,,,,,1,,_verify_stress_test_replication.py
+R5.11,CODE_REVIEW ledger,unverified,0,,,,,1,,_verify_eigenvalue_weighted_position_sizing.py
+R5.2,CODE_REVIEW ledger,confirmed-open,0,,,,,1,,_verify_eigenvalue_weighted_position_sizing.py
+R5.3,CODE_REVIEW ledger,confirmed-open,0,,,,,1,,_verify_strategy_risk_precision.py
+R5.4,CODE_REVIEW ledger,unverified,0,,,,,1,,_verify_eigenvalue_weighted_position_sizing.py
+R5.5,CODE_REVIEW ledger,unverified,0,,,,,1,,_verify_stress_test_replication.py
+R5.6,CODE_REVIEW ledger,unverified,0,,,,,1,,_verify_stress_test_replication.py
+R5.7,CODE_REVIEW ledger,unverified,0,,,,,1,,_verify_stress_test_replication.py
+R5.8,CODE_REVIEW ledger,unverified,0,,,,,1,,_verify_pit_wfa_trade_bootstrap.py
+R5.9,CODE_REVIEW ledger,unverified,0,,,,,1,,_verify_strategy_risk_precision.py
+R6.10,CODE_REVIEW ledger,unverified,0,,,,,1,,_verify_bh_fdr_dependence_check.py;_verify_bh_vs_by_full_universe.py;_verify_tail_dependence_universe_screen.py
+R6.11,CODE_REVIEW ledger,unverified,0,,,,,1,,_verify_bh_fdr_dependence_check.py;_verify_bh_vs_by_full_universe.py;_verify_tail_dependence_universe_screen.py
+R6.12,CODE_REVIEW ledger,unverified,0,,,,,1,,_verify_variance_ratio_gap_fix.py;_verify_variance_ratio_test.py
+R6.2,CODE_REVIEW ledger,confirmed-open,0,,,,,1,,_verify_cointegration_regime_segmentation.py
+R6.3,CODE_REVIEW ledger,confirmed-open,0,,,,,1,,_verify_coint_decay_rate_signal_test.py;_verify_cointegration_regime_segmentation.py;_verify_confirmatory_cointegration_check.py;_verify_correlation_transition_detector.py;_verify_diversification_basket_test.py;_verify_eg_common_index_a1.py
+R6.4,CODE_REVIEW ledger,unverified,0,,,,,1,,_verify_eg_null_calibration.py;_verify_episodic_pairs_adapter.py;_verify_instrument_labels_no_collision.py;_verify_loader_cwd_independent.py;_verify_loader_disjoint_sources.py;_verify_loader_wrds_total_return.py
+R6.5,CODE_REVIEW ledger,confirmed-open,0,,,,,1,,_verify_grid_bootstrap_ar_ci.py
+R6.6,CODE_REVIEW ledger,unverified,0,,,,,1,,_verify_grid_bootstrap_ar_ci.py
+R6.7,CODE_REVIEW ledger,unverified,0,,,,,1,,_verify_threshold_cointegration.py
+R6.8,CODE_REVIEW ledger,unverified,0,,,,,1,,_verify_grid_bootstrap_ar_ci.py;_verify_threshold_cointegration.py;_verify_variance_ratio_gap_fix.py;_verify_variance_ratio_test.py
+R6.9,CODE_REVIEW ledger,unverified,0,,,,,1,,_verify_crisis_regime_cluster_bootstrap_test.py
+R7.1,CODE_REVIEW ledger,confirmed-open,0,,,,,1,,_verify_asset_volatility_profile.py;_verify_confidence_score_allocation.py
+R7.10,CODE_REVIEW ledger,unverified,0,,,,,1,,
+R7.11,CODE_REVIEW ledger,unverified,0,,,,,1,,_verify_compute_metrics_sharpe_annualization_fix.py
+R7.12,CODE_REVIEW ledger,unverified,0,,,,,1,,_verify_dd_hub_asymmetric_drop_fix.py;_verify_dd_hub_effective_bets.py;_verify_stop_loss_correlation_caps.py
+R7.13,CODE_REVIEW ledger,unverified,0,,,,,1,,_verify_return_smoothing_audit.py
+R7.14,CODE_REVIEW ledger,unverified,0,,,,,1,,_verify_bertram_ou_thresholds.py
+R7.15,CODE_REVIEW ledger,unverified,0,,,,,1,,_verify_bertram_ou_thresholds.py
+R7.2,CODE_REVIEW ledger,unverified,0,,,,,1,,_verify_confidence_score_allocation.py
+R7.3,CODE_REVIEW ledger,confirmed-open,0,,,,,1,,_verify_beta_weighted_portfolio.py
+R7.4,CODE_REVIEW ledger,unverified,0,,,,,1,,_verify_beta_weighted_portfolio.py;_verify_confidence_score_allocation.py
+R7.5,CODE_REVIEW ledger,unverified,0,,,,,1,,
+R7.6,CODE_REVIEW ledger,unverified,0,,,,,1,,
+R7.7,CODE_REVIEW ledger,unverified,0,,,,,1,,_verify_backtest_overfitting_detector.py
+R7.8,CODE_REVIEW ledger,unverified,0,,,,,1,,_verify_backtest_overfitting_detector.py
+R7.9,CODE_REVIEW ledger,unverified,0,,,,,1,,_verify_hrp_ledoit_wolf.py;_verify_squeeze_momentum_features.py;_verify_wrds_lead_lag_scan.py
+R8.1,CODE_REVIEW ledger,withdrawn,0,,,,,1,,_verify_news_impact_asymmetry.py
+R8.10,CODE_REVIEW ledger,unverified,0,,,,,1,,_verify_price_target_pairs_overlay.py
+R8.12,CODE_REVIEW ledger,unverified,0,,,,,1,,
+R8.13,CODE_REVIEW ledger,unverified,0,,,,,1,,_verify_risk_neutral_density.py
+R8.2,CODE_REVIEW ledger,unverified,0,,,,,1,,_verify_news_impact_asymmetry.py
+R8.3,CODE_REVIEW ledger,confirmed-open,0,,,,,1,,
+R8.4,CODE_REVIEW ledger,confirmed-open,0,,,,,1,,
+R8.5,CODE_REVIEW ledger,unverified,0,,,,,1,,
+R8.6,CODE_REVIEW ledger,unverified,0,,,,,1,,_verify_short_term_factor_alpha.py
+R8.7,CODE_REVIEW ledger,unverified,0,,,,,1,,_verify_short_term_factor_alpha.py
+R8.8,CODE_REVIEW ledger,unverified,0,,,,,1,,_verify_reimers_trio_correction.py
+R8.9,CODE_REVIEW ledger,unverified,0,,,,,1,,_verify_price_target_pairs_overlay.py
+S1,CODE_REVIEW ledger,confirmed-open,2,_verify_diversification_basket_test.py;_verify_near_miss_lag_scan.py,,,,1,,
+S10,CODE_REVIEW ledger,fixed,1,_verify_coint_frac_nan_status.py,,,,1,,
+S11,CODE_REVIEW ledger,unverified,0,,,,,1,,_verify_backtest_hurst_none_fix.py;_verify_backtest_risk_parity_is_only_fit.py;_verify_backtest_storm_label_fix.py;_verify_backtest_zero_z_filter_fix.py;_verify_bugD100_garch_stop_causal.py;_verify_bugD101_position_sizing_circularity.py
+S12,CODE_REVIEW ledger,unverified,0,,,,,1,,_verify_deflated_sharpe.py;_verify_hierarchical_dsr.py;_verify_portfolio_math.py
+S13,CODE_REVIEW ledger,unverified,0,,,,,1,,_verify_adf_confirmatory_tier.py;_verify_bugD102_coint_frac_sizing_fold_leakage.py;_verify_coint_strength_series_builder.py;_verify_copula_pairs.py;_verify_cvar.py;_verify_decoupling_meta_analysis.py
+S14,CODE_REVIEW ledger,unverified,0,,,,,1,,_verify_backtest_hurst_none_fix.py;_verify_bugD99_pit_wfa_hurst_rs.py;_verify_coint_frac_nan_status.py;_verify_index_tracking_exclusion.py;_verify_lag_aware_coint_discovery.py;_verify_persistence_filter.py
+S2,CODE_REVIEW ledger,fixed,3,_verify_diversification_basket_test.py;_verify_eg_bh_denominator.py;_verify_near_miss_lag_scan.py,,,,1,,
+S3,CODE_REVIEW ledger,confirmed-open,2,_verify_eligible_from_gate.py;_verify_near_miss_lag_scan.py,,,,1,,
+S4,CODE_REVIEW ledger,unverified,0,,,,,1,,_verify_backtest_hurst_none_fix.py;_verify_bugD99_pit_wfa_hurst_rs.py;_verify_coint_frac_nan_status.py;_verify_index_tracking_exclusion.py;_verify_lag_aware_coint_discovery.py;_verify_persistence_filter.py
+S5,CODE_REVIEW ledger,confirmed-open,0,,,,,1,,_verify_adf_confirmatory_tier.py;_verify_bugD102_coint_frac_sizing_fold_leakage.py;_verify_coint_strength_series_builder.py;_verify_copula_pairs.py;_verify_cvar.py;_verify_decoupling_meta_analysis.py
+S6,CODE_REVIEW ledger,unverified,0,,,,,1,,_verify_adf_confirmatory_tier.py;_verify_bugD102_coint_frac_sizing_fold_leakage.py;_verify_coint_strength_series_builder.py;_verify_copula_pairs.py;_verify_cvar.py;_verify_decoupling_meta_analysis.py
+S7,CODE_REVIEW ledger,fixed,1,_verify_za_breakdate_index.py,,,,1,,
+S8,CODE_REVIEW ledger,unverified,0,,,,,1,,_verify_adf_confirmatory_tier.py;_verify_bugD102_coint_frac_sizing_fold_leakage.py;_verify_coint_strength_series_builder.py;_verify_copula_pairs.py;_verify_cvar.py;_verify_decoupling_meta_analysis.py
+S9,CODE_REVIEW ledger,unverified,0,,,,,1,,_verify_adf_confirmatory_tier.py;_verify_bugD102_coint_frac_sizing_fold_leakage.py;_verify_coint_strength_series_builder.py;_verify_copula_pairs.py;_verify_cvar.py;_verify_decoupling_meta_analysis.py
+SWEEP-A6/S10,INCONSISTENCY_SWEEP,fixed,1,_verify_coint_frac_nan_status.py,,,,1,,
+SWEEP-C1-3,INCONSISTENCY_SWEEP,fixed,0,,,,,1,,
+SWEEP-C4-1,INCONSISTENCY_SWEEP,fixed,0,,,,,1,,
+SWEEP-C4-2,INCONSISTENCY_SWEEP,open,0,,,,,1,,
+SWEEP-C6-1,INCONSISTENCY_SWEEP,fixed,0,,,,,1,,
+SWEEP-C6-2,INCONSISTENCY_SWEEP,surfaced,0,,,,,1,,
+SWEEP-M-1,INCONSISTENCY_SWEEP,open,0,,,,,1,,
+SWEEP-M13,INCONSISTENCY_SWEEP,fixed,1,_verify_cot_contract_history.py,,,,1,,
+SWEEP-S1,INCONSISTENCY_SWEEP,open,2,_verify_diversification_basket_test.py;_verify_near_miss_lag_scan.py,,,,1,,
+U1,CODE_REVIEW ledger,fixed,1,_verify_loader_cwd_independent.py,,,,1,,
+U2,CODE_REVIEW ledger,fixed,1,_verify_loader_timezones.py,,,,1,,
+U3,CODE_REVIEW ledger,unverified,1,_verify_calendar_no_weekend_rows.py,,,,1,,
+U4,CODE_REVIEW ledger,fixed,1,_verify_loader_wrds_total_return.py,,,,1,,
+U5,CODE_REVIEW ledger,unverified,1,_verify_wrds_priority_over_ibkr.py,,,,1,,
+U6,CODE_REVIEW ledger,unverified,1,_verify_wrds_priority_over_ibkr.py,,,,1,,
