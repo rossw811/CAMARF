@@ -1,3 +1,7 @@
+## 2026-10-03: the full plan of action is docs/PLAN_OF_ACTION_2026-10-03.md (every thread + backlog, owners,
+## dependencies, done-criteria, decisions needed). CachyOS hung 2026-10-03 (~10:55) and was rebooted; trfd fetch and
+## the chain were restarted 13:12. The entry below remains the detailed state.
+
 ## 2026-10-02: RESUME HERE (supersedes every entry below)
 
 ### Ross's decisions (2026-10-02)
