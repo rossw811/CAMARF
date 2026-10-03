@@ -94,7 +94,9 @@ def test_daily_pnl_stats_synthetic_trades():
     with tempfile.TemporaryDirectory() as d:
         n = 60
         rng = np.random.default_rng(3)
-        dates = pd.date_range("2023-01-01", periods=n, freq="1D")
+        # business days (2026-10-03, bug recheck T14): daily P&L is on business days since the P1 fix, so a
+        # calendar-day fixture booked weekend exits onto Fridays and t_obs != n -- a stale fixture, not a bug.
+        dates = pd.bdate_range("2023-01-02", periods=n)
         trades = pd.DataFrame({
             "entry_time": dates, "exit_time": dates,
             "pnl_net": rng.normal(5.0, 20.0, n),

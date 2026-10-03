@@ -41,7 +41,10 @@ def _reference_resample_sharpe(taken: pd.DataFrame) -> float:
     of portfolio_sim.py's own code, so this isn't just checking the function against itself."""
     exit_time = pd.to_datetime(taken["exit_time"])
     s = pd.Series(taken["actual_pnl"].values, index=pd.DatetimeIndex(exit_time)).sort_index()
-    full_range = pd.date_range(s.index.min().normalize(), s.index.max().normalize(), freq="1D")
+    # 2026-10-03 (bug recheck T14): BUSINESS days -- the convention since the 2026-09-26 P1 fix (weekend zeros shrink
+    # mean and variance; portfolio_math.daily_pnl_from_exits). This reference still used calendar days, so the test
+    # had failed since P1 -- a stale expectation, not a regression. Fixture exits are all on weekdays.
+    full_range = pd.bdate_range(s.index.min().normalize(), s.index.max().normalize())
     daily = s.groupby(s.index.normalize()).sum().reindex(full_range, fill_value=0.0)
     if len(daily) < 5 or daily.std() == 0:
         return float("nan")
@@ -96,8 +99,8 @@ def main():
     # Case 3: dense fixture (every calendar day has a trade, no gaps) -- here groupby and resample
     # SHOULD agree, since there are no zero-P&L days to fill. Confirms the fix doesn't change
     # behavior when the bug's precondition (gaps) doesn't hold.
-    dense_rows = [{"exit_time": pd.Timestamp("2026-03-01") + pd.Timedelta(days=i),
-                   "actual_pnl": float(50 + 10 * ((-1) ** i))} for i in range(10)]
+    dense_rows = [{"exit_time": d, "actual_pnl": float(50 + 10 * ((-1) ** i))}
+                  for i, d in enumerate(pd.bdate_range("2026-03-02", periods=10))]   # every BUSINESS day
     dense_taken = pd.DataFrame(dense_rows)
     dense_result = {"taken": dense_taken}
     dense_fixed = portfolio_sharpe_from_replay(dense_result)
