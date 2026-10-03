@@ -47,17 +47,23 @@ def main():
         import bisect
         return bisect.bisect_right(line_starts, pos)
 
-    for m in re.finditer(r"\bBUG-[A-Z]+\d+\b", dev):
-        bid = m.group(0)
-        r = rows.setdefault(bid, {"id": bid, "source": "Development.md", "first_line": lineno(m.start()),
-                                  "last_line": 0, "n_mentions": 0, "doc_status": ""})
-        r["last_line"] = lineno(m.start())
-        r["n_mentions"] += 1
-        st = status_near(dev, m.start())
-        if st:
-            r["doc_status"] = st                      # latest mention's status wins
+    # normalise BUG-D01 / BUG-D1, and read slash lists ("BUG-D107/D109/D110") as one mention of each id
+    for m in re.finditer(r"\bBUG-([A-Z]+)(\d+)((?:/(?:BUG-)?[A-Z]*\d+)*)\b", dev):
+        ids = [f"BUG-{m.group(1)}{int(m.group(2))}"] + [
+            f"BUG-{p or m.group(1)}{int(n)}" for p, n in re.findall(r"/(?:BUG-)?([A-Z]*)(\d+)", m.group(3))]
+        for bid in ids:
+            r = rows.setdefault(bid, {"id": bid, "source": "Development.md", "first_line": lineno(m.start()),
+                                      "last_line": 0, "n_mentions": 0, "doc_status": ""})
+            r["last_line"] = lineno(m.start())
+            r["n_mentions"] += 1
+            st = status_near(dev, m.start())
+            if st:
+                r["doc_status"] = st                      # latest mention's status wins
     idx = read("docs/BUG_LOG.md")
-    indexed = set(re.findall(r"\bBUG-[A-Z]+\d+\b", idx))
+    # 2026-10-03: the index writes ids as table rows "| D01 |" (zero-padded, no "BUG-" prefix); the first version
+    # matched only "BUG-D1" and under-counted coverage as 47/125 (true: 124/125). Normalise both forms.
+    indexed = ({f"BUG-{p}{int(n)}" for p, n in re.findall(r"^\| ([A-Z]+)(\d+) \|", idx, re.M)}
+               | {f"BUG-{p}{int(n)}" for p, n in re.findall(r"\bBUG-([A-Z]+)(\d+)\b", idx)})
 
     rev = read("docs/CODE_REVIEW_2026-09-26.md")
     for l in rev.split("\n"):
@@ -89,9 +95,18 @@ def main():
         r["recheck_verdict"] = ""                       # filled by T14.3-14.5: holds / regressed / obsolete / untested
         out.append(r)
     os.makedirs(os.path.join(ROOT, "docs", "bug_recheck"), exist_ok=True)
-    cols = ["id", "source", "doc_status", "n_tests", "verify_scripts", "in_bug_log_index", "first_line", "last_line",
-            "n_mentions", "recheck_verdict"]
-    with open(os.path.join(ROOT, "docs", "bug_recheck", "inventory.csv"), "w", newline="", encoding="utf-8") as fh:
+    inv_path = os.path.join(ROOT, "docs", "bug_recheck", "inventory.csv")
+    # Hand/derived columns survive a rebuild (2026-10-03: a re-run had wiped the T14.2 content mapping).
+    keep = ("verify_scripts_by_content", "recheck_verdict")
+    if os.path.exists(inv_path):
+        prev = {r["id"]: r for r in csv.DictReader(open(inv_path, encoding="utf-8"))}
+        for r in out:
+            for k in keep:
+                if prev.get(r["id"], {}).get(k):
+                    r[k] = prev[r["id"]][k]
+    cols = ["id", "source", "doc_status", "n_tests", "verify_scripts", "verify_scripts_by_content",
+            "in_bug_log_index", "first_line", "last_line", "n_mentions", "recheck_verdict"]
+    with open(inv_path, "w", newline="", encoding="utf-8") as fh:
         w = csv.DictWriter(fh, fieldnames=cols)
         w.writeheader()
         for r in out:
