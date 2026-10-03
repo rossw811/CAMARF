@@ -97,6 +97,22 @@ comomentum, DEV-044 usable-not-just-significant, DEV-069 shared-leg hub risk, DE
 the rest are recorded as "deferred — not run" with the reason. Free-data rule applies (e.g. DEV-033 CBOE SKEW /
 put-call / Google Trends are free → eligible; DEV-042 extra WRDS tiers only if in the subscription).
 
+## T14 — Recheck of every logged bug (Ross, 2026-10-03)
+Scope: every logged defect, whoever logged it and whatever its "FIXED" label says (Ross's standing rule: treat every
+earlier claim as unverified until re-checked). Sources: Development.md's bug registry (125 distinct BUG-* IDs; the
+docs/BUG_LOG.md index covers only 48 — itself stale), the code-review ledger (175 rows), the inconsistency sweep
+(~20 findings), and the D/M/U/S/C/A/B series.
+| # | Step | Owner | Done when |
+|---|---|---|---|
+| 14.1 | One inventory of every logged bug: id, source line, claimed status, affected code (file:function) → `docs/bug_recheck/inventory.csv` | C | every BUG-*/ledger/sweep id present once |
+| 14.2 | Map each bug to its regression test(s) (`debug/_verify_*.py` docstrings/ids) → coverage % | C | mapping in the inventory |
+| 14.3 | Run the full verify suite against current code (`debug/_run_all_verify.py`, 319 scripts) on CachyOS + the Surface | C/J | every FAIL triaged: regression (fix) vs stale fixture (fix the fixture only with evidence, as with _verify_pdr_calmar) |
+| 14.4 | Bugs in live code with no test: write a reproduce-first regression test; dead-code bugs → "obsolete" with the commit that removed the code | C | no live-code bug without a test or a stated reason |
+| 14.5 | Real-data recheck for bugs that touch a headline number (re-derive the effect; record before/after) | C | effect recorded in the inventory and, if cited, in the claims registry |
+| 14.6 | Rebuild docs/BUG_LOG.md from the inventory (all ids, current status: holds / regressed / obsolete / untested) | C | index covers 100% |
+| 14.7 | Independent check: adversarial-reviewer agent re-verifies a random sample (≥ 10%) of "holds" verdicts | C + agent | disagreements resolved |
+Runs alongside T2/T3 (needs no new data); a regression found here pre-empts everything downstream it touches.
+
 ## T13 — Decisions needed from Ross (consolidated)
 1. Process-paper framing (T5.1).
 2. B1/B2/B4: retire the legacy P&L mode and `--hedge both` default, or keep as labelled arms (T1.6).
@@ -109,5 +125,5 @@ put-call / Google Trends are free → eligible; DEV-042 extra WRDS tiers only if
 
 ## Sequencing (critical path)
 T1.1-1.3 (≈ today) → T2.2 (≈ 1 day) → T2.3 (≈ 1 day) and in parallel T2.5 on the primary → T3 (≈ 1 day) →
-T6 + T7. While jobs run: T4, T5, T8, T10, T11, T1.6-1.10. CachyOS stability (DEV-018) first, because a hang
+T6 + T7. While jobs run: T14 (bug recheck), T4, T5, T8, T10, T11, T1.6-1.10. CachyOS stability (DEV-018) first, because a hang
 mid-discovery costs a day.
