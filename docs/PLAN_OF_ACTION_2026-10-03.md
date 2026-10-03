@@ -123,6 +123,21 @@ Runs alongside T2/T3 (needs no new data); a regression found here pre-empts ever
    implied-correlation divergence (needs options data → ✖ under the free rule unless CBOE free data suffices),
    DEV-064 momentum overlay design, DEV-066 (now the process paper), DEV-067 DFA/wavelet Hurst arm.
 
+**Decided by Ross, 2026-10-03 ("as for everything else i approve"), all as recommended:**
+1. Process-paper framing: approved as outlined (docs/PAPER_PROCESS_OUTLINE.md).
+2. B2/B3: dollar P&L is the default everywhere; legacy spread-unit P&L only behind an explicit `--legacy-pnl` flag,
+   labelled known-wrong, for reproducing old numbers. B4: default hedge = OLS; Kalman a separately labelled arm,
+   never pooled with OLS. B1: fix the dead `data_gap` exit so data gaps force-close positions (with a test).
+3. D18: decide after the two discovery runs compare (Ross leans "exclude").
+4. DEV-055: a fresh holdout per new evaluation; old results labelled "shared holdout". DEV-056: keep current
+   values + a sensitivity arm with the pilot's values. DEV-057: flag and include + a sensitivity run excluding flagged
+   pairs. DEV-061: dropped (needs options data). DEV-064: deferred until after the second prereg pass. DEV-067: a
+   comparison arm after the deep dives.
+5. DEV-058 — Ross: "find a free source and verify it; if not, disclose and note for re-investigation". Done the same
+   day: SEC EDGAR holdings of the index ETFs (MDY for the 400, IJR for the 600) + S&P's dated press releases; 37/38
+   announced changes agree on one rebalance, the 1 difference explained (docs/PIT_INDEX_MEMBERSHIP_SOURCES.md).
+   Next: more rebalances across 2001-2026, then a comparison arm (universe change = methodology).
+
 ## Sequencing (critical path)
 T1.1-1.3 (≈ today) → T2.2 (≈ 1 day) → T2.3 (≈ 1 day) and in parallel T2.5 on the primary → T3 (≈ 1 day) →
 T6 + T7. While jobs run: T14 (bug recheck), T4, T5, T8, T10, T11, T1.6-1.10. CachyOS stability (DEV-018) first, because a hang
