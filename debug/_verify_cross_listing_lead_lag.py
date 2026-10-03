@@ -33,7 +33,20 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import research.cross_listing_lead_lag as cll
 
-_TEST_CACHE_DIR = cll._WRDS_CACHE_DIR
+# 2026-10-03 (bug recheck T14): sandboxed -- this test used to write its fake symbols into the REAL cache (pollution while running, leftovers if it crashed). All writes now go to a temp directory, removed at exit.
+import atexit, shutil, tempfile
+import research.wrds_lead_lag_scan as _wll
+_TEST_CACHE_DIR = tempfile.mkdtemp(prefix="verify_cll_")
+_orig_dirs = (cll._WRDS_CACHE_DIR, _wll._WRDS_CACHE_DIR)
+cll._WRDS_CACHE_DIR = _wll._WRDS_CACHE_DIR = _TEST_CACHE_DIR
+
+
+def _restore():
+    cll._WRDS_CACHE_DIR, _wll._WRDS_CACHE_DIR = _orig_dirs
+    shutil.rmtree(_TEST_CACHE_DIR, ignore_errors=True)
+
+
+atexit.register(_restore)
 
 
 def check(name, cond):
