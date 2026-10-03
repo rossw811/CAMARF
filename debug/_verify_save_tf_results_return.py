@@ -51,13 +51,13 @@ def _real_manifest_snapshot():
     return True, os.path.getmtime(_REAL_MANIFEST_PATH), content
 
 
-def _make_pair(symbol_a, symbol_b, coint_frac, slope=-0.5, za=None, cusum=None, n_bars=500):
+def _make_pair(symbol_a, symbol_b, coint_frac, slope=-0.5, za=None, cusum=None, n_bars=500, status="ok"):
     return PairResult(
         symbol_a=symbol_a, symbol_b=symbol_b,
         asset_class_a="equity", asset_class_b="equity",
         tf_label=_TF, is_cross_asset=False,
         pearson_corr=0.8, coint_pvalue_raw=0.01, coint_pvalue_adjusted=0.02,
-        coint_fraction_rolling=coint_frac,
+        coint_fraction_rolling=coint_frac, coint_fraction_status=status,
         hedge_ratio_ols=1.0, hedge_ratio_tls=1.0, hedge_ratio_kalman_mean=1.0,
         half_life_rolling=20.0, half_life_expanding=20.0, mean_reversion_speed=0.05,
         half_life_trend_slope=slope, zivot_andrews_break=za, cusum_first_excursion=cusum,
@@ -82,7 +82,10 @@ def main():
         # (not this one's intent) and would need its own test if wanted.
         ("override-kept (cf<0.70, improving slope, no breaks)",
          _make_pair("EEE", "FFF", 0.40, slope=-0.1, za=None, cusum=None, n_bars=800), True),
-        ("nan coint_frac, exempt by design", _make_pair("GGG", "HHH", float("nan")), True),
+        # A6/S10 (2026-09-28, updated 2026-10-03): NaN is kept ONLY when the history was too short to test;
+        # a crashed rolling test is excluded (it used to pass).
+        ("nan coint_frac, insufficient history: kept", _make_pair("GGG", "HHH", float("nan"), status="insufficient_history"), True),
+        ("nan coint_frac, crashed test: excluded", _make_pair("III", "JJJ", float("nan"), status="error: boom"), False),
     ]
     pairs_in = [c[1] for c in cases]
 
