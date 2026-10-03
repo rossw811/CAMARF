@@ -35,6 +35,20 @@ import pandas as pd
 from backtest import BacktestEngine, RegimeConditioner, MLConditioner
 from config import Config
 
+# 2026-10-03 (bug recheck T14): sandboxed -- this test used to write its fake symbols into the REAL cache (pollution while running, leftovers if it crashed). All writes now go to a temp directory, removed at exit.
+import atexit as _atexit, shutil as _shutil, tempfile as _tempfile
+_SANDBOX = _tempfile.mkdtemp(prefix="verify_deadconst_")
+_ORIG_CACHE = Config.DATA.CACHE_DIR
+Config.DATA.CACHE_DIR = _SANDBOX
+
+
+def _restore_cache():
+    Config.DATA.CACHE_DIR = _ORIG_CACHE
+    _shutil.rmtree(_SANDBOX, ignore_errors=True)
+
+
+_atexit.register(_restore_cache)
+
 
 def build_pair_row():
     return pd.Series({

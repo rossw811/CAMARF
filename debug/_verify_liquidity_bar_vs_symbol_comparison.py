@@ -25,7 +25,13 @@ import numpy as np
 import pandas as pd
 
 from research.liquidity_bar_vs_symbol_comparison import compare_bar_vs_symbol
-from data_wrds import _OUT_DIR
+# 2026-10-03 (bug recheck T14): sandboxed -- this test used to write its fake symbols into the REAL cache (pollution while running, leftovers if it crashed). All writes now go to a temp directory, removed at exit.
+import atexit, shutil, tempfile
+import research.liquidity_bar_vs_symbol_comparison as _lbvs
+_OUT_DIR = tempfile.mkdtemp(prefix="verify_lbvs_")
+_orig_out = _lbvs._OUT_DIR
+_lbvs._OUT_DIR = _OUT_DIR
+atexit.register(lambda: (setattr(_lbvs, "_OUT_DIR", _orig_out), shutil.rmtree(_OUT_DIR, ignore_errors=True)))
 
 _TEST_LABEL = "TESTSYM_VERIFY"
 _TEST_PATH = os.path.join(_OUT_DIR, f"{_TEST_LABEL}_1D.parquet")
