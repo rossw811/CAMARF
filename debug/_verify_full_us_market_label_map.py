@@ -23,6 +23,17 @@ import pandas as pd
 from research.full_us_market_price_fetch import build_full_market_label_map
 
 
+def _with_recency(m):
+    """The recency rule (D17) needs is_current / nameenddt, as the real CRSP master has; default: not current,
+    name ends one year after it starts."""
+    m = m.copy()
+    if "is_current" not in m.columns:
+        m["is_current"] = False
+    if "nameenddt" not in m.columns:
+        m["nameenddt"] = pd.to_datetime(m["namedt"]) + pd.Timedelta(days=365)
+    return m
+
+
 def main():
     failures = []
 
@@ -31,7 +42,7 @@ def main():
         {"permno": 1, "ticker": "AAA", "namedt": pd.Timestamp("2000-01-01")},
         {"permno": 2, "ticker": "BBB", "namedt": pd.Timestamp("2000-01-01")},
     ])
-    labels1 = build_full_market_label_map(master1)
+    labels1 = build_full_market_label_map(_with_recency(master1))
     if set(labels1.keys()) != {"AAA", "BBB"}:
         failures.append(f"Check 1: expected clean AAA/BBB labels, got {labels1}")
 
@@ -46,7 +57,10 @@ def main():
         {"permno": 1, "ticker": "XYZ", "namedt": pd.Timestamp("1990-01-01")},
         {"permno": 2, "ticker": "XYZ", "namedt": pd.Timestamp("2015-01-01")},  # different co, same ticker later
     ])
-    labels2 = build_full_market_label_map(master2)
+    # D17 (2026-09-27, updated 2026-10-03): the MOST RECENT holder (permno 2, current) now claims the ticker;
+    # the old first-come rule gave it to the oldest holder (2,719 of 4,327 reused tickers wrong on real data).
+    master2["is_current"] = [False, True]
+    labels2 = build_full_market_label_map(_with_recency(master2))
     permno_by_label2 = labels2
     if len(set(permno_by_label2.values())) != len(permno_by_label2):
         failures.append(f"Check 2: labels are not 1:1 with permnos (a real overwrite risk), "
@@ -54,8 +68,8 @@ def main():
     if len(labels2) != 2:
         failures.append(f"Check 2: expected exactly 2 distinct labels for 2 distinct permnos, "
                          f"got {labels2}")
-    if permno_by_label2.get("XYZ") not in (1, 2):
-        failures.append(f"Check 2: 'XYZ' should map to whichever permno claimed it first, got {labels2}")
+    if permno_by_label2.get("XYZ") != 2:
+        failures.append(f"Check 2: 'XYZ' should map to its most recent (current) holder, permno 2, got {labels2}")
 
     # --- Check 4: null ticker (the real bug caught on the actual run,
     # 2026-08-13 -- a genuinely NULL/None ticker in CRSP, not a missing
@@ -65,7 +79,7 @@ def main():
         {"permno": 1, "ticker": "GOOD", "namedt": pd.Timestamp("2000-01-01")},
         {"permno": 2, "ticker": None, "namedt": pd.Timestamp("2000-01-01")},
     ])
-    labels4 = build_full_market_label_map(master4)
+    labels4 = build_full_market_label_map(_with_recency(master4))
     if 2 not in labels4.values():
         failures.append(f"Check 4: permno 2 (null ticker) should still be present, fell back to "
                          f"PERMNO2, not silently dropped -- got {labels4}")
@@ -84,7 +98,7 @@ def main():
         "ticker": pd.array(["GOOD", pd.NA], dtype="string"),
         "namedt": [pd.Timestamp("2000-01-01"), pd.Timestamp("2000-01-01")],
     })
-    labels5 = build_full_market_label_map(master5)
+    labels5 = build_full_market_label_map(_with_recency(master5))
     bad_labels5 = [k for k in labels5 if not isinstance(k, str)]
     if bad_labels5:
         failures.append(f"Check 5: pd.NA (pandas 'string' dtype) produced non-string label(s) "
@@ -97,7 +111,7 @@ def main():
         {"permno": 1, "ticker": "OLD", "namedt": pd.Timestamp("2000-01-01")},
         {"permno": 1, "ticker": "NEW", "namedt": pd.Timestamp("2015-01-01")},
     ])
-    labels3 = build_full_market_label_map(master3)
+    labels3 = build_full_market_label_map(_with_recency(master3))
     if "NEW" not in labels3 or "OLD" in labels3:
         failures.append(f"Check 3: expected the MOST RECENT ticker 'NEW' to be used, not 'OLD', "
                          f"got {labels3}")

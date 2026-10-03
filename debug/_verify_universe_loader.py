@@ -85,15 +85,16 @@ def main():
             failures.append("Check 1: yfinance-only symbol VERIFYYF not found in merged universe")
         if "VERIFYWRDS" not in merged:
             failures.append("Check 2: WRDS-only symbol VERIFYWRDS not found in merged universe")
-        if "VERIFYBIN" not in merged:
-            failures.append("Check 3: Binance-only symbol VERIFYBIN not found in merged universe")
+        # D16 (2026-09-27): Binance crypto is labelled "<SYM>-USD" (instrument_labels.py) -- updated 2026-10-03
+        if "VERIFYBIN-USD" not in merged:
+            failures.append("Check 3: Binance-only symbol VERIFYBIN-USD not found in merged universe")
 
         # --- Check 4: selective source exclusion ---
         yf_only = load_full_universe("1D", include_wrds=False, include_binance=False,
                                       include_ibkr=False)
         if "VERIFYYF" not in yf_only:
             failures.append("Check 4: yfinance symbol should still be present with other sources off")
-        if "VERIFYWRDS" in yf_only or "VERIFYBIN" in yf_only or "VERIFYIBKR" in yf_only:
+        if "VERIFYWRDS" in yf_only or "VERIFYBIN-USD" in yf_only or "VERIFYIBKR" in yf_only:
             failures.append(f"Check 4: WRDS/Binance/IBKR symbols should be EXCLUDED when their "
                              f"flags are False, got keys: {list(yf_only.keys())}")
 

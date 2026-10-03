@@ -39,8 +39,14 @@ def check(name, cond):
     return cond
 
 
-_TEST_CACHE_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-                                "output", "cache", "wrds")
+# 2026-10-03 (bug recheck T14): this test used to write its synthetic symbols into the REAL WRDS cache and its fake
+# Tier 1/2 files into the REAL output/research directory -- then os.remove() them, DELETING any real discovery output
+# with those names (found when a full-suite run removed CachyOS's tier1/tier2_confirmed files). main() now points the
+# module under test at a temporary directory for the whole run; nothing outside it is touched.
+import tempfile as _tempfile
+_TMP_ROOT = _tempfile.mkdtemp(prefix="verify_wll_")
+_TEST_CACHE_DIR = os.path.join(_TMP_ROOT, "cache", "wrds")
+os.makedirs(_TEST_CACHE_DIR, exist_ok=True)
 
 
 def _write_test_symbol(label, close_values, close_total_return_values=None):
@@ -182,12 +188,20 @@ def verify_scan_pair_end_to_end():
 
 
 def main():
-    results = [
-        verify_load_price_series_prefers_total_return(),
-        verify_lagged_corr_scan_recovers_known_lag(),
-        verify_load_confirmed_pairs_both_formats(),
-        verify_scan_pair_end_to_end(),
-    ]
+    orig = (wll._WRDS_CACHE_DIR, wll._RESEARCH_DIR)
+    wll._WRDS_CACHE_DIR = _TEST_CACHE_DIR
+    wll._RESEARCH_DIR = os.path.join(_TMP_ROOT, "research")
+    os.makedirs(wll._RESEARCH_DIR, exist_ok=True)
+    try:
+        results = [
+            verify_load_price_series_prefers_total_return(),
+            verify_lagged_corr_scan_recovers_known_lag(),
+            verify_load_confirmed_pairs_both_formats(),
+            verify_scan_pair_end_to_end(),
+        ]
+    finally:
+        wll._WRDS_CACHE_DIR, wll._RESEARCH_DIR = orig
+        shutil.rmtree(_TMP_ROOT, ignore_errors=True)
     print("\n" + "=" * 60)
     if all(results):
         print("ALL CHECKS PASSED")
