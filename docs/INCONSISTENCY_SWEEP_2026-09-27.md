@@ -171,3 +171,34 @@ scrutiny had marked this claim STANDS — the re-derivation rule (re-run, don't 
   because PAPER.md's Act-3 numbers no longer match the saved outputs; those claims are already marked for withdrawal
   (PAPER_SCRUTINY) — resolves with the redraft (T6). Suite now: 318/319 expected green (+ `_verify_data_wrds` needs a
   live WRDS connection).
+
+**2026-10-03 — A3 held after independent review (adversarial-reviewer; every claim below re-run by me).**
+- A3 itself is correct: `_build_pair_result` fitted hedge ratios on prices forward-filled through DATA_GAP runs
+  (test `debug/_verify_pair_result_hedge_gap_mask.py`: 0.665 on HEAD vs 0.700 on real rows). Real data, 24 pairs of the
+  2026-08-24 1-day run: 16 hedge ratios change (e.g. OVV/PERMNO82298 0.316 → 0.753).
+- **But masking exposes code-review A2** (confirmed-open): wherever the rolling hedge has no value, the spread falls
+  back to the FULL-SAMPLE hedge ratio (lookahead). With A3, ATXG/KNBE (91 tradeable bars) and
+  GVKEY248220_01W/GVKEY329260_01W (149) have a rolling hedge on 0 tradeable bars → 100% full-sample hedge; before A3
+  the same pairs used hedges fitted on forward-filled fake prices. Both versions are wrong.
+- My companion rule ("exclude if the rolling hedge is never finite") was WRONG and is withdrawn: it tested any row,
+  and `ols_rolling` writes values on dead DATA_GAP rows, so it missed exactly those pairs; and it excluded every clean
+  pair shorter than 60 bars (45/59/61-bar pairs excluded, 80 kept — most 6M/1Y pairs; `hr_window` floor 60 is
+  hardcoded) — an undisclosed methodology change.
+- Also from the review: with A3, `coint_fraction_rolling_t` changes a lot for daily pairs (`is_genuine_data_gap` is
+  False for daily-or-coarser TFs, so `longest_gap_respecting_segment` joins real bars across multi-year holes:
+  ALTG/FBM 0.174 → 1.000) — feeds `--storm-coint-frac` sizing and ML features. Kalman with NaN rows: OK.
+  `episodic_pairs_adapter` DROPS DATA_GAP rows where the main pipeline NaN-masks them (rolling windows then span
+  different calendar time).
+- New finding (verified): `HedgeRatioEstimator.tls` returns the inverted slope (B on A): true 0.7 → TLS 1.429.
+  Used only for reporting (`stats.py` beta_tls). Open, low.
+- **Status: A3 code kept UNCOMMITTED pending Ross's decision on A2** (how the hedge ratio is estimated where the
+  rolling window has no data, and on daily coint-fraction gap handling). Recommendation: a causal fallback
+  (expanding-window OLS on past real rows only) replacing the full-sample hedge, built as a comparison arm first.
+- **Flaky under the parallel suite (open):** `_verify_pit_wfa` and `_verify_pit_wfa_wrds_daily_merge_and_save` each
+  failed once in a full parallel run and pass alone (3/3 and 7/7 on CachyOS, also on the Surface). No shared file
+  path found; the suite logs only the FAIL line. Next: have `_run_all_verify` save the failing test's output.
+- **B1–B4 committed 2026-10-03** (A3 held). Full suite with all changes: 317 pass; the only failures were 4 replay
+  tests of legacy-only mechanics (now pinned to `pnl_mode="legacy"` explicitly, all pass), `paper_claims` (→ T6) and
+  the flaky `_verify_pit_wfa`. Research scripts that relied on the legacy default now stop with a clear error
+  (`capital_sim_selection_mechanism.py`, `pdr_calmar_comparison.py`, the Kelly arms of
+  `parameter_sensitivity_screen.py`) — convert if re-run.

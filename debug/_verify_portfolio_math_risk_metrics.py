@@ -66,6 +66,10 @@ check("rolling_sharpe matches a manual computation at one spot-checked point (in
 print("Check 4: calmar_from_daily_pnl -- matches portfolio_sim.py's own calmar_from_replay() "
       "on the SAME underlying trade data, confirming no drift between the two implementations")
 import portfolio_sim
+# B2/B3 (2026-10-03): replay_portfolio now defaults to dollar P&L. This test checks replay MECHANICS on synthetic
+# spread-unit trades, not P&L validity, so it asks for the legacy basis explicitly.
+import functools as _ft
+portfolio_sim.replay_portfolio = _ft.partial(portfolio_sim.replay_portfolio, pnl_mode="legacy")
 trades_df = pd.DataFrame({
     "symbol_a": ["A"] * 10, "symbol_b": ["B"] * 10, "tf": ["1D"] * 10,
     "entry_time": pd.date_range("2024-01-01", periods=10, freq="10D"),

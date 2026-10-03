@@ -61,8 +61,8 @@ REGISTRY = [
     {
         "name": "hedge_method",
         "param_kwarg": "hedge",
-        "grid": ["both", "ols", "kalman"],
-        "baseline": "both",
+        "grid": ["ols", "kalman"],          # "both" removed 2026-10-03 (B4: pooled near-duplicate trades)
+        "baseline": "ols",
     },
     {
         "name": "capital_sizing_method",
@@ -131,7 +131,7 @@ TIER2_REGISTRY = [
 ]
 
 
-def build_cmd(entry_z=None, hedge="both", capital_sizing="fixed",
+def build_cmd(entry_z=None, hedge="ols", capital_sizing="fixed",
               account=100_000, holdout=False, override=None, extra_flags=None):
     cmd = [
         _PYTHON, "backtest.py",
@@ -154,7 +154,7 @@ def build_cmd(entry_z=None, hedge="both", capital_sizing="fixed",
 
 def run_one(param_kwarg, value, holdout, timeout=1800, override_name=None,
             extra_flags=None, capital_sizing="fixed"):
-    kwargs = {"entry_z": None, "hedge": "both", "capital_sizing": capital_sizing,
+    kwargs = {"entry_z": None, "hedge": "ols", "capital_sizing": capital_sizing,
               "extra_flags": extra_flags}
     if override_name:
         kwargs["override"] = {override_name: value}

@@ -60,6 +60,8 @@ _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _OUT_DIR = os.path.join(_ROOT, "output", "backtest")
 
 _TF_LABEL = "1D"
+# B2/B3: --legacy-pnl travels by environment variable so worker processes (fork or spawn) see it.
+_LEGACY_PNL = os.environ.get("CAMARF_LEGACY_PNL") == "1"
 
 log = logging.getLogger("pit_wfa_wrds_daily")
 
@@ -271,6 +273,9 @@ def backtest_pair_on_test_window(
     engine = BacktestEngine(cfg=Config.BACKTEST, regime_cond=RegimeConditioner(enabled=False),
                              ml_cond=MLConditioner(enabled=False))
     trades = engine.run(pair_row, test_slice, hedge_method="ols", holdout_only=False)
+    # B2/B3 (Ross 2026-10-03): dollar P&L by default; unpriceable trades dropped (backtest.apply_pnl_basis)
+    from backtest import apply_pnl_basis
+    trades, _ = apply_pnl_basis(trades, legacy=_LEGACY_PNL)
     metrics = compute_metrics(trades, _TF_LABEL, sym_a, sym_b, "ols") if trades else {}
     return trades, metrics
 
@@ -330,6 +335,8 @@ def main():
     import argparse
     parser = argparse.ArgumentParser(description="Point-in-time portfolio-wide WFA (WRDS daily, full universe)")
     parser.add_argument("--workers", type=int, default=Config.RUNTIME.N_WORKERS)
+    parser.add_argument("--legacy-pnl", action="store_true",
+                        help="KNOWN WRONG (code review B2/B3): spread-unit P&L. Default: dollar P&L.")
     parser.add_argument("--variant", choices=["expanding", "rolling", "both"], default="both")
     # Capital-constrained, risk-managed measurement (2026-09-03, Ross: "for the trades make
     # sure capital constraints also apply, and measure using per risk management optimization
@@ -363,6 +370,11 @@ def main():
                               "trade outright at the 5% min_size_scale floor instead of "
                               "partially funding it. Pass None to restore the uncapped default.")
     args = parser.parse_args()
+    global _LEGACY_PNL
+    if args.legacy_pnl:
+        os.environ["CAMARF_LEGACY_PNL"] = "1"
+        _LEGACY_PNL = True
+        log.warning("--legacy-pnl: spread-unit P&L, KNOWN WRONG (code review B2/B3); only to reproduce old numbers")
 
     _setup_logging()
     t0 = time.time()
@@ -411,8 +423,10 @@ def main():
             if trades:
                 trades_df = trades_to_replay_df(trades)
                 replay = portfolio_sim.replay_portfolio(
-                    trades_df, starting_capital=args.capital_account_size,
+                    trades_df if _LEGACY_PNL else portfolio_sim.ensure_dollar_columns(trades_df),
+                    starting_capital=args.capital_account_size,
                     sizing_method=args.capital_sizing, concentration_cap=args.concentration_cap,
+                    pnl_mode="legacy" if _LEGACY_PNL else "dollar",
                 )
                 cs_sharpe = portfolio_sim.portfolio_sharpe_from_replay(replay)
                 cs_dd = portfolio_sim.max_drawdown_pct(replay["equity_curve"])

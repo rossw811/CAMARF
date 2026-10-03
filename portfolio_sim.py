@@ -363,7 +363,7 @@ def replay_portfolio(
     leverage_cap: float = None,
     quality_admission_col: str = None,
     quality_admission_ascending: bool = False,
-    pnl_mode: str = "legacy",
+    pnl_mode: str = "dollar",   # B2/B3 (Ross 2026-10-03): dollar by default; "legacy" is known-wrong
 ) -> dict:
     """
     Event-driven, capital-constrained, mark-to-market replay of an already-generated trade list.
@@ -682,6 +682,27 @@ def calmar_from_replay(result: dict) -> float:
     return annualized_return / dd
 
 
+def ensure_dollar_columns(trades: pd.DataFrame) -> pd.DataFrame:
+    """B2/B3 (Ross 2026-10-03, dollar P&L by default): returns trades ready for pnl_mode="dollar". Trades already
+    converted by backtest.apply_pnl_basis (pnl_basis == "dollar") reuse their pnl_net; otherwise (an older,
+    spread-unit trades file) pnl_dollar.add_dollar_pnl prices them. Unpriceable trades are dropped with a logged count
+    -- never kept at a spread-unit value."""
+    t = trades.copy()
+    if "pnl_dollar_net" in t.columns and "notional_dollar_entry" in t.columns:
+        ok = np.isfinite(t["pnl_dollar_net"].to_numpy(float))
+    elif "pnl_basis" in t.columns and (t["pnl_basis"] == "dollar").all():
+        t["pnl_dollar_net"] = t["pnl_net"].astype(float)
+        ok = np.isfinite(t["pnl_dollar_net"].to_numpy(float)) & np.isfinite(t["notional_dollar_entry"].to_numpy(float))
+    else:
+        import pnl_dollar
+        t = pnl_dollar.add_dollar_pnl(t)
+        ok = (t["pnl_dollar_status"] == "ok").to_numpy()
+        if (~ok).any():
+            log.warning("dollar P&L: %d/%d trades unpriceable, dropped: %s", int((~ok).sum()), len(t),
+                        t.loc[~ok, "pnl_dollar_status"].value_counts().to_dict())
+    return t[ok].reset_index(drop=True)
+
+
 def main():
     p = argparse.ArgumentParser(description="Capital-constrained, mark-to-market portfolio replay (BUG-D60)")
     p.add_argument("--account-size", type=float, default=100_000)
@@ -689,6 +710,8 @@ def main():
                                          "quarter_kelly", "third_kelly", "half_kelly", "full_kelly"],
                    default="fixed")
     p.add_argument("--trades-path", default="output/backtest/trades_layer1.parquet")
+    p.add_argument("--legacy-pnl", action="store_true",
+                   help="KNOWN WRONG (code review B2/B3): spread-unit P&L. Only to reproduce old numbers.")
     args = p.parse_args()
 
     trades_df = pd.read_parquet(args.trades_path)
@@ -697,7 +720,12 @@ def main():
 
     log.info("Replaying %d trades, starting capital $%.0f, sizing=%s",
               len(trades_df), args.account_size, args.sizing)
-    result = replay_portfolio(trades_df, args.account_size, args.sizing)
+    if args.legacy_pnl:
+        log.warning("--legacy-pnl: spread-unit P&L, KNOWN WRONG (code review B2/B3)")
+    else:
+        trades_df = ensure_dollar_columns(trades_df)
+    result = replay_portfolio(trades_df, args.account_size, args.sizing,
+                              pnl_mode="legacy" if args.legacy_pnl else "dollar")
     sharpe = portfolio_sharpe_from_replay(result)
 
     original_total_pnl = float(trades_df["pnl_net"].sum())

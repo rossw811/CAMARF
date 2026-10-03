@@ -20,6 +20,10 @@ from portfolio_sim import (
     replay_portfolio, max_drawdown_pct, profit_factor_from_replay,
     pdr_from_replay, calmar_from_replay,
 )
+# B2/B3 (2026-10-03): replay_portfolio now defaults to dollar P&L. This test checks replay MECHANICS on synthetic
+# spread-unit trades, not P&L validity, so it asks for the legacy basis explicitly.
+import functools as _ft
+replay_portfolio = _ft.partial(replay_portfolio, pnl_mode="legacy")
 
 portfolio_sim.get_price_at = lambda symbol, ts: 100.0
 portfolio_sim.get_spread_at = lambda symbol_a, symbol_b, tf, ts: 10.0
