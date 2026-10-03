@@ -132,9 +132,11 @@ WRDS/CRSP data (re-derived 2026-09-10, §4.2; the original demonstration
 predated this project's WRDS-primary sourcing and is not used as evidence
 here): this project's own original headline pair, **NTRS/STT**, passes a
 full-sample Engle-Granger test with overwhelming significance (p≈0.00005,
-13,373 daily observations since 1972) while failing the identical test
-restricted to just the last five years (p=0.561). A full-sample screen
-over 50+ years answers "was this relationship ever cointegrated," not "is
+10,098 overlapping daily observations since 1985-12-03) while failing the identical
+test restricted to just the last five years (p=0.561, 1,256 days). [Corrected 2026-10-02: an earlier draft said
+"13,373 daily observations since 1972" -- the script counted calendar rows before either stock had a price; the
+p-values were unaffected. docs/CLAIMS_REGISTRY.md C-001.] A full-sample screen
+over 40 years answers "was this relationship ever cointegrated," not "is
 it cointegrated now," and a pair can clear the former bar while having
 already failed the latter. **SHW/UNP, this project's other original
 headline pair, does not replicate as cleanly on WRDS data as it did under
@@ -634,9 +636,9 @@ the last 5 years alone:
 | Pair | Full-sample EG p | Last-5y EG p | Full-sample n (days, WRDS/CRSP) |
 |------|------------------|--------------|----------------------------------|
 | XOM/CVX | 0.0823 | 0.4822 | 26,301 (since 1925) |
-| JPM/BAC | 0.9346 | 0.8814 | 13,373 (since 1972) |
+| JPM/BAC | 0.9346 | 0.8814 | 11,741 (since 1979) |
 | KO/PEP | 0.1053 | 0.9632 | 26,301 (since 1925) |
-| **NTRS/STT** | **0.0000** | 0.5613 | 13,373 (since 1972) |
+| **NTRS/STT** | **0.0000** | 0.5613 | 10,098 (since 1985) |
 | SHW/UNP | 0.0611 | 0.0544 | 14,238 (since 1969) |
 
 **NTRS/STT reproduces the demonstration cleanly on real WRDS data**: this
