@@ -98,7 +98,10 @@ def test_compare_flags_better_or_worse_correctly():
     # variance for a meaningful Sharpe comparison, so this fixture varies pnl_net
     # around each subset's mean rather than using a single repeated constant.
     n = 50
-    dates = pd.date_range("2022-01-01", periods=n, freq="6h")
+    # 2026-10-03 (bug recheck T14): starts on a MONDAY. Daily P&L is on business days since the P1 fix; starting on
+    # Saturday 2022-01-01 booked the weekend exits onto Friday, leaving 4 distinct days (< the 5-day Sharpe minimum),
+    # so the taken Sharpe was NaN and the comparison None -- a stale fixture, not a bug.
+    dates = pd.date_range("2022-01-03", periods=n, freq="6h")
     rng = np.random.default_rng(9)
     taken_subset = pd.DataFrame({
         "entry_time": dates[:20], "exit_time": dates[:20] + pd.Timedelta(hours=1),

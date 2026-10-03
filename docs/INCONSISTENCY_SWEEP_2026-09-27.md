@@ -160,3 +160,13 @@ scrutiny had marked this claim STANDS — the re-derivation rule (re-run, don't 
   and updated to test the new rule: `universe_loader` (D16 labels), `full_us_market_label_map` (D17 recency),
   `save_tf_results_return` (A6/S10 — plus a new crashed-test case); `wrds_lead_lag_scan` (sandboxed above);
   `paper_claims` (reads saved outputs; under investigation — passed at 5f7e28b8 on the same files).
+- **Pre-existing failures resolved (same day).** A first "before" run was invalid (the old worktree already had an
+  `output/` folder, so the data link nested and data-dependent tests SKIPPED and "passed") — redone with the link in
+  place: `bug_d62_sharpe_convention`, `capital_constraint_luck_check`, `hierarchical_dsr` and `paper_claims` all fail
+  at 5f7e28b8 too. The first three were fixtures written for the calendar-day convention that P1 (2026-09-26)
+  replaced with business days (calendar-day reference; dense fixture with weekend exits; a fixture starting on a
+  Saturday) — updated, now 4/4, 11/11, 8/8. They stayed red for a week because P1 was committed without a full-suite
+  run → process fix: full verify suite before committing changes to core modules (plan T14.3). `paper_claims` fails
+  because PAPER.md's Act-3 numbers no longer match the saved outputs; those claims are already marked for withdrawal
+  (PAPER_SCRUTINY) — resolves with the redraft (T6). Suite now: 318/319 expected green (+ `_verify_data_wrds` needs a
+  live WRDS connection).
