@@ -100,7 +100,8 @@ put-call / Google Trends are free → eligible; DEV-042 extra WRDS tiers only if
 ## T14 — Recheck of every logged bug (Ross, 2026-10-03)
 Scope: every logged defect, whoever logged it and whatever its "FIXED" label says (Ross's standing rule: treat every
 earlier claim as unverified until re-checked). Sources: Development.md's bug registry (125 distinct BUG-* IDs; the
-docs/BUG_LOG.md index covers only 48 — itself stale), the code-review ledger (175 rows), the inconsistency sweep
+docs/BUG_LOG.md index — CORRECTED 2026-10-03: it covers 124 of 125, not 48; the first inventory script matched only
+"BUG-D1"-style ids and missed the index's "| D01 |" rows. Now 126/126 after adding D32 and finding D109 in a slash list), the code-review ledger (175 rows), the inconsistency sweep
 (~20 findings), and the D/M/U/S/C/A/B series.
 | # | Step | Owner | Done when |
 |---|---|---|---|
@@ -109,7 +110,7 @@ docs/BUG_LOG.md index covers only 48 — itself stale), the code-review ledger (
 | 14.3 | ✅ 2026-10-03: 310/319 → 8 failures triaged (3 stale P1 fixtures fixed, 3 tests updated to new rules, 1 data-deleting test sandboxed, paper_claims → T6; data_wrds needs live WRDS). **Standing rule from now: run the full suite before committing a change to a core module** (P1 broke 3 tests unnoticed for a week). Original step: run the full verify suite against current code (`debug/_run_all_verify.py`, 319 scripts) on CachyOS + the Surface | C/J | every FAIL triaged: regression (fix) vs stale fixture (fix the fixture only with evidence, as with _verify_pdr_calmar) |
 | 14.4 | Bugs in live code with no test: write a reproduce-first regression test; dead-code bugs → "obsolete" with the commit that removed the code | C | no live-code bug without a test or a stated reason |
 | 14.5 | Real-data recheck for bugs that touch a headline number (re-derive the effect; record before/after) | C | effect recorded in the inventory and, if cited, in the claims registry |
-| 14.6 | Rebuild docs/BUG_LOG.md from the inventory (all ids, current status: holds / regressed / obsolete / untested) | C | index covers 100% |
+| 14.6 | ✅ index coverage 2026-10-03: 126/126 (D32 added, D104 pointer fixed); a status column per entry still to add from the T14.5 verdicts. Original step: rebuild docs/BUG_LOG.md from the inventory (all ids, current status: holds / regressed / obsolete / untested) | C | index covers 100% |
 | 14.7 | Independent check: adversarial-reviewer agent re-verifies a random sample (≥ 10%) of "holds" verdicts | C + agent | disagreements resolved |
 Runs alongside T2/T3 (needs no new data); a regression found here pre-empts everything downstream it touches.
 
