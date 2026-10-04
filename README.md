@@ -1,5 +1,10 @@
 # CAMARF — Cross-Asset Co-Movement Arbitrage Research Framework
 
+> **Start here to check our work: [`docs/ERRATA.md`](docs/ERRATA.md)** — one page listing what is fixed, withdrawn
+> and still open, with links to the evidence; citable claims only from [`docs/CLAIMS_REGISTRY.md`](docs/CLAIMS_REGISTRY.md).
+> Since this banner was written, B2/B3 (dollar P&L, now the default), B4 (`--hedge both` removed) and the Compustat
+> currency conversion are fixed (2026-09-28 → 2026-10-03); the P&L numbers below remain withdrawn until re-derived.
+>
 > **⚠ RESULTS UNDER REVISION — 2026-09-26.** A full code, citation and consistency audit found
 > confirmed defects that invalidate every P&L-derived number in this document (Sharpe, DSR,
 > capital-sim, luck check, quality admission), several pair-discovery results, and a number of
@@ -294,29 +299,27 @@ All scripts run via the project's pinned conda environment (`trading`) — see
 
 ## Reproducibility
 
-This run's exact data footprint (see `CLAUDE.md`'s "Data Test Range & Reproducibility"
-section for the canonical, kept-current version of this table):
+How to check a result yourself (updated 2026-10-03; open problems: [`docs/ERRATA.md`](docs/ERRATA.md)).
 
-- **Universe snapshot:** current canonical daily-and-coarser universe is WRDS-primary as of
-  Session 30 (2026-08-03), ~1,730 symbols with cached daily data, 1,660 passing the full
-  screening funnel — see `CLAUDE.md`'s "Data Test Range & Reproducibility" section for the
-  exact, kept-current figures (this file's own copy of that table drifts faster than `CLAUDE.md`'s
-  does). International equities and intraday timeframes remain yfinance-sourced against the
-  ~1,608-1,691-symbol universe from the pre-WRDS snapshot below, kept for provenance.
-  Pre-WRDS snapshot: 1,608 candidate symbols (S&P Composite 1500 + international), completed
-  **2026-06-30** in 5.6 minutes; `config.py` specifies ~1,691 assets as of 2026-07-13 — not yet
-  exercised by a full yfinance-side run.
-- **Per-timeframe fetch windows (yfinance):** 1m/3m → 5 calendar days (3m derived by
-  resampling 1m — Yahoo's 1m hard limit is 8 days), 2m → 55 days, 5m/15m/30m → 60 days,
-  1h/4h → 730 days (4h derived by resampling 1h with session-aligned bins), 1D/1M → full
-  available history
-- **Package versions:** see `requirements.txt`, in particular `pyarrow==24.0.0` (pinned
-  — cross-version pyarrow reads can misreport valid parquet files as corrupted)
-
-An independent party can re-fetch statistically equivalent data by running `data.py`
-against the same universe source and date parameters above, without needing this
-repo's cached `output/cache/` directory. `reproduce.py` maps every `PAPER.md` finding
-to the exact script/flags that generated it.
+1. **Which results are citable:** only claims marked REPLICATED in [`docs/CLAIMS_REGISTRY.md`](docs/CLAIMS_REGISTRY.md).
+   Each entry gives its data range, universe snapshot, exact parameters and the command that reproduces it.
+2. **Environment:** Python with the versions in `requirements.txt` (the author's `trading` conda env:
+   pyarrow 24.0.0 — pinned; cross-version pyarrow reads can misreport valid parquet as corrupted — pandas 3.0.3,
+   numpy 2.4.6, statsmodels 0.14.6).
+3. **Data:** CRSP / Compustat (via WRDS) cannot be redistributed — replication needs your own WRDS access; the code
+   and SQL queries are in `data_wrds.py`. Free sources (yfinance, FRED, CFTC, Binance) are re-fetched by `data.py` /
+   `macro.py` / `data_crypto.py`. The research universe is the full WRDS-merged pool
+   (`universe_loader.load_full_universe()`, ~44,700 symbols: CRSP full US market, Compustat Global listings,
+   yfinance, Binance); yfinance fetch windows: 1m/3m → 5 days (3m resampled from 1m), 2m → 55 days,
+   5m/15m/30m → 60 days, 1h/4h → 730 days (4h resampled from 1h, session-aligned), 1D/1M → full history.
+4. **Lineage:** every stage of the discovery → pools → search chain records a manifest in `output/lineage/<stage>.json`
+   (seed = hash of upstream seeds, input fingerprints, code hashes and parameters; plus git commit and output
+   fingerprints). `python research/pipeline_stages.py` shows which stages are up to date or stale and why;
+   `python lineage.py diff <stage>` shows what changed.
+5. **Tests:** `python debug/_run_all_verify.py` runs every `debug/_verify_*.py` (each fix has a test that fails on the
+   old code); failing tests' full output is saved to `output/verify_runs/last_failures/`.
+6. **Older findings:** `reproduce.py` maps `PAPER.md` findings to the scripts and flags that generated them; P&L-derived
+   numbers in PAPER.md are withdrawn until re-derived (see the banner above).
 
 ---
 

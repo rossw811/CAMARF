@@ -102,6 +102,16 @@ def load_log_close(symbol: str, suffix: str) -> np.ndarray:
     return np.log(close)
 
 
+def load_log_close_series(symbol: str, suffix: str) -> pd.Series:
+    """Log close WITH its timestamps (M-1 same-dates null, 2026-10-03): the date-aligned counterpart of
+    load_log_close, which drops the index."""
+    df = pd.read_parquet(os.path.join(CACHE_DIR, f"{symbol}_{suffix}.parquet"))
+    close = pd.to_numeric(df["close"], errors="coerce").astype(float)
+    close.index = pd.to_datetime(df.index)
+    close = close[np.isfinite(close) & (close > 0)]
+    return np.log(close)
+
+
 def symbols_for_suffix(suffix: str) -> list:
     paths = glob.glob(os.path.join(CACHE_DIR, f"*_{suffix}.parquet"))
     syms = []
@@ -140,6 +150,8 @@ def spurious_regression_risk_score(
     n_partners: int,
     rng: np.random.Generator,
     cache: dict,
+    null: str = "count_aligned",
+    partners=None,
 ) -> dict:
     """
     Stage 2: pair `symbol` against n_partners genuinely-random OTHER symbols
@@ -147,7 +159,18 @@ def spurious_regression_risk_score(
     eg_null_calibration_montecarlo.py) and report the empirical rate of
     spuriously significant (p<0.05) EG results -- and the raw test-statistic
     distribution, needed later for leg_corrected_pvalue()'s empirical p-value.
+
+    null (M-1, code review sweep; comparison arm added 2026-10-03, design approved):
+      "count_aligned" (default, unchanged): partners right-aligned BY COUNT after dropping NaNs -- non-contemporaneous,
+          so the null lacks the shared market factor the real (date-aligned) pair has; not like-for-like.
+      "same_dates": partners aligned on COMMON DATES -- contemporaneous, the real pair's setting.
+    partners: evaluate exactly these partners (to compare both nulls on the same draws); the returned dict carries
+    the partners used. debug/_verify_same_dates_null.py
     """
+    if null not in ("count_aligned", "same_dates"):
+        raise ValueError(f"unknown null {null!r}")
+    if null == "same_dates":
+        return _same_dates_risk(symbol, suffix, all_symbols, n_partners, rng, cache, partners)
     if symbol not in cache:
         try:
             cache[symbol] = load_log_close(symbol, suffix)
@@ -158,7 +181,8 @@ def spurious_regression_risk_score(
         return {"n_ok": 0, "n_rejected": 0, "risk_rate": float("nan"), "pvalues": []}
 
     others = [s for s in all_symbols if s != symbol]
-    partners = rng.choice(others, size=min(n_partners, len(others)), replace=False)
+    if partners is None:
+        partners = rng.choice(others, size=min(n_partners, len(others)), replace=False)
 
     n_ok = 0
     n_rejected = 0
@@ -185,7 +209,48 @@ def spurious_regression_risk_score(
             n_rejected += 1
 
     rate = n_rejected / n_ok if n_ok else float("nan")
-    return {"n_ok": n_ok, "n_rejected": n_rejected, "risk_rate": rate, "pvalues": pvalues}
+    return {"n_ok": n_ok, "n_rejected": n_rejected, "risk_rate": rate, "pvalues": pvalues,
+            "partners": list(partners)}
+
+
+def _same_dates_risk(symbol, suffix, all_symbols, n_partners, rng, cache, partners=None) -> dict:
+    """M-1 same-dates null: like the count-aligned null, but each (leg, partner) pair is aligned on common dates."""
+    key = ("__series__", symbol)
+    if key not in cache:
+        try:
+            cache[key] = load_log_close_series(symbol, suffix)
+        except Exception:
+            cache[key] = None
+    a = cache[key]
+    if partners is None:
+        others = [s for s in all_symbols if s != symbol]
+        partners = rng.choice(others, size=min(n_partners, len(others)), replace=False)
+    if a is None:
+        return {"n_ok": 0, "n_rejected": 0, "risk_rate": float("nan"), "pvalues": [], "partners": list(partners)}
+    n_ok = n_rejected = 0
+    pvalues = []
+    for partner in partners:
+        pk = ("__series__", partner)
+        if pk not in cache:
+            try:
+                cache[pk] = load_log_close_series(partner, suffix)
+            except Exception:
+                cache[pk] = None
+        b = cache[pk]
+        if b is None:
+            continue
+        j = pd.concat([a.rename("a"), b.rename("b")], axis=1, join="inner").dropna()
+        if len(j) < 60:
+            continue
+        try:
+            p = eg_pvalue(j["a"].to_numpy(), j["b"].to_numpy())
+        except Exception:
+            continue
+        n_ok += 1
+        pvalues.append(p)
+        n_rejected += int(p < 0.05)
+    rate = n_rejected / n_ok if n_ok else float("nan")
+    return {"n_ok": n_ok, "n_rejected": n_rejected, "risk_rate": rate, "pvalues": pvalues, "partners": list(partners)}
 
 
 def leg_corrected_pvalue(real_pvalue: float, leg_null_pvalues: list) -> float:
@@ -256,16 +321,23 @@ def main():
           "40 for comparison symbols, matching the verify script's cheaper baseline check) ===")
     risk_rows = []
     dd_risk = spurious_regression_risk_score("DD", suffix, all_symbols, 150, rng, cache)
-    risk_rows.append({"symbol": "DD", **{k: v for k, v in dd_risk.items() if k != "pvalues"}})
+    risk_rows.append({"symbol": "DD", **{k: v for k, v in dd_risk.items() if k not in ("pvalues", "partners")}})
     print(f"DD: n_ok={dd_risk['n_ok']} n_rejected={dd_risk['n_rejected']} "
           f"risk_rate={dd_risk['risk_rate']:.2%}")
+    # M-1 comparison arm (2026-10-03): the SAME partners, aligned on common dates (contemporaneous null)
+    dd_risk_same = spurious_regression_risk_score("DD", suffix, all_symbols, 150, rng, cache, null="same_dates",
+                                                  partners=dd_risk["partners"])
+    print(f"DD (same-dates null, same partners): n_ok={dd_risk_same['n_ok']} n_rejected={dd_risk_same['n_rejected']} "
+          f"risk_rate={dd_risk_same['risk_rate']:.2%}")
+    risk_rows.append({"symbol": "DD", "null": "same_dates",
+                      **{k: v for k, v in dd_risk_same.items() if k not in ("pvalues", "partners")}})
 
     comparison_risk_symbols = list(rng.choice(comparison_sample, size=3, replace=False))
     comparison_risks = {}
     for sym in comparison_risk_symbols:
         r2 = spurious_regression_risk_score(sym, suffix, all_symbols, 40, rng, cache)
         comparison_risks[sym] = r2
-        risk_rows.append({"symbol": sym, **{k: v for k, v in r2.items() if k != "pvalues"}})
+        risk_rows.append({"symbol": sym, **{k: v for k, v in r2.items() if k not in ("pvalues", "partners")}})
         print(f"{sym}: n_ok={r2['n_ok']} n_rejected={r2['n_rejected']} "
               f"risk_rate={r2['risk_rate']:.2%}")
 
@@ -281,16 +353,20 @@ def main():
         corrected_p = np.array([leg_corrected_pvalue(p, dd_risk["pvalues"]) for p in raw_p])
         n_before = int((raw_p < 0.05).sum())
         n_after = int((corrected_p < 0.05).sum())
+        corrected_same = np.array([leg_corrected_pvalue(p, dd_risk_same["pvalues"]) for p in raw_p])
+        n_after_same = int((corrected_same < 0.05).sum())
         before_after = {
             "n_dd_candidates": len(dd_cand),
             "n_significant_before": n_before,
             "n_significant_after": n_after,
             "pct_reduction": 1.0 - (n_after / n_before if n_before else 1.0),
+            "n_significant_after_same_dates_null": n_after_same,
         }
         print(
             f"DD candidates: {len(dd_cand)} | significant before correction "
             f"(raw p<0.05): {n_before} | after leg-corrected p<0.05: {n_after} "
-            f"({before_after['pct_reduction']:.1%} reduction)"
+            f"({before_after['pct_reduction']:.1%} reduction) | after correction with the SAME-DATES null: "
+            f"{n_after_same}"
         )
     else:
         print(f"WARNING: {cand_path} not found -- skipping real before/after test.")

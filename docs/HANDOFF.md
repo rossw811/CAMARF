@@ -2,6 +2,25 @@
 ## dependencies, done-criteria, decisions needed). CachyOS hung 2026-10-03 (~10:55) and was rebooted; trfd fetch and
 ## the chain were restarted 13:12. The entry below remains the detailed state.
 
+## 2026-10-03 (evening): state at end of day — read with docs/PLAN_OF_ACTION_2026-10-03.md
+
+**Running on CachyOS (unattended chain v2, watchdog for stuck WRDS queries):** trfd TR applied (15,093 listings, 0
+negative gaps), quote-only fetch done (2,757) → discovery PRIMARY `--fresh --d18 exclude` (tier 2 at 22:05) → then
+SENSITIVITY `--d18 include`. Logs: latest_run_chain.log, latest_run_wrds_deep_history_episodic_scan*.log.
+**Known bias in that run:** its rolling-ADV gate uses CRSP raw volume x split-adjusted close (DEV-003) — impact
+measurement running (`latest_run_volume_impact.log`); decide with Ross whether to re-run discovery after the switch.
+
+**Committed today (each fix failing-first, full suite before commit):** T14 recheck (inventory, test mapping, suite
+triage, tests that touched real data sandboxed, BUG_LOG 126/126); B1–B4 (data-gap exit; dollar P&L default,
+`--legacy-pnl`; `--hedge both` removed); A2 comparison arm (causal hedge + A3 + daily gap breaks, default off);
+intraday dollar P&L; TLS slope; forex USD; B5/B6/B7/B10/B13/B14/B15; suite runner saves failing output; PIT S&P 400/600
+membership from SEC filings (76/78 announced changes agree).
+**Uncommitted, suite running (latest_run_all_verify_t18.log):** T1.8 data.py handlers (2 fail loud), M-1 same-dates
+null arm, DEV-003 volume reconstruction (matches CRSP on 307/307), docs/ERRATA.md, README reproducibility.
+
+**Decisions waiting on Ross:** B8 (common calendar holdout date); after the scans: D18 arm, A2 arm adoption, PIT
+membership arm; DEV-003 consumer switch (+ whether to re-run discovery); CachyOS memtest (DEV-018).
+
 ## 2026-10-02: RESUME HERE (supersedes every entry below)
 
 ### Ross's decisions (2026-10-02)

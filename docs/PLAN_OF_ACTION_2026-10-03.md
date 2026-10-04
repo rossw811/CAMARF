@@ -20,9 +20,9 @@ Status legend: ✅ done · ▶ in progress · ⏳ waiting on a dependency · ❓
 | 1.5 | Futures roll adjustment | — | ✖ no free contract history (IBKR from 2025-09 only; yfinance none; WRDS 100-contract sample) | disclosed in paper limitations |
 | 1.6 | B1 / B2 / B4 (legacy P&L, `--hedge both` duplicates, dead `data_gap` exit) | R → C | ❓ decide: retire legacy `pnl_net` mode + make OLS-only the default, or keep both as labelled arms | decision logged; code + tests |
 | 1.7 | D11 tz redesign (`_standardize` + `snap_timestamps`, BUG-D57 interaction) | C | open; exposure nil today (intraday pool is US-only) | test across .L/.T/.HK + crypto |
-| 1.8 | Silent handlers: data.py's 26; `_apply_research_screen_flags`; stats spread loaders; permutation default | C | open | each triaged: log, fail-loud, or justified |
-| 1.9 | Unilever ADR ratio 1.089 vs 1.0 | C | open | explained (share line / ratio change) or disclosed |
-| 1.10 | DEV-003 CRSP `dlyvol` share-count adjustment direction | C | open | checked against a known split |
+| 1.8 | ✅ data.py part 2026-10-03: 25 handlers triaged — 2 fail loud (exclusions file, delisted registry: both silently changed the universe), rest logged (warning where data can be wrong) or commented; `debug/_verify_data_no_silent_handlers.py` (AST scan + fail-loud; fails on the old file). Remaining: `_apply_research_screen_flags`; stats spread loaders; permutation default. Original: Silent handlers: data.py's 26; `_apply_research_screen_flags`; stats spread loaders; permutation default | C | open | each triaged: log, fail-loud, or justified |
+| 1.9 | Unilever ADR ratio 1.089 vs 1.0 | C | investigated 2026-10-03: NV/PLC twin-share gap explains the pre-2020 listing difference; UL drift vs London PLC still unexplained; disclosed (INCONSISTENCY_SWEEP) | explained (share line / ratio change) or disclosed |
+| 1.10 | DEV-003 CRSP `dlyvol` share-count adjustment direction | C | ✅ direction verified 2026-10-03 (AAPL vs yfinance within 0.2%); impact on the ADV gate being measured; consumers to switch | checked against a known split |
 | 1.11 | D18 sensitivity data (midpoint days, quote-only) | J | ▶ arms built (dacd3b07) | both arms' scans complete (T2) |
 
 ## T2 — Discovery → pools (the chain)
@@ -34,7 +34,7 @@ Status legend: ✅ done · ▶ in progress · ⏳ waiting on a dependency · ❓
 | 2.4 | D18 comparison report (pairs found, overlap, tier counts, which factor drives differences) | C | ⏳ 2.3 | report + registry entry; Ross decides the arm |
 | 2.5 | Adapter `--fresh` → comparison arms → PIT eligibility → clean pools → spreads → squeeze | C/J | ⏳ 2.2 | `python research/pipeline_stages.py` all OK; `degenerate_column_audit` + `pipeline_contracts` pass |
 | 2.6 | M-1: same-dates null alongside the date-scrambled null | C | ⏳ design approved | both nulls reported for the spurious-regression correction |
-| 2.7 | DEV-013 end-of-run pair count printed pre-filter | C | open | count matches the saved pairs |
+| 2.7 | DEV-013 end-of-run pair count printed pre-filter | C | ✅ already fixed 2026-06-23 (3b2b1741), ledger stale; verified 2026-10-03 | count matches the saved pairs |
 
 ## T3 — Pre-registered strategy search, second labelled pass
 | 3.1 | Dated addendum to Amendment 2 once trfd TR applied (drops the price-only disclosure) | C | ⏳ T1.2 | committed BEFORE the run |
@@ -43,7 +43,7 @@ Status legend: ✅ done · ▶ in progress · ⏳ waiting on a dependency · ❓
 
 ## T4 — Claims registry and re-derivation
 | 4.1 | C-001 durability (NTRS/STT) | C | ✅ CORRECTED → REPLICATED | — |
-| 4.2 | Fix PAPER.md:130-137 sample statement (10,098 d from 1985) | C | open | committed |
+| 4.2 | Fix PAPER.md:130-137 sample statement (10,098 d from 1985) | C | ✅ commit 445997ac (2026-10-03) | committed |
 | 4.3 | Register every number cited in PAPER.md / PAPER_MAGNITUDE.md (≈ 284 scrutiny rows → claims) | C | open | each claim has an entry + status |
 | 4.4 | Re-derive C-002..C-006 on current data | C/J | ⏳ T2/T3 for C-003..C-006 | status REPLICATED / CORRECTED / WITHDRAWN |
 
@@ -67,8 +67,8 @@ Status legend: ✅ done · ▶ in progress · ⏳ waiting on a dependency · ❓
 
 ## T8 — Scrutiny infrastructure (repo is public)
 | 8.1 | `find_a_hole` issue template | C | ✅ | — |
-| 8.2 | Public errata / known-limitations page (one index into the ledgers) | C | open | linked from README |
-| 8.3 | README: how to reproduce (lineage, WRDS licence note, free-data claims) | C | open | — |
+| 8.2 | Public errata / known-limitations page (one index into the ledgers) | C | ✅ docs/ERRATA.md 2026-10-03, linked from README | linked from README |
+| 8.3 | README: how to reproduce (lineage, WRDS licence note, free-data claims) | C | ✅ 2026-10-03 (README "Reproducibility" rewritten; stale universe numbers replaced) | — |
 | 8.4 | Intake triage routine (verify → fix/disclose → log on the claim) | C | open | first external report handled end to end |
 
 ## T9 — Execution realism (free data only)
