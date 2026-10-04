@@ -149,6 +149,9 @@ Runs alongside T2/T3 (needs no new data); a regression found here pre-empts ever
 9. PIT S&P 400/600 membership: verify ~10 more rebalances across 2001-2026, match to CRSP, then a membership-filtered
    universe as a comparison arm.
 
+**Decided by Ross, 2026-10-04:** 10. B8 holdout = ONE common calendar cutoff date for every pair (the date leaving
+20% of the pooled sample after it), built first as a comparison arm vs the per-pair 80% rule, then adopted.
+
 ## Sequencing (critical path)
 T1.1-1.3 (≈ today) → T2.2 (≈ 1 day) → T2.3 (≈ 1 day) and in parallel T2.5 on the primary → T3 (≈ 1 day) →
 T6 + T7. While jobs run: T14 (bug recheck), T4, T5, T8, T10, T11, T1.6-1.10. CachyOS stability (DEV-018) first, because a hang
