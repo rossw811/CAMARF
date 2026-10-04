@@ -1230,7 +1230,8 @@ def fetch_symbol_global(db, gvkey: str, iid: str, start: Optional[str] = None) -
         "high": df["prchd"] / fac,
         "low": df["prcld"] / fac,
         "close": df["prccd"] / fac,
-        "volume": df["cshtrd"],
+        "volume": df["cshtrd"] * fac,  # T14.7 (2026-10-04): Compustat shares restated by ajexdi, consistent with close = prccd/ajexdi; raw kept
+        "volume_raw": df["cshtrd"],
     })
     out.index.name = None
     return out
@@ -1292,7 +1293,8 @@ def fetch_symbols_bulk_global(db, label_by_gvkey_iid: Dict[str, Tuple[str, str]]
                 "high": g["prchd"] / fac,
                 "low": g["prcld"] / fac,
                 "close": g["prccd"] / fac,
-                "volume": g["cshtrd"],
+                "volume": g["cshtrd"] * fac,  # T14.7 (2026-10-04): Compustat shares restated by ajexdi, consistent with close = prccd/ajexdi; raw kept
+                "volume_raw": g["cshtrd"],
             })
             n_in_batch += 1
             yield label, df

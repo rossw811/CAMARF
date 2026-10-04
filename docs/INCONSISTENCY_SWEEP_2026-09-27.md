@@ -246,3 +246,19 @@ scrutiny had marked this claim STANDS — the re-derivation rule (re-run, don't 
   substance (4,173 price-less daily files, ALL ending <= 1992 = the pre-1992 Nasdaq quote-only class the loader skips).
   OPEN: D19 cited 2,758 such securities and 2,757 quote-only replacements were built on CachyOS, but 4,173 exist --
   ~1,400 may be missing from the D18 "include" arm; check before the D18 comparison.
+- **2026-10-04 — T14.7 independent check (adversarial reviewer, 7 verdicts) and fixes.** Holds: CRSP volume rebuild
+  (re-run by the reviewer: 307/307 match, 270/270 cache factors = CRSP's), B13, T1.8 core. Problems found, each
+  re-verified by me, then fixed failing-first:
+  1. **Compustat volume (DEV-003's international half) never fixed** — close = prccd/ajexdi, volume = raw cshtrd
+     (Toyota 5:1 on 2021-09-29: volume 7.6M → 34.9M on a continuous close). Fetch paths now cshtrd × ajexdi;
+     apply script restates GVKEY files from `_trfd/` ajexdi (runs after the scans; the running discovery's ADV gate
+     used raw Compustat volume — disclose).
+  2. **B6 regression** — RegimeConditioner and portfolio_sim's STOP_ZSCORE read the global config, so overrides were
+     silently ignored after the B6 fix; my ledger note about "before" was wrong. Fixed (cfg handed down).
+  3. **B8 design** — the common date pooled bars across timeframes (dense intraday bars set the daily cutoff). Now one
+     cutoff per timeframe. Remaining trade-off for Ross: at 1D (cutoff 2023-12-26) 19 of 26 pairs have NO holdout
+     (data ends earlier), 1 is entirely holdout, 5 have 10-50%.
+  4. **B10 lookahead** — intraday bars used their own day's full-day volume (my test encoded it); now the latest day
+     strictly before (B13's rule).
+  5. **B5 gap** — P&L-cap thresholds now refuse dollar-basis trades.
+  6. **T1.8 caveats** — the two fail-loud files are written atomically; their write failures log at warning.

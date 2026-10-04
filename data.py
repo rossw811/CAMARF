@@ -3924,11 +3924,15 @@ class UniverseBuilder:
                 "reason": reason or "persistent failure — both IBKR and yfinance",
                 "added_at": datetime.now().isoformat(timespec="seconds"),
             }
-            with open(UniverseBuilder._EXCLUSION_CACHE, "w") as f:
+            # atomic write (T14.7 review, 2026-10-04): the reader now FAILS LOUD on a corrupt file, so a crash or a
+            # concurrent read mid-write must never see a half-written one
+            _tmp = UniverseBuilder._EXCLUSION_CACHE + ".tmp"
+            with open(_tmp, "w") as f:
                 json.dump(existing, f, indent=2)
+            os.replace(_tmp, UniverseBuilder._EXCLUSION_CACHE)
             log.info(f"Exclusion list: added {symbol} ({reason})")
         except Exception as e:
-            log.debug(f"Exclusion persist failed for {symbol}: {e}")
+            log.warning(f"Exclusion persist failed for {symbol}: {e}")   # was debug (T14.7): an exclusion was lost
 
     @staticmethod
     def flag_or_exclude(symbol: str, reason: str, run_failures: int = 0) -> bool:
@@ -3979,14 +3983,16 @@ class UniverseBuilder:
                 "flagged_at": datetime.now().isoformat(timespec="seconds"),
                 "flag_reason": reason,
             }
-            with open(UniverseBuilder._DELISTED_REGISTRY, "w") as f:
+            _tmp = UniverseBuilder._DELISTED_REGISTRY + ".tmp"   # atomic write (T14.7 review, 2026-10-04)
+            with open(_tmp, "w") as f:
                 json.dump(registry, f, indent=2)
+            os.replace(_tmp, UniverseBuilder._DELISTED_REGISTRY)
             log.warning(
                 f"  {symbol}: flagged likely_delisted (last data {last_good_date}, "
                 f"{n_bars} daily bars retained) — see delisted_symbols.json"
             )
         except Exception as e:
-            log.debug(f"Delisted-registry persist failed for {symbol}: {e}")
+            log.warning(f"Delisted-registry persist failed for {symbol}: {e}")   # was debug (T14.7)
         return True
 
     @staticmethod

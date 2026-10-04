@@ -76,6 +76,15 @@ def main():
     src = open(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "backtest.py"),
                encoding="utf-8").read()
     check("3.pnl_cap_requires_legacy", "--pnl-cap requires --legacy-pnl" in src)
+    # 4 (T14.7 review): thresholds refuse dollar-basis trades (a default run writes the file they read)
+    import backtest as _bt
+    t = pd.DataFrame({"symbol_a": ["A"], "symbol_b": ["B"], "pnl_net": [5.0], "pnl_basis": ["dollar"]})
+    try:
+        _bt.compute_pnl_cap_thresholds(trades_df=t); check("4.thresholds_refuse_dollar_basis", False)
+    except ValueError:
+        check("4.thresholds_refuse_dollar_basis", True)
+    ok_legacy = _bt.compute_pnl_cap_thresholds(trades_df=t.assign(pnl_basis="legacy_known_wrong"))
+    check("4b.legacy_basis_accepted", ok_legacy == {"A/B": 5.0}, str(ok_legacy))
     print(); print(f"{len(PASS)}/{len(PASS) + len(FAIL)} checks passed")
     if FAIL:
         print("FAILED:", FAIL); sys.exit(1)

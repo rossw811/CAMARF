@@ -2,7 +2,8 @@
 research/apply_crsp_volume_adjustment.py -- DEV-003 applied to the existing WRDS cache (Ross 2026-10-03: stop the
 discovery run, fix the volume, restart).
 
-For every CRSP daily file (output/cache/wrds/{label}_1D.parquet, not GVKEY*, plus _quote_only/): `volume` is restated
+Compustat Global (GVKEY*) files: volume = cshtrd x ajexdi from _trfd/ (T14.7 review, 2026-10-04 -- see
+_apply_compustat). For every CRSP daily file (output/cache/wrds/{label}_1D.parquet, plus _quote_only/): `volume` is restated
 in today's share units -- raw x the cumulative CRSP price factor of later events (research/crsp_volume_split_
 adjustment.cumulative_factor, matching CRSP's dlycumfacpr on 307/307 securities) -- so dollar volume = close x volume
 is right before every split and reverse split. The raw values stay in `volume_raw`, the factor in
@@ -41,6 +42,37 @@ def _permno_of(label: str, permno_by_label: dict):
     return int(p) if p is not None and pd.notna(p) else None
 
 
+def _apply_compustat(path: str, label: str, root: str, rec: dict) -> dict:
+    """Compustat Global (T14.7 review, 2026-10-04 -- the same bias, never fixed): files store close = prccd/ajexdi but
+    volume = raw cshtrd, so pre-split dollar volume was understated (Toyota 5:1, 2021-09-29: volume 7.6M -> 34.9M on
+    a continuous close). Restated volume = cshtrd x ajexdi as of each date (dollar volume = prccd x cshtrd, exact).
+    ajexdi comes from the trfd fetch (output/cache/wrds/_trfd/{label}.parquet, columns trfd, ajexdi)."""
+    fpath = os.path.join(root, "_trfd", f"{label}.parquet")
+    if not os.path.exists(fpath):
+        rec["status"] = "no_ajexdi"; return rec
+    try:
+        df = pd.read_parquet(path)
+        fac = pd.read_parquet(fpath, columns=["ajexdi"])["ajexdi"].astype(float)
+    except Exception as e:
+        rec["status"] = f"unreadable: {type(e).__name__}"; return rec
+    if "volume_raw" in df.columns:
+        rec["status"] = "already_adjusted"; return rec
+    if "volume" not in df.columns:
+        rec["status"] = "no_volume"; return rec
+    fac.index = pd.to_datetime(fac.index)
+    fac = fac[~fac.index.duplicated(keep="last")].sort_index().replace(0, np.nan)
+    f = fac.reindex(pd.to_datetime(df.index), method="ffill").to_numpy()
+    raw = pd.to_numeric(df["volume"], errors="coerce")
+    df["volume_raw"] = raw
+    df["volume_adj_factor"] = f
+    df["volume"] = raw * f
+    rec["unknown_days"] = int(np.isnan(f).sum())
+    rec["status"] = "adjusted_ajexdi"
+    df.to_parquet(path + ".tmp")
+    os.replace(path + ".tmp", path)
+    return rec
+
+
 def apply(root: str, events: pd.DataFrame, label_map: pd.DataFrame, extra_maps=None) -> pd.DataFrame:
     """extra_maps: further {label, permno, identity_ok} tables for labels the security master lacks (ETFs, ADRs,
     REITs -- output/cache/wrds/extra_permno_map_*.parquet, resolved by ticker as of the file's last date and VERIFIED
@@ -54,9 +86,9 @@ def apply(root: str, events: pd.DataFrame, label_map: pd.DataFrame, extra_maps=N
     rows = []
     for path in paths:
         label = os.path.basename(path)[:-len("_1D.parquet")]
-        if label.startswith("GVKEY"):
-            continue
         rec = {"label": label, "path": os.path.relpath(path, root), "permno": None, "status": "", "unknown_days": 0}
+        if label.startswith("GVKEY"):
+            rows.append(_apply_compustat(path, label, root, rec)); continue
         p = _permno_of(label, permno_by_label)
         if p is None:
             rec["status"] = "unmapped"; rows.append(rec); continue

@@ -340,15 +340,16 @@ class RegimeConditioner:
         yield_r = regime.get("yield", "")
 
         # Hard filter: reject if regime is in unfavorable set
-        if Config.BACKTEST.REGIME_HARD_FILTER:
-            if vix_ts in Config.BACKTEST.UNFAVORABLE_VIX_TS:
+        _c = getattr(self, "cfg", None) or Config.BACKTEST   # T14.7: the engine's (overridden) cfg
+        if _c.REGIME_HARD_FILTER:
+            if vix_ts in _c.UNFAVORABLE_VIX_TS:
                 return False, 0.0, regime
-            if yield_r in Config.BACKTEST.UNFAVORABLE_YIELD:
+            if yield_r in _c.UNFAVORABLE_YIELD:
                 return False, 0.0, regime
 
         # Sizing multiplier (from hl_ratio lookup in regime_conditional_analysis)
         size_mult = 1.0
-        if Config.BACKTEST.REGIME_SIZING == "continuous":
+        if _c.REGIME_SIZING == "continuous":
             # hl_ratio < 1.0 → faster convergence → upsize; >1.0 → downsize
             # Approximate from documented findings:
             hl_ratio_map = {
@@ -363,7 +364,7 @@ class RegimeConditioner:
                   hl_ratio_map.get(("yield_curve_regime", yield_r), 1.0))
             # Invert and clip: ratio=0.5 → 2× size, ratio=4.0 → 0.25× size, capped [0.5, 2.0]
             size_mult = float(np.clip(1.0 / hl, 0.5, 2.0))
-        elif Config.BACKTEST.REGIME_SIZING == "binary":
+        elif _c.REGIME_SIZING == "binary":
             # Favorable: backwardation, flat_inverted → 1.5× size
             favorable_vix = {"backwardation", "flat"}
             favorable_yield = {"flat_inverted"}
@@ -469,9 +470,18 @@ class BacktestEngine:
         holdout_date: Optional[pd.Timestamp] = None,
     ):
         self.cfg = cfg
+        # T14.7 (2026-10-04): the regime conditioner reads THIS engine's cfg (overrides are no longer global)
+        regime_cond.cfg = cfg
         # B8 comparison arm (Ross 2026-10-04): one calendar cutoff for every pair (see common_holdout_date);
         # None = the per-pair rule (last HOLDOUT_PCT of each pair's own bars).
-        self.holdout_date = pd.Timestamp(holdout_date) if holdout_date is not None else None
+        # {tf_label: date} -- one cutoff PER TIMEFRAME (T14.7 review, 2026-10-04: pooling timeframes let intraday bars
+        # set the daily cutoff); a single date applies to every timeframe
+        if holdout_date is None:
+            self.holdout_date = None
+        elif isinstance(holdout_date, dict):
+            self.holdout_date = {k: pd.Timestamp(v) for k, v in holdout_date.items() if v is not None}
+        else:
+            self.holdout_date = pd.Timestamp(holdout_date)
         self.regime_cond = regime_cond
         self.ml_cond = ml_cond
         self.layer2 = layer2_enabled
@@ -591,10 +601,11 @@ class BacktestEngine:
         df["_gap_before"] = _missing_days > _MAX_FILL_BARS
 
         # Holdout split (chronological)
-        if self.holdout_date is not None and (holdout_only or is_only):
-            # B8: common calendar cutoff -- in-sample strictly before it, holdout from it on, for every pair alike
+        _hd = (self.holdout_date.get(tf) if isinstance(self.holdout_date, dict) else self.holdout_date)
+        if _hd is not None and (holdout_only or is_only):
+            # B8: common calendar cutoff (per timeframe) -- in-sample strictly before it, holdout from it on
             _d = pd.DatetimeIndex(df.index)
-            df = df[_d >= self.holdout_date] if holdout_only else df[_d < self.holdout_date]
+            df = df[_d >= _hd] if holdout_only else df[_d < _hd]
         elif holdout_only:
             cutoff = int(len(df) * (1 - self.cfg.HOLDOUT_PCT))
             df = df.iloc[cutoff:]
@@ -2214,6 +2225,12 @@ def compute_pnl_cap_thresholds(
     if trades.empty:
         log.warning("P&L cap: no IS trades available — cap disabled")
         return {}
+    # T14.7 (2026-10-04): the engine's running total is spread-unit P&L, so the budget must be too. A trades file
+    # written by a default (dollar) run -- or one with no basis recorded but dollar columns -- would mix units.
+    basis = set(trades["pnl_basis"].dropna().unique()) if "pnl_basis" in trades.columns else {"unrecorded"}
+    if basis - {"legacy_known_wrong", "spread_units_unconverted", "unrecorded"}:
+        raise ValueError(f"P&L cap needs spread-unit IS trades; got pnl_basis {sorted(basis)} -- run the IS pass with "
+                         "--legacy-pnl (the dollar cap is not built)")
     pair_totals = trades.groupby(["symbol_a", "symbol_b"])["pnl_net"].sum()
     profitable = pair_totals[pair_totals > 0]
     if profitable.empty:
@@ -2264,28 +2281,30 @@ def _pairs_for_tf(tf_dir: str, tf_label: str, _pairs_override_df: Optional[pd.Da
     return pairs
 
 
-def common_holdout_date(args, _pairs_override_df: Optional[pd.DataFrame], holdout_pct: float) -> Optional[pd.Timestamp]:
+def common_holdout_date(args, _pairs_override_df: Optional[pd.DataFrame], holdout_pct: float) -> Dict[str, pd.Timestamp]:
     """B8 comparison arm (Ross 2026-10-04): ONE calendar cutoff for every pair -- the date with `holdout_pct` of the
     pooled sample (every valid bar of every pair this run covers) after it. The per-pair rule (last HOLDOUT_PCT of
     each pair's own bars) gives pairs different cutoffs, so in-sample fitting pooled across pairs saw dates that
     were already out-of-sample for other pairs. debug/_verify_backtest_common_holdout.py"""
-    dates = []
-    for tf_dir, tf_label in _TF_DIRS:
+    out: Dict[str, pd.Timestamp] = {}
+    for tf_dir, tf_label in _TF_DIRS:            # PER TIMEFRAME (T14.7 review 2026-10-04: no pooling across them)
         if args.tf and tf_label != args.tf:
             continue
         pairs = _pairs_for_tf(tf_dir, tf_label, _pairs_override_df)
         if pairs is None:
             continue
+        dates = []
         for _, row in pairs.iterrows():
             sdf = _load_spread(tf_dir, row["symbol_a"], row["symbol_b"])
             if sdf is None:
                 continue
             ok = sdf.dropna(subset=["z_rolling", "spread"])
             dates.append(pd.DatetimeIndex(ok.index).as_unit("ns").asi8)   # explicit ns: pandas 3 indexes may be us/s
-    if not dates:
-        return None
-    allv = np.sort(np.concatenate(dates))
-    return pd.Timestamp(allv[int(np.floor(len(allv) * (1.0 - holdout_pct)))])
+        if dates:
+            allv = np.sort(np.concatenate(dates))
+            if len(allv):
+                out[tf_label] = pd.Timestamp(allv[int(np.floor(len(allv) * (1.0 - holdout_pct)))])
+    return out
 
 
 def _run_all_pairs(
@@ -2815,8 +2834,8 @@ def main() -> None:
     _holdout_date = None
     if args.holdout_mode == "common_date":
         _holdout_date = common_holdout_date(args, _pairs_override_df, _backtest_cfg.HOLDOUT_PCT)
-        log.info("B8 common-date holdout: cutoff %s (%.0f%% of the pooled sample after it)",
-                 _holdout_date, 100 * _backtest_cfg.HOLDOUT_PCT)
+        log.info("B8 common-date holdout: cutoffs %s (%.0f%% of each timeframe's pooled sample after it)",
+                 {k: str(v.date()) for k, v in _holdout_date.items()}, 100 * _backtest_cfg.HOLDOUT_PCT)
         label += "_commonholdout"
     if _needs_is_only_fit:
         log.info(
@@ -3010,6 +3029,7 @@ def main() -> None:
             quality_admission_col=args.quality_admission_col,
             quality_admission_ascending=args.quality_admission_ascending,
             pnl_mode="legacy" if args.legacy_pnl else "dollar",   # B2/B3: dollar unless --legacy-pnl
+            stop_zscore=_backtest_cfg.STOP_ZSCORE,                 # T14.7: overrides reach the risk sizers
         )
         sim_sharpe = portfolio_sim.portfolio_sharpe_from_replay(sim_result)
         log.info("  [capital_sim] taken=%d/%d skipped=%d peak_notional=$%.0f "
