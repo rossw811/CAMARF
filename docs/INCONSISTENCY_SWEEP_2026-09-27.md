@@ -194,11 +194,22 @@ scrutiny had marked this claim STANDS — the re-derivation rule (re-run, don't 
 - **Status: A3 code kept UNCOMMITTED pending Ross's decision on A2** (how the hedge ratio is estimated where the
   rolling window has no data, and on daily coint-fraction gap handling). Recommendation: a causal fallback
   (expanding-window OLS on past real rows only) replacing the full-sample hedge, built as a comparison arm first.
-- **Flaky under the parallel suite (open):** `_verify_pit_wfa` and `_verify_pit_wfa_wrds_daily_merge_and_save` each
-  failed once in a full parallel run and pass alone (3/3 and 7/7 on CachyOS, also on the Surface). No shared file
-  path found; the suite logs only the FAIL line. Next: have `_run_all_verify` save the failing test's output.
+- **Flaky in the full suite (open):** `_verify_pit_wfa` and `_verify_pit_wfa_wrds_daily_merge_and_save` each
+  failed once in a full suite run and pass alone (3/3 and 7/7 on CachyOS, also on the Surface). CORRECTION (same
+  day): I first called this "parallel-run collisions" — wrong: `_run_all_verify` defaults to ONE worker, so those
+  runs were sequential. Cause unknown; candidates: the live WRDS fetch writing to the cache at the same time, CPU
+  load timeouts. No shared file path found; the suite logs only the FAIL line. Next: have `_run_all_verify` save the
+  failing test's output.
 - **B1–B4 committed 2026-10-03** (A3 held). Full suite with all changes: 317 pass; the only failures were 4 replay
   tests of legacy-only mechanics (now pinned to `pnl_mode="legacy"` explicitly, all pass), `paper_claims` (→ T6) and
   the flaky `_verify_pit_wfa`. Research scripts that relied on the legacy default now stop with a clear error
   (`capital_sim_selection_mechanism.py`, `pdr_calmar_comparison.py`, the Kelly arms of
   `parameter_sensitivity_screen.py`) — convert if re-run.
+- **2026-10-03 (evening) — A2 arm, intraday dollar P&L, TLS + forex fixes committed.** Final full suite (CachyOS,
+  nice 19, while the discovery scan was running): 322/326 pass; `data_wrds` (needs live WRDS), `paper_claims` (→ T6;
+  passes on the Surface, whose older backtest outputs still match PAPER.md — the paper's numbers reproduce only from
+  those files), and two TIMEOUTS under load: `squeeze_momentum_signal_validation` (passes alone in 80 s on the
+  Surface) and `polars_universe_loader` (passed in the A2 suite at 15:43; nothing since touches the loader).
+- New findings fixed today, each failing-first: TLS hedge returned 1/β (`_verify_tls_hedge_direction.py`, reporting
+  only); forex "=X" tickers counted as USD in dollar P&L (`_verify_usd_symbol_fx.py`; 0 of 2,623,505 saved trades
+  have a forex leg — latent).

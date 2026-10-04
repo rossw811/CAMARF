@@ -7,7 +7,8 @@ Checks (synthetic prices, hand-computed answer):
   1. backtest.apply_pnl_basis exists and converts a daily trade to dollars: long A 100->110, B 50->52, beta 1.5,
      $10,000 notional -> gross = 10,000 * (0.10 - 1.5 * 0.04) = $400; cost per pnl_dollar's formula;
   2. the spread-unit values are kept in pnl_legacy_*; pnl_basis == "dollar"; notional recorded;
-  3. an intraday trade cannot be priced -> DROPPED and counted {"intraday": 1}, never kept at a spread-unit value;
+  3. a trade that cannot be priced (here: intraday with no intraday price file; intraday marking exists since
+     2026-10-03) -> DROPPED and counted {"missing_price": 1}, never kept at a spread-unit value;
   4. legacy=True keeps the spread-unit values, labelled "legacy_known_wrong";
   5. portfolio_sim.replay_portfolio defaults to pnl_mode="dollar";
   6. re-pricing already-converted trades with add_dollar_pnl gives the identical dollar P&L (so research/
@@ -47,6 +48,8 @@ def main():
     prices = {"SYNA": A, "SYNB": B}
     orig = pnl_dollar.load_daily_prices
     pnl_dollar.load_daily_prices = lambda s: prices.get(s)
+    orig_i = pnl_dollar.load_intraday_prices
+    pnl_dollar.load_intraday_prices = lambda s, tf: None
     try:
         def mk(tf="1D"):
             return Trade(tf=tf, symbol_a="SYNA", symbol_b="SYNB", hedge_method="ols", hedge_ratio=1.5,
@@ -65,7 +68,7 @@ def main():
               f"net={getattr(t, 'pnl_net', None)} expected {gross - cost}")
         check("2.legacy_kept_and_labelled", t is not None and t.pnl_legacy_net == 19.0 and t.pnl_legacy_gross == 20.0
               and t.pnl_basis == "dollar" and np.isclose(t.notional_dollar_entry, N_a * (1 + beta)))
-        check("3.intraday_dropped_and_counted", len(kept) == 1 and dropped == {"intraday": 1}, f"dropped={dropped}")
+        check("3.unpriceable_dropped_and_counted", len(kept) == 1 and dropped == {"missing_price": 1}, f"dropped={dropped}")
         lk, ld = apply_pnl_basis([mk()], legacy=True)
         check("4.legacy_flag", lk[0].pnl_net == 19.0 and lk[0].pnl_basis == "legacy_known_wrong" and ld == {})
         default = inspect.signature(portfolio_sim.replay_portfolio).parameters["pnl_mode"].default
@@ -77,6 +80,7 @@ def main():
         check("7.ensure_dollar_reuses", len(E) == 1 and np.isclose(E["pnl_dollar_net"].iloc[0], gross - cost))
     finally:
         pnl_dollar.load_daily_prices = orig
+        pnl_dollar.load_intraday_prices = orig_i
     _finish()
 
 

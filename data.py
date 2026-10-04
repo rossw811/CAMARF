@@ -909,7 +909,9 @@ def is_genuine_data_gap(run_length_bars: int, tf_label: str) -> bool:
     """
     bar_minutes = _TF_LABEL_MINUTES.get(tf_label)
     if not bar_minutes:
-        return False
+        # A2 comparison arm (Ross 2026-10-03): with DAILY_GAP_BREAKS on, daily-or-coarser runs longer than the
+        # DATA_GAP threshold are genuine gaps too (default off = the behaviour documented above).
+        return bool(getattr(Config.ANALYSIS, "DAILY_GAP_BREAKS", False)) and run_length_bars > _MAX_FILL_BARS
     ceiling_bars = (ROUTINE_CLOSURE_CEILING_HOURS * 60.0) / bar_minutes
     return run_length_bars > ceiling_bars
 

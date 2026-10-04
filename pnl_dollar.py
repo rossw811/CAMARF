@@ -58,6 +58,10 @@ def is_usd_symbol(symbol: str) -> bool:
     s = str(symbol)
     if "GVKEY" in s:
         return False
+    if s.endswith("=X"):
+        # 2026-10-03: yfinance forex is quoted in its LAST three letters ("EURUSD=X" dollars per euro; "JPY=X" =
+        # USD/JPY and "GBPJPY=X" in yen) -- USD only when that quote currency is USD. debug/_verify_usd_symbol_fx.py
+        return s[:-2].upper()[-3:] == "USD"
     m = re.search(r"\.([A-Z0-9]+)$", s)
     return not (m and m.group(1) not in _SHARE_CLASS)
 
@@ -115,6 +119,64 @@ def _at_or_before(df: pd.DataFrame, ts: pd.Timestamp):
     return None if i < 0 else df.iloc[i]
 
 
+# Intraday marking (Ross 2026-10-03): CAMARF timeframe label -> cache file suffix (same names as backtest._TF_DIRS).
+_INTRADAY_FILE = {"1m": "1min", "2m": "2min", "3m": "3min", "5m": "5min", "15m": "15min", "30m": "30min",
+                  "1h": "1hr", "4h": "4hr"}
+_intraday_cache = {}
+
+
+def load_intraday_prices(symbol: str, tf: str) -> Optional[pd.DataFrame]:
+    """DataFrame[close, tr] on the bar timestamps (naive ET), or None. yfinance intraday cache first, the IBKR
+    supplement (read-only reader) filling timestamps it lacks. tr = close: intraday closes are split-adjusted, not
+    dividend-adjusted -- a dividend inside an intraday hold is ignored (disclosed)."""
+    key = (symbol, tf)
+    if key in _intraday_cache:
+        return _intraday_cache[key]
+    suffix = _INTRADAY_FILE.get(tf)
+    frames = []
+    if suffix:
+        path = os.path.join(_YF_DIR, f"{symbol}_{suffix}.parquet")
+        if os.path.exists(path) and os.path.getsize(path) > 0:
+            try:
+                frames.append(pd.read_parquet(path, columns=["close"]))
+            except Exception as e:
+                READ_FAILURES[path] = f"{type(e).__name__}: {e}"[:200]
+                log.warning("pnl_dollar: %s unreadable (%s)", path, READ_FAILURES[path])
+        try:
+            from ibkr_supplement_reader import load_supplement
+            sup = load_supplement(symbol, tf)
+            if sup is not None and "close" in sup.columns:
+                frames.append(sup[["close"]])
+        except Exception as e:
+            log.warning("pnl_dollar: IBKR supplement for %s@%s unreadable (%s)", symbol, tf, e)
+    out = None
+    if frames:
+        f = pd.concat(frames)                            # yfinance first: keep="first" prefers it on duplicates
+        idx = pd.to_datetime(f.index)
+        f.index = idx.tz_convert("America/New_York").tz_localize(None) if idx.tz is not None else idx
+        f = f[~f.index.duplicated(keep="first")].sort_index()
+        px = pd.to_numeric(f["close"], errors="coerce").astype(float)
+        out = pd.DataFrame({"close": px, "tr": px})
+        out.attrs["usd"] = is_usd_symbol(symbol)
+    _intraday_cache[key] = out
+    return out
+
+
+def _at_or_before_intraday(df: pd.DataFrame, ts: pd.Timestamp):
+    """Last bar at or before ts (NOT normalised to the date); None if none, or if that bar is stale -- more than
+    data._MAX_FILL_BARS business days before ts (the DATA_GAP rule), so an outage is never priced as a fill."""
+    from data import _MAX_FILL_BARS
+    ts = pd.Timestamp(ts)
+    i = df.index.searchsorted(ts, side="right") - 1
+    if i < 0:
+        return None
+    found = df.index[i]
+    if np.busday_count(found.date(), ts.date()) > _MAX_FILL_BARS:
+        return None
+    row = df.iloc[i]
+    return row if "tr" in row.index else pd.Series({"close": row["close"], "tr": row["close"]})
+
+
 def add_dollar_pnl(trades: pd.DataFrame, commission_per_share: float = None, slippage_bps: float = None,
                    price_loader: Callable[[str], Optional[pd.DataFrame]] = None,
                    sizing: str = "fixed_notional", notional_per_trade: float = 10_000.0) -> pd.DataFrame:
@@ -128,12 +190,17 @@ def add_dollar_pnl(trades: pd.DataFrame, commission_per_share: float = None, sli
             ("pnl_dollar_gross", "pnl_dollar_cost", "pnl_dollar_net", "notional_dollar_entry", "n_shares_b_dollar")}
     status = np.array(["ok"] * len(out), dtype=object)
     for i, t in enumerate(out.itertuples(index=False)):
-        if str(t.tf) != "1D":
-            status[i] = "intraday"; continue
+        tf = str(t.tf)
+        if tf == "1D":
+            _load, _look = loader, _at_or_before
+        elif tf in _INTRADAY_FILE:          # 2026-10-03: intraday marked too (was status "intraday", no P&L)
+            _load, _look = (lambda s, _tf=tf: load_intraday_prices(s, _tf)), _at_or_before_intraday
+        else:
+            status[i] = "unsupported_tf"; continue
         beta = float(t.hedge_ratio)
         if not np.isfinite(beta):
             status[i] = "bad_hedge"; continue
-        A, B = loader(t.symbol_a), loader(t.symbol_b)
+        A, B = _load(t.symbol_a), _load(t.symbol_b)
         # A leg is usable only if its price series is in USD: a US listing, or a Compustat Global listing
         # converted via close_usd (frame attrs set by load_daily_prices; name rule as the fallback).
         _usd = lambda F, sym: F.attrs.get("usd", is_usd_symbol(sym)) if F is not None else is_usd_symbol(sym)
@@ -141,8 +208,8 @@ def add_dollar_pnl(trades: pd.DataFrame, commission_per_share: float = None, sli
             status[i] = "non_usd_leg"; continue
         if A is None or B is None or pd.isna(t.exit_time):
             status[i] = "missing_price"; continue
-        ae, ax, be, bx = (_at_or_before(A, t.entry_time), _at_or_before(A, t.exit_time),
-                          _at_or_before(B, t.entry_time), _at_or_before(B, t.exit_time))
+        ae, ax, be, bx = (_look(A, t.entry_time), _look(A, t.exit_time),
+                          _look(B, t.entry_time), _look(B, t.exit_time))
         if any(v is None for v in (ae, ax, be, bx)):
             status[i] = "missing_price"; continue
         vals = [ae["close"], be["close"], ae["tr"], ax["tr"], be["tr"], bx["tr"]]
