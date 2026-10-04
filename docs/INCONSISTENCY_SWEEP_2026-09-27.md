@@ -75,7 +75,14 @@ is the single API. Non-permutation callers switch to it passing NaN-preserving a
 first select production's gap-free segment, then run real and every null draw on that segment in both directions.
 Re-derive and compare old vs new numbers for each affected finding before any is cited.
 
-**M-1 OPEN (methodology, for Ross) — non-like-for-like null in `trend_dominance_diagnostic.leg_corrected_pvalue`.**
+**M-1 — comparison arm BUILT 2026-10-03 (design approved): `spurious_regression_risk_score(..., null="same_dates")`
+next to the default count-aligned null, same partners; `debug/_verify_same_dates_null.py` (4/4, mechanical: what
+reaches the EG test). Real 1h data (DD, 150 partners): count-aligned 3.33% vs same-dates 4.67% rejections -- both
+near nominal; 0 DD candidates in the current 1h results, so no correction changes today. Also: DD no longer looks
+trend-dominated on current data (trend R^2 0.50, 47th percentile) -- the original "DD high-risk" finding was on older
+data; re-derive before citing. A first synthetic design (market random walk + stationary noise) was REJECTED: both
+nulls reject 100% because a random walk and its lagged copy stay cointegrated, so rejection rates cannot separate
+them in that design. Original finding:** non-like-for-like null in `trend_dominance_diagnostic.leg_corrected_pvalue`.
 The real pair's EG statistic is computed on contemporaneous, date-aligned data; the null distribution comes from
 random partners right-aligned by COUNT after dropping NaNs (non-contemporaneous by design). The real statistic shares
 the market factor, the null does not, so the correction is biased. Same design in `eg_null_calibration_montecarlo`,
@@ -213,3 +220,18 @@ scrutiny had marked this claim STANDS — the re-derivation rule (re-run, don't 
 - New findings fixed today, each failing-first: TLS hedge returned 1/β (`_verify_tls_hedge_direction.py`, reporting
   only); forex "=X" tickers counted as USD in dollar P&L (`_verify_usd_symbol_fx.py`; 0 of 2,623,505 saved trades
   have a forex leg — latent).
+- **Unilever ADR ratio (T1.9) — investigated 2026-10-03, still OPEN, disclosed.** UL (CRSP) / USD price per Compustat
+  listing of gvkey 010846 (Unilever PLC), median by year: London 01W 1.047–1.11 (2013-2020, drifting, data ends
+  2020-11-27); 02W 1.05–1.11 (ends 2019-07); Amsterdam 16W 0.948–0.953 (2018-2025, stable). Explained part: before the
+  2020 unification the Amsterdam line was NV shares, and NV/PLC are the classic dual-listed twins that traded at
+  different prices (Rosenthal & Young 1990) — 01W vs 16W differing by 11–14% pre-2020 is that. Unexplained: UL (one
+  PLC share per ADR) drifting 5–11% above London PLC by year, and ~5% below Amsterdam PLC after 2020 when both are PLC
+  shares. UL is not in the CRSP ordinary-share security master, so how its file was resolved (ticker as-of) needs
+  checking next; other ADRs (HSBC, BP, Shell, AZN, Honda, Toyota, Sony) match to the share ratio, so the FX
+  conversion itself is not the suspect. Effect: any pair involving these Unilever lines carries a level offset in a
+  price-level spread (hedge ratio absorbs a constant, not a drift).
+- **2026-10-03 (night) — T14.4 backtest fixes committed (B5, B6, B7, B10, B13, B14, B15).** Full suite on CachyOS:
+  329/335; failures now carry their output (`output/verify_runs/last_failures/`): 4 TIMEOUTS under the discovery
+  scan's load (`a2_causal_hedge_arm`, `absorption_ratio` pass alone in ~5 s; the two LSTM tests are TensorFlow under
+  load), `paper_claims` (→ T6), and `_verify_regime_conditional_adjustment` — it ENCODED the B13 lookahead (expected an
+  09:30 intraday timestamp to see that day's end-of-day row); updated to the causal expectation.

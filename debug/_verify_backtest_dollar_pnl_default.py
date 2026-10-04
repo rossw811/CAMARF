@@ -13,7 +13,9 @@ Checks (synthetic prices, hand-computed answer):
   5. portfolio_sim.replay_portfolio defaults to pnl_mode="dollar";
   6. re-pricing already-converted trades with add_dollar_pnl gives the identical dollar P&L (so research/
      strategy_search.py, which prices its own trades, is unchanged by the earlier conversion);
-  7. portfolio_sim.ensure_dollar_columns reuses converted trades' dollar P&L.
+  7. portfolio_sim.ensure_dollar_columns reuses converted trades' dollar P&L;
+  8. an engine config with overridden COMMISSION_PER_SHARE / SLIPPAGE_BPS (config.section_copy) reaches the dollar
+     cost (B6 follow-up: overrides no longer leak into the global Config.BACKTEST).
 Run: python debug/_verify_backtest_dollar_pnl_default.py
 """
 import inspect
@@ -78,6 +80,12 @@ def main():
         check("6.reprice_identical", np.isclose(again["pnl_dollar_net"].iloc[0], T["pnl_net"].iloc[0]))
         E = portfolio_sim.ensure_dollar_columns(T)
         check("7.ensure_dollar_reuses", len(E) == 1 and np.isclose(E["pnl_dollar_net"].iloc[0], gross - cost))
+        from config import section_copy
+        free = section_copy(Config.BACKTEST)
+        free.COMMISSION_PER_SHARE, free.SLIPPAGE_BPS = 0.0, 0.0
+        k8, _ = apply_pnl_basis([mk()], cfg=free)
+        check("8.override_reaches_dollar_cost", np.isclose(k8[0].pnl_cost, 0.0) and np.isclose(k8[0].pnl_net, gross)
+              and Config.BACKTEST.COMMISSION_PER_SHARE > 0, f"cost={k8[0].pnl_cost}")
     finally:
         pnl_dollar.load_daily_prices = orig
         pnl_dollar.load_intraday_prices = orig_i

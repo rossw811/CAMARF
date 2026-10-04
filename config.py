@@ -1139,3 +1139,10 @@ class Config:
             DataConfig.CBOE_DATA_DIR,
         ]:
             os.makedirs(path, exist_ok=True)
+
+
+def section_copy(section: type) -> type:
+    """A real, independent copy of a Config section (2026-10-03). Sections are CLASSES, so copy.copy(section) returns
+    the same class and setattr on it mutated the global config for the rest of the process (found fixing code-review
+    B6). A subclass inherits every value and shadows only what is set on it."""
+    return type(f"{section.__name__}Copy", (section,), {})
