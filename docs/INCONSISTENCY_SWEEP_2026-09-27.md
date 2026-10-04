@@ -235,3 +235,14 @@ scrutiny had marked this claim STANDS — the re-derivation rule (re-run, don't 
   scan's load (`a2_causal_hedge_arm`, `absorption_ratio` pass alone in ~5 s; the two LSTM tests are TensorFlow under
   load), `paper_claims` (→ T6), and `_verify_regime_conditional_adjustment` — it ENCODED the B13 lookahead (expected an
   09:30 intraday timestamp to see that day's end-of-day row); updated to the causal expectation.
+- **2026-10-04 — B8 comparison arm + T14.5 real-data rechecks.** B8: `--holdout-mode common_date` (one calendar cutoff:
+  HOLDOUT_PCT of the pooled sample after it); `debug/_verify_backtest_common_holdout.py` reproduces the leak first.
+  Real 1D pairs: per-pair cutoffs span 2017-08 → 2025-05, so in-sample trades ran to 2025-05 while holdout trades
+  began 2020-03 (leak); common date 2023-12-26: 120 IS / 23 OOS trades, no overlap. Found while building it: pandas 3
+  date indexes are not always nanoseconds, so `.asi8` -> Timestamp gave 1970 (the new code only; no other use in the
+  repo). Full suite 339/340 (paper_claims → T6).
+  T14.5 (`research/bug_recheck_realdata.py`, current Surface cache): D13 HOLDS (1,200 coarse files period-end), D16
+  HOLDS (ES/CL/CC/LTC hold stock prices; Binance LTC separate), D17 HOLDS (A/TPC/SNDK/AAP current holders), D19 HOLDS in
+  substance (4,173 price-less daily files, ALL ending <= 1992 = the pre-1992 Nasdaq quote-only class the loader skips).
+  OPEN: D19 cited 2,758 such securities and 2,757 quote-only replacements were built on CachyOS, but 4,173 exist --
+  ~1,400 may be missing from the D18 "include" arm; check before the D18 comparison.
