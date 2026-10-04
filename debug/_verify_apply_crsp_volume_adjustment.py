@@ -8,6 +8,8 @@ discovery whose ADV gate used raw CRSP volume). Temp WRDS dir:
   4. an unmapped label is left untouched and reported "unmapped";
   5. a security with a cash-payment event gets NaN volume before it (unknown factor), never a guess;
   6. a file under _quote_only/ is adjusted too;
+  8. an EXTRA verified map (`extra_maps`, e.g. ETFs/ADRs resolved 2026-10-04) adds labels the security master lacks;
+     only rows with identity_ok are used;
   7. future fetches: all four CRSP fetch paths in data_wrds.py write volume = raw x fac and keep volume_raw
      (source check -- the fetch itself needs a live WRDS connection).
 Run: python debug/_verify_apply_crsp_volume_adjustment.py
@@ -68,6 +70,20 @@ def main():
         check("6.quote_only_adjusted", np.allclose(q.loc[before, "volume"], 200.0))
     finally:
         shutil.rmtree(root, ignore_errors=True)
+    root2 = tempfile.mkdtemp(prefix="apply_vol2_")
+    try:
+        idx2 = pd.bdate_range("2020-02-24", periods=10)
+        for lab in ("ETFX", "BADX"):
+            pd.DataFrame({"close": 50.0, "volume": 100.0}, index=idx2).to_parquet(os.path.join(root2, f"{lab}_1D.parquet"))
+        ev2 = pd.DataFrame({"permno": [555, 666], "disexdt": pd.to_datetime(["2020-03-02"] * 2), "disfacpr": [1.0, 1.0],
+                            "distype": ["FRS", "FRS"]})
+        extra = pd.DataFrame({"label": ["ETFX", "BADX"], "permno": [555, 666], "identity_ok": [True, False]})
+        r8 = ap.apply(root2, ev2, pd.DataFrame(columns=["label", "permno"]), extra_maps=[extra]).set_index("label")
+        e = pd.read_parquet(os.path.join(root2, "ETFX_1D.parquet"))
+        check("8.extra_map", r8.loc["ETFX", "status"] == "adjusted" and np.allclose(e.loc[idx2 < "2020-03-02", "volume"], 200.0)
+              and r8.loc["BADX", "status"] == "unmapped", r8["status"].to_dict())
+    finally:
+        shutil.rmtree(root2, ignore_errors=True)
     src = open(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data_wrds.py"), encoding="utf-8").read()
     n_adj = len(re.findall(r'"volume": (?:g|df)\["(?:dlyvol|mthvol)"\] \* fac,', src))
     n_raw = len(re.findall(r'"volume_raw": (?:g|df)\["(?:dlyvol|mthvol)"\],', src))

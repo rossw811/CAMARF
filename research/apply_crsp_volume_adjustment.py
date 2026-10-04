@@ -41,9 +41,15 @@ def _permno_of(label: str, permno_by_label: dict):
     return int(p) if p is not None and pd.notna(p) else None
 
 
-def apply(root: str, events: pd.DataFrame, label_map: pd.DataFrame) -> pd.DataFrame:
+def apply(root: str, events: pd.DataFrame, label_map: pd.DataFrame, extra_maps=None) -> pd.DataFrame:
+    """extra_maps: further {label, permno, identity_ok} tables for labels the security master lacks (ETFs, ADRs,
+    REITs -- output/cache/wrds/extra_permno_map_*.parquet, resolved by ticker as of the file's last date and VERIFIED
+    by matching CRSP's adjusted close on that date); only identity_ok rows are used."""
     by_permno = {int(p): g for p, g in events.groupby("permno")}
     permno_by_label = dict(zip(label_map["label"], label_map["permno"]))
+    for m in extra_maps or []:
+        ok = m[m["identity_ok"].astype(bool) & m["permno"].notna()]
+        permno_by_label.update(dict(zip(ok["label"], ok["permno"].astype(int))))
     paths = sorted(glob.glob(os.path.join(root, "*_1D.parquet")) + glob.glob(os.path.join(root, "_quote_only", "*_1D.parquet")))
     rows = []
     for path in paths:
@@ -79,7 +85,8 @@ def apply(root: str, events: pd.DataFrame, label_map: pd.DataFrame) -> pd.DataFr
 def main():
     events = pd.read_parquet(FACPR_PATH)
     label_map = pd.read_parquet(LABEL_MAP_PATH)
-    rep = apply(_WRDS, events, label_map)
+    extras = [pd.read_parquet(p) for p in sorted(glob.glob(os.path.join(_WRDS, "extra_permno_map_*.parquet")))]
+    rep = apply(_WRDS, events, label_map, extra_maps=extras)
     os.makedirs(os.path.dirname(REPORT), exist_ok=True)
     rep.to_parquet(REPORT)
     print(rep["status"].value_counts().to_string())
