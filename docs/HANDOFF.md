@@ -19,9 +19,11 @@ membership from SEC filings (76/78 announced changes agree).
 null arm, DEV-003 volume reconstruction (matches CRSP on 307/307), docs/ERRATA.md, README reproducibility.
 
 **After both scans finish (2026-10-04):** re-run `python research/apply_crsp_volume_adjustment.py` on CachyOS AND the
-Surface -- it now also adjusts the 37 ETF/ADR/REIT files mapped by `output/cache/wrds/extra_permno_map_20261004.parquet`
+Surface -- it now also restates every Compustat Global (GVKEY) file from `_trfd/` ajexdi (T14.7 review) and adjusts the 37 ETF/ADR/REIT files mapped by `output/cache/wrds/extra_permno_map_20261004.parquet`
 (37/37 identity-verified against CRSP's adjusted close). Deferred so the running scans' inputs stay what their
-lineage records; the current discovery run used RAW volume for those 37 (disclose with its results).
+lineage records; the current discovery run used RAW volume for those 37 and for all Compustat Global listings
+(disclose with its results). D18 include arm: 1,412 missing quote-only securities were fetched 2026-10-04 15:30
+(now 4,169 in `_quote_only/`, volume-adjusted) before the sensitivity scan starts.
 **Decisions waiting on Ross:** B8 decided 2026-10-04 (common calendar holdout, comparison arm first); after the scans: D18 arm, A2 arm adoption, PIT
 membership arm; DEV-003 consumer switch (+ whether to re-run discovery); CachyOS memtest (DEV-018).
 

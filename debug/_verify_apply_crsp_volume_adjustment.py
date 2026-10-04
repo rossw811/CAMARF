@@ -10,6 +10,9 @@ discovery whose ADV gate used raw CRSP volume). Temp WRDS dir:
   6. a file under _quote_only/ is adjusted too;
   8. an EXTRA verified map (`extra_maps`, e.g. ETFs/ADRs resolved 2026-10-04) adds labels the security master lacks;
      only rows with identity_ok are used;
+  9. Compustat Global (GVKEY*) files (T14.7 review, 2026-10-04: same bias, never fixed): volume = cshtrd x ajexdi
+     as of each date, ajexdi from output/cache/wrds/_trfd/{label}.parquet; a GVKEY file with no _trfd file is left
+     untouched and reported "no_ajexdi";
   7. future fetches: all four CRSP fetch paths in data_wrds.py write volume = raw x fac and keep volume_raw
      (source check -- the fetch itself needs a live WRDS connection).
 Run: python debug/_verify_apply_crsp_volume_adjustment.py
@@ -84,6 +87,22 @@ def main():
               and r8.loc["BADX", "status"] == "unmapped", r8["status"].to_dict())
     finally:
         shutil.rmtree(root2, ignore_errors=True)
+    root3 = tempfile.mkdtemp(prefix="apply_vol3_")
+    try:
+        idx3 = pd.bdate_range("2021-09-27", periods=5)
+        pd.DataFrame({"close": [413.2, 415.4, 2073.0, 2000.0, 1967.0], "volume": [5_362_000.0, 7_563_400.0, 34_887_300.0,
+                      33_149_100.0, 27_672_500.0]}, index=idx3).to_parquet(os.path.join(root3, "GVKEY019661_01W_1D.parquet"))
+        pd.DataFrame({"close": 10.0, "volume": 1.0}, index=idx3).to_parquet(os.path.join(root3, "GVKEY000002_01W_1D.parquet"))
+        os.makedirs(os.path.join(root3, "_trfd"))
+        pd.DataFrame({"trfd": 1.0, "ajexdi": [5.0, 5.0, 1.0, 1.0, 1.0]}, index=idx3).to_parquet(
+            os.path.join(root3, "_trfd", "GVKEY019661_01W.parquet"))
+        r9 = ap.apply(root3, pd.DataFrame(columns=["permno", "disexdt", "disfacpr"]), pd.DataFrame(columns=["label", "permno"])).set_index("label")
+        g = pd.read_parquet(os.path.join(root3, "GVKEY019661_01W_1D.parquet"))
+        check("9.compustat_ajexdi", r9.loc["GVKEY019661_01W", "status"] == "adjusted_ajexdi"
+              and np.allclose(g["volume"].iloc[:2], [26_810_000.0, 37_817_000.0]) and np.allclose(g["volume"].iloc[2:], g["volume_raw"].iloc[2:])
+              and r9.loc["GVKEY000002_01W", "status"] == "no_ajexdi", r9["status"].to_dict())
+    finally:
+        shutil.rmtree(root3, ignore_errors=True)
     src = open(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data_wrds.py"), encoding="utf-8").read()
     n_adj = len(re.findall(r'"volume": (?:g|df)\["(?:dlyvol|mthvol)"\] \* fac,', src))
     n_raw = len(re.findall(r'"volume_raw": (?:g|df)\["(?:dlyvol|mthvol)"\],', src))

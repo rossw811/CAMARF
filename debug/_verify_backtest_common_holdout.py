@@ -8,7 +8,9 @@ Checks (pair A 2010-2020, pair B 2016-2020, triangle-wave signals):
   1. per-pair rule REPRODUCES the leak: the latest in-sample trade exit (any pair) is after the earliest holdout
      trade entry (any pair);
   2. common date: every in-sample trade exits before the cutoff and every holdout trade enters on/after it;
-  3. common_holdout_date returns the pooled quantile (synthetic loader).
+  3. common_holdout_date returns the pooled quantile PER TIMEFRAME, {tf_label: date} -- pooling bars across
+     timeframes let dense intraday bars set the daily cutoff (independent T14.7 review, 2026-10-04: no --tf gave a
+     2026-06-17 cutoff and 0% holdout for every 1D pair); the engine uses the date of the pair's own timeframe.
 Run: python debug/_verify_backtest_common_holdout.py
 """
 import os
@@ -48,6 +50,7 @@ def row(a, b):
 
 
 def eng(date=None):
+    date = {"1D": date} if date is not None and not isinstance(date, dict) else date
     return bt.BacktestEngine(cfg=Config.BACKTEST, regime_cond=bt.RegimeConditioner(enabled=False),
                              ml_cond=bt.MLConditioner(enabled=False), storm_flags={}, mm_hedge_map={}, holdout_date=date)
 
@@ -72,14 +75,17 @@ def main():
           f"cut {cut.date()}: latest IS exit {is_exit2.date()}, earliest OOS entry {oos_entry2.date()}")
     orig = (bt._pairs_for_tf, bt._load_spread, bt._TF_DIRS)
     try:
-        bt._TF_DIRS = [("1day", "1D")]
-        bt._pairs_for_tf = lambda tf_dir, tf_label, ov, log_pairs=False: pd.DataFrame(
-            [{"symbol_a": a, "symbol_b": b} for a, b in data])
-        bt._load_spread = lambda tf_dir, a, b: data[(a, b)]
+        hourly = sdf(pd.date_range("2026-01-05 09:30", periods=20000, freq="h"))     # dense, recent
+        bt._TF_DIRS = [("1day", "1D"), ("1hr", "1h")]
+        bt._pairs_for_tf = lambda tf_dir, tf_label, ov, log_pairs=False: (
+            pd.DataFrame([{"symbol_a": a, "symbol_b": b} for a, b in data]) if tf_label == "1D"
+            else pd.DataFrame([{"symbol_a": "H1", "symbol_b": "H2"}]))
+        bt._load_spread = lambda tf_dir, a, b: data[(a, b)] if tf_dir == "1day" else hourly
         got = bt.common_holdout_date(SimpleNamespace(tf=None), None, Config.BACKTEST.HOLDOUT_PCT)
     finally:
         bt._pairs_for_tf, bt._load_spread, bt._TF_DIRS = orig
-    check("3.pooled_quantile", got == cut, f"got {got} expected {cut}")
+    check("3.pooled_quantile_per_tf", isinstance(got, dict) and got.get("1D") == cut and got.get("1h") is not None
+          and got["1h"] > pd.Timestamp("2026-01-05"), f"got {got} expected 1D={cut}")
     finish()
 
 

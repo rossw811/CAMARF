@@ -10,7 +10,9 @@ Checks (temp dirs):
   1. a WRDS-only symbol gets a real mask (liquid / illiquid days as constructed);
   2. WRDS wins over a yfinance file for the same symbol;
   3. a Compustat Global listing uses close_usd x volume, not local-currency close x volume;
-  4. mask_on_bars: intraday bars take their day's value; a day with no data is False.
+  4. mask_on_bars: a DAILY bar (midnight, entry at the close) takes its own day's value; an INTRADAY bar takes the
+     PREVIOUS trading day's value -- its own day's full-day volume is only known after the close (lookahead found by
+     the independent T14.7 review, 2026-10-04; same rule as B13's regime lookup); no data -> False.
 Run: python debug/_verify_liquid_bar_mask_sources.py
 """
 import os
@@ -56,10 +58,14 @@ def main():
         m3 = lbm.liquid_bar_mask("GVKEY000001_01W", **kw)
         check("3.compustat_uses_usd", len(m3) == 6 and not m3.any(), str(m3.tolist()))
         if hasattr(lbm, "mask_on_bars"):
-            bars = pd.DatetimeIndex([pd.Timestamp(f"{d.date()} {h}") for d in list(idx[[0, 4]]) +
-                                     [pd.Timestamp("2024-02-01")] for h in ("09:30", "15:30")])
+            # m1: days 0-2 liquid, 3-5 illiquid. Intraday bars on day 1 -> day 0 (True); day 3 -> day 2 (True);
+            # day 4 -> day 3 (False); first day 0 -> no earlier day (False); a day without data -> False
+            bars = pd.DatetimeIndex([pd.Timestamp(f"{idx[k].date()} 10:30") for k in (0, 1, 3, 4)] +
+                                    [pd.Timestamp("2024-02-01 10:30")])
             mb = lbm.mask_on_bars(m1, bars)
-            check("4.mask_on_bars", mb.tolist() == [True, True, False, False, False, False], str(mb.tolist()))
+            daily = lbm.mask_on_bars(m1, pd.DatetimeIndex([idx[2], idx[3]]))
+            check("4.mask_on_bars", mb.tolist() == [False, True, True, False, False] and daily.tolist() == [True, False],
+                  f"intraday {mb.tolist()} daily {daily.tolist()}")
         else:
             check("4.mask_on_bars", False, "missing")
     finally:

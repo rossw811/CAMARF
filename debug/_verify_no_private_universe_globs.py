@@ -59,6 +59,10 @@ _RESEARCH_DIR = os.path.join(_ROOT, "research")
 # would still be caught) but its already-reviewed glob/loader pattern is
 # not re-flagged every run.
 EXPECTED_FLAGS = {
+    "bug_recheck_realdata.py": (
+        "Reviewed 2026-10-04: a data-file AUDIT (plan T14.5) -- it must inspect the cache files themselves "
+        "(period-end stamps, price-less files, label identities); it builds no universe for analysis."
+    ),
     "wrds_deep_history_episodic_scan.py": (
         "output/cache/wrds/ glob confirmed 2026-09-01: that directory alone "
         "already IS the full ~44,700-symbol merged universe on disk (WRDS-scoped "

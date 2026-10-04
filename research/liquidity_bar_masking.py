@@ -101,8 +101,23 @@ def mask_on_bars(daily_mask: pd.Series, bars: pd.DatetimeIndex) -> pd.Series:
         return pd.Series(False, index=b)
     day = daily_mask.copy()
     day.index = pd.DatetimeIndex(day.index).normalize()
-    day = day[~day.index.duplicated(keep="last")]
-    return pd.Series(day.reindex(b.normalize()).fillna(False).astype(bool).to_numpy(), index=b)
+    day = day[~day.index.duplicated(keep="last")].sort_index()
+    # Causality (independent T14.7 review, 2026-10-04): a day's dollar volume is known only after its close. A DAILY
+    # bar (midnight stamp, entry at the close) may use its own day; an INTRADAY bar uses the latest day STRICTLY
+    # before its date (same rule as B13's regime lookup). debug/_verify_liquid_bar_mask_sources.py
+    days = day.index.as_unit("ns").asi8
+    bd = b.normalize().as_unit("ns").asi8
+    intraday = b.as_unit("ns").asi8 != bd
+    pos = np.where(intraday, np.searchsorted(days, bd, side="left") - 1, np.searchsorted(days, bd, side="right") - 1)
+    vals = day.to_numpy(dtype=bool)
+    out = np.zeros(len(b), dtype=bool)
+    ok = pos >= 0
+    out[ok] = vals[pos[ok]]
+    # a daily bar needs ITS OWN day's row (no carry-forward from an earlier day)
+    same = np.zeros(len(b), dtype=bool)
+    same[ok] = days[pos[ok]] == bd[ok]
+    out[~intraday & ~same] = False
+    return pd.Series(out, index=b)
 
 
 def recompute_correlation_bar_masked(sym_a: str, sym_b: str, threshold: float = None,

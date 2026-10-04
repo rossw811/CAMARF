@@ -214,7 +214,7 @@ def causal_rolling_std_at_entry(symbol_a: str, symbol_b: str, tf_label: str,
 
 def stop_distance_dollars_per_share(entry_z: float, entry_spread: float, symbol_a: str,
                                      symbol_b: str, tf_label: str, entry_time: pd.Timestamp,
-                                     half_life: float) -> float:
+                                     half_life: float, stop_zscore: float = None) -> float:
     """Estimated dollar P&L, per share of leg A, if this trade were stopped out at
     Config.BACKTEST.STOP_ZSCORE -- entirely from information available AT entry_time (causal).
     Uses the SAME (current_spread - entry_spread) formula BacktestEngine._close_trade() uses
@@ -226,7 +226,8 @@ def stop_distance_dollars_per_share(entry_z: float, entry_spread: float, symbol_
     sigma = causal_rolling_std_at_entry(symbol_a, symbol_b, tf_label, entry_time, half_life)
     if not np.isfinite(sigma) or sigma <= 0 or not np.isfinite(entry_z):
         return float("nan")
-    z_distance_to_stop = STOP_ZSCORE - abs(entry_z)
+    # stop_zscore: the run's (possibly overridden) value -- T14.7, 2026-10-04; the module constant is read at import
+    z_distance_to_stop = (STOP_ZSCORE if stop_zscore is None else stop_zscore) - abs(entry_z)
     if z_distance_to_stop <= 0:
         return float("nan")  # already past the stop level -- shouldn't happen for a real entry
     return z_distance_to_stop * sigma
@@ -364,6 +365,7 @@ def replay_portfolio(
     quality_admission_col: str = None,
     quality_admission_ascending: bool = False,
     pnl_mode: str = "dollar",   # B2/B3 (Ross 2026-10-03): dollar by default; "legacy" is known-wrong
+    stop_zscore: float = None,  # T14.7: the run's STOP_ZSCORE (overrides); None = Config.BACKTEST at import
 ) -> dict:
     """
     Event-driven, capital-constrained, mark-to-market replay of an already-generated trade list.
@@ -492,7 +494,7 @@ def replay_portfolio(
         elif sizing_method == "flat_2pct" or sizing_method in _KELLY_MULTS:
             risk_per_share = stop_distance_dollars_per_share(
                 t.get("entry_z", float("nan")), t["entry_spread"], t["symbol_a"], t["symbol_b"],
-                t["tf"], entry_time, t.get("half_life_at_entry", float("nan")),
+                t["tf"], entry_time, t.get("half_life_at_entry", float("nan")), stop_zscore=stop_zscore,
             )
             if not np.isfinite(risk_per_share) or risk_per_share <= 0:
                 skipped += 1
