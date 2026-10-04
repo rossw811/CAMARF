@@ -46,13 +46,19 @@ def check_1_no_lookahead():
     # Shift happens exactly at dates[10] (2026-01-11). A timestamp on
     # 2026-01-10 (the last pre-shift day) must NOT see "contango"/"normal".
     pre_shift_ts = pd.Timestamp("2026-01-10 14:30:00")
-    post_shift_ts = pd.Timestamp("2026-01-11 09:30:00")
+    # Updated 2026-10-03 (code review B13): rows are END-OF-DAY values, so an intraday timestamp sees only rows from
+    # EARLIER days. The 2026-01-11 row (first "contango") is visible from 2026-01-12 on; at 2026-01-11 09:30 the regime
+    # is still the 01-10 row. This test used to expect 01-11 09:30 to see the 01-11 row -- the lookahead B13 removed.
+    shift_day_open_ts = pd.Timestamp("2026-01-11 09:30:00")
+    post_shift_ts = pd.Timestamp("2026-01-12 09:30:00")
 
     pre_regime = rc._get_regime(pre_shift_ts)
     post_regime = rc._get_regime(post_shift_ts)
+    shift_open = rc._get_regime(shift_day_open_ts)
 
     ok = (
-        pre_regime["vix_ts"] == "backwardation"
+        shift_open["vix_ts"] == "backwardation"
+        and pre_regime["vix_ts"] == "backwardation"
         and pre_regime["yield"] == "flat_inverted"
         and post_regime["vix_ts"] == "contango"
         and post_regime["yield"] == "normal"

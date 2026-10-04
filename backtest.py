@@ -157,13 +157,15 @@ class Trade:
     notional_dollar_entry: float = np.nan
 
 
-def apply_pnl_basis(trades: List["Trade"], legacy: bool = False) -> Tuple[List["Trade"], Dict[str, int]]:
+def apply_pnl_basis(trades: List["Trade"], legacy: bool = False, cfg=None) -> Tuple[List["Trade"], Dict[str, int]]:
     """B2/B3 (code review 2026-09-26; Ross 2026-10-03: "dollar P&L the default everywhere; legacy only behind an
     explicit flag, labelled known-wrong"). The engine books spread-unit P&L with a hedge ratio re-estimated every bar
     -- on 2,062 real trades the beta drift was ALL of the positive gross P&L -- in log units mixed with dollar costs.
     Default: every trade is re-marked in dollars by pnl_dollar.add_dollar_pnl; trades it cannot price (intraday,
     a leg with no USD price, missing prices, bad hedge) are DROPPED and counted by reason -- never silently kept at
     the wrong value. legacy=True keeps the spread-unit numbers, labelled known-wrong.
+    cfg: the engine's config, so --override COMMISSION_PER_SHARE / SLIPPAGE_BPS reach the dollar costs (B6 follow-up:
+    overrides no longer leak into the global Config.BACKTEST, which pnl_dollar reads by default).
     Returns (kept trades, {status: n dropped}). debug/_verify_backtest_dollar_pnl_default.py"""
     if legacy:
         for t in trades:
@@ -172,8 +174,10 @@ def apply_pnl_basis(trades: List["Trade"], legacy: bool = False) -> Tuple[List["
     if not trades:
         return trades, {}
     import pnl_dollar
+    _kw = {} if cfg is None else {"commission_per_share": cfg.COMMISSION_PER_SHARE, "slippage_bps": cfg.SLIPPAGE_BPS}
     D = pnl_dollar.add_dollar_pnl(pd.DataFrame([{k: getattr(t, k) for k in (
-        "tf", "symbol_a", "symbol_b", "hedge_ratio", "entry_time", "exit_time", "side", "n_shares_a")} for t in trades]))
+        "tf", "symbol_a", "symbol_b", "hedge_ratio", "entry_time", "exit_time", "side", "n_shares_a")} for t in trades]),
+        **_kw)
     kept, dropped = [], {}
     for t, r in zip(trades, D.itertuples(index=False)):
         if r.pnl_dollar_status != "ok":
@@ -311,7 +315,11 @@ class RegimeConditioner:
         if self._macro is None:
             return out
         date = ts.normalize()
-        candidates = self._macro[self._macro.index <= date]
+        # B13 (fixed 2026-10-03): an intraday entry (time after midnight) must not see its own day's END-OF-DAY macro
+        # row -- known only after the close; daily (midnight) timestamps keep the same-day row.
+        # debug/_verify_regime_lookup_intraday.py
+        intraday = pd.Timestamp(ts) != date
+        candidates = self._macro[self._macro.index < date] if intraday else self._macro[self._macro.index <= date]
         if candidates.empty:
             return out
         row = candidates.iloc[-1]
@@ -528,6 +536,11 @@ class BacktestEngine:
         sym_b = pair_row["symbol_b"]
         tf = pair_row["tf_label"]
         _pair_key = f"{sym_a}/{sym_b}"
+        # B5 (code review 2026-09-26; fixed 2026-10-03): the P&L-cap running total is per RUN (pair, timeframe, hedge
+        # method) and starts at zero -- it was keyed by pair only and carried across runs, so a later run was gated
+        # by P&L it had not earned yet. debug/_verify_backtest_pnl_cap_scope.py
+        _run_key = f"{_pair_key}@{tf}[{hedge_method}]"
+        self._pair_pnl[_run_key] = 0.0
 
         # Scalar fallbacks from pairs.parquet (used when point-in-time series absent)
         hedge_scalar_ols = float(pair_row.get("hedge_ratio_ols", np.nan))
@@ -632,9 +645,15 @@ class BacktestEngine:
         _liquidity_bar_filter = self.storm_flags.get("liquidity_bar_filter", False)
         _liquid_a = _liquid_b = None
         if _liquidity_bar_filter:
-            from research.liquidity_bar_masking import liquid_bar_mask
-            _liquid_a = liquid_bar_mask(sym_a).reindex(timestamps, fill_value=False)
-            _liquid_b = liquid_bar_mask(sym_b).reindex(timestamps, fill_value=False)
+            # B10 (fixed 2026-10-03): WRDS-first source + each bar mapped to its own trading day (an exact reindex
+            # onto intraday timestamps never matched a date, and WRDS symbols had no mask -> every entry blocked).
+            from research.liquidity_bar_masking import liquid_bar_mask, mask_on_bars
+            _ma, _mb = liquid_bar_mask(sym_a), liquid_bar_mask(sym_b)
+            if len(_ma) == 0 or len(_mb) == 0:
+                log.warning("liquidity_bar_filter: %s has no daily price+volume file -- all its entries blocked",
+                            sym_a if len(_ma) == 0 else sym_b)
+            _liquid_a = mask_on_bars(_ma, timestamps)
+            _liquid_b = mask_on_bars(_mb, timestamps)
 
         # Thread Q Idea 1 Path B (2026-08-23, Development.md's Thread Q entry): only allow entry
         # when coint_fraction_rolling_t is both above a strength floor AND rising over a short
@@ -1022,7 +1041,7 @@ class BacktestEngine:
 
                 # P&L cap: gate new entries once pair has hit its IS-calibrated budget
                 _cap = self.pnl_cap_by_pair.get(_pair_key)
-                if _cap is not None and self._pair_pnl.get(_pair_key, 0.0) >= _cap:
+                if _cap is not None and self._pair_pnl.get(_run_key, 0.0) >= _cap:
                     continue
 
                 # N_SHARES: hub-count, risk-parity, and PIT-confidence-tier multipliers
@@ -1218,13 +1237,23 @@ class BacktestEngine:
         trade.pnl_net = round(gross - cost, 4)
         trade.mae = round(mae * n, 4)
         trade.mfe = round(mfe * n, 4)
-        _key = f"{trade.symbol_a}/{trade.symbol_b}"
+        _key = f"{trade.symbol_a}/{trade.symbol_b}@{trade.tf}[{trade.hedge_method}]"   # B5: per run
         self._pair_pnl[_key] = self._pair_pnl.get(_key, 0.0) + trade.pnl_net
 
 
 # ---------------------------------------------------------------------------
 # Survivorship boundary resolution (BUG-D58 fix, 2026-07-12)
 # ---------------------------------------------------------------------------
+def data_last_seen(spread_df: pd.DataFrame) -> Optional[pd.Timestamp]:
+    """B15 (code review 2026-09-26; fixed 2026-10-03): the last bar with a REAL (finite) spread -- proof the pair was
+    still trading. spread_df.index.max() is the shared index end, which runs on in NaN rows after a delisting, so a
+    real delisting could pass as a false positive. debug/_verify_survivorship_last_real_bar.py"""
+    if "spread" not in spread_df.columns:
+        return spread_df.index.max() if len(spread_df) else None
+    v = pd.to_numeric(spread_df["spread"], errors="coerce")
+    return v[np.isfinite(v)].index.max() if np.isfinite(v).any() else None
+
+
 def resolve_survivorship_oos_end(
     candidate_oos_end: Optional[pd.Timestamp],
     data_last_seen: Optional[pd.Timestamp],
@@ -1499,17 +1528,29 @@ def load_adv_shares_map(symbols: List[str]) -> Dict[str, float]:
 # ---------------------------------------------------------------------------
 # Concentration-risk helpers
 # ---------------------------------------------------------------------------
-def compute_hub_weights(tf_dirs: List[Tuple[str, str]], tf_filter: Optional[str]) -> Dict[str, float]:
+def compute_hub_weights(tf_dirs: List[Tuple[str, str]], tf_filter: Optional[str],
+                        pairs_df: Optional[pd.DataFrame] = None) -> Dict[str, float]:
     """
     Inverse hub-count N_SHARES multipliers: 1 / max(peers_A, peers_B).
 
     DD appears in 8 confirmed 1h pairs → each DD pair gets weight 1/8 ≈ 0.125.
     A standalone pair (CMS/DUK) gets weight 1.0.
     Computed at load time from pairs.parquet — no cross-pair runtime state needed.
+    pairs_df: the --pairs-override pair set; when given it IS the population (B14, fixed 2026-10-03: override runs got
+    hub weights from output/results/*/pairs.parquet, pairs they did not trade). debug/_verify_hub_weights_override.py
     """
     from collections import Counter
     symbol_counts: Counter = Counter()
     pair_keys = []
+    if pairs_df is not None:
+        _p = pairs_df
+        if tf_filter and "tf_label" in _p.columns:
+            _p = _p[_p["tf_label"] == tf_filter]
+        for sym_a, sym_b in zip(_p["symbol_a"], _p["symbol_b"]):
+            symbol_counts[sym_a] += 1
+            symbol_counts[sym_b] += 1
+            pair_keys.append((sym_a, sym_b))
+        tf_dirs = []                                    # override replaces the results-dir population
     for tf_dir, tf_label in tf_dirs:
         if tf_filter and tf_label != tf_filter:
             continue
@@ -2262,20 +2303,20 @@ def _run_all_pairs(
                 d_b = _get_oos_end(sym_b, _survivorship)
                 if d_a is not None or d_b is not None:
                     _candidate_oos_end = min(d for d in [d_a, d_b] if d is not None)
-                    _oos_end = resolve_survivorship_oos_end(_candidate_oos_end, spread_df.index.max())
+                    _oos_end = resolve_survivorship_oos_end(_candidate_oos_end, data_last_seen(spread_df))
                     if _oos_end is None:
                         log.debug(
                             "%s/%s@%s: survivorship 'removed' date %s predates real data through "
                             "%s -- treating as false-positive (index removal, not delisting), "
                             "NOT truncating",
                             sym_a, sym_b, tf_label, _candidate_oos_end.date(),
-                            spread_df.index.max().date(),
+                            data_last_seen(spread_df).date(),
                         )
 
             for hm in hedge_methods:
                 trades = engine.run(row, spread_df, hm, holdout_only=holdout_only,
                                     is_only=is_only, oos_end_date=_oos_end)
-                trades, _dropped = apply_pnl_basis(trades, legacy=getattr(args, "legacy_pnl", False))
+                trades, _dropped = apply_pnl_basis(trades, legacy=getattr(args, "legacy_pnl", False), cfg=engine.cfg)
                 for _k, _v in _dropped.items():
                     _pnl_dropped[_k] = _pnl_dropped.get(_k, 0) + _v
                 if not trades:
@@ -2305,6 +2346,49 @@ def _run_all_pairs(
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
+def _build_backtest_cfg(args) -> Tuple["object", str]:
+    """B6 (code review 2026-09-26; fixed 2026-10-03): --entry-z / --entry-z-max / --override applied to a COPY of
+    Config.BACKTEST, built once and used by BOTH the IS-only fitting engine and the main engine (the fitting engine
+    used raw Config.BACKTEST, so weights were fitted under other trading rules). Returns (cfg, label suffix).
+    debug/_verify_backtest_override_fit_engine.py"""
+    # --entry-z override for z=1.5 comparison arm (DD/GPN, DD/JCI zero-trade diagnostic)
+    _backtest_cfg = Config.BACKTEST
+    _override_label_sfx = ""
+    if args.entry_z is not None or args.entry_z_max is not None or args.override:
+        import copy
+        from config import section_copy
+        _backtest_cfg = section_copy(Config.BACKTEST)   # copy.copy of a class returned the global itself
+        if args.entry_z is not None:
+            _backtest_cfg.ENTRY_ZSCORE = args.entry_z
+            log.info("entry-z override: ENTRY_ZSCORE = %.2f", args.entry_z)
+        if args.entry_z_max is not None:
+            _backtest_cfg.ENTRY_ZSCORE_MAX = args.entry_z_max
+            log.info("entry-z-max override: ENTRY_ZSCORE_MAX = %.2f", args.entry_z_max)
+        if args.override:
+            for item in args.override:
+                if "=" not in item:
+                    raise ValueError(f"--override entries must be NAME=VALUE, got {item!r}")
+                name, raw_value = item.split("=", 1)
+                if not hasattr(_backtest_cfg, name):
+                    raise ValueError(
+                        f"--override {name!r} is not an existing Config.BACKTEST attribute -- "
+                        f"refusing to silently create a new one (likely a typo)."
+                    )
+                current = getattr(_backtest_cfg, name)
+                if isinstance(current, bool):
+                    coerced = raw_value.strip().lower() in ("1", "true", "yes", "on")
+                elif isinstance(current, int) and not isinstance(current, bool):
+                    coerced = int(raw_value)
+                elif isinstance(current, float):
+                    coerced = float(raw_value)
+                else:
+                    coerced = raw_value
+                setattr(_backtest_cfg, name, coerced)
+                log.info("--override: %s = %r (was %r)", name, coerced, current)
+                _override_label_sfx += f"_ov{name}{str(coerced).replace('.', 'p').replace('-', 'neg')}"
+    return _backtest_cfg, _override_label_sfx
+
+
 def main() -> None:
     p = argparse.ArgumentParser(description="CAMARF backtest.py — Layer 1 event-driven baseline")
     p.add_argument("--tf", default=None,
@@ -2610,6 +2694,10 @@ def main() -> None:
     if args.decay_rate_modifier:
         label += f"_decayratemod{args.decay_rate_modifier.replace(':', '')}"
     if args.pnl_cap:
+        if not args.legacy_pnl:
+            # 2026-10-03 (found fixing B5): the cap budget comes from in-sample trades, in DOLLARS since B2/B3, but the
+            # engine's running total is the spread-unit P&L booked inside the event loop -- mismatched units.
+            p.error("--pnl-cap requires --legacy-pnl: its running total is spread-unit P&L (dollar cap not built)")
         label += "_pnlcap"
     if args.pit_confidence_weight:
         label += "_pitconf"
@@ -2632,7 +2720,7 @@ def main() -> None:
         except Exception as _e:
             log.warning("Could not load survivorship exclusions: %s", _e)
 
-    hub_weights = compute_hub_weights(_TF_DIRS, args.tf) if args.hub_weight else {}
+    hub_weights = compute_hub_weights(_TF_DIRS, args.tf, pairs_df=_pairs_override_df) if args.hub_weight else {}
     pit_confidence_weights = (
         compute_pit_confidence_weights(_pairs_override_df) if args.pit_confidence_weight else {}
     )
@@ -2651,6 +2739,21 @@ def main() -> None:
     # -- that file's own trades_path may itself span the --holdout OOS window. Disclosed as a
     # real, open lookahead risk (not silently ignored) via the warning below, not yet fixed --
     # matches this project's "no bandaid, disclose don't hide" rule until a real fix is built.
+    # B7 (code review 2026-09-26; fixed 2026-10-03): --decay-rate-sizing / --decay-rate-modifier read the same kind of
+    # precomputed detail file (output/research/decay_rate_at_entry_detail.parquet) whose source trades can span the
+    # OOS window -- same lookahead risk as --regime-age-sizing, but with no warning. Now warned too, and every such
+    # run carries "_lookaheadrisk" in its output label so the risk travels with the files.
+    # debug/_verify_backtest_lookahead_label.py
+    _lookahead_sizers = [n for n, v in (("--regime-age-sizing", args.regime_age_sizing),
+                                        ("--decay-rate-sizing", args.decay_rate_sizing),
+                                        ("--decay-rate-modifier", args.decay_rate_modifier)) if v]
+    if args.holdout and _lookahead_sizers:
+        label += "_lookaheadrisk"
+    if args.holdout and (args.decay_rate_sizing or args.decay_rate_modifier):
+        log.warning(
+            "%s combined with --holdout: weights come from a precomputed detail file whose source trades may span the "
+            "OOS window this run evaluates -- a disclosed lookahead risk (output labelled _lookaheadrisk); not "
+            "production-safe.", " / ".join(n for n in _lookahead_sizers if n != "--regime-age-sizing"))
     if args.holdout and args.regime_age_sizing:
         log.warning(
             "--regime-age-sizing combined with --holdout: the detail file's own source trades "
@@ -2662,6 +2765,7 @@ def main() -> None:
     _needs_is_only_fit = bool(args.holdout) and (
         args.risk_parity or args.hrp_weight or args.var_sizing or args.pnl_cap
     )
+    _backtest_cfg, _override_label_sfx = _build_backtest_cfg(args)   # B6: before BOTH engines
     if _needs_is_only_fit:
         log.info(
             "Fitting sizing weights on a genuinely non-overlapping IS-only pass "
@@ -2669,7 +2773,7 @@ def main() -> None:
             "would overlap the OOS window --holdout evaluates."
         )
         _fitting_engine = BacktestEngine(
-            cfg=Config.BACKTEST, regime_cond=RegimeConditioner(enabled=False),
+            cfg=_backtest_cfg, regime_cond=RegimeConditioner(enabled=False),
             ml_cond=MLConditioner(enabled=False), layer2_enabled=False,
             allow_negative_hedge=args.neg_hedge,
             hub_weights={}, risk_parity_weights={}, pnl_cap_by_pair={},
@@ -2804,40 +2908,6 @@ def main() -> None:
                     _adv_symbols.update(_df["symbol_b"])
         adv_shares_map = load_adv_shares_map(sorted(_adv_symbols))
 
-    # --entry-z override for z=1.5 comparison arm (DD/GPN, DD/JCI zero-trade diagnostic)
-    _backtest_cfg = Config.BACKTEST
-    _override_label_sfx = ""
-    if args.entry_z is not None or args.entry_z_max is not None or args.override:
-        import copy
-        _backtest_cfg = copy.copy(Config.BACKTEST)
-        if args.entry_z is not None:
-            _backtest_cfg.ENTRY_ZSCORE = args.entry_z
-            log.info("entry-z override: ENTRY_ZSCORE = %.2f", args.entry_z)
-        if args.entry_z_max is not None:
-            _backtest_cfg.ENTRY_ZSCORE_MAX = args.entry_z_max
-            log.info("entry-z-max override: ENTRY_ZSCORE_MAX = %.2f", args.entry_z_max)
-        if args.override:
-            for item in args.override:
-                if "=" not in item:
-                    raise ValueError(f"--override entries must be NAME=VALUE, got {item!r}")
-                name, raw_value = item.split("=", 1)
-                if not hasattr(_backtest_cfg, name):
-                    raise ValueError(
-                        f"--override {name!r} is not an existing Config.BACKTEST attribute -- "
-                        f"refusing to silently create a new one (likely a typo)."
-                    )
-                current = getattr(_backtest_cfg, name)
-                if isinstance(current, bool):
-                    coerced = raw_value.strip().lower() in ("1", "true", "yes", "on")
-                elif isinstance(current, int) and not isinstance(current, bool):
-                    coerced = int(raw_value)
-                elif isinstance(current, float):
-                    coerced = float(raw_value)
-                else:
-                    coerced = raw_value
-                setattr(_backtest_cfg, name, coerced)
-                log.info("--override: %s = %r (was %r)", name, coerced, current)
-                _override_label_sfx += f"_ov{name}{str(coerced).replace('.', 'p').replace('-', 'neg')}"
     label += _override_label_sfx
 
     engine = BacktestEngine(

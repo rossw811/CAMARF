@@ -64,21 +64,45 @@ import pandas as pd
 from config import Config
 
 
-def liquid_bar_mask(symbol: str, threshold: float = None, cache_dir: str = None) -> pd.Series:
-    """True on days where `symbol`'s own dollar volume (close x volume)
-    clears `threshold`. Empty Series if the symbol's cache is missing or
-    lacks close/volume columns."""
+_WRDS_DIR = os.path.join("output", "cache", "wrds")
+
+
+def liquid_bar_mask(symbol: str, threshold: float = None, cache_dir: str = None, wrds_dir: str = None) -> pd.Series:
+    """True on days where `symbol`'s own dollar volume (USD price x volume) clears `threshold`. Empty Series if no
+    daily file with price + volume exists.
+    Sources (code review B10, fixed 2026-10-03): the WRDS cache first ({sym}_1D.parquet; CLAUDE.md rule 2), then the
+    yfinance cache ({sym}_1day.parquet). It used to read ONLY yfinance, so every WRDS-universe symbol got an empty mask
+    and --storm-liquidity-bar-filter blocked all of its entries. Price: close_usd when present (Compustat Global listings
+    are in local currency), else |close| (CRSP marks no-trade days with a negative bid/ask midpoint).
+    debug/_verify_liquid_bar_mask_sources.py"""
     threshold = threshold if threshold is not None else Config.DATA.MIN_DOLLAR_VOLUME
     cache_dir = cache_dir or Config.DATA.CACHE_DIR
-    path = os.path.join(cache_dir, f"{symbol}_1day.parquet")
-    if not os.path.exists(path):
-        return pd.Series(dtype=bool)
-    df = pd.read_parquet(path)
-    if "close" not in df.columns or "volume" not in df.columns:
-        return pd.Series(dtype=bool)
-    df.index = pd.to_datetime(df.index)
-    dollar_vol = (df["close"] * df["volume"]).replace([np.inf, -np.inf], np.nan)
-    return dollar_vol >= threshold
+    wrds_dir = wrds_dir or _WRDS_DIR
+    for path in (os.path.join(wrds_dir, f"{symbol}_1D.parquet"), os.path.join(cache_dir, f"{symbol}_1day.parquet")):
+        if not os.path.exists(path):
+            continue
+        df = pd.read_parquet(path)
+        if "volume" not in df.columns or not ({"close", "close_usd"} & set(df.columns)):
+            continue
+        px = df["close_usd"] if "close_usd" in df.columns and df["close_usd"].notna().any() else df["close"].abs()
+        idx = pd.to_datetime(df.index)
+        dollar_vol = (px * df["volume"]).replace([np.inf, -np.inf], np.nan)
+        out = pd.Series((dollar_vol >= threshold).to_numpy(), index=idx.tz_localize(None) if idx.tz else idx)
+        return out[~out.index.duplicated(keep="last")].sort_index()
+    return pd.Series(dtype=bool)
+
+
+def mask_on_bars(daily_mask: pd.Series, bars: pd.DatetimeIndex) -> pd.Series:
+    """A daily mask on any bar index: each bar takes its own trading day's value; days with no data -> False.
+    (backtest.py reindexed the daily mask onto intraday timestamps exactly, so 09:30/10:30/... bars never matched a
+    midnight date and were all blocked -- B10.)"""
+    b = pd.DatetimeIndex(bars)
+    if len(daily_mask) == 0:
+        return pd.Series(False, index=b)
+    day = daily_mask.copy()
+    day.index = pd.DatetimeIndex(day.index).normalize()
+    day = day[~day.index.duplicated(keep="last")]
+    return pd.Series(day.reindex(b.normalize()).fillna(False).astype(bool).to_numpy(), index=b)
 
 
 def recompute_correlation_bar_masked(sym_a: str, sym_b: str, threshold: float = None,
