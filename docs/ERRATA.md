@@ -43,7 +43,7 @@ Full registries: [`docs/CODE_REVIEW_2026-09-26.md`](CODE_REVIEW_2026-09-26.md) (
 | ID | Issue | Effect |
 |---|---|---|
 | A2 / A3 | Where a rolling hedge ratio has no value, the spread uses the full-sample ratio (lookahead); hedge ratios are fitted on prices forward-filled through data outages | Causal comparison arm built (`Config.ANALYSIS.HEDGE_FALLBACK = "causal_expanding"`); default unchanged until the comparison on rebuilt pools |
-| DEV-003 | CRSP volume is stored in pre-split share units against a split-adjusted price, so dollar volume before a later split is understated by the split factor | Direction verified (`research/crsp_volume_split_adjustment.py`); consumers (ADV gate, liquidity mask, impact costs) not yet switched; the running discovery scan's ADV gate uses the biased volume |
+| DEV-003 | CRSP volume was stored in pre-split share units against a split-adjusted price (19% of the discovery ADV gate's passes were reverse-split names; 1,103 split stocks wrongly excluded on some days) | FIXED 2026-10-03: cache restated (33,016 files; raw kept as `volume_raw`), fetches adjust at source; discovery stopped and re-run. Open: 67 files with no PERMNO mapping (ETFs, ADRs, a few REITs, FX) keep raw volume; coarser 7D/1M/3M/6M/1Y files not restated |
 | B8 | Holdout = last 20% of each pair's own bars, not a common calendar date (cross-pair leakage into fitted weights) | Needs a decision on the holdout definition |
 | B9 | Same-bar fill | Sensitivity study must be re-run on dollar P&L |
 | A4 | Rolling z-score window derived from the full-sample half-life | Open |
