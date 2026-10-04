@@ -139,6 +139,16 @@ Runs alongside T2/T3 (needs no new data); a regression found here pre-empts ever
    announced changes agree on one rebalance, the 1 difference explained (docs/PIT_INDEX_MEMBERSHIP_SOURCES.md).
    Next: more rebalances across 2001-2026, then a comparison arm (universe change = methodology).
 
+**Decided by Ross, 2026-10-03 (later), all as recommended:**
+6. A2 (full-sample hedge fallback = lookahead, exposed by A3): replace with a CAUSAL expanding-window OLS (real rows up
+   to each bar only; no spread before a minimum history), built as a comparison arm vs the current method; A3 lands
+   with it.
+7. Daily coint-fraction across outages: break at >5 missing business days (the DATA_GAP rule) for daily data too;
+   part of the same comparison arm.
+8. Build intraday dollar marking (dollar risk sizing: not now — no reported result uses flat-2%/Kelly).
+9. PIT S&P 400/600 membership: verify ~10 more rebalances across 2001-2026, match to CRSP, then a membership-filtered
+   universe as a comparison arm.
+
 ## Sequencing (critical path)
 T1.1-1.3 (≈ today) → T2.2 (≈ 1 day) → T2.3 (≈ 1 day) and in parallel T2.5 on the primary → T3 (≈ 1 day) →
 T6 + T7. While jobs run: T14 (bug recheck), T4, T5, T8, T10, T11, T1.6-1.10. CachyOS stability (DEV-018) first, because a hang

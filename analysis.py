@@ -2771,8 +2771,11 @@ class HedgeRatioEstimator:
             Center each series. Stack as X = [a; b] (2 × N).
             Compute SVD: X = U Σ V^T
             The minor singular vector (last column of U) defines the orthogonal
-            regression direction. Hedge ratio = -U[0,1] / U[1,1] gives slope
-            of B on A in TLS sense.
+            regression direction n = (n_a, n_b), normal to the fitted line
+            n_a*a + n_b*b = 0, so the slope of A on B (the convention OLS,
+            Kalman and the spread log_a - beta*log_b use) is -n_b / n_a.
+            (Fixed 2026-10-03: this returned -n_a / n_b, the slope of B on A --
+            1/beta. debug/_verify_tls_hedge_direction.py)
         """
         mask = np.isfinite(log_a) & np.isfinite(log_b)
         a = log_a[mask]
@@ -2785,11 +2788,10 @@ class HedgeRatioEstimator:
         try:
             U, _S, _Vt = scipy_svd(X, full_matrices=False)
             # Last column of U is the minor direction
-            # The TLS hedge ratio for predicting a from b:
-            #   slope = -U[0,-1] / U[1,-1]
-            if abs(U[1, -1]) < 1e-12:
+            # slope of a on b = -n_b / n_a (see docstring)
+            if abs(U[0, -1]) < 1e-12:
                 return np.nan
-            return float(-U[0, -1] / U[1, -1])
+            return float(-U[1, -1] / U[0, -1])
         except Exception:
             return np.nan
 
@@ -2877,6 +2879,23 @@ class HedgeRatioEstimator:
         return beta, mean_beta
 
     @staticmethod
+    def ols_expanding(log_a: np.ndarray, log_b: np.ndarray, min_obs: int) -> np.ndarray:
+        """CAUSAL hedge ratio (A2 comparison arm, 2026-10-03): beta_t = OLS slope of log_a on log_b over the real
+        (finite) rows at or before t only; NaN until min_obs real rows exist. Vectorised running sums."""
+        m = np.isfinite(log_a) & np.isfinite(log_b)
+        a = np.where(m, log_a, 0.0)
+        b = np.where(m, log_b, 0.0)
+        n = np.cumsum(m).astype(float)
+        sa, sb = np.cumsum(a), np.cumsum(b)
+        sab, sbb = np.cumsum(a * b), np.cumsum(b * b)
+        with np.errstate(invalid="ignore", divide="ignore"):
+            cov = sab - sa * sb / n
+            var = sbb - sb * sb / n
+            beta = cov / var
+        beta[(n < max(int(min_obs), 2)) | ~(var > 1e-12 * np.maximum(sbb, 1.0))] = np.nan
+        return beta
+
+    @staticmethod
     def estimate_all_for_pair(
         log_a: np.ndarray,
         log_b: np.ndarray,
@@ -2939,13 +2958,19 @@ class SpreadModel:
         log_b: np.ndarray,
         hedge_series: np.ndarray,
         hedge_static: float,
+        static_fallback: bool = True,
     ) -> np.ndarray:
         """
         spread_t = log_a_t - hedge_t * log_b_t
 
         For bars where hedge_series is NaN (early bars before rolling window
-        fills), fall back to the static full-sample hedge ratio.
+        fills), fall back to the static full-sample hedge ratio (lookahead --
+        code review A2). static_fallback=False (the A2 comparison arm): no
+        fallback at all, those bars get a NaN spread.
         """
+        if not static_fallback:
+            with np.errstate(invalid="ignore"):
+                return log_a - hedge_series * log_b
         h = np.where(
             np.isfinite(hedge_series),
             hedge_series,
@@ -3116,6 +3141,7 @@ class SpreadModel:
         hedge_series: np.ndarray,
         hedge_static: float,
         clean_mask: Optional[np.ndarray] = None,
+        static_fallback: bool = True,
     ) -> Dict[str, Any]:
         """
         Compute full spread model for one pair. Returns dict with all
@@ -3152,7 +3178,7 @@ class SpreadModel:
         the entry signal's own denominator — not yet built, see
         DEVELOPMENT.md.
         """
-        spread = SpreadModel.compute_spread(log_a, log_b, hedge_series, hedge_static)
+        spread = SpreadModel.compute_spread(log_a, log_b, hedge_series, hedge_static, static_fallback=static_fallback)
         n = spread.size
         if clean_mask is None:
             clean_mask = np.ones(n, dtype=bool)
@@ -5702,14 +5728,31 @@ class AnalysisPipeline:
             if gap_flag_a is not None and gap_flag_b is not None
             else None
         )
+        # A3 (code review 2026-09-26, confirmed 2026-10-03, bug recheck T14): DataAligner forward-fills `close`
+        # through DATA_GAP runs, and the hedge ratios below were fitted on those fake flat prices (only the spread
+        # model honoured clean_mask) -- against CLAUDE.md rule 3. NaN-masking them is part of the A2 comparison arm
+        # (Ross 2026-10-03: "A3 lands with it"): alone it exposes the full-sample hedge fallback (an independent
+        # review found pairs trading 100% on it), so it switches on together with the causal hedge.
+        # debug/_verify_pair_result_hedge_gap_mask.py, debug/_verify_a2_causal_hedge_arm.py
+        _causal = getattr(Config.ANALYSIS, "HEDGE_FALLBACK", "full_sample") == "causal_expanding"
+        if _causal and clean_mask is not None:
+            log_a = np.where(clean_mask, log_a, np.nan)
+            log_b = np.where(clean_mask, log_b, np.nan)
 
         # Hedge ratios
         hr_window = min(252, max(60, log_a.size // 4))
         hr = HedgeRatioEstimator.estimate_all_for_pair(log_a, log_b, hr_window)
+        # A2 comparison arm (Ross 2026-10-03): where the rolling hedge has no value, use the CAUSAL expanding OLS
+        # (real rows up to each bar; minimum = half the rolling window, its own requirement) instead of the
+        # full-sample ratio, and never a constant fallback. The persisted hedge_ratio_ols_t carries the same series.
+        if _causal:
+            _exp = HedgeRatioEstimator.ols_expanding(log_a, log_b, min_obs=hr_window // 2)
+            hr["ols_series"] = np.where(np.isfinite(hr["ols_series"]), hr["ols_series"], _exp)
 
         # Spread model with rolling OLS hedge series as primary
         sm = SpreadModel.fit_pair(
-            log_a, log_b, hr["ols_series"], hr["ols_point"], clean_mask=clean_mask
+            log_a, log_b, hr["ols_series"], hr["ols_point"], clean_mask=clean_mask,
+            static_fallback=not _causal,
         )
 
         # Half-life — full sample as "expanding", rolling median for primary

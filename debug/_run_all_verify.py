@@ -106,6 +106,9 @@ def main():
     p.add_argument("--pattern", default=None, help="Only run scripts whose filename contains this substring")
     p.add_argument("--timeout", type=int, default=120, help="Per-script timeout in seconds (default 120)")
     p.add_argument("--workers", type=int, default=1, help="Parallel workers (default 1, sequential)")
+    p.add_argument("--failure-dir", default=os.path.join("output", "verify_runs", "last_failures"),
+                   help="Full output of every FAIL/ERROR is saved here (2026-10-03: two tests failed once inside a "
+                        "full run and passed alone; the runner had kept only the FAIL line, so the cause was lost)")
     args = p.parse_args()
 
     scripts = discover_verify_scripts(args.pattern)
@@ -125,16 +128,27 @@ def main():
         for i, path in enumerate(scripts, 1):
             r = run_one(path, _timeout_for(path))
             results.append(r)
-            print(f"[{i}/{len(scripts)}] {r['status']:5s} {r['name']} ({r['elapsed']:.1f}s)")
+            print(f"[{i}/{len(scripts)}] {r['status']:5s} {r['name']} ({r['elapsed']:.1f}s)", flush=True)
     else:
         with ThreadPoolExecutor(max_workers=args.workers) as pool:
             futures = {pool.submit(run_one, path, _timeout_for(path)): path for path in scripts}
             for i, fut in enumerate(as_completed(futures), 1):
                 r = fut.result()
                 results.append(r)
-                print(f"[{i}/{len(scripts)}] {r['status']:5s} {r['name']} ({r['elapsed']:.1f}s)")
+                print(f"[{i}/{len(scripts)}] {r['status']:5s} {r['name']} ({r['elapsed']:.1f}s)", flush=True)
 
     total_elapsed = time.time() - t0
+    fail_dir = os.path.join(_ROOT, args.failure_dir)
+    if os.path.isdir(fail_dir):
+        for f in os.listdir(fail_dir):              # only this runner's own .txt files, from the previous run
+            if f.endswith(".txt"):
+                os.remove(os.path.join(fail_dir, f))
+    for r in results:
+        if r["status"] != "PASS":
+            os.makedirs(fail_dir, exist_ok=True)
+            with open(os.path.join(fail_dir, os.path.basename(r["name"]) + ".txt"), "w", encoding="utf-8") as fh:
+                fh.write(f"status={r['status']} returncode={r['returncode']} elapsed={r['elapsed']:.1f}s "
+                         f"at={time.strftime('%Y-%m-%d %H:%M:%S')}\n\n{r['output']}")
     passed = [r for r in results if r["status"] == "PASS"]
     failed = [r for r in results if r["status"] == "FAIL"]
     errored = [r for r in results if r["status"] == "ERROR"]

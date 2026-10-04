@@ -541,6 +541,14 @@ class AnalysisConfig:
     # diagnostic (short/long vol ratio, same convention as relative_vol_ratio
     # below) is a candidate future feature, not wired into this z-score.
     OU_WINDOW_HALFLIFE_MULT_MEAN = 8  # window ~= 8x half-life
+    # A2 comparison arm (Ross 2026-10-03; code review A2, exposed by A3). Current method = "full_sample": where the
+    # rolling OLS hedge has no value the spread uses the FULL-SAMPLE hedge ratio (and 1.0 if that is missing) --
+    # lookahead. Arm = "causal_expanding": OLS on real rows up to each bar only (minimum = half the rolling window, the
+    # rolling window's own requirement); no spread before that. debug/_verify_a2_causal_hedge_arm.py
+    HEDGE_FALLBACK = "full_sample"
+    # Same arm: for daily-or-coarser data, a run of > data._MAX_FILL_BARS missing bars breaks the segment used by
+    # level-based tests (longest_gap_respecting_segment), as DATA_GAP does everywhere else. Current: never a break.
+    DAILY_GAP_BREAKS = False
     OU_WINDOW_MIN_BARS = 30  # floor — below this, the estimate is too noisy
 
     # Trio construction (derivative method)

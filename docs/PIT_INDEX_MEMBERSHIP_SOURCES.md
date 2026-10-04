@@ -53,3 +53,26 @@ more rebalances spread across 2001-2026 (annual N-30D era too), and the press-re
 Not yet built into the pipeline: this would change the universe definition, a methodology decision, so it
 enters as a comparison arm first (CLAUDE.md).
 Until then the survivorship limit stays disclosed as is.
+
+## Multi-rebalance verification (2026-10-03, later) — `research/pit_index_membership.py`
+Built and run: all 81 holdings filings downloaded and cached (MDY: 25 N-30D 2001-2025 + 28 NPORT-P 2019-2026;
+IJR: 28 NPORT-P 2019-2026; SEC User-Agent contact per Ross: aflacgamer@outlook.com) → 38,402 holding rows,
+`output/research/pit_membership/holdings.parquet`. Every MDY snapshot parses to 398–401 equity holdings (index: 400);
+IJR to 601–608 (index: 600). Synthetic parser/checker test: `debug/_verify_pit_index_membership.py` (12/12).
+Parser bugs found on the real filings and fixed with failing-first test cases: page footers/headers read as
+holdings (10 per report), page breaks swallowing the next holding (2009/2010: 390 → 400), plain-text reports
+(2001-2005) not parsed, EDGAR feed entries paired with the wrong filing date (IJR).
+
+**Check against S&P's own announcements** (`docs/pit_membership/announcements.csv`, 78 changes, 10 announcements,
+2012-09 → 2026-01, each with its source URL; transcribed via a fetch tool — any mismatch was checked by hand): for each
+change, the snapshot before vs after its effective date. **76/78 agree.** The 2: Valaris (held as "Ensco PLC" before
+its 2019 rename — a name change, not a disagreement) and Ascena (IJR leftover at 0.004 × median weight, counted as a
+member by the inclusive rule below). Caveat: the 20 SP600 changes of 2019-09-23 are checked on the "after" side only
+(IJR's first filing is 2019-09-30); before 2019 only the 400 is covered, at annual granularity.
+
+**Membership rule — open question for the comparison arm.** A fixed top-400/600 cut was tried and REJECTED: MDY held
+401 normal-weight names on 2022-06-30 and the cut dropped a real member. The rule kept: drop only near-zero rows
+(< 0.001 × the snapshot's median holding; 33 rows). Between 0.002 and 0.05 × median, ETF leftovers (Ascena,
+post-bankruptcy Unit Corp/Frontier, acquisition stubs) and genuinely tiny members (KLX Energy, HighPoint, CBL in
+March 2020; Wolfspeed 2025) overlap — 18 of 38,402 rows; no weight threshold separates them. Effect on a universe
+filter is at most those names on those dates; disclose, or resolve each against the announcement record.
