@@ -18,7 +18,11 @@ membership from SEC filings (76/78 announced changes agree).
 **Uncommitted, suite running (latest_run_all_verify_t18.log):** T1.8 data.py handlers (2 fail loud), M-1 same-dates
 null arm, DEV-003 volume reconstruction (matches CRSP on 307/307), docs/ERRATA.md, README reproducibility.
 
-**Decisions waiting on Ross:** B8 (common calendar holdout date); after the scans: D18 arm, A2 arm adoption, PIT
+**After both scans finish (2026-10-04):** re-run `python research/apply_crsp_volume_adjustment.py` on CachyOS AND the
+Surface -- it now also adjusts the 37 ETF/ADR/REIT files mapped by `output/cache/wrds/extra_permno_map_20261004.parquet`
+(37/37 identity-verified against CRSP's adjusted close). Deferred so the running scans' inputs stay what their
+lineage records; the current discovery run used RAW volume for those 37 (disclose with its results).
+**Decisions waiting on Ross:** B8 decided 2026-10-04 (common calendar holdout, comparison arm first); after the scans: D18 arm, A2 arm adoption, PIT
 membership arm; DEV-003 consumer switch (+ whether to re-run discovery); CachyOS memtest (DEV-018).
 
 ## 2026-10-02: RESUME HERE (supersedes every entry below)
