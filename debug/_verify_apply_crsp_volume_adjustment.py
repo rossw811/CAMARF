@@ -7,10 +7,13 @@ discovery whose ADV gate used raw CRSP volume). Temp WRDS dir:
   3. a PERMNO-labelled file is mapped from its name;
   4. an unmapped label is left untouched and reported "unmapped";
   5. a security with a cash-payment event gets NaN volume before it (unknown factor), never a guess;
-  6. a file under _quote_only/ is adjusted too.
+  6. a file under _quote_only/ is adjusted too;
+  7. future fetches: all four CRSP fetch paths in data_wrds.py write volume = raw x fac and keep volume_raw
+     (source check -- the fetch itself needs a live WRDS connection).
 Run: python debug/_verify_apply_crsp_volume_adjustment.py
 """
 import os
+import re
 import shutil
 import sys
 import tempfile
@@ -65,6 +68,11 @@ def main():
         check("6.quote_only_adjusted", np.allclose(q.loc[before, "volume"], 200.0))
     finally:
         shutil.rmtree(root, ignore_errors=True)
+    src = open(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data_wrds.py"), encoding="utf-8").read()
+    n_adj = len(re.findall(r'"volume": (?:g|df)\["(?:dlyvol|mthvol)"\] \* fac,', src))
+    n_raw = len(re.findall(r'"volume_raw": (?:g|df)\["(?:dlyvol|mthvol)"\],', src))
+    n_bare = len(re.findall(r'"volume": (?:g|df)\["(?:dlyvol|mthvol)"\],', src))
+    check("7.fetch_paths_adjusted", n_adj == 4 and n_raw == 4 and n_bare == 0, f"adjusted={n_adj} raw_kept={n_raw} bare={n_bare}")
     finish()
 
 

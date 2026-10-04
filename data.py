@@ -706,7 +706,8 @@ class ProgressLogger:
                     if path == fallback:
                         log.info(f"Loaded progress from TEMP fallback: {path}")
                     return data
-                except Exception:
+                except Exception as _e:  # T1.8 2026-10-03: was silent
+                    log.warning(f"progress file {path} unreadable ({type(_e).__name__}: {_e}) -- trying the next path")
                     continue
         return {
             "config_hash": ProgressLogger.compute_config_hash(),
@@ -1659,18 +1660,22 @@ def snap_timestamps(
         if hasattr(df.index, "tz") and df.index.tz is not None:
             try:
                 local_tz_index = df.index.tz_convert(exch_tz)
-            except Exception:
+            except Exception as _e:  # T1.8 2026-10-03: was silent
+                log.warning(f"_standardize: tz_convert to {exch_tz} failed ({_e}) -- falling back to NYSE-session handling")
                 local_tz_index = None  # fall back to NYSE-session behavior below
         else:
             try:
                 local_tz_index = df.index.tz_localize(exch_tz, ambiguous="NaT", nonexistent="NaT")
-            except Exception:
+            except Exception as _e:  # T1.8 2026-10-03: was silent
+                log.warning(f"_standardize: tz_localize to {exch_tz} failed ({_e}) -- falling back to NYSE-session handling")
                 local_tz_index = None  # fall back to NYSE-session behavior below
 
     if hasattr(df.index, "tz") and df.index.tz is not None:
         try:
             df.index = df.index.tz_convert("America/New_York").tz_localize(None)
-        except Exception:
+        except Exception as _e:  # T1.8 2026-10-03: was silent
+            # tz_convert failed: dropping the tz WITHOUT converting keeps the original wall clock (wrong if not ET) -- logged
+            log.warning(f"_standardize: tz_convert to America/New_York failed ({_e}) -- tz dropped without conversion; timestamps may be off")
             df.index = df.index.tz_localize(None)
     elif local_tz_index is not None:
         # Naive input we just determined IS local exchange time (above) -- convert it to the
@@ -1678,8 +1683,8 @@ def snap_timestamps(
         # (wrong-timezone-implied) naive values in place.
         try:
             df.index = local_tz_index.tz_convert("America/New_York").tz_localize(None)
-        except Exception:
-            pass  # leave df.index as-is; downstream NYSE-session snap will just drop these bars
+        except Exception as _e:  # T1.8 2026-10-03: was silent
+            log.warning(f"_standardize: local->ET conversion failed ({_e}) -- index left as-is; the NYSE-session snap may drop these bars")
 
     if tf_label not in _TF_MINUTES:
         return df  # daily+ TFs: timezone normalize is sufficient
@@ -2157,7 +2162,8 @@ class YFinanceFeed:
                                 if isinstance(raw.columns, pd.MultiIndex):
                                     try:
                                         raw = raw.xs(yf_sym, axis=1, level=1)
-                                    except Exception:
+                                    except Exception as _e:  # T1.8 2026-10-03: was silent
+                                        # yfinance MultiIndex layout differs by version (ticker on level 1 or level 0): the other layout, not an error
                                         raw = raw.xs(yf_sym, axis=1, level=0)
                                 cleaned, _ = DataCleaner.clean(
                                     raw,
@@ -2176,8 +2182,8 @@ class YFinanceFeed:
                                     derived = YFinanceFeed._resample_from_daily(cleaned)
                                     for derived_tf, derived_df in derived.items():
                                         results[ibkr_sym][derived_tf] = derived_df
-                        except Exception:
-                            pass
+                        except Exception as _e:  # T1.8 2026-10-03: was silent
+                            log.warning(f"yfinance retry path: deriving 7D/1M from 1D failed for {ibkr_sym} ({type(_e).__name__}: {_e})")
 
             # Cache daily/weekly/monthly — intraday handled separately by IBKR.
             # Never for an incremental slice: saving it would REPLACE the full history (D2).
@@ -2375,8 +2381,8 @@ class YFinanceFeed:
             _pmeta = DataStore.load(_pkey, "meta")
             if _pmeta is not None and not _pmeta.empty:
                 period = str(_pmeta.iloc[0]["period"])
-        except Exception:
-            pass
+        except Exception as _e:  # T1.8 2026-10-03: was silent
+            log.debug(f"period cache {_pkey} unreadable ({_e}) -- using the default period")
 
         # Download via yf.Ticker().history() — NOT yf.download().
         #
@@ -2514,8 +2520,8 @@ class YFinanceFeed:
                         f"(expected ~{_expected_gap}s, got {_med:.0f}s) — discarding"
                     )
                     return None
-            except Exception:
-                pass
+            except Exception as _e:  # T1.8 2026-10-03: was silent
+                log.warning(f"yfinance {symbol} {tf_label}: frequency check itself failed ({type(_e).__name__}: {_e}) -- data NOT frequency-validated")
 
         # Cache the attempt label that worked (if it was a fallback, not the primary)
         # _attempts is a list of period strings; [0][0] compared against its first CHARACTER, so
@@ -2523,14 +2529,14 @@ class YFinanceFeed:
         if worked_period and _attempts and worked_period != _attempts[0]:
             try:
                 DataStore.save(_pkey, "meta", pd.DataFrame([{"period": worked_period}]))
-            except Exception:
-                pass
+            except Exception as _e:  # T1.8 2026-10-03: was silent
+                log.debug(f"period cache {_pkey} not saved ({_e})")
 
         # Flatten MultiIndex if present (single ticker returns MultiIndex)
         if isinstance(raw.columns, pd.MultiIndex):
             try:
                 raw = raw.xs(yf_sym, axis=1, level=1)
-            except Exception:
+            except Exception:  # yfinance column layout differs by version: alternative flattening, not an error (T1.8 2026-10-03)
                 raw.columns = [
                     c[0].lower() if isinstance(c, tuple) else c.lower()
                     for c in raw.columns
@@ -2592,7 +2598,8 @@ class ConIdCache:
                 with open(cls._PATH) as f:
                     cls._cache = json.load(f)
                 log.debug(f"ConIdCache: {len(cls._cache)} entries loaded")
-            except Exception:
+            except Exception as _e:  # T1.8 2026-10-03: was silent
+                log.warning(f"ConIdCache {cls._PATH} unreadable ({_e}) -- starting empty")
                 cls._cache = {}
 
     @classmethod
@@ -2992,7 +2999,8 @@ class IBKRFeed:
             c.lastTradeDateOrContractMonth = d.get("expiry", "")
             log.debug(f"Contract cache: {symbol} → {d.get('localSymbol','')}")
             return c
-        except Exception:
+        except Exception as _e:  # T1.8 2026-10-03: was silent
+            log.debug(f"contract cache entry for {symbol} unusable ({_e}) -- will re-qualify")
             return None
 
     @staticmethod
@@ -3218,8 +3226,8 @@ class IBKRFeed:
                 )
                 if bars_retry and len(bars_retry) > 1:
                     raw_bars = ibi.util.df(bars_retry)
-            except Exception:
-                pass
+            except Exception as _e:  # T1.8 2026-10-03: was silent
+                log.warning(f"IBKR retry request failed ({type(_e).__name__}: {_e}) -- no bars from the retry")
 
         if raw_bars is None or raw_bars.empty:
             self._consecutive_fails += 1
@@ -3628,7 +3636,8 @@ class CBOEFeed:
             opt_type = match.group(2)
             strike = int(match.group(3)) / 1000.0
             return expiry, opt_type, strike
-        except Exception:
+        except Exception as _e:  # T1.8 2026-10-03: was silent
+            # not an OCC option symbol -> None is the documented "no parse" result, not a hidden error
             return None
 
 
@@ -3865,8 +3874,8 @@ class UniverseBuilder:
                             f"  Removed contaminated cache: {fname} "
                             f"(expected ~{expected_gap}s, got {med:.0f}s)"
                         )
-                except Exception:
-                    pass  # unreadable or corrupt file — leave it
+                except Exception as _e:  # T1.8 2026-10-03: was silent
+                    log.debug(f"cache cleanup: {fname} unreadable ({_e}) -- left in place")
 
             if cleaned:
                 log.info(
@@ -3895,8 +3904,9 @@ class UniverseBuilder:
                     excluded |= set(data.keys())
                 elif isinstance(data, list):
                     excluded |= set(data)
-        except Exception:
-            pass
+        except Exception as _e:  # T1.8 2026-10-03: was silent
+            # FAIL LOUD (T1.8): an unreadable exclusions file used to mean "no exclusions" -- known-bad symbols entered
+            raise RuntimeError(f"exclusions file unreadable ({type(_e).__name__}: {_e}) -- fix or remove it; refusing to run without exclusions") from _e
         return excluded
 
     @staticmethod
@@ -3994,8 +4004,9 @@ class UniverseBuilder:
         try:
             with open(UniverseBuilder._DELISTED_REGISTRY) as f:
                 return json.load(f)
-        except Exception:
-            return {}
+        except Exception as _e:  # T1.8 2026-10-03: was silent
+            # FAIL LOUD (T1.8): an unreadable delisted registry used to return {} -- survivorship info silently lost
+            raise RuntimeError(f"delisted registry {UniverseBuilder._DELISTED_REGISTRY} unreadable ({_e})") from _e
 
     def build(
         self,
@@ -5000,8 +5011,8 @@ class UniverseBuilder:
                             try:
                                 with open(_fail_path) as _f:
                                     _pfails = json.load(_f)
-                            except Exception:
-                                pass
+                            except Exception as _e:  # T1.8 2026-10-03: was silent
+                                log.warning(f"persistent-failure counter {_fail_path} unreadable ({_e}) -- starting from zero")
 
                         for tf_f, sym_f, cls_f in _all_dual:
                             r = YFinanceFeed.get_intraday_fallback(sym_f, cls_f, tf_f)
@@ -5041,8 +5052,8 @@ class UniverseBuilder:
                         try:
                             with open(_fail_path, "w") as _f:
                                 json.dump(_pfails, _f, indent=2)
-                        except Exception:
-                            pass
+                        except Exception as _e:  # T1.8 2026-10-03: was silent
+                            log.warning(f"persistent-failure counter {_fail_path} not saved ({_e})")
                         log.info(
                             f"  Dual-fail retry: {_n_recovered}/{len(_all_dual)} recovered"
                         )
@@ -5422,7 +5433,8 @@ class UniverseBuilder:
             try:
                 with open(cache_path) as f:
                     cached_tickers = json.load(f) or []
-            except Exception:
+            except Exception as _e:  # T1.8 2026-10-03: was silent
+                log.warning(f"constituent cache {cache_path} unreadable ({_e}) -- treated as empty, refetching")
                 cached_tickers = []
 
         if cached_tickers and cache_age_h < max_age_hours:
@@ -5471,8 +5483,8 @@ class UniverseBuilder:
             try:
                 with open(cache_path, "w") as f:
                     json.dump(fresh_tickers, f)
-            except Exception:
-                pass
+            except Exception as _e:  # T1.8 2026-10-03: was silent
+                log.warning(f"constituent cache {cache_path} not saved ({_e})")
         else:
             log.debug(
                 f"  {cache_name}: empty result — leaving cache file "
@@ -5799,8 +5811,8 @@ class UniverseBuilder:
             Config.ensure_dirs()
             with open(UniverseBuilder._SP500_CACHE, "w") as f:
                 json.dump(tickers, f)
-        except Exception:
-            pass
+        except Exception as _e:  # T1.8 2026-10-03: was silent
+            log.warning(f"S&P 500 constituent cache not saved ({_e})")
 
     @staticmethod
     def _fetch_sp500_tickers() -> List[str]:
@@ -5817,8 +5829,8 @@ class UniverseBuilder:
                             f"S&P 500: {len(tickers)} tickers from cache ({age_h:.1f}h old)"
                         )
                         return tickers
-                except Exception:
-                    pass
+                except Exception as _e:  # T1.8 2026-10-03: was silent
+                    log.warning(f"S&P 500 constituent cache unreadable ({_e}) -- refetching")
         try:
             headers = {
                 "User-Agent": (
@@ -5879,8 +5891,8 @@ class UniverseBuilder:
                         f"emergency fallback."
                     )
                     return stale_tickers
-            except Exception:
-                pass
+            except Exception as _e:  # T1.8 2026-10-03: was silent
+                log.warning(f"S&P 500 stale cache unreadable ({_e}) -- falling through to the emergency fallback")
 
         log.error(
             "S&P 500: ALL sources failed (Wikipedia, iShares, AND no "

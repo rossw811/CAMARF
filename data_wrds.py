@@ -342,7 +342,8 @@ def fetch_symbols_bulk(db, permno_by_symbol: Dict[str, int], start: Optional[str
                 "low": g["dlylow"] / fac,
                 "close": close_split_adj,
                 "close_total_return": close_tr,
-                "volume": g["dlyvol"],
+                "volume": g["dlyvol"] * fac,  # DEV-003 (2026-10-03): shares restated by CRSP's own factor, consistent with the split-adjusted close; raw kept
+                "volume_raw": g["dlyvol"],
             })
             n_in_batch += 1
             yield sym, df
@@ -397,7 +398,8 @@ def fetch_monthly_bulk(db, permno_by_symbol: Dict[str, int], start: Optional[str
             df = pd.DataFrame({
                 "close": close_split_adj,
                 "close_total_return": close_tr,
-                "volume": g["mthvol"],
+                "volume": g["mthvol"] * fac,  # DEV-003 (2026-10-03): shares restated by CRSP's own factor, consistent with the split-adjusted close; raw kept
+                "volume_raw": g["mthvol"],
             })
             n_in_batch += 1
             yield sym, restamp_to_period_end(df, "1M")  # D13: CRSP stamps last trading day -> calendar month end
@@ -495,6 +497,9 @@ def fetch_symbol(db, symbol: str, start: Optional[str] = None) -> Optional[pd.Da
     forward split) before being trusted -- not done here, flagged rather
     than guessed. Raw dlyvol is persisted as-is; a `volume_adjusted` column
     is deliberately NOT added until that's verified.
+    VERIFIED + APPLIED 2026-10-03 (DEV-003): `volume` = dlyvol x dlycumfacpr (multiply -- AAPL vs yfinance within 0.2%
+    across its 2014 and 2020 splits), `volume_raw` = dlyvol. Existing cache files: research/apply_crsp_volume_
+    adjustment.py (factor rebuilt from CRSP distributions, matching dlycumfacpr on 307/307 securities).
     """
     resolved = resolve_permno(db, symbol)
     if resolved is None:
@@ -543,7 +548,8 @@ def fetch_symbol(db, symbol: str, start: Optional[str] = None) -> Optional[pd.Da
         "low": df["dlylow"] / fac,
         "close": close_split_adj,
         "close_total_return": close_tr,
-        "volume": df["dlyvol"],
+        "volume": df["dlyvol"] * fac,  # DEV-003 (2026-10-03): shares restated by CRSP's own factor, consistent with the split-adjusted close; raw kept
+        "volume_raw": df["dlyvol"],
     })
     out.index.name = None
     return out
@@ -641,7 +647,8 @@ def fetch_symbol_monthly_native(db, symbol: str, start: Optional[str] = None) ->
     out = pd.DataFrame({
         "close": close_split_adj,
         "close_total_return": close_tr,
-        "volume": df["mthvol"],
+        "volume": df["mthvol"] * fac,  # DEV-003 (2026-10-03): shares restated by CRSP's own factor, consistent with the split-adjusted close; raw kept
+        "volume_raw": df["mthvol"],
     })
     out.index.name = None
     return restamp_to_period_end(out, "1M")  # D13: calendar month end, same as every other source
