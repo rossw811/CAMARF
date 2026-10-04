@@ -466,8 +466,12 @@ class BacktestEngine:
         adv_shares_map: Optional[Dict[str, float]] = None,
         earnings_cal: Optional["EarningsCalendar"] = None,
         pit_confidence_weights: Optional[Dict[str, float]] = None,
+        holdout_date: Optional[pd.Timestamp] = None,
     ):
         self.cfg = cfg
+        # B8 comparison arm (Ross 2026-10-04): one calendar cutoff for every pair (see common_holdout_date);
+        # None = the per-pair rule (last HOLDOUT_PCT of each pair's own bars).
+        self.holdout_date = pd.Timestamp(holdout_date) if holdout_date is not None else None
         self.regime_cond = regime_cond
         self.ml_cond = ml_cond
         self.layer2 = layer2_enabled
@@ -587,7 +591,11 @@ class BacktestEngine:
         df["_gap_before"] = _missing_days > _MAX_FILL_BARS
 
         # Holdout split (chronological)
-        if holdout_only:
+        if self.holdout_date is not None and (holdout_only or is_only):
+            # B8: common calendar cutoff -- in-sample strictly before it, holdout from it on, for every pair alike
+            _d = pd.DatetimeIndex(df.index)
+            df = df[_d >= self.holdout_date] if holdout_only else df[_d < self.holdout_date]
+        elif holdout_only:
             cutoff = int(len(df) * (1 - self.cfg.HOLDOUT_PCT))
             df = df.iloc[cutoff:]
         elif is_only:
@@ -2221,6 +2229,65 @@ def compute_pnl_cap_thresholds(
 # ---------------------------------------------------------------------------
 # Per-pair/per-timeframe run loop, extracted from main() (BUG-D76, 2026-07-20)
 # ---------------------------------------------------------------------------
+def _pairs_for_tf(tf_dir: str, tf_label: str, _pairs_override_df: Optional[pd.DataFrame],
+                  log_pairs: bool = False) -> Optional[pd.DataFrame]:
+    """The pairs a run covers at one timeframe (extracted 2026-10-04 so _run_all_pairs and common_holdout_date use
+    the SAME pair set). None = nothing to run at this timeframe."""
+    if _pairs_override_df is not None:
+        # Counterfactual mode: backtest only the pairs listed in the override
+        # file for this TF. Keeps every column the override file provides
+        # (not just symbol_a/symbol_b) — engine.run() reads scalar fallback
+        # fields directly off the pair row (hedge_ratio_ols, coint_fraction_
+        # rolling, etc., used as hard gates — e.g. a missing/NaN hedge ratio
+        # causes the pair to be silently skipped with 0 trades). The override
+        # file is therefore expected to carry the same schema as
+        # output/results/{tf_dir}/pairs.parquet or all_candidates.parquet
+        # (research/filter_ablation.py builds it from the latter), not a
+        # bare symbol list.
+        pairs = _pairs_override_df.loc[
+            _pairs_override_df["tf_label"] == tf_label
+        ].reset_index(drop=True)
+        if pairs.empty:
+            return None
+        if log_pairs:
+            log.info("[%s] %d pairs from --pairs-override", tf_label, len(pairs))
+        return pairs
+    pairs_path = f"output/results/{tf_dir}/pairs.parquet"
+    if not os.path.exists(pairs_path):
+        return None
+    pairs = pd.read_parquet(pairs_path)
+    # Ensure tf_label column exists
+    if "tf_label" not in pairs.columns:
+        pairs["tf_label"] = tf_label
+    if log_pairs:
+        log.info("[%s] %d confirmed pairs", tf_label, len(pairs))
+    return pairs
+
+
+def common_holdout_date(args, _pairs_override_df: Optional[pd.DataFrame], holdout_pct: float) -> Optional[pd.Timestamp]:
+    """B8 comparison arm (Ross 2026-10-04): ONE calendar cutoff for every pair -- the date with `holdout_pct` of the
+    pooled sample (every valid bar of every pair this run covers) after it. The per-pair rule (last HOLDOUT_PCT of
+    each pair's own bars) gives pairs different cutoffs, so in-sample fitting pooled across pairs saw dates that
+    were already out-of-sample for other pairs. debug/_verify_backtest_common_holdout.py"""
+    dates = []
+    for tf_dir, tf_label in _TF_DIRS:
+        if args.tf and tf_label != args.tf:
+            continue
+        pairs = _pairs_for_tf(tf_dir, tf_label, _pairs_override_df)
+        if pairs is None:
+            continue
+        for _, row in pairs.iterrows():
+            sdf = _load_spread(tf_dir, row["symbol_a"], row["symbol_b"])
+            if sdf is None:
+                continue
+            ok = sdf.dropna(subset=["z_rolling", "spread"])
+            dates.append(pd.DatetimeIndex(ok.index).as_unit("ns").asi8)   # explicit ns: pandas 3 indexes may be us/s
+    if not dates:
+        return None
+    allv = np.sort(np.concatenate(dates))
+    return pd.Timestamp(allv[int(np.floor(len(allv) * (1.0 - holdout_pct)))])
+
+
 def _run_all_pairs(
     engine: "BacktestEngine",
     hedge_methods: List[str],
@@ -2251,34 +2318,9 @@ def _run_all_pairs(
     for tf_dir, tf_label in _TF_DIRS:
         if args.tf and tf_label != args.tf:
             continue
-        if _pairs_override_df is not None:
-            # Counterfactual mode: backtest only the pairs listed in the override
-            # file for this TF. Keeps every column the override file provides
-            # (not just symbol_a/symbol_b) — engine.run() reads scalar fallback
-            # fields directly off the pair row (hedge_ratio_ols, coint_fraction_
-            # rolling, etc., used as hard gates — e.g. a missing/NaN hedge ratio
-            # causes the pair to be silently skipped with 0 trades). The override
-            # file is therefore expected to carry the same schema as
-            # output/results/{tf_dir}/pairs.parquet or all_candidates.parquet
-            # (research/filter_ablation.py builds it from the latter), not a
-            # bare symbol list.
-            pairs = _pairs_override_df.loc[
-                _pairs_override_df["tf_label"] == tf_label
-            ].reset_index(drop=True)
-            if pairs.empty:
-                continue
-            if log_pairs:
-                log.info("[%s] %d pairs from --pairs-override", tf_label, len(pairs))
-        else:
-            pairs_path = f"output/results/{tf_dir}/pairs.parquet"
-            if not os.path.exists(pairs_path):
-                continue
-            pairs = pd.read_parquet(pairs_path)
-            # Ensure tf_label column exists
-            if "tf_label" not in pairs.columns:
-                pairs["tf_label"] = tf_label
-            if log_pairs:
-                log.info("[%s] %d confirmed pairs", tf_label, len(pairs))
+        pairs = _pairs_for_tf(tf_dir, tf_label, _pairs_override_df, log_pairs)
+        if pairs is None:
+            continue
 
         for _, row in pairs.iterrows():
             sym_a, sym_b = row["symbol_a"], row["symbol_b"]
@@ -2399,6 +2441,10 @@ def main() -> None:
     # never pooled with OLS.
     p.add_argument("--hedge", choices=["ols", "kalman"], default="ols",
                    help="Hedge ratio method (default: ols). kalman = separate arm, own output label; never pooled.")
+    p.add_argument("--holdout-mode", choices=["per_pair", "common_date"], default="per_pair",
+                   help="B8 (Ross 2026-10-04): per_pair (default) = last HOLDOUT_PCT of each pair's own bars; common_date "
+                        "= one calendar cutoff for every pair (HOLDOUT_PCT of the pooled sample after it) -- comparison "
+                        "arm, output label _commonholdout.")
     p.add_argument("--holdout", action="store_true",
                    help="Run on hold-out slice only (last 20%% of each pair).")
     p.add_argument("--layer2", action="store_true",
@@ -2766,6 +2812,12 @@ def main() -> None:
         args.risk_parity or args.hrp_weight or args.var_sizing or args.pnl_cap
     )
     _backtest_cfg, _override_label_sfx = _build_backtest_cfg(args)   # B6: before BOTH engines
+    _holdout_date = None
+    if args.holdout_mode == "common_date":
+        _holdout_date = common_holdout_date(args, _pairs_override_df, _backtest_cfg.HOLDOUT_PCT)
+        log.info("B8 common-date holdout: cutoff %s (%.0f%% of the pooled sample after it)",
+                 _holdout_date, 100 * _backtest_cfg.HOLDOUT_PCT)
+        label += "_commonholdout"
     if _needs_is_only_fit:
         log.info(
             "Fitting sizing weights on a genuinely non-overlapping IS-only pass "
@@ -2778,7 +2830,7 @@ def main() -> None:
             allow_negative_hedge=args.neg_hedge,
             hub_weights={}, risk_parity_weights={}, pnl_cap_by_pair={},
             storm_flags={}, mm_hedge_map={}, adv_shares_map={}, earnings_cal=None,
-            pit_confidence_weights={},
+            pit_confidence_weights={}, holdout_date=_holdout_date,
         )
         _is_only_trades, _ = _run_all_pairs(
             _fitting_engine, hedge_methods, args, _pairs_override_df, _survivorship,
@@ -2921,7 +2973,7 @@ def main() -> None:
         mm_hedge_map=mm_hedge_map,
         adv_shares_map=adv_shares_map,
         earnings_cal=earnings_cal,
-        pit_confidence_weights=pit_confidence_weights,
+        pit_confidence_weights=pit_confidence_weights, holdout_date=_holdout_date,
     )
 
     # Run over confirmed pairs
