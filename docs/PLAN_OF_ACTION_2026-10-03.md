@@ -88,7 +88,7 @@ whose results are not cited are marked "not cited — finding unresolved" in the
 DEV-008 manifest write race · DEV-014 read-only gate for analysis.py · DEV-016 mem_guard tree-kill re-test ·
 DEV-017 CachyOS NTFS mounts in fstab · **DEV-018 memtest86+ / RAM speed on CachyOS** (hard hangs recurred
 2026-10-02/03 — moved up) · DEV-023 config-drift guard beyond wfa/sensitivity · DEV-024 CachyOS optimisation
-leftovers · `intraday_episodic_scan --workers` hardcoded 6 · Windows CRLF / PowerShell BOM hazards in tooling.
+leftovers · ~~`intraday_episodic_scan --workers` hardcoded 6~~ (✅ 2026-10-05: derived from Config.RUNTIME.N_WORKERS, also regenerate_pool_spread_series' 8; a duplicate verify test in the repo root removed) · Windows CRLF / PowerShell BOM hazards in tooling.
 Owner C (DEV-018, DEV-019 need Ross at the machine). Done when each is fixed or closed with a reason.
 
 ## T12 — Research-extension backlog (DEV ledger OPEN nice-to-have, 30+ items)
