@@ -12,7 +12,7 @@ Only claims marked **REPLICATED** in [`docs/CLAIMS_REGISTRY.md`](CLAIMS_REGISTRY
 | Claim | Status |
 |---|---|
 | C-001 full-sample cointegration can be stale (NTRS/STT) | CORRECTED → **REPLICATED** (sample size corrected to 10,098 days from 1985-12-03; p-values unchanged) |
-| C-002 calendar-padding artifact in rolling z-scores | REGISTERED (not yet re-derived) |
+| C-002 calendar-padding artifact in rolling z-scores | analytic bound **REPLICATED** 2026-10-05 (= Samuelson's inequality, attained by padding); empirical "4 of 32" part REGISTERED |
 | C-003 purged ML predicts z-convergence, not profitability | PENDING-DATA |
 | C-004 the engine executes its rules; the rules are defective | PENDING-DATA |
 | C-005 entry clustering | PENDING-DATA |
