@@ -39,27 +39,39 @@ free data (yfinance, FRED, CFTC, Binance) are fully reproducible without it.
 - **Claim:** a z-score over a window padded with calendar (non-trading) rows is bounded by (n−1)/√n
   (= 15.81 at n = 252), producing spurious extreme z at the market open.
 - **Falsification:** a counterexample exceeding the bound, or the bound not being attained by the construction.
-- **Status:** REGISTERED (an analytical result, PAPER.md:803-812; the empirical "4 of 32 examples |z| > 10"
-  needs re-derivation on current intraday data before citation).
+- **Reproduce:** `python debug/_verify_calendar_padding_bound.py` (3/3, 2026-10-05).
+- **Status:** analytic part **REPLICATED (2026-10-05)**: attained exactly by n-1 equal values whatever the move size
+  (15.8115 at n = 252; pandas rolling z reproduces it) and never exceeded over 200,000 random windows. It is
+  **Samuelson's inequality** (Samuelson 1968, "How deviant can you be?", JASA 63) for the sample standard deviation
+  (ddof = 1) -- cite it as such, not as a new result; the contribution is the padding mechanism that attains it.
+  The empirical "4 of 32 examples |z| > 10" (PAPER.md:803-812) is still REGISTERED: re-derive on current intraday data.
 
 ## C-003 — Purged ML predicts z-convergence, not profitability
 - **Claim:** with purged + 1%-embargoed CV, AUC ≈ 0.61 (RF 0.6085 [0.600, 0.616]) for z-convergence after a
   |z| = 1.5 crossing (74,732 events / 1,301 pairs); AUC 0.47-0.54 for the strategy's own trades' dollar profit.
 - **Falsification:** purged AUC ≤ 0.5 within its CI on the convergence label.
+- **Reproduce:** `python research/ml_model_comparison_purged.py` → `output/research/ml_model_comparison_purged.parquet`
+  (+ `_trials.json`).
 - **Status:** PENDING-DATA — computed before the D13-D19 data fixes (labels, identities, FX, total return).
   Re-derive on the re-run pools.
 
 ## C-004 — The engine executes its rules; the rules are defective
 - **Claim:** 0 rule violations in 101,700 trades; 54-68% of entries at or past the stop; 32-40% stopped after a
   favourable move; 19-38% re-entry within one bar of a stop.
+- **Reproduce:** `python research/strategy_rule_invariants.py` → `output/research/strategy_rule_invariants.parquet`
+  (reads `output/backtest/trades_layer1*storm_*gate_pairsoverride.parquet`).
 - **Status:** PENDING-DATA (pre-fix pools); the invariant code (`research/strategy_rule_invariants.py`) is unchanged.
 
 ## C-005 — Entry clustering
 - **Claim:** entries per business day are negative binomial (mean 1.90, variance 5.15), so iid nulls are misspecified.
+- **Reproduce:** `python research/distribution_fits.py` → `output/research/distribution_fits.parquet` (default trades
+  `output/backtest/trades_layer1_storm_momgate_pairsoverride.parquet`).
 - **Status:** PENDING-DATA (pre-fix pools). Basis for the planned Hawkes null.
 
 ## C-006 — Pre-registered strategy search: no robust signal (first pass)
 - **Claim:** no configuration met the pre-registered criterion (holdout > 0, DSR ≥ 0.95, PBO < 0.20 in all four
   splits) in either pool.
+- **Reproduce:** `python research/strategy_search.py run` then `python research/strategy_search.py eval` →
+  `output/research/strategy_search/` (pools `output/research/purity_pairs_pit_k{1,2}_clean.parquet`).
 - **Status:** REGISTERED for the first pass only (docs/PREREGISTRATION_STRATEGY_SEARCH_2026-09-27.md); second
   labelled pass (Amendment 2) pending the discovery re-run.
