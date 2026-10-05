@@ -26,7 +26,10 @@ import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-CACHE_DIR = "output/cache"
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from config import Config  # noqa: E402
+
+CACHE_DIR = Config.DATA.CACHE_DIR  # DEV-023 (2026-10-05): from Config, not a duplicated literal (a relative path also breaks outside the root, cf. U1)
 # Fixed 2026-09-01 per a code-quality guard script (debug/_verify_no_private_universe_globs.py)
 # catching this: the scan previously only covered CACHE_DIR (the ~1,700-symbol yfinance-primary
 # cache), never output/cache/wrds/ (the real ~44,700-symbol merged universe) or output/cache/

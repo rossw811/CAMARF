@@ -84,7 +84,7 @@ from statsmodels.tsa.stattools import coint
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config import Config
 
-CACHE_DIR = "output/cache"
+CACHE_DIR = Config.DATA.CACHE_DIR  # DEV-023 (2026-10-05): from Config, not a duplicated literal (a relative path also breaks outside the root, cf. U1)
 OUT_PATH = "output/research/trend_dominance_diagnostic.parquet"
 SEED = 20260713
 
