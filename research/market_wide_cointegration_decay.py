@@ -65,7 +65,7 @@ DEFAULT_ERAS = [
 ]
 CORR_THRESHOLD = 0.40  # same default threshold analysis.py's own candidate gate uses
 EG_MAX_LAG = Config.ANALYSIS.EG_MAX_LAG if hasattr(Config.ANALYSIS, "EG_MAX_LAG") else 10
-FDR_ALPHA = 0.05
+FDR_ALPHA = Config.STATS.FDR_ALPHA  # DEV-023 (2026-10-05): from Config, not a duplicated literal
 
 
 def _slice_era(df: pd.DataFrame, start: str, end: str) -> pd.DataFrame:
