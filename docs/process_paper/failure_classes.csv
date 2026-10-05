@@ -1,69 +1,69 @@
 id,class,assigned_by,note
-B2,accounting,"assistant 2026-10-04, pending Ross's review",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
-B3,accounting,"assistant 2026-10-04, pending Ross's review",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
-B4,accounting,"assistant 2026-10-04, pending Ross's review",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
-B1,logic_error,"assistant 2026-10-04, pending Ross's review",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
-B5,lookahead_selection,"assistant 2026-10-04, pending Ross's review",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
-B6,logic_error,"assistant 2026-10-04, pending Ross's review",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
-B11,statistic,"assistant 2026-10-04, pending Ross's review",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
-B12,silent_fallback,"assistant 2026-10-04, pending Ross's review",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
-B15,lookahead_selection,"assistant 2026-10-04, pending Ross's review",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
-B7,lookahead_selection,"assistant 2026-10-04, pending Ross's review",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
-B10,identity,"assistant 2026-10-04, pending Ross's review",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
-B13,calendar_time,"assistant 2026-10-04, pending Ross's review",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
-B14,logic_error,"assistant 2026-10-04, pending Ross's review",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
-A1,calendar_time,"assistant 2026-10-04, pending Ross's review",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
-A2,lookahead_selection,"assistant 2026-10-04, pending Ross's review",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
-A3,data_fabrication,"assistant 2026-10-04, pending Ross's review",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
-A6,silent_fallback,"assistant 2026-10-04, pending Ross's review",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
-D1,data_fabrication,"assistant 2026-10-04, pending Ross's review",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
-D2,logic_error,"assistant 2026-10-04, pending Ross's review",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
-D3,calendar_time,"assistant 2026-10-04, pending Ross's review",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
-D4,calendar_time,"assistant 2026-10-04, pending Ross's review",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
-D5,data_fabrication,"assistant 2026-10-04, pending Ross's review",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
-D7,silent_fallback,"assistant 2026-10-04, pending Ross's review",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
-D8,data_fabrication,"assistant 2026-10-04, pending Ross's review",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
-D9,data_fabrication,"assistant 2026-10-04, pending Ross's review",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
-D10,calendar_time,"assistant 2026-10-04, pending Ross's review",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
-D12,units_scale,"assistant 2026-10-04, pending Ross's review",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
-D13,calendar_time,"assistant 2026-10-04, pending Ross's review",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
-D14,silent_fallback,"assistant 2026-10-04, pending Ross's review",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
-D15,logic_error,"assistant 2026-10-04, pending Ross's review",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
-S3,lookahead_selection,"assistant 2026-10-04, pending Ross's review",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
-S5,statistic,"assistant 2026-10-04, pending Ross's review",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
-S7,statistic,"assistant 2026-10-04, pending Ross's review",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
-S1,calendar_time,"assistant 2026-10-04, pending Ross's review",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
-S2,statistic,"assistant 2026-10-04, pending Ross's review",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
-S10,silent_fallback,"assistant 2026-10-04, pending Ross's review",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
-U1,silent_fallback,"assistant 2026-10-04, pending Ross's review",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
-U2,calendar_time,"assistant 2026-10-04, pending Ross's review",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
-U4,units_scale,"assistant 2026-10-04, pending Ross's review",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
-M7,calendar_time,"assistant 2026-10-04, pending Ross's review",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
-M8,calendar_time,"assistant 2026-10-04, pending Ross's review",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
-M9,calendar_time,"assistant 2026-10-04, pending Ross's review",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
-C13,documentation_config,"assistant 2026-10-04, pending Ross's review",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
-C14,documentation_config,"assistant 2026-10-04, pending Ross's review",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
-C15,documentation_config,"assistant 2026-10-04, pending Ross's review",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
-C16,documentation_config,"assistant 2026-10-04, pending Ross's review",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
-R1.1,units_scale,"assistant 2026-10-04, pending Ross's review",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
-R1.6,statistic,"assistant 2026-10-04, pending Ross's review",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
-R2.1,logic_error,"assistant 2026-10-04, pending Ross's review",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
-R2.2,logic_error,"assistant 2026-10-04, pending Ross's review",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
-R2.3,lookahead_selection,"assistant 2026-10-04, pending Ross's review",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
-R3.1,logic_error,"assistant 2026-10-04, pending Ross's review",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
-R3.7,statistic,"assistant 2026-10-04, pending Ross's review",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
-R4.2,statistic,"assistant 2026-10-04, pending Ross's review",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
-R4.4,lookahead_selection,"assistant 2026-10-04, pending Ross's review",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
-R4.10,lookahead_selection,"assistant 2026-10-04, pending Ross's review",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
-R5.1,accounting,"assistant 2026-10-04, pending Ross's review",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
-R5.2,lookahead_selection,"assistant 2026-10-04, pending Ross's review",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
-R5.3,accounting,"assistant 2026-10-04, pending Ross's review",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
-R6.2,logic_error,"assistant 2026-10-04, pending Ross's review",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
-R6.3,statistic,"assistant 2026-10-04, pending Ross's review",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
-R6.5,statistic,"assistant 2026-10-04, pending Ross's review",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
-R6.7,logic_error,"assistant 2026-10-04, pending Ross's review",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
-R7.1,lookahead_selection,"assistant 2026-10-04, pending Ross's review",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
-R7.3,accounting,"assistant 2026-10-04, pending Ross's review",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
-R8.1,logic_error,"assistant 2026-10-04, pending Ross's review",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
-R8.3,lookahead_selection,"assistant 2026-10-04, pending Ross's review",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
-R8.4,statistic,"assistant 2026-10-04, pending Ross's review",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
+B2,accounting,"assistant 2026-10-04, approved by Ross 2026-10-04",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
+B3,accounting,"assistant 2026-10-04, approved by Ross 2026-10-04",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
+B4,accounting,"assistant 2026-10-04, approved by Ross 2026-10-04",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
+B1,logic_error,"assistant 2026-10-04, approved by Ross 2026-10-04",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
+B5,lookahead_selection,"assistant 2026-10-04, approved by Ross 2026-10-04",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
+B6,logic_error,"assistant 2026-10-04, approved by Ross 2026-10-04",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
+B11,statistic,"assistant 2026-10-04, approved by Ross 2026-10-04",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
+B12,silent_fallback,"assistant 2026-10-04, approved by Ross 2026-10-04",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
+B15,lookahead_selection,"assistant 2026-10-04, approved by Ross 2026-10-04",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
+B7,lookahead_selection,"assistant 2026-10-04, approved by Ross 2026-10-04",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
+B10,identity,"assistant 2026-10-04, approved by Ross 2026-10-04",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
+B13,calendar_time,"assistant 2026-10-04, approved by Ross 2026-10-04",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
+B14,logic_error,"assistant 2026-10-04, approved by Ross 2026-10-04",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
+A1,calendar_time,"assistant 2026-10-04, approved by Ross 2026-10-04",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
+A2,lookahead_selection,"assistant 2026-10-04, approved by Ross 2026-10-04",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
+A3,data_fabrication,"assistant 2026-10-04, approved by Ross 2026-10-04",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
+A6,silent_fallback,"assistant 2026-10-04, approved by Ross 2026-10-04",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
+D1,data_fabrication,"assistant 2026-10-04, approved by Ross 2026-10-04",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
+D2,logic_error,"assistant 2026-10-04, approved by Ross 2026-10-04",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
+D3,calendar_time,"assistant 2026-10-04, approved by Ross 2026-10-04",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
+D4,calendar_time,"assistant 2026-10-04, approved by Ross 2026-10-04",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
+D5,data_fabrication,"assistant 2026-10-04, approved by Ross 2026-10-04",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
+D7,silent_fallback,"assistant 2026-10-04, approved by Ross 2026-10-04",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
+D8,data_fabrication,"assistant 2026-10-04, approved by Ross 2026-10-04",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
+D9,data_fabrication,"assistant 2026-10-04, approved by Ross 2026-10-04",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
+D10,calendar_time,"assistant 2026-10-04, approved by Ross 2026-10-04",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
+D12,units_scale,"assistant 2026-10-04, approved by Ross 2026-10-04",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
+D13,calendar_time,"assistant 2026-10-04, approved by Ross 2026-10-04",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
+D14,silent_fallback,"assistant 2026-10-04, approved by Ross 2026-10-04",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
+D15,logic_error,"assistant 2026-10-04, approved by Ross 2026-10-04",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
+S3,lookahead_selection,"assistant 2026-10-04, approved by Ross 2026-10-04",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
+S5,statistic,"assistant 2026-10-04, approved by Ross 2026-10-04",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
+S7,statistic,"assistant 2026-10-04, approved by Ross 2026-10-04",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
+S1,calendar_time,"assistant 2026-10-04, approved by Ross 2026-10-04",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
+S2,statistic,"assistant 2026-10-04, approved by Ross 2026-10-04",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
+S10,silent_fallback,"assistant 2026-10-04, approved by Ross 2026-10-04",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
+U1,silent_fallback,"assistant 2026-10-04, approved by Ross 2026-10-04",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
+U2,calendar_time,"assistant 2026-10-04, approved by Ross 2026-10-04",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
+U4,units_scale,"assistant 2026-10-04, approved by Ross 2026-10-04",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
+M7,calendar_time,"assistant 2026-10-04, approved by Ross 2026-10-04",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
+M8,calendar_time,"assistant 2026-10-04, approved by Ross 2026-10-04",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
+M9,calendar_time,"assistant 2026-10-04, approved by Ross 2026-10-04",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
+C13,documentation_config,"assistant 2026-10-04, approved by Ross 2026-10-04",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
+C14,documentation_config,"assistant 2026-10-04, approved by Ross 2026-10-04",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
+C15,documentation_config,"assistant 2026-10-04, approved by Ross 2026-10-04",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
+C16,documentation_config,"assistant 2026-10-04, approved by Ross 2026-10-04",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
+R1.1,units_scale,"assistant 2026-10-04, approved by Ross 2026-10-04",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
+R1.6,statistic,"assistant 2026-10-04, approved by Ross 2026-10-04",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
+R2.1,logic_error,"assistant 2026-10-04, approved by Ross 2026-10-04",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
+R2.2,logic_error,"assistant 2026-10-04, approved by Ross 2026-10-04",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
+R2.3,lookahead_selection,"assistant 2026-10-04, approved by Ross 2026-10-04",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
+R3.1,logic_error,"assistant 2026-10-04, approved by Ross 2026-10-04",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
+R3.7,statistic,"assistant 2026-10-04, approved by Ross 2026-10-04",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
+R4.2,statistic,"assistant 2026-10-04, approved by Ross 2026-10-04",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
+R4.4,lookahead_selection,"assistant 2026-10-04, approved by Ross 2026-10-04",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
+R4.10,lookahead_selection,"assistant 2026-10-04, approved by Ross 2026-10-04",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
+R5.1,accounting,"assistant 2026-10-04, approved by Ross 2026-10-04",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
+R5.2,lookahead_selection,"assistant 2026-10-04, approved by Ross 2026-10-04",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
+R5.3,accounting,"assistant 2026-10-04, approved by Ross 2026-10-04",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
+R6.2,logic_error,"assistant 2026-10-04, approved by Ross 2026-10-04",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
+R6.3,statistic,"assistant 2026-10-04, approved by Ross 2026-10-04",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
+R6.5,statistic,"assistant 2026-10-04, approved by Ross 2026-10-04",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
+R6.7,logic_error,"assistant 2026-10-04, approved by Ross 2026-10-04",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
+R7.1,lookahead_selection,"assistant 2026-10-04, approved by Ross 2026-10-04",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
+R7.3,accounting,"assistant 2026-10-04, approved by Ross 2026-10-04",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
+R8.1,logic_error,"assistant 2026-10-04, approved by Ross 2026-10-04",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
+R8.3,lookahead_selection,"assistant 2026-10-04, approved by Ross 2026-10-04",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
+R8.4,statistic,"assistant 2026-10-04, approved by Ross 2026-10-04",FIXED/CONFIRMED-OPEN rows; from the ledger finding text
