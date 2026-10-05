@@ -4035,8 +4035,15 @@ class UniverseBuilder:
         """
         _summary = RunSummary()  # tracks metrics; written to latest_run_data.log at end
         Config.ensure_dirs()
-        UniverseBuilder._run_cache_migration()  # one-time safe filename migration
-        UniverseBuilder._clean_contaminated_cache()  # delete wrong-freq cache files
+        # DEV-014 (fixed 2026-10-05): both maintenance steps RENAME/DELETE cache files, and ran even in read-only mode
+        # (fetch=False, analysis.py's call -- BUG-D39) -- the mechanism of a real near-incident (1,500+ valid 4h files
+        # reduced to 7). Read-only mode now never mutates the cache. debug/_verify_build_readonly_gate.py
+        if fetch:
+            UniverseBuilder._run_cache_migration()  # one-time safe filename migration
+            UniverseBuilder._clean_contaminated_cache()  # delete wrong-freq cache files
+        else:
+            log.info("  read-only (fetch=False): skipping cache migration and contaminated-cache cleanup "
+                     "(both rename/delete cache files)")
 
         if reset_progress:
             ProgressLogger.reset()
