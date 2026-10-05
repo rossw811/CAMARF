@@ -47,8 +47,12 @@ caught by none of them, or if removing a check loses no catches.
    lineage ("seeds"), claims registry, open hole intake.
 5. **Evaluating the protocol** — for each failure: which check caught it, when, and what it would have cost if not
    caught (from the corrected-vs-original numbers). Include misses and late catches.
-6. **AI assistance** — classification of failures by origin (from commit trailers and ledgers; attribution is
-   incomplete — most history has no model trailer; say so), and of catches by who/what caught them.
+6. **AI assistance** — classification of failures by origin (from commit trailers and ledgers), and of catches by
+   who/what caught them. Measured 2026-10-05 (`python scripts/build_attribution.py`): 163 of 188 commits carry an AI
+   co-author trailer; by Python lines changed, 62% came in trailered commits (Sonnet 5 45%, Opus 5.5 9%, Sonnet 4.6
+   7%) and 38% (all June-August, in large batch commits) have NO record either way. A trailer means "co-authored",
+   not "wrote these lines"; state claims at that strength. (An earlier draft of this outline said "most history has
+   no model trailer" -- wrong: by commits 13% have none, by lines 38%.)
 7. **What survived** — the claims that replicate on corrected data (claims registry REPLICATED entries only).
 8. **Limitations** — single project; licence limits on data sharing (CRSP/Compustat cannot be redistributed);
    attribution gaps; the protocol's own cost.

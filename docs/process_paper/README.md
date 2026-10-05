@@ -16,3 +16,7 @@ series, the 110 Purity "pairs" that were one security against itself, DEV-003 CR
 T14.7 independent-review findings (docs/INCONSISTENCY_SWEEP_2026-09-27.md, docs/ERRATA.md).
 Effects (`effect_reviewed`) are still empty: only 1 of 44 FIXED rows states a before/after number in the ledger text;
 each needs its re-derived effect from its evidence before the paper cites it.
+
+`attribution_by_commit.csv` — T5.4: one row per commit (date, AI co-author trailer or "none", Python / other lines
+changed), built by `python scripts/build_attribution.py`. A trailer means co-authored, not who wrote which lines;
+"none" means no record, not "by hand".
