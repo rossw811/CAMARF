@@ -6,7 +6,10 @@
 - `class_reviewed` comes from `failure_classes.csv` (who assigned it is recorded: currently the assistant, 2026-10-04,
   for the 68 FIXED / CONFIRMED-OPEN rows, **pending Ross's review**). Only reviewed classes go into the paper.
 
-**Not yet in the table (prose findings outside the ledger's tables — add before computing the taxonomy):**
+`failures_extra.csv` — the prose findings outside the ledger's tables (12 rows, 2026-10-04: D16, D17, D19, the Purity
+self-pairs, DEV-003 CRSP + Compustat, A2/A3, the test that deleted real outputs, the T14.7 review findings, C-001's
+sample size), each with its effect, how it was detected, and evidence. Same review rule: classes assigned by the
+assistant, pending Ross. Previously listed as missing:
 D16 cross-asset symbol collisions, D17 reused tickers given to the oldest holder (2,719 of 4,327), D18/D19 quote-only
 series, the 110 Purity "pairs" that were one security against itself, DEV-003 CRSP + Compustat volume split bias
 (19% of ADV-gate passes), the A3/A2 forward-filled hedge inputs, the T14 tests that deleted real outputs, and the
