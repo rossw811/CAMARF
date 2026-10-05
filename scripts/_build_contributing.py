@@ -10,6 +10,7 @@ Usage: python scripts/_build_contributing.py
 import ast
 import glob
 import os
+import re
 
 _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -31,11 +32,66 @@ def summarize(path, maxlen=260):
         return f"(could not parse: {e})"
 
 
-def table(rows, headers=("Script", "What it does")):
-    lines = [f"| {headers[0]} | {headers[1]} |", "|---|---|"]
-    for name, doc in rows:
+def how_to_run(path, rel, maxlen=170):
+    """The command to run a script (2026-10-05, Ross: "outline ... how to run each script"): the docstring's own
+    'Usage:' / 'Run:' line when it has one; else built from its argparse block (positional choices + flag names);
+    'import only' when it has no __main__ entry point."""
+    try:
+        src = open(path, encoding="utf-8").read()
+        tree = ast.parse(src)
+    except Exception:
+        return "(could not parse)"
+    doc = ast.get_docstring(tree) or ""
+    lines = doc.splitlines()
+    for i, line in enumerate(lines):
+        m = re.match(r"\s*(?:Usage|Run|USAGE|RUN)\s*:\s*(.+)", line)
+        if m and "python" in m.group(1):
+            cmds = [" ".join(m.group(1).split())]
+            for nxt in lines[i + 1:]:                        # a Usage block with one command per line
+                if nxt.strip().startswith("python"):
+                    cmds.append(" ".join(nxt.split()))
+                else:
+                    break
+            cmd = " ; ".join(c.split("#")[0].strip() for c in cmds)
+            return cmd if len(cmd) <= maxlen else cmd[: maxlen - 3] + "..."
+    if "__main__" not in src:
+        return "import only (no CLI)"
+    pos, flags = [], []
+    for n in ast.walk(tree):
+        if isinstance(n, ast.Call) and getattr(n.func, "attr", "") == "add_argument" and n.args:
+            first = n.args[0]
+            if not isinstance(first, ast.Constant) or not isinstance(first.value, str):
+                continue
+            kw = {k.arg: k.value for k in n.keywords}
+            if first.value.startswith("-"):
+                req = isinstance(kw.get("required"), ast.Constant) and kw["required"].value is True
+                flags.append(first.value + " <value>" if req else first.value)
+            else:
+                ch = kw.get("choices")
+                try:
+                    vals = ast.literal_eval(ch) if ch is not None else None
+                except Exception:
+                    vals = None
+                pos.append("{" + ",".join(map(str, vals)) + "}" if vals else f"<{first.value}>")
+    # flags read straight from sys.argv (no argparse), e.g. `"--fresh" in sys.argv`, sys.argv.index("--d18")
+    for f in re.findall(r'"(--[a-z0-9][a-z0-9-]*)"\s+(?:not\s+)?in\s+sys\.argv|sys\.argv\.index\("(--[a-z0-9-]+)"\)', src):
+        name = f[0] or f[1]
+        if name not in flags and name not in [x.split()[0] for x in flags]:
+            flags.append(name)
+    cmd = f"python {rel}" + "".join(" " + p for p in pos)
+    if flags:
+        cmd += " " + " ".join(f"[{f}]" for f in flags[:4])
+        if len(flags) > 4:
+            cmd += f" (+{len(flags) - 4} more flags, see --help)"
+    return cmd
+
+
+def table(rows, headers=("Script", "How to run", "What it does")):
+    lines = [f"| {headers[0]} | {headers[1]} | {headers[2]} |", "|---|---|---|"]
+    for name, run, doc in rows:
         doc = doc.replace("|", "\\|")
-        lines.append(f"| `{name}` | {doc} |")
+        run = run.replace("|", "\\|")
+        lines.append(f"| `{name}` | `{run}` | {doc} |")
     return "\n".join(lines)
 
 
@@ -61,7 +117,9 @@ automatically every run). Never calls `analysis.py`'s logic and never touches IB
 
 ### `data_wrds.py` -- WRDS/CRSP fetch (manual, primary for daily-and-coarser US equity/ETF)
 **Run:** `python data_wrds.py` (needs an active WRDS session -- interactive login/Duo, not
-scriptable end-to-end). Fetches CRSP total-return-adjusted daily history for the whole US
+scriptable end-to-end). Volume is stored in today's share units (`volume`, raw in `volume_raw`) --
+CRSP dlyvol x dlycumfacpr, Compustat cshtrd x ajexdi -- so close x volume is a correct dollar volume
+(DEV-003; existing caches: `research/apply_crsp_volume_adjustment.py`). Fetches CRSP total-return-adjusted daily history for the whole US
 equity/ETF universe, decades deep -- the data source the episodic PIT-safe confirmation
 methodology depends on. Also home to Compustat Global (international `GVKEY_IID` constituents),
 Compustat fundamentals (CCM-linked), Fama-French factors, IBES price targets, FX
@@ -84,8 +142,9 @@ per-pair modeling (hedge ratio, half-life, Hurst) -> eigenportfolio decompositio
 classification -> structural-exclusion tagging (forex triangles, share classes, index-tracking,
 SPAC NAV-clustering). Clears `output/results/` whenever its own script hash (or `config.py`'s)
 changes, so results always correspond to the code that produced them -- expect a full re-run, not
-incremental, whenever you edit `analysis.py` itself. Reads via `builder.build(connect=False)`,
-never fetches (rule 1). `latest_run_analysis.log` is the structured log to read first.
+incremental, whenever you edit `analysis.py` itself. Reads via `builder.build(connect=False, fetch=False)`,
+never fetches and never mutates the cache (rule 1; since 2026-10-05 read-only mode also skips the cache
+migration/cleanup steps that rename or delete files -- DEV-014). `latest_run_analysis.log` is the structured log to read first.
 
 ### `backtest.py` -- event-driven backtest engine, every comparison-arm variant
 **Run:** `python backtest.py` (baseline) or with flags for any variant -- `--pairs-override
@@ -93,7 +152,11 @@ never fetches (rule 1). `latest_run_analysis.log` is the structured log to read 
 split), `--capital-sim` (capital-constrained, mark-to-market replay -- **the project's designated
 headline metric**, per pair backtests are diagnostic only), `--capital-sizing {fixed,
 equity_proportional,flat_2pct,quarter_kelly,third_kelly,half_kelly,full_kelly}`,
-`--capital-account-size <N>`, `--entry-z <N>`, `--hedge {both,ols,kalman}`, `--override
+`--capital-account-size <N>`, `--entry-z <N>`, `--hedge {ols,kalman}` (default ols; kalman is its own
+arm with output label `_kalman` -- `both` was removed 2026-10-03, it double-counted near-duplicate trades),
+`--holdout-mode {per_pair,common_date}` (common_date = one calendar cutoff per timeframe, comparison arm),
+`--legacy-pnl` (KNOWN WRONG spread-unit P&L, only to reproduce old numbers; the default is dollar P&L from
+`pnl_dollar.py`, and trades that cannot be priced are dropped and counted -- `--pnl-cap` requires it), `--override
 NAME=VALUE` (generic `Config.BACKTEST` constant override, e.g. `--override
 STOP_ZSCORE=4.0 CORR_EXIT_THRESHOLD=0.15`), plus ~15 `--storm-*` flags (see "Adding a new
 backtest variant" below) each gated behind their own flag -- **a swept `Config.BACKTEST` constant
@@ -195,8 +258,9 @@ issues). Confirms itself against real staged changes before trusting it, not a s
 test.
 
 ### `debug/_run_all_verify.py` -- the full verify-suite runner
-**Run:** `python debug/_run_all_verify.py` (all ~265 scripts, sequential, ~13-25 min depending on
-machine) or `--pattern <substring>` (subset) or `--workers N` (parallel -- **only on a machine
+**Run:** `python debug/_run_all_verify.py` (every `debug/_verify_*.py`, ~340 as of 2026-10; sequential by
+default; on CachyOS `--workers 2 --timeout 300`; failing tests' full output goes to `--failure-dir`, default
+`output/verify_runs/last_failures/`) or `--pattern <substring>` (subset) or `--workers N` (parallel -- **only on a machine
 with real memory headroom**; running the full suite in parallel OOM-killed a 16GB machine twice
 in one night, 2026-09-21 -- prefer CachyOS or sequential on a constrained machine). Classifies
 PASS / FAIL (real check failure) / ERROR (crashed before any check ran, or timed out -- usually a
@@ -212,7 +276,7 @@ every run.
 # =============================================================================
 
 def build_table_section(title, intro, entries, run_note=None):
-    rows = [(e["name"], e["doc"] or "(no module docstring)") for e in entries]
+    rows = [(e["name"], e["run"], e["doc"] or "(no module docstring)") for e in entries]
     section = f"### {title}\n\n{intro}\n"
     if run_note:
         section += f"\n{run_note}\n"
@@ -234,20 +298,27 @@ def main():
 
     for path in sorted(glob.glob(os.path.join(_ROOT, "research", "*.py"))):
         name = os.path.basename(path)
-        research.append({"name": name, "doc": summarize(path)})
+        research.append({"name": name, "run": how_to_run(path, f"research/{name}"), "doc": summarize(path)})
 
     for path in sorted(glob.glob(os.path.join(_ROOT, "debug", "*.py"))):
         name = os.path.basename(path)
         if name.startswith("_verify_"):
             continue
-        debug_util.append({"name": name, "doc": summarize(path)})
+        debug_util.append({"name": name, "run": how_to_run(path, f"debug/{name}"), "doc": summarize(path)})
 
     for path in sorted(glob.glob(os.path.join(_ROOT, "*.py"))):
         name = os.path.basename(path)
         if name in CORE_NAMES:
             continue
-        root_supporting.append({"name": name, "doc": summarize(path)})
+        root_supporting.append({"name": name, "run": how_to_run(path, name), "doc": summarize(path)})
 
+    scripts_dir = []
+    for path in sorted(glob.glob(os.path.join(_ROOT, "scripts", "*.py"))):
+        name = os.path.basename(path)
+        scripts_dir.append({"name": name, "run": how_to_run(path, f"scripts/{name}"), "doc": summarize(path)})
+
+    n_verify = len(glob.glob(os.path.join(_ROOT, "debug", "_verify_*.py")))
+    n_total = len(research) + len(debug_util) + len(root_supporting) + len(scripts_dir) + n_verify
     doc = f"""# Contributing to / Modifying CAMARF
 
 This is a solo research project (Ross W.), but this doc exists so anyone -- human or an AI
@@ -260,14 +331,60 @@ the current-state/open-items log.
 
 **How this file is organized**: the core production pipeline (below) gets full hand-written
 detail -- what each script does, exactly how to run it, its real gotchas. Everything else
-(`research/`, `debug/`, supporting root-level modules) is far too numerous (490+ scripts as of
-this writing) for that treatment without the doc itself becoming stale reading; those sections are
-one-line-per-script tables, auto-generated from each script's own module docstring by
+(`research/`, `debug/`, `scripts/`, supporting root-level modules) is far too numerous ({n_total} scripts at
+the last regeneration) for that treatment without the doc itself becoming stale reading; those sections are
+one-line-per-script tables -- **how to run it** (from the script's own `Usage:`/`Run:` docstring line, else its
+argparse flags) and **what it does** (its docstring's first paragraph) -- auto-generated by
 `scripts/_build_contributing.py` -- re-run that generator after adding/removing scripts rather
 than hand-editing the tables. Every script in this codebase has a real, specific module docstring
 (project convention, not optional) -- when a table row here is too terse, `Read` the script's own
 top-of-file docstring directly; it is the authoritative, current source, this file is a fast index
 into it.
+
+---
+
+## How to contribute -- the workflow every change follows
+
+The project is public and built to be checked: anyone may attack any result, and every hole found is verified,
+fixed or disclosed, and logged. A change is "done" only when it has passed all of the steps below.
+
+1. **Start from the open work.** `docs/ERRATA.md` (what is fixed, withdrawn, open -- the public index),
+   `docs/HANDOFF.md` (current state), `docs/PLAN_OF_ACTION_2026-10-03.md` (every thread and its done-criteria),
+   `docs/CLAIMS_REGISTRY.md` (only REPLICATED claims are citable). Outside reports come in through
+   `.github/ISSUE_TEMPLATE/find_a_hole.md`.
+2. **Reproduce first.** Write `debug/_verify_<name>.py` that FAILS on the current code, run it and keep the
+   output, then fix, then run it again (passes). Build synthetic input with a known answer; print `[PASS]`/`[FAIL]`
+   per check and exit non-zero on failure. **Tests must never write to or delete from `output/`** -- use a temp
+   directory and monkeypatch paths (a test once deleted real discovery outputs; three others wrote fake symbols into
+   the real caches).
+3. **Check on real data.** Re-derive the effect on real outputs and record the before/after numbers (a synthetic
+   test proves the code; only real data proves the effect -- several fixes changed nothing on real data, others
+   changed a headline).
+4. **Full suite before committing a change to a core module** (`data.py`, `data_wrds.py`, `analysis.py`,
+   `backtest.py`, `portfolio_sim.py`, `pnl_dollar.py`, `ml.py`, `stats.py`, `config.py`, `universe_loader.py`):
+   `python debug/_run_all_verify.py --workers 2 --timeout 300` (on CachyOS). A failing test's full output is saved
+   to `output/verify_runs/last_failures/`. A change once broke three tests unnoticed for a week because this step
+   was skipped.
+5. **Independent check for anything headline-level** -- a separate reviewer (e.g. the `adversarial-reviewer`
+   agent) tries to break the claim; it checks, it does not do the work. Independent review has found real bugs
+   in fixes that had passed their own tests.
+6. **Record it.** Update the finding's status with evidence (file:line, commit, test, output path) in the ledger it
+   came from (`docs/CODE_REVIEW_2026-09-26.md`, `docs/INCONSISTENCY_SWEEP_2026-09-27.md`, `Development.md`); register
+   any number you will cite in `docs/CLAIMS_REGISTRY.md` with a reproduce command; update `docs/ERRATA.md`. Document
+   what was tried and reverted, not only what was kept.
+
+**Rules that every change follows (from `CLAUDE.md`):** free data only (WRDS subscription + free sources);
+`data.py` fetches and `analysis.py` analyzes, never reversed (`build(fetch=False)` never touches the cache); WRDS
+wins symbol collisions for daily-and-coarser data; DATA_GAP bars are never forward-filled into a statistic;
+constants come from `config.py` (`debug/_verify_config_drift_guard.py` fails on a duplicated literal); the universe
+comes from `universe_loader.load_full_universe()`; a new method enters as a comparison arm next to the current one
+and needs Ross's approval before it replaces anything; known biases are disclosed, never silently corrected; data
+is never deleted (back it up); numbers are never inflated.
+
+**Adding a research script:** module docstring stating the claim it tests, with a `Usage: python research/<name>.py
+...` line (this file's How-to-run column reads it); a `debug/_verify_<name>.py`; outputs under
+`output/research/*.parquet`; if it is part of the discovery -> pools -> search chain, a lineage stage in
+`research/pipeline_stages.py`. Then regenerate this file: `python scripts/_build_contributing.py`.
 
 ---
 
@@ -349,9 +466,11 @@ To add a new one:
 2. **Config override / precompute** -- if the variant needs a precomputed input (e.g.
    `compute_risk_parity_weights()` reads `trades_layer1.parquet` for per-pair volatility), compute
    it once in `main()` before constructing the engine, and pass it through as a `BacktestEngine`
-   constructor argument. Never mutate global `Config` state directly -- pass overrides explicitly
-   (see `--entry-z`'s `copy.copy()` pattern rather than mutating `Config.BACKTEST.ENTRY_ZSCORE` in
-   place).
+   constructor argument. Never mutate global `Config` state -- build a real copy with
+   `config.section_copy(Config.BACKTEST)` (`_build_backtest_cfg`). **Not `copy.copy`:** Config sections are classes,
+   so `copy.copy` returns the original and every override silently became global (found 2026-10-03, code review
+   B6). Anything that must see the override has to receive the engine's cfg (the regime conditioner and the
+   capital simulation's `stop_zscore` do).
 3. **Apply in the engine** -- the actual sizing/execution logic change goes in `BacktestEngine`'s
    position-sizing loop or cost function, gated on whether the new variant's flag/weights dict was
    passed in.
@@ -386,7 +505,7 @@ and default to reading the current production output files; a handful take real 
 --full-trades <path> --taken-trades <path>`, `fdr_threshold_sensitivity.py --alphas <floats>`) --
 run `python research/<name>.py --help` or read its own argparse block to check.
 
-{table([(e["name"], e["doc"]) for e in research])}
+{table([(e["name"], e["run"], e["doc"]) for e in research])}
 
 ---
 
@@ -401,7 +520,7 @@ pair -- it covers 12 independently-togglable factors and is the shared foundatio
 is meant to build on, not a per-script bespoke generator), assert against the known answer, print
 `[PASS]`/`[FAIL]` per check plus a final count, exit nonzero on any failure.
 
-**Don't enumerate all ~265 individually here** -- each one's own module docstring states exactly
+**Don't enumerate all {n_verify} individually here** -- each one's own module docstring states exactly
 what it verifies and why, and `research/<name>.py`'s own docstring cross-references its
 `debug/_verify_<name>.py` counterpart. To run one: `python debug/_verify_<name>.py`. To run
 everything: `python debug/_run_all_verify.py` (see its entry in Core production pipeline above).
@@ -416,7 +535,7 @@ script's own filename.
 One-off diagnostic tools, benchmarks, and investigation scripts -- not synthetic proofs, not part
 of any automated suite.
 
-{table([(e["name"], e["doc"]) for e in debug_util])}
+{table([(e["name"], e["run"], e["doc"]) for e in debug_util])}
 
 ---
 
@@ -426,7 +545,13 @@ Not part of the "core pipeline" run sequence above, but not `research/`-scoped e
 importable utilities, one-off/legacy scripts, and secondary analysis modules living at the
 project root.
 
-{table([(e["name"], e["doc"]) for e in root_supporting])}
+{table([(e["name"], e["run"], e["doc"]) for e in root_supporting])}
+
+---
+
+## `scripts/` -- project maintenance tools (inventories, documentation generators, hooks)
+
+{table([(e["name"], e["run"], e["doc"]) for e in scripts_dir])}
 
 ---
 
