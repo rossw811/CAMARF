@@ -157,7 +157,8 @@ def build_log_prices_and_returns(close_by_symbol: dict, min_overlap: int):
     return log_price_df[valid_cols], returns[valid_cols]
 
 
-def run_scan(tf_label: str, window_config_name: str, workers: int = 6, tier3_threshold: float = 0.80) -> dict:
+def run_scan(tf_label: str, window_config_name: str, workers: int = None, tier3_threshold: float = 0.80) -> dict:
+    workers = workers or Config.RUNTIME.N_WORKERS   # T11 2026-10-04: was a hardcoded 6 (the real CachyOS run used --workers 14)
     window, step = window_config(window_config_name, tf_label)
     log.info(f"[{tf_label}] window={window} step={step} (config={window_config_name})")
 
@@ -294,7 +295,7 @@ def main():
     parser.add_argument("--window-config", choices=["fixed_min_overlap_1x", "fixed_min_overlap_2x"],
                          default="fixed_min_overlap_2x",
                          help="Default is Step 1's empirically most stable config (CV=0.0 on real data).")
-    parser.add_argument("--workers", type=int, default=6)
+    parser.add_argument("--workers", type=int, default=Config.RUNTIME.N_WORKERS)   # derived (T11), was 6
     parser.add_argument("--fresh", action="store_true", help="back up stale outputs/checkpoints and start clean")
     parser.add_argument("--tier3-threshold", type=float, default=0.80,
                          help="Rolling correlation prefilter threshold for Tier 3, stricter than "

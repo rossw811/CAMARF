@@ -25,6 +25,7 @@ import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from config import Config
 from data import DataStore
 from research import episodic_pairs_adapter as ad
 
@@ -63,7 +64,7 @@ def main():
     import multiprocessing as mp
     ap = argparse.ArgumentParser()
     ap.add_argument("--pairs", default=os.path.join("output", "research", "purity_pairs_pit_k1.parquet"))
-    ap.add_argument("--workers", type=int, default=8)
+    ap.add_argument("--workers", type=int, default=Config.RUNTIME.N_WORKERS)   # derived (T11 2026-10-04), was 8
     args = ap.parse_args()
     P = pd.read_parquet(args.pairs)
     tasks = list(zip(P["symbol_a"], P["symbol_b"], P["tf_label"]))
