@@ -79,7 +79,7 @@ Status legend: ✅ done · ▶ in progress · ⏳ waiting on a dependency · ❓
 ## T10 — Research-script findings (R-series: 21 confirmed, 80 unverified)
 Rule: an R-finding is fixed and its script re-derived **when that script's result is cited or re-run**; scripts
 whose results are not cited are marked "not cited — finding unresolved" in the errata (honest, not silent).
-| 10.1 | Map every R-finding to the PAPER/MAGNITUDE claims that depend on it (scrutiny rows already cite them) | C | open |
+| 10.1 | Map every R-finding to the PAPER/MAGNITUDE claims that depend on it (scrutiny rows already cite them) | C | ✅ 2026-10-04: no registered claim (C-002..C-006) rests on a script with an open ledger finding (C-003 uses the purged ml_model_comparison_purged.py; R2.3 stays open for ml.py / LSTM only). Rule: fix an R-finding when a claim depending on it is registered. Gap found: only C-001 has a "Reproduce" line — add for C-002..C-006 (T4.4) |
 | 10.2 | Fix the cited ones first: R6.3 (EG null one-direction), R6.5 (CI grid can't contain 1), R8.x, R3.1/R3.7, R4.x, R5.x, R7.x — each with a failing-first test | C | open |
 | 10.3 | C4-2: research EG p-values via `analysis.eg_pvalue_pair` (non-permutation callers) / production segment then real + null (permutation callers) | C | plan written |
 | 10.4 | DEV-011 re-run the 5 scripts whose "full universe" was the yfinance glob | C | ⏳ T2 |
