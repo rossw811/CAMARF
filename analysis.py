@@ -5096,6 +5096,32 @@ class FilterFunnel:
         log.info(f"  [{self.tf_label}] filter funnel:\n{df.to_string(index=False)}")
 
 
+def _update_confirmed_manifest(manifest_path: str, tf_label: str, symbols) -> None:
+    """Replace `tf_label`'s membership in confirmed_pairs_manifest.json with `symbols` (symbols left on no timeframe
+    are dropped). DEV-008 (fixed 2026-10-05): the read-modify-write runs under an exclusive file lock -- writes were
+    already atomic (temp file + os.replace) but two concurrent analysis.py runs could each read the same starting
+    state and the later write dropped the other's timeframe update. debug/_verify_manifest_lock.py"""
+    from file_lock import exclusive_lock
+    with exclusive_lock(manifest_path):
+        manifest: Dict[str, Any] = {}
+        if os.path.exists(manifest_path):
+            with open(manifest_path) as f:
+                manifest = json.load(f)
+        for entry in manifest.values():
+            if tf_label in entry["tfs"]:
+                entry["tfs"].remove(tf_label)
+        for sym in symbols:
+            if sym not in manifest:
+                manifest[sym] = {"tfs": [], "added": tf_label}
+            if tf_label not in manifest[sym]["tfs"]:
+                manifest[sym]["tfs"].append(tf_label)
+        manifest = {sym: entry for sym, entry in manifest.items() if entry["tfs"]}
+        tmp = f"{manifest_path}.tmp.{os.getpid()}"
+        with open(tmp, "w") as f:
+            json.dump(manifest, f, indent=2)
+        os.replace(tmp, manifest_path)
+
+
 class AnalysisPipeline:
     """
     Top-level orchestrator. Consumes a UniverseResult from data.py and
@@ -6472,39 +6498,10 @@ class AnalysisPipeline:
             os.path.dirname(out_dir), "confirmed_pairs_manifest.json"
         )
         try:
-            _manifest: Dict[str, Any] = {}
-            if os.path.exists(_manifest_path):
-                with open(_manifest_path) as _f:
-                    _manifest = json.load(_f)
-            for _entry in _manifest.values():
-                if tf_label in _entry["tfs"]:
-                    _entry["tfs"].remove(tf_label)
-            for _p in discovered_pairs:
-                for _sym in (_p.symbol_a, _p.symbol_b):
-                    if _sym not in _manifest:
-                        _manifest[_sym] = {"tfs": [], "added": tf_label}
-                    if tf_label not in _manifest[_sym]["tfs"]:
-                        _manifest[_sym]["tfs"].append(tf_label)
-            _manifest = {
-                _sym: _entry for _sym, _entry in _manifest.items() if _entry["tfs"]
-            }
-            # Atomic write (temp file + os.replace) -- same non-atomic-write bug
-            # class found and fixed in universe_loader.py's memo cache this
-            # session, prevents a concurrent reader from seeing a truncated file.
-            # Does NOT fix the underlying read-modify-write race itself (two
-            # concurrent writers, e.g. two --timeframes-scoped analysis.py runs,
-            # can still each read the same starting state and the later write
-            # wins, silently dropping the other's TF update) -- that needs real
-            # file locking, a bigger design decision, not attempted here.
-            # Disclosed, not silently "fully fixed": don't run two analysis.py
-            # processes against the same confirmed_pairs_manifest.json path
-            # concurrently until that's addressed.
-            _tmp_manifest_path = f"{_manifest_path}.tmp.{os.getpid()}"
-            with open(_tmp_manifest_path, "w") as _f:
-                json.dump(_manifest, _f, indent=2)
-            os.replace(_tmp_manifest_path, _manifest_path)
+            _update_confirmed_manifest(
+                _manifest_path, tf_label, [_s for _p in discovered_pairs for _s in (_p.symbol_a, _p.symbol_b)])
         except Exception as _e:
-            log.debug(f"Manifest write failed: {_e}")
+            log.warning(f"Manifest write failed: {_e}")   # was debug (DEV-008 fix, 2026-10-05)
 
         if discovered_pairs:
             pairs_df = pd.DataFrame([asdict(p) for p in discovered_pairs])
