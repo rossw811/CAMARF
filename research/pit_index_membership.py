@@ -20,6 +20,7 @@ SEC fair access: <= 10 requests/s with a contact User-Agent (Ross's chosen conta
 
 Usage:  python research/pit_index_membership.py download
         python research/pit_index_membership.py parse
+        python research/pit_index_membership.py check     # vs docs/pit_membership/announcements.csv
 Synthetic check: debug/_verify_pit_index_membership.py
 """
 import html
