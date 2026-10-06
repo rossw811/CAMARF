@@ -5,6 +5,14 @@
 > Since this banner was written, B2/B3 (dollar P&L, now the default), B4 (`--hedge both` removed) and the Compustat
 > currency conversion are fixed (2026-09-28 → 2026-10-03); the P&L numbers below remain withdrawn until re-derived.
 >
+> **Current status (2026-10-05).** Every logged bug was rechecked (310 items; a full test suite of ~340
+> verification scripts, each fix with a test that fails on the old code) and an independent review attacked the fixes.
+> Dollar P&L is now the default, a volume split bias in the CRSP and Compustat data was found and fixed (19% of the
+> discovery liquidity gate's passes were reverse-split names), and pair discovery was re-run on the corrected data:
+> 891 / 278 / 703 pairs confirmed in Tiers 1 / 2 / 3. These are discovery counts, not results -- the sensitivity run,
+> the pools rebuild and the second pre-registered strategy search come first. Open problems and every fix, with
+> evidence: [`docs/ERRATA.md`](docs/ERRATA.md); how to contribute and run each script: [`CONTRIBUTING.md`](CONTRIBUTING.md).
+>
 > **⚠ RESULTS UNDER REVISION — 2026-09-26.** A full code, citation and consistency audit found
 > confirmed defects that invalidate every P&L-derived number in this document (Sharpe, DSR,
 > capital-sim, luck check, quality admission), several pair-discovery results, and a number of

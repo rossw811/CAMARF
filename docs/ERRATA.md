@@ -1,6 +1,6 @@
 # Errata and known limitations — one index
 
-Last updated 2026-10-03. This page is the entry point for anyone checking this project's results. It does not repeat
+Last updated 2026-10-05. This page is the entry point for anyone checking this project's results. It does not repeat
 the details; it says what is wrong, fixed, withdrawn or still open, and links to where the evidence lives.
 **Found a hole?** Open an issue with `.github/ISSUE_TEMPLATE/find_a_hole.md`. Every report is verified, then fixed or
 disclosed, and the outcome is logged here and on the affected claim.

@@ -28646,3 +28646,60 @@ Compustat `trfd` total return (exact dividends; HSBC special dividend captured);
 deeper dives, for Ross), prereg Amendment 2 (second labelled pass; committed before any result).
 **Open for Ross:** futures roll method (D9); D18 quote-midpoint series; M-1 null construction; deeper-dive order;
 C4-2 research EG p-value plan; Unilever ADR ratio 1.089.
+
+## Session 2026-10-02 → 10-05 — scrutiny-first process, bug recheck of every logged item, dollar P&L default, volume split bias, discovery re-run (summary; full detail in docs/ERRATA.md, docs/INCONSISTENCY_SWEEP_2026-09-27.md, docs/CODE_REVIEW_2026-09-26.md, docs/PLAN_OF_ACTION_2026-10-03.md)
+
+**Ross's direction:** the work is meant to be attacked by outsiders, and every hole found is verified and closed in
+the open (public errata `docs/ERRATA.md`, claims registry, `find_a_hole` issue template); free data only; stop
+referencing the NQ/ES system; plan of action for every thread (14 threads, T1-T14) incl. a recheck of every logged bug.
+Decisions taken (each recorded in the plan): dollar P&L default (B2/B3), OLS default with Kalman as its own arm (B4),
+data-gap exit (B1), A2 causal hedge arm, daily outages break the coint segment, intraday dollar marking, PIT S&P
+400/600 membership arm (after more checks), common calendar holdout arm (B8), DEV-055/056/057/061/064/067, stop and
+re-run discovery after the volume fix, approval of the process-paper failure classes.
+
+**Bug recheck (T14):** inventory of every logged item (310; BUG_LOG index 126/126 -- an earlier "47/125" was my
+counting error, corrected); full verify suite triaged (three tests broken for a week by P1 -> rule: full suite before
+committing core changes); **a test that deleted real discovery outputs** and three that wrote fake symbols into real
+caches were sandboxed; real-data rechecks (D13/D16/D17/D19 hold); independent adversarial review of the fixes found
+six real problems in them (Compustat volume never fixed, B6 regression, B8 pooled across timeframes, B10 intraday
+lookahead encoded by its own test, B5 guard gap, non-atomic fail-loud files) -- all fixed failing-first.
+
+**Fixed (each with a failing-first test, real-data effect, commit):** B1 data-gap exit (latent on current data);
+B2/B3 dollar P&L default (+274.7 spread units vs -$1,809 on 121 real trades; 34% flip sign); B4 `--hedge both`
+removed; B5/B6/B7/B10/B13/B14/B15 (B10: liquidity filter let 11 vs 75 of 143 real trades through); B6 found Config
+sections are classes, so `copy.copy` overrides had been global (`config.section_copy`); TLS slope returned 1/beta;
+forex `=X` legs counted as USD (latent); intraday dollar marking (hand-checked on a real PNC/ZION trade); D19 gap
+(1,412 missing quote-only securities fetched); T1.8 data.py silent handlers (2 fail loud); DEV-008 manifest lock;
+DEV-014 read-only build no longer renames/deletes cache files (the 1,500 -> 7 near-incident mechanism); DEV-023
+config-drift guard; DEV-013 found already fixed (stale ledger).
+
+**DEV-003 volume split bias (headline-relevant):** CRSP volume was stored in pre-split shares against a split-adjusted
+close. Factor rebuilt from CRSP distributions and matched to CRSP's own dlycumfacpr on 307/307 securities -- after two
+corrections that comparison forced (same-date events ADD; terminal -1 events excluded). **Tried and discarded:** a
+first impact run that multiplied terminal events in and zeroed whole histories. Corrected impact: 19% of the
+discovery ADV gate's passes were reverse-split names; 1,103 split stocks wrongly excluded on some days. Ross: stop,
+fix, restart -- the running discovery was stopped, the cache restated (raw kept as `volume_raw`), fetches adjust at
+source. Compustat Global had the same bias (found by the independent review): code fixed, cache restated after the
+scans.
+
+**Comparison arms built (default unchanged until Ross decides):** A2 causal expanding hedge + A3 + daily gap breaks
+(no-lookahead proven; lookahead of the current method shown); B8 common calendar holdout (per timeframe; real 1D
+pairs: per-pair cutoffs leaked ~5 years; but 19 of 26 pairs get no holdout under one date); M-1 same-dates null (DD
+3.3% vs 4.7% rejections -- negligible today); PIT S&P 400/600 membership from SEC ETF filings + S&P announcements
+(76/78 announced changes agree, 2 explained; 18 of 38,402 holding rows ambiguous).
+
+**Process paper:** failures table from the ledger (175 rows + 12 prose findings, classes approved by Ross);
+attribution from git trailers (163/188 commits; 62% of Python lines in AI-co-authored commits, 38% no record --
+correcting the outline's wrong "most history untrailered"). C-002's analytic bound replicated = Samuelson's
+inequality (cite it; not new). CONTRIBUTING.md rebuilt with a how-to-contribute workflow and a how-to-run command
+for every script.
+
+**Discovery re-run (corrected data):** primary (D18 exclude) done 2026-10-05 13:11 -- Tier 1 891 confirmed of
+1,051,395; Tier 2 278; Tier 3 703 of 9,424,497 (Aug, pre-fix: 103 / 189 / 620). Sensitivity (D18 include) running:
+Tier 1 828, Tier 2 285 so far. Not yet citable: D18 comparison, pools rebuild and the second pre-registered pass
+come first. Disclosed: the run used raw volume for Compustat Global and 37 ETF/ADR/REIT files.
+
+**Open:** D18 comparison report (Ross decides the arm); restate Compustat/ETF volume + coarse-TF files; sync cache to
+the Surface; pools -> spreads -> squeeze -> second prereg pass; A2/B8/PIT-membership adoption decisions; scan log
+writes to the primary's log file and prints tier-2 paths without the arm suffix (cosmetic, fix after the run);
+DEV-016 mem_guard and DEV-018 memtest on CachyOS when idle.
