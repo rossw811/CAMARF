@@ -2,6 +2,15 @@
 ## dependencies, done-criteria, decisions needed). CachyOS hung 2026-10-03 (~10:55) and was rebooted; trfd fetch and
 ## the chain were restarted 13:12. The entry below remains the detailed state.
 
+## 2026-10-05 (evening): discovery PRIMARY done (chain v3, corrected CRSP volume; D18 "exclude")
+Finished 13:11 (CachyOS). Outputs `output/research/wrds_deep_history_episodic_scan_tier{1,2_*,3_*}.parquet`:
+Tier 1 1,051,395 candidates, **891 full-sample confirmed** (FDR); Tier 2 **278** confirmed; Tier 3 9,424,497 candidates
+-> **703** confirmed. (Aug run, pre-fix data: 103 / 189 / 620 of 1,089,763.) NOTE: the sensitivity run's logger also
+writes `latest_run_wrds_deep_history_episodic_scan.log`, so the primary's log tail was overwritten -- counts above are
+from the output files. Disclose with these results: the run used RAW volume for Compustat Global listings and the 37
+ETF/ADR/REIT files (restated only after both scans). SENSITIVITY (`--d18 include`) running: Tier 1 done (1,031,546
+candidates, 828 confirmed), Tier 2 in progress at 18:22; Tier 3 likely ~24 h more.
+
 ## 2026-10-03 (evening): state at end of day — read with docs/PLAN_OF_ACTION_2026-10-03.md
 
 **Running on CachyOS (unattended chain v2, watchdog for stuck WRDS queries):** trfd TR applied (15,093 listings, 0
