@@ -25,6 +25,10 @@ from lineage import Lineage
 _R = "output/research"
 _CORE = ["analysis.py", "universe_loader.py", "config.py", "stats.py", "data.py"]
 _SPREAD_DIRS = ["output/results/1D", "output/results/1hr", "output/results/4hr"]
+# Episodic window-grid offsets (bars): quarter steps of the scan's EPISODIC_STEP_BARS = 252 (equality checked by
+# debug/_verify_episodic_grid_offset.py); the D18 report's arms differed by a median 42 days of grid placement.
+_EPISODIC_STEP_BARS = 252
+GRID_OFFSETS = tuple(_EPISODIC_STEP_BARS * k // 4 for k in (1, 2, 3))
 
 
 def _declare(lin: Lineage) -> Lineage:
@@ -41,6 +45,17 @@ def _declare(lin: Lineage) -> Lineage:
               outputs=[f"{_R}/wrds_deep_history_episodic_scan_{n}_d18incl.parquet" for n in
                        ("tier1", "tier2_windows", "tier2_confirmed", "tier3_pairs", "tier3_windows", "tier3_confirmed")],
               params={"lookback_years": 50, "d18_arm": "include"})
+    # Grid-phase robustness arm (Ross 2026-10-07): Tier 2/3 window tests re-run with the window grid shifted; Tier 1
+    # and Tier 3's candidate list are the offset-0 primary run's files (they do not depend on the grid).
+    for off in GRID_OFFSETS:
+        lin.stage(f"episodic_scan_grid{off}",
+                  code=["research/wrds_deep_history_episodic_scan.py", "data_wrds.py",
+                        "research/rolling_adv_comparison.py"] + _CORE,
+                  inputs=["output/cache/wrds", f"{_R}/wrds_deep_history_episodic_scan_tier1.parquet",
+                          f"{_R}/wrds_deep_history_episodic_scan_tier3_pairs.parquet"],
+                  outputs=[f"{_R}/wrds_deep_history_episodic_scan_{n}_grid{off}.parquet" for n in
+                           ("tier2_windows", "tier2_confirmed", "tier3_windows", "tier3_confirmed")],
+                  params={"lookback_years": 50, "d18_arm": "exclude", "grid_offset": off})
     for tf in ("1h", "4h"):
         lin.stage(f"intraday_scan_{tf}", code=["research/intraday_episodic_scan.py",
                                                "research/wrds_deep_history_episodic_scan.py"] + _CORE,
