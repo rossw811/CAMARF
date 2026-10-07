@@ -262,3 +262,11 @@ scrutiny had marked this claim STANDS — the re-derivation rule (re-run, don't 
      strictly before (B13's rule).
   5. **B5 gap** — P&L-cap thresholds now refuse dollar-basis trades.
   6. **T1.8 caveats** — the two fail-loud files are written atomically; their write failures log at warning.
+- **2026-10-07 — episodic-scan arm logging (found on the CachyOS chain run, fixed failing-first).** The scan's log
+  file name ignored the D18 arm and the chain wrapper also redirected the primary run's stdout into that same name, so
+  the `--d18 include` run's FileHandler (mode "w") overwrote it: **the primary run's full log is lost**. Its outputs
+  are intact (`wrds_deep_history_episodic_scan_tier{1,2_*,3_*}.parquet`, 2026-10-05; counts re-read from the files:
+  Tier 2 278, Tier 3 703). The "Saved ->" lines also printed un-suffixed paths. Fix: `_log_path()` carries the arm
+  suffix; the Saved lines print the real output paths. Test `debug/_verify_episodic_scan_arm_logging.py` (2/5 on
+  the old code, 5/5 fixed); the 13 other scan tests pass. Chain wrappers must not redirect stdout to a script's own
+  log file name.
