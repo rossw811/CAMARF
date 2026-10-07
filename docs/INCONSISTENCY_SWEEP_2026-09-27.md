@@ -270,3 +270,37 @@ scrutiny had marked this claim STANDS — the re-derivation rule (re-run, don't 
   suffix; the Saved lines print the real output paths. Test `debug/_verify_episodic_scan_arm_logging.py` (2/5 on
   the old code, 5/5 fixed); the 13 other scan tests pass. Chain wrappers must not redirect stdout to a script's own
   log file name.
+- **2026-10-07 — volume restatement finished on both machines; three findings from it.**
+  1. *Surface cache synced and restated.* Raw daily data identical across machines (400-file sample: rows, dates,
+     close, raw volume); the 12,286 missing `_trfd` files and `_quote_only/` (4,169) copied from CachyOS (the 2,807
+     already present were byte-identical); `apply_crsp_volume_adjustment.py` re-run on the Surface reproduces
+     CachyOS's report exactly (15,093 Compustat + 22 ETF/ADR adjusted, 31,142 unknown-factor days, same 29
+     unmapped) and a 500-file content comparison (300 Compustat, 200 CRSP) shows no difference.
+  2. *Coarse volume restated* (`research/rederive_coarse_volume.py`): 7D/1M/3M/6M/1Y volume = sum of the restated
+     daily volume; native 1M mthvol equals summed raw dlyvol (ratio 1.0000 p5..p95, 8 large caps). Guarded: a bar
+     is restated only if its stored volume equals the summed raw daily volume. CachyOS: 98.2% of 6,488,338 bars (6,373,890)
+     restated; unknown-factor periods NaN; mismatches 3,431 bars. The mismatches had two causes: (a) **bug**,
+     `period_bars.resample_to_period_end` summed an all-missing period to 0 and a partly unknown period to a
+     partial sum (AAPL 1982 7D bars: 0) -- fixed at source, failing-first; (b) **identity bug**, PAR's coarse files
+     are a different security than PAR_1D (PAR Technology, PERMNO 61146; 3M close agreement 0%; every other label
+     >= 99%). `research/repair_coarse_identity.py` quarantined PAR's 5 coarse files (moved, not deleted) and rebuilt
+     7D/3M/6M/1Y on both machines; **open:** PAR_1M needs a msf_v2 refetch (next WRDS session). The Surface run
+     (PAR repaired first) matches CachyOS bar-for-bar: identical restated/unknown counts per timeframe, and its
+     mismatches (7D 766, 3M 53, 6M 27, 1Y 14, 1M 0) are CachyOS's minus PAR's old bars -- the zero-volume bars of (a). 1M closes differ
+     from the daily last close in 681 labels only where the month's last day had no trade (CRSP monthly midpoint;
+     27,449 months, median gap 1.2%, max 13%) -- expected, not an identity problem.
+  3. *Act 3 claims depend on the machine (open).* `debug/_verify_paper_claims.py` passes on the Surface but fails
+     3 act3 claims on CachyOS: the claims (Purity IS Sharpe -0.679, OOS -0.834, all sizing variants negative OOS)
+     match the Surface's 2026-08-14 `output/backtest/portfolio_layer1_*pairsoverride_capsim_fixed_100000.parquet`;
+     CachyOS holds a 2026-09-21 rerun (IS -1.468, OOS -0.594, not all variants negative). Both predate the dollar
+     P&L default, so the Act 3 numbers must be re-derived from current code before the paper cites them.
+- **2026-10-07 — D18 comparison report** (`research/d18_arm_comparison.py`, output
+  `output/research/d18_arm_comparison.parquet`). 60 pairs are confirmed by one arm only (Tier 2: 6 exclude-only,
+  13 include-only; Tier 3: 19 / 22). 57 of 60 are **grid shifts**: episodic windows are counted in bars from the
+  pair's first common date, so the arms' 10-year windows sit at different dates (median 42 days apart, max 363);
+  the other arm's nearest window has raw p < 0.01 in 75% of them. 2 are BH-threshold cases (adjusted p 0.0493 vs
+  0.0500), 1 was not a Tier 3 candidate in the exclude arm (LH/MXIM). No one-arm pair has a quote-only leg; 4 of
+  60 have any no-trade day in the deciding window (max share 8.8%). Reading: the midpoint data itself barely moves
+  discovery; the arms differ by window placement. Wider implication (for Ross): single-window episodic
+  confirmations are sensitive to the window grid's phase (CMA/ZION: p 8.6e-10 at the window ending 2018-12-07,
+  0.045 four months earlier).
