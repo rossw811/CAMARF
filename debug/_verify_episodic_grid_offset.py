@@ -93,6 +93,25 @@ def main():
     bare = re.findall(r'clear_checkpoint\("[a-z0-9_]+"\)', src)
     check("checkpoint_cleanup_uses_suffix", not bare, bare)
     check("lineage_log_names_real_stage", "recorded stage 'episodic_scan'\")" not in src)
+    # 6. --fresh must only collect THIS run's checkpoints (2026-10-07: the primary's glob checkpoint_tier2_rolling*
+    #    also caught checkpoint_tier2_rolling_d18incl_* and moved them into the primary's backup)
+    import tempfile, shutil
+    d = tempfile.mkdtemp(prefix="ckpt_")
+    try:
+        names = ["checkpoint_tier2_rolling.parquet", "checkpoint_tier2_rolling.meta",
+                 "checkpoint_tier2_rolling_part000001.parquet", "checkpoint_tier2_rolling_d18incl_part000001.parquet",
+                 "checkpoint_tier2_rolling_grid63_part000001.parquet", "checkpoint_tier1_fullsample_d18incl.parquet"]
+        for n in names:
+            open(os.path.join(d, n), "w").close()
+        got = {}
+        for mod in (m, g):
+            mod._OUT_DIR = d
+            got[mod._RUN_SUFFIX] = sorted(os.path.basename(p) for p in mod._run_checkpoint_files()) \
+                if hasattr(mod, "_run_checkpoint_files") else None
+        check("primary_collects_only_its_checkpoints", got[""] == sorted(names[:3]), got[""])
+        check("grid_collects_only_its_checkpoints", got["_grid63"] == [names[4]], got["_grid63"])
+    finally:
+        shutil.rmtree(d, ignore_errors=True)
     finish()
 
 
