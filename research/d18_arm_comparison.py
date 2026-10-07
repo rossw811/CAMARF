@@ -10,7 +10,10 @@ because masked days shorten the aligned series), each leg's quote-only flag, sha
 median dollar volume over that window (close x restated volume; window = the 2520 aligned bars ending at
 window_end_date under the include arm's alignment), and a reason (classify()):
   quote_only_leg  a leg is a quote-only series -- only the include arm admits it
-  window_absent   the other arm never tested that window (e.g. masking left too little aligned history)
+  pair_not_tested the other arm never tested the pair at all
+  grid_shift      the other arm tested the pair, but on a shifted window grid (no window with the same end date):
+                  windows are counted in BARS from the pair's first common date, so masked/extra days move every
+                  window's position. Reported: the other arm's NEAREST window, its p / adjusted p, offset in days.
   multiplicity    raw p identical in both arms; only the BH-adjusted p crossed alpha (the arms differ in test count)
   data_changed    raw p differs -- the midpoint days changed the test statistic itself
 Usage:  python research/d18_arm_comparison.py          (CachyOS: reads both arms' window files, ~6.9M rows each)
@@ -32,11 +35,14 @@ WINDOW_BARS = 2520                                   # = wrds_deep_history_episo
 ARMS = {"exclude": "", "include": "_d18incl"}
 
 
-def classify(quote_only_leg: bool, other_p, conf_p, rtol: float = 1e-6) -> str:
+def classify(quote_only_leg: bool, other_p, conf_p, tested: bool = True, same_window: bool = True,
+             rtol: float = 1e-6) -> str:
     if quote_only_leg:
         return "quote_only_leg"
-    if other_p is None or (isinstance(other_p, float) and np.isnan(other_p)):
-        return "window_absent"
+    if not tested:
+        return "pair_not_tested"
+    if not same_window:
+        return "grid_shift"
     if np.isclose(other_p, conf_p, rtol=rtol, atol=0.0):
         return "multiplicity"
     return "data_changed"
@@ -106,15 +112,20 @@ def compare_tier(tier: int, windows: dict, confirmed: dict) -> pd.DataFrame:
         ow = ow[ow["key"].isin(only)]
         # a pair can have several rows per window (both regression directions): keep the smallest p
         ow = ow.sort_values("pvalue").drop_duplicates(["key", "window_end_date"])
-        omap = {(k, pd.Timestamp(e)): (p, ap) for k, e, p, ap in
-                zip(ow["key"], ow["window_end_date"], ow["pvalue"], ow["fdr_adjusted_pvalue"])}
+        by_key = {k: g for k, g in ow.groupby("key")}
         for _, r in dec.iterrows():
             a, b = r["key"]
             end = pd.Timestamp(r["window_end_date"])
-            o = omap.get((r["key"], end))
+            g = by_key.get(r["key"])
             rec = {"tier": tier, "confirmed_by": arm, "symbol_a": a, "symbol_b": b, "window_end_date": end,
                    "conf_pvalue": float(r["pvalue"]), "conf_adj_pvalue": float(r["fdr_adjusted_pvalue"]),
-                   "other_pvalue": float(o[0]) if o else np.nan, "other_adj_pvalue": float(o[1]) if o else np.nan}
+                   "other_pvalue": np.nan, "other_adj_pvalue": np.nan, "other_offset_days": np.nan,
+                   "other_any_rejected": False}
+            if g is not None:
+                off = (pd.DatetimeIndex(g["window_end_date"]) - end).days
+                n = int(np.argmin(np.abs(off)))
+                rec.update(other_pvalue=float(g["pvalue"].iloc[n]), other_adj_pvalue=float(g["fdr_adjusted_pvalue"].iloc[n]),
+                           other_offset_days=int(off[n]), other_any_rejected=bool(g["fdr_rejected"].any()))
             da, db = load_leg(a), load_leg(b)
             if da is not None and db is not None:
                 s, e = window_bounds(da, db, end)
@@ -124,7 +135,8 @@ def compare_tier(tier: int, windows: dict, confirmed: dict) -> pd.DataFrame:
                         for kk, vv in leg_window_stats(d, s, e).items():
                             rec[f"{kk}_{leg}"] = vv
             qo = bool(rec.get("quote_only_a", False)) or bool(rec.get("quote_only_b", False))
-            rec["reason"] = classify(qo, rec["other_pvalue"], rec["conf_pvalue"])
+            rec["reason"] = classify(qo, rec["other_pvalue"], rec["conf_pvalue"], tested=g is not None,
+                                     same_window=rec["other_offset_days"] == 0)
             rows.append(rec)
     return pd.DataFrame(rows)
 
@@ -134,12 +146,33 @@ def _read(tier, arm, part, cols=None):
                            columns=cols)
 
 
+def with_fdr(win: pd.DataFrame, confirmed: pd.DataFrame) -> pd.DataFrame:
+    """Tier 2's window file is written BEFORE the scan's BH step, so it has no fdr columns: apply the scan's own
+    _benjamini_hochberg (same family = all rows, same alpha) and require the result to reproduce the saved
+    confirmed set exactly."""
+    if "fdr_rejected" in win.columns:
+        return win
+    from config import Config
+    from research.wrds_deep_history_episodic_scan import _benjamini_hochberg
+    rej, adj = _benjamini_hochberg(win["pvalue"].to_numpy(), Config.STATS.FDR_ALPHA)
+    win = win.assign(fdr_rejected=np.asarray(rej, bool), fdr_adjusted_pvalue=np.asarray(adj, float))
+    got = {_key(a, b) for a, b in zip(win.loc[win.fdr_rejected, "symbol_a"], win.loc[win.fdr_rejected, "symbol_b"])}
+    saved = {_key(a, b) for a, b in zip(confirmed["symbol_a"], confirmed["symbol_b"])}
+    if got != saved:
+        raise SystemExit(f"recomputed BH does not reproduce the saved confirmed set: {len(got ^ saved)} pairs differ")
+    return win
+
+
 def main():
-    cols = ["symbol_a", "symbol_b", "pvalue", "window_end_date", "fdr_rejected", "fdr_adjusted_pvalue"]
+    base = ["symbol_a", "symbol_b", "pvalue", "window_end_date"]
     out = []
     for tier in (2, 3):
         confirmed = {arm: _read(tier, arm, "confirmed") for arm in ARMS}
-        windows = {arm: _read(tier, arm, "windows", cols) for arm in ARMS}
+        windows = {}
+        for arm in ARMS:
+            w = _read(tier, arm, "windows")
+            w = w[[c for c in base + ["fdr_rejected", "fdr_adjusted_pvalue"] if c in w.columns]]
+            windows[arm] = with_fdr(w, confirmed[arm])
         out.append(compare_tier(tier, windows, confirmed))
         del windows
     rep = pd.concat(out, ignore_index=True)
@@ -151,6 +184,13 @@ def main():
     print("\nmedians per group: worst leg's no-trade share, thinnest leg's median daily $ volume")
     print(rep.groupby(["tier", "confirmed_by"])[["worst_leg_no_trade_frac", "thinnest_leg_dollar_vol"]]
           .median().to_string())
+    gs = rep[rep.reason == "grid_shift"]
+    if len(gs):
+        print(f"\ngrid_shift ({len(gs)}): |offset| to the other arm's nearest window, days: median "
+              f"{gs.other_offset_days.abs().median():.0f}, max {gs.other_offset_days.abs().max():.0f}; nearest-window raw "
+              f"p < 0.01 in {(gs.other_pvalue < 0.01).mean():.0%}, < 0.05 in {(gs.other_pvalue < 0.05).mean():.0%}")
+    print(f"one-arm pairs with any no-trade day in the deciding window: {(rep.worst_leg_no_trade_frac > 0).sum()} "
+          f"of {len(rep)}; max share {rep.worst_leg_no_trade_frac.max():.3f}")
     print(f"-> {OUT}")
 
 
