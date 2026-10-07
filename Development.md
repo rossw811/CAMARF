@@ -28700,6 +28700,13 @@ for every script.
 run overwrote the primary's log; un-suffixed "Saved" paths) fixed 2026-10-07, see the sweep log. Not yet citable: D18 comparison, pools rebuild and the second pre-registered pass
 come first. Disclosed: the run used raw volume for Compustat Global and 37 ETF/ADR/REIT files.
 
-**Open:** D18 comparison report (Ross decides the arm); restate Compustat/ETF volume + coarse-TF files; sync cache to
-the Surface; pools -> spreads -> squeeze -> second prereg pass; A2/B8/PIT-membership adoption decisions;
-DEV-016 mem_guard and DEV-018 memtest on CachyOS when idle.
+**2026-10-07:** volume restated everywhere (Compustat Global, ETF/ADR, and the 7D/1M/3M/6M/1Y files from the
+restated daily; Surface synced and reproduces CachyOS exactly). Found and fixed on the way: `period_bars` summed
+missing volume to 0 / partial sums; PAR's coarse files were another security (quarantined, rebuilt; 1M needs a
+refetch); the episodic scan's sensitivity run overwrote the primary's log. D18 report done: 57 of the 60 one-arm
+pairs differ by window-grid placement, not midpoint data. Act 3 paper claims differ between machines (Surface
+2026-08-14 vs CachyOS 2026-09-21 outputs) -- re-derive. Detail: docs/INCONSISTENCY_SWEEP_2026-09-27.md.
+
+**Open:** D18 decision (Ross); grid-phase sensitivity of episodic confirmation (proposal, needs Ross's buy-in);
+Amendment 2 addendum, then pools -> spreads -> squeeze -> second prereg pass; PAR_1M msf_v2 refetch; Act 3
+re-derivation; A2/B8/PIT-membership adoption decisions; DEV-016 mem_guard and DEV-018 memtest on CachyOS when idle.
