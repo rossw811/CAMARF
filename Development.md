@@ -28707,6 +28707,12 @@ refetch); the episodic scan's sensitivity run overwrote the primary's log. D18 r
 pairs differ by window-grid placement, not midpoint data. Act 3 paper claims differ between machines (Surface
 2026-08-14 vs CachyOS 2026-09-21 outputs) -- re-derive. Detail: docs/INCONSISTENCY_SWEEP_2026-09-27.md.
 
-**Open:** D18 decision (Ross); grid-phase sensitivity of episodic confirmation (proposal, needs Ross's buy-in);
-Amendment 2 addendum, then pools -> spreads -> squeeze -> second prereg pass; PAR_1M msf_v2 refetch; Act 3
+**Decisions (Ross, 2026-10-07):** D18 = exclude (adopted); grid-phase robustness arm approved (`--grid-offset`
+63/126/189, pre-declared metric "grid-robust = confirmed under all 4 grids", research/grid_phase_robustness.py);
+Amendment 2 addendum to be drafted for sign-off. Pre-run check found that the 2026-10-05 discovery used raw volume
+in its ADV gate, so offset 0 is re-run too: CachyOS chain (debug/_tmp_chain_grid.sh, code 0ee0f784, started
+16:49) = primary --fresh, then offsets 63/126/189, then the report; ~5-6 days. Log: latest_run_grid_chain.log.
+
+**Open:** sign-off on the Amendment 2 addendum draft (docs/PREREGISTRATION_STRATEGY_SEARCH_2026-09-27.md,
+uncommitted until signed), then pools -> spreads -> squeeze -> second prereg pass; PAR_1M msf_v2 refetch; Act 3
 re-derivation; A2/B8/PIT-membership adoption decisions; DEV-016 mem_guard and DEV-018 memtest on CachyOS when idle.
