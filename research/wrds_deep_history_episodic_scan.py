@@ -100,7 +100,7 @@ log = logging.getLogger("wrds_deep_history_episodic_scan")
 
 def _log_path():
     """Per-arm log file (2026-10-07: one shared name let the `--d18 include` run overwrite the primary run's log)."""
-    return os.path.join(_ROOT, f"latest_run_wrds_deep_history_episodic_scan{_ARM_SUFFIX}.log")
+    return os.path.join(_ROOT, f"latest_run_wrds_deep_history_episodic_scan{_RUN_SUFFIX}.log")
 
 
 def _rel(path):
@@ -688,7 +688,7 @@ def _build_symbol_array_cache(log_price_df, symbols):
 
 def build_rolling_eg_tasks(pairs, log_price_df, max_lag, window=EPISODIC_WINDOW_BARS, step=EPISODIC_STEP_BARS,
                            adv_by_symbol=None, adv_threshold=None, array_cache=None,
-                           membership_df=None, permno_by_symbol=None):
+                           membership_df=None, permno_by_symbol=None, offset=0):
     """Builds the flat both-directions EG task list for every (pair, window)
     combination, in the exact tuple shape _eg_worker already expects -- lets
     Tier 2/3 reuse the SAME ProcessPoolExecutor pattern Tier 1's full-sample
@@ -769,7 +769,7 @@ def build_rolling_eg_tasks(pairs, log_price_df, max_lag, window=EPISODIC_WINDOW_
         # deployment at that early date would never have proposed this pair
         # for EG testing at all.
         pair_first_qualified = p.get("first_qualified_window_end_date")
-        for start in range(0, n - window + 1, step):
+        for start in range(offset, n - window + 1, step):    # offset: grid-phase robustness arm (2026-10-07)
             window_start_date = dates_masked[start]
             window_end_date = dates_masked[start + window - 1]
             if pair_first_qualified is not None and window_end_date < pair_first_qualified:
@@ -814,7 +814,7 @@ def build_rolling_eg_tasks(pairs, log_price_df, max_lag, window=EPISODIC_WINDOW_
 def run_rolling_eg_pool(pairs, log_price_df, max_lag, window=EPISODIC_WINDOW_BARS,
                          step=EPISODIC_STEP_BARS, workers=Config.RUNTIME.N_WORKERS, adv_by_symbol=None, adv_threshold=None,
                          pair_batch_size=500, checkpoint_id=None, checkpoint_every=10,
-                         membership_df=None, permno_by_symbol=None):
+                         membership_df=None, permno_by_symbol=None, offset=0):
     """Runs the rolling-window EG-both-directions test for EVERY candidate
     pair, independent of any full-sample EG result -- the actual episodic
     DISCOVERY step Tier 2/3 both need. Returns a flat list of
@@ -924,7 +924,7 @@ def run_rolling_eg_pool(pairs, log_price_df, max_lag, window=EPISODIC_WINDOW_BAR
             tasks, task_meta = build_rolling_eg_tasks(
                 batch_pairs, log_price_df, max_lag, window, step,
                 adv_by_symbol=adv_by_symbol, adv_threshold=adv_threshold, array_cache=array_cache,
-                membership_df=membership_df, permno_by_symbol=permno_by_symbol,
+                membership_df=membership_df, permno_by_symbol=permno_by_symbol, offset=offset,
             )
             n_done_now = i + len(batch_pairs)
             if not tasks:
@@ -1117,15 +1117,28 @@ _D18_ARM = sys.argv[sys.argv.index("--d18") + 1] if "--d18" in sys.argv else "ex
 if _D18_ARM not in ("exclude", "include"):
     raise SystemExit(f"--d18 must be 'exclude' or 'include', got {_D18_ARM!r}")
 _ARM_SUFFIX = "" if _D18_ARM == "exclude" else "_d18incl"
+# Grid-phase robustness arm (Ross 2026-10-07): `--grid-offset N` starts every Tier 2/3 window grid N bars later.
+# Tier 1 and Tier 3's candidate list do not depend on the grid and are READ from the arm's offset-0 files (which
+# must exist); only the window tests are recomputed, into _gridN outputs. Declared offsets only (lineage stages,
+# research/pipeline_stages.GRID_OFFSETS), exclude arm only (D18 adopted "exclude" 2026-10-07).
+_GRID_OFFSET = int(sys.argv[sys.argv.index("--grid-offset") + 1]) if "--grid-offset" in sys.argv else 0
+if _GRID_OFFSET:
+    from research.pipeline_stages import GRID_OFFSETS as _DECLARED_GRID_OFFSETS
+    if _GRID_OFFSET not in _DECLARED_GRID_OFFSETS or _GRID_OFFSET >= EPISODIC_STEP_BARS:
+        raise SystemExit(f"--grid-offset must be one of {_DECLARED_GRID_OFFSETS}, got {_GRID_OFFSET}")
+    if _D18_ARM != "exclude":
+        raise SystemExit("--grid-offset is declared for the exclude arm only (D18 decision 2026-10-07)")
+_RUN_SUFFIX = _ARM_SUFFIX + (f"_grid{_GRID_OFFSET}" if _GRID_OFFSET else "")
 
-_SCAN_OUTPUTS = [os.path.join(_OUT_DIR, f"wrds_deep_history_episodic_scan_{n}{_ARM_SUFFIX}.parquet")
-                 for n in ("tier1", "tier2_windows", "tier2_confirmed", "tier3_pairs", "tier3_windows", "tier3_confirmed")]
+_SCAN_OUTPUTS = [os.path.join(_OUT_DIR, f"wrds_deep_history_episodic_scan_{n}{_RUN_SUFFIX}.parquet")
+                 for n in (("tier2_windows", "tier2_confirmed", "tier3_windows", "tier3_confirmed") if _GRID_OFFSET else
+                           ("tier1", "tier2_windows", "tier2_confirmed", "tier3_pairs", "tier3_windows", "tier3_confirmed"))]
 
 
 def _scan_lineage():
     """Seed/lineage stage for this scan -- declared once, with the whole chain, in research/pipeline_stages.py."""
     from research.pipeline_stages import stage
-    return stage("episodic_scan" + _ARM_SUFFIX)
+    return stage("episodic_scan" + _RUN_SUFFIX)
 
 
 def _guard_stale_resume(stage):
@@ -1134,7 +1147,7 @@ def _guard_stale_resume(stage):
     # only THIS scan's checkpoints (the intraday scan's checkpoint_intraday_* may belong to a run in progress)
     existing = [p for p in _SCAN_OUTPUTS if os.path.exists(p)] + [
         p for cid in ("tier1_fullsample", "tier2_rolling", "tier3_rolling")
-        for p in glob.glob(os.path.join(_OUT_DIR, f"checkpoint_{cid}{_ARM_SUFFIX}*"))]
+        for p in glob.glob(os.path.join(_OUT_DIR, f"checkpoint_{cid}{_RUN_SUFFIX}*"))]
     if not existing:
         return
     st = stage.status()
@@ -1237,6 +1250,8 @@ def main():
     # reconstructing `pairs` from it is lossless. Delete the output file first to force a genuine
     # from-scratch Tier 1 re-run.
     _tier1_output_path = os.path.join(_OUT_DIR, f"wrds_deep_history_episodic_scan_tier1{_ARM_SUFFIX}.parquet")
+    if _GRID_OFFSET and not os.path.exists(_tier1_output_path):
+        raise SystemExit(f"--grid-offset reuses the offset-0 Tier 1 output, missing: {_tier1_output_path}")
     if os.path.exists(_tier1_output_path):
         log.info(f"[TIER 1] Found existing output at {_tier1_output_path} -- resuming from it "
                  f"instead of re-running correlation+EG from scratch. Delete this file first to "
@@ -1266,7 +1281,7 @@ def main():
 
         results = run_full_sample_eg_pool(pairs, log_price_df, Config.ANALYSIS.EG_MAX_LAG,
                                            checkpoint_id="tier1_fullsample" + _ARM_SUFFIX)
-        clear_checkpoint("tier1_fullsample")
+        clear_checkpoint("tier1_fullsample" + _ARM_SUFFIX)
 
         ok_results = [r for r in results if r.get("ok")]
         by_key = {}
@@ -1342,7 +1357,7 @@ def main():
     # EG-testing, crashed and forced a relaunch, even though Tier 2 itself had already completed
     # and saved cleanly each time. Only `tier2_flat` (raw pvalue rows) needs to survive --
     # `episodic_bhfdr_confirm` is cheap to recompute from it, not worth caching separately.
-    _tier2_windows_path = os.path.join(_OUT_DIR, f"wrds_deep_history_episodic_scan_tier2_windows{_ARM_SUFFIX}.parquet")
+    _tier2_windows_path = os.path.join(_OUT_DIR, f"wrds_deep_history_episodic_scan_tier2_windows{_RUN_SUFFIX}.parquet")
     if os.path.exists(_tier2_windows_path):
         log.info(f"[TIER 2] Found existing output at {_tier2_windows_path} -- resuming from it "
                  f"instead of re-running rolling EG from scratch. Delete this file first to force "
@@ -1352,9 +1367,10 @@ def main():
         log.info(f"[TIER 2] Rolling-window EG discovery on the SAME {len(pairs)} static-corr-prefiltered "
                  f"candidate pairs as Tier 1 -- no full-sample EG gate.")
         tier2_flat = run_rolling_eg_pool(pairs, log_price_df, Config.ANALYSIS.EG_MAX_LAG,
-                                          adv_by_symbol=adv_by_symbol, checkpoint_id="tier2_rolling" + _ARM_SUFFIX,
-                                          membership_df=membership_df, permno_by_symbol=permno_by_symbol)
-        clear_checkpoint("tier2_rolling")
+                                          adv_by_symbol=adv_by_symbol, checkpoint_id="tier2_rolling" + _RUN_SUFFIX,
+                                          membership_df=membership_df, permno_by_symbol=permno_by_symbol,
+                                          offset=_GRID_OFFSET)
+        clear_checkpoint("tier2_rolling" + _RUN_SUFFIX)
         os.makedirs(_OUT_DIR, exist_ok=True)
         pd.DataFrame(tier2_flat).to_parquet(_tier2_windows_path, index=False)
     tier2_confirmed = episodic_bhfdr_confirm(tier2_flat, Config.STATS.FDR_ALPHA)
@@ -1364,7 +1380,7 @@ def main():
         log.info(f"  [TIER 2 episodic] {r['symbol_a']}/{r['symbol_b']}: "
                  f"{r['n_windows_fdr_rejected']}/{r['n_windows_tested']} windows FDR-rejected, "
                  f"min_adj_p={r['min_adjusted_pvalue']:.3e}")
-    _tier2_confirmed_path = os.path.join(_OUT_DIR, f"wrds_deep_history_episodic_scan_tier2_confirmed{_ARM_SUFFIX}.parquet")
+    _tier2_confirmed_path = os.path.join(_OUT_DIR, f"wrds_deep_history_episodic_scan_tier2_confirmed{_RUN_SUFFIX}.parquet")
     pd.DataFrame(tier2_confirmed).to_parquet(_tier2_confirmed_path, index=False)
     log.info(f"[TIER 2] Saved -> {_rel(_tier2_windows_path)}, {_rel(_tier2_confirmed_path)}")
 
@@ -1384,6 +1400,8 @@ def main():
     # `tier3_pairs` to its own checkpoint file immediately after computing it, and skip
     # recomputation on a future relaunch if that file already exists.
     _tier3_pairs_path = os.path.join(_OUT_DIR, f"wrds_deep_history_episodic_scan_tier3_pairs{_ARM_SUFFIX}.parquet")
+    if _GRID_OFFSET and not os.path.exists(_tier3_pairs_path):
+        raise SystemExit(f"--grid-offset reuses the offset-0 Tier 3 candidate list, missing: {_tier3_pairs_path}")
     if os.path.exists(_tier3_pairs_path):
         log.info(f"[TIER 3] Found existing candidate-pairs cache at {_tier3_pairs_path} -- "
                  f"resuming from it instead of re-running the multi-hour rolling correlation "
@@ -1418,9 +1436,10 @@ def main():
     del returns
     gc.collect()
     tier3_flat = run_rolling_eg_pool(tier3_pairs, log_price_df, Config.ANALYSIS.EG_MAX_LAG,
-                                      adv_by_symbol=adv_by_symbol, checkpoint_id="tier3_rolling" + _ARM_SUFFIX,
-                                      membership_df=membership_df, permno_by_symbol=permno_by_symbol)
-    clear_checkpoint("tier3_rolling")
+                                      adv_by_symbol=adv_by_symbol, checkpoint_id="tier3_rolling" + _RUN_SUFFIX,
+                                      membership_df=membership_df, permno_by_symbol=permno_by_symbol,
+                                      offset=_GRID_OFFSET)
+    clear_checkpoint("tier3_rolling" + _RUN_SUFFIX)
     tier3_confirmed = episodic_bhfdr_confirm(tier3_flat, Config.STATS.FDR_ALPHA)
     log.info(f"[TIER 3] {len(tier3_flat)} (pair,window) tests -> "
              f"{len(tier3_confirmed)} episodically confirmed (>=1 FDR-rejected window)")
@@ -1428,8 +1447,8 @@ def main():
         log.info(f"  [TIER 3 episodic] {r['symbol_a']}/{r['symbol_b']}: "
                  f"{r['n_windows_fdr_rejected']}/{r['n_windows_tested']} windows FDR-rejected, "
                  f"min_adj_p={r['min_adjusted_pvalue']:.3e}")
-    _tier3_windows_path = os.path.join(_OUT_DIR, f"wrds_deep_history_episodic_scan_tier3_windows{_ARM_SUFFIX}.parquet")
-    _tier3_confirmed_path = os.path.join(_OUT_DIR, f"wrds_deep_history_episodic_scan_tier3_confirmed{_ARM_SUFFIX}.parquet")
+    _tier3_windows_path = os.path.join(_OUT_DIR, f"wrds_deep_history_episodic_scan_tier3_windows{_RUN_SUFFIX}.parquet")
+    _tier3_confirmed_path = os.path.join(_OUT_DIR, f"wrds_deep_history_episodic_scan_tier3_confirmed{_RUN_SUFFIX}.parquet")
     pd.DataFrame(tier3_flat).to_parquet(_tier3_windows_path, index=False)
     pd.DataFrame(tier3_confirmed).to_parquet(_tier3_confirmed_path, index=False)
     log.info(f"[TIER 3] Saved -> {_rel(_tier3_windows_path)}, {_rel(_tier3_confirmed_path)}")
@@ -1440,8 +1459,8 @@ def main():
              f"Tier 2 (rolling EG, static corr) episodic-confirmed={len(tier2_confirmed)} of {len(pairs)} pairs | "
              f"Tier 3 (rolling EG, rolling corr) episodic-confirmed={len(tier3_confirmed)} of {len(tier3_pairs)} pairs")
     log.info(f"wrds_deep_history_episodic_scan.py complete ({runtime:.1f} min)")
-    _stage.record()  # lineage: seed + output fingerprints (output/lineage/episodic_scan.json)
-    log.info("lineage: recorded stage 'episodic_scan'")
+    _stage.record()  # lineage: seed + output fingerprints (output/lineage/<stage name>.json)
+    log.info(f"lineage: recorded stage '{_stage.name}'")
 
 
 if __name__ == "__main__":
