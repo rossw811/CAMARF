@@ -8,7 +8,8 @@ shares. Window files for both arms are built so each one-arm pair lands in one k
   (X,Y) include-only, same raw p in exclude (adjusted p above alpha)   -> multiplicity
   (X,Z) include-only, exclude raw p differs                           -> data_changed
   (Q,X) include-only, Q quote-only                                    -> quote_only_leg
-  (Y,Z) exclude-only, window not tested in include                    -> window_absent
+  (Y,Z) exclude-only, pair not tested at all in include              -> pair_not_tested
+  (V,X) include-only, exclude tested the pair on a SHIFTED window grid -> grid_shift (nearest window, its p, offset)
   (Y,Q) confirmed in both                                             -> not in the report
 Other-arm rows in both regression directions: the smaller p is used.
 Checks: the reasons; the shared pair excluded; window = last 2520 aligned bars; X's no-trade share = 100/2520;
@@ -47,27 +48,36 @@ def main():
         x.to_parquet(os.path.join(d, "X_1D.parquet"))
         base.to_parquet(os.path.join(d, "Y_1D.parquet"))
         base.to_parquet(os.path.join(d, "Z_1D.parquet"))
+        base.to_parquet(os.path.join(d, "V_1D.parquet"))
         q = base.drop(columns=["close"]).assign(quote_only=True)
         q.to_parquet(os.path.join(d, "_quote_only", "Q_1D.parquet"))
         m._WRDS = d
 
-        def w(a, b, p, ap, rej):
-            return {"symbol_a": a, "symbol_b": b, "pvalue": p, "window_end_date": end, "fdr_rejected": rej,
+        def w(a, b, p, ap, rej, e=end):
+            return {"symbol_a": a, "symbol_b": b, "pvalue": p, "window_end_date": e, "fdr_rejected": rej,
                     "fdr_adjusted_pvalue": ap}
         inc = pd.DataFrame([w("X", "Y", 0.001, 0.01, True), w("X", "Z", 0.001, 0.01, True),
-                            w("Q", "X", 0.001, 0.01, True), w("Y", "Q", 0.001, 0.01, True)])
+                            w("Q", "X", 0.001, 0.01, True), w("Y", "Q", 0.001, 0.01, True),
+                            w("V", "X", 0.001, 0.01, True)])
+        # V/X in exclude: windows 120 and 400 days away from the deciding end -> nearest is the 120-day one
         exc = pd.DataFrame([w("Y", "X", 0.5, 0.9, False), w("X", "Y", 0.001, 0.08, False),   # both directions
                             w("X", "Z", 0.2, 0.9, False), w("Y", "Z", 0.001, 0.01, True),
-                            w("Y", "Q", 0.001, 0.01, True)])
-        conf = {"include": pd.DataFrame({"symbol_a": ["X", "X", "Q", "Y"], "symbol_b": ["Y", "Z", "X", "Q"]}),
+                            w("Y", "Q", 0.001, 0.01, True),
+                            w("X", "V", 0.04, 0.95, False, end - pd.Timedelta(days=120)),
+                            w("V", "X", 0.3, 0.99, False, end + pd.Timedelta(days=400))])
+        conf = {"include": pd.DataFrame({"symbol_a": ["X", "X", "Q", "Y", "V"], "symbol_b": ["Y", "Z", "X", "Q", "X"]}),
                 "exclude": pd.DataFrame({"symbol_a": ["Y", "Y"], "symbol_b": ["Z", "Q"]})}
         rep = m.compare_tier(3, {"exclude": exc, "include": inc}, conf)
         reason = {(r.symbol_a, r.symbol_b): r.reason for r in rep.itertuples()}
         check("multiplicity", reason.get(("X", "Y")) == "multiplicity", reason)
         check("data_changed", reason.get(("X", "Z")) == "data_changed")
         check("quote_only_leg", reason.get(("Q", "X")) == "quote_only_leg")
-        check("window_absent", reason.get(("Y", "Z")) == "window_absent")
-        check("shared_pair_excluded", ("Q", "Y") not in reason and len(rep) == 4, f"{len(rep)} rows")
+        check("pair_not_tested", reason.get(("Y", "Z")) == "pair_not_tested", reason.get(("Y", "Z")))
+        check("shared_pair_excluded", ("Q", "Y") not in reason and len(rep) == 5, f"{len(rep)} rows")
+        vx = rep[(rep.symbol_a == "V") & (rep.symbol_b == "X")].iloc[0]
+        check("grid_shift", vx.reason == "grid_shift", vx.reason)
+        check("grid_shift_nearest_window", vx.other_offset_days == -120 and np.isclose(vx.other_pvalue, 0.04)
+              and np.isclose(vx.other_adj_pvalue, 0.95), f"{vx.other_offset_days} {vx.other_pvalue}")
         xy = rep[(rep.symbol_a == "X") & (rep.symbol_b == "Y")].iloc[0]
         check("other_arm_uses_smaller_p", np.isclose(xy.other_pvalue, 0.001), xy.other_pvalue)
         check("window_is_2520_aligned_bars", xy.window_start_date == idx[280] and xy.window_end_date == end,

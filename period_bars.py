@@ -44,10 +44,18 @@ def period_end_index(index: pd.DatetimeIndex, tf_label: str) -> pd.DatetimeIndex
 
 def resample_to_period_end(df: pd.DataFrame, tf_label: str, agg: Optional[dict] = None) -> pd.DataFrame:
     """Aggregate a daily OHLCV frame to tf_label bars stamped at calendar period end.
-    Periods with no valid close, and non-positive closes, are dropped (same rule as the old resamplers)."""
+    Periods with no valid close, and non-positive closes, are dropped (same rule as the old resamplers).
+    Summed columns (volume): a day with a valid close but NaN volume is UNKNOWN volume, so its period is NaN; a day
+    with no close (a missing bar) adds nothing; a period with no volume at all is NaN, never 0 (2026-10-07: a plain
+    groupby sum stored 0 / partial sums -- debug/_verify_period_bars_volume_nan.py)."""
     agg = {k: v for k, v in (agg or _AGG).items() if k in df.columns}
     keys = period_end_index(df.index, tf_label)
     out = df[list(agg)].groupby(keys).agg(agg)
+    priced = df["close"].notna() if "close" in df.columns else pd.Series(True, index=df.index)
+    for col in (k for k, v in agg.items() if v == "sum"):
+        unknown = (df[col].isna() & priced).groupby(keys).any()
+        n_valid = df[col].notna().groupby(keys).sum()
+        out[col] = out[col].where(~unknown & (n_valid > 0))
     out.index = pd.DatetimeIndex(out.index)
     out.index.name = df.index.name
     out = out.dropna(subset=["close"])

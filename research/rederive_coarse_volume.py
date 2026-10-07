@@ -31,7 +31,7 @@ from period_bars import TIMEFRAMES, period_end_index
 
 _WRDS = os.path.join("output", "cache", "wrds")
 REPORT = os.path.join("output", "research", "rederive_coarse_volume_report.parquet")
-COARSE_TFS = ("1M",) + tuple(TIMEFRAMES)                       # 1M native + the daily-derived ones (1M appears once)
+COARSE_TFS = tuple(TIMEFRAMES)                                 # 7D/1M/3M/6M/1Y (1M: CRSP native monthly)
 
 
 def restate_coarse(daily: pd.DataFrame, coarse: pd.DataFrame, tf: str):
