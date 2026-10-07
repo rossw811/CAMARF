@@ -98,6 +98,15 @@ EPISODIC_STEP_BARS = 252      # re-evaluate roughly once a year
 log = logging.getLogger("wrds_deep_history_episodic_scan")
 
 
+def _log_path():
+    """Per-arm log file (2026-10-07: one shared name let the `--d18 include` run overwrite the primary run's log)."""
+    return os.path.join(_ROOT, f"latest_run_wrds_deep_history_episodic_scan{_ARM_SUFFIX}.log")
+
+
+def _rel(path):
+    return os.path.relpath(path, _ROOT).replace(os.sep, "/")
+
+
 def _setup_logging():
     fmt = logging.Formatter("%(asctime)s %(levelname)s  %(message)s", datefmt="%H:%M:%S")
     log.setLevel(logging.DEBUG)
@@ -105,9 +114,7 @@ def _setup_logging():
     ch.setLevel(logging.INFO)
     ch.setFormatter(fmt)
     log.addHandler(ch)
-    fh = logging.FileHandler(
-        os.path.join(_ROOT, "latest_run_wrds_deep_history_episodic_scan.log"), mode="w", encoding="utf-8"
-    )
+    fh = logging.FileHandler(_log_path(), mode="w", encoding="utf-8")
     fh.setLevel(logging.DEBUG)
     fh.setFormatter(fmt)
     log.addHandler(fh)
@@ -1319,10 +1326,8 @@ def main():
                       f"over {len(pvals)} ~10yr windows")
 
         os.makedirs(_OUT_DIR, exist_ok=True)
-        pd.DataFrame(rows).to_parquet(
-            os.path.join(_OUT_DIR, f"wrds_deep_history_episodic_scan_tier1{_ARM_SUFFIX}.parquet"), index=False
-        )
-        log.info(f"[TIER 1] Saved -> output/research/wrds_deep_history_episodic_scan_tier1.parquet "
+        pd.DataFrame(rows).to_parquet(_tier1_output_path, index=False)
+        log.info(f"[TIER 1] Saved -> {_rel(_tier1_output_path)} "
                  f"({len(rows)} candidate pairs, {n_confirmed} full-sample confirmed)")
 
     # -------------------------------------------------------------------
@@ -1359,10 +1364,9 @@ def main():
         log.info(f"  [TIER 2 episodic] {r['symbol_a']}/{r['symbol_b']}: "
                  f"{r['n_windows_fdr_rejected']}/{r['n_windows_tested']} windows FDR-rejected, "
                  f"min_adj_p={r['min_adjusted_pvalue']:.3e}")
-    pd.DataFrame(tier2_confirmed).to_parquet(
-        os.path.join(_OUT_DIR, f"wrds_deep_history_episodic_scan_tier2_confirmed{_ARM_SUFFIX}.parquet"), index=False
-    )
-    log.info(f"[TIER 2] Saved -> output/research/wrds_deep_history_episodic_scan_tier2_{{windows,confirmed}}.parquet")
+    _tier2_confirmed_path = os.path.join(_OUT_DIR, f"wrds_deep_history_episodic_scan_tier2_confirmed{_ARM_SUFFIX}.parquet")
+    pd.DataFrame(tier2_confirmed).to_parquet(_tier2_confirmed_path, index=False)
+    log.info(f"[TIER 2] Saved -> {_rel(_tier2_windows_path)}, {_rel(_tier2_confirmed_path)}")
 
     # -------------------------------------------------------------------
     # TIER 3: rolling correlation prefilter (broader candidate set than
@@ -1424,13 +1428,11 @@ def main():
         log.info(f"  [TIER 3 episodic] {r['symbol_a']}/{r['symbol_b']}: "
                  f"{r['n_windows_fdr_rejected']}/{r['n_windows_tested']} windows FDR-rejected, "
                  f"min_adj_p={r['min_adjusted_pvalue']:.3e}")
-    pd.DataFrame(tier3_flat).to_parquet(
-        os.path.join(_OUT_DIR, f"wrds_deep_history_episodic_scan_tier3_windows{_ARM_SUFFIX}.parquet"), index=False
-    )
-    pd.DataFrame(tier3_confirmed).to_parquet(
-        os.path.join(_OUT_DIR, f"wrds_deep_history_episodic_scan_tier3_confirmed{_ARM_SUFFIX}.parquet"), index=False
-    )
-    log.info(f"[TIER 3] Saved -> output/research/wrds_deep_history_episodic_scan_tier3_{{windows,confirmed}}.parquet")
+    _tier3_windows_path = os.path.join(_OUT_DIR, f"wrds_deep_history_episodic_scan_tier3_windows{_ARM_SUFFIX}.parquet")
+    _tier3_confirmed_path = os.path.join(_OUT_DIR, f"wrds_deep_history_episodic_scan_tier3_confirmed{_ARM_SUFFIX}.parquet")
+    pd.DataFrame(tier3_flat).to_parquet(_tier3_windows_path, index=False)
+    pd.DataFrame(tier3_confirmed).to_parquet(_tier3_confirmed_path, index=False)
+    log.info(f"[TIER 3] Saved -> {_rel(_tier3_windows_path)}, {_rel(_tier3_confirmed_path)}")
 
     runtime = (time.time() - t0) / 60
     log.info("=" * 60)

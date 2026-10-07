@@ -28695,11 +28695,11 @@ inequality (cite it; not new). CONTRIBUTING.md rebuilt with a how-to-contribute 
 for every script.
 
 **Discovery re-run (corrected data):** primary (D18 exclude) done 2026-10-05 13:11 -- Tier 1 891 confirmed of
-1,051,395; Tier 2 278; Tier 3 703 of 9,424,497 (Aug, pre-fix: 103 / 189 / 620). Sensitivity (D18 include) running:
-Tier 1 828, Tier 2 285 so far. Not yet citable: D18 comparison, pools rebuild and the second pre-registered pass
+1,051,395; Tier 2 278; Tier 3 703 of 9,424,497 (Aug, pre-fix: 103 / 189 / 620). Sensitivity (D18 include) done 2026-10-07
+02:47: Tier 1 828 of 1,031,546; Tier 2 285 (272 shared with primary); Tier 3 706 (684 shared). Scan-log bug (sensitivity
+run overwrote the primary's log; un-suffixed "Saved" paths) fixed 2026-10-07, see the sweep log. Not yet citable: D18 comparison, pools rebuild and the second pre-registered pass
 come first. Disclosed: the run used raw volume for Compustat Global and 37 ETF/ADR/REIT files.
 
 **Open:** D18 comparison report (Ross decides the arm); restate Compustat/ETF volume + coarse-TF files; sync cache to
-the Surface; pools -> spreads -> squeeze -> second prereg pass; A2/B8/PIT-membership adoption decisions; scan log
-writes to the primary's log file and prints tier-2 paths without the arm suffix (cosmetic, fix after the run);
+the Surface; pools -> spreads -> squeeze -> second prereg pass; A2/B8/PIT-membership adoption decisions;
 DEV-016 mem_guard and DEV-018 memtest on CachyOS when idle.
