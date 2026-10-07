@@ -1141,13 +1141,24 @@ def _scan_lineage():
     return stage("episodic_scan" + _RUN_SUFFIX)
 
 
+def _run_checkpoint_files():
+    """THIS run's checkpoint files only, by their exact names (2026-10-07: a `checkpoint_{cid}{suffix}*` glob also
+    matched other arms' / grids' checkpoints, e.g. the primary's caught checkpoint_tier2_rolling_d18incl_*)."""
+    out = []
+    # a grid run never computes Tier 1 (it reads the offset-0 file), so it never owns a Tier 1 checkpoint
+    for cid in (("tier2_rolling", "tier3_rolling") if _GRID_OFFSET else
+                ("tier1_fullsample", "tier2_rolling", "tier3_rolling")):
+        run_id = cid + _RUN_SUFFIX
+        out += [p for p in _checkpoint_paths(run_id) if os.path.exists(p)]
+        out += sorted(glob.glob(_checkpoint_part_glob(run_id)))
+    return out
+
+
 def _guard_stale_resume(stage):
     """Refuse to RESUME from outputs/checkpoints that were produced against different inputs or code (2026-09-27:
     the scan silently resumed from an existing Tier 1 file). `--fresh` moves them to a timestamped backup first."""
     # only THIS scan's checkpoints (the intraday scan's checkpoint_intraday_* may belong to a run in progress)
-    existing = [p for p in _SCAN_OUTPUTS if os.path.exists(p)] + [
-        p for cid in ("tier1_fullsample", "tier2_rolling", "tier3_rolling")
-        for p in glob.glob(os.path.join(_OUT_DIR, f"checkpoint_{cid}{_RUN_SUFFIX}*"))]
+    existing = [p for p in _SCAN_OUTPUTS if os.path.exists(p)] + _run_checkpoint_files()
     if not existing:
         return
     st = stage.status()
