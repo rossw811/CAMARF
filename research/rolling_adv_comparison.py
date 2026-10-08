@@ -46,6 +46,7 @@ import pandas as pd
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from config import Config
+from dollar_volume import usd_dollar_volume
 
 _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _WRDS_CACHE_DIR = os.path.join(_ROOT, "output", "cache", "wrds")
@@ -86,7 +87,7 @@ def flat_adv(df: pd.DataFrame) -> float:
     volume, then mean over whatever's in the cache)."""
     if "close" not in df.columns or "volume" not in df.columns or df.empty:
         return float("nan")
-    dollar_volume = pd.to_numeric(df["close"], errors="coerce") * pd.to_numeric(df["volume"], errors="coerce")
+    dollar_volume = usd_dollar_volume(df)   # R1.2 (2026-10-07): USD price, not Compustat's local-currency close
     result = dollar_volume.mean()
     # Some WRDS symbols carry nullable-dtype columns (or are entirely null,
     # e.g. a degenerate history) -- .mean() over an all-NA nullable Series
@@ -109,7 +110,7 @@ def rolling_adv(df: pd.DataFrame, window: int = ROLLING_ADV_WINDOW) -> pd.Series
     """
     if "close" not in df.columns or "volume" not in df.columns:
         return pd.Series(dtype=float)
-    dollar_volume = pd.to_numeric(df["close"], errors="coerce") * pd.to_numeric(df["volume"], errors="coerce")
+    dollar_volume = usd_dollar_volume(df)   # R1.2 (2026-10-07): USD price, not Compustat's local-currency close
     return dollar_volume.astype(float).rolling(window=window, min_periods=window).mean()
 
 

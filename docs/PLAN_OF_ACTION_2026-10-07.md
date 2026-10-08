@@ -13,14 +13,14 @@ at a time. Owners: **C** Claude · **R** Ross · **J** unattended job (CachyOS).
 ## The goal (paste into /goal)
 
 > Every thread in docs/PLAN_OF_ACTION_2026-10-07.md reaches its "done when" or is closed with a recorded reason; every
-> sign-off item S1–S30 has Ross's decision recorded in this file; the second pre-registered strategy-search pass is
+> sign-off item S1–S31 has Ross's decision recorded in this file; the second pre-registered strategy-search pass is
 > run and reported beside the first; every claim cited in PAPER.md / PAPER_MAGNITUDE.md is REPLICATED, CORRECTED or
 > WITHDRAWN in docs/CLAIMS_REGISTRY.md; every logged bug has a recheck verdict with evidence; the full verify suite
 > passes (or each failure is explained); and Development.md / HANDOFF / README / ERRATA match the final state.
 
 ---
 
-## Part A — Sign-off sheet
+## Part A — Sign-off sheet (S1–S31)
 
 Mark each: ✅ approve as recommended · ✏️ change (say how) · ✖ drop. Items already decided are listed at the end for
 completeness, not for re-decision.
@@ -49,6 +49,7 @@ completeness, not for re-decision.
 | S15 | **DEV-054 universe expansion** | ✖ close: the ~44,700-symbol WRDS universe is already the scope |
 | S16 | **Futures roll adjustment (T1.5)** | ✖ not run (no free contract history) — disclosed |
 | S17 | **Unilever ADR drift** | close as disclosed (unexplained UL vs London PLC drift stays in the errata) |
+| S31 | **R1.3: the S&P 500 membership gate skips international pairs** (applied only when both legs have a CRSP PERMNO, so Compustat Global legs are never gated and the pool tilts international). Options: (a) keep ungated and disclose; (b) gate international legs by a free point-in-time index-membership source; (c) restrict the membership-gated arm to US-US pairs and report international pairs as their own arm | (c): the gate's purpose is a point-in-time US index universe; mixing gated US pairs with ungated international ones has no clean interpretation; reporting them separately keeps both |
 
 ### A3. Claims and papers
 | # | Decision | Recommendation |
@@ -133,6 +134,7 @@ Legend: ✅ done · ▶ running · ⏳ waiting · ❓ sign-off · ✖ not run (f
 | 5.4 | Real-data re-derivation for headline-touching bugs | C | open | before/after recorded |
 | 5.5 | Independent check of ≥ 10% of "holds" verdicts (adversarial-reviewer, one at a time) | C + agent | ⏳ 5.3 | disagreements resolved |
 | 5.6 | R-series findings (21 confirmed, 80 unverified as of 2026-10-03): fix each when a claim depending on it is registered (T10 rule); C4-2 EG p-value routing | C | open | errata marks the rest "not cited — unresolved" |
+| 5.6b | Same bug class as R1.2 in yfinance paths: `analysis.py` `_compute_adv` (and `sensitivity.py`:124) multiply a non-US yfinance close (local currency, no `close_usd`) by volume against a USD threshold; needs FX conversion as in research/international_liquidity_filter.py | C | open (found 2026-10-07) | failing-first test, then fixed |
 | 5.7 | DEV-011 re-run the 5 yfinance-glob scripts; DEV-004/005/007/009/010/012 correctness items | C/J | open | each fixed or closed with a reason |
 
 ### W6 — Data layer leftovers

@@ -1381,9 +1381,9 @@ def main():
                                           adv_by_symbol=adv_by_symbol, checkpoint_id="tier2_rolling" + _RUN_SUFFIX,
                                           membership_df=membership_df, permno_by_symbol=permno_by_symbol,
                                           offset=_GRID_OFFSET)
-        clear_checkpoint("tier2_rolling" + _RUN_SUFFIX)
         os.makedirs(_OUT_DIR, exist_ok=True)
         pd.DataFrame(tier2_flat).to_parquet(_tier2_windows_path, index=False)
+        clear_checkpoint("tier2_rolling" + _RUN_SUFFIX)   # R1.7: only after the windows file is on disk
     tier2_confirmed = episodic_bhfdr_confirm(tier2_flat, Config.STATS.FDR_ALPHA)
     log.info(f"[TIER 2] {len(tier2_flat)} (pair,window) tests -> "
              f"{len(tier2_confirmed)} episodically confirmed (>=1 FDR-rejected window)")
@@ -1450,7 +1450,6 @@ def main():
                                       adv_by_symbol=adv_by_symbol, checkpoint_id="tier3_rolling" + _RUN_SUFFIX,
                                       membership_df=membership_df, permno_by_symbol=permno_by_symbol,
                                       offset=_GRID_OFFSET)
-    clear_checkpoint("tier3_rolling" + _RUN_SUFFIX)
     tier3_confirmed = episodic_bhfdr_confirm(tier3_flat, Config.STATS.FDR_ALPHA)
     log.info(f"[TIER 3] {len(tier3_flat)} (pair,window) tests -> "
              f"{len(tier3_confirmed)} episodically confirmed (>=1 FDR-rejected window)")
@@ -1462,6 +1461,7 @@ def main():
     _tier3_confirmed_path = os.path.join(_OUT_DIR, f"wrds_deep_history_episodic_scan_tier3_confirmed{_RUN_SUFFIX}.parquet")
     pd.DataFrame(tier3_flat).to_parquet(_tier3_windows_path, index=False)
     pd.DataFrame(tier3_confirmed).to_parquet(_tier3_confirmed_path, index=False)
+    clear_checkpoint("tier3_rolling" + _RUN_SUFFIX)   # R1.7: only after windows + confirmed are on disk
     log.info(f"[TIER 3] Saved -> {_rel(_tier3_windows_path)}, {_rel(_tier3_confirmed_path)}")
 
     runtime = (time.time() - t0) / 60
