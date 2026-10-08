@@ -16,6 +16,25 @@ free data (yfinance, FRED, CFTC, Binance) are fully reproducible without it.
 
 ---
 
+## Every cited claim: status table (2026-10-07, plan W4.3 / S20)
+
+`docs/claims_table.csv` (built by `scripts/build_claims_table.py`, check `debug/_verify_build_claims_table.py`) lists
+every claim row of the section-by-section scrutiny (`docs/PAPER_SCRUTINY_2026-09-27.md`, sections 2-3) with a status:
+
+| Scrutiny verdict | Registry status | Meaning |
+|---|---|---|
+| WITHDRAW | WITHDRAWN | rests on a confirmed defect; not citable. Plan S34 may move a thesis-central claim back to fix-and-re-derive |
+| REPLACE | CORRECTED | a committed corrected value exists (CR-1..CR-7); cite it with its stated scope |
+| STANDS / QUALIFY / UNVERIFIED | REGISTERED | stated, not yet re-derived on current data -- nothing is REPLICATED until it is |
+
+Counts (455 claim rows): PAPER.md 313 = 107 WITHDRAWN, 11 CORRECTED, 195 REGISTERED; PAPER_MAGNITUDE.md 142 = 52
+WITHDRAWN, 0 CORRECTED, 90 REGISTERED. Note: the scrutiny document's own summary table says 284 rows; its tables hold
+455 (the summary was not updated as rows were added) -- the table counts are the ones used here.
+Since the scrutiny (2026-09-27) more defects were confirmed (2026-10-07 bug recheck, docs/bug_recheck/): e.g. S5 (the
+Reality Check p-values), S6 (the Gold/Silver/Bronze tiers), the engine-level dollar P&L gap and A5/A7/A8 (the
+coint-fraction override). REGISTERED rows that cite those results move to WITHDRAWN when the paper is redrafted.
+The C-entries below are claims re-derived one by one on current data.
+
 ## C-001 — Full-sample cointegration can be stale: NTRS/STT
 - **Claim:** Northern Trust / State Street pass a full-sample Engle-Granger test with p = 0.000046 over 10,098
   overlapping trading days (1985-12-03 to 2025-12-31), but fail the identical test on the last five years
