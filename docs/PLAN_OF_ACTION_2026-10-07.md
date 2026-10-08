@@ -13,14 +13,14 @@ at a time. Owners: **C** Claude · **R** Ross · **J** unattended job (CachyOS).
 ## The goal (paste into /goal)
 
 > Every thread in docs/PLAN_OF_ACTION_2026-10-07.md reaches its "done when" or is closed with a recorded reason; every
-> sign-off item S1–S31 has Ross's decision recorded in this file; the second pre-registered strategy-search pass is
+> sign-off item S1–S35 has Ross's decision recorded in this file; the second pre-registered strategy-search pass is
 > run and reported beside the first; every claim cited in PAPER.md / PAPER_MAGNITUDE.md is REPLICATED, CORRECTED or
 > WITHDRAWN in docs/CLAIMS_REGISTRY.md; every logged bug has a recheck verdict with evidence; the full verify suite
 > passes (or each failure is explained); and Development.md / HANDOFF / README / ERRATA match the final state.
 
 ---
 
-## Part A — Sign-off sheet (S1–S31)
+## Part A — Sign-off sheet (S1–S35)
 
 Mark each: ✅ approve as recommended · ✏️ change (say how) · ✖ drop. Items already decided are listed at the end for
 completeness, not for re-decision.
@@ -49,6 +49,10 @@ completeness, not for re-decision.
 | S15 | **DEV-054 universe expansion** | ✖ close: the ~44,700-symbol WRDS universe is already the scope |
 | S16 | **Futures roll adjustment (T1.5)** | ✖ not run (no free contract history) — disclosed |
 | S17 | **Unilever ADR drift** | close as disclosed (unexplained UL vs London PLC drift stays in the errata) |
+| S32 | **PIT FDR family for pool eligibility** (residual of S3): `eligible_from` uses each window's whole-history BH flag, so whether a 2005 window counts as rejected depends on p-values of windows ending later. The scan already has `episodic_bhfdr_confirm_asof` (BH over windows concluded by the date). Use it for `eligible_from` in the pools -- as the primary rule, or as a comparison arm? | Primary rule if adopted before the addendum is committed (it is a lookahead fix, like S4); otherwise a labelled arm in the third pass |
+| S33 | **S6: Gold/Silver/Bronze confirmatory tiers use mis-sized tests.** The "Phillips-Ouliaris proxy" is PhillipsPerron on the estimated spread with univariate critical values: 27.3% rejections at nominal 10% on independent random walks (verified 2026-10-07, 400 runs, n=500); arch's `phillips_ouliaris` on the two legs: 11.2%. KPSS on residuals has the same problem (needs Shin 1994). PAPER.md's "4 Gold / 23 Silver / 10 Bronze" rests on them. Fix: PO via `arch.unitroot.cointegration.phillips_ouliaris` on the legs (WRDS-first loader); KPSS -> implement Shin (1994) residual-based critical values, or drop KPSS from the tier and disclose | PO fix (correctness); drop KPSS from the tier until a Shin implementation is verified; re-derive the tier counts in W4.3 |
+| S34 | **Research-script findings behind paper claims** (bug recheck 2026-10-07): 81 open code-review findings (R-series; 17 confirmed by code, 64 reviewer claims not yet checked; 8 more sit in scripts no paper names) sit in research scripts that PAPER.md or PAPER_MAGNITUDE.md names. Rule for each claim those scripts support: (a) central to the thesis -> verify the finding, fix with a failing-first test, re-derive the number; (b) peripheral -> withdraw the claim (stated in the paper's errata), finding marked 'not cited -- unresolved'. You decide which claims are central | Approve the rule; I draft the central/peripheral list from the claims registry (W4.3) for you to mark |
+| S35 | **D18 for the traded series too?** Discovery now masks CRSP no-trade days (bid/ask midpoints) and drops quote-only series (exclude arm). The pool spreads (episodic_pairs_adapter, from close_total_return) still carry the midpoint-day values, so the hedge ratio / half-life / z-score that are TRADED include days discovery threw out, and a position can be marked or entered on a price nobody traded at | Mask the same days in the traded series (consistent with the D18 decision; dollar P&L already needs real trade prices); include in the addendum if decided before it is committed |
 | S31 | **R1.3: the S&P 500 membership gate skips international pairs** (applied only when both legs have a CRSP PERMNO, so Compustat Global legs are never gated and the pool tilts international). Options: (a) keep ungated and disclose; (b) gate international legs by a free point-in-time index-membership source; (c) restrict the membership-gated arm to US-US pairs and report international pairs as their own arm | (c): the gate's purpose is a point-in-time US index universe; mixing gated US pairs with ungated international ones has no clean interpretation; reporting them separately keeps both |
 
 ### A3. Claims and papers

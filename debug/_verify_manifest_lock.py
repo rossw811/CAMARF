@@ -76,12 +76,18 @@ def main():
     import analysis
     if not hasattr(analysis, "_update_confirmed_manifest"):
         check("function_exists", False); return finish()
-    lost_unlocked = run(False)
-    print(f"control (no lock): timeframes lost = {lost_unlocked}")
+    # The unlocked control is timing-dependent; one attempt missed the race in 2 of 3 full-suite runs (2026-10-07),
+    # failing the suite on a non-defect. Retry up to 5 attempts; failing only if the race never shows keeps the
+    # evidence that the lock matters without the flake.
+    for attempt in range(1, 6):
+        lost_unlocked = run(False)
+        print(f"control (no lock), attempt {attempt}: timeframes lost = {lost_unlocked}")
+        if lost_unlocked:
+            break
     lost_locked = run(True)
     check("no_update_lost_with_lock", lost_locked == [], f"lost = {lost_locked}")
     check("control_shows_the_race", len(lost_unlocked) > 0,
-          "(if this fails the race simply did not trigger this time -- informative, not a fix failure)")
+          f"(race shown on attempt {attempt} of 5; failing means it never triggered in 5 attempts)")
     finish()
 
 

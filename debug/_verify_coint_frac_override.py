@@ -57,6 +57,7 @@ def main():
         row = row.iloc[0]
         p = SimpleNamespace(
             n_bars=row["n_bars"],
+            n_overlap=row["n_overlap"] if "n_overlap" in row.index else None,   # A5 (2026-10-07): the gate counts this
             half_life_trend_slope=row["half_life_trend_slope"],
             zivot_andrews_break=row["zivot_andrews_break"],
             cusum_first_excursion=row["cusum_first_excursion"],
@@ -77,7 +78,8 @@ def main():
     min_bars = AnalysisPipeline._MIN_BARS_FOR_SECONDARY_EVIDENCE
 
     def make(n_bars, slope=-0.01, za=None, cusum=None):
-        return SimpleNamespace(n_bars=n_bars, half_life_trend_slope=slope,
+        # A5 (2026-10-07): the gate now counts n_overlap (both legs finite); fully-overlapping synthetic pairs
+        return SimpleNamespace(n_bars=n_bars, n_overlap=n_bars, half_life_trend_slope=slope,
                                 zivot_andrews_break=za, cusum_first_excursion=cusum)
 
     synthetic_cases = [
