@@ -438,6 +438,9 @@ def main():
                     fold_taken = taken_df[["exit_time", "actual_pnl"]].copy()
                     fold_taken["wfa_variant"] = wfa_variant
                     fold_taken["fold"] = label
+                    # R5.1 (2026-10-07): the pooled equity curve zero-fills each fold over its whole test window
+                    fold_taken["test_start"] = fold_dates["test_start"]
+                    fold_taken["test_end"] = fold_dates["test_end"]
                     taken_trade_rows.append(fold_taken)
                 log.info(f"[{wfa_variant}/{label}] CAPITAL-CONSTRAINED ({args.capital_sizing}, "
                          f"${args.capital_account_size:,.0f} account): {len(replay['taken'])}/"

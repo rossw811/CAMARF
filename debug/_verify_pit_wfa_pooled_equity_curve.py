@@ -38,6 +38,17 @@ trades = pd.DataFrame([
     {"exit_time": pd.Timestamp("2020-01-05"), "actual_pnl": 15.0, "wfa_variant": "test", "fold": "f2"},
 ])
 
+
+def _with_window(df):
+    """R5.1 (2026-10-07): pool_variant now needs each fold's test window; these fixtures use the fold's own exit span
+    (business days), which reproduces this test's original expectations."""
+    df = df.copy()
+    g = df.groupby("fold")["exit_time"]
+    df["test_start"] = g.transform("min").apply(lambda t: t - pd.offsets.BDay(0) if t.dayofweek < 5 else t - pd.offsets.BDay(1))
+    df["test_end"] = g.transform("max").apply(lambda t: t if t.dayofweek < 5 else t - pd.offsets.BDay(1))
+    return df
+
+trades = _with_window(trades)
 result = pool_variant(trades, "test", ["f1", "f2"])
 print(result)
 
@@ -78,7 +89,7 @@ short_fold = pd.DataFrame([
     {"exit_time": pd.Timestamp("2010-01-01"), "actual_pnl": 100.0, "wfa_variant": "test2", "fold": "short"},
     {"exit_time": pd.Timestamp("2010-01-02"), "actual_pnl": -100.0, "wfa_variant": "test2", "fold": "short"},
 ])  # 2 trades, 2 daily obs
-combo = pd.concat([long_fold, short_fold], ignore_index=True)
+combo = _with_window(pd.concat([long_fold, short_fold], ignore_index=True))
 result2 = pool_variant(combo, "test2", ["long", "short"])
 n_long = result2["per_fold"][0]["n_daily_obs"]
 n_short = result2["per_fold"][1]["n_daily_obs"]
