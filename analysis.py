@@ -4238,8 +4238,11 @@ class StrategyDecayDetector:
                 best_f = f_stat
                 best_t_break = t_break
 
-        # Approximate critical value for Quandt sup-F at α=0.05 ≈ 8.85 for k=2
-        if best_f < 8.85 or best_t_break < 0:
+        # A7 (2026-10-07): f_stat = Wald/2 with 2 parameters changing (intercept + phi), 15% trimming. Andrews (1993,
+        # Table 1, p=2, pi0=0.15) 5% sup-Wald = 11.72 -> sup-F 5.86. The old 8.85 (the p=1 sup-Wald value) gave a
+        # real size of ~0.7% (debug/_verify_break_tests_size.py), missing breaks the override then read as "clean".
+        _SUP_F_CRIT_5PCT = 11.72 / k_params
+        if best_f < _SUP_F_CRIT_5PCT or best_t_break < 0:
             return None
         return str(best_t_break)  # caller maps index to actual date
 
@@ -4248,9 +4251,9 @@ class StrategyDecayDetector:
         """
         CUSUM test for parameter instability on AR(1) spread model.
 
-        Approach: fit AR(1) on full sample, compute recursive standardized
-        residuals, cumulative sum. If CUSUM path exits ±2σ * sqrt(n) bounds,
-        record the first exit point.
+        Approach (OLS-CUSUM, Ploberger & Kraemer 1992): fit AR(1) on the full
+        sample, cumulate the OLS residuals scaled by sigma; if the path exits
+        the constant 5% band +-1.358 * sqrt(n), record the first exit point.
 
         Returns: index of first excursion as string, or None.
         """
@@ -4274,12 +4277,12 @@ class StrategyDecayDetector:
 
         cumsum = np.cumsum(resid) / sigma
         n_resid = resid.size
-        # CUSUM bound: ±2 * sqrt(n)  (approximation of Brown-Durbin-Evans bands)
-        for t in range(20, n_resid):
-            bound = 2.0 * np.sqrt(t)
-            if abs(cumsum[t]) > bound:
-                return str(t)
-        return None
+        # A8 (2026-10-07): OLS-CUSUM (Ploberger & Kraemer 1992): reject at 5% when sup_t |S_t| / (sigma*sqrt(n)) > 1.358
+        # (Kolmogorov). The old pointwise +-2*sqrt(t) band is crossed almost surely on long series (law of the iterated
+        # logarithm): size 20% at n=600, 34% at n=3000 (debug/_verify_break_tests_size.py). Returns the first crossing.
+        bound = 1.358 * np.sqrt(n_resid)
+        over = np.flatnonzero(np.abs(cumsum) > bound)
+        return str(int(over[0])) if over.size else None
 
     @staticmethod
     def analyze_pair(
@@ -4502,12 +4505,21 @@ def _johansen_worker(args) -> Dict[str, Any]:
     """
     Worker for Johansen cointegration on a trio. Top-level for picklability.
     """
-    sym_a, sym_b, sym_c, log_a, log_b, log_c, det_order, k_ar_diff = args
+    sym_a, sym_b, sym_c, log_a, log_b, log_c, det_order, k_ar_diff, tf_label, sig_level = args
+    # Code review A11 (2026-10-07): coint_johansen's cvt columns are 10% / 5% / 1%; the level used to be fixed at 5%
+    # whatever test_trios resolved (and logged). debug/_verify_johansen_worker_gaps_sig.py
+    _col = {0.10: 0, 0.05: 1, 0.01: 2}.get(round(float(sig_level), 4))
+    if _col is None:
+        return {"symbol_a": sym_a, "symbol_b": sym_b, "symbol_c": sym_c, "ok": False,
+                "error": f"unsupported sig_level {sig_level} (coint_johansen tabulates 0.10/0.05/0.01)", "n_bars": 0}
     try:
+        # A11: longest run that never spans a genuine data gap (BUG-D77 rule, as the pairwise EG worker) -- packing
+        # the finite rows stitched the trio across outages.
         mask = np.isfinite(log_a) & np.isfinite(log_b) & np.isfinite(log_c)
-        a = log_a[mask]
-        b = log_b[mask]
-        c = log_c[mask]
+        keep = longest_gap_respecting_segment(mask, tf_label)
+        a = log_a[keep]
+        b = log_b[keep]
+        c = log_c[keep]
         n = a.size
         if n < 60:
             return {
@@ -4522,10 +4534,10 @@ def _johansen_worker(args) -> Dict[str, Any]:
         result = coint_johansen(X, det_order=det_order, k_ar_diff=k_ar_diff)
         # trace stat for r=0 (at least one cointegrating vector)
         trace_stat = float(result.lr1[0])
-        # critical value at 5% significance is column index 1
-        crit_5pct = float(result.cvt[0, 1])
-        # Number of cointegrating vectors: count r where lr1[r] > cvt[r, 1]
-        n_coint = int(np.sum(result.lr1 > result.cvt[:, 1]))
+        # critical value at the requested level (A11; the variable name is kept for the fields below)
+        crit_5pct = float(result.cvt[0, _col])
+        # Number of cointegrating vectors: count r where lr1[r] > cvt[r, col]
+        n_coint = int(np.sum(result.lr1 > result.cvt[:, _col]))
         # Approximate p-value: use trace_stat / crit_5pct ratio as a proxy
         # (Johansen doesn't have closed-form p; report stat + crit instead)
         passes = trace_stat > crit_5pct
@@ -4543,6 +4555,7 @@ def _johansen_worker(args) -> Dict[str, Any]:
             "symbol_c": sym_c,
             "trace_stat": trace_stat,
             "crit_5pct": crit_5pct,
+            "crit_column": _col,  # A11: 0=10%, 1=5%, 2=1%
             "approx_p": approx_p,
             "n_coint_vec": n_coint,
             "n_bars": int(n),
@@ -4699,6 +4712,8 @@ class TrioBuilder:
                     log_prices[c],
                     det_order,
                     k_ar_diff,
+                    tf_label,
+                    sig_level,
                 )
             )
 
@@ -6136,6 +6151,10 @@ class AnalysisPipeline:
         from this specific deep re-test — documented here and in
         DEVELOPMENT.md rather than silently accepted.
         """
+        # CLAUDE.md rule 2 (2026-10-07): a labelled side arm, off by default -- IBKR depth exists only for
+        # earlier-confirmed pairs' symbols, and this replaces production spread series with the deep version.
+        if not getattr(Config.ANALYSIS, "IBKR_DEEP_HISTORY_ENRICH", False):
+            return
         from ibkr_supplement_reader import load_supplement
 
         def _merge(main_df, sup_df):
@@ -6173,7 +6192,10 @@ class AnalysisPipeline:
 
         # Pass 1 (cheap, no process pool): figure out which pairs actually
         # have usable deep data and build their merged close-price series.
+        # A10 (2026-10-07): keyed PER PAIR (alias "sym#i<a|b>"), not per symbol -- a leg shared by two pairs used to
+        # keep only the last pair's overlap, misaligning the earlier pair's refit. debug/_verify_deep_history_enrich.py
         deep_aligned: Dict[str, pd.DataFrame] = {}
+        alias_by_pair: Dict[Tuple[str, str], Tuple[str, str]] = {}
         shared_idx_by_pair: Dict[Tuple[str, str], pd.DatetimeIndex] = {}
         pairs_to_test: List[PairResult] = []
 
@@ -6193,8 +6215,10 @@ class AnalysisPipeline:
             if len(shared_idx) < 100:
                 continue  # not enough overlap to bother re-testing
 
-            deep_aligned[p.symbol_a] = merged_a.loc[shared_idx, ["close"]]
-            deep_aligned[p.symbol_b] = merged_b.loc[shared_idx, ["close"]]
+            al_a, al_b = f"{p.symbol_a}#{len(pairs_to_test)}a", f"{p.symbol_b}#{len(pairs_to_test)}b"
+            deep_aligned[al_a] = merged_a.loc[shared_idx, ["close"]]
+            deep_aligned[al_b] = merged_b.loc[shared_idx, ["close"]]
+            alias_by_pair[(p.symbol_a, p.symbol_b)] = (al_a, al_b)
             shared_idx_by_pair[(p.symbol_a, p.symbol_b)] = shared_idx
             pairs_to_test.append(p)
 
@@ -6207,13 +6231,16 @@ class AnalysisPipeline:
         # run showed this taking far longer than the main per-pair modeling
         # step, which processes ALL pairs through a single shared pool).
         confirmed_dicts = [
-            {"symbol_a": p.symbol_a, "symbol_b": p.symbol_b} for p in pairs_to_test
+            {"symbol_a": alias_by_pair[(p.symbol_a, p.symbol_b)][0],
+             "symbol_b": alias_by_pair[(p.symbol_a, p.symbol_b)][1]} for p in pairs_to_test
         ]
         deep_results = CointScanner.rolling_fraction(
             confirmed_dicts, deep_aligned, tf_label, n_workers=min(Config.RUNTIME.N_WORKERS, len(pairs_to_test))
         )
+        pair_by_alias = {v: k for k, v in alias_by_pair.items()}
         deep_frac_by_key = {
-            (r["symbol_a"], r["symbol_b"]): r.get("coint_fraction_rolling", np.nan)
+            pair_by_alias.get((r["symbol_a"], r["symbol_b"]), (r["symbol_a"], r["symbol_b"])):
+                r.get("coint_fraction_rolling", np.nan)
             for r in deep_results
         }
 
@@ -6222,8 +6249,9 @@ class AnalysisPipeline:
         for p in pairs_to_test:
             key = (p.symbol_a, p.symbol_b)
             shared_idx = shared_idx_by_pair[key]
-            close_a = deep_aligned[p.symbol_a]["close"].values
-            close_b = deep_aligned[p.symbol_b]["close"].values
+            al_a, al_b = alias_by_pair[key]
+            close_a = deep_aligned[al_a]["close"].values
+            close_b = deep_aligned[al_b]["close"].values
             with np.errstate(invalid="ignore", divide="ignore"):
                 log_a = np.log(close_a)
                 log_b = np.log(close_b)
@@ -6331,8 +6359,11 @@ class AnalysisPipeline:
         set was 95.6% (43/45) override-rescued at a median
         coint_fraction_rolling of 0.129, far below 0.40.
         """
-        n_bars = getattr(p, "n_bars", 0)
-        if not np.isfinite(n_bars) or n_bars < AnalysisPipeline._MIN_BARS_FOR_SECONDARY_EVIDENCE:
+        # A5 (2026-10-07): count bars where BOTH legs are finite (n_overlap) -- the break tests run on finite spread
+        # values only; n_bars is the dense grid incl. NaN bars. No n_overlap -> refuse (no silent pass).
+        n_real = getattr(p, "n_overlap", np.nan)
+        n_real = np.nan if n_real is None else float(n_real)
+        if not np.isfinite(n_real) or n_real < AnalysisPipeline._MIN_BARS_FOR_SECONDARY_EVIDENCE:
             return False  # not enough data for the break tests to have real power
         slope = getattr(p, "half_life_trend_slope", np.nan)
         if not np.isfinite(slope) or slope > 0:

@@ -607,6 +607,10 @@ def _build_daily_pnl(trades: pd.DataFrame) -> pd.DataFrame:
     tr["exit_date"] = pd.to_datetime(tr["exit_time"]).dt.date
     daily = tr.groupby(["exit_date", "pair"])["pnl_net"].sum().unstack("pair")
     daily.index = pd.to_datetime(daily.index)
+    # Code review S9 (2026-10-07): every business day from the first to the last exit, zero where nothing exited --
+    # an exit-days-only series inflates any Sharpe built on it (BUG-D62/D64 class; synthetic 10 exits in 100 days:
+    # Sharpe 44.6 vs 4.93). Same calendar as portfolio_math. debug/_verify_stats_daily_pnl_calendar.py
+    daily = daily.reindex(pd.bdate_range(daily.index.min(), daily.index.max()))
     return daily.fillna(0.0)
 
 
@@ -734,6 +738,13 @@ def run_dcc_garch(trades: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame]:
 # =============================================================================
 
 
+def _per_trade_sharpe(pnl: np.ndarray) -> float:
+    """Per-trade Sharpe (mean / sd of trade P&L), NOT annualized -- for trade-level resamples (code review S13)."""
+    if len(pnl) < 5 or np.std(pnl) < 1e-10:
+        return np.nan
+    return float(np.mean(pnl) / np.std(pnl))
+
+
 def _portfolio_sharpe(pnl_series: np.ndarray, ann_factor: float = 252.0) -> float:
     """Annualized Sharpe from daily P&L series."""
     if len(pnl_series) < 5 or np.std(pnl_series) < 1e-10:
@@ -806,6 +817,9 @@ def run_montecarlo(trades: pd.DataFrame, daily_pnl: pd.DataFrame) -> Dict[str, p
     results["dist_fit"] = dist_df
 
     # ------ Phase 2: Regime-conditional bootstrap --------------------------------
+    # Code review S13 (2026-10-07): resamples are PER-TRADE P&L, so the statistic is the per-trade Sharpe (mean / sd,
+    # not annualized); it used to go through _portfolio_sharpe's sqrt(252), annualized only if exactly 252 trades a
+    # year closed. Columns renamed sim_trade_sharpe_* (no consumers). debug/_verify_stats_trade_bootstrap_scale.py
     log.info("  Phase 2: Regime-conditional bootstrap")
     regime_col = "vix_ts_regime" if "vix_ts_regime" in trades.columns else None
     regime_rows = []
@@ -820,15 +834,15 @@ def run_montecarlo(trades: pd.DataFrame, daily_pnl: pd.DataFrame) -> Dict[str, p
             sim_sharpes = []
             for _ in range(1000):
                 resampled = rng.choice(pnl_r, size=len(pnl_r), replace=True)
-                s = _portfolio_sharpe(resampled)
+                s = _per_trade_sharpe(resampled)
                 if not np.isnan(s):
                     sim_sharpes.append(s)
             regime_rows.append({
                 "regime": regime, "n_trades": len(grp),
                 "mean_pnl": float(np.mean(pnl_r)), "std_pnl": float(np.std(pnl_r)),
-                "sim_sharpe_5pct": float(np.percentile(sim_sharpes, 5)) if sim_sharpes else np.nan,
-                "sim_sharpe_median": float(np.median(sim_sharpes)) if sim_sharpes else np.nan,
-                "sim_sharpe_95pct": float(np.percentile(sim_sharpes, 95)) if sim_sharpes else np.nan,
+                "sim_trade_sharpe_5pct": float(np.percentile(sim_sharpes, 5)) if sim_sharpes else np.nan,
+                "sim_trade_sharpe_median": float(np.median(sim_sharpes)) if sim_sharpes else np.nan,
+                "sim_trade_sharpe_95pct": float(np.percentile(sim_sharpes, 95)) if sim_sharpes else np.nan,
             })
         log.info("  Regime-conditional bootstrap: %d regimes", len(regime_rows))
     else:
@@ -837,7 +851,7 @@ def run_montecarlo(trades: pd.DataFrame, daily_pnl: pd.DataFrame) -> Dict[str, p
         sim_sharpes_iid = []
         for _ in range(1000):
             resampled = rng.choice(pnl_arr, size=len(pnl_arr), replace=True)
-            s = _portfolio_sharpe(resampled)
+            s = _per_trade_sharpe(resampled)
             if not np.isnan(s):
                 sim_sharpes_iid.append(s)
         regime_rows.append({
@@ -845,18 +859,18 @@ def run_montecarlo(trades: pd.DataFrame, daily_pnl: pd.DataFrame) -> Dict[str, p
             "n_trades": n_trades,
             "mean_pnl": float(np.mean(pnl_arr)),
             "std_pnl": float(np.std(pnl_arr)),
-            "sim_sharpe_5pct": float(np.percentile(sim_sharpes_iid, 5)) if sim_sharpes_iid else np.nan,
-            "sim_sharpe_median": float(np.median(sim_sharpes_iid)) if sim_sharpes_iid else np.nan,
-            "sim_sharpe_95pct": float(np.percentile(sim_sharpes_iid, 95)) if sim_sharpes_iid else np.nan,
+            "sim_trade_sharpe_5pct": float(np.percentile(sim_sharpes_iid, 5)) if sim_sharpes_iid else np.nan,
+            "sim_trade_sharpe_median": float(np.median(sim_sharpes_iid)) if sim_sharpes_iid else np.nan,
+            "sim_trade_sharpe_95pct": float(np.percentile(sim_sharpes_iid, 95)) if sim_sharpes_iid else np.nan,
         })
-        log.info("  No regime tags — IID bootstrap: Sharpe 5/50/95 pct = %.2f/%.2f/%.2f",
-                 regime_rows[-1]["sim_sharpe_5pct"], regime_rows[-1]["sim_sharpe_median"],
-                 regime_rows[-1]["sim_sharpe_95pct"])
+        log.info("  No regime tags — IID bootstrap: per-trade Sharpe 5/50/95 pct = %.2f/%.2f/%.2f",
+                 regime_rows[-1]["sim_trade_sharpe_5pct"], regime_rows[-1]["sim_trade_sharpe_median"],
+                 regime_rows[-1]["sim_trade_sharpe_95pct"])
 
     results["regime_bootstrap"] = pd.DataFrame(regime_rows)
     summary.note(
         f"[S5 Phase 2] regime_bootstrap: {len(regime_rows)} groups, "
-        f"iid_median_sharpe={regime_rows[-1]['sim_sharpe_median']:.2f}"
+        f"iid_median_per_trade_sharpe={regime_rows[-1]['sim_trade_sharpe_median']:.2f}"
     )
 
     # ------ Phase 3: Slippage sensitivity ----------------------------------------
@@ -1001,7 +1015,7 @@ def run_permutation_test(
        realized and bootstrapped paths).  Backtest equity-curve Sharpe also reported.
     2. Generate N_PERMS bootstrap daily-P&L paths by resampling
        _PERM_BLOCK_LEN_DAYS-day contiguous blocks (with replacement, circular)
-       from the realized daily P&L series.
+       from the DEMEANED realized daily P&L series (zero-mean null; code review S5, 2026-10-07).
     3. p-value = fraction of bootstrap Sharpes >= realized closed-trade Sharpe.
     """
     log.info("=== Section 6: Permutation Test / White Reality Check ===")
@@ -1051,10 +1065,14 @@ def run_permutation_test(
     n_blocks_needed = int(np.ceil(n_days / block_len)) if block_len > 0 else 0
     rng = np.random.default_rng(42)
     perm_sharpes = []
+    # Code review S5 (2026-10-07): resample the DEMEANED series -- the zero-mean null (White 2000; Politis & Romano).
+    # Resampling the raw series centres the bootstrap on the realized Sharpe itself, so p ~ 0.5 regardless of skill
+    # (strong-skill synthetic: p 0.504 before, debug/_verify_reality_check_null.py). Block structure unchanged.
+    null_vals = daily_vals - np.mean(daily_vals)
     for _ in range(_N_PERMS):
         starts = rng.integers(0, n_days, size=n_blocks_needed)
         boot_series = np.concatenate(
-            [np.take(daily_vals, np.arange(s, s + block_len) % n_days) for s in starts]
+            [np.take(null_vals, np.arange(s, s + block_len) % n_days) for s in starts]
         )[:n_days]
         s = _portfolio_sharpe(boot_series)
         if not np.isnan(s):

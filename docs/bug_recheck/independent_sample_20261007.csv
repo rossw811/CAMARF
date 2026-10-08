@@ -1,0 +1,21 @@
+id,verdict,evidence
+M7,tests-pass,_verify_macro_daily_cot_availability.py: PASS; _verify_macro_release_lags.py: PASS
+BUG-D72,tests-pass,_verify_adv_1day_fallback.py: PASS; _verify_backtest_hurst_none_fix.py: PASS; _verify_backtest_risk_parity_is_only_fit.py: PASS; _verify_backtest_storm_label_fix.py: PASS; _verify_backtest_zero_z_filter_fix.py: PASS; _verify_bugD100_garch_stop_causal.py: PASS
+BUG-D97,tests-pass,_verify_adv_1day_fallback.py: PASS; _verify_backtest_zero_z_filter_fix.py: PASS; _verify_bh_vs_by_full_universe.py: PASS; _verify_bh_vs_by_full_universe_1d.py: PASS; _verify_bugD101_position_sizing_circularity.py: PASS; _verify_bugD105_wrds_universe_passed.py: PASS
+R5.1,tests-pass,_verify_portfolio_math_business_days.py: PASS
+D14,tests-pass,_verify_sp500_cache_guard.py: PASS
+BUG-D105,tests-pass,_verify_bugD105_wrds_universe_passed.py: PASS
+BUG-D22,tests-pass,_verify_absorption_ratio.py: PASS; _verify_adapter_stale_checkpoint_fix.py: PASS; _verify_adapter_wrds_first.py: PASS; _verify_adf_confirmatory_tier.py: PASS; _verify_adv_1day_fallback.py: PASS; _verify_align_daily_gap_gate.py: PASS
+A1,tests-pass,_verify_eg_bh_denominator.py: PASS; _verify_eg_common_index_a1.py: PASS; _verify_returns_matrix_timestamp_aligned.py: PASS; _verify_scan_guard_direct_callers.py: PASS; _verify_stress_test_replication.py: PASS
+A5,fixed,Confirmed by code: override eligibility used n_bars = log_a.size (dense grid incl. NaN) while ZA/CUSUM run on finite values only and None is read as no-break. Real data: output/results/1day/pairs.parquet had 2 below-threshold pairs eligible by n_bars with n_overlap < 756. Fix: eligibility counts n_overlap; debug/_verify_secondary_evidence_overlap.py 2/5 -> 5/5; _verify_coint_frac_override.py fixtures given n_overlap.
+U1,tests-pass,_verify_loader_cwd_independent.py: PASS
+BUG-D90,tests-pass,_verify_absorption_ratio.py: PASS; _verify_adapter_stale_checkpoint_fix.py: PASS; _verify_adapter_wrds_first.py: PASS; _verify_adf_confirmatory_tier.py: PASS; _verify_adv_1day_fallback.py: PASS; _verify_align_daily_gap_gate.py: PASS
+D12,tests-pass,_verify_append_basis_reconcile.py: PASS
+BUG-D41,tests-pass,_verify_absorption_ratio.py: PASS; _verify_adapter_stale_checkpoint_fix.py: PASS; _verify_adapter_wrds_first.py: PASS; _verify_adf_confirmatory_tier.py: PASS; _verify_adv_1day_fallback.py: PASS; _verify_align_daily_gap_gate.py: PASS
+BUG-D75,tests-pass,_verify_append_basis_reconcile.py: PASS; _verify_bugD101_position_sizing_circularity.py: PASS; _verify_bug_d61_window_alignment.py: PASS; _verify_conformal_predictor.py: PASS; _verify_data_crypto_binance.py: PASS; _verify_hrp_ledoit_wolf.py: PASS
+BUG-D52,tests-pass,_verify_adapter_wrds_first.py: PASS; _verify_adv_1day_fallback.py: PASS; _verify_append_basis_reconcile.py: PASS; _verify_backtest_risk_parity_is_only_fit.py: PASS; _verify_backtest_zero_z_filter_fix.py: PASS; _verify_bh_vs_by_full_universe.py: PASS
+BUG-D101,tests-pass,_verify_bugD101_position_sizing_circularity.py: PASS; _verify_bugD102_coint_frac_sizing_fold_leakage.py: PASS; _verify_wrds_primary_wiring.py: PASS
+R1.9,fixed,"Confirmed by code: intraday_episodic_scan named outputs/checkpoints by timeframe only and skips a tier whose output exists; lineage params record only tf, so a different --window-config / --tier3-threshold reused the default run. Fix: _config_suffix for non-default configs, exact per-run file patterns in the guard, non-default runs never trusted without --fresh, lineage recorded only for the default. debug/_verify_intraday_config_isolation.py 0/1 -> 8/8; intraday tests pass."
+BUG-A3,tests-pass,_verify_absorption_ratio.py: PASS; _verify_adapter_stale_checkpoint_fix.py: PASS; _verify_adapter_wrds_first.py: PASS; _verify_adf_confirmatory_tier.py: PASS; _verify_adv_1day_fallback.py: PASS; _verify_align_daily_gap_gate.py: PASS
+BUG-A6,tests-pass,_verify_absorption_ratio.py: PASS; _verify_adapter_stale_checkpoint_fix.py: PASS; _verify_adapter_wrds_first.py: PASS; _verify_adf_confirmatory_tier.py: PASS; _verify_adv_1day_fallback.py: PASS; _verify_align_daily_gap_gate.py: PASS
+BUG-D44,tests-pass,_verify_absorption_ratio.py: PASS; _verify_adapter_stale_checkpoint_fix.py: PASS; _verify_adapter_wrds_first.py: PASS; _verify_adf_confirmatory_tier.py: PASS; _verify_adv_1day_fallback.py: PASS; _verify_align_daily_gap_gate.py: PASS

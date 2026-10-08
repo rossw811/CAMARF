@@ -202,8 +202,19 @@ def _dir_signature(directory: str) -> tuple:
 _LOADER_VERSION = "2026-09-27-wrds-priority-dedupe-headtail-tr-usd-d16-labels-d17-disjoint"
 
 
+def _loader_code_hash(source_bytes: bytes) -> str:
+    return hashlib.sha1(source_bytes).hexdigest()
+
+
+# U6 re-check (2026-10-07): a hand-bumped version string only works if every change remembers to bump it; the key also
+# carries this file's own source hash, so any loader code change invalidates old memos automatically.
+# debug/_verify_universe_loader_memo_code_key.py
+with open(__file__, "rb") as _fh:
+    _LOADER_CODE_HASH = _loader_code_hash(_fh.read())
+
+
 def _memo_signature(tf_label, include_yfinance, include_wrds, include_binance, include_ibkr, columns):
-    sig_parts = [tf_label, ("loader_version", _LOADER_VERSION)]
+    sig_parts = [tf_label, ("loader_version", _LOADER_VERSION), ("loader_code", _LOADER_CODE_HASH)]
     if include_yfinance:
         sig_parts.append(("yf", _dir_signature(_YF_CACHE_DIR)))
     if include_wrds:

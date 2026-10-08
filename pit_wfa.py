@@ -235,6 +235,13 @@ def compute_fold_dates(
 # POINT-IN-TIME SCREENING (reuses analysis.py's production building blocks)
 # =============================================================================
 
+def _train_slice(df: pd.DataFrame, train_start, train_end) -> pd.DataFrame:
+    """[train_start, train_end): the folds set test_start == train_end and the test slice is >= test_start, so the
+    boundary bar belongs to the test window only (code review S14, 2026-10-07: it used to select AND trade).
+    debug/_verify_pit_wfa_train_test_boundary.py"""
+    return df.loc[(df.index >= train_start) & (df.index < train_end)]
+
+
 def screen_universe_at_cutoff(
     universe: Dict[str, pd.DataFrame],
     train_start: pd.Timestamp,
@@ -245,13 +252,10 @@ def screen_universe_at_cutoff(
     Re-runs the SAME screening sequence analysis.py's _run_one_tf() uses
     (Pearson pre-filter -> EG+BH-FDR -> rolling coint_fraction -> per-pair
     modeling -> structural exclusion -> coint_frac threshold + secondary-
-    evidence override), restricted to [train_start, train_end] only. Returns
+    evidence override), restricted to [train_start, train_end) only. Returns
     the point-in-time confirmed PairResult list for this cutoff.
     """
-    truncated = {
-        sym: df.loc[(df.index >= train_start) & (df.index <= train_end)]
-        for sym, df in universe.items()
-    }
+    truncated = {sym: _train_slice(df, train_start, train_end) for sym, df in universe.items()}
     truncated = {sym: df for sym, df in truncated.items() if len(df) >= 60}
     if len(truncated) < 10:
         return []
@@ -404,14 +408,7 @@ def backtest_pair_on_test_window(
     # decision) so pair_row is point-in-time-safe regardless of which
     # downstream logic reads it, not just for today's disabled-conditioner
     # configuration.
-    pair_row = pd.Series({
-        **vars(full_pair_result),
-        "coint_fraction_rolling": getattr(pair_result, "coint_fraction_rolling", np.nan),
-        "half_life_trend_slope": getattr(pair_result, "half_life_trend_slope", np.nan),
-        "mean_reversion_speed": getattr(pair_result, "mean_reversion_speed", np.nan),
-        "hurst_rs": getattr(pair_result, "hurst_rs", np.nan),
-        "tf_label": _TF_LABEL,
-    })
+    pair_row = _pit_pair_row(full_pair_result, pair_result, _TF_LABEL)
     engine = BacktestEngine(
         cfg=Config.BACKTEST, regime_cond=RegimeConditioner(enabled=False),
         ml_cond=MLConditioner(enabled=False),
@@ -419,6 +416,20 @@ def backtest_pair_on_test_window(
     trades = engine.run(pair_row, test_slice, hedge_method="ols", holdout_only=False)
     metrics = compute_metrics(trades, _TF_LABEL, sym_a, sym_b, "ols") if trades else {}
     return trades, metrics
+
+
+# Summary fields the backtest reads off the pair row: they must come from the TRAIN-only screen result. BUG-D69 covered
+# the first four; code review S4 (2026-10-07): the hedge scalars too -- backtest.py skips a pair on a non-positive
+# hedge_ratio_ols and uses it where the rolling hedge is missing, so a train+test value leaked the test period into
+# whether and how a pair trades. debug/_verify_pit_pair_row.py
+_TRAIN_ONLY_FIELDS = ("coint_fraction_rolling", "half_life_trend_slope", "mean_reversion_speed", "hurst_rs",
+                      "hedge_ratio_ols", "hedge_ratio_kalman_mean")
+
+
+def _pit_pair_row(full_pair_result, pair_result, tf_label: str) -> pd.Series:
+    return pd.Series({**vars(full_pair_result),
+                      **{f: getattr(pair_result, f, np.nan) for f in _TRAIN_ONLY_FIELDS},
+                      "tf_label": tf_label})
 
 
 # =============================================================================

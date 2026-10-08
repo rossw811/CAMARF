@@ -549,6 +549,10 @@ class AnalysisConfig:
     # Same arm: for daily-or-coarser data, a run of > data._MAX_FILL_BARS missing bars breaks the segment used by
     # level-based tests (longest_gap_respecting_segment), as DATA_GAP does everywhere else. Current: never a break.
     DAILY_GAP_BREAKS = False
+    # CLAUDE.md rule 2 (enforced 2026-10-07): IBKR deep history exists only for earlier-confirmed pairs' symbols, so
+    # analysis.AnalysisPipeline._enrich_with_deep_history (re-test + spread replacement on IBKR-extended series) is a
+    # labelled side arm, off by default. debug/_verify_deep_history_enrich.py
+    IBKR_DEEP_HISTORY_ENRICH = False
     OU_WINDOW_MIN_BARS = 30  # floor — below this, the estimate is too noisy
 
     # Trio construction (derivative method)

@@ -160,7 +160,8 @@ def build_log_prices_and_returns(close_by_symbol: dict, min_overlap: int):
 def run_scan(tf_label: str, window_config_name: str, workers: int = None, tier3_threshold: float = 0.80) -> dict:
     workers = workers or Config.RUNTIME.N_WORKERS   # T11 2026-10-04: was a hardcoded 6 (the real CachyOS run used --workers 14)
     window, step = window_config(window_config_name, tf_label)
-    log.info(f"[{tf_label}] window={window} step={step} (config={window_config_name})")
+    suffix = _config_suffix(window_config_name, tier3_threshold)   # R1.9: a non-default config never reuses defaults
+    log.info(f"[{tf_label}] window={window} step={step} (config={window_config_name}, outputs suffix {suffix!r})")
 
     close_by_symbol = load_universe(tf_label, min_bars=window)
     log.info(f"[{tf_label}] {len(close_by_symbol)} symbols with >= {window} bars")
@@ -201,7 +202,7 @@ def run_scan(tf_label: str, window_config_name: str, workers: int = None, tier3_
     os.makedirs(_OUT_DIR, exist_ok=True)
 
     def _tier_paths(key):
-        return {k: os.path.join(_OUT_DIR, f"intraday_episodic_scan_{tf_label}_{k}.parquet")
+        return {k: os.path.join(_OUT_DIR, f"intraday_episodic_scan_{tf_label}{suffix}_{k}.parquet")
                 for k in (f"{key}_windows", f"{key}_confirmed")}
 
     tier2_paths = _tier_paths("tier2")
@@ -212,7 +213,7 @@ def run_scan(tf_label: str, window_config_name: str, workers: int = None, tier3_
     elif static_pairs:
         tier2_flat = run_rolling_eg_pool(
             static_pairs, log_price_df, max_lag, window=window, step=step,
-            workers=workers, checkpoint_id=f"intraday_{tf_label}_tier2", checkpoint_every=3,
+            workers=workers, checkpoint_id=f"intraday_{tf_label}{suffix}_tier2", checkpoint_every=3,
         )
         clear_checkpoint(f"intraday_{tf_label}_tier2")
         tier2_confirmed = episodic_bhfdr_confirm(tier2_flat, Config.STATS.FDR_ALPHA)
@@ -253,7 +254,7 @@ def run_scan(tf_label: str, window_config_name: str, workers: int = None, tier3_
         if tier3_pairs:
             tier3_flat = run_rolling_eg_pool(
                 tier3_pairs, log_price_df, max_lag, window=window, step=step,
-                workers=workers, checkpoint_id=f"intraday_{tf_label}_tier3", checkpoint_every=3,
+                workers=workers, checkpoint_id=f"intraday_{tf_label}{suffix}_tier3", checkpoint_every=3,
             )
             clear_checkpoint(f"intraday_{tf_label}_tier3")
             tier3_confirmed = episodic_bhfdr_confirm(tier3_flat, Config.STATS.FDR_ALPHA)
@@ -268,20 +269,45 @@ def run_scan(tf_label: str, window_config_name: str, workers: int = None, tier3_
     return results
 
 
-def _guard_stale_resume(tf_label):
+_DEFAULT_WINDOW_CONFIG = "fixed_min_overlap_2x"
+_DEFAULT_TIER3_THRESHOLD = 0.80
+
+
+def _config_suffix(window_config_name: str, tier3_threshold: float) -> str:
+    """'' for the default config (original file names, the lineage-recorded run); otherwise a suffix naming the
+    config, so outputs/checkpoints of different configs never collide (code review R1.9, 2026-10-07: a non-default
+    run used to load the default run's tiers). debug/_verify_intraday_config_isolation.py"""
+    if window_config_name == _DEFAULT_WINDOW_CONFIG and abs(float(tier3_threshold) - _DEFAULT_TIER3_THRESHOLD) < 1e-12:
+        return ""
+    return f"_{window_config_name}_t3{float(tier3_threshold):g}"
+
+
+def _run_files(tf_label: str, suffix: str) -> list:
+    """This run's outputs and checkpoints only (exact patterns: the default run never sees a suffixed run's files)."""
+    import glob
+    return (glob.glob(os.path.join(_OUT_DIR, f"intraday_episodic_scan_{tf_label}{suffix}_tier*.parquet"))
+            + glob.glob(os.path.join(_OUT_DIR, f"checkpoint_intraday_{tf_label}{suffix}_tier*")))
+
+
+def _guard_stale_resume(tf_label, suffix=""):
     """Lineage guard (2026-09-28): this scan SKIPS any tier whose output exists and resumes its own checkpoints, so
     a re-run on changed data silently reused old tiers. Refuse unless the stage is up to date; `--fresh` moves this
-    timeframe's outputs and checkpoints (only its own) to a timestamped backup."""
-    import glob
-    from research.pipeline_stages import stage
-    st = stage(f"intraday_scan_{tf_label}").status()
-    existing = glob.glob(os.path.join(_OUT_DIR, f"intraday_episodic_scan_{tf_label}_tier*.parquet")) +         glob.glob(os.path.join(_OUT_DIR, f"checkpoint_intraday_{tf_label}_*"))
-    if not existing or st["up_to_date"]:
+    run's outputs and checkpoints (only its own) to a timestamped backup. A non-default config (R1.9) has no
+    lineage stage: existing outputs are never trusted without --fresh."""
+    existing = _run_files(tf_label, suffix)
+    if not existing:
+        return
+    if suffix:
+        st = {"up_to_date": False, "reason": f"non-default config {suffix!r} has no lineage stage"}
+    else:
+        from research.pipeline_stages import stage
+        st = stage(f"intraday_scan_{tf_label}").status()
+    if st["up_to_date"]:
         return
     if "--fresh" not in sys.argv:
         raise SystemExit(f"lineage: {len(existing)} intraday {tf_label} outputs/checkpoints are STALE "
                          f"({st['reason'][:200]}) -- re-run with --fresh to back them up and start clean")
-    bk = os.path.join(_OUT_DIR, f"_intraday_{tf_label}_backup_{time.strftime('%Y%m%d_%H%M%S')}")
+    bk = os.path.join(_OUT_DIR, f"_intraday_{tf_label}{suffix}_backup_{time.strftime('%Y%m%d_%H%M%S')}")
     os.makedirs(bk, exist_ok=True)
     for p in existing:
         os.replace(p, os.path.join(bk, os.path.basename(p)))
@@ -306,8 +332,9 @@ def main():
     args = parser.parse_args()
 
     tfs = ["1h", "4h"] if args.tf == "both" else [args.tf]
+    _suffix = _config_suffix(args.window_config, args.tier3_threshold)
     for tf_label in tfs:
-        _guard_stale_resume(tf_label)
+        _guard_stale_resume(tf_label, _suffix)
     t0 = time.time()
     for tf_label in tfs:
         run_scan(tf_label, args.window_config, workers=args.workers, tier3_threshold=args.tier3_threshold)
@@ -319,5 +346,8 @@ if __name__ == "__main__":
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
     from pipeline_stages import stage  # lineage: record each timeframe this run produced
     _tf = sys.argv[sys.argv.index("--tf") + 1] if "--tf" in sys.argv else "1h"
-    for _t in (("1h", "4h") if _tf == "both" else (_tf,)):
-        stage(f"intraday_scan_{_t}").record()
+    _wc = sys.argv[sys.argv.index("--window-config") + 1] if "--window-config" in sys.argv else _DEFAULT_WINDOW_CONFIG
+    _t3 = float(sys.argv[sys.argv.index("--tier3-threshold") + 1]) if "--tier3-threshold" in sys.argv else _DEFAULT_TIER3_THRESHOLD
+    if _config_suffix(_wc, _t3) == "":   # R1.9: only the default config is the lineage-recorded run
+        for _t in (("1h", "4h") if _tf == "both" else (_tf,)):
+            stage(f"intraday_scan_{_t}").record()
