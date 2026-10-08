@@ -98,6 +98,7 @@ import pandas as pd
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from config import Config
+from dollar_volume import usd_dollar_volume
 from period_bars import resample_to_period_end, restamp_to_period_end
 
 warnings.filterwarnings("ignore")
@@ -910,7 +911,7 @@ def compute_symbol_adv_wrds(label: str, window_days: int = 252) -> float:
         recent = df.tail(window_days)
         if recent.empty:
             return float("nan")
-        return float((recent["close"] * recent["volume"]).mean())
+        return float(usd_dollar_volume(recent).mean())   # R1.2 (2026-10-07): close_usd for Compustat listings
     except Exception:
         return float("nan")
 

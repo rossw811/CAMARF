@@ -62,6 +62,7 @@ import numpy as np
 import pandas as pd
 
 from config import Config
+from dollar_volume import usd_dollar_volume
 
 
 _WRDS_DIR = os.path.join("output", "cache", "wrds")
@@ -84,9 +85,8 @@ def liquid_bar_mask(symbol: str, threshold: float = None, cache_dir: str = None,
         df = pd.read_parquet(path)
         if "volume" not in df.columns or not ({"close", "close_usd"} & set(df.columns)):
             continue
-        px = df["close_usd"] if "close_usd" in df.columns and df["close_usd"].notna().any() else df["close"].abs()
         idx = pd.to_datetime(df.index)
-        dollar_vol = (px * df["volume"]).replace([np.inf, -np.inf], np.nan)
+        dollar_vol = usd_dollar_volume(df).replace([np.inf, -np.inf], np.nan)   # shared rule (dollar_volume.py)
         out = pd.Series((dollar_vol >= threshold).to_numpy(), index=idx.tz_localize(None) if idx.tz else idx)
         return out[~out.index.duplicated(keep="last")].sort_index()
     return pd.Series(dtype=bool)
