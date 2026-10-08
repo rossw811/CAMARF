@@ -1,3 +1,6 @@
+## 2026-10-07: CURRENT PLAN + SIGN-OFF SHEET = docs/PLAN_OF_ACTION_2026-10-07.md (supersedes the 10-03 plan). Discovery re-run + grid-phase
+## robustness chain running on CachyOS (latest_run_grid_chain.log). Amendment 2 addendum drafted, uncommitted until Ross signs S1/S2.
+
 ## 2026-10-03: the full plan of action is docs/PLAN_OF_ACTION_2026-10-03.md (every thread + backlog, owners,
 ## dependencies, done-criteria, decisions needed). CachyOS hung 2026-10-03 (~10:55) and was rebooted; trfd fetch and
 ## the chain were restarted 13:12. The entry below remains the detailed state.
