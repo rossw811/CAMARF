@@ -917,6 +917,25 @@ def is_genuine_data_gap(run_length_bars: int, tf_label: str) -> bool:
     return run_length_bars > ceiling_bars
 
 
+def extend_passed_list(passed, yf_assets, yf_daily_done, wrds_daily_done):
+    """UniverseBuilder.build()'s final passed-list step. Adds every yfinance asset with daily data, then every
+    WRDS-primary symbol. BUG-D105: WRDS-covered symbols are removed from yf_assets (so yfinance does not re-fetch
+    them), so iterating yf_assets alone silently dropped all of them (a real run: 148 assets passed instead of
+    ~1650+). Extracted 2026-10-07 (the test used to check a copy of this logic).
+    debug/_verify_bugD105_wrds_universe_passed.py"""
+    passed = list(passed)
+    passed_symbols = {s for s, _ in passed}
+    for symbol, asset_class in yf_assets:
+        if symbol in yf_daily_done and symbol not in passed_symbols:
+            passed.append((symbol, asset_class))
+            passed_symbols.add(symbol)
+    for symbol, asset_class in dict(wrds_daily_done).items():
+        if symbol not in passed_symbols:
+            passed.append((symbol, asset_class))
+            passed_symbols.add(symbol)
+    return passed
+
+
 def longest_gap_respecting_segment(mask: np.ndarray, tf_label: str) -> np.ndarray:
     """
     Returns a boolean array the same length as `mask` (a positional
@@ -5169,24 +5188,9 @@ class UniverseBuilder:
 
                     self._ibkr.disconnect()
 
-        # Add all yfinance assets with daily data to passed list if not already there
-        passed_symbols = {s for s, _ in passed}
-        for symbol, asset_class in yf_assets:
-            if symbol in yf_daily_done and symbol not in passed_symbols:
-                passed.append((symbol, asset_class))
-
-        # WRDS-primary symbols were removed from yf_assets above (2026-08-01
-        # WRDS routing, so they don't get redundantly re-fetched from
-        # yfinance) -- but that same removal meant they never went through
-        # the "add to passed" loop above, since it only iterates yf_assets.
-        # Confirmed via a real run (2026-08-02): this silently dropped all
-        # 1512 WRDS-sourced symbols from the analysis universe entirely
-        # (Universe complete: 148 assets passed, vs. ~1650+ expected) --
-        # BUG-D105. Add them explicitly here.
-        passed_symbols = {s for s, _ in passed}
-        for symbol, asset_class in wrds_daily_done.items():
-            if symbol not in passed_symbols:
-                passed.append((symbol, asset_class))
+        # yfinance-daily and WRDS-primary symbols join the passed list (BUG-D105; extracted 2026-10-07 into
+        # extend_passed_list so the regression test exercises THIS code, not a copy of it)
+        passed = extend_passed_list(passed, yf_assets, yf_daily_done, wrds_daily_done)
 
         # ---------------------------------------------------------------
         # Post-build incremental refresh for COMPLETED assets

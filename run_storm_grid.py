@@ -65,9 +65,11 @@ def portfolio_sharpe(trades):
     # aggregate_portfolio()'s convention) -- NOT groupby("date"), which silently
     # drops zero-P&L calendar days and inflates Sharpe (BUG-D62/D64/D70/D71 class,
     # found here 2026-07-20 Grand Sweep as a previously-missed 7th recurrence).
-    exit_times = [t.exit_time for t in trades if t.exit_time is not None]
-    if exit_times:
-        df = pd.DataFrame({"exit_time": exit_times, "pnl_net": pnl})
+    # exit times and P&L filtered TOGETHER (2026-10-07, independent check on BUG-D72: building pnl from all trades but
+    # exit_times from closed ones only raised a length mismatch whenever a trade had no exit time)
+    closed = [(t.exit_time, t.pnl_net) for t in trades if t.exit_time is not None]
+    if closed:
+        df = pd.DataFrame(closed, columns=["exit_time", "pnl_net"])
         sharpe = portfolio_math.sharpe_from_trades(df)
     else:
         sharpe = float("nan")

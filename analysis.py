@@ -6044,9 +6044,8 @@ class AnalysisPipeline:
         """
         import dataclasses as _dc
 
-        research_dir = os.path.join(
-            os.path.dirname(os.path.abspath(__file__)), "output", "research"
-        )
+        # 2026-10-07: follows Config.DATA.OUTPUT_DIR (was hardcoded next to this file, ignoring the configured output)
+        research_dir = os.path.join(Config.DATA.OUTPUT_DIR, "research")
 
         # --- thin_info_content ---
         # Uses DataStore._TF_SAFE's mapping for the filename, not the raw
@@ -6069,8 +6068,9 @@ class AnalysisPipeline:
                 deg_df = pd.read_parquet(deg_path)
                 if "symbol" in deg_df.columns:
                     degenerate_syms = set(deg_df["symbol"].tolist())
-            except Exception:
-                pass
+            except Exception as e:   # T1.8 / W6.4 (2026-10-07): an existing but unreadable screen file used to
+                # silently yield UNFLAGGED pairs (DEV-057 sensitivity run would be wrong) -- fail loud.
+                raise RuntimeError(f"unreadable research screen file {deg_path}: {type(e).__name__}: {e}") from e
 
         # --- predicted_degeneracy_risk (2026-07-11, visibility-only) ---
         # Reuses whatever metadata investigate_price_degeneracy_cause.py has
@@ -6085,8 +6085,9 @@ class AnalysisPipeline:
                     risk_lookup[row["symbol"]] = AnalysisPipeline._predict_degeneracy_risk(
                         row.get("market_cap"), row.get("sector")
                     )
-            except Exception:
-                pass
+            except Exception as e:   # T1.8 / W6.4 (2026-10-07): an existing but unreadable screen file used to
+                # silently yield UNFLAGGED pairs (DEV-057 sensitivity run would be wrong) -- fail loud.
+                raise RuntimeError(f"unreadable research screen file {meta_path}: {type(e).__name__}: {e}") from e
 
         def _worse_risk(r1: Optional[str], r2: Optional[str]) -> Optional[str]:
             order = {"high": 2, "medium": 1, "low": 0}
@@ -6105,8 +6106,9 @@ class AnalysisPipeline:
                 for _, row in perm_tf.iterrows():
                     key = (row["symbol_a"], row["symbol_b"])
                     perm_lookup[key] = not bool(row["flagged_divergent"])
-            except Exception:
-                pass
+            except Exception as e:   # T1.8 / W6.4 (2026-10-07): an existing but unreadable screen file used to
+                # silently yield UNFLAGGED pairs (DEV-057 sensitivity run would be wrong) -- fail loud.
+                raise RuntimeError(f"unreadable research screen file {perm_path}: {type(e).__name__}: {e}") from e
 
         updated = []
         for pr in pair_results:

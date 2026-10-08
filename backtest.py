@@ -167,12 +167,23 @@ def apply_pnl_basis(trades: List["Trade"], legacy: bool = False, cfg=None) -> Tu
     cfg: the engine's config, so --override COMMISSION_PER_SHARE / SLIPPAGE_BPS reach the dollar costs (B6 follow-up:
     overrides no longer leak into the global Config.BACKTEST, which pnl_dollar reads by default).
     Returns (kept trades, {status: n dropped}). debug/_verify_backtest_dollar_pnl_default.py"""
+    # Idempotent (2026-10-07): BacktestEngine.run now converts every trade it returns, so already-dollar trades pass
+    # through unchanged (a second conversion would overwrite pnl_legacy_* with dollar values). Asking for legacy on
+    # dollar trades is refused -- relabelling dollar values as spread units would be silently wrong.
     if legacy:
+        if any(getattr(t, "pnl_basis", None) == "dollar" for t in trades):
+            raise ValueError("apply_pnl_basis(legacy=True) on dollar-basis trades: build the engine with legacy_pnl=True")
         for t in trades:
             t.pnl_basis = "legacy_known_wrong"
         return trades, {}
     if not trades:
         return trades, {}
+    done = [t for t in trades if getattr(t, "pnl_basis", None) == "dollar"]
+    if len(done) == len(trades):
+        return trades, {}
+    if done:
+        rest, dropped = apply_pnl_basis([t for t in trades if getattr(t, "pnl_basis", None) != "dollar"], cfg=cfg)
+        return done + rest, dropped
     import pnl_dollar
     _kw = {} if cfg is None else {"commission_per_share": cfg.COMMISSION_PER_SHARE, "slippage_bps": cfg.SLIPPAGE_BPS}
     D = pnl_dollar.add_dollar_pnl(pd.DataFrame([{k: getattr(t, k) for k in (
@@ -468,8 +479,15 @@ class BacktestEngine:
         earnings_cal: Optional["EarningsCalendar"] = None,
         pit_confidence_weights: Optional[Dict[str, float]] = None,
         holdout_date: Optional[pd.Timestamp] = None,
+        legacy_pnl: bool = False,
     ):
         self.cfg = cfg
+        # Dollar P&L at the engine (2026-10-07): run() converts every trade it returns (apply_pnl_basis); 12 callers
+        # never applied it and reported the retired spread-unit P&L. legacy_pnl=True keeps spread units, labelled
+        # known-wrong. last_pnl_dropped: unpriceable trades dropped by the last run(), by reason.
+        # debug/_verify_engine_dollar_default.py
+        self.legacy_pnl = bool(legacy_pnl)
+        self.last_pnl_dropped: Dict[str, int] = {}
         # T14.7 (2026-10-04): the regime conditioner reads THIS engine's cfg (overrides are no longer global)
         regime_cond.cfg = cfg
         # B8 comparison arm (Ross 2026-10-04): one calendar cutoff for every pair (see common_holdout_date);
@@ -513,6 +531,22 @@ class BacktestEngine:
         self.earnings_cal = earnings_cal
 
     def run(
+        self,
+        pair_row: pd.Series,
+        spread_df: pd.DataFrame,
+        hedge_method: str,
+        holdout_only: bool = False,
+        is_only: bool = False,
+        oos_end_date: Optional[pd.Timestamp] = None,
+    ) -> List[Trade]:
+        """Layer 1 event loop (_run_unconverted), then the P&L basis: dollar by default, legacy only when the engine was
+        built with legacy_pnl=True. Unpriceable trades are dropped and counted in self.last_pnl_dropped."""
+        trades = self._run_unconverted(pair_row, spread_df, hedge_method, holdout_only=holdout_only,
+                                       is_only=is_only, oos_end_date=oos_end_date)
+        trades, self.last_pnl_dropped = apply_pnl_basis(trades, legacy=self.legacy_pnl, cfg=self.cfg)
+        return trades
+
+    def _run_unconverted(
         self,
         pair_row: pd.Series,
         spread_df: pd.DataFrame,
@@ -2377,7 +2411,7 @@ def _run_all_pairs(
             for hm in hedge_methods:
                 trades = engine.run(row, spread_df, hm, holdout_only=holdout_only,
                                     is_only=is_only, oos_end_date=_oos_end)
-                trades, _dropped = apply_pnl_basis(trades, legacy=getattr(args, "legacy_pnl", False), cfg=engine.cfg)
+                _dropped = engine.last_pnl_dropped   # the engine converts (2026-10-07); legacy via its legacy_pnl flag
                 for _k, _v in _dropped.items():
                     _pnl_dropped[_k] = _pnl_dropped.get(_k, 0) + _v
                 if not trades:
@@ -2850,6 +2884,7 @@ def main() -> None:
             hub_weights={}, risk_parity_weights={}, pnl_cap_by_pair={},
             storm_flags={}, mm_hedge_map={}, adv_shares_map={}, earnings_cal=None,
             pit_confidence_weights={}, holdout_date=_holdout_date,
+            legacy_pnl=getattr(args, "legacy_pnl", False),
         )
         _is_only_trades, _ = _run_all_pairs(
             _fitting_engine, hedge_methods, args, _pairs_override_df, _survivorship,
@@ -2993,6 +3028,7 @@ def main() -> None:
         adv_shares_map=adv_shares_map,
         earnings_cal=earnings_cal,
         pit_confidence_weights=pit_confidence_weights, holdout_date=_holdout_date,
+        legacy_pnl=getattr(args, "legacy_pnl", False),
     )
 
     # Run over confirmed pairs
