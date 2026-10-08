@@ -170,51 +170,51 @@ BUG-A6,fixed-untested,Independent check: exclusion check present (analysis.py:53
 BUG-D44,partly-fixed,"Independent check: stale-dir skip (ml.py:204) and _tf_dirname (:441) fixed, skips logged; but the documented 'zero dependency on data.py/yfinance' is false (ml.py:253 from data import GapFlag; data.py imports yfinance). Inventory lists it open.",2026-10-07
 BUG-D41,holds-data,"Independent check: a cache-data issue, not code; 60 random *_30min files: 0 missing 09:30-13:00 bars. Note: AAPL 30m cache ends 2026-08-14 (stale).",2026-10-07
 BUG-D22,holds,Independent check: 8h timeframe removed (no '8h' in config/data/analysis); linked tests unrelated.,2026-10-07
-B12,unverified-historical,"Not re-verified 2026-10-07; historical entry (mostly the early yfinance/IBKR fetch path, now secondary to WRDS for daily data). Summary: ",2026-10-07
+B12,fixed-earlier,MLConditioner fails closed (commit 516c9a10); _verify_ml_gate_fail_closed.py,2026-10-07
 BUG-A1,fixed-code-checked,"Code read 2026-10-07: build_returns_matrix aligns on timestamps, no equal-length drop (A1/A9).",2026-10-07
 BUG-A10,fixed-code-checked,Code read 2026-10-07: canonical cutoff defined as data.compute_canonical_cutoff (data.py:1494) and used.,2026-10-07
 BUG-A11,obsolete,Code read 2026-10-07: nested _fit_one_regime no longer exists (grep).,2026-10-07
 BUG-A12,fixed-code-checked,Code read 2026-10-07: clean_close imported and used in the EG path (no NameError).,2026-10-07
 BUG-A13,fixed-code-checked,Code read 2026-10-07: build_returns_matrix uses gap_aware_returns (analysis.py build_returns_matrix).,2026-10-07
 BUG-A14,fixed-code-checked,Code read 2026-10-07: timeframe dirs use _TF_SAFE names (3min vs 3mo); output/results has 3min and 3mo.,2026-10-07
-BUG-A2,unverified-historical,"Not re-verified 2026-10-07; historical entry (mostly the early yfinance/IBKR fetch path, now secondary to WRDS for daily data). Summary: Structural pairs leaking into pairs.parquet",2026-10-07
+BUG-A2,fixed-mislinked,"structural-pair filter exists with a real test (_verify_filter_structural_pairs.py, per the independent check); share-class scope gap = S36",2026-10-07
 BUG-A4,unverified-historical,"Not re-verified 2026-10-07; historical entry (mostly the early yfinance/IBKR fetch path, now secondary to WRDS for daily data). Summary: HMM convergence warnings fire for any log-likelihood decrease below tol",2026-10-07
 BUG-A5,unverified-historical,"Not re-verified 2026-10-07; historical entry (mostly the early yfinance/IBKR fetch path, now secondary to WRDS for daily data). Summary: OOM guard allocated date_range before checking",2026-10-07
-BUG-A7,unverified-historical,"Not re-verified 2026-10-07; historical entry (mostly the early yfinance/IBKR fetch path, now secondary to WRDS for daily data). Summary: Hurst estimator wrong domain",2026-10-07
+BUG-A7,fixed-code-checked-plus-residual-fixed,"Code read 2026-10-07: R/S Hurst runs on increments, not levels (analysis.py hurst_rs). Residual found and fixed: hurst_rs and hurst_dfa dropped NaNs BEFORE differencing, bridging data outages (synthetic: R/S 0.455 vs 0.386 clean; DFA 0.370 vs 0.275) -- now diff then mask (D81 rule). debug/_verify_hurst_rs_gap_increments.py fails on old code, 5/5 now. Same packing in the LEVEL-based AR(1) functions (half_life_ar1, zivot_andrews, cusum) is governed by the BUG-D77 segment rule + the DAILY_GAP_BREAKS arm -> plan S4.",2026-10-07
 BUG-A8,obsolete,Code read 2026-10-07: nested _fit_one_regime no longer exists (grep).,2026-10-07
 BUG-A9,fixed-code-checked,Code read 2026-10-07: INCLUDE_QQQ_EXTRAS / RUSSELL_TOP_N / INCLUDE_BRK_HOLDINGS defined (config.py:485-489).,2026-10-07
 BUG-D1,fixed-code-checked,Code read 2026-10-07: front-month futures via reqContractDetails + lastTradeDateOrContractMonth (data.py:2888-2917).,2026-10-07
 BUG-D10,unverified-historical,"Not re-verified 2026-10-07; historical entry (mostly the early yfinance/IBKR fetch path, now secondary to WRDS for daily data). Summary: Cache backfill returning session-only keys, missed 5,752 disk files",2026-10-07
-BUG-D106,doc-fixed-not-reverified,"BUG_LOG/Development.md record it FIXED; not re-verified in code 2026-10-07. Summary: Not a live bug (nothing downstream consumes this output, confirmed via grep) but a real, previously-flagged design gap now closed: `research/wrds_deep_history_e",2026-10-07
+BUG-D106,fixed-code-checked,Code read 2026-10-07: episodic_bhfdr_confirm_asof exists (research/wrds_deep_history_episodic_scan.py:1085).,2026-10-07
 BUG-D107,fixed-code-checked,"Code read 2026-10-07: backtest._TF_DIRS includes ('1day', '1D') (backtest.py:85-89).",2026-10-07
-BUG-D108,doc-fixed-not-reverified,"BUG_LOG/Development.md record it FIXED; not re-verified in code 2026-10-07. Summary: `_save_checkpoint` (`research/wrds_deep_history_episodic_scan.py`, shared by the WRDS scan and the new intraday scanner) wrote directly to its final path, not a",2026-10-07
-BUG-D11,unverified-historical,"Not re-verified 2026-10-07; historical entry (mostly the early yfinance/IBKR fetch path, now secondary to WRDS for daily data). Summary: 7D/1M yfinance weekly inconsistency across asset classes",2026-10-07
-BUG-D110,unverified-historical,"Not re-verified 2026-10-07; historical entry (mostly the early yfinance/IBKR fetch path, now secondary to WRDS for daily data). Summary: ",2026-10-07
-BUG-D111,unverified-historical,"Not re-verified 2026-10-07; historical entry (mostly the early yfinance/IBKR fetch path, now secondary to WRDS for daily data). Summary: ",2026-10-07
-BUG-D113,unverified-historical,"Not re-verified 2026-10-07; historical entry (mostly the early yfinance/IBKR fetch path, now secondary to WRDS for daily data). Summary: ",2026-10-07
+BUG-D108,fixed-code-checked,Code read 2026-10-07: checkpoint writes go to .tmp then os.replace (wrds_deep_history_episodic_scan.py:435-452).,2026-10-07
+BUG-D11,fixed-code-checked,Code read 2026-10-07: all coarse bars use the shared period_bars calendar-period-end convention (D13); weekly = W-FRI for every asset class.,2026-10-07
+BUG-D110,fixed-code-checked,"Code read 2026-10-07: episodic_pairs_adapter has atomic resumable per-pair progress checkpoints (research/episodic_pairs_adapter.py:303, 437).",2026-10-07
+BUG-D111,fixed-code-checked,Code read 2026-10-07: same class as tonight's A1 residual: _build_log_price_map now aligns to a union index for every caller (_verify_log_price_map_common_index.py).,2026-10-07
+BUG-D113,fixed-code-checked,"Code read 2026-10-07: portfolio_sim imports Config and derives STOP_ZSCORE etc. from it (portfolio_sim.py:57, 178).",2026-10-07
 BUG-D12,fixed-code-checked,Code read 2026-10-07: get_equity_history has the period kwarg (data.py:2064).,2026-10-07
-BUG-D13,unverified-historical,"Not re-verified 2026-10-07; historical entry (mostly the early yfinance/IBKR fetch path, now secondary to WRDS for daily data). Summary: Completed assets bypass freshness check",2026-10-07
+BUG-D13,fixed-code-checked,Code read 2026-10-07: post-build incremental refresh for completed assets (data.py:5196).,2026-10-07
 BUG-D14,unverified-historical,"Not re-verified 2026-10-07; historical entry (mostly the early yfinance/IBKR fetch path, now secondary to WRDS for daily data). Summary: Excluded assets could still enter backfill",2026-10-07
 BUG-D15,unverified-historical,"Not re-verified 2026-10-07; historical entry (mostly the early yfinance/IBKR fetch path, now secondary to WRDS for daily data). Summary: Cache deletion via rename fails on Windows/OneDrive",2026-10-07
 BUG-D16,fixed-code-checked,"Code read 2026-10-07: ETF included in yfinance routing (data.py:4117, 4440).",2026-10-07
 BUG-D17,unverified-historical,"Not re-verified 2026-10-07; historical entry (mostly the early yfinance/IBKR fetch path, now secondary to WRDS for daily data). Summary: 2m/3m derived from corrupted 1m data",2026-10-07
 BUG-D18,unverified-historical,"Not re-verified 2026-10-07; historical entry (mostly the early yfinance/IBKR fetch path, now secondary to WRDS for daily data). Summary: Batch yfinance saves 0/N bars",2026-10-07
-BUG-D19,unverified-historical,"Not re-verified 2026-10-07; historical entry (mostly the early yfinance/IBKR fetch path, now secondary to WRDS for daily data). Summary: IBKR session-dead reconnection infinite loop",2026-10-07
+BUG-D19,fixed-code-checked,"Code read 2026-10-07: Warning 2110 sets _upstream_broken and stops the reconnect loop (data.py:2735, 2807-2828).",2026-10-07
 BUG-D2,unverified-historical,"Not re-verified 2026-10-07; historical entry (mostly the early yfinance/IBKR fetch path, now secondary to WRDS for daily data). Summary: Forex contract format — wrong pair ordering in ib.Forex()",2026-10-07
-BUG-D20,unverified-historical,"Not re-verified 2026-10-07; historical entry (mostly the early yfinance/IBKR fetch path, now secondary to WRDS for daily data). Summary: Config hash forces full re-fetch on every config change",2026-10-07
+BUG-D20,fixed-code-checked,"Code read 2026-10-07: progress config hash covers only ProgressLogger._HASH_FIELDS (fetch-relevant), not the whole config (data.py compute_config_hash).",2026-10-07
 BUG-D21,fixed-code-checked,Code read 2026-10-07: analysis.py imports no IBKR fetch code (grep); IBKR enrichment now off by default (A10).,2026-10-07
 BUG-D23,fixed-code-checked,Code read 2026-10-07: contamination/frequency check in the cache cleaner (data.py:368-382).,2026-10-07
 BUG-D24,fixed-code-checked,Code read 2026-10-07: 4h frequency validation excludes >8h gaps before the median (data.py:379).,2026-10-07
 BUG-D25,unverified-historical,"Not re-verified 2026-10-07; historical entry (mostly the early yfinance/IBKR fetch path, now secondary to WRDS for daily data). Summary: RunSummary table empty despite Phase 2A running",2026-10-07
-BUG-D26,unverified-historical,"Not re-verified 2026-10-07; historical entry (mostly the early yfinance/IBKR fetch path, now secondary to WRDS for daily data). Summary: 2m systematic 100% fetch failure — period interpretation",2026-10-07
-BUG-D27,unverified-historical,"Not re-verified 2026-10-07; historical entry (mostly the early yfinance/IBKR fetch path, now secondary to WRDS for daily data). Summary: Explicit-date day-count keyed by wrong variable (introduced by D26's wrong-hypothesis-2)",2026-10-07
+BUG-D26,fixed-code-checked,Code read 2026-10-07: period chosen per actual yf_interval (data.py:2423; CLAUDE.md period-limit rule).,2026-10-07
+BUG-D27,fixed-code-checked,"Code read 2026-10-07: day-count keyed by the Yahoo interval requested, not the CAMARF label (data.py:2423; CLAUDE.md).",2026-10-07
 BUG-D28,unverified-historical,"Not re-verified 2026-10-07; historical entry (mostly the early yfinance/IBKR fetch path, now secondary to WRDS for daily data). Summary: yf.download() unreliable for bulk sequential calls vs. yf.Ticker().history()",2026-10-07
 BUG-D29,fixed-code-checked,Code read 2026-10-07: no '45d_fallback' string anywhere (grep).,2026-10-07
 BUG-D3,unverified-historical,"Not re-verified 2026-10-07; historical entry (mostly the early yfinance/IBKR fetch path, now secondary to WRDS for daily data). Summary: OOM on 1m reindex — date_range allocates before size check",2026-10-07
 BUG-D30,fixed-code-checked,Code read 2026-10-07: pytz importable in the trading env (2026.2).,2026-10-07
 BUG-D33,fixed-code-checked,Code read 2026-10-07: empty/suspiciously small constituent fetch not cached (data.py:5461-5467).,2026-10-07
 BUG-D34,fixed-code-checked,"Code read 2026-10-07: pd.read_html(StringIO(...)) (data.py:5527, 5618, 5660).",2026-10-07
-BUG-D35,unverified-historical,"Not re-verified 2026-10-07; historical entry (mostly the early yfinance/IBKR fetch path, now secondary to WRDS for daily data). Summary: seed_sp_caches.py picked Wikipedia's historical ""Selected changes"" table instead of current constituents",2026-10-07
+BUG-D35,fixed-code-checked,Code read 2026-10-07: seed_sp_caches skips MultiIndex (Added/Removed history) tables and takes the flat Symbol/Ticker constituents table (seed_sp_caches.py:71-90).,2026-10-07
 BUG-D36,fixed-code-checked,Code read 2026-10-07: MIN_BARS_REQUIRED 1m/2m/3m re-derived from real bar counts (config.py:145-160 comments).,2026-10-07
 BUG-D37,fixed-code-checked,Code read 2026-10-07: 4h session-aligned bins offset='9h30min' (data.py:2323).,2026-10-07
 BUG-D38,unverified-historical,"Not re-verified 2026-10-07; historical entry (mostly the early yfinance/IBKR fetch path, now secondary to WRDS for daily data). Summary: Stale per-ticker yf_period cache entries with no expiry, silently capping ~80 tickers' 1h fetches",2026-10-07
@@ -222,21 +222,21 @@ BUG-D39,fixed-code-checked,"Code read 2026-10-07: analysis builds with connect=F
 BUG-D4,fixed-code-checked,"Code read 2026-10-07: NYSE calendar from pandas_market_calendars (data.py:30, _get_nyse_calendar :1091).",2026-10-07
 BUG-D40,fixed-code-checked,Code read 2026-10-07: overnight/weekend gaps (>8h) excluded from frequency checks (data.py:379-382).,2026-10-07
 BUG-D42,unverified-historical,"Not re-verified 2026-10-07; historical entry (mostly the early yfinance/IBKR fetch path, now secondary to WRDS for daily data). Summary: Supersedes D31's throttling guess — 1m/2m/3m real root cause",2026-10-07
-BUG-D43,unverified-historical,"Not re-verified 2026-10-07; historical entry (mostly the early yfinance/IBKR fetch path, now secondary to WRDS for daily data). Summary: _write_analysis_summary() crashed on Optional[float]=None hurst_rs",2026-10-07
+BUG-D43,fixed-code-checked,Code read 2026-10-07: _write_analysis_summary formats hurst_rs via _fnum (None-safe) (analysis.py ~6856).,2026-10-07
 BUG-D46,unverified-historical,"Not re-verified 2026-10-07; historical entry (mostly the early yfinance/IBKR fetch path, now secondary to WRDS for daily data). Summary: Overnight is_fresh() fix was incomplete — one more call site",2026-10-07
 BUG-D47,fixed-code-checked,"Code read 2026-10-07: end-of-run pair count post-filter (DEV-013, verified 2026-10-03); analysis.py:6792.",2026-10-07
 BUG-D48,fixed-code-checked,"Code read 2026-10-07: manifest update removes the timeframe from every entry before re-adding (analysis._update_confirmed_manifest, DEV-008 test).",2026-10-07
-BUG-D49,unverified-historical,"Not re-verified 2026-10-07; historical entry (mostly the early yfinance/IBKR fetch path, now secondary to WRDS for daily data). Summary: Degenerate, repeated-price bars (price degeneracy) — root-caused to market cap, ~32% of 1m universe. Multiple entries as the investigation progressed",2026-10-07
+BUG-D49,addressed-by-flags,price-degeneracy audit writes per-tf flag files; analysis._apply_research_screen_flags attaches them (fails loud on unreadable since today); DEV-057: flag-and-include + exclude-flagged sensitivity,2026-10-07
 BUG-D5,fixed-code-checked,"Code read 2026-10-07: Warning 2110 handled, reconnect stops (data.py:2716, 2789, 2833).",2026-10-07
 BUG-D50,fixed-code-checked,Code read 2026-10-07: COT dataset 6dca-aqww with exact contract-name lists (macro.py:411-422); _verify_cot_contract_history.py.,2026-10-07
-BUG-D51,unverified-historical,"Not re-verified 2026-10-07; historical entry (mostly the early yfinance/IBKR fetch path, now secondary to WRDS for daily data). Summary: _clean_close() returns np.ndarray, not pd.Series",2026-10-07
-BUG-D53,unverified-historical,"Not re-verified 2026-10-07; historical entry (mostly the early yfinance/IBKR fetch path, now secondary to WRDS for daily data). Summary: Permutation test's trade-level shuffle destroyed genuine cross-pair exit-timing correlation, inflating the null",2026-10-07
-BUG-D54,unverified-historical,"Not re-verified 2026-10-07; historical entry (mostly the early yfinance/IBKR fetch path, now secondary to WRDS for daily data). Summary: research/decoupling_analysis.py — zero GapFlag masking + live/stale directory double-counting",2026-10-07
-BUG-D55,unverified-historical,"Not re-verified 2026-10-07; historical entry (mostly the early yfinance/IBKR fetch path, now secondary to WRDS for daily data). Summary: stats.py confirmatory validation stack loads unmasked spread_series_*.parquet",2026-10-07
+BUG-D51,fixed-code-checked,"Code read 2026-10-07: research callers wrap _clean_close in pd.Series(..., index=...) (13 sites, e.g. research/cross_tf_lead_lag_scan.py:103).",2026-10-07
+BUG-D53,fixed-code-checked,"Code read 2026-10-07: stats.run_permutation_test block-bootstraps the aggregated daily series (2026-07-06 fix), demeaned since S5 (today).",2026-10-07
+BUG-D54,fixed-code-checked,Code read 2026-10-07: decoupling analysis excludes gap_flag 4 rows on both legs (research/decoupling_analysis.py:189-192).,2026-10-07
+BUG-D55,fixed-code-checked,Code read 2026-10-07: stats._load_spread_series/_load_spread_df drop gap_flag 4 (DATA_GAP) rows (stats.py:168-196).,2026-10-07
 BUG-D57,confirmed-open,"same defect as code review D11 (tz dropped without converting to ET), confirmed open 2026-10-07; plan W6.3",2026-10-07
-BUG-D58,doc-fixed-not-reverified,"BUG_LOG/Development.md record it FIXED; not re-verified in code 2026-10-07. Summary: survivorship_exclusions.csv conflates ""removed from S&P 500 index"" with ""delisted/no longer trading"" — silently truncated 7/24 confirmed 1h pairs (DD/NOV/FHN le",2026-10-07
+BUG-D58,fixed-code-checked,"Code read 2026-10-07: survivorship boundary truncates at the symbol's real delist/last bar (backtest.py:652, 1302; B15).",2026-10-07
 BUG-D6,fixed-code-checked,Code read 2026-10-07: 1m period 5d (data.py:2341-2343).,2026-10-07
-BUG-D61,doc-fixed-not-reverified,"BUG_LOG/Development.md record it FIXED; not re-verified in code 2026-10-07. Summary: distance.py's GGR comparison never tested the same date window on both sides — cointegration side used backtest.py's 20% holdout (~7mo), distance side used its ",2026-10-07
+BUG-D61,fixed-code-checked,Code read 2026-10-07: distance.py formation/trading split aligned to the cointegration side's window (distance.py:51-54).,2026-10-07
 BUG-D62,fixed-code-checked,Code read 2026-10-07: no groupby(exit_date) pooling left in portfolio_sim/sensitivity/deflated_sharpe/cvar/run_storm_grid (grep); portfolio_math business days.,2026-10-07
 BUG-D63,fixed-code-checked,Code read 2026-10-07: 0 '__TEST_SAVE__' entries in output/results/confirmed_pairs_manifest.json.,2026-10-07
 BUG-D64,fixed-code-checked,Code read 2026-10-07: sensitivity.py pools via portfolio_math (no groupby(exit_date)).,2026-10-07
@@ -244,33 +244,33 @@ BUG-D66,unverified-historical,"Not re-verified 2026-10-07; historical entry (mos
 BUG-D67,fixed-code-checked,Code read 2026-10-07: near_miss_lag_scan writes safe-named files (research/near_miss_lag_scan.py:226).,2026-10-07
 BUG-D68,fixed-code-checked,"Code read 2026-10-07: override needs >= 756 bars, now counted as real overlap (A5 fix today).",2026-10-07
 BUG-D7,fixed-code-checked,"Code read 2026-10-07: ADJUSTED_LAST only for daily, TRADES fallback (data.py:3031, 3191).",2026-10-07
-BUG-D73,doc-fixed-not-reverified,"BUG_LOG/Development.md record it FIXED; not re-verified in code 2026-10-07. Summary: `data_ibkr.py`'s `merge_with_yfinance()` — BUG-D65's split-adjustment-seam bug recurring in a 14th, independent merge path never covered by the original fix's 1",2026-10-07
-BUG-D74,doc-fixed-not-reverified,BUG_LOG/Development.md record it FIXED; not re-verified in code 2026-10-07. Summary: `ml.py`'s `hedge_ratio_drift` and `backtest.py`'s Layer-2 `_ml_hedge_drift` both used the static full-sample `hedge_ratio_ols`/`hedge_ratio_kalman_mean` scalar ,2026-10-07
+BUG-D73,fixed-code-checked,Code read 2026-10-07: merge_with_yfinance reconciles the split basis via DataStore._reconcile_split_adjustment (data_ibkr.py:163-169).,2026-10-07
+BUG-D74,fixed-code-checked,Code read 2026-10-07: ml uses the point-in-time hedge_ratio_ols_t/kalman_t series (ml.py:264-282).,2026-10-07
 BUG-D77,fixed-code-checked,Code read 2026-10-07: data.longest_gap_respecting_segment used by _eg_worker (analysis.py:1787) and now the Johansen worker (A11).,2026-10-07
-BUG-D78,doc-fixed-not-reverified,"BUG_LOG/Development.md record it FIXED; not re-verified in code 2026-10-07. Summary: `comomentum.py` reconstructed its entire spread series from a static full-sample `hedge_ratio_ols` scalar — same lookahead class as D74, independently found. FI",2026-10-07
-BUG-D79,doc-fixed-not-reverified,BUG_LOG/Development.md record it FIXED; not re-verified in code 2026-10-07. Summary: `earnings_lead_lag.py`/`big_move_lead_lag.py` pooled disjoint event windows into one compacted array then ran a positional lagged-correlation shift on it — sile,2026-10-07
+BUG-D78,fixed-code-checked,Code read 2026-10-07: comomentum loads the persisted spread_series instead of a static hedge (research/comomentum.py:63-78).,2026-10-07
+BUG-D79,fixed-code-checked,"Code read 2026-10-07: lead-lag correlation computed per window, then pooled (research/earnings_lead_lag.py:107-121).",2026-10-07
 BUG-D8,fixed-code-checked,Code read 2026-10-07: MultiIndex columns flattened per ticker via xs (data.py:2162-2164).,2026-10-07
-BUG-D80,doc-fixed-not-reverified,"BUG_LOG/Development.md record it FIXED; not re-verified in code 2026-10-07. Summary: `follower_direction_validation.py` treated thousands of heavily-overlapping expanding-window ""OOS"" beta estimates as independent samples in an SEM calculation, ",2026-10-07
-BUG-D81,doc-fixed-not-reverified,BUG_LOG/Development.md record it FIXED; not re-verified in code 2026-10-07. Summary: `jump_diffusion_spread_analysis.py`/`jump_diffusion_parameter_fit.py` dropped DATA_GAP rows THEN diffed — a dropped multi-day gap is indistinguishable from a ge,2026-10-07
-BUG-D82,doc-fixed-not-reverified,BUG_LOG/Development.md record it FIXED; not re-verified in code 2026-10-07. Summary: `predictability_optimizer.py`/`ccp_variants.py` computed a lag-1 cross-covariance via positional `X[1:]`/`X[:-1]` on a dropna'd level series — silently treats r,2026-10-07
-BUG-D83,doc-fixed-not-reverified,BUG_LOG/Development.md record it FIXED; not re-verified in code 2026-10-07. Summary: `variance_ratio_test.py` — same drop-then-diff class; re-assessed as HIGH-concern mechanism (even routine gaps must not bridge a variance-ratio test). FIXED — n,2026-10-07
-BUG-D84,doc-fixed-not-reverified,"BUG_LOG/Development.md record it FIXED; not re-verified in code 2026-10-07. Summary: `network_momentum.py` `fillna(0.0)`'d a returns panel with genuine missing-data NaNs, distorting lag-1 cross-correlation for thin/newer symbols. FIXED — NaN pre",2026-10-07
-BUG-D85,doc-fixed-not-reverified,"BUG_LOG/Development.md record it FIXED; not re-verified in code 2026-10-07. Summary: `news_impact_asymmetry.py` borrowed a LEVEL-test's gap-masking justification for its own diff-based, lag-sensitive asymmetry test — doesn't transfer. FIXED — sa",2026-10-07
-BUG-D86,doc-fixed-not-reverified,BUG_LOG/Development.md record it FIXED; not re-verified in code 2026-10-07. Summary: `peer_correlation_contamination_check.py` had no gap-flag check on the prior-bar anchor used to compute a same-day return — ironic given the script validates sy,2026-10-07
-BUG-D87,doc-fixed-not-reverified,BUG_LOG/Development.md record it FIXED; not re-verified in code 2026-10-07. Summary: `dd_hub_effective_bets.py` dropped each pair's DATA_GAP rows independently before a cross-pair intersection — one pair's unrelated gap could silently double a s,2026-10-07
-BUG-D88,doc-fixed-not-reverified,BUG_LOG/Development.md record it FIXED; not re-verified in code 2026-10-07. Summary: `vol_targeting_and_drawdown_derisking.py`'s `target_vol` was a full-history scalar median — an early trade's size depended on years-later volatility data. FIXED,2026-10-07
-BUG-D89,doc-fixed-not-reverified,"BUG_LOG/Development.md record it FIXED; not re-verified in code 2026-10-07. Summary: `backtest.py::_cf_carver`'s forecast-scale factor was computed once from the entire df passed to `run()`, applied as a constant multiplier throughout (compariso",2026-10-07
+BUG-D80,fixed-code-checked,Code read 2026-10-07: non-overlapping walk-forward train/test beta pairs (research/follower_direction_validation.py:10-13).,2026-10-07
+BUG-D81,fixed-code-checked,"Code read 2026-10-07: diff first, then mask diffs spanning DATA_GAP (research/jump_diffusion_spread_analysis.py:77-99).",2026-10-07
+BUG-D82,fixed-code-checked,Code read 2026-10-07: gap-aware lag pairing (research/predictability_optimizer.py:46-78).,2026-10-07
+BUG-D83,fixed-code-checked,"Code read 2026-10-07: _longest_clean_run restricts the VR test to one gap-free run (research/variance_ratio_test.py:59, 172-176).",2026-10-07
+BUG-D84,fixed-code-checked,"Code read 2026-10-07: NaN kept, pairwise-complete correlation; fillna(0) only in comments (research/network_momentum.py:69-122).",2026-10-07
+BUG-D85,fixed-code-checked,Code read 2026-10-07: diff before dropping gap rows (research/news_impact_asymmetry.py:40-68).,2026-10-07
+BUG-D86,fixed-code-checked,Code read 2026-10-07: anchor bar checked against gap_flag (research/peer_correlation_contamination_check.py:61-66).,2026-10-07
+BUG-D87,fixed-code-checked,Code read 2026-10-07: full-calendar load with per-leg DATA_GAP masking before intersection (research/dd_hub_effective_bets.py:97-100).,2026-10-07
+BUG-D88,fixed-code-checked,Code read 2026-10-07: expanding causal target_vol median (research/vol_targeting_and_drawdown_derisking.py:63-80).,2026-10-07
+BUG-D89,fixed-code-checked,Code read 2026-10-07: causal expanding forecast scale (backtest.py:771-776 and _cf_carver).,2026-10-07
 BUG-D9,fixed-code-checked,Code read 2026-10-07: progress file written via tmp + os.replace with retries (data.py:720-730).,2026-10-07
-BUG-D91,doc-fixed-not-reverified,"BUG_LOG/Development.md record it FIXED; not re-verified in code 2026-10-07. Summary: `earnings_structural_break_correlation.py` pooled break events as independent trials despite DD-hub concentration (73.4% of the 1h pool), and tested 3 window si",2026-10-07
-BUG-D92,doc-fixed-not-reverified,"BUG_LOG/Development.md record it FIXED; not re-verified in code 2026-10-07. Summary: `short_term_factor_alpha.py`'s Monday-dummy signal is identical across every asset on a given day, so its true independent sample size is ~n_days, not n_days×n_",2026-10-07
-BUG-D93,doc-fixed-not-reverified,"BUG_LOG/Development.md record it FIXED; not re-verified in code 2026-10-07. Summary: `eg_permutation_check.py`'s circular-shift null rolled the RAW (NaN-containing) b array then re-masked, so every permutation draw's overlap N differed from ever",2026-10-07
-BUG-D94,doc-fixed-not-reverified,"BUG_LOG/Development.md record it FIXED; not re-verified in code 2026-10-07. Summary: **Regression, not an original audit item**: BUG-D77 (this session) changed `_eg_worker`'s signature to require `tf_label`, but 4 EXTERNAL consumer scripts (`dec",2026-10-07
+BUG-D91,fixed-code-checked,"Code read 2026-10-07: FDR-BH across windows via multipletests (research/earnings_structural_break_correlation.py:48, 168-169).",2026-10-07
+BUG-D92,fixed-code-checked,Code read 2026-10-07: n_effective_days reported (research/short_term_factor_alpha.py:94-107).,2026-10-07
+BUG-D93,fixed-code-checked,Code read 2026-10-07: gap-masked arrays before circular shift (research/eg_permutation_check.py:16-70).,2026-10-07
+BUG-D94,fixed-code-checked,Code read 2026-10-07: every external _eg_worker call passes tf_label as the 6th element (grep: 9 call sites).,2026-10-07
 BUG-D95,fixed-code-checked,Code read 2026-10-07: all_candidates/spread persistence no longer nested in 'if discovered_pairs' (analysis.py:6607-6702).,2026-10-07
 BUG-D96,fixed-code-checked,Code read 2026-10-07: no Config.ANALYSIS.MIN_OVERLAP_BY_TF / ADV_FILTER_USD references remain (grep).,2026-10-07
-BUG-D98,doc-fixed-not-reverified,BUG_LOG/Development.md record it FIXED; not re-verified in code 2026-10-07. Summary: `analysis.py::_run_one_tf`'s ADV liquidity filter computed its per-symbol proxy exclusively from `{sym}_1hr.parquet`; when that file doesn't exist (161 symbols ,2026-10-07
+BUG-D98,fixed-code-checked,Code read 2026-10-07: _compute_adv falls back from 1hr to 1day files (analysis.py ~5371); USD/causal issues remain as A14/W5.6b.,2026-10-07
 BUG-D99,fixed-code-checked,"Code read 2026-10-07: hurst_rs (and now the hedge scalars, S4) taken from the train-only screen (pit_wfa._TRAIN_ONLY_FIELDS).",2026-10-07
-C14,unverified-historical,"Not re-verified 2026-10-07; historical entry (mostly the early yfinance/IBKR fetch path, now secondary to WRDS for daily data). Summary: ",2026-10-07
-C15,unverified-historical,"Not re-verified 2026-10-07; historical entry (mostly the early yfinance/IBKR fetch path, now secondary to WRDS for daily data). Summary: ",2026-10-07
-C16,unverified-historical,"Not re-verified 2026-10-07; historical entry (mostly the early yfinance/IBKR fetch path, now secondary to WRDS for daily data). Summary: ",2026-10-07
-R8.1,unverified-historical,"Not re-verified 2026-10-07; historical entry (mostly the early yfinance/IBKR fetch path, now secondary to WRDS for daily data). Summary: ",2026-10-07
+C14,fixed-code-checked,Code read 2026-10-07: comment corrected: OU_ZSCORE_ENTRY only flags divergence events (config.py:624).,2026-10-07
+C15,fixed-code-checked,Code read 2026-10-07: REGIME_SIZING comment matches code: 1.5x / 1.0x (config.py:798-802).,2026-10-07
+C16,fixed-code-checked,"Code read 2026-10-07: _IO_WORKERS derived from os.cpu_count(), capped at 32 (universe_loader.py:132).",2026-10-07
+R8.1,confirmed-open-cited,"ledger: 'after narrowing' coded as dz_{t-1} < 0, not sign(dz) == -sign(z); claim to be withdrawn pending re-run -> S34",2026-10-07
 SWEEP-S1,documented-open-not-rechecked,documented open in the inconsistency sweep; not re-checked,2026-10-07

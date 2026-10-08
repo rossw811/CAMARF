@@ -3338,8 +3338,11 @@ class HurstEstimator:
         (phi-1)/(2-phi) < 0, yielding H < 0.5. Operating on levels would
         give H > 0.5 for high-phi OU due to positive level autocorrelation.
         """
-        s = spread[np.isfinite(spread)]
-        inc = np.diff(s)  # <- INCREMENTS, not levels
+        # Difference the FULL series, then drop increments touching a NaN (2026-10-07: dropping NaNs first bridged
+        # data outages -- one "increment" = the whole move across the outage; same class as BUG-D81/D83/D85;
+        # synthetic: H 0.455 bridged vs 0.386 clean). debug/_verify_hurst_rs_gap_increments.py
+        inc = np.diff(np.asarray(spread, dtype=float))  # <- INCREMENTS, not levels
+        inc = inc[np.isfinite(inc)]
         n = inc.size
         if n < HurstEstimator.MIN_BARS:
             return np.nan
@@ -3403,8 +3406,10 @@ class HurstEstimator:
         DFA is more robust than R/S when increments have non-stationarity or
         slow structural shifts — detrending within each window absorbs these.
         """
-        s = spread[np.isfinite(spread)]
-        inc = np.diff(s)  # operate on INCREMENTS (same as R/S)
+        # Difference the full series, then drop increments touching a NaN (2026-10-07, same fix as hurst_rs: dropping
+        # NaNs first bridged data outages; synthetic: H 0.370 bridged vs 0.275 clean).
+        inc = np.diff(np.asarray(spread, dtype=float))  # operate on INCREMENTS (same as R/S)
+        inc = inc[np.isfinite(inc)]
         n = inc.size
         if n < HurstEstimator.MIN_BARS:
             return np.nan
