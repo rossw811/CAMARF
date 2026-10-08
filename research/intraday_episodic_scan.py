@@ -215,7 +215,7 @@ def run_scan(tf_label: str, window_config_name: str, workers: int = None, tier3_
             static_pairs, log_price_df, max_lag, window=window, step=step,
             workers=workers, checkpoint_id=f"intraday_{tf_label}{suffix}_tier2", checkpoint_every=3,
         )
-        clear_checkpoint(f"intraday_{tf_label}_tier2")
+        clear_checkpoint(f"intraday_{tf_label}{suffix}_tier2")
         tier2_confirmed = episodic_bhfdr_confirm(tier2_flat, Config.STATS.FDR_ALPHA)
         log.info(f"[{tf_label}][TIER 2] {len(tier2_flat)} (pair,window) tests -> "
                  f"{len(tier2_confirmed)} episodically confirmed")
@@ -256,7 +256,7 @@ def run_scan(tf_label: str, window_config_name: str, workers: int = None, tier3_
                 tier3_pairs, log_price_df, max_lag, window=window, step=step,
                 workers=workers, checkpoint_id=f"intraday_{tf_label}{suffix}_tier3", checkpoint_every=3,
             )
-            clear_checkpoint(f"intraday_{tf_label}_tier3")
+            clear_checkpoint(f"intraday_{tf_label}{suffix}_tier3")
             tier3_confirmed = episodic_bhfdr_confirm(tier3_flat, Config.STATS.FDR_ALPHA)
             log.info(f"[{tf_label}][TIER 3] {len(tier3_flat)} (pair,window) tests -> "
                      f"{len(tier3_confirmed)} episodically confirmed")

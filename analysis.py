@@ -2028,7 +2028,13 @@ class CointScanner:
         DATA_GAP bars are masked to NaN: a 6-day data void produces a large
         spurious return at the resumption bar that would artificially widen
         the ADF test statistic toward false rejection of unit root.
+
+        A1 residual (2026-10-07, independent check): research callers pass align_universe output (per-symbol spans)
+        straight in, and _eg_worker needs row i to be the same timestamp for both legs. Align the requested symbols
+        onto one union index here (no fill; already-aligned input takes align_to_common_index's no-copy path).
+        debug/_verify_log_price_map_common_index.py
         """
+        aligned_data = align_to_common_index({s: aligned_data[s] for s in symbols if aligned_data.get(s) is not None})
         out = {}
         for sym in symbols:
             df = aligned_data.get(sym)

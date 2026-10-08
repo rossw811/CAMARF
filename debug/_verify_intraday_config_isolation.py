@@ -67,6 +67,10 @@ def main():
     check("paths_use_suffix", re.search(r"intraday_episodic_scan_\{tf_label\}\{suffix\}_\{k\}", src) is not None)
     check("checkpoints_use_suffix", 'checkpoint_id=f"intraday_{tf_label}{suffix}_tier2"' in src
           and 'checkpoint_id=f"intraday_{tf_label}{suffix}_tier3"' in src)
+    # 2026-10-07 independent check: the two clear_checkpoint calls missed the suffix (a non-default run deleted the
+    # DEFAULT run's checkpoint and kept its own) -- the checkpoint_id check above did not see them.
+    clears = re.findall(r'clear_checkpoint\(f"([^"]+)"\)', src)
+    check("every_clear_uses_suffix", len(clears) >= 2 and all("{suffix}" in c for c in clears), clears)
     finish()
 
 

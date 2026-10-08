@@ -3,7 +3,8 @@ scripts/build_bug_verdicts.py -- T14 bug recheck (plan W5.3): one verdict per lo
 Inputs: docs/bug_recheck/inventory.csv (scripts/build_bug_inventory.py), a full-suite log
 (debug/_run_all_verify.py output, default docs/bug_recheck/suite_20261007_cachyos.log) and the hand-made verdicts in
 docs/bug_recheck/manual_verdicts.csv (id, verdict, evidence, date).
-Rules: a manual verdict always wins; otherwise a bug with linked tests gets "tests-pass" only if EVERY linked test
+Rules: a manual verdict always wins; a bug documented open/confirmed-open is "documented-open" (never inferred fixed);
+otherwise a bug with tests linked BY NAME (content matches are candidates only) gets "tests-pass" only if EVERY linked test
 passed, "tests-fail" if any failed, "tests-not-run" if a linked test is not in the log; no linked test and no
 manual verdict -> "unchecked" (never assumed fine). "tests-pass" is weaker than a manual "holds": it says the linked
 tests pass, not that they exercise this bug -- the independent sample check (W5.5) is what tests that.
@@ -32,12 +33,11 @@ def parse_suite_log(lines) -> dict:
 
 
 def _tests(row) -> list:
-    names = []
-    for col in ("verify_scripts", "verify_scripts_by_content"):
-        v = row.get(col)
-        if isinstance(v, str) and v.strip():
-            names += [x.strip() for x in v.split(";") if x.strip()]
-    return sorted(set(names))
+    """Tests linked BY NAME only. Content (text) matches are candidates, never evidence: the 2026-10-07 independent
+    check found most of them unrelated (118 rows carry exactly 6 matches, 36 of them the first 6 scripts
+    alphabetically)."""
+    v = row.get("verify_scripts")
+    return sorted({x.strip() for x in v.split(";") if x.strip()}) if isinstance(v, str) and v.strip() else []
 
 
 def merge(inventory: pd.DataFrame, results: dict, manual: pd.DataFrame) -> pd.DataFrame:
@@ -48,6 +48,10 @@ def merge(inventory: pd.DataFrame, results: dict, manual: pd.DataFrame) -> pd.Da
             m = man[r["id"]]
             rows.append({"id": r["id"], "verdict": m["verdict"], "evidence": m["evidence"], "date": m["date"],
                          "basis": "manual"})
+            continue
+        if str(r.get("doc_status", "")).strip() in ("open", "confirmed-open"):
+            rows.append({"id": r["id"], "verdict": "documented-open", "evidence": "documented open; needs a manual verdict",
+                         "date": "", "basis": "doc_status"})
             continue
         tests = _tests(r)
         if not tests:

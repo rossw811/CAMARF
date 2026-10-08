@@ -1,7 +1,8 @@
 """
 Synthetic check for scripts/build_bug_verdicts.py (T14.3-14.5 recheck, 2026-10-07; written before the script).
-Merge rules: a manual verdict (docs/bug_recheck/manual_verdicts.csv) always wins; otherwise a bug with linked tests
-(by name or content) gets "tests-pass" only if EVERY linked test passed in the suite log, "tests-fail" if any failed,
+Merge rules: a manual verdict (docs/bug_recheck/manual_verdicts.csv) always wins; a bug documented as open/
+confirmed-open is "documented-open"; otherwise a bug with tests linked BY NAME (content matches are candidates only,
+never evidence -- 2026-10-07 independent check) gets "tests-pass" only if EVERY linked test passed in the suite log, "tests-fail" if any failed,
 "tests-not-run" if a linked test is absent from the log; a bug with no linked test and no manual verdict is
 "unchecked" -- never assumed fine.
 Run: python debug/_verify_build_bug_verdicts.py
@@ -37,14 +38,20 @@ def main():
                         "verify_scripts_by_content": [None, None, "_verify_c.py", None, None, None]})
     manual = pd.DataFrame({"id": ["X5"], "verdict": ["holds"], "evidence": ["read code, commit abc"],
                            "date": ["2026-10-07"]})
+    inv["doc_status"] = ["fixed", "fixed", "fixed", "fixed", "fixed", "fixed"]
     out = merge(inv, res, manual).set_index("id")
     check("all_pass", out.loc["X1", "verdict"] == "tests-pass")
     check("any_fail", out.loc["X2", "verdict"] == "tests-fail", out.loc["X2", "verdict"])
-    check("content_match_counts", out.loc["X3", "verdict"] == "tests-pass")
+    # 2026-10-07 independent check: content (text) matches were mostly junk (118 rows = the first 6 scripts
+    # alphabetically) -- they are candidates only, never evidence.
+    check("content_match_not_evidence", out.loc["X3", "verdict"] == "unchecked", out.loc["X3", "verdict"])
     check("not_in_log", out.loc["X4", "verdict"] == "tests-not-run")
     check("manual_wins", out.loc["X5", "verdict"] == "holds" and out.loc["X5", "evidence"] == "read code, commit abc")
     check("no_test_unchecked", out.loc["X6", "verdict"] == "unchecked")
     check("evidence_names_tests", "_verify_b.py: FAIL" in out.loc["X2", "evidence"], out.loc["X2", "evidence"])
+    inv2 = inv.copy(); inv2.loc[0, "doc_status"] = "confirmed-open"
+    out2 = merge(inv2, res, manual).set_index("id")
+    check("documented_open_never_tests_pass", out2.loc["X1", "verdict"] == "documented-open", out2.loc["X1", "verdict"])
     finish()
 
 

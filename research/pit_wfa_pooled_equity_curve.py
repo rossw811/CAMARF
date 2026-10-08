@@ -46,6 +46,20 @@ _TRADES_PATH = os.path.join(_ROOT, "output", "backtest", "pit_wfa_wrds_daily_tak
 _OUT_PATH = os.path.join(_ROOT, "output", "backtest", "pit_wfa_wrds_daily_pooled_sharpe.parquet")
 
 
+def _fold_daily(fold_trades: pd.DataFrame) -> pd.Series:
+    """One fold's business-day P&L zero-filled over its WHOLE test window [test_start, test_end] (code review R5.1,
+    fixed 2026-10-07 after the independent check found no caller passed the window: zero-filling ran only from the
+    first to the last exit, dropping trade-free edge days and inflating the pooled Sharpe). Trades without the
+    window columns are refused -- re-run research/pit_wfa_wrds_daily.py, which writes them.
+    debug/_verify_pooled_equity_fold_window.py"""
+    if not {"test_start", "test_end"} <= set(fold_trades.columns):
+        raise ValueError("taken trades carry no test_start/test_end -- re-run research/pit_wfa_wrds_daily.py (R5.1)")
+    if fold_trades.empty:
+        return pd.Series(dtype=float)
+    start = pd.Timestamp(fold_trades["test_start"].iloc[0]); end = pd.Timestamp(fold_trades["test_end"].iloc[0])
+    return portfolio_math.daily_pnl_from_trades(fold_trades, pnl_col="actual_pnl", start=start, end=end)
+
+
 def pool_variant(trades_df: pd.DataFrame, wfa_variant: str, fold_order: list) -> dict:
     """Splices the named folds' daily P&L (in `fold_order`) end to end,
     dropping the inter-fold calendar gap (see module docstring), and
@@ -54,7 +68,7 @@ def pool_variant(trades_df: pd.DataFrame, wfa_variant: str, fold_order: list) ->
     per_fold_stats = []
     for fold in fold_order:
         fold_trades = trades_df[(trades_df["wfa_variant"] == wfa_variant) & (trades_df["fold"] == fold)]
-        daily = portfolio_math.daily_pnl_from_trades(fold_trades, pnl_col="actual_pnl")
+        daily = _fold_daily(fold_trades)
         per_fold_daily.append(daily)
         per_fold_stats.append({
             "fold": fold, "n_trades": len(fold_trades),
@@ -104,7 +118,7 @@ def pool_variant_equal_weighted(trades_df: pd.DataFrame, wfa_variant: str, fold_
     fold_sharpes = []
     for fold in fold_order:
         fold_trades = trades_df[(trades_df["wfa_variant"] == wfa_variant) & (trades_df["fold"] == fold)]
-        daily = portfolio_math.daily_pnl_from_trades(fold_trades, pnl_col="actual_pnl")
+        daily = _fold_daily(fold_trades)
         s = sharpe_from_daily_pnl_local(daily)
         fold_sharpes.append({"fold": fold, "n_trades": len(fold_trades), "n_daily_obs": len(daily), "sharpe": s})
 
