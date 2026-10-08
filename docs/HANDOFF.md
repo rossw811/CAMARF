@@ -1,5 +1,23 @@
-## 2026-10-07: CURRENT PLAN + SIGN-OFF SHEET = docs/PLAN_OF_ACTION_2026-10-07.md (supersedes the 10-03 plan). Discovery re-run + grid-phase
-## robustness chain running on CachyOS (latest_run_grid_chain.log). Amendment 2 addendum drafted, uncommitted until Ross signs S1/S2.
+## 2026-10-07 (night): RESUME HERE. Plan + sign-off sheet: docs/PLAN_OF_ACTION_2026-10-07.md (S1-S36, none decided yet).
+**Running (CachyOS, code beb004b4, do not pull until it finishes):** debug/_tmp_chain_grid.sh -- 1D discovery primary
+re-run on corrected volume + USD liquidity gate (R1.2), then grid offsets 63/126/189, then the pre-declared
+grid_phase_robustness report. ~5-6 days from 19:32. Log: latest_run_grid_chain.log.
+**Blocked on Ross:** S1-S2 (commit the Amendment 2 addendum draft, uncommitted in
+docs/PREREGISTRATION_STRATEGY_SEARCH_2026-09-27.md; N=864); S4-S8 arm adoptions; S31/S32/S35/S36 pool rules; S34
+(research-claim rule). At the machine: memtest86+ (DEV-018), Windows admin fix (DEV-019), Duo for PAR_1M + FX lookup.
+**Done today:** volume restated everywhere (Surface synced); D18 report; bug recheck (docs/bug_recheck/verdicts.csv:
+every bug has a verdict with its evidence level; 15 fetch-path entries still 'unverified-historical'); ~20 defects
+fixed failing-first (R1.2, R1.7, R1.9, R5.1, A1-residual, A5, A7, A8, A10+rule 2, A11, S4, S5, S9, S13, S14, U6,
+engine-level dollar P&L for 12 callers, Hurst gap bridging, screen-flag fail-loud); claims table
+(docs/claims_table.csv, 455 rows). Full suite 371/371 (Surface). Details: Development.md, docs/ERRATA.md.
+**Next once unblocked:** commit addendum -> pools (offset-0 + grid-robust) -> spreads -> squeeze -> second pass ->
+side-by-side report; re-run pit_wfa/pit_wfa_wrds_daily/distance/sensitivity on dollar P&L; Act 3 re-derivation.
+**Where I stopped (2026-10-08, usage limit):** closing the 15 'unverified-historical' bugs (A4, A5, D2, D3, D10, D14,
+D15, D17, D18, D25, D28, D38, D42, D46, D66) -- their fix descriptions are in Development.md at the inventory's
+first_line; check each in code, record in docs/bug_recheck/manual_verdicts.csv, rebuild with
+scripts/build_bug_verdicts.py docs/bug_recheck/suite_20261007i_surface.log. Uncommitted: only the Amendment 2
+addendum draft (deliberately, awaiting S1/S2). The /goal is set to the full plan goal; it cannot complete without
+Ross's S1-S36 decisions and the CachyOS chain.
 
 ## 2026-10-03: the full plan of action is docs/PLAN_OF_ACTION_2026-10-03.md (every thread + backlog, owners,
 ## dependencies, done-criteria, decisions needed). CachyOS hung 2026-10-03 (~10:55) and was rebooted; trfd fetch and
