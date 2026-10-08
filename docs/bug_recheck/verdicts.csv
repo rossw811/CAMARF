@@ -1,0 +1,311 @@
+id,verdict,evidence,date,basis,suite_log
+A1,tests-pass,_verify_eg_bh_denominator.py: PASS; _verify_eg_common_index_a1.py: PASS; _verify_returns_matrix_timestamp_aligned.py: PASS; _verify_scan_guard_direct_callers.py: PASS; _verify_stress_test_replication.py: PASS,,suite,suite_20261007_cachyos.log
+A10,unchecked,,,none,suite_20261007_cachyos.log
+A11,unchecked,,,none,suite_20261007_cachyos.log
+A12,unchecked,,,none,suite_20261007_cachyos.log
+A13,unchecked,,,none,suite_20261007_cachyos.log
+A14,unchecked,,,none,suite_20261007_cachyos.log
+A2,unchecked,,,none,suite_20261007_cachyos.log
+A3,tests-pass,_verify_pair_result_hedge_gap_mask.py: PASS,,suite,suite_20261007_cachyos.log
+A4,unchecked,,,none,suite_20261007_cachyos.log
+A5,unchecked,,,none,suite_20261007_cachyos.log
+A6,tests-pass,_verify_coint_frac_nan_status.py: PASS,,suite,suite_20261007_cachyos.log
+A7,unchecked,,,none,suite_20261007_cachyos.log
+A8,unchecked,,,none,suite_20261007_cachyos.log
+A9,tests-pass,_verify_align_daily_gap_gate.py: PASS,,suite,suite_20261007_cachyos.log
+B1,tests-pass,_verify_backtest_data_gap_exit.py: PASS; _verify_stress_test_replication.py: PASS,,suite,suite_20261007_cachyos.log
+B10,unchecked,,,none,suite_20261007_cachyos.log
+B11,unchecked,,,none,suite_20261007_cachyos.log
+B12,tests-pass,_verify_hrp_ledoit_wolf.py: PASS; _verify_ml_gate_fail_closed.py: PASS; _verify_squeeze_momentum_features.py: PASS; _verify_wrds_lead_lag_scan.py: PASS,,suite,suite_20261007_cachyos.log
+B13,unchecked,,,none,suite_20261007_cachyos.log
+B14,unchecked,,,none,suite_20261007_cachyos.log
+B15,unchecked,,,none,suite_20261007_cachyos.log
+B2,tests-pass,_verify_backtest_dollar_pnl_default.py: PASS; _verify_pnl_dollar.py: PASS; _verify_portfolio_sim_dollar.py: PASS,,suite,suite_20261007_cachyos.log
+B3,tests-pass,_verify_backtest_dollar_pnl_default.py: PASS; _verify_pnl_dollar.py: PASS,,suite,suite_20261007_cachyos.log
+B4,tests-pass,_verify_backtest_hedge_default.py: PASS,,suite,suite_20261007_cachyos.log
+B5,unchecked,,,none,suite_20261007_cachyos.log
+B6,unchecked,,,none,suite_20261007_cachyos.log
+B7,unchecked,,,none,suite_20261007_cachyos.log
+B8,unchecked,,,none,suite_20261007_cachyos.log
+B9,unchecked,,,none,suite_20261007_cachyos.log
+BUG-A1,tests-pass,_verify_absorption_ratio.py: PASS; _verify_adapter_stale_checkpoint_fix.py: PASS; _verify_adapter_wrds_first.py: PASS; _verify_adf_confirmatory_tier.py: PASS; _verify_adv_1day_fallback.py: PASS; _verify_align_daily_gap_gate.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-A10,tests-pass,_verify_absorption_ratio.py: PASS; _verify_adapter_stale_checkpoint_fix.py: PASS; _verify_adapter_wrds_first.py: PASS; _verify_adf_confirmatory_tier.py: PASS; _verify_adv_1day_fallback.py: PASS; _verify_align_daily_gap_gate.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-A11,tests-pass,_verify_absorption_ratio.py: PASS; _verify_adapter_stale_checkpoint_fix.py: PASS; _verify_adapter_wrds_first.py: PASS; _verify_adf_confirmatory_tier.py: PASS; _verify_adv_1day_fallback.py: PASS; _verify_align_daily_gap_gate.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-A12,tests-pass,_verify_absorption_ratio.py: PASS; _verify_adapter_stale_checkpoint_fix.py: PASS; _verify_adapter_wrds_first.py: PASS; _verify_adf_confirmatory_tier.py: PASS; _verify_adv_1day_fallback.py: PASS; _verify_align_daily_gap_gate.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-A13,tests-pass,_verify_absorption_ratio.py: PASS; _verify_adapter_stale_checkpoint_fix.py: PASS; _verify_adapter_wrds_first.py: PASS; _verify_adf_confirmatory_tier.py: PASS; _verify_adv_1day_fallback.py: PASS; _verify_align_daily_gap_gate.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-A14,tests-pass,_verify_adv_1day_fallback.py: PASS; _verify_backtest_zero_z_filter_fix.py: PASS; _verify_bh_vs_by_full_universe.py: PASS; _verify_bh_vs_by_full_universe_1d.py: PASS; _verify_bugD101_position_sizing_circularity.py: PASS; _verify_bugD105_wrds_universe_passed.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-A2,tests-pass,_verify_absorption_ratio.py: PASS; _verify_adapter_stale_checkpoint_fix.py: PASS; _verify_adapter_wrds_first.py: PASS; _verify_adf_confirmatory_tier.py: PASS; _verify_adv_1day_fallback.py: PASS; _verify_align_daily_gap_gate.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-A3,tests-pass,_verify_absorption_ratio.py: PASS; _verify_adapter_stale_checkpoint_fix.py: PASS; _verify_adapter_wrds_first.py: PASS; _verify_adf_confirmatory_tier.py: PASS; _verify_adv_1day_fallback.py: PASS; _verify_align_daily_gap_gate.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-A4,tests-pass,_verify_absorption_ratio.py: PASS; _verify_adapter_stale_checkpoint_fix.py: PASS; _verify_adapter_wrds_first.py: PASS; _verify_adf_confirmatory_tier.py: PASS; _verify_adv_1day_fallback.py: PASS; _verify_align_daily_gap_gate.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-A5,tests-pass,_verify_absorption_ratio.py: PASS; _verify_adapter_stale_checkpoint_fix.py: PASS; _verify_adapter_wrds_first.py: PASS; _verify_adf_confirmatory_tier.py: PASS; _verify_adv_1day_fallback.py: PASS; _verify_align_daily_gap_gate.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-A6,tests-pass,_verify_absorption_ratio.py: PASS; _verify_adapter_stale_checkpoint_fix.py: PASS; _verify_adapter_wrds_first.py: PASS; _verify_adf_confirmatory_tier.py: PASS; _verify_adv_1day_fallback.py: PASS; _verify_align_daily_gap_gate.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-A7,tests-pass,_verify_adf_confirmatory_tier.py: PASS; _verify_append_basis_reconcile.py: PASS; _verify_append_switch.py: PASS; _verify_asset_volatility_profile.py: PASS; _verify_backtest_overfitting_detector.py: PASS; _verify_backtest_risk_parity_is_only_fit.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-A8,tests-pass,_verify_adapter_wrds_first.py: PASS; _verify_adf_confirmatory_tier.py: PASS; _verify_adv_1day_fallback.py: PASS; _verify_append_basis_reconcile.py: PASS; _verify_backtest_data_gap_exit.py: PASS; _verify_backtest_dollar_pnl_default.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-A9,tests-pass,_verify_absorption_ratio.py: PASS; _verify_adapter_stale_checkpoint_fix.py: PASS; _verify_adapter_wrds_first.py: PASS; _verify_adf_confirmatory_tier.py: PASS; _verify_adv_1day_fallback.py: PASS; _verify_align_daily_gap_gate.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-D1,tests-pass,_verify_absorption_ratio.py: PASS; _verify_adapter_wrds_first.py: PASS; _verify_adv_1day_fallback.py: PASS; _verify_append_switch.py: PASS; _verify_asset_volatility_profile.py: PASS; _verify_backtest_overfitting_detector.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-D10,tests-pass,_verify_absorption_ratio.py: PASS; _verify_adapter_stale_checkpoint_fix.py: PASS; _verify_adapter_wrds_first.py: PASS; _verify_adf_confirmatory_tier.py: PASS; _verify_adv_1day_fallback.py: PASS; _verify_align_daily_gap_gate.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-D100,tests-pass,_verify_bugD100_garch_stop_causal.py: PASS; _verify_bugD101_position_sizing_circularity.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-D101,tests-pass,_verify_bugD101_position_sizing_circularity.py: PASS; _verify_bugD102_coint_frac_sizing_fold_leakage.py: PASS; _verify_wrds_primary_wiring.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-D102,tests-pass,_verify_bugD102_coint_frac_sizing_fold_leakage.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-D103,tests-pass,_verify_bugD103_macro_publication_lag.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-D105,tests-pass,_verify_bugD105_wrds_universe_passed.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-D106,tests-pass,_verify_absorption_ratio.py: PASS; _verify_adapter_stale_checkpoint_fix.py: PASS; _verify_adapter_wrds_first.py: PASS; _verify_adf_confirmatory_tier.py: PASS; _verify_adv_1day_fallback.py: PASS; _verify_align_daily_gap_gate.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-D107,tests-pass,_verify_backtest_hurst_none_fix.py: PASS; _verify_backtest_risk_parity_is_only_fit.py: PASS; _verify_backtest_storm_label_fix.py: PASS; _verify_backtest_zero_z_filter_fix.py: PASS; _verify_bugD100_garch_stop_causal.py: PASS; _verify_bugD101_position_sizing_circularity.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-D108,tests-pass,_verify_backtest_hurst_none_fix.py: PASS; _verify_backtest_risk_parity_is_only_fit.py: PASS; _verify_backtest_storm_label_fix.py: PASS; _verify_backtest_zero_z_filter_fix.py: PASS; _verify_bugD100_garch_stop_causal.py: PASS; _verify_bugD101_position_sizing_circularity.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-D109,unchecked,,,none,suite_20261007_cachyos.log
+BUG-D11,tests-pass,_verify_absorption_ratio.py: PASS; _verify_adapter_stale_checkpoint_fix.py: PASS; _verify_adapter_wrds_first.py: PASS; _verify_adf_confirmatory_tier.py: PASS; _verify_adv_1day_fallback.py: PASS; _verify_align_daily_gap_gate.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-D110,tests-pass,_verify_adapter_stale_checkpoint_fix.py: PASS; _verify_adapter_wrds_first.py: PASS; _verify_backtest_hurst_none_fix.py: PASS; _verify_backtest_risk_parity_is_only_fit.py: PASS; _verify_backtest_storm_label_fix.py: PASS; _verify_backtest_zero_z_filter_fix.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-D111,tests-pass,_verify_build_log_prices_bounded.py: PASS; _verify_confirmatory_cointegration_check.py: PASS; _verify_data_crypto_binance.py: PASS; _verify_dd_hub_asymmetric_drop_fix.py: PASS; _verify_persistence_filter.py: PASS; _verify_ridge_hedge_ratio_comparison.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-D112,tests-pass,_verify_adapter_stale_checkpoint_fix.py: PASS; _verify_bug_d112_causal_candidacy.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-D113,tests-pass,_verify_absorption_ratio.py: PASS; _verify_adapter_stale_checkpoint_fix.py: PASS; _verify_adapter_wrds_first.py: PASS; _verify_adf_confirmatory_tier.py: PASS; _verify_adv_1day_fallback.py: PASS; _verify_align_daily_gap_gate.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-D12,tests-pass,_verify_absorption_ratio.py: PASS; _verify_adapter_stale_checkpoint_fix.py: PASS; _verify_adapter_wrds_first.py: PASS; _verify_adf_confirmatory_tier.py: PASS; _verify_adv_1day_fallback.py: PASS; _verify_align_daily_gap_gate.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-D13,tests-pass,_verify_absorption_ratio.py: PASS; _verify_adapter_stale_checkpoint_fix.py: PASS; _verify_adapter_wrds_first.py: PASS; _verify_adf_confirmatory_tier.py: PASS; _verify_adv_1day_fallback.py: PASS; _verify_align_daily_gap_gate.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-D14,tests-pass,_verify_absorption_ratio.py: PASS; _verify_adapter_stale_checkpoint_fix.py: PASS; _verify_adapter_wrds_first.py: PASS; _verify_adf_confirmatory_tier.py: PASS; _verify_adv_1day_fallback.py: PASS; _verify_align_daily_gap_gate.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-D15,tests-pass,_verify_adapter_wrds_first.py: PASS; _verify_adf_confirmatory_tier.py: PASS; _verify_append_basis_reconcile.py: PASS; _verify_append_switch.py: PASS; _verify_asset_volatility_profile.py: PASS; _verify_backtest_overfitting_detector.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-D16,tests-pass,_verify_adapter_wrds_first.py: PASS; _verify_adv_1day_fallback.py: PASS; _verify_append_basis_reconcile.py: PASS; _verify_backtest_risk_parity_is_only_fit.py: PASS; _verify_backtest_zero_z_filter_fix.py: PASS; _verify_bh_vs_by_full_universe.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-D17,tests-pass,_verify_absorption_ratio.py: PASS; _verify_adapter_stale_checkpoint_fix.py: PASS; _verify_adapter_wrds_first.py: PASS; _verify_adf_confirmatory_tier.py: PASS; _verify_adv_1day_fallback.py: PASS; _verify_align_daily_gap_gate.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-D18,tests-pass,_verify_absorption_ratio.py: PASS; _verify_adapter_stale_checkpoint_fix.py: PASS; _verify_adapter_wrds_first.py: PASS; _verify_adf_confirmatory_tier.py: PASS; _verify_adv_1day_fallback.py: PASS; _verify_align_daily_gap_gate.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-D19,tests-pass,_verify_absorption_ratio.py: PASS; _verify_adapter_stale_checkpoint_fix.py: PASS; _verify_adapter_wrds_first.py: PASS; _verify_adf_confirmatory_tier.py: PASS; _verify_adv_1day_fallback.py: PASS; _verify_align_daily_gap_gate.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-D2,tests-pass,_verify_absorption_ratio.py: PASS; _verify_adapter_wrds_first.py: PASS; _verify_adv_1day_fallback.py: PASS; _verify_append_switch.py: PASS; _verify_asset_volatility_profile.py: PASS; _verify_backtest_overfitting_detector.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-D20,tests-pass,_verify_absorption_ratio.py: PASS; _verify_adapter_stale_checkpoint_fix.py: PASS; _verify_adapter_wrds_first.py: PASS; _verify_adf_confirmatory_tier.py: PASS; _verify_adv_1day_fallback.py: PASS; _verify_align_daily_gap_gate.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-D21,tests-pass,_verify_absorption_ratio.py: PASS; _verify_adapter_stale_checkpoint_fix.py: PASS; _verify_adapter_wrds_first.py: PASS; _verify_adf_confirmatory_tier.py: PASS; _verify_adv_1day_fallback.py: PASS; _verify_align_daily_gap_gate.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-D22,tests-pass,_verify_absorption_ratio.py: PASS; _verify_adapter_stale_checkpoint_fix.py: PASS; _verify_adapter_wrds_first.py: PASS; _verify_adf_confirmatory_tier.py: PASS; _verify_adv_1day_fallback.py: PASS; _verify_align_daily_gap_gate.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-D23,tests-pass,_verify_absorption_ratio.py: PASS; _verify_adapter_stale_checkpoint_fix.py: PASS; _verify_adapter_wrds_first.py: PASS; _verify_adf_confirmatory_tier.py: PASS; _verify_adv_1day_fallback.py: PASS; _verify_align_daily_gap_gate.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-D24,tests-pass,_verify_bug_d62_sharpe_convention.py: PASS; _verify_check_cachyos_parity.py: PASS; _verify_cleaner_no_cache_ffill.py: PASS; _verify_crisis_regime_cluster_bootstrap_test.py: PASS; _verify_cross_listing_lead_lag.py: PASS; _verify_dead_constants_comparison_arms.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-D25,tests-pass,_verify_align_daily_gap_gate.py: PASS; _verify_asset_volatility_profile.py: PASS; _verify_backtest_overfitting_detector.py: PASS; _verify_beta_weighted_portfolio.py: PASS; _verify_bh_vs_by_full_universe_1d.py: PASS; _verify_bounded_lookback_primary_screen.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-D26,tests-pass,_verify_align_daily_gap_gate.py: PASS; _verify_asset_volatility_profile.py: PASS; _verify_backtest_overfitting_detector.py: PASS; _verify_beta_weighted_portfolio.py: PASS; _verify_bh_vs_by_full_universe_1d.py: PASS; _verify_bounded_lookback_primary_screen.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-D27,tests-pass,_verify_align_daily_gap_gate.py: PASS; _verify_asset_volatility_profile.py: PASS; _verify_backtest_overfitting_detector.py: PASS; _verify_beta_weighted_portfolio.py: PASS; _verify_bh_vs_by_full_universe_1d.py: PASS; _verify_bounded_lookback_primary_screen.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-D28,tests-pass,_verify_align_daily_gap_gate.py: PASS; _verify_asset_volatility_profile.py: PASS; _verify_backtest_overfitting_detector.py: PASS; _verify_beta_weighted_portfolio.py: PASS; _verify_bh_vs_by_full_universe_1d.py: PASS; _verify_bounded_lookback_primary_screen.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-D29,tests-pass,_verify_absorption_ratio.py: PASS; _verify_adapter_stale_checkpoint_fix.py: PASS; _verify_adapter_wrds_first.py: PASS; _verify_adf_confirmatory_tier.py: PASS; _verify_align_daily_gap_gate.py: PASS; _verify_append_basis_reconcile.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-D3,tests-pass,_verify_absorption_ratio.py: PASS; _verify_adapter_wrds_first.py: PASS; _verify_adv_1day_fallback.py: PASS; _verify_append_switch.py: PASS; _verify_asset_volatility_profile.py: PASS; _verify_backtest_overfitting_detector.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-D30,tests-pass,_verify_align_daily_gap_gate.py: PASS; _verify_asset_volatility_profile.py: PASS; _verify_backtest_overfitting_detector.py: PASS; _verify_beta_weighted_portfolio.py: PASS; _verify_bh_vs_by_full_universe_1d.py: PASS; _verify_bounded_lookback_primary_screen.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-D31,unchecked,,,none,suite_20261007_cachyos.log
+BUG-D32,unchecked,,,none,suite_20261007_cachyos.log
+BUG-D33,tests-pass,_verify_absorption_ratio.py: PASS; _verify_adapter_stale_checkpoint_fix.py: PASS; _verify_adapter_wrds_first.py: PASS; _verify_adf_confirmatory_tier.py: PASS; _verify_adv_1day_fallback.py: PASS; _verify_align_daily_gap_gate.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-D34,tests-pass,_verify_absorption_ratio.py: PASS; _verify_adapter_stale_checkpoint_fix.py: PASS; _verify_adapter_wrds_first.py: PASS; _verify_adf_confirmatory_tier.py: PASS; _verify_adv_1day_fallback.py: PASS; _verify_align_daily_gap_gate.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-D35,tests-pass,_verify_absorption_ratio.py: PASS; _verify_adapter_stale_checkpoint_fix.py: PASS; _verify_adapter_wrds_first.py: PASS; _verify_adf_confirmatory_tier.py: PASS; _verify_adv_1day_fallback.py: PASS; _verify_align_daily_gap_gate.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-D36,tests-pass,_verify_adapter_wrds_first.py: PASS; _verify_append_basis_reconcile.py: PASS; _verify_backtest_risk_parity_is_only_fit.py: PASS; _verify_bugD101_position_sizing_circularity.py: PASS; _verify_bug_d56_compose.py: PASS; _verify_bug_d61_window_alignment.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-D37,tests-pass,_verify_append_switch.py: PASS; _verify_bug_d62_sharpe_convention.py: PASS; _verify_cleaner_no_cache_ffill.py: PASS; _verify_coint_frac_override.py: PASS; _verify_cointegration_regime_segmentation.py: PASS; _verify_crisis_regime_cluster_bootstrap_test.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-D38,tests-pass,_verify_adapter_stale_checkpoint_fix.py: PASS; _verify_adv_1day_fallback.py: PASS; _verify_backtest_zero_z_filter_fix.py: PASS; _verify_bh_vs_by_full_universe.py: PASS; _verify_bh_vs_by_full_universe_1d.py: PASS; _verify_bugD101_position_sizing_circularity.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-D39,tests-pass,_verify_adapter_stale_checkpoint_fix.py: PASS; _verify_adv_1day_fallback.py: PASS; _verify_backtest_zero_z_filter_fix.py: PASS; _verify_bh_vs_by_full_universe.py: PASS; _verify_bh_vs_by_full_universe_1d.py: PASS; _verify_bugD101_position_sizing_circularity.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-D4,tests-pass,_verify_adv_1day_fallback.py: PASS; _verify_backtest_zero_z_filter_fix.py: PASS; _verify_bh_vs_by_full_universe.py: PASS; _verify_bh_vs_by_full_universe_1d.py: PASS; _verify_bugD101_position_sizing_circularity.py: PASS; _verify_bugD105_wrds_universe_passed.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-D40,tests-pass,_verify_absorption_ratio.py: PASS; _verify_adapter_stale_checkpoint_fix.py: PASS; _verify_adapter_wrds_first.py: PASS; _verify_adf_confirmatory_tier.py: PASS; _verify_adv_1day_fallback.py: PASS; _verify_align_daily_gap_gate.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-D41,tests-pass,_verify_absorption_ratio.py: PASS; _verify_adapter_stale_checkpoint_fix.py: PASS; _verify_adapter_wrds_first.py: PASS; _verify_adf_confirmatory_tier.py: PASS; _verify_adv_1day_fallback.py: PASS; _verify_align_daily_gap_gate.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-D42,tests-pass,_verify_adv_1day_fallback.py: PASS; _verify_backtest_hurst_none_fix.py: PASS; _verify_backtest_risk_parity_is_only_fit.py: PASS; _verify_backtest_storm_label_fix.py: PASS; _verify_backtest_zero_z_filter_fix.py: PASS; _verify_bh_vs_by_full_universe.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-D43,tests-pass,_verify_backtest_hurst_none_fix.py: PASS; _verify_coint_frac_nan_status.py: PASS; _verify_dd_cache_anomaly_fix.py: PASS; _verify_ibkr_merge_split_reconciliation.py: PASS; _verify_liquidity_filter_no_fabrication.py: PASS; _verify_min_bars_long_tfs.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-D44,tests-pass,_verify_absorption_ratio.py: PASS; _verify_adapter_stale_checkpoint_fix.py: PASS; _verify_adapter_wrds_first.py: PASS; _verify_adf_confirmatory_tier.py: PASS; _verify_adv_1day_fallback.py: PASS; _verify_align_daily_gap_gate.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-D45,tests-pass,_verify_ewma_zscore_comparison.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-D46,tests-pass,_verify_adf_confirmatory_tier.py: PASS; _verify_backtest_hurst_none_fix.py: PASS; _verify_backtest_risk_parity_is_only_fit.py: PASS; _verify_backtest_storm_label_fix.py: PASS; _verify_backtest_zero_z_filter_fix.py: PASS; _verify_bh_vs_by_full_universe_1d.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-D47,tests-pass,_verify_lstm_attention_architecture.py: PASS; _verify_ml_gate_fail_closed.py: PASS; _verify_ml_threshold_recalibration.py: PASS; _verify_trend_dominance_diagnostic.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-D48,tests-pass,_verify_ibkr_merge_split_reconciliation.py: PASS; _verify_manifest_pruning.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-D49,tests-pass,_verify_backtest_hurst_none_fix.py: PASS; _verify_backtest_risk_parity_is_only_fit.py: PASS; _verify_backtest_storm_label_fix.py: PASS; _verify_backtest_zero_z_filter_fix.py: PASS; _verify_bugD100_garch_stop_causal.py: PASS; _verify_bugD101_position_sizing_circularity.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-D5,tests-pass,_verify_adv_1day_fallback.py: PASS; _verify_backtest_zero_z_filter_fix.py: PASS; _verify_bh_vs_by_full_universe.py: PASS; _verify_bh_vs_by_full_universe_1d.py: PASS; _verify_bugD101_position_sizing_circularity.py: PASS; _verify_bugD105_wrds_universe_passed.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-D50,tests-pass,_verify_bugD103_macro_publication_lag.py: PASS; _verify_cot_contract_history.py: PASS; _verify_data_contamination_scan.py: PASS; _verify_hmm_gmm_regime_features.py: PASS; _verify_macro_daily_cot_availability.py: PASS; _verify_macro_regimes.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-D51,tests-pass,_verify_align_daily_gap_gate.py: PASS; _verify_backtest_zero_z_filter_fix.py: PASS; _verify_bugD101_position_sizing_circularity.py: PASS; _verify_bug_d61_window_alignment.py: PASS; _verify_clean_mask_gapflag_semantics_fix.py: PASS; _verify_cleaner_no_cache_ffill.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-D52,tests-pass,_verify_adapter_wrds_first.py: PASS; _verify_adv_1day_fallback.py: PASS; _verify_append_basis_reconcile.py: PASS; _verify_backtest_risk_parity_is_only_fit.py: PASS; _verify_backtest_zero_z_filter_fix.py: PASS; _verify_bh_vs_by_full_universe.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-D53,tests-pass,_verify_adf_confirmatory_tier.py: PASS; _verify_bugD102_coint_frac_sizing_fold_leakage.py: PASS; _verify_coint_strength_series_builder.py: PASS; _verify_copula_pairs.py: PASS; _verify_cvar.py: PASS; _verify_decoupling_meta_analysis.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-D54,tests-pass,_verify_dd_hub_asymmetric_drop_fix.py: PASS; _verify_dd_hub_effective_bets.py: PASS; _verify_decoupling_analysis.py: PASS; _verify_stop_loss_correlation_caps.py: PASS; _verify_threshold_cointegration.py: PASS; _verify_variance_ratio_gap_fix.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-D55,tests-pass,_verify_adf_confirmatory_tier.py: PASS; _verify_backtest_zero_z_filter_fix.py: PASS; _verify_bugD102_coint_frac_sizing_fold_leakage.py: PASS; _verify_bug_d61_window_alignment.py: PASS; _verify_cleaner_no_cache_ffill.py: PASS; _verify_coint_strength_series_builder.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-D56,tests-pass,_verify_bug_d56_compose.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-D57,tests-pass,_verify_bug_d57_naive_exchange_index.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-D58,tests-pass,_verify_bug_d58_survivorship_false_positive.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-D59,tests-pass,_verify_bug_d59_pooled_coint_sharpe.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-D6,tests-pass,_verify_adv_1day_fallback.py: PASS; _verify_backtest_zero_z_filter_fix.py: PASS; _verify_bh_vs_by_full_universe.py: PASS; _verify_bh_vs_by_full_universe_1d.py: PASS; _verify_bugD101_position_sizing_circularity.py: PASS; _verify_bugD105_wrds_universe_passed.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-D60,tests-pass,_verify_portfolio_sim.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-D61,tests-pass,_verify_bug_d61_window_alignment.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-D62,tests-pass,_verify_bug_d62_sharpe_convention.py: PASS; _verify_portfolio_math.py: PASS; _verify_run_storm_grid_sharpe_fix.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-D63,tests-pass,_verify_bug_d95_persistence_fix.py: PASS; _verify_manifest_pruning.py: PASS; _verify_save_tf_results_return.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-D64,tests-pass,_verify_adv_1day_fallback.py: PASS; _verify_backtest_hurst_none_fix.py: PASS; _verify_backtest_risk_parity_is_only_fit.py: PASS; _verify_backtest_storm_label_fix.py: PASS; _verify_backtest_zero_z_filter_fix.py: PASS; _verify_bertram_ou_thresholds.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-D65,tests-pass,_verify_data_contamination_scan.py: PASS; _verify_dd_cache_anomaly_fix.py: PASS; _verify_ibkr_merge_split_reconciliation.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-D66,tests-pass,_verify_data_contamination_scan.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-D67,tests-pass,_verify_absorption_ratio.py: PASS; _verify_adapter_stale_checkpoint_fix.py: PASS; _verify_adapter_wrds_first.py: PASS; _verify_adf_confirmatory_tier.py: PASS; _verify_adv_1day_fallback.py: PASS; _verify_align_daily_gap_gate.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-D68,tests-pass,_verify_coint_frac_override.py: PASS; _verify_save_tf_results_return.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-D69,tests-pass,_verify_bugD99_pit_wfa_hurst_rs.py: PASS; _verify_episodic_pairs_adapter.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-D7,tests-pass,_verify_adv_1day_fallback.py: PASS; _verify_backtest_zero_z_filter_fix.py: PASS; _verify_bh_vs_by_full_universe.py: PASS; _verify_bh_vs_by_full_universe_1d.py: PASS; _verify_bugD101_position_sizing_circularity.py: PASS; _verify_bugD105_wrds_universe_passed.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-D70,tests-pass,_verify_ibkr_pagination.py: PASS; _verify_run_storm_grid_sharpe_fix.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-D71,tests-pass,_verify_sensitivity_config_centralization.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-D72,tests-pass,_verify_adv_1day_fallback.py: PASS; _verify_backtest_hurst_none_fix.py: PASS; _verify_backtest_risk_parity_is_only_fit.py: PASS; _verify_backtest_storm_label_fix.py: PASS; _verify_backtest_zero_z_filter_fix.py: PASS; _verify_bugD100_garch_stop_causal.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-D73,tests-pass,_verify_absorption_ratio.py: PASS; _verify_adapter_stale_checkpoint_fix.py: PASS; _verify_adapter_wrds_first.py: PASS; _verify_adf_confirmatory_tier.py: PASS; _verify_align_daily_gap_gate.py: PASS; _verify_append_basis_reconcile.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-D74,tests-pass,_verify_adv_1day_fallback.py: PASS; _verify_backtest_hurst_none_fix.py: PASS; _verify_backtest_risk_parity_is_only_fit.py: PASS; _verify_backtest_storm_label_fix.py: PASS; _verify_backtest_zero_z_filter_fix.py: PASS; _verify_bh_vs_by_full_universe.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-D75,tests-pass,_verify_append_basis_reconcile.py: PASS; _verify_bugD101_position_sizing_circularity.py: PASS; _verify_bug_d61_window_alignment.py: PASS; _verify_conformal_predictor.py: PASS; _verify_data_crypto_binance.py: PASS; _verify_hrp_ledoit_wolf.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-D76,tests-pass,_verify_backtest_risk_parity_is_only_fit.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-D77,tests-pass,_verify_eg_gap_classification_fix.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-D78,tests-pass,_verify_adv_1day_fallback.py: PASS; _verify_backtest_hurst_none_fix.py: PASS; _verify_backtest_risk_parity_is_only_fit.py: PASS; _verify_backtest_storm_label_fix.py: PASS; _verify_backtest_zero_z_filter_fix.py: PASS; _verify_bh_vs_by_full_universe.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-D79,tests-pass,_verify_big_move_lead_lag.py: PASS; _verify_cf_carver_causal_scale_fix.py: PASS; _verify_coint_decay_rate_signal_test.py: PASS; _verify_decoupling_analysis.py: PASS; _verify_earnings_lead_lag_seam_fix.py: PASS; _verify_eg_gap_classification_fix.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-D8,tests-pass,_verify_adv_1day_fallback.py: PASS; _verify_backtest_zero_z_filter_fix.py: PASS; _verify_bh_vs_by_full_universe.py: PASS; _verify_bh_vs_by_full_universe_1d.py: PASS; _verify_bugD101_position_sizing_circularity.py: PASS; _verify_bugD105_wrds_universe_passed.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-D80,tests-pass,_verify_comparison_arm_scaffold.py: PASS; _verify_follower_direction_validation_walkforward_fix.py: PASS; _verify_jump_diffusion_fit.py: PASS; _verify_jump_diffusion_gap_fix.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-D81,tests-pass,_verify_absorption_ratio.py: PASS; _verify_adapter_stale_checkpoint_fix.py: PASS; _verify_adapter_wrds_first.py: PASS; _verify_adf_confirmatory_tier.py: PASS; _verify_adv_1day_fallback.py: PASS; _verify_align_daily_gap_gate.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-D82,tests-pass,_verify_absorption_ratio.py: PASS; _verify_adapter_stale_checkpoint_fix.py: PASS; _verify_adapter_wrds_first.py: PASS; _verify_adf_confirmatory_tier.py: PASS; _verify_adv_1day_fallback.py: PASS; _verify_align_daily_gap_gate.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-D83,tests-pass,_verify_hrp_ledoit_wolf.py: PASS; _verify_squeeze_momentum_features.py: PASS; _verify_variance_ratio_gap_fix.py: PASS; _verify_variance_ratio_test.py: PASS; _verify_wrds_lead_lag_scan.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-D84,tests-pass,_verify_hrp_ledoit_wolf.py: PASS; _verify_news_impact_asymmetry.py: PASS; _verify_squeeze_momentum_features.py: PASS; _verify_threshold_cointegration.py: PASS; _verify_wrds_lead_lag_scan.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-D85,tests-pass,_verify_bh_vs_by_full_universe_1d.py: PASS; _verify_data_contamination_scan.py: PASS; _verify_dd_hub_asymmetric_drop_fix.py: PASS; _verify_dd_hub_effective_bets.py: PASS; _verify_eg_common_index_a1.py: PASS; _verify_news_impact_asymmetry.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-D86,tests-pass,_verify_backtest_zero_z_filter_fix.py: PASS; _verify_bh_vs_by_full_universe_1d.py: PASS; _verify_bug_d61_window_alignment.py: PASS; _verify_cleaner_no_cache_ffill.py: PASS; _verify_confidence_score_allocation.py: PASS; _verify_data_contamination_scan.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-D87,tests-pass,_verify_backtest_zero_z_filter_fix.py: PASS; _verify_big_move_lead_lag.py: PASS; _verify_bug_d61_window_alignment.py: PASS; _verify_cleaner_no_cache_ffill.py: PASS; _verify_confidence_score_allocation.py: PASS; _verify_data_crypto_binance.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-D88,tests-pass,_verify_append_basis_reconcile.py: PASS; _verify_backtest_hurst_none_fix.py: PASS; _verify_backtest_risk_parity_is_only_fit.py: PASS; _verify_backtest_storm_label_fix.py: PASS; _verify_backtest_zero_z_filter_fix.py: PASS; _verify_bugD100_garch_stop_causal.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-D89,tests-pass,_verify_backtest_hurst_none_fix.py: PASS; _verify_backtest_risk_parity_is_only_fit.py: PASS; _verify_backtest_storm_label_fix.py: PASS; _verify_backtest_zero_z_filter_fix.py: PASS; _verify_bugD100_garch_stop_causal.py: PASS; _verify_bugD101_position_sizing_circularity.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-D9,tests-pass,_verify_absorption_ratio.py: PASS; _verify_adapter_stale_checkpoint_fix.py: PASS; _verify_adapter_wrds_first.py: PASS; _verify_adf_confirmatory_tier.py: PASS; _verify_adv_1day_fallback.py: PASS; _verify_align_daily_gap_gate.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-D90,tests-pass,_verify_absorption_ratio.py: PASS; _verify_adapter_stale_checkpoint_fix.py: PASS; _verify_adapter_wrds_first.py: PASS; _verify_adf_confirmatory_tier.py: PASS; _verify_adv_1day_fallback.py: PASS; _verify_align_daily_gap_gate.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-D91,tests-pass,_verify_eg_permutation_mask_consistency_fix.py: PASS; _verify_short_term_factor_alpha.py: PASS; _verify_trend_dominance_diagnostic.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-D92,tests-pass,_verify_bh_vs_by_full_universe_1d.py: PASS; _verify_bugD100_garch_stop_causal.py: PASS; _verify_bugD99_pit_wfa_hurst_rs.py: PASS; _verify_calendar_no_weekend_rows.py: PASS; _verify_clean_mask_gapflag_semantics_fix.py: PASS; _verify_coint_frac_nan_status.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-D93,tests-pass,_verify_bh_vs_by_full_universe_1d.py: PASS; _verify_bugD100_garch_stop_causal.py: PASS; _verify_bugD99_pit_wfa_hurst_rs.py: PASS; _verify_calendar_no_weekend_rows.py: PASS; _verify_clean_mask_gapflag_semantics_fix.py: PASS; _verify_coint_frac_nan_status.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-D94,tests-pass,_verify_adv_1day_fallback.py: PASS; _verify_backtest_zero_z_filter_fix.py: PASS; _verify_bh_vs_by_full_universe.py: PASS; _verify_bh_vs_by_full_universe_1d.py: PASS; _verify_bugD101_position_sizing_circularity.py: PASS; _verify_bugD105_wrds_universe_passed.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-D95,tests-pass,_verify_bug_d95_persistence_fix.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-D96,tests-pass,_verify_adv_1day_fallback.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-D97,tests-pass,_verify_adv_1day_fallback.py: PASS; _verify_backtest_zero_z_filter_fix.py: PASS; _verify_bh_vs_by_full_universe.py: PASS; _verify_bh_vs_by_full_universe_1d.py: PASS; _verify_bugD101_position_sizing_circularity.py: PASS; _verify_bugD105_wrds_universe_passed.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-D98,tests-pass,_verify_adv_1day_fallback.py: PASS; _verify_backtest_zero_z_filter_fix.py: PASS; _verify_bh_vs_by_full_universe.py: PASS; _verify_bh_vs_by_full_universe_1d.py: PASS; _verify_bugD101_position_sizing_circularity.py: PASS; _verify_bugD105_wrds_universe_passed.py: PASS,,suite,suite_20261007_cachyos.log
+BUG-D99,tests-pass,_verify_bugD101_position_sizing_circularity.py: PASS; _verify_bugD99_pit_wfa_hurst_rs.py: PASS; _verify_cycle_detection.py: PASS; _verify_inverse_polarity.py: PASS,,suite,suite_20261007_cachyos.log
+C13,tests-pass,_verify_min_bars_long_tfs.py: PASS,,suite,suite_20261007_cachyos.log
+C14,tests-pass,_verify_adapter_wrds_first.py: PASS; _verify_append_basis_reconcile.py: PASS; _verify_backtest_risk_parity_is_only_fit.py: PASS; _verify_bugD101_position_sizing_circularity.py: PASS; _verify_bug_d56_compose.py: PASS; _verify_bug_d61_window_alignment.py: PASS,,suite,suite_20261007_cachyos.log
+C15,tests-pass,_verify_adapter_wrds_first.py: PASS; _verify_append_basis_reconcile.py: PASS; _verify_backtest_hurst_none_fix.py: PASS; _verify_backtest_risk_parity_is_only_fit.py: PASS; _verify_backtest_storm_label_fix.py: PASS; _verify_backtest_zero_z_filter_fix.py: PASS,,suite,suite_20261007_cachyos.log
+C16,tests-pass,_verify_adapter_wrds_first.py: PASS; _verify_bh_vs_by_full_universe_1d.py: PASS; _verify_calendar_no_weekend_rows.py: PASS; _verify_clean_pool_identity_pairs.py: PASS; _verify_dedupe_identical_series.py: PASS; _verify_episodic_pairs_adapter.py: PASS,,suite,suite_20261007_cachyos.log
+D1,tests-pass,_verify_futures_no_magnitude_roll_adjust.py: PASS; _verify_liquidity_filter_no_fabrication.py: PASS; _verify_loader_timezones.py: PASS,,suite,suite_20261007_cachyos.log
+D10,tests-pass,_verify_ibkr_cache_snapped.py: PASS,,suite,suite_20261007_cachyos.log
+D11,unchecked,,,none,suite_20261007_cachyos.log
+D12,tests-pass,_verify_append_basis_reconcile.py: PASS,,suite,suite_20261007_cachyos.log
+D13,tests-pass,_verify_period_end_stamps.py: PASS,,suite,suite_20261007_cachyos.log
+D14,tests-pass,_verify_sp500_cache_guard.py: PASS,,suite,suite_20261007_cachyos.log
+D15,unchecked,,,none,suite_20261007_cachyos.log
+D2,tests-pass,_verify_daily_incremental_refresh.py: PASS; _verify_loader_timezones.py: PASS,,suite,suite_20261007_cachyos.log
+D3,tests-pass,_verify_snap_timestamps_no_lookahead.py: PASS,,suite,suite_20261007_cachyos.log
+D4,tests-pass,_verify_snap_timestamps_no_lookahead.py: PASS,,suite,suite_20261007_cachyos.log
+D5,tests-pass,_verify_intraday_closed_market_gaps.py: PASS,,suite,suite_20261007_cachyos.log
+D6,tests-pass,_verify_align_daily_gap_gate.py: PASS,,suite,suite_20261007_cachyos.log
+D7,tests-pass,_verify_intraday_oom_guard_grid.py: PASS,,suite,suite_20261007_cachyos.log
+D8,tests-pass,_verify_cleaner_no_cache_ffill.py: PASS,,suite,suite_20261007_cachyos.log
+D9,tests-pass,_verify_futures_no_magnitude_roll_adjust.py: PASS,,suite,suite_20261007_cachyos.log
+M10,tests-pass,_verify_bugD103_macro_publication_lag.py: PASS; _verify_cot_contract_history.py: PASS; _verify_data_contamination_scan.py: PASS; _verify_hmm_gmm_regime_features.py: PASS; _verify_macro_daily_cot_availability.py: PASS; _verify_macro_regimes.py: PASS,,suite,suite_20261007_cachyos.log
+M11,tests-pass,_verify_bugD103_macro_publication_lag.py: PASS; _verify_cot_contract_history.py: PASS; _verify_data_contamination_scan.py: PASS; _verify_hmm_gmm_regime_features.py: PASS; _verify_macro_daily_cot_availability.py: PASS; _verify_macro_regimes.py: PASS,,suite,suite_20261007_cachyos.log
+M12,tests-pass,_verify_cot_contract_history.py: PASS,,suite,suite_20261007_cachyos.log
+M7,tests-pass,_verify_macro_daily_cot_availability.py: PASS; _verify_macro_release_lags.py: PASS,,suite,suite_20261007_cachyos.log
+M8,tests-pass,_verify_macro_daily_cot_availability.py: PASS,,suite,suite_20261007_cachyos.log
+M9,tests-pass,_verify_macro_daily_cot_availability.py: PASS,,suite,suite_20261007_cachyos.log
+R1.1,tests-pass,_verify_fx_convert.py: PASS; _verify_loader_wrds_total_return.py: PASS,,suite,suite_20261007_cachyos.log
+R1.10,tests-pass,_verify_intraday_episodic_scan.py: PASS,,suite,suite_20261007_cachyos.log
+R1.11,tests-pass,_verify_bh_vs_by_full_universe_1d.py: PASS,,suite,suite_20261007_cachyos.log
+R1.12,tests-pass,_verify_backtest_hurst_none_fix.py: PASS; _verify_episodic_pairs_adapter.py: PASS; _verify_instrument_labels_no_collision.py: PASS; _verify_loader_cwd_independent.py: PASS; _verify_loader_disjoint_sources.py: PASS; _verify_loader_wrds_total_return.py: PASS,,suite,suite_20261007_cachyos.log
+R1.13,tests-pass,_verify_backtest_hurst_none_fix.py: PASS; _verify_overlap_threshold_pit_test.py: PASS; _verify_pit_wfa_pooled_equity_curve.py: PASS; _verify_pit_wfa_wrds_daily.py: PASS; _verify_pit_wfa_wrds_daily_merge_and_save.py: PASS; _verify_portfolio_sim_external_series_fix.py: PASS,,suite,suite_20261007_cachyos.log
+R1.14,tests-pass,_verify_adapter_stale_checkpoint_fix.py: PASS; _verify_adapter_wrds_first.py: PASS; _verify_bug_d112_causal_candidacy.py: PASS; _verify_episodic_pairs_adapter.py: PASS,,suite,suite_20261007_cachyos.log
+R1.15,tests-pass,_verify_purity_pit_eligibility.py: PASS,,suite,suite_20261007_cachyos.log
+R1.2,tests-pass,_verify_bug_d112_causal_candidacy.py: PASS; _verify_build_log_prices_bounded.py: PASS; _verify_chunked_pearson_candidate_pairs.py: PASS; _verify_episodic_pit_asof.py: PASS; _verify_fdr_threshold_sensitivity.py: PASS; _verify_intraday_episodic_scan.py: PASS,,suite,suite_20261007_cachyos.log
+R1.3,tests-pass,_verify_bug_d112_causal_candidacy.py: PASS; _verify_build_log_prices_bounded.py: PASS; _verify_chunked_pearson_candidate_pairs.py: PASS; _verify_episodic_pit_asof.py: PASS; _verify_fdr_threshold_sensitivity.py: PASS; _verify_intraday_episodic_scan.py: PASS,,suite,suite_20261007_cachyos.log
+R1.4,tests-pass,_verify_adapter_wrds_first.py: PASS,,suite,suite_20261007_cachyos.log
+R1.5,tests-pass,_verify_bug_d112_causal_candidacy.py: PASS; _verify_build_log_prices_bounded.py: PASS; _verify_chunked_pearson_candidate_pairs.py: PASS; _verify_data_wrds.py: PASS; _verify_episodic_pit_asof.py: PASS; _verify_fdr_threshold_sensitivity.py: PASS,,suite,suite_20261007_cachyos.log
+R1.6,tests-pass,_verify_bug_d112_causal_candidacy.py: PASS; _verify_build_log_prices_bounded.py: PASS; _verify_chunked_pearson_candidate_pairs.py: PASS; _verify_episodic_pit_asof.py: PASS; _verify_fdr_threshold_sensitivity.py: PASS; _verify_intraday_episodic_scan.py: PASS,,suite,suite_20261007_cachyos.log
+R1.7,tests-pass,_verify_bug_d112_causal_candidacy.py: PASS; _verify_build_log_prices_bounded.py: PASS; _verify_chunked_pearson_candidate_pairs.py: PASS; _verify_episodic_pit_asof.py: PASS; _verify_fdr_threshold_sensitivity.py: PASS; _verify_intraday_episodic_scan.py: PASS,,suite,suite_20261007_cachyos.log
+R1.8,tests-pass,_verify_bug_d112_causal_candidacy.py: PASS; _verify_build_log_prices_bounded.py: PASS; _verify_chunked_pearson_candidate_pairs.py: PASS; _verify_episodic_pit_asof.py: PASS; _verify_fdr_threshold_sensitivity.py: PASS; _verify_intraday_episodic_scan.py: PASS,,suite,suite_20261007_cachyos.log
+R1.9,tests-pass,_verify_intraday_episodic_scan.py: PASS,,suite,suite_20261007_cachyos.log
+R2.1,tests-pass,_verify_deflated_sharpe.py: PASS; _verify_hierarchical_dsr.py: PASS; _verify_portfolio_math.py: PASS,,suite,suite_20261007_cachyos.log
+R2.10,tests-pass,_verify_parameter_sensitivity_screen.py: PASS,,suite,suite_20261007_cachyos.log
+R2.11,tests-pass,_verify_lstm_attention_architecture.py: PASS; _verify_lstm_attention_training.py: PASS,,suite,suite_20261007_cachyos.log
+R2.12,tests-pass,_verify_capital_constraint_luck_check.py: PASS,,suite,suite_20261007_cachyos.log
+R2.13,tests-pass,_verify_capital_size_sweep.py: PASS,,suite,suite_20261007_cachyos.log
+R2.2,tests-pass,_verify_hierarchical_dsr.py: PASS; _verify_parameter_sensitivity_screen.py: PASS,,suite,suite_20261007_cachyos.log
+R2.3,tests-pass,_verify_bugD101_position_sizing_circularity.py: PASS; _verify_conformal_predictor.py: PASS; _verify_lstm_attention_architecture.py: PASS; _verify_lstm_attention_training.py: PASS; _verify_ml_feature_lag.py: PASS; _verify_ml_hedge_ratio_drift_pit.py: PASS,,suite,suite_20261007_cachyos.log
+R2.4,tests-pass,_verify_hierarchical_dsr.py: PASS,,suite,suite_20261007_cachyos.log
+R2.5,tests-pass,_verify_hierarchical_dsr.py: PASS,,suite,suite_20261007_cachyos.log
+R2.6,tests-pass,_verify_capital_constraint_luck_check.py: PASS,,suite,suite_20261007_cachyos.log
+R2.7,tests-pass,_verify_capital_constraint_luck_check.py: PASS,,suite,suite_20261007_cachyos.log
+R2.8,tests-pass,_verify_cf_carver_causal_scale_fix.py: PASS; _verify_coint_decay_rate_signal_test.py: PASS; _verify_decoupling_analysis.py: PASS; _verify_earnings_lead_lag_seam_fix.py: PASS; _verify_eg_gap_classification_fix.py: PASS; _verify_eg_permutation_mask_consistency_fix.py: PASS,,suite,suite_20261007_cachyos.log
+R2.9,tests-pass,_verify_lstm_attention_architecture.py: PASS; _verify_lstm_attention_training.py: PASS,,suite,suite_20261007_cachyos.log
+R3.1,tests-pass,_verify_crisis_regime_correlation_diagnostic.py: PASS,,suite,suite_20261007_cachyos.log
+R3.10,unchecked,,,none,suite_20261007_cachyos.log
+R3.11,unchecked,,,none,suite_20261007_cachyos.log
+R3.12,unchecked,,,none,suite_20261007_cachyos.log
+R3.13,unchecked,,,none,suite_20261007_cachyos.log
+R3.2,unchecked,,,none,suite_20261007_cachyos.log
+R3.3,unchecked,,,none,suite_20261007_cachyos.log
+R3.4,unchecked,,,none,suite_20261007_cachyos.log
+R3.5,unchecked,,,none,suite_20261007_cachyos.log
+R3.6,unchecked,,,none,suite_20261007_cachyos.log
+R3.7,tests-pass,_verify_crisis_regime_same_sector_test.py: PASS,,suite,suite_20261007_cachyos.log
+R3.8,unchecked,,,none,suite_20261007_cachyos.log
+R3.9,unchecked,,,none,suite_20261007_cachyos.log
+R4.1,unchecked,,,none,suite_20261007_cachyos.log
+R4.10,tests-pass,_verify_bugD101_position_sizing_circularity.py: PASS; _verify_conformal_predictor.py: PASS; _verify_lstm_attention_architecture.py: PASS; _verify_lstm_attention_training.py: PASS; _verify_ml_feature_lag.py: PASS; _verify_ml_hedge_ratio_drift_pit.py: PASS,,suite,suite_20261007_cachyos.log
+R4.11,tests-pass,_verify_regime_strength_vs_discovery_regime_test.py: PASS,,suite,suite_20261007_cachyos.log
+R4.2,tests-pass,_verify_paper_magnitude_claims.py: PASS; _verify_pit_confirmation_vs_regime_interaction.py: PASS,,suite,suite_20261007_cachyos.log
+R4.3,tests-pass,_verify_residual_correlation_factor_test.py: PASS,,suite,suite_20261007_cachyos.log
+R4.4,unchecked,,,none,suite_20261007_cachyos.log
+R4.5,unchecked,,,none,suite_20261007_cachyos.log
+R4.6,tests-pass,_verify_sequential_bootstrap_ml_comparison.py: PASS,,suite,suite_20261007_cachyos.log
+R4.7,tests-pass,_verify_sequential_bootstrap_ml_comparison.py: PASS,,suite,suite_20261007_cachyos.log
+R4.8,tests-pass,_verify_backtest_zero_z_filter_fix.py: PASS; _verify_bug_d61_window_alignment.py: PASS; _verify_cleaner_no_cache_ffill.py: PASS; _verify_confidence_score_allocation.py: PASS; _verify_data_crypto_binance.py: PASS; _verify_dd_hub_asymmetric_drop_fix.py: PASS,,suite,suite_20261007_cachyos.log
+R4.9,tests-pass,_verify_transfer_entropy_lead_lag.py: PASS,,suite,suite_20261007_cachyos.log
+R5.1,tests-pass,_verify_portfolio_math_business_days.py: PASS,,suite,suite_20261007_cachyos.log
+R5.10,tests-pass,_verify_stress_test_replication.py: PASS,,suite,suite_20261007_cachyos.log
+R5.11,tests-pass,_verify_eigenvalue_weighted_position_sizing.py: PASS,,suite,suite_20261007_cachyos.log
+R5.2,tests-pass,_verify_eigenvalue_weighted_position_sizing.py: PASS,,suite,suite_20261007_cachyos.log
+R5.3,tests-pass,_verify_strategy_risk_precision.py: PASS,,suite,suite_20261007_cachyos.log
+R5.4,tests-pass,_verify_eigenvalue_weighted_position_sizing.py: PASS,,suite,suite_20261007_cachyos.log
+R5.5,tests-pass,_verify_stress_test_replication.py: PASS,,suite,suite_20261007_cachyos.log
+R5.6,tests-pass,_verify_stress_test_replication.py: PASS,,suite,suite_20261007_cachyos.log
+R5.7,tests-pass,_verify_stress_test_replication.py: PASS,,suite,suite_20261007_cachyos.log
+R5.8,tests-pass,_verify_pit_wfa_trade_bootstrap.py: PASS,,suite,suite_20261007_cachyos.log
+R5.9,tests-pass,_verify_strategy_risk_precision.py: PASS,,suite,suite_20261007_cachyos.log
+R6.10,tests-pass,_verify_bh_fdr_dependence_check.py: PASS; _verify_bh_vs_by_full_universe.py: PASS; _verify_tail_dependence_universe_screen.py: PASS,,suite,suite_20261007_cachyos.log
+R6.11,tests-pass,_verify_bh_fdr_dependence_check.py: PASS; _verify_bh_vs_by_full_universe.py: PASS; _verify_tail_dependence_universe_screen.py: PASS,,suite,suite_20261007_cachyos.log
+R6.12,tests-pass,_verify_variance_ratio_gap_fix.py: PASS; _verify_variance_ratio_test.py: PASS,,suite,suite_20261007_cachyos.log
+R6.2,tests-pass,_verify_cointegration_regime_segmentation.py: PASS,,suite,suite_20261007_cachyos.log
+R6.3,tests-pass,_verify_coint_decay_rate_signal_test.py: PASS; _verify_cointegration_regime_segmentation.py: PASS; _verify_confirmatory_cointegration_check.py: PASS; _verify_correlation_transition_detector.py: PASS; _verify_diversification_basket_test.py: PASS; _verify_eg_common_index_a1.py: PASS,,suite,suite_20261007_cachyos.log
+R6.4,tests-pass,_verify_eg_null_calibration.py: PASS; _verify_episodic_pairs_adapter.py: PASS; _verify_instrument_labels_no_collision.py: PASS; _verify_loader_cwd_independent.py: PASS; _verify_loader_disjoint_sources.py: PASS; _verify_loader_wrds_total_return.py: PASS,,suite,suite_20261007_cachyos.log
+R6.5,tests-pass,_verify_grid_bootstrap_ar_ci.py: PASS,,suite,suite_20261007_cachyos.log
+R6.6,tests-pass,_verify_grid_bootstrap_ar_ci.py: PASS,,suite,suite_20261007_cachyos.log
+R6.7,tests-pass,_verify_threshold_cointegration.py: PASS,,suite,suite_20261007_cachyos.log
+R6.8,tests-pass,_verify_grid_bootstrap_ar_ci.py: PASS; _verify_threshold_cointegration.py: PASS; _verify_variance_ratio_gap_fix.py: PASS; _verify_variance_ratio_test.py: PASS,,suite,suite_20261007_cachyos.log
+R6.9,tests-pass,_verify_crisis_regime_cluster_bootstrap_test.py: PASS,,suite,suite_20261007_cachyos.log
+R7.1,tests-pass,_verify_asset_volatility_profile.py: PASS; _verify_confidence_score_allocation.py: PASS,,suite,suite_20261007_cachyos.log
+R7.10,unchecked,,,none,suite_20261007_cachyos.log
+R7.11,tests-pass,_verify_compute_metrics_sharpe_annualization_fix.py: PASS,,suite,suite_20261007_cachyos.log
+R7.12,tests-pass,_verify_dd_hub_asymmetric_drop_fix.py: PASS; _verify_dd_hub_effective_bets.py: PASS; _verify_stop_loss_correlation_caps.py: PASS,,suite,suite_20261007_cachyos.log
+R7.13,tests-pass,_verify_return_smoothing_audit.py: PASS,,suite,suite_20261007_cachyos.log
+R7.14,tests-pass,_verify_bertram_ou_thresholds.py: PASS,,suite,suite_20261007_cachyos.log
+R7.15,tests-pass,_verify_bertram_ou_thresholds.py: PASS,,suite,suite_20261007_cachyos.log
+R7.2,tests-pass,_verify_confidence_score_allocation.py: PASS,,suite,suite_20261007_cachyos.log
+R7.3,tests-pass,_verify_beta_weighted_portfolio.py: PASS,,suite,suite_20261007_cachyos.log
+R7.4,tests-pass,_verify_beta_weighted_portfolio.py: PASS; _verify_confidence_score_allocation.py: PASS,,suite,suite_20261007_cachyos.log
+R7.5,unchecked,,,none,suite_20261007_cachyos.log
+R7.6,unchecked,,,none,suite_20261007_cachyos.log
+R7.7,tests-pass,_verify_backtest_overfitting_detector.py: PASS,,suite,suite_20261007_cachyos.log
+R7.8,tests-pass,_verify_backtest_overfitting_detector.py: PASS,,suite,suite_20261007_cachyos.log
+R7.9,tests-pass,_verify_hrp_ledoit_wolf.py: PASS; _verify_squeeze_momentum_features.py: PASS; _verify_wrds_lead_lag_scan.py: PASS,,suite,suite_20261007_cachyos.log
+R8.1,tests-pass,_verify_news_impact_asymmetry.py: PASS,,suite,suite_20261007_cachyos.log
+R8.10,tests-pass,_verify_price_target_pairs_overlay.py: PASS,,suite,suite_20261007_cachyos.log
+R8.12,unchecked,,,none,suite_20261007_cachyos.log
+R8.13,tests-pass,_verify_risk_neutral_density.py: PASS,,suite,suite_20261007_cachyos.log
+R8.2,tests-pass,_verify_news_impact_asymmetry.py: PASS,,suite,suite_20261007_cachyos.log
+R8.3,unchecked,,,none,suite_20261007_cachyos.log
+R8.4,unchecked,,,none,suite_20261007_cachyos.log
+R8.5,unchecked,,,none,suite_20261007_cachyos.log
+R8.6,tests-pass,_verify_short_term_factor_alpha.py: PASS,,suite,suite_20261007_cachyos.log
+R8.7,tests-pass,_verify_short_term_factor_alpha.py: PASS,,suite,suite_20261007_cachyos.log
+R8.8,tests-pass,_verify_reimers_trio_correction.py: PASS,,suite,suite_20261007_cachyos.log
+R8.9,tests-pass,_verify_price_target_pairs_overlay.py: PASS,,suite,suite_20261007_cachyos.log
+S1,tests-pass,_verify_diversification_basket_test.py: PASS; _verify_near_miss_lag_scan.py: PASS,,suite,suite_20261007_cachyos.log
+S10,tests-pass,_verify_coint_frac_nan_status.py: PASS,,suite,suite_20261007_cachyos.log
+S11,tests-pass,_verify_backtest_hurst_none_fix.py: PASS; _verify_backtest_risk_parity_is_only_fit.py: PASS; _verify_backtest_storm_label_fix.py: PASS; _verify_backtest_zero_z_filter_fix.py: PASS; _verify_bugD100_garch_stop_causal.py: PASS; _verify_bugD101_position_sizing_circularity.py: PASS,,suite,suite_20261007_cachyos.log
+S12,tests-pass,_verify_deflated_sharpe.py: PASS; _verify_hierarchical_dsr.py: PASS; _verify_portfolio_math.py: PASS,,suite,suite_20261007_cachyos.log
+S13,tests-pass,_verify_adf_confirmatory_tier.py: PASS; _verify_bugD102_coint_frac_sizing_fold_leakage.py: PASS; _verify_coint_strength_series_builder.py: PASS; _verify_copula_pairs.py: PASS; _verify_cvar.py: PASS; _verify_decoupling_meta_analysis.py: PASS,,suite,suite_20261007_cachyos.log
+S14,tests-pass,_verify_backtest_hurst_none_fix.py: PASS; _verify_bugD99_pit_wfa_hurst_rs.py: PASS; _verify_coint_frac_nan_status.py: PASS; _verify_index_tracking_exclusion.py: PASS; _verify_lag_aware_coint_discovery.py: PASS; _verify_persistence_filter.py: PASS,,suite,suite_20261007_cachyos.log
+S2,tests-pass,_verify_diversification_basket_test.py: PASS; _verify_eg_bh_denominator.py: PASS; _verify_near_miss_lag_scan.py: PASS,,suite,suite_20261007_cachyos.log
+S3,tests-pass,_verify_eligible_from_gate.py: PASS; _verify_near_miss_lag_scan.py: PASS,,suite,suite_20261007_cachyos.log
+S4,tests-pass,_verify_backtest_hurst_none_fix.py: PASS; _verify_bugD99_pit_wfa_hurst_rs.py: PASS; _verify_coint_frac_nan_status.py: PASS; _verify_index_tracking_exclusion.py: PASS; _verify_lag_aware_coint_discovery.py: PASS; _verify_persistence_filter.py: PASS,,suite,suite_20261007_cachyos.log
+S5,tests-pass,_verify_adf_confirmatory_tier.py: PASS; _verify_bugD102_coint_frac_sizing_fold_leakage.py: PASS; _verify_coint_strength_series_builder.py: PASS; _verify_copula_pairs.py: PASS; _verify_cvar.py: PASS; _verify_decoupling_meta_analysis.py: PASS,,suite,suite_20261007_cachyos.log
+S6,tests-pass,_verify_adf_confirmatory_tier.py: PASS; _verify_bugD102_coint_frac_sizing_fold_leakage.py: PASS; _verify_coint_strength_series_builder.py: PASS; _verify_copula_pairs.py: PASS; _verify_cvar.py: PASS; _verify_decoupling_meta_analysis.py: PASS,,suite,suite_20261007_cachyos.log
+S7,tests-pass,_verify_za_breakdate_index.py: PASS,,suite,suite_20261007_cachyos.log
+S8,tests-pass,_verify_adf_confirmatory_tier.py: PASS; _verify_bugD102_coint_frac_sizing_fold_leakage.py: PASS; _verify_coint_strength_series_builder.py: PASS; _verify_copula_pairs.py: PASS; _verify_cvar.py: PASS; _verify_decoupling_meta_analysis.py: PASS,,suite,suite_20261007_cachyos.log
+S9,tests-pass,_verify_adf_confirmatory_tier.py: PASS; _verify_bugD102_coint_frac_sizing_fold_leakage.py: PASS; _verify_coint_strength_series_builder.py: PASS; _verify_copula_pairs.py: PASS; _verify_cvar.py: PASS; _verify_decoupling_meta_analysis.py: PASS,,suite,suite_20261007_cachyos.log
+SWEEP-A6/S10,tests-pass,_verify_coint_frac_nan_status.py: PASS,,suite,suite_20261007_cachyos.log
+SWEEP-C1-3,unchecked,,,none,suite_20261007_cachyos.log
+SWEEP-C4-1,unchecked,,,none,suite_20261007_cachyos.log
+SWEEP-C4-2,unchecked,,,none,suite_20261007_cachyos.log
+SWEEP-C6-1,unchecked,,,none,suite_20261007_cachyos.log
+SWEEP-C6-2,unchecked,,,none,suite_20261007_cachyos.log
+SWEEP-M-1,unchecked,,,none,suite_20261007_cachyos.log
+SWEEP-M13,tests-pass,_verify_cot_contract_history.py: PASS,,suite,suite_20261007_cachyos.log
+SWEEP-S1,tests-pass,_verify_diversification_basket_test.py: PASS; _verify_near_miss_lag_scan.py: PASS,,suite,suite_20261007_cachyos.log
+U1,tests-pass,_verify_loader_cwd_independent.py: PASS,,suite,suite_20261007_cachyos.log
+U2,tests-pass,_verify_loader_timezones.py: PASS,,suite,suite_20261007_cachyos.log
+U3,tests-pass,_verify_calendar_no_weekend_rows.py: PASS,,suite,suite_20261007_cachyos.log
+U4,tests-pass,_verify_loader_wrds_total_return.py: PASS,,suite,suite_20261007_cachyos.log
+U5,tests-pass,_verify_wrds_priority_over_ibkr.py: PASS,,suite,suite_20261007_cachyos.log
+U6,tests-pass,_verify_wrds_priority_over_ibkr.py: PASS,,suite,suite_20261007_cachyos.log
