@@ -58,7 +58,12 @@ def main():
     yf_daily_done = set(wrds_daily_done) | {"GME", "AMC"}  # all 5 confirmed to have daily data
 
     pre = _passed_list_pre_fix(yf_assets, wrds_daily_done, yf_daily_done)
-    post = _passed_list_post_fix(yf_assets, wrds_daily_done, yf_daily_done)
+    # 2026-10-07 (independent check): the post-fix list now comes from the REAL production function -- this test
+    # used to check its own copy and would have passed whatever data.py did.
+    import os, sys
+    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    from data import extend_passed_list
+    post = extend_passed_list([], yf_assets, yf_daily_done, wrds_daily_done)
 
     pre_symbols = {s for s, _ in pre}
     post_symbols = {s for s, _ in post}

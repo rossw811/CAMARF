@@ -816,6 +816,21 @@ class ConformalPredictor:
         ]
 
 
+def _chronological_split_impute(X_raw, y, train_pct: float, val_pct: float):
+    """Chronological train/val/test split by row position (rows already sorted by entry_time) with the NaN-imputation
+    median fitted on the TRAIN split only and applied to all three. BUG-D75 (2026-07-20 Grand Sweep): the median used
+    to be computed over train+val+test, leaking val/test feature distributions into the training fill. Extracted
+    2026-10-07 so debug/_verify_ml_median_imputation_no_leakage.py tests this code, not a copy. (No purge/embargo
+    between the splits -- code review R2.3, open.) Returns (X_train, y_train, X_val, y_val, X_test, y_test, median)."""
+    n = len(X_raw)
+    train_end = int(n * train_pct)
+    val_end = train_end + int(n * val_pct)
+    train_median = X_raw.iloc[:train_end].median()
+    X = X_raw.fillna(train_median)
+    return (X.iloc[:train_end], y[:train_end], X.iloc[train_end:val_end], y[train_end:val_end],
+            X.iloc[val_end:], y[val_end:], train_median)
+
+
 def _train_and_validate(result: MLResult, summary: MLRunSummary) -> None:
     """
     Chronological holdout (not full CPCV — that needs more data than a
@@ -838,21 +853,8 @@ def _train_and_validate(result: MLResult, summary: MLRunSummary) -> None:
     le = LabelEncoder()
     y = le.fit_transform(df["label_for_training"])
 
-    n = len(df)
-    train_end = int(n * Config.ML.TRAIN_PCT)
-    val_end = train_end + int(n * Config.ML.VAL_PCT)
-
-    # Fit the imputation median on the TRAIN split only, then apply that same
-    # value to fill NaN in train/val/test. Computing the median over the full
-    # (train+val+test) dataset first -- the prior behavior -- leaks val/test
-    # feature-distribution information into the value used to fill training-set
-    # NaNs (found 2026-07-20 Grand Sweep).
-    train_median = X_raw.iloc[:train_end].median()
-    X = X_raw.fillna(train_median)
-
-    X_train, y_train = X.iloc[:train_end], y[:train_end]
-    X_val, y_val = X.iloc[train_end:val_end], y[train_end:val_end]
-    X_test, y_test = X.iloc[val_end:], y[val_end:]
+    X_train, y_train, X_val, y_val, X_test, y_test, _ = _chronological_split_impute(
+        X_raw, y, Config.ML.TRAIN_PCT, Config.ML.VAL_PCT)
 
     if len(X_train) == 0 or len(X_test) == 0:
         summary.note("Chronological split left an empty train or test fold — skipping training.")

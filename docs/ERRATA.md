@@ -26,7 +26,7 @@ only REPLICATED claims ([`docs/PAPER_SCRUTINY_2026-09-27.md`](PAPER_SCRUTINY_202
 
 | ID | What was wrong | Status / evidence |
 |---|---|---|
-| B2/B3 | Backtest P&L in spread units with a hedge ratio re-estimated every bar (the drift was ALL positive gross P&L on 2,062 real trades), costs in dollars | Dollar P&L is the default everywhere since 2026-10-03; legacy only via `--legacy-pnl`, labelled known-wrong. On 143 real 1-day trades: +274.7 spread units vs −$1,809; 34% flip sign |
+| B2/B3 | Backtest P&L in spread units with a hedge ratio re-estimated every bar (the drift was ALL positive gross P&L on 2,062 real trades), costs in dollars | Dollar P&L is the default everywhere since 2026-10-03; legacy only via `--legacy-pnl`, labelled known-wrong. On 143 real 1-day trades: +274.7 spread units vs −$1,809; 34% flip sign **Correction 2026-10-07:** 'everywhere' was not true -- 12 callers of BacktestEngine.run (pit_wfa.py, distance.py, sensitivity.py, run_storm_grid.py and 8 research scripts) never applied the dollar basis and kept reporting spread-unit P&L; the engine now converts every trade itself (`_verify_engine_dollar_default.py`), so their earlier outputs are spread-unit results until re-run |
 | B4 | `--hedge both` emitted near-duplicate OLS + Kalman trades treated as independent | Removed; OLS default, Kalman its own arm |
 | D13–D19 | Data identity: ticker reuse assigned to the oldest holder (2,719 of 4,327 reused CRSP tickers), label collisions, local-currency Compustat legs, price-only series | Fixed; discovery re-running on corrected data (2026-10-03) |
 | A6/S10 | Crashed or never-computed rolling cointegration tests passed the stability filter | Fixed 2026-09-28 |

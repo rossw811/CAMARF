@@ -17,6 +17,9 @@ import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import backtest as _bt_basis  # 2026-10-07: BacktestEngine.run converts to dollar P&L; this test checks the event
+_bt_basis.apply_pnl_basis = lambda trades, legacy=False, cfg=None: (trades, {})  # loop on synthetic symbols with no
+# price files (the conversion would drop every trade). P&L basis is covered by _verify_engine_dollar_default.py.
 
 from types import SimpleNamespace
 

@@ -271,11 +271,9 @@ def backtest_pair_on_test_window(
         "tf_label": _TF_LABEL,
     })
     engine = BacktestEngine(cfg=Config.BACKTEST, regime_cond=RegimeConditioner(enabled=False),
-                             ml_cond=MLConditioner(enabled=False))
+                             ml_cond=MLConditioner(enabled=False), legacy_pnl=_LEGACY_PNL)
+    # B2/B3 (Ross 2026-10-03): dollar P&L by default -- applied by the engine itself since 2026-10-07
     trades = engine.run(pair_row, test_slice, hedge_method="ols", holdout_only=False)
-    # B2/B3 (Ross 2026-10-03): dollar P&L by default; unpriceable trades dropped (backtest.apply_pnl_basis)
-    from backtest import apply_pnl_basis
-    trades, _ = apply_pnl_basis(trades, legacy=_LEGACY_PNL, cfg=engine.cfg)
     metrics = compute_metrics(trades, _TF_LABEL, sym_a, sym_b, "ols") if trades else {}
     return trades, metrics
 

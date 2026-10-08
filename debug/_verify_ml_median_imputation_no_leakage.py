@@ -58,6 +58,18 @@ def main() -> None:
             f"own regime (1.0) by the val/test rows at 100.0, confirming the leakage this fix closes"
         )
 
+    # 2026-10-07 (independent check): the checks above only show the two conventions differ; they never touched
+    # ml.py. Now the REAL split/impute step: training NaNs must be filled with the train-only median (1.0).
+    from ml import _chronological_split_impute
+    y = np.zeros(n, dtype=int)
+    X_tr, _, X_va, _, X_te, _, med = _chronological_split_impute(df, y, train_end / n, (val_end - train_end) / n)
+    if not np.isclose(float(med["f"]), 1.0):
+        failures.append(f"ml._chronological_split_impute fitted median {float(med['f'])}, expected train-only 1.0")
+    if not np.allclose(X_tr["f"].to_numpy(), 1.0):
+        failures.append("ml._chronological_split_impute filled training NaNs with something other than the train median")
+    if len(X_tr) != train_end or len(X_va) != val_end - train_end or len(X_te) != n - val_end:
+        failures.append(f"split sizes {len(X_tr)}/{len(X_va)}/{len(X_te)} != {train_end}/{val_end-train_end}/{n-val_end}")
+
     if failures:
         print("FAILURES:")
         for f in failures:
