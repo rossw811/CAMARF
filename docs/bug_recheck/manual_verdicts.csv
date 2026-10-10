@@ -178,13 +178,13 @@ BUG-A12,fixed-code-checked,Code read 2026-10-07: clean_close imported and used i
 BUG-A13,fixed-code-checked,Code read 2026-10-07: build_returns_matrix uses gap_aware_returns (analysis.py build_returns_matrix).,2026-10-07
 BUG-A14,fixed-code-checked,Code read 2026-10-07: timeframe dirs use _TF_SAFE names (3min vs 3mo); output/results has 3min and 3mo.,2026-10-07
 BUG-A2,fixed-mislinked,"structural-pair filter exists with a real test (_verify_filter_structural_pairs.py, per the independent check); share-class scope gap = S36",2026-10-07
-BUG-A4,unverified-historical,"Not re-verified 2026-10-07; historical entry (mostly the early yfinance/IBKR fetch path, now secondary to WRDS for daily data). Summary: HMM convergence warnings fire for any log-likelihood decrease below tol",2026-10-07
-BUG-A5,unverified-historical,"Not re-verified 2026-10-07; historical entry (mostly the early yfinance/IBKR fetch path, now secondary to WRDS for daily data). Summary: OOM guard allocated date_range before checking",2026-10-07
+BUG-A4,fixed-code-checked,Code read 2026-10-10: RuntimeWarning/UserWarning filtered for the HMM fits (analysis.py:101-102).,2026-10-10
+BUG-A5,fixed-code-checked,Code read 2026-10-10: _MAX_REINDEX = 500_000 guard checked before the dense reindex (data.py ~1327).,2026-10-10
 BUG-A7,fixed-code-checked-plus-residual-fixed,"Code read 2026-10-07: R/S Hurst runs on increments, not levels (analysis.py hurst_rs). Residual found and fixed: hurst_rs and hurst_dfa dropped NaNs BEFORE differencing, bridging data outages (synthetic: R/S 0.455 vs 0.386 clean; DFA 0.370 vs 0.275) -- now diff then mask (D81 rule). debug/_verify_hurst_rs_gap_increments.py fails on old code, 5/5 now. Same packing in the LEVEL-based AR(1) functions (half_life_ar1, zivot_andrews, cusum) is governed by the BUG-D77 segment rule + the DAILY_GAP_BREAKS arm -> plan S4.",2026-10-07
 BUG-A8,obsolete,Code read 2026-10-07: nested _fit_one_regime no longer exists (grep).,2026-10-07
 BUG-A9,fixed-code-checked,Code read 2026-10-07: INCLUDE_QQQ_EXTRAS / RUSSELL_TOP_N / INCLUDE_BRK_HOLDINGS defined (config.py:485-489).,2026-10-07
 BUG-D1,fixed-code-checked,Code read 2026-10-07: front-month futures via reqContractDetails + lastTradeDateOrContractMonth (data.py:2888-2917).,2026-10-07
-BUG-D10,unverified-historical,"Not re-verified 2026-10-07; historical entry (mostly the early yfinance/IBKR fetch path, now secondary to WRDS for daily data). Summary: Cache backfill returning session-only keys, missed 5,752 disk files",2026-10-07
+BUG-D10,fixed-code-checked,Code read 2026-10-10: backfill iterates every passed asset x every timeframe via DataStore.load (data.py ~5235-5250).,2026-10-10
 BUG-D106,fixed-code-checked,Code read 2026-10-07: episodic_bhfdr_confirm_asof exists (research/wrds_deep_history_episodic_scan.py:1085).,2026-10-07
 BUG-D107,fixed-code-checked,"Code read 2026-10-07: backtest._TF_DIRS includes ('1day', '1D') (backtest.py:85-89).",2026-10-07
 BUG-D108,fixed-code-checked,Code read 2026-10-07: checkpoint writes go to .tmp then os.replace (wrds_deep_history_episodic_scan.py:435-452).,2026-10-07
@@ -194,23 +194,23 @@ BUG-D111,fixed-code-checked,Code read 2026-10-07: same class as tonight's A1 res
 BUG-D113,fixed-code-checked,"Code read 2026-10-07: portfolio_sim imports Config and derives STOP_ZSCORE etc. from it (portfolio_sim.py:57, 178).",2026-10-07
 BUG-D12,fixed-code-checked,Code read 2026-10-07: get_equity_history has the period kwarg (data.py:2064).,2026-10-07
 BUG-D13,fixed-code-checked,Code read 2026-10-07: post-build incremental refresh for completed assets (data.py:5196).,2026-10-07
-BUG-D14,unverified-historical,"Not re-verified 2026-10-07; historical entry (mostly the early yfinance/IBKR fetch path, now secondary to WRDS for daily data). Summary: Excluded assets could still enter backfill",2026-10-07
-BUG-D15,unverified-historical,"Not re-verified 2026-10-07; historical entry (mostly the early yfinance/IBKR fetch path, now secondary to WRDS for daily data). Summary: Cache deletion via rename fails on Windows/OneDrive",2026-10-07
+BUG-D14,fixed-code-checked,"Code read 2026-10-10: backfill loop skips symbols in exclusions (data.py ~5248, belt-and-suspenders guard).",2026-10-10
+BUG-D15,fixed-code-checked,"Code read 2026-10-10: stale result directories are renamed, not deleted (analysis.py:568).",2026-10-10
 BUG-D16,fixed-code-checked,"Code read 2026-10-07: ETF included in yfinance routing (data.py:4117, 4440).",2026-10-07
-BUG-D17,unverified-historical,"Not re-verified 2026-10-07; historical entry (mostly the early yfinance/IBKR fetch path, now secondary to WRDS for daily data). Summary: 2m/3m derived from corrupted 1m data",2026-10-07
-BUG-D18,unverified-historical,"Not re-verified 2026-10-07; historical entry (mostly the early yfinance/IBKR fetch path, now secondary to WRDS for daily data). Summary: Batch yfinance saves 0/N bars",2026-10-07
+BUG-D17,fixed-code-checked,Code read 2026-10-10: cache migration removes *_2min/*_3min files so they re-derive from clean 1m (data.py:157-200).,2026-10-10
+BUG-D18,fixed-code-checked,"Code read 2026-10-10: intraday fallback downloads the mapped yfinance interval per timeframe (data.py:2354 _YF_INTRADAY_MAP, 2372).",2026-10-10
 BUG-D19,fixed-code-checked,"Code read 2026-10-07: Warning 2110 sets _upstream_broken and stops the reconnect loop (data.py:2735, 2807-2828).",2026-10-07
-BUG-D2,unverified-historical,"Not re-verified 2026-10-07; historical entry (mostly the early yfinance/IBKR fetch path, now secondary to WRDS for daily data). Summary: Forex contract format — wrong pair ordering in ib.Forex()",2026-10-07
+BUG-D2,not-applicable,"IBKR forex contract format; CLAUDE.md: IBKR has zero forex/commodity data in this project, so the path is unused",2026-10-10
 BUG-D20,fixed-code-checked,"Code read 2026-10-07: progress config hash covers only ProgressLogger._HASH_FIELDS (fetch-relevant), not the whole config (data.py compute_config_hash).",2026-10-07
 BUG-D21,fixed-code-checked,Code read 2026-10-07: analysis.py imports no IBKR fetch code (grep); IBKR enrichment now off by default (A10).,2026-10-07
 BUG-D23,fixed-code-checked,Code read 2026-10-07: contamination/frequency check in the cache cleaner (data.py:368-382).,2026-10-07
 BUG-D24,fixed-code-checked,Code read 2026-10-07: 4h frequency validation excludes >8h gaps before the median (data.py:379).,2026-10-07
-BUG-D25,unverified-historical,"Not re-verified 2026-10-07; historical entry (mostly the early yfinance/IBKR fetch path, now secondary to WRDS for daily data). Summary: RunSummary table empty despite Phase 2A running",2026-10-07
+BUG-D25,fixed-code-checked,"Code read 2026-10-10: RunSummary.record_tf wired into the main loop and the 4h derivation (data.py:3693, 4478, 4581).",2026-10-10
 BUG-D26,fixed-code-checked,Code read 2026-10-07: period chosen per actual yf_interval (data.py:2423; CLAUDE.md period-limit rule).,2026-10-07
 BUG-D27,fixed-code-checked,"Code read 2026-10-07: day-count keyed by the Yahoo interval requested, not the CAMARF label (data.py:2423; CLAUDE.md).",2026-10-07
 BUG-D28,unverified-historical,"Not re-verified 2026-10-07; historical entry (mostly the early yfinance/IBKR fetch path, now secondary to WRDS for daily data). Summary: yf.download() unreliable for bulk sequential calls vs. yf.Ticker().history()",2026-10-07
 BUG-D29,fixed-code-checked,Code read 2026-10-07: no '45d_fallback' string anywhere (grep).,2026-10-07
-BUG-D3,unverified-historical,"Not re-verified 2026-10-07; historical entry (mostly the early yfinance/IBKR fetch path, now secondary to WRDS for daily data). Summary: OOM on 1m reindex — date_range allocates before size check",2026-10-07
+BUG-D3,fixed-code-checked,Code read 2026-10-10: same guard as A5: expected size checked before date_range (data.py ~1327).,2026-10-10
 BUG-D30,fixed-code-checked,Code read 2026-10-07: pytz importable in the trading env (2026.2).,2026-10-07
 BUG-D33,fixed-code-checked,Code read 2026-10-07: empty/suspiciously small constituent fetch not cached (data.py:5461-5467).,2026-10-07
 BUG-D34,fixed-code-checked,"Code read 2026-10-07: pd.read_html(StringIO(...)) (data.py:5527, 5618, 5660).",2026-10-07
@@ -240,7 +240,7 @@ BUG-D61,fixed-code-checked,Code read 2026-10-07: distance.py formation/trading s
 BUG-D62,fixed-code-checked,Code read 2026-10-07: no groupby(exit_date) pooling left in portfolio_sim/sensitivity/deflated_sharpe/cvar/run_storm_grid (grep); portfolio_math business days.,2026-10-07
 BUG-D63,fixed-code-checked,Code read 2026-10-07: 0 '__TEST_SAVE__' entries in output/results/confirmed_pairs_manifest.json.,2026-10-07
 BUG-D64,fixed-code-checked,Code read 2026-10-07: sensitivity.py pools via portfolio_math (no groupby(exit_date)).,2026-10-07
-BUG-D66,unverified-historical,"Not re-verified 2026-10-07; historical entry (mostly the early yfinance/IBKR fetch path, now secondary to WRDS for daily data). Summary: Universe-wide scan (task #51, read-only, `research/data_contamination_scan.py`) found BUG-D65's append-seam mechanism is not DD-isolated: 6 more confirmed-pair ",2026-10-07
+BUG-D66,fixed-code-checked,Code read 2026-10-10: split-seam reconciliation DataStore._reconcile_split_adjustment (data.py:435; code review D12 agreed by the independent check) + research/data_contamination_scan.py.,2026-10-10
 BUG-D67,fixed-code-checked,Code read 2026-10-07: near_miss_lag_scan writes safe-named files (research/near_miss_lag_scan.py:226).,2026-10-07
 BUG-D68,fixed-code-checked,"Code read 2026-10-07: override needs >= 756 bars, now counted as real overlap (A5 fix today).",2026-10-07
 BUG-D7,fixed-code-checked,"Code read 2026-10-07: ADJUSTED_LAST only for daily, TRADES fallback (data.py:3031, 3191).",2026-10-07
