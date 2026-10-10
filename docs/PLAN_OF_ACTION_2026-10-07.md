@@ -77,6 +77,22 @@ completeness, not for re-decision.
 | S29 | **DEV-062 "Singha" hidden-order paper** | yours to locate, or ✖ drop |
 | S30 | **Paper trading (T9.2)** only if a pass finds a robust signal; **TAQ-sample cost model (T9.1)** only if the sample overlaps the pools | ✅ |
 
+### Ross's decisions on S1–S36 (2026-10-10: "i like all your answers for the threads")
+All 36 approved as recommended, including the recommendation as updated after the independent check of the grid result
+(2026-10-10):
+- **S3 (updated):** robustness rule = **at least 2 rejected windows** (the pre-registered k = 2 pool arm); the
+  all-four-grids set is reported as a check (fraction of each pool / of traded pairs that is grid-robust), **not** as
+  separate pool arms. Reason: the fragility is entirely in one-window confirmations; pairs with >= 2 rejected windows
+  are 82-94% grid-robust (>= 3: 97-100%).
+- **S2 (follows from S3):** no grid-robust pool arms -> N stays at the declared **432** (2 pools x 216); the success
+  criterion is evaluated at 432 as pre-registered.
+- **S1:** commit the Amendment 2 addendum, amended for S2/S3 and including the pool-construction decisions adopted
+  before it is committed: **S32** (point-in-time BH family for eligible_from), **S35** (traded spreads mask CRSP no-trade
+  days), **S36** (exclude same-PERMCO / same-GVKEY pairs, counted and reported).
+- **S4–S7** comparison arms adopted on their stated rules; **S8:** second pass as drafted (carrying A2/A4/B8/B9,
+  disclosed), a labelled third pass with the fixes.
+- **S9–S17, S18–S30, S31, S33, S34** as recommended in the tables above (S29: drop unless Ross locates the paper).
+
 ### Already decided (recorded, not for re-decision)
 D18 = exclude (2026-10-07) · grid-phase arm approved (2026-10-07) · dollar P&L default, `--legacy-pnl` labelled
 known-wrong, OLS default with Kalman a separate arm, B1 gap exit (2026-10-03) · DEV-055 fresh holdout per evaluation
