@@ -1,4 +1,5 @@
 ## 2026-10-07 (night): RESUME HERE. Plan + sign-off sheet: docs/PLAN_OF_ACTION_2026-10-07.md (S1-S36, none decided yet).
+**Update 2026-10-10:** chain progress -- primary done 10-08 22:53 (Tier 1 891 / Tier 2 291 / Tier 3 687 confirmed), grid 63 done 10-09 12:20 (244 / 593), grid 126 done 10-10 01:07 (250 / 606), grid 189 running (ETA ~14:00 10-10), then grid_phase_robustness report. Bug recheck: 4 entries remain unverified-historical (D28, D38, D42, D46; no clear code trace, would need a fetch-path test); all else has a verdict with evidence. S1-S36 still undecided.
 **Running (CachyOS, code beb004b4, do not pull until it finishes):** debug/_tmp_chain_grid.sh -- 1D discovery primary
 re-run on corrected volume + USD liquidity gate (R1.2), then grid offsets 63/126/189, then the pre-declared
 grid_phase_robustness report. ~5-6 days from 19:32. Log: latest_run_grid_chain.log.
