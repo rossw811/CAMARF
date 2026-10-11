@@ -28,9 +28,8 @@ every claim row of the section-by-section scrutiny (`docs/PAPER_SCRUTINY_2026-09
 | STANDS / QUALIFY / UNVERIFIED | REGISTERED | stated, not yet re-derived on current data -- nothing is REPLICATED until it is |
 
 Counts (455 claim rows; 2026-10-07 build): PAPER.md 313 = 107 WITHDRAWN, 11 CORRECTED, 195 REGISTERED;
-PAPER_MAGNITUDE.md 142 = 52 WITHDRAWN, 0 CORRECTED, 90 REGISTERED. **After S34 (Ross, 2026-10-10) and the C-001
-re-derivation:** PAPER.md 262 WITHDRAWN, 9 CORRECTED, 42 REGISTERED; PAPER_MAGNITUDE.md 99 WITHDRAWN, 43 REGISTERED.
-Decisions are kept in docs/claims_status_overrides.csv, which scripts/build_claims_table.py applies last. Note: the scrutiny document's own summary table says 284 rows; its tables hold
+PAPER_MAGNITUDE.md 142 = 52 WITHDRAWN, 0 CORRECTED, 90 REGISTERED. **Current counts:** run `python scripts/build_claims_table.py` (prints them); not hand-copied here, so they
+cannot go stale.
 455 (the summary was not updated as rows were added) -- the table counts are the ones used here.
 Since the scrutiny (2026-09-27) more defects were confirmed (2026-10-07 bug recheck, docs/bug_recheck/): e.g. S5 (the
 Reality Check p-values), S6 (the Gold/Silver/Bronze tiers), the engine-level dollar P&L gap and A5/A7/A8 (the
@@ -112,3 +111,34 @@ The C-entries below are claims re-derived one by one on current data.
   `output/research/strategy_search/` (pools `output/research/purity_pairs_pit_k{1,2}_clean.parquet`).
 - **Status:** REGISTERED for the first pass only (docs/PREREGISTRATION_STRATEGY_SEARCH_2026-09-27.md); second
   labelled pass (Amendment 2) pending the discovery re-run.
+
+## C-007 — Code and arithmetic claims (S34 central; re-derived 2026-10-10)
+- **Reproduce:** `python research/rederive_code_claims.py` → `output/research/rederive_code_claims.parquet` (production
+  code on synthetic input with known answers, or production constants). Independent adversarial review 2026-10-10
+  (its corrections are folded in below).
+- **P-087 — CORRECTED.** `coint_fraction_rolling` is the fraction of rolling windows (default 252 bars, step 21) with
+  p < 0.05 and MIN_COINT_FRAC = 0.70 -- as stated. Omitted by the paper: (1) the test is ONE direction (a on b) at a
+  fixed lag of 1 (`_batched_eg_fixed_lag_tstat`, analysis.py:1832-1838), not discovery's max over both directions at
+  max lag 10, so a borderline pair's fraction can depend on leg order; (2) a pair whose gap-free history is shorter
+  than window+step gets NaN / `insufficient_history` and is KEPT as `untestable_kept` (analysis.py:1926-1933, 6338) --
+  it never faces the 0.70 threshold; (3) for shallow timeframes the window is shrunk once per batch from the first
+  pair's grid length (analysis.py:2271-2278).
+- **P-088 — CORRECTED.** The override also requires n_overlap >= `_MIN_BARS_FOR_SECONDARY_EVIDENCE` = 756 bars
+  (BUG-D68; analysis.py:6324, 6379-6380), which the paper omits. The FANG/OXY worked example (P-089) was verified
+  2026-06-23, before BUG-D68 and A5, and must be re-checked against the 756-bar rule before it is cited.
+- **P-091 — REPLICATED.** Production `SpreadModel.rolling_zscore` (ddof=1) gives 15.81151378755267 = 251/√252 at a
+  252-bar window. Caveat: today's window is adaptive (8 × half-life, clipped to [30, 252]); the artifact is
+  (w-1)/√w at window w, and 15.8115 only at the 252 cap. "Matched to 10 significant digits in observed output" is
+  not re-checkable here.
+- **M-038 — CORRECTED.** `chunked_pearson_candidate_pairs` returns the same pair set as the direct call (1,800/1,800;
+  1,843/1,843 with 30% NaNs) with correlations agreeing to ~1e-15 (floating-point summation order) -- equivalent,
+  not "bit-exact". A pair could flip only within ~1e-15 of the threshold; none of 7,140 test pairs was within 1e-12.
+- **M-039 — CORRECTED.** Same max-over-directions rule as `CointScanner.scan`, but the discovery scan dropped
+  crashed tests from BH's m until BUG-D115 (fixed 2026-10-10; effect on the existing runs not yet measured).
+- **M-040 — REPLICATED.** `_benjamini_hochberg` matches statsmodels `fdr_bh` exactly (20 × 500 p-values; ties,
+  p = 0/1, p = kα/m). FDR_ALPHA = 0.05. Shared caveat: a NaN p-value makes every adjusted p-value NaN in both.
+- **M-041 — CORRECTED.** EPISODIC_WINDOW_BARS = 2520 and STEP = 252 are right, but "unioning each window's
+  qualifying pairs" describes only Tier 3's correlation prefilter. Confirmation is one BH correction over the whole
+  (pair × window) family, a pair confirmed if at least one window survives (`episodic_bhfdr_confirm`; its docstring
+  says it is not point-in-time safe -- the pools use the as-of version, S32).
+

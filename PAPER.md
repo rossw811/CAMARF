@@ -763,13 +763,13 @@ Engle-Granger p-value clears 0.05: a cheap, per-pair-scalar proxy for
 the same underlying question Gregory-Hansen and Quintos-Phillips answer
 formally but at real per-pair computational cost. `Config.UNIVERSE.MIN_COINT_FRAC
 = 0.70` (restored from an undocumented 0.40 drift found during this
-session's bug hunt; see `Development.md` Session 10).
+session's bug hunt; see `Development.md` Session 10). [Corrected 2026-10-10, docs/CLAIMS_REGISTRY.md C-007: the windowed test is one direction (a on b) at a fixed lag of 1, not discovery's max over both directions at max lag 10; a pair with less history than one window plus step is kept untested (`untestable_kept`), never facing the 0.70 threshold.]
 
 ### 4.4 Secondary-evidence override: corroborating borderline cases against the formal apparatus [DRAFTED: worked example verified 2026-06-23]
 
 A pair below the 0.70 threshold is kept anyway if `half_life_trend_slope
 ≤ 0` (the spread's mean-reversion speed is improving, not decaying) AND
-neither Zivot-Andrews nor CUSUM detects a structural break in the spread,
+neither Zivot-Andrews nor CUSUM detects a structural break in the spread, [Corrected 2026-10-10, C-007: the code also requires at least 756 overlapping bars (BUG-D68) before the override can apply; the worked example below predates that rule and is not re-checked.]
 i.e., corroboration against the two single-pair structural-break tests
 already in the pipeline, not a softer threshold. Real worked example,
 verified directly against the persisted post-fix data this session:
