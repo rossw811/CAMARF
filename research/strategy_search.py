@@ -61,6 +61,46 @@ def build_grid():
 # Run phase
 # ---------------------------------------------------------------------------
 
+_FP_FILE = "_pool_fingerprint.txt"
+
+
+def pool_fingerprint(path: str) -> str:
+    """sha256 of the pool file's bytes: which exact pool a directory of trade files was built from."""
+    import hashlib
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(1 << 20), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def _read_fp(d: str):
+    f = os.path.join(d, _FP_FILE)
+    return open(f, encoding="utf-8").read().strip() if os.path.exists(f) else None
+
+
+def check_pool_dir(d: str, fp: str, fresh: bool = False):
+    """Trade files are reusable only if built from this exact pool (2026-10-11: the second pre-registered pass reused
+    all 432 first-pass trade files -- the run phase skipped any existing <pool>/<cfg>.parquet -- and scored old-pool
+    trades against the new pool). A dir with trade files and no or another fingerprint is refused; --fresh moves it
+    to <dir>_stale_<timestamp> (kept, never deleted) and starts clean. An empty or missing dir is initialised."""
+    have = _read_fp(d)
+    trades = [x for x in os.listdir(d) if x.endswith(".parquet")] if os.path.isdir(d) else []
+    if have == fp:
+        return
+    if trades or have is not None:
+        if not fresh:
+            raise SystemExit(f"{d}: {len(trades)} trade files built from "
+                             f"{'an unrecorded pool' if have is None else 'pool ' + have[:12]}, not the current pool "
+                             f"{fp[:12]} -- re-run with --fresh to move them to a backup")
+        dst = f"{d}_stale_{time.strftime('%Y%m%d_%H%M%S')}"
+        os.replace(d, dst)
+        print(f"moved stale trade dir {d} -> {dst}", flush=True)
+    os.makedirs(d, exist_ok=True)
+    with open(os.path.join(d, _FP_FILE), "w", encoding="utf-8") as f:
+        f.write(fp + "\n")
+
+
 _POOL_DF = {}
 
 
@@ -89,9 +129,10 @@ def _run_one(task):
     return c["id"], len(df)
 
 
-def run_phase(workers):
+def run_phase(workers, fresh=False):
     import multiprocessing as mp
     for name, path in POOLS.items():
+        check_pool_dir(os.path.join(_OUT, name), pool_fingerprint(path), fresh=fresh)
         _POOL_DF[name] = pd.read_parquet(path)
     tasks = [(p, c) for p in POOLS for c in build_grid()]
     print(f"{len(tasks)} runs, {workers} workers", flush=True)
@@ -181,6 +222,10 @@ def eval_phase():
     grid = {c["id"]: c for c in build_grid()}
     rows, summary = [], []
     for pname, ppath in POOLS.items():
+        d = os.path.join(_OUT, pname)
+        if _read_fp(d) != pool_fingerprint(ppath):
+            raise SystemExit(f"{d}: trade files were not built from the current {ppath} (fingerprint mismatch) -- "
+                             f"run the 'run' phase (with --fresh) first")
         pool = pd.read_parquet(ppath)
         t0 = pd.to_datetime(pool["eligible_from"]).min().normalize()
         cache = {}
@@ -245,8 +290,10 @@ def main():
     ap.add_argument("phase", choices=["run", "eval"])
     from config import Config
     ap.add_argument("--workers", type=int, default=Config.RUNTIME.N_WORKERS)   # was cpu_count // 2 (hardware check 2026-10-10)
+    ap.add_argument("--fresh", action="store_true",
+                    help="move trade dirs built from a different pool to a backup and rebuild (run phase)")
     a = ap.parse_args()
-    run_phase(a.workers) if a.phase == "run" else eval_phase()
+    run_phase(a.workers, fresh=a.fresh) if a.phase == "run" else eval_phase()
 
 
 if __name__ == "__main__":

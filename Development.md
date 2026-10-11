@@ -28770,3 +28770,19 @@ centred cluster bootstrap, unaligned null pairs) and are handled in the re-deriv
 (M-066/067/073/075/076/077, M-051/052, P-082); their fixes are methodology choices for Ross. R1.12 (price-only close in
 pit_wfa_wrds_daily) is the open U4 question. Also fixed: the bug-inventory builder silently dropped SWEEP-M-1 after a
 heading retitle -- it now keeps unparsed ids and warns (0/1 -> 4/4).
+
+### BUG-D116: the second pre-registered pass reused the first pass's trades (2026-10-11)
+
+The 2026-10-10 pool chain completed (intraday re-run, adapter, comparison arms, PIT eligibility, clean pools, pool
+spreads, squeeze, both audits, strategy search run + eval; chain complete 2026-10-11 00:14). But the search's run
+phase finished in 6 seconds: `research/strategy_search.py` skipped any configuration whose
+`output/research/strategy_search/<pool>/<cfg>.parquet` existed, and all 432 files were the FIRST pass's (mtime
+2026-09-27, built from the old pools). The eval then scored those old trades against the new pools' `eligible_from`
+start and overwrote summary.parquet / all_trials.parquet on CachyOS. **That output is neither pass and is not
+reported.** The first pass's results are intact (Surface copy dated 2026-09-27, matching C-006; its trade files are
+unchanged on CachyOS). Fix: each pool's trade dir carries `_pool_fingerprint.txt` (sha256 of the pool file); the run
+phase refuses a dir built from another (or an unrecorded) pool unless `--fresh`, which moves it to
+`<dir>_stale_<timestamp>` (never deleted); the eval refuses a fingerprint mismatch. Failing-first:
+`debug/_verify_strategy_search_pool_fingerprint.py` 0/1 -> 10/10; `_verify_strategy_search` 9/9 still passes.
+What I missed: the chain had no check that the run step actually ran -- a 6-second run of 432 backtests should have
+stopped the chain. Re-run: `strategy_search.py run --fresh` then `eval` on CachyOS.

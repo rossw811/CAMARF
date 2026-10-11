@@ -292,3 +292,7 @@ the full context stays in `Development.md`.
   production's `_combine_eg_directions` rule (A1/S2: crash -> p = 1.0, kept in m). Fixed failing-first
   (`debug/_verify_episodic_crash_in_bh_m.py`, 0/3 -> 7/7). Impact on the beb004b4 discovery runs not yet measured
   (needs a full-universe task rebuild on CachyOS).
+- **BUG-D116** (2026-10-11): `research/strategy_search.py`'s run phase reused any existing `<pool>/<cfg>.parquet`, so
+  the second pre-registered pass reused all 432 first-pass trade files (built from the old pools) and its eval scored
+  them against the new pools. Output discarded (not reported); pool-fingerprinted trade dirs, `--fresh` moves stale
+  dirs to a backup. Failing-first: `debug/_verify_strategy_search_pool_fingerprint.py` 0/1 -> 10/10.
