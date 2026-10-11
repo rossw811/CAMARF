@@ -61,6 +61,31 @@ def main():
         check("unknown_verdict_error", False)
     except ValueError:
         check("unknown_verdict_error", True)
+    # 2026-10-10: decisions recorded after the scrutiny (S34 class, re-derivations) live in an overrides file the
+    # builder applies last, so a rebuild cannot silently revert them
+    try:
+        from scripts.build_claims_table import apply_overrides
+    except ImportError as e:
+        check("apply_overrides_exists", False, str(e)); return finish()
+    import pandas as pd
+    ov = pd.DataFrame([{"id": "P-001", "registry_status": "WITHDRAWN", "s34_class": "peripheral", "status_reason": "S34"},
+                       {"id": "P-004", "registry_status": "CORRECTED", "s34_class": "central", "status_reason": "C-001"}])
+    u = apply_overrides(parse_claims(DOC), ov).set_index("id")
+    check("override_status", u.loc["P-001", "registry_status"] == "WITHDRAWN" and u.loc["P-001", "status_reason"] == "S34")
+    check("override_class", u.loc["P-004", "s34_class"] == "central")
+    check("no_override_unchanged", u.loc["M-010", "registry_status"] == "REGISTERED" and u.loc["M-010", "status_reason"] == "")
+    try:
+        apply_overrides(parse_claims(DOC), pd.DataFrame([{"id": "P-999", "registry_status": "WITHDRAWN",
+                                                          "s34_class": "", "status_reason": ""}]))
+        check("unknown_override_id_error", False)
+    except ValueError:
+        check("unknown_override_id_error", True)
+    try:
+        apply_overrides(parse_claims(DOC), pd.DataFrame([{"id": "P-001", "registry_status": "MAYBE",
+                                                          "s34_class": "", "status_reason": ""}]))
+        check("bad_override_status_error", False)
+    except ValueError:
+        check("bad_override_status_error", True)
     finish()
 
 

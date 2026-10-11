@@ -1,0 +1,456 @@
+id,registry_status,s34_class,status_reason
+P-001,REGISTERED,central,S34 central: re-derive on current data
+P-002,WITHDRAWN,central,
+P-003,WITHDRAWN,central,
+P-004,CORRECTED,central,S34 central: re-derive on current data
+P-005,REGISTERED,central,S34 central: re-derive on current data
+P-006,REGISTERED,central,S34 central: re-derive on current data
+P-007,WITHDRAWN,central,
+P-008,REGISTERED,central,S34 central: re-derive on current data
+P-009,CORRECTED,central,S34 re-derived 2026-10-10 under the production EG test: see CLAIMS_REGISTRY C-001
+P-010,REGISTERED,central,S34 central: re-derive on current data
+P-011,REGISTERED,central,S34 central: re-derive on current data
+P-012,REGISTERED,central,S34 central: re-derive on current data
+P-013,WITHDRAWN,central,
+P-014,REGISTERED,central,S34 central: re-derive on current data
+P-015,WITHDRAWN,central,
+P-016,WITHDRAWN,central,
+P-017,WITHDRAWN,central,
+P-018,REGISTERED,central,S34 central: re-derive on current data
+P-019,REGISTERED,central,S34 central: re-derive on current data
+M-001,REGISTERED,central,S34 central: re-derive on current data
+M-002,WITHDRAWN,central,
+M-003,WITHDRAWN,central,
+M-004,REGISTERED,central,S34 central: re-derive on current data
+M-005,WITHDRAWN,central,
+M-006,REGISTERED,central,S34 central: re-derive on current data
+M-007,WITHDRAWN,central,
+M-008,WITHDRAWN,central,
+M-009,WITHDRAWN,central,
+M-010,WITHDRAWN,central,
+M-011,REGISTERED,central,S34 central: re-derive on current data
+M-012,REGISTERED,central,S34 central: re-derive on current data
+M-013,REGISTERED,central,S34 central: re-derive on current data
+M-014,WITHDRAWN,central,
+M-015,REGISTERED,central,S34 central: re-derive on current data
+M-016,REGISTERED,central,S34 central: re-derive on current data
+M-017,REGISTERED,central,S34 central: re-derive on current data
+M-018,REGISTERED,central,S34 central: re-derive on current data
+M-019,REGISTERED,central,S34 central: re-derive on current data
+M-020,REGISTERED,central,S34 central: re-derive on current data
+M-021,WITHDRAWN,central,
+M-022,REGISTERED,central,S34 central: re-derive on current data
+P-020,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-021,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-022,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-023,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-024,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-025,WITHDRAWN,peripheral,
+P-026,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-027,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-028,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-029,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-030,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-031,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-032,WITHDRAWN,peripheral,
+P-033,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-034,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-035,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-036,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-037,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-038,WITHDRAWN,peripheral,
+P-039,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-040,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-041,WITHDRAWN,peripheral,
+P-042,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-043,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-044,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-045,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-046,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-047,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-048,WITHDRAWN,peripheral,
+P-049,WITHDRAWN,peripheral,
+P-050,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-051,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-052,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-053,WITHDRAWN,peripheral,
+P-054,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-055,WITHDRAWN,peripheral,
+P-056,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-057,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-058,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-059,WITHDRAWN,peripheral,
+P-060,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-061,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-062,WITHDRAWN,peripheral,
+P-063,WITHDRAWN,peripheral,
+P-064,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-065,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-066,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-067,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-068,WITHDRAWN,peripheral,
+P-069,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-070,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-071,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-072,REGISTERED,central,S34 central: re-derive on current data
+P-073,CORRECTED,central,S34 re-derived 2026-10-10 under the production EG test: see CLAIMS_REGISTRY C-001
+P-074,CORRECTED,central,S34 re-derived 2026-10-10 under the production EG test: see CLAIMS_REGISTRY C-001
+P-075,CORRECTED,central,S34 re-derived 2026-10-10 under the production EG test: see CLAIMS_REGISTRY C-001
+P-076,CORRECTED,central,S34 re-derived 2026-10-10 under the production EG test: see CLAIMS_REGISTRY C-001
+P-077,REGISTERED,central,S34 central: re-derive on current data
+P-078,REGISTERED,central,S34 central: re-derive on current data
+P-079,WITHDRAWN,central,
+P-080,REGISTERED,central,S34 central: re-derive on current data
+P-081,WITHDRAWN,central,
+P-082,REGISTERED,central,S34 central: re-derive on current data
+P-083,REGISTERED,central,S34 central: re-derive on current data
+P-084,WITHDRAWN,central,
+P-085,WITHDRAWN,central,
+P-086,REGISTERED,central,S34 central: re-derive on current data
+P-087,REGISTERED,central,S34 central: re-derive on current data
+P-088,REGISTERED,central,S34 central: re-derive on current data
+P-089,REGISTERED,central,S34 central: re-derive on current data
+P-090,REGISTERED,central,S34 central: re-derive on current data
+P-091,REGISTERED,central,S34 central: re-derive on current data
+P-092,REGISTERED,central,S34 central: re-derive on current data
+P-093,REGISTERED,central,S34 central: re-derive on current data
+P-094,REGISTERED,central,S34 central: re-derive on current data
+P-095,REGISTERED,central,S34 central: re-derive on current data
+P-096,REGISTERED,central,S34 central: re-derive on current data
+P-097,WITHDRAWN,central,
+P-098,WITHDRAWN,central,
+P-099,REGISTERED,central,S34 central: re-derive on current data
+P-100,REGISTERED,central,S34 central: re-derive on current data
+P-101,REGISTERED,central,S34 central: re-derive on current data
+P-102,REGISTERED,central,S34 central: re-derive on current data
+P-103,REGISTERED,central,S34 central: re-derive on current data
+P-104,WITHDRAWN,central,
+P-105,REGISTERED,central,S34 central: re-derive on current data
+P-106,REGISTERED,central,S34 central: re-derive on current data
+P-107,WITHDRAWN,central,
+P-108,WITHDRAWN,central,
+P-109,WITHDRAWN,central,
+P-110,REGISTERED,central,S34 central: re-derive on current data
+P-111,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-112,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-113,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-114,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-115,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-116,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-117,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-118,WITHDRAWN,peripheral,
+P-119,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-120,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-121,WITHDRAWN,peripheral,
+P-122,WITHDRAWN,peripheral,
+P-123,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-124,WITHDRAWN,peripheral,
+P-125,WITHDRAWN,peripheral,
+P-126,WITHDRAWN,peripheral,
+P-127,WITHDRAWN,peripheral,
+P-128,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-129,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-130,WITHDRAWN,peripheral,
+P-131,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-132,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-133,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-134,WITHDRAWN,peripheral,
+P-135,WITHDRAWN,peripheral,
+P-136,WITHDRAWN,peripheral,
+P-137,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-138,WITHDRAWN,peripheral,
+P-139,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-140,WITHDRAWN,peripheral,
+P-141,WITHDRAWN,peripheral,
+P-142,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-143,WITHDRAWN,peripheral,
+P-144,WITHDRAWN,peripheral,
+P-145,WITHDRAWN,peripheral,
+P-146,WITHDRAWN,peripheral,
+P-147,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-148,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-149,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-150,WITHDRAWN,peripheral,
+P-151,WITHDRAWN,peripheral,
+P-152,WITHDRAWN,peripheral,
+P-153,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-154,WITHDRAWN,peripheral,
+P-155,WITHDRAWN,peripheral,
+P-156,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-157,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-158,WITHDRAWN,peripheral,
+P-159,WITHDRAWN,peripheral,
+P-160,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-161,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-162,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-163,WITHDRAWN,peripheral,
+P-164,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-165,WITHDRAWN,peripheral,
+P-166,WITHDRAWN,peripheral,
+P-167,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-168,WITHDRAWN,peripheral,
+P-169,WITHDRAWN,peripheral,
+P-170,WITHDRAWN,peripheral,
+P-171,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-172,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-173,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-174,WITHDRAWN,peripheral,
+P-175,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-176,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-177,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-178,WITHDRAWN,peripheral,
+P-179,WITHDRAWN,peripheral,
+P-180,WITHDRAWN,peripheral,
+P-181,WITHDRAWN,peripheral,
+P-182,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-183,WITHDRAWN,peripheral,
+P-184,WITHDRAWN,peripheral,
+P-185,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-186,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-187,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-188,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-189,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-190,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-191,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-192,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-193,WITHDRAWN,peripheral,
+P-194,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-195,WITHDRAWN,peripheral,
+P-196,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-197,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-198,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-199,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-200,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-201,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-202,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-203,WITHDRAWN,peripheral,
+P-204,WITHDRAWN,peripheral,
+P-205,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-206,WITHDRAWN,peripheral,
+P-207,WITHDRAWN,peripheral,
+P-208,WITHDRAWN,peripheral,
+P-209,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-210,WITHDRAWN,peripheral,
+P-211,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-212,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-213,WITHDRAWN,peripheral,
+P-214,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-215,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-216,WITHDRAWN,peripheral,
+P-217,WITHDRAWN,peripheral,
+P-218,WITHDRAWN,peripheral,
+P-219,WITHDRAWN,peripheral,
+P-220,WITHDRAWN,peripheral,
+P-221,WITHDRAWN,peripheral,
+P-222,WITHDRAWN,peripheral,
+P-223,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-224,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-225,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-226,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-227,WITHDRAWN,peripheral,
+P-228,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-229,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-230,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-231,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-232,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-233,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-234,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-235,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-236,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-237,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-238,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-239,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-240,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-241,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-242,WITHDRAWN,peripheral,
+P-243,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-244,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-245,WITHDRAWN,peripheral,
+P-246,WITHDRAWN,peripheral,
+P-247,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-248,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-249,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-250,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-251,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-252,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-253,WITHDRAWN,central,
+P-254,REGISTERED,central,S34 central: re-derive on current data
+P-255,REGISTERED,central,S34 central: re-derive on current data
+P-256,WITHDRAWN,central,
+P-257,WITHDRAWN,central,
+P-258,WITHDRAWN,central,
+P-259,CORRECTED,central,S34 central: re-derive on current data
+P-260,REGISTERED,central,S34 central: re-derive on current data
+P-261,REGISTERED,central,S34 central: re-derive on current data
+P-262,WITHDRAWN,central,
+P-263,WITHDRAWN,central,
+P-264,WITHDRAWN,central,
+P-265,REGISTERED,central,S34 central: re-derive on current data
+P-266,CORRECTED,central,S34 central: re-derive on current data
+P-267,WITHDRAWN,central,
+P-268,REGISTERED,central,S34 central: re-derive on current data
+P-269,WITHDRAWN,central,
+P-270,WITHDRAWN,central,
+P-271,WITHDRAWN,central,
+P-272,REGISTERED,central,S34 central: re-derive on current data
+P-273,CORRECTED,central,S34 central: re-derive on current data
+P-274,WITHDRAWN,central,
+P-275,WITHDRAWN,central,
+P-276,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-277,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-278,WITHDRAWN,peripheral,
+P-279,WITHDRAWN,peripheral,
+P-280,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-281,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-282,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-283,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-284,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-285,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-286,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-287,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-288,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-289,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-290,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-291,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-292,WITHDRAWN,peripheral,
+P-293,WITHDRAWN,peripheral,
+P-294,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-295,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-296,WITHDRAWN,peripheral,
+P-297,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-298,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-299,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-300,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-301,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-302,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-303,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-304,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-305,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-306,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-307,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-308,WITHDRAWN,peripheral,
+P-309,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-310,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-311,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-312,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+P-313,WITHDRAWN,peripheral,
+M-023,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+M-024,WITHDRAWN,peripheral,
+M-025,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+M-026,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+M-027,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+M-028,WITHDRAWN,peripheral,
+M-029,WITHDRAWN,peripheral,
+M-030,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+M-031,WITHDRAWN,peripheral,
+M-032,WITHDRAWN,peripheral,
+M-033,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+M-034,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+M-035,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+M-036,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+M-037,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+M-038,REGISTERED,central,S34 central: re-derive on current data
+M-039,REGISTERED,central,S34 central: re-derive on current data
+M-040,REGISTERED,central,S34 central: re-derive on current data
+M-041,REGISTERED,central,S34 central: re-derive on current data
+M-042,WITHDRAWN,central,
+M-043,REGISTERED,central,S34 central: re-derive on current data
+M-044,REGISTERED,central,S34 central: re-derive on current data
+M-045,REGISTERED,central,S34 central: re-derive on current data
+M-046,WITHDRAWN,central,
+M-047,WITHDRAWN,central,
+M-048,WITHDRAWN,central,
+M-049,WITHDRAWN,central,
+M-050,REGISTERED,central,S34 central: re-derive on current data
+M-051,REGISTERED,central,S34 central: re-derive on current data
+M-052,REGISTERED,central,S34 central: re-derive on current data
+M-053,REGISTERED,central,S34 central: re-derive on current data
+M-054,WITHDRAWN,central,
+M-055,WITHDRAWN,central,
+M-056,WITHDRAWN,central,
+M-057,WITHDRAWN,central,
+M-058,REGISTERED,central,S34 central: re-derive on current data
+M-059,REGISTERED,central,S34 central: re-derive on current data
+M-060,REGISTERED,central,S34 central: re-derive on current data
+M-061,REGISTERED,central,S34 central: re-derive on current data
+M-062,REGISTERED,central,S34 central: re-derive on current data
+M-063,WITHDRAWN,central,
+M-064,REGISTERED,central,S34 central: re-derive on current data
+M-065,REGISTERED,central,S34 central: re-derive on current data
+M-066,REGISTERED,central,S34 central: re-derive on current data
+M-067,REGISTERED,central,S34 central: re-derive on current data
+M-068,REGISTERED,central,S34 central: re-derive on current data
+M-069,WITHDRAWN,central,
+M-070,WITHDRAWN,central,
+M-071,WITHDRAWN,central,
+M-072,WITHDRAWN,central,
+M-073,REGISTERED,central,S34 central: re-derive on current data
+M-074,REGISTERED,central,S34 central: re-derive on current data
+M-075,REGISTERED,central,S34 central: re-derive on current data
+M-076,REGISTERED,central,S34 central: re-derive on current data
+M-077,REGISTERED,central,S34 central: re-derive on current data
+M-078,WITHDRAWN,central,
+M-079,REGISTERED,central,S34 central: re-derive on current data
+M-080,WITHDRAWN,central,
+M-081,REGISTERED,central,S34 central: re-derive on current data
+M-082,WITHDRAWN,central,
+M-083,REGISTERED,central,S34 central: re-derive on current data
+M-084,REGISTERED,central,S34 central: re-derive on current data
+M-085,WITHDRAWN,central,
+M-086,WITHDRAWN,peripheral,
+M-087,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+M-088,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+M-089,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+M-090,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+M-091,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+M-092,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+M-093,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+M-094,WITHDRAWN,peripheral,
+M-095,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+M-096,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+M-097,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+M-098,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+M-099,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+M-100,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+M-101,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+M-102,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+M-103,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+M-104,WITHDRAWN,peripheral,
+M-105,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+M-106,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+M-107,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+M-108,WITHDRAWN,peripheral,
+M-109,WITHDRAWN,peripheral,
+M-110,WITHDRAWN,peripheral,
+M-111,WITHDRAWN,peripheral,
+M-112,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+M-113,WITHDRAWN,peripheral,
+M-114,WITHDRAWN,peripheral,
+M-115,WITHDRAWN,peripheral,
+M-116,WITHDRAWN,peripheral,
+M-117,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+M-118,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+M-119,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+M-120,WITHDRAWN,peripheral,
+M-121,WITHDRAWN,peripheral,
+M-122,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+M-123,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+M-124,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+M-125,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+M-126,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+M-127,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+M-128,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+M-129,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+M-130,WITHDRAWN,peripheral,
+M-131,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+M-132,WITHDRAWN,peripheral,
+M-133,WITHDRAWN,peripheral,
+M-134,WITHDRAWN,peripheral,
+M-135,WITHDRAWN,peripheral,
+M-136,WITHDRAWN,peripheral,
+M-137,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+M-138,WITHDRAWN,peripheral,
+M-139,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+M-140,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+M-141,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
+M-142,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
