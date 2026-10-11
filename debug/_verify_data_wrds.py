@@ -37,6 +37,14 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import data_wrds as dw
 
 
+
+def _live_connect(dw):
+    """Live WRDS checks run only when asked (2026-10-10): in the full suite, wrds.Connection's interactive
+    username/Duo prompt waited on stdin until the 600 s suite timeout. Set CAMARF_LIVE_WRDS=1 to run them."""
+    if os.environ.get("CAMARF_LIVE_WRDS") != "1":
+        raise RuntimeError("live WRDS checks disabled -- set CAMARF_LIVE_WRDS=1 to run them")
+    return dw._connect()
+
 def check(name, cond):
     status = "PASS" if cond else "FAIL"
     print(f"  [{status}] {name}")
@@ -99,7 +107,7 @@ def verify_ambiguous_ticker_refused():
 def verify_real_cwen_ambiguity_refused():
     print("\n=== 1c. Real WRDS: 'CWEN' (real dual-share-class collision) correctly refused ===")
     try:
-        db = dw._connect()
+        db = _live_connect(dw)
     except Exception as e:
         print(f"  [SKIP] Could not connect to WRDS ({type(e).__name__}: {e})")
         return True
@@ -126,7 +134,7 @@ def verify_no_mapping_returns_none():
 def verify_real_aapl_split_and_volume():
     print("\n=== 2-3. Real WRDS: AAPL 2020-08-31 split continuity + unadjusted volume ===")
     try:
-        db = dw._connect()
+        db = _live_connect(dw)
     except Exception as e:
         print(f"  [SKIP] Could not connect to WRDS ({type(e).__name__}: {e}) -- "
               f"this check requires a live, already-configured WRDS connection.")
@@ -158,7 +166,7 @@ def verify_real_aapl_split_and_volume():
 def verify_global_currency_disambiguates_name_matches():
     print("\n=== 4. resolve_gvkey_global: currency correctly DISAMBIGUATES multiple name matches ===")
     try:
-        db = dw._connect()
+        db = _live_connect(dw)
     except Exception as e:
         print(f"  [SKIP] Could not connect to WRDS ({type(e).__name__}: {e})")
         return True
@@ -190,7 +198,7 @@ def verify_global_currency_disambiguates_name_matches():
 def verify_bulk_matches_single_symbol():
     print("\n=== 6. Real WRDS: fetch_symbols_bulk matches fetch_symbol exactly (AAPL) ===")
     try:
-        db = dw._connect()
+        db = _live_connect(dw)
     except Exception as e:
         print(f"  [SKIP] Could not connect to WRDS ({type(e).__name__}: {e})")
         return True
@@ -218,7 +226,7 @@ def verify_bulk_matches_single_symbol():
 def verify_native_monthly_vs_derived_resample():
     print("\n=== 7. Real WRDS: native monthly (msf_v2) vs derived resample -- expected to DIFFER ===")
     try:
-        db = dw._connect()
+        db = _live_connect(dw)
     except Exception as e:
         print(f"  [SKIP] Could not connect to WRDS ({type(e).__name__}: {e})")
         return True
@@ -340,7 +348,7 @@ def verify_build_delisted_label_map_prevents_overwriting_active_symbol():
 def verify_real_sp500_membership_history():
     print("\n=== 12. Real WRDS: S&P 500 point-in-time membership history sane against known facts ===")
     try:
-        db = dw._connect()
+        db = _live_connect(dw)
     except Exception as e:
         print(f"  [SKIP] Could not connect to WRDS ({type(e).__name__}: {e})")
         return True
@@ -407,7 +415,7 @@ def verify_index_members_asof_multi_spell():
 def verify_real_global_index_membership_dax():
     print("\n=== 15. Real WRDS: Composite DAX (gvkeyx=150007) point-in-time membership sane ===")
     try:
-        db = dw._connect()
+        db = _live_connect(dw)
     except Exception as e:
         print(f"  [SKIP] Could not connect to WRDS ({type(e).__name__}: {e})")
         return True
@@ -440,7 +448,7 @@ def verify_global_index_current_convention_auto_detected():
     # max-date comparison; every genuinely-current NaT row was silently
     # excluded, since NaT never equals a finite date).
     try:
-        db = dw._connect()
+        db = _live_connect(dw)
     except Exception as e:
         print(f"  [SKIP] Could not connect to WRDS ({type(e).__name__}: {e})")
         return True
@@ -462,7 +470,7 @@ def verify_global_index_current_convention_auto_detected():
 def verify_unpopulated_gvkeyx_returns_empty_not_crash():
     print("\n=== 16. Real WRDS: an unpopulated gvkeyx (FTSE 100) returns empty, not a crash ===")
     try:
-        db = dw._connect()
+        db = _live_connect(dw)
     except Exception as e:
         print(f"  [SKIP] Could not connect to WRDS ({type(e).__name__}: {e})")
         return True
@@ -478,7 +486,7 @@ def verify_unpopulated_gvkeyx_returns_empty_not_crash():
 def verify_bulk_global_matches_single_symbol():
     print("\n=== 18. Real WRDS: fetch_symbols_bulk_global matches fetch_symbol_global exactly (Toyota) ===")
     try:
-        db = dw._connect()
+        db = _live_connect(dw)
     except Exception as e:
         print(f"  [SKIP] Could not connect to WRDS ({type(e).__name__}: {e})")
         return True
@@ -508,7 +516,7 @@ def verify_bulk_global_matches_single_symbol():
 def verify_real_fx_wrds():
     print("\n=== 17. Real WRDS: fetch_fx_wrds returns sane FX series, staleness confirmed ===")
     try:
-        db = dw._connect()
+        db = _live_connect(dw)
     except Exception as e:
         print(f"  [SKIP] Could not connect to WRDS ({type(e).__name__}: {e})")
         return True
@@ -533,7 +541,7 @@ def verify_real_fx_wrds():
 def verify_global_toyota_split():
     print("\n=== 5. Real WRDS: Toyota Motor 2021-10-01 5-for-1 split continuity ===")
     try:
-        db = dw._connect()
+        db = _live_connect(dw)
     except Exception as e:
         print(f"  [SKIP] Could not connect to WRDS ({type(e).__name__}: {e})")
         return True
