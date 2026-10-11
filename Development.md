@@ -28758,3 +28758,15 @@ succeeded and the run checkpoints were cleared, so the number of crashes in the 
 measuring it means rebuilding the task list against the full universe and re-running the missing tests (CachyOS,
 after the pool chain). Zero crashes -> results unchanged; any crash -> BH thresholds were slightly too loose. The pool
 chain running now uses the pre-fix discovery outputs; this is disclosed, not silently assumed harmless.
+
+**Bug recheck after S34 (2026-10-10).** The 64 reviewer findings marked `unverified-pending-S34` were mapped (finding
+-> script -> paper lines naming it -> claims covering those lines): 46 bear only on WITHDRAWN claims
+(`unverified-not-cited-after-S34`, claims listed in the evidence); 18 back live claims and were checked in code -- all
+18 confirmed (file:line in docs/bug_recheck/manual_verdicts.csv). Fixed now, failing-first: R1.13 (pit_wfa_wrds_daily
+used train+test hedge ratios in the engine row -- the S4 leak; now shares pit_wfa._pit_pair_row; 0/2 -> 5/5) and
+R1.14 (adapter refuses a non-production --alpha without --out-suffix; 0/2 -> 4/4). The rest are methodological
+(post-hoc top-2 binomial, independence assumptions, survivorship design, baseline-dominated stress EG, non-null-
+centred cluster bootstrap, unaligned null pairs) and are handled in the re-derivation of the claims they back
+(M-066/067/073/075/076/077, M-051/052, P-082); their fixes are methodology choices for Ross. R1.12 (price-only close in
+pit_wfa_wrds_daily) is the open U4 question. Also fixed: the bug-inventory builder silently dropped SWEEP-M-1 after a
+heading retitle -- it now keeps unparsed ids and warns (0/1 -> 4/4).

@@ -460,6 +460,17 @@ def _lineage_guard(args):
             print("WARNING " + msg + " -- used anyway (--allow-stale-upstream)")
 
 
+_PRODUCTION_ALPHA = 0.05
+
+
+def _check_alpha_args(alpha: float, out_suffix: str):
+    """Code review R1.14 (2026-10-10): a non-production --alpha without --out-suffix would reuse the production
+    resume checkpoint (its filter keys on the pair only, mixing alphas) and overwrite the production output."""
+    if alpha != _PRODUCTION_ALPHA and not out_suffix:
+        raise SystemExit(f"--alpha {alpha} differs from the production {_PRODUCTION_ALPHA}: pass --out-suffix "
+                         f"(e.g. _alpha{str(alpha).replace('0.', '')}) so the production checkpoint and output are untouched")
+
+
 def main():
     import argparse
     parser = argparse.ArgumentParser()
@@ -467,7 +478,7 @@ def main():
                          help="Parallel worker processes for the per-pair build "
                               "(BUG-D110: single-threaded, ~28s/pair, hours for "
                               "647+ pairs). Each pair's build is independent.")
-    parser.add_argument("--alpha", type=float, default=0.05,
+    parser.add_argument("--alpha", type=float, default=_PRODUCTION_ALPHA,
                          help="BH-FDR alpha for episodic confirmation (default 0.05, the "
                               "production value). Added 2026-09-21 for research/"
                               "fdr_threshold_sensitivity.py's backlog item #3: reuses the "
@@ -484,6 +495,7 @@ def main():
     parser.add_argument("--allow-stale-upstream", action="store_true",
                          help="build even if an upstream scan's output is older than its inputs/code (logged)")
     args = parser.parse_args()
+    _check_alpha_args(args.alpha, args.out_suffix)
     _lineage_guard(args)
 
     # Tier 2 REMOVED from every source (BUG-D112, 2026-08-11): its candidate
