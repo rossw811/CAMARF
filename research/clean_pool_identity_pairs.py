@@ -29,6 +29,9 @@ _R = os.path.join(_ROOT, "output", "research")
 MIN_COMMON, SHARE, TOL = 60, 0.99, 1e-9
 
 
+_CCM_LINK = os.path.join(_ROOT, "output", "cache", "wrds", "crsp_ccm_link.parquet")
+
+
 def identity_share(ra: pd.Series, rb: pd.Series):
     a, b = ra.align(rb, join="inner")
     ok = a.notna() & b.notna()
@@ -38,29 +41,47 @@ def identity_share(ra: pd.Series, rb: pd.Series):
     return float((np.abs(a.to_numpy() - b.to_numpy()) <= TOL).mean()), len(a)
 
 
-def company_ids(labels, label_map: pd.DataFrame, master: pd.DataFrame) -> dict:
-    """label -> 'permco:<n>' (CRSP: label map or PERMNO<n> label -> PERMNO -> PERMCO) or 'gvkey:<g>' (Compustat
-    GVKEY<g>_<iid>); None when unmapped. Plan S36 (Ross 2026-10-10). debug/_verify_same_company_pairs.py"""
+def company_ids(labels, label_map: pd.DataFrame, master: pd.DataFrame, ccm_link: pd.DataFrame = None) -> dict:
+    """label -> frozenset of company ids: 'permco:<n>' (CRSP: label map or PERMNO<n> label -> PERMNO -> PERMCO) and,
+    when the CRSP-Compustat link is given (crsp.ccmxpf_lnkhist: permno -> gvkey, any link row of the PERMCO), the
+    linked 'gvkey:<g>'; Compustat labels GVKEY<g>_<iid> -> {'gvkey:<g>'}; None when unmapped. Plan S36 (Ross
+    2026-10-10). 2026-10-11: without the link a US ADR and the same company's home listing (ASML vs GVKEY061214_01W)
+    were never matched. debug/_verify_same_company_pairs.py"""
     import re
     permno_by_label = dict(zip(label_map["label"].astype(str), label_map["permno"]))
-    permco_by_permno = dict(master.dropna(subset=["permno", "permco"]).drop_duplicates("permno")[["permno", "permco"]]
-                            .astype(int).itertuples(index=False, name=None))
+    m_ = master.dropna(subset=["permno", "permco"])[["permno", "permco"]].astype(int).drop_duplicates()
+    permco_by_permno = dict(m_.drop_duplicates("permno").itertuples(index=False, name=None))
+    gvkeys_by_permco = {}
+    if ccm_link is not None and len(ccm_link):
+        L = ccm_link.dropna(subset=["permno", "gvkey"])[["permno", "gvkey"]].astype(int).merge(m_, on="permno")
+        for pc, g in L[["permco", "gvkey"]].drop_duplicates().itertuples(index=False, name=None):
+            gvkeys_by_permco.setdefault(pc, set()).add(g)
     out = {}
     for lab in labels:
         lab = str(lab)
         g = re.fullmatch(r"GVKEY(\d+)_\w+", lab)
         if g:
-            out[lab] = f"gvkey:{int(g.group(1))}"; continue
+            out[lab] = frozenset({f"gvkey:{int(g.group(1))}"}); continue
         m = re.fullmatch(r"PERMNO(\d+)", lab)
         pn = int(m.group(1)) if m else permno_by_label.get(lab)
         pc = permco_by_permno.get(int(pn)) if pn is not None and pd.notna(pn) else None
-        out[lab] = f"permco:{pc}" if pc is not None else None
+        out[lab] = (frozenset({f"permco:{pc}"} | {f"gvkey:{x}" for x in gvkeys_by_permco.get(pc, ())})
+                    if pc is not None else None)
     return out
 
 
 def same_company(a: str, b: str, ids: dict) -> bool:
     ca, cb = ids.get(str(a)), ids.get(str(b))
-    return ca is not None and ca == cb
+    return bool(ca and cb and (ca & cb))
+
+
+def require_link_for_mixed(pairs, ccm_link):
+    """A pool with CRSP-vs-Compustat pairs cannot be checked for same company without the CCM link: refuse rather
+    than silently pass them (2026-10-11)."""
+    mixed = [(a, b) for a, b in pairs if str(a).startswith("GVKEY") != str(b).startswith("GVKEY")]
+    if mixed and (ccm_link is None or len(ccm_link) == 0):
+        raise SystemExit(f"{len(mixed)} CRSP-vs-Compustat pairs (e.g. {mixed[:3]}) need the CRSP-Compustat link "
+                         f"({_CCM_LINK}) to apply the same-company rule -- fetch it first (WRDS job 21_fetch_ccm_link)")
 
 
 def _log_returns(df):
@@ -80,9 +101,11 @@ def main():
                     + [pd.read_parquet(f)[["label", "permno"]] for f in sorted(
                         __import__("glob").glob(os.path.join(_w, "extra_permno_map_*.parquet")))], ignore_index=True)
     _master = pd.read_parquet(os.path.join(_w, "crsp_full_security_master_v2.parquet"), columns=["permno", "permco"])
+    _link = pd.read_parquet(_CCM_LINK) if os.path.exists(_CCM_LINK) else None
     for k in (1, 2):
         P = pd.read_parquet(os.path.join(_R, f"purity_pairs_pit_k{k}.parquet"))
-        ids = company_ids(pd.concat([P["symbol_a"], P["symbol_b"]]).unique(), _lm, _master)
+        require_link_for_mixed(zip(P["symbol_a"], P["symbol_b"]), _link)
+        ids = company_ids(pd.concat([P["symbol_a"], P["symbol_b"]]).unique(), _lm, _master, _link)
         keep = []
         for r in P.itertuples():
             for s in (r.symbol_a, r.symbol_b):

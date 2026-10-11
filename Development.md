@@ -28786,3 +28786,16 @@ phase refuses a dir built from another (or an unrecorded) pool unless `--fresh`,
 `debug/_verify_strategy_search_pool_fingerprint.py` 0/1 -> 10/10; `_verify_strategy_search` 9/9 still passes.
 What I missed: the chain had no check that the run step actually ran -- a 6-second run of 432 backtests should have
 stopped the chain. Re-run: `strategy_search.py run --fresh` then `eval` on CachyOS.
+
+### S36 gap (2026-10-11): ADR vs home-listing pairs passed the same-company rule
+
+Reviewing the pool chain's degenerate-column audit: 32 pool spread files have `coint_fraction_rolling_t` exactly 1.0
+on every bar -- all a US ADR (CRSP) against the same company's home listing (Compustat Global): ASML /
+GVKEY061214_01W, AZN, BCS, DAI, DB, SONY, SHEL, VOD, RIO, TM, STM, ... S36 matched PERMCO-to-PERMCO and GVKEY-to-GVKEY
+only, so a CRSP leg was never matched to a GVKEY leg. 91 of 686 k=1 pairs (22 of 119 k=2) mix the two sources; some
+are genuinely different companies. Fix: `company_ids` gives each CRSP label its PERMCO plus every GVKEY linked to
+that PERMCO in the CRSP-Compustat link (crsp.ccmxpf_lnkhist, LC/LU/LS); `same_company` = the id sets intersect; the
+pool step refuses mixed pairs when the link file is missing (`require_link_for_mixed`). Failing-first:
+`debug/_verify_same_company_pairs.py` extended (TypeError on the old code) -> 13/13. The link is not cached; WRDS job
+`21_fetch_ccm_link.py` is queued. The second pass (stopped 2026-10-11 before any trade was written) re-runs after:
+link fetched -> clean_pools -> pool_spreads -> squeeze -> audits -> search run --fresh -> eval.

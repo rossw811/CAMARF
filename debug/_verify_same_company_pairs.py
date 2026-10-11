@@ -34,11 +34,29 @@ def main():
                       label_map, master)
     check("share_class_same", same_company("Z", "ZG", ids), ids.get("Z"))
     check("unrelated_different", not same_company("Z", "AAPL", ids))
-    check("permno_label_resolves", ids.get("PERMNO4") == "permco:400", ids.get("PERMNO4"))
+    check("permno_label_resolves", "permco:400" in (ids.get("PERMNO4") or ()), ids.get("PERMNO4"))
     check("gvkey_listings_same", same_company("GVKEY001_01W", "GVKEY001_02W", ids))
     check("gvkey_different", not same_company("GVKEY001_01W", "GVKEY002_01W", ids))
     check("unmapped_not_same", not same_company("UNKNOWN", "UNKNOWN2", ids) and ids.get("UNKNOWN") is None)
-    check("mixed_not_same", not same_company("Z", "GVKEY001_01W", ids))
+    check("mixed_not_same_without_link", not same_company("Z", "GVKEY001_01W", ids))
+    # 2026-10-11: a US ADR (CRSP) and the same company's home listing (Compustat Global GVKEY<g>_<iid>) reached the
+    # pools (ASML/GVKEY061214_01W, VOD/GVKEY014894_01W, ...): PERMCO and GVKEY were never linked. With the CRSP-
+    # Compustat link (crsp.ccmxpf_lnkhist: permno -> gvkey), a CRSP label also carries gvkey:<g>.
+    link = pd.DataFrame({"permno": [1, 3], "gvkey": [1, 7]})
+    ids2 = company_ids(["Z", "ZG", "AAPL", "GVKEY001_01W", "GVKEY002_01W", "GVKEY007_03W"], label_map, master, link)
+    check("adr_vs_home_same", same_company("Z", "GVKEY001_01W", ids2), ids2.get("Z"))
+    check("link_via_permco_sibling", same_company("ZG", "GVKEY001_01W", ids2), ids2.get("ZG"))
+    check("adr_vs_other_gvkey_different", not same_company("Z", "GVKEY002_01W", ids2))
+    check("second_link", same_company("AAPL", "GVKEY007_03W", ids2))
+    try:
+        from research.clean_pool_identity_pairs import require_link_for_mixed
+        try:
+            require_link_for_mixed([("Z", "GVKEY001_01W")], None); check("mixed_without_link_refused", False)
+        except SystemExit:
+            check("mixed_without_link_refused", True)
+        require_link_for_mixed([("Z", "ZG")], None); check("unmixed_without_link_ok", True)
+    except ImportError as e:
+        check("require_link_for_mixed_exists", False, str(e))
     finish()
 
 
