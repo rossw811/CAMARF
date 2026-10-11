@@ -208,7 +208,7 @@ BUG-D24,fixed-code-checked,Code read 2026-10-07: 4h frequency validation exclude
 BUG-D25,fixed-code-checked,"Code read 2026-10-10: RunSummary.record_tf wired into the main loop and the 4h derivation (data.py:3693, 4478, 4581).",2026-10-10
 BUG-D26,fixed-code-checked,Code read 2026-10-07: period chosen per actual yf_interval (data.py:2423; CLAUDE.md period-limit rule).,2026-10-07
 BUG-D27,fixed-code-checked,"Code read 2026-10-07: day-count keyed by the Yahoo interval requested, not the CAMARF label (data.py:2423; CLAUDE.md).",2026-10-07
-BUG-D28,unverified-historical,"Not re-verified 2026-10-07; historical entry (mostly the early yfinance/IBKR fetch path, now secondary to WRDS for daily data). Summary: yf.download() unreliable for bulk sequential calls vs. yf.Ticker().history()",2026-10-07
+BUG-D28,fixed-code-checked,Code read 2026-10-10: intraday fallback downloads via yf.Ticker().history() with period strings; the explicit-date _CAL_DAYS mechanism is gone (0 occurrences in data.py; comment data.py ~2405-2420).,2026-10-10
 BUG-D29,fixed-code-checked,Code read 2026-10-07: no '45d_fallback' string anywhere (grep).,2026-10-07
 BUG-D3,fixed-code-checked,Code read 2026-10-10: same guard as A5: expected size checked before date_range (data.py ~1327).,2026-10-10
 BUG-D30,fixed-code-checked,Code read 2026-10-07: pytz importable in the trading env (2026.2).,2026-10-07
@@ -217,13 +217,13 @@ BUG-D34,fixed-code-checked,"Code read 2026-10-07: pd.read_html(StringIO(...)) (d
 BUG-D35,fixed-code-checked,Code read 2026-10-07: seed_sp_caches skips MultiIndex (Added/Removed history) tables and takes the flat Symbol/Ticker constituents table (seed_sp_caches.py:71-90).,2026-10-07
 BUG-D36,fixed-code-checked,Code read 2026-10-07: MIN_BARS_REQUIRED 1m/2m/3m re-derived from real bar counts (config.py:145-160 comments).,2026-10-07
 BUG-D37,fixed-code-checked,Code read 2026-10-07: 4h session-aligned bins offset='9h30min' (data.py:2323).,2026-10-07
-BUG-D38,unverified-historical,"Not re-verified 2026-10-07; historical entry (mostly the early yfinance/IBKR fetch path, now secondary to WRDS for daily data). Summary: Stale per-ticker yf_period cache entries with no expiry, silently capping ~80 tickers' 1h fetches",2026-10-07
+BUG-D38,confirmed-open-recurrence-risk,"Re-read 2026-10-10: the recorded fix was a one-time cleanup (all 3,254 yf_period_* cache files deleted), not a code change. The mechanism remains: get_intraday_fallback reads a cached per-ticker period with no expiry and no re-validation against MIN_BARS_REQUIRED (data.py yf_period_ block), so a stale short period can recur. Affects the yfinance intraday fetch path only (not WRDS discovery). Fix when that path is next used: expire cached periods or retry the _YF_INTRADAY_MAP default first.",2026-10-10
 BUG-D39,fixed-code-checked,"Code read 2026-10-07: analysis builds with connect=False, fetch=False (analysis.py:6768); DEV-014 read-only test.",2026-10-07
 BUG-D4,fixed-code-checked,"Code read 2026-10-07: NYSE calendar from pandas_market_calendars (data.py:30, _get_nyse_calendar :1091).",2026-10-07
 BUG-D40,fixed-code-checked,Code read 2026-10-07: overnight/weekend gaps (>8h) excluded from frequency checks (data.py:379-382).,2026-10-07
-BUG-D42,unverified-historical,"Not re-verified 2026-10-07; historical entry (mostly the early yfinance/IBKR fetch path, now secondary to WRDS for daily data). Summary: Supersedes D31's throttling guess — 1m/2m/3m real root cause",2026-10-07
+BUG-D42,fixed-code-checked,"Code read 2026-10-10: MIN_BARS_REQUIRED for 1m/2m/3m recalibrated to calendar-day periods (config.py:145-160, 'fixed AGAIN 2026-06-22').",2026-10-10
 BUG-D43,fixed-code-checked,Code read 2026-10-07: _write_analysis_summary formats hurst_rs via _fnum (None-safe) (analysis.py ~6856).,2026-10-07
-BUG-D46,unverified-historical,"Not re-verified 2026-10-07; historical entry (mostly the early yfinance/IBKR fetch path, now secondary to WRDS for daily data). Summary: Overnight is_fresh() fix was incomplete — one more call site",2026-10-07
+BUG-D46,fixed-code-checked,"Code read 2026-10-10: _intraday_complete calls DataStore.is_fresh(..., max_age_hours=DataStore.intraday_max_age_hours(tf)) (data.py ~4384-4400); the other native-intraday call sites pass it too (e.g. data.py:2245).",2026-10-10
 BUG-D47,fixed-code-checked,"Code read 2026-10-07: end-of-run pair count post-filter (DEV-013, verified 2026-10-03); analysis.py:6792.",2026-10-07
 BUG-D48,fixed-code-checked,"Code read 2026-10-07: manifest update removes the timeframe from every entry before re-adding (analysis._update_confirmed_manifest, DEV-008 test).",2026-10-07
 BUG-D49,addressed-by-flags,price-degeneracy audit writes per-tf flag files; analysis._apply_research_screen_flags attaches them (fails loud on unreadable since today); DEV-057: flag-and-include + exclude-flagged sensitivity,2026-10-07
