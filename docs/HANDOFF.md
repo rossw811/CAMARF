@@ -13,6 +13,16 @@ D38 confirmed open (one-time cache cleanup, mechanism remains; yfinance intraday
 _verify_data_wrds live checks gated behind CAMARF_LIVE_WRDS=1 (its login prompt hung the suite) (f63b1484).
 **Suite:** the Surface re-run (docs/bug_recheck/suite_20261010b_surface.log) was stopped at 285/376 by Claude Code for
 low memory; the one ERROR (_verify_manifest_lock.py) passes 2/2 alone -- memory pressure. Full re-run still owed.
+**Later 2026-10-10 (all committed):** S34 re-derivations begun -- C-001 durability table (P-009/073/074/075/076
+CORRECTED: XOM/CVX shows the NTRS/STT pattern under the production test) and C-007 code/arithmetic claims (P-091,
+M-040 REPLICATED; P-087/088, M-038/039/041 CORRECTED); both independently reviewed. 78 central claims remain (39 per
+paper), nearly all needing the new discovery outputs or the second pass. Claim decisions now live in
+docs/claims_status_overrides.csv (the table builder applies them last). BUG-D115 (discovery scan dropped crashed EG
+tests from BH's m) fixed failing-first -- **measure its effect on beb004b4 on CachyOS after the chain** (rebuild the
+task list, count tests missing from the windows files that are not insufficient_overlap). Bug recheck: all 311 items
+have verdicts; the 64 S34-pending reviewer findings resolved (46 no longer cited; 18 confirmed in code, R1.13 and
+R1.14 fixed). The other 16 confirmed findings are methodology choices for Ross, to bring as proposals with the
+regime-claim re-derivation (M-066/067/073/075/076/077, M-051/052, P-082). R1.12 = open U4 question.
 **Blocked on Ross:** Duo for the PAR_1M refetch -- run research/wrds_session_server.py in a terminal and approve;
 job queued at output/wrds_jobs/queue/20_refetch_par_monthly.py (PERMNO 61146, refuses to overwrite). The stale
 13_fetch_trfd_global_resume.py job was moved to output/wrds_jobs/superseded/.
