@@ -411,13 +411,14 @@ re-derived per finding:
 - **`UniverseFilter.correlation_matrix`/`candidate_pairs`**, the Pearson
   correlation pre-filter (|ρ| ≥ `Config.UNIVERSE.MIN_PEARSON_CORR`), and at
   full universe scale, the memory-bounded `chunked_pearson_candidate_pairs`
-  variant (block-diagonal splitting, bit-exact equivalent to the direct
+  variant (block-diagonal splitting, bit-exact equivalent [corrected 2026-10-10, C-007: same pair set, correlations equal to ~1e-15 -- not bit-exact] to the direct
   call, built after a real OOM crash at ~18,283 symbols). That crash is
   itself an instructive small case of this paper's own §7.5-adjacent thesis:
   engineering detail, not statistics, determines whether a screen at scale
   runs at all.
 - **`_eg_worker`**, the two-step Engle-Granger cointegration test,
-  both-directions max-combination logic, identical to `CointScanner.scan`.
+  both-directions max-combination logic, identical to `CointScanner.scan`. [Corrected 2026-10-10, C-007 / BUG-D115: the max rule
+  is identical, but the discovery scan dropped crashed tests from BH's m until 2026-10-10.]
 - **`_benjamini_hochberg`**, step-up Benjamini-Hochberg false-discovery-rate
   correction, `Config.STATS.FDR_ALPHA`.
 - **Episodic/rolling confirmation.** A pair qualifies not on a single
@@ -426,7 +427,7 @@ re-derived per finding:
   re-evaluation), unioning each window's qualifying pairs across the full
   scan. This was built specifically because a fixed whole-history verdict
   cannot distinguish "cointegrated for 3 of the last 30 years" from
-  "cointegrated throughout."
+  "cointegrated throughout." [Corrected 2026-10-10, C-007: "unioning" describes only Tier 3's correlation prefilter; a pair is confirmed by one BH correction over all (pair, window) tests, needing at least one surviving window.]
 - **Regime-span hysteresis.** A state change (cointegrated vs. not)
   confirms only after persisting for at least 3 consecutive windows
   (`MIN_REGIME_WINDOWS=3`), preventing a single borderline p-value from

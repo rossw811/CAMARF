@@ -107,11 +107,11 @@ P-083,REGISTERED,central,S34 central: re-derive on current data
 P-084,WITHDRAWN,central,
 P-085,WITHDRAWN,central,
 P-086,REGISTERED,central,S34 central: re-derive on current data
-P-087,REGISTERED,central,S34 central: re-derive on current data
-P-088,REGISTERED,central,S34 central: re-derive on current data
+P-087,CORRECTED,central,S34 re-derived 2026-10-10: see CLAIMS_REGISTRY C-007
+P-088,CORRECTED,central,S34 re-derived 2026-10-10: see CLAIMS_REGISTRY C-007
 P-089,REGISTERED,central,S34 central: re-derive on current data
 P-090,REGISTERED,central,S34 central: re-derive on current data
-P-091,REGISTERED,central,S34 central: re-derive on current data
+P-091,REPLICATED,central,S34 re-derived 2026-10-10: see CLAIMS_REGISTRY C-007
 P-092,REGISTERED,central,S34 central: re-derive on current data
 P-093,REGISTERED,central,S34 central: re-derive on current data
 P-094,REGISTERED,central,S34 central: re-derive on current data
@@ -349,10 +349,10 @@ M-034,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
 M-035,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
 M-036,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
 M-037,WITHDRAWN,peripheral,S34 (Ross 2026-10-10): peripheral claim withdrawn
-M-038,REGISTERED,central,S34 central: re-derive on current data
-M-039,REGISTERED,central,S34 central: re-derive on current data
-M-040,REGISTERED,central,S34 central: re-derive on current data
-M-041,REGISTERED,central,S34 central: re-derive on current data
+M-038,CORRECTED,central,S34 re-derived 2026-10-10: see CLAIMS_REGISTRY C-007
+M-039,CORRECTED,central,S34 re-derived 2026-10-10: see CLAIMS_REGISTRY C-007
+M-040,REPLICATED,central,S34 re-derived 2026-10-10: see CLAIMS_REGISTRY C-007
+M-041,CORRECTED,central,S34 re-derived 2026-10-10: see CLAIMS_REGISTRY C-007
 M-042,WITHDRAWN,central,
 M-043,REGISTERED,central,S34 central: re-derive on current data
 M-044,REGISTERED,central,S34 central: re-derive on current data
