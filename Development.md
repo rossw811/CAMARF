@@ -28724,3 +28724,37 @@ in its ADV gate, so offset 0 is re-run too: CachyOS chain (debug/_tmp_chain_grid
 **Open:** sign-off on the Amendment 2 addendum draft (docs/PREREGISTRATION_STRATEGY_SEARCH_2026-09-27.md,
 uncommitted until signed), then pools -> spreads -> squeeze -> second prereg pass; PAR_1M msf_v2 refetch; Act 3
 re-derivation; A2/B8/PIT-membership adoption decisions; DEV-016 mem_guard and DEV-018 memtest on CachyOS when idle.
+
+## Session 2026-10-10 (night) — S34 re-derivations begin; BUG-D115 found by one of them
+
+**C-001 re-derived (S34 central; P-009/P-073/P-074/P-075/P-076 CORRECTED).** `research/rederive_durability_claims.py`
+runs PAPER.md §4.2's durability table in two arms. *as_published* (one direction, `max_lag=None`, no-trade days kept)
+reproduces every published number exactly. *current_rules* (S35 no-trade mask, max over both directions,
+`EG_MAX_LAG=10` -- what discovery actually runs): NTRS/STT 0.000039 / 0.599 (holds); XOM/CVX 0.041 / 0.377 -- a
+negative control now shows the NTRS/STT pattern, so §4.2's "none of them show the pattern" is false under the
+production test. Tried and corrected: my first version of the script left `max_lag=None` in the current-rules arm;
+the independent adversarial review caught it (statsmodels then picks ~48 lags by AIC at n≈26k). Fixed, re-run, both
+arms reported with each direction's p. Registry C-001; dated correction note in PAPER.md §4.2 (original kept).
+Also fixed: `scripts/build_claims_table.py` regenerated statuses from the scrutiny verdicts only, so a rebuild would
+have silently reverted the S34 decisions and this correction; decisions now live in
+`docs/claims_status_overrides.csv`, applied last (test written first: 7/8 -> 12/12).
+
+### BUG-D115: the discovery scan dropped crashed EG tests from BH's m
+
+Found re-deriving PAPER_MAGNITUDE M-039 ("both-directions max ... identical to `CointScanner.scan`"). The max rule is
+identical; crash handling was not. Production's rule (`analysis._combine_eg_directions`, code review A1/S2,
+2026-09-26): a test that crashed was attempted, so it enters Benjamini-Hochberg with p = 1.0; only
+`insufficient_overlap` (never a real test) is excluded. `research/wrds_deep_history_episodic_scan.py` excluded both on
+every path: Tier 1 kept only pairs whose two directions were both `ok` (inline copy of the pre-A1 logic), the Tier 2/3
+window loop in `run_rolling_eg_pool` skipped every non-`ok` direction, and `episodic_fraction` skipped crashed windows
+(so 1 crash in 4 windows read as 3/3 significant instead of 3/4). Each crash therefore shrank m and loosened every BH
+threshold. The intraday scan reuses the same pool function, so it had the same gap.
+Fix: `_window_row` maps each direction's result under the production rule (ok -> p; insufficient_overlap -> excluded;
+anything else -> p = 1.0, counted and logged); Tier 1 now calls `_combine_eg_directions` and logs its counts.
+Reproduced first: `debug/_verify_episodic_crash_in_bh_m.py` 0/3 on the old code (`fraction_counts_crash` gave
+`(1.0, [0.01, 0.01, 0.01])`), 7/7 after; the 11 other scan/adapter/intraday test files still pass.
+**Impact on existing results: NOT YET MEASURED.** The saved windows files hold only rows where both directions
+succeeded and the run checkpoints were cleared, so the number of crashes in the beb004b4 runs cannot be read back;
+measuring it means rebuilding the task list against the full universe and re-running the missing tests (CachyOS,
+after the pool chain). Zero crashes -> results unchanged; any crash -> BH thresholds were slightly too loose. The pool
+chain running now uses the pre-fix discovery outputs; this is disclosed, not silently assumed harmless.

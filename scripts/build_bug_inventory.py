@@ -35,6 +35,21 @@ def status_near(text, pos, span=260):
     return ""
 
 
+def carry_forward(out, prev):
+    """Merge a rebuild with the previous inventory. Hand/derived columns survive (2026-10-03: a re-run had wiped the
+    T14.2 content mapping), and an id the rebuild no longer parses is KEPT with its previous row and returned in
+    `dropped` -- never silently removed (2026-10-10: SWEEP-M-1 vanished after its sweep heading was retitled)."""
+    keep = ("verify_scripts_by_content", "recheck_verdict")
+    for r in out:
+        for k in keep:
+            if prev.get(r["id"], {}).get(k):
+                r[k] = prev[r["id"]][k]
+    have = {r["id"] for r in out}
+    dropped = sorted(i for i in prev if i not in have)
+    out = out + [dict(prev[i]) for i in dropped]
+    return sorted(out, key=lambda r: r["id"]), dropped
+
+
 def main():
     rows = {}
     dev = read("Development.md")
@@ -96,14 +111,12 @@ def main():
         out.append(r)
     os.makedirs(os.path.join(ROOT, "docs", "bug_recheck"), exist_ok=True)
     inv_path = os.path.join(ROOT, "docs", "bug_recheck", "inventory.csv")
-    # Hand/derived columns survive a rebuild (2026-10-03: a re-run had wiped the T14.2 content mapping).
-    keep = ("verify_scripts_by_content", "recheck_verdict")
     if os.path.exists(inv_path):
         prev = {r["id"]: r for r in csv.DictReader(open(inv_path, encoding="utf-8"))}
-        for r in out:
-            for k in keep:
-                if prev.get(r["id"], {}).get(k):
-                    r[k] = prev[r["id"]][k]
+        out, dropped = carry_forward(out, prev)
+        if dropped:
+            print(f"WARNING: {len(dropped)} previously inventoried id(s) no longer parsed from the docs -- kept from the "
+                  f"previous inventory (fix the parser or the doc heading): {dropped}")
     cols = ["id", "source", "doc_status", "n_tests", "verify_scripts", "verify_scripts_by_content",
             "in_bug_log_index", "first_line", "last_line", "n_mentions", "recheck_verdict"]
     with open(inv_path, "w", newline="", encoding="utf-8") as fh:
