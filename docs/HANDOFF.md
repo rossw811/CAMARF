@@ -1,3 +1,22 @@
+## 2026-10-10 (night): RESUME HERE. Pool chain (second pass) running on CachyOS; S34 decided.
+**Running (CachyOS, code 95825bec, do not pull until it finishes):** debug/_tmp_chain_pools.sh. Log
+latest_run_pool_chain.log; per-stage stdout output/research/_stdout_pool_chain_<stage>.log. Intraday re-run done
+18:38 (59 min): 1h Tier 2 60 / Tier 3 6 confirmed, 4h Tier 2 13 / Tier 3 0 (Tier 3 matches the 09-28 run). Adapter
+started 18:38 (--allow-stale-upstream; justified by debug/_check_discovery_code_neutrality.py, 500/500 identical
+p-values); then comparison_arms, pit_eligibility, clean_pools, pool_spreads, squeeze, the two audits, strategy_search
+run + eval. When it completes: review the audits, report the second pass beside the first, update C-006/registry,
+adversarial review of the verdict, then pull latest code on CachyOS and run the full suite there.
+**Decided today:** S1-S36 (all as recommended; S3 = k=2, N = 432). S34 accepted by Ross: 202 peripheral claims
+WITHDRAWN, 94 central claims REGISTERED pending re-derivation (8885db0c; docs/claims_triage_S34.csv, docs/claims_table.csv).
+**Done today:** bug recheck complete -- all 310 bugs have a verdict with evidence; last four: D28/D42/D46 fixed in code,
+D38 confirmed open (one-time cache cleanup, mechanism remains; yfinance intraday path only) (3c16ef58).
+_verify_data_wrds live checks gated behind CAMARF_LIVE_WRDS=1 (its login prompt hung the suite) (f63b1484).
+**Suite:** the Surface re-run (docs/bug_recheck/suite_20261010b_surface.log) was stopped at 285/376 by Claude Code for
+low memory; the one ERROR (_verify_manifest_lock.py) passes 2/2 alone -- memory pressure. Full re-run still owed.
+**Blocked on Ross:** Duo for the PAR_1M refetch -- run research/wrds_session_server.py in a terminal and approve;
+job queued at output/wrds_jobs/queue/20_refetch_par_monthly.py (PERMNO 61146, refuses to overwrite). The stale
+13_fetch_trfd_global_resume.py job was moved to output/wrds_jobs/superseded/.
+
 ## 2026-10-07 (night): RESUME HERE. Plan + sign-off sheet: docs/PLAN_OF_ACTION_2026-10-07.md (S1-S36, none decided yet).
 **2026-10-10 evening: S1-S36 DECIDED by Ross (all as recommended; S3 = k=2 rule, N = 432).** Addendum committed a918c5b0 before any second-pass result; S32/S35/S36 + hardware tuning 74e54dfa (suite 374/375, the 1 = live-WRDS prompt timeout). 1D discovery outputs shown behaviour-neutral to later code (500/500 sampled p-values identical, ~/neutrality_20261010.log on CachyOS). **Running on CachyOS since 17:37:** debug/_tmp_chain_pools.sh -- intraday re-run (1h/4h, last run 09-28) -> adapter --allow-stale-upstream -> comparison arms -> PIT eligibility -> clean pools -> spreads -> squeeze -> audits -> strategy_search run + eval. Log: latest_run_pool_chain.log; per-stage output output/research/_stdout_pool_chain_<stage>.log. After it: review audits, report pass 2 beside pass 1.
 **Grid-phase robustness result (2026-10-10, pre-declared metric; checked, see next entry):** chain complete 13:41 (code beb004b4). Tier 2: offset-0 confirmed 291, grid-robust (all 4 grids) 62 (21.3%), confirmed only by shifted grids 406; by number of grids {4: 62, 3: 44, 2: 87, 1: 504}. Tier 3: 687 -> 121 (17.6%), shifted-only 1,049; {4: 121, 3: 62, 2: 157, 1: 1,396}. Single-window episodic confirmation depends mostly on where the windows fall. Output output/research/grid_phase_robustness.parquet (CachyOS). S3 decides whether grid-robust pools replace offset-0 downstream.
