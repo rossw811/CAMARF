@@ -77,7 +77,8 @@ import pandas as pd
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from config import Config
-from analysis import UniverseFilter, _eg_worker, _benjamini_hochberg, CointScanner, _limit_worker_blas_threads
+from analysis import (UniverseFilter, _eg_worker, _benjamini_hochberg, CointScanner, _limit_worker_blas_threads,
+                      _combine_eg_directions)
 from research.rolling_adv_comparison import rolling_adv, load_wrds_universe_ohlcv
 from data_wrds import sp500_members_asof
 
@@ -336,6 +337,22 @@ def build_log_prices_and_returns_bounded(close_by_symbol, lookback_years=25, dty
     return log_price_df[valid_cols], returns[valid_cols]
 
 
+def _window_row(meta, r):
+    """One EG direction's result -> a per-direction p-value row, under production's rule
+    (analysis._combine_eg_directions, code review A1/S2): ok -> its p-value; "insufficient_overlap" -> None (never a
+    real test, excluded); any other error is a CRASHED test, which was attempted and so enters BH's m with p = 1.0
+    (flagged crashed=True). 2026-10-10: every path in this scan used to drop crashed tests, shrinking m."""
+    symbol_a, symbol_b, start, direction, _window_start_date, window_end_date = meta
+    if r.get("ok"):
+        p, crashed = r["pvalue"], False
+    elif r.get("error", "") == "insufficient_overlap":
+        return None
+    else:
+        p, crashed = 1.0, True
+    return {"symbol_a": symbol_a, "symbol_b": symbol_b, "window_start": start, "direction": direction,
+            "pvalue": p, "window_end_date": window_end_date, "crashed": crashed}
+
+
 def episodic_fraction(log_a, log_b, max_lag, window=EPISODIC_WINDOW_BARS, step=EPISODIC_STEP_BARS):
     """Rolling EG-both-directions test over a MUCH longer window than
     production's own 252-bar rolling_fraction -- the genuinely new
@@ -365,9 +382,10 @@ def episodic_fraction(log_a, log_b, max_lag, window=EPISODIC_WINDOW_BARS, step=E
         seg_a, seg_b = a[start:start + window], b[start:start + window]
         r_ab = _eg_worker(("A", "B", seg_a, seg_b, max_lag, TF_LABEL))
         r_ba = _eg_worker(("B", "A", seg_b, seg_a, max_lag, TF_LABEL))
-        if not (r_ab.get("ok") and r_ba.get("ok")):
+        rows = [_window_row(("A", "B", start, d, None, None), r) for d, r in (("ab", r_ab), ("ba", r_ba))]
+        if any(r is None for r in rows):   # insufficient overlap: never a real test
             continue
-        pvals.append(max(r_ab["pvalue"], r_ba["pvalue"]))
+        pvals.append(max(r["pvalue"] for r in rows))   # a crash enters as p = 1.0 (2026-10-10, A1/S2 rule)
     if not pvals:
         return np.nan, []
     frac = float(np.mean(np.array(pvals) < 0.05))
@@ -903,6 +921,7 @@ def run_rolling_eg_pool(pairs, log_price_df, max_lag, window=EPISODIC_WINDOW_BAR
     # the full accumulated `by_key` history -- part_idx starts past whatever part files a resumed
     # run already has on disk, so a resume never overwrites earlier parts.
     pending_new_rows = []
+    n_crashed = 0
     part_idx = len(glob.glob(_checkpoint_part_glob(checkpoint_id))) if checkpoint_id else 0
 
     def _flatten_by_key(d):
@@ -936,16 +955,16 @@ def run_rolling_eg_pool(pairs, log_price_df, max_lag, window=EPISODIC_WINDOW_BAR
                 continue
             results = pool.map(_eg_worker, tasks, chunksize=200)
             for meta, r in zip(task_meta, results):
-                symbol_a, symbol_b, start, direction, window_start_date, window_end_date = meta
-                if not r.get("ok"):
+                row = _window_row(meta, r)
+                if row is None:
                     continue
+                n_crashed += row.pop("crashed")
+                symbol_a, symbol_b, start, direction = meta[:4]
                 if not use_streaming:
                     key = (symbol_a, symbol_b, start)
-                    by_key.setdefault(key, {})[direction] = r["pvalue"]
-                    window_end_by_key[key] = window_end_date
-                pending_new_rows.append({"symbol_a": symbol_a, "symbol_b": symbol_b,
-                                          "window_start": start, "direction": direction,
-                                          "pvalue": r["pvalue"], "window_end_date": window_end_date})
+                    by_key.setdefault(key, {})[direction] = row["pvalue"]
+                    window_end_by_key[key] = row["window_end_date"]
+                pending_new_rows.append(row)
             if checkpoint_id and batch_num % checkpoint_every == 0 and pending_new_rows:
                 _save_checkpoint_batch(checkpoint_id, part_idx, pending_new_rows, n_done_now)
                 part_idx += 1
@@ -955,7 +974,7 @@ def run_rolling_eg_pool(pairs, log_price_df, max_lag, window=EPISODIC_WINDOW_BAR
                          f"({(time.time()-t0)/60:.1f} min elapsed)")
     if checkpoint_id and pending_new_rows:
         _save_checkpoint_batch(checkpoint_id, part_idx, pending_new_rows, len(pairs))
-    log.info(f"  done in {(time.time()-t0)/60:.1f} min")
+    log.info(f"  done in {(time.time()-t0)/60:.1f} min; crashed EG directions counted as p=1.0 in BH's m: {n_crashed}")
 
     # Reconstruct the final result from disk (streaming path only) -- a ONE-TIME cost paid once
     # at the very end, not compounding throughout the run the way the old always-in-memory
@@ -1295,27 +1314,14 @@ def main():
                                            checkpoint_id="tier1_fullsample" + _ARM_SUFFIX)
         clear_checkpoint("tier1_fullsample" + _ARM_SUFFIX)
 
-        ok_results = [r for r in results if r.get("ok")]
-        by_key = {}
-        for r in ok_results:
-            by_key.setdefault(frozenset((r["symbol_a"], r["symbol_b"])), []).append(r)
-
-        combined = []
-        for p in pairs:
-            key = frozenset((p["symbol_a"], p["symbol_b"]))
-            rs = by_key.get(key)
-            if not rs or len(rs) < 2:
-                continue
-            fwd = next((r for r in rs if r["symbol_a"] == p["symbol_a"]), None)
-            rev = next((r for r in rs if r["symbol_a"] == p["symbol_b"]), None)
-            if fwd is None or rev is None:
-                continue
-            combined.append({
-                "symbol_a": p["symbol_a"], "symbol_b": p["symbol_b"],
-                "pvalue": max(fwd["pvalue"], rev["pvalue"]),
-                "pvalue_ab": fwd["pvalue"], "pvalue_ba": rev["pvalue"],
-                "pearson_corr": p["pearson_corr"],
-            })
+        # 2026-10-10: production's direction-combination rule (analysis._combine_eg_directions, code review A1/S2):
+        # max p over both directions; a CRASHED test stays in BH's m with p = 1.0, only insufficient overlap is
+        # excluded. This path used to keep fully-ok pairs only, so every crash shrank m.
+        combined, eg_counts = _combine_eg_directions(pairs, results)
+        corr_by_key = {frozenset((p["symbol_a"], p["symbol_b"])): p["pearson_corr"] for p in pairs}
+        for c in combined:
+            c["pearson_corr"] = corr_by_key[frozenset((c["symbol_a"], c["symbol_b"]))]
+        log.info(f"Tier 1 EG direction combination: {eg_counts}")
 
         if not combined:
             log.warning("No pairs had usable EG results in both directions.")

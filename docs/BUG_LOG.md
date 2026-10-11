@@ -287,3 +287,8 @@ the full context stays in `Development.md`.
   now computed in both `ml.py::_train_and_validate` and `research/lstm_attention_training.py`. No
   code defect -- the gap was a missing evaluation metric across the whole project, not a wrong
   calculation.
+- **BUG-D115** (2026-10-10): `research/wrds_deep_history_episodic_scan.py` dropped CRASHED Engle-Granger tests from
+  Benjamini-Hochberg's m on every path (Tier 1 inline combination, Tier 2/3 window loop, `episodic_fraction`), unlike
+  production's `_combine_eg_directions` rule (A1/S2: crash -> p = 1.0, kept in m). Fixed failing-first
+  (`debug/_verify_episodic_crash_in_bh_m.py`, 0/3 -> 7/7). Impact on the beb004b4 discovery runs not yet measured
+  (needs a full-universe task rebuild on CachyOS).
