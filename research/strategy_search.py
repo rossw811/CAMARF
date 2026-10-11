@@ -96,7 +96,8 @@ def run_phase(workers):
     tasks = [(p, c) for p in POOLS for c in build_grid()]
     print(f"{len(tasks)} runs, {workers} workers", flush=True)
     t0 = time.time()
-    with mp.get_context("fork").Pool(workers) as pool:
+    from analysis import _limit_worker_blas_threads   # 1 BLAS thread per worker (hardware check, 2026-10-10)
+    with mp.get_context("fork").Pool(workers, initializer=_limit_worker_blas_threads) as pool:
         for i, (cid, n) in enumerate(pool.imap_unordered(_run_one, tasks), 1):
             if i % 10 == 0 or i == len(tasks):
                 print(f"{i}/{len(tasks)} done ({time.time() - t0:.0f}s); last {cid}: {n}", flush=True)
@@ -242,7 +243,8 @@ def eval_phase():
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("phase", choices=["run", "eval"])
-    ap.add_argument("--workers", type=int, default=max(1, (os.cpu_count() or 2) // 2))
+    from config import Config
+    ap.add_argument("--workers", type=int, default=Config.RUNTIME.N_WORKERS)   # was cpu_count // 2 (hardware check 2026-10-10)
     a = ap.parse_args()
     run_phase(a.workers) if a.phase == "run" else eval_phase()
 

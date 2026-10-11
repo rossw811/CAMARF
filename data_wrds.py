@@ -878,6 +878,16 @@ _ILLIQUID_EXCLUSION_CACHE = os.path.join(_OUT_DIR, "sp500_delisted_illiquid_excl
 _DELISTED_LABEL_MAP_CACHE = os.path.join(_OUT_DIR, "sp500_delisted_label_map.parquet")
 
 
+def crsp_no_trade_mask(df: pd.DataFrame, label: str, px: pd.Series) -> pd.Series:
+    """D18 rule (Ross 2026-10-07: exclude), shared by the discovery scan and the traded pool spreads (plan S35,
+    2026-10-10): for a non-Compustat (non-GVKEY) WRDS daily file, a day with no close but a total-return value is a
+    CRSP no-trade day (the return is a bid/ask midpoint) -> masked to NaN. Compustat files are returned unchanged.
+    debug/_verify_traded_series_no_trade_mask.py"""
+    if str(label).startswith("GVKEY") or "close" not in df.columns:
+        return px
+    return px.mask(df["close"].isna() & px.notna())
+
+
 def compute_symbol_adv_wrds(label: str, window_days: int = 252) -> float:
     """
     Average daily dollar volume for an already-fetched WRDS symbol, read

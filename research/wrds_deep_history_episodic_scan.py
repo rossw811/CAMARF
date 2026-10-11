@@ -206,10 +206,11 @@ def load_wrds_universe(d18_arm: str = "exclude"):
             continue
         if "close_total_return" in df.columns and df["close_total_return"].notna().any():
             px = df["close_total_return"].astype("float64")
-            if d18_arm == "exclude" and "close" in df.columns and not sym.startswith("GVKEY"):
-                no_trade = df["close"].isna() & px.notna()
-                n_masked_days += int(no_trade.sum())
-                px = px.mask(no_trade)
+            if d18_arm == "exclude":
+                from data_wrds import crsp_no_trade_mask   # one rule, shared with the traded pool spreads (S35)
+                masked = crsp_no_trade_mask(df, sym, px)
+                n_masked_days += int((masked.isna() & px.notna()).sum())
+                px = masked
             out[sym] = px
             used_total_return.add(sym)
         elif "close_usd" in df.columns and df["close_usd"].notna().any():

@@ -163,7 +163,12 @@ def _load_symbol(symbol: str, tf_label: str, preloaded: dict = None):
                 for _col in ("close_total_return", "close_usd"):
                     if _col in _w.columns and _w[_col].notna().any():
                         _w = _w.copy()
-                        _w["close"] = _w[_col]
+                        _px = pd.to_numeric(_w[_col], errors="coerce").astype("float64")
+                        if _col == "close_total_return":
+                            # S35 (Ross 2026-10-10): mask CRSP no-trade (midpoint) days, the same rule discovery uses
+                            from data_wrds import crsp_no_trade_mask
+                            _px = crsp_no_trade_mask(_w, symbol, _px)
+                        _w["close"] = _px
                         break
                 if not _w.empty:
                     _w = _w.drop(columns=[c for c in ("close_total_return", "close_usd") if c in _w.columns])
@@ -408,7 +413,8 @@ def build_adapter_rows(
         for d in pending
     ]
     completed_since_save = 0
-    with ProcessPoolExecutor(max_workers=n_workers) as pool:
+    from analysis import _limit_worker_blas_threads   # 1 BLAS thread per worker (hardware check, 2026-10-10)
+    with ProcessPoolExecutor(max_workers=n_workers, initializer=_limit_worker_blas_threads) as pool:
         futures = {pool.submit(_build_one_row_worker, t): t for t in tasks}
         for fut in as_completed(futures):
             row = fut.result()
@@ -457,7 +463,7 @@ def _lineage_guard(args):
 def main():
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument("--workers", type=int, default=1,
+    parser.add_argument("--workers", type=int, default=Config.RUNTIME.N_WORKERS,   # was 1 (hardware check 2026-10-10)
                          help="Parallel worker processes for the per-pair build "
                               "(BUG-D110: single-threaded, ~28s/pair, hours for "
                               "647+ pairs). Each pair's build is independent.")

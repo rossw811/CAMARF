@@ -28,6 +28,10 @@ def main():
         ("B", "A", "2012-12-31", True),                        # reversed order, same unordered pair
         ("C", "D", "2010-12-31", True), ("C", "D", "2011-12-31", False),
     ], columns=["symbol_a", "symbol_b", "window_end_date", "fdr_rejected"])
+    # S32 (2026-10-10): eligibility now recomputes a point-in-time BH family from p-values; a rejected window gets a
+    # p that every as-of family rejects (1e-9), a non-rejected one 0.9 -- same expectations as before (all dates are
+    # month-ends). The as-of-family behaviour itself: debug/_verify_pit_bh_eligibility.py
+    W["pvalue"] = W.pop("fdr_rejected").map({True: 1e-9, False: 0.9})
     pool = pd.DataFrame({"symbol_a": ["A", "D", "E"], "symbol_b": ["B", "C", "F"], "tf_label": ["1D"] * 3})
     r1, m1 = attach_eligibility(pool, {"1D": W}, 1)
     e1 = {(a, b): d for a, b, d in zip(r1.symbol_a, r1.symbol_b, pd.to_datetime(r1.eligible_from))}

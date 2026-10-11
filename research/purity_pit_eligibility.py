@@ -20,9 +20,12 @@ Verified first: debug/_verify_purity_pit_eligibility.py.
 import os
 import sys
 
+import numpy as np
 import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from config import Config
 
 _TIER3 = {
     "1D": os.path.join("output", "research", "wrds_deep_history_episodic_scan_tier3_windows.parquet"),
@@ -45,13 +48,57 @@ def kth_rejection_dates(windows: pd.DataFrame, k: int) -> pd.DataFrame:
     return pd.concat([kth, n], axis=1).dropna(subset=["eligible_from"]).reset_index()
 
 
+def _bh_cutoff(sorted_p: np.ndarray, alpha: float) -> float:
+    """Benjamini-Hochberg step-up cutoff on ascending p-values: reject every p <= the returned value (-1 if none)."""
+    m = sorted_p.size
+    if m == 0:
+        return -1.0
+    ok = np.flatnonzero(sorted_p <= alpha * np.arange(1, m + 1) / m)
+    return float(sorted_p[ok[-1]]) if ok.size else -1.0
+
+
+def pit_kth_rejection_dates(windows: pd.DataFrame, k: int, alpha: float = None) -> pd.DataFrame:
+    """Point-in-time eligibility (plan S32, Ross 2026-10-10). At each month-end T, BH over the windows concluded by T
+    (window_end_date <= T); a pair's eligible_from is the first month-end at which >= k of its windows are rejected
+    under that as-of family. The whole-history fdr_rejected flag used before let windows ending later decide whether
+    an early window counted (lookahead). Month-end evaluation is conservative (up to a month late), never early.
+    Returns key_a, key_b, eligible_from, n_rejected (as of the last month-end). debug/_verify_pit_bh_eligibility.py"""
+    alpha = Config.STATS.FDR_ALPHA if alpha is None else alpha
+    w = windows[["symbol_a", "symbol_b", "window_end_date", "pvalue"]].copy()
+    w["window_end_date"] = pd.to_datetime(w["window_end_date"])
+    w = w.dropna(subset=["window_end_date", "pvalue"]).sort_values("window_end_date").reset_index(drop=True)
+    a, b = w["symbol_a"].astype(str), w["symbol_b"].astype(str)
+    w["key_a"], w["key_b"] = a.where(a <= b, b), b.where(a <= b, a)
+    codes, uniq = pd.factorize(pd.Series(list(zip(w["key_a"], w["key_b"]))))
+    ends = w["window_end_date"].to_numpy()
+    p = w["pvalue"].to_numpy(dtype=float)
+    months = pd.date_range(w["window_end_date"].min(), w["window_end_date"].max() + pd.offsets.MonthEnd(0), freq="ME")
+    first = np.full(len(uniq), np.datetime64("NaT"), dtype="datetime64[ns]")
+    last_count = np.zeros(len(uniq), dtype=int)
+    for T in months:
+        n = int(np.searchsorted(ends, np.datetime64(T), side="right"))
+        if n == 0:
+            continue
+        cut = _bh_cutoff(np.sort(p[:n]), alpha)
+        rej = p[:n] <= cut
+        counts = np.bincount(codes[:n][rej], minlength=len(uniq))
+        new = (counts >= k) & np.isnat(first)
+        first[new] = np.datetime64(T)
+        last_count = counts
+    keep = ~np.isnat(first)
+    return pd.DataFrame({"key_a": [uniq[i][0] for i in np.flatnonzero(keep)],
+                         "key_b": [uniq[i][1] for i in np.flatnonzero(keep)],
+                         "eligible_from": pd.to_datetime(first[keep]),
+                         "n_rejected": last_count[keep]})
+
+
 def attach_eligibility(pool: pd.DataFrame, windows_by_tf: dict, k: int):
     out, missing = [], []
     for tf, g in pool.groupby("tf_label"):
         w = windows_by_tf.get(tf)
         if w is None:
             missing.append((tf, len(g), "no tier-3 file")); continue
-        e = kth_rejection_dates(w, k)
+        e = pit_kth_rejection_dates(w, k)   # S32 (2026-10-10): point-in-time BH family, not the whole-history flag
         g = g.copy()
         a, b = g["symbol_a"].astype(str), g["symbol_b"].astype(str)
         g["key_a"], g["key_b"] = a.where(a <= b, b), b.where(a <= b, a)
@@ -69,7 +116,7 @@ def main():
     windows = {}
     for tf, path in _TIER3.items():
         if os.path.exists(path):
-            windows[tf] = pd.read_parquet(path, columns=["symbol_a", "symbol_b", "window_end_date", "fdr_rejected"])
+            windows[tf] = pd.read_parquet(path, columns=["symbol_a", "symbol_b", "window_end_date", "pvalue"])
     for k in (1, 2):
         res, missing = attach_eligibility(pool, windows, k)
         path = os.path.join("output", "research", f"purity_pairs_pit_k{k}.parquet")
