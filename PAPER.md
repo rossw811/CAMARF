@@ -668,7 +668,7 @@ underlying point: NTRS/STT alone is sufficient to demonstrate that a pair
 can clear a decisive full-sample bar while having already failed a recent
 one, and the negative controls (XOM/CVX, JPM/BAC, KO/PEP) confirm the
 demonstration isn't an artifact of testing at all, since none of them show
-the pattern on either window. SHW/UNP is kept in the table for
+the pattern on either window. [Corrected 2026-10-10, docs/CLAIMS_REGISTRY.md C-001: this table did not use the production test settings -- it ran one direction with a free lag. Under discovery's actual test (no-trade mask, max over both directions, max lag 10) NTRS/STT still holds (0.000039 / 0.599), but XOM/CVX shows the same pattern (0.041 / 0.377), so the sentence about the negative controls does not hold; NTRS/STT's history here is ~40 years, not 50+.] SHW/UNP is kept in the table for
 transparency about what changed, not presented as a second confirming
 case going forward. **Why this is a structural limitation, not just an
 explanation:** `coint_fraction_rolling` is a secondary filter applied only

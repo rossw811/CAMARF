@@ -6,6 +6,10 @@ lists (docs/PAPER_SCRUTINY_2026-09-27.md, 284 rows across PAPER.md and PAPER_MAG
   STANDS / QUALIFY / UNVERIFIED -> REGISTERED (nothing is REPLICATED until re-derived on current data)
 Output: docs/claims_table.csv (id, paper, location, claim, scrutiny_verdict, findings, registry_status); prints counts.
 docs/CLAIMS_REGISTRY.md links to it; the full entries C-001.. stay there for claims re-derived one by one.
+Decisions made after the scrutiny (Ross's S34 class, per-claim re-derivations) are kept in
+docs/claims_status_overrides.csv (id, registry_status, s34_class, status_reason) and applied last, so a rebuild never
+reverts them (2026-10-10: the S34 and C-001 updates were first made in the generated CSV, which a rebuild would have
+silently undone).
 Usage: python scripts/build_claims_table.py
 Synthetic check: debug/_verify_build_claims_table.py
 """
@@ -17,6 +21,8 @@ import pandas as pd
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SRC = os.path.join(ROOT, "docs", "PAPER_SCRUTINY_2026-09-27.md")
 OUT = os.path.join(ROOT, "docs", "claims_table.csv")
+OVERRIDES = os.path.join(ROOT, "docs", "claims_status_overrides.csv")
+REGISTRY_STATUSES = {"REGISTERED", "REPLICATED", "CORRECTED", "WITHDRAWN"}
 STATUS = {"WITHDRAW": "WITHDRAWN", "REPLACE": "CORRECTED", "STANDS": "REGISTERED", "QUALIFY": "REGISTERED",
           "UNVERIFIED": "REGISTERED"}
 _ID = re.compile(r"^[PM]-\d+[a-z]?$")
@@ -43,8 +49,29 @@ def parse_claims(text: str) -> pd.DataFrame:
                                        "registry_status"])
 
 
+def apply_overrides(t: pd.DataFrame, ov: pd.DataFrame) -> pd.DataFrame:
+    t = t.copy()
+    t["s34_class"], t["status_reason"] = "", ""
+    ov = ov.fillna("")
+    unknown = sorted(set(ov["id"]) - set(t["id"]))
+    if unknown:
+        raise ValueError(f"overrides name claims not in the scrutiny table: {unknown}")
+    bad = sorted(set(ov["registry_status"]) - REGISTRY_STATUSES - {""})
+    if bad:
+        raise ValueError(f"unknown registry status in overrides: {bad}")
+    for r in ov.itertuples():
+        m = t["id"] == r.id
+        if r.registry_status:
+            t.loc[m, "registry_status"] = r.registry_status
+        t.loc[m, "s34_class"] = r.s34_class
+        t.loc[m, "status_reason"] = r.status_reason
+    return t
+
+
 def main():
     t = parse_claims(open(SRC, encoding="utf-8").read())
+    if os.path.exists(OVERRIDES):
+        t = apply_overrides(t, pd.read_csv(OVERRIDES, dtype=str))
     t.to_csv(OUT, index=False)
     print(f"{len(t)} claims -> {OUT}")
     print(pd.crosstab(t["paper"], t["registry_status"]).to_string())

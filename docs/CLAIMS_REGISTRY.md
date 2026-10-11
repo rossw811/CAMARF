@@ -54,6 +54,22 @@ The C-entries below are claims re-derived one by one on current data.
 - **Controls (same run):** XOM/CVX 0.082 / 0.482 (26,301 d); JPM/BAC 0.935 / 0.881 (11,741 d); KO/PEP 0.105 / 0.963
   (26,301 d); SHW/UNP 0.061 / 0.054 (14,238 d).
 
+- **Re-derivation 2026-10-10 (S34, central): CORRECTED.** `python research/rederive_durability_claims.py` →
+  `output/research/rederive_durability_claims.parquet`, two arms on the same CRSP files. *as_published* (A-on-B only,
+  `max_lag=None` → statsmodels picks the lag, ~48 at n≈26k, by AIC; no-trade days kept) reproduces every number above
+  exactly. *current_rules* = the test discovery actually runs: S35 no-trade mask, max p over both directions,
+  `max_lag = Config.ANALYSIS.EG_MAX_LAG = 10`. Full p / last-5y p:
+  NTRS/STT 0.000039 / 0.599 (10,097 d) -- **claim holds**; the recent p is 0.599 (the B-on-A direction), not 0.561.
+  XOM/CVX **0.041** / 0.377 (26,291 d) -- **now shows the NTRS/STT pattern**, so "none of the negative controls show
+  the pattern" (PAPER.md §4.2) is false under the production test. JPM/BAC 0.895 / 0.881. KO/PEP 0.112 / 0.963
+  (24,671 d). SHW/UNP 0.061 / 0.054 (directions: UNP-on-SHW 0.044 / 0.003 -- the published one-direction reading
+  depended on leg order). Also corrected: §4.2 says the demo used production `_eg_worker` "unmodified: same test";
+  the parameters were not production's (lag, direction). Caveat (independent review): "since 1985-12-03" is when the
+  WRDS cache has prices for both legs; NTRS and STT have positive volume from 1982-11-01 with no price on 772 / 413
+  days -- not checked against WRDS whether CRSP has returns for those days. "50+ years" in the NTRS/STT paragraph
+  (PAPER.md §4.2) should read ~40. Checked by an independent adversarial review (2026-10-10), which found the lag
+  error in the first version of the re-derivation script; fixed and re-run.
+
 ## C-002 — Calendar-padding artifact in rolling z-scores
 - **Claim:** a z-score over a window padded with calendar (non-trading) rows is bounded by (n−1)/√n
   (= 15.81 at n = 252), producing spurious extreme z at the market open.
