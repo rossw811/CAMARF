@@ -54,7 +54,7 @@ from analysis import AnalysisPipeline, UniverseFilter, CointScanner, CrossAssetT
 from backtest import BacktestEngine, RegimeConditioner, MLConditioner, compute_metrics, aggregate_portfolio
 from config import Config
 from data import DataAligner
-from pit_wfa import compute_fold_dates, FOLD_EXPANDING, FOLD_ROLLING
+from pit_wfa import compute_fold_dates, FOLD_EXPANDING, FOLD_ROLLING, _pit_pair_row
 
 _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _OUT_DIR = os.path.join(_ROOT, "output", "backtest")
@@ -199,6 +199,14 @@ def screen_universe_at_cutoff(
     return confirmed
 
 
+def _pair_row(full_pair_result, pair_result, tf_label):
+    """The engine's pair row: per-bar/series fields from the train+test build, every train-only scalar
+    (pit_wfa._TRAIN_ONLY_FIELDS, incl. both hedge ratios the skip/fallback logic reads) from the point-in-time train
+    screen. Code review R1.13 (2026-10-10): this script hand-built the row and overrode only four filter scalars, so
+    the hedge ratios came from train+test data -- the S4 leak pit_wfa.py had already fixed. Now shares that fix."""
+    return _pit_pair_row(full_pair_result, pair_result, tf_label)
+
+
 def backtest_pair_on_test_window(
     pair_result, universe: Dict[str, pd.DataFrame],
     train_start: pd.Timestamp, test_start: pd.Timestamp, test_end: pd.Timestamp,
@@ -262,14 +270,7 @@ def backtest_pair_on_test_window(
     if len(test_slice) < 30:
         return [], {}
 
-    pair_row = pd.Series({
-        **vars(full_pair_result),
-        "coint_fraction_rolling": getattr(pair_result, "coint_fraction_rolling", np.nan),
-        "half_life_trend_slope": getattr(pair_result, "half_life_trend_slope", np.nan),
-        "mean_reversion_speed": getattr(pair_result, "mean_reversion_speed", np.nan),
-        "hurst_rs": getattr(pair_result, "hurst_rs", np.nan),
-        "tf_label": _TF_LABEL,
-    })
+    pair_row = _pair_row(full_pair_result, pair_result, _TF_LABEL)
     engine = BacktestEngine(cfg=Config.BACKTEST, regime_cond=RegimeConditioner(enabled=False),
                              ml_cond=MLConditioner(enabled=False), legacy_pnl=_LEGACY_PNL)
     # B2/B3 (Ross 2026-10-03): dollar P&L by default -- applied by the engine itself since 2026-10-07
