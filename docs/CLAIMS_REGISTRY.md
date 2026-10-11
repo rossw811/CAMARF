@@ -27,8 +27,10 @@ every claim row of the section-by-section scrutiny (`docs/PAPER_SCRUTINY_2026-09
 | REPLACE | CORRECTED | a committed corrected value exists (CR-1..CR-7); cite it with its stated scope |
 | STANDS / QUALIFY / UNVERIFIED | REGISTERED | stated, not yet re-derived on current data -- nothing is REPLICATED until it is |
 
-Counts (455 claim rows): PAPER.md 313 = 107 WITHDRAWN, 11 CORRECTED, 195 REGISTERED; PAPER_MAGNITUDE.md 142 = 52
-WITHDRAWN, 0 CORRECTED, 90 REGISTERED. Note: the scrutiny document's own summary table says 284 rows; its tables hold
+Counts (455 claim rows; 2026-10-07 build): PAPER.md 313 = 107 WITHDRAWN, 11 CORRECTED, 195 REGISTERED;
+PAPER_MAGNITUDE.md 142 = 52 WITHDRAWN, 0 CORRECTED, 90 REGISTERED. **After S34 (Ross, 2026-10-10) and the C-001
+re-derivation:** PAPER.md 262 WITHDRAWN, 9 CORRECTED, 42 REGISTERED; PAPER_MAGNITUDE.md 99 WITHDRAWN, 43 REGISTERED.
+Decisions are kept in docs/claims_status_overrides.csv, which scripts/build_claims_table.py applies last. Note: the scrutiny document's own summary table says 284 rows; its tables hold
 455 (the summary was not updated as rows were added) -- the table counts are the ones used here.
 Since the scrutiny (2026-09-27) more defects were confirmed (2026-10-07 bug recheck, docs/bug_recheck/): e.g. S5 (the
 Reality Check p-values), S6 (the Gold/Silver/Bronze tiers), the engine-level dollar P&L gap and A5/A7/A8 (the
