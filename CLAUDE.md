@@ -32,7 +32,7 @@ structure, predictable at statistically significant rates via multiclass ML.
    from CRSP `close_total_return`, the series discovery tests. yfinance fills only symbols WRDS
    doesn't cover (and is the daily *fetch* tool in `data.py`). Caveat, still open: the loader's
    `columns=["close"]` path reads WRDS *price-only* `close`, not total return (code review U4),
-   and Compustat Global prices are in local currency until the FX conversion lands (R1.1).
+   and Compustat Global prices are converted to USD (`close_usd`, R1.1, fixed 2026-09-27; loaders prefer it).
    **IBKR deep history is off by default** (`include_ibkr=False`): it exists only for previously
    confirmed pairs' symbols, so using it in discovery makes data depth depend on earlier results.
    It may only be used as a separately labelled side arm on a symbol set declared in advance.
