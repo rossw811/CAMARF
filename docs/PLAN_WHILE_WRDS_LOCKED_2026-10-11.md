@@ -14,6 +14,20 @@ first (W2.3/W2.4). Also PAR_1M (job 20, S13) and the R1.12 total-return question
 
 ---
 
+**Ross 2026-10-12: all of Tracks A–D and all 20 brainstorm items approved ("i like all those. let's do it"), plus
+Track E (no arbitrary values; show why; account for overfitting).** Progress: A0 ✅ (0549c32d); A1 ▶ (CachyOS suite);
+E1–E2 ✅ (4e0364a0).
+
+## Track E — every value justified, overfitting accounted for (Ross 2026-10-12)
+
+| # | Item | Owner | Done when |
+|---|---|---|---|
+| E1 | Registry of every tunable value (`docs/PARAMETER_REGISTRY.csv`, 337 on day one) | C | ✅ |
+| E2 | Gate test: unregistered / drifted / reason-less values fail; unjustified backlog may only shrink (ratchet) | C | ✅ in the suite |
+| E3 | Justify every value, headline-affecting first (BACKTEST, ANALYSIS, STATS, UNIVERSE, discovery-scan constants), from Development.md / git history / calibration scripts; where none exists, run the calibration or mark it for the specification curve | C | backlog 0 |
+| E4 | Phase 2: register inline numeric literals used as thresholds (`p < 0.05`, 0.15 gaps, …) | C | scanner + gate cover them |
+| E5 | Overfitting account (docs/PARAMETER_REGISTRY.md proposal: trial-count deflation, specification curves, placebo discovery, sealed holdout) | ❓ R | Ross adopts / modifies; then built as comparisons |
+
 ## Track A — now, no WRDS, no Ross decision needed
 
 | # | Item | Owner | Done when |
