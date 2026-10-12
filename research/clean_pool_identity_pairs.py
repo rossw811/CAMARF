@@ -41,32 +41,57 @@ def identity_share(ra: pd.Series, rb: pd.Series):
     return float((np.abs(a.to_numpy() - b.to_numpy()) <= TOL).mean()), len(a)
 
 
-def company_ids(labels, label_map: pd.DataFrame, master: pd.DataFrame, ccm_link: pd.DataFrame = None) -> dict:
-    """label -> frozenset of company ids: 'permco:<n>' (CRSP: label map or PERMNO<n> label -> PERMNO -> PERMCO) and,
-    when the CRSP-Compustat link is given (crsp.ccmxpf_lnkhist: permno -> gvkey, any link row of the PERMCO), the
-    linked 'gvkey:<g>'; Compustat labels GVKEY<g>_<iid> -> {'gvkey:<g>'}; None when unmapped. Plan S36 (Ross
-    2026-10-10). 2026-10-11: without the link a US ADR and the same company's home listing (ASML vs GVKEY061214_01W)
-    were never matched. debug/_verify_same_company_pairs.py"""
+def company_ids(labels, label_map: pd.DataFrame, master: pd.DataFrame, ccm_link: pd.DataFrame = None,
+                ciq_gvkey: pd.DataFrame = None, ciq_cusip: pd.DataFrame = None, cusip_by_permno: dict = None) -> dict:
+    """label -> frozenset of company ids; two labels are the same company when their sets intersect.
+      CRSP label  (label map, or a PERMNO<n> label -> PERMNO -> PERMCO): 'permco:<n>'; every GVKEY linked to that
+                  PERMCO in the CRSP-Compustat link (crsp.ccmxpf_lnkhist) -> 'gvkey:<g>'; and the Capital IQ company
+                  of its CUSIP (ciq_common.wrds_cusip, 8-character match) or of a linked GVKEY -> 'ciq:<id>'
+      Compustat GVKEY<g>_<iid>: 'gvkey:<g>' and its Capital IQ company (ciq_common.wrds_gvkey) -> 'ciq:<id>'
+    None when unmapped. Plan S36 (Ross 2026-10-10). 2026-10-11: CCM link (ASML vs GVKEY061214_01W). 2026-10-12:
+    Capital IQ, which keeps one companyid across all of a firm's listings -- Compustat files some ADRs under a
+    different GVKEY than the home company. debug/_verify_same_company_pairs.py"""
     import re
     permno_by_label = dict(zip(label_map["label"].astype(str), label_map["permno"]))
     m_ = master.dropna(subset=["permno", "permco"])[["permno", "permco"]].astype(int).drop_duplicates()
     permco_by_permno = dict(m_.drop_duplicates("permno").itertuples(index=False, name=None))
+    permnos_by_permco = m_.groupby("permco")["permno"].apply(set).to_dict()
     gvkeys_by_permco = {}
     if ccm_link is not None and len(ccm_link):
         L = ccm_link.dropna(subset=["permno", "gvkey"])[["permno", "gvkey"]].astype(int).merge(m_, on="permno")
         for pc, g in L[["permco", "gvkey"]].drop_duplicates().itertuples(index=False, name=None):
             gvkeys_by_permco.setdefault(pc, set()).add(g)
+    ciq_by_gvkey = {}
+    if ciq_gvkey is not None and len(ciq_gvkey):
+        G = ciq_gvkey.dropna(subset=["gvkey", "companyid"])
+        for g, c in zip(G["gvkey"].astype(int), G["companyid"].astype(int)):
+            ciq_by_gvkey.setdefault(g, set()).add(c)
+    ciq_by_c8 = {}
+    if ciq_cusip is not None and len(ciq_cusip):
+        C = ciq_cusip.dropna(subset=["cusip", "companyid"])
+        for cu, c in zip(C["cusip"].astype(str).str[:8], C["companyid"].astype(int)):
+            ciq_by_c8.setdefault(cu, set()).add(c)
+    cusip_by_permno = cusip_by_permno or {}
     out = {}
     for lab in labels:
         lab = str(lab)
         g = re.fullmatch(r"GVKEY(\d+)_\w+", lab)
         if g:
-            out[lab] = frozenset({f"gvkey:{int(g.group(1))}"}); continue
+            gv = int(g.group(1))
+            out[lab] = frozenset({f"gvkey:{gv}"} | {f"ciq:{c}" for c in ciq_by_gvkey.get(gv, ())}); continue
         m = re.fullmatch(r"PERMNO(\d+)", lab)
         pn = int(m.group(1)) if m else permno_by_label.get(lab)
         pc = permco_by_permno.get(int(pn)) if pn is not None and pd.notna(pn) else None
-        out[lab] = (frozenset({f"permco:{pc}"} | {f"gvkey:{x}" for x in gvkeys_by_permco.get(pc, ())})
-                    if pc is not None else None)
+        if pc is None:
+            out[lab] = None; continue
+        gvs = gvkeys_by_permco.get(pc, set())
+        ids = {f"permco:{pc}"} | {f"gvkey:{x}" for x in gvs}
+        ids |= {f"ciq:{c}" for x in gvs for c in ciq_by_gvkey.get(x, ())}
+        for p in permnos_by_permco.get(pc, {int(pn)}):
+            cu = cusip_by_permno.get(p)
+            if cu:
+                ids |= {f"ciq:{c}" for c in ciq_by_c8.get(str(cu)[:8], ())}
+        out[lab] = frozenset(ids)
     return out
 
 
@@ -97,15 +122,27 @@ def main():
     cache, rows = {}, []
     # S36 (Ross 2026-10-10): same-company pairs (share classes, Compustat listings of one GVKEY) are removed and counted
     _w = os.path.join(_ROOT, "output", "cache", "wrds")
-    _lm = pd.concat([pd.read_parquet(os.path.join(_w, "full_us_market_label_map.parquet"))]
-                    + [pd.read_parquet(f)[["label", "permno"]] for f in sorted(
-                        __import__("glob").glob(os.path.join(_w, "extra_permno_map_*.parquet")))], ignore_index=True)
-    _master = pd.read_parquet(os.path.join(_w, "crsp_full_security_master_v2.parquet"), columns=["permno", "permco"])
+    # 2026-10-12: the content-verified label -> PERMNO map (full_us_market_label_map named reused tickers' old holders:
+    # TM -> Toastmaster), PERMCO/CUSIP from the FULL CRSP names history (the v2 master has no ADRs), Capital IQ links
+    from data_wrds import label_permno_map
+    _lmap = label_permno_map()
+    _lm = pd.DataFrame({"label": list(_lmap), "permno": list(_lmap.values())})
+    _names = pd.read_parquet(os.path.join(_w, "crsp_stocknames_all.parquet"))
+    _master = pd.concat([_names[["permno", "permco"]],
+                         pd.read_parquet(os.path.join(_w, "crsp_full_security_master_v2.parquet"), columns=["permno", "permco"])])
+    _cus = dict(_names.sort_values("nameenddt").dropna(subset=["ncusip"]).groupby("permno")["ncusip"].last())
     _link = pd.read_parquet(_CCM_LINK) if os.path.exists(_CCM_LINK) else None
+    _cg = os.path.join(_w, "ciq_link_gvkey.parquet"); _cc = os.path.join(_w, "ciq_link_cusip.parquet")
+    _ciq_g = pd.read_parquet(_cg, columns=["gvkey", "companyid"]) if os.path.exists(_cg) else None
+    _ciq_c = pd.read_parquet(_cc, columns=["cusip", "companyid"]) if os.path.exists(_cc) else None
     for k in (1, 2):
         P = pd.read_parquet(os.path.join(_R, f"purity_pairs_pit_k{k}.parquet"))
         require_link_for_mixed(zip(P["symbol_a"], P["symbol_b"]), _link)
-        ids = company_ids(pd.concat([P["symbol_a"], P["symbol_b"]]).unique(), _lm, _master, _link)
+        if _ciq_g is None or _ciq_c is None:
+            raise SystemExit("Capital IQ link files missing (output/cache/wrds/ciq_link_gvkey/cusip.parquet; WRDS job "
+                             "24_fetch_ciq_company_links) -- ADR-vs-home-listing pairs cannot be checked")
+        ids = company_ids(pd.concat([P["symbol_a"], P["symbol_b"]]).unique(), _lm, _master, _link,
+                          ciq_gvkey=_ciq_g, ciq_cusip=_ciq_c, cusip_by_permno=_cus)
         keep = []
         for r in P.itertuples():
             for s in (r.symbol_a, r.symbol_b):

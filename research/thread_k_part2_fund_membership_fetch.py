@@ -87,7 +87,9 @@ def build_combined_universe() -> list:
     wanted later) would need a DIFFERENT data source entirely, not tr_13f --
     out of scope for this fetch, not silently attempted and producing
     guaranteed-empty results for ~2,930 wasted query slots."""
-    us_map = pd.read_parquet(os.path.join(_OUT_DIR, "full_us_market_label_map.parquet"))
+    from data_wrds import label_permno_map   # 2026-10-12: content-verified map
+    _m = label_permno_map()
+    us_map = pd.DataFrame({"label": list(_m), "permno": list(_m.values())})
     # Excludes PERMNO<n> collision-fallback labels -- tr_13f is ticker-keyed,
     # a synthetic PERMNO<n> label can never match a real 13F filing.
     us_tickers = [l for l in us_map["label"] if not str(l).startswith("PERMNO")]

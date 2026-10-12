@@ -28799,3 +28799,37 @@ pool step refuses mixed pairs when the link file is missing (`require_link_for_m
 `debug/_verify_same_company_pairs.py` extended (TypeError on the old code) -> 13/13. The link is not cached; WRDS job
 `21_fetch_ccm_link.py` is queued. The second pass (stopped 2026-10-11 before any trade was written) re-runs after:
 link fetched -> clean_pools -> pool_spreads -> squeeze -> audits -> search run --fresh -> eval.
+
+### BUG-D117: two label -> PERMNO maps named the wrong security (2026-10-12)
+
+Found while checking why ADR-vs-home-listing pairs survived the CCM-linked same-company rule. Each CRSP file in
+output/cache/wrds is labelled by a ticker but does not record its PERMNO; two maps supplied it:
+- `full_us_market_label_map` (D17 relabel, built against crsp_full_security_master_v2, which holds ORDINARY SHARES
+  ONLY): for files it could not identify it kept a reused ticker's old holder -- TM -> Toastmaster (the TM file is
+  Toyota's ADR, 1972-2025), SHEL -> Sheldahl, GSK -> Gamble-Skogmo. Read by the DEV-003 volume restatement,
+  universe_loader's D17 PERMNO aliasing and the same-company pool rule.
+- `symbol_permno_map` (ticker -> CURRENT holder): wrong for old files -- SNS (Sundstrand 1957-1999) -> Biglari, NEP
+  (China North East Petroleum 2009-2012) -> NextEra Energy Partners. Read by the discovery scan's S&P 500
+  membership gate and four research scripts.
+Fix: `research/identify_wrds_files.py` identifies every file from its content against the FULL CRSP names history
+(crsp.stocknames, every share type; WRDS job 25): the PERMNO holding the ticker on the file's last date whose listing
+life contains the file; where that disagrees with the D17 map (or either is missing), the candidate whose daily
+returns match the file's on >= 90% of days (crsp.dsf_v2, three windows) decides (jobs 26-28). Tried and corrected on
+the way: (1) price LEVELS -- the files' close is split-adjusted, so 56/200 agreeing labels "failed"; switched to
+returns; (2) a whole-listing-life rule picked Barrick for a 2020-2025 ABX file that is Abacus Life; (3) a pure
+ticker rule cannot place files D17 labelled by another of the security's tickers (the 'B' file is Barrick, 'GOLD' is
+A-Mark) -- returns settle those. Result (`wrds_label_permno_final.parquet`): 19,619 agree, 5,681 PERMNO labels, 767
+settled by returns, 85 unresolved (never guessed). Validation: return check on a 562-label sample -- the final map
+matches every testable label; the old label map was wrong in 13 of 17 testable disputes and right in 4; the symbol
+map wrong in all 11 testable. One accessor, `data_wrds.label_permno_map()`, now feeds every consumer and raises if
+the map is missing (failing-first: `_verify_label_permno_accessor` 0/5 -> 7/7, `_verify_identify_wrds_files` 16/16,
+`_verify_apply_crsp_volume_adjustment` 9/10 -> 12/12, `_verify_same_company_pairs` -> 16/16).
+Measured impact (research/measure_identity_impact.py, CachyOS): volume -- 51 of 30,296 CRSP files were restated
+with another security's split factors (re-restated from volume_raw by `reapply_mismatched`); membership gate -- 2,122
+labels mapped differently, 147 change a membership decision on a scan window date (77 wrongly excluded, 70 wrongly
+included); wrongly included tests: Tier 2 21 of 391,130, Tier 3 715 of 1,740,574; confirmed pairs involving any
+flipped label: 0 of 291 / 0 of 687. Wrongly EXCLUDED windows never ran, so their effect is unknown without a re-run.
+Decision (Ross 2026-10-12, "fix everything first then resume running scripts and re run what was broken"): re-run
+the primary discovery after the fixes (with BUG-D115), then pools and the second pass.
+The same-company rule now also links legs through Capital IQ (one companyid across a firm's listings; job 24):
+Compustat files some ADRs under a different GVKEY than the home company.

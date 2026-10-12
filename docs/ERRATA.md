@@ -55,6 +55,7 @@ Full registries: [`docs/CODE_REVIEW_2026-09-26.md`](CODE_REVIEW_2026-09-26.md) (
 | B8 | Holdout = last 20% of each pair's own bars, not a common calendar date (cross-pair leakage into fitted weights) | Needs a decision on the holdout definition |
 | B9 | Same-bar fill | Sensitivity study must be re-run on dollar P&L |
 | BUG-D115 (2026-10-10) | The discovery scan dropped crashed EG tests from BH's m (production keeps them at p = 1.0) | Fixed in code (`_verify_episodic_crash_in_bh_m`); effect on the existing discovery runs not yet measured -- zero crashes means no change, any crash means BH was slightly too loose |
+| BUG-D117 (2026-10-12) | Two label -> PERMNO maps named the wrong security for some files (ADRs -> a ticker's old holder; old files -> its current holder): 51 files restated with another security's split factors; the discovery S&P gate checked the wrong company for 147 labels (0 confirmed pairs touched) | Fixed (content-verified map, one accessor); discovery re-run decided -- results until then predate the fix |
 | A4 | Rolling z-score window derived from the full-sample half-life | Open |
 | Unilever | UL ADR vs its London PLC line drifts 5–11% by year | Investigated, open (INCONSISTENCY_SWEEP) |
 | S6 (verified 2026-10-07) | Gold/Silver/Bronze confirmatory tiers: the "Phillips-Ouliaris proxy" rejects 27.3% of independent random walks at nominal 10% (arch's real PO: 11.2%); KPSS on residuals same class | PAPER.md's tier counts not citable until re-derived (plan S33) |

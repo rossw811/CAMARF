@@ -33,7 +33,7 @@ from pit_confirmation_vs_regime_interaction import two_proportion_test
 
 _REGIME_PATH = os.path.join(_ROOT, "output", "research", "crisis_regime_correlation_diagnostic_pairs.parquet")
 _MEMBERSHIP_PATH = os.path.join(_ROOT, "output", "cache", "wrds", "sp500_membership_history.parquet")
-_PERMNO_MAP_PATH = os.path.join(_ROOT, "output", "cache", "wrds", "symbol_permno_map.parquet")
+_PERMNO_MAP_PATH = os.path.join(_ROOT, "output", "cache", "wrds", "wrds_label_permno_final.parquet")  # 2026-10-12: content-verified map
 _OUT_PATH = os.path.join(_ROOT, "output", "research", "crisis_regime_survivorship_confound_test.parquet")
 
 
@@ -66,7 +66,9 @@ def main():
 
     regime_df = pd.read_parquet(_REGIME_PATH)
     membership_df = pd.read_parquet(_MEMBERSHIP_PATH)
-    permno_map_df = pd.read_parquet(_PERMNO_MAP_PATH)
+    from data_wrds import label_permno_map
+    _m = label_permno_map(_PERMNO_MAP_PATH)
+    permno_map_df = pd.DataFrame({"symbol": list(_m), "permno": list(_m.values())})
     permno_map = dict(zip(permno_map_df["symbol"], permno_map_df["permno"]))
     survival_lookup = build_survival_lookup(membership_df)
 

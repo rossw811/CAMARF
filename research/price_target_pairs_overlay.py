@@ -42,7 +42,7 @@ import options
 from beta_weighted_portfolio import value_at_date
 
 _TRADES_PATH = os.path.join(_ROOT, "output", "backtest", "baseline_trades_layer1.parquet")
-_PERMNO_MAP_PATH = os.path.join(_ROOT, "output", "cache", "wrds", "symbol_permno_map.parquet")
+_PERMNO_MAP_PATH = os.path.join(_ROOT, "output", "cache", "wrds", "wrds_label_permno_final.parquet")  # 2026-10-12: content-verified map
 _IBES_PATH = os.path.join(_ROOT, "output", "cache", "wrds", "ibes_price_targets_camarf_universe.parquet")
 _OUT_PATH = os.path.join(_ROOT, "output", "research", "price_target_pairs_overlay.parquet")
 
@@ -52,7 +52,9 @@ _MAX_TARGET_STALENESS_DAYS = 120  # a target older than ~1 quarter is treated as
 
 
 def load_permno_map() -> dict:
-    df = pd.read_parquet(_PERMNO_MAP_PATH)
+    from data_wrds import label_permno_map
+    _m = label_permno_map(_PERMNO_MAP_PATH)
+    df = pd.DataFrame({"symbol": list(_m), "permno": list(_m.values())})
     return dict(zip(df["symbol"], df["permno"]))
 
 

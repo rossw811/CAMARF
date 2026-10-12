@@ -38,7 +38,7 @@ from config import Config
 
 _WRDS = os.path.join("output", "cache", "wrds")
 FACPR_PATH = os.path.join(_WRDS, "crsp_stock_distributions_facpr.parquet")
-LABEL_MAP_PATH = os.path.join(_WRDS, "full_us_market_label_map.parquet")
+LABEL_MAP_PATH = os.path.join(_WRDS, "wrds_label_permno_final.parquet")  # 2026-10-12: content-verified map
 
 
 def cumulative_factor(dates: pd.DatetimeIndex, events: pd.DataFrame) -> np.ndarray:
@@ -92,8 +92,8 @@ def impact(threshold: float = None, window: int = None):
     win = window or ROLLING_ADV_WINDOW
     ev = pd.read_parquet(FACPR_PATH)
     by_permno = {p: g for p, g in ev.groupby("permno")}
-    lm = pd.read_parquet(LABEL_MAP_PATH)
-    permno_of = dict(zip(lm["label"], lm["permno"].astype(int)))
+    from data_wrds import label_permno_map
+    permno_of = label_permno_map(LABEL_MAP_PATH)
     rows = []
     for path in glob.glob(os.path.join(_WRDS, "*_1D.parquet")):
         sym = os.path.basename(path)[:-len("_1D.parquet")]

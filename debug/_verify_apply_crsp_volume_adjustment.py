@@ -108,6 +108,29 @@ def main():
     n_raw = len(re.findall(r'"volume_raw": (?:g|df)\["(?:dlyvol|mthvol)"\],', src))
     n_bare = len(re.findall(r'"volume": (?:g|df)\["(?:dlyvol|mthvol)"\],', src))
     check("7.fetch_paths_adjusted", n_adj == 4 and n_raw == 4 and n_bare == 0, f"adjusted={n_adj} raw_kept={n_raw} bare={n_bare}")
+    # 10 (2026-10-12, label-map identity bug): a file restated with ANOTHER security's factors (the old label map named
+    # a reused ticker's old holder) is recomputed from volume_raw with the correct PERMNO; others untouched
+    if not hasattr(ap, "reapply_mismatched"):
+        check("10.reapply_exists", False); return finish()
+    root4 = tempfile.mkdtemp(prefix="apply_vol_re_")
+    try:
+        idx4 = pd.bdate_range("2020-02-24", periods=10)
+        wrong = pd.DataFrame({"close": 50.0, "volume_raw": 100.0, "volume_adj_factor": 3.0, "volume": 300.0}, index=idx4)
+        wrong.to_parquet(os.path.join(root4, "TM_1D.parquet"))
+        wrong.to_parquet(os.path.join(root4, "OK_1D.parquet"))
+        ev4 = pd.DataFrame({"permno": [76655], "disexdt": pd.to_datetime(["2020-03-02"]), "disfacpr": [1.0],
+                            "distype": ["FRS"]})
+        report = pd.DataFrame({"label": ["TM", "OK"], "path": ["TM_1D.parquet", "OK_1D.parquet"],
+                               "permno": [77456, 5], "status": ["adjusted", "adjusted"], "unknown_days": [0, 0]})
+        out = ap.reapply_mismatched(root4, ev4, {"TM": 76655, "OK": 5}, report).set_index("label")
+        t = pd.read_parquet(os.path.join(root4, "TM_1D.parquet")); o = pd.read_parquet(os.path.join(root4, "OK_1D.parquet"))
+        before4 = t.index < "2020-03-02"
+        check("10.reapplied_correct_permno", np.allclose(t.loc[before4, "volume"], 200.0) and np.allclose(t.loc[~before4, "volume"], 100.0)
+              and out.loc["TM", "permno"] == 76655 and out.loc["TM", "status"] == "reapplied", out.loc["TM"].to_dict())
+        check("10.raw_unchanged", np.allclose(t["volume_raw"], 100.0))
+        check("10.matching_untouched", np.allclose(o["volume"], 300.0) and out.loc["OK", "status"] == "adjusted")
+    finally:
+        shutil.rmtree(root4, ignore_errors=True)
     finish()
 
 

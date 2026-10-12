@@ -28,7 +28,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import numpy as np
 import pandas as pd
 
-from research.crsp_volume_split_adjustment import FACPR_PATH, LABEL_MAP_PATH, cumulative_factor
+from research.crsp_volume_split_adjustment import FACPR_PATH, cumulative_factor
 
 _WRDS = os.path.join("output", "cache", "wrds")
 REPORT = os.path.join("output", "research", "apply_crsp_volume_adjustment_report.parquet")
@@ -114,11 +114,48 @@ def apply(root: str, events: pd.DataFrame, label_map: pd.DataFrame, extra_maps=N
     return pd.DataFrame(rows, columns=["label", "path", "permno", "status", "unknown_days"])
 
 
+def reapply_mismatched(root: str, events: pd.DataFrame, mapping: dict, report: pd.DataFrame) -> pd.DataFrame:
+    """2026-10-12 (label-map identity bug): files restated with ANOTHER security's split factors -- the old label map
+    named a reused ticker's old holder (TM -> Toastmaster) -- are recomputed from their untouched `volume_raw` with the
+    PERMNO from the content-verified map (data_wrds.label_permno_map). Rows whose PERMNO already matches are kept."""
+    by_permno = {int(p): g for p, g in events.groupby("permno")}
+    out = report.copy()
+    for i, r in out.iterrows():
+        if not str(r["status"]).startswith("adjusted"):
+            continue
+        p_true = mapping.get(r["label"])
+        if p_true is None or pd.isna(r["permno"]) or int(r["permno"]) == int(p_true):
+            continue
+        path = os.path.join(root, r["path"])
+        df = pd.read_parquet(path)
+        if "volume_raw" not in df.columns:
+            continue
+        f = cumulative_factor(pd.DatetimeIndex(pd.to_datetime(df.index)), by_permno.get(int(p_true)))
+        df["volume_adj_factor"] = f
+        df["volume"] = pd.to_numeric(df["volume_raw"], errors="coerce") * f
+        df.to_parquet(path + ".tmp")
+        os.replace(path + ".tmp", path)
+        out.at[i, "permno"] = int(p_true)
+        out.at[i, "status"] = "reapplied"
+        out.at[i, "unknown_days"] = int(np.isnan(f).sum())
+    return out
+
+
 def main():
     events = pd.read_parquet(FACPR_PATH)
-    label_map = pd.read_parquet(LABEL_MAP_PATH)
-    extras = [pd.read_parquet(p) for p in sorted(glob.glob(os.path.join(_WRDS, "extra_permno_map_*.parquet")))]
+    # 2026-10-12: the content-verified map; the old extra maps (price-verified) only fill labels it leaves unresolved
+    from data_wrds import label_permno_map
+    mapping = label_permno_map()
+    label_map = pd.DataFrame({"label": list(mapping), "permno": list(mapping.values())})
+    extras = [m[~m["label"].isin(mapping)] for m in
+              (pd.read_parquet(p) for p in sorted(glob.glob(os.path.join(_WRDS, "extra_permno_map_*.parquet"))))]
     rep = apply(_WRDS, events, label_map, extra_maps=extras)
+    if os.path.exists(REPORT):   # files restated earlier with another security's factors
+        prev = pd.read_parquet(REPORT)
+        fixed = reapply_mismatched(_WRDS, events, mapping, prev)
+        print(f"re-restated with the correct PERMNO: {int((fixed['status'] == 'reapplied').sum())} files")
+        rep = pd.concat([fixed[~fixed["label"].isin(rep.loc[rep["status"] != "already_adjusted", "label"])],
+                         rep[rep["status"] != "already_adjusted"]], ignore_index=True)
     os.makedirs(os.path.dirname(REPORT), exist_ok=True)
     rep.to_parquet(REPORT)
     print(rep["status"].value_counts().to_string())

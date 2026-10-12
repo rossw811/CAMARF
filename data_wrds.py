@@ -114,6 +114,25 @@ _OUT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "output", "c
 _LOG_PATH = "latest_run_data_wrds.log"
 
 
+LABEL_PERMNO_MAP_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "output", "cache", "wrds",
+                                     "wrds_label_permno_final.parquet")
+
+
+def label_permno_map(path: str = None) -> dict:
+    """{label: permno} for every CRSP-labelled WRDS file whose security was identified from its content
+    (research/identify_wrds_files.py: dates rule + D17 label map, disputes settled by matching daily returns against
+    CRSP). Unresolved labels are absent. THE one map for every consumer (2026-10-12): full_us_market_label_map was
+    wrong for 72 labels (TM -> Toastmaster) and symbol_permno_map for 2,122 (SNS Sundstrand -> Biglari).
+    Raises FileNotFoundError if the map is missing -- no silent fallback to an old map."""
+    import pandas as pd
+    path = path or LABEL_PERMNO_MAP_PATH
+    if not os.path.exists(path):
+        raise FileNotFoundError(f"{path} missing -- build it with research/identify_wrds_files.py")
+    m = pd.read_parquet(path)
+    m = m[m["permno"].notna()]
+    return {str(l): int(p) for l, p in zip(m["label"], m["permno"])}
+
+
 def _connect():
     """Real finding (2026-08-13): passing `wrds_username` explicitly lets
     wrds.Connection() skip its interactive `input()` username prompt

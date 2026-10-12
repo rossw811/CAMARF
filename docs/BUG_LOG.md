@@ -296,3 +296,9 @@ the full context stays in `Development.md`.
   the second pre-registered pass reused all 432 first-pass trade files (built from the old pools) and its eval scored
   them against the new pools. Output discarded (not reported); pool-fingerprinted trade dirs, `--fresh` moves stale
   dirs to a backup. Failing-first: `debug/_verify_strategy_search_pool_fingerprint.py` 0/1 -> 10/10.
+- **BUG-D117** (2026-10-12): both label -> PERMNO maps named the wrong security for some files --
+  `full_us_market_label_map` (72 labels; ADRs -> a reused ticker's old holder, e.g. TM -> Toastmaster) fed the volume
+  restatement, universe_loader aliasing and the same-company rule; `symbol_permno_map` (2,122 labels; old files ->
+  current holder) fed the discovery membership gate. Content-verified map (`research/identify_wrds_files.py`) behind
+  one accessor (`data_wrds.label_permno_map`). 51 files re-restated; 147 labels changed a gate decision; 0 confirmed
+  pairs touched; discovery re-run decided.

@@ -688,11 +688,14 @@ def load_full_universe(tf_label: str = "1D", include_yfinance: bool = True,
         # D17 (2026-09-27): a WRDS series that ends before the same-label non-WRDS series begins, or more than a
         # year before it ends, is a different security (CRSP ends 2025-12-31; e.g. VSNT = old Versant 1996-2012 vs the 2026 Versant spin in yfinance).
         # The newer listing keeps the ticker; the WRDS series stays in the universe under its PERMNO<n> label.
-        _lm_path = os.path.join(_WRDS_CACHE_DIR, "full_us_market_label_map.parquet")
+        # 2026-10-12: the content-verified map (full_us_market_label_map named reused tickers' old holders)
+        from data_wrds import label_permno_map, LABEL_PERMNO_MAP_PATH
+        _lm_path = os.path.join(_WRDS_CACHE_DIR, os.path.basename(LABEL_PERMNO_MAP_PATH))
         _permno_of = {}
         if os.path.exists(_lm_path):
-            _lm = pd.read_parquet(_lm_path)
-            _permno_of = dict(zip(_lm["label"], _lm["permno"]))
+            _permno_of = label_permno_map(_lm_path)
+        else:
+            print(f"universe_loader: WARNING {_lm_path} missing -- D17 PERMNO aliasing skipped")
         for k in [k for k in _wrds if k in merged and k in _permno_of]:
             w, o = _wrds[k], merged[k]
             # different securities if the WRDS series ends before the other begins, or ends > 1 year before the

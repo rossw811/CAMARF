@@ -130,29 +130,25 @@ def load_membership_gate():
     the index in 2022 would still get correlation/EG-tested against 2015-era
     windows, which a real deployment back then would never have screened.
 
-    Returns (membership_df, permno_by_symbol) from the two cache files
-    research/build_symbol_permno_map.py + data_wrds.py::
-    fetch_sp500_membership_history already produced (both READ-ONLY here,
-    NEITHER re-fetched -- membership_df was already cached 2026-07-27;
-    permno_by_symbol requires a one-time live WRDS metadata query, run
-    separately via `python research/build_symbol_permno_map.py`).
+    Returns (membership_df, permno_by_symbol): membership_df from
+    data_wrds.py::fetch_sp500_membership_history's cache; permno_by_symbol
+    from data_wrds.label_permno_map() -- each file's security identified
+    from its content (research/identify_wrds_files.py), since 2026-10-12.
 
     Returns (None, {}) if either cache is missing -- callers must treat this
     as "membership gating unavailable, do not filter," never as "no symbols
     are eligible." Logged loudly either way so an accidentally-missing cache
     is never silently indistinguishable from "gating deliberately off."
     """
-    if not os.path.exists(_SP500_MEMBERSHIP_PATH) or not os.path.exists(_SYMBOL_PERMNO_MAP_PATH):
-        log.warning(
-            "Point-in-time membership gate UNAVAILABLE (missing %s -- run "
-            "research/build_symbol_permno_map.py first) -- candidate generation will NOT be "
-            "filtered by index-membership date this run.",
-            _SYMBOL_PERMNO_MAP_PATH if not os.path.exists(_SYMBOL_PERMNO_MAP_PATH) else _SP500_MEMBERSHIP_PATH,
-        )
+    if not os.path.exists(_SP500_MEMBERSHIP_PATH):
+        log.warning("Point-in-time membership gate UNAVAILABLE (missing %s) -- candidate generation will NOT be "
+                    "filtered by index-membership date this run.", _SP500_MEMBERSHIP_PATH)
         return None, {}
     membership_df = pd.read_parquet(_SP500_MEMBERSHIP_PATH)
-    permno_map_df = pd.read_parquet(_SYMBOL_PERMNO_MAP_PATH)
-    permno_by_symbol = dict(zip(permno_map_df["symbol"], permno_map_df["permno"]))
+    # 2026-10-12: the content-verified label -> PERMNO map (the old symbol -> PERMNO map mapped 2,122 labels to another
+    # security -- e.g. the SNS file (Sundstrand) to Biglari -- so the gate checked the wrong company's membership)
+    from data_wrds import label_permno_map
+    permno_by_symbol = label_permno_map()
     log.info(f"Point-in-time membership gate ACTIVE: {len(membership_df)} membership spells, "
              f"{len(permno_by_symbol)} symbols resolved to permnos")
     return membership_df, permno_by_symbol

@@ -48,6 +48,22 @@ def main():
     check("link_via_permco_sibling", same_company("ZG", "GVKEY001_01W", ids2), ids2.get("ZG"))
     check("adr_vs_other_gvkey_different", not same_company("Z", "GVKEY002_01W", ids2))
     check("second_link", same_company("AAPL", "GVKEY007_03W", ids2))
+    # 2026-10-12: Compustat files some ADRs under a different GVKEY than the home company (Toyota ADR -> GVKEY 25015
+    # in an old build; home GVKEY019661). Capital IQ keeps one companyid across a firm's listings: link CRSP legs by
+    # CUSIP (ciq_common.wrds_cusip) and both legs' GVKEYs (ciq_common.wrds_gvkey) to it.
+    ciq_g = pd.DataFrame({"gvkey": [19661, 25015, 5], "companyid": [319676, 319676, 999]})
+    ciq_c = pd.DataFrame({"cusip": ["89233130"], "companyid": [319676]})
+    cus = {10: "89233130"}
+    lm3 = pd.DataFrame({"label": ["TMADR", "OTHER"], "permno": [10, 11]})
+    ms3 = pd.DataFrame({"permno": [10, 11], "permco": [1000, 1100]})
+    ids3 = company_ids(["TMADR", "OTHER", "GVKEY019661_01W", "GVKEY000005_01W"], lm3, ms3, None,
+                       ciq_gvkey=ciq_g, ciq_cusip=ciq_c, cusip_by_permno=cus)
+    check("ciq_cusip_links_adr_to_home", same_company("TMADR", "GVKEY019661_01W", ids3), ids3.get("TMADR"))
+    check("ciq_other_company_different", not same_company("OTHER", "GVKEY019661_01W", ids3)
+          and not same_company("TMADR", "GVKEY000005_01W", ids3))
+    link3 = pd.DataFrame({"permno": [11], "gvkey": [25015]})
+    ids4 = company_ids(["OTHER", "GVKEY019661_01W"], lm3, ms3, link3, ciq_gvkey=ciq_g)
+    check("ciq_gvkey_bridge", same_company("OTHER", "GVKEY019661_01W", ids4), ids4.get("OTHER"))
     try:
         from research.clean_pool_identity_pairs import require_link_for_mixed
         try:

@@ -36,7 +36,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _WRDS_CACHE_DIR = os.path.join(_ROOT, "output", "cache", "wrds")
-_PERMNO_MAP_PATH = os.path.join(_WRDS_CACHE_DIR, "symbol_permno_map.parquet")
+_PERMNO_MAP_PATH = os.path.join(_WRDS_CACHE_DIR, "wrds_label_permno_final.parquet")  # 2026-10-12: content-verified map
 _FUNDA_PATH = os.path.join(_WRDS_CACHE_DIR, "compustat_funda_camarf_universe.parquet")
 _COMPANY_PATH = os.path.join(_WRDS_CACHE_DIR, "compustat_company_camarf_universe.parquet")
 
@@ -52,7 +52,9 @@ def load_fundamentals_cache():
     similar" (same discipline as load_membership_gate's own contract)."""
     if not (os.path.exists(_PERMNO_MAP_PATH) and os.path.exists(_FUNDA_PATH) and os.path.exists(_COMPANY_PATH)):
         return None, None, None
-    permno_map = pd.read_parquet(_PERMNO_MAP_PATH)
+    from data_wrds import label_permno_map
+    _m = label_permno_map(_PERMNO_MAP_PATH)
+    permno_map = pd.DataFrame({"symbol": list(_m), "permno": list(_m.values())})
     permno_by_symbol = dict(zip(permno_map["symbol"], permno_map["permno"]))
 
     funda = pd.read_parquet(_FUNDA_PATH)
