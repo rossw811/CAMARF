@@ -28,7 +28,7 @@ account for the overfitting."*
 `alternatives_tried` how many other values were tried on outcome data. Those two columns are the input to the
 overfitting account below.
 
-## Accounting for overfitting — PROPOSAL (needs Ross's buy-in before it changes any reported number)
+## Accounting for overfitting — ADOPTED by Ross 2026-10-12 ("i like your ideas"; each enters beside the current numbers first)
 
 A value chosen after looking at results is a hidden trial. Three complementary corrections, each standard:
 

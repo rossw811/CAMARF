@@ -26,7 +26,7 @@ E1–E2 ✅ (4e0364a0).
 | E2 | Gate test: unregistered / drifted / reason-less values fail; unjustified backlog may only shrink (ratchet) | C | ✅ in the suite |
 | E3 | Justify every value, headline-affecting first (BACKTEST, ANALYSIS, STATS, UNIVERSE, discovery-scan constants), from Development.md / git history / calibration scripts; where none exists, run the calibration or mark it for the specification curve | C | backlog 0 |
 | E4 | Phase 2: register inline numeric literals used as thresholds (`p < 0.05`, 0.15 gaps, …) | C | scanner + gate cover them |
-| E5 | Overfitting account (docs/PARAMETER_REGISTRY.md proposal: trial-count deflation, specification curves, placebo discovery, sealed holdout) | ❓ R | Ross adopts / modifies; then built as comparisons |
+| E5 | Overfitting account (trial-count deflation, specification curves, placebo discovery, sealed holdout) — ADOPTED by Ross 2026-10-12 | C | Ross adopts / modifies; then built as comparisons |
 
 ## Track A — now, no WRDS, no Ross decision needed
 
