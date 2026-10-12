@@ -182,10 +182,3 @@ for any new dependency (confirmed 2026-09-21 installing `tensorflow` for the LST
 - `DEVELOPMENT.md` (canonical memory, full bug registry), `docs/BUG_LOG.md` (one-line index into
   it), `docs/HANDOFF.md` (current open items), `PAPER.md` (living thesis draft),
   `docs/FINDINGS.md` (full-depth writeups PAPER.md summarizes)
-
-## graphify
-
-Knowledge graph at `graphify-out/`. For codebase questions, run `graphify query "<question>"`
-first when `graphify-out/graph.json` exists — `graphify path`/`graphify explain` for
-relationships/concepts. Read `GRAPH_REPORT.md` only for broad architecture review. Run
-`graphify update .` after code changes.
