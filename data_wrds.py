@@ -126,6 +126,14 @@ def _connect():
     doesn't change that. `WRDS_USERNAME` env var overrides the fallback
     default if ever needed for a different account."""
     import os
+    import sys
+    # Login guard (2026-10-12): unattended attempts with a stale pgpass password counted as failed logins and locked
+    # the WRDS account. Connect only with someone at a terminal, or when explicitly allowed for a known-good setup.
+    tty = getattr(sys.stdin, "isatty", lambda: False)()
+    if not tty and os.environ.get("CAMARF_WRDS_UNATTENDED") != "1":
+        raise RuntimeError("WRDS login refused: no terminal attached. Unattended attempts can lock the account "
+                           "(2026-10-11). Run interactively, or set CAMARF_WRDS_UNATTENDED=1 if the login is known "
+                           "to work. debug/_verify_wrds_login_guard.py")
     import wrds
     username = os.environ.get("WRDS_USERNAME", "rossw0811")
     return wrds.Connection(wrds_username=username)

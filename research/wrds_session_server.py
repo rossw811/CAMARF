@@ -7,8 +7,8 @@ work proceed unattended on the same connection.
 Protocol: drop a Python file into output/wrds_jobs/queue/. It is exec'd with `db` (the open wrds.Connection),
 `log` (a function that appends to the job's log) and `ROOT` (project root) in scope. Its stdout/stderr and a final
 status line go to output/wrds_jobs/done/<name>.log, and the script moves to done/ (or failed/ on exception).
-Every KEEPALIVE_SEC with no job running, `select 1` keeps the connection alive; if that fails, one silent reconnect
-is attempted (works only while the Duo "remember this device" window is valid) and the outcome is logged.
+Every KEEPALIVE_SEC with no job running, `select 1` keeps the connection alive; if that fails the server stops
+(no automatic reconnect: unattended logins locked the account on 2026-10-11).
 Status: output/wrds_jobs/server.log. Stop: create output/wrds_jobs/STOP.
 Usage: python research/wrds_session_server.py
 """
@@ -56,12 +56,10 @@ def main():
                 try:
                     db.raw_sql("select 1 as ok")
                 except Exception as e:
-                    _slog(f"keepalive failed ({e}); trying one reconnect")
-                    try:
-                        db = _connect(); _slog("RECONNECTED")
-                    except Exception as e2:
-                        _slog(f"RECONNECT FAILED ({e2}) -- a new Duo approval is needed; server stopping")
-                        return
+                    # No automatic reconnect (2026-10-12): an unattended login with a stale password counts as a
+                    # failed attempt and can lock the account. Stop; Ross restarts the server interactively.
+                    _slog(f"keepalive failed ({e}) -- connection lost; server stopping (restart it interactively)")
+                    return
                 last_ping = time.time()
             time.sleep(5)
             continue
