@@ -1,0 +1,21 @@
+dlc_name,side,ids,mapping_confidence,note
+Royal Dutch/Shell,A,gvkey:9267;permco:3909;permco:22508,high,Royal Dutch Petroleum (name match CIQ + CRSP)
+Royal Dutch/Shell,B,gvkey:9655;permco:21607,high,Shell Transport & Trading
+Unilever,A,permco:21803,high,Unilever N.V. (no GVKEY in our universe)
+Unilever,B,gvkey:10846;permco:21802,high,Unilever plc (CRSP name UNILEVER LTD)
+ABB,A,permco:6285;gvkey:17346,medium,ASEA AB (GVKEY 17346 'ABB Participation AB' = renamed ASEA side; least certain mapping)
+ABB,B,gvkey:101631,medium,BBC Brown Boveri -> ABB AG
+RELX,A,gvkey:100338;permco:30501,high,Reed International / RELX PLC
+RELX,B,gvkey:100075;permco:30486,high,Elsevier / RELX NV
+Rio Tinto,A,gvkey:19565;permco:26084,high,Rio Tinto plc (CIQ name 'Rio Tinto Group')
+Rio Tinto,B,gvkey:17535,high,Rio Tinto Limited
+Dexia,A,gvkey:24596,high,Dexia Belgium (Dexia Holding)
+Dexia,B,gvkey:24995,high,Dexia France
+BHP Billiton,A,gvkey:13312;permco:653,high,BHP Limited
+BHP Billiton,B,gvkey:105595;permco:44121,high,BHP plc (Billiton; CIQ 'BHP Group (UK) Ltd')
+Carnival Corporation & plc,A,gvkey:13498;permco:20394,medium,Carnival Corporation (CRSP 'CARNIVAL CRUISE LINES' permco assumed same company)
+Carnival Corporation & plc,B,gvkey:140821;permco:56248,high,Carnival plc (CIQ 'Carnival UK Ltd')
+Thomson Reuters,A,permco:28754,high,Thomson Reuters Corp
+Thomson Reuters,B,permco:7066;gvkey:9098,high,Thomson Reuters PLC
+Mondi,A,gvkey:285170,high,Mondi Limited
+Mondi,B,gvkey:285169,high,Mondi plc

@@ -77,6 +77,22 @@ def main():
         check("d15_unverified_labels_exists", False, str(e))
     src = open(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "research", "clean_pool_identity_pairs.py"), encoding="utf-8").read()
     check("d15_applied_in_main", "unverified_labels(" in src[src.index("def main("):])
+    # D14 (Ross 2026-10-12): dual-listed twins (research/dual_listed_companies.csv, de Jong et al. 2009 et al.;
+    # identifiers in research/dual_listed_companies_ids.csv) are excluded from the pools: one leg on side A and the
+    # other on side B of the same DLC; a DLC parent paired with an unrelated company is kept
+    try:
+        from research.clean_pool_identity_pairs import dlc_twin, load_dlc_sides
+        sides = {"Rio Tinto": ({"gvkey:19565", "permco:26084"}, {"gvkey:17535"})}
+        idsd = {"RIO": frozenset({"permco:26084"}), "GVKEY017535_01W": frozenset({"gvkey:17535"}),
+                "GVKEY019565_01W": frozenset({"gvkey:19565"}), "BHP": frozenset({"permco:653"})}
+        check("d14_twin_cross_listing", dlc_twin("RIO", "GVKEY017535_01W", idsd, sides))
+        check("d14_twin_reversed", dlc_twin("GVKEY017535_01W", "RIO", idsd, sides))
+        check("d14_same_side_not_twin", not dlc_twin("RIO", "GVKEY019565_01W", idsd, sides))
+        check("d14_unrelated_kept", not dlc_twin("RIO", "BHP", idsd, sides))
+        real = load_dlc_sides()
+        check("d14_real_sides_loaded", "Rio Tinto" in real and len(real) >= 8, sorted(real))
+    except ImportError as e:
+        check("d14_functions_exist", False, str(e))
     try:
         from research.clean_pool_identity_pairs import require_link_for_mixed
         try:

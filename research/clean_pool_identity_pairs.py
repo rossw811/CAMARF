@@ -100,6 +100,28 @@ def same_company(a: str, b: str, ids: dict) -> bool:
     return bool(ca and cb and (ca & cb))
 
 
+_DLC_IDS = os.path.join(_ROOT, "research", "dual_listed_companies_ids.csv")
+
+
+def load_dlc_sides(path: str = _DLC_IDS) -> dict:
+    """D14 (Ross 2026-10-12): {dlc_name: (side A ids, side B ids)} for the dual-listed structures in
+    research/dual_listed_companies.csv (de Jong, Rosenthal & van Dijk 2009 Table I and later sources) whose two
+    parents both exist in our data; identifiers mapped by name in research/dual_listed_companies_ids.csv."""
+    d = pd.read_csv(path)
+    out = {}
+    for name, g in d.groupby("dlc_name"):
+        sides = {r.side: set(str(r.ids).split(";")) for r in g.itertuples()}
+        if "A" in sides and "B" in sides:
+            out[name] = (sides["A"], sides["B"])
+    return out
+
+
+def dlc_twin(a: str, b: str, ids: dict, sides: dict) -> bool:
+    """True when one leg belongs to side A and the other to side B of the same dual-listed company (D14)."""
+    ia, ib = ids.get(str(a)) or frozenset(), ids.get(str(b)) or frozenset()
+    return any((ia & A and ib & B) or (ia & B and ib & A) for A, B in sides.values())
+
+
 def unverified_labels(final_map: pd.DataFrame) -> set:
     """D15 (Ross 2026-10-12): labels whose CRSP file could not be identified (research/identify_wrds_files.py,
     source 'unresolved_*' -- too short to test, or no candidate's returns matched). Pairs with such a leg are
@@ -145,6 +167,7 @@ def main():
     _ciq_c = pd.read_parquet(_cc, columns=["cusip", "companyid"]) if os.path.exists(_cc) else None
     from data_wrds import LABEL_PERMNO_MAP_PATH
     _unverified = unverified_labels(pd.read_parquet(LABEL_PERMNO_MAP_PATH))   # D15
+    _dlc = load_dlc_sides()                                                      # D14
     for k in (1, 2):
         P = pd.read_parquet(os.path.join(_R, f"purity_pairs_pit_k{k}.parquet"))
         require_link_for_mixed(zip(P["symbol_a"], P["symbol_b"]), _link)
@@ -164,16 +187,18 @@ def main():
             ident = bool(np.isfinite(share) and share >= SHARE)
             same = same_company(r.symbol_a, r.symbol_b, ids)
             unver = r.symbol_a in _unverified or r.symbol_b in _unverified
+            twin = dlc_twin(r.symbol_a, r.symbol_b, ids, _dlc)
             rows.append({"k": k, "symbol_a": r.symbol_a, "symbol_b": r.symbol_b, "identical_share": share,
-                         "n_common": n, "identity": ident, "same_company": same, "unverified_leg": unver})
-            keep.append(not ident and not same and not unver)
+                         "n_common": n, "identity": ident, "same_company": same, "unverified_leg": unver, "dlc_twin": twin})
+            keep.append(not ident and not same and not unver and not twin)
         C = P[np.array(keep)].reset_index(drop=True)
         C.to_parquet(os.path.join(_R, f"purity_pairs_pit_k{k}_clean.parquet"))
         R = pd.DataFrame([x for x in rows if x["k"] == k])
         print(f"k={k}: {len(P)} -> {len(C)} (removed {int(R['identity'].sum())} identity pairs, "
               f"{int((R['same_company'] & ~R['identity']).sum())} further same-company pairs, "
               f"{int((R['unverified_leg'] & ~R['same_company'] & ~R['identity']).sum())} further pairs with an "
-              f"unverified leg (D15))")
+              f"unverified leg (D15), {int((R['dlc_twin'] & ~R['unverified_leg'] & ~R['same_company'] & ~R['identity']).sum())} "
+              f"further dual-listed twins (D14))")
     pd.DataFrame(rows).to_parquet(os.path.join(_R, "clean_pool_identity_pairs_report.parquet"))
     st.record()
     print("lineage: recorded 'clean_pools'")
