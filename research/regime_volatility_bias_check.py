@@ -111,9 +111,12 @@ def main():
         x, y = mkt[ok].to_numpy(), R.loc[ok, l].to_numpy()
         b = np.cov(x, y)[0, 1] / np.var(x)
         beta[l], idio[l] = b, float(np.std(y - b * x))
-    ends = sorted(pd.to_datetime(pd.read_parquet(
+    # one window per year: the scan steps EPISODIC_STEP_BARS (252) bars; per-pair end dates differ by days, so take the
+    # last Tier-3 window end in each calendar year (2026-10-13: the first run iterated every distinct daily end date)
+    e_all = pd.Series(pd.to_datetime(pd.read_parquet(
         os.path.join(ROOT, "output", "research", "wrds_deep_history_episodic_scan_tier3_windows.parquet"),
         columns=["window_end_date"])["window_end_date"]).unique())
+    ends = sorted(e_all.groupby(e_all.dt.year).max())
     rows = []
     for e in ends:
         idx = mkt.index[mkt.index <= e][-win:]
