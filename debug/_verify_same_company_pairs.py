@@ -11,6 +11,7 @@ Run: python debug/_verify_same_company_pairs.py
 import os
 import sys
 
+import numpy as np
 import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -64,6 +65,18 @@ def main():
     link3 = pd.DataFrame({"permno": [11], "gvkey": [25015]})
     ids4 = company_ids(["OTHER", "GVKEY019661_01W"], lm3, ms3, link3, ciq_gvkey=ciq_g)
     check("ciq_gvkey_bridge", same_company("OTHER", "GVKEY019661_01W", ids4), ids4.get("OTHER"))
+    # D15 (Ross 2026-10-12): a pair with a leg whose file could not be identified (research/identify_wrds_files.py:
+    # 'unresolved_*') is dropped at the pool step; resolved, PERMNO and non-CRSP labels are kept
+    try:
+        from research.clean_pool_identity_pairs import unverified_labels
+        fm = pd.DataFrame({"label": ["TM", "BRK", "AGM", "PERMNO5"], "permno": [76655, np.nan, np.nan, 5],
+                           "source": ["returns", "unresolved_none", "unresolved_untestable", "self"]})
+        u = unverified_labels(fm)
+        check("d15_unverified_set", u == {"BRK", "AGM"}, u)
+    except ImportError as e:
+        check("d15_unverified_labels_exists", False, str(e))
+    src = open(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "research", "clean_pool_identity_pairs.py"), encoding="utf-8").read()
+    check("d15_applied_in_main", "unverified_labels(" in src[src.index("def main("):])
     try:
         from research.clean_pool_identity_pairs import require_link_for_mixed
         try:

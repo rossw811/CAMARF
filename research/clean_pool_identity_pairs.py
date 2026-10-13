@@ -100,6 +100,14 @@ def same_company(a: str, b: str, ids: dict) -> bool:
     return bool(ca and cb and (ca & cb))
 
 
+def unverified_labels(final_map: pd.DataFrame) -> set:
+    """D15 (Ross 2026-10-12): labels whose CRSP file could not be identified (research/identify_wrds_files.py,
+    source 'unresolved_*' -- too short to test, or no candidate's returns matched). Pairs with such a leg are
+    dropped at the pool step; unresolved != eligible."""
+    m = final_map[final_map["permno"].isna()]
+    return set(m["label"].astype(str))
+
+
 def require_link_for_mixed(pairs, ccm_link):
     """A pool with CRSP-vs-Compustat pairs cannot be checked for same company without the CCM link: refuse rather
     than silently pass them (2026-10-11)."""
@@ -135,6 +143,8 @@ def main():
     _cg = os.path.join(_w, "ciq_link_gvkey.parquet"); _cc = os.path.join(_w, "ciq_link_cusip.parquet")
     _ciq_g = pd.read_parquet(_cg, columns=["gvkey", "companyid"]) if os.path.exists(_cg) else None
     _ciq_c = pd.read_parquet(_cc, columns=["cusip", "companyid"]) if os.path.exists(_cc) else None
+    from data_wrds import LABEL_PERMNO_MAP_PATH
+    _unverified = unverified_labels(pd.read_parquet(LABEL_PERMNO_MAP_PATH))   # D15
     for k in (1, 2):
         P = pd.read_parquet(os.path.join(_R, f"purity_pairs_pit_k{k}.parquet"))
         require_link_for_mixed(zip(P["symbol_a"], P["symbol_b"]), _link)
@@ -153,14 +163,17 @@ def main():
             share, n = (np.nan, 0) if ra is None or rb is None else identity_share(ra, rb)
             ident = bool(np.isfinite(share) and share >= SHARE)
             same = same_company(r.symbol_a, r.symbol_b, ids)
+            unver = r.symbol_a in _unverified or r.symbol_b in _unverified
             rows.append({"k": k, "symbol_a": r.symbol_a, "symbol_b": r.symbol_b, "identical_share": share,
-                         "n_common": n, "identity": ident, "same_company": same})
-            keep.append(not ident and not same)
+                         "n_common": n, "identity": ident, "same_company": same, "unverified_leg": unver})
+            keep.append(not ident and not same and not unver)
         C = P[np.array(keep)].reset_index(drop=True)
         C.to_parquet(os.path.join(_R, f"purity_pairs_pit_k{k}_clean.parquet"))
         R = pd.DataFrame([x for x in rows if x["k"] == k])
         print(f"k={k}: {len(P)} -> {len(C)} (removed {int(R['identity'].sum())} identity pairs, "
-              f"{int((R['same_company'] & ~R['identity']).sum())} further same-company pairs)")
+              f"{int((R['same_company'] & ~R['identity']).sum())} further same-company pairs, "
+              f"{int((R['unverified_leg'] & ~R['same_company'] & ~R['identity']).sum())} further pairs with an "
+              f"unverified leg (D15))")
     pd.DataFrame(rows).to_parquet(os.path.join(_R, "clean_pool_identity_pairs_report.parquet"))
     st.record()
     print("lineage: recorded 'clean_pools'")
