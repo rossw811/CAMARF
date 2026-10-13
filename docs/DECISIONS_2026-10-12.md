@@ -6,6 +6,20 @@ One place for every open decision, with a recommendation, cost and dependency fo
 `docs/DATA_SOURCES_SURVEY.md`, `docs/PARAMETER_REGISTRY.md`, `docs/bug_recheck/verdicts.csv`, `docs/ERRATA.md`.
 Cost key: **S** < 1 day of my work · **M** 1–3 days · **L** a week+ · **J** = CachyOS compute time.
 
+## Ross's answers (2026-10-12, in chat)
+
+- A1/A2 **go** (re-copy + CachyOS re-run chain launched 18:09). Librarian email: **yes** (drafted in chat).
+- Research batch **yes**: E1 placebo discovery + power curves, E3 bonds/credit via TRACE, E4 pair-break causes,
+  E5 fundamental divergence, E13 sealed holdout (see the correction below).
+- Methodology **yes to all** (D1-D18: the regime/episode test fixes, dual-listed twins excluded and kept as positive
+  controls, the 85 unverified labels excluded from gate-dependent tiers, total return in the walk-forward re-runs).
+- PitchBook: Ross is a finance and mathematics student, signed in. Kamiak: no WSU staff oversees the project, so no
+  sponsor -- not pursued for now.
+- **E13 correction (Claude):** a 2024-07+ holdout is NOT sealed -- the discovery windows, the strategy-search
+  holdouts and several studies already used data through 2025-12-31. The untouched period is everything AFTER the
+  CRSP cache's end, 2026-01-01 onward (CRSP's next annual release + forward-recorded data). Declared sealed as of
+  this commit: no CAMARF result may be computed on data dated 2026-01-01 or later until the final pre-registered test.
+
 ## State in one paragraph
 
 Four defects found since 10-10 are fixed failing-first and committed: BUG-D115 (crashed tests left out of BH's m),
