@@ -133,3 +133,33 @@ test before this addendum (evidence: docs/INCONSISTENCY_SWEEP_2026-09-27.md, doc
 Unchanged: grid (216 configurations), the four calendar splits and 1% embargo, the median-of-four-folds selection
 rule, PBO via CSCV (16 blocks), and the success criterion's thresholds (holdout Sharpe > 0, DSR ≥ 0.95, PBO < 0.20
 in every split).
+
+## Amendment 3 (approved by Ross 2026-10-12; committed before ANY result of the second pass exists)
+The 2026-10-10 chain's second pass is void and was never reported: its run phase reused the FIRST pass's trade files
+(BUG-D116; output moved to `output/research/strategy_search/_INVALID_20261011_reused_first_pass_trades/`). No valid
+second-pass result exists at this commit; the re-run chain (`debug/_tmp_chain_rerun_20261012.sh`, started on CachyOS
+2026-10-12 18:09) is at its first step. Known at commit time and disclosed: the per-label identity impact measurement
+below (discovery-side, not a strategy result) and that the old pools contained 12 ADR-vs-home-listing pairs. Changes
+since the Amendment 2 addendum, each committed with a failing-first test:
+1. **Discovery re-run** (Tier 1-3 and intraday) on code with two fixes: BUG-D115 -- a CRASHED Engle-Granger test now
+   enters BH's m with p = 1.0 (it was dropped, shrinking m); BUG-D117 -- the S&P 500 membership gate reads each file's
+   content-verified PERMNO (`data_wrds.label_permno_map`; the old map named another security for 2,122 labels, 147 of
+   which changed a gate decision; 0 confirmed pairs involved). 51 files whose volume had been restated with another
+   security's split factors are re-restated. The 2026-10-08 discovery outputs are superseded (kept, not used).
+2. **Same-company rule, completed (S36):** legs are the same company when their identifier sets intersect -- CRSP
+   PERMCO (from the full names history, incl. ADRs), every GVKEY linked to it in the CRSP-Compustat link
+   (crsp.ccmxpf_lnkhist, LC/LU/LS), and the Capital IQ company of its CUSIP or linked GVKEYs (ciq_common.wrds_cusip /
+   wrds_gvkey; Capital IQ keeps one company id across a firm's listings). This removes ADR-vs-home-listing pairs
+   (Toyota, Shell, Vodafone, HSBC, ...). The pool step refuses to run without these link files.
+3. **D14: dual-listed twins excluded** -- pairs whose legs are the two parents of one dual-listed company
+   (`research/dual_listed_companies.csv`: de Jong, Rosenthal & van Dijk 2009 Table I and later sources; identifiers in
+   `research/dual_listed_companies_ids.csv`). They are one economic entity; kept as positive controls elsewhere.
+4. **D15: pairs with an unverified leg excluded** -- a CRSP file whose security could not be identified from its
+   content (85 files: too short to test, or no candidate's returns matched) does not enter a pool.
+5. **Pool step order** (`research/clean_pool_identity_pairs.py`): identical-return pairs, same company, unverified leg,
+   dual-listed twins -- each count reported. No other filtering; k = 1 and k = 2 arms unchanged.
+6. **Run guards** (BUG-D116): each pool's trade directory carries the pool file's fingerprint; the run phase refuses
+   trades built from another pool; the chain stops unless 216 fresh trade files per pool were written and the run took
+   a plausible time.
+Unchanged: everything else in Amendment 2 and its addendum -- grid (216 per pool, N = 432), splits, embargo,
+selection rule, DSR/PBO, the success criterion, and the disclosed open issues (A2/A3, A4, B9).
