@@ -28833,3 +28833,26 @@ Decision (Ross 2026-10-12, "fix everything first then resume running scripts and
 the primary discovery after the fixes (with BUG-D115), then pools and the second pass.
 The same-company rule now also links legs through Capital IQ (one companyid across a firm's listings; job 24):
 Compustat files some ADRs under a different GVKEY than the home company.
+
+### Endogeneity comparison arms (Ross 2026-10-13: comparison first, main pathway only if supported)
+
+**(b) Regime volatility bias** (`research/regime_volatility_bias_check.py`, synthetic 8/8). Forbes & Rigobon's
+adjustment is exact only for correlation WITH the factor; for stock pairs it removed ~92% of a purely mechanical spike
+on synthetic data (crisis 0.080 vs calm 0.000), so an exact one-factor version was added (each stock's market component
+rescaled to the reference volatility: flat 0.000/0.000, keeps a genuine beta rise). Real data, ~400-500 CRSP stocks with
+complete 10-year windows, one window per year (old discovery grid): the share of pairs passing the 0.4 prefilter jumps
+2007 -> 2008 / 2009 by 4.2x / 9.7x raw but 1.9x / 3.4x after rescaling, with the rescaled 2008-09 shares (0.45%, 0.82%)
+about equal to the constant-beta null (0.38%, 0.80%); 2019 -> 2020: 1.7x raw, 0.9x rescaled. Reading: the crisis
+spike behind PAPER_MAGNITUDE M-058 ("prefilter counts jump 4-10x in 2008-09 and 2020 windows") is mostly the volatility
+bias; the larger, genuine pattern is a persistent post-2010 rise (rescaled share 5-17% vs a null of 0.1-1.1%), not
+explained by volatility. M-058 is corrected in its re-derivation. Tried and corrected: the script's first summary was a
+crisis/calm mean over 10-year windows (every window ending 2008-2025 'contains' a crisis, so it meant post-2008; it read
+66x) -- replaced by window-level jumps. Caveats: long-lived stocks only (complete 10-year history), one factor (market).
+**(a) DOLS / FM-OLS / restricted-constant Johansen** (`research/cointegration_estimator_arms.py`, 5/5): DOLS and FM-OLS
+halve OLS's hedge-ratio error under an endogenous regressor (0.058 -> 0.028 / 0.031, T = 250); Johansen with the
+constant restricted to the cointegrating relation, critical values simulated (20.22 at T=250, 20.48 at T=1000;
+Osterwald-Lenum ~20), size 0.050. statsmodels' det_order=0 over-rejected 11-12% on driftless random walks at every T --
+replaced. Real-data comparison on the rebuilt pools after the re-run chain.
+**(c) S&P 500 inclusion difference-in-differences** (`research/inclusion_did.py`, 5/5): core and pre-trend test built
+and sized (sign-flip randomization; 600-seed size 0.045/0.053). Real-data driver waits for WRDS job 29 (CRSP SIC + size).
+**(d)** Standing rules in CLAUDE.md (explicit conditioning, matched placebo pairs, exogenous shocks, errors-in-variables).

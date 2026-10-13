@@ -16,8 +16,9 @@ stocks with complete returns in the window:
   null_share  -- the share in a CONSTANT-BETA world: r_i = beta_i m_t + e_i with the window's ACTUAL market path m_t,
                  and each stock's beta and idiosyncratic sd estimated once over its full history (the mechanical part)
 Market: Fama-French daily mktrf + rf (output/cache/wrds/ff_factors_3_daily.parquet).
-Verdict printed: crisis-window / calm-window ratios for raw, adjusted and null (crisis = windows containing 2008-09 or
-2020-03; calm = the rest).
+Printed: window-to-window jumps (2007 -> 2008, 2009; 2019 -> 2020) for each share, and the rescaled share's excess over
+the constant-beta null per window. The `crisis` column marks windows that contain 2008-09 or 2020-03 -- with 10-year
+windows that is every window from 2008 on, so it is NOT used as a crisis/calm comparison.
 Output: output/research/regime_volatility_bias_check.parquet. Test: debug/_verify_regime_volatility_bias_check.py
 Usage: python research/regime_volatility_bias_check.py [--n-symbols 2000]
 """
@@ -73,6 +74,21 @@ def simulate_null_share(mkt_window, betas, idio_sd, threshold, rng) -> float:
     m = np.asarray(mkt_window, dtype=float)
     R = np.outer(betas, m) + rng.normal(0, 1, (len(betas), len(m))) * np.asarray(idio_sd)[:, None]
     return candidate_share(R, threshold)
+
+
+def summarize(D: pd.DataFrame):
+    """Window-level jumps around the crisis years and the excess over the constant-beta null. (2026-10-13: a crisis/
+    calm mean over 10-YEAR windows was misleading -- every window ending 2008-2025 contains 2008-09 or 2020, so the
+    flag meant 'post-2008'; it read 66x.)"""
+    D = D.assign(year=pd.to_datetime(D["window_end"]).dt.year).set_index("year")
+    cols = ["raw_share", "adj_share", "rescaled_share", "null_share"]
+    for base, hits in ((2007, (2008, 2009)), (2019, (2020,))):
+        if base in D.index:
+            for h in hits:
+                if h in D.index:
+                    print(f"window {base} -> {h}: " + ", ".join(f"{c} {D.loc[h, c] / D.loc[base, c]:.1f}x" for c in cols))
+    D["rescaled_excess_over_null"] = D["rescaled_share"] - D["null_share"]
+    print(D[cols + ["rescaled_excess_over_null"]].round(4).to_string())
 
 
 def _market():
@@ -140,12 +156,7 @@ def main():
               f"adj={rows[-1]['adj_share']:.4f} resc={rows[-1]['rescaled_share']:.4f} null={rows[-1]['null_share']:.4f} crisis={rows[-1]['crisis']}", flush=True)
     D = pd.DataFrame(rows)
     D.to_parquet(OUT)
-    g = D.groupby("crisis")[["raw_share", "adj_share", "rescaled_share", "null_share"]].mean()
-    print(g.to_string())
-    if True in g.index and False in g.index:
-        r = g.loc[True] / g.loc[False]
-        print(f"crisis/calm ratio: raw {r['raw_share']:.2f}x, FR-adjusted {r['adj_share']:.2f}x, factor-rescaled "
-              f"{r['rescaled_share']:.2f}x, constant-beta null {r['null_share']:.2f}x")
+    summarize(D)
     print(f"-> {OUT}")
 
 
