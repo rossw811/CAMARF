@@ -53,6 +53,21 @@ def _num(node):
     return v if isinstance(v, (int, float)) and not isinstance(v, bool) else None
 
 
+def _assigned(st):
+    """(name, value-node) pairs for simple and tuple assignments ("A, B = 0.9, 1e-3"; 2026-10-12: tuple assignments
+    were missed). Unpacked values that are not a literal tuple of the same length are skipped."""
+    if isinstance(st, ast.AnnAssign) and isinstance(st.target, ast.Name) and st.value is not None:
+        return [(st.target.id, st.value)]
+    if not isinstance(st, ast.Assign) or len(st.targets) != 1:
+        return []
+    t, v = st.targets[0], st.value
+    if isinstance(t, ast.Name):
+        return [(t.id, v)]
+    if isinstance(t, (ast.Tuple, ast.List)) and isinstance(v, (ast.Tuple, ast.List)) and len(t.elts) == len(v.elts):
+        return [(e.id, x) for e, x in zip(t.elts, v.elts) if isinstance(e, ast.Name)]
+    return []
+
+
 def scan_config(path):
     tree = ast.parse(open(path, encoding="utf-8").read())
     rows = []
@@ -60,12 +75,10 @@ def scan_config(path):
         if isinstance(top, ast.ClassDef):
             for cls in [top] + [n for n in top.body if isinstance(n, ast.ClassDef)]:
                 for st in cls.body:
-                    tgt = st.targets[0] if isinstance(st, ast.Assign) and len(st.targets) == 1 else \
-                        (st.target if isinstance(st, ast.AnnAssign) else None)
-                    if isinstance(tgt, ast.Name) and tgt.id.isupper() and getattr(st, "value", None) is not None:
-                        v = _num(st.value)
+                    for nm, node in _assigned(st):
+                        v = _num(node) if nm.isupper() else None
                         if v is not None:
-                            rows.append({"name": f"{cls.name}.{tgt.id}", "file": "config.py", "line": st.lineno,
+                            rows.append({"name": f"{cls.name}.{nm}", "file": "config.py", "line": st.lineno,
                                          "value": repr(v)})
     return rows
 
@@ -75,12 +88,10 @@ def scan_module(path):
     tree = ast.parse(open(path, encoding="utf-8").read())
     rows = []
     for st in tree.body:
-        tgt = st.targets[0] if isinstance(st, ast.Assign) and len(st.targets) == 1 else \
-            (st.target if isinstance(st, ast.AnnAssign) else None)
-        if isinstance(tgt, ast.Name) and tgt.id.isupper() and getattr(st, "value", None) is not None:
-            v = _num(st.value)
+        for nm, node in _assigned(st):
+            v = _num(node) if nm.isupper() else None
             if v is not None:
-                rows.append({"name": f"{rel}:{tgt.id}", "file": rel, "line": st.lineno, "value": repr(v)})
+                rows.append({"name": f"{rel}:{nm}", "file": rel, "line": st.lineno, "value": repr(v)})
     return rows
 
 

@@ -120,8 +120,8 @@ data.py:_MAINTENANCE_START_ET,data.py,55,23,unjustified,,,,
 data.py:_MAX_FILL_BARS,data.py,854,5,unjustified,,,,
 data.py:_SESSION_CLOSE_MIN,data.py,1470,960,unjustified,,,,
 data.py:_SESSION_OPEN_MIN,data.py,1469,570,unjustified,,,,
-data_wrds.py:_GLOBAL_INDEX_MIN_CONSTITUENTS,data_wrds.py,1709,20,unjustified,,,,
-data_wrds.py:_GLOBAL_STATEMENT_TIMEOUT_MS,data_wrds.py,1761,120000,unjustified,,,,
+data_wrds.py:_GLOBAL_INDEX_MIN_CONSTITUENTS,data_wrds.py,1728,20,unjustified,,,,
+data_wrds.py:_GLOBAL_STATEMENT_TIMEOUT_MS,data_wrds.py,1780,120000,unjustified,,,,
 deflated_sharpe.py:_EULER_MASCHERONI,deflated_sharpe.py,74,0.5772156649015329,unjustified,,,,
 pit_wfa.py:PERSISTENCE_LOOKBACK_DAYS,pit_wfa.py,488,90,unjustified,,,,
 pit_wfa.py:WINDOW_SWEEP_ANCHOR_PCT,pit_wfa.py,121,0.8,unjustified,,,,
@@ -152,6 +152,9 @@ research/bug_d45_decoupled_std_retest.py:_OU_WINDOW_HALFLIFE_MULT_VOL,research/b
 research/capital_sim_selection_mechanism.py:_N_BOOTSTRAP,research/capital_sim_selection_mechanism.py,39,5000,unjustified,,,,
 research/capital_sim_selection_mechanism.py:_SEED,research/capital_sim_selection_mechanism.py,40,20260713,unjustified,,,,
 research/caviar_dynamic_var.py:_MIN_CALIBRATION_DAYS,research/caviar_dynamic_var.py,62,30,unjustified,,,,
+research/clean_pool_identity_pairs.py:MIN_COMMON,research/clean_pool_identity_pairs.py,29,60,unjustified,,set 2026-09-27 (commit 1eb7ca96); no recorded reason -- backlog (revealed by the tuple-assignment scanner fix 2026-10-12),,
+research/clean_pool_identity_pairs.py:SHARE,research/clean_pool_identity_pairs.py,29,0.99,unjustified,,set 2026-09-27 (commit 1eb7ca96); no recorded reason -- backlog (revealed by the tuple-assignment scanner fix 2026-10-12),,
+research/clean_pool_identity_pairs.py:TOL,research/clean_pool_identity_pairs.py,29,1e-09,definition,Floating-point equality of daily log returns (1e-9): identical series differ only by float rounding.,research/clean_pool_identity_pairs.py identity_share,no,0
 research/coint_decay_rate_signal_test.py:PVALUE_COINT_CUTOFF,research/coint_decay_rate_signal_test.py,45,0.05,unjustified,,,,
 research/coint_frac_window_grid.py:_EARLY_FRACTION,research/coint_frac_window_grid.py,69,0.7,unjustified,,,,
 research/coint_frac_window_grid.py:_PROD_THRESHOLD,research/coint_frac_window_grid.py,61,0.7,unjustified,,,,
@@ -213,6 +216,11 @@ research/hmm_gmm_regime_trade_features.py:_N_STATES,research/hmm_gmm_regime_trad
 research/hmm_gmm_regime_trade_features.py:_SEED,research/hmm_gmm_regime_trade_features.py,50,42,unjustified,,,,
 research/hub_leg_stop_conditioning.py:HUB_VOL_PERCENTILE_THRESHOLD,research/hub_leg_stop_conditioning.py,55,0.8,unjustified,,,,
 research/hub_leg_stop_conditioning.py:TIGHT_STOP_Z,research/hub_leg_stop_conditioning.py,53,2.5,unjustified,,,,
+research/identify_wrds_files.py:MATCH_SHARE,research/identify_wrds_files.py,98,0.9,calibrated,"Share of days a candidate's CRSP return must match the file's. Scores are bimodal: of 823 candidate scores none lies in [0.4, 0.9); thresholds 0.5-0.9 give the identical 767 matches (0.95 gives 766).",wrds_label_permno_final.parquet return_scores; check run 2026-10-12,no,0
+research/identify_wrds_files.py:MATCH_TOL,research/identify_wrds_files.py,98,0.001,definition,Daily return equality tolerance (1e-3 = 0.1%): CRSP dlyret vs the file's close-to-close return of the same security differ only by rounding of adjusted prices; different securities differ by far more on most days.,research/identify_wrds_files.py return_match_share,no,0
+research/identify_wrds_files.py:MIN_DAYS,research/identify_wrds_files.py,98,15,convention,"Minimum overlapping days for a share to be computed (15, i.e. 3 trading weeks); below it the label is 'unresolved_untestable', never guessed.",research/identify_wrds_files.py pick(),no,0
+research/identify_wrds_files.py:TOL_DAYS,research/identify_wrds_files.py,43,10,convention,Same +-10 day listing-date tolerance as the D17 relabel (first trade can lag the names-table date by days); kept identical so the two identifications are comparable.,research/relabel_wrds_by_recency_d17.py docstring; research/identify_wrds_files.py,no,0
+research/identify_wrds_files.py:WINDOW_DAYS,research/identify_wrds_files.py,98,45,engineering,"+-45 calendar days around each of three dates (~60 trading days each) bounds the WRDS query size; identity is decided by the bimodal share, insensitive to window length.",WRDS job 28_identity_resolve_returns,no,0
 research/international_liquidity_filter.py:_TRAILING_DAYS,research/international_liquidity_filter.py,73,504,unjustified,,,,
 research/intraday_episodic_scan.py:_DEFAULT_TIER3_THRESHOLD,research/intraday_episodic_scan.py,273,0.8,unjustified,,,,
 research/intraday_episodic_window_sensitivity.py:ALPHA,research/intraday_episodic_window_sensitivity.py,74,0.05,unjustified,,,,

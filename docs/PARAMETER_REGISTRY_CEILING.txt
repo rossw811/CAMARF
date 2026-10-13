@@ -1,1 +1,1 @@
-337  # 2026-10-12 initial backlog; may only go down
+339  # 2026-10-12: 337 + 2 previously hidden tuple-assigned values (clean_pool MIN_COMMON, SHARE) revealed by the scanner fix; may only go down

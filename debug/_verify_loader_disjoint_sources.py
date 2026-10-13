@@ -53,8 +53,9 @@ def main():
         live = pd.bdate_range("2015-01-02", "2026-09-25")
         pd.DataFrame({"close": 4.0, "volume": 1.0}, index=dead).to_parquet(os.path.join(d["wrds"], "P_1D.parquet"))
         pd.DataFrame({"close": 40.0, "volume": 1.0}, index=live).to_parquet(os.path.join(d["yf"], "P_1day.parquet"))
-        pd.DataFrame({"label": ["VSNT", "OVL", "ONLY", "P"], "permno": [83808, 11111, 22222, 12873]}).to_parquet(
-            os.path.join(d["wrds"], "full_us_market_label_map.parquet"))
+        # the loader reads the content-verified label -> PERMNO map since BUG-D117 (2026-10-12)
+        pd.DataFrame({"label": ["VSNT", "OVL", "ONLY", "P"], "permno": [83808, 11111, 22222, 12873],
+                      "source": ["agree"] * 4}).to_parquet(os.path.join(d["wrds"], "wrds_label_permno_final.parquet"))
         m = ul.load_full_universe("1D", use_memo_cache=False, dedupe=False)
         check("disjoint_split", "VSNT" in m and float(m["VSNT"]["close"].dropna().iloc[0]) == 50.0
               and "PERMNO83808" in m and float(m["PERMNO83808"]["close"].dropna().iloc[0]) == 7.0, f"keys={sorted(m)}")

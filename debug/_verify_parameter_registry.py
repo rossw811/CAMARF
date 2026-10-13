@@ -63,6 +63,13 @@ def main():
     m.loc[0, "value"] = "999999"
     m = pd.concat([m, pd.DataFrame([{"name": "config.py:NEW_MAGIC", "file": "config.py", "line": 1, "value": "7"}])])
     pm = problems(m, reg, CATEGORIES)
+    # 2026-10-12: tuple assignments ("A, B = 0.9, 1e-3") must be scanned too -- the scanner missed four constants
+    import tempfile
+    from scripts.build_parameter_registry import scan_module
+    tf = os.path.join(tempfile.mkdtemp(), "tup.py")
+    open(tf, "w").write("A_ONE, B_TWO = 0.9, 1e-3\nC_THREE = 5\nlower, D_FOUR = 1, 2\n")
+    names = {r["name"].split(":")[-1] for r in scan_module(tf)}
+    check("tuple_assignments_scanned", names == {"A_ONE", "B_TWO", "C_THREE", "D_FOUR"}, sorted(names))
     check("mutation_caught", code.loc[0, "name"] in pm["drift"] and "config.py:NEW_MAGIC" in pm["unregistered"])
     finish()
 
