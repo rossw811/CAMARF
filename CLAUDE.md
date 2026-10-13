@@ -109,6 +109,13 @@ for any new dependency (confirmed 2026-09-21 installing `tensorflow` for the LST
 - **Open to scrutiny, and we close every hole found (Ross, 2026-10-02).** The goal is a process outsiders
   are invited to attack: every claim traceable (claims registry, lineage seeds, exact data/params), every
   known limitation published, every reported hole verified, fixed or disclosed, and logged with its outcome.
+- **Endogeneity rules for explanatory studies (Ross, 2026-10-13).** Every study that explains co-movement or breaks
+  (ownership, board/lender links, fundamentals, events) states its conditioning explicitly ("among confirmed pairs"),
+  compares against matched placebo pairs from the same prefilter stage, uses exogenous shocks where it claims
+  causation (S&P 500 inclusion difference-in-differences with pre-trend tests), and corrects for errors-in-variables
+  when an estimated quantity (half-life, hedge ratio) is a regressor. Endogeneity fixes enter as comparison arms
+  (DOLS/FM-OLS + Johansen vs EG; Forbes-Rigobon volatility adjustment for regime claims) and replace the main
+  pathway only if the comparison supports it.
 - **Free data only (Ross, 2026-10-02).** No paid data subscriptions; use what WRDS already provides plus free
   sources (yfinance, FRED, CFTC, Binance, forward-recorded live data).
 
