@@ -59,3 +59,4 @@ logs/archive/*.log
 !/near_miss_remaining.log
 latest_*_stdout.log
 latest_*_stderr.loglogs/*_auto_attempt*.log
+graphify-out/

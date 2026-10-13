@@ -20,6 +20,18 @@ Cost key: **S** < 1 day of my work · **M** 1–3 days · **L** a week+ · **J**
   CRSP cache's end, 2026-01-01 onward (CRSP's next annual release + forward-recorded data). Declared sealed as of
   this commit: no CAMARF result may be computed on data dated 2026-01-01 or later until the final pre-registered test.
 
+## Ross's answers, round 2 (2026-10-12)
+
+1. Pre-registration **Amendment 3: yes** (records BUG-D117, the CCM + Capital IQ same-company rule, D14, D15 before
+   the second pass). 2. D15 applied **at the pool step** (pairs with an unverified leg dropped; discovery counts
+   reported with and without). 3. D14 twins: **the published DLC list** (de Jong, Rosenthal & van Dijk 2009 and
+   successors). 4. graphify-out removed (yes). 5. E6-E21 **yes**. 6. Papers: calibrated-discovery lead + process
+   paper **yes**. 7. Grid offsets after the second pass **yes**. 8. Licensing **yes**: no WRDS/PitchBook raw data in
+   the repo; code, derived statistics and results public. 9. Bloomberg checklist **no**. 10. Memtest **no**.
+   Synthetic fill of the OptionMetrics/TAQ sample gaps: **yes, as a labelled curiosity, never a finding**. Librarian
+   email: not sent. Kamiak: maybe, via Ross's linear-algebra instructor (a PhD candidate; a faculty PI is usually
+   required).
+
 ## State in one paragraph
 
 Four defects found since 10-10 are fixed failing-first and committed: BUG-D115 (crashed tests left out of BH's m),
