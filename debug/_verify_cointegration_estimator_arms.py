@@ -57,6 +57,20 @@ def main():
     y, x = world(rng, 250)
     t1, t2 = m.johansen_trace(y, x), m.johansen_trace(x, y)
     check("johansen_symmetric", abs(t1 - t2) < 1e-8, f"{t1:.6f} vs {t2:.6f}")
+    # compare_pair (real-data driver's per-pair function, 2026-10-14; written before it): on one window, returns OLS /
+    # DOLS / FM-OLS hedge ratios, production EG (both directions, max p) and Johansen; cointegrated -> both reject
+    try:
+        from research.cointegration_estimator_comparison import compare_pair
+        y, x = world(rng, 1500)
+        r = compare_pair(y, x)
+        keys = {"beta_ols", "beta_dols", "beta_fmols", "eg_p", "eg_reject", "johansen_trace", "johansen_reject", "n"}
+        check("compare_pair_fields", keys <= set(r), sorted(r))
+        check("compare_pair_cointegrated", r["eg_reject"] and r["johansen_reject"] and abs(r["beta_dols"] - 2) < 0.1, r)
+        y0, x0 = world(rng, 1500, coint=False)
+        r0 = compare_pair(y0, x0)
+        check("compare_pair_independent_runs", isinstance(r0["eg_reject"], bool) and isinstance(r0["johansen_reject"], bool))
+    except ImportError as e:
+        check("compare_pair_exists", False, str(e))
     finish()
 
 

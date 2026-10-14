@@ -17,7 +17,7 @@ selection only partly. Test: debug/_verify_inclusion_did.py
 import numpy as np
 from scipy import stats
 
-PRETREND_BINS = 5        # pre-period bins for the event-time profile (registry)
+PRETREND_BINS = 12       # one bin per calendar month of the 12-month pre-period (definition; registry)
 N_BOOT = 2000            # bootstrap draws over events for the DiD CI (registry)
 
 
