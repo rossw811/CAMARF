@@ -140,7 +140,8 @@ def main():
         members_now = sp500_members_asof(mem, d - pd.Timedelta(days=1)) - {a.permno}
         pool = nm[(nm["siccd"] // 100 == sic2) & nm["shrcd"].isin([10, 11]) & ~nm["permno"].isin(members_now | {a.permno})]
         sz = size[(size["date"] < d) & (size["date"] >= d - pd.Timedelta(days=40))].drop_duplicates("permno", keep="last")
-        sz = sz.set_index("permno")["mcap"]
+        sz = pd.to_numeric(sz.set_index("permno")["mcap"], errors="coerce").astype(float)
+        sz = sz[np.isfinite(sz) & (sz > 0)]          # no size -> cannot be size-matched (CRSP prc/shrout missing)
         if a.permno not in sz.index:
             continue
         cand = pool[pool["permno"].isin(sz.index)]["permno"].unique()
