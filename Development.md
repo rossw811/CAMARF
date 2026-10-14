@@ -28856,3 +28856,27 @@ replaced. Real-data comparison on the rebuilt pools after the re-run chain.
 **(c) S&P 500 inclusion difference-in-differences** (`research/inclusion_did.py`, 5/5): core and pre-trend test built
 and sized (sign-flip randomization; 600-seed size 0.045/0.053). Real-data driver waits for WRDS job 29 (CRSP SIC + size).
 **(d)** Standing rules in CLAUDE.md (explicit conditioning, matched placebo pairs, exogenous shocks, errors-in-variables).
+
+## Session 2026-10-14 — re-run complete: discovery, pools, second pre-registered pass
+
+Chain `debug/_tmp_chain_rerun_20261012.sh` on CachyOS at 6fdc10c4 (first launch stopped correctly at its suite gate on
+two failures my BUG-D117 commit caused -- a loader test fixture still wrote the old label map, and the parameter
+registry found an unregistered constant plus a scanner gap for tuple assignments; both fixed, suite 384/385 with the
+known Act 3 failure). Volume re-restatement 2026-10-12 20:50 -> chain complete 2026-10-14 02:04 (faster than estimated
+once the healthvault Ollama services were stopped and disabled).
+- **Discovery** (`--fresh --d18 exclude`): Tier 1 891 (unchanged), Tier 2 286 (was 291), Tier 3 680 (was 687).
+  Intraday identical (1h 60 / 6, 4h 13 / 0). **BUG-D115 impact measured: zero** -- no EG test crashed in any tier, so
+  BH's m was never short. The Tier 2/3 changes come from BUG-D117 (membership gate on the content-verified PERMNO) and
+  the 51 re-restated volume files.
+- **Pools** (Amendment 3 rules): k = 1 686 -> 660, k = 2 124 -> 104; removed 26 / 20 same-company pairs (ADR vs home
+  listing -- Toyota, Shell x2, Vodafone, HSBC, Barclays, Sony, GSK, AstraZeneca x2, ASML, STMicro x2, Daimler, Deutsche
+  Bank, MUFG, Logitech, Rio Tinto, ArcelorMittal -- and same-GVKEY listing pairs); D15 0, D14 0. Spreads 660/660 rebuilt.
+  Degenerate audit: only all-zero gap flags on pool files (expected for daily CRSP); the constant coint_fraction 1.0 ADR
+  artifacts are gone. Contracts: 1 violation, an old 3m file outside the pools.
+- **Second pre-registered pass: no robust signal** -- 0 of 8 pool x split cells pass (holdout Sharpe > 0, DSR >= 0.95,
+  PBO < 0.20). k = 1 holdout Sharpe -0.48 / -0.14 / +0.50 / -0.15 (DSR <= 0.13); k = 2 +0.08 / +0.91 / +0.33 / +0.71
+  (DSR <= 0.56, PBO 0.32-0.86); the selected configuration differs in every split. First pass k = 2: -0.16 / -0.34 /
+  +0.45 / +1.19. Reading: no configuration meets the pre-registered standard; k = 2 (>= 2 rejected windows) is positive in
+  all four splits this time -- a lead, not a finding. Independent review pending before C-006 is updated.
+- WRDS: the saved pgpass password still works (I had judged it stale from the file date and declined to run the server
+  unattended; Ross asked to run it once -- it connected; job 29, CRSP SIC + monthly size for the inclusion study, done).
