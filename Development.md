@@ -28880,3 +28880,12 @@ once the healthvault Ollama services were stopped and disabled).
   all four splits this time -- a lead, not a finding. Independent review pending before C-006 is updated.
 - WRDS: the saved pgpass password still works (I had judged it stale from the file date and declined to run the server
   unattended; Ross asked to run it once -- it connected; job 29, CRSP SIC + monthly size for the inclusion study, done).
+**Arm (a) on real data (2026-10-14, `research/cointegration_estimator_comparison.py`, CachyOS).** 654 pool pairs (k = 1,
+1D; 2520-bar window ending at eligible_from) and 654 random Tier-3 candidates: hedge ratios -- median |DOLS - OLS|/|OLS|
+0.004 (90th pct 0.045 pool / 0.026 candidates), FM-OLS 0.003-0.005, no sign flips: at 10-year windows OLS's T-rate
+convergence swamps the finite-sample endogeneity bias (large at T = 250 synthetic). Tests on the same window, 5%: pool --
+EG rejects 593, Johansen (restricted constant, simulated critical value) 638, Johansen agrees on 592 of EG's 593
+(99.8%); candidates -- EG 30 (4.6%), Johansen 63 (9.6%), agreeing on 20. Johansen rejects more often, as expected (EG's
+max-over-two-directions is conservative; Johansen is exactly sized with more power). Recommendation to Ross: keep OLS
+hedge ratios and EG as the main test; report the 99.8% Johansen agreement as a robustness result (requiring both would
+remove one pair).
