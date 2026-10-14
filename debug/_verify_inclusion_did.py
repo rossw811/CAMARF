@@ -71,6 +71,22 @@ def main():
                                      rng=np.random.default_rng(s))["pretrend_p"] < 0.05 for s in range(40)])
     check("pretrend_size", fe <= 0.10, f"false-flag rate {fe:.3f}")
     check("pretrend_power", fp >= 0.80, f"flag rate {fp:.3f}")
+    # build_event (real-data driver, 2026-10-14; written before it): returns segments around an inclusion date --
+    # pre = [d-252, d-21), post = [d+21, d+252) trading days, the +-21-day announcement/inclusion band excluded;
+    # only series complete on both segments are used; t0 = length of pre
+    try:
+        from research.inclusion_did import build_event
+        idx = pd.bdate_range("2000-01-03", periods=700)
+        R = pd.DataFrame(np.random.default_rng(3).normal(size=(700, 6)), index=idx, columns=list("TCDMNX"))
+        R.loc[idx[600], "X"] = np.nan                      # incomplete member -> dropped
+        d = idx[350]
+        ev = build_event(R, d, "T", ["C", "D"], ["M", "N", "X"])
+        check("event_t0", ev["t0"] == 231, ev["t0"])
+        check("event_post_len", len(ev["treated"]) - ev["t0"] == 231, len(ev["treated"]))
+        check("event_excludes_band", not np.isin(R.loc[idx[330:371], "T"].to_numpy(), ev["treated"]).any())
+        check("event_drops_incomplete_member", ev["members"].shape[0] == 2, ev["members"].shape)
+    except ImportError as e:
+        check("build_event_exists", False, str(e))
     finish()
 
 

@@ -68,3 +68,98 @@ def signflip_p(x, rng=None, draws: int = SIGNFLIP_DRAWS) -> float:
     obs = abs(x.mean())
     flips = rng.choice([-1.0, 1.0], size=(draws, len(x)))
     return float((1 + np.sum(np.abs((flips * x).mean(axis=1)) >= obs)) / (draws + 1))
+
+
+PRE_BARS, BAND_BARS = 252, 21    # 12-month window; +-1 month excluded around inclusion (definition; registry)
+N_MEMBERS, N_CONTROLS = 50, 3    # incumbent members sampled per event; matched controls per event (registry)
+
+
+def build_event(R, d, treated, controls, members, pre: int = PRE_BARS, band: int = BAND_BARS):
+    """Return segments around inclusion date d from R (dates x labels): pre = [d-pre, d-band), post = [d+band, d+pre)
+    trading days. Only series complete on both segments are used. None when the treated stock is incomplete."""
+    import pandas as pd
+    pos = int(R.index.searchsorted(pd.Timestamp(d)))
+    if pos - pre < 0 or pos + pre > len(R):
+        return None
+    rows = np.r_[pos - pre:pos - band, pos + band:pos + pre]
+    seg = R.iloc[rows]
+    ok = seg.notna().all()
+    if treated not in seg or not ok.get(treated, False):
+        return None
+    ctrl = [seg[c].to_numpy() for c in controls if c in seg and ok.get(c, False)]
+    mem = [m for m in members if m in seg and ok.get(m, False) and m != treated]
+    if not ctrl or len(mem) < 2:
+        return None
+    return {"treated": seg[treated].to_numpy(), "controls": ctrl, "members": seg[mem].to_numpy().T,
+            "t0": pre - band}
+
+
+def main():
+    """S&P 500 additions 1990-2023 -> events; controls = non-members at the date, same 2-digit SIC, common stock
+    (shrcd 10/11), nearest log market cap (|prc| x shrout, month-end before the date), complete data."""
+    import os
+    import sys
+    import pandas as pd
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    sys.path.insert(0, root)
+    from data_wrds import label_permno_map, sp500_members_asof, crsp_no_trade_mask
+    W = os.path.join(root, "output", "cache", "wrds")
+    mem = pd.read_parquet(os.path.join(W, "sp500_membership_history.parquet"))
+    names = pd.read_parquet(os.path.join(W, "crsp_msenames_sic.parquet"))
+    size = pd.read_parquet(os.path.join(W, "crsp_msf_size.parquet"))
+    size["date"] = pd.to_datetime(size["date"]); size["mcap"] = size["prc"].abs() * size["shrout"]
+    lab = {}
+    for l, p in label_permno_map().items():
+        if p not in lab or lab[p].startswith("PERMNO"):
+            lab[p] = l
+    cache = {}
+
+    def ret(p):
+        if p not in cache:
+            l = lab.get(int(p))
+            f = os.path.join(W, f"{l}_1D.parquet") if l else None
+            if not f or not os.path.exists(f):
+                cache[p] = None
+            else:
+                df = pd.read_parquet(f)
+                px = crsp_no_trade_mask(df, l, df["close_total_return"].astype(float)).abs()
+                r = np.log(px).diff(); r.index = pd.to_datetime(r.index)
+                cache[p] = r[~r.index.duplicated(keep="last")]
+        return cache[p]
+
+    adds = mem[(pd.to_datetime(mem["mbrstartdt"]) >= "1990-01-01") & (pd.to_datetime(mem["mbrstartdt"]) <= "2023-12-31")]
+    rng = np.random.default_rng(20261014)
+    events, meta = [], []
+    for a in adds.itertuples():
+        d = pd.Timestamp(a.mbrstartdt)
+        nm = names[(pd.to_datetime(names["namedt"]) <= d) & (pd.to_datetime(names["nameendt"]) >= d)]
+        sic = nm.loc[nm["permno"] == a.permno, "siccd"]
+        if sic.empty or ret(a.permno) is None:
+            continue
+        sic2 = int(sic.iloc[0]) // 100
+        members_now = sp500_members_asof(mem, d - pd.Timedelta(days=1)) - {a.permno}
+        pool = nm[(nm["siccd"] // 100 == sic2) & nm["shrcd"].isin([10, 11]) & ~nm["permno"].isin(members_now | {a.permno})]
+        sz = size[(size["date"] < d) & (size["date"] >= d - pd.Timedelta(days=40))].drop_duplicates("permno", keep="last")
+        sz = sz.set_index("permno")["mcap"]
+        if a.permno not in sz.index:
+            continue
+        cand = pool[pool["permno"].isin(sz.index)]["permno"].unique()
+        cand = sorted(cand, key=lambda p: abs(np.log(sz[p]) - np.log(sz[a.permno])))
+        ctrl = [p for p in cand if ret(p) is not None][:N_CONTROLS * 3]
+        mlist = [p for p in rng.permutation(sorted(members_now)) if ret(p) is not None][:N_MEMBERS * 2]
+        ids = [a.permno] + ctrl + mlist
+        R = pd.concat({p: ret(p) for p in ids}, axis=1).sort_index()
+        ev = build_event(R, d, a.permno, ctrl, mlist)
+        if ev is None:
+            continue
+        ev["controls"] = ev["controls"][:N_CONTROLS]; ev["members"] = ev["members"][:N_MEMBERS]
+        events.append(ev); meta.append({"permno": a.permno, "date": d, "sic2": sic2})
+    res = did_from_events(events, rng=np.random.default_rng(1))
+    print(f"events {len(events)} of {len(adds)} additions 1990-2023: {res}")
+    M = pd.DataFrame(meta); M["delta"] = [_event_delta(e) for e in events]; M["decade"] = (M["date"].dt.year // 10) * 10
+    print(M.groupby("decade")["delta"].agg(["count", "mean"]).to_string())
+    M.to_parquet(os.path.join(root, "output", "research", "inclusion_did_events.parquet"))
+
+
+if __name__ == "__main__":
+    main()
