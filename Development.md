@@ -28889,3 +28889,12 @@ EG rejects 593, Johansen (restricted constant, simulated critical value) 638, Jo
 max-over-two-directions is conservative; Johansen is exactly sized with more power). Recommendation to Ross: keep OLS
 hedge ratios and EG as the main test; report the 99.8% Johansen agreement as a robustness result (requiring both would
 remove one pair).
+**Arm (c) on real data (2026-10-15, `research/inclusion_did.py`, CachyOS).** 664 of 822 S&P 500 additions 1990-2023
+(the rest lacked SIC, size, or complete returns), 3 controls each (non-member, same SIC2, nearest log market cap the
+month before, complete data), 12-month pre/post windows with +-1 month excluded, co-movement = mean correlation with up
+to 50 incumbent members. DiD +0.0118 (95% bootstrap CI 0.0065-0.0172); pre-trend slope -0.0007, sign-flip p = 0.09
+(not flagged at 5%, stated). By decade: 1990s +0.018 (180), 2000s +0.015 (242), 2010s +0.008 (186), 2020s -0.012 (56).
+Reading: inclusion -- a shock to index ownership without a change in fundamentals -- causes a small rise in co-movement
+(Barberis-Shleifer-Wurgler 2005), fading as index ownership became near-universal; consistent with arm (b)'s market-wide
+post-2010 rise. Baseline for the economic-linkage study (E6): ownership is a real but small driver. Caveats: committee
+selection on size/liquidity (matching on size and SIC2 only), N_CONTROLS sensitivity (1 and 5) still to run.
