@@ -94,7 +94,7 @@ def build_event(R, d, treated, controls, members, pre: int = PRE_BARS, band: int
             "t0": pre - band}
 
 
-def main():
+def main(n_controls: int = None):
     """S&P 500 additions 1990-2023 -> events; controls = non-members at the date, same 2-digit SIC, common stock
     (shrcd 10/11), nearest log market cap (|prc| x shrout, month-end before the date), complete data."""
     import os
@@ -153,14 +153,18 @@ def main():
         ev = build_event(R, d, a.permno, ctrl, mlist)
         if ev is None:
             continue
-        ev["controls"] = ev["controls"][:N_CONTROLS]; ev["members"] = ev["members"][:N_MEMBERS]
+        ev["controls"] = ev["controls"][:n_controls or N_CONTROLS]; ev["members"] = ev["members"][:N_MEMBERS]
         events.append(ev); meta.append({"permno": a.permno, "date": d, "sic2": sic2})
     res = did_from_events(events, rng=np.random.default_rng(1))
     print(f"events {len(events)} of {len(adds)} additions 1990-2023: {res}")
     M = pd.DataFrame(meta); M["delta"] = [_event_delta(e) for e in events]; M["decade"] = (M["date"].dt.year // 10) * 10
     print(M.groupby("decade")["delta"].agg(["count", "mean"]).to_string())
-    M.to_parquet(os.path.join(root, "output", "research", "inclusion_did_events.parquet"))
+    suffix = "" if not n_controls or n_controls == N_CONTROLS else f"_c{n_controls}"
+    M.to_parquet(os.path.join(root, "output", "research", f"inclusion_did_events{suffix}.parquet"))
 
 
 if __name__ == "__main__":
-    main()
+    import argparse
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--n-controls", type=int, default=None, help="sensitivity: matched controls per event")
+    main(ap.parse_args().n_controls)
