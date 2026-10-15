@@ -28917,3 +28917,5 @@ never breaks a daily series unless DAILY_GAP_BREAKS). Failing-first: _verify_rep
 8/8; full suite 388/389 (known Act 3). The 2026-10-14 discovery, pools and second pass are superseded; re-run under
 pre-registration Amendment 4. Also: the Surface's copies of the Compustat files lack close_total_return (out of sync
 with CachyOS) -- CachyOS is canonical; re-sync before any Surface-side Compustat analysis.
+**Arm (c) sensitivity (2026-10-15):** controls per event 1 / 3 / 5 -> DiD +0.0099 (CI 0.0035-0.0165, pre-trend p 0.33) /
++0.0118 (0.0065-0.0172, p 0.09) / +0.0125 (0.0075-0.0175, p 0.06): robust to the control count.
