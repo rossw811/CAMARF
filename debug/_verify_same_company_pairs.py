@@ -93,6 +93,15 @@ def main():
         check("d14_real_sides_loaded", "Rio Tinto" in real and len(real) >= 8, sorted(real))
     except ImportError as e:
         check("d14_functions_exist", False, str(e))
+    # Amendment 4 (Ross 2026-10-15): structural pairs (production's CrossAssetTagger whitelists: index-tracking
+    # SPY/VOO, share classes GOOGL/GOOG) are dropped at the pool step -- SPY/VOO@1h reached the k=2 pool
+    try:
+        from research.clean_pool_identity_pairs import structural_pair
+        check("a4_spy_voo", structural_pair("SPY", "VOO") and structural_pair("VOO", "SPY"))
+        check("a4_share_class", structural_pair("GOOGL", "GOOG"))
+        check("a4_ordinary_pair_kept", not structural_pair("KO", "PEP"))
+    except ImportError as e:
+        check("a4_structural_pair_exists", False, str(e))
     try:
         from research.clean_pool_identity_pairs import require_link_for_mixed
         try:

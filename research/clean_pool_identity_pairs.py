@@ -122,6 +122,13 @@ def dlc_twin(a: str, b: str, ids: dict, sides: dict) -> bool:
     return any((ia & A and ib & B) or (ia & B and ib & A) for A, B in sides.values())
 
 
+def structural_pair(a: str, b: str) -> bool:
+    """Amendment 4 (Ross 2026-10-15): production's structural-pair whitelists (analysis.CrossAssetTagger: ETFs tracking
+    the same index, share classes of one company). The pool step never called them; SPY/VOO@1h reached the k=2 pool."""
+    from analysis import CrossAssetTagger
+    return bool(CrossAssetTagger._is_index_tracking_pair(a, b) or CrossAssetTagger._is_share_class_pair(a, b))
+
+
 def unverified_labels(final_map: pd.DataFrame) -> set:
     """D15 (Ross 2026-10-12): labels whose CRSP file could not be identified (research/identify_wrds_files.py,
     source 'unresolved_*' -- too short to test, or no candidate's returns matched). Pairs with such a leg are
@@ -188,9 +195,10 @@ def main():
             same = same_company(r.symbol_a, r.symbol_b, ids)
             unver = r.symbol_a in _unverified or r.symbol_b in _unverified
             twin = dlc_twin(r.symbol_a, r.symbol_b, ids, _dlc)
+            structural = structural_pair(r.symbol_a, r.symbol_b)
             rows.append({"k": k, "symbol_a": r.symbol_a, "symbol_b": r.symbol_b, "identical_share": share,
-                         "n_common": n, "identity": ident, "same_company": same, "unverified_leg": unver, "dlc_twin": twin})
-            keep.append(not ident and not same and not unver and not twin)
+                         "n_common": n, "identity": ident, "same_company": same, "unverified_leg": unver, "dlc_twin": twin, "structural": structural})
+            keep.append(not ident and not same and not unver and not twin and not structural)
         C = P[np.array(keep)].reset_index(drop=True)
         C.to_parquet(os.path.join(_R, f"purity_pairs_pit_k{k}_clean.parquet"))
         R = pd.DataFrame([x for x in rows if x["k"] == k])
@@ -198,7 +206,9 @@ def main():
               f"{int((R['same_company'] & ~R['identity']).sum())} further same-company pairs, "
               f"{int((R['unverified_leg'] & ~R['same_company'] & ~R['identity']).sum())} further pairs with an "
               f"unverified leg (D15), {int((R['dlc_twin'] & ~R['unverified_leg'] & ~R['same_company'] & ~R['identity']).sum())} "
-              f"further dual-listed twins (D14))")
+              f"further dual-listed twins (D14), "
+              f"{int((R['structural'] & ~R['dlc_twin'] & ~R['unverified_leg'] & ~R['same_company'] & ~R['identity']).sum())} "
+              f"further structural pairs (Amendment 4))")
     pd.DataFrame(rows).to_parquet(os.path.join(_R, "clean_pool_identity_pairs_report.parquet"))
     st.record()
     print("lineage: recorded 'clean_pools'")
