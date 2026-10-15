@@ -28898,3 +28898,22 @@ Reading: inclusion -- a shock to index ownership without a change in fundamental
 (Barberis-Shleifer-Wurgler 2005), fading as index ownership became near-universal; consistent with arm (b)'s market-wide
 post-2010 rise. Baseline for the economic-linkage study (E6): ownership is a real but small driver. Caveats: committee
 selection on size/liquidity (matching on size and SIC2 only), N_CONTROLS sensitivity (1 and 5) still to run.
+
+### BUG-D118: ~1000x level jumps in Compustat Global prices (2026-10-14/15)
+
+Found by the independent review of the second pass (its top-profit pair, SMFG vs SBI Shinsei, showed a 460x one-day
+move -- LTCB 1998 / Shinsei 2004 stitched under one GVKEY). Audit: 698 of 15,094 Compustat Global series had a > 5x
+one-day move in close_total_return, most near ln(1000) (Brazil 1994-07-04 Plano Real; quotation changes 2003-07); in
+136 of 680 Tier-3 confirmations (44 with both legs) and 29% of the k = 2 pool. Cause 1 (verified on COMGAS 2007-10-02):
+prices are quoted per `qunit` shares and data_wrds built close = prccd / ajexdi; prccd / (qunit x ajexdi) is
+continuous (WRDS job 31 fetched qunit runs; the first, unbatched attempt -- one GROUP BY with a tuple IN over g_secd --
+ran 2 h and was dropped by the server). qunit explains 103 series. The remaining jumps (bad prints that revert: 268
+events; exact powers of 10: 181; other permanent shifts: 958) are handled by splitting the series at each break
+(Ross approved 2026-10-15; no level rescaling, which would erase genuine wipeouts); 836 segment files, 64 series
+spike-masked only, 20 residual fragments quarantined. Re-audit: 0 of 15,910 files with a > 5x one-day move. Tried and
+corrected on the way: I first blamed a missing ajexdi in apply_trfd_total_return (wrong -- its input close is already
+divided by ajexdi); I first planned to reuse the gap rule by masking a block (wrong for daily data: is_genuine_data_gap
+never breaks a daily series unless DAILY_GAP_BREAKS). Failing-first: _verify_repair_qunit 7/7, _verify_split_level_breaks
+8/8; full suite 388/389 (known Act 3). The 2026-10-14 discovery, pools and second pass are superseded; re-run under
+pre-registration Amendment 4. Also: the Surface's copies of the Compustat files lack close_total_return (out of sync
+with CachyOS) -- CachyOS is canonical; re-sync before any Surface-side Compustat analysis.

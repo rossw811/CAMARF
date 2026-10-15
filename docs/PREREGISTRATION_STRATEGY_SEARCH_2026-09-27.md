@@ -163,3 +163,21 @@ since the Amendment 2 addendum, each committed with a failing-first test:
    a plausible time.
 Unchanged: everything else in Amendment 2 and its addendum -- grid (216 per pool, N = 432), splits, embargo,
 selection rule, DSR/PBO, the success criterion, and the disclosed open issues (A2/A3, A4, B9).
+
+## Amendment 4 (approved by Ross 2026-10-15; committed before ANY result of the re-run below exists)
+The Amendment 3 second pass ran (2026-10-14, 0 of 8 cells pass) and was independently reviewed (verdict held; "k = 2
+is a lead" judged overstated). Before its result is registered, a data defect was found and fixed, so the pass is
+RE-RUN under this amendment; the 2026-10-14 output is kept and reported as superseded, never as the result.
+1. **BUG-D118, Compustat Global prices.** 698 of 15,094 series had ~1000x one-day level jumps (in 136 of 680 Tier-3
+   confirmations; 29% of the k = 2 pool). (a) Prices are quoted per `qunit` shares; per-share price is now
+   prccd / (qunit x ajexdi) at fetch, and 104 cached series were repaired. (b) Any remaining one-day move > 5x in a
+   Compustat Global total-return series splits the series there (bad prints that revert within 5 trading days are
+   masked instead); the earlier pieces become separate `<label>_segN` series of the same company; 20 residual
+   fragments are quarantined. After the fix no Compustat Global daily series has a one-day move > 5x.
+2. **Structural pairs excluded at the pool step** (production's index-tracking and share-class whitelists; SPY/VOO@1h
+   had reached the k = 2 pool).
+3. **Disclosed deviations in the evaluation, unchanged for comparability with passes 1-2:** the DSR uses the selected
+   configuration's unconstrained development daily Sharpe (selection uses capital-sim fold Sharpes), and Var[SR] is
+   taken across the 216 trials of one pool while N = 432.
+Discovery, intraday, pools and the search are re-run in full (`debug/_tmp_chain_rerun_20261012.sh`). Unchanged:
+everything else in Amendments 2-3 -- grid (N = 432), splits, embargo, selection rule, DSR/PBO, success criterion.
