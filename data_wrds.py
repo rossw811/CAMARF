@@ -1248,7 +1248,7 @@ def fetch_symbol_global(db, gvkey: str, iid: str, start: Optional[str] = None) -
     real follow-up, not silently assumed to work the same way as CRSP's.
     """
     q = f"""
-        select datadate, prcod, prchd, prcld, prccd, cshtrd, ajexdi
+        select datadate, prcod, prchd, prcld, prccd, cshtrd, ajexdi, qunit
         from comp_global_daily.g_secd
         where gvkey = '{gvkey}' and iid = '{iid}'
         {f"and datadate >= '{start}'" if start else ""}
@@ -1263,11 +1263,14 @@ def fetch_symbol_global(db, gvkey: str, iid: str, start: Optional[str] = None) -
     df["datadate"] = pd.to_datetime(df["datadate"])
     df = df.set_index("datadate")
     fac = df["ajexdi"].replace(0, pd.NA)
+    # BUG-D118 (2026-10-15): prices are quoted per `qunit` shares (e.g. Brazil per 1,000 until the 2000s); a quotation-
+    # unit change looked like a ~1000x jump. Per-share, split-adjusted price = prccd / (qunit * ajexdi).
+    df["qunit"] = df["qunit"].fillna(1.0).replace(0, 1.0)
     out = pd.DataFrame({
-        "open": df["prcod"] / fac,
-        "high": df["prchd"] / fac,
-        "low": df["prcld"] / fac,
-        "close": df["prccd"] / fac,
+        "open": df["prcod"] / (df["qunit"] * fac),
+        "high": df["prchd"] / (df["qunit"] * fac),
+        "low": df["prcld"] / (df["qunit"] * fac),
+        "close": df["prccd"] / (df["qunit"] * fac),
         "volume": df["cshtrd"] * fac,  # T14.7 (2026-10-04): Compustat shares restated by ajexdi, consistent with close = prccd/ajexdi; raw kept
         "volume_raw": df["cshtrd"],
     })
@@ -1305,7 +1308,7 @@ def fetch_symbols_bulk_global(db, label_by_gvkey_iid: Dict[str, Tuple[str, str]]
         values_sql = ",".join(f"('{g}','{iid}')" for g, iid in batch)
         start_clause = f"and datadate >= '{start}'" if start else ""
         q = f"""
-            select gvkey, iid, datadate, prcod, prchd, prcld, prccd, cshtrd, ajexdi
+            select gvkey, iid, datadate, prcod, prchd, prcld, prccd, cshtrd, ajexdi, qunit
             from comp_global_daily.g_secd
             where (gvkey, iid) in ({values_sql})
             {start_clause}
@@ -1326,11 +1329,12 @@ def fetch_symbols_bulk_global(db, label_by_gvkey_iid: Dict[str, Tuple[str, str]]
                 continue
             g = g.set_index("datadate").sort_index()
             fac = g["ajexdi"].replace(0, pd.NA)
+            g["qunit"] = g["qunit"].fillna(1.0).replace(0, 1.0)   # BUG-D118: per-share = prccd / (qunit * ajexdi)
             df = pd.DataFrame({
-                "open": g["prcod"] / fac,
-                "high": g["prchd"] / fac,
-                "low": g["prcld"] / fac,
-                "close": g["prccd"] / fac,
+                "open": g["prcod"] / (g["qunit"] * fac),
+                "high": g["prchd"] / (g["qunit"] * fac),
+                "low": g["prcld"] / (g["qunit"] * fac),
+                "close": g["prccd"] / (g["qunit"] * fac),
                 "volume": g["cshtrd"] * fac,  # T14.7 (2026-10-04): Compustat shares restated by ajexdi, consistent with close = prccd/ajexdi; raw kept
                 "volume_raw": g["cshtrd"],
             })

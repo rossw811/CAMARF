@@ -120,8 +120,8 @@ data.py:_MAINTENANCE_START_ET,data.py,55,23,unjustified,,,,
 data.py:_MAX_FILL_BARS,data.py,854,5,unjustified,,,,
 data.py:_SESSION_CLOSE_MIN,data.py,1470,960,unjustified,,,,
 data.py:_SESSION_OPEN_MIN,data.py,1469,570,unjustified,,,,
-data_wrds.py:_GLOBAL_INDEX_MIN_CONSTITUENTS,data_wrds.py,1728,20,unjustified,,,,
-data_wrds.py:_GLOBAL_STATEMENT_TIMEOUT_MS,data_wrds.py,1780,120000,unjustified,,,,
+data_wrds.py:_GLOBAL_INDEX_MIN_CONSTITUENTS,data_wrds.py,1732,20,unjustified,,,,
+data_wrds.py:_GLOBAL_STATEMENT_TIMEOUT_MS,data_wrds.py,1784,120000,unjustified,,,,
 deflated_sharpe.py:_EULER_MASCHERONI,deflated_sharpe.py,74,0.5772156649015329,unjustified,,,,
 pit_wfa.py:PERSISTENCE_LOOKBACK_DAYS,pit_wfa.py,488,90,unjustified,,,,
 pit_wfa.py:WINDOW_SWEEP_ANCHOR_PCT,pit_wfa.py,121,0.8,unjustified,,,,
@@ -307,6 +307,9 @@ research/sector_fdr_random_null_comparison.py:DEFAULT_N_TRIALS,research/sector_f
 research/sector_restricted_fdr_rescan.py:ALPHA,research/sector_restricted_fdr_rescan.py,54,0.05,unjustified,,,,
 research/short_term_factor_alpha.py:_REVERSAL_WINDOW,research/short_term_factor_alpha.py,51,5,unjustified,,,,
 research/smoothing_comparison.py:_MIN_EG_N,research/smoothing_comparison.py,58,60,unjustified,,,,
+research/split_level_breaks.py:LEVEL_BREAK_FACTOR,research/split_level_breaks.py,30,5.0,calibrated,One-day move above which a Compustat Global total-return series is split: the 2026-10-14 audit threshold (698 series; qunit explains 103). Approved by Ross 2026-10-15; results to be checked at 3x and 10x.,output/research/compustat_global_level_jumps.parquet; unexplained_jump_kinds.parquet,yes,0
+research/split_level_breaks.py:REVERT_DAYS,research/split_level_breaks.py,31,5,convention,A bad print must revert within one trading week to be masked rather than split.,research/split_level_breaks.py find_breaks,no,0
+research/split_level_breaks.py:REVERT_TOL,research/split_level_breaks.py,32,0.5,convention,"|log| distance from the pre-jump level that counts as reverted (0.5 = within ~1.6x), loose enough for an intervening real move, far below the 5x break.",research/split_level_breaks.py find_breaks,no,0
 research/strategy_search.py:CAPITAL,research/strategy_search.py,41,100000.0,unjustified,,,,
 research/strategy_search.py:EMBARGO_PCT,research/strategy_search.py,40,0.01,unjustified,,,,
 research/strategy_search.py:N_FOLDS,research/strategy_search.py,39,4,unjustified,,,,
