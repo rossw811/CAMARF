@@ -116,6 +116,12 @@ for any new dependency (confirmed 2026-09-21 installing `tensorflow` for the LST
   when an estimated quantity (half-life, hedge ratio) is a regressor. Endogeneity fixes enter as comparison arms
   (DOLS/FM-OLS + Johansen vs EG; Forbes-Rigobon volatility adjustment for regime claims) and replace the main
   pathway only if the comparison supports it.
+- **Point-in-time for every decision metric (Ross, 2026-10-15).** Any metric that selects, sizes, filters, predicts or
+  trades (pair selection, hedge ratios, thresholds, regime labels used as signals, ML features, anything behind a
+  backtest or out-of-sample claim) uses only data available at its decision date. Metrics that are deliberately
+  full-sample (e.g. the full-sample screen the papers compare against) are labelled "descriptive" wherever reported
+  and never feed a decision. Enforced by a test: each decision metric records the last data date it used, and the
+  test fails if that date is after the decision date.
 - **Free data only (Ross, 2026-10-02).** No paid data subscriptions; use what WRDS already provides plus free
   sources (yfinance, FRED, CFTC, Binance, forward-recorded live data).
 
