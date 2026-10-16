@@ -6,6 +6,7 @@ it against real crisis_regime_correlation_diagnostic_pairs.parquet data.
 import os
 import sys
 
+import numpy as np
 import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -91,6 +92,35 @@ by_episode_concentrated = summarize_by_episode(concentrated)
 check("episode 0 carries ALL 20 confirmations (concentration correctly visible per-episode)",
       by_episode_concentrated.loc[0, "n_confirmed"] == 20
       and by_episode_concentrated.loc[1, "n_confirmed"] == 0)
+
+# D3 / D4 (Ross 2026-10-12, R3.5 / R3.6; added 2026-10-15, written before the code)
+try:
+    from research.crisis_regime_episode_clustering_check import crisis_calm_cluster_ri, gap_null_table
+    def _world(rng, effect, n_crisis=10, n_calm=30, per=200):
+        rows = []
+        for c in range(n_crisis + n_calm):
+            crisis = c < n_crisis
+            base = np.clip(rng.normal(0.05, 0.03), 0.001, 0.5)          # cluster-level heterogeneity
+            p = min(base * (effect if crisis else 1.0), 0.9)
+            rows += [{"cluster": c, "crisis": crisis, "confirmed": bool(x)} for x in rng.random(per) < p]
+        return pd.DataFrame(rows)
+    print("Check D3a: cluster randomization inference is sized (no crisis effect, 120 seeds)")
+    ps = [crisis_calm_cluster_ri(_world(np.random.default_rng(s), 1.0), n_sim=400, rng=np.random.default_rng(s))["p_value"] for s in range(120)]
+    rate = float(np.mean(np.array(ps) < 0.05))
+    check(f"false-positive rate at 5% <= 0.10 [{rate:.3f}]", rate <= 0.10)
+    print("Check D3b: a real crisis effect (rate x3) is detected")
+    r = crisis_calm_cluster_ri(_world(np.random.default_rng(999), 3.0), n_sim=2000, rng=np.random.default_rng(1))
+    check(f"p < 0.01 [{r['p_value']:.4f}], diff > 0 [{r['rate_diff']:.4f}]", r["p_value"] < 0.01 and r["rate_diff"] > 0)
+    print("Check D4: gap_null_table reports observed top-2 share and its null per gap")
+    dates = pd.Series(pd.to_datetime(["2008-01-15"] * 40 + ["2008-06-15"] * 40 + ["2011-08-15"] * 40 + ["2020-03-15"] * 40))
+    cr = pd.DataFrame({"first_window_end_date": dates, "confirmed": [True] * 6 + [False] * 154,
+                       "symbol_a": [f"a{i}" for i in range(160)], "symbol_b": [f"b{i}" for i in range(160)]})
+    T = gap_null_table(cr, gaps=(1, 3, 6), n_sim=2000, rng=np.random.default_rng(2))
+    check("one row per gap with observed / null mean / p", list(T["gap_months"]) == [1, 3, 6]
+          and {"observed_top2_share", "null_mean_top2_share", "p_value", "n_episodes"} <= set(T.columns))
+    check("coarser gap -> fewer episodes", T["n_episodes"].is_monotonic_decreasing)
+except ImportError as e:
+    check(f"D3/D4 functions exist ({e})", False)
 
 print(f"\n{passed}/{passed + failed} checks passed")
 sys.exit(0 if failed == 0 else 1)

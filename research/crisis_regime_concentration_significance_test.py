@@ -57,6 +57,7 @@ _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _EPISODES_PATH = os.path.join(_ROOT, "output", "research", "crisis_regime_episode_clustering.parquet")
 _OUT_PATH = os.path.join(_ROOT, "output", "research",
                           "crisis_regime_concentration_significance.parquet")
+_CRISIS_PAIRS_PATH = os.path.join(_ROOT, "output", "research", "crisis_regime_episode_crisis_pairs.parquet")
 
 log = logging.getLogger("crisis_regime_concentration_significance_test")
 
@@ -197,7 +198,21 @@ def main():
              f"null 95th pctile={mc_result['null_p95_max2_share']:.3f}, "
              f"p={mc_result['p_value']:.6f}")
 
-    pd.DataFrame([{**binom_result, **{f"mc_{k}": v for k, v in mc_result.items()}}]).to_parquet(_OUT_PATH)
+    comp_result = {}
+    if os.path.exists(_CRISIS_PAIRS_PATH):
+        cp = pd.read_parquet(_CRISIS_PAIRS_PATH)
+        sizes = cp.groupby("episode").size().sort_index().to_numpy()
+        conf = cp[cp["confirmed"].astype(bool)][["symbol_a", "symbol_b", "episode"]]
+        comp_result = component_max2_test(conf, sizes, n_sim=100_000, rng=np.random.default_rng(0))
+        log.info(f"D2 component-level test (the one used): {comp_result['n_units']} independent units from "
+                 f"{comp_result['n_confirmed']} confirmations (largest unit {comp_result['largest_unit']}); observed "
+                 f"top-2 share {comp_result['observed_max2_share']:.3f}, null mean "
+                 f"{comp_result['null_mean_max2_share']:.3f}, p = {comp_result['p_value']:.5f}")
+    else:
+        log.warning(f"{_CRISIS_PAIRS_PATH} missing -- run crisis_regime_episode_clustering_check.py first (D2 not run)")
+    pd.DataFrame([{**{f"binom_posthoc_unused_{k}": v for k, v in binom_result.items()},
+                   **{f"mc_independent_{k}": v for k, v in mc_result.items()},
+                   **{f"component_{k}": v for k, v in comp_result.items()}}]).to_parquet(_OUT_PATH)
     log.info(f"Saved -> {_OUT_PATH}")
     log.info("crisis_regime_concentration_significance_test.py complete")
 

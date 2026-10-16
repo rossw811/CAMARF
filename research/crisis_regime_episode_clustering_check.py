@@ -33,6 +33,7 @@ import logging
 import os
 import sys
 
+import numpy as np
 import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -40,6 +41,9 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _PAIRS_PATH = os.path.join(_ROOT, "output", "research",
                             "crisis_regime_correlation_diagnostic_pairs.parquet")
+_CRISIS_PAIRS_PATH = os.path.join(_ROOT, "output", "research", "crisis_regime_episode_crisis_pairs.parquet")
+_D3_PATH = os.path.join(_ROOT, "output", "research", "crisis_regime_episode_crisis_vs_calm_ri.parquet")
+_D4_PATH = os.path.join(_ROOT, "output", "research", "crisis_regime_episode_gap_null.parquet")
 _OUT_PATH = os.path.join(_ROOT, "output", "research",
                           "crisis_regime_episode_clustering.parquet")
 
@@ -92,6 +96,44 @@ def summarize_by_episode(pairs_df: pd.DataFrame) -> pd.DataFrame:
     )
 
 
+def crisis_calm_cluster_ri(df: pd.DataFrame, n_sim: int = 10_000, rng=None) -> dict:
+    """D3 (Ross 2026-10-12, R3.5): episode-level crisis-vs-calm test by randomization inference over CLUSTERS.
+    df: one row per pair with `cluster` (a crisis episode or a calm calendar year), `crisis` (bool, constant within a
+    cluster) and `confirmed` (bool). Statistic: pooled crisis confirmation rate minus pooled calm rate. Null: the
+    crisis label is exchangeable across clusters -- shuffle which clusters are 'crisis' (their number fixed), so
+    within-cluster dependence is kept intact. One-sided p = share of shuffles with a difference >= observed."""
+    rng = rng or np.random.default_rng(0)
+    g = df.groupby("cluster").agg(n=("confirmed", "size"), k=("confirmed", "sum"), crisis=("crisis", "first"))
+    n, k, lab = g["n"].to_numpy(float), g["k"].to_numpy(float), g["crisis"].to_numpy(bool)
+
+    def diff(mask):
+        return k[mask].sum() / n[mask].sum() - k[~mask].sum() / n[~mask].sum()
+    obs = diff(lab)
+    sims = np.array([diff(rng.permutation(lab)) for _ in range(n_sim)])
+    return {"rate_diff": float(obs), "p_value": float((1 + np.sum(sims >= obs - 1e-15)) / (n_sim + 1)),
+            "n_crisis_clusters": int(lab.sum()), "n_calm_clusters": int((~lab).sum()), "n_sim": n_sim}
+
+
+def gap_null_table(crisis: pd.DataFrame, gaps=(1, 2, 3, 4, 6), n_sim: int = 20_000, rng=None) -> pd.DataFrame:
+    """D4 (Ross 2026-10-12, R3.6): per episode gap rule, the observed top-2 share of confirmations NEXT TO its null --
+    research/crisis_regime_concentration_significance_test.component_max2_test with episodes defined by that gap
+    (confirmations sharing a stock are one unit). A share that rises with the gap only because episodes merge is
+    visible as a rising null too."""
+    from research.crisis_regime_concentration_significance_test import component_max2_test
+    rng = rng or np.random.default_rng(0)
+    rows = []
+    for gap in gaps:
+        c = crisis.assign(episode=cluster_into_episodes(pd.to_datetime(crisis["first_window_end_date"]), gap_months=gap))
+        sizes = c.groupby("episode").size().sort_index().to_numpy()
+        conf = c[c["confirmed"].astype(bool)][["symbol_a", "symbol_b", "episode"]]
+        if conf.empty:
+            continue
+        r = component_max2_test(conf, sizes, n_sim=n_sim, rng=rng)
+        rows.append({"gap_months": gap, "n_episodes": len(sizes), "observed_top2_share": r["observed_max2_share"],
+                     "null_mean_top2_share": r["null_mean_max2_share"], "p_value": r["p_value"], "n_units": r["n_units"]})
+    return pd.DataFrame(rows)
+
+
 def main():
     _setup_logging()
     log.info("=== crisis_regime_episode_clustering_check.py: does the crisis-vs-calm "
@@ -133,18 +175,25 @@ def main():
              f"{reappear_rates_excl_recent.max():.3f}], "
              f"median={reappear_rates_excl_recent.median():.3f}")
 
-    # GAP-RULE SENSITIVITY (2026-09-02, Ross: brainstorm item -- "sensitivity-check the
-    # episode-clustering gap rule"): the 3-month threshold is a fixed, disclosed choice, but
-    # was never checked against alternatives -- a skeptical reader's natural next question.
-    log.info("Gap-rule sensitivity check (does the concentration finding depend on the "
-             "specific 3-month threshold chosen?):")
-    for gap in (1, 2, 3, 4, 6):
-        crisis["episode"] = cluster_into_episodes(crisis["first_window_end_date"], gap_months=gap)
-        alt_by_episode = summarize_by_episode(crisis)
-        alt_top2 = alt_by_episode.nlargest(2, "n_confirmed")
-        alt_top2_share = alt_top2["n_confirmed"].sum() / alt_by_episode["n_confirmed"].sum()
-        log.info(f"  gap={gap}mo: {len(alt_by_episode)} episodes, "
-                 f"top-2 confirmation share={alt_top2_share:.3f}")
+    # Pair-level crisis table for the concentration test's component-level null (D2)
+    crisis.to_parquet(_CRISIS_PAIRS_PATH)
+
+    # D3 (Ross 2026-10-12, R3.5): episode-level crisis-vs-calm test -- clusters = crisis episodes + calm calendar
+    # years; randomization inference over clusters keeps within-episode dependence intact
+    calm = df[df["first_regime"] != "crisis"].copy()
+    clus = pd.concat([crisis.assign(cluster="crisis_" + crisis["episode"].astype(str), crisis_flag=True),
+                      calm.assign(cluster="calm_" + calm["first_window_end_date"].dt.year.astype(str), crisis_flag=False)])
+    ri = crisis_calm_cluster_ri(clus.rename(columns={"crisis_flag": "crisis"})[["cluster", "crisis", "confirmed"]],
+                                n_sim=20_000, rng=np.random.default_rng(0))
+    log.info(f"D3 episode-level crisis-vs-calm (cluster randomization inference): crisis minus calm confirmation rate "
+             f"{ri['rate_diff']:+.5f}, p = {ri['p_value']:.4f} ({ri['n_crisis_clusters']} crisis episodes vs "
+             f"{ri['n_calm_clusters']} calm years)")
+    pd.DataFrame([ri]).to_parquet(_D3_PATH)
+
+    # D4 (Ross 2026-10-12, R3.6): gap-rule sensitivity WITH a null per gap (component-level, D2)
+    gt = gap_null_table(crisis, gaps=(1, 2, 3, 4, 6), n_sim=20_000, rng=np.random.default_rng(0))
+    log.info("D4 gap-rule sensitivity (observed top-2 share vs its null):\n" + gt.to_string(index=False))
+    gt.to_parquet(_D4_PATH)
 
     log.info("crisis_regime_episode_clustering_check.py complete")
 
