@@ -21,6 +21,7 @@ import os
 import sys
 
 import numpy as np
+import pandas as pd
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
@@ -69,6 +70,21 @@ def main():
     nk = m.simulate_null_share(mk, betas, idio, thr, rng)
     check("null_matches_constant_beta_world", abs(nc - raw_c) < 0.05 and abs(nk - raw_k) < 0.05,
           f"null calm {nc:.3f} vs {raw_c:.3f}; null crisis {nk:.3f} vs {raw_k:.3f}")
+    # 2026-10-15 independent review: the null above keeps the window's market volatility, so it must be compared with the
+    # RAW share; comparing it with the rescaled share mixes two quantities. A null rescaled the same way is required.
+    try:
+        rnc = m.simulate_null_share(mc, betas, idio, thr, np.random.default_rng(5), ref_sd=sd_ref)
+        rnk = m.simulate_null_share(mk, betas, idio, thr, np.random.default_rng(6), ref_sd=sd_ref)
+        check("rescaled_null_matches_rescaled_constant_beta_world", abs(rnk - resc_k) < 0.05 and abs(rnc - resc_c) < 0.05,
+              f"rescaled null calm {rnc:.3f} vs {resc_c:.3f}; crisis {rnk:.3f} vs {resc_k:.3f}")
+        rng_g = m.simulate_null_share(mg, betas, idio, thr, np.random.default_rng(7), ref_sd=sd_ref)
+        check("genuine_increase_exceeds_rescaled_null", resc_g > rng_g + 0.2, f"genuine {resc_g:.3f} vs null {rng_g:.3f}")
+        lo, mid, hi = m.reference_sds(pd.Series(np.r_[np.random.default_rng(8).normal(0, 0.01, 2520),
+                                                     np.random.default_rng(9).normal(0, 0.03, 252)],
+                                                index=pd.bdate_range("1990-01-01", periods=2772)))
+        check("reference_sds_ordered_from_data", 0 < lo < hi and lo <= mid <= hi * 1.5, f"{lo:.4f} {mid:.4f} {hi:.4f}")
+    except (TypeError, AttributeError) as e:
+        check("rescaled_null_and_reference_sds_exist", False, e)
     finish()
 
 

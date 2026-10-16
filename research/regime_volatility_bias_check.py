@@ -69,11 +69,20 @@ def rescaled_share(R: np.ndarray, mkt_window, ref_sd: float, threshold: float) -
     return candidate_share(Rp, threshold)
 
 
-def simulate_null_share(mkt_window, betas, idio_sd, threshold, rng) -> float:
-    """Constant-beta world with the window's actual market path."""
+def simulate_null_share(mkt_window, betas, idio_sd, threshold, rng, ref_sd=None) -> float:
+    """Constant-beta world with the window's actual market path. Compare with the RAW share. With ref_sd, the simulated
+    returns are rescaled exactly as rescaled_share rescales the data -- the null to compare the RESCALED share with
+    (2026-10-15 independent review: the unrescaled null keeps the window's volatility)."""
     m = np.asarray(mkt_window, dtype=float)
     R = np.outer(betas, m) + rng.normal(0, 1, (len(betas), len(m))) * np.asarray(idio_sd)[:, None]
-    return candidate_share(R, threshold)
+    return candidate_share(R, threshold) if ref_sd is None else rescaled_share(R, m, ref_sd, threshold)
+
+
+def reference_sds(mkt: pd.Series):
+    """Reference market volatilities derived from the data, not chosen: the 25th percentile, the full-sample value and
+    the 75th percentile of calendar-year market volatility (sensitivity of the rescaled shares to the reference)."""
+    by_year = mkt.groupby(mkt.index.year).std().dropna()
+    return float(by_year.quantile(0.25)), float(mkt.std()), float(by_year.quantile(0.75))
 
 
 def summarize(D: pd.DataFrame):
@@ -81,14 +90,19 @@ def summarize(D: pd.DataFrame):
     calm mean over 10-YEAR windows was misleading -- every window ending 2008-2025 contains 2008-09 or 2020, so the
     flag meant 'post-2008'; it read 66x.)"""
     D = D.assign(year=pd.to_datetime(D["window_end"]).dt.year).set_index("year")
-    cols = ["raw_share", "adj_share", "rescaled_share", "null_share"]
+    cols = [c for c in ["raw_share", "adj_share", "rescaled_share", "null_share", "null_rescaled_share",
+                        "rescaled_share_ref_p25", "rescaled_share_ref_p75"] if c in D.columns]
     for base, hits in ((2007, (2008, 2009)), (2019, (2020,))):
         if base in D.index:
             for h in hits:
                 if h in D.index:
                     print(f"window {base} -> {h}: " + ", ".join(f"{c} {D.loc[h, c] / D.loc[base, c]:.1f}x" for c in cols))
-    D["rescaled_excess_over_null"] = D["rescaled_share"] - D["null_share"]
-    print(D[cols + ["rescaled_excess_over_null"]].round(4).to_string())
+    # like-for-like: raw vs null, rescaled vs rescaled null (2026-10-15 review)
+    D["raw_excess_over_null"] = D["raw_share"] - D["null_share"]
+    if "null_rescaled_share" in D.columns:
+        D["rescaled_excess_over_rescaled_null"] = D["rescaled_share"] - D["null_rescaled_share"]
+    print(D[cols + [c for c in ("raw_excess_over_null", "rescaled_excess_over_rescaled_null") if c in D.columns]]
+          .round(4).to_string())
 
 
 def _market():
@@ -99,7 +113,7 @@ def _market():
 
 def main():
     from config import Config
-    from data_wrds import label_permno_map
+    from data_wrds import label_permno_map, crsp_no_trade_mask
     ap = argparse.ArgumentParser()
     ap.add_argument("--n-symbols", type=int, default=2000)
     a = ap.parse_args()
@@ -107,15 +121,17 @@ def main():
     win = 2520
     mkt = _market()
     ref_var = float(mkt.var())
+    ref_lo, _, ref_hi = reference_sds(mkt)
     rng = np.random.default_rng(20261013)
     labels = sorted(label_permno_map())
     labels = [l for l in labels if os.path.exists(os.path.join(_W, f"{l}_1D.parquet"))]
     pick = rng.choice(labels, size=min(a.n_symbols, len(labels)), replace=False)
     rets = {}
     for l in pick:
-        d = pd.read_parquet(os.path.join(_W, f"{l}_1D.parquet"), columns=["close_total_return"])
+        d = pd.read_parquet(os.path.join(_W, f"{l}_1D.parquet"))
         d.index = pd.to_datetime(d.index)
-        r = np.log(d["close_total_return"].astype(float).abs()).diff()
+        px = crsp_no_trade_mask(d, l, d["close_total_return"].astype(float))   # as arm (c); 2026-10-15 review
+        r = np.log(px.abs()).diff()
         rets[l] = r[~r.index.duplicated(keep="last")]
     R = pd.DataFrame(rets).reindex(mkt.index)
     # constant betas / idiosyncratic sd over each stock's full history
@@ -150,6 +166,10 @@ def main():
                      "adj_share": candidate_share(Rw.to_numpy().T, thr, delta=dlt),
                      "rescaled_share": rescaled_share(Rw.to_numpy().T, mw, float(np.sqrt(ref_var)), thr),
                      "null_share": simulate_null_share(mw, [beta[c] for c in cols], [idio[c] for c in cols], thr, rng),
+                     "null_rescaled_share": simulate_null_share(mw, [beta[c] for c in cols], [idio[c] for c in cols],
+                                                                thr, rng, ref_sd=float(np.sqrt(ref_var))),
+                     **{f"rescaled_share_ref_{k}": rescaled_share(Rw.to_numpy().T, mw, sd, thr)
+                        for k, sd in zip(("p25", "p75"), (ref_lo, ref_hi))},
                      "crisis": bool(((idx >= "2008-01-01") & (idx <= "2009-12-31")).any()
                                     or ((idx >= "2020-02-15") & (idx <= "2020-04-30")).any())})
         print(f"{e.date()} n={len(cols)} delta={dlt:+.2f} raw={rows[-1]['raw_share']:.4f} "
