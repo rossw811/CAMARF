@@ -28919,3 +28919,27 @@ pre-registration Amendment 4. Also: the Surface's copies of the Compustat files 
 with CachyOS) -- CachyOS is canonical; re-sync before any Surface-side Compustat analysis.
 **Arm (c) sensitivity (2026-10-15):** controls per event 1 / 3 / 5 -> DiD +0.0099 (CI 0.0035-0.0165, pre-trend p 0.33) /
 +0.0118 (0.0065-0.0172, p 0.09) / +0.0125 (0.0075-0.0175, p 0.06): robust to the control count.
+
+### D1-D4 regime tests fixed; TRACE availability; papers updated (2026-10-15)
+
+D1/D2 (`research/crisis_regime_concentration_significance_test.py`, 0f213115): the binomial top-2 test fixed the "top
+2" episodes from the counts it then tested -- kept, marked post-hoc and unused. Both old nulls treated confirmations
+as independent; `component_max2_test` treats each connected group of confirmed pairs (linked by a shared stock) as one
+unit. Failing-first 7/8 -> 11/11; on a synthetic world with one 16-pair cluster and no episode effect the old Monte
+Carlo gave p = 0.0001, the component test p = 1.0; genuine concentration over independent units still p < 0.0001.
+D3/D4 (`research/crisis_regime_episode_clustering_check.py`, ee484f1d): crisis-vs-calm by randomization inference over
+clusters (crisis episodes vs calm calendar years; within-cluster dependence kept): size 0.042 over 120 seeds with
+heterogeneous cluster base rates, a 3x effect detected (p 0.0005). The gap-rule sensitivity now reports each gap's
+observed top-2 share next to its component-level null. Failing-first 11/12 -> 15/15. Real-data runs wait for the
+discovery re-run. Tried and corrected: two edits dropped a numpy import / split a "
+" across a line -- caught by
+running the tests, not by review.
+WRDS job 32 (TRACE exploration, read-only, 25 s): trace / trace_enhanced / trace_standard and
+wrdsapps_link_crsp_bond.bondcrsp_link (bond CUSIP -> PERMNO with link dates) are accessible; wrdsapps_bondret and FISD
+are NotSubscribed -- bond returns for E3 have to be built from enhanced TRACE trades with the standard cleaning.
+The WRDS server's first unattended start (20:30) stopped at a username prompt (saved credentials not picked up); not
+retried (unattended retries locked the account on 2026-10-11); Ross started it interactively at 20:35.
+Papers: PAPER.md, PAPER_MAGNITUDE.md and README.md got a dated "Current state" block (citable claims, BUG-D118, re-run
+status, overfitting accounting, arms (a)-(c) with status, D1-D4); PAPER_MAGNITUDE §5 got the M-058 correction (the
+4-10x prefilter jump is mostly volatility bias, from arm (b)). No result number in the bodies was changed: every one
+waits for re-derivation on the re-run outputs.

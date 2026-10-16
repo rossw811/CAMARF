@@ -1,6 +1,6 @@
 # Errata and known limitations — one index
 
-Last updated 2026-10-05. This page is the entry point for anyone checking this project's results. It does not repeat
+Last updated 2026-10-15. This page is the entry point for anyone checking this project's results. It does not repeat
 the details; it says what is wrong, fixed, withdrawn or still open, and links to where the evidence lives.
 **Found a hole?** Open an issue with `.github/ISSUE_TEMPLATE/find_a_hole.md`. Every report is verified, then fixed or
 disclosed, and the outcome is logged here and on the affected claim.
@@ -16,7 +16,7 @@ Only claims marked **REPLICATED** in [`docs/CLAIMS_REGISTRY.md`](CLAIMS_REGISTRY
 | C-003 purged ML predicts z-convergence, not profitability | PENDING-DATA |
 | C-004 the engine executes its rules; the rules are defective | PENDING-DATA |
 | C-005 entry clustering | PENDING-DATA |
-| C-006 pre-registered strategy search: no robust signal (first pass) | REGISTERED for the first pass; second pass pending rebuilt data |
+| C-006 pre-registered strategy search: no robust signal (first pass) | REGISTERED for the first pass. Second pass run 2026-10-14 (0 of 8 cells pass) is SUPERSEDED by BUG-D118; re-run under pre-registration Amendment 4 in progress (started 2026-10-15) |
 
 **Every P&L-derived number published before 2026-10-03** (Sharpe, DSR, capital-sim, luck check, quality admission)
 is withdrawn pending re-derivation — see §2 (B2/B3/B4). PAPER.md / PAPER_MAGNITUDE.md are being redrafted to cite
@@ -56,6 +56,7 @@ Full registries: [`docs/CODE_REVIEW_2026-09-26.md`](CODE_REVIEW_2026-09-26.md) (
 | B9 | Same-bar fill | Sensitivity study must be re-run on dollar P&L |
 | BUG-D115 (2026-10-10) | The discovery scan dropped crashed EG tests from BH's m (production keeps them at p = 1.0) | Fixed; impact measured on the 2026-10-12 re-run: zero crashed tests in every tier -- no result changed |
 | BUG-D117 (2026-10-12) | Two label -> PERMNO maps named the wrong security for some files (ADRs -> a ticker's old holder; old files -> its current holder): 51 files restated with another security's split factors; the discovery S&P gate checked the wrong company for 147 labels | Fixed; discovery re-run 2026-10-12/13: Tier 2 291 -> 286, Tier 3 687 -> 680 confirmed; superseded outputs kept |
+| BUG-D118 (2026-10-15) | Compustat Global prices are quoted per `qunit` shares and were never divided by it; with other stitched or redenominated listings, 698 of 15,094 series had ~1000x one-day jumps (in 136 of 680 Tier-3 confirmations, 29% of the k = 2 pool) | Fixed: qunit divided at fetch, 104 cached series repaired, remaining > 5x moves split the series (592 split, 64 spike-masked, 20 fragments quarantined); 0 series with a > 5x move after. Discovery, pools and the second pass re-run (Amendment 4). `a8a853ec`, `27b7d4a7` |
 | A4 | Rolling z-score window derived from the full-sample half-life | Open |
 | Unilever | UL ADR vs its London PLC line drifts 5–11% by year | Investigated, open (INCONSISTENCY_SWEEP) |
 | S6 (verified 2026-10-07) | Gold/Silver/Bronze confirmatory tiers: the "Phillips-Ouliaris proxy" rejects 27.3% of independent random walks at nominal 10% (arch's real PO: 11.2%); KPSS on residuals same class | PAPER.md's tier counts not citable until re-derived (plan S33) |

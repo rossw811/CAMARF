@@ -12,6 +12,10 @@
 > with dollar costs, and double-counts OLS/Kalman copies; pairs with different history start dates
 > were never cointegration-tested in `analysis.py`'s main path; Compustat Global legs are in local
 > currency; the "PIT-safe" Purity pool is selected using windows up to its build date.
+>
+> **2026-10-15:** a further data defect (BUG-D118: ~1000x level breaks in 698 Compustat Global price
+> series) affects international pairs. Discovery, pools and the pre-registered second pass are being re-run;
+> every discovery count and pool statistic here is pending that re-run. Status per claim: `docs/ERRATA.md`.
 
 Durability Is Not Currency: A Recency Diagnostic for Cross-Asset
 Cointegration Screening, and the Honest Cost of Applying It
@@ -75,6 +79,37 @@ session that produces a citable finding. `Development.md` remains the
 canonical bug-by-bug/session-by-session memory; this file is the
 paper-shaped synthesis of the subset of that memory meant for an
 external reader.
+
+### Current state (2026-10-15) — read before any number below
+
+- **What can be cited:** only claims marked REPLICATED in `docs/CLAIMS_REGISTRY.md` (index: `docs/ERRATA.md`). On
+  2026-10-10 the claims in this document were triaged (S34, Ross): 202 peripheral claims WITHDRAWN, 94 central claims
+  kept and REGISTERED pending re-derivation from the rebuilt data (`docs/claims_table.csv`).
+- **Data rebuilt, again.** BUG-D118 (2026-10-15): Compustat Global prices are quoted per `qunit` shares and were never
+  divided by it; with stitched or redenominated listings, 698 of 15,094 international series had ~1000x one-day level
+  jumps. Fixed at fetch and in the cache; remaining > 5x one-day moves now split a series into separate segments
+  (commit `a8a853ec`). Earlier in October: a content-verified label → PERMNO map (BUG-D117), and the same-company rule
+  extended to ADR / home-listing pairs via CCM and Capital IQ links, dual-listed-company twins and unverified legs.
+- **Re-run in progress** (started 2026-10-15 on CachyOS): discovery → intraday → pools → audits → the second
+  pre-registered strategy search, under pre-registration Amendment 4 (committed `27b7d4a7` before any result exists).
+  The previous second pass (2026-10-14, 0 of 8 pool × split cells met the pre-registered criterion) is superseded by
+  BUG-D118 and kept only for provenance.
+- **Overfitting accounting** (approved by Ross): every tunable value is listed in `docs/PARAMETER_REGISTRY.csv`
+  with its justification and whether it was set after seeing a result (339 still lack a recorded justification and
+  are being traced); the strategy search counts all N = 432 trials in its deflated Sharpe and reports PBO; data from
+  2026-01-01 onward is a sealed holdout.
+- **Endogeneity comparison arms** (approved 2026-10-13; they enter as comparisons, never directly into the pipeline):
+  (a) DOLS / FM-OLS hedge ratios and an exactly-sized Johansen test vs OLS + Engle-Granger — validated on synthetic
+  data; the real-data comparison is being re-run on the rebuilt pools. (b) Volatility bias in crisis correlations
+  (Forbes-Rigobon and an exact factor-rescaled version, US CRSP stocks): the 2008-09 jump in prefilter-passing pairs
+  shrinks from 4.2x / 9.7x to 1.9x / 3.4x once volatility is removed, close to a constant-beta null; the 2020 jump
+  disappears; a persistent post-2010 rise remains. (c) S&P 500 inclusion difference-in-differences (664 additions
+  1990-2023): inclusion raises co-movement by +0.0118 (95% CI 0.0065-0.0172; +0.0099 / +0.0125 with 1 / 5 controls per event),
+  fading by decade. (b) and (c) are REGISTERED, pending independent review; neither depends on the Compustat data.
+- **Regime-claim tests corrected before re-running** (D1-D4, 2026-10-15): the episode-concentration test now treats
+  confirmations that share a stock as one unit (the old test raised a false alarm, p = 0.0001, on synthetic data with
+  no effect); crisis-vs-calm is tested by randomization over episodes; the gap-rule sensitivity reports a null per gap.
+  Real-data results follow the discovery re-run.
 
 ---
 

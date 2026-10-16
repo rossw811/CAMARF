@@ -302,3 +302,7 @@ the full context stays in `Development.md`.
   current holder) fed the discovery membership gate. Content-verified map (`research/identify_wrds_files.py`) behind
   one accessor (`data_wrds.label_permno_map`). 51 files re-restated; 147 labels changed a gate decision; 0 confirmed
   pairs touched; discovery re-run decided.
+- **BUG-D118** (2026-10-15): Compustat Global prices are per `qunit` shares; data_wrds divided by ajexdi only, so
+  quotation-unit changes (and stitched / redenominated listings) left ~1000x one-day jumps in 698 of 15,094 series
+  (136 of 680 Tier-3 confirmations). qunit now divided at fetch; cached files repaired; remaining > 5x moves split
+  the series. Discovery, pools and second pass re-run under pre-registration Amendment 4 (a8a853ec, 27b7d4a7).

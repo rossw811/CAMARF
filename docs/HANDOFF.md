@@ -1,3 +1,20 @@
+## 2026-10-15 (night): RESUME HERE. Re-run chain under Amendment 4 running on CachyOS.
+**Running (CachyOS, code 27b7d4a7+):** debug/_tmp_chain_rerun_20261012.sh, log latest_run_rerun_20261012.log
+(started 14:17; suite gate 390 tests, 0 unexplained failures; discovery Tier 1 908 confirmed, was 891 before BUG-D118).
+Expected finish ~2026-10-17. Superseded 10-14 outputs backed up in output/research/_superseded_20261014/ (776 MB).
+**Done 2026-10-12..15:** BUG-D117 (content-verified PERMNO map) and the same-company rule (CCM + Capital IQ links,
+D14 DLC twins, D15 unverified legs); 10-14 re-run + second pass (0 of 8; independent review QUALIFY) -- superseded by
+BUG-D118 (Compustat Global qunit + level breaks; a8a853ec), Amendment 4 (27b7d4a7); endogeneity arms (a) synthetic +
+pools (to re-run), (b) and (c) real results (Development.md); D1-D4 regime tests fixed failing-first (0f213115,
+ee484f1d); papers' status blocks updated. WRDS job 32: TRACE (enhanced + standard) and the CRSP bond link are
+available; WRDS bond returns and FISD are not subscribed (bond prices must be built from TRACE).
+**When the chain finishes:** report the second pass beside the first; independent review; update C-006, ERRATA;
+re-run arm (a) on the new pools; run the regime scripts (diagnostic -> clustering -> concentration -> bootstrap) and
+register results; re-derive coarse Compustat files (7D-1Y) from the repaired daily files.
+**Open, not blocked:** D5-D13; sensitivity of the 5x break rule at 3x / 10x; Surface WRDS cache re-sync (Compustat
+files lack close_total_return there); parameter-justification drafts (docs/parameter_justification_drafts.csv, Sonnet,
+unverified -- verify each row before it enters the registry); TRACE bond design (E3).
+
 ## 2026-10-10 (night): RESUME HERE. Pool chain (second pass) running on CachyOS; S34 decided.
 **Running (CachyOS, code 95825bec, do not pull until it finishes):** debug/_tmp_chain_pools.sh. Log
 latest_run_pool_chain.log; per-stage stdout output/research/_stdout_pool_chain_<stage>.log. Intraday re-run done

@@ -109,8 +109,13 @@ The C-entries below are claims re-derived one by one on current data.
   splits) in either pool.
 - **Reproduce:** `python research/strategy_search.py run` then `python research/strategy_search.py eval` →
   `output/research/strategy_search/` (pools `output/research/purity_pairs_pit_k{1,2}_clean.parquet`).
-- **Status:** REGISTERED for the first pass only (docs/PREREGISTRATION_STRATEGY_SEARCH_2026-09-27.md); second
-  labelled pass (Amendment 2) pending the discovery re-run.
+- **Status:** REGISTERED for the first pass only (docs/PREREGISTRATION_STRATEGY_SEARCH_2026-09-27.md). The second
+  pass (Amendment 3) ran 2026-10-14: 0 of 8 cells passed (holdout Sharpes k=1 -0.48/-0.14/+0.50/-0.15, k=2
+  +0.08/+0.91/+0.33/+0.71). Independent review: verdict held, "k = 2 is a lead" overstated (98 of 216 configs
+  positive in all splits; nested holdouts; SPY/VOO in the k = 2 pool; clustered pool). That pass is SUPERSEDED by
+  BUG-D118 (Compustat Global price breaks; 29% of the k = 2 pool affected) and is being re-run under Amendment 4
+  (committed 27b7d4a7 before any result). Disclosed evaluation deviations (kept for comparability): the DSR uses the
+  selected configuration's unconstrained development Sharpe, and Var[SR] is over 216 trials while N = 432.
 
 ## C-007 — Code and arithmetic claims (S34 central; re-derived 2026-10-10)
 - **Reproduce:** `python research/rederive_code_claims.py` → `output/research/rederive_code_claims.parquet` (production
