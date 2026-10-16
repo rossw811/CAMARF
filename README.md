@@ -159,11 +159,18 @@ and backtest-specific results.
 - **Endogeneity comparison arms** (approved 2026-10-13; they enter as comparisons, never directly into the pipeline):
   (a) DOLS / FM-OLS hedge ratios and an exactly-sized Johansen test vs OLS + Engle-Granger — validated on synthetic
   data; the real-data comparison is being re-run on the rebuilt pools. (b) Volatility bias in crisis correlations
-  (Forbes-Rigobon and an exact factor-rescaled version, US CRSP stocks): the 2008-09 jump in prefilter-passing pairs
-  shrinks from 4.2x / 9.7x to 1.9x / 3.4x once volatility is removed, close to a constant-beta null; the 2020 jump
-  disappears; a persistent post-2010 rise remains. (c) S&P 500 inclusion difference-in-differences (664 additions
-  1990-2023): inclusion raises co-movement by +0.0118 (95% CI 0.0065-0.0172; +0.0099 / +0.0125 with 1 / 5 controls per event),
-  fading by decade. (b) and (c) are REGISTERED, pending independent review; neither depends on the Compustat data.
+  (Forbes-Rigobon and an exact factor-rescaled version; ~450 long-lived US CRSP stocks with complete 10-year windows):
+  for the 2008 and 2009 window ends most of the jump in the share of pairs passing the prefilter is consistent with
+  higher volatility (raw 4.2x / 9.7x vs 2007, 1.9x / 3.4x after rescaling to the full-sample market variance); the
+  2019 -> 2020 jump (1.7x) disappears (0.9x). For windows ending 2010-2018, which also span the crisis, the rescaled
+  share stays 5-17%, far above the pre-crisis level, so the rise in counts over that period is NOT explained by
+  volatility. (c) S&P 500 inclusion (664 additions 1990-2023) is associated with a small rise in co-movement with
+  incumbent members relative to size- and SIC2-matched non-members: +0.0118 (event-bootstrap 95% CI 0.0065-0.0172,
+  not clustered by time; +0.0099 / +0.0125 with 1 / 5 controls per event). The pre-period trend (about -0.008 over
+  the year, p = 0.09) and matching on size alone mean selection on the pre-inclusion run-up is not ruled out (Chen,
+  Singal & Whitelaw 2016). Independent review 2026-10-15: (b) QUALIFY, (c) QUALIFY; fixes in progress (a rescaled
+  null and reference-volatility sensitivity for (b); control exclusions, pre-period co-movement matching and a
+  time-clustered bootstrap for (c)). Neither depends on the Compustat data.
 - **Regime-claim tests corrected before re-running** (D1-D4, 2026-10-15): the episode-concentration test now treats
   confirmations that share a stock as one unit (the old test raised a false alarm, p = 0.0001, on synthetic data with
   no effect); crisis-vs-calm is tested by randomization over episodes; the gap-rule sensitivity reports a null per gap.

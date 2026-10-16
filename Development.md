@@ -28943,3 +28943,19 @@ Papers: PAPER.md, PAPER_MAGNITUDE.md and README.md got a dated "Current state" b
 status, overfitting accounting, arms (a)-(c) with status, D1-D4); PAPER_MAGNITUDE §5 got the M-058 correction (the
 4-10x prefilter jump is mostly volatility bias, from arm (b)). No result number in the bodies was changed: every one
 waits for re-derivation on the re-run outputs.
+
+### Independent review of arms (b) and (c) (2026-10-15, adversarial-reviewer; read-only, code + Development numbers)
+Verdicts: (b) BREAKS as I had worded it in PAPER_MAGNITUDE s5 / underlying result QUALIFY; (c) QUALIFY. Verified by me
+in the code before acting: (b) `simulate_null_share` uses the window's actual market path, so the null contains the
+volatility effect and "rescaled share ~ null" compared different quantities (regime_volatility_bias_check.py:72-76);
+the reference variance is the full-sample `mkt.var()` (:109), not a calm period as I wrote. (c) the docstring promised
+matching on pre-period co-movement (inclusion_did.py:13) -- the code matches SIC2 + size only (:141-149); the control
+pool excludes only members at the event date (:139), so stocks deleted in the pre-window and added in the post-window
+can be controls; the pre-trend slope -0.0007 x 12 bins ~ -0.008 is about two-thirds of the DiD. My errors: "the 4-10x
+jump is mostly volatility" (wrong: windows ending 2010-2018 also span 2008-09 and their rescaled share stays 5-17%);
+"inclusion causes" (not identified: selection on the pre-inclusion run-up is not ruled out -- Chen, Singal & Whitelaw
+2016). Paper wording replaced with the reviewed wording (PAPER.md, PAPER_MAGNITUDE.md, README.md). The Development
+entries above are left as written (history). Fixes queued, failing-first: (b) a null rescaled the same way and
+sensitivity to the reference variance (calm-period and full-sample); (c) exclude controls deleted from the index in the
+pre-window or added within the post-window, match also on pre-period co-movement (as the docstring promised), bootstrap
+clustered by calendar year, docstring (t-test -> sign-flip), and a synthetic test with a pre-inclusion run-up.

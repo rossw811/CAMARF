@@ -71,11 +71,18 @@ in place, not silently omitted.
 - **Endogeneity comparison arms** (approved 2026-10-13; they enter as comparisons, never directly into the pipeline):
   (a) DOLS / FM-OLS hedge ratios and an exactly-sized Johansen test vs OLS + Engle-Granger — validated on synthetic
   data; the real-data comparison is being re-run on the rebuilt pools. (b) Volatility bias in crisis correlations
-  (Forbes-Rigobon and an exact factor-rescaled version, US CRSP stocks): the 2008-09 jump in prefilter-passing pairs
-  shrinks from 4.2x / 9.7x to 1.9x / 3.4x once volatility is removed, close to a constant-beta null; the 2020 jump
-  disappears; a persistent post-2010 rise remains. (c) S&P 500 inclusion difference-in-differences (664 additions
-  1990-2023): inclusion raises co-movement by +0.0118 (95% CI 0.0065-0.0172; +0.0099 / +0.0125 with 1 / 5 controls per event),
-  fading by decade. (b) and (c) are REGISTERED, pending independent review; neither depends on the Compustat data.
+  (Forbes-Rigobon and an exact factor-rescaled version; ~450 long-lived US CRSP stocks with complete 10-year windows):
+  for the 2008 and 2009 window ends most of the jump in the share of pairs passing the prefilter is consistent with
+  higher volatility (raw 4.2x / 9.7x vs 2007, 1.9x / 3.4x after rescaling to the full-sample market variance); the
+  2019 -> 2020 jump (1.7x) disappears (0.9x). For windows ending 2010-2018, which also span the crisis, the rescaled
+  share stays 5-17%, far above the pre-crisis level, so the rise in counts over that period is NOT explained by
+  volatility. (c) S&P 500 inclusion (664 additions 1990-2023) is associated with a small rise in co-movement with
+  incumbent members relative to size- and SIC2-matched non-members: +0.0118 (event-bootstrap 95% CI 0.0065-0.0172,
+  not clustered by time; +0.0099 / +0.0125 with 1 / 5 controls per event). The pre-period trend (about -0.008 over
+  the year, p = 0.09) and matching on size alone mean selection on the pre-inclusion run-up is not ruled out (Chen,
+  Singal & Whitelaw 2016). Independent review 2026-10-15: (b) QUALIFY, (c) QUALIFY; fixes in progress (a rescaled
+  null and reference-volatility sensitivity for (b); control exclusions, pre-period co-movement matching and a
+  time-clustered bootstrap for (c)). Neither depends on the Compustat data.
 - **Regime-claim tests corrected before re-running** (D1-D4, 2026-10-15): the episode-concentration test now treats
   confirmations that share a stock as one unit (the old test raised a false alarm, p = 0.0001, on synthetic data with
   no effect); crisis-vs-calm is tested by randomization over episodes; the gap-rule sensitivity reports a null per gap.
@@ -684,13 +691,14 @@ the underlying fold-to-fold sign disagreement: full account in §4/§10.
 
 ## 5. Finding 2: Discovery Regime Is an Exploitable Signal [DRAFTED, Finding #41, 2026-09-02]
 
-> **Correction pending re-derivation (2026-10-15, M-058).** The "4-10x" prefilter jump that motivates this section is
-> mostly a volatility artifact. Correlations rise mechanically when volatility rises (Forbes & Rigobon, 2002); with
-> each stock's market component rescaled to a calm-period volatility (`research/regime_volatility_bias_check.py`,
-> US CRSP stocks with complete 10-year windows, one window per year), the 2007 → 2008 / 2009 jump in the share of
-> pairs passing the 0.4 prefilter falls from 4.2x / 9.7x to 1.9x / 3.4x, about what a constant-beta null gives, and
-> the 2019 → 2020 jump (1.7x) disappears (0.9x). What survives is a persistent post-2010 rise that volatility does not
-> explain. The section's downstream tests (concentration, crisis-vs-calm, gap rule) have been corrected (D1-D4) and
+> **Correction pending re-derivation (2026-10-15, M-058; wording revised after independent review).** Correlations
+> rise mechanically when volatility rises (Forbes & Rigobon, 2002). With each stock's market component rescaled to the
+> full-sample market variance (`research/regime_volatility_bias_check.py`; ~450 long-lived US CRSP stocks with
+> complete 10-year windows, one window per year), the 2007 → 2008 / 2009 jump in the share of pairs passing the 0.4
+> prefilter falls from 4.2x / 9.7x to 1.9x / 3.4x, and the 2019 → 2020 jump (1.7x) disappears (0.9x). But windows
+> ending 2010-2018 also span the crisis, and there the rescaled share stays 5-17%, far above the pre-crisis level:
+> the rise in prefilter counts described below is NOT mainly a volatility artifact. Only the 2008-09 window ends are.
+> Not yet done: a null with volatility removed in the same way, and sensitivity to the reference variance. The section's downstream tests (concentration, crisis-vs-calm, gap rule) have been corrected (D1-D4) and
 > are re-run on the new discovery output; the text below is kept for provenance until then.
 
 This is the signal side of the paper's central argument (§1.4). If a
