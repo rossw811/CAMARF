@@ -1,6 +1,6 @@
 """
 scripts/build_failures_table.py -- process paper task T5.3 (docs/PAPER_PROCESS_OUTLINE.md): one row per logged failure
-from the code-review ledger (docs/CODE_REVIEW_2026-09-26.md, 175 rows), as a data file the paper's failure taxonomy
+from the code-review ledger (docs/archive/audits/CODE_REVIEW_2026-09-26.md, 175 rows), as a data file the paper's failure taxonomy
 is computed from -- docs/process_paper/failures.csv.
 
 EXTRACTED (facts from the ledger text): id, review group, location, severity, finding, status_text, status (FIXED /

@@ -1,7 +1,7 @@
 """
 scripts/build_claims_triage.py -- plan S34 draft (Ross approved the rule 2026-10-10: thesis-central claims are fixed and
 re-derived, peripheral ones withdrawn). Proposes a class for every claim row of docs/claims_table.csv from the scrutiny
-section it sits in (docs/PAPER_SCRUTINY_2026-09-27.md headings), for Ross to confirm or flip per row:
+section it sits in (docs/archive/audits/PAPER_SCRUTINY_2026-09-27.md headings), for Ross to confirm or flip per row:
   central    -- headline / abstract; PAPER.md §7.20-§7.22 (current headline sections), §5 empirical findings,
                 §4 methodology; PAPER_MAGNITUDE.md §4 Finding 1, §5 Finding 2, §6 Synthesis, §3 shared methodology
   peripheral -- everything else (literature review, pre-WRDS Layer-1 results, §7.4-§7.19 side analyses, bias /

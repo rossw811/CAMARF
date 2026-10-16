@@ -13,7 +13,7 @@ sample size), each with its effect, how it was detected, and evidence. Classes a
 D16 cross-asset symbol collisions, D17 reused tickers given to the oldest holder (2,719 of 4,327), D18/D19 quote-only
 series, the 110 Purity "pairs" that were one security against itself, DEV-003 CRSP + Compustat volume split bias
 (19% of ADV-gate passes), the A3/A2 forward-filled hedge inputs, the T14 tests that deleted real outputs, and the
-T14.7 independent-review findings (docs/INCONSISTENCY_SWEEP_2026-09-27.md, docs/ERRATA.md).
+T14.7 independent-review findings (docs/archive/audits/INCONSISTENCY_SWEEP_2026-09-27.md, docs/ERRATA.md).
 Effects (`effect_reviewed`) are still empty: only 1 of 44 FIXED rows states a before/after number in the ledger text;
 each needs its re-derived effect from its evidence before the paper cites it.
 

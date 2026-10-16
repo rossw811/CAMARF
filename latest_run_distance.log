@@ -1,9 +1,0 @@
-21:31:23 INFO  distance.py — Gatev-style SSD baseline
-21:31:23 INFO  ============================================================
-21:31:23 INFO  Loaded 2 confirmed cointegration pairs
-21:31:23 INFO  
---- Timeframe: 1h ---
-21:31:23 INFO    No confirmed pairs for 1h
-21:31:23 WARNING  No results generated — check that spread_series files exist for 1hr
-21:31:23 INFO  ============================================================
-21:31:23 INFO  distance.py complete (0.0 min)

@@ -1,7 +1,7 @@
 """Verification that universe_loader.py's Polars-backed _read_one (2026-08-23) produces output
 BIT-IDENTICAL to the original pandas-only pd.read_parquet path -- including the index, which
 Polars does not restore automatically the way pandas' own parquet reader does (the real risk
-this whole swap needed checking for, see docs/HARDWARE_OPTIMIZATION_PLAN.md Sec 4 and the
+this whole swap needed checking for, see docs/archive/plans/HARDWARE_OPTIMIZATION_PLAN.md Sec 4 and the
 inline comments in universe_loader.py::_pandas_index_col).
 
 Runs against REAL cache files, not synthetic data -- an index-restoration bug wouldn't

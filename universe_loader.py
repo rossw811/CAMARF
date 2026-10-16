@@ -239,7 +239,7 @@ def _read_one_polars(path: str, columns):
     case the caller falls back to the pandas path rather than risk silently wrong data. Added
     2026-08-23: real-cache benchmark (docs/HANDOFF.md), 30,586 real files, 7.11x faster than the
     threaded pandas/pyarrow path this replaces (16.91s -> 2.38s), per
-    docs/HARDWARE_OPTIMIZATION_PLAN.md Sec 4's own scoped recommendation. Verified bit-exact
+    docs/archive/plans/HARDWARE_OPTIMIZATION_PLAN.md Sec 4's own scoped recommendation. Verified bit-exact
     against pd.read_parquet across real cache files spanning both index-naming conventions
     ('Date' for yfinance-sourced files, 'dlycaldt' for WRDS files) --
     debug/_verify_polars_universe_loader.py."""

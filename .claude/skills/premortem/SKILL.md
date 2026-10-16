@@ -55,7 +55,7 @@ questions, or as a substitute for the council review at an actual milestone.
      cache-append contamination).
    - Gap-handling mismatched to the test type (bridging a routine closure is fine for a level test,
      wrong for a lag-sensitive one — the "refined risk classification" in
-     `docs/GRAND_SWEEP_BUG_AUDIT_2026-07-20.md`).
+     `docs/archive/audits/GRAND_SWEEP_BUG_AUDIT_2026-07-20.md`).
    - Multiple-testing / data-mining bias not actually corrected for (BUG-D59-class pooling errors,
      FDR/BH-Y correction gaps).
    - "Same bug fixed once, not propagated to a sibling" (recurred at least 8+ times this project's
@@ -68,7 +68,7 @@ questions, or as a substitute for the council review at an actual milestone.
 
 4. **Deep-dive each failure reason, one at a time.** Dispatch one `Agent` call per failure reason
    (`general-purpose` or `adversarial-reviewer`, whichever fits), run **sequentially, not in
-   parallel** — this project's standing convention (dedicated_pass.md §11.9 flags parallel
+   parallel** — this project's standing convention (docs/archive/plans/dedicated_pass.md §11.9 flags parallel
    agent-orchestration as a real, undiscussed change from the "one agent at a time" default; this
    skill does not make that call silently just because the tooling supports it). Each dispatch gets:
    the full plan context, the premortem frame, and its ONE assigned failure reason — and must

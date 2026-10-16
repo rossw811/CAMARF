@@ -349,7 +349,7 @@ The project is public and built to be checked: anyone may attack any result, and
 fixed or disclosed, and logged. A change is "done" only when it has passed all of the steps below.
 
 1. **Start from the open work.** `docs/ERRATA.md` (what is fixed, withdrawn, open -- the public index),
-   `docs/HANDOFF.md` (current state), `docs/PLAN_OF_ACTION_2026-10-03.md` (every thread and its done-criteria),
+   `docs/HANDOFF.md` (current state), `docs/archive/plans/PLAN_OF_ACTION_2026-10-03.md` (every thread and its done-criteria),
    `docs/CLAIMS_REGISTRY.md` (only REPLICATED claims are citable). Outside reports come in through
    `.github/ISSUE_TEMPLATE/find_a_hole.md`.
 2. **Reproduce first.** Write `debug/_verify_<name>.py` that FAILS on the current code, run it and keep the
@@ -369,7 +369,7 @@ fixed or disclosed, and logged. A change is "done" only when it has passed all o
    agent) tries to break the claim; it checks, it does not do the work. Independent review has found real bugs
    in fixes that had passed their own tests.
 6. **Record it.** Update the finding's status with evidence (file:line, commit, test, output path) in the ledger it
-   came from (`docs/CODE_REVIEW_2026-09-26.md`, `docs/INCONSISTENCY_SWEEP_2026-09-27.md`, `Development.md`); register
+   came from (`docs/archive/audits/CODE_REVIEW_2026-09-26.md`, `docs/archive/audits/INCONSISTENCY_SWEEP_2026-09-27.md`, `Development.md`); register
    any number you will cite in `docs/CLAIMS_REGISTRY.md` with a reproduce command; update `docs/ERRATA.md`. Document
    what was tried and reverted, not only what was kept.
 

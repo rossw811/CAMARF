@@ -14,11 +14,11 @@ subprocess module with direct file-handle redirection (no manual event
 pumping at all) sidesteps that entire class of bug by construction.
 
 WHAT'S DIFFERENT FROM THE .ps1 VERSION (both verified via a dependency
-audit, 2026-08-20 -- see docs/SOFTWARE_OPTIMIZATION_AUDIT.md and
+audit, 2026-08-20 -- see docs/archive/plans/SOFTWARE_OPTIMIZATION_AUDIT.md and
 Development.md for the full audit writeup, not repeated here):
   1. Cross-platform: uses sys.executable (not a hardcoded python.exe path),
      os.name-branched process-group kill (POSIX: os.killpg + SIGKILL: this
-     project's own docs/HARDWARE_OPTIMIZATION_PLAN.md already established
+     project's own docs/archive/plans/HARDWARE_OPTIMIZATION_PLAN.md already established
      CachyOS as a real, actively-used second machine), pathlib-free but
      os.path.join throughout (already the existing codebase convention).
   2. Stage 00c (pit_wfa.py) now runs CONCURRENTLY with the 00/00a/00b chain
@@ -274,7 +274,7 @@ def _warm_cache(cache_dir: str, max_workers: int) -> None:
     """Sequentially-issued-but-thread-parallel read-and-discard pass over every
     file under `cache_dir`, added 2026-08-20 for CachyOS: `output/cache/` sits
     on a genuine spinning HDD there (confirmed via /sys/block/*/queue/rotational
-    -- see docs/HARDWARE_OPTIMIZATION_PLAN.md item 1), but the whole cache
+    -- see docs/archive/plans/HARDWARE_OPTIMIZATION_PLAN.md item 1), but the whole cache
     (9.2GB as of this session's transfer) comfortably fits in that machine's
     46.9GB RAM. Once the OS page cache holds these files, every subsequent
     read across this run's ~150 script invocations is served from RAM, not

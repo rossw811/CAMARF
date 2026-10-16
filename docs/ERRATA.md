@@ -20,7 +20,7 @@ Only claims marked **REPLICATED** in [`docs/CLAIMS_REGISTRY.md`](CLAIMS_REGISTRY
 
 **Every P&L-derived number published before 2026-10-03** (Sharpe, DSR, capital-sim, luck check, quality admission)
 is withdrawn pending re-derivation — see §2 (B2/B3/B4). PAPER.md / PAPER_MAGNITUDE.md are being redrafted to cite
-only REPLICATED claims ([`docs/PAPER_SCRUTINY_2026-09-27.md`](PAPER_SCRUTINY_2026-09-27.md): claim-by-claim verdicts).
+only REPLICATED claims ([`docs/archive/audits/PAPER_SCRUTINY_2026-09-27.md`](archive/audits/PAPER_SCRUTINY_2026-09-27.md): claim-by-claim verdicts).
 
 ## 2. Defects that changed results (fixed)
 
@@ -30,7 +30,7 @@ only REPLICATED claims ([`docs/PAPER_SCRUTINY_2026-09-27.md`](PAPER_SCRUTINY_202
 | B4 | `--hedge both` emitted near-duplicate OLS + Kalman trades treated as independent | Removed; OLS default, Kalman its own arm |
 | D13–D19 | Data identity: ticker reuse assigned to the oldest holder (2,719 of 4,327 reused CRSP tickers), label collisions, local-currency Compustat legs, price-only series | Fixed; discovery re-running on corrected data (2026-10-03) |
 | A6/S10 | Crashed or never-computed rolling cointegration tests passed the stability filter | Fixed 2026-09-28 |
-| B5, B6, B7, B10, B13, B14, B15 | P&L-cap state carried across runs; overrides not reaching the in-sample fitting engine (and leaking into the global config); unflagged lookahead sizers; liquidity filter blocking every WRDS symbol (11 vs 75 of 143 trades); intraday regime lookahead; hub weights from the wrong pair set; survivorship end date | Fixed 2026-10-03, each with a failing-first test — [`docs/CODE_REVIEW_2026-09-26.md`](CODE_REVIEW_2026-09-26.md) |
+| B5, B6, B7, B10, B13, B14, B15 | P&L-cap state carried across runs; overrides not reaching the in-sample fitting engine (and leaking into the global config); unflagged lookahead sizers; liquidity filter blocking every WRDS symbol (11 vs 75 of 143 trades); intraday regime lookahead; hub weights from the wrong pair set; survivorship end date | Fixed 2026-10-03, each with a failing-first test — [`docs/archive/audits/CODE_REVIEW_2026-09-26.md`](archive/audits/CODE_REVIEW_2026-09-26.md) |
 | R1.2 (2026-10-07) | The 1D discovery scan's liquidity gate multiplied Compustat Global's LOCAL-currency close by volume against a USD threshold (yen listings ~159x too liquid): it passed 45.0% of international symbol-days at $25M instead of 9.0% (listings ever passing 5,734 vs 1,458). Every 1D discovery run before 2026-10-07 had the gate effectively off for international listings | Fixed (`dollar_volume.py`, `_verify_usd_dollar_volume.py`); discovery re-run started 2026-10-07 |
 | DEV-003 follow-ups (2026-10-07) | Coarse (7D-1Y) WRDS volume was raw shares; `period_bars` summed missing volume to 0; PAR's coarse files were another security | Fixed (`rederive_coarse_volume.py`, `_verify_period_bars_volume_nan.py`, `repair_coarse_identity.py`); PAR_1M needs a refetch |
 | S5 (2026-10-07) | The "White Reality Check" (`stats.run_permutation_test`) bootstrapped undemeaned P&L, so p ~ 0.5 whatever the skill; PAPER.md's IS p=0.559 / OOS p=0.546 are that artifact | Fixed (`_verify_reality_check_null.py`); the cited p-values are withdrawn pending re-derivation |
@@ -41,8 +41,8 @@ only REPLICATED claims ([`docs/PAPER_SCRUTINY_2026-09-27.md`](PAPER_SCRUTINY_202
 | A11, U6, R1.7, R1.9 (2026-10-07) | Johansen trios stitched across outages and ignored the configured level; loader memos survived code changes; scan checkpoints cleared before saves; intraday configs reused each other's outputs | Fixed, each with a failing-first test (docs/bug_recheck/manual_verdicts.csv) |
 | Tests touching real data | A test deleted real discovery outputs; three wrote fake symbols into real caches | Sandboxed 2026-10-03 |
 
-Full registries: [`docs/CODE_REVIEW_2026-09-26.md`](CODE_REVIEW_2026-09-26.md) (175-row ledger, statuses with evidence),
-[`docs/INCONSISTENCY_SWEEP_2026-09-27.md`](INCONSISTENCY_SWEEP_2026-09-27.md), [`Development.md`](../Development.md)
+Full registries: [`docs/archive/audits/CODE_REVIEW_2026-09-26.md`](archive/audits/CODE_REVIEW_2026-09-26.md) (175-row ledger, statuses with evidence),
+[`docs/archive/audits/INCONSISTENCY_SWEEP_2026-09-27.md`](archive/audits/INCONSISTENCY_SWEEP_2026-09-27.md), [`Development.md`](../Development.md)
 (126 BUG ids; index [`docs/BUG_LOG.md`](BUG_LOG.md)), [`docs/bug_recheck/inventory.csv`](bug_recheck/inventory.csv)
 (every logged bug, its tests, its recheck status).
 

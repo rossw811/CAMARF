@@ -1,7 +1,7 @@
 """
 research/lstm_attention_architecture.py -- Ross's direct request (2026-07-22):
 "add the architecture for LSTM/attention but don't use it in actual
-backtesting" (dedicated_pass.md sec 11.8).
+backtesting" (docs/archive/plans/dedicated_pass.md sec 11.8).
 
 ARCHITECTURE ONLY. This module defines and mechanically verifies two
 sequence-model architectures (LSTM, attention/transformer-encoder-style) so
@@ -11,7 +11,7 @@ up the moment the blocking condition below is actually met. It does NOT:
   - get imported by ml.py, backtest.py, or MLConditioner,
   - produce a model artifact any production or comparison-arm path reads.
 
-Why architecture-only, not trained: dedicated_pass.md sec 11.8 already
+Why architecture-only, not trained: docs/archive/plans/dedicated_pass.md sec 11.8 already
 flagged this as a real, current blocker, not a caveat to add after building
 anyway -- `research/ml_model_comparison.py` (built the same session) just
 QUANTIFIED exactly how severe: ml.build() currently produces 24 total
@@ -29,7 +29,7 @@ risk to caveat after training; it's disqualifying at today's sample size,
 and training anyway would produce a number that looks like a result but
 means nothing.
 
-**Unblocking condition** (dedicated_pass.md sec 11.8, unchanged): revisit
+**Unblocking condition** (docs/archive/plans/dedicated_pass.md sec 11.8, unchanged): revisit
 once the confirmed-pair set (or an appropriately-scoped adjacent dataset --
 e.g. spread-level features pooled across a much larger candidate universe
 rather than only the confirmed set) is large enough that a train/test split

@@ -28,7 +28,7 @@ The project is public and built to be checked: anyone may attack any result, and
 fixed or disclosed, and logged. A change is "done" only when it has passed all of the steps below.
 
 1. **Start from the open work.** `docs/ERRATA.md` (what is fixed, withdrawn, open -- the public index),
-   `docs/HANDOFF.md` (current state), `docs/PLAN_OF_ACTION_2026-10-03.md` (every thread and its done-criteria),
+   `docs/HANDOFF.md` (current state), `docs/archive/plans/PLAN_OF_ACTION_2026-10-03.md` (every thread and its done-criteria),
    `docs/CLAIMS_REGISTRY.md` (only REPLICATED claims are citable). Outside reports come in through
    `.github/ISSUE_TEMPLATE/find_a_hole.md`.
 2. **Reproduce first.** Write `debug/_verify_<name>.py` that FAILS on the current code, run it and keep the
@@ -48,7 +48,7 @@ fixed or disclosed, and logged. A change is "done" only when it has passed all o
    agent) tries to break the claim; it checks, it does not do the work. Independent review has found real bugs
    in fixes that had passed their own tests.
 6. **Record it.** Update the finding's status with evidence (file:line, commit, test, output path) in the ledger it
-   came from (`docs/CODE_REVIEW_2026-09-26.md`, `docs/INCONSISTENCY_SWEEP_2026-09-27.md`, `Development.md`); register
+   came from (`docs/archive/audits/CODE_REVIEW_2026-09-26.md`, `docs/archive/audits/INCONSISTENCY_SWEEP_2026-09-27.md`, `Development.md`); register
    any number you will cite in `docs/CLAIMS_REGISTRY.md` with a reproduce command; update `docs/ERRATA.md`. Document
    what was tried and reverted, not only what was kept.
 
@@ -366,7 +366,7 @@ run `python research/<name>.py --help` or read its own argparse block to check.
 | `asset_volatility_profile.py` | `python research/asset_volatility_profile.py` | research/asset_volatility_profile.py -- per-asset historical-volatility profile (Ross's queued item: "historical volatility of asset for asset profile... maybe average daily volatility"). |
 | `audit_price_degeneracy.py` | `python research/audit_price_degeneracy.py [--tf] [--min-distinct] [--min-distinct-ratio]` | CAMARF audit_price_degeneracy.py — universe-wide scan for BUG-D49's thin-information-content pattern (Development.md, found 2026-06-23). |
 | `backtest_overfitting_detector.py` | `python research/backtest_overfitting_detector.py [--symbol] [--expiry <value>]` | research/backtest_overfitting_detector.py -- the backtest-overfitting-detector application flagged (not built) in Finding #55, per Ross's own notes on Breeden-Litzenberger: "and also a backtest overfitting detector." |
-| `bayesian_pair_confirmation.py` | `python research/bayesian_pair_confirmation.py` | research/bayesian_pair_confirmation.py -- Ross's direct request (2026-07-22): "add the bayesian confirmation as comparison" (dedicated_pass.md sec 11.5). |
+| `bayesian_pair_confirmation.py` | `python research/bayesian_pair_confirmation.py` | research/bayesian_pair_confirmation.py -- Ross's direct request (2026-07-22): "add the bayesian confirmation as comparison" (docs/archive/plans/dedicated_pass.md sec 11.5). |
 | `bertram_ou_thresholds.py` | `python research/bertram_ou_thresholds.py` | CAMARF bertram_ou_thresholds.py — comparison/diagnostic method, NOT part of the production pipeline. |
 | `beta_weighted_portfolio.py` | `python research/beta_weighted_portfolio.py` | research/beta_weighted_portfolio.py -- Phase 3 of the new backlog (Ross: "for the beta weighting let's use SPY and compare both hedge and report only"). |
 | `bh_fdr_dependence_check.py` | `python research/bh_fdr_dependence_check.py` | research/bh_fdr_dependence_check.py -- tests whether CAMARF's per-timeframe Benjamini-Hochberg (1995) FDR correction (analysis.py's `_benjamini_hochberg`, applied once per timeframe across all correlation-pre-filtered candidate pairs) has its independence/P... |
@@ -490,7 +490,7 @@ run `python research/<name>.py --help` or read its own argparse block to check.
 | `liquidity_threshold_sensitivity.py` | `python research/liquidity_threshold_sensitivity.py` | research/liquidity_threshold_sensitivity.py -- Thread I follow-up (Ross, 2026-08-14): "let's do a test to see what level actually filters out the proper amount of assets, ensuring liquid stocks." |
 | `lit_search_tools.py` | `import only (no CLI)` | research/lit_search_tools.py -- Reusable literature-search library for the Scope 2 citation-graph-driven research methodology (see docs/HANDOFF.md's 2026-09-10 entry for the design rationale and Development.md Session 26, 2026-07-02, for the original web-se... |
 | `lo2002_sharpe_correction.py` | `python research/lo2002_sharpe_correction.py` | Applies the verified Lo (2002) Sharpe-autocorrelation correction to CAMARF's actual reported portfolio Sharpe ratios, using the real daily P&L series from `output/backtest/trades_layer1*.parquet` -- not a synthetic replication (that already exists and passe... |
-| `lstm_attention_architecture.py` | `python research/lstm_attention_architecture.py` | research/lstm_attention_architecture.py -- Ross's direct request (2026-07-22): "add the architecture for LSTM/attention but don't use it in actual backtesting" (dedicated_pass.md sec 11.8). |
+| `lstm_attention_architecture.py` | `python research/lstm_attention_architecture.py` | research/lstm_attention_architecture.py -- Ross's direct request (2026-07-22): "add the architecture for LSTM/attention but don't use it in actual backtesting" (docs/archive/plans/dedicated_pass.md sec 11.8). |
 | `lstm_attention_training.py` | `python research/lstm_attention_training.py [--lookback-bars]` | research/lstm_attention_training.py -- the real training run `research/lstm_attention_ architecture.py` was deliberately built to wait for. That module's own docstring (2026-07-22, Ross: "add the architecture for LSTM/attention but don't use it in actual ba... |
 | `market_wide_cointegration_decay.py` | `python research/market_wide_cointegration_decay.py [--limit-symbols]` | research/market_wide_cointegration_decay.py -- Scope 2 from Ross's 2026-08-23 request: is the RATE/DENSITY of cointegration across the whole universe declining over calendar time? A genuine gap, distinct from the already-done Do & Faff (2010) era-decay repl... |
 | `meta_label_capital_sim.py` | `python research/meta_label_capital_sim.py (CachyOS: trades files + spread files + WRDS cache)` | research/meta_label_capital_sim.py -- audit step 3, second pre-declared primary metric (2026-09-27): does an ML meta-labeler improve the CAPITAL-CONSTRAINED performance of the strategy's own trades? |
@@ -498,7 +498,7 @@ run `python research/<name>.py --help` or read its own argparse block to check.
 | `midas_feature.py` | `python research/midas_feature.py` | CAMARF midas_feature.py — comparison method, NOT part of the production pipeline. |
 | `migrate_instrument_labels_d16.py` | `python research/migrate_instrument_labels_d16.py [--apply]` | research/migrate_instrument_labels_d16.py -- one-off cache migration for code review D16 (2026-09-27). |
 | `ml_lookahead_selftest.py` | `python research/ml_lookahead_selftest.py` | Mechanical lookahead self-test for ml.py's meta-labeler (Development.md second-pass triage item #5, flagged Session 27 bias-literature review, reconfirmed still absent Session 28: "lag every feature by one bar, confirm performance degrades"). |
-| `ml_model_comparison.py` | `python research/ml_model_comparison.py` | research/ml_model_comparison.py -- Ross's direct request (2026-07-22): "let's add all the ML things as comparison and only for comparison until enough data is found" (dedicated_pass.md sec 11.7). |
+| `ml_model_comparison.py` | `python research/ml_model_comparison.py` | research/ml_model_comparison.py -- Ross's direct request (2026-07-22): "let's add all the ML things as comparison and only for comparison until enough data is found" (docs/archive/plans/dedicated_pass.md sec 11.7). |
 | `ml_model_comparison_purged.py` | `python research/ml_model_comparison_purged.py [--embargo-pct] [--svm-max-train] [--n-boot]` | research/ml_model_comparison_purged.py -- audit step 3 (2026-09-26, Ross-approved plan). |
 | `ml_stage2_ablation.py` | `python research/ml_stage2_ablation.py` | CAMARF ml_stage2_ablation.py — research script, NOT part of the production pipeline. |
 | `multiscale_entropy.py` | `python research/multiscale_entropy.py` | research/multiscale_entropy.py — comparison/diagnostic method, NOT part of the production pipeline. |
@@ -706,7 +706,7 @@ project root.
 | `_build_contributing.py` | `python scripts/_build_contributing.py` | One-off generator for CONTRIBUTING.md. Not part of the production pipeline or a debug tool -- run once to assemble the doc from (a) hand-curated descriptions of the core pipeline scripts and (b) programmatically-extracted module-docstring summaries for the ... |
 | `build_attribution.py` | `python scripts/build_attribution.py` | scripts/build_attribution.py -- process-paper task T5.4 (docs/PAPER_PROCESS_OUTLINE.md): what the git history does and does not record about AI assistance. Reads every commit's `Co-Authored-By:` trailer and its line counts. Writes docs/process_paper/attribu... |
 | `build_bug_inventory.py` | `python scripts/build_bug_inventory.py` | scripts/build_bug_inventory.py -- one inventory of every logged bug (plan of action T14.1/T14.2, 2026-10-03). |
-| `build_failures_table.py` | `python scripts/build_failures_table.py` | scripts/build_failures_table.py -- process paper task T5.3 (docs/PAPER_PROCESS_OUTLINE.md): one row per logged failure from the code-review ledger (docs/CODE_REVIEW_2026-09-26.md, 175 rows), as a data file the paper's failure taxonomy is computed from -- do... |
+| `build_failures_table.py` | `python scripts/build_failures_table.py` | scripts/build_failures_table.py -- process paper task T5.3 (docs/PAPER_PROCESS_OUTLINE.md): one row per logged failure from the code-review ledger (docs/archive/audits/CODE_REVIEW_2026-09-26.md, 175 rows), as a data file the paper's failure taxonomy is computed from -- do... |
 | `mem_guard.py` | `python scripts/mem_guard.py <cmd> [--min-free-gb] [--min-vram-free-gb] [--poll-seconds] [--stop-gpu-sharers] (+1 more flags, see --help)` | mem_guard.py -- reusable memory-watch wrapper for heavy CAMARF jobs on CachyOS. |
 | `pre_commit_verify.py` | `python scripts/pre_commit_verify.py` | scripts/pre_commit_verify.py -- git pre-commit hook: runs only the debug/_verify_*.py scripts relevant to whatever files are staged, blocking the commit on a real FAIL (not on ERROR -- those are usually environment/ missing-dependency, not a regression this... |
 

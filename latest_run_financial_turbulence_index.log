@@ -1,3 +1,0 @@
-09:57:22 INFO  === financial_turbulence_index.py: Kritzman & Li (2010) turbulence measure ===
-09:57:22 INFO  Universe: 4 unique symbols across all confirmed pairs
-09:57:22 WARNING  Too few symbols (4) — run analysis.py first. Aborting.

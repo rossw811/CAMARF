@@ -1,3 +1,0 @@
-21:31:31 INFO  Fetching S&P 500 historical changes from Wikipedia...
-21:31:31 ERROR  Fetch failed: `Import lxml` failed.  Use pip or conda to install the lxml package.
-21:31:31 ERROR  No changes table fetched — check network/Wikipedia structure

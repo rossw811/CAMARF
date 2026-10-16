@@ -138,7 +138,7 @@ def main():
             # about a LEVEL-based test (bridging a routine closure is fine
             # there) -- it does not transfer to this dz_t (diff-based,
             # lag-sensitive) asymmetry test, per the refined risk
-            # classification (docs/GRAND_SWEEP_BUG_AUDIT_2026-07-20.md).
+            # classification (docs/archive/audits/GRAND_SWEEP_BUG_AUDIT_2026-07-20.md).
             # Dropping gap rows BEFORE np.diff() silently concatenates
             # positions spanning any gap as if one bar apart. Fixed by
             # diffing the full series first, then masking any diff whose

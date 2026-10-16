@@ -1,7 +1,7 @@
 """
 research/ml_model_comparison.py -- Ross's direct request (2026-07-22):
 "let's add all the ML things as comparison and only for comparison until
-enough data is found" (dedicated_pass.md sec 11.7).
+enough data is found" (docs/archive/plans/dedicated_pass.md sec 11.7).
 
 COMPARISON ARM ONLY. `ml.py`'s Stage 1 meta-labeler (XGBoost) stays the
 sole model persisted to output/ml/model_stage1.pkl and read by backtest.py's

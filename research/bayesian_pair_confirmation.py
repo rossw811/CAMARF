@@ -1,6 +1,6 @@
 """
 research/bayesian_pair_confirmation.py -- Ross's direct request (2026-07-22):
-"add the bayesian confirmation as comparison" (dedicated_pass.md sec 11.5).
+"add the bayesian confirmation as comparison" (docs/archive/plans/dedicated_pass.md sec 11.5).
 
 COMPARISON ARM ONLY -- does not replace production's static EG+FDR pass/fail
 confirmation. Answers a different question: instead of "did this pair clear

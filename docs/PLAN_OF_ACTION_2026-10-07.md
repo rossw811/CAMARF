@@ -1,8 +1,8 @@
 # Goal plan — everything to completion, with a sign-off sheet (2026-10-07)
 
 Ross (2026-10-07): "make a /goal plan for everything including the whole backlog and every concept and idea for me to
-sign off on". Supersedes docs/PLAN_OF_ACTION_2026-10-03.md (kept for history). Sources: that plan (T1–T14), the DEV
-ledger (docs/DEV_OPEN_ITEMS_LEDGER_2026-09-26.md: 56 OPEN + 13 NEEDS-ROSS), the claims registry (C-001..C-006), the
+sign off on". Supersedes docs/archive/plans/PLAN_OF_ACTION_2026-10-03.md (kept for history). Sources: that plan (T1–T14), the DEV
+ledger (docs/archive/audits/DEV_OPEN_ITEMS_LEDGER_2026-09-26.md: 56 OPEN + 13 NEEDS-ROSS), the claims registry (C-001..C-006), the
 bug-recheck inventory (docs/bug_recheck/inventory.csv: 310 logged bugs), docs/ERRATA.md, and today's findings.
 
 Rules for every step: free data only; verification loop (failing test first → real-data check → independent check

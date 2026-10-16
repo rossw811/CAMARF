@@ -561,8 +561,8 @@ replace them). Specific things this sweep must cover, not just generically imply
 In order, not to be compressed into one sitting — this is genuinely multi-session work, said plainly
 rather than implied to fit in one session and coming up short:
 
-1. **Files updated, dedicated_pass.md's scoped ideas turned into real files** — build the actual
-   `research/*.py` modules `dedicated_pass.md` currently only scopes (k-BAHC, copula-correlation
+1. **Files updated, docs/archive/plans/dedicated_pass.md's scoped ideas turned into real files** — build the actual
+   `research/*.py` modules `docs/archive/plans/dedicated_pass.md` currently only scopes (k-BAHC, copula-correlation
    extension of `copula_pairs.py`, wavelet-scale cointegration, beta-neutral lag structure, the
    relational-adaptation ideas #59-62, etc.) — "dedicated pass files created" means instantiated,
    not just documented.
@@ -578,7 +578,7 @@ rather than implied to fit in one session and coming up short:
    being the working fix — see Development.md's process notes), this needs active monitoring and
    relaunching as things die, not a fire-and-forget single command.
 4. **A round of connections** — once real, current results exist from step 3, repeat the
-   cross-script connections pass (`dedicated_pass.md` §10 is the first one, done Session 28 against
+   cross-script connections pass (`docs/archive/plans/dedicated_pass.md` §10 is the first one, done Session 28 against
    pre-full-run state) informed by fresh output, not stale assumptions.
 5. **Buildings** — build whatever step 4's fresh connections round surfaces.
 6. **A run of those, a review of those, another run of those** — build → run once (unreviewed,
@@ -713,7 +713,7 @@ near-miss scan output paths, the root cause of `pit_wfa.py`'s catastrophic point
 result, and a related latent lookahead in its test-window backtest); PDR + Calmar Ratio built with a
 real finding that the sizing-method ranking isn't metric-invariant; lead-lag search methodology
 validated clean (no implementation bug, prior null results trustworthy); `analysis.py` completed a
-full rerun against the expanded 1,661-asset universe; `dedicated_pass.md` holds a large scoped
+full rerun against the expanded 1,661-asset universe; `docs/archive/plans/dedicated_pass.md` holds a large scoped
 research program (k-BAHC, copula-based correlation, wavelet-scale cointegration, beta-neutral lag
 structure, and more) not yet executed. See `docs/BUG_LOG.md` for the full D65-D69 index and
 Development.md for complete write-ups of each.

@@ -3,7 +3,7 @@
 Every claim this project makes in a paper or summary is registered here BEFORE it is cited. A claim is citable only
 when its status is **REPLICATED** on the current data. Anyone may attack any entry — see
 `.github/ISSUE_TEMPLATE/find_a_hole.md`; every report is verified, then fixed or disclosed, and the outcome is logged
-under the entry and in the errata (docs/CODE_REVIEW_2026-09-26.md, docs/INCONSISTENCY_SWEEP_2026-09-27.md).
+under the entry and in the errata (docs/archive/audits/CODE_REVIEW_2026-09-26.md, docs/archive/audits/INCONSISTENCY_SWEEP_2026-09-27.md).
 
 **Fields:** claim · hypothesis / falsification test (what result would refute it) · data & universe snapshot ·
 exact parameters · how to reproduce (script, command, output path) · lineage seed or commit · status · history.
@@ -19,7 +19,7 @@ free data (yfinance, FRED, CFTC, Binance) are fully reproducible without it.
 ## Every cited claim: status table (2026-10-07, plan W4.3 / S20)
 
 `docs/claims_table.csv` (built by `scripts/build_claims_table.py`, check `debug/_verify_build_claims_table.py`) lists
-every claim row of the section-by-section scrutiny (`docs/PAPER_SCRUTINY_2026-09-27.md`, sections 2-3) with a status:
+every claim row of the section-by-section scrutiny (`docs/archive/audits/PAPER_SCRUTINY_2026-09-27.md`, sections 2-3) with a status:
 
 | Scrutiny verdict | Registry status | Meaning |
 |---|---|---|
@@ -51,7 +51,7 @@ The C-entries below are claims re-derived one by one on current data.
   before either stock has a price. Fixed in the script (commit in this registry's history); JPM/BAC was likewise
   overstated (11,741 days from 1979, not 13,373 from 1972). Caveat that travels with the claim: the recent window
   has ~8× fewer observations, so part of the gap may be power (P-075 / R8.12) — the universe-wide deep dive
-  (docs/SCRUTINY_WHAT_HELD_UP_2026-09-28.md #1) is designed to separate the two.
+  (docs/archive/audits/SCRUTINY_WHAT_HELD_UP_2026-09-28.md #1) is designed to separate the two.
 - **Controls (same run):** XOM/CVX 0.082 / 0.482 (26,301 d); JPM/BAC 0.935 / 0.881 (11,741 d); KO/PEP 0.105 / 0.963
   (26,301 d); SHW/UNP 0.061 / 0.054 (14,238 d).
 

@@ -70,8 +70,8 @@ Nothing else changes.
 This is the "separate, labelled pass" promised under *Data and accounting* (re-run once FX conversion lands). It is
 run with the FIRST pass's outcome already known ("no robust signal found" in all 8 pool×split cells, Development.md
 2026-09-27) — disclosed here, and both passes are reported side by side.
-What changes, and why (all fixes committed before this amendment; details in docs/CODE_REVIEW_2026-09-26.md
-"Data-layer round 3" and docs/INCONSISTENCY_SWEEP_2026-09-27.md):
+What changes, and why (all fixes committed before this amendment; details in docs/archive/audits/CODE_REVIEW_2026-09-26.md
+"Data-layer round 3" and docs/archive/audits/INCONSISTENCY_SWEEP_2026-09-27.md):
 - **Discovery is re-run from scratch** on the corrected data: coarse-bar stamps (D13), cross-asset labels (D16),
   WRDS ticker → security identity (D17: 2,719 reused tickers had been assigned to their oldest holder), corrupt
   WRDS files refetched (D19), loader dedupe that now also catches shorter-history aliases, FX-converted Compustat
@@ -94,7 +94,7 @@ the median-of-four-folds selection rule, PBO via CSCV (16 blocks), and the succe
 No second-pass result exists: its pools have not been built and `research/strategy_search.py` has not been run on
 corrected data. Known at commit time and disclosed: the discovery re-run's confirmed counts and the grid-phase
 robustness result (items 3 and 5) -- discovery outputs, not strategy results. Changes since Amendment 2, each committed with a failing-first
-test before this addendum (evidence: docs/INCONSISTENCY_SWEEP_2026-09-27.md, docs/ERRATA.md):
+test before this addendum (evidence: docs/archive/audits/INCONSISTENCY_SWEEP_2026-09-27.md, docs/ERRATA.md):
 1. **Compustat Global legs are now total return** — the dated addendum Amendment 2 promised. `trfd` verified on real
    dividend events (HSBC, Toyota, BP 2024-25: the exact dividend on every ex-date, identical to price return to
    2e-16 otherwise; it captures HSBC's 2024-05 special dividend that `divd` omits) and applied to all 15,093

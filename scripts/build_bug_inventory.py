@@ -1,8 +1,8 @@
 """
 scripts/build_bug_inventory.py -- one inventory of every logged bug (plan of action T14.1/T14.2, 2026-10-03).
 
-Sources: Development.md (canonical registry; every BUG-* id), docs/BUG_LOG.md (index), docs/CODE_REVIEW_2026-09-26.md
-(ledger table rows), docs/INCONSISTENCY_SWEEP_2026-09-27.md (sweep findings). For each id: where it is logged (first
+Sources: Development.md (canonical registry; every BUG-* id), docs/BUG_LOG.md (index), docs/archive/audits/CODE_REVIEW_2026-09-26.md
+(ledger table rows), docs/archive/audits/INCONSISTENCY_SWEEP_2026-09-27.md (sweep findings). For each id: where it is logged (first
 and last mention), the latest status word found next to it, the verify scripts that mention it, and whether the
 index (BUG_LOG) lists it. This is a STARTING POINT for the recheck, not a verdict: "status" is what the docs say,
 which is exactly what T14 re-checks.
@@ -80,7 +80,7 @@ def main():
     indexed = ({f"BUG-{p}{int(n)}" for p, n in re.findall(r"^\| ([A-Z]+)(\d+) \|", idx, re.M)}
                | {f"BUG-{p}{int(n)}" for p, n in re.findall(r"\bBUG-([A-Z]+)(\d+)\b", idx)})
 
-    rev = read("docs/CODE_REVIEW_2026-09-26.md")
+    rev = read("docs/archive/audits/CODE_REVIEW_2026-09-26.md")
     for l in rev.split("\n"):
         m = re.match(r"^\| ([A-Z]+\d+(?:\.\d+)?) \|", l)
         if m:
@@ -88,7 +88,7 @@ def main():
             st = next((v for k, v in STATUS_WORDS if k in last), "")
             rows[m.group(1)] = {"id": m.group(1), "source": "CODE_REVIEW ledger", "first_line": "", "last_line": "",
                                 "n_mentions": 1, "doc_status": st}
-    sw = read("docs/INCONSISTENCY_SWEEP_2026-09-27.md")
+    sw = read("docs/archive/audits/INCONSISTENCY_SWEEP_2026-09-27.md")
     for m in re.finditer(r"\*\*((?:C\d-\d|M-\d|S\d|M\d+|C0-\d|C1-\d|C4-\d|C6-\d|A6/S10))\b[^*]*?(FIXED|OPEN|SURFACED|CORRECTED)", sw):
         bid = "SWEEP-" + m.group(1)
         rows[bid] = {"id": bid, "source": "INCONSISTENCY_SWEEP", "first_line": "", "last_line": "", "n_mentions": 1,

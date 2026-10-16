@@ -16,7 +16,7 @@ has to intervene. A clean SIGTERM-then-SIGKILL of one runaway process is always 
 losing the whole machine.
 
 This is a backstop under systemd-oomd/earlyoom (OS-level, protects against anything not run
-through this wrapper), not a replacement for it -- see docs/HARDWARE_OPTIMIZATION_PLAN.md.
+through this wrapper), not a replacement for it -- see docs/archive/plans/HARDWARE_OPTIMIZATION_PLAN.md.
 
 Usage:
     python3 scripts/mem_guard.py --min-free-gb 4 --min-vram-free-gb 2 -- <command> [args...]

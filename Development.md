@@ -14136,7 +14136,7 @@ divergence study (task #54) rather than a standalone third Hurst comparison; Pai
 DSR/GFP's trial-independence assumption holds across correlated pairs; jump-diffusion parameter
 clustering across sector-exposed pairs.
 
-**Addendum: full scope written to `dedicated_pass.md` (project root, 2026-07-13), not duplicated
+**Addendum: full scope written to `docs/archive/plans/dedicated_pass.md` (project root, 2026-07-13), not duplicated
 here.** Ross asked for the sweep to include a fully fleshed-out tail-dependence extension, a
 combinatorial "pair-dynamics-data × every other concept" matrix with a starter set of concrete
 cross-combinations and a Mermaid diagram, and a new, separate volatility-standardization audit —
@@ -14145,7 +14145,7 @@ grep-confirmed before writing it down, not speculative: at least 7 files (`dista
 `research/capital_sim_selection_mechanism.py`, `research/stop_loss_correlation_caps.py`, plus
 `backtest.py`) carry a near-identical inline copy of the same Sharpe-denominator pattern — the exact
 bug class BUG-D62 and BUG-D64 already both hit independently. Given the size of this material,
-`dedicated_pass.md` is the working document going forward, not this entry — update that file in
+`docs/archive/plans/dedicated_pass.md` is the working document going forward, not this entry — update that file in
 place as ideas develop. Task #63 covers execution, explicitly gated on every currently-running
 task clearing first (the `data.py`→`analysis.py` background pipeline, task #17, primarily), per
 Ross's explicit sequencing instruction.
@@ -14608,7 +14608,7 @@ per tonight's established pattern of avoiding simultaneous heavy jobs. Not yet l
 
 ### Full execution sequence for next session — explicitly deferred, not started tonight (2026-07-14)
 
-Ross laid out the complete remaining arc: build dedicated_pass.md's scoped modules into real files
+Ross laid out the complete remaining arc: build docs/archive/plans/dedicated_pass.md's scoped modules into real files
 → run code reviewers → full production pipeline + all 79 research scripts → a fresh connections
 round informed by real results → build what that surfaces → run/review/run those → a final
 documentation consistency pass. Explicit instruction: "it's a lot of things to do so i want all
@@ -15167,7 +15167,7 @@ earnings, task #70's real open follow-up) remains the most actionable output of 
 ### Task #61 — CAMARF-native relational regime indicator, built and validated (2026-07-14)
 
 Ross clarified scope: build #61 using its original task-list description (avg pairwise correlation
-across confirmed-pair legs) — NOT the `dedicated_pass.md`-redirected coint_frac-time-series version,
+across confirmed-pair legs) — NOT the `docs/archive/plans/dedicated_pass.md`-redirected coint_frac-time-series version,
 which was explicitly reserved for next session along with the rest of that file's scoped program.
 
 `research/relational_regime_indicator.py`: rolling (causal, 60-bar trailing window) average pairwise
@@ -15178,7 +15178,7 @@ correlation among the LEGS' own price returns (a general market-stress/regime si
 genuinely distinct, worth building separately.
 
 **Self-correction, caught before finalizing**: an early draft of the docstring assumed the 2007/2008/2020
-sanity check dedicated_pass.md originally proposed would be impossible, generalizing from task #71's
+sanity check docs/archive/plans/dedicated_pass.md originally proposed would be impossible, generalizing from task #71's
 finding that the main 1h cache only reaches back to 2023-07-24. Running the script directly showed this
 generalization was wrong — the DAILY cache for these symbols reaches back to **1972-07-26** (several are
 long-listed utilities/industrials). The 1h depth finding is real and correctly scoped to 1h; it does not
@@ -15205,7 +15205,7 @@ detection (task #37) in a future session, not acted on further here.
 
 ### Task #58 — k-BAHC hierarchical-clustering covariance cleaning, built, honest negative result (2026-07-14)
 
-Ross confirmed: build using the task list's own description, not `dedicated_pass.md`'s elaboration
+Ross confirmed: build using the task list's own description, not `docs/archive/plans/dedicated_pass.md`'s elaboration
 (reserved for next session). Interpretation stated explicitly in the script's own docstring rather than
 assumed silently: "k-BAHC" implemented as k-cluster Bounded/Block Asset Hierarchical-Clustering
 covariance cleaning — distinct from HRP (`backtest.py`'s `compute_hrp_weights`, hierarchical clustering
@@ -15913,7 +15913,7 @@ data bug) — plausible, not confirmed, and not chased further here given the sm
 **Conclusion: no real lead-lag signal survives permutation correction at 3m.** This is the fifth
 independently convergent null result on lead-lag (same-session scan, `big_move_lead_lag.py`,
 `hub_leg_stop_conditioning.py`, task #56's MIDAS cross-asset work, task #69's Pieces B/C, and now this
-one) — directly motivating the lead-lag literature survey Ross scoped into `dedicated_pass.md` this
+one) — directly motivating the lead-lag literature survey Ross scoped into `docs/archive/plans/dedicated_pass.md` this
 session (why does the literature find lead-lag at all, when CAMARF's every construction hasn't).
 
 Output: `output/research/lead_lag_permutation_check_3m.parquet`, `lead_lag_perm_3m_out.log`.
@@ -16359,7 +16359,7 @@ confirmed-pair set as input) surfaced a genuine blocker, investigated directly r
 - No python process is currently running that could produce a fresh 1h result (confirmed via
   `Get-CimInstance Win32_Process` — zero python processes active at the moment this was checked).
 
-**This is exactly the gating dependency dedicated_pass.md's own "Task #46 (CAPSTONE)" note already
+**This is exactly the gating dependency docs/archive/plans/dedicated_pass.md's own "Task #46 (CAPSTONE)" note already
 flagged**: task #71's confirmed-pair-set reconciliation needs to happen before a capstone-style rerun,
 "otherwise the capstone would need to be re-run again the moment that decision lands, wasted duplicate
 work." Rather than either (a) guessing which pair set is "final" and re-running everything against
@@ -16440,7 +16440,7 @@ stress test) **cannot be meaningfully re-run against "the final confirmed 1h pai
 is no substantial confirmed 1h pair set on current data — it's empty.** This is not something to push
 through with a fabricated or reduced-significance version; it is itself the headline finding this
 entire capstone-style rerun was meant to check for. This is precisely the reconciliation dependency
-`dedicated_pass.md`'s "Task #46 (CAPSTONE)" note already flagged in advance: PAPER.md's entire
+`docs/archive/plans/dedicated_pass.md`'s "Task #46 (CAPSTONE)" note already flagged in advance: PAPER.md's entire
 headline claim set was built on a pair set that no longer reproduces on clean data, and the real
 decision — does PAPER.md move to reporting this honestly as a null/negative result, does the strategy
 get re-scoped to other timeframes where confirmed pairs DO still exist (2m/3m/1M each still show 1
@@ -16598,7 +16598,7 @@ about exactly this class of file (Phase 5/task #10).
   question. Phases 17-18 (limitations pass, final reconciliation, the planned full production pipeline
   rerun) are explicitly sequenced AFTER Phase 13's numeric work lands — attempting them now would mean
   redoing them once the pair-set question resolves, the exact wasted-duplicate-work outcome
-  `dedicated_pass.md`'s own "Task #46" note already warned against.
+  `docs/archive/plans/dedicated_pass.md`'s own "Task #46" note already warned against.
 
 **This is real, substantial, verified progress — not a claim that "the plan is complete."** Every
 finding above was investigated directly, verified before being trusted, and written up honestly
@@ -16967,7 +16967,7 @@ Raw output: `output/research/confirmatory_cointegration_check.parquet`,
 ## BUG-D70: BUG-D62/D64's Sharpe-pooling-convention bug recurs in four more files (2026-07-20, Grand Sweep)
 
 Found via a full-codebase bug/quality sweep (Ross's direction: deploy the `improve` skill and grep-based
-checks across the whole codebase for recurring bug classes, per `dedicated_pass.md` §11's Grand Sweep,
+checks across the whole codebase for recurring bug classes, per `docs/archive/plans/dedicated_pass.md` §11's Grand Sweep,
 itself triggered by the pair-set collapse investigation). BUG-D62 (`portfolio_sim.py`, 2026-07-13) and
 BUG-D64 (`sensitivity.py`, same day) already found and fixed this exact bug twice independently:
 computing portfolio Sharpe via `trades.groupby("exit_date")["pnl_net"].sum()` silently drops every
@@ -17043,7 +17043,7 @@ fresh run against whichever pair-set Phase 13 ultimately settles on, per the sta
 **Not yet done**: `research/portfolio_effective_bets.py`/`return_smoothing_audit.py`/`stats.py::_build_daily_pnl()`'s
 own convention question (flagged above, needs its own dedicated review, not blindly migrated); re-running
 `stats.py`/`cvar.py`/`deflated_sharpe.py`/`fresh_holdout_compare.py` for real against the current confirmed-
-pair set once that's resolved (folds into the existing Phase 13 checklist and `dedicated_pass.md` §11.1's
+pair set once that's resolved (folds into the existing Phase 13 checklist and `docs/archive/plans/dedicated_pass.md` §11.1's
 claim re-verification sweep).
 
 ---
@@ -17130,7 +17130,7 @@ removal) from 2026-06-24 — read together before any future attempt, rather tha
 
 ## BUG-D71: wfa.py's strategy constants silently drifted from Config.BACKTEST (2026-07-20, Grand Sweep)
 
-Found via batch 8 of the Grand Sweep's full-codebase bug audit (`docs/GRAND_SWEEP_BUG_AUDIT_2026-07-20.md`
+Found via batch 8 of the Grand Sweep's full-codebase bug audit (`docs/archive/audits/GRAND_SWEEP_BUG_AUDIT_2026-07-20.md`
 Tier 1.2). `wfa.py` (lines 73-80) hardcoded its own copy of `ENTRY_ZSCORE`/`EXIT_ZSCORE`/`STOP_ZSCORE`/
 `N_SHARES`/`COMMISSION`/`SLIPPAGE_BPS`/`MAX_HOLD_MULT`, with a comment claiming they were "matched to
 Config.BACKTEST defaults." Confirmed by direct comparison: **three had silently drifted** —
@@ -17172,7 +17172,7 @@ would replace).
 
 ## BUG-D72: run_storm_grid.py — 7th recurrence of the Sharpe-pooling-convention bug class
 
-Found via the Grand Sweep's batch 8 (`docs/GRAND_SWEEP_BUG_AUDIT_2026-07-20.md` Tier 1.3).
+Found via the Grand Sweep's batch 8 (`docs/archive/audits/GRAND_SWEEP_BUG_AUDIT_2026-07-20.md` Tier 1.3).
 `portfolio_sharpe()` (line 56) pooled daily P&L via `groupby("date")["pnl_net"].sum()` — the same
 zero-P&L-day-dropping bug BUG-D62/D64/D70/D71 already found and fixed, here in a previously unaudited
 file. Directly inflates every Sharpe in the 16-combination STORM factor grid and its "marginal effect of
@@ -17194,7 +17194,7 @@ BUG-D71, folds into the same Phase 13 rerun checklist rather than re-run standal
 
 ## BUG-D73: data_ibkr.py's merge_with_yfinance() — BUG-D65's split-seam bug in an uncovered merge path
 
-Found via the Grand Sweep's batch 8 (`docs/GRAND_SWEEP_BUG_AUDIT_2026-07-20.md` Tier 1.4). BUG-D65 fixed
+Found via the Grand Sweep's batch 8 (`docs/archive/audits/GRAND_SWEEP_BUG_AUDIT_2026-07-20.md` Tier 1.4). BUG-D65 fixed
 the append-seam price-discontinuity bug (a split/reverse-split occurring between two fetches produces a
 raw price jump where old-basis and new-basis bars meet) for all 13 `DataStore.append()` call sites via
 `DataStore._reconcile_split_adjustment()`. `data_ibkr.py::merge_with_yfinance()` (lines 130-166) does its
@@ -17223,7 +17223,7 @@ next time any symbol's supplement is refreshed, not re-triggered standalone in t
 
 ## BUG-D74: ml.py/backtest.py Layer-2 hedge_ratio_drift used the static scalar, not the point-in-time series
 
-Found via the Grand Sweep's batches 6/8 (`docs/GRAND_SWEEP_BUG_AUDIT_2026-07-20.md` Tier 3.2). Both
+Found via the Grand Sweep's batches 6/8 (`docs/archive/audits/GRAND_SWEEP_BUG_AUDIT_2026-07-20.md` Tier 3.2). Both
 `ml.py::_build_examples_for_pair`'s `hedge_drift` and `backtest.py`'s Layer-2 ML-gate `_ml_hedge_drift`
 computed a SINGLE hedge-ratio-drift value per pair from the static full-sample scalar fields
 `hedge_ratio_ols`/`hedge_ratio_kalman_mean`, then applied that same value to every entry event/bar
@@ -17259,7 +17259,7 @@ and this path is currently unreachable in production.
 
 ## BUG-D75: ml.py's median imputation computed over the full dataset before the train/val/test split
 
-Found via the Grand Sweep's batch 8 (`docs/GRAND_SWEEP_BUG_AUDIT_2026-07-20.md` Tier 3.1).
+Found via the Grand Sweep's batch 8 (`docs/archive/audits/GRAND_SWEEP_BUG_AUDIT_2026-07-20.md` Tier 3.1).
 `_train_and_validate()` (line 618, pre-fix) did `X = df[_FEATURE_COLS].fillna(df[_FEATURE_COLS].median())`
 — the median used to fill training-set NaNs was computed over the ENTIRE chronologically-sorted dataset,
 including the val/test rows that come strictly later in time. Classic look-ahead via imputation
@@ -17284,7 +17284,7 @@ it's next run; no existing cached model/output was regenerated in this pass.
 
 ## BUG-D76: backtest.py's risk-parity/HRP/pnl-cap sizing weights fit on a window overlapping their own OOS evaluation
 
-Found via the Grand Sweep's batch 8 (`docs/GRAND_SWEEP_BUG_AUDIT_2026-07-20.md` Tier 1.1) — the single
+Found via the Grand Sweep's batch 8 (`docs/archive/audits/GRAND_SWEEP_BUG_AUDIT_2026-07-20.md` Tier 1.1) — the single
 highest-stakes finding of the whole sweep, directly touching the "recommended production" risk-parity OOS
 Sharpe claim (5.8689). `compute_risk_parity_weights()`, `compute_hrp_weights()`, and
 `compute_pnl_cap_thresholds()` all defaulted to `is_trades_path="output/backtest/trades_layer1.parquet"`
@@ -17349,7 +17349,7 @@ overnight/weekend/holiday closures (also DATA_GAP-flagged under `align_intraday`
 reindex) with rare genuine multi-day provider outages. Per Ross's direction, built the correct version:
 a **per-timeframe LENGTH threshold** distinguishing the two, rather than a blanket rule.
 
-**Built** (`data.py`, new shared utilities — doubles as `dedicated_pass.md`'s task #16, the GapFlag
+**Built** (`data.py`, new shared utilities — doubles as `docs/archive/plans/dedicated_pass.md`'s task #16, the GapFlag
 redesign): `ROUTINE_CLOSURE_CEILING_HOURS = 120.0` (5 calendar days — real headroom above the measured
 max routine run of 93 hours at 1h, a long holiday weekend), `is_genuine_data_gap(run_length_bars,
 tf_label)` (converts the hours ceiling to a per-timeframe bar-count ceiling via `_TF_LABEL_MINUTES`, and
@@ -17383,7 +17383,7 @@ functions and their task-tuple construction (`CointScanner.scan()`/rolling-coint
 
 ---
 
-## Consolidation: shared research/ hedge-ratio spread construction (2026-07-20, dedicated_pass.md task #17)
+## Consolidation: shared research/ hedge-ratio spread construction (2026-07-20, docs/archive/plans/dedicated_pass.md task #17)
 
 The Grand Sweep found the full-sample static OLS hedge-ratio spread/z-score construction
 (`beta = np.dot(lb-lb.mean(), la-la.mean()) / np.dot(lb-lb.mean(), lb-lb.mean())`, etc.) independently
@@ -17415,7 +17415,7 @@ pre-migration return contract).
 
 ---
 
-## Built: mandatory comparison-arm walk-forward scaffold (2026-07-20, dedicated_pass.md task #22)
+## Built: mandatory comparison-arm walk-forward scaffold (2026-07-20, docs/archive/plans/dedicated_pass.md task #22)
 
 The Grand Sweep found the same in-sample-circularity mistake (fitting weights/a model and scoring its
 performance on the IDENTICAL sample, no held-out split) independently in 3 files —
@@ -17448,7 +17448,7 @@ deliverable for task #22, not a claim that the 3 files have been fixed.
 
 ---
 
-## Config centralization + sensitivity.py expansion (2026-07-20, dedicated_pass.md task #24)
+## Config centralization + sensitivity.py expansion (2026-07-20, docs/archive/plans/dedicated_pass.md task #24)
 
 Ross's direction, motivated directly by BUG-D71 (`wfa.py`'s constant drift): "update our current param
 sensitivity to test for all the values in config as well... add settings for lead lag and all the other
@@ -17533,7 +17533,7 @@ logic.
 
 ## Tier 2 findings: 13 real bugs with direct bearing on active investigations (2026-07-20, Grand Sweep)
 
-All 13 Tier 2 findings from `docs/GRAND_SWEEP_BUG_AUDIT_2026-07-20.md` triaged and fixed this pass
+All 13 Tier 2 findings from `docs/archive/audits/GRAND_SWEEP_BUG_AUDIT_2026-07-20.md` triaged and fixed this pass
 (Tier 2.1 covered above, folded into the Tier 5 write-up since both fixes landed in the same file/commit
 scope). Each fix below has its own synthetic verification test in `debug/`.
 
@@ -17793,7 +17793,7 @@ Adaptations from the source skill, each a deliberate choice, not a verbatim port
   collisions — the actual categories `docs/BUG_LOG.md`'s D-registry already contains), THEN ranges freely
   — rather than brainstorming cold every time.
 - **Sub-agent dispatch is explicitly SEQUENTIAL, not parallel**, called out as a deliberate choice tied to
-  dedicated_pass.md §11.9's still-open agent-orchestration question (parallel `Workflow`-style dispatch
+  docs/archive/plans/dedicated_pass.md §11.9's still-open agent-orchestration question (parallel `Workflow`-style dispatch
   vs. this project's established "one agent at a time" default) — this skill does not make that call
   silently just because the tooling supports parallel fan-out.
 - **Output is a markdown file** (`docs/premortems/premortem-<slug>-<date>.md`), matching this project's
@@ -18021,7 +18021,7 @@ referencing BUG-D60 and `portfolio_sim.py` as the actual capital-constrained com
 
 ### Tier 6 / full Grand Sweep triage summary
 
-All Tier 2 through Tier 6 findings from `docs/GRAND_SWEEP_BUG_AUDIT_2026-07-20.md` are now triaged:
+All Tier 2 through Tier 6 findings from `docs/archive/audits/GRAND_SWEEP_BUG_AUDIT_2026-07-20.md` are now triaged:
 fixed-and-verified, or (for the handful of genuinely-hard statistical subtleties — `decay_proxy.py`'s
 window overlap) honestly disclosed rather than force-fixed with an unverified correction. New BUG-D
 entries: D78-D93 (16 total across Tiers 2-4), plus the un-numbered Tier 5/Tier 6 batches and the
@@ -18120,7 +18120,7 @@ Ross's direction: "do the exogeneity test for everything we measure and see what
 ... vs which ones don't matter," explicitly wanting the CURRENT pipeline fully explored. Terminology note
 first: this project already has a `research/weak_exogeneity_test.py` testing a different, specific
 econometric concept (VECM weak exogeneity — which leg of a cointegrated pair does the mean-reverting).
-This task is the broader thing already scoped as "filter-relevance sweep" in dedicated_pass.md §11.2 —
+This task is the broader thing already scoped as "filter-relevance sweep" in docs/archive/plans/dedicated_pass.md §11.2 —
 generalizing `research/filter_ablation.py`'s existing counterfactual-ablation methodology to every
 gate/check in the pipeline, not just the two it originally covered.
 
@@ -18359,7 +18359,7 @@ including its clean negative answer.
 
 Output written to `output/research/k_bahc_candidate_discovery_{new,removed,eg}_1hr.parquet` (the first
 two are empty given the null result; no `eg` file was written since there were no new candidates to
-test). Per `dedicated_pass.md`'s existing task #58 scoping, marked as now built (see that file's §11.2
+test). Per `docs/archive/plans/dedicated_pass.md`'s existing task #58 scoping, marked as now built (see that file's §11.2
 addendum).
 
 ## Both flagged k-BAHC follow-ups run — negative result holds under both (2026-07-21)
@@ -18883,7 +18883,7 @@ derived on load, not fetched separately. The stale-manifest concern (data_ibkr.p
 actual confirmed set) is now moot for these three pairs specifically; it would still matter if a future confirmed
 pair's underlying SYMBOLS have never been deep-fetched at all (no native 1m/1D supplement to derive from).
 
-### Price-degeneracy scan (dedicated_pass.md priority follow-up): coverage extended to all 12 TFs, plus BUG-D97
+### Price-degeneracy scan (docs/archive/plans/dedicated_pass.md priority follow-up): coverage extended to all 12 TFs, plus BUG-D97
 
 Resuming the deferred price-degeneracy task: quantify how many candidates the BUG-D49 price-degeneracy filter
 excludes across all 12 timeframes, and whether any excluded candidate would otherwise have been EG-significant.
@@ -18979,7 +18979,7 @@ problem (testing 2 hypotheses per pair and reporting the nicer result) that infl
 beyond what BH-FDR's own `m` accounts for — `max()` requires the relationship to hold regardless of which symbol
 is treated as the OLS dependent variable, which has no such inflation and matches this project's standing bias
 toward conservative, defensible confirmation over raw sensitivity (the same spirit as Aronson's framework,
-dedicated_pass.md sec 11.4, and as BH-FDR's own alpha=0.05 restoration reasoning). Both raw directional p-values
+docs/archive/plans/dedicated_pass.md sec 11.4, and as BH-FDR's own alpha=0.05 restoration reasoning). Both raw directional p-values
 are still recorded (`coint_pvalue_raw_ab`, `coint_pvalue_raw_ba`, new `PairResult` fields, `Optional[float]=None`)
 rather than collapsed away — same "expose every method side by side" convention this project already applies to
 OLS/TLS/Kalman hedge ratios. `coint_pvalue_raw` is now `max(ab, ba)`; `hedge_ratio_ols_pointest`/`n_overlap`
@@ -19013,7 +19013,7 @@ Not triggered yet in this session; queued as the next capstone-adjacent step.
 
 ### `research/bayesian_pair_confirmation.py` — new comparison arm (2026-07-22): Bayesian pair-confirmation confidence
 
-Builds dedicated_pass.md sec 11.5's scoped Bayesian framework, per Ross's direct request ("add the bayesian
+Builds docs/archive/plans/dedicated_pass.md sec 11.5's scoped Bayesian framework, per Ross's direct request ("add the bayesian
 confirmation as comparison"). **Comparison arm only — does not replace production's static EG+FDR pass/fail
 confirmation.** Beta-Binomial conjugate model: prior `Beta(a0, b0)` per pair derived from the EG/FDR screen's own
 BH-adjusted p-value (`prior_mean = 1 - coint_pvalue_adjusted`, fixed prior strength `PRIOR_PSEUDO_N=10`
@@ -19042,7 +19042,7 @@ Output: `output/research/bayesian_pair_confirmation.parquet`, `latest_run_bayesi
 
 ### `research/ml_model_comparison.py` — new comparison arm (2026-07-22): LightGBM/Ridge/Lasso/RandomForest vs. XGBoost
 
-Builds dedicated_pass.md sec 11.7, per Ross's direct request ("add all the ML things as comparison and only for
+Builds docs/archive/plans/dedicated_pass.md sec 11.7, per Ross's direct request ("add all the ML things as comparison and only for
 comparison until enough data is found"). **Comparison arm only** — `ml.py`'s XGBoost stays the sole model
 persisted to `output/ml/model_stage1.pkl` and read by `backtest.py`'s `MLConditioner`; nothing here touches that
 path. Reuses `ml.build()` and `ml._train_and_validate()` directly (not a reimplementation) so the XGBoost number
@@ -19074,7 +19074,7 @@ Output: `output/research/ml_model_comparison.parquet`, `latest_run_ml_model_comp
 
 ### `research/lstm_attention_architecture.py` — architecture built, deliberately NOT trained (2026-07-22)
 
-Builds dedicated_pass.md sec 11.8, per Ross's direct request ("add the architecture for LSTM/attention but don't
+Builds docs/archive/plans/dedicated_pass.md sec 11.8, per Ross's direct request ("add the architecture for LSTM/attention but don't
 use it in actual backtesting"). Defines two `tf.keras` architectures — a small 1-layer LSTM + dense head, and a
 minimal single-head self-attention block (scaled dot-product, residual + layer-norm, global-average-pooled) +
 dense head — both taking windowed per-bar features `(batch, lookback_bars, n_features)` and outputting a
@@ -23161,7 +23161,7 @@ Files: `research/k_bahc_candidate_discovery.py`, `research/fdr_method_comparison
 (all rewired), `universe_loader.py` (`filter_structural_pairs`, new),
 `debug/_verify_filter_structural_pairs.py` (new, 7/7 pass), `report.py` (5 locations rewritten),
 `docs/HANDOFF.md` (full reconstructed handoff + this session's continuation),
-`docs/SESSION_014f_FULL_LOG.md` (exhaustive raw re-read of the crashed session, new).
+`docs/archive/sessions/SESSION_014f_FULL_LOG.md` (exhaustive raw re-read of the crashed session, new).
 
 ### Session 31 addendum (2026-08-17, later) -- PIT-safety audit of episodic pair counting;
 `ENTRY_ZSCORE` raised to 3.0; two more real k-BAHC OOM bugs found (the second, in production
@@ -23263,7 +23263,7 @@ Ross provided LAN SSH access to a second machine (CachyOS, `10.0.0.196`) with a 
 different resource profile than the 16GB Windows box this entire session had been fighting:
 46.9GB RAM + 46.9GB zram swap, RTX 4080 (16GB VRAM), 8-core i7-10700K, requested a full
 hardware-optimization plan. Read real specs directly over SSH rather than assuming --
-`docs/HARDWARE_OPTIMIZATION_PLAN.md` covers storage, GPU (CuPy port of the exact correlation-
+`docs/archive/plans/HARDWARE_OPTIMIZATION_PLAN.md` covers storage, GPU (CuPy port of the exact correlation-
 matrix code this session spent hours fixing bugs in, plus RAPIDS cuML for k-BAHC clustering),
 scoped Polars swaps, Ruff, Pandera, a real Python-3.14-compatibility risk, and sequencing.
 **Plan only, not yet built** -- storage/sync groundwork below is the only part actually done.
@@ -23307,14 +23307,14 @@ a workaround; he did, and it worked cleanly. **Lesson for future sessions**: aft
 the same underlying action across different permission-rule scopings, stop -- that pattern means
 the harness wants the human's own hands on this one, not a permissions puzzle to keep solving.
 
-Files: `docs/HARDWARE_OPTIMIZATION_PLAN.md` (new), `.claude/settings.local.json` (2 new scoped
+Files: `docs/archive/plans/HARDWARE_OPTIMIZATION_PLAN.md` (new), `.claude/settings.local.json` (2 new scoped
 Bash permission entries), `docs/HANDOFF.md` (consolidated summary entry).
 
 ### Session 32 addendum (2026-08-20) -- software optimization audit, first 3 items executed
 
 Following the CachyOS hardware connection, Ross asked for optimization to cover "literally every
 part and or aspect" of the project, not just hardware. A forked agent produced
-`docs/SOFTWARE_OPTIMIZATION_AUDIT.md` (6 sections: redundant code, script orchestration, testing
+`docs/archive/plans/SOFTWARE_OPTIMIZATION_AUDIT.md` (6 sections: redundant code, script orchestration, testing
 pattern, config management, plugin/tooling gaps, data/IO efficiency), which I then reviewed and
 edited. On "get started on the optimizations," executed the first 3 prioritized items:
 
@@ -23516,13 +23516,13 @@ run. `gpu_backend.py` and the `analysis.py` change exist locally, UNCOMMITTED (p
 "only commit when explicitly asked" rule).
 
 Files: `gpu_backend.py` (new), `analysis.py` (`_vectorized_pairwise_stats` +import),
-`docs/HARDWARE_OPTIMIZATION_PLAN.md` (§3.1 marked DONE with the real implementation detail),
+`docs/archive/plans/HARDWARE_OPTIMIZATION_PLAN.md` (§3.1 marked DONE with the real implementation detail),
 `docs/HANDOFF.md`.
 
 ### Tier-2 GPU scoping (2026-08-20, same session, Ross's explicit request: "write a scoping plan
 ### only, no code" for the Engle-Granger/Johansen/ADF GPU reimplementation question)
 
-Wrote a grounded (not hand-waved) scoping section into `docs/HARDWARE_OPTIMIZATION_PLAN.md` §3.2,
+Wrote a grounded (not hand-waved) scoping section into `docs/archive/plans/HARDWARE_OPTIMIZATION_PLAN.md` §3.2,
 read directly from `statsmodels.tsa.stattools.coint()`'s real call site (`analysis.py:1677`,
 `trend="c", maxlag=max_lag, autolag="aic"`). Key finding: `autolag="aic"` means each pair's ADF
 test runs a *family* of candidate-lag regressions and selects by AIC — a per-pair, data-dependent
@@ -23547,7 +23547,7 @@ currently access. **All three SSD-class devices on this machine are off-limits.*
 CAMARF can safely use is `sdb` (`/sys/block/sdb/queue/rotational` = `1`, a genuine spinning HDD)
 — which is also where `/` and `/home` themselves live. This is a permanent constraint, not a
 temporary state to revisit once "more room" appears — there is no faster free tier on this
-machine. Updated `docs/HARDWARE_OPTIMIZATION_PLAN.md` §0 item 1 to state this plainly.
+machine. Updated `docs/archive/plans/HARDWARE_OPTIMIZATION_PLAN.md` §0 item 1 to state this plainly.
 
 Given HDD-speed storage is fixed, checked whether the OS-level tunables are already reasonable
 before assuming code-level fixes were the only lever: `vm.vfs_cache_pressure=50` (favors keeping
@@ -23574,7 +23574,7 @@ synthetic test: real files read correctly (byte count matches), empty directory 
 error, missing directory handled without error. Not yet timed against the real 9.2GB CachyOS
 cache.
 
-Files: `docs/HARDWARE_OPTIMIZATION_PLAN.md` (§0 items 1/4, §3.2), `run_overnight_research.py`
+Files: `docs/archive/plans/HARDWARE_OPTIMIZATION_PLAN.md` (§0 items 1/4, §3.2), `run_overnight_research.py`
 (`_warm_cache` + `--skip-warm-cache` flag), `docs/HANDOFF.md`.
 
 ### Session work committed to git (2026-08-20)
@@ -23597,7 +23597,7 @@ second Windows OS install (`Windows/`, `Program Files/`, `Users/`, `EFI/`, `boot
 data/games drive (`SteamLibrary/`, `ComfyUI/`, `AI/`) — ~1.27TB combined of real, substantial
 data. `nvme0n1p1` (16MB) is a near-empty remnant; `nvme1n1p1` (16MB) is a standard Microsoft
 Reserved partition (no filesystem, normal GPT boilerplate, not data). Both drives passed
-`smartctl -H`. Updated `docs/HARDWARE_OPTIMIZATION_PLAN.md` §0 item 1 with this direct
+`smartctl -H`. Updated `docs/archive/plans/HARDWARE_OPTIMIZATION_PLAN.md` §0 item 1 with this direct
 confirmation. No change to the standing conclusion — all three SSD-class devices remain
 off-limits **for CAMARF storage** (item 1's own scope), but see below: Ross separately asked to
 make them accessible for his own general use, which is a different, narrower request than
@@ -23666,7 +23666,7 @@ Files: `config.py` (new `RuntimeConfig`), `analysis.py` (8 sites), `pyproject.to
 (all 3 rewired to thin wrappers/reduced local scope), `universe_loader.py` (`use_memo_cache`
 param + `_dir_signature`/`_memo_cache_path` helpers), `debug/_verify_universe_loader_memo_cache.py`
 (new), `run_overnight_research.py` (new, cross-platform orchestrator),
-`debug/_verify_overnight_orchestrator_py.py` (new), `docs/SOFTWARE_OPTIMIZATION_AUDIT.md`
+`debug/_verify_overnight_orchestrator_py.py` (new), `docs/archive/plans/SOFTWARE_OPTIMIZATION_AUDIT.md`
 (prioritized list updated), `docs/HANDOFF.md`.
 
 ### Session 32 (2026-08-23) — instruction audit, CachyOS GPU/chunking work, batched EG production
@@ -23699,7 +23699,7 @@ reference loop, 6/6 including a real degenerate-window (zero-variance segment) e
 benchmark: 94.9x over the loop at 20,000 windows -- and CPU-only, GPU was actually SLOWER
 (0.6x vs CPU-batched) for this small closed-form regression, unlike the correlation core where
 GPU genuinely wins. The main `autolag="aic"` screen (`analysis.py:1702`) was NOT touched --
-scoped-only update to `docs/HARDWARE_OPTIMIZATION_PLAN.md` Sec 3.2 reflecting this new evidence
+scoped-only update to `docs/archive/plans/HARDWARE_OPTIMIZATION_PLAN.md` Sec 3.2 reflecting this new evidence
 (the batched-math pattern is now proven, de-risking effort estimate; GPU-vs-CPU is now an open
 benchmarking question there too, not an assumed-GPU-wins framing), still gated on Ross's explicit
 sign-off + a premortem before any code.
@@ -23729,7 +23729,7 @@ memory fault would be fundamentally invisible to software either way. Ross updat
 (ASUS PRIME Z490-V, 1621->1806) via EZ Flash reading the `.CAP` off the existing `/boot` FAT32
 partition (no USB available) and loaded Optimized Defaults, suspecting a custom RAM-OC profile.
 Confirmed real, concrete outcomes: **HT/SMT is now ENABLED (16 logical CPUs, was 8)** --
-`docs/HARDWARE_OPTIMIZATION_PLAN.md`'s hardware table updated; `Config.RUNTIME.N_WORKERS`
+`docs/archive/plans/HARDWARE_OPTIMIZATION_PLAN.md`'s hardware table updated; `Config.RUNTIME.N_WORKERS`
 auto-derives from `os.cpu_count()` so this needs no code change. A genuine scare followed: post-
 flash, the machine booted a live installer/rescue image (`liveuser@Cachy0S`) instead of the real
 install (BIOS boot-order reset, not an actual reinstall) -- resolved by mounting the real
@@ -23751,7 +23751,7 @@ full rerun), `pit_wfa.py`, `universe_loader.py`, `scripts/mem_guard.py` (new),
 `research/gpu_batched_eg_fixed_lag.py`, `debug/_verify_gpu_backend_vram_headroom.py`,
 `debug/_verify_eigendecompose_gpu.py`, `debug/_verify_gpu_batched_eg.py`,
 `debug/_verify_rolling_coint_batched.py`, `debug/_verify_polars_universe_loader.py`,
-`debug/_verify_var_sizing_weights.py`, `docs/HARDWARE_OPTIMIZATION_PLAN.md`, `docs/HANDOFF.md`.
+`debug/_verify_var_sizing_weights.py`, `docs/archive/plans/HARDWARE_OPTIMIZATION_PLAN.md`, `docs/HANDOFF.md`.
 Committed as `204a33da`; work since that commit (GPU chunking, batched EG production wiring,
 Polars swap, n_workers fixes, CachyOS hardware arc) not yet committed.
 
@@ -28489,11 +28489,11 @@ and #73 both corrected/updated in place as the picture sharpened), `docs/HANDOFF
 
 ## Session 2026-09-26/27 — Full audit (code review, open-item ledger, citation + consistency audits), step-3 ML/distribution study, first data-layer fix
 
-**Scope and outputs.** Ross-approved four-step audit plan. Outputs, all committed: `docs/CODE_REVIEW_2026-09-26.md`
+**Scope and outputs.** Ross-approved four-step audit plan. Outputs, all committed: `docs/archive/audits/CODE_REVIEW_2026-09-26.md`
 (11 core modules + all 60 PAPER-cited research scripts; ~190 findings, each CONFIRMED only after an independent code
-read and/or real-data measurement), `docs/DEV_OPEN_ITEMS_LEDGER_2026-09-26.md` (712 marker hits in this file -> 192
+read and/or real-data measurement), `docs/archive/audits/DEV_OPEN_ITEMS_LEDGER_2026-09-26.md` (712 marker hits in this file -> 192
 items: 56 OPEN, 13 NEEDS-ROSS, 28 SUPERSEDED-BY-AUDIT, 86 DONE with cited evidence, 9 OBSOLETE; 12 statements here
-contradicted by current code), `docs/CITATION_AUDIT_2026-09-26.md` (74 works; 0 fabricated, 9 misattributed, 5
+contradicted by current code), `docs/archive/audits/CITATION_AUDIT_2026-09-26.md` (74 works; 0 fabricated, 9 misattributed, 5
 overstated; PAPER.md:252 "All citations were verified" alongside 19 [TBD] entries), `docs/CONSISTENCY_AUDIT_
 2026-09-26.md` (69 claims: 34 MUST-WITHDRAW, 30 MUST-QUALIFY; 16/18 CLAUDE.md rules currently violated). A
 results-under-revision notice now heads README.md, PAPER.md and PAPER_MAGNITUDE.md. Ross signed off (2026-09-26) on
@@ -28620,7 +28620,7 @@ output current with its inputs and code?" a mechanical check.
 strategy search), then other scripts as they are touched. Complements `research/pipeline_contracts.py` (schema checks).
 
 ## Session 2026-09-27 (night) / 09-28 — data layer round 3, identity fixes, sweep, lineage (summary; full detail in
-## docs/CODE_REVIEW_2026-09-26.md "Data-layer round 3" + "2026-09-28 updates", docs/INCONSISTENCY_SWEEP_2026-09-27.md)
+## docs/archive/audits/CODE_REVIEW_2026-09-26.md "Data-layer round 3" + "2026-09-28 updates", docs/archive/audits/INCONSISTENCY_SWEEP_2026-09-27.md)
 
 **Fixed (each with a failing-first debug/_verify_* test):** D7 (intraday OOM guard off-grid), D8 (cache-time ffill;
 MAX_MISSING_PCT never applied to yfinance/WRDS; reliable-span trim), D9 (inverted ">5% roll" adjustment doubled real
@@ -28642,12 +28642,12 @@ WRDS tuple-IN query never returned (switched to indexed gvkey IN); CRLF batch li
 Compustat `trfd` total return (exact dividends; HSBC special dividend captured); intraday depth uniform (no IBKR bias).
 **Built:** `lineage.py` + `research/pipeline_stages.py` (Ross's seed system; scans/adapter refuse stale resume),
 `research/wrds_session_server.py` (one WRDS connection, queued jobs), `research/clean_pool_identity_pairs.py`,
-`research/apply_trfd_total_return.py`. **Docs:** docs/SCRUTINY_WHAT_HELD_UP_2026-09-28.md (what survived + ranked
+`research/apply_trfd_total_return.py`. **Docs:** docs/archive/audits/SCRUTINY_WHAT_HELD_UP_2026-09-28.md (what survived + ranked
 deeper dives, for Ross), prereg Amendment 2 (second labelled pass; committed before any result).
 **Open for Ross:** futures roll method (D9); D18 quote-midpoint series; M-1 null construction; deeper-dive order;
 C4-2 research EG p-value plan; Unilever ADR ratio 1.089.
 
-## Session 2026-10-02 → 10-05 — scrutiny-first process, bug recheck of every logged item, dollar P&L default, volume split bias, discovery re-run (summary; full detail in docs/ERRATA.md, docs/INCONSISTENCY_SWEEP_2026-09-27.md, docs/CODE_REVIEW_2026-09-26.md, docs/PLAN_OF_ACTION_2026-10-03.md)
+## Session 2026-10-02 → 10-05 — scrutiny-first process, bug recheck of every logged item, dollar P&L default, volume split bias, discovery re-run (summary; full detail in docs/ERRATA.md, docs/archive/audits/INCONSISTENCY_SWEEP_2026-09-27.md, docs/archive/audits/CODE_REVIEW_2026-09-26.md, docs/archive/plans/PLAN_OF_ACTION_2026-10-03.md)
 
 **Ross's direction:** the work is meant to be attacked by outsiders, and every hole found is verified and closed in
 the open (public errata `docs/ERRATA.md`, claims registry, `find_a_hole` issue template); free data only; stop
@@ -28705,7 +28705,7 @@ restated daily; Surface synced and reproduces CachyOS exactly). Found and fixed 
 missing volume to 0 / partial sums; PAR's coarse files were another security (quarantined, rebuilt; 1M needs a
 refetch); the episodic scan's sensitivity run overwrote the primary's log. D18 report done: 57 of the 60 one-arm
 pairs differ by window-grid placement, not midpoint data. Act 3 paper claims differ between machines (Surface
-2026-08-14 vs CachyOS 2026-09-21 outputs) -- re-derive. Detail: docs/INCONSISTENCY_SWEEP_2026-09-27.md.
+2026-08-14 vs CachyOS 2026-09-21 outputs) -- re-derive. Detail: docs/archive/audits/INCONSISTENCY_SWEEP_2026-09-27.md.
 
 **Decisions (Ross, 2026-10-07):** D18 = exclude (adopted); grid-phase robustness arm approved (`--grid-offset`
 63/126/189, pre-declared metric "grid-robust = confirmed under all 4 grids", research/grid_phase_robustness.py);

@@ -4,7 +4,7 @@ selector. Added 2026-08-20, following Ross's direct request to identify and
 GPU-accelerate every script "big enough" to benefit, now that CachyOS
 (RTX 4080, 16GB VRAM) is a real second machine for this project.
 
-A forked dependency audit (2026-08-20, see docs/SOFTWARE_OPTIMIZATION_AUDIT.md
+A forked dependency audit (2026-08-20, see docs/archive/plans/SOFTWARE_OPTIMIZATION_AUDIT.md
 and Development.md for the full writeup) found exactly one clear "easy,
 high-value, no-methodology-change" GPU cluster in this ~150-script codebase:
 dense linear algebra over universe-scale arrays (the masked-matmul

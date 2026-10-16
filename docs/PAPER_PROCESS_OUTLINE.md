@@ -59,8 +59,8 @@ caught by none of them, or if removing a check loses no catches.
 9. **Reproducibility statement** — code public; lineage manifests; queries; free-data claims fully reproducible.
 
 ## Source material (for re-derivation, not copying)
-Development.md (canonical log), docs/CODE_REVIEW_2026-09-26.md, docs/INCONSISTENCY_SWEEP_2026-09-27.md,
-docs/PAPER_SCRUTINY_2026-09-27.md, docs/CLAIMS_REGISTRY.md, docs/PREREGISTRATION_STRATEGY_SEARCH_2026-09-27.md,
+Development.md (canonical log), docs/archive/audits/CODE_REVIEW_2026-09-26.md, docs/archive/audits/INCONSISTENCY_SWEEP_2026-09-27.md,
+docs/archive/audits/PAPER_SCRUTINY_2026-09-27.md, docs/CLAIMS_REGISTRY.md, docs/PREREGISTRATION_STRATEGY_SEARCH_2026-09-27.md,
 git history (commit trailers), debug/_verify_*.py (each fix's failing-first test).
 
 ## Tasks before drafting prose

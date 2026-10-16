@@ -80,7 +80,7 @@ def _lag1_pairs(X: np.ndarray, valid_lag1: np.ndarray = None):
     covariance/predictability-ratio calculation depends specifically on
     "lag 1" meaning a fixed real elapsed time, so that silent conflation is
     a genuine contamination, not a cosmetic one (see refined risk
-    classification, docs/GRAND_SWEEP_BUG_AUDIT_2026-07-20.md)."""
+    classification, docs/archive/audits/GRAND_SWEEP_BUG_AUDIT_2026-07-20.md)."""
     dX1, dX0 = X[1:], X[:-1]
     if valid_lag1 is not None:
         dX1, dX0 = dX1[valid_lag1], dX0[valid_lag1]

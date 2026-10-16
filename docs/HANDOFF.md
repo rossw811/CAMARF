@@ -12,7 +12,7 @@ available; WRDS bond returns and FISD are not subscribed (bond prices must be bu
 re-run arm (a) on the new pools; run the regime scripts (diagnostic -> clustering -> concentration -> bootstrap) and
 register results; re-derive coarse Compustat files (7D-1Y) from the repaired daily files.
 **Open, not blocked:** D5-D13; sensitivity of the 5x break rule at 3x / 10x; Surface WRDS cache re-sync (Compustat
-files lack close_total_return there); parameter-justification drafts (docs/parameter_justification_drafts.csv, Sonnet,
+files lack close_total_return there); parameter-justification drafts (docs/drafts/parameter_justification_drafts.csv, Sonnet,
 unverified -- verify each row before it enters the registry); TRACE bond design (E3).
 
 ## 2026-10-10 (night): RESUME HERE. Pool chain (second pass) running on CachyOS; S34 decided.
@@ -71,7 +71,7 @@ scripts/build_bug_verdicts.py docs/bug_recheck/suite_20261007i_surface.log. Unco
 addendum draft (deliberately, awaiting S1/S2). The /goal is set to the full plan goal; it cannot complete without
 Ross's S1-S36 decisions and the CachyOS chain.
 
-## 2026-10-03: the full plan of action is docs/PLAN_OF_ACTION_2026-10-03.md (every thread + backlog, owners,
+## 2026-10-03: the full plan of action is docs/archive/plans/PLAN_OF_ACTION_2026-10-03.md (every thread + backlog, owners,
 ## dependencies, done-criteria, decisions needed). CachyOS hung 2026-10-03 (~10:55) and was rebooted; trfd fetch and
 ## the chain were restarted 13:12. The entry below remains the detailed state.
 
@@ -84,7 +84,7 @@ from the output files. Disclose with these results: the run used RAW volume for 
 ETF/ADR/REIT files (restated only after both scans). SENSITIVITY (`--d18 include`) running: Tier 1 done (1,031,546
 candidates, 828 confirmed), Tier 2 in progress at 18:22; Tier 3 likely ~24 h more.
 
-## 2026-10-03 (evening): state at end of day — read with docs/PLAN_OF_ACTION_2026-10-03.md
+## 2026-10-03 (evening): state at end of day — read with docs/archive/plans/PLAN_OF_ACTION_2026-10-03.md
 
 **Running on CachyOS (unattended chain v2, watchdog for stuck WRDS queries):** trfd TR applied (15,093 listings, 0
 negative gaps), quote-only fetch done (2,757) → discovery PRIMARY `--fresh --d18 exclude` (tier 2 at 22:05) → then
@@ -131,8 +131,8 @@ membership arm; DEV-003 consumer switch (+ whether to re-run discovery); CachyOS
   failure-class taxonomy with measured effects, the protocol that caught them, honest AI-assistance accounting.
 
 ### State
-- All code/docs committed + pushed (latest 45c58cb8). Ledgers: docs/CODE_REVIEW_2026-09-26.md,
-  docs/INCONSISTENCY_SWEEP_2026-09-27.md, Development.md, docs/SCRUTINY_WHAT_HELD_UP_2026-09-28.md, prereg Amendment 2.
+- All code/docs committed + pushed (latest 45c58cb8). Ledgers: docs/archive/audits/CODE_REVIEW_2026-09-26.md,
+  docs/archive/audits/INCONSISTENCY_SWEEP_2026-09-27.md, Development.md, docs/archive/audits/SCRUTINY_WHAT_HELD_UP_2026-09-28.md, prereg Amendment 2.
 - **Intraday discovery DONE** (CachyOS, 09-28, no IBKR depth): 1h 1,539 symbols, 83,086 candidates, 287,170 window
   tests → **6** confirmed; 4h 1,421 symbols → **0** confirmed (earlier pool had 12 intraday pairs with IBKR depth).
   Lineage stages `intraday_scan_1h/4h` recorded on CachyOS (manifests not yet committed).
@@ -181,9 +181,9 @@ membership arm; DEV-003 consumer switch (+ whether to re-run discovery); CachyOS
 
 ## 2026-09-28 08:00 — STOPPED at Ross's request ("stop work entirely after this and then update all related documents"). RESUME HERE.
 
-**All code and docs committed + pushed** (latest: 516c9a10 + this doc commit). Details: docs/CODE_REVIEW_2026-09-26.md
-("Data-layer round 3", "2026-09-28 updates"), docs/INCONSISTENCY_SWEEP_2026-09-27.md ("2026-09-28 additions"),
-Development.md (session 2026-09-27/28 summary), docs/SCRUTINY_WHAT_HELD_UP_2026-09-28.md, prereg Amendment 2.
+**All code and docs committed + pushed** (latest: 516c9a10 + this doc commit). Details: docs/archive/audits/CODE_REVIEW_2026-09-26.md
+("Data-layer round 3", "2026-09-28 updates"), docs/archive/audits/INCONSISTENCY_SWEEP_2026-09-27.md ("2026-09-28 additions"),
+Development.md (session 2026-09-27/28 summary), docs/archive/audits/SCRUTINY_WHAT_HELD_UP_2026-09-28.md, prereg Amendment 2.
 
 **Background jobs at the stop point:**
 1. **WRDS job 11 — NOT running (correction, 08:35):** it FAILED at 07:59 — WRDS closed the connection mid-query
@@ -212,7 +212,7 @@ copy kept at `output/cache/_wrds_pre_sync_20260928`. CachyOS repo on main; its o
 4. Sweep leftovers: C4-2 research EG p-values (plan in the sweep doc), data.py's 26 silent handlers, the three
    lower-impact C6 items, Unilever ADR ratio.
 
-**Decisions waiting for Ross:** deeper-dive order (docs/SCRUTINY_WHAT_HELD_UP_2026-09-28.md); futures roll method
+**Decisions waiting for Ross:** deeper-dive order (docs/archive/audits/SCRUTINY_WHAT_HELD_UP_2026-09-28.md); futures roll method
 (D9); D18 quote-midpoint series (and the 2,758 pre-1992 Nasdaq quote-only securities); M-1 null construction.
 
 ---
@@ -226,13 +226,13 @@ copy kept at `output/cache/_wrds_pre_sync_20260928`. CachyOS repo on main; its o
 - D19: 3,256 corrupt WRDS files refetched — 498 recovered; 2,758 pre-1992 Nasdaq quote-only securities excluded
   (disclosed). M13 (first mislabelled M12): NQ COT history restored to 1999. FX (R1.1) applied to 15,093 global files; ADR check passes
   (HSBC 5.03, BP 6.00, SHEL 2.01, AZN 0.50, HMC 3.00, TM 10.0, SONY 0.97; Unilever 1.089 open).
-- Sweep (`docs/INCONSISTENCY_SWEEP_2026-09-27.md`): WFA fold Sharpe mis-annualized (fixed, shared helper); WFA
+- Sweep (`docs/archive/audits/INCONSISTENCY_SWEEP_2026-09-27.md`): WFA fold Sharpe mis-annualized (fixed, shared helper); WFA
   stale-spread fallback removed; legacy capital-sim missing prices surfaced; loader dedupe head+tail buckets;
   COT prefix truncation; open: C4-2 research EG p-values (plan written), M-1 null construction (for Ross).
 - Seed/lineage system (Ross's idea): `lineage.py` + `research/pipeline_stages.py` (whole chain declared once);
   every chain script records its stage; the episodic scan and the adapter refuse to resume from stale outputs
   (`--fresh` backs them up). `python research/pipeline_stages.py` prints chain status.
-- `docs/SCRUTINY_WHAT_HELD_UP_2026-09-28.md`: what survived + ranked deeper-dive proposals (for Ross).
+- `docs/archive/audits/SCRUTINY_WHAT_HELD_UP_2026-09-28.md`: what survived + ranked deeper-dive proposals (for Ross).
 
 **In flight:** Surface → CachyOS sync of `output/cache/wrds` (tar over ssh; CachyOS's old copy set aside as
 `output/cache/_wrds_pre_sync_20260928`). Then on CachyOS: `python research/migrate_instrument_labels_d16.py --apply`
@@ -257,7 +257,7 @@ fixes you must perform"); "fix the mixing" (D16); wants a systematic inconsisten
 look at what in the scrutiny actually succeeded / merits a deeper dive. Do WRDS work while a session is open.
 
 **Committed + pushed (eaec5799):** D7, D8, D9, D10, D12, D13, D16, M8/M9, C14-C16, A1 research follow-ups — see
-docs/CODE_REVIEW_2026-09-26.md "Data-layer round 3". Cache migrations applied on the SURFACE only: D13 restamp
+docs/archive/audits/CODE_REVIEW_2026-09-26.md "Data-layer round 3". Cache migrations applied on the SURFACE only: D13 restamp
 (21,136 files), D16 namespaced labels (225 files; crypto "<SYM>-USD", futures/commodities "<SYM>=F"), futures refetch
 (26/27 incl. PL=F after the D8 trim rule; DX=F does not exist on Yahoo).
 
@@ -295,10 +295,10 @@ confirmed bug this session was caught by checking code/data, not write-ups.
 re-derive; dollar P&L; USD conversion of Compustat Global legs; min-windows rule (k=2 arm); purged CV; Design 1
 (pre-registered search, holdout splits 50/60/70/80 all reported) and Design 2 (point-in-time eligible_from);
 **WRDS has priority over yfinance and IBKR**; IBKR deep history = pre-declared side arm only (CLAUDE.md rule 2
-rewritten); paper edits to follow the search results (proposals in docs/PAPER_SCRUTINY_2026-09-27.md);
+rewritten); paper edits to follow the search results (proposals in docs/archive/audits/PAPER_SCRUTINY_2026-09-27.md);
 churn fixes stay comparison arms, not defaults; push commits.
 
-**Done today (all committed + pushed; details in docs/CODE_REVIEW_2026-09-26.md "Post-review updates"):**
+**Done today (all committed + pushed; details in docs/archive/audits/CODE_REVIEW_2026-09-26.md "Post-review updates"):**
 - WRDS priority: `universe_loader` merges WRDS last, `include_ibkr=False` default, memo version key; adapter
   builds spreads from CRSP `close_total_return` first.
 - One label per security: `universe_loader.dedupe_identical_series` (default on; also in
@@ -341,10 +341,10 @@ WRDS subscription (Ross, 2026-09-27).
 
 ## 2026-09-26/27: Full audit + overnight fixes — READ FIRST (everything committed; nothing pushed)
 
-**Audit plan (steps 1–4): complete.** `docs/CODE_REVIEW_2026-09-26.md` (~190 findings, every confirmed one checked
-against code/real data; "Post-review updates" at the end), `docs/DEV_OPEN_ITEMS_LEDGER_2026-09-26.md`,
-`docs/CITATION_AUDIT_2026-09-26.md`, `docs/CONSISTENCY_AUDIT_2026-09-26.md`, and — for your approval, papers NOT edited
-— `docs/PAPER_SCRUTINY_2026-09-27.md` (284 claims: 44 stand, 109 qualify, 115 withdraw, 8 replace-now, 8 unverified;
+**Audit plan (steps 1–4): complete.** `docs/archive/audits/CODE_REVIEW_2026-09-26.md` (~190 findings, every confirmed one checked
+against code/real data; "Post-review updates" at the end), `docs/archive/audits/DEV_OPEN_ITEMS_LEDGER_2026-09-26.md`,
+`docs/archive/audits/CITATION_AUDIT_2026-09-26.md`, `docs/archive/audits/CONSISTENCY_AUDIT_2026-09-26.md`, and — for your approval, papers NOT edited
+— `docs/archive/audits/PAPER_SCRUTINY_2026-09-27.md` (284 claims: 44 stand, 109 qualify, 115 withdraw, 8 replace-now, 8 unverified;
 proposed revised abstracts in its §6). README/PAPER/PAPER_MAGNITUDE carry a results-under-revision notice.
 
 **Headline, corrected accounting:** marked at real leg prices with the hedge fixed at entry (pnl_dollar.py), every
@@ -5678,7 +5678,7 @@ a physical power-cycle — no clean shutdown, no reboot logged.
   `nvidia-smi` snapshot taken before launch read the GPU as idle (caught it between ollama's
   bursty requests) — the benchmark's own CUDA allocation then collided with ollama's, hanging the
   NVIDIA driver hard enough to take the whole machine down. This is exactly the "machine is
-  shared with other GPU work, not CAMARF-dedicated" risk `docs/HARDWARE_OPTIMIZATION_PLAN.md` §8
+  shared with other GPU work, not CAMARF-dedicated" risk `docs/archive/plans/HARDWARE_OPTIMIZATION_PLAN.md` §8
   already named — the gap was that nothing actually *checked* live headroom at launch time, only
   device presence.
 
@@ -5736,7 +5736,7 @@ Found via a port-22 scan of `10.0.1.0/24` since no mDNS (`cachyos.local`) resolu
 **2026-08-20, latest — software optimization audit, first 3 prioritized items executed.**
 Following the CachyOS hardware plan, Ross asked for optimization to cover "literally every part
 and or aspect" of the project, not just hardware. A forked agent produced
-`docs/SOFTWARE_OPTIMIZATION_AUDIT.md` (6 sections, reviewed and edited by me), then I executed
+`docs/archive/plans/SOFTWARE_OPTIMIZATION_AUDIT.md` (6 sections, reviewed and edited by me), then I executed
 the top 3 items from its prioritized list:
 
 1. **`n_workers=12` hardcoding fixed.** `analysis.py` hardcoded `n_workers=12` as a default in 8
@@ -5824,7 +5824,7 @@ Built a diff instead — sorted relative-path file lists from both sides (`LC_AL
    correlation core did — `coint()`'s `autolag="aic"` runs a per-pair, data-dependent
    lag-selection search, so a real GPU port means either dropping that adaptivity (a disclosable
    methodology change) or reimplementing the AIC-selection loop as a new, unverified batched
-   procedure. Full writeup in `docs/HARDWARE_OPTIMIZATION_PLAN.md` §3.2. Recommendation: this is
+   procedure. Full writeup in `docs/archive/plans/HARDWARE_OPTIMIZATION_PLAN.md` §3.2. Recommendation: this is
    a multi-session effort on the project's most safety-critical test — needs its own explicit
    go-ahead and premortem, not a default-yes follow-on to the correlation-core work.
 
@@ -5892,7 +5892,7 @@ needs your sudo), and the Tier-2 GPU reimplementation (scoped only, needs your s
     - **~90 of the 121 `research/*.py` scripts were never individually audited** this session for
       whether they're actually wired to the current BUG-D112-fixed 182-pair PIT-safe source
       rather than a stale manifest/checkpoint — flagged by the dependency-audit fork
-      (`docs/SOFTWARE_OPTIMIZATION_AUDIT.md` §2) as a real, unclosed gap, not assumed safe.
+      (`docs/archive/plans/SOFTWARE_OPTIMIZATION_AUDIT.md` §2) as a real, unclosed gap, not assumed safe.
     - **`eg_null_calibration_montecarlo.py`'s known stale-cache bug remains unfixed** — it reads
       the old yfinance-only universe directly rather than the current WRDS-primary one, and its
       output is cited as a published `PAPER.md` §4.2.1 claim. Needs your explicit decision
@@ -5908,7 +5908,7 @@ needs your sudo), and the Tier-2 GPU reimplementation (scoped only, needs your s
       scheduler switch, and the `/etc/fstab` lines for the two NVMe mounts (both exact commands
       given above in this file).
     - **The Tier-2 GPU reimplementation of Engle-Granger/Johansen** — scoped only
-      (`docs/HARDWARE_OPTIMIZATION_PLAN.md` §3.2), zero code, needs your explicit separate
+      (`docs/archive/plans/HARDWARE_OPTIMIZATION_PLAN.md` §3.2), zero code, needs your explicit separate
       sign-off given it touches the project's single most safety-critical statistical test.
     - **`run_verify_suite.py` usage-habit confirmation and the pytest migration for the 176
       verify scripts** — both untouched, lowest urgency of everything in this list.
@@ -5918,7 +5918,7 @@ Files: `config.py`, `analysis.py`, `pyproject.toml` (new), `data_wrds.py`,
 `research/wrds_global_index_universe_fetch.py`, `universe_loader.py`,
 `debug/_verify_universe_loader_memo_cache.py` (new), `run_overnight_research.py` (new),
 `debug/_verify_overnight_orchestrator_py.py` (new), `gpu_backend.py` (new),
-`docs/SOFTWARE_OPTIMIZATION_AUDIT.md`, `docs/HARDWARE_OPTIMIZATION_PLAN.md`, `Development.md`.
+`docs/archive/plans/SOFTWARE_OPTIMIZATION_AUDIT.md`, `docs/archive/plans/HARDWARE_OPTIMIZATION_PLAN.md`, `Development.md`.
 
 Note: `gpu_backend.py` and the `analysis.py` GPU-parameter change are UNCOMMITTED, same as
 everything else from this session — per this project's own rule, nothing gets committed unless
@@ -5938,7 +5938,7 @@ place. Everything below is real and verified (SSH-checked directly), not assumed
   (16GB VRAM, compute cap 8.9, currently shared with `ollama`'s `llama-server` and `whisper-cli`
   — this machine is in active daily use for other work, not dedicated to CAMARF), 8-core
   i7-10700K (SMT disabled), Python 3.14.7, `uv` package manager.
-- **Full plan**: `docs/HARDWARE_OPTIMIZATION_PLAN.md` — storage, GPU (CuPy port of the exact
+- **Full plan**: `docs/archive/plans/HARDWARE_OPTIMIZATION_PLAN.md` — storage, GPU (CuPy port of the exact
   correlation-matrix code responsible for every real bug found tonight; RAPIDS cuML for k-BAHC
   clustering), scoped Polars swaps, Ruff, Pandera, Python-3.14-compatibility risk, sequencing.
   **Plan only — none of the GPU/Polars/Ruff/Pandera work has been built yet**, only the
@@ -6013,7 +6013,7 @@ exact commands, the way this session eventually did.
 Connected via SSH and read real specs directly (not assumed): 46.9GB RAM + 46.9GB zram swap
 (vs. the 16GB that caused tonight's whole ordeal), RTX 4080 (16GB VRAM, compute cap 8.9),
 8-core i7-10700K (SMT disabled), 1.86TB of currently-unmounted NVMe storage sitting next to a
-spinning-HDD-hosted `/home`. Full plan: `docs/HARDWARE_OPTIMIZATION_PLAN.md` — covers storage
+spinning-HDD-hosted `/home`. Full plan: `docs/archive/plans/HARDWARE_OPTIMIZATION_PLAN.md` — covers storage
 (mount the NVMe, move CAMARF's cache off the HDD), GPU (CuPy port of the exact correlation-
 matrix code that caused all 4 of tonight's real bugs — same math, ~2.4GB fits trivially in 16GB
 VRAM vs. fighting 16GB of shared system RAM; RAPIDS cuML for k-BAHC's clustering step, which
@@ -6316,7 +6316,7 @@ session's own methodology audit. Check `output/k_bahc_1D_full_stderr.log` for pr
 ### Exhaustive full-session re-read (fork) — genuinely new findings not previously captured
 
 Dispatched per Ross's explicit "don't gloss over anything" instruction. Full raw
-chronological log: `docs/SESSION_014f_FULL_LOG.md`. The fork did NOT reach the session's
+chronological log: `docs/archive/sessions/SESSION_014f_FULL_LOG.md`. The fork did NOT reach the session's
 literal first message (extremely long, multiply-compacted session) — it reached a clean,
 explicitly-stated stopping point (Thread G Phase 2 completion), not false completeness.
 New items, verified against real files where possible:
@@ -6330,7 +6330,7 @@ New items, verified against real files where possible:
 - Ross granted full autonomous-operation mode mid-session at some point ("run everything
   yourself... remind me about the question though") and explicitly asked to be reminded
   of open questions on his return — unclear from the fork's stopping point whether any
-  such flagged questions are still dangling; worth checking `docs/SESSION_014f_FULL_LOG.md`
+  such flagged questions are still dangling; worth checking `docs/archive/sessions/SESSION_014f_FULL_LOG.md`
   for the exact context if it matters later.
 - **Thread L status correction — it is NOT "scoped only"** as this file previously said
   (copied from the stale plan-file index). It was actually built, run, and produced a real
@@ -6418,7 +6418,7 @@ than guessing — see the full audit reasoning in the conversation; summary:
 (`claude.ai/code/session_014f6574WEQZKywfguD4Dish`) end-to-end in small scroll increments (Ross:
 "make sure you fully read the old chat for every detail and comprehension, don't gloss over
 anything") — the earlier pass used large scroll jumps in a virtualized UI, which risks silently
-skipping content. Output going to `docs/SESSION_014f_FULL_LOG.md` once that fork completes; check
+skipping content. Output going to `docs/archive/sessions/SESSION_014f_FULL_LOG.md` once that fork completes; check
 there for anything not already captured in this file.
 
 **Thread J Test 1 status as of this entry**: grid point 1 (5yr) completed — **679 confirmed

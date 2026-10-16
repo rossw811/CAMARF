@@ -1,3 +1,0 @@
-17:48:26 INFO  === wrds_lead_lag_scan.py: Tier 1 confirmed pairs, applying lead_lag_scan.py's methodology to WRDS-sourced data ===
-17:48:26 INFO  Tier 1: 0 confirmed pairs to scan
-17:48:26 WARNING  No confirmed pairs found for Tier 1 -- has research/wrds_deep_history_episodic_scan.py been run yet?

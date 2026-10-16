@@ -1,3 +1,0 @@
-21:31:29 INFO  === absorption_ratio.py: Kritzman-Li-Page-Rigobon (2011) systemic risk measure ===
-21:31:29 INFO  Universe: 4 unique symbols across all confirmed pairs
-21:31:29 WARNING  Too few symbols (4) — run analysis.py first. Aborting.

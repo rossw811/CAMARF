@@ -1,6 +1,6 @@
 """
 scripts/build_claims_table.py -- plan W4.3 / S20 groundwork (2026-10-07): every claim the section-by-section scrutiny
-lists (docs/PAPER_SCRUTINY_2026-09-27.md, 284 rows across PAPER.md and PAPER_MAGNITUDE.md) gets a registry status:
+lists (docs/archive/audits/PAPER_SCRUTINY_2026-09-27.md, 284 rows across PAPER.md and PAPER_MAGNITUDE.md) gets a registry status:
   WITHDRAW -> WITHDRAWN  (rests on a confirmed defect; plan S34 may move a central claim back to fix-and-re-derive)
   REPLACE  -> CORRECTED  (a committed corrected value exists -- cite it with its scope)
   STANDS / QUALIFY / UNVERIFIED -> REGISTERED (nothing is REPLICATED until re-derived on current data)

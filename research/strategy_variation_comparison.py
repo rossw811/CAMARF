@@ -6,7 +6,7 @@ risk-adjusted returns applied to single assets, using generic strategy
 archetypes (breakout, trend-following DCA, single-asset mean reversion),
 with everything else (position sizing, cost model, metrics) held constant? A
 placebo/confound test in the spirit of Aronson's data-mining-bias framework
-(dedicated_pass.md sec 11.4, not yet built) and this session's own
+(docs/archive/plans/dedicated_pass.md sec 11.4, not yet built) and this session's own
 filter-relevance sweep.
 
 Population: the SAME 20 (pair, timeframe) rows already used by

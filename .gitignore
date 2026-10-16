@@ -35,28 +35,11 @@ graphify-out/.graphify_*
 # same bug class — same rationale, untracked here.
 logs/archive/*.log
 
-# Root-level *.log handling — rewritten 2026-07-20 as a robust allow-list
-# after the same bug class recurred 3 times (2026-07-11, 2026-07-15,
-# 2026-07-20): every prior fix here was a one-off pattern for that
-# session's specific ad-hoc scratch-log naming convention (`*_stdout.log`,
-# `*_out.log`, `*_out[0-9].log`, ...), and every session invents a
-# slightly different convention (e.g. 2026-07-20's `near_miss_1M_fixed.log`,
-# `analysis_bugd65_rerun.log` — no _out/_err suffix at all) that slips
-# through. Now: ignore ALL *.log at repo root by default, explicitly
-# un-ignore the curated latest_run_*.log summaries and the small number of
-# pre-existing tracked exceptions, then re-ignore the specific stdout/
-# stderr-dump sub-pattern that would otherwise be caught by the
-# latest_run_*.log allow-list. Order matters in gitignore — last matching
-# rule wins, so the re-ignore below MUST come after the allow-list above
-# it. New scratch logs of ANY future naming convention are ignored by
-# default now instead of requiring a new pattern each time. Does not touch
-# output/ (already ignored above) or logs/archive/ (already ignored above).
+# Run logs (2026-10-15 cleanup): every log stays local -- root latest_run_*.log summaries, logs/, *.pid. They are
+# written by the code at every run (CLAUDE.md: read latest_run_*.log first) but are machine-local run records, not
+# source. Logs cited as evidence before 2026-10-15 resolve at tag snapshot-2026-10-15-pre-cleanup; evidence logs that
+# must travel with a claim go under docs/ (e.g. docs/bug_recheck/*.log), which is not ignored.
 /*.log
-!/latest_run_*.log
-!/analysis_overnight.log
-!/analysis_overnight_err.log
-!/latest_run_data_err.log
-!/near_miss_remaining.log
-latest_*_stdout.log
-latest_*_stderr.loglogs/*_auto_attempt*.log
+/*.pid
+/logs/
 graphify-out/

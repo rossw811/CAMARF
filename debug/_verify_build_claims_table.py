@@ -1,6 +1,6 @@
 """
 Synthetic check for scripts/build_claims_table.py (2026-10-07, written before the script). The script turns the
-section-by-section scrutiny (docs/PAPER_SCRUTINY_2026-09-27.md, one row per claim: ID | Location | Claim | Verdict |
+section-by-section scrutiny (docs/archive/audits/PAPER_SCRUTINY_2026-09-27.md, one row per claim: ID | Location | Claim | Verdict |
 Finding IDs | Proposed replacement) into a claims table with a registry status:
   WITHDRAW -> WITHDRAWN (rests on a confirmed defect; S34 may move a central claim back to fix-and-re-derive)
   REPLACE  -> CORRECTED (a committed corrected value exists; cite it with its scope)

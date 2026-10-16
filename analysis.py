@@ -1999,7 +1999,7 @@ class CointScanner:
          BH-FDR's own m accounts for; max() has no such inflation and
          matches this project's standing bias toward conservative,
          defensible confirmation over sensitivity (Aronson's own framework,
-         dedicated_pass.md sec 11.4). Both raw directional p-values are
+         docs/archive/plans/dedicated_pass.md sec 11.4). Both raw directional p-values are
          still recorded (coint_pvalue_raw_ab/_ba) for transparency, not
          collapsed away — same "expose every method side by side" habit as
          OLS/TLS/Kalman hedge ratios.
