@@ -28971,3 +28971,17 @@ automated reads), so they are NOT cited until read in primary text -- and found 
 well-cited work selecting pairs on the full sample. All three passages corrected (s.1 abstract area, s.4, s.6); the
 paper now says full-history screening is a shortcut outside the seminal design, which it measures. Consequence for
 the rewrite: the contribution cannot be framed as correcting the literature's selection practice.
+
+### Git history rewrite (2026-10-15, Ross: "let's do the git filter repo")
+Repo is public; ~36,000 data files (yfinance cache, 370 IBKR files, generated results) were in history from June
+commits though gone from the tree. No WRDS/CRSP/Compustat path was ever committed (checked over every path in history).
+Steps: (1) backup -- a network `git clone --mirror` of GitHub failed mid-transfer ("fetch-pack: invalid index-pack
+output"); replaced by `git bundle create --all` from the local repo (main == origin/main, 8b1d6de0), 3.29 GB,
+`git bundle verify` OK, kept at Projects/CAMARF_history_backup_20261015.bundle; (2) `git filter-repo --path output/
+--path graphify-out/cache/ --invert-paths` on a clone of the bundle: 274 -> 273 commits (one touched only output/),
+0 output/ paths left, pack 5 GB -> 7.65 MiB, final tree identical except three small output/ result files; (3) force-
+pushed main (e0beb022; no forks, one branch, no tags); (4) local repo `git reset --mixed origin/main` (working files
+untouched); the three result files re-added; old -> new hash map in docs/history/commit_map_2026-10-15.csv. Open:
+GitHub may keep the old objects reachable by SHA until its garbage collection; a purge request to GitHub Support
+removes them sooner. CachyOS's clone still has the old history -- re-point it (fetch + reset --mixed) after the
+re-run chain finishes, never during.
