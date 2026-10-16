@@ -1,5 +1,14 @@
 # CAMARF — Cross-Asset Co-Movement Arbitrage Research Framework
 
+**In plain terms.** I set out to build a statistical-arbitrage strategy that trades pairs of assets whose prices move
+together. Along the way I tested the standard way of finding such pairs, a cointegration test run over each pair's full
+price history, and found that it gives false confidence: it can certify relationships that had already broken down by
+the time a trader could have used them. My own strategy had the same problem. An early backtest reported an
+out-of-sample Sharpe ratio of 5.2; once hindsight was removed from how pairs were chosen and errors in the profit
+accounting were fixed, the edge was gone, and no strategy configuration passed a test I had registered in advance.
+This repository is the full record: every result, every bug and every correction, published so that anyone can check
+it or try to break it.
+
 > **Start here to check our work: [`docs/ERRATA.md`](docs/ERRATA.md)** — one page listing what is fixed, withdrawn
 > and still open, with links to the evidence; citable claims only from [`docs/CLAIMS_REGISTRY.md`](docs/CLAIMS_REGISTRY.md).
 > Since this banner was written, B2/B3 (dollar P&L, now the default), B4 (`--hedge both` removed) and the Compustat
