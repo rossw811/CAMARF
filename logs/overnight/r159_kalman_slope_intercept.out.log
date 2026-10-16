@@ -1,0 +1,4 @@
+KVUE/KMB@3m: mean_alpha=-0.4919 std(spread) origin=0.0021 vs slope+intercept=0.0019 ADF-p origin=0.0000 vs si=0.0000
+PNC/ZION@4h: mean_alpha=2.2752 std(spread) origin=0.0364 vs slope+intercept=0.0187 ADF-p origin=0.0000 vs si=0.0000
+Wrote output/research/kalman_slope_intercept.parquet: 2 pairs, 2/2 with |mean_alpha|>0.05 (material intercept), 1/2 pairs where slope+intercept gives a lower (more stationary) ADF p-value than origin-only
+

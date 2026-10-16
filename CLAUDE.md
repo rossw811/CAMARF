@@ -175,7 +175,7 @@ for any new dependency (confirmed 2026-09-21 installing `tensorflow` for the LST
 - **Portfolio-level, capital-constrained (`--capital-sim`) PIT backtest results are the
   headline** over per-pair backtests — per-pair is fine as a diagnostic, never the reported
   result.
-- **Read `latest_run_data.log` / `latest_run_analysis.log` first** when diagnosing a `data.py`/
+- **Read `logs/latest/latest_run_data.log` / `logs/latest/latest_run_analysis.log` first** when diagnosing a `data.py`/
   `analysis.py` run — structured, LLM-readable, written automatically after every run.
 - **Run the 5 `council-*` agents together at real milestones, never one alone** — independent
   blind convergence is the point. `/code-review` after any nontrivial change to

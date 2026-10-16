@@ -1,0 +1,91 @@
+18:32:16 INFO  === pit_wfa.py: Point-In-Time Portfolio-Wide Walk-Forward Analysis (1h) ===
+2026-07-14 18:32:16  INFO      === pit_wfa.py: Point-In-Time Portfolio-Wide Walk-Forward Analysis (1h) ===
+18:32:16 INFO  Unlike wfa.py's semi-WFA, pair SELECTION itself is re-derived per fold using only train-window data — see module docstring for exact scope.
+2026-07-14 18:32:16  INFO      Unlike wfa.py's semi-WFA, pair SELECTION itself is re-derived per fold using only train-window data — see module docstring for exact scope.
+18:32:23 INFO  Universe: 1566 symbols with cached 1h data
+2026-07-14 18:32:23  INFO      Universe: 1566 symbols with cached 1h data
+18:32:23 INFO  Analysis window: [2023-07-13, 2026-07-14]
+2026-07-14 18:32:23  INFO      Analysis window: [2023-07-13, 2026-07-14]
+18:32:23 INFO  [window_sweep/window_180d] screening train window [2025-06-10, 2025-12-07] (point-in-time, no test-period data used)...
+2026-07-14 18:32:23  INFO      [window_sweep/window_180d] screening train window [2025-06-10, 2025-12-07] (point-in-time, no test-period data used)...
+2026-07-14 18:32:36  INFO        [1h] Computing 1556×1556 correlation matrices (Pearson + Spearman + rolling avg)...
+2026-07-14 18:32:41  INFO        [1h] Pearson 0.8s | Spearman 1.1s | RollingAvg 3.2s
+2026-07-14 18:32:43  INFO        [1h] Candidate pairs: 60156 (0 cross-asset)  threshold |\u03c1| \u2265 0.40  [gold=30543 silver=19724 bronze=9889]
+2026-07-14 18:32:43  INFO        [1h] Running EG on 60156 pairs (workers=12, max_lag=10)...
+2026-07-14 18:37:52  INFO        [1h] EG complete in 309.2s
+2026-07-14 18:37:52  INFO        [1h] EG: tested=60156, raw<0.05=2161, FDR-adjusted<0.05=0
+18:37:52 INFO  [window_sweep/window_180d] 0 pairs point-in-time confirmed (5.5 min)
+2026-07-14 18:37:52  INFO      [window_sweep/window_180d] 0 pairs point-in-time confirmed (5.5 min)
+18:37:52 INFO  [window_sweep/window_180d] backtest: 0 pairs traded, 0 trades, portfolio Sharpe=nan
+2026-07-14 18:37:52  INFO      [window_sweep/window_180d] backtest: 0 pairs traded, 0 trades, portfolio Sharpe=nan
+18:37:52 INFO  [window_sweep/window_365d] screening train window [2024-12-06, 2025-12-07] (point-in-time, no test-period data used)...
+2026-07-14 18:37:52  INFO      [window_sweep/window_365d] screening train window [2024-12-06, 2025-12-07] (point-in-time, no test-period data used)...
+2026-07-14 18:38:05  INFO        [1h] Computing 1556×1556 correlation matrices (Pearson + Spearman + rolling avg)...
+2026-07-14 18:38:11  INFO        [1h] Pearson 1.3s | Spearman 1.6s | RollingAvg 2.9s
+2026-07-14 18:38:15  INFO        [1h] Candidate pairs: 290037 (0 cross-asset)  threshold |\u03c1| \u2265 0.40  [gold=57885 silver=71785 bronze=160367]
+2026-07-14 18:38:15  INFO        [1h] Running EG on 290037 pairs (workers=12, max_lag=10)...
+2026-07-14 19:07:34  INFO        [1h] EG complete in 1758.4s
+2026-07-14 19:07:34  INFO        [1h] EG: tested=290037, raw<0.05=20098, FDR-adjusted<0.05=0
+19:07:35 INFO  [window_sweep/window_365d] 0 pairs point-in-time confirmed (29.7 min)
+2026-07-14 19:07:35  INFO      [window_sweep/window_365d] 0 pairs point-in-time confirmed (29.7 min)
+19:07:35 INFO  [window_sweep/window_365d] backtest: 0 pairs traded, 0 trades, portfolio Sharpe=nan
+2026-07-14 19:07:35  INFO      [window_sweep/window_365d] backtest: 0 pairs traded, 0 trades, portfolio Sharpe=nan
+19:07:35 INFO  [window_sweep/window_545d] screening train window [2024-06-09, 2025-12-07] (point-in-time, no test-period data used)...
+2026-07-14 19:07:35  INFO      [window_sweep/window_545d] screening train window [2024-06-09, 2025-12-07] (point-in-time, no test-period data used)...
+2026-07-14 19:07:49  INFO        [1h] Computing 1556×1556 correlation matrices (Pearson + Spearman + rolling avg)...
+2026-07-14 19:07:57  INFO        [1h] Pearson 2.2s | Spearman 2.6s | RollingAvg 3.5s
+2026-07-14 19:08:00  INFO        [1h] Candidate pairs: 184215 (0 cross-asset)  threshold |\u03c1| \u2265 0.40  [gold=35669 silver=61516 bronze=87030]
+2026-07-14 19:08:00  INFO        [1h] Running EG on 184215 pairs (workers=12, max_lag=10)...
+2026-07-14 19:28:53  INFO        [1h] EG complete in 1252.4s
+2026-07-14 19:28:53  INFO        [1h] EG: tested=184215, raw<0.05=10498, FDR-adjusted<0.05=2
+2026-07-14 19:28:53  INFO        [1h] Rolling coint on 2 pairs (window=252, step=21)...
+2026-07-14 19:28:57  INFO        [1h] Rolling coint complete in 4.1s
+19:28:59 INFO  [window_sweep/window_545d] 0 pairs point-in-time confirmed (21.4 min)
+2026-07-14 19:28:59  INFO      [window_sweep/window_545d] 0 pairs point-in-time confirmed (21.4 min)
+19:28:59 INFO  [window_sweep/window_545d] backtest: 0 pairs traded, 0 trades, portfolio Sharpe=nan
+2026-07-14 19:28:59  INFO      [window_sweep/window_545d] backtest: 0 pairs traded, 0 trades, portfolio Sharpe=nan
+19:28:59 INFO  [window_sweep/window_730d] screening train window [2023-12-07, 2025-12-07] (point-in-time, no test-period data used)...
+2026-07-14 19:28:59  INFO      [window_sweep/window_730d] screening train window [2023-12-07, 2025-12-07] (point-in-time, no test-period data used)...
+2026-07-14 19:29:16  INFO        [1h] Computing 1556×1556 correlation matrices (Pearson + Spearman + rolling avg)...
+2026-07-14 19:29:25  INFO        [1h] Pearson 2.6s | Spearman 3.3s | RollingAvg 3.3s
+2026-07-14 19:29:28  INFO        [1h] Candidate pairs: 134918 (0 cross-asset)  threshold |\u03c1| \u2265 0.40  [gold=24705 silver=48784 bronze=61429]
+2026-07-14 19:29:28  INFO        [1h] Running EG on 134918 pairs (workers=12, max_lag=10)...
+Exception in thread Thread-5:
+Traceback (most recent call last):
+  File "C:\Users\RossW\anaconda3\envs\trading\Lib\threading.py", line 1045, in _bootstrap_inner
+    self.run()
+  File "C:\Users\RossW\anaconda3\envs\trading\Lib\concurrent\futures\process.py", line 347, in run
+    self.terminate_broken(cause)
+  File "C:\Users\RossW\anaconda3\envs\trading\Lib\concurrent\futures\process.py", line 499, in terminate_broken
+    work_item.future.set_exception(bpe)
+  File "C:\Users\RossW\anaconda3\envs\trading\Lib\concurrent\futures\_base.py", line 559, in set_exception
+    raise InvalidStateError('{}: {!r}'.format(self._state, self))
+concurrent.futures._base.InvalidStateError: CANCELLED: <Future at 0x1d3936bb9d0 state=cancelled>
+Traceback (most recent call last):
+  File "C:\Users\RossW\Projects\CAMARF\pit_wfa.py", line 495, in <module>
+    main()
+  File "C:\Users\RossW\Projects\CAMARF\pit_wfa.py", line 469, in main
+    metrics, portfolio_stats, pair_sets = run_fold(universe, fold_dates, wfa_variant, args.workers)
+                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\RossW\Projects\CAMARF\pit_wfa.py", line 390, in run_fold
+    confirmed = screen_universe_at_cutoff(
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\RossW\Projects\CAMARF\pit_wfa.py", line 240, in screen_universe_at_cutoff
+    confirmed_dicts, _eg_stats = CointScanner.scan(
+                                 ^^^^^^^^^^^^^^^^^^
+  File "C:\Users\RossW\Projects\CAMARF\analysis.py", line 1445, in scan
+    for r in pool.map(_eg_worker, tasks, chunksize=50):
+  File "C:\Users\RossW\anaconda3\envs\trading\Lib\concurrent\futures\process.py", line 620, in _chain_from_iterable_of_lists
+    for element in iterable:
+  File "C:\Users\RossW\anaconda3\envs\trading\Lib\concurrent\futures\_base.py", line 619, in result_iterator
+    yield _result_or_cancel(fs.pop())
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\RossW\anaconda3\envs\trading\Lib\concurrent\futures\_base.py", line 317, in _result_or_cancel
+    return fut.result(timeout)
+           ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\RossW\anaconda3\envs\trading\Lib\concurrent\futures\_base.py", line 456, in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\RossW\anaconda3\envs\trading\Lib\concurrent\futures\_base.py", line 401, in __get_result
+    raise self._exception
+concurrent.futures.process.BrokenProcessPool: A process in the process pool was terminated abruptly while the future was running or pending.

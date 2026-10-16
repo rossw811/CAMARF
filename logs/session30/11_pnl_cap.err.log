@@ -1,0 +1,9 @@
+2026-08-03 09:58:09  INFO      Survivorship exclusions loaded: 378 delist events
+2026-08-03 09:58:09  INFO      Fitting sizing weights on a genuinely non-overlapping IS-only pass (BUG-D76 fix) -- NOT the full-series trades_layer1.parquet, which would overlap the OOS window --holdout evaluates.
+2026-08-03 09:58:09  INFO      IS-only fitting pass: 8 trades across 1 pairs
+2026-08-03 09:58:09  INFO      P&L cap: IS mean profitable-pair P&L = 986.61 → cap on 1 pairs
+2026-08-03 09:58:09  INFO      [3m] 1 confirmed pairs
+2026-08-03 09:58:09  INFO      [4h] 1 confirmed pairs
+2026-08-03 09:58:09  INFO        PNC/ZION@4h[ols] 1 trades | WR=100% | SR=nan | PnL=160.07
+2026-08-03 09:58:09  INFO        PNC/ZION@4h[kalman] 1 trades | WR=100% | SR=nan | PnL=159.89
+2026-08-03 09:58:09  INFO      Run summary → latest_run_backtest.log

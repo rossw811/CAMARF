@@ -1,0 +1,58 @@
+﻿2026-08-03 08:47:03  ================ CAMARF Session 30 runner started (workers=6) ================
+2026-08-03 08:47:03  Free RAM at start: 1.5 GB
+2026-08-03 08:47:03  START   01_analysis  ->  analysis.py --workers 6
+2026-08-03 09:57:37  DONE    01_analysis in 71 min (exit 0)
+2026-08-03 09:57:37  START   02_backtest_is  ->  backtest.py 
+2026-08-03 09:57:41  DONE    02_backtest_is in 0 min (exit 0)
+2026-08-03 09:57:41  START   03_backtest_oos  ->  backtest.py --holdout
+2026-08-03 09:57:44  DONE    03_backtest_oos in 0 min (exit 0)
+2026-08-03 09:57:44  START   04_storm_session_edge  ->  backtest.py --holdout --storm-session-edge
+2026-08-03 09:57:47  DONE    04_storm_session_edge in 0 min (exit 0)
+2026-08-03 09:57:47  START   05_storm_session_edge_postopen  ->  backtest.py --holdout --storm-session-edge-postopen
+2026-08-03 09:57:50  DONE    05_storm_session_edge_postopen in 0 min (exit 0)
+2026-08-03 09:57:50  START   06_storm_mm_exec  ->  backtest.py --holdout --storm-mm-exec
+2026-08-03 09:57:53  DONE    06_storm_mm_exec in 0 min (exit 0)
+2026-08-03 09:57:53  START   07_storm_coint_frac  ->  backtest.py --holdout --storm-coint-frac
+2026-08-03 09:57:56  DONE    07_storm_coint_frac in 0 min (exit 0)
+2026-08-03 09:57:56  START   08_storm_all  ->  backtest.py --holdout --storm-all
+2026-08-03 09:57:59  DONE    08_storm_all in 0 min (exit 0)
+2026-08-03 09:57:59  START   09_hub_weight  ->  backtest.py --holdout --hub-weight
+2026-08-03 09:58:02  DONE    09_hub_weight in 0 min (exit 0)
+2026-08-03 09:58:02  START   10_risk_parity  ->  backtest.py --holdout --risk-parity
+2026-08-03 09:58:06  DONE    10_risk_parity in 0 min (exit 0)
+2026-08-03 09:58:06  START   11_pnl_cap  ->  backtest.py --holdout --pnl-cap
+2026-08-03 09:58:09  DONE    11_pnl_cap in 0 min (exit 0)
+2026-08-03 09:58:09  START   12_neg_hedge  ->  backtest.py --holdout --neg-hedge
+2026-08-03 09:58:12  DONE    12_neg_hedge in 0 min (exit 0)
+2026-08-03 09:58:12  START   13_entryz15_is  ->  backtest.py --entry-z 1.5
+2026-08-03 09:58:16  DONE    13_entryz15_is in 0 min (exit 0)
+2026-08-03 09:58:16  START   14_entryz15_oos  ->  backtest.py --holdout --entry-z 1.5
+2026-08-03 09:58:19  DONE    14_entryz15_oos in 0 min (exit 0)
+2026-08-03 09:58:19  START   15_stats  ->  stats.py 
+2026-08-03 09:58:27  DONE    15_stats in 0 min (exit 0)
+2026-08-03 09:58:27  START   16_wfa  ->  wfa.py 
+2026-08-03 09:58:33  DONE    16_wfa in 0 min (exit 0)
+2026-08-03 09:58:33  START   17_distance  ->  distance.py 
+2026-08-03 09:58:36  DONE    17_distance in 0 min (exit 0)
+2026-08-03 09:58:36  START   18_sensitivity  ->  sensitivity.py 
+2026-08-03 09:58:38  DONE    18_sensitivity in 0 min (exit 0)
+2026-08-03 09:58:38  START   19_deflated_sharpe  ->  deflated_sharpe.py 
+2026-08-03 09:58:41  DONE    19_deflated_sharpe in 0 min (exit 0)
+2026-08-03 09:58:41  START   20_report  ->  report.py 
+2026-08-03 09:59:00  DONE    20_report in 0 min (exit 0)
+2026-08-03 09:59:00  START   21_cycle_detection  ->  research\cycle_detection.py 
+2026-08-03 09:59:07  DONE    21_cycle_detection in 0 min (exit 0)
+2026-08-03 09:59:07  START   22_levy_jump  ->  research\levy_jump_diffusion.py 
+2026-08-03 09:59:12  DONE    22_levy_jump in 0 min (exit 0)
+2026-08-03 09:59:12  START   23_rough_vol  ->  research\rough_volatility.py 
+2026-08-03 09:59:18  DONE    23_rough_vol in 0 min (exit 0)
+2026-08-03 09:59:18  START   24_options_greeks  ->  research\options_greeks_features.py 
+2026-08-03 09:59:21  DONE    24_options_greeks in 0 min (exit 0)
+2026-08-03 09:59:21  START   25_svm_classifier  ->  research\svm_gradient_descent_classifier.py 
+2026-08-03 09:59:24  DONE    25_svm_classifier in 0 min (exit 0)
+2026-08-03 09:59:24  START   26_pit_wfa  ->  pit_wfa.py --workers 6
+2026-08-03 12:33:17  DONE    26_pit_wfa in 154 min (exit 0)
+2026-08-03 12:33:17  START   27_data_crypto  ->  data_crypto.py 
+2026-08-04 02:24:21  DONE    27_data_crypto in 831 min (exit 0)
+2026-08-04 02:24:21  ================ CAMARF Session 30 runner finished ================
+2026-08-04 02:24:21  Stages completed this run or earlier: 27

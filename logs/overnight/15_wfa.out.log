@@ -1,0 +1,25 @@
+
+=== WFA × STRATEGY COMPARISON ===
+             n_trades_total         sharpe_portfolio         total_pnl_portfolio          
+wfa_variant       expanding rolling        expanding rolling           expanding   rolling
+strategy                                                                                  
+baseline                 12      35            1.430   5.080             7254.20   9027.88
+cfrac_sizing             12      35            1.390   5.095             6263.38   7938.63
+garch_stop               12      35            1.430   5.080             7254.20   9027.88
+mm_exec                  27    2363            1.693   4.040            21210.48  17944.74
+session_edge             12      35            1.431   5.080             7259.77   9027.88
+storm_all                56    1489            1.596   4.578            17707.09  17698.64
+
+=== FOLD-LEVEL AVERAGES (baseline only) ===
+
+expanding:
+           n_trades   sharpe  total_pnl  win_rate
+fold                                             
+fold1_exp       4.0  238.044   4218.700     1.000
+fold2_exp       4.0   67.875   1517.745     0.857
+
+rolling:
+            n_trades   sharpe  total_pnl  win_rate
+fold                                              
+fold1_roll       4.0  238.044    4218.70      1.00
+fold2_roll      31.0   19.641    4809.18      0.29

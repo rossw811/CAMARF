@@ -1,0 +1,4 @@
+Return matrix: 2479 bars x 17 symbols (2016-08-08 to 2026-06-17)
+
+106 walk-forward windows (train=252 bars, test=21 bars). k-BAHC chose k in range [2, 6], median=2.
+  ledoit_wolf: mean realized variance=1.330561e-04, median=6.140019e-05, std=3.839014e-04

@@ -1,0 +1,239 @@
+2026-07-10 23:44:19  INFO      ============================================================
+2026-07-10 23:44:19  INFO      CAMARF  —  data.py  —  Universe Build
+2026-07-10 23:44:19  INFO      ============================================================
+2026-07-10 23:55:50  INFO      Resuming — 1357 assets already complete (config hash 0c0e67a6b00ff0bb)
+2026-07-10 23:55:50  INFO      Building asset universe...
+2026-07-10 23:55:50  INFO      S&P 500: 503 tickers from cache (22.9h old)
+2026-07-10 23:55:50  INFO        sp400: 400 tickers from cache (22.9h old)
+2026-07-10 23:55:50  INFO        S&P MidCap 400: fetched 400 tickers (net new after S&P 500 overlap removed by dedup)
+2026-07-10 23:55:50  INFO        sp600: 603 tickers from cache (22.9h old)
+2026-07-10 23:55:50  INFO        S&P SmallCap 600: fetched 603 tickers (net new after dedup)
+2026-07-10 23:55:50  INFO        S&P 1500 total equities in universe: 1506
+2026-07-10 23:55:50  INFO        International equities + ADRs + FX spots added: 64 symbols
+2026-07-10 23:55:50  INFO        Total universe: 1614 assets
+2026-07-10 23:55:50  INFO      Exclusion list: skipping 3 assets ['BNY', 'FDXF', 'VLTO']
+2026-07-10 23:55:50  INFO      Universe candidates: 1611 assets
+2026-07-10 23:55:50  INFO      Phase 1 (yfinance daily): 1517 equities + 45 intl equities + 5 crypto + 15 forex/FX + 15 ETFs
+2026-07-10 23:56:06  INFO        Fetching fresh daily data for 3 assets...
+2026-07-10 23:56:06  INFO      yfinance: downloading 3 assets in 1 chunks of 50
+2026-07-10 23:56:06  INFO        Chunk 1/1: HONA \u2192 VGNT (3 tickers)
+2026-07-10 23:56:08  ERROR     
+1 Failed download:
+2026-07-10 23:56:08  ERROR     ['MBGL']: YFInvalidPeriodError("MBGL: Period 'max' is invalid, must be one of: 1d, 5d")
+2026-07-10 23:56:08  INFO        Retrying 3 failed tickers individually
+2026-07-10 23:56:08  ERROR     
+1 Failed download:
+2026-07-10 23:56:08  ERROR     ['MBGL']: YFInvalidPeriodError("MBGL: Period 'max' is invalid, must be one of: 1d, 5d")
+2026-07-10 23:56:08  INFO        Incremental refresh for 1582 stale daily assets...
+2026-07-10 23:56:08  INFO      yfinance: downloading 1582 assets in 32 chunks of 50
+2026-07-10 23:56:08  INFO        Chunk 1/32: MMM \u2192 ATO (50 tickers)
+2026-07-10 23:56:18  INFO        Chunk 2/32: ADSK \u2192 CVX (50 tickers)
+2026-07-10 23:56:27  INFO        Chunk 3/32: CMG \u2192 DG (50 tickers)
+2026-07-10 23:56:37  INFO        Chunk 4/32: DLTR \u2192 FLEX (50 tickers)
+2026-07-10 23:56:47  INFO        Chunk 5/32: F \u2192 INTC (50 tickers)
+2026-07-10 23:56:56  INFO        Chunk 6/32: IBKR \u2192 MRVL (50 tickers)
+2026-07-10 23:57:05  INFO        Chunk 7/32: MAS \u2192 OKE (50 tickers)
+2026-07-10 23:57:15  INFO        Chunk 8/32: ORCL \u2192 SPGI (50 tickers)
+2026-07-10 23:57:25  INFO        Chunk 9/32: CRM \u2192 TYL (50 tickers)
+2026-07-10 23:57:34  INFO        Chunk 10/32: TSN \u2192 BTC (50 tickers)
+2026-07-10 23:57:44  INFO        Chunk 11/32: ETH \u2192 ANF (50 tickers)
+2026-07-10 23:57:51  INFO        Chunk 12/32: APG \u2192 CHDN (50 tickers)
+2026-07-10 23:58:00  INFO        Chunk 13/32: CHE \u2192 ENTG (50 tickers)
+2026-07-10 23:58:08  INFO        Chunk 14/32: EPR \u2192 HLI (50 tickers)
+2026-07-10 23:58:16  INFO        Chunk 15/32: HLNE \u2192 MOG-A (50 tickers)
+2026-07-10 23:58:25  INFO        Chunk 16/32: MORN \u2192 PCTY (50 tickers)
+2026-07-10 23:58:33  INFO        Chunk 17/32: PEGA \u2192 SITM (50 tickers)
+2026-07-10 23:58:40  INFO        Chunk 18/32: SLAB \u2192 VICR (50 tickers)
+2026-07-10 23:58:49  INFO        Chunk 19/32: VLY \u2192 AESI (50 tickers)
+2026-07-10 23:58:57  INFO        Chunk 20/32: AGNT \u2192 BFAM (50 tickers)
+2026-07-10 23:59:04  INFO        Chunk 21/32: BFH \u2192 COLL (50 tickers)
+2026-07-10 23:59:12  INFO        Chunk 22/32: CON \u2192 ECG (50 tickers)
+2026-07-10 23:59:20  INFO        Chunk 23/32: ECPG \u2192 GIII (50 tickers)
+2026-07-10 23:59:27  INFO        Chunk 24/32: GKOS \u2192 IPAR (50 tickers)
+2026-07-10 23:59:36  INFO        Chunk 25/32: IRDM \u2192 LZB (50 tickers)
+2026-07-10 23:59:43  INFO        Chunk 26/32: MAC \u2192 NPK (50 tickers)
+2026-07-10 23:59:51  INFO        Chunk 27/32: NPO \u2192 PRDO (50 tickers)
+2026-07-10 23:59:59  INFO        Chunk 28/32: PRG \u2192 SCL (50 tickers)
+2026-07-11 00:00:06  INFO        Chunk 29/32: SCSC \u2192 TRIP (50 tickers)
+2026-07-11 00:00:14  INFO        Chunk 30/32: TRMK \u2192 WINA (50 tickers)
+2026-07-11 00:00:22  INFO        Chunk 31/32: WKC \u2192 7751.T (50 tickers)
+2026-07-11 00:00:31  INFO        Chunk 32/32: 6954.T \u2192 AUDUSD=X (32 tickers)
+2026-07-11 00:02:12  INFO        Incremental refresh: 1582/1582 updated
+2026-07-11 00:03:07  INFO        1514 equities + 10 forex need IBKR intraday
+2026-07-11 00:03:07  INFO        Phase 2A: yfinance intraday sweep (primary pipeline)
+2026-07-11 00:03:09  INFO          [1h] 1537 assets to fetch
+2026-07-11 00:07:34  INFO          [1h] 200/1537 (199 saved | fetch_fail=1 snap_fail=0 cutoff_fail=0)
+2026-07-11 00:07:49  ERROR     $GEV: possibly delisted; no price data found  (1h 2024-07-11 03:07:54-04:00 -> 2026-07-11 03:07:49-04:00) (Yahoo error = "1h data not available for startTime=1720681674 and endTime=1783753669. The requested range must be within the last 730 days.")
+2026-07-11 00:07:49  WARNING   yfinance GEV 1h [period=max]: returned EMPTY (no exception) — ticker=GEV, interval=1h, rows_returned=0
+2026-07-11 00:11:47  INFO          [1h] 400/1537 (397 saved | fetch_fail=3 snap_fail=0 cutoff_fail=0)
+2026-07-11 00:12:05  ERROR     $SOLV: possibly delisted; no price data found  (1h 2024-07-11 03:12:09-04:00 -> 2026-07-11 03:12:04-04:00) (Yahoo error = "1h data not available for startTime=1720681929 and endTime=1783753924. The requested range must be within the last 730 days.")
+2026-07-11 00:12:05  WARNING   yfinance SOLV 1h [period=max]: returned EMPTY (no exception) — ticker=SOLV, interval=1h, rows_returned=0
+2026-07-11 00:14:33  ERROR     $AHR: possibly delisted; no price data found  (1h 2024-07-11 03:14:38-04:00 -> 2026-07-11 03:14:33-04:00) (Yahoo error = "1h data not available for startTime=1720682078 and endTime=1783754073. The requested range must be within the last 730 days.")
+2026-07-11 00:14:33  WARNING   yfinance AHR 1h [period=max]: returned EMPTY (no exception) — ticker=AHR, interval=1h, rows_returned=0
+2026-07-11 00:15:38  ERROR     $CART: possibly delisted; no price data found  (1h 2024-07-11 03:15:43-04:00 -> 2026-07-11 03:15:38-04:00) (Yahoo error = "1h data not available for startTime=1720682143 and endTime=1783754138. The requested range must be within the last 730 days.")
+2026-07-11 00:15:38  WARNING   yfinance CART 1h [period=max]: returned EMPTY (no exception) — ticker=CART, interval=1h, rows_returned=0
+2026-07-11 00:16:03  INFO          [1h] 600/1537 (594 saved | fetch_fail=6 snap_fail=0 cutoff_fail=0)
+2026-07-11 00:20:18  INFO          [1h] 800/1537 (793 saved | fetch_fail=7 snap_fail=0 cutoff_fail=0)
+2026-07-11 00:21:19  ERROR     $SN: possibly delisted; no price data found  (1h 2024-07-11 03:21:23-04:00 -> 2026-07-11 03:21:18-04:00) (Yahoo error = "1h data not available for startTime=1720682483 and endTime=1783754478. The requested range must be within the last 730 days.")
+2026-07-11 00:21:19  WARNING   yfinance SN 1h [period=max]: returned EMPTY (no exception) — ticker=SN, interval=1h, rows_returned=0
+2026-07-11 00:22:02  ERROR     $ULS: possibly delisted; no price data found  (1h 2024-07-11 03:22:06-04:00 -> 2026-07-11 03:22:01-04:00) (Yahoo error = "1h data not available for startTime=1720682526 and endTime=1783754521. The requested range must be within the last 730 days.")
+2026-07-11 00:22:02  WARNING   yfinance ULS 1h [period=max]: returned EMPTY (no exception) — ticker=ULS, interval=1h, rows_returned=0
+2026-07-11 00:24:24  INFO          [1h] 1000/1537 (990 saved | fetch_fail=10 snap_fail=0 cutoff_fail=0)
+2026-07-11 00:24:34  ERROR     $BTSG: possibly delisted; no price data found  (1h 2024-07-11 03:24:38-04:00 -> 2026-07-11 03:24:33-04:00) (Yahoo error = "1h data not available for startTime=1720682678 and endTime=1783754673. The requested range must be within the last 730 days.")
+2026-07-11 00:24:34  WARNING   yfinance BTSG 1h [period=max]: returned EMPTY (no exception) — ticker=BTSG, interval=1h, rows_returned=0
+2026-07-11 00:25:41  ERROR     $CWEN-A: possibly delisted; no price data found  (period=730d) (Yahoo error = "No data found, symbol may be delisted")
+2026-07-11 00:25:41  WARNING   yfinance CWEN-A 1h [period=730d]: returned EMPTY (no exception) — ticker=CWEN-A, interval=1h, rows_returned=0
+2026-07-11 00:25:41  ERROR     $CWEN-A: possibly delisted; no price data found  (1h 2024-07-11 03:25:46-04:00 -> 2026-07-11 03:25:41-04:00) (Yahoo error = "No data found, symbol may be delisted")
+2026-07-11 00:25:41  WARNING   yfinance CWEN-A 1h [period=max]: returned EMPTY (no exception) — ticker=CWEN-A, interval=1h, rows_returned=0
+2026-07-11 00:25:51  ERROR     $DBD: possibly delisted; no price data found  (1h 2024-07-11 03:25:56-04:00 -> 2026-07-11 03:25:51-04:00) (Yahoo error = "1h data not available for startTime=1720682756 and endTime=1783754751. The requested range must be within the last 730 days.")
+2026-07-11 00:25:51  WARNING   yfinance DBD 1h [period=max]: returned EMPTY (no exception) — ticker=DBD, interval=1h, rows_returned=0
+2026-07-11 00:28:23  INFO          [1h] 1200/1537 (1186 saved | fetch_fail=14 snap_fail=0 cutoff_fail=0)
+2026-07-11 00:28:59  ERROR     $LIF: possibly delisted; no price data found  (1h 2024-07-11 03:29:04-04:00 -> 2026-07-11 03:28:59-04:00) (Yahoo error = "1h data not available for startTime=1720682944 and endTime=1783754939. The requested range must be within the last 730 days.")
+2026-07-11 00:28:59  WARNING   yfinance LIF 1h [period=max]: returned EMPTY (no exception) — ticker=LIF, interval=1h, rows_returned=0
+2026-07-11 00:30:20  ERROR     $NATL: possibly delisted; no price data found  (1h 2024-07-11 03:30:24-04:00 -> 2026-07-11 03:30:19-04:00) (Yahoo error = "1h data not available for startTime=1720683024 and endTime=1783755019. The requested range must be within the last 730 days.")
+2026-07-11 00:30:20  WARNING   yfinance NATL 1h [period=max]: returned EMPTY (no exception) — ticker=NATL, interval=1h, rows_returned=0
+2026-07-11 00:32:48  INFO          [1h] 1400/1537 (1382 saved | fetch_fail=18 snap_fail=0 cutoff_fail=0)
+2026-07-11 00:32:54  ERROR     $SEZL: possibly delisted; no price data found  (1h 2024-07-11 03:32:58-04:00 -> 2026-07-11 03:32:53-04:00) (Yahoo error = "1h data not available for startTime=1720683178 and endTime=1783755173. The requested range must be within the last 730 days.")
+2026-07-11 00:32:54  WARNING   yfinance SEZL 1h [period=max]: returned EMPTY (no exception) — ticker=SEZL, interval=1h, rows_returned=0
+2026-07-11 00:34:42  ERROR     $VSTS: possibly delisted; no price data found  (1h 2024-07-11 03:34:46-04:00 -> 2026-07-11 03:34:41-04:00) (Yahoo error = "1h data not available for startTime=1720683286 and endTime=1783755281. The requested range must be within the last 730 days.")
+2026-07-11 00:34:42  WARNING   yfinance VSTS 1h [period=max]: returned EMPTY (no exception) — ticker=VSTS, interval=1h, rows_returned=0
+2026-07-11 00:34:48  ERROR     $WAY: possibly delisted; no price data found  (1h 2024-07-11 03:34:52-04:00 -> 2026-07-11 03:34:47-04:00) (Yahoo error = "1h data not available for startTime=1720683292 and endTime=1783755287. The requested range must be within the last 730 days.")
+2026-07-11 00:34:48  WARNING   yfinance WAY 1h [period=max]: returned EMPTY (no exception) — ticker=WAY, interval=1h, rows_returned=0
+2026-07-11 00:35:05  ERROR     $WS: possibly delisted; no price data found  (1h 2024-07-11 03:35:09-04:00 -> 2026-07-11 03:35:04-04:00) (Yahoo error = "1h data not available for startTime=1720683309 and endTime=1783755304. The requested range must be within the last 730 days.")
+2026-07-11 00:35:05  WARNING   yfinance WS 1h [period=max]: returned EMPTY (no exception) — ticker=WS, interval=1h, rows_returned=0
+2026-07-11 00:35:48  INFO          [1h] complete: 1513/1537 saved | fail_fetch=24 fail_snap=0 fail_cutoff=0
+2026-07-11 00:35:48  WARNING       [1h] first failure: fetch:ECHO
+2026-07-11 00:35:49  INFO          [30m] 1537 assets to fetch
+2026-07-11 00:37:52  INFO          [30m] 200/1537 (199 saved | fetch_fail=1 snap_fail=0 cutoff_fail=0)
+2026-07-11 00:39:50  INFO          [30m] 400/1537 (398 saved | fetch_fail=2 snap_fail=0 cutoff_fail=0)
+2026-07-11 00:41:54  INFO          [30m] 600/1537 (598 saved | fetch_fail=2 snap_fail=0 cutoff_fail=0)
+2026-07-11 00:43:52  INFO          [30m] 800/1537 (798 saved | fetch_fail=2 snap_fail=0 cutoff_fail=0)
+2026-07-11 00:45:50  INFO          [30m] 1000/1537 (998 saved | fetch_fail=2 snap_fail=0 cutoff_fail=0)
+2026-07-11 00:46:29  ERROR     $CWEN-A: possibly delisted; no price data found  (period=60d) (Yahoo error = "No data found, symbol may be delisted")
+2026-07-11 00:46:29  WARNING   yfinance CWEN-A 30m [period=60d]: returned EMPTY (no exception) — ticker=CWEN-A, interval=30m, rows_returned=0
+2026-07-11 00:46:30  ERROR     $CWEN-A: possibly delisted; no price data found  (15m 2026-05-12 03:46:34-04:00 -> 2026-07-11 03:46:29-04:00) (Yahoo error = "No data found, symbol may be delisted")
+2026-07-11 00:46:30  WARNING   yfinance CWEN-A 30m [period=max]: returned EMPTY (no exception) — ticker=CWEN-A, interval=30m, rows_returned=0
+2026-07-11 00:47:47  INFO          [30m] 1200/1537 (1197 saved | fetch_fail=3 snap_fail=0 cutoff_fail=0)
+2026-07-11 00:49:45  INFO          [30m] 1400/1537 (1395 saved | fetch_fail=5 snap_fail=0 cutoff_fail=0)
+2026-07-11 00:50:33  ERROR     $VGNT: possibly delisted; no price data found  (15m 2026-05-12 03:50:37-04:00 -> 2026-07-11 03:50:32-04:00) (Yahoo error = "15m data not available for startTime=1778572237 and endTime=1783756232. The requested range must be within the last 60 days.")
+2026-07-11 00:50:33  WARNING   yfinance VGNT 30m [period=max]: returned EMPTY (no exception) — ticker=VGNT, interval=30m, rows_returned=0
+2026-07-11 00:51:07  INFO          [30m] complete: 1530/1537 saved | fail_fetch=7 fail_snap=0 fail_cutoff=0
+2026-07-11 00:51:07  WARNING       [30m] first failure: fetch:ECHO
+2026-07-11 00:51:08  INFO          [15m] 1537 assets to fetch
+2026-07-11 00:52:55  ERROR     $DTE: possibly delisted; no price data found  (15m 2026-05-12 03:53:00-04:00 -> 2026-07-11 03:52:55-04:00) (Yahoo error = "15m data not available for startTime=1778572380 and endTime=1783756375. The requested range must be within the last 60 days.")
+2026-07-11 00:52:55  WARNING   yfinance DTE 15m [period=max]: returned EMPTY (no exception) — ticker=DTE, interval=15m, rows_returned=0
+2026-07-11 00:53:00  ERROR     $EIX: possibly delisted; no price data found  (15m 2026-05-12 03:53:04-04:00 -> 2026-07-11 03:52:59-04:00) (Yahoo error = "15m data not available for startTime=1778572384 and endTime=1783756379. The requested range must be within the last 60 days.")
+2026-07-11 00:53:00  WARNING   yfinance EIX 15m [period=max]: returned EMPTY (no exception) — ticker=EIX, interval=15m, rows_returned=0
+2026-07-11 00:53:24  INFO          [15m] 200/1537 (197 saved | fetch_fail=3 snap_fail=0 cutoff_fail=0)
+2026-07-11 00:55:41  INFO          [15m] 400/1537 (396 saved | fetch_fail=4 snap_fail=0 cutoff_fail=0)
+2026-07-11 00:57:57  INFO          [15m] 600/1537 (596 saved | fetch_fail=4 snap_fail=0 cutoff_fail=0)
+2026-07-11 01:00:13  INFO          [15m] 800/1537 (796 saved | fetch_fail=4 snap_fail=0 cutoff_fail=0)
+2026-07-11 01:02:29  INFO          [15m] 1000/1537 (996 saved | fetch_fail=4 snap_fail=0 cutoff_fail=0)
+2026-07-11 01:03:17  ERROR     $CWEN-A: possibly delisted; no price data found  (period=60d) (Yahoo error = "No data found, symbol may be delisted")
+2026-07-11 01:03:17  WARNING   yfinance CWEN-A 15m [period=60d]: returned EMPTY (no exception) — ticker=CWEN-A, interval=15m, rows_returned=0
+2026-07-11 01:03:17  ERROR     $CWEN-A: possibly delisted; no price data found  (15m 2026-05-12 04:03:22-04:00 -> 2026-07-11 04:03:17-04:00) (Yahoo error = "No data found, symbol may be delisted")
+2026-07-11 01:03:17  WARNING   yfinance CWEN-A 15m [period=max]: returned EMPTY (no exception) — ticker=CWEN-A, interval=15m, rows_returned=0
+2026-07-11 01:04:48  INFO          [15m] 1200/1537 (1195 saved | fetch_fail=5 snap_fail=0 cutoff_fail=0)
+2026-07-11 01:07:01  INFO          [15m] 1400/1537 (1393 saved | fetch_fail=7 snap_fail=0 cutoff_fail=0)
+2026-07-11 01:07:55  ERROR     $VGNT: possibly delisted; no price data found  (15m 2026-05-12 04:08:00-04:00 -> 2026-07-11 04:07:55-04:00) (Yahoo error = "15m data not available for startTime=1778573280 and endTime=1783757275. The requested range must be within the last 60 days.")
+2026-07-11 01:07:55  WARNING   yfinance VGNT 15m [period=max]: returned EMPTY (no exception) — ticker=VGNT, interval=15m, rows_returned=0
+2026-07-11 01:08:32  INFO          [15m] complete: 1528/1537 saved | fail_fetch=9 fail_snap=0 fail_cutoff=0
+2026-07-11 01:08:32  WARNING       [15m] first failure: fetch:DTE
+2026-07-11 01:08:33  INFO          [5m] 1537 assets to fetch
+2026-07-11 01:12:25  INFO          [5m] 200/1537 (199 saved | fetch_fail=1 snap_fail=0 cutoff_fail=0)
+2026-07-11 01:16:18  INFO          [5m] 400/1537 (398 saved | fetch_fail=2 snap_fail=0 cutoff_fail=0)
+2026-07-11 01:20:13  INFO          [5m] 600/1537 (598 saved | fetch_fail=2 snap_fail=0 cutoff_fail=0)
+2026-07-11 01:24:03  INFO          [5m] 800/1537 (798 saved | fetch_fail=2 snap_fail=0 cutoff_fail=0)
+2026-07-11 01:27:50  INFO          [5m] 1000/1537 (998 saved | fetch_fail=2 snap_fail=0 cutoff_fail=0)
+2026-07-11 01:27:54  ERROR     $BNL: possibly delisted; no price data found  (5m 2026-05-12 04:27:59-04:00 -> 2026-07-11 04:27:54-04:00) (Yahoo error = "5m data not available for startTime=1778574479 and endTime=1783758474. The requested range must be within the last 60 days.")
+2026-07-11 01:27:54  WARNING   yfinance BNL 5m [period=max]: returned EMPTY (no exception) — ticker=BNL, interval=5m, rows_returned=0
+2026-07-11 01:29:05  ERROR     $CWEN-A: possibly delisted; no price data found  (period=60d) (Yahoo error = "No data found, symbol may be delisted")
+2026-07-11 01:29:05  WARNING   yfinance CWEN-A 5m [period=60d]: returned EMPTY (no exception) — ticker=CWEN-A, interval=5m, rows_returned=0
+2026-07-11 01:29:06  ERROR     $CWEN-A: possibly delisted; no price data found  (5m 2026-05-12 04:29:10-04:00 -> 2026-07-11 04:29:05-04:00) (Yahoo error = "No data found, symbol may be delisted")
+2026-07-11 01:29:06  WARNING   yfinance CWEN-A 5m [period=max]: returned EMPTY (no exception) — ticker=CWEN-A, interval=5m, rows_returned=0
+2026-07-11 01:31:34  INFO          [5m] 1200/1537 (1196 saved | fetch_fail=4 snap_fail=0 cutoff_fail=0)
+2026-07-11 01:35:26  INFO          [5m] 1400/1537 (1394 saved | fetch_fail=6 snap_fail=0 cutoff_fail=0)
+2026-07-11 01:36:56  ERROR     $VGNT: possibly delisted; no price data found  (5m 2026-05-12 04:37:01-04:00 -> 2026-07-11 04:36:56-04:00) (Yahoo error = "5m data not available for startTime=1778575021 and endTime=1783759016. The requested range must be within the last 60 days.")
+2026-07-11 01:36:56  WARNING   yfinance VGNT 5m [period=max]: returned EMPTY (no exception) — ticker=VGNT, interval=5m, rows_returned=0
+2026-07-11 01:37:59  INFO          [5m] complete: 1530/1537 saved | fail_fetch=7 fail_snap=0 fail_cutoff=0
+2026-07-11 01:37:59  WARNING       [5m] first failure: fetch:ECHO
+2026-07-11 01:38:00  INFO          [2m] 1537 assets to fetch
+2026-07-11 01:43:01  INFO          [2m] 200/1537 (200 saved | fetch_fail=0 snap_fail=0 cutoff_fail=0)
+2026-07-11 01:48:03  INFO          [2m] 400/1537 (399 saved | fetch_fail=1 snap_fail=0 cutoff_fail=0)
+2026-07-11 01:53:09  INFO          [2m] 600/1537 (599 saved | fetch_fail=1 snap_fail=0 cutoff_fail=0)
+2026-07-11 01:57:48  INFO          [2m] 800/1537 (799 saved | fetch_fail=1 snap_fail=0 cutoff_fail=0)
+2026-07-11 02:02:13  INFO          [2m] 1000/1537 (999 saved | fetch_fail=1 snap_fail=0 cutoff_fail=0)
+2026-07-11 02:03:40  ERROR     $CWEN-A: possibly delisted; no price data found  (period=55d) (Yahoo error = "No data found, symbol may be delisted")
+2026-07-11 02:03:40  WARNING   yfinance CWEN-A 2m [period=55d]: returned EMPTY (no exception) — ticker=CWEN-A, interval=2m, rows_returned=0
+2026-07-11 02:03:41  ERROR     $CWEN-A: possibly delisted; no price data found  (2m 2026-05-12 05:03:45-04:00 -> 2026-07-11 05:03:40-04:00) (Yahoo error = "No data found, symbol may be delisted")
+2026-07-11 02:03:41  WARNING   yfinance CWEN-A 2m [period=max]: returned EMPTY (no exception) — ticker=CWEN-A, interval=2m, rows_returned=0
+2026-07-11 02:06:39  INFO          [2m] 1200/1537 (1194 saved | fetch_fail=6 snap_fail=0 cutoff_fail=0)
+2026-07-11 02:10:49  INFO          [2m] 1400/1537 (1386 saved | fetch_fail=14 snap_fail=0 cutoff_fail=0)
+2026-07-11 02:13:36  INFO          [2m] complete: 1517/1537 saved | fail_fetch=20 fail_snap=0 fail_cutoff=0
+2026-07-11 02:13:36  WARNING       [2m] first failure: fetch:HONA
+2026-07-11 02:13:37  INFO          [1m] 1537 assets to fetch
+2026-07-11 02:16:03  INFO          [1m] 200/1537 (199 saved | fetch_fail=1 snap_fail=0 cutoff_fail=0)
+2026-07-11 02:18:29  INFO          [1m] 400/1537 (397 saved | fetch_fail=3 snap_fail=0 cutoff_fail=0)
+2026-07-11 02:20:32  ERROR     $BLD: possibly delisted; no price data found  (period=5d)
+2026-07-11 02:20:32  WARNING   yfinance BLD 1m [period=5d]: returned EMPTY (no exception) — ticker=BLD, interval=1m, rows_returned=0
+2026-07-11 02:20:32  ERROR     $BLD: possibly delisted; no price data found  (1m 2026-07-03 05:20:37-04:00 -> 2026-07-11 05:20:32-04:00)
+2026-07-11 02:20:32  WARNING   yfinance BLD 1m [period=max]: returned EMPTY (no exception) — ticker=BLD, interval=1m, rows_returned=0
+2026-07-11 02:20:54  INFO          [1m] 600/1537 (595 saved | fetch_fail=5 snap_fail=0 cutoff_fail=0)
+2026-07-11 02:22:10  ERROR     $JHG: possibly delisted; no price data found  (period=5d)
+2026-07-11 02:22:10  WARNING   yfinance JHG 1m [period=5d]: returned EMPTY (no exception) — ticker=JHG, interval=1m, rows_returned=0
+2026-07-11 02:22:11  ERROR     $JHG: possibly delisted; no price data found  (1m 2026-07-03 05:22:15-04:00 -> 2026-07-11 05:22:10-04:00)
+2026-07-11 02:22:11  WARNING   yfinance JHG 1m [period=max]: returned EMPTY (no exception) — ticker=JHG, interval=1m, rows_returned=0
+2026-07-11 02:23:11  INFO          [1m] 800/1537 (783 saved | fetch_fail=17 snap_fail=0 cutoff_fail=0)
+2026-07-11 02:25:21  INFO          [1m] 1000/1537 (962 saved | fetch_fail=38 snap_fail=0 cutoff_fail=0)
+2026-07-11 02:26:01  ERROR     $CWEN-A: possibly delisted; no price data found  (period=5d) (Yahoo error = "No data found, symbol may be delisted")
+2026-07-11 02:26:01  WARNING   yfinance CWEN-A 1m [period=5d]: returned EMPTY (no exception) — ticker=CWEN-A, interval=1m, rows_returned=0
+2026-07-11 02:26:01  ERROR     $CWEN-A: possibly delisted; no price data found  (1m 2026-07-03 05:26:06-04:00 -> 2026-07-11 05:26:01-04:00) (Yahoo error = "No data found, symbol may be delisted")
+2026-07-11 02:26:01  WARNING   yfinance CWEN-A 1m [period=max]: returned EMPTY (no exception) — ticker=CWEN-A, interval=1m, rows_returned=0
+2026-07-11 02:26:37  ERROR     $FDP: possibly delisted; no price data found  (period=5d)
+2026-07-11 02:26:37  WARNING   yfinance FDP 1m [period=5d]: returned EMPTY (no exception) — ticker=FDP, interval=1m, rows_returned=0
+2026-07-11 02:26:37  ERROR     $FDP: possibly delisted; no price data found  (1m 2026-07-03 05:26:42-04:00 -> 2026-07-11 05:26:37-04:00)
+2026-07-11 02:26:37  WARNING   yfinance FDP 1m [period=max]: returned EMPTY (no exception) — ticker=FDP, interval=1m, rows_returned=0
+2026-07-11 02:27:24  INFO          [1m] 1200/1537 (1115 saved | fetch_fail=85 snap_fail=0 cutoff_fail=0)
+2026-07-11 02:29:26  INFO          [1m] 1400/1537 (1263 saved | fetch_fail=137 snap_fail=0 cutoff_fail=0)
+2026-07-11 02:30:53  INFO          [1m] complete: 1369/1537 saved | fail_fetch=168 fail_snap=0 fail_cutoff=0
+2026-07-11 02:30:53  WARNING       [1m] first failure: fetch:ERIE
+2026-07-11 02:30:54  INFO          [3m] 1537 assets to fetch
+2026-07-11 02:32:52  INFO          [3m] 200/1537 (200 saved | fetch_fail=0 snap_fail=0 cutoff_fail=0)
+2026-07-11 02:34:56  INFO          [3m] 400/1537 (400 saved | fetch_fail=0 snap_fail=0 cutoff_fail=0)
+2026-07-11 02:36:37  ERROR     $BLD: possibly delisted; no price data found  (period=5d)
+2026-07-11 02:36:37  WARNING   yfinance BLD 3m [period=5d]: returned EMPTY (no exception) — ticker=BLD, interval=1m, rows_returned=0
+2026-07-11 02:36:37  ERROR     $BLD: possibly delisted; no price data found  (1m 2026-07-03 05:36:42-04:00 -> 2026-07-11 05:36:37-04:00)
+2026-07-11 02:36:37  WARNING   yfinance BLD 3m [period=max]: returned EMPTY (no exception) — ticker=BLD, interval=1m, rows_returned=0
+2026-07-11 02:36:55  INFO          [3m] 600/1537 (599 saved | fetch_fail=1 snap_fail=0 cutoff_fail=0)
+2026-07-11 02:37:59  ERROR     $JHG: possibly delisted; no price data found  (period=5d)
+2026-07-11 02:37:59  WARNING   yfinance JHG 3m [period=5d]: returned EMPTY (no exception) — ticker=JHG, interval=1m, rows_returned=0
+2026-07-11 02:37:59  ERROR     $JHG: possibly delisted; no price data found  (1m 2026-07-03 05:38:04-04:00 -> 2026-07-11 05:37:59-04:00)
+2026-07-11 02:37:59  WARNING   yfinance JHG 3m [period=max]: returned EMPTY (no exception) — ticker=JHG, interval=1m, rows_returned=0
+2026-07-11 02:38:51  INFO          [3m] 800/1537 (796 saved | fetch_fail=4 snap_fail=0 cutoff_fail=0)
+2026-07-11 02:40:43  INFO          [3m] 1000/1537 (984 saved | fetch_fail=16 snap_fail=0 cutoff_fail=0)
+2026-07-11 02:41:18  ERROR     $CWEN-A: possibly delisted; no price data found  (period=5d) (Yahoo error = "No data found, symbol may be delisted")
+2026-07-11 02:41:18  WARNING   yfinance CWEN-A 3m [period=5d]: returned EMPTY (no exception) — ticker=CWEN-A, interval=1m, rows_returned=0
+2026-07-11 02:41:19  ERROR     $CWEN-A: possibly delisted; no price data found  (1m 2026-07-03 05:41:23-04:00 -> 2026-07-11 05:41:18-04:00) (Yahoo error = "No data found, symbol may be delisted")
+2026-07-11 02:41:19  WARNING   yfinance CWEN-A 3m [period=max]: returned EMPTY (no exception) — ticker=CWEN-A, interval=1m, rows_returned=0
+2026-07-11 02:41:47  ERROR     $FDP: possibly delisted; no price data found  (period=5d)
+2026-07-11 02:41:47  WARNING   yfinance FDP 3m [period=5d]: returned EMPTY (no exception) — ticker=FDP, interval=1m, rows_returned=0
+2026-07-11 02:41:47  ERROR     $FDP: possibly delisted; no price data found  (1m 2026-07-03 05:41:52-04:00 -> 2026-07-11 05:41:47-04:00)
+2026-07-11 02:41:47  WARNING   yfinance FDP 3m [period=max]: returned EMPTY (no exception) — ticker=FDP, interval=1m, rows_returned=0
+2026-07-11 02:42:22  INFO          [3m] 1200/1537 (1148 saved | fetch_fail=52 snap_fail=0 cutoff_fail=0)
+2026-07-11 02:43:54  INFO          [3m] 1400/1537 (1322 saved | fetch_fail=78 snap_fail=0 cutoff_fail=0)
+2026-07-11 02:44:59  INFO          [3m] complete: 1438/1537 saved | fail_fetch=99 fail_snap=0 fail_cutoff=0
+2026-07-11 02:44:59  WARNING       [3m] first failure: fetch:BLD
+2026-07-11 02:46:21  INFO          [4h] derived: 1528 saved | 9 no 1h source | 0 resample failed | 0 wrong frequency after resample
+2026-07-11 02:46:21  INFO        Phase 2A complete. Run data_ibkr.py for deep IBKR history on confirmed pairs.
+2026-07-11 02:48:36  INFO      Universe complete: 1594 assets passed, 3 excluded
+2026-07-11 02:48:36  INFO      Data keys: 20026 symbol-timeframe combinations (6487 loaded from cache)
+2026-07-11 02:48:36  INFO      Run summary \u2192 C:\Users\RossW\Projects\CAMARF\latest_run_data.log
+2026-07-11 02:48:36  INFO      
+Final universe: 1594 assets
+2026-07-11 02:48:36  INFO      Excluded:       3 assets
+2026-07-11 02:48:36  INFO      Data keys:      20026 symbol-timeframe combinations
+2026-07-11 02:48:36  INFO      
+Exclusion summary (first 20):
+2026-07-11 02:48:36  INFO        HONA         (equity    )  \u2192  no_daily_data_yfinance
+2026-07-11 02:48:36  INFO        MBGL         (equity    )  \u2192  no_daily_data_yfinance
+2026-07-11 02:48:36  INFO        VGNT         (equity    )  \u2192  no_daily_data_yfinance

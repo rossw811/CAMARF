@@ -1,0 +1,4 @@
+Loaded 16 break events from 8 result files (14 distinct symbols involved).
+[full_sample] window=┬▒10d: observed=0.000 (0/16) vs null_mean=0.165 (p95=0.312) -> empirical p=1.0000
+
+=== Hub-exclusion robustness check: excluding all KVUE-involving pairs (6/16 events removed) ===

@@ -1,0 +1,31 @@
+2026-07-27 11:19:17  INFO      S&P 500: 503 tickers from cache (0.3h old)
+2026-07-27 11:19:17  INFO        sp400: 400 tickers from cache (0.3h old)
+2026-07-27 11:19:17  INFO        S&P MidCap 400: fetched 400 tickers (net new after S&P 500 overlap removed by dedup)
+2026-07-27 11:19:17  INFO        sp600: 603 tickers from cache (0.3h old)
+2026-07-27 11:19:17  INFO        S&P SmallCap 600: fetched 603 tickers (net new after dedup)
+2026-07-27 11:19:17  INFO        S&P 1500 total equities in universe: 1505
+2026-07-27 11:19:17  INFO        International equities + ADRs + FX spots added: 108 symbols
+2026-07-27 11:19:17  INFO        Total universe: 1696 assets
+2026-07-27 11:19:17  INFO      CAMARF data_wrds.py -- 1537 US equity/ETF symbols targeted (bulk mode)
+2026-07-27 11:19:19  INFO      Resolved 1515/1537 symbols to PERMNOs (22 not found)
+2026-07-27 11:20:42  INFO        batch 0-200/1515: 200 symbols fetched
+2026-07-27 11:23:32  INFO        batch 200-400/1515: 200 symbols fetched
+2026-07-27 11:26:27  INFO        batch 400-600/1515: 200 symbols fetched
+2026-07-27 11:29:29  INFO        batch 600-800/1515: 200 symbols fetched
+2026-07-27 11:31:56  INFO        batch 800-1000/1515: 200 symbols fetched
+2026-07-27 11:34:40  INFO        batch 1000-1200/1515: 200 symbols fetched
+2026-07-27 11:38:00  INFO        batch 1200-1400/1515: 200 symbols fetched
+2026-07-27 11:39:37  INFO        batch 1400-1515/1515: 115 symbols fetched
+2026-07-27 11:39:37  INFO      Daily+derived pass complete in 20.3 min: 1515 saved, 22 failed/unresolved
+2026-07-27 11:39:51  INFO        monthly batch 0-200/1515: 200 symbols fetched
+2026-07-27 11:40:02  INFO        monthly batch 200-400/1515: 200 symbols fetched
+2026-07-27 11:40:18  INFO        monthly batch 400-600/1515: 200 symbols fetched
+2026-07-27 11:40:32  INFO        monthly batch 600-800/1515: 200 symbols fetched
+2026-07-27 11:40:43  INFO        monthly batch 800-1000/1515: 200 symbols fetched
+2026-07-27 11:40:55  INFO        monthly batch 1000-1200/1515: 200 symbols fetched
+2026-07-27 11:41:08  INFO        monthly batch 1200-1400/1515: 200 symbols fetched
+2026-07-27 11:41:16  INFO        monthly batch 1400-1515/1515: 115 symbols fetched
+2026-07-27 11:41:16  INFO      Native monthly pass complete in 1.7 min: 1515 saved
+2026-07-27 11:41:16  INFO      ALL DONE in 22.0 min total. Timeframes written per symbol: 1D, 1M (native), 7D, 3M, 6M, 1Y (derived).
+Loading library list...
+Done

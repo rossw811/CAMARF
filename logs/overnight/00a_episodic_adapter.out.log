@@ -1,0 +1,7 @@
+wrds_1D: resuming from 170 already-built rows in /home/rw/CAMARF/output/research/episodic_pairs_adapter_progress_wrds_1D.parquet
+wrds_1D@1D: 170 rows built
+intraday_1h: resuming from 6 already-built rows in /home/rw/CAMARF/output/research/episodic_pairs_adapter_progress_intraday_1h.parquet
+intraday_1h@1h: 6 rows built
+intraday_4h: resuming from 6 already-built rows in /home/rw/CAMARF/output/research/episodic_pairs_adapter_progress_intraday_4h.parquet
+intraday_4h@4h: 6 rows built
+Wrote /home/rw/CAMARF/output/research/episodic_confirmed_pairs_adapter_output.parquet (182 total rows)

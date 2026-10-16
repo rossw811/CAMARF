@@ -1,0 +1,4 @@
+=== Holdout check: apply IS-fitted GMM to unseen holdout trades ===
+
+IS market-open cluster: state=0, mean_hour=9.50, n_trades=2, sharpe_like=nan
+Holdout set too small (2 clean trades) for a meaningful check.

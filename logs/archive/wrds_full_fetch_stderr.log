@@ -1,0 +1,11 @@
+2026-07-27 11:03:58  INFO      S&P 500: 503 tickers from Wikipedia
+2026-07-27 11:03:59  INFO        S&P MidCap 400: 400 tickers from Wikipedia
+2026-07-27 11:03:59  INFO        S&P MidCap 400: fetched 400 tickers (net new after S&P 500 overlap removed by dedup)
+2026-07-27 11:04:00  INFO        S&P SmallCap 600: 603 tickers from Wikipedia
+2026-07-27 11:04:00  INFO        S&P SmallCap 600: fetched 603 tickers (net new after dedup)
+2026-07-27 11:04:00  INFO        S&P 1500 total equities in universe: 1505
+2026-07-27 11:04:00  INFO        International equities + ADRs + FX spots added: 108 symbols
+2026-07-27 11:04:00  INFO        Total universe: 1696 assets
+2026-07-27 11:04:00  INFO      CAMARF data_wrds.py -- 1537 US equity/ETF symbols targeted (bulk mode)
+2026-07-27 11:04:02  INFO      Resolved 1515/1537 symbols to PERMNOs (22 not found)
+2026-07-27 11:05:32  INFO        batch 0-200/1515: 200 symbols fetched

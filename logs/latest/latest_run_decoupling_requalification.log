@@ -1,0 +1,17 @@
+19:09:41 INFO  === decoupling_requalification.py: re-test broken pairs on their post-break window ===
+19:09:41 INFO  SETTLING_BARS=60 before re-testing; EG_SIGNIFICANCE=0.050 (same threshold production analysis.py uses)
+19:09:41 INFO  [1hr] 0 broken-and-excluded pairs to re-test
+19:09:41 INFO  [1min] 2 broken-and-excluded pairs to re-test
+19:09:41 INFO  [2min] 1 broken-and-excluded pairs to re-test
+19:09:41 INFO  [3min] 0 broken-and-excluded pairs to re-test
+19:09:41 INFO  [4hr] 0 broken-and-excluded pairs to re-test
+19:09:41 INFO  
+--- Re-qualification result: 2/3 broken-and-excluded pairs re-qualify on their post-break window alone ---
+19:09:41 INFO  
+symbol_a symbol_b tf_label  requalify_pvalue  requalify_hedge_ratio
+     SPY      VOO       1m      8.902008e-23               0.998837
+     SPY      VOO       2m      0.000000e+00               0.998492
+19:09:41 INFO  Saved -> /home/rw/CAMARF/output/research/decoupling_requalification.parquet
+19:09:41 INFO  NOTE: a passing re-qualification p-value is evidence a new relationship has formed, not by itself a decision to re-admit the pair to a live confirmed set — that needs its own backtest evidence per this project's standing discipline.
+19:09:41 INFO  ============================================================
+19:09:41 INFO  decoupling_requalification.py complete (0.0 min)

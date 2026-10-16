@@ -1,0 +1,105 @@
+2026-09-27 00:46:18  INFO      S&P 500: 503 tickers from cache (0.0h old)
+2026-09-27 00:46:18  INFO        sp400: 400 tickers from cache (0.0h old)
+2026-09-27 00:46:18  INFO        S&P MidCap 400: fetched 400 tickers (net new after S&P 500 overlap removed by dedup)
+2026-09-27 00:46:18  INFO        sp600: 603 tickers from cache (0.0h old)
+2026-09-27 00:46:18  INFO        S&P SmallCap 600: fetched 603 tickers (net new after dedup)
+2026-09-27 00:46:18  INFO        S&P 1500 total equities in universe: 1504
+2026-09-27 00:46:18  INFO        International equities + ADRs + FX spots added: 108 symbols
+2026-09-27 00:46:18  INFO        Total universe: 1695 assets
+2026-09-27 00:46:32  INFO      yfinance: downloading 1645 assets in 33 chunks of 50
+2026-09-27 00:46:32  INFO        Chunk 1/33: 0005.HK \u2192 9022.T (50 tickers)
+2026-09-27 00:46:46  INFO        Chunk 2/33: 9432.T \u2192 AFG (50 tickers)
+2026-09-27 00:46:55  INFO        Chunk 3/33: AFL \u2192 AN (50 tickers)
+2026-09-27 00:47:04  INFO        Chunk 4/33: ANDE \u2192 AVT (50 tickers)
+2026-09-27 00:47:12  INFO        Retrying 1 failed tickers individually
+2026-09-27 00:47:17  INFO        Chunk 5/33: AVTR \u2192 BJRI (50 tickers)
+2026-09-27 00:47:29  INFO        Chunk 6/33: BKE \u2192 CART (50 tickers)
+2026-09-27 00:47:42  INFO        Chunk 7/33: CASH \u2192 CLF (50 tickers)
+2026-09-27 00:47:54  INFO        Chunk 8/33: CLH \u2192 CRK (50 tickers)
+2026-09-27 00:48:03  INFO        Chunk 9/33: CRL \u2192 DBX (50 tickers)
+2026-09-27 00:48:09  ERROR     
+1 Failed download:
+2026-09-27 00:48:09  ERROR     ['CWEN-A']: YFPricesMissingError('possibly delisted; no price data found  (1d 1927-10-22 -> 2026-09-27) (Yahoo error = "No data found, symbol may be delisted")')
+2026-09-27 00:48:12  INFO        Retrying 1 failed tickers individually
+2026-09-27 00:48:13  ERROR     
+1 Failed download:
+2026-09-27 00:48:13  ERROR     ['CWEN-A']: YFPricesMissingError('possibly delisted; no price data found  (1d 1927-10-22 -> 2026-09-27) (Yahoo error = "No data found, symbol may be delisted")')
+2026-09-27 00:48:14  INFO        Chunk 10/33: DCH \u2192 DXC (50 tickers)
+2026-09-27 00:48:24  INFO        Chunk 11/33: DXCM \u2192 ESAB (50 tickers)
+2026-09-27 00:48:40  INFO        Chunk 12/33: ESE \u2192 FCN (50 tickers)
+2026-09-27 00:48:58  ERROR     
+7 Failed downloads:
+2026-09-27 00:48:58  ERROR     ['EURCHF=X']: Timeout('Failed to perform, curl: (28) Operation timed out after 10002 milliseconds with 44455 bytes received. See https://curl.se/libcurl/c/libcurl-errors.html first for more details.')
+2026-09-27 00:48:58  ERROR     ['EW']: Timeout('Failed to perform, curl: (28) Operation timed out after 10005 milliseconds with 49664 bytes received. See https://curl.se/libcurl/c/libcurl-errors.html first for more details.')
+2026-09-27 00:48:58  ERROR     ['EVR']: Timeout('Failed to perform, curl: (28) Operation timed out after 10010 milliseconds with 64692 bytes received. See https://curl.se/libcurl/c/libcurl-errors.html first for more details.')
+2026-09-27 00:48:58  ERROR     ['EWH']: Timeout('Failed to perform, curl: (28) Operation timed out after 10008 milliseconds with 141552 bytes received. See https://curl.se/libcurl/c/libcurl-errors.html first for more details.')
+2026-09-27 00:48:58  ERROR     ['FBP']: Timeout('Failed to perform, curl: (28) Operation timed out after 10015 milliseconds with 45755 bytes received. See https://curl.se/libcurl/c/libcurl-errors.html first for more details.')
+2026-09-27 00:48:58  ERROR     ['EXPD']: Timeout('Failed to perform, curl: (28) Connection timed out after 10001 milliseconds. See https://curl.se/libcurl/c/libcurl-errors.html first for more details.')
+2026-09-27 00:48:58  ERROR     ['EWJ']: Timeout('Failed to perform, curl: (28) Connection timed out after 10017 milliseconds. See https://curl.se/libcurl/c/libcurl-errors.html first for more details.')
+2026-09-27 00:49:01  INFO        Retrying 8 failed tickers individually
+2026-09-27 00:49:09  INFO        Chunk 13/33: FCPT \u2192 FXI (50 tickers)
+2026-09-27 00:49:20  INFO        Chunk 14/33: G \u2192 GSK.L (50 tickers)
+2026-09-27 00:49:29  INFO        Retrying 1 failed tickers individually
+2026-09-27 00:49:31  INFO        Chunk 15/33: GT \u2192 HRB (50 tickers)
+2026-09-27 00:49:40  INFO        Retrying 1 failed tickers individually
+2026-09-27 00:49:42  INFO        Chunk 16/33: HRL \u2192 IOSP (50 tickers)
+2026-09-27 00:49:55  INFO        Chunk 17/33: IP \u2192 KKR (50 tickers)
+2026-09-27 00:50:08  INFO        Chunk 18/33: KLAC \u2192 LKFN (50 tickers)
+2026-09-27 00:50:17  INFO        Retrying 1 failed tickers individually
+2026-09-27 00:50:19  INFO        Chunk 19/33: LKQ \u2192 MC (50 tickers)
+2026-09-27 00:50:31  INFO        Chunk 20/33: MCD \u2192 MSA (50 tickers)
+2026-09-27 00:50:44  INFO        Chunk 21/33: MSCI \u2192 NJR (50 tickers)
+2026-09-27 00:50:54  INFO        Chunk 22/33: NKE \u2192 OI (50 tickers)
+2026-09-27 00:51:07  INFO        Chunk 23/33: OII \u2192 PEN (50 tickers)
+2026-09-27 00:51:17  INFO        Chunk 24/33: PENG \u2192 PRI (50 tickers)
+2026-09-27 00:51:28  INFO        Chunk 25/33: PRIM \u2192 RF (50 tickers)
+2026-09-27 00:51:37  INFO        Chunk 26/33: RGA \u2192 SBAC (50 tickers)
+2026-09-27 00:51:49  INFO        Chunk 27/33: SBCF \u2192 SMPL (50 tickers)
+2026-09-27 00:51:59  INFO        Chunk 28/33: SMTC \u2192 SXT (50 tickers)
+2026-09-27 00:52:10  INFO        Chunk 29/33: SYF \u2192 TRMK (50 tickers)
+2026-09-27 00:52:21  INFO        Chunk 30/33: TRN \u2192 UPBD (50 tickers)
+2026-09-27 00:52:29  ERROR     
+1 Failed download:
+2026-09-27 00:52:29  ERROR     ['UNI-USD']: YFPricesMissingError('possibly delisted; no price data found  (1d 1927-10-22 -> 2026-09-27) (Yahoo error = "No data found, symbol may be delisted")')
+2026-09-27 00:52:33  INFO        Retrying 1 failed tickers individually
+2026-09-27 00:52:33  ERROR     
+1 Failed download:
+2026-09-27 00:52:33  ERROR     ['UNI-USD']: YFPricesMissingError('possibly delisted; no price data found  (1d 1927-10-22 -> 2026-09-27) (Yahoo error = "No data found, symbol may be delisted")')
+2026-09-27 00:52:35  INFO        Chunk 31/33: UPS \u2192 VRSK (50 tickers)
+2026-09-27 00:52:45  INFO        Chunk 32/33: VRSN \u2192 WMS (50 tickers)
+2026-09-27 00:52:56  INFO        Chunk 33/33: WMT \u2192 ZWS (45 tickers)
+1645 yfinance daily symbols to regenerate; backup -> C:\Users\RossW\Projects\CAMARF\output\cache\_yf_daily_backup_20260927
+regenerated 1641, restored originals for 4
+median zero-change fraction: old 0.094 -> new 0.030; files >20% flat: old 544 -> new 46
+last bar: old mode 2026-06-17 00:00:00 -> new max 2026-09-27 00:00:00
+ symbol asset_class yf_ticker  rows_old  rows_new   last_old   last_new  zero_change_old  zero_change_new  restored_original
+0005.HK equity_intl   0005.HK      6664      6664 2026-09-25 2026-09-25         0.063776         0.063776              False
+0016.HK equity_intl   0016.HK      6663      6663 2026-09-25 2026-09-25         0.053129         0.052979              False
+0027.HK equity_intl   0027.HK      6663      6663 2026-09-25 2026-09-25         0.102356         0.102356              False
+0175.HK equity_intl   0175.HK      5176      5176 2026-09-25 2026-09-25         0.059505         0.059505              False
+0288.HK equity_intl   0288.HK      2992      2992 2026-09-25 2026-09-25         0.045789         0.045789              False
+0386.HK equity_intl   0386.HK      6456      6456 2026-09-25 2026-09-25         0.080855         0.080855              False
+0388.HK equity_intl   0388.HK      6538      6538 2026-09-25 2026-09-25         0.047262         0.047262              False
+0669.HK equity_intl   0669.HK      5504      5504 2026-09-25 2026-09-25         0.039062         0.038881              False
+0688.HK equity_intl   0688.HK      6663      6663 2026-09-25 2026-09-25         0.083146         0.083146              False
+0700.HK equity_intl   0700.HK      5502      5502 2026-09-25 2026-09-25         0.031080         0.031080              False
+0762.HK equity_intl   0762.HK      6541      6541 2026-09-25 2026-09-25         0.081333         0.081333              False
+0857.HK equity_intl   0857.HK      6595      6595 2026-09-25 2026-09-25         0.089007         0.089007              False
+0868.HK equity_intl   0868.HK      5336      5336 2026-09-25 2026-09-25         0.052286         0.052286              False
+0883.HK equity_intl   0883.HK      5567      5567 2026-09-25 2026-09-25         0.045087         0.044907              False
+0941.HK equity_intl   0941.HK      6663      6663 2026-09-25 2026-09-25         0.047576         0.047576              False
+1109.HK equity_intl   1109.HK      6663      6663 2026-09-25 2026-09-25         0.066487         0.066336              False
+1113.HK equity_intl   1113.HK      2789      2789 2026-09-25 2026-09-25         0.035497         0.035497              False
+1211.HK equity_intl   1211.HK      5992      5992 2026-09-25 2026-09-25         0.035381         0.035381              False
+1299.HK equity_intl   1299.HK      3919      3919 2026-09-25 2026-09-25         0.031130         0.031130              False
+1928.HK equity_intl   1928.HK      4146      4146 2026-09-25 2026-09-25         0.034973         0.034973              False
+2318.HK equity_intl   2318.HK      5496      5496 2026-09-25 2026-09-25         0.041849         0.041849              False
+2688.HK equity_intl   2688.HK      6311      6311 2026-09-25 2026-09-25         0.069720         0.069720              False
+ 2802.T equity_intl    2802.T      6668      6668 2026-09-25 2026-09-25         0.040492         0.040492              False
+3690.HK equity_intl   3690.HK      1971      1971 2026-09-25 2026-09-25         0.009640         0.009640              False
+ 4063.T equity_intl    4063.T      6668      6668 2026-09-25 2026-09-25         0.045891         0.045741              False
+ 4502.T equity_intl    4502.T      6619      6668 2026-07-13 2026-09-25         0.058619         0.057439              False
+ 4519.T equity_intl    4519.T      6608      6668 2026-06-26 2026-09-25         0.046913         0.046491              False
+ 4568.T equity_intl    4568.T      6619      6668 2026-07-13 2026-09-25         0.046533         0.046341              False
+ 4901.T equity_intl    4901.T      6619      6668 2026-07-13 2026-09-25         0.047741         0.047391              False
+ 6098.T equity_intl    6098.T      2888      2937 2026-07-13 2026-09-25         0.023199         0.022812              False

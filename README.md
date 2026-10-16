@@ -325,7 +325,7 @@ FINDINGS.md` #68-#69, #73, `PAPER.md` §7.21-§7.22.
 
 ## Pipeline
 
-Run in this order (each stage writes its own `latest_run_*.log`):
+Run in this order (each stage writes its own `logs/latest/latest_run_*.log`):
 
 ```bash
 python data.py                    # yfinance fetch, ~1,691 configured assets × 13 TFs, ~30-40 min
@@ -481,7 +481,7 @@ episodic/time-varying cointegration schedules, PIT index-membership spells, ADV 
 regime, GVKEY/ticker-collision duplicate identities) — write a new synthetic test against this,
 not a bespoke one-off generator.
 
-- `latest_run_*.log` — auto-generated structured run summaries, one per script
+- `logs/latest/latest_run_*.log` — auto-generated structured run summaries, one per script
 
 ---
 

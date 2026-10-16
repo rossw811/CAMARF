@@ -1,0 +1,7 @@
+2026-08-14 18:59:09,962  INFO      Loaded 18450 candidate pairs from 18 chunk files
+2026-08-14 18:59:09,964  INFO      Loading full merged universe for tf=1D (same source as the pre-filter stage)...
+2026-08-14 19:01:51,970  INFO      Loaded 44840 symbols in 162.0s
+2026-08-14 19:01:51,980  INFO      Running EG + BH-FDR confirmation on 18450 candidates (n_workers=12)...
+2026-08-14 19:02:24,455  INFO      EG/BH-FDR complete in 32.5s (0.5 min). stats={'n_tested': 653, 'n_passed_raw': 542, 'n_passed_fdr': 541, 'fdr_alpha': 0.05}
+2026-08-14 19:02:24,455  INFO      CONFIRMED: 541 pairs out of 18450 candidates tested
+2026-08-14 19:02:24,496  INFO      Saved 541 confirmed pairs -> output/research/full_universe_eg_confirmed_pairs.parquet

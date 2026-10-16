@@ -1,0 +1,669 @@
+2026-07-11 23:49:31  INFO      ======================================================================
+2026-07-11 23:49:31  INFO      CAMARF  —  wfa.py  —  Walk-Forward Analysis (semi-WFA)
+2026-07-11 23:49:31  INFO      ======================================================================
+2026-07-11 23:49:31  INFO      Loaded 26 confirmed pairs
+2026-07-11 23:49:31  INFO      MM hedge map: 24 pairs
+2026-07-11 23:49:31  INFO      
+--- WFA [expanding] strategy=baseline ---
+2026-07-11 23:49:31  INFO      WFA [expanding_baseline] LNT/VTR@1h fold=fold1_exp  train=5194 test=7793  n_trades=131  sharpe=5.39  pnl=1506.97
+2026-07-11 23:49:31  INFO      WFA [expanding_baseline] LNT/VTR@1h fold=fold2_exp  train=12987 test=7792  n_trades=40  sharpe=6.45  pnl=876.01
+2026-07-11 23:49:31  INFO      WFA [expanding_baseline] LNT/WELL@1h fold=fold1_exp  train=5194 test=7793  n_trades=46  sharpe=9.34  pnl=1998.27
+2026-07-11 23:49:31  INFO      WFA [expanding_baseline] LNT/WELL@1h fold=fold2_exp  train=12987 test=7792  n_trades=3  sharpe=43.97  pnl=814.61
+2026-07-11 23:49:31  INFO      WFA [expanding_baseline] AXP/CRWD@1h fold=fold1_exp  train=5194 test=7793  n_trades=1  sharpe=nan  pnl=311.28
+2026-07-11 23:49:31  INFO      WFA [expanding_baseline] AXP/CRWD@1h fold=fold2_exp  train=12987 test=7792  n_trades=7  sharpe=690.96  pnl=1925.12
+2026-07-11 23:49:31  INFO      WFA [expanding_baseline] AME/DD@1h fold=fold1_exp  train=5194 test=7793  n_trades=3  sharpe=2329.75  pnl=1242.11
+2026-07-11 23:49:31  INFO      WFA [expanding_baseline] AME/DD@1h fold=fold2_exp  train=12987 test=7792  n_trades=0  sharpe=nan  pnl=0.00
+2026-07-11 23:49:31  INFO      WFA [expanding_baseline] AME/MAR@1h fold=fold1_exp  train=5194 test=7793  n_trades=56  sharpe=9.74  pnl=1868.39
+2026-07-11 23:49:32  INFO      WFA [expanding_baseline] AME/MAR@1h fold=fold2_exp  train=12987 test=7792  n_trades=1  sharpe=nan  pnl=470.38
+2026-07-11 23:49:32  INFO      WFA [expanding_baseline] AMAT/DD@1h fold=fold1_exp  train=5194 test=7793  n_trades=68  sharpe=7.42  pnl=3878.25
+2026-07-11 23:49:32  INFO      WFA [expanding_baseline] AMAT/DD@1h fold=fold2_exp  train=12987 test=7792  n_trades=35  sharpe=7.11  pnl=3042.05
+2026-07-11 23:49:32  INFO      WFA [expanding_baseline] APP/CRWD@1h fold=fold1_exp  train=5194 test=7793  n_trades=119  sharpe=3.53  pnl=2518.31
+2026-07-11 23:49:32  INFO      WFA [expanding_baseline] APP/CRWD@1h fold=fold2_exp  train=12987 test=7792  n_trades=26  sharpe=8.50  pnl=2046.25
+2026-07-11 23:49:32  INFO      WFA [expanding_baseline] AVGO/CRWD@1h fold=fold1_exp  train=5194 test=7793  n_trades=132  sharpe=3.49  pnl=1785.19
+2026-07-11 23:49:32  INFO      WFA [expanding_baseline] AVGO/CRWD@1h fold=fold2_exp  train=12987 test=7792  n_trades=26  sharpe=5.64  pnl=932.65
+2026-07-11 23:49:32  INFO      WFA [expanding_baseline] CAT/DD@1h fold=fold1_exp  train=5194 test=7793  n_trades=28  sharpe=8.07  pnl=1640.11
+2026-07-11 23:49:32  INFO      WFA [expanding_baseline] CAT/DD@1h fold=fold2_exp  train=12987 test=7792  n_trades=73  sharpe=4.43  pnl=2303.78
+2026-07-11 23:49:32  INFO      WFA [expanding_baseline] CMS/DUK@1h fold=fold1_exp  train=5194 test=7793  n_trades=109  sharpe=8.77  pnl=3107.99
+2026-07-11 23:49:32  INFO      WFA [expanding_baseline] CMS/DUK@1h fold=fold2_exp  train=12987 test=7792  n_trades=2  sharpe=1632.46  pnl=721.85
+2026-07-11 23:49:33  INFO      WFA [expanding_baseline] FIX/MLI@1h fold=fold1_exp  train=5194 test=7793  n_trades=20  sharpe=18.62  pnl=2170.40
+2026-07-11 23:49:33  INFO      WFA [expanding_baseline] FIX/MLI@1h fold=fold2_exp  train=12987 test=7792  n_trades=131  sharpe=4.56  pnl=2289.91
+2026-07-11 23:49:33  INFO      WFA [expanding_baseline] DE/DD@1h fold=fold1_exp  train=5194 test=7793  n_trades=84  sharpe=2.31  pnl=964.14
+2026-07-11 23:49:33  INFO      WFA [expanding_baseline] DE/DD@1h fold=fold2_exp  train=12987 test=7792  n_trades=0  sharpe=nan  pnl=0.00
+2026-07-11 23:49:33  INFO      WFA [expanding_baseline] DAL/DD@1h fold=fold1_exp  train=5194 test=7793  n_trades=2  sharpe=4206.52  pnl=1577.51
+2026-07-11 23:49:33  INFO      WFA [expanding_baseline] DAL/DD@1h fold=fold2_exp  train=12987 test=7792  n_trades=4  sharpe=2267.27  pnl=3421.42
+2026-07-11 23:49:33  INFO      WFA [expanding_baseline] EME/MLI@1h fold=fold1_exp  train=5194 test=7793  n_trades=115  sharpe=2.25  pnl=595.18
+2026-07-11 23:49:33  INFO      WFA [expanding_baseline] EME/MLI@1h fold=fold2_exp  train=12987 test=7792  n_trades=94  sharpe=5.77  pnl=1655.98
+2026-07-11 23:49:33  INFO      WFA [expanding_baseline] EG/WRB@1h fold=fold1_exp  train=5194 test=7793  n_trades=75  sharpe=5.26  pnl=1990.47
+2026-07-11 23:49:33  INFO      WFA [expanding_baseline] EG/WRB@1h fold=fold2_exp  train=12987 test=7792  n_trades=1  sharpe=nan  pnl=511.48
+2026-07-11 23:49:33  INFO      WFA [expanding_baseline] GS/MLI@1h fold=fold1_exp  train=5194 test=7793  n_trades=5  sharpe=859.41  pnl=1329.09
+2026-07-11 23:49:33  INFO      WFA [expanding_baseline] GS/MLI@1h fold=fold2_exp  train=12987 test=7792  n_trades=110  sharpe=5.55  pnl=1498.54
+2026-07-11 23:49:34  INFO      WFA [expanding_baseline] HAL/NOV@1h fold=fold1_exp  train=5194 test=7793  n_trades=2  sharpe=84.64  pnl=296.35
+2026-07-11 23:49:34  INFO      WFA [expanding_baseline] HAL/NOV@1h fold=fold2_exp  train=12987 test=7792  n_trades=12  sharpe=17.20  pnl=771.39
+2026-07-11 23:49:34  INFO      WFA [expanding_baseline] MET/TMHC@1h fold=fold1_exp  train=5194 test=7793  n_trades=6  sharpe=3966.46  pnl=1573.70
+2026-07-11 23:49:34  INFO      WFA [expanding_baseline] MET/TMHC@1h fold=fold2_exp  train=12987 test=7792  n_trades=59  sharpe=4.59  pnl=608.02
+2026-07-11 23:49:34  INFO      WFA [expanding_baseline] PFG/STLD@1h fold=fold1_exp  train=5194 test=7793  n_trades=19  sharpe=11.17  pnl=1422.18
+2026-07-11 23:49:34  INFO      WFA [expanding_baseline] PFG/STLD@1h fold=fold2_exp  train=12987 test=7792  n_trades=2  sharpe=4470.36  pnl=717.47
+2026-07-11 23:49:34  INFO      WFA [expanding_baseline] VRT/MTZ@1h fold=fold1_exp  train=5194 test=7793  n_trades=114  sharpe=3.73  pnl=1942.11
+2026-07-11 23:49:34  INFO      WFA [expanding_baseline] VRT/MTZ@1h fold=fold2_exp  train=12987 test=7792  n_trades=66  sharpe=5.01  pnl=2265.06
+2026-07-11 23:49:34  INFO      WFA [expanding_baseline] QQQ/MLI@1h fold=fold1_exp  train=5194 test=7793  n_trades=79  sharpe=1.03  pnl=135.48
+2026-07-11 23:49:34  INFO      WFA [expanding_baseline] QQQ/MLI@1h fold=fold2_exp  train=12987 test=7792  n_trades=3  sharpe=3001.88  pnl=754.61
+2026-07-11 23:49:34  INFO      WFA [expanding_baseline] FHN/MLI@1h fold=fold1_exp  train=5194 test=7793  n_trades=4  sharpe=2495.03  pnl=1504.45
+2026-07-11 23:49:34  INFO      WFA [expanding_baseline] FHN/MLI@1h fold=fold2_exp  train=12987 test=7792  n_trades=3  sharpe=942.13  pnl=1114.56
+2026-07-11 23:49:35  INFO      WFA [expanding_baseline] MTSI/WCC@1h fold=fold1_exp  train=5194 test=7793  n_trades=0  sharpe=nan  pnl=0.00
+2026-07-11 23:49:35  INFO      WFA [expanding_baseline] MTSI/WCC@1h fold=fold2_exp  train=12987 test=7792  n_trades=6  sharpe=3.36  pnl=298.36
+2026-07-11 23:49:35  INFO      WFA [expanding_baseline] UMBF/FHB@1h fold=fold1_exp  train=5194 test=7793  n_trades=5  sharpe=5187.38  pnl=1146.61
+2026-07-11 23:49:35  INFO      WFA [expanding_baseline] UMBF/FHB@1h fold=fold2_exp  train=12987 test=7792  n_trades=16  sharpe=8.56  pnl=684.46
+2026-07-11 23:49:35  INFO      WFA [expanding_baseline] KVUE/KMB@3m fold=fold1_exp  train=2714 test=4071  n_trades=17  sharpe=55.95  pnl=6676.08
+2026-07-11 23:49:35  INFO      WFA [expanding_baseline] KVUE/KMB@3m fold=fold2_exp  train=6785 test=4071  n_trades=2  sharpe=536.23  pnl=978.94
+2026-07-11 23:49:35  INFO      WFA [expanding/baseline] 1962 trades | Sharpe=3.2876 | PnL=73883.53
+2026-07-11 23:49:35  INFO      
+--- WFA [expanding] strategy=cfrac_sizing ---
+2026-07-11 23:49:35  INFO      WFA [expanding_cfrac_sizing] LNT/VTR@1h fold=fold1_exp  train=5194 test=7793  n_trades=131  sharpe=5.39  pnl=135.63
+2026-07-11 23:49:35  INFO      WFA [expanding_cfrac_sizing] LNT/VTR@1h fold=fold2_exp  train=12987 test=7792  n_trades=40  sharpe=6.45  pnl=78.84
+2026-07-11 23:49:35  INFO      WFA [expanding_cfrac_sizing] LNT/WELL@1h fold=fold1_exp  train=5194 test=7793  n_trades=46  sharpe=9.34  pnl=79.93
+2026-07-11 23:49:35  INFO      WFA [expanding_cfrac_sizing] LNT/WELL@1h fold=fold2_exp  train=12987 test=7792  n_trades=3  sharpe=43.97  pnl=32.58
+2026-07-11 23:49:35  INFO      WFA [expanding_cfrac_sizing] AXP/CRWD@1h fold=fold1_exp  train=5194 test=7793  n_trades=1  sharpe=nan  pnl=3.11
+2026-07-11 23:49:35  INFO      WFA [expanding_cfrac_sizing] AXP/CRWD@1h fold=fold2_exp  train=12987 test=7792  n_trades=7  sharpe=690.95  pnl=19.25
+2026-07-11 23:49:36  INFO      WFA [expanding_cfrac_sizing] AME/DD@1h fold=fold1_exp  train=5194 test=7793  n_trades=3  sharpe=2329.67  pnl=99.37
+2026-07-11 23:49:36  INFO      WFA [expanding_cfrac_sizing] AME/DD@1h fold=fold2_exp  train=12987 test=7792  n_trades=0  sharpe=nan  pnl=0.00
+2026-07-11 23:49:36  INFO      WFA [expanding_cfrac_sizing] AME/MAR@1h fold=fold1_exp  train=5194 test=7793  n_trades=56  sharpe=9.74  pnl=168.16
+2026-07-11 23:49:36  INFO      WFA [expanding_cfrac_sizing] AME/MAR@1h fold=fold2_exp  train=12987 test=7792  n_trades=1  sharpe=nan  pnl=42.33
+2026-07-11 23:49:36  INFO      WFA [expanding_cfrac_sizing] AMAT/DD@1h fold=fold1_exp  train=5194 test=7793  n_trades=68  sharpe=7.42  pnl=116.35
+2026-07-11 23:49:36  INFO      WFA [expanding_cfrac_sizing] AMAT/DD@1h fold=fold2_exp  train=12987 test=7792  n_trades=35  sharpe=7.11  pnl=91.26
+2026-07-11 23:49:36  INFO      WFA [expanding_cfrac_sizing] APP/CRWD@1h fold=fold1_exp  train=5194 test=7793  n_trades=119  sharpe=3.53  pnl=226.65
+2026-07-11 23:49:36  INFO      WFA [expanding_cfrac_sizing] APP/CRWD@1h fold=fold2_exp  train=12987 test=7792  n_trades=26  sharpe=8.50  pnl=184.16
+2026-07-11 23:49:36  INFO      WFA [expanding_cfrac_sizing] AVGO/CRWD@1h fold=fold1_exp  train=5194 test=7793  n_trades=132  sharpe=3.49  pnl=89.26
+2026-07-11 23:49:36  INFO      WFA [expanding_cfrac_sizing] AVGO/CRWD@1h fold=fold2_exp  train=12987 test=7792  n_trades=26  sharpe=5.64  pnl=46.63
+2026-07-11 23:49:36  INFO      WFA [expanding_cfrac_sizing] CAT/DD@1h fold=fold1_exp  train=5194 test=7793  n_trades=28  sharpe=8.07  pnl=114.81
+2026-07-11 23:49:37  INFO      WFA [expanding_cfrac_sizing] CAT/DD@1h fold=fold2_exp  train=12987 test=7792  n_trades=73  sharpe=4.43  pnl=161.26
+2026-07-11 23:49:37  INFO      WFA [expanding_cfrac_sizing] CMS/DUK@1h fold=fold1_exp  train=5194 test=7793  n_trades=109  sharpe=8.77  pnl=186.48
+2026-07-11 23:49:37  INFO      WFA [expanding_cfrac_sizing] CMS/DUK@1h fold=fold2_exp  train=12987 test=7792  n_trades=2  sharpe=1632.43  pnl=43.31
+2026-07-11 23:49:37  INFO      WFA [expanding_cfrac_sizing] FIX/MLI@1h fold=fold1_exp  train=5194 test=7793  n_trades=20  sharpe=18.62  pnl=130.22
+2026-07-11 23:49:37  INFO      WFA [expanding_cfrac_sizing] FIX/MLI@1h fold=fold2_exp  train=12987 test=7792  n_trades=131  sharpe=4.56  pnl=137.39
+2026-07-11 23:49:37  INFO      WFA [expanding_cfrac_sizing] DE/DD@1h fold=fold1_exp  train=5194 test=7793  n_trades=84  sharpe=2.31  pnl=106.06
+2026-07-11 23:49:37  INFO      WFA [expanding_cfrac_sizing] DE/DD@1h fold=fold2_exp  train=12987 test=7792  n_trades=0  sharpe=nan  pnl=0.00
+2026-07-11 23:49:37  INFO      WFA [expanding_cfrac_sizing] DAL/DD@1h fold=fold1_exp  train=5194 test=7793  n_trades=2  sharpe=4205.88  pnl=31.55
+2026-07-11 23:49:37  INFO      WFA [expanding_cfrac_sizing] DAL/DD@1h fold=fold2_exp  train=12987 test=7792  n_trades=4  sharpe=2267.23  pnl=68.43
+2026-07-11 23:49:37  INFO      WFA [expanding_cfrac_sizing] EME/MLI@1h fold=fold1_exp  train=5194 test=7793  n_trades=115  sharpe=2.25  pnl=35.71
+2026-07-11 23:49:37  INFO      WFA [expanding_cfrac_sizing] EME/MLI@1h fold=fold2_exp  train=12987 test=7792  n_trades=94  sharpe=5.77  pnl=99.36
+2026-07-11 23:49:37  INFO      WFA [expanding_cfrac_sizing] EG/WRB@1h fold=fold1_exp  train=5194 test=7793  n_trades=75  sharpe=5.26  pnl=79.62
+2026-07-11 23:49:38  INFO      WFA [expanding_cfrac_sizing] EG/WRB@1h fold=fold2_exp  train=12987 test=7792  n_trades=1  sharpe=nan  pnl=20.46
+2026-07-11 23:49:38  INFO      WFA [expanding_cfrac_sizing] GS/MLI@1h fold=fold1_exp  train=5194 test=7793  n_trades=5  sharpe=859.42  pnl=79.75
+2026-07-11 23:49:38  INFO      WFA [expanding_cfrac_sizing] GS/MLI@1h fold=fold2_exp  train=12987 test=7792  n_trades=110  sharpe=5.55  pnl=89.91
+2026-07-11 23:49:38  INFO      WFA [expanding_cfrac_sizing] HAL/NOV@1h fold=fold1_exp  train=5194 test=7793  n_trades=2  sharpe=84.64  pnl=17.78
+2026-07-11 23:49:38  INFO      WFA [expanding_cfrac_sizing] HAL/NOV@1h fold=fold2_exp  train=12987 test=7792  n_trades=12  sharpe=17.20  pnl=46.28
+2026-07-11 23:49:38  INFO      WFA [expanding_cfrac_sizing] MET/TMHC@1h fold=fold1_exp  train=5194 test=7793  n_trades=6  sharpe=3966.83  pnl=78.69
+2026-07-11 23:49:38  INFO      WFA [expanding_cfrac_sizing] MET/TMHC@1h fold=fold2_exp  train=12987 test=7792  n_trades=59  sharpe=4.59  pnl=30.40
+2026-07-11 23:49:38  INFO      WFA [expanding_cfrac_sizing] PFG/STLD@1h fold=fold1_exp  train=5194 test=7793  n_trades=19  sharpe=11.17  pnl=156.44
+2026-07-11 23:49:38  INFO      WFA [expanding_cfrac_sizing] PFG/STLD@1h fold=fold2_exp  train=12987 test=7792  n_trades=2  sharpe=4470.46  pnl=78.92
+2026-07-11 23:49:38  INFO      WFA [expanding_cfrac_sizing] VRT/MTZ@1h fold=fold1_exp  train=5194 test=7793  n_trades=114  sharpe=3.73  pnl=135.95
+2026-07-11 23:49:38  INFO      WFA [expanding_cfrac_sizing] VRT/MTZ@1h fold=fold2_exp  train=12987 test=7792  n_trades=66  sharpe=5.01  pnl=158.55
+2026-07-11 23:49:38  INFO      WFA [expanding_cfrac_sizing] QQQ/MLI@1h fold=fold1_exp  train=5194 test=7793  n_trades=79  sharpe=1.03  pnl=10.84
+2026-07-11 23:49:39  INFO      WFA [expanding_cfrac_sizing] QQQ/MLI@1h fold=fold2_exp  train=12987 test=7792  n_trades=3  sharpe=3001.79  pnl=60.37
+2026-07-11 23:49:39  INFO      WFA [expanding_cfrac_sizing] FHN/MLI@1h fold=fold1_exp  train=5194 test=7793  n_trades=4  sharpe=2495.09  pnl=90.27
+2026-07-11 23:49:39  INFO      WFA [expanding_cfrac_sizing] FHN/MLI@1h fold=fold2_exp  train=12987 test=7792  n_trades=3  sharpe=942.16  pnl=66.87
+2026-07-11 23:49:39  INFO      WFA [expanding_cfrac_sizing] MTSI/WCC@1h fold=fold1_exp  train=5194 test=7793  n_trades=0  sharpe=nan  pnl=0.00
+2026-07-11 23:49:39  INFO      WFA [expanding_cfrac_sizing] MTSI/WCC@1h fold=fold2_exp  train=12987 test=7792  n_trades=6  sharpe=3.36  pnl=14.92
+2026-07-11 23:49:39  INFO      WFA [expanding_cfrac_sizing] UMBF/FHB@1h fold=fold1_exp  train=5194 test=7793  n_trades=5  sharpe=5187.69  pnl=183.46
+2026-07-11 23:49:39  INFO      WFA [expanding_cfrac_sizing] UMBF/FHB@1h fold=fold2_exp  train=12987 test=7792  n_trades=16  sharpe=8.56  pnl=109.51
+2026-07-11 23:49:39  INFO      WFA [expanding_cfrac_sizing] KVUE/KMB@3m fold=fold1_exp  train=2714 test=4071  n_trades=17  sharpe=55.95  pnl=6542.56
+2026-07-11 23:49:39  INFO      WFA [expanding_cfrac_sizing] KVUE/KMB@3m fold=fold2_exp  train=6785 test=4071  n_trades=2  sharpe=536.23  pnl=959.36
+2026-07-11 23:49:39  INFO      WFA [expanding/cfrac_sizing] 1962 trades | Sharpe=1.1457 | PnL=11539.01
+2026-07-11 23:49:39  INFO      
+--- WFA [expanding] strategy=garch_stop ---
+2026-07-11 23:49:39  INFO      WFA [expanding_garch_stop] LNT/VTR@1h fold=fold1_exp  train=5194 test=7793  n_trades=131  sharpe=5.39  pnl=1506.97
+2026-07-11 23:49:39  INFO      WFA [expanding_garch_stop] LNT/VTR@1h fold=fold2_exp  train=12987 test=7792  n_trades=40  sharpe=6.45  pnl=876.01
+2026-07-11 23:49:40  INFO      WFA [expanding_garch_stop] LNT/WELL@1h fold=fold1_exp  train=5194 test=7793  n_trades=46  sharpe=9.34  pnl=1998.27
+2026-07-11 23:49:40  INFO      WFA [expanding_garch_stop] LNT/WELL@1h fold=fold2_exp  train=12987 test=7792  n_trades=3  sharpe=43.97  pnl=814.61
+2026-07-11 23:49:40  INFO      WFA [expanding_garch_stop] AXP/CRWD@1h fold=fold1_exp  train=5194 test=7793  n_trades=1  sharpe=nan  pnl=311.28
+2026-07-11 23:49:40  INFO      WFA [expanding_garch_stop] AXP/CRWD@1h fold=fold2_exp  train=12987 test=7792  n_trades=7  sharpe=690.96  pnl=1925.12
+2026-07-11 23:49:40  INFO      WFA [expanding_garch_stop] AME/DD@1h fold=fold1_exp  train=5194 test=7793  n_trades=3  sharpe=2329.75  pnl=1242.11
+2026-07-11 23:49:40  INFO      WFA [expanding_garch_stop] AME/DD@1h fold=fold2_exp  train=12987 test=7792  n_trades=0  sharpe=nan  pnl=0.00
+2026-07-11 23:49:40  INFO      WFA [expanding_garch_stop] AME/MAR@1h fold=fold1_exp  train=5194 test=7793  n_trades=56  sharpe=9.74  pnl=1868.39
+2026-07-11 23:49:40  INFO      WFA [expanding_garch_stop] AME/MAR@1h fold=fold2_exp  train=12987 test=7792  n_trades=1  sharpe=nan  pnl=470.38
+2026-07-11 23:49:40  INFO      WFA [expanding_garch_stop] AMAT/DD@1h fold=fold1_exp  train=5194 test=7793  n_trades=68  sharpe=7.42  pnl=3878.25
+2026-07-11 23:49:40  INFO      WFA [expanding_garch_stop] AMAT/DD@1h fold=fold2_exp  train=12987 test=7792  n_trades=35  sharpe=7.11  pnl=3042.05
+2026-07-11 23:49:40  INFO      WFA [expanding_garch_stop] APP/CRWD@1h fold=fold1_exp  train=5194 test=7793  n_trades=119  sharpe=3.53  pnl=2518.31
+2026-07-11 23:49:40  INFO      WFA [expanding_garch_stop] APP/CRWD@1h fold=fold2_exp  train=12987 test=7792  n_trades=26  sharpe=8.50  pnl=2046.25
+2026-07-11 23:49:41  INFO      WFA [expanding_garch_stop] AVGO/CRWD@1h fold=fold1_exp  train=5194 test=7793  n_trades=132  sharpe=3.49  pnl=1785.19
+2026-07-11 23:49:41  INFO      WFA [expanding_garch_stop] AVGO/CRWD@1h fold=fold2_exp  train=12987 test=7792  n_trades=26  sharpe=5.64  pnl=932.65
+2026-07-11 23:49:41  INFO      WFA [expanding_garch_stop] CAT/DD@1h fold=fold1_exp  train=5194 test=7793  n_trades=32  sharpe=7.69  pnl=1526.40
+2026-07-11 23:49:41  INFO      WFA [expanding_garch_stop] CAT/DD@1h fold=fold2_exp  train=12987 test=7792  n_trades=73  sharpe=4.43  pnl=2303.78
+2026-07-11 23:49:41  INFO      WFA [expanding_garch_stop] CMS/DUK@1h fold=fold1_exp  train=5194 test=7793  n_trades=109  sharpe=8.77  pnl=3107.99
+2026-07-11 23:49:41  INFO      WFA [expanding_garch_stop] CMS/DUK@1h fold=fold2_exp  train=12987 test=7792  n_trades=2  sharpe=1632.46  pnl=721.85
+2026-07-11 23:49:41  INFO      WFA [expanding_garch_stop] FIX/MLI@1h fold=fold1_exp  train=5194 test=7793  n_trades=20  sharpe=18.62  pnl=2170.40
+2026-07-11 23:49:41  INFO      WFA [expanding_garch_stop] FIX/MLI@1h fold=fold2_exp  train=12987 test=7792  n_trades=131  sharpe=4.56  pnl=2289.91
+2026-07-11 23:49:41  INFO      WFA [expanding_garch_stop] DE/DD@1h fold=fold1_exp  train=5194 test=7793  n_trades=84  sharpe=2.31  pnl=964.14
+2026-07-11 23:49:41  INFO      WFA [expanding_garch_stop] DE/DD@1h fold=fold2_exp  train=12987 test=7792  n_trades=0  sharpe=nan  pnl=0.00
+2026-07-11 23:49:41  INFO      WFA [expanding_garch_stop] DAL/DD@1h fold=fold1_exp  train=5194 test=7793  n_trades=2  sharpe=4206.52  pnl=1577.51
+2026-07-11 23:49:41  INFO      WFA [expanding_garch_stop] DAL/DD@1h fold=fold2_exp  train=12987 test=7792  n_trades=4  sharpe=2267.27  pnl=3421.42
+2026-07-11 23:49:42  INFO      WFA [expanding_garch_stop] EME/MLI@1h fold=fold1_exp  train=5194 test=7793  n_trades=115  sharpe=2.25  pnl=595.18
+2026-07-11 23:49:42  INFO      WFA [expanding_garch_stop] EME/MLI@1h fold=fold2_exp  train=12987 test=7792  n_trades=94  sharpe=5.77  pnl=1655.98
+2026-07-11 23:49:42  INFO      WFA [expanding_garch_stop] EG/WRB@1h fold=fold1_exp  train=5194 test=7793  n_trades=75  sharpe=5.26  pnl=1990.47
+2026-07-11 23:49:42  INFO      WFA [expanding_garch_stop] EG/WRB@1h fold=fold2_exp  train=12987 test=7792  n_trades=1  sharpe=nan  pnl=511.48
+2026-07-11 23:49:42  INFO      WFA [expanding_garch_stop] GS/MLI@1h fold=fold1_exp  train=5194 test=7793  n_trades=5  sharpe=859.41  pnl=1329.09
+2026-07-11 23:49:42  INFO      WFA [expanding_garch_stop] GS/MLI@1h fold=fold2_exp  train=12987 test=7792  n_trades=110  sharpe=5.55  pnl=1498.54
+2026-07-11 23:49:42  INFO      WFA [expanding_garch_stop] HAL/NOV@1h fold=fold1_exp  train=5194 test=7793  n_trades=2  sharpe=84.64  pnl=296.35
+2026-07-11 23:49:42  INFO      WFA [expanding_garch_stop] HAL/NOV@1h fold=fold2_exp  train=12987 test=7792  n_trades=12  sharpe=17.20  pnl=771.39
+2026-07-11 23:49:42  INFO      WFA [expanding_garch_stop] MET/TMHC@1h fold=fold1_exp  train=5194 test=7793  n_trades=6  sharpe=3966.46  pnl=1573.70
+2026-07-11 23:49:42  INFO      WFA [expanding_garch_stop] MET/TMHC@1h fold=fold2_exp  train=12987 test=7792  n_trades=59  sharpe=4.59  pnl=608.02
+2026-07-11 23:49:42  INFO      WFA [expanding_garch_stop] PFG/STLD@1h fold=fold1_exp  train=5194 test=7793  n_trades=19  sharpe=11.17  pnl=1422.18
+2026-07-11 23:49:42  INFO      WFA [expanding_garch_stop] PFG/STLD@1h fold=fold2_exp  train=12987 test=7792  n_trades=2  sharpe=4470.36  pnl=717.47
+2026-07-11 23:49:43  INFO      WFA [expanding_garch_stop] VRT/MTZ@1h fold=fold1_exp  train=5194 test=7793  n_trades=114  sharpe=3.73  pnl=1942.11
+2026-07-11 23:49:43  INFO      WFA [expanding_garch_stop] VRT/MTZ@1h fold=fold2_exp  train=12987 test=7792  n_trades=66  sharpe=5.01  pnl=2265.06
+2026-07-11 23:49:43  INFO      WFA [expanding_garch_stop] QQQ/MLI@1h fold=fold1_exp  train=5194 test=7793  n_trades=79  sharpe=1.03  pnl=135.48
+2026-07-11 23:49:43  INFO      WFA [expanding_garch_stop] QQQ/MLI@1h fold=fold2_exp  train=12987 test=7792  n_trades=3  sharpe=3001.88  pnl=754.61
+2026-07-11 23:49:43  INFO      WFA [expanding_garch_stop] FHN/MLI@1h fold=fold1_exp  train=5194 test=7793  n_trades=4  sharpe=2495.03  pnl=1504.45
+2026-07-11 23:49:43  INFO      WFA [expanding_garch_stop] FHN/MLI@1h fold=fold2_exp  train=12987 test=7792  n_trades=3  sharpe=942.13  pnl=1114.56
+2026-07-11 23:49:43  INFO      WFA [expanding_garch_stop] MTSI/WCC@1h fold=fold1_exp  train=5194 test=7793  n_trades=0  sharpe=nan  pnl=0.00
+2026-07-11 23:49:43  INFO      WFA [expanding_garch_stop] MTSI/WCC@1h fold=fold2_exp  train=12987 test=7792  n_trades=6  sharpe=3.36  pnl=298.36
+2026-07-11 23:49:43  INFO      WFA [expanding_garch_stop] UMBF/FHB@1h fold=fold1_exp  train=5194 test=7793  n_trades=5  sharpe=5187.38  pnl=1146.61
+2026-07-11 23:49:43  INFO      WFA [expanding_garch_stop] UMBF/FHB@1h fold=fold2_exp  train=12987 test=7792  n_trades=16  sharpe=8.56  pnl=684.46
+2026-07-11 23:49:43  INFO      WFA [expanding_garch_stop] KVUE/KMB@3m fold=fold1_exp  train=2714 test=4071  n_trades=17  sharpe=55.95  pnl=6676.08
+2026-07-11 23:49:43  INFO      WFA [expanding_garch_stop] KVUE/KMB@3m fold=fold2_exp  train=6785 test=4071  n_trades=2  sharpe=536.23  pnl=978.94
+2026-07-11 23:49:44  INFO      WFA [expanding/garch_stop] 1966 trades | Sharpe=3.2855 | PnL=73769.82
+2026-07-11 23:49:44  INFO      
+--- WFA [expanding] strategy=session_edge ---
+2026-07-11 23:49:44  INFO      WFA [expanding_session_edge] LNT/VTR@1h fold=fold1_exp  train=5194 test=7793  n_trades=89  sharpe=6.32  pnl=1347.40
+2026-07-11 23:49:44  INFO      WFA [expanding_session_edge] LNT/VTR@1h fold=fold2_exp  train=12987 test=7792  n_trades=28  sharpe=9.33  pnl=1086.85
+2026-07-11 23:49:44  INFO      WFA [expanding_session_edge] LNT/WELL@1h fold=fold1_exp  train=5194 test=7793  n_trades=34  sharpe=12.66  pnl=2107.19
+2026-07-11 23:49:44  INFO      WFA [expanding_session_edge] LNT/WELL@1h fold=fold2_exp  train=12987 test=7792  n_trades=3  sharpe=54.47  pnl=881.64
+2026-07-11 23:49:44  INFO      WFA [expanding_session_edge] AXP/CRWD@1h fold=fold1_exp  train=5194 test=7793  n_trades=1  sharpe=nan  pnl=326.12
+2026-07-11 23:49:44  INFO      WFA [expanding_session_edge] AXP/CRWD@1h fold=fold2_exp  train=12987 test=7792  n_trades=7  sharpe=295.33  pnl=2086.96
+2026-07-11 23:49:44  INFO      WFA [expanding_session_edge] AME/DD@1h fold=fold1_exp  train=5194 test=7793  n_trades=3  sharpe=272.84  pnl=1536.78
+2026-07-11 23:49:44  INFO      WFA [expanding_session_edge] AME/DD@1h fold=fold2_exp  train=12987 test=7792  n_trades=0  sharpe=nan  pnl=0.00
+2026-07-11 23:49:44  INFO      WFA [expanding_session_edge] AME/MAR@1h fold=fold1_exp  train=5194 test=7793  n_trades=39  sharpe=12.37  pnl=1893.76
+2026-07-11 23:49:44  INFO      WFA [expanding_session_edge] AME/MAR@1h fold=fold2_exp  train=12987 test=7792  n_trades=1  sharpe=nan  pnl=470.38
+2026-07-11 23:49:44  INFO      WFA [expanding_session_edge] AMAT/DD@1h fold=fold1_exp  train=5194 test=7793  n_trades=46  sharpe=10.57  pnl=4413.36
+2026-07-11 23:49:45  INFO      WFA [expanding_session_edge] AMAT/DD@1h fold=fold2_exp  train=12987 test=7792  n_trades=26  sharpe=10.29  pnl=3639.99
+2026-07-11 23:49:45  INFO      WFA [expanding_session_edge] APP/CRWD@1h fold=fold1_exp  train=5194 test=7793  n_trades=82  sharpe=5.34  pnl=3077.77
+2026-07-11 23:49:45  INFO      WFA [expanding_session_edge] APP/CRWD@1h fold=fold2_exp  train=12987 test=7792  n_trades=18  sharpe=11.35  pnl=2307.19
+2026-07-11 23:49:45  INFO      WFA [expanding_session_edge] AVGO/CRWD@1h fold=fold1_exp  train=5194 test=7793  n_trades=92  sharpe=4.70  pnl=1893.17
+2026-07-11 23:49:45  INFO      WFA [expanding_session_edge] AVGO/CRWD@1h fold=fold2_exp  train=12987 test=7792  n_trades=19  sharpe=7.37  pnl=914.70
+2026-07-11 23:49:45  INFO      WFA [expanding_session_edge] CAT/DD@1h fold=fold1_exp  train=5194 test=7793  n_trades=19  sharpe=5.66  pnl=840.25
+2026-07-11 23:49:45  INFO      WFA [expanding_session_edge] CAT/DD@1h fold=fold2_exp  train=12987 test=7792  n_trades=52  sharpe=6.04  pnl=2504.92
+2026-07-11 23:49:45  INFO      WFA [expanding_session_edge] CMS/DUK@1h fold=fold1_exp  train=5194 test=7793  n_trades=80  sharpe=11.17  pnl=3017.95
+2026-07-11 23:49:45  INFO      WFA [expanding_session_edge] CMS/DUK@1h fold=fold2_exp  train=12987 test=7792  n_trades=2  sharpe=353.24  pnl=795.05
+2026-07-11 23:49:45  INFO      WFA [expanding_session_edge] FIX/MLI@1h fold=fold1_exp  train=5194 test=7793  n_trades=15  sharpe=23.30  pnl=2101.47
+2026-07-11 23:49:45  INFO      WFA [expanding_session_edge] FIX/MLI@1h fold=fold2_exp  train=12987 test=7792  n_trades=88  sharpe=6.87  pnl=2805.86
+2026-07-11 23:49:46  INFO      WFA [expanding_session_edge] DE/DD@1h fold=fold1_exp  train=5194 test=7793  n_trades=59  sharpe=3.01  pnl=989.43
+2026-07-11 23:49:46  INFO      WFA [expanding_session_edge] DE/DD@1h fold=fold2_exp  train=12987 test=7792  n_trades=0  sharpe=nan  pnl=0.00
+2026-07-11 23:49:46  INFO      WFA [expanding_session_edge] DAL/DD@1h fold=fold1_exp  train=5194 test=7793  n_trades=2  sharpe=4206.52  pnl=1577.51
+2026-07-11 23:49:46  INFO      WFA [expanding_session_edge] DAL/DD@1h fold=fold2_exp  train=12987 test=7792  n_trades=4  sharpe=322.22  pnl=3686.16
+2026-07-11 23:49:46  INFO      WFA [expanding_session_edge] EME/MLI@1h fold=fold1_exp  train=5194 test=7793  n_trades=78  sharpe=3.41  pnl=739.85
+2026-07-11 23:49:46  INFO      WFA [expanding_session_edge] EME/MLI@1h fold=fold2_exp  train=12987 test=7792  n_trades=64  sharpe=8.78  pnl=1962.54
+2026-07-11 23:49:46  INFO      WFA [expanding_session_edge] EG/WRB@1h fold=fold1_exp  train=5194 test=7793  n_trades=52  sharpe=6.55  pnl=1828.77
+2026-07-11 23:49:46  INFO      WFA [expanding_session_edge] EG/WRB@1h fold=fold2_exp  train=12987 test=7792  n_trades=1  sharpe=nan  pnl=511.48
+2026-07-11 23:49:46  INFO      WFA [expanding_session_edge] GS/MLI@1h fold=fold1_exp  train=5194 test=7793  n_trades=5  sharpe=687.85  pnl=1416.83
+2026-07-11 23:49:46  INFO      WFA [expanding_session_edge] GS/MLI@1h fold=fold2_exp  train=12987 test=7792  n_trades=76  sharpe=7.23  pnl=1475.30
+2026-07-11 23:49:46  INFO      WFA [expanding_session_edge] HAL/NOV@1h fold=fold1_exp  train=5194 test=7793  n_trades=2  sharpe=88.33  pnl=300.41
+2026-07-11 23:49:47  INFO      WFA [expanding_session_edge] HAL/NOV@1h fold=fold2_exp  train=12987 test=7792  n_trades=12  sharpe=17.07  pnl=712.61
+2026-07-11 23:49:47  INFO      WFA [expanding_session_edge] MET/TMHC@1h fold=fold1_exp  train=5194 test=7793  n_trades=5  sharpe=767.72  pnl=1377.10
+2026-07-11 23:49:47  INFO      WFA [expanding_session_edge] MET/TMHC@1h fold=fold2_exp  train=12987 test=7792  n_trades=43  sharpe=5.38  pnl=542.73
+2026-07-11 23:49:47  INFO      WFA [expanding_session_edge] PFG/STLD@1h fold=fold1_exp  train=5194 test=7793  n_trades=17  sharpe=14.44  pnl=1634.51
+2026-07-11 23:49:47  INFO      WFA [expanding_session_edge] PFG/STLD@1h fold=fold2_exp  train=12987 test=7792  n_trades=2  sharpe=1098.22  pnl=738.18
+2026-07-11 23:49:47  INFO      WFA [expanding_session_edge] VRT/MTZ@1h fold=fold1_exp  train=5194 test=7793  n_trades=76  sharpe=6.09  pnl=2493.83
+2026-07-11 23:49:47  INFO      WFA [expanding_session_edge] VRT/MTZ@1h fold=fold2_exp  train=12987 test=7792  n_trades=48  sharpe=7.76  pnl=2809.10
+2026-07-11 23:49:47  INFO      WFA [expanding_session_edge] QQQ/MLI@1h fold=fold1_exp  train=5194 test=7793  n_trades=54  sharpe=1.84  pnl=189.79
+2026-07-11 23:49:47  INFO      WFA [expanding_session_edge] QQQ/MLI@1h fold=fold2_exp  train=12987 test=7792  n_trades=3  sharpe=4411.13  pnl=759.99
+2026-07-11 23:49:47  INFO      WFA [expanding_session_edge] FHN/MLI@1h fold=fold1_exp  train=5194 test=7793  n_trades=4  sharpe=2572.34  pnl=1508.14
+2026-07-11 23:49:47  INFO      WFA [expanding_session_edge] FHN/MLI@1h fold=fold2_exp  train=12987 test=7792  n_trades=3  sharpe=976.97  pnl=1116.26
+2026-07-11 23:49:47  INFO      WFA [expanding_session_edge] MTSI/WCC@1h fold=fold1_exp  train=5194 test=7793  n_trades=0  sharpe=nan  pnl=0.00
+2026-07-11 23:49:48  INFO      WFA [expanding_session_edge] MTSI/WCC@1h fold=fold2_exp  train=12987 test=7792  n_trades=6  sharpe=5.43  pnl=458.39
+2026-07-11 23:49:48  INFO      WFA [expanding_session_edge] UMBF/FHB@1h fold=fold1_exp  train=5194 test=7793  n_trades=4  sharpe=323.94  pnl=982.39
+2026-07-11 23:49:48  INFO      WFA [expanding_session_edge] UMBF/FHB@1h fold=fold2_exp  train=12987 test=7792  n_trades=14  sharpe=14.45  pnl=1104.32
+2026-07-11 23:49:48  INFO      WFA [expanding_session_edge] KVUE/KMB@3m fold=fold1_exp  train=2714 test=4071  n_trades=16  sharpe=56.50  pnl=6527.31
+2026-07-11 23:49:48  INFO      WFA [expanding_session_edge] KVUE/KMB@3m fold=fold2_exp  train=6785 test=4071  n_trades=2  sharpe=536.23  pnl=978.94
+2026-07-11 23:49:48  INFO      WFA [expanding/session_edge] 1396 trades | Sharpe=3.6284 | PnL=78470.65
+2026-07-11 23:49:48  INFO      
+--- WFA [expanding] strategy=mm_exec ---
+2026-07-11 23:49:48  INFO      WFA [expanding_mm_exec] LNT/VTR@1h fold=fold1_exp  train=5194 test=7793  n_trades=193  sharpe=6.31  pnl=2900.79
+2026-07-11 23:49:48  INFO      WFA [expanding_mm_exec] LNT/VTR@1h fold=fold2_exp  train=12987 test=7792  n_trades=46  sharpe=6.91  pnl=1288.23
+2026-07-11 23:49:48  INFO      WFA [expanding_mm_exec] LNT/WELL@1h fold=fold1_exp  train=5194 test=7793  n_trades=152  sharpe=5.89  pnl=3667.21
+2026-07-11 23:49:48  INFO      WFA [expanding_mm_exec] LNT/WELL@1h fold=fold2_exp  train=12987 test=7792  n_trades=6  sharpe=73.79  pnl=2153.16
+2026-07-11 23:49:48  INFO      WFA [expanding_mm_exec] AXP/CRWD@1h fold=fold1_exp  train=5194 test=7793  n_trades=3  sharpe=5887.45  pnl=927.18
+2026-07-11 23:49:48  INFO      WFA [expanding_mm_exec] AXP/CRWD@1h fold=fold2_exp  train=12987 test=7792  n_trades=44  sharpe=16.34  pnl=2962.12
+2026-07-11 23:49:49  INFO      WFA [expanding_mm_exec] AME/DD@1h fold=fold1_exp  train=5194 test=7793  n_trades=63  sharpe=11.91  pnl=4031.36
+2026-07-11 23:49:49  INFO      WFA [expanding_mm_exec] AME/DD@1h fold=fold2_exp  train=12987 test=7792  n_trades=0  sharpe=nan  pnl=0.00
+2026-07-11 23:49:49  INFO      WFA [expanding_mm_exec] AME/MAR@1h fold=fold1_exp  train=5194 test=7793  n_trades=174  sharpe=6.94  pnl=3798.65
+2026-07-11 23:49:49  INFO      WFA [expanding_mm_exec] AME/MAR@1h fold=fold2_exp  train=12987 test=7792  n_trades=35  sharpe=11.67  pnl=2313.33
+2026-07-11 23:49:49  INFO      WFA [expanding_mm_exec] AMAT/DD@1h fold=fold1_exp  train=5194 test=7793  n_trades=158  sharpe=8.86  pnl=10732.23
+2026-07-11 23:49:49  INFO      WFA [expanding_mm_exec] AMAT/DD@1h fold=fold2_exp  train=12987 test=7792  n_trades=35  sharpe=7.54  pnl=3221.72
+2026-07-11 23:49:49  INFO      WFA [expanding_mm_exec] APP/CRWD@1h fold=fold1_exp  train=5194 test=7793  n_trades=136  sharpe=4.59  pnl=4063.39
+2026-07-11 23:49:49  INFO      WFA [expanding_mm_exec] APP/CRWD@1h fold=fold2_exp  train=12987 test=7792  n_trades=94  sharpe=5.50  pnl=4186.54
+2026-07-11 23:49:49  INFO      WFA [expanding_mm_exec] AVGO/CRWD@1h fold=fold1_exp  train=5194 test=7793  n_trades=136  sharpe=6.72  pnl=3855.41
+2026-07-11 23:49:49  INFO      WFA [expanding_mm_exec] AVGO/CRWD@1h fold=fold2_exp  train=12987 test=7792  n_trades=30  sharpe=10.84  pnl=2332.97
+2026-07-11 23:49:49  INFO      WFA [expanding_mm_exec] CAT/DD@1h fold=fold1_exp  train=5194 test=7793  n_trades=65  sharpe=7.76  pnl=3358.04
+2026-07-11 23:49:50  INFO      WFA [expanding_mm_exec] CAT/DD@1h fold=fold2_exp  train=12987 test=7792  n_trades=85  sharpe=4.81  pnl=3047.12
+2026-07-11 23:49:50  INFO      WFA [expanding_mm_exec] CMS/DUK@1h fold=fold1_exp  train=5194 test=7793  n_trades=159  sharpe=6.72  pnl=3134.93
+2026-07-11 23:49:50  INFO      WFA [expanding_mm_exec] CMS/DUK@1h fold=fold2_exp  train=12987 test=7792  n_trades=12  sharpe=27.04  pnl=2142.70
+2026-07-11 23:49:50  INFO      WFA [expanding_mm_exec] FIX/MLI@1h fold=fold1_exp  train=5194 test=7793  n_trades=54  sharpe=16.54  pnl=4756.17
+2026-07-11 23:49:50  INFO      WFA [expanding_mm_exec] FIX/MLI@1h fold=fold2_exp  train=12987 test=7792  n_trades=206  sharpe=7.02  pnl=6327.15
+2026-07-11 23:49:50  INFO      WFA [expanding_mm_exec] DE/DD@1h fold=fold1_exp  train=5194 test=7793  n_trades=84  sharpe=3.15  pnl=1312.29
+2026-07-11 23:49:50  INFO      WFA [expanding_mm_exec] DE/DD@1h fold=fold2_exp  train=12987 test=7792  n_trades=1  sharpe=nan  pnl=393.93
+2026-07-11 23:49:50  INFO      WFA [expanding_mm_exec] DAL/DD@1h fold=fold1_exp  train=5194 test=7793  n_trades=74  sharpe=6.71  pnl=4937.57
+2026-07-11 23:49:50  INFO      WFA [expanding_mm_exec] DAL/DD@1h fold=fold2_exp  train=12987 test=7792  n_trades=6  sharpe=514.69  pnl=5309.30
+2026-07-11 23:49:50  INFO      WFA [expanding_mm_exec] EME/MLI@1h fold=fold1_exp  train=5194 test=7793  n_trades=181  sharpe=5.37  pnl=2514.75
+2026-07-11 23:49:50  INFO      WFA [expanding_mm_exec] EME/MLI@1h fold=fold2_exp  train=12987 test=7792  n_trades=266  sharpe=4.40  pnl=3655.68
+2026-07-11 23:49:51  INFO      WFA [expanding_mm_exec] EG/WRB@1h fold=fold1_exp  train=5194 test=7793  n_trades=75  sharpe=5.26  pnl=1990.47
+2026-07-11 23:49:51  INFO      WFA [expanding_mm_exec] EG/WRB@1h fold=fold2_exp  train=12987 test=7792  n_trades=1  sharpe=nan  pnl=511.48
+2026-07-11 23:49:51  INFO      WFA [expanding_mm_exec] GS/MLI@1h fold=fold1_exp  train=5194 test=7793  n_trades=7  sharpe=953.27  pnl=1849.70
+2026-07-11 23:49:51  INFO      WFA [expanding_mm_exec] GS/MLI@1h fold=fold2_exp  train=12987 test=7792  n_trades=142  sharpe=7.71  pnl=2977.20
+2026-07-11 23:49:51  INFO      WFA [expanding_mm_exec] HAL/NOV@1h fold=fold1_exp  train=5194 test=7793  n_trades=2  sharpe=84.93  pnl=297.33
+2026-07-11 23:49:51  INFO      WFA [expanding_mm_exec] HAL/NOV@1h fold=fold2_exp  train=12987 test=7792  n_trades=13  sharpe=20.51  pnl=985.54
+2026-07-11 23:49:51  INFO      WFA [expanding_mm_exec] MET/TMHC@1h fold=fold1_exp  train=5194 test=7793  n_trades=27  sharpe=21.80  pnl=2317.97
+2026-07-11 23:49:51  INFO      WFA [expanding_mm_exec] MET/TMHC@1h fold=fold2_exp  train=12987 test=7792  n_trades=63  sharpe=10.49  pnl=1753.48
+2026-07-11 23:49:51  INFO      WFA [expanding_mm_exec] PFG/STLD@1h fold=fold1_exp  train=5194 test=7793  n_trades=20  sharpe=13.43  pnl=1798.95
+2026-07-11 23:49:51  INFO      WFA [expanding_mm_exec] PFG/STLD@1h fold=fold2_exp  train=12987 test=7792  n_trades=3  sharpe=5413.28  pnl=1078.19
+2026-07-11 23:49:51  INFO      WFA [expanding_mm_exec] VRT/MTZ@1h fold=fold1_exp  train=5194 test=7793  n_trades=180  sharpe=6.02  pnl=4956.81
+2026-07-11 23:49:52  INFO      WFA [expanding_mm_exec] VRT/MTZ@1h fold=fold2_exp  train=12987 test=7792  n_trades=66  sharpe=5.41  pnl=2444.24
+2026-07-11 23:49:52  INFO      WFA [expanding_mm_exec] QQQ/MLI@1h fold=fold1_exp  train=5194 test=7793  n_trades=138  sharpe=5.59  pnl=1550.52
+2026-07-11 23:49:52  INFO      WFA [expanding_mm_exec] QQQ/MLI@1h fold=fold2_exp  train=12987 test=7792  n_trades=7  sharpe=2588.68  pnl=1783.00
+2026-07-11 23:49:52  INFO      WFA [expanding_mm_exec] FHN/MLI@1h fold=fold1_exp  train=5194 test=7793  n_trades=5  sharpe=2810.50  pnl=1887.74
+2026-07-11 23:49:52  INFO      WFA [expanding_mm_exec] FHN/MLI@1h fold=fold2_exp  train=12987 test=7792  n_trades=24  sharpe=19.21  pnl=2537.11
+2026-07-11 23:49:52  INFO      WFA [expanding_mm_exec] MTSI/WCC@1h fold=fold1_exp  train=5194 test=7793  n_trades=1  sharpe=nan  pnl=755.16
+2026-07-11 23:49:52  INFO      WFA [expanding_mm_exec] MTSI/WCC@1h fold=fold2_exp  train=12987 test=7792  n_trades=9  sharpe=19.19  pnl=2497.36
+2026-07-11 23:49:52  INFO      WFA [expanding_mm_exec] UMBF/FHB@1h fold=fold1_exp  train=5194 test=7793  n_trades=71  sharpe=7.89  pnl=1431.61
+2026-07-11 23:49:52  INFO      WFA [expanding_mm_exec] UMBF/FHB@1h fold=fold2_exp  train=12987 test=7792  n_trades=82  sharpe=7.13  pnl=1741.09
+2026-07-11 23:49:52  INFO      WFA [expanding_mm_exec] KVUE/KMB@3m fold=fold1_exp  train=2714 test=4071  n_trades=20  sharpe=60.53  pnl=8060.45
+2026-07-11 23:49:52  INFO      WFA [expanding_mm_exec] KVUE/KMB@3m fold=fold2_exp  train=6785 test=4071  n_trades=81  sharpe=23.79  pnl=8883.42
+2026-07-11 23:49:53  INFO      WFA [expanding/mm_exec] 3535 trades | Sharpe=4.5122 | PnL=147412.79
+2026-07-11 23:49:53  INFO      
+--- WFA [expanding] strategy=storm_all ---
+2026-07-11 23:49:53  INFO      WFA [expanding_storm_all] LNT/VTR@1h fold=fold1_exp  train=5194 test=7793  n_trades=133  sharpe=7.54  pnl=247.61
+2026-07-11 23:49:53  INFO      WFA [expanding_storm_all] LNT/VTR@1h fold=fold2_exp  train=12987 test=7792  n_trades=34  sharpe=11.35  pnl=158.52
+2026-07-11 23:49:53  INFO      WFA [expanding_storm_all] LNT/WELL@1h fold=fold1_exp  train=5194 test=7793  n_trades=108  sharpe=8.36  pnl=165.57
+2026-07-11 23:49:53  INFO      WFA [expanding_storm_all] LNT/WELL@1h fold=fold2_exp  train=12987 test=7792  n_trades=6  sharpe=86.62  pnl=90.81
+2026-07-11 23:49:53  INFO      WFA [expanding_storm_all] AXP/CRWD@1h fold=fold1_exp  train=5194 test=7793  n_trades=3  sharpe=1642.94  pnl=9.58
+2026-07-11 23:49:53  INFO      WFA [expanding_storm_all] AXP/CRWD@1h fold=fold2_exp  train=12987 test=7792  n_trades=33  sharpe=20.54  pnl=31.79
+2026-07-11 23:49:53  INFO      WFA [expanding_storm_all] AME/DD@1h fold=fold1_exp  train=5194 test=7793  n_trades=44  sharpe=16.30  pnl=389.91
+2026-07-11 23:49:53  INFO      WFA [expanding_storm_all] AME/DD@1h fold=fold2_exp  train=12987 test=7792  n_trades=0  sharpe=nan  pnl=0.00
+2026-07-11 23:49:53  INFO      WFA [expanding_storm_all] AME/MAR@1h fold=fold1_exp  train=5194 test=7793  n_trades=122  sharpe=9.43  pnl=376.04
+2026-07-11 23:49:54  INFO      WFA [expanding_storm_all] AME/MAR@1h fold=fold2_exp  train=12987 test=7792  n_trades=26  sharpe=14.09  pnl=208.47
+2026-07-11 23:49:54  INFO      WFA [expanding_storm_all] AMAT/DD@1h fold=fold1_exp  train=5194 test=7793  n_trades=111  sharpe=12.62  pnl=364.94
+2026-07-11 23:49:54  INFO      WFA [expanding_storm_all] AMAT/DD@1h fold=fold2_exp  train=12987 test=7792  n_trades=26  sharpe=10.67  pnl=113.12
+2026-07-11 23:49:54  INFO      WFA [expanding_storm_all] APP/CRWD@1h fold=fold1_exp  train=5194 test=7793  n_trades=95  sharpe=6.28  pnl=408.63
+2026-07-11 23:49:54  INFO      WFA [expanding_storm_all] APP/CRWD@1h fold=fold2_exp  train=12987 test=7792  n_trades=66  sharpe=7.88  pnl=443.70
+2026-07-11 23:49:54  INFO      WFA [expanding_storm_all] AVGO/CRWD@1h fold=fold1_exp  train=5194 test=7793  n_trades=96  sharpe=8.91  pnl=218.04
+2026-07-11 23:49:54  INFO      WFA [expanding_storm_all] AVGO/CRWD@1h fold=fold2_exp  train=12987 test=7792  n_trades=23  sharpe=15.53  pnl=135.80
+2026-07-11 23:49:54  INFO      WFA [expanding_storm_all] CAT/DD@1h fold=fold1_exp  train=5194 test=7793  n_trades=46  sharpe=7.96  pnl=189.90
+2026-07-11 23:49:54  INFO      WFA [expanding_storm_all] CAT/DD@1h fold=fold2_exp  train=12987 test=7792  n_trades=62  sharpe=6.38  pnl=216.60
+2026-07-11 23:49:54  INFO      WFA [expanding_storm_all] CMS/DUK@1h fold=fold1_exp  train=5194 test=7793  n_trades=114  sharpe=8.80  pnl=189.47
+2026-07-11 23:49:55  INFO      WFA [expanding_storm_all] CMS/DUK@1h fold=fold2_exp  train=12987 test=7792  n_trades=12  sharpe=27.61  pnl=134.45
+2026-07-11 23:49:55  INFO      WFA [expanding_storm_all] FIX/MLI@1h fold=fold1_exp  train=5194 test=7793  n_trades=39  sharpe=20.43  pnl=280.79
+2026-07-11 23:49:55  INFO      WFA [expanding_storm_all] FIX/MLI@1h fold=fold2_exp  train=12987 test=7792  n_trades=143  sharpe=9.30  pnl=416.35
+2026-07-11 23:49:55  INFO      WFA [expanding_storm_all] DE/DD@1h fold=fold1_exp  train=5194 test=7793  n_trades=59  sharpe=3.75  pnl=135.48
+2026-07-11 23:49:55  INFO      WFA [expanding_storm_all] DE/DD@1h fold=fold2_exp  train=12987 test=7792  n_trades=1  sharpe=nan  pnl=49.11
+2026-07-11 23:49:55  INFO      WFA [expanding_storm_all] DAL/DD@1h fold=fold1_exp  train=5194 test=7793  n_trades=56  sharpe=9.26  pnl=112.93
+2026-07-11 23:49:55  INFO      WFA [expanding_storm_all] DAL/DD@1h fold=fold2_exp  train=12987 test=7792  n_trades=6  sharpe=340.49  pnl=111.49
+2026-07-11 23:49:55  INFO      WFA [expanding_storm_all] EME/MLI@1h fold=fold1_exp  train=5194 test=7793  n_trades=124  sharpe=7.54  pnl=169.53
+2026-07-11 23:49:55  INFO      WFA [expanding_storm_all] EME/MLI@1h fold=fold2_exp  train=12987 test=7792  n_trades=181  sharpe=6.54  pnl=265.14
+2026-07-11 23:49:55  INFO      WFA [expanding_storm_all] EG/WRB@1h fold=fold1_exp  train=5194 test=7793  n_trades=52  sharpe=6.55  pnl=73.15
+2026-07-11 23:49:55  INFO      WFA [expanding_storm_all] EG/WRB@1h fold=fold2_exp  train=12987 test=7792  n_trades=1  sharpe=nan  pnl=20.46
+2026-07-11 23:49:56  INFO      WFA [expanding_storm_all] GS/MLI@1h fold=fold1_exp  train=5194 test=7793  n_trades=7  sharpe=809.96  pnl=119.58
+2026-07-11 23:49:56  INFO      WFA [expanding_storm_all] GS/MLI@1h fold=fold2_exp  train=12987 test=7792  n_trades=98  sharpe=10.13  pnl=180.52
+2026-07-11 23:49:56  INFO      WFA [expanding_storm_all] HAL/NOV@1h fold=fold1_exp  train=5194 test=7793  n_trades=2  sharpe=88.65  pnl=18.08
+2026-07-11 23:49:56  INFO      WFA [expanding_storm_all] HAL/NOV@1h fold=fold2_exp  train=12987 test=7792  n_trades=13  sharpe=20.58  pnl=55.59
+2026-07-11 23:49:56  INFO      WFA [expanding_storm_all] MET/TMHC@1h fold=fold1_exp  train=5194 test=7793  n_trades=21  sharpe=24.24  pnl=108.50
+2026-07-11 23:49:56  INFO      WFA [expanding_storm_all] MET/TMHC@1h fold=fold2_exp  train=12987 test=7792  n_trades=47  sharpe=12.61  pnl=85.72
+2026-07-11 23:49:56  INFO      WFA [expanding_storm_all] PFG/STLD@1h fold=fold1_exp  train=5194 test=7793  n_trades=18  sharpe=16.89  pnl=222.01
+2026-07-11 23:49:56  INFO      WFA [expanding_storm_all] PFG/STLD@1h fold=fold2_exp  train=12987 test=7792  n_trades=3  sharpe=1204.87  pnl=120.88
+2026-07-11 23:49:56  INFO      WFA [expanding_storm_all] VRT/MTZ@1h fold=fold1_exp  train=5194 test=7793  n_trades=122  sharpe=8.62  pnl=425.66
+2026-07-11 23:49:56  INFO      WFA [expanding_storm_all] VRT/MTZ@1h fold=fold2_exp  train=12987 test=7792  n_trades=48  sharpe=8.12  pnl=205.64
+2026-07-11 23:49:57  INFO      WFA [expanding_storm_all] QQQ/MLI@1h fold=fold1_exp  train=5194 test=7793  n_trades=95  sharpe=7.59  pnl=135.57
+2026-07-11 23:49:57  INFO      WFA [expanding_storm_all] QQQ/MLI@1h fold=fold2_exp  train=12987 test=7792  n_trades=7  sharpe=3240.47  pnl=143.07
+2026-07-11 23:49:57  INFO      WFA [expanding_storm_all] FHN/MLI@1h fold=fold1_exp  train=5194 test=7793  n_trades=5  sharpe=2026.80  pnl=114.34
+2026-07-11 23:49:57  INFO      WFA [expanding_storm_all] FHN/MLI@1h fold=fold2_exp  train=12987 test=7792  n_trades=20  sharpe=24.01  pnl=155.35
+2026-07-11 23:49:57  INFO      WFA [expanding_storm_all] MTSI/WCC@1h fold=fold1_exp  train=5194 test=7793  n_trades=1  sharpe=nan  pnl=38.24
+2026-07-11 23:49:57  INFO      WFA [expanding_storm_all] MTSI/WCC@1h fold=fold2_exp  train=12987 test=7792  n_trades=9  sharpe=22.66  pnl=147.68
+2026-07-11 23:49:57  INFO      WFA [expanding_storm_all] UMBF/FHB@1h fold=fold1_exp  train=5194 test=7793  n_trades=50  sharpe=10.76  pnl=256.61
+2026-07-11 23:49:57  INFO      WFA [expanding_storm_all] UMBF/FHB@1h fold=fold2_exp  train=12987 test=7792  n_trades=59  sharpe=11.13  pnl=374.15
+2026-07-11 23:49:57  INFO      WFA [expanding_storm_all] KVUE/KMB@3m fold=fold1_exp  train=2714 test=4071  n_trades=18  sharpe=58.78  pnl=7262.61
+2026-07-11 23:49:57  INFO      WFA [expanding_storm_all] KVUE/KMB@3m fold=fold2_exp  train=6785 test=4071  n_trades=54  sharpe=27.33  pnl=8113.80
+2026-07-11 23:49:57  INFO      WFA [expanding/storm_all] 2519 trades | Sharpe=1.3762 | PnL=24011.02
+2026-07-11 23:49:57  INFO      
+--- WFA [rolling] strategy=baseline ---
+2026-07-11 23:49:58  INFO      WFA [rolling_baseline] LNT/VTR@1h fold=fold1_roll  train=5194 test=7793  n_trades=131  sharpe=5.39  pnl=1506.97
+2026-07-11 23:49:58  INFO      WFA [rolling_baseline] LNT/VTR@1h fold=fold2_roll  train=5194 test=7793  n_trades=29  sharpe=12.27  pnl=1482.35
+2026-07-11 23:49:58  INFO      WFA [rolling_baseline] LNT/WELL@1h fold=fold1_roll  train=5194 test=7793  n_trades=46  sharpe=9.34  pnl=1998.27
+2026-07-11 23:49:58  INFO      WFA [rolling_baseline] LNT/WELL@1h fold=fold2_roll  train=5194 test=7793  n_trades=4  sharpe=3224.68  pnl=1381.04
+2026-07-11 23:49:58  INFO      WFA [rolling_baseline] AXP/CRWD@1h fold=fold1_roll  train=5194 test=7793  n_trades=1  sharpe=nan  pnl=311.28
+2026-07-11 23:49:58  INFO      WFA [rolling_baseline] AXP/CRWD@1h fold=fold2_roll  train=5194 test=7793  n_trades=0  sharpe=nan  pnl=0.00
+2026-07-11 23:49:58  INFO      WFA [rolling_baseline] AME/DD@1h fold=fold1_roll  train=5194 test=7793  n_trades=3  sharpe=2329.75  pnl=1242.11
+2026-07-11 23:49:58  INFO      WFA [rolling_baseline] AME/DD@1h fold=fold2_roll  train=5194 test=7793  n_trades=2  sharpe=1165.34  pnl=616.07
+2026-07-11 23:49:58  INFO      WFA [rolling_baseline] AME/MAR@1h fold=fold1_roll  train=5194 test=7793  n_trades=56  sharpe=9.74  pnl=1868.39
+2026-07-11 23:49:58  INFO      WFA [rolling_baseline] AME/MAR@1h fold=fold2_roll  train=5194 test=7793  n_trades=3  sharpe=999.85  pnl=1132.38
+2026-07-11 23:49:58  INFO      WFA [rolling_baseline] AMAT/DD@1h fold=fold1_roll  train=5194 test=7793  n_trades=68  sharpe=7.42  pnl=3878.25
+2026-07-11 23:49:58  INFO      WFA [rolling_baseline] AMAT/DD@1h fold=fold2_roll  train=5194 test=7793  n_trades=54  sharpe=3.12  pnl=1090.31
+2026-07-11 23:49:59  INFO      WFA [rolling_baseline] APP/CRWD@1h fold=fold1_roll  train=5194 test=7793  n_trades=119  sharpe=3.53  pnl=2518.31
+2026-07-11 23:49:59  INFO      WFA [rolling_baseline] APP/CRWD@1h fold=fold2_roll  train=5194 test=7793  n_trades=2  sharpe=33550.82  pnl=2019.65
+2026-07-11 23:49:59  INFO      WFA [rolling_baseline] AVGO/CRWD@1h fold=fold1_roll  train=5194 test=7793  n_trades=132  sharpe=3.49  pnl=1785.19
+2026-07-11 23:49:59  INFO      WFA [rolling_baseline] AVGO/CRWD@1h fold=fold2_roll  train=5194 test=7793  n_trades=112  sharpe=3.22  pnl=1782.67
+2026-07-11 23:49:59  INFO      WFA [rolling_baseline] CAT/DD@1h fold=fold1_roll  train=5194 test=7793  n_trades=28  sharpe=8.07  pnl=1640.11
+2026-07-11 23:49:59  INFO      WFA [rolling_baseline] CAT/DD@1h fold=fold2_roll  train=5194 test=7793  n_trades=104  sharpe=3.29  pnl=1764.35
+2026-07-11 23:49:59  INFO      WFA [rolling_baseline] CMS/DUK@1h fold=fold1_roll  train=5194 test=7793  n_trades=109  sharpe=8.77  pnl=3107.99
+2026-07-11 23:49:59  INFO      WFA [rolling_baseline] CMS/DUK@1h fold=fold2_roll  train=5194 test=7793  n_trades=3  sharpe=4336.99  pnl=893.83
+2026-07-11 23:49:59  INFO      WFA [rolling_baseline] FIX/MLI@1h fold=fold1_roll  train=5194 test=7793  n_trades=20  sharpe=18.62  pnl=2170.40
+2026-07-11 23:49:59  INFO      WFA [rolling_baseline] FIX/MLI@1h fold=fold2_roll  train=5194 test=7793  n_trades=0  sharpe=nan  pnl=0.00
+2026-07-11 23:49:59  INFO      WFA [rolling_baseline] DE/DD@1h fold=fold1_roll  train=5194 test=7793  n_trades=84  sharpe=2.31  pnl=964.14
+2026-07-11 23:49:59  INFO      WFA [rolling_baseline] DE/DD@1h fold=fold2_roll  train=5194 test=7793  n_trades=8  sharpe=7.45  pnl=448.71
+2026-07-11 23:50:00  INFO      WFA [rolling_baseline] DAL/DD@1h fold=fold1_roll  train=5194 test=7793  n_trades=2  sharpe=4206.52  pnl=1577.51
+2026-07-11 23:50:00  INFO      WFA [rolling_baseline] DAL/DD@1h fold=fold2_roll  train=5194 test=7793  n_trades=1  sharpe=nan  pnl=764.15
+2026-07-11 23:50:00  INFO      WFA [rolling_baseline] EME/MLI@1h fold=fold1_roll  train=5194 test=7793  n_trades=115  sharpe=2.25  pnl=595.18
+2026-07-11 23:50:00  INFO      WFA [rolling_baseline] EME/MLI@1h fold=fold2_roll  train=5194 test=7793  n_trades=1  sharpe=nan  pnl=679.01
+2026-07-11 23:50:00  INFO      WFA [rolling_baseline] EG/WRB@1h fold=fold1_roll  train=5194 test=7793  n_trades=75  sharpe=5.26  pnl=1990.47
+2026-07-11 23:50:00  INFO      WFA [rolling_baseline] EG/WRB@1h fold=fold2_roll  train=5194 test=7793  n_trades=3  sharpe=131.83  pnl=1011.57
+2026-07-11 23:50:00  INFO      WFA [rolling_baseline] GS/MLI@1h fold=fold1_roll  train=5194 test=7793  n_trades=5  sharpe=859.41  pnl=1329.09
+2026-07-11 23:50:00  INFO      WFA [rolling_baseline] GS/MLI@1h fold=fold2_roll  train=5194 test=7793  n_trades=28  sharpe=10.65  pnl=1553.02
+2026-07-11 23:50:00  INFO      WFA [rolling_baseline] HAL/NOV@1h fold=fold1_roll  train=5194 test=7793  n_trades=2  sharpe=84.64  pnl=296.35
+2026-07-11 23:50:00  INFO      WFA [rolling_baseline] HAL/NOV@1h fold=fold2_roll  train=5194 test=7793  n_trades=10  sharpe=25.07  pnl=989.76
+2026-07-11 23:50:00  INFO      WFA [rolling_baseline] MET/TMHC@1h fold=fold1_roll  train=5194 test=7793  n_trades=6  sharpe=3966.46  pnl=1573.70
+2026-07-11 23:50:00  INFO      WFA [rolling_baseline] MET/TMHC@1h fold=fold2_roll  train=5194 test=7793  n_trades=234  sharpe=-4.39  pnl=-3606.40
+2026-07-11 23:50:01  INFO      WFA [rolling_baseline] PFG/STLD@1h fold=fold1_roll  train=5194 test=7793  n_trades=19  sharpe=11.17  pnl=1422.18
+2026-07-11 23:50:01  INFO      WFA [rolling_baseline] PFG/STLD@1h fold=fold2_roll  train=5194 test=7793  n_trades=7  sharpe=12.55  pnl=540.87
+2026-07-11 23:50:01  INFO      WFA [rolling_baseline] VRT/MTZ@1h fold=fold1_roll  train=5194 test=7793  n_trades=114  sharpe=3.73  pnl=1942.11
+2026-07-11 23:50:01  INFO      WFA [rolling_baseline] VRT/MTZ@1h fold=fold2_roll  train=5194 test=7793  n_trades=95  sharpe=7.20  pnl=3421.62
+2026-07-11 23:50:01  INFO      WFA [rolling_baseline] QQQ/MLI@1h fold=fold1_roll  train=5194 test=7793  n_trades=79  sharpe=1.03  pnl=135.48
+2026-07-11 23:50:01  INFO      WFA [rolling_baseline] QQQ/MLI@1h fold=fold2_roll  train=5194 test=7793  n_trades=1  sharpe=nan  pnl=241.96
+2026-07-11 23:50:01  INFO      WFA [rolling_baseline] FHN/MLI@1h fold=fold1_roll  train=5194 test=7793  n_trades=4  sharpe=2495.03  pnl=1504.45
+2026-07-11 23:50:01  INFO      WFA [rolling_baseline] FHN/MLI@1h fold=fold2_roll  train=5194 test=7793  n_trades=3  sharpe=2238.51  pnl=1178.72
+2026-07-11 23:50:01  INFO      WFA [rolling_baseline] MTSI/WCC@1h fold=fold1_roll  train=5194 test=7793  n_trades=0  sharpe=nan  pnl=0.00
+2026-07-11 23:50:01  INFO      WFA [rolling_baseline] MTSI/WCC@1h fold=fold2_roll  train=5194 test=7793  n_trades=130  sharpe=3.78  pnl=2687.49
+2026-07-11 23:50:01  INFO      WFA [rolling_baseline] UMBF/FHB@1h fold=fold1_roll  train=5194 test=7793  n_trades=5  sharpe=5187.38  pnl=1146.61
+2026-07-11 23:50:01  INFO      WFA [rolling_baseline] UMBF/FHB@1h fold=fold2_roll  train=5194 test=7793  n_trades=4  sharpe=528.52  pnl=1267.70
+2026-07-11 23:50:02  INFO      WFA [rolling_baseline] KVUE/KMB@3m fold=fold1_roll  train=2714 test=4071  n_trades=17  sharpe=55.95  pnl=6676.08
+2026-07-11 23:50:02  INFO      WFA [rolling_baseline] KVUE/KMB@3m fold=fold2_roll  train=2714 test=4071  n_trades=0  sharpe=nan  pnl=0.00
+2026-07-11 23:50:02  INFO      WFA [rolling/baseline] 2078 trades | Sharpe=2.8320 | PnL=66521.47
+2026-07-11 23:50:02  INFO      
+--- WFA [rolling] strategy=cfrac_sizing ---
+2026-07-11 23:50:02  INFO      WFA [rolling_cfrac_sizing] LNT/VTR@1h fold=fold1_roll  train=5194 test=7793  n_trades=131  sharpe=5.39  pnl=135.63
+2026-07-11 23:50:02  INFO      WFA [rolling_cfrac_sizing] LNT/VTR@1h fold=fold2_roll  train=5194 test=7793  n_trades=29  sharpe=12.27  pnl=133.41
+2026-07-11 23:50:02  INFO      WFA [rolling_cfrac_sizing] LNT/WELL@1h fold=fold1_roll  train=5194 test=7793  n_trades=46  sharpe=9.34  pnl=79.93
+2026-07-11 23:50:02  INFO      WFA [rolling_cfrac_sizing] LNT/WELL@1h fold=fold2_roll  train=5194 test=7793  n_trades=4  sharpe=3224.64  pnl=55.24
+2026-07-11 23:50:02  INFO      WFA [rolling_cfrac_sizing] AXP/CRWD@1h fold=fold1_roll  train=5194 test=7793  n_trades=1  sharpe=nan  pnl=3.11
+2026-07-11 23:50:02  INFO      WFA [rolling_cfrac_sizing] AXP/CRWD@1h fold=fold2_roll  train=5194 test=7793  n_trades=0  sharpe=nan  pnl=0.00
+2026-07-11 23:50:02  INFO      WFA [rolling_cfrac_sizing] AME/DD@1h fold=fold1_roll  train=5194 test=7793  n_trades=3  sharpe=2329.67  pnl=99.37
+2026-07-11 23:50:02  INFO      WFA [rolling_cfrac_sizing] AME/DD@1h fold=fold2_roll  train=5194 test=7793  n_trades=2  sharpe=1165.34  pnl=49.29
+2026-07-11 23:50:02  INFO      WFA [rolling_cfrac_sizing] AME/MAR@1h fold=fold1_roll  train=5194 test=7793  n_trades=56  sharpe=9.74  pnl=168.16
+2026-07-11 23:50:03  INFO      WFA [rolling_cfrac_sizing] AME/MAR@1h fold=fold2_roll  train=5194 test=7793  n_trades=3  sharpe=999.86  pnl=101.91
+2026-07-11 23:50:03  INFO      WFA [rolling_cfrac_sizing] AMAT/DD@1h fold=fold1_roll  train=5194 test=7793  n_trades=68  sharpe=7.42  pnl=116.35
+2026-07-11 23:50:03  INFO      WFA [rolling_cfrac_sizing] AMAT/DD@1h fold=fold2_roll  train=5194 test=7793  n_trades=54  sharpe=3.12  pnl=32.71
+2026-07-11 23:50:03  INFO      WFA [rolling_cfrac_sizing] APP/CRWD@1h fold=fold1_roll  train=5194 test=7793  n_trades=119  sharpe=3.53  pnl=226.65
+2026-07-11 23:50:03  INFO      WFA [rolling_cfrac_sizing] APP/CRWD@1h fold=fold2_roll  train=5194 test=7793  n_trades=2  sharpe=33545.78  pnl=181.77
+2026-07-11 23:50:03  INFO      WFA [rolling_cfrac_sizing] AVGO/CRWD@1h fold=fold1_roll  train=5194 test=7793  n_trades=132  sharpe=3.49  pnl=89.26
+2026-07-11 23:50:03  INFO      WFA [rolling_cfrac_sizing] AVGO/CRWD@1h fold=fold2_roll  train=5194 test=7793  n_trades=112  sharpe=3.22  pnl=89.13
+2026-07-11 23:50:03  INFO      WFA [rolling_cfrac_sizing] CAT/DD@1h fold=fold1_roll  train=5194 test=7793  n_trades=28  sharpe=8.07  pnl=114.81
+2026-07-11 23:50:03  INFO      WFA [rolling_cfrac_sizing] CAT/DD@1h fold=fold2_roll  train=5194 test=7793  n_trades=104  sharpe=3.29  pnl=123.50
+2026-07-11 23:50:03  INFO      WFA [rolling_cfrac_sizing] CMS/DUK@1h fold=fold1_roll  train=5194 test=7793  n_trades=109  sharpe=8.77  pnl=186.48
+2026-07-11 23:50:03  INFO      WFA [rolling_cfrac_sizing] CMS/DUK@1h fold=fold2_roll  train=5194 test=7793  n_trades=3  sharpe=4337.06  pnl=53.63
+2026-07-11 23:50:03  INFO      WFA [rolling_cfrac_sizing] FIX/MLI@1h fold=fold1_roll  train=5194 test=7793  n_trades=20  sharpe=18.62  pnl=130.22
+2026-07-11 23:50:04  INFO      WFA [rolling_cfrac_sizing] FIX/MLI@1h fold=fold2_roll  train=5194 test=7793  n_trades=0  sharpe=nan  pnl=0.00
+2026-07-11 23:50:04  INFO      WFA [rolling_cfrac_sizing] DE/DD@1h fold=fold1_roll  train=5194 test=7793  n_trades=84  sharpe=2.31  pnl=106.06
+2026-07-11 23:50:04  INFO      WFA [rolling_cfrac_sizing] DE/DD@1h fold=fold2_roll  train=5194 test=7793  n_trades=8  sharpe=7.45  pnl=49.36
+2026-07-11 23:50:04  INFO      WFA [rolling_cfrac_sizing] DAL/DD@1h fold=fold1_roll  train=5194 test=7793  n_trades=2  sharpe=4205.88  pnl=31.55
+2026-07-11 23:50:04  INFO      WFA [rolling_cfrac_sizing] DAL/DD@1h fold=fold2_roll  train=5194 test=7793  n_trades=1  sharpe=nan  pnl=15.28
+2026-07-11 23:50:04  INFO      WFA [rolling_cfrac_sizing] EME/MLI@1h fold=fold1_roll  train=5194 test=7793  n_trades=115  sharpe=2.25  pnl=35.71
+2026-07-11 23:50:04  INFO      WFA [rolling_cfrac_sizing] EME/MLI@1h fold=fold2_roll  train=5194 test=7793  n_trades=1  sharpe=nan  pnl=40.74
+2026-07-11 23:50:04  INFO      WFA [rolling_cfrac_sizing] EG/WRB@1h fold=fold1_roll  train=5194 test=7793  n_trades=75  sharpe=5.26  pnl=79.62
+2026-07-11 23:50:04  INFO      WFA [rolling_cfrac_sizing] EG/WRB@1h fold=fold2_roll  train=5194 test=7793  n_trades=3  sharpe=131.82  pnl=40.46
+2026-07-11 23:50:04  INFO      WFA [rolling_cfrac_sizing] GS/MLI@1h fold=fold1_roll  train=5194 test=7793  n_trades=5  sharpe=859.42  pnl=79.75
+2026-07-11 23:50:04  INFO      WFA [rolling_cfrac_sizing] GS/MLI@1h fold=fold2_roll  train=5194 test=7793  n_trades=28  sharpe=10.65  pnl=93.18
+2026-07-11 23:50:04  INFO      WFA [rolling_cfrac_sizing] HAL/NOV@1h fold=fold1_roll  train=5194 test=7793  n_trades=2  sharpe=84.64  pnl=17.78
+2026-07-11 23:50:05  INFO      WFA [rolling_cfrac_sizing] HAL/NOV@1h fold=fold2_roll  train=5194 test=7793  n_trades=10  sharpe=25.07  pnl=59.39
+2026-07-11 23:50:05  INFO      WFA [rolling_cfrac_sizing] MET/TMHC@1h fold=fold1_roll  train=5194 test=7793  n_trades=6  sharpe=3966.83  pnl=78.69
+2026-07-11 23:50:05  INFO      WFA [rolling_cfrac_sizing] MET/TMHC@1h fold=fold2_roll  train=5194 test=7793  n_trades=234  sharpe=-4.39  pnl=-180.32
+2026-07-11 23:50:05  INFO      WFA [rolling_cfrac_sizing] PFG/STLD@1h fold=fold1_roll  train=5194 test=7793  n_trades=19  sharpe=11.17  pnl=156.44
+2026-07-11 23:50:05  INFO      WFA [rolling_cfrac_sizing] PFG/STLD@1h fold=fold2_roll  train=5194 test=7793  n_trades=7  sharpe=12.55  pnl=59.50
+2026-07-11 23:50:05  INFO      WFA [rolling_cfrac_sizing] VRT/MTZ@1h fold=fold1_roll  train=5194 test=7793  n_trades=114  sharpe=3.73  pnl=135.95
+2026-07-11 23:50:05  INFO      WFA [rolling_cfrac_sizing] VRT/MTZ@1h fold=fold2_roll  train=5194 test=7793  n_trades=95  sharpe=7.20  pnl=239.51
+2026-07-11 23:50:05  INFO      WFA [rolling_cfrac_sizing] QQQ/MLI@1h fold=fold1_roll  train=5194 test=7793  n_trades=79  sharpe=1.03  pnl=10.84
+2026-07-11 23:50:05  INFO      WFA [rolling_cfrac_sizing] QQQ/MLI@1h fold=fold2_roll  train=5194 test=7793  n_trades=1  sharpe=nan  pnl=19.36
+2026-07-11 23:50:05  INFO      WFA [rolling_cfrac_sizing] FHN/MLI@1h fold=fold1_roll  train=5194 test=7793  n_trades=4  sharpe=2495.09  pnl=90.27
+2026-07-11 23:50:05  INFO      WFA [rolling_cfrac_sizing] FHN/MLI@1h fold=fold2_roll  train=5194 test=7793  n_trades=3  sharpe=2238.36  pnl=70.72
+2026-07-11 23:50:05  INFO      WFA [rolling_cfrac_sizing] MTSI/WCC@1h fold=fold1_roll  train=5194 test=7793  n_trades=0  sharpe=nan  pnl=0.00
+2026-07-11 23:50:06  INFO      WFA [rolling_cfrac_sizing] MTSI/WCC@1h fold=fold2_roll  train=5194 test=7793  n_trades=130  sharpe=3.78  pnl=134.37
+2026-07-11 23:50:06  INFO      WFA [rolling_cfrac_sizing] UMBF/FHB@1h fold=fold1_roll  train=5194 test=7793  n_trades=5  sharpe=5187.69  pnl=183.46
+2026-07-11 23:50:06  INFO      WFA [rolling_cfrac_sizing] UMBF/FHB@1h fold=fold2_roll  train=5194 test=7793  n_trades=4  sharpe=528.52  pnl=202.83
+2026-07-11 23:50:06  INFO      WFA [rolling_cfrac_sizing] KVUE/KMB@3m fold=fold1_roll  train=2714 test=4071  n_trades=17  sharpe=55.95  pnl=6542.56
+2026-07-11 23:50:06  INFO      WFA [rolling_cfrac_sizing] KVUE/KMB@3m fold=fold2_roll  train=2714 test=4071  n_trades=0  sharpe=nan  pnl=0.00
+2026-07-11 23:50:06  INFO      WFA [rolling/cfrac_sizing] 2078 trades | Sharpe=1.0518 | PnL=10563.61
+2026-07-11 23:50:06  INFO      
+--- WFA [rolling] strategy=garch_stop ---
+2026-07-11 23:50:06  INFO      WFA [rolling_garch_stop] LNT/VTR@1h fold=fold1_roll  train=5194 test=7793  n_trades=131  sharpe=5.39  pnl=1506.97
+2026-07-11 23:50:06  INFO      WFA [rolling_garch_stop] LNT/VTR@1h fold=fold2_roll  train=5194 test=7793  n_trades=30  sharpe=12.17  pnl=1461.78
+2026-07-11 23:50:06  INFO      WFA [rolling_garch_stop] LNT/WELL@1h fold=fold1_roll  train=5194 test=7793  n_trades=46  sharpe=9.34  pnl=1998.27
+2026-07-11 23:50:06  INFO      WFA [rolling_garch_stop] LNT/WELL@1h fold=fold2_roll  train=5194 test=7793  n_trades=4  sharpe=3224.68  pnl=1381.04
+2026-07-11 23:50:06  INFO      WFA [rolling_garch_stop] AXP/CRWD@1h fold=fold1_roll  train=5194 test=7793  n_trades=1  sharpe=nan  pnl=311.28
+2026-07-11 23:50:06  INFO      WFA [rolling_garch_stop] AXP/CRWD@1h fold=fold2_roll  train=5194 test=7793  n_trades=0  sharpe=nan  pnl=0.00
+2026-07-11 23:50:07  INFO      WFA [rolling_garch_stop] AME/DD@1h fold=fold1_roll  train=5194 test=7793  n_trades=3  sharpe=2329.75  pnl=1242.11
+2026-07-11 23:50:07  INFO      WFA [rolling_garch_stop] AME/DD@1h fold=fold2_roll  train=5194 test=7793  n_trades=2  sharpe=1165.34  pnl=616.07
+2026-07-11 23:50:07  INFO      WFA [rolling_garch_stop] AME/MAR@1h fold=fold1_roll  train=5194 test=7793  n_trades=56  sharpe=9.74  pnl=1868.39
+2026-07-11 23:50:07  INFO      WFA [rolling_garch_stop] AME/MAR@1h fold=fold2_roll  train=5194 test=7793  n_trades=3  sharpe=999.85  pnl=1132.38
+2026-07-11 23:50:07  INFO      WFA [rolling_garch_stop] AMAT/DD@1h fold=fold1_roll  train=5194 test=7793  n_trades=68  sharpe=7.42  pnl=3878.25
+2026-07-11 23:50:07  INFO      WFA [rolling_garch_stop] AMAT/DD@1h fold=fold2_roll  train=5194 test=7793  n_trades=54  sharpe=3.12  pnl=1090.31
+2026-07-11 23:50:07  INFO      WFA [rolling_garch_stop] APP/CRWD@1h fold=fold1_roll  train=5194 test=7793  n_trades=119  sharpe=3.53  pnl=2518.31
+2026-07-11 23:50:07  INFO      WFA [rolling_garch_stop] APP/CRWD@1h fold=fold2_roll  train=5194 test=7793  n_trades=2  sharpe=33550.82  pnl=2019.65
+2026-07-11 23:50:07  INFO      WFA [rolling_garch_stop] AVGO/CRWD@1h fold=fold1_roll  train=5194 test=7793  n_trades=132  sharpe=3.49  pnl=1785.19
+2026-07-11 23:50:07  INFO      WFA [rolling_garch_stop] AVGO/CRWD@1h fold=fold2_roll  train=5194 test=7793  n_trades=112  sharpe=3.22  pnl=1782.67
+2026-07-11 23:50:07  INFO      WFA [rolling_garch_stop] CAT/DD@1h fold=fold1_roll  train=5194 test=7793  n_trades=32  sharpe=7.69  pnl=1526.40
+2026-07-11 23:50:07  INFO      WFA [rolling_garch_stop] CAT/DD@1h fold=fold2_roll  train=5194 test=7793  n_trades=104  sharpe=3.29  pnl=1764.35
+2026-07-11 23:50:08  INFO      WFA [rolling_garch_stop] CMS/DUK@1h fold=fold1_roll  train=5194 test=7793  n_trades=109  sharpe=8.77  pnl=3107.99
+2026-07-11 23:50:08  INFO      WFA [rolling_garch_stop] CMS/DUK@1h fold=fold2_roll  train=5194 test=7793  n_trades=3  sharpe=4336.99  pnl=893.83
+2026-07-11 23:50:08  INFO      WFA [rolling_garch_stop] FIX/MLI@1h fold=fold1_roll  train=5194 test=7793  n_trades=20  sharpe=18.62  pnl=2170.40
+2026-07-11 23:50:08  INFO      WFA [rolling_garch_stop] FIX/MLI@1h fold=fold2_roll  train=5194 test=7793  n_trades=0  sharpe=nan  pnl=0.00
+2026-07-11 23:50:08  INFO      WFA [rolling_garch_stop] DE/DD@1h fold=fold1_roll  train=5194 test=7793  n_trades=84  sharpe=2.31  pnl=964.14
+2026-07-11 23:50:08  INFO      WFA [rolling_garch_stop] DE/DD@1h fold=fold2_roll  train=5194 test=7793  n_trades=8  sharpe=7.45  pnl=448.71
+2026-07-11 23:50:08  INFO      WFA [rolling_garch_stop] DAL/DD@1h fold=fold1_roll  train=5194 test=7793  n_trades=2  sharpe=4206.52  pnl=1577.51
+2026-07-11 23:50:08  INFO      WFA [rolling_garch_stop] DAL/DD@1h fold=fold2_roll  train=5194 test=7793  n_trades=1  sharpe=nan  pnl=764.15
+2026-07-11 23:50:08  INFO      WFA [rolling_garch_stop] EME/MLI@1h fold=fold1_roll  train=5194 test=7793  n_trades=115  sharpe=2.25  pnl=595.18
+2026-07-11 23:50:08  INFO      WFA [rolling_garch_stop] EME/MLI@1h fold=fold2_roll  train=5194 test=7793  n_trades=1  sharpe=nan  pnl=679.01
+2026-07-11 23:50:08  INFO      WFA [rolling_garch_stop] EG/WRB@1h fold=fold1_roll  train=5194 test=7793  n_trades=75  sharpe=5.26  pnl=1990.47
+2026-07-11 23:50:08  INFO      WFA [rolling_garch_stop] EG/WRB@1h fold=fold2_roll  train=5194 test=7793  n_trades=3  sharpe=131.83  pnl=1011.57
+2026-07-11 23:50:09  INFO      WFA [rolling_garch_stop] GS/MLI@1h fold=fold1_roll  train=5194 test=7793  n_trades=5  sharpe=859.41  pnl=1329.09
+2026-07-11 23:50:09  INFO      WFA [rolling_garch_stop] GS/MLI@1h fold=fold2_roll  train=5194 test=7793  n_trades=28  sharpe=10.65  pnl=1553.02
+2026-07-11 23:50:09  INFO      WFA [rolling_garch_stop] HAL/NOV@1h fold=fold1_roll  train=5194 test=7793  n_trades=2  sharpe=84.64  pnl=296.35
+2026-07-11 23:50:09  INFO      WFA [rolling_garch_stop] HAL/NOV@1h fold=fold2_roll  train=5194 test=7793  n_trades=10  sharpe=25.07  pnl=989.76
+2026-07-11 23:50:09  INFO      WFA [rolling_garch_stop] MET/TMHC@1h fold=fold1_roll  train=5194 test=7793  n_trades=6  sharpe=3966.46  pnl=1573.70
+2026-07-11 23:50:09  INFO      WFA [rolling_garch_stop] MET/TMHC@1h fold=fold2_roll  train=5194 test=7793  n_trades=234  sharpe=-4.39  pnl=-3606.40
+2026-07-11 23:50:09  INFO      WFA [rolling_garch_stop] PFG/STLD@1h fold=fold1_roll  train=5194 test=7793  n_trades=19  sharpe=11.17  pnl=1422.18
+2026-07-11 23:50:09  INFO      WFA [rolling_garch_stop] PFG/STLD@1h fold=fold2_roll  train=5194 test=7793  n_trades=7  sharpe=12.55  pnl=540.87
+2026-07-11 23:50:09  INFO      WFA [rolling_garch_stop] VRT/MTZ@1h fold=fold1_roll  train=5194 test=7793  n_trades=114  sharpe=3.73  pnl=1942.11
+2026-07-11 23:50:09  INFO      WFA [rolling_garch_stop] VRT/MTZ@1h fold=fold2_roll  train=5194 test=7793  n_trades=95  sharpe=7.20  pnl=3421.62
+2026-07-11 23:50:09  INFO      WFA [rolling_garch_stop] QQQ/MLI@1h fold=fold1_roll  train=5194 test=7793  n_trades=79  sharpe=1.03  pnl=135.48
+2026-07-11 23:50:09  INFO      WFA [rolling_garch_stop] QQQ/MLI@1h fold=fold2_roll  train=5194 test=7793  n_trades=1  sharpe=nan  pnl=241.96
+2026-07-11 23:50:10  INFO      WFA [rolling_garch_stop] FHN/MLI@1h fold=fold1_roll  train=5194 test=7793  n_trades=4  sharpe=2495.03  pnl=1504.45
+2026-07-11 23:50:10  INFO      WFA [rolling_garch_stop] FHN/MLI@1h fold=fold2_roll  train=5194 test=7793  n_trades=3  sharpe=2238.51  pnl=1178.72
+2026-07-11 23:50:10  INFO      WFA [rolling_garch_stop] MTSI/WCC@1h fold=fold1_roll  train=5194 test=7793  n_trades=0  sharpe=nan  pnl=0.00
+2026-07-11 23:50:10  INFO      WFA [rolling_garch_stop] MTSI/WCC@1h fold=fold2_roll  train=5194 test=7793  n_trades=130  sharpe=3.78  pnl=2687.49
+2026-07-11 23:50:10  INFO      WFA [rolling_garch_stop] UMBF/FHB@1h fold=fold1_roll  train=5194 test=7793  n_trades=5  sharpe=5187.38  pnl=1146.61
+2026-07-11 23:50:10  INFO      WFA [rolling_garch_stop] UMBF/FHB@1h fold=fold2_roll  train=5194 test=7793  n_trades=4  sharpe=528.52  pnl=1267.70
+2026-07-11 23:50:10  INFO      WFA [rolling_garch_stop] KVUE/KMB@3m fold=fold1_roll  train=2714 test=4071  n_trades=17  sharpe=55.95  pnl=6676.08
+2026-07-11 23:50:10  INFO      WFA [rolling_garch_stop] KVUE/KMB@3m fold=fold2_roll  train=2714 test=4071  n_trades=0  sharpe=nan  pnl=0.00
+2026-07-11 23:50:10  INFO      WFA [rolling/garch_stop] 2083 trades | Sharpe=2.8292 | PnL=66387.19
+2026-07-11 23:50:10  INFO      
+--- WFA [rolling] strategy=session_edge ---
+2026-07-11 23:50:10  INFO      WFA [rolling_session_edge] LNT/VTR@1h fold=fold1_roll  train=5194 test=7793  n_trades=89  sharpe=6.32  pnl=1347.40
+2026-07-11 23:50:10  INFO      WFA [rolling_session_edge] LNT/VTR@1h fold=fold2_roll  train=5194 test=7793  n_trades=22  sharpe=16.09  pnl=1492.75
+2026-07-11 23:50:11  INFO      WFA [rolling_session_edge] LNT/WELL@1h fold=fold1_roll  train=5194 test=7793  n_trades=34  sharpe=12.66  pnl=2107.19
+2026-07-11 23:50:11  INFO      WFA [rolling_session_edge] LNT/WELL@1h fold=fold2_roll  train=5194 test=7793  n_trades=4  sharpe=3224.68  pnl=1381.04
+2026-07-11 23:50:11  INFO      WFA [rolling_session_edge] AXP/CRWD@1h fold=fold1_roll  train=5194 test=7793  n_trades=1  sharpe=nan  pnl=326.12
+2026-07-11 23:50:11  INFO      WFA [rolling_session_edge] AXP/CRWD@1h fold=fold2_roll  train=5194 test=7793  n_trades=0  sharpe=nan  pnl=0.00
+2026-07-11 23:50:11  INFO      WFA [rolling_session_edge] AME/DD@1h fold=fold1_roll  train=5194 test=7793  n_trades=3  sharpe=272.84  pnl=1536.78
+2026-07-11 23:50:11  INFO      WFA [rolling_session_edge] AME/DD@1h fold=fold2_roll  train=5194 test=7793  n_trades=2  sharpe=403.14  pnl=661.04
+2026-07-11 23:50:11  INFO      WFA [rolling_session_edge] AME/MAR@1h fold=fold1_roll  train=5194 test=7793  n_trades=39  sharpe=12.37  pnl=1893.76
+2026-07-11 23:50:11  INFO      WFA [rolling_session_edge] AME/MAR@1h fold=fold2_roll  train=5194 test=7793  n_trades=3  sharpe=1046.18  pnl=1136.83
+2026-07-11 23:50:11  INFO      WFA [rolling_session_edge] AMAT/DD@1h fold=fold1_roll  train=5194 test=7793  n_trades=46  sharpe=10.57  pnl=4413.36
+2026-07-11 23:50:11  INFO      WFA [rolling_session_edge] AMAT/DD@1h fold=fold2_roll  train=5194 test=7793  n_trades=38  sharpe=4.76  pnl=1387.01
+2026-07-11 23:50:11  INFO      WFA [rolling_session_edge] APP/CRWD@1h fold=fold1_roll  train=5194 test=7793  n_trades=82  sharpe=5.34  pnl=3077.77
+2026-07-11 23:50:11  INFO      WFA [rolling_session_edge] APP/CRWD@1h fold=fold2_roll  train=5194 test=7793  n_trades=2  sharpe=1834.93  pnl=2092.77
+2026-07-11 23:50:12  INFO      WFA [rolling_session_edge] AVGO/CRWD@1h fold=fold1_roll  train=5194 test=7793  n_trades=92  sharpe=4.70  pnl=1893.17
+2026-07-11 23:50:12  INFO      WFA [rolling_session_edge] AVGO/CRWD@1h fold=fold2_roll  train=5194 test=7793  n_trades=77  sharpe=5.31  pnl=2348.24
+2026-07-11 23:50:12  INFO      WFA [rolling_session_edge] CAT/DD@1h fold=fold1_roll  train=5194 test=7793  n_trades=19  sharpe=5.66  pnl=840.25
+2026-07-11 23:50:12  INFO      WFA [rolling_session_edge] CAT/DD@1h fold=fold2_roll  train=5194 test=7793  n_trades=74  sharpe=5.84  pnl=2878.45
+2026-07-11 23:50:12  INFO      WFA [rolling_session_edge] CMS/DUK@1h fold=fold1_roll  train=5194 test=7793  n_trades=80  sharpe=11.17  pnl=3017.95
+2026-07-11 23:50:12  INFO      WFA [rolling_session_edge] CMS/DUK@1h fold=fold2_roll  train=5194 test=7793  n_trades=3  sharpe=435.76  pnl=950.50
+2026-07-11 23:50:12  INFO      WFA [rolling_session_edge] FIX/MLI@1h fold=fold1_roll  train=5194 test=7793  n_trades=15  sharpe=23.30  pnl=2101.47
+2026-07-11 23:50:12  INFO      WFA [rolling_session_edge] FIX/MLI@1h fold=fold2_roll  train=5194 test=7793  n_trades=0  sharpe=nan  pnl=0.00
+2026-07-11 23:50:12  INFO      WFA [rolling_session_edge] DE/DD@1h fold=fold1_roll  train=5194 test=7793  n_trades=59  sharpe=3.01  pnl=989.43
+2026-07-11 23:50:12  INFO      WFA [rolling_session_edge] DE/DD@1h fold=fold2_roll  train=5194 test=7793  n_trades=5  sharpe=19.41  pnl=938.19
+2026-07-11 23:50:12  INFO      WFA [rolling_session_edge] DAL/DD@1h fold=fold1_roll  train=5194 test=7793  n_trades=2  sharpe=4206.52  pnl=1577.51
+2026-07-11 23:50:12  INFO      WFA [rolling_session_edge] DAL/DD@1h fold=fold2_roll  train=5194 test=7793  n_trades=1  sharpe=nan  pnl=764.15
+2026-07-11 23:50:13  INFO      WFA [rolling_session_edge] EME/MLI@1h fold=fold1_roll  train=5194 test=7793  n_trades=78  sharpe=3.41  pnl=739.85
+2026-07-11 23:50:13  INFO      WFA [rolling_session_edge] EME/MLI@1h fold=fold2_roll  train=5194 test=7793  n_trades=1  sharpe=nan  pnl=907.97
+2026-07-11 23:50:13  INFO      WFA [rolling_session_edge] EG/WRB@1h fold=fold1_roll  train=5194 test=7793  n_trades=52  sharpe=6.55  pnl=1828.77
+2026-07-11 23:50:13  INFO      WFA [rolling_session_edge] EG/WRB@1h fold=fold2_roll  train=5194 test=7793  n_trades=3  sharpe=115.38  pnl=1097.36
+2026-07-11 23:50:13  INFO      WFA [rolling_session_edge] GS/MLI@1h fold=fold1_roll  train=5194 test=7793  n_trades=5  sharpe=687.85  pnl=1416.83
+2026-07-11 23:50:13  INFO      WFA [rolling_session_edge] GS/MLI@1h fold=fold2_roll  train=5194 test=7793  n_trades=20  sharpe=13.10  pnl=1588.62
+2026-07-11 23:50:13  INFO      WFA [rolling_session_edge] HAL/NOV@1h fold=fold1_roll  train=5194 test=7793  n_trades=2  sharpe=88.33  pnl=300.41
+2026-07-11 23:50:13  INFO      WFA [rolling_session_edge] HAL/NOV@1h fold=fold2_roll  train=5194 test=7793  n_trades=10  sharpe=25.38  pnl=1012.18
+2026-07-11 23:50:13  INFO      WFA [rolling_session_edge] MET/TMHC@1h fold=fold1_roll  train=5194 test=7793  n_trades=5  sharpe=767.72  pnl=1377.10
+2026-07-11 23:50:13  INFO      WFA [rolling_session_edge] MET/TMHC@1h fold=fold2_roll  train=5194 test=7793  n_trades=159  sharpe=-1.21  pnl=-582.47
+2026-07-11 23:50:13  INFO      WFA [rolling_session_edge] PFG/STLD@1h fold=fold1_roll  train=5194 test=7793  n_trades=17  sharpe=14.44  pnl=1634.51
+2026-07-11 23:50:14  INFO      WFA [rolling_session_edge] PFG/STLD@1h fold=fold2_roll  train=5194 test=7793  n_trades=4  sharpe=42.19  pnl=870.42
+2026-07-11 23:50:14  INFO      WFA [rolling_session_edge] VRT/MTZ@1h fold=fold1_roll  train=5194 test=7793  n_trades=76  sharpe=6.09  pnl=2493.83
+2026-07-11 23:50:14  INFO      WFA [rolling_session_edge] VRT/MTZ@1h fold=fold2_roll  train=5194 test=7793  n_trades=69  sharpe=9.34  pnl=3533.72
+2026-07-11 23:50:14  INFO      WFA [rolling_session_edge] QQQ/MLI@1h fold=fold1_roll  train=5194 test=7793  n_trades=54  sharpe=1.84  pnl=189.79
+2026-07-11 23:50:14  INFO      WFA [rolling_session_edge] QQQ/MLI@1h fold=fold2_roll  train=5194 test=7793  n_trades=1  sharpe=nan  pnl=241.96
+2026-07-11 23:50:14  INFO      WFA [rolling_session_edge] FHN/MLI@1h fold=fold1_roll  train=5194 test=7793  n_trades=4  sharpe=2572.34  pnl=1508.14
+2026-07-11 23:50:14  INFO      WFA [rolling_session_edge] FHN/MLI@1h fold=fold2_roll  train=5194 test=7793  n_trades=3  sharpe=1681.24  pnl=1199.14
+2026-07-11 23:50:14  INFO      WFA [rolling_session_edge] MTSI/WCC@1h fold=fold1_roll  train=5194 test=7793  n_trades=0  sharpe=nan  pnl=0.00
+2026-07-11 23:50:14  INFO      WFA [rolling_session_edge] MTSI/WCC@1h fold=fold2_roll  train=5194 test=7793  n_trades=86  sharpe=4.80  pnl=2638.69
+2026-07-11 23:50:14  INFO      WFA [rolling_session_edge] UMBF/FHB@1h fold=fold1_roll  train=5194 test=7793  n_trades=4  sharpe=323.94  pnl=982.39
+2026-07-11 23:50:14  INFO      WFA [rolling_session_edge] UMBF/FHB@1h fold=fold2_roll  train=5194 test=7793  n_trades=4  sharpe=231.63  pnl=1348.57
+2026-07-11 23:50:14  INFO      WFA [rolling_session_edge] KVUE/KMB@3m fold=fold1_roll  train=2714 test=4071  n_trades=16  sharpe=56.50  pnl=6527.31
+2026-07-11 23:50:14  INFO      WFA [rolling_session_edge] KVUE/KMB@3m fold=fold2_roll  train=2714 test=4071  n_trades=0  sharpe=nan  pnl=0.00
+2026-07-11 23:50:15  INFO      WFA [rolling/session_edge] 1465 trades | Sharpe=3.5172 | PnL=74008.22
+2026-07-11 23:50:15  INFO      
+--- WFA [rolling] strategy=mm_exec ---
+2026-07-11 23:50:15  INFO      WFA [rolling_mm_exec] LNT/VTR@1h fold=fold1_roll  train=5194 test=7793  n_trades=193  sharpe=6.31  pnl=2900.79
+2026-07-11 23:50:15  INFO      WFA [rolling_mm_exec] LNT/VTR@1h fold=fold2_roll  train=5194 test=7793  n_trades=83  sharpe=9.17  pnl=2973.65
+2026-07-11 23:50:15  INFO      WFA [rolling_mm_exec] LNT/WELL@1h fold=fold1_roll  train=5194 test=7793  n_trades=152  sharpe=5.89  pnl=3667.21
+2026-07-11 23:50:15  INFO      WFA [rolling_mm_exec] LNT/WELL@1h fold=fold2_roll  train=5194 test=7793  n_trades=53  sharpe=14.42  pnl=3003.03
+2026-07-11 23:50:15  INFO      WFA [rolling_mm_exec] AXP/CRWD@1h fold=fold1_roll  train=5194 test=7793  n_trades=3  sharpe=5887.45  pnl=927.18
+2026-07-11 23:50:15  INFO      WFA [rolling_mm_exec] AXP/CRWD@1h fold=fold2_roll  train=5194 test=7793  n_trades=6  sharpe=567.51  pnl=2163.75
+2026-07-11 23:50:15  INFO      WFA [rolling_mm_exec] AME/DD@1h fold=fold1_roll  train=5194 test=7793  n_trades=63  sharpe=11.91  pnl=4031.36
+2026-07-11 23:50:15  INFO      WFA [rolling_mm_exec] AME/DD@1h fold=fold2_roll  train=5194 test=7793  n_trades=32  sharpe=11.36  pnl=1627.10
+2026-07-11 23:50:15  INFO      WFA [rolling_mm_exec] AME/MAR@1h fold=fold1_roll  train=5194 test=7793  n_trades=174  sharpe=6.94  pnl=3798.65
+2026-07-11 23:50:16  INFO      WFA [rolling_mm_exec] AME/MAR@1h fold=fold2_roll  train=5194 test=7793  n_trades=102  sharpe=6.42  pnl=2404.74
+2026-07-11 23:50:16  INFO      WFA [rolling_mm_exec] AMAT/DD@1h fold=fold1_roll  train=5194 test=7793  n_trades=158  sharpe=8.86  pnl=10732.23
+2026-07-11 23:50:16  INFO      WFA [rolling_mm_exec] AMAT/DD@1h fold=fold2_roll  train=5194 test=7793  n_trades=179  sharpe=4.24  pnl=4250.70
+2026-07-11 23:50:16  INFO      WFA [rolling_mm_exec] APP/CRWD@1h fold=fold1_roll  train=5194 test=7793  n_trades=136  sharpe=4.59  pnl=4063.39
+2026-07-11 23:50:16  INFO      WFA [rolling_mm_exec] APP/CRWD@1h fold=fold2_roll  train=5194 test=7793  n_trades=3  sharpe=6269.21  pnl=3046.75
+2026-07-11 23:50:16  INFO      WFA [rolling_mm_exec] AVGO/CRWD@1h fold=fold1_roll  train=5194 test=7793  n_trades=136  sharpe=6.72  pnl=3855.41
+2026-07-11 23:50:16  INFO      WFA [rolling_mm_exec] AVGO/CRWD@1h fold=fold2_roll  train=5194 test=7793  n_trades=127  sharpe=6.15  pnl=4324.92
+2026-07-11 23:50:16  INFO      WFA [rolling_mm_exec] CAT/DD@1h fold=fold1_roll  train=5194 test=7793  n_trades=65  sharpe=7.76  pnl=3358.04
+2026-07-11 23:50:16  INFO      WFA [rolling_mm_exec] CAT/DD@1h fold=fold2_roll  train=5194 test=7793  n_trades=207  sharpe=3.21  pnl=3167.83
+2026-07-11 23:50:16  INFO      WFA [rolling_mm_exec] CMS/DUK@1h fold=fold1_roll  train=5194 test=7793  n_trades=159  sharpe=6.72  pnl=3134.93
+2026-07-11 23:50:16  INFO      WFA [rolling_mm_exec] CMS/DUK@1h fold=fold2_roll  train=5194 test=7793  n_trades=35  sharpe=10.97  pnl=1387.53
+2026-07-11 23:50:17  INFO      WFA [rolling_mm_exec] FIX/MLI@1h fold=fold1_roll  train=5194 test=7793  n_trades=54  sharpe=16.54  pnl=4756.17
+2026-07-11 23:50:17  INFO      WFA [rolling_mm_exec] FIX/MLI@1h fold=fold2_roll  train=5194 test=7793  n_trades=1  sharpe=nan  pnl=963.96
+2026-07-11 23:50:17  INFO      WFA [rolling_mm_exec] DE/DD@1h fold=fold1_roll  train=5194 test=7793  n_trades=84  sharpe=3.15  pnl=1312.29
+2026-07-11 23:50:17  INFO      WFA [rolling_mm_exec] DE/DD@1h fold=fold2_roll  train=5194 test=7793  n_trades=111  sharpe=6.89  pnl=3307.46
+2026-07-11 23:50:17  INFO      WFA [rolling_mm_exec] DAL/DD@1h fold=fold1_roll  train=5194 test=7793  n_trades=74  sharpe=6.71  pnl=4937.57
+2026-07-11 23:50:17  INFO      WFA [rolling_mm_exec] DAL/DD@1h fold=fold2_roll  train=5194 test=7793  n_trades=5  sharpe=8278.92  pnl=3861.71
+2026-07-11 23:50:17  INFO      WFA [rolling_mm_exec] EME/MLI@1h fold=fold1_roll  train=5194 test=7793  n_trades=181  sharpe=5.37  pnl=2514.75
+2026-07-11 23:50:17  INFO      WFA [rolling_mm_exec] EME/MLI@1h fold=fold2_roll  train=5194 test=7793  n_trades=91  sharpe=4.24  pnl=1744.40
+2026-07-11 23:50:17  INFO      WFA [rolling_mm_exec] EG/WRB@1h fold=fold1_roll  train=5194 test=7793  n_trades=75  sharpe=5.26  pnl=1990.47
+2026-07-11 23:50:17  INFO      WFA [rolling_mm_exec] EG/WRB@1h fold=fold2_roll  train=5194 test=7793  n_trades=3  sharpe=131.83  pnl=1011.57
+2026-07-11 23:50:17  INFO      WFA [rolling_mm_exec] GS/MLI@1h fold=fold1_roll  train=5194 test=7793  n_trades=7  sharpe=953.27  pnl=1849.70
+2026-07-11 23:50:18  INFO      WFA [rolling_mm_exec] GS/MLI@1h fold=fold2_roll  train=5194 test=7793  n_trades=30  sharpe=14.79  pnl=2437.54
+2026-07-11 23:50:18  INFO      WFA [rolling_mm_exec] HAL/NOV@1h fold=fold1_roll  train=5194 test=7793  n_trades=2  sharpe=84.93  pnl=297.33
+2026-07-11 23:50:18  INFO      WFA [rolling_mm_exec] HAL/NOV@1h fold=fold2_roll  train=5194 test=7793  n_trades=11  sharpe=28.41  pnl=1193.37
+2026-07-11 23:50:18  INFO      WFA [rolling_mm_exec] MET/TMHC@1h fold=fold1_roll  train=5194 test=7793  n_trades=27  sharpe=21.80  pnl=2317.97
+2026-07-11 23:50:18  INFO      WFA [rolling_mm_exec] MET/TMHC@1h fold=fold2_roll  train=5194 test=7793  n_trades=336  sharpe=1.29  pnl=2061.42
+2026-07-11 23:50:18  INFO      WFA [rolling_mm_exec] PFG/STLD@1h fold=fold1_roll  train=5194 test=7793  n_trades=20  sharpe=13.43  pnl=1798.95
+2026-07-11 23:50:18  INFO      WFA [rolling_mm_exec] PFG/STLD@1h fold=fold2_roll  train=5194 test=7793  n_trades=39  sharpe=15.06  pnl=2423.55
+2026-07-11 23:50:18  INFO      WFA [rolling_mm_exec] VRT/MTZ@1h fold=fold1_roll  train=5194 test=7793  n_trades=180  sharpe=6.02  pnl=4956.81
+2026-07-11 23:50:18  INFO      WFA [rolling_mm_exec] VRT/MTZ@1h fold=fold2_roll  train=5194 test=7793  n_trades=95  sharpe=7.80  pnl=3712.31
+2026-07-11 23:50:18  INFO      WFA [rolling_mm_exec] QQQ/MLI@1h fold=fold1_roll  train=5194 test=7793  n_trades=138  sharpe=5.59  pnl=1550.52
+2026-07-11 23:50:18  INFO      WFA [rolling_mm_exec] QQQ/MLI@1h fold=fold2_roll  train=5194 test=7793  n_trades=15  sharpe=30.12  pnl=1984.65
+2026-07-11 23:50:19  INFO      WFA [rolling_mm_exec] FHN/MLI@1h fold=fold1_roll  train=5194 test=7793  n_trades=5  sharpe=2810.50  pnl=1887.74
+2026-07-11 23:50:19  INFO      WFA [rolling_mm_exec] FHN/MLI@1h fold=fold2_roll  train=5194 test=7793  n_trades=40  sharpe=12.37  pnl=2232.95
+2026-07-11 23:50:19  INFO      WFA [rolling_mm_exec] MTSI/WCC@1h fold=fold1_roll  train=5194 test=7793  n_trades=1  sharpe=nan  pnl=755.16
+2026-07-11 23:50:19  INFO      WFA [rolling_mm_exec] MTSI/WCC@1h fold=fold2_roll  train=5194 test=7793  n_trades=137  sharpe=5.75  pnl=4827.62
+2026-07-11 23:50:19  INFO      WFA [rolling_mm_exec] UMBF/FHB@1h fold=fold1_roll  train=5194 test=7793  n_trades=71  sharpe=7.89  pnl=1431.61
+2026-07-11 23:50:19  INFO      WFA [rolling_mm_exec] UMBF/FHB@1h fold=fold2_roll  train=5194 test=7793  n_trades=7  sharpe=511.43  pnl=2228.60
+2026-07-11 23:50:19  INFO      WFA [rolling_mm_exec] KVUE/KMB@3m fold=fold1_roll  train=2714 test=4071  n_trades=20  sharpe=60.53  pnl=8060.45
+2026-07-11 23:50:19  INFO      WFA [rolling_mm_exec] KVUE/KMB@3m fold=fold2_roll  train=2714 test=4071  n_trades=0  sharpe=nan  pnl=0.00
+2026-07-11 23:50:19  INFO      WFA [rolling/mm_exec] 3926 trades | Sharpe=4.3451 | PnL=143227.82
+2026-07-11 23:50:19  INFO      
+--- WFA [rolling] strategy=storm_all ---
+2026-07-11 23:50:19  INFO      WFA [rolling_storm_all] LNT/VTR@1h fold=fold1_roll  train=5194 test=7793  n_trades=133  sharpe=7.54  pnl=247.61
+2026-07-11 23:50:20  INFO      WFA [rolling_storm_all] LNT/VTR@1h fold=fold2_roll  train=5194 test=7793  n_trades=62  sharpe=15.22  pnl=332.35
+2026-07-11 23:50:20  INFO      WFA [rolling_storm_all] LNT/WELL@1h fold=fold1_roll  train=5194 test=7793  n_trades=108  sharpe=8.36  pnl=165.57
+2026-07-11 23:50:20  INFO      WFA [rolling_storm_all] LNT/WELL@1h fold=fold2_roll  train=5194 test=7793  n_trades=39  sharpe=17.42  pnl=121.87
+2026-07-11 23:50:20  INFO      WFA [rolling_storm_all] AXP/CRWD@1h fold=fold1_roll  train=5194 test=7793  n_trades=3  sharpe=1642.94  pnl=9.58
+2026-07-11 23:50:20  INFO      WFA [rolling_storm_all] AXP/CRWD@1h fold=fold2_roll  train=5194 test=7793  n_trades=6  sharpe=217.66  pnl=23.31
+2026-07-11 23:50:20  INFO      WFA [rolling_storm_all] AME/DD@1h fold=fold1_roll  train=5194 test=7793  n_trades=44  sharpe=16.30  pnl=389.91
+2026-07-11 23:50:20  INFO      WFA [rolling_storm_all] AME/DD@1h fold=fold2_roll  train=5194 test=7793  n_trades=25  sharpe=18.34  pnl=150.36
+2026-07-11 23:50:20  INFO      WFA [rolling_storm_all] AME/MAR@1h fold=fold1_roll  train=5194 test=7793  n_trades=122  sharpe=9.43  pnl=376.04
+2026-07-11 23:50:20  INFO      WFA [rolling_storm_all] AME/MAR@1h fold=fold2_roll  train=5194 test=7793  n_trades=71  sharpe=8.54  pnl=238.20
+2026-07-11 23:50:20  INFO      WFA [rolling_storm_all] AMAT/DD@1h fold=fold1_roll  train=5194 test=7793  n_trades=111  sharpe=12.62  pnl=364.94
+2026-07-11 23:50:21  INFO      WFA [rolling_storm_all] AMAT/DD@1h fold=fold2_roll  train=5194 test=7793  n_trades=124  sharpe=5.81  pnl=141.54
+2026-07-11 23:50:21  INFO      WFA [rolling_storm_all] APP/CRWD@1h fold=fold1_roll  train=5194 test=7793  n_trades=95  sharpe=6.28  pnl=408.63
+2026-07-11 23:50:21  INFO      WFA [rolling_storm_all] APP/CRWD@1h fold=fold2_roll  train=5194 test=7793  n_trades=3  sharpe=229.59  pnl=322.96
+2026-07-11 23:50:21  INFO      WFA [rolling_storm_all] AVGO/CRWD@1h fold=fold1_roll  train=5194 test=7793  n_trades=96  sharpe=8.91  pnl=218.04
+2026-07-11 23:50:21  INFO      WFA [rolling_storm_all] AVGO/CRWD@1h fold=fold2_roll  train=5194 test=7793  n_trades=89  sharpe=8.81  pnl=247.69
+2026-07-11 23:50:21  INFO      WFA [rolling_storm_all] CAT/DD@1h fold=fold1_roll  train=5194 test=7793  n_trades=46  sharpe=7.96  pnl=189.90
+2026-07-11 23:50:21  INFO      WFA [rolling_storm_all] CAT/DD@1h fold=fold2_roll  train=5194 test=7793  n_trades=145  sharpe=5.07  pnl=305.70
+2026-07-11 23:50:21  INFO      WFA [rolling_storm_all] CMS/DUK@1h fold=fold1_roll  train=5194 test=7793  n_trades=114  sharpe=8.80  pnl=189.47
+2026-07-11 23:50:21  INFO      WFA [rolling_storm_all] CMS/DUK@1h fold=fold2_roll  train=5194 test=7793  n_trades=25  sharpe=14.56  pnl=93.71
+2026-07-11 23:50:21  INFO      WFA [rolling_storm_all] FIX/MLI@1h fold=fold1_roll  train=5194 test=7793  n_trades=39  sharpe=20.43  pnl=280.79
+2026-07-11 23:50:21  INFO      WFA [rolling_storm_all] FIX/MLI@1h fold=fold2_roll  train=5194 test=7793  n_trades=1  sharpe=nan  pnl=57.84
+2026-07-11 23:50:22  INFO      WFA [rolling_storm_all] DE/DD@1h fold=fold1_roll  train=5194 test=7793  n_trades=59  sharpe=3.75  pnl=135.48
+2026-07-11 23:50:22  INFO      WFA [rolling_storm_all] DE/DD@1h fold=fold2_roll  train=5194 test=7793  n_trades=77  sharpe=10.28  pnl=441.33
+2026-07-11 23:50:22  INFO      WFA [rolling_storm_all] DAL/DD@1h fold=fold1_roll  train=5194 test=7793  n_trades=56  sharpe=9.26  pnl=112.93
+2026-07-11 23:50:22  INFO      WFA [rolling_storm_all] DAL/DD@1h fold=fold2_roll  train=5194 test=7793  n_trades=5  sharpe=604.93  pnl=80.94
+2026-07-11 23:50:22  INFO      WFA [rolling_storm_all] EME/MLI@1h fold=fold1_roll  train=5194 test=7793  n_trades=124  sharpe=7.54  pnl=169.53
+2026-07-11 23:50:22  INFO      WFA [rolling_storm_all] EME/MLI@1h fold=fold2_roll  train=5194 test=7793  n_trades=61  sharpe=5.93  pnl=127.90
+2026-07-11 23:50:22  INFO      WFA [rolling_storm_all] EG/WRB@1h fold=fold1_roll  train=5194 test=7793  n_trades=52  sharpe=6.55  pnl=73.15
+2026-07-11 23:50:22  INFO      WFA [rolling_storm_all] EG/WRB@1h fold=fold2_roll  train=5194 test=7793  n_trades=3  sharpe=115.38  pnl=43.89
+2026-07-11 23:50:22  INFO      WFA [rolling_storm_all] GS/MLI@1h fold=fold1_roll  train=5194 test=7793  n_trades=7  sharpe=809.96  pnl=119.58
+2026-07-11 23:50:22  INFO      WFA [rolling_storm_all] GS/MLI@1h fold=fold2_roll  train=5194 test=7793  n_trades=22  sharpe=17.88  pnl=147.39
+2026-07-11 23:50:23  INFO      WFA [rolling_storm_all] HAL/NOV@1h fold=fold1_roll  train=5194 test=7793  n_trades=2  sharpe=88.65  pnl=18.08
+2026-07-11 23:50:23  INFO      WFA [rolling_storm_all] HAL/NOV@1h fold=fold2_roll  train=5194 test=7793  n_trades=11  sharpe=29.20  pnl=76.16
+2026-07-11 23:50:23  INFO      WFA [rolling_storm_all] MET/TMHC@1h fold=fold1_roll  train=5194 test=7793  n_trades=21  sharpe=24.24  pnl=108.50
+2026-07-11 23:50:23  INFO      WFA [rolling_storm_all] MET/TMHC@1h fold=fold2_roll  train=5194 test=7793  n_trades=228  sharpe=4.13  pnl=248.66
+2026-07-11 23:50:23  INFO      WFA [rolling_storm_all] PFG/STLD@1h fold=fold1_roll  train=5194 test=7793  n_trades=18  sharpe=16.89  pnl=222.01
+2026-07-11 23:50:23  INFO      WFA [rolling_storm_all] PFG/STLD@1h fold=fold2_roll  train=5194 test=7793  n_trades=27  sharpe=22.80  pnl=287.10
+2026-07-11 23:50:23  INFO      WFA [rolling_storm_all] VRT/MTZ@1h fold=fold1_roll  train=5194 test=7793  n_trades=122  sharpe=8.62  pnl=425.66
+2026-07-11 23:50:23  INFO      WFA [rolling_storm_all] VRT/MTZ@1h fold=fold2_roll  train=5194 test=7793  n_trades=69  sharpe=10.12  pnl=280.95
+2026-07-11 23:50:23  INFO      WFA [rolling_storm_all] QQQ/MLI@1h fold=fold1_roll  train=5194 test=7793  n_trades=95  sharpe=7.59  pnl=135.57
+2026-07-11 23:50:23  INFO      WFA [rolling_storm_all] QQQ/MLI@1h fold=fold2_roll  train=5194 test=7793  n_trades=14  sharpe=32.43  pnl=165.71
+2026-07-11 23:50:24  INFO      WFA [rolling_storm_all] FHN/MLI@1h fold=fold1_roll  train=5194 test=7793  n_trades=5  sharpe=2026.80  pnl=114.34
+2026-07-11 23:50:24  INFO      WFA [rolling_storm_all] FHN/MLI@1h fold=fold2_roll  train=5194 test=7793  n_trades=28  sharpe=15.53  pnl=137.45
+2026-07-11 23:50:24  INFO      WFA [rolling_storm_all] MTSI/WCC@1h fold=fold1_roll  train=5194 test=7793  n_trades=1  sharpe=nan  pnl=38.24
+2026-07-11 23:50:24  INFO      WFA [rolling_storm_all] MTSI/WCC@1h fold=fold2_roll  train=5194 test=7793  n_trades=93  sharpe=7.85  pnl=265.19
+2026-07-11 23:50:24  INFO      WFA [rolling_storm_all] UMBF/FHB@1h fold=fold1_roll  train=5194 test=7793  n_trades=50  sharpe=10.76  pnl=256.61
+2026-07-11 23:50:24  INFO      WFA [rolling_storm_all] UMBF/FHB@1h fold=fold2_roll  train=5194 test=7793  n_trades=7  sharpe=285.06  pnl=371.68
+2026-07-11 23:50:24  INFO      WFA [rolling_storm_all] KVUE/KMB@3m fold=fold1_roll  train=2714 test=4071  n_trades=18  sharpe=58.78  pnl=7262.61
+2026-07-11 23:50:24  INFO      WFA [rolling_storm_all] KVUE/KMB@3m fold=fold2_roll  train=2714 test=4071  n_trades=0  sharpe=nan  pnl=0.00
+2026-07-11 23:50:24  INFO      WFA [rolling/storm_all] 2776 trades | Sharpe=1.5113 | PnL=16742.71
+2026-07-11 23:50:24  INFO      
+WFA complete in 0.9 min. Outputs in C:\Users\RossW\Projects\CAMARF\output\backtest
+
+=== WFA × STRATEGY COMPARISON ===
+             n_trades_total         sharpe_portfolio         total_pnl_portfolio           
+wfa_variant       expanding rolling        expanding rolling           expanding    rolling
+strategy                                                                                   
+baseline               1962    2078            3.288   2.832            73883.53   66521.47
+cfrac_sizing           1962    2078            1.146   1.052            11539.01   10563.61
+garch_stop             1966    2083            3.286   2.829            73769.82   66387.19
+mm_exec                3535    3926            4.512   4.345           147412.79  143227.82
+session_edge           1396    1465            3.628   3.517            78470.65   74008.22
+storm_all              2519    2776            1.376   1.511            24011.02   16742.71
+
+=== FOLD-LEVEL AVERAGES (baseline only) ===
+
+expanding:
+           n_trades   sharpe  total_pnl  win_rate
+fold                                             
+fold1_exp    51.667  838.490   1799.192     0.539
+fold2_exp    31.391  651.047   1334.909     0.605
+
+rolling:
+            n_trades    sharpe  total_pnl  win_rate
+fold                                               
+fold1_roll    51.667   838.490   1799.192     0.539
+fold2_roll    38.091  2434.776   1060.947     0.713
+EXIT:0

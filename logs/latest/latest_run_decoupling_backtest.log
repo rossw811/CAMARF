@@ -1,0 +1,14 @@
+19:09:35 INFO  === decoupling_backtest.py: backtest the re-qualified pairs on their post-break window ===
+19:09:35 INFO  2 re-qualified pairs to build and backtest
+19:09:38 INFO    SPY/VOO@1m: 36 trades, Sharpe=-503.068, PnL=-58.80, WR=8%, HL=59.0, coint_frac=nan
+19:09:39 INFO    SPY/VOO@2m: 13 trades, Sharpe=-1481.986, PnL=-25.50, WR=0%, HL=69.9, coint_frac=nan
+19:09:39 INFO  
+--- Result: 2/2 re-qualified pairs generated trades; 0/2 had positive Sharpe ---
+19:09:39 INFO  
+symbol_a symbol_b tf_label break_date  n_post_settling_bars  half_life_rolling  coint_fraction_rolling  n_trades     sharpe  total_pnl  win_rate
+     SPY      VOO       1m 2026-07-28                  3353          59.000519                     NaN        36  -503.0680      -58.8    0.0833
+     SPY      VOO       2m 2026-08-10                   855          69.928565                     NaN        13 -1481.9858      -25.5    0.0000
+19:09:39 INFO  Saved -> /home/rw/CAMARF/output/research/decoupling_backtest.parquet
+19:09:39 INFO  This is IS-only (no holdout split — too little post-break history to split further for most pairs). A positive result here is evidence for the live-pipeline wiring decision, not itself an OOS-validated claim.
+19:09:39 INFO  ============================================================
+19:09:39 INFO  decoupling_backtest.py complete (0.1 min)

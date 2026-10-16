@@ -1,0 +1,14 @@
+11:59:58 INFO  === wrds_universal_lead_lag_scan.py [whole-sample]: lead-lag correlation as a PAIR-DISCOVERY methodology across the FULL WRDS universe (not just already-confirmed pairs) ===
+2026-08-04 11:59:58  INFO      === wrds_universal_lead_lag_scan.py [whole-sample]: lead-lag correlation as a PAIR-DISCOVERY methodology across the FULL WRDS universe (not just already-confirmed pairs) ===
+2026-08-04 12:01:06  INFO      Loaded 5846 symbols from output/cache/wrds/: 2843 total-return-adjusted (CRSP), 3003 split-only-adjusted (Compustat Global, disclosed)
+12:02:23 INFO  5762 symbols, 16,597,441 unordered pairs in the full combinatorial universe
+2026-08-04 12:02:23  INFO      5762 symbols, 16,597,441 unordered pairs in the full combinatorial universe
+2026-08-04 12:04:21  DEBUG       Stage 0 lag=-10 done (101.7s elapsed)
+2026-08-04 12:06:04  DEBUG       Stage 0 lag=-9 done (204.9s elapsed)
+2026-08-04 12:07:48  DEBUG       Stage 0 lag=-8 done (308.3s elapsed)
+2026-08-04 12:09:28  DEBUG       Stage 0 lag=-7 done (408.3s elapsed)
+2026-08-04 12:11:05  DEBUG       Stage 0 lag=-6 done (505.3s elapsed)
+2026-08-04 12:12:47  DEBUG       Stage 0 lag=-5 done (607.3s elapsed)
+2026-08-04 12:14:31  DEBUG       Stage 0 lag=-4 done (711.8s elapsed)
+2026-08-04 12:16:15  DEBUG       Stage 0 lag=-3 done (815.7s elapsed)
+2026-08-04 12:18:01  DEBUG       Stage 0 lag=-2 done (921.2s elapsed)

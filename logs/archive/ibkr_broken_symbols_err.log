@@ -1,0 +1,39 @@
+2026-07-14 14:52:56  INFO      CAMARF  —  data_ibkr.py  —  IBKR Supplemental Pipeline
+2026-07-14 14:52:56  INFO      Primary yfinance cache is untouched by this script.
+2026-07-14 14:52:56  INFO      User-specified symbols: ['LNT', 'VTR', 'WELL', 'AME', 'MAR', 'CMS', 'DUK', 'EG', 'WRB', 'HAL', 'NOV', 'MET', 'TMHC', 'PFG', 'STLD', 'UMBF', 'FHB']
+2026-07-14 14:52:56  INFO      Fetching TFs: ['1h']
+2026-07-14 14:52:56  INFO      IBKR Supplement: 17 symbols × 1 TFs = 17 fetches needed (0 already fresh, skipped)
+2026-07-14 14:52:56  INFO      Connecting to 127.0.0.1:4001 with clientId 1...
+2026-07-14 14:52:56  INFO      Connected
+2026-07-14 14:52:56  INFO      Logged on to server version 176
+2026-07-14 14:52:56  INFO      API connection ready
+2026-07-14 14:52:56  INFO      Warning 2104, reqId -1: Market data farm connection is OK:usfarm
+2026-07-14 14:52:56  INFO      Warning 2107, reqId -1: HMDS data farm connection is inactive but should be available upon demand.ushmds
+2026-07-14 14:52:56  INFO      Warning 2158, reqId -1: Sec-def data farm connection is OK:secdefil
+2026-07-14 14:52:56  INFO      Synchronization complete
+2026-07-14 14:52:56  INFO      IBKR connected  \u2192  127.0.0.1:4001
+2026-07-14 14:52:56  INFO        LNT: 1/1 TFs saved (1h)
+2026-07-14 14:52:57  INFO        VTR: 1/1 TFs saved (1h)
+2026-07-14 14:52:57  INFO        WELL: 1/1 TFs saved (1h)
+2026-07-14 14:52:57  INFO        AME: 1/1 TFs saved (1h)
+2026-07-14 14:52:57  INFO        MAR: 1/1 TFs saved (1h)
+2026-07-14 14:52:58  INFO        CMS: 1/1 TFs saved (1h)
+2026-07-14 14:52:58  INFO        DUK: 1/1 TFs saved (1h)
+2026-07-14 14:52:58  INFO        EG: 1/1 TFs saved (1h)
+2026-07-14 14:52:59  INFO        WRB: 1/1 TFs saved (1h)
+2026-07-14 14:52:59  INFO        HAL: 1/1 TFs saved (1h)
+2026-07-14 14:52:59  INFO        [10/17] 10 saved, 0 failed
+2026-07-14 14:52:59  INFO        NOV: 1/1 TFs saved (1h)
+2026-07-14 14:53:00  INFO        MET: 1/1 TFs saved (1h)
+2026-07-14 14:53:00  INFO        TMHC: 1/1 TFs saved (1h)
+2026-07-14 14:53:00  INFO        PFG: 1/1 TFs saved (1h)
+2026-07-14 14:53:01  INFO        STLD: 1/1 TFs saved (1h)
+2026-07-14 14:53:01  INFO        UMBF: 1/1 TFs saved (1h)
+2026-07-14 14:53:02  INFO        FHB: 1/1 TFs saved (1h)
+2026-07-14 14:53:02  INFO      Disconnecting from 127.0.0.1:4001, 100 B sent in 6 messages, 17.6 kB received in 376 messages, session time 5.90 s.
+2026-07-14 14:53:02  INFO      Disconnecting
+2026-07-14 14:53:02  INFO      IBKR disconnected
+2026-07-14 14:53:02  INFO      ======================================================================
+2026-07-14 14:53:02  INFO      IBKR Supplement complete: 17 TF-fetches saved across 17 symbols | 0 failed | 0 skipped (session killed)
+2026-07-14 14:53:02  INFO      Re-run analysis.py to use deep history for episodic cointegration analysis.
+2026-07-14 14:53:02  INFO      ======================================================================

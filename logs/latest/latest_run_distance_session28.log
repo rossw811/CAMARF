@@ -1,0 +1,59 @@
+23:50:36 INFO  distance.py — Gatev-style SSD baseline
+2026-07-11 23:50:36  INFO      distance.py — Gatev-style SSD baseline
+23:50:36 INFO  ============================================================
+2026-07-11 23:50:36  INFO      ============================================================
+23:50:36 INFO  Loaded 26 confirmed cointegration pairs
+2026-07-11 23:50:36  INFO      Loaded 26 confirmed cointegration pairs
+23:50:36 INFO  
+--- Timeframe: 1h ---
+2026-07-11 23:50:36  INFO      
+--- Timeframe: 1h ---
+23:50:36 INFO    Formation window: 2023-07-24 => 2025-01-15
+2026-07-11 23:50:36  INFO        Formation window: 2023-07-24 => 2025-01-15
+23:50:36 INFO    Trading window:   2025-01-15 => 2026-07-10
+2026-07-11 23:50:36  INFO        Trading window:   2025-01-15 => 2026-07-10
+23:50:36 INFO    Loading prices for 36 symbols (formation <= 2025-01-15)
+2026-07-11 23:50:36  INFO        Loading prices for 36 symbols (formation <= 2025-01-15)
+23:50:37 INFO    36 symbols loaded with sufficient formation data
+2026-07-11 23:50:37  INFO        36 symbols loaded with sufficient formation data
+23:50:37 INFO    Top-20 distance pairs by SSD (lowest = most co-moving):
+2026-07-11 23:50:37  INFO        Top-20 distance pairs by SSD (lowest = most co-moving):
+23:50:37 INFO      CMS/LNT  SSD=2.8342  n=2221
+2026-07-11 23:50:37  INFO          CMS/LNT  SSD=2.8342  n=2221
+23:50:37 INFO      MET/QQQ  SSD=6.8685  n=2223
+2026-07-11 23:50:37  INFO          MET/QQQ  SSD=6.8685  n=2223
+23:50:37 INFO      CMS/PFG  SSD=10.5528  n=2220
+2026-07-11 23:50:37  INFO          CMS/PFG  SSD=10.5528  n=2220
+23:50:37 INFO      LNT/PFG  SSD=12.1827  n=2220
+2026-07-11 23:50:37  INFO          LNT/PFG  SSD=12.1827  n=2220
+23:50:37 INFO      PFG/WCC  SSD=12.6902  n=2219
+2026-07-11 23:50:37  INFO          PFG/WCC  SSD=12.6902  n=2219
+23:50:37 INFO    Overlap: 2/24 confirmed pairs also selected by distance (top-20)
+2026-07-11 23:50:37  INFO        Overlap: 2/24 confirmed pairs also selected by distance (top-20)
+23:50:37 INFO    Running distance-method OOS simulation...
+2026-07-11 23:50:37  INFO        Running distance-method OOS simulation...
+23:50:38 INFO    Distance portfolio: Sharpe=7.865  n_trades=46  total_pnl=345.02%  WR=78.3%
+2026-07-11 23:50:38  INFO        Distance portfolio: Sharpe=7.865  n_trades=46  total_pnl=345.02%  WR=78.3%
+23:50:38 INFO    Running cointegration OOS via BacktestEngine...
+2026-07-11 23:50:38  INFO        Running cointegration OOS via BacktestEngine...
+23:50:39 INFO    Coint portfolio: mean_pair_Sharpe=20.435  n_pairs=21/24 with valid Sharpe
+2026-07-11 23:50:39  INFO        Coint portfolio: mean_pair_Sharpe=20.435  n_pairs=21/24 with valid Sharpe
+23:50:39 INFO  
+  === 1h SUMMARY ===
+  Distance (top-20 by SSD):  Sharpe = 7.865  n_trades = 46
+  Cointegration (24 pairs):  mean pair Sharpe = 20.435
+  Pairs in both selections: 2/24
+2026-07-11 23:50:39  INFO      
+  === 1h SUMMARY ===
+  Distance (top-20 by SSD):  Sharpe = 7.865  n_trades = 46
+  Cointegration (24 pairs):  mean pair Sharpe = 20.435
+  Pairs in both selections: 2/24
+23:50:39 INFO  Saved => C:\Users\RossW\Projects\CAMARF\output\stats\distance_baseline.parquet (24 rows)
+2026-07-11 23:50:39  INFO      Saved => C:\Users\RossW\Projects\CAMARF\output\stats\distance_baseline.parquet (24 rows)
+23:50:39 INFO  Saved => C:\Users\RossW\Projects\CAMARF\output\stats\distance_summary.json
+2026-07-11 23:50:39  INFO      Saved => C:\Users\RossW\Projects\CAMARF\output\stats\distance_summary.json
+23:50:39 INFO  ============================================================
+2026-07-11 23:50:39  INFO      ============================================================
+23:50:39 INFO  distance.py complete (0.0 min)
+2026-07-11 23:50:39  INFO      distance.py complete (0.0 min)
+EXIT:0

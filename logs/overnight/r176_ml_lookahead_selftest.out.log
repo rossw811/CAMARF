@@ -1,0 +1,4 @@
+Backed up real production model: C:\Users\RossW\Projects\CAMARF\output\ml\model_stage1.pkl -> C:\Users\RossW\Projects\CAMARF\output\ml\model_stage1.pkl.selftest_backup
+
+=== unlagged (current production behavior) ===
+  19 labeled examples, 2 classes, min class count 9 (need >=30/class to train)

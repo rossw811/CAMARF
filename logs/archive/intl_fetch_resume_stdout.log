@@ -1,0 +1,18 @@
+2026-07-27 17:07:41  INFO        batch 0-200/2577: 200 symbols fetched
+2026-07-27 17:10:33  INFO        batch 200-400/2577: 199 symbols fetched
+2026-07-27 17:13:17  INFO        batch 400-600/2577: 200 symbols fetched
+2026-07-27 17:16:15  INFO        batch 600-800/2577: 200 symbols fetched
+2026-07-27 17:19:04  INFO        batch 800-1000/2577: 200 symbols fetched
+2026-07-27 17:21:45  INFO        batch 1000-1200/2577: 199 symbols fetched
+2026-07-27 17:24:36  INFO        batch 1200-1400/2577: 199 symbols fetched
+2026-07-27 17:27:27  INFO        batch 1400-1600/2577: 200 symbols fetched
+2026-07-27 17:30:26  INFO        batch 1600-1800/2577: 200 symbols fetched
+2026-07-27 17:33:20  INFO        batch 1800-2000/2577: 200 symbols fetched
+2026-07-27 17:36:07  INFO        batch 2000-2200/2577: 200 symbols fetched
+2026-07-27 17:39:00  INFO        batch 2200-2400/2577: 200 symbols fetched
+2026-07-27 17:41:38  INFO        batch 2400-2577/2577: 177 symbols fetched
+Total: 2977, already done: 400, remaining: 2577
+Loading library list...
+Done
+
+Done: 2574/2577 newly saved in 39.8 min

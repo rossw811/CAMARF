@@ -1,0 +1,77 @@
+2026-07-14 22:23:40  INFO      ======================================================================
+2026-07-14 22:23:40  INFO      CAMARF  —  analysis.py  —  Cross-Asset Co-Movement Analysis
+2026-07-14 22:23:40  INFO      ======================================================================
+2026-07-14 22:29:59  INFO      Resuming — 1357 assets already complete (config hash 86ca897df0541bcf)
+2026-07-14 22:29:59  INFO      Building asset universe...
+2026-07-14 22:30:00  INFO      S&P 500: 503 tickers from cache (12.7h old)
+2026-07-14 22:30:00  INFO        sp400: 400 tickers from cache (12.7h old)
+2026-07-14 22:30:00  INFO        S&P MidCap 400: fetched 400 tickers (net new after S&P 500 overlap removed by dedup)
+2026-07-14 22:30:00  INFO        sp600: 603 tickers from cache (12.7h old)
+2026-07-14 22:30:00  INFO        S&P SmallCap 600: fetched 603 tickers (net new after dedup)
+2026-07-14 22:30:00  INFO        S&P 1500 total equities in universe: 1506
+2026-07-14 22:30:00  INFO        International equities + ADRs + FX spots added: 108 symbols
+2026-07-14 22:30:00  INFO        Total universe: 1697 assets
+2026-07-14 22:30:00  INFO      Exclusion list: skipping 3 assets ['BNY', 'FDXF', 'VLTO']
+2026-07-14 22:30:00  INFO      Universe candidates: 1694 assets
+2026-07-14 22:30:00  INFO      Phase 1 (yfinance daily): 1517 equities + 89 intl equities + 15 crypto + 25 forex/FX + 21 ETFs
+2026-07-14 22:30:07  INFO        Read-only mode (fetch=False): skipping yfinance fetch for 6 uncached + 1600 stale daily assets — using cache as-is
+2026-07-14 22:30:07  INFO        All daily data cached and current — skipping yfinance download
+2026-07-14 22:30:19  INFO        288 equities + 19 forex need IBKR intraday
+2026-07-14 22:30:19  INFO        Read-only mode (fetch=False): 334 assets need intraday data but fetching is disabled — using cache as-is (expected for analysis.py; run data.py to backfill)
+2026-07-14 22:31:47  INFO      Universe complete: 1661 assets passed, 0 excluded
+2026-07-14 22:31:47  INFO      Data keys: 20427 symbol-timeframe combinations (18767 loaded from cache)
+2026-07-14 22:31:47  INFO      Run summary \u2192 C:\Users\RossW\Projects\CAMARF\latest_run_data.log
+2026-07-14 22:31:47  INFO      Universe loaded: 1661 assets, 20427 symbol-TF combinations
+2026-07-14 22:31:47  INFO      ======================================================================
+2026-07-14 22:31:47  INFO      CAMARF — analysis.py — Pipeline start
+2026-07-14 22:31:47  INFO      ======================================================================
+2026-07-14 22:31:47  INFO        Universe: 1661 assets, 20427 symbol-TF combinations
+2026-07-14 22:31:47  INFO      Script hash unchanged (1bb856d43111274c) — reusing prior results
+2026-07-14 22:31:47  INFO        Timeframes: ['1h']
+2026-07-14 22:31:47  INFO      ----------------------------------------------------------------------
+2026-07-14 22:31:47  INFO        Timeframe: 1h
+2026-07-14 22:31:47  INFO      ----------------------------------------------------------------------
+2026-07-14 22:31:48  INFO        [1h] 1543 assets have data for this TF
+2026-07-14 22:32:02  INFO        [1h] aligned: 1543 assets
+2026-07-14 22:32:05  INFO        [1h] Computing 1543×1543 correlation matrices (Pearson + Spearman + rolling avg)...
+2026-07-14 22:32:13  INFO        [1h] Pearson 2.6s | Spearman 3.1s | RollingAvg 1.6s
+2026-07-14 22:32:14  INFO        [1h] Candidate pairs: 68685 (7311 cross-asset)  threshold |\u03c1| \u2265 0.40  [gold=16369 silver=21155 bronze=31161]
+2026-07-14 22:32:14  INFO        [1h] Running EG on 68685 pairs (workers=12, max_lag=10)...
+2026-07-14 22:38:39  INFO        [1h] EG complete in 383.7s
+2026-07-14 22:38:39  INFO        [1h] EG: tested=68685, raw<0.05=2166, FDR-adjusted<0.05=2
+2026-07-14 22:38:39  INFO        [1h] Rolling coint on 2 pairs (window=252, step=21)...
+2026-07-14 22:38:44  INFO        [1h] Rolling coint complete in 5.0s
+2026-07-14 22:38:44  INFO        [1h] Per-pair modeling: hedge ratios + spread + decay...
+2026-07-14 22:38:46  INFO        [1h] Per-pair modeling done in 1.9s — 2 PairResult objects built
+2026-07-14 22:38:46  INFO        [1h] Eigenportfolio validation on 2 pairs...
+2026-07-14 22:38:59  INFO        [1h]   K=144 systematic factors removed (MP \u03bb+=1.544)
+2026-07-14 22:38:59  INFO        [1h]   Eigenportfolio: 0/2 Gold tier (idiosyncratic) | 2 Silver tier (factor-driven) in 12.9s
+2026-07-14 22:38:59  INFO        [1h] Computing VolumeStructure features...
+2026-07-14 22:39:04  INFO        [1h] Features saved: 4 assets in 5.3s
+2026-07-14 22:39:04  INFO        [1h] Regime classification (4 assets)...
+2026-07-14 22:39:08  INFO        [1h] Regimes fitted: 0 assets (0 per-bar label files saved) in 3.6s
+2026-07-14 22:39:08  INFO        CrossAssetTagger: 1 structural pairs (triangular arbitrage / share-class / same-index-tracking ETFs) excluded from primary findings
+2026-07-14 22:39:08  INFO        [1h] Cross-asset split: same=1, cross=0
+2026-07-14 22:39:08  INFO        [1h] Trio enumeration + Johansen...
+2026-07-14 22:39:08  INFO        [1h] filter funnel:
+tf_label                      stage  n_before  n_after  n_removed
+      1h    pearson_prefilter_pairs   1189653    68685    1120968
+      1h            eg_bh_fdr_pairs     68685        2      68683
+      1h     price_degeneracy_pairs         2        2          0
+      1h structural_exclusion_pairs         2        1          1
+      1h coint_frac_threshold_pairs         1        0          1
+2026-07-14 22:39:08  INFO        [1h] coint_frac filter: 1 pairs removed (coint_fraction_rolling < 0.70 and no clean secondary evidence); 0 pairs below the threshold kept anyway via secondary-evidence override
+2026-07-14 22:39:08  INFO        [1h] 1 structural pairs excluded from pairs.parquet (logged to bias_audit)
+2026-07-14 22:39:09  INFO      Bias audit log saved: 9 entries \u2192 C:\Users\RossW\Projects\CAMARF\output\results\bias_audit.json
+2026-07-14 22:39:09  INFO      Script hash saved: 1bb856d43111274c
+2026-07-14 22:39:09  INFO      ======================================================================
+2026-07-14 22:39:09  INFO      Pipeline complete in 7.4 min
+2026-07-14 22:39:09  INFO        1h: pairs=0 (cross=0), trios=0, regimes=0
+2026-07-14 22:39:09  INFO      ======================================================================
+2026-07-14 22:39:09  INFO      ANALYSIS RESULTS — SUMMARY
+2026-07-14 22:39:09  INFO      ======================================================================
+2026-07-14 22:39:09  INFO          1h  pairs=    0  cross=   0  trios=   0  regimes=   0
+2026-07-14 22:39:09  INFO        Total bias-audit entries: 9
+2026-07-14 22:39:09  INFO        Runtime: 7.4 min
+2026-07-14 22:39:09  INFO      ======================================================================
+2026-07-14 22:39:09  INFO      Run summary \u2192 C:\Users\RossW\Projects\CAMARF\latest_run_analysis.log

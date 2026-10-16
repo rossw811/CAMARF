@@ -1,0 +1,4 @@
+Hub legs in this 9-pair set (appearing in >1 pair): {'LNT': 2}
+LNT/VTR@1hr (hub=LNT): baseline total_pnl_z=201.82 stopped=8/84 | hub-conditioned total_pnl_z=202.83 stopped=19/95
+
+LNT/WELL@1hr (hub=LNT): baseline total_pnl_z=200.48 stopped=8/81 | hub-conditioned total_pnl_z=198.10 stopped=18/90

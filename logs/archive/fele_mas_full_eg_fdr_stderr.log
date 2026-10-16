@@ -1,0 +1,48 @@
+2026-07-21 17:20:55,131 INFO Building full universe (connect=False, fetch=False)...
+2026-07-21 17:29:16,712 INFO Resuming — 1357 assets already complete (config hash 86ca897df0541bcf)
+2026-07-21 17:29:16,712 INFO Building asset universe...
+2026-07-21 17:29:16,728 INFO S&P 500: 503 tickers from cache (21.2h old)
+2026-07-21 17:29:16,746 INFO   sp400: 400 tickers from cache (21.2h old)
+2026-07-21 17:29:16,748 INFO   S&P MidCap 400: fetched 400 tickers (net new after S&P 500 overlap removed by dedup)
+2026-07-21 17:29:16,752 INFO   sp600: 603 tickers from cache (21.2h old)
+2026-07-21 17:29:16,752 INFO   S&P SmallCap 600: fetched 603 tickers (net new after dedup)
+2026-07-21 17:29:16,753 INFO   S&P 1500 total equities in universe: 1505
+2026-07-21 17:29:16,753 INFO   International equities + ADRs + FX spots added: 108 symbols
+2026-07-21 17:29:16,753 INFO   Total universe: 1696 assets
+2026-07-21 17:29:16,754 INFO Exclusion list: skipping 3 assets ['BNY', 'FDXF', 'VLTO']
+2026-07-21 17:29:16,754 INFO Universe candidates: 1693 assets
+2026-07-21 17:29:16,757 INFO Phase 1 (yfinance daily): 1516 equities + 89 intl equities + 15 crypto + 25 forex/FX + 21 ETFs
+2026-07-21 17:29:32,793 INFO   Read-only mode (fetch=False): skipping yfinance fetch for 6 uncached + 1660 stale daily assets — using cache as-is
+2026-07-21 17:29:32,793 INFO   All daily data cached and current — skipping yfinance download
+2026-07-21 17:29:53,227 INFO   1512 equities + 19 forex need IBKR intraday
+2026-07-21 17:29:53,235 INFO   Read-only mode (fetch=False): 1558 assets need intraday data but fetching is disabled — using cache as-is (expected for analysis.py; run data.py to backfill)
+2026-07-21 17:32:18,019 INFO Universe complete: 1660 assets passed, 0 excluded
+2026-07-21 17:32:18,019 INFO Data keys: 20423 symbol-timeframe combinations (18764 loaded from cache)
+2026-07-21 17:32:18,021 INFO Run summary \u2192 C:\Users\RossW\Projects\CAMARF\latest_run_data.log
+2026-07-21 17:32:20,705 INFO tf_data_raw: 1542 assets (ADV filter deliberately NOT applied -- reproducing the exact pre-fix state that generated today's observed all_candidates.parquet)
+2026-07-21 17:32:57,270 INFO aligned: 1542 assets. FELE present: True  MAS present: True
+2026-07-21 17:33:04,055 INFO   [1h] Computing 1535×1535 correlation matrices (Pearson + Spearman + rolling avg)...
+2026-07-21 17:33:33,667 INFO   [1h] Pearson 11.8s | Spearman 13.9s | RollingAvg 3.9s
+2026-07-21 17:33:37,651 INFO   [1h] Candidate pairs: 67525 (7211 cross-asset)  threshold |\u03c1| \u2265 0.40  [gold=15445 silver=18882 bronze=33198]
+2026-07-21 17:33:37,662 INFO candidate_pairs at threshold 0.4: 67525
+2026-07-21 17:33:37,662 INFO Building log-price map and running EG on the FULL real candidate pool (67525 pairs, workers=12)...
+2026-07-21 17:51:24,082 INFO EG complete in 17.7 min
+2026-07-21 17:51:24,097 INFO EG usable results: 36132/67525
+2026-07-21 17:51:24,388 INFO === Full production-pool BH-FDR (alpha=0.05, m=36132): 2 confirmed ===
+2026-07-21 17:51:30,908 INFO FELE/MAS: pvalue=8.963478e-04  rank=66/36132  fdr_adjusted_pvalue=4.907097e-01  fdr_rejected(confirmed)=False
+2026-07-21 17:51:30,927 INFO Top 10 most-significant pairs in the full production pool:
+2026-07-21 17:51:30,929 INFO   SPY/VOO: p=1.298e-14  confirmed=True
+2026-07-21 17:51:30,929 INFO   PNC/ZION: p=1.161e-06  confirmed=True
+2026-07-21 17:51:30,929 INFO   ASB/EWBC: p=1.767e-05  confirmed=False
+2026-07-21 17:51:30,931 INFO   APA/TALO: p=3.282e-05  confirmed=False
+2026-07-21 17:51:30,931 INFO   LNT/WELL: p=5.059e-05  confirmed=False
+2026-07-21 17:51:30,932 INFO   ANET/SPY: p=5.973e-05  confirmed=False
+2026-07-21 17:51:30,932 INFO   AME/MAR: p=6.248e-05  confirmed=False
+2026-07-21 17:51:30,933 INFO   ANET/VOO: p=6.373e-05  confirmed=False
+2026-07-21 17:51:30,933 INFO   ATR/SLGN: p=6.455e-05  confirmed=False
+2026-07-21 17:51:30,933 INFO   FITB/SPG: p=9.471e-05  confirmed=False
+2026-07-21 17:51:30,937 INFO All 2 BH-FDR-confirmed pairs:
+2026-07-21 17:51:30,938 INFO   PNC/ZION: p=1.161e-06  adj=2.098e-02
+2026-07-21 17:51:30,938 INFO   SPY/VOO: p=1.298e-14  adj=4.689e-10
+2026-07-21 17:51:31,081 INFO Saved -> output/research/fele_mas_full_eg_fdr_check.parquet
+2026-07-21 17:51:31,081 INFO Total runtime: 30.6 min

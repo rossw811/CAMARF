@@ -1,0 +1,20 @@
+09:25:19 INFO  === k_bahc_candidate_discovery.py: does denoising the correlation matrix surface new pair candidates the raw Pearson pre-filter misses? (tf=4h) ===
+09:25:43 INFO  Loaded 1573 symbols with usable 4h cache
+09:25:43 INFO  Aligning via real production DataAligner.align_universe()...
+09:25:54 INFO  Aligned: 1573 symbols
+09:25:54 INFO  Running real production UniverseFilter (Pearson pre-filter, threshold=0.4)...
+09:26:02 INFO  Raw candidates (|corr|>=0.40): 65416 / 1236378 possible pairs
+09:26:02 INFO  Applying k-BAHC cleaning (max_k=6) to the 1573x1573 Pearson matrix...
+09:26:03 INFO  k-BAHC cleaning done in 0.8s, chose k=2 clusters
+09:26:03 INFO  Raw correlation matrix: mean|corr|=0.1830 over 1236378 finite off-diagonal pairs
+09:26:06 INFO  
+09:26:06 INFO  === Candidate set comparison: raw vs. k-BAHC-cleaned Pearson matrix ===
+09:26:06 INFO  New candidates (below threshold raw, above threshold cleaned): 0
+09:26:06 INFO  Removed candidates (above threshold raw, below threshold cleaned): 1
+09:26:06 INFO  Sample of removed (likely noise-suppressed) candidates:
+09:26:06 INFO    PRA/SNDK: raw=-0.445 -> cleaned=-0.047
+09:26:06 INFO  
+09:26:06 INFO  HONEST NULL RESULT: no new candidates surfaced by k-BAHC cleaning at this timeframe/threshold. Per the verified mechanism (debug/_verify_k_bahc_candidate_discovery.py), this happens whenever the mean cross-cluster correlation itself stays below the 0.40 threshold -- consistent with this project's own established finding that real full-universe correlation is close to zero on average (rho_bar~0, see research/eigenvalue_weighted_position_sizing.py). This is a genuine, informative negative result, not a failed search.
+09:26:06 INFO  Saved -> output/research/k_bahc_candidate_discovery_{new,removed,eg}_4hr.parquet
+09:26:06 INFO  ============================================================
+09:26:06 INFO  k_bahc_candidate_discovery.py complete (0.8 min)

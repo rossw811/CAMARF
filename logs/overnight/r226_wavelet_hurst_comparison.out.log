@@ -1,0 +1,4 @@
+LNT/VTR@1h: H_rs=0.517 H_dfa=0.419 H_wavelet=0.435  (rs-dfa=0.098, rs-wav=0.082, dfa-wav=0.016)
+LNT/WELL@1h: H_rs=0.532 H_dfa=0.435 H_wavelet=0.434  (rs-dfa=0.097, rs-wav=0.097, dfa-wav=0.001)
+AME/MAR@1h: H_rs=0.512 H_dfa=0.423 H_wavelet=0.402  (rs-dfa=0.089, rs-wav=0.110, dfa-wav=0.021)
+MET/TMHC@1h: H_rs=0.501 H_dfa=0.422 H_wavelet=0.404  (rs-dfa=0.079, rs-wav=0.097, dfa-wav=0.018)

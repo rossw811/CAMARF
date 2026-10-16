@@ -1,0 +1,45 @@
+15:00:19 INFO  === wrds_deep_history_episodic_scan.py: does WRDS's much deeper daily history reveal cointegrated pairs yfinance's own 1D scan (0 confirmed) lacked the depth/quality to detect? ===
+2026-07-27 15:00:19  INFO      === wrds_deep_history_episodic_scan.py: does WRDS's much deeper daily history reveal cointegrated pairs yfinance's own 1D scan (0 confirmed) lacked the depth/quality to detect? ===
+15:01:38 INFO  Loaded 2846 symbols from output/cache/wrds/: 2843 total-return-adjusted (CRSP), 3 split-only-adjusted (Compustat Global, disclosed)
+2026-07-27 15:01:38  INFO      Loaded 2846 symbols from output/cache/wrds/: 2843 total-return-adjusted (CRSP), 3 split-only-adjusted (Compustat Global, disclosed)
+15:01:38 INFO  Building rolling ADV series for the liquidity gate (separate load pass, needs volume)...
+2026-07-27 15:01:38  INFO      Building rolling ADV series for the liquidity gate (separate load pass, needs volume)...
+2026-07-27 15:02:13  INFO      Loaded 2846 symbols with close+volume from output/cache/wrds/
+15:02:21 INFO  Rolling ADV computed for 2846 symbols (threshold $25M, applied to Tier 2/3 only -- Tier 1's full-sample test is unchanged, production-identical)
+2026-07-27 15:02:21  INFO      Rolling ADV computed for 2846 symbols (threshold $25M, applied to Tier 2/3 only -- Tier 1's full-sample test is unchanged, production-identical)
+15:02:48 INFO  2771 symbols have >=756 bars of overlapping history
+2026-07-27 15:02:48  INFO      2771 symbols have >=756 bars of overlapping history
+15:03:44 INFO  Candidate pairs at threshold 0.4: 199589 (Pearson pre-filter, same as production)
+2026-07-27 15:03:44  INFO      Candidate pairs at threshold 0.4: 199589 (Pearson pre-filter, same as production)
+15:04:02 INFO  Running EG on 199589 pairs, BOTH directions (399178 tasks, workers=12)...
+2026-07-27 15:04:02  INFO      Running EG on 199589 pairs, BOTH directions (399178 tasks, workers=12)...
+Exception in thread Thread-1:
+Traceback (most recent call last):
+  File "C:\Users\RossW\anaconda3\envs\trading\Lib\threading.py", line 1045, in _bootstrap_inner
+    self.run()
+  File "C:\Users\RossW\anaconda3\envs\trading\Lib\concurrent\futures\process.py", line 347, in run
+    self.terminate_broken(cause)
+  File "C:\Users\RossW\anaconda3\envs\trading\Lib\concurrent\futures\process.py", line 499, in terminate_broken
+    work_item.future.set_exception(bpe)
+  File "C:\Users\RossW\anaconda3\envs\trading\Lib\concurrent\futures\_base.py", line 559, in set_exception
+    raise InvalidStateError('{}: {!r}'.format(self._state, self))
+concurrent.futures._base.InvalidStateError: CANCELLED: <Future at 0x22947101750 state=cancelled>
+Traceback (most recent call last):
+  File "C:\Users\RossW\Projects\CAMARF\research\wrds_deep_history_episodic_scan.py", line 566, in <module>
+    main()
+  File "C:\Users\RossW\Projects\CAMARF\research\wrds_deep_history_episodic_scan.py", line 435, in main
+    for r in pool.map(_eg_worker, tasks, chunksize=100):
+  File "C:\Users\RossW\anaconda3\envs\trading\Lib\concurrent\futures\process.py", line 620, in _chain_from_iterable_of_lists
+    for element in iterable:
+  File "C:\Users\RossW\anaconda3\envs\trading\Lib\concurrent\futures\_base.py", line 619, in result_iterator
+    yield _result_or_cancel(fs.pop())
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\RossW\anaconda3\envs\trading\Lib\concurrent\futures\_base.py", line 317, in _result_or_cancel
+    return fut.result(timeout)
+           ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\RossW\anaconda3\envs\trading\Lib\concurrent\futures\_base.py", line 456, in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\RossW\anaconda3\envs\trading\Lib\concurrent\futures\_base.py", line 401, in __get_result
+    raise self._exception
+concurrent.futures.process.BrokenProcessPool: A process in the process pool was terminated abruptly while the future was running or pending.

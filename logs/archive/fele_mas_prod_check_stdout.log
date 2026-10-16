@@ -1,0 +1,31 @@
+=== Building full universe via UniverseBuilder().build(connect=False, fetch=False) ===
+universe.assets: 1660  universe.data keys: 20423
+FELE in universe.assets: True  in exclusion_set: False
+MAS  in universe.assets: True  in exclusion_set: False
+FELE_1h in universe.data: True
+MAS_1h in universe.data: True
+
+tf_data_raw (post exclusion+freq-validation): 1542 assets
+FELE in tf_data_raw: True
+MAS  in tf_data_raw: True
+
+ADV_FILTER_USD (post-fix): 25000000.0
+FELE ADV: 11175451.309200225  passes: False
+MAS  ADV: 91038417.3582124  passes: True
+tf_data_raw after ADV filter: 1063 (of 1542)
+
+=== DataAligner.align_universe (production path, WITHOUT ADV filter -- pre-fix state) ===
+aligned (no ADV): 1542 assets
+FELE_1h in aligned (no ADV): False
+MAS_1h in aligned (no ADV): False
+
+=== Now WITH the (fixed) ADV filter applied ===
+aligned (with ADV): 1063 assets
+FELE_1h in aligned (with ADV): False
+MAS_1h in aligned (with ADV): False
+
+=== UniverseFilter.run (production path, current MIN_PEARSON_CORR threshold) ===
+threshold: 0.4
+candidate pairs (no ADV, pre-EG): 67525
+FELE/MAS in production candidate_pairs (pre-EG): True
+FELE/MAS correlation in production's own matrix: 0.420184

@@ -1,0 +1,56 @@
+2026-06-29 15:57:21  INFO      Survivorship exclusions loaded: 378 delist events
+2026-06-29 15:57:21  INFO      [1h] 5 confirmed pairs
+2026-06-29 15:57:21  INFO        LNT/WELL@1h[ols] 12 trades | WR=50% | SR=28.71 | PnL=2912.89
+2026-06-29 15:57:21  INFO        LNT/WELL@1h[kalman] 12 trades | WR=50% | SR=28.78 | PnL=2919.09
+2026-06-29 15:57:21  INFO        EG/ORI@1h[kalman] 5 trades | WR=100% | SR=124.64 | PnL=2288.37
+2026-06-29 15:57:21  INFO        VRT/MTZ@1h[ols] 10 trades | WR=60% | SR=23.32 | PnL=3518.73
+2026-06-29 15:57:21  INFO        VRT/MTZ@1h[kalman] 10 trades | WR=70% | SR=23.51 | PnL=3545.56
+2026-06-29 15:57:21  INFO      Run summary \u2192 latest_run_backtest.log
+
+======================================================================
+  BACKTEST SUMMARY — LAYER1_HOLDOUT
+======================================================================
+  Pairs tested: 5
+  Total trades: 49
+  Total net P&L (spread units): 15184.64
+
+  By timeframe (mean):
+    n_trades  win_rate    sharpe  total_pnl
+tf                                         
+1h       9.8      0.66  45.79104   3036.928
+
+  OLS vs Kalman:
+              n_trades  win_rate     sharpe    total_pnl
+hedge_method                                            
+kalman             9.0  0.733333  58.976333  2917.673333
+ols               11.0  0.550000  26.013100  3215.810000
+
+  Top 10 pairs by net P&L:
+tf symbol_a symbol_b hedge_method  n_trades  win_rate   sharpe  total_pnl
+1h      VRT      MTZ       kalman        10       0.7  23.5121    3545.56
+1h      VRT      MTZ          ols        10       0.6  23.3174    3518.73
+1h      LNT     WELL       kalman        12       0.5  28.7760    2919.09
+1h      LNT     WELL          ols        12       0.5  28.7088    2912.89
+1h       EG      ORI       kalman         5       1.0 124.6409    2288.37
+
+  Bottom 5 pairs by net P&L:
+tf symbol_a symbol_b hedge_method  n_trades  total_pnl
+1h       EG      ORI       kalman         5    2288.37
+1h      LNT     WELL          ols        12    2912.89
+1h      LNT     WELL       kalman        12    2919.09
+1h      VRT      MTZ          ols        10    3518.73
+1h      VRT      MTZ       kalman        10    3545.56
+
+  Portfolio-level stats:
+    n_pairs: 3
+    n_trades_total: 49
+    total_pnl_portfolio: 15184.65
+    sharpe_portfolio: 3.149
+    max_drawdown_portfolio: 913.91
+    max_concentration_pair: VRT/MTZ@1h
+    max_concentration_pct: 0.4652
+
+  Bias notes (episodic survivorship + hedge lookahead — see docstring):
+    Full-series run = IN-SAMPLE. Layer 2 holdout run = OOS.
+======================================================================
+

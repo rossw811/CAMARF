@@ -1,0 +1,323 @@
+2026-09-27 09:49:44  INFO      CAMARF  —  data_ibkr.py  —  IBKR Supplemental Pipeline
+2026-09-27 09:49:44  INFO      Primary yfinance cache is untouched by this script.
+2026-09-27 09:49:44  INFO      User-specified symbols: ['CFG', 'CMS', 'COLB', 'DV', 'DXCM', 'FITB', 'GBCI', 'GGG', 'ITW', 'KEY', 'MC', 'NCLH', 'PPL', 'QQQ', 'RF', 'SPY', 'SSB', 'VOO', 'VTOL']
+2026-09-27 09:49:44  INFO      Fetching TFs: ['1h', '4h']
+2026-09-27 09:49:44  INFO      IBKR Supplement: 19 symbols × 2 TFs = 38 fetches needed (0 already fresh, skipped)
+2026-09-27 09:49:44  INFO      Connecting to 127.0.0.1:4001 with clientId 1...
+2026-09-27 09:49:44  INFO      Connected
+2026-09-27 09:49:44  INFO      Logged on to server version 176
+2026-09-27 09:49:44  INFO      API connection ready
+2026-09-27 09:49:44  INFO      Warning 2104, reqId -1: Market data farm connection is OK:usfarm
+2026-09-27 09:49:44  INFO      Warning 2106, reqId -1: HMDS data farm connection is OK:ushmds
+2026-09-27 09:49:44  INFO      Warning 2158, reqId -1: Sec-def data farm connection is OK:secdefil
+2026-09-27 09:49:44  INFO      Synchronization complete
+2026-09-27 09:49:44  INFO      IBKR connected  \u2192  127.0.0.1:4001
+2026-09-27 09:49:56  INFO      Warning 2174, reqId 4: Warning: You submitted request with date-time attributes without explicit time zone. Please switch to use yyyymmdd-hh:mm:ss in UTC or use instrument time zone, like US/Eastern. Implied time zone functionality will be removed in the next API release, contract: Stock(symbol='CFG', exchange='SMART', currency='USD')
+2026-09-27 09:49:56  WARNING   IBKR error 2174 (reqId=4): Warning: You submitted request with date-time attributes without explicit time zone. Please switch to use yyyymmdd-hh:mm:ss in UTC or use instrument time zone, like US/Eastern. Implied time zone functionality will be removed in the next API release [contract=CFG]
+2026-09-27 09:50:30  INFO      Warning 2105, reqId -1: HMDS data farm connection is broken:ushmds
+2026-09-27 09:50:30  WARNING   IBKR error 2105 (reqId=-1): HMDS data farm connection is broken:ushmds
+2026-09-27 09:50:30  INFO      Warning 165, reqId 5: Historical Market Data Service query message:HMDS server disconnect occurred.  Attempting reconnection..., contract: Stock(symbol='CFG', exchange='SMART', currency='USD')
+2026-09-27 09:50:30  WARNING   IBKR error 165 (reqId=5): Historical Market Data Service query message:HMDS server disconnect occurred.  Attempting reconnection... [contract=CFG]
+2026-09-27 09:50:30  INFO      Warning 2106, reqId -1: HMDS data farm connection is OK:ushmds
+2026-09-27 09:50:30  INFO      Warning 165, reqId 5: Historical Market Data Service query message:HMDS server connection was successful., contract: Stock(symbol='CFG', exchange='SMART', currency='USD')
+2026-09-27 09:50:30  WARNING   IBKR error 165 (reqId=5): Historical Market Data Service query message:HMDS server connection was successful. [contract=CFG]
+2026-09-27 09:50:58  INFO        CFG 1 hour: pagination reached target (3650.0+ days across 5 chunks)
+2026-09-27 09:50:58  INFO        CFG 1 hour: paginated fetch complete — 30111 bars from 5 chunks, 2016-10-03 09:00:00-04:00 to 2026-09-25 19:00:00-04:00
+2026-09-27 09:51:16  INFO      Warning 2105, reqId -1: HMDS data farm connection is broken:ushmds
+2026-09-27 09:51:16  WARNING   IBKR error 2105 (reqId=-1): HMDS data farm connection is broken:ushmds
+2026-09-27 09:51:16  INFO      Warning 165, reqId 8: Historical Market Data Service query message:HMDS server disconnect occurred.  Attempting reconnection..., contract: Stock(symbol='CFG', exchange='SMART', currency='USD')
+2026-09-27 09:51:16  WARNING   IBKR error 165 (reqId=8): Historical Market Data Service query message:HMDS server disconnect occurred.  Attempting reconnection... [contract=CFG]
+2026-09-27 09:51:16  INFO      Warning 2106, reqId -1: HMDS data farm connection is OK:ushmds
+2026-09-27 09:51:16  INFO      Warning 165, reqId 8: Historical Market Data Service query message:HMDS server connection was successful., contract: Stock(symbol='CFG', exchange='SMART', currency='USD')
+2026-09-27 09:51:16  WARNING   IBKR error 165 (reqId=8): Historical Market Data Service query message:HMDS server connection was successful. [contract=CFG]
+2026-09-27 09:52:02  INFO      Warning 2105, reqId -1: HMDS data farm connection is broken:ushmds
+2026-09-27 09:52:02  WARNING   IBKR error 2105 (reqId=-1): HMDS data farm connection is broken:ushmds
+2026-09-27 09:52:02  INFO      Warning 165, reqId 11: Historical Market Data Service query message:HMDS server disconnect occurred.  Attempting reconnection..., contract: Stock(symbol='CFG', exchange='SMART', currency='USD')
+2026-09-27 09:52:02  WARNING   IBKR error 165 (reqId=11): Historical Market Data Service query message:HMDS server disconnect occurred.  Attempting reconnection... [contract=CFG]
+2026-09-27 09:52:02  INFO      Warning 2106, reqId -1: HMDS data farm connection is OK:ushmds
+2026-09-27 09:52:02  INFO      Warning 165, reqId 11: Historical Market Data Service query message:HMDS server connection was successful., contract: Stock(symbol='CFG', exchange='SMART', currency='USD')
+2026-09-27 09:52:02  WARNING   IBKR error 165 (reqId=11): Historical Market Data Service query message:HMDS server connection was successful. [contract=CFG]
+2026-09-27 09:52:12  INFO        CFG 4 hours: pagination reached target (3650.0+ days across 5 chunks)
+2026-09-27 09:52:12  INFO        CFG 4 hours: paginated fetch complete — 8934 bars from 5 chunks, 2016-10-03 08:00:00-04:00 to 2026-09-25 16:00:00-04:00
+2026-09-27 09:52:12  INFO        CFG: 2/2 TFs saved (1h, 4h)
+2026-09-27 09:52:51  INFO      Warning 2103, reqId -1: Market data farm connection is broken:usfarm
+2026-09-27 09:52:51  WARNING   IBKR error 2103 (reqId=-1): Market data farm connection is broken:usfarm
+2026-09-27 09:52:51  INFO      Warning 2105, reqId -1: HMDS data farm connection is broken:ushmds
+2026-09-27 09:52:51  WARNING   IBKR error 2105 (reqId=-1): HMDS data farm connection is broken:ushmds
+2026-09-27 09:52:51  INFO      Warning 165, reqId 14: Historical Market Data Service query message:HMDS server disconnect occurred.  Attempting reconnection..., contract: Stock(symbol='CMS', exchange='SMART', currency='USD')
+2026-09-27 09:52:51  WARNING   IBKR error 165 (reqId=14): Historical Market Data Service query message:HMDS server disconnect occurred.  Attempting reconnection... [contract=CMS]
+2026-09-27 09:52:51  INFO      Warning 2104, reqId -1: Market data farm connection is OK:usfarm
+2026-09-27 09:52:52  INFO      Warning 2106, reqId -1: HMDS data farm connection is OK:ushmds
+2026-09-27 09:52:52  INFO      Warning 165, reqId 14: Historical Market Data Service query message:HMDS server connection was successful., contract: Stock(symbol='CMS', exchange='SMART', currency='USD')
+2026-09-27 09:52:52  WARNING   IBKR error 165 (reqId=14): Historical Market Data Service query message:HMDS server connection was successful. [contract=CMS]
+2026-09-27 09:53:15  INFO      Warning 2105, reqId -1: HMDS data farm connection is broken:ushmds
+2026-09-27 09:53:15  WARNING   IBKR error 2105 (reqId=-1): HMDS data farm connection is broken:ushmds
+2026-09-27 09:53:15  INFO      Warning 165, reqId 16: Historical Market Data Service query message:HMDS server disconnect occurred.  Attempting reconnection..., contract: Stock(symbol='CMS', exchange='SMART', currency='USD')
+2026-09-27 09:53:15  WARNING   IBKR error 165 (reqId=16): Historical Market Data Service query message:HMDS server disconnect occurred.  Attempting reconnection... [contract=CMS]
+2026-09-27 09:53:15  INFO      Warning 2106, reqId -1: HMDS data farm connection is OK:ushmds
+2026-09-27 09:53:15  INFO      Warning 165, reqId 16: Historical Market Data Service query message:HMDS server connection was successful., contract: Stock(symbol='CMS', exchange='SMART', currency='USD')
+2026-09-27 09:53:15  WARNING   IBKR error 165 (reqId=16): Historical Market Data Service query message:HMDS server connection was successful. [contract=CMS]
+2026-09-27 09:53:33  INFO        CMS 1 hour: pagination reached target (3650.0+ days across 5 chunks)
+2026-09-27 09:53:33  INFO        CMS 1 hour: paginated fetch complete — 28261 bars from 5 chunks, 2016-10-03 09:00:00-04:00 to 2026-09-25 19:00:00-04:00
+2026-09-27 09:53:54  INFO      Warning 2103, reqId -1: Market data farm connection is broken:usfarm
+2026-09-27 09:53:54  WARNING   IBKR error 2103 (reqId=-1): Market data farm connection is broken:usfarm
+2026-09-27 09:53:54  INFO      Warning 2104, reqId -1: Market data farm connection is OK:usfarm
+2026-09-27 09:54:45  INFO        CMS 4 hours: pagination reached target (3650.0+ days across 5 chunks)
+2026-09-27 09:54:45  INFO        CMS 4 hours: paginated fetch complete — 8514 bars from 5 chunks, 2016-10-03 08:00:00-04:00 to 2026-09-25 16:00:00-04:00
+2026-09-27 09:54:45  INFO        CMS: 2/2 TFs saved (1h, 4h)
+2026-09-27 09:55:05  INFO      Warning 2103, reqId -1: Market data farm connection is broken:usfarm
+2026-09-27 09:55:05  WARNING   IBKR error 2103 (reqId=-1): Market data farm connection is broken:usfarm
+2026-09-27 09:55:05  INFO      Warning 2104, reqId -1: Market data farm connection is OK:usfarm
+2026-09-27 09:55:55  INFO      Warning 2105, reqId -1: HMDS data farm connection is broken:ushmds
+2026-09-27 09:55:55  WARNING   IBKR error 2105 (reqId=-1): HMDS data farm connection is broken:ushmds
+2026-09-27 09:55:55  INFO      Warning 165, reqId 24: Historical Market Data Service query message:HMDS server disconnect occurred.  Attempting reconnection..., contract: Stock(symbol='COLB', exchange='SMART', currency='USD')
+2026-09-27 09:55:55  WARNING   IBKR error 165 (reqId=24): Historical Market Data Service query message:HMDS server disconnect occurred.  Attempting reconnection... [contract=COLB]
+2026-09-27 09:55:56  INFO      Warning 2106, reqId -1: HMDS data farm connection is OK:ushmds
+2026-09-27 09:55:56  INFO      Warning 165, reqId 24: Historical Market Data Service query message:HMDS server connection was successful., contract: Stock(symbol='COLB', exchange='SMART', currency='USD')
+2026-09-27 09:55:56  WARNING   IBKR error 165 (reqId=24): Historical Market Data Service query message:HMDS server connection was successful. [contract=COLB]
+2026-09-27 09:56:56  INFO      Warning 2105, reqId -1: HMDS data farm connection is broken:ushmds
+2026-09-27 09:56:56  WARNING   IBKR error 2105 (reqId=-1): HMDS data farm connection is broken:ushmds
+2026-09-27 09:56:56  INFO      Warning 165, reqId 27: Historical Market Data Service query message:HMDS server disconnect occurred.  Attempting reconnection..., contract: Stock(symbol='COLB', exchange='SMART', currency='USD')
+2026-09-27 09:56:56  WARNING   IBKR error 165 (reqId=27): Historical Market Data Service query message:HMDS server disconnect occurred.  Attempting reconnection... [contract=COLB]
+2026-09-27 09:56:57  INFO      Warning 2106, reqId -1: HMDS data farm connection is OK:ushmds
+2026-09-27 09:56:57  INFO      Warning 165, reqId 27: Historical Market Data Service query message:HMDS server connection was successful., contract: Stock(symbol='COLB', exchange='SMART', currency='USD')
+2026-09-27 09:56:57  WARNING   IBKR error 165 (reqId=27): Historical Market Data Service query message:HMDS server connection was successful. [contract=COLB]
+2026-09-27 09:56:59  INFO      Warning 2103, reqId -1: Market data farm connection is broken:usfarm
+2026-09-27 09:56:59  WARNING   IBKR error 2103 (reqId=-1): Market data farm connection is broken:usfarm
+2026-09-27 09:56:59  INFO        COLB 1 hour: pagination reached target (3650.0+ days across 5 chunks)
+2026-09-27 09:56:59  INFO        COLB 1 hour: paginated fetch complete — 28478 bars from 5 chunks, 2016-10-03 09:00:00-04:00 to 2026-09-25 19:00:00-04:00
+2026-09-27 09:57:00  INFO      Warning 2104, reqId -1: Market data farm connection is OK:usfarm
+2026-09-27 09:57:22  INFO      Warning 2157, reqId -1: Sec-def data farm connection is broken:secdefil
+2026-09-27 09:57:22  WARNING   IBKR error 2157 (reqId=-1): Sec-def data farm connection is broken:secdefil
+2026-09-27 09:57:22  INFO      Warning 2158, reqId -1: Sec-def data farm connection is OK:secdefil
+2026-09-27 09:57:52  INFO      Warning 2105, reqId -1: HMDS data farm connection is broken:ushmds
+2026-09-27 09:57:52  WARNING   IBKR error 2105 (reqId=-1): HMDS data farm connection is broken:ushmds
+2026-09-27 09:57:52  INFO      Warning 2106, reqId -1: HMDS data farm connection is OK:ushmds
+2026-09-27 09:58:09  INFO        COLB 4 hours: pagination reached target (3650.0+ days across 5 chunks)
+2026-09-27 09:58:09  INFO        COLB 4 hours: paginated fetch complete — 8575 bars from 5 chunks, 2016-10-03 08:00:00-04:00 to 2026-09-25 16:00:00-04:00
+2026-09-27 09:58:09  INFO        COLB: 2/2 TFs saved (1h, 4h)
+2026-09-27 09:58:54  INFO      Warning 2103, reqId -1: Market data farm connection is broken:usfarm
+2026-09-27 09:58:54  WARNING   IBKR error 2103 (reqId=-1): Market data farm connection is broken:usfarm
+2026-09-27 09:58:55  INFO      Warning 2104, reqId -1: Market data farm connection is OK:usfarm
+2026-09-27 09:59:18  INFO      Warning 2157, reqId -1: Sec-def data farm connection is broken:secdefil
+2026-09-27 09:59:18  WARNING   IBKR error 2157 (reqId=-1): Sec-def data farm connection is broken:secdefil
+2026-09-27 09:59:19  INFO      Warning 2158, reqId -1: Sec-def data farm connection is OK:secdefil
+2026-09-27 09:59:32  INFO        DV 1 hour: pagination reached target (3650.0+ days across 5 chunks)
+2026-09-27 09:59:32  INFO        DV 1 hour: paginated fetch complete — 16474 bars from 5 chunks, 2021-04-21 11:00:00-04:00 to 2026-09-25 19:00:00-04:00
+2026-09-27 10:00:38  ERROR     Error 162, reqId 41: Historical Market Data Service error message:HMDS query returned no data: DV@SMART Trades, contract: Stock(symbol='DV', exchange='SMART', currency='USD')
+2026-09-27 10:00:38  WARNING   IBKR error 162 (reqId=41): Historical Market Data Service error message:HMDS query returned no data: DV@SMART Trades [contract=DV]
+2026-09-27 10:00:38  INFO        DV 4 hours: pagination stopped at chunk 3 (empty response — real historical boundary, not an error)
+2026-09-27 10:00:38  INFO        DV 4 hours: paginated fetch complete — 4836 bars from 3 chunks, 2021-04-21 08:00:00-04:00 to 2026-09-25 16:00:00-04:00
+2026-09-27 10:00:38  INFO        DV: 2/2 TFs saved (1h, 4h)
+2026-09-27 10:01:57  INFO      Warning 2103, reqId -1: Market data farm connection is broken:usfarm
+2026-09-27 10:01:57  WARNING   IBKR error 2103 (reqId=-1): Market data farm connection is broken:usfarm
+2026-09-27 10:01:57  INFO      Warning 2105, reqId -1: HMDS data farm connection is broken:ushmds
+2026-09-27 10:01:57  WARNING   IBKR error 2105 (reqId=-1): HMDS data farm connection is broken:ushmds
+2026-09-27 10:01:57  INFO      Warning 165, reqId 43: Historical Market Data Service query message:HMDS server disconnect occurred.  Attempting reconnection..., contract: Stock(symbol='DXCM', exchange='SMART', currency='USD')
+2026-09-27 10:01:57  WARNING   IBKR error 165 (reqId=43): Historical Market Data Service query message:HMDS server disconnect occurred.  Attempting reconnection... [contract=DXCM]
+2026-09-27 10:01:58  INFO      Warning 2106, reqId -1: HMDS data farm connection is OK:ushmds
+2026-09-27 10:01:58  INFO      Warning 165, reqId 43: Historical Market Data Service query message:HMDS server connection was successful., contract: Stock(symbol='DXCM', exchange='SMART', currency='USD')
+2026-09-27 10:01:58  WARNING   IBKR error 165 (reqId=43): Historical Market Data Service query message:HMDS server connection was successful. [contract=DXCM]
+2026-09-27 10:01:58  INFO      Warning 2104, reqId -1: Market data farm connection is OK:usfarm
+2026-09-27 10:02:19  INFO      Warning 2157, reqId -1: Sec-def data farm connection is broken:secdefil
+2026-09-27 10:02:19  WARNING   IBKR error 2157 (reqId=-1): Sec-def data farm connection is broken:secdefil
+2026-09-27 10:02:19  INFO      Warning 2158, reqId -1: Sec-def data farm connection is OK:secdefil
+2026-09-27 10:03:04  INFO      Warning 2103, reqId -1: Market data farm connection is broken:usfarm
+2026-09-27 10:03:04  WARNING   IBKR error 2103 (reqId=-1): Market data farm connection is broken:usfarm
+2026-09-27 10:03:04  INFO      Warning 2105, reqId -1: HMDS data farm connection is broken:ushmds
+2026-09-27 10:03:04  WARNING   IBKR error 2105 (reqId=-1): HMDS data farm connection is broken:ushmds
+2026-09-27 10:03:04  INFO      Warning 165, reqId 46: Historical Market Data Service query message:HMDS server disconnect occurred.  Attempting reconnection..., contract: Stock(symbol='DXCM', exchange='SMART', currency='USD')
+2026-09-27 10:03:04  WARNING   IBKR error 165 (reqId=46): Historical Market Data Service query message:HMDS server disconnect occurred.  Attempting reconnection... [contract=DXCM]
+2026-09-27 10:03:04  INFO      Warning 2106, reqId -1: HMDS data farm connection is OK:ushmds
+2026-09-27 10:03:04  INFO      Warning 165, reqId 46: Historical Market Data Service query message:HMDS server connection was successful., contract: Stock(symbol='DXCM', exchange='SMART', currency='USD')
+2026-09-27 10:03:04  WARNING   IBKR error 165 (reqId=46): Historical Market Data Service query message:HMDS server connection was successful. [contract=DXCM]
+2026-09-27 10:03:04  INFO      Warning 2104, reqId -1: Market data farm connection is OK:usfarm
+2026-09-27 10:03:06  INFO        DXCM 1 hour: pagination reached target (3650.0+ days across 5 chunks)
+2026-09-27 10:03:06  INFO        DXCM 1 hour: paginated fetch complete — 30485 bars from 5 chunks, 2016-10-03 09:00:00-04:00 to 2026-09-25 19:00:00-04:00
+2026-09-27 10:03:59  INFO      Warning 2105, reqId -1: HMDS data farm connection is broken:ushmds
+2026-09-27 10:03:59  WARNING   IBKR error 2105 (reqId=-1): HMDS data farm connection is broken:ushmds
+2026-09-27 10:03:59  INFO      Warning 2103, reqId -1: Market data farm connection is broken:usfarm
+2026-09-27 10:03:59  WARNING   IBKR error 2103 (reqId=-1): Market data farm connection is broken:usfarm
+2026-09-27 10:03:59  INFO      Warning 2106, reqId -1: HMDS data farm connection is OK:ushmds
+2026-09-27 10:04:00  INFO      Warning 2104, reqId -1: Market data farm connection is OK:usfarm
+2026-09-27 10:04:06  INFO        DXCM 4 hours: pagination reached target (3650.0+ days across 5 chunks)
+2026-09-27 10:04:06  INFO        DXCM 4 hours: paginated fetch complete — 9013 bars from 5 chunks, 2016-10-03 08:00:00-04:00 to 2026-09-25 16:00:00-04:00
+2026-09-27 10:04:06  INFO        DXCM: 2/2 TFs saved (1h, 4h)
+2026-09-27 10:05:05  INFO      Warning 2103, reqId -1: Market data farm connection is broken:usfarm
+2026-09-27 10:05:05  WARNING   IBKR error 2103 (reqId=-1): Market data farm connection is broken:usfarm
+2026-09-27 10:05:08  INFO      Warning 2104, reqId -1: Market data farm connection is OK:usfarm
+2026-09-27 10:05:09  INFO      Warning 2105, reqId -1: HMDS data farm connection is broken:ushmds
+2026-09-27 10:05:09  WARNING   IBKR error 2105 (reqId=-1): HMDS data farm connection is broken:ushmds
+2026-09-27 10:05:09  INFO      Warning 165, reqId 53: Historical Market Data Service query message:HMDS server disconnect occurred.  Attempting reconnection..., contract: Stock(symbol='FITB', exchange='SMART', currency='USD')
+2026-09-27 10:05:09  WARNING   IBKR error 165 (reqId=53): Historical Market Data Service query message:HMDS server disconnect occurred.  Attempting reconnection... [contract=FITB]
+2026-09-27 10:05:10  INFO      Warning 2106, reqId -1: HMDS data farm connection is OK:ushmds
+2026-09-27 10:05:10  INFO      Warning 165, reqId 53: Historical Market Data Service query message:HMDS server connection was successful., contract: Stock(symbol='FITB', exchange='SMART', currency='USD')
+2026-09-27 10:05:10  WARNING   IBKR error 165 (reqId=53): Historical Market Data Service query message:HMDS server connection was successful. [contract=FITB]
+2026-09-27 10:05:24  INFO      Warning 2157, reqId -1: Sec-def data farm connection is broken:secdefil
+2026-09-27 10:05:24  WARNING   IBKR error 2157 (reqId=-1): Sec-def data farm connection is broken:secdefil
+2026-09-27 10:05:24  INFO      Warning 2158, reqId -1: Sec-def data farm connection is OK:secdefil
+2026-09-27 10:06:20  INFO        FITB 1 hour: pagination reached target (3650.0+ days across 5 chunks)
+2026-09-27 10:06:20  INFO        FITB 1 hour: paginated fetch complete — 30549 bars from 5 chunks, 2016-10-03 08:00:00-04:00 to 2026-09-25 19:00:00-04:00
+2026-09-27 10:06:39  INFO      Warning 2105, reqId -1: HMDS data farm connection is broken:ushmds
+2026-09-27 10:06:39  WARNING   IBKR error 2105 (reqId=-1): HMDS data farm connection is broken:ushmds
+2026-09-27 10:06:39  INFO      Warning 165, reqId 58: Historical Market Data Service query message:HMDS server disconnect occurred.  Attempting reconnection..., contract: Stock(symbol='FITB', exchange='SMART', currency='USD')
+2026-09-27 10:06:39  WARNING   IBKR error 165 (reqId=58): Historical Market Data Service query message:HMDS server disconnect occurred.  Attempting reconnection... [contract=FITB]
+2026-09-27 10:06:39  INFO      Warning 2106, reqId -1: HMDS data farm connection is OK:ushmds
+2026-09-27 10:06:39  INFO      Warning 165, reqId 58: Historical Market Data Service query message:HMDS server connection was successful., contract: Stock(symbol='FITB', exchange='SMART', currency='USD')
+2026-09-27 10:06:39  WARNING   IBKR error 165 (reqId=58): Historical Market Data Service query message:HMDS server connection was successful. [contract=FITB]
+2026-09-27 10:07:20  INFO      Warning 2157, reqId -1: Sec-def data farm connection is broken:secdefil
+2026-09-27 10:07:20  WARNING   IBKR error 2157 (reqId=-1): Sec-def data farm connection is broken:secdefil
+2026-09-27 10:07:21  INFO      Warning 2158, reqId -1: Sec-def data farm connection is OK:secdefil
+2026-09-27 10:07:21  INFO        FITB 4 hours: pagination reached target (3650.0+ days across 5 chunks)
+2026-09-27 10:07:21  INFO        FITB 4 hours: paginated fetch complete — 9050 bars from 5 chunks, 2016-10-03 08:00:00-04:00 to 2026-09-25 16:00:00-04:00
+2026-09-27 10:07:22  INFO        FITB: 2/2 TFs saved (1h, 4h)
+2026-09-27 10:08:18  INFO      Warning 2103, reqId -1: Market data farm connection is broken:usfarm
+2026-09-27 10:08:18  WARNING   IBKR error 2103 (reqId=-1): Market data farm connection is broken:usfarm
+2026-09-27 10:08:19  INFO      Warning 2104, reqId -1: Market data farm connection is OK:usfarm
+2026-09-27 10:08:21  INFO      Warning 2157, reqId -1: Sec-def data farm connection is broken:secdefil
+2026-09-27 10:08:21  WARNING   IBKR error 2157 (reqId=-1): Sec-def data farm connection is broken:secdefil
+2026-09-27 10:08:22  INFO      Warning 2158, reqId -1: Sec-def data farm connection is OK:secdefil
+2026-09-27 10:08:40  INFO      Warning 2105, reqId -1: HMDS data farm connection is broken:ushmds
+2026-09-27 10:08:40  WARNING   IBKR error 2105 (reqId=-1): HMDS data farm connection is broken:ushmds
+2026-09-27 10:08:40  INFO      Warning 165, reqId 63: Historical Market Data Service query message:HMDS server disconnect occurred.  Attempting reconnection..., contract: Stock(symbol='GBCI', exchange='SMART', currency='USD')
+2026-09-27 10:08:40  WARNING   IBKR error 165 (reqId=63): Historical Market Data Service query message:HMDS server disconnect occurred.  Attempting reconnection... [contract=GBCI]
+2026-09-27 10:08:40  INFO      Warning 2106, reqId -1: HMDS data farm connection is OK:ushmds
+2026-09-27 10:08:40  INFO      Warning 165, reqId 63: Historical Market Data Service query message:HMDS server connection was successful., contract: Stock(symbol='GBCI', exchange='SMART', currency='USD')
+2026-09-27 10:08:40  WARNING   IBKR error 165 (reqId=63): Historical Market Data Service query message:HMDS server connection was successful. [contract=GBCI]
+2026-09-27 10:09:05  INFO      Warning 2157, reqId -1: Sec-def data farm connection is broken:secdefil
+2026-09-27 10:09:05  WARNING   IBKR error 2157 (reqId=-1): Sec-def data farm connection is broken:secdefil
+2026-09-27 10:09:05  INFO      Warning 2105, reqId -1: HMDS data farm connection is broken:ushmds
+2026-09-27 10:09:05  WARNING   IBKR error 2105 (reqId=-1): HMDS data farm connection is broken:ushmds
+2026-09-27 10:09:05  INFO      Warning 2158, reqId -1: Sec-def data farm connection is OK:secdefil
+2026-09-27 10:09:05  INFO      Warning 2106, reqId -1: HMDS data farm connection is OK:ushmds
+2026-09-27 10:09:19  INFO        GBCI 1 hour: pagination reached target (3650.0+ days across 5 chunks)
+2026-09-27 10:09:19  INFO        GBCI 1 hour: paginated fetch complete — 28185 bars from 5 chunks, 2016-10-03 09:00:00-04:00 to 2026-09-25 19:00:00-04:00
+2026-09-27 10:09:38  INFO      Warning 2105, reqId -1: HMDS data farm connection is broken:ushmds
+2026-09-27 10:09:38  WARNING   IBKR error 2105 (reqId=-1): HMDS data farm connection is broken:ushmds
+2026-09-27 10:09:38  INFO      Warning 165, reqId 67: Historical Market Data Service query message:HMDS server disconnect occurred.  Attempting reconnection..., contract: Stock(symbol='GBCI', exchange='SMART', currency='USD')
+2026-09-27 10:09:38  WARNING   IBKR error 165 (reqId=67): Historical Market Data Service query message:HMDS server disconnect occurred.  Attempting reconnection... [contract=GBCI]
+2026-09-27 10:09:39  INFO      Warning 2106, reqId -1: HMDS data farm connection is OK:ushmds
+2026-09-27 10:09:39  INFO      Warning 165, reqId 67: Historical Market Data Service query message:HMDS server connection was successful., contract: Stock(symbol='GBCI', exchange='SMART', currency='USD')
+2026-09-27 10:09:39  WARNING   IBKR error 165 (reqId=67): Historical Market Data Service query message:HMDS server connection was successful. [contract=GBCI]
+2026-09-27 10:09:54  INFO      Warning 2157, reqId -1: Sec-def data farm connection is broken:secdefil
+2026-09-27 10:09:54  WARNING   IBKR error 2157 (reqId=-1): Sec-def data farm connection is broken:secdefil
+2026-09-27 10:09:55  INFO      Warning 2158, reqId -1: Sec-def data farm connection is OK:secdefil
+2026-09-27 10:10:24  INFO      Warning 2103, reqId -1: Market data farm connection is broken:usfarm
+2026-09-27 10:10:24  WARNING   IBKR error 2103 (reqId=-1): Market data farm connection is broken:usfarm
+2026-09-27 10:10:24  INFO      Warning 2104, reqId -1: Market data farm connection is OK:usfarm
+2026-09-27 10:10:42  INFO        GBCI 4 hours: pagination reached target (3650.0+ days across 5 chunks)
+2026-09-27 10:10:42  INFO        GBCI 4 hours: paginated fetch complete — 8517 bars from 5 chunks, 2016-10-03 08:00:00-04:00 to 2026-09-25 16:00:00-04:00
+2026-09-27 10:10:42  INFO        GBCI: 2/2 TFs saved (1h, 4h)
+2026-09-27 10:10:55  INFO      Warning 2157, reqId -1: Sec-def data farm connection is broken:secdefil
+2026-09-27 10:10:55  WARNING   IBKR error 2157 (reqId=-1): Sec-def data farm connection is broken:secdefil
+2026-09-27 10:10:55  INFO      Warning 2158, reqId -1: Sec-def data farm connection is OK:secdefil
+2026-09-27 10:11:41  INFO      Warning 2105, reqId -1: HMDS data farm connection is broken:ushmds
+2026-09-27 10:11:41  WARNING   IBKR error 2105 (reqId=-1): HMDS data farm connection is broken:ushmds
+2026-09-27 10:11:41  INFO      Warning 165, reqId 73: Historical Market Data Service query message:HMDS server disconnect occurred.  Attempting reconnection..., contract: Stock(symbol='GGG', exchange='SMART', currency='USD')
+2026-09-27 10:11:41  WARNING   IBKR error 165 (reqId=73): Historical Market Data Service query message:HMDS server disconnect occurred.  Attempting reconnection... [contract=GGG]
+2026-09-27 10:11:43  INFO      Warning 2106, reqId -1: HMDS data farm connection is OK:ushmds
+2026-09-27 10:11:43  INFO      Warning 165, reqId 73: Historical Market Data Service query message:HMDS server connection was successful., contract: Stock(symbol='GGG', exchange='SMART', currency='USD')
+2026-09-27 10:11:43  WARNING   IBKR error 165 (reqId=73): Historical Market Data Service query message:HMDS server connection was successful. [contract=GGG]
+2026-09-27 10:11:57  INFO      Warning 2157, reqId -1: Sec-def data farm connection is broken:secdefil
+2026-09-27 10:11:57  WARNING   IBKR error 2157 (reqId=-1): Sec-def data farm connection is broken:secdefil
+2026-09-27 10:11:57  INFO      Warning 2158, reqId -1: Sec-def data farm connection is OK:secdefil
+2026-09-27 10:12:25  INFO      Warning 2103, reqId -1: Market data farm connection is broken:usfarm
+2026-09-27 10:12:25  WARNING   IBKR error 2103 (reqId=-1): Market data farm connection is broken:usfarm
+2026-09-27 10:12:26  INFO      Warning 2104, reqId -1: Market data farm connection is OK:usfarm
+2026-09-27 10:12:53  INFO        GGG 1 hour: pagination reached target (3650.0+ days across 5 chunks)
+2026-09-27 10:12:53  INFO        GGG 1 hour: paginated fetch complete — 28073 bars from 5 chunks, 2016-10-03 09:00:00-04:00 to 2026-09-25 19:00:00-04:00
+2026-09-27 10:13:12  INFO      Warning 2103, reqId -1: Market data farm connection is broken:usfarm
+2026-09-27 10:13:12  WARNING   IBKR error 2103 (reqId=-1): Market data farm connection is broken:usfarm
+2026-09-27 10:13:13  INFO      Warning 2104, reqId -1: Market data farm connection is OK:usfarm
+2026-09-27 10:13:53  INFO        GGG 4 hours: pagination reached target (3650.0+ days across 5 chunks)
+2026-09-27 10:13:53  INFO        GGG 4 hours: paginated fetch complete — 8475 bars from 5 chunks, 2016-10-03 08:00:00-04:00 to 2026-09-25 16:00:00-04:00
+2026-09-27 10:13:53  INFO        GGG: 2/2 TFs saved (1h, 4h)
+2026-09-27 10:16:48  INFO        ITW 1 hour: pagination reached target (3650.0+ days across 5 chunks)
+2026-09-27 10:16:48  INFO        ITW 1 hour: paginated fetch complete — 28760 bars from 5 chunks, 2016-10-03 08:00:00-04:00 to 2026-09-25 19:00:00-04:00
+2026-09-27 10:17:29  INFO      Warning 2103, reqId -1: Market data farm connection is broken:usfarm
+2026-09-27 10:17:29  WARNING   IBKR error 2103 (reqId=-1): Market data farm connection is broken:usfarm
+2026-09-27 10:17:29  INFO      Warning 2157, reqId -1: Sec-def data farm connection is broken:secdefil
+2026-09-27 10:17:29  WARNING   IBKR error 2157 (reqId=-1): Sec-def data farm connection is broken:secdefil
+2026-09-27 10:17:29  INFO      Warning 2105, reqId -1: HMDS data farm connection is broken:ushmds
+2026-09-27 10:17:29  WARNING   IBKR error 2105 (reqId=-1): HMDS data farm connection is broken:ushmds
+2026-09-27 10:17:29  INFO      Warning 165, reqId 89: Historical Market Data Service query message:HMDS server disconnect occurred.  Attempting reconnection..., contract: Stock(symbol='ITW', exchange='SMART', currency='USD')
+2026-09-27 10:17:29  WARNING   IBKR error 165 (reqId=89): Historical Market Data Service query message:HMDS server disconnect occurred.  Attempting reconnection... [contract=ITW]
+2026-09-27 10:17:29  INFO      Warning 2158, reqId -1: Sec-def data farm connection is OK:secdefil
+2026-09-27 10:17:29  INFO      Warning 2106, reqId -1: HMDS data farm connection is OK:ushmds
+2026-09-27 10:17:29  INFO      Warning 165, reqId 89: Historical Market Data Service query message:HMDS server connection was successful., contract: Stock(symbol='ITW', exchange='SMART', currency='USD')
+2026-09-27 10:17:29  WARNING   IBKR error 165 (reqId=89): Historical Market Data Service query message:HMDS server connection was successful. [contract=ITW]
+2026-09-27 10:17:29  INFO      Warning 2104, reqId -1: Market data farm connection is OK:usfarm
+2026-09-27 10:17:48  INFO        ITW 4 hours: pagination reached target (3650.0+ days across 5 chunks)
+2026-09-27 10:17:48  INFO        ITW 4 hours: paginated fetch complete — 8609 bars from 5 chunks, 2016-10-03 08:00:00-04:00 to 2026-09-25 16:00:00-04:00
+2026-09-27 10:17:48  INFO        ITW: 2/2 TFs saved (1h, 4h)
+2026-09-27 10:18:34  INFO      Warning 2105, reqId -1: HMDS data farm connection is broken:ushmds
+2026-09-27 10:18:34  WARNING   IBKR error 2105 (reqId=-1): HMDS data farm connection is broken:ushmds
+2026-09-27 10:18:35  INFO      Warning 2157, reqId -1: Sec-def data farm connection is broken:secdefil
+2026-09-27 10:18:35  WARNING   IBKR error 2157 (reqId=-1): Sec-def data farm connection is broken:secdefil
+2026-09-27 10:18:35  INFO      Warning 2103, reqId -1: Market data farm connection is broken:usfarm
+2026-09-27 10:18:35  WARNING   IBKR error 2103 (reqId=-1): Market data farm connection is broken:usfarm
+2026-09-27 10:18:35  INFO      Warning 165, reqId 93: Historical Market Data Service query message:HMDS server disconnect occurred.  Attempting reconnection..., contract: Stock(symbol='KEY', exchange='SMART', currency='USD')
+2026-09-27 10:18:35  WARNING   IBKR error 165 (reqId=93): Historical Market Data Service query message:HMDS server disconnect occurred.  Attempting reconnection... [contract=KEY]
+2026-09-27 10:18:35  INFO      Warning 2106, reqId -1: HMDS data farm connection is OK:ushmds
+2026-09-27 10:18:35  INFO      Warning 165, reqId 93: Historical Market Data Service query message:HMDS server connection was successful., contract: Stock(symbol='KEY', exchange='SMART', currency='USD')
+2026-09-27 10:18:35  WARNING   IBKR error 165 (reqId=93): Historical Market Data Service query message:HMDS server connection was successful. [contract=KEY]
+2026-09-27 10:18:35  INFO      Warning 2158, reqId -1: Sec-def data farm connection is OK:secdefil
+2026-09-27 10:18:36  INFO      Warning 2104, reqId -1: Market data farm connection is OK:usfarm
+2026-09-27 10:19:35  INFO      Warning 2105, reqId -1: HMDS data farm connection is broken:ushmds
+2026-09-27 10:19:35  WARNING   IBKR error 2105 (reqId=-1): HMDS data farm connection is broken:ushmds
+2026-09-27 10:19:35  INFO      Warning 165, reqId 96: Historical Market Data Service query message:HMDS server disconnect occurred.  Attempting reconnection..., contract: Stock(symbol='KEY', exchange='SMART', currency='USD')
+2026-09-27 10:19:35  WARNING   IBKR error 165 (reqId=96): Historical Market Data Service query message:HMDS server disconnect occurred.  Attempting reconnection... [contract=KEY]
+2026-09-27 10:19:36  INFO      Warning 2106, reqId -1: HMDS data farm connection is OK:ushmds
+2026-09-27 10:19:36  INFO      Warning 165, reqId 96: Historical Market Data Service query message:HMDS server connection was successful., contract: Stock(symbol='KEY', exchange='SMART', currency='USD')
+2026-09-27 10:19:36  WARNING   IBKR error 165 (reqId=96): Historical Market Data Service query message:HMDS server connection was successful. [contract=KEY]
+2026-09-27 10:19:39  INFO        KEY 1 hour: pagination reached target (3650.0+ days across 5 chunks)
+2026-09-27 10:19:39  INFO        KEY 1 hour: paginated fetch complete — 32041 bars from 5 chunks, 2016-10-03 09:00:00-04:00 to 2026-09-25 19:00:00-04:00
+2026-09-27 10:20:21  INFO      Warning 2103, reqId -1: Market data farm connection is broken:usfarm
+2026-09-27 10:20:21  WARNING   IBKR error 2103 (reqId=-1): Market data farm connection is broken:usfarm
+2026-09-27 10:20:21  INFO      Warning 2105, reqId -1: HMDS data farm connection is broken:ushmds
+2026-09-27 10:20:21  WARNING   IBKR error 2105 (reqId=-1): HMDS data farm connection is broken:ushmds
+2026-09-27 10:20:21  INFO      Warning 2106, reqId -1: HMDS data farm connection is OK:ushmds
+2026-09-27 10:20:21  INFO      Warning 2104, reqId -1: Market data farm connection is OK:usfarm
+2026-09-27 10:20:50  INFO        KEY 4 hours: pagination reached target (3650.0+ days across 5 chunks)
+2026-09-27 10:20:50  INFO        KEY 4 hours: paginated fetch complete — 9414 bars from 5 chunks, 2016-10-03 08:00:00-04:00 to 2026-09-25 16:00:00-04:00
+2026-09-27 10:20:51  INFO        KEY: 2/2 TFs saved (1h, 4h)
+2026-09-27 10:20:51  INFO        [10/19] 20 saved, 0 failed
+2026-09-27 10:23:12  INFO        MC 1 hour: pagination reached target (3650.0+ days across 5 chunks)
+2026-09-27 10:23:12  INFO        MC 1 hour: paginated fetch complete — 28467 bars from 5 chunks, 2016-10-03 09:00:00-04:00 to 2026-09-25 19:00:00-04:00
+2026-09-27 10:24:17  INFO      Warning 2105, reqId -1: HMDS data farm connection is broken:ushmds
+2026-09-27 10:24:17  WARNING   IBKR error 2105 (reqId=-1): HMDS data farm connection is broken:ushmds
+2026-09-27 10:24:17  INFO      Warning 2103, reqId -1: Market data farm connection is broken:usfarm
+2026-09-27 10:24:17  WARNING   IBKR error 2103 (reqId=-1): Market data farm connection is broken:usfarm
+2026-09-27 10:24:17  INFO      Warning 2106, reqId -1: HMDS data farm connection is OK:ushmds
+2026-09-27 10:24:17  INFO      Warning 2104, reqId -1: Market data farm connection is OK:usfarm
+2026-09-27 10:24:18  INFO        MC 4 hours: pagination reached target (3650.0+ days across 5 chunks)
+2026-09-27 10:24:18  INFO        MC 4 hours: paginated fetch complete — 8565 bars from 5 chunks, 2016-10-03 08:00:00-04:00 to 2026-09-25 16:00:00-04:00
+2026-09-27 10:24:19  INFO        MC: 2/2 TFs saved (1h, 4h)
+2026-09-27 10:25:21  INFO      Warning 2103, reqId -1: Market data farm connection is broken:usfarm
+2026-09-27 10:25:21  WARNING   IBKR error 2103 (reqId=-1): Market data farm connection is broken:usfarm
+2026-09-27 10:25:21  INFO      Warning 2105, reqId -1: HMDS data farm connection is broken:ushmds
+2026-09-27 10:25:21  WARNING   IBKR error 2105 (reqId=-1): HMDS data farm connection is broken:ushmds
+2026-09-27 10:25:21  INFO      Warning 165, reqId 114: Historical Market Data Service query message:HMDS server disconnect occurred.  Attempting reconnection..., contract: Stock(symbol='NCLH', exchange='SMART', currency='USD')
+2026-09-27 10:25:21  WARNING   IBKR error 165 (reqId=114): Historical Market Data Service query message:HMDS server disconnect occurred.  Attempting reconnection... [contract=NCLH]
+2026-09-27 10:25:23  INFO      Warning 2106, reqId -1: HMDS data farm connection is OK:ushmds
+2026-09-27 10:25:23  INFO      Warning 165, reqId 114: Historical Market Data Service query message:HMDS server connection was successful., contract: Stock(symbol='NCLH', exchange='SMART', currency='USD')
+2026-09-27 10:25:23  WARNING   IBKR error 165 (reqId=114): Historical Market Data Service query message:HMDS server connection was successful. [contract=NCLH]
+2026-09-27 10:25:24  INFO      Warning 2104, reqId -1: Market data farm connection is OK:usfarm
+2026-09-27 10:25:47  INFO      Warning 2157, reqId -1: Sec-def data farm connection is broken:secdefil
+2026-09-27 10:25:47  WARNING   IBKR error 2157 (reqId=-1): Sec-def data farm connection is broken:secdefil
+2026-09-27 10:25:47  INFO      Warning 2158, reqId -1: Sec-def data farm connection is OK:secdefil
+2026-09-27 10:25:51  INFO        NCLH 1 hour: pagination reached target (3650.0+ days across 5 chunks)
+2026-09-27 10:25:51  INFO        NCLH 1 hour: paginated fetch complete — 35630 bars from 5 chunks, 2016-10-03 09:00:00-04:00 to 2026-09-25 19:00:00-04:00
+2026-09-27 10:26:29  INFO      Warning 2105, reqId -1: HMDS data farm connection is broken:ushmds
+2026-09-27 10:26:29  WARNING   IBKR error 2105 (reqId=-1): HMDS data farm connection is broken:ushmds
+2026-09-27 10:26:29  INFO      Warning 2103, reqId -1: Market data farm connection is broken:usfarm
+2026-09-27 10:26:29  WARNING   IBKR error 2103 (reqId=-1): Market data farm connection is broken:usfarm
+2026-09-27 10:26:29  INFO      Warning 165, reqId 118: Historical Market Data Service query message:HMDS server disconnect occurred.  Attempting reconnection..., contract: Stock(symbol='NCLH', exchange='SMART', currency='USD')
+2026-09-27 10:26:29  WARNING   IBKR error 165 (reqId=118): Historical Market Data Service query message:HMDS server disconnect occurred.  Attempting reconnection... [contract=NCLH]
+2026-09-27 10:26:30  INFO      Warning 2106, reqId -1: HMDS data farm connection is OK:ushmds
+2026-09-27 10:26:30  INFO      Warning 165, reqId 118: Historical Market Data Service query message:HMDS server connection was successful., contract: Stock(symbol='NCLH', exchange='SMART', currency='USD')
+2026-09-27 10:26:30  WARNING   IBKR error 165 (reqId=118): Historical Market Data Service query message:HMDS server connection was successful. [contract=NCLH]
+2026-09-27 10:26:30  INFO      Warning 2104, reqId -1: Market data farm connection is OK:usfarm
+2026-09-27 10:27:02  INFO        NCLH 4 hours: pagination reached target (3650.0+ days across 5 chunks)
+2026-09-27 10:27:02  INFO        NCLH 4 hours: paginated fetch complete — 10052 bars from 5 chunks, 2016-10-03 08:00:00-04:00 to 2026-09-25 16:00:00-04:00
+2026-09-27 10:27:02  INFO        NCLH: 2/2 TFs saved (1h, 4h)

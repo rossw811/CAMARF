@@ -1,0 +1,42 @@
+
+======================================================================
+  BACKTEST SUMMARY — LAYER1_EZ15
+======================================================================
+  Pairs tested: 2
+  Total trades: 24
+  Total net P&L (spread units): 1926.47
+
+  By timeframe (mean):
+    n_trades  win_rate    sharpe  total_pnl
+tf                                         
+4h      12.0    0.9167  22.91815    963.235
+
+  OLS vs Kalman:
+              n_trades  win_rate   sharpe  total_pnl
+hedge_method                                        
+kalman            12.0    0.9167  22.8116     959.54
+ols               12.0    0.9167  23.0247     966.93
+
+  Top 10 pairs by net P&L:
+tf symbol_a symbol_b hedge_method  n_trades  win_rate  sharpe  total_pnl
+4h      PNC     ZION          ols        12    0.9167 23.0247     966.93
+4h      PNC     ZION       kalman        12    0.9167 22.8116     959.54
+
+  Bottom 5 pairs by net P&L:
+tf symbol_a symbol_b hedge_method  n_trades  total_pnl
+4h      PNC     ZION       kalman        12     959.54
+4h      PNC     ZION          ols        12     966.93
+
+  Portfolio-level stats:
+    n_pairs: 1
+    n_trades_total: 24
+    total_pnl_portfolio: 1926.47
+    sharpe_portfolio: 1.5389
+    max_drawdown_portfolio: 169.08
+    max_concentration_pair: PNC/ZION@4h
+    max_concentration_pct: 1.0
+
+  Bias notes (episodic survivorship + hedge lookahead — see docstring):
+    Full-series run = IN-SAMPLE. Layer 2 holdout run = OOS.
+======================================================================
+

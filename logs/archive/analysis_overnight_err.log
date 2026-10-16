@@ -1,0 +1,471 @@
+2026-07-13 21:57:11  INFO      ======================================================================
+2026-07-13 21:57:11  INFO      CAMARF  —  analysis.py  —  Cross-Asset Co-Movement Analysis
+2026-07-13 21:57:11  INFO      ======================================================================
+2026-07-13 22:01:25  INFO      Resuming — 1357 assets already complete (config hash 86ca897df0541bcf)
+2026-07-13 22:01:25  INFO      Building asset universe...
+2026-07-13 22:01:25  INFO      S&P 500: 503 tickers from cache (16.0h old)
+2026-07-13 22:01:25  INFO        sp400: 400 tickers from cache (16.0h old)
+2026-07-13 22:01:25  INFO        S&P MidCap 400: fetched 400 tickers (net new after S&P 500 overlap removed by dedup)
+2026-07-13 22:01:25  INFO        sp600: 603 tickers from cache (16.0h old)
+2026-07-13 22:01:25  INFO        S&P SmallCap 600: fetched 603 tickers (net new after dedup)
+2026-07-13 22:01:25  INFO        S&P 1500 total equities in universe: 1506
+2026-07-13 22:01:25  INFO        International equities + ADRs + FX spots added: 108 symbols
+2026-07-13 22:01:25  INFO        Total universe: 1697 assets
+2026-07-13 22:01:25  INFO      Exclusion list: skipping 3 assets ['BNY', 'FDXF', 'VLTO']
+2026-07-13 22:01:25  INFO      Universe candidates: 1694 assets
+2026-07-13 22:01:25  INFO      Phase 1 (yfinance daily): 1517 equities + 89 intl equities + 15 crypto + 25 forex/FX + 21 ETFs
+2026-07-13 22:01:31  INFO        Read-only mode (fetch=False): skipping yfinance fetch for 6 uncached + 1600 stale daily assets — using cache as-is
+2026-07-13 22:01:31  INFO        All daily data cached and current — skipping yfinance download
+2026-07-13 22:01:43  INFO        210 equities + 19 forex need IBKR intraday
+2026-07-13 22:01:43  INFO        Read-only mode (fetch=False): 256 assets need intraday data but fetching is disabled — using cache as-is (expected for analysis.py; run data.py to backfill)
+2026-07-13 22:03:15  INFO      Universe complete: 1661 assets passed, 0 excluded
+2026-07-13 22:03:15  INFO      Data keys: 20427 symbol-timeframe combinations (18767 loaded from cache)
+2026-07-13 22:03:15  INFO      Run summary \u2192 C:\Users\RossW\Projects\CAMARF\latest_run_data.log
+2026-07-13 22:03:15  INFO      Universe loaded: 1661 assets, 20427 symbol-TF combinations
+2026-07-13 22:03:15  INFO      ======================================================================
+2026-07-13 22:03:15  INFO      CAMARF — analysis.py — Pipeline start
+2026-07-13 22:03:15  INFO      ======================================================================
+2026-07-13 22:03:15  INFO        Universe: 1661 assets, 20427 symbol-TF combinations
+2026-07-13 22:03:15  INFO      Script hash unchanged (e1d647b826c3e8af) — reusing prior results
+2026-07-13 22:03:15  INFO        Timeframes: ['1m', '2m', '3m', '5m', '15m', '30m', '1h', '4h', '1D', '7D', '1M', '3M', '6M']
+2026-07-13 22:03:15  INFO      ----------------------------------------------------------------------
+2026-07-13 22:03:15  INFO        Timeframe: 1m
+2026-07-13 22:03:15  INFO      ----------------------------------------------------------------------
+2026-07-13 22:03:16  INFO        [1m] 1446 assets have data for this TF
+2026-07-13 22:03:34  INFO        [1m] aligned: 1446 assets
+2026-07-13 22:03:40  INFO        [1m] Computing 1434×1434 correlation matrices (Pearson + Spearman + rolling avg)...
+2026-07-13 22:04:03  INFO        [1m] Pearson 14.8s | Spearman 5.9s | RollingAvg 2.7s
+2026-07-13 22:04:05  INFO        [1m] Candidate pairs: 1859 (268 cross-asset)  threshold |\u03c1| \u2265 0.40  [gold=64 silver=1343 bronze=452]
+2026-07-13 22:04:05  INFO        [1m] Running EG on 1859 pairs (workers=12, max_lag=10)...
+2026-07-13 22:04:20  INFO        [1m] EG complete in 13.9s
+2026-07-13 22:04:20  INFO        [1m] EG: tested=1859, raw<0.05=6, FDR-adjusted<0.05=0
+2026-07-13 22:04:20  INFO        [1m] filter funnel:
+tf_label                   stage  n_before  n_after  n_removed
+      1m pearson_prefilter_pairs   1044735     1859    1042876
+      1m         eg_bh_fdr_pairs      1859        0       1859
+2026-07-13 22:04:20  INFO        [1m] no pairs survived BH-FDR
+2026-07-13 22:04:20  INFO      ----------------------------------------------------------------------
+2026-07-13 22:04:20  INFO        Timeframe: 2m
+2026-07-13 22:04:20  INFO      ----------------------------------------------------------------------
+2026-07-13 22:04:22  INFO        [2m] 1537 assets have data for this TF
+2026-07-13 22:04:44  INFO        [2m] aligned: 1537 assets
+2026-07-13 22:04:49  INFO        [2m] Computing 1532×1532 correlation matrices (Pearson + Spearman + rolling avg)...
+2026-07-13 22:05:10  INFO        [2m] Pearson 7.6s | Spearman 11.5s | RollingAvg 2.5s
+2026-07-13 22:05:12  INFO        [2m] Candidate pairs: 2348 (575 cross-asset)  threshold |\u03c1| \u2265 0.40  [gold=43 silver=1703 bronze=602]
+2026-07-13 22:05:12  INFO        [2m] Running EG on 2348 pairs (workers=12, max_lag=10)...
+2026-07-13 22:05:49  INFO        [2m] EG complete in 35.7s
+2026-07-13 22:05:49  INFO        [2m] EG: tested=2348, raw<0.05=95, FDR-adjusted<0.05=36
+2026-07-13 22:05:49  INFO        [2m] Rolling coint on 36 pairs (window=252, step=21)...
+2026-07-13 22:06:03  INFO        [2m] Rolling coint complete in 13.4s
+2026-07-13 22:06:03  INFO        [2m] Per-pair modeling: hedge ratios + spread + decay...
+2026-07-13 22:06:46  INFO        [2m] Per-pair modeling done in 42.7s — 36 PairResult objects built
+2026-07-13 22:06:46  INFO        [2m] Eigenportfolio validation on 36 pairs...
+2026-07-13 22:06:46  WARNING     Eigenportfolio: 32930 NaN entries in the 1532x1532 correlation matrix (insufficient pairwise overlap) — treated as uncorrelated (0) before eigendecomposition
+2026-07-13 22:07:54  INFO        [2m]   K=322 systematic factors removed (MP \u03bb+=1.388)
+2026-07-13 22:07:55  INFO        [2m]   Eigenportfolio: 2/36 Gold tier (idiosyncratic) | 34 Silver tier (factor-driven) in 70.0s
+2026-07-13 22:07:56  INFO        [2m] Computing VolumeStructure features...
+2026-07-13 22:08:57  INFO        [2m] Features saved: 39 assets in 61.7s
+2026-07-13 22:08:57  INFO        [2m] Regime classification (39 assets)...
+2026-07-13 22:10:04  WARNING   Model is not converging.  Current: -28621.244992805438 is not greater than -28608.40260927606. Delta is -12.842383529376093
+2026-07-13 22:10:30  WARNING   Model is not converging.  Current: -40346.70914113334 is not greater than -40346.70798583929. Delta is -0.0011552940486581065
+2026-07-13 22:10:31  WARNING   Model is not converging.  Current: -35633.135662674984 is not greater than -35633.129584789065. Delta is -0.006077885918784887
+2026-07-13 22:14:39  INFO        [2m] Regimes fitted: 39 assets (39 per-bar label files saved) in 341.8s
+2026-07-13 22:14:39  INFO        [2m] Cross-asset split: same=29, cross=7
+2026-07-13 22:14:39  INFO        [2m] Trio enumeration + Johansen...
+2026-07-13 22:14:39  INFO        [2m] Testing 468 trios with Johansen...
+2026-07-13 22:14:47  INFO        [2m] Trio testing complete in 7.5s
+2026-07-13 22:14:47  INFO        [2m] Confirmed trios: 261/468
+2026-07-13 22:14:47  INFO        [2m] filter funnel:
+tf_label                      stage  n_before  n_after  n_removed
+      2m    pearson_prefilter_pairs   1180416     2348    1178068
+      2m            eg_bh_fdr_pairs      2348       36       2312
+      2m     price_degeneracy_pairs        36       36          0
+      2m structural_exclusion_pairs        36       36          0
+      2m coint_frac_threshold_pairs        36        1         35
+2026-07-13 22:14:47  INFO        [2m] coint_frac filter: 35 pairs removed (coint_fraction_rolling < 0.70 and no clean secondary evidence); 0 pairs below the threshold kept anyway via secondary-evidence override
+2026-07-13 22:14:47  INFO        [2m] GICS tagged: 1/1 pairs have sector_a
+2026-07-13 22:14:47  INFO        [2m] saved 1 pairs \u2192 C:\Users\RossW\Projects\CAMARF\output\results\2min/pairs.parquet
+2026-07-13 22:14:48  INFO        [2m] persisted per-bar spread/z-score series for 36/36 EG+FDR-confirmed pairs (post price-degeneracy filter, pre coint_frac/structural)
+2026-07-13 22:14:48  INFO        [2m] saved 36 pre-coint_frac/pre-structural candidates \u2192 C:\Users\RossW\Projects\CAMARF\output\results\2min/all_candidates.parquet
+2026-07-13 22:14:48  INFO        [2m] saved 7 cross-asset pairs
+2026-07-13 22:14:48  INFO        [2m] saved 261 trios
+2026-07-13 22:14:48  INFO        [2m] saved 39 regime profiles
+2026-07-13 22:14:49  INFO      ----------------------------------------------------------------------
+2026-07-13 22:14:49  INFO        Timeframe: 3m
+2026-07-13 22:14:49  INFO      ----------------------------------------------------------------------
+2026-07-13 22:14:51  INFO        [3m] 1533 assets have data for this TF
+2026-07-13 22:15:07  INFO        [3m] aligned: 1533 assets
+2026-07-13 22:15:10  INFO        [3m] Computing 1529×1529 correlation matrices (Pearson + Spearman + rolling avg)...
+2026-07-13 22:15:24  INFO        [3m] Pearson 8.4s | Spearman 2.6s | RollingAvg 2.5s
+2026-07-13 22:15:25  INFO        [3m] Candidate pairs: 3425 (474 cross-asset)  threshold |\u03c1| \u2265 0.40  [gold=86 silver=2188 bronze=1151]
+2026-07-13 22:15:25  INFO        [3m] Running EG on 3425 pairs (workers=12, max_lag=10)...
+2026-07-13 22:15:44  INFO        [3m] EG complete in 18.3s
+2026-07-13 22:15:44  INFO        [3m] EG: tested=3425, raw<0.05=62, FDR-adjusted<0.05=1
+2026-07-13 22:15:44  INFO        [3m] Rolling coint on 1 pairs (window=252, step=21)...
+2026-07-13 22:15:49  INFO        [3m] Rolling coint complete in 4.3s
+2026-07-13 22:15:49  INFO        [3m] Per-pair modeling: hedge ratios + spread + decay...
+2026-07-13 22:15:49  INFO        [3m] Per-pair modeling done in 0.7s — 1 PairResult objects built
+2026-07-13 22:15:49  INFO        [3m] Eigenportfolio validation on 1 pairs...
+2026-07-13 22:15:49  WARNING     Eigenportfolio: 146858 NaN entries in the 1529x1529 correlation matrix (insufficient pairwise overlap) — treated as uncorrelated (0) before eigendecomposition
+2026-07-13 22:16:08  INFO        [3m]   K=247 systematic factors removed (MP \u03bb+=1.742)
+2026-07-13 22:16:08  INFO        [3m]   Eigenportfolio: 0/1 Gold tier (idiosyncratic) | 1 Silver tier (factor-driven) in 18.4s
+2026-07-13 22:16:08  INFO        [3m] Computing VolumeStructure features...
+2026-07-13 22:16:10  INFO        [3m] Features saved: 2 assets in 1.6s
+2026-07-13 22:16:10  INFO        [3m] Regime classification (2 assets)...
+2026-07-13 22:16:37  INFO        [3m] Regimes fitted: 2 assets (2 per-bar label files saved) in 27.2s
+2026-07-13 22:16:37  INFO        [3m] Cross-asset split: same=1, cross=0
+2026-07-13 22:16:37  INFO        [3m] Trio enumeration + Johansen...
+2026-07-13 22:16:37  INFO        [3m] filter funnel:
+tf_label                      stage  n_before  n_after  n_removed
+      3m    pearson_prefilter_pairs   1174278     3425    1170853
+      3m            eg_bh_fdr_pairs      3425        1       3424
+      3m     price_degeneracy_pairs         1        1          0
+      3m structural_exclusion_pairs         1        1          0
+      3m coint_frac_threshold_pairs         1        1          0
+2026-07-13 22:16:37  INFO        [3m] GICS tagged: 1/1 pairs have sector_a
+2026-07-13 22:16:37  INFO        [3m] saved 1 pairs \u2192 C:\Users\RossW\Projects\CAMARF\output\results\3min/pairs.parquet
+2026-07-13 22:16:37  INFO        [3m] persisted per-bar spread/z-score series for 1/1 EG+FDR-confirmed pairs (post price-degeneracy filter, pre coint_frac/structural)
+2026-07-13 22:16:37  INFO        [3m] saved 1 pre-coint_frac/pre-structural candidates \u2192 C:\Users\RossW\Projects\CAMARF\output\results\3min/all_candidates.parquet
+2026-07-13 22:16:37  INFO        [3m] saved 2 regime profiles
+2026-07-13 22:16:37  INFO      ----------------------------------------------------------------------
+2026-07-13 22:16:37  INFO        Timeframe: 5m
+2026-07-13 22:16:37  INFO      ----------------------------------------------------------------------
+2026-07-13 22:16:39  INFO        [5m] 1544 assets have data for this TF
+2026-07-13 22:17:06  INFO        [5m] aligned: 1544 assets
+2026-07-13 22:17:12  INFO        [5m] Computing 1543×1543 correlation matrices (Pearson + Spearman + rolling avg)...
+2026-07-13 22:17:56  INFO        [5m] Pearson 8.5s | Spearman 8.8s | RollingAvg 27.1s
+2026-07-13 22:17:58  INFO        [5m] Candidate pairs: 4661 (916 cross-asset)  threshold |\u03c1| \u2265 0.40  [gold=2018 silver=1343 bronze=1300]
+2026-07-13 22:17:58  INFO        [5m] Running EG on 4661 pairs (workers=12, max_lag=10)...
+2026-07-13 22:19:21  INFO        [5m] EG complete in 81.7s
+2026-07-13 22:19:21  INFO        [5m] EG: tested=4661, raw<0.05=163, FDR-adjusted<0.05=2
+2026-07-13 22:19:21  INFO        [5m] Rolling coint on 2 pairs (window=252, step=21)...
+2026-07-13 22:19:26  INFO        [5m] Rolling coint complete in 5.4s
+2026-07-13 22:19:26  INFO        [5m] Per-pair modeling: hedge ratios + spread + decay...
+2026-07-13 22:19:29  INFO        [5m] Per-pair modeling done in 2.9s — 2 PairResult objects built
+2026-07-13 22:19:29  INFO        [5m] Eigenportfolio validation on 2 pairs...
+2026-07-13 22:19:29  WARNING     Eigenportfolio: 18530 NaN entries in the 1543x1543 correlation matrix (insufficient pairwise overlap) — treated as uncorrelated (0) before eigendecomposition
+2026-07-13 22:20:25  INFO        [5m]   K=282 systematic factors removed (MP \u03bb+=1.382)
+2026-07-13 22:20:26  INFO        [5m]   Eigenportfolio: 0/2 Gold tier (idiosyncratic) | 2 Silver tier (factor-driven) in 56.5s
+2026-07-13 22:20:26  INFO        [5m] Computing VolumeStructure features...
+2026-07-13 22:20:32  INFO        [5m] Features saved: 3 assets in 5.9s
+2026-07-13 22:20:32  INFO        [5m] Regime classification (3 assets)...
+2026-07-13 22:21:30  INFO        [5m] Regimes fitted: 3 assets (3 per-bar label files saved) in 58.2s
+2026-07-13 22:21:30  INFO        [5m] Cross-asset split: same=2, cross=0
+2026-07-13 22:21:30  INFO        [5m] Trio enumeration + Johansen...
+2026-07-13 22:21:30  INFO        [5m] Testing 1 trios with Johansen...
+2026-07-13 22:21:34  INFO        [5m] Trio testing complete in 3.9s
+2026-07-13 22:21:34  INFO        [5m] Confirmed trios: 1/1
+2026-07-13 22:21:34  INFO        [5m] filter funnel:
+tf_label                      stage  n_before  n_after  n_removed
+      5m    pearson_prefilter_pairs   1191196     4661    1186535
+      5m            eg_bh_fdr_pairs      4661        2       4659
+      5m     price_degeneracy_pairs         2        2          0
+      5m structural_exclusion_pairs         2        2          0
+      5m coint_frac_threshold_pairs         2        0          2
+2026-07-13 22:21:34  INFO        [5m] coint_frac filter: 2 pairs removed (coint_fraction_rolling < 0.70 and no clean secondary evidence); 0 pairs below the threshold kept anyway via secondary-evidence override
+2026-07-13 22:21:34  INFO        [5m] saved 1 trios
+2026-07-13 22:21:34  INFO        [5m] saved 3 regime profiles
+2026-07-13 22:21:34  INFO      ----------------------------------------------------------------------
+2026-07-13 22:21:34  INFO        Timeframe: 15m
+2026-07-13 22:21:34  INFO      ----------------------------------------------------------------------
+2026-07-13 22:21:36  INFO        [15m] 1542 assets have data for this TF
+2026-07-13 22:21:50  INFO        [15m] aligned: 1542 assets
+2026-07-13 22:21:54  INFO        [15m] Computing 1541×1541 correlation matrices (Pearson + Spearman + rolling avg)...
+2026-07-13 22:22:02  INFO        [15m] Pearson 1.4s | Spearman 2.0s | RollingAvg 4.1s
+2026-07-13 22:22:03  INFO        [15m] Candidate pairs: 14510 (1877 cross-asset)  threshold |\u03c1| \u2265 0.40  [gold=6212 silver=4166 bronze=4132]
+2026-07-13 22:22:03  INFO        [15m] Running EG on 14510 pairs (workers=12, max_lag=10)...
+2026-07-13 22:24:07  INFO        [15m] EG complete in 122.4s
+2026-07-13 22:24:07  INFO        [15m] EG: tested=14510, raw<0.05=628, FDR-adjusted<0.05=0
+2026-07-13 22:24:07  INFO        [15m] filter funnel:
+tf_label                   stage  n_before  n_after  n_removed
+     15m pearson_prefilter_pairs   1188111    14510    1173601
+     15m         eg_bh_fdr_pairs     14510        0      14510
+2026-07-13 22:24:07  INFO        [15m] no pairs survived BH-FDR
+2026-07-13 22:24:07  INFO      ----------------------------------------------------------------------
+2026-07-13 22:24:07  INFO        Timeframe: 30m
+2026-07-13 22:24:07  INFO      ----------------------------------------------------------------------
+2026-07-13 22:24:09  INFO        [30m] 1542 assets have data for this TF
+2026-07-13 22:24:21  INFO        [30m] aligned: 1542 assets
+2026-07-13 22:24:25  INFO        [30m] Computing 1542×1542 correlation matrices (Pearson + Spearman + rolling avg)...
+2026-07-13 22:24:37  INFO        [30m] Pearson 3.9s | Spearman 4.8s | RollingAvg 3.4s
+2026-07-13 22:24:40  INFO        [30m] Candidate pairs: 20860 (2584 cross-asset)  threshold |\u03c1| \u2265 0.40  [gold=13155 silver=5415 bronze=2290]
+2026-07-13 22:24:40  INFO        [30m] Running EG on 20860 pairs (workers=12, max_lag=10)...
+2026-07-13 22:27:10  INFO        [30m] EG complete in 150.0s
+2026-07-13 22:27:10  INFO        [30m] EG: tested=20860, raw<0.05=841, FDR-adjusted<0.05=0
+2026-07-13 22:27:10  INFO        [30m] filter funnel:
+tf_label                   stage  n_before  n_after  n_removed
+     30m pearson_prefilter_pairs   1188111    20860    1167251
+     30m         eg_bh_fdr_pairs     20860        0      20860
+2026-07-13 22:27:10  INFO        [30m] no pairs survived BH-FDR
+2026-07-13 22:27:11  INFO      ----------------------------------------------------------------------
+2026-07-13 22:27:11  INFO        Timeframe: 1h
+2026-07-13 22:27:11  INFO      ----------------------------------------------------------------------
+2026-07-13 22:27:13  INFO        [1h] 1543 assets have data for this TF
+2026-07-13 22:27:38  INFO        [1h] aligned: 1543 assets
+2026-07-13 22:27:44  INFO        [1h] Computing 1543×1543 correlation matrices (Pearson + Spearman + rolling avg)...
+2026-07-13 22:27:56  INFO        [1h] Pearson 3.5s | Spearman 4.8s | RollingAvg 3.2s
+2026-07-13 22:27:59  INFO        [1h] Candidate pairs: 68846 (7317 cross-asset)  threshold |\u03c1| \u2265 0.40  [gold=15812 silver=18861 bronze=34173]
+2026-07-13 22:27:59  INFO        [1h] Running EG on 68846 pairs (workers=12, max_lag=10)...
+2026-07-13 22:40:40  INFO        [1h] EG complete in 759.9s
+2026-07-13 22:40:40  INFO        [1h] EG: tested=68846, raw<0.05=2624, FDR-adjusted<0.05=353
+2026-07-13 22:40:41  INFO        [1h] Rolling coint on 353 pairs (window=252, step=21)...
+2026-07-13 22:41:55  INFO        [1h] Rolling coint complete in 74.3s
+2026-07-13 22:41:55  INFO        [1h] Per-pair modeling: hedge ratios + spread + decay...
+2026-07-13 22:48:42  INFO        [1h] Per-pair modeling done in 406.8s — 353 PairResult objects built
+2026-07-13 22:48:42  INFO        [1h] Eigenportfolio validation on 353 pairs...
+2026-07-13 22:49:01  INFO        [1h]   K=142 systematic factors removed (MP \u03bb+=1.544)
+2026-07-13 22:49:18  INFO        [1h]   Eigenportfolio: 5/353 Gold tier (idiosyncratic) | 348 Silver tier (factor-driven) in 35.9s
+2026-07-13 22:49:18  INFO        [1h] Computing VolumeStructure features...
+2026-07-13 22:56:28  INFO        [1h] Features saved: 313 assets in 430.0s
+2026-07-13 22:56:28  INFO        [1h] Regime classification (313 assets)...
+2026-07-13 22:59:10  INFO        [1h] Regimes fitted: 3 assets (3 per-bar label files saved) in 162.2s
+2026-07-13 22:59:10  INFO        CrossAssetTagger: 1 structural pairs (triangular arbitrage / share-class / same-index-tracking ETFs) excluded from primary findings
+2026-07-13 22:59:10  INFO        [1h] Cross-asset split: same=340, cross=12
+2026-07-13 22:59:10  INFO        [1h] Trio enumeration + Johansen...
+2026-07-13 22:59:10  INFO        [1h] Testing 500 trios with Johansen...
+2026-07-13 22:59:18  INFO        [1h] Trio testing complete in 7.6s
+2026-07-13 22:59:18  INFO        [1h] Confirmed trios: 496/500
+2026-07-13 22:59:18  INFO        [1h] filter funnel:
+tf_label                      stage  n_before  n_after  n_removed
+      1h    pearson_prefilter_pairs   1189653    68846    1120807
+      1h            eg_bh_fdr_pairs     68846      353      68493
+      1h     price_degeneracy_pairs       353      353          0
+      1h structural_exclusion_pairs       353      352          1
+      1h coint_frac_threshold_pairs       352       24        328
+2026-07-13 22:59:18  INFO        [1h] coint_frac filter: 328 pairs removed (coint_fraction_rolling < 0.70 and no clean secondary evidence); 24 pairs below the threshold kept anyway via secondary-evidence override
+2026-07-13 22:59:18  INFO        [1h] GICS tagged: 23/24 pairs have sector_a
+2026-07-13 22:59:18  INFO        [1h] saved 24 pairs \u2192 C:\Users\RossW\Projects\CAMARF\output\results\1hr/pairs.parquet
+2026-07-13 22:59:18  INFO        [1h] Rolling coint on 10 pairs (window=252, step=21)...
+2026-07-13 22:59:27  INFO        [1h] Rolling coint complete in 8.7s
+2026-07-13 22:59:41  INFO        [1h] persisted per-bar spread/z-score series for 353/353 EG+FDR-confirmed pairs (post price-degeneracy filter, pre coint_frac/structural)
+2026-07-13 22:59:41  INFO        [1h] saved 353 pre-coint_frac/pre-structural candidates \u2192 C:\Users\RossW\Projects\CAMARF\output\results\1hr/all_candidates.parquet
+2026-07-13 22:59:41  INFO        [1h] 1 structural pairs excluded from pairs.parquet (logged to bias_audit)
+2026-07-13 22:59:41  INFO        [1h] saved 12 cross-asset pairs
+2026-07-13 22:59:41  INFO        [1h] saved 496 trios
+2026-07-13 22:59:41  INFO        [1h] saved 3 regime profiles
+2026-07-13 22:59:42  INFO      ----------------------------------------------------------------------
+2026-07-13 22:59:42  INFO        Timeframe: 4h
+2026-07-13 22:59:42  INFO      ----------------------------------------------------------------------
+2026-07-13 22:59:44  INFO        [4h] 1540 assets have data for this TF
+2026-07-13 22:59:59  INFO        [4h] aligned: 1540 assets
+2026-07-13 23:00:04  INFO        [4h] Computing 1540×1540 correlation matrices (Pearson + Spearman + rolling avg)...
+2026-07-13 23:00:09  INFO        [4h] Pearson 1.0s | Spearman 2.2s | RollingAvg 2.4s
+2026-07-13 23:00:12  INFO        [4h] Candidate pairs: 69174 (4587 cross-asset)  threshold |\u03c1| \u2265 0.40  [gold=41628 silver=23243 bronze=4303]
+2026-07-13 23:00:12  INFO        [4h] Running EG on 69174 pairs (workers=12, max_lag=10)...
+2026-07-13 23:12:26  INFO        [4h] EG complete in 733.6s
+2026-07-13 23:12:27  INFO        [4h] EG: tested=69174, raw<0.05=3540, FDR-adjusted<0.05=5
+2026-07-13 23:12:27  INFO        [4h] Rolling coint on 5 pairs (window=252, step=21)...
+2026-07-13 23:12:33  INFO        [4h] Rolling coint complete in 6.0s
+2026-07-13 23:12:33  INFO        [4h] Per-pair modeling: hedge ratios + spread + decay...
+2026-07-13 23:12:34  INFO        [4h] Per-pair modeling done in 1.6s — 5 PairResult objects built
+2026-07-13 23:12:34  INFO        [4h] Eigenportfolio validation on 5 pairs...
+2026-07-13 23:12:46  INFO        [4h]   K=132 systematic factors removed (MP \u03bb+=2.211)
+2026-07-13 23:12:47  INFO        [4h]   Eigenportfolio: 3/5 Gold tier (idiosyncratic) | 2 Silver tier (factor-driven) in 12.3s
+2026-07-13 23:12:47  INFO        [4h] Computing VolumeStructure features...
+2026-07-13 23:12:50  INFO        [4h] Features saved: 8 assets in 3.2s
+2026-07-13 23:12:50  INFO        [4h] Regime classification (8 assets)...
+2026-07-13 23:14:49  INFO        [4h] Regimes fitted: 8 assets (8 per-bar label files saved) in 119.5s
+2026-07-13 23:14:49  INFO        CrossAssetTagger: 1 structural pairs (triangular arbitrage / share-class / same-index-tracking ETFs) excluded from primary findings
+2026-07-13 23:14:49  INFO        [4h] Cross-asset split: same=4, cross=0
+2026-07-13 23:14:49  INFO        [4h] Trio enumeration + Johansen...
+2026-07-13 23:14:49  INFO        [4h] Testing 3 trios with Johansen...
+2026-07-13 23:14:53  INFO        [4h] Trio testing complete in 4.1s
+2026-07-13 23:14:53  INFO        [4h] Confirmed trios: 3/3
+2026-07-13 23:14:53  INFO        [4h] filter funnel:
+tf_label                      stage  n_before  n_after  n_removed
+      4h    pearson_prefilter_pairs   1185030    69174    1115856
+      4h            eg_bh_fdr_pairs     69174        5      69169
+      4h     price_degeneracy_pairs         5        5          0
+      4h structural_exclusion_pairs         5        4          1
+      4h coint_frac_threshold_pairs         4        0          4
+2026-07-13 23:14:53  INFO        [4h] coint_frac filter: 4 pairs removed (coint_fraction_rolling < 0.70 and no clean secondary evidence); 0 pairs below the threshold kept anyway via secondary-evidence override
+2026-07-13 23:14:53  INFO        [4h] 1 structural pairs excluded from pairs.parquet (logged to bias_audit)
+2026-07-13 23:14:53  INFO        [4h] saved 3 trios
+2026-07-13 23:14:53  INFO        [4h] saved 8 regime profiles
+2026-07-13 23:14:54  INFO      ----------------------------------------------------------------------
+2026-07-13 23:14:54  INFO        Timeframe: 1D
+2026-07-13 23:14:54  INFO      ----------------------------------------------------------------------
+2026-07-13 23:14:57  INFO        [1D] 1660 assets have data for this TF
+2026-07-13 23:14:58  INFO      DataAligner: aligning 1660 assets to NYSE calendar (1962-01-02 \u2192 2026-07-13, 16239 sessions)
+2026-07-13 23:15:32  INFO      DataAligner: 1635/1660 assets aligned (25 excluded for excessive gaps)
+2026-07-13 23:15:32  INFO        [1D] aligned: 1635 assets
+2026-07-13 23:15:37  INFO        [1D] Computing 1631×1631 correlation matrices (Pearson + Spearman + rolling avg)...
+2026-07-13 23:15:47  INFO        [1D] Pearson 2.4s | Spearman 5.1s | RollingAvg 3.1s
+2026-07-13 23:15:51  INFO        [1D] Candidate pairs: 130455 (9082 cross-asset)  threshold |\u03c1| \u2265 0.40  [gold=71137 silver=33559 bronze=25759]
+2026-07-13 23:15:51  INFO        [1D] Running EG on 130455 pairs (workers=12, max_lag=10)...
+2026-07-13 23:16:43  INFO        [1D] EG complete in 50.6s
+2026-07-13 23:16:43  INFO        [1D] EG: tested=130455, raw<0.05=22, FDR-adjusted<0.05=6
+2026-07-13 23:16:43  INFO        [1D] Rolling coint on 6 pairs (window=252, step=21)...
+2026-07-13 23:16:50  INFO        [1D] Rolling coint complete in 7.2s
+2026-07-13 23:16:50  INFO        [1D] Per-pair modeling: hedge ratios + spread + decay...
+2026-07-13 23:16:53  INFO        [1D] Per-pair modeling done in 2.7s — 6 PairResult objects built
+2026-07-13 23:16:53  INFO        [1D] Eigenportfolio validation on 6 pairs...
+2026-07-13 23:17:19  INFO        [1D]   K=125 systematic factors removed (MP \u03bb+=1.735)
+2026-07-13 23:17:20  INFO        [1D]   Eigenportfolio: 2/6 Gold tier (idiosyncratic) | 4 Silver tier (factor-driven) in 27.2s
+2026-07-13 23:17:20  INFO        [1D] Computing VolumeStructure features...
+2026-07-13 23:17:24  INFO        [1D] Features saved: 11 assets in 4.3s
+2026-07-13 23:17:24  INFO        [1D] Regime classification (11 assets)...
+2026-07-13 23:18:31  WARNING   Model is not converging.  Current: -10379.84928319555 is not greater than -10379.765082144957. Delta is -0.08420105059303751
+2026-07-13 23:19:56  INFO        [1D] Regimes fitted: 11 assets (11 per-bar label files saved) in 152.1s
+2026-07-13 23:19:56  INFO        [1D] Cross-asset split: same=6, cross=0
+2026-07-13 23:19:56  INFO        [1D] Trio enumeration + Johansen...
+2026-07-13 23:19:56  INFO        [1D] Testing 1 trios with Johansen...
+2026-07-13 23:20:01  INFO        [1D] Trio testing complete in 4.1s
+2026-07-13 23:20:01  INFO        [1D] Confirmed trios: 1/1
+2026-07-13 23:20:01  INFO        [1D] Threshold calibration...
+2026-07-13 23:20:08  INFO        [1D] Pearson calibration: 7 thresholds
+2026-07-13 23:20:18  INFO        [1D]   \u03c1\u22650.45: candidates=64614, sample_confirmed=0/2000, rate=0.000
+2026-07-13 23:20:31  INFO        [1D]   \u03c1\u22650.50: candidates=29315, sample_confirmed=0/2000, rate=0.000
+2026-07-13 23:20:41  INFO        [1D]   \u03c1\u22650.55: candidates=12988, sample_confirmed=2/2000, rate=0.001
+2026-07-13 23:20:51  INFO        [1D]   \u03c1\u22650.60: candidates=6198, sample_confirmed=0/2000, rate=0.000
+2026-07-13 23:21:00  INFO        [1D]   \u03c1\u22650.65: candidates=2921, sample_confirmed=1/2000, rate=0.001
+2026-07-13 23:21:11  INFO        [1D]   \u03c1\u22650.70: candidates=1176, sample_confirmed=0/1176, rate=0.000
+2026-07-13 23:21:19  INFO        [1D]   \u03c1\u22650.75: candidates=394, sample_confirmed=0/394, rate=0.000
+2026-07-13 23:21:19  INFO        [1D]   Johansen \u03b1=0.01: 0/1 passed
+2026-07-13 23:21:19  INFO        [1D]   Johansen \u03b1=0.05: 1/1 passed
+2026-07-13 23:21:19  INFO        [1D]   Johansen \u03b1=0.1: 1/1 passed
+2026-07-13 23:21:19  INFO        [1D] filter funnel:
+tf_label                      stage  n_before  n_after  n_removed
+      1D    pearson_prefilter_pairs   1335795   130455    1205340
+      1D            eg_bh_fdr_pairs    130455        6     130449
+      1D     price_degeneracy_pairs         6        6          0
+      1D structural_exclusion_pairs         6        6          0
+      1D coint_frac_threshold_pairs         6        0          6
+2026-07-13 23:21:19  INFO        [1D] coint_frac filter: 6 pairs removed (coint_fraction_rolling < 0.70 and no clean secondary evidence); 0 pairs below the threshold kept anyway via secondary-evidence override
+2026-07-13 23:21:19  INFO        [1D] saved 1 trios
+2026-07-13 23:21:19  INFO        [1D] saved 11 regime profiles
+2026-07-13 23:21:19  INFO        [1D] saved calibration results
+2026-07-13 23:21:20  INFO      ----------------------------------------------------------------------
+2026-07-13 23:21:20  INFO        Timeframe: 7D
+2026-07-13 23:21:20  INFO      ----------------------------------------------------------------------
+2026-07-13 23:21:22  INFO        [7D] 1635 assets have data for this TF
+2026-07-13 23:21:24  INFO        [7D] aligned: 1635 assets
+2026-07-13 23:21:25  INFO        [7D] Computing 1580×1580 correlation matrices (Pearson + Spearman + rolling avg)...
+2026-07-13 23:21:30  INFO        [7D] Pearson 0.7s | Spearman 1.2s | RollingAvg 2.6s
+2026-07-13 23:21:33  INFO        [7D] Candidate pairs: 148362 (4116 cross-asset)  threshold |\u03c1| \u2265 0.40  [gold=72236 silver=41740 bronze=34386]
+2026-07-13 23:21:33  INFO        [7D] Running EG on 148362 pairs (workers=12, max_lag=10)...
+2026-07-13 23:21:47  INFO        [7D] EG complete in 13.9s
+2026-07-13 23:21:47  INFO        [7D] EG: tested=148362, raw<0.05=14, FDR-adjusted<0.05=2
+2026-07-13 23:21:47  INFO        [7D] Rolling coint on 2 pairs (window=252, step=21)...
+2026-07-13 23:21:51  INFO        [7D] Rolling coint complete in 4.2s
+2026-07-13 23:21:51  INFO        [7D] Per-pair modeling: hedge ratios + spread + decay...
+2026-07-13 23:21:51  INFO        [7D] Per-pair modeling done in 0.2s — 2 PairResult objects built
+2026-07-13 23:21:51  INFO        [7D] Eigenportfolio validation on 2 pairs...
+2026-07-13 23:21:56  INFO        [7D]   K=95 systematic factors removed (MP \u03bb+=2.842)
+2026-07-13 23:21:56  INFO        [7D]   Eigenportfolio: 1/2 Gold tier (idiosyncratic) | 1 Silver tier (factor-driven) in 5.0s
+2026-07-13 23:21:57  INFO        [7D] Computing VolumeStructure features...
+2026-07-13 23:21:57  INFO        [7D] Features saved: 4 assets in 0.3s
+2026-07-13 23:21:57  INFO        [7D] Regime classification (4 assets)...
+2026-07-13 23:22:11  WARNING   Model is not converging.  Current: -1998.5399809077417 is not greater than -1964.0064116004557. Delta is -34.533569307285916
+2026-07-13 23:22:14  WARNING   Model is not converging.  Current: -2076.6953013075804 is not greater than -2050.8761831094776. Delta is -25.819118198102842
+2026-07-13 23:22:17  WARNING   Model is not converging.  Current: -9249.041658982735 is not greater than -9249.037372339404. Delta is -0.004286643330488005
+2026-07-13 23:22:24  INFO        [7D] Regimes fitted: 4 assets (4 per-bar label files saved) in 27.1s
+2026-07-13 23:22:24  INFO        [7D] Cross-asset split: same=2, cross=0
+2026-07-13 23:22:24  INFO        [7D] Trio enumeration + Johansen...
+2026-07-13 23:22:24  INFO        [7D] filter funnel:
+tf_label                      stage  n_before  n_after  n_removed
+      7D    pearson_prefilter_pairs   1335795   148362    1187433
+      7D            eg_bh_fdr_pairs    148362        2     148360
+      7D     price_degeneracy_pairs         2        2          0
+      7D structural_exclusion_pairs         2        2          0
+      7D coint_frac_threshold_pairs         2        0          2
+2026-07-13 23:22:24  INFO        [7D] coint_frac filter: 2 pairs removed (coint_fraction_rolling < 0.70 and no clean secondary evidence); 0 pairs below the threshold kept anyway via secondary-evidence override
+2026-07-13 23:22:24  INFO        [7D] saved 4 regime profiles
+2026-07-13 23:22:24  INFO      ----------------------------------------------------------------------
+2026-07-13 23:22:24  INFO        Timeframe: 1M
+2026-07-13 23:22:24  INFO      ----------------------------------------------------------------------
+2026-07-13 23:22:26  INFO        [1M] 1635 assets have data for this TF
+2026-07-13 23:22:27  INFO        [1M] aligned: 1635 assets
+2026-07-13 23:22:28  INFO        [1M] Computing 1060×1060 correlation matrices (Pearson + Spearman + rolling avg)...
+2026-07-13 23:22:29  INFO        [1M] Pearson 0.2s | Spearman 0.3s | RollingAvg 0.8s
+2026-07-13 23:22:30  INFO        [1M] Candidate pairs: 38123 (5056 cross-asset)  threshold |\u03c1| \u2265 0.40  [gold=18139 silver=13879 bronze=6105]
+2026-07-13 23:22:30  INFO        [1M] Running EG on 38123 pairs (workers=12, max_lag=10)...
+2026-07-13 23:22:42  INFO        [1M] EG complete in 11.9s
+2026-07-13 23:22:42  INFO        [1M] EG: tested=38123, raw<0.05=16, FDR-adjusted<0.05=1
+2026-07-13 23:22:42  INFO        [1M] Rolling coint on 1 pairs (window=252, step=21)...
+2026-07-13 23:22:46  INFO        [1M] Rolling coint complete in 4.0s
+2026-07-13 23:22:46  INFO        [1M] Per-pair modeling: hedge ratios + spread + decay...
+2026-07-13 23:22:46  INFO        [1M] Per-pair modeling done in 0.1s — 1 PairResult objects built
+2026-07-13 23:22:46  INFO        [1M] Eigenportfolio validation on 1 pairs...
+2026-07-13 23:22:47  INFO        [1M]   K=39 systematic factors removed (MP \u03bb+=4.710)
+2026-07-13 23:22:47  INFO        [1M]   Eigenportfolio: 0/1 Gold tier (idiosyncratic) | 1 Silver tier (factor-driven) in 0.9s
+2026-07-13 23:22:47  INFO        [1M] Computing VolumeStructure features...
+2026-07-13 23:22:47  INFO        [1M] Features saved: 2 assets in 0.1s
+2026-07-13 23:22:47  INFO        [1M] Regime classification (2 assets)...
+2026-07-13 23:23:00  WARNING   Model is not converging.  Current: -1588.2852973586994 is not greater than -1588.2012916112992. Delta is -0.08400574740016964
+2026-07-13 23:23:00  WARNING   Model is not converging.  Current: -1588.2576280026362 is not greater than -1588.1722725091124. Delta is -0.08535549352382077
+2026-07-13 23:23:00  WARNING   Model is not converging.  Current: -704.0122390129 is not greater than -703.9892687804316. Delta is -0.022970232468310314
+2026-07-13 23:23:04  INFO        [1M] Regimes fitted: 2 assets (2 per-bar label files saved) in 17.1s
+2026-07-13 23:23:04  INFO        [1M] Cross-asset split: same=1, cross=0
+2026-07-13 23:23:04  INFO        [1M] Trio enumeration + Johansen...
+2026-07-13 23:23:04  INFO        [1M] filter funnel:
+tf_label                      stage  n_before  n_after  n_removed
+      1M    pearson_prefilter_pairs   1335795    38123    1297672
+      1M            eg_bh_fdr_pairs     38123        1      38122
+      1M     price_degeneracy_pairs         1        1          0
+      1M structural_exclusion_pairs         1        1          0
+      1M coint_frac_threshold_pairs         1        1          0
+2026-07-13 23:23:04  INFO        [1M] GICS tagged: 0/1 pairs have sector_a
+2026-07-13 23:23:04  INFO        [1M] saved 1 pairs \u2192 C:\Users\RossW\Projects\CAMARF\output\results\1mo/pairs.parquet
+2026-07-13 23:23:04  INFO        [1M] persisted per-bar spread/z-score series for 1/1 EG+FDR-confirmed pairs (post price-degeneracy filter, pre coint_frac/structural)
+2026-07-13 23:23:05  INFO        [1M] saved 1 pre-coint_frac/pre-structural candidates \u2192 C:\Users\RossW\Projects\CAMARF\output\results\1mo/all_candidates.parquet
+2026-07-13 23:23:05  INFO        [1M] saved 2 regime profiles
+2026-07-13 23:23:05  INFO      ----------------------------------------------------------------------
+2026-07-13 23:23:05  INFO        Timeframe: 3M
+2026-07-13 23:23:05  INFO      ----------------------------------------------------------------------
+2026-07-13 23:23:05  INFO        [3M] 1635 assets have data for this TF
+2026-07-13 23:23:06  INFO        [3M] aligned: 1635 assets
+2026-07-13 23:23:06  INFO        [3M] Computing 4×4 correlation matrices (Pearson + Spearman + rolling avg)...
+2026-07-13 23:23:06  INFO        [3M] Pearson 0.0s | Spearman 0.0s | RollingAvg 0.0s
+2026-07-13 23:23:06  INFO        [3M] Candidate pairs: 0 (0 cross-asset)  threshold |\u03c1| \u2265 0.40  [gold=0 silver=0 bronze=0]
+2026-07-13 23:23:06  INFO        [3M] filter funnel:
+tf_label                   stage  n_before  n_after  n_removed
+      3M pearson_prefilter_pairs   1335795        0    1335795
+2026-07-13 23:23:06  INFO        [3M] no candidate pairs above threshold
+2026-07-13 23:23:06  INFO      ----------------------------------------------------------------------
+2026-07-13 23:23:06  INFO        Timeframe: 6M
+2026-07-13 23:23:06  INFO      ----------------------------------------------------------------------
+2026-07-13 23:23:06  INFO        [6M] 1635 assets have data for this TF
+2026-07-13 23:23:07  INFO        [6M] aligned: 1635 assets
+2026-07-13 23:23:07  WARNING     [6M] UniverseFilter: no valid assets after filtering
+2026-07-13 23:23:07  INFO        [6M] filter funnel:
+tf_label                   stage  n_before  n_after  n_removed
+      6M pearson_prefilter_pairs   1335795        0    1335795
+2026-07-13 23:23:07  INFO        [6M] no candidate pairs above threshold
+2026-07-13 23:23:07  INFO      Bias audit log saved: 79 entries \u2192 C:\Users\RossW\Projects\CAMARF\output\results\bias_audit.json
+2026-07-13 23:23:07  INFO      Script hash saved: e1d647b826c3e8af
+2026-07-13 23:23:07  INFO      ======================================================================
+2026-07-13 23:23:07  INFO      Pipeline complete in 79.9 min
+2026-07-13 23:23:07  INFO        1m: pairs=0 (cross=0), trios=0, regimes=0
+2026-07-13 23:23:07  INFO        2m: pairs=1 (cross=7), trios=261, regimes=39
+2026-07-13 23:23:07  INFO        3m: pairs=1 (cross=0), trios=0, regimes=2
+2026-07-13 23:23:07  INFO        5m: pairs=0 (cross=0), trios=1, regimes=3
+2026-07-13 23:23:07  INFO        15m: pairs=0 (cross=0), trios=0, regimes=0
+2026-07-13 23:23:07  INFO        30m: pairs=0 (cross=0), trios=0, regimes=0
+2026-07-13 23:23:07  INFO        1h: pairs=24 (cross=12), trios=496, regimes=3
+2026-07-13 23:23:07  INFO        4h: pairs=0 (cross=0), trios=3, regimes=8
+2026-07-13 23:23:07  INFO        1D: pairs=0 (cross=0), trios=1, regimes=11
+2026-07-13 23:23:07  INFO        7D: pairs=0 (cross=0), trios=0, regimes=4
+2026-07-13 23:23:07  INFO        1M: pairs=1 (cross=0), trios=0, regimes=2
+2026-07-13 23:23:07  INFO        3M: pairs=0 (cross=0), trios=0, regimes=0
+2026-07-13 23:23:07  INFO        6M: pairs=0 (cross=0), trios=0, regimes=0
+2026-07-13 23:23:07  INFO      ======================================================================
+2026-07-13 23:23:07  INFO      ANALYSIS RESULTS — SUMMARY
+2026-07-13 23:23:07  INFO      ======================================================================
+2026-07-13 23:23:07  INFO          1m  pairs=    0  cross=   0  trios=   0  regimes=   0
+2026-07-13 23:23:07  INFO          2m  pairs=    1  cross=   7  trios= 261  regimes=  39
+2026-07-13 23:23:07  INFO          3m  pairs=    1  cross=   0  trios=   0  regimes=   2
+2026-07-13 23:23:07  INFO          5m  pairs=    0  cross=   0  trios=   1  regimes=   3
+2026-07-13 23:23:07  INFO         15m  pairs=    0  cross=   0  trios=   0  regimes=   0
+2026-07-13 23:23:07  INFO         30m  pairs=    0  cross=   0  trios=   0  regimes=   0
+2026-07-13 23:23:07  INFO          1h  pairs=   24  cross=  12  trios= 496  regimes=   3
+2026-07-13 23:23:07  INFO          4h  pairs=    0  cross=   0  trios=   3  regimes=   8
+2026-07-13 23:23:07  INFO          1D  pairs=    0  cross=   0  trios=   1  regimes=  11
+2026-07-13 23:23:07  INFO          7D  pairs=    0  cross=   0  trios=   0  regimes=   4
+2026-07-13 23:23:07  INFO          1M  pairs=    1  cross=   0  trios=   0  regimes=   2
+2026-07-13 23:23:07  INFO          3M  pairs=    0  cross=   0  trios=   0  regimes=   0
+2026-07-13 23:23:07  INFO          6M  pairs=    0  cross=   0  trios=   0  regimes=   0
+2026-07-13 23:23:07  INFO        Total bias-audit entries: 79
+2026-07-13 23:23:07  INFO        Runtime: 79.9 min
+2026-07-13 23:23:07  INFO      ======================================================================
+2026-07-13 23:23:07  INFO      Run summary \u2192 C:\Users\RossW\Projects\CAMARF\latest_run_analysis.log

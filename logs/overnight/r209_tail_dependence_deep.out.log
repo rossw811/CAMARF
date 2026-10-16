@@ -1,0 +1,4 @@
+1/1 pairs/TFs have an IBKR supplement for BOTH legs.
+symbol_a symbol_b tf  shallow_n_obs  deep_n_obs  shallow_lambda_L  shallow_lambda_U  deep_lambda_L  deep_lambda_U  shallow_n_L  shallow_n_U  deep_n_L  deep_n_U
+     PNC     ZION 4h           3702        3702          0.662162          0.684636       0.662162       0.684636          370          371       370       371
+

@@ -1,0 +1,7 @@
+status
+adjusted              20909
+adjusted_no_events     9350
+unmapped                 66
+days with unknown factor (volume NaN): 256,625
+unmapped labels: ['7267.T', '8058.T', 'AKR', 'ASA', 'AZN', 'BCS', 'BP', 'CALY', 'DEO', 'EEM', 'EFA', 'EOP', 'EPR', 'EQR', 'EWG', 'EWH', 'EWJ', 'EWQ', 'EWU', 'FRT', 'FXI', 'FX_AUDUSD', 'FX_EURUSD', 'FX_GBPUSD', 'FX_NZDUSD', 'FX_USDAUD', 'FX_USDBRL', 'FX_USDCAD', 'FX_USDCHF', 'FX_USDCNY', 'FX_USDDKK', 'FX_USDGBP', 'FX_USDHKD', 'FX_USDINR', 'FX_USDJPY', 'FX_USDKRW', 'FX_USDLKR', 'FX_USDMXN', 'FX_USDMYR', 'FX_USDNOK', 'FX_USDNZD', 'FX_USDSEK', 'FX_USDSGD', 'FX_USDTHB', 'FX_USDTWD', 'FX_USDVES', 'FX_USDZAR', 'GLCN', 'HMC', 'HSBC', 'HYG', 'IEF', 'IWM', 'JBGS', 'LQD', 'MML', 'MPT', 'MUFG', 'PEB', 'QQQ', 'RD', 'SHY', 'SONY', 'TLT', 'UL', 'VOD']
+-> output\research\apply_crsp_volume_adjustment_report.parquet

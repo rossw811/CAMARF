@@ -1,0 +1,73 @@
+2026-07-11 23:35:03  INFO      Survivorship exclusions loaded: 378 delist events
+2026-07-11 23:35:03  INFO      [3m] 1 confirmed pairs
+2026-07-11 23:35:03  INFO      [1h] 24 confirmed pairs
+2026-07-11 23:35:03  INFO        LNT/VTR@1h[ols] 57 trades | WR=60% | SR=23.17 | PnL=1232.76
+2026-07-11 23:35:03  INFO        LNT/WELL@1h[ols] 40 trades | WR=78% | SR=33.36 | PnL=623.08
+2026-07-11 23:35:03  INFO        AXP/CRWD@1h[ols] 51 trades | WR=65% | SR=33.32 | PnL=102.98
+2026-07-11 23:35:03  INFO        AME/MAR@1h[ols] 61 trades | WR=48% | SR=14.48 | PnL=1007.77
+2026-07-11 23:35:03  INFO        APP/CRWD@1h[ols] 44 trades | WR=68% | SR=28.36 | PnL=2189.22
+2026-07-11 23:35:03  INFO        AVGO/CRWD@1h[ols] 56 trades | WR=57% | SR=21.39 | PnL=1034.39
+2026-07-11 23:35:03  INFO        CMS/DUK@1h[ols] 47 trades | WR=64% | SR=28.41 | PnL=646.47
+2026-07-11 23:35:03  INFO        FIX/MLI@1h[ols] 43 trades | WR=67% | SR=24.23 | PnL=1243.01
+2026-07-11 23:35:03  INFO        EME/MLI@1h[ols] 43 trades | WR=60% | SR=21.90 | PnL=723.94
+2026-07-11 23:35:03  INFO        GS/MLI@1h[ols] 40 trades | WR=50% | SR=21.34 | PnL=497.70
+2026-07-11 23:35:03  INFO        MET/TMHC@1h[ols] 52 trades | WR=65% | SR=9.47 | PnL=872.88
+2026-07-11 23:35:03  INFO        PFG/STLD@1h[ols] 38 trades | WR=66% | SR=33.09 | PnL=1127.14
+2026-07-11 23:35:03  INFO        VRT/MTZ@1h[ols] 38 trades | WR=71% | SR=31.69 | PnL=1411.78
+2026-07-11 23:35:03  INFO        QQQ/MLI@1h[ols] 39 trades | WR=72% | SR=27.28 | PnL=393.87
+2026-07-11 23:35:03  INFO        MTSI/WCC@1h[ols] 48 trades | WR=56% | SR=21.58 | PnL=759.41
+2026-07-11 23:35:04  INFO        UMBF/FHB@1h[ols] 40 trades | WR=52% | SR=20.77 | PnL=1006.92
+2026-07-11 23:35:04  INFO      Run summary \u2192 latest_run_backtest.log
+
+======================================================================
+  BACKTEST SUMMARY — LAYER1_STORM_CFRAC
+======================================================================
+  Pairs tested: 16
+  Total trades: 737
+  Total net P&L (spread units): 14873.32
+
+  By timeframe (mean):
+    n_trades  win_rate     sharpe  total_pnl
+tf                                          
+1h   46.0625  0.624513  24.614463   929.5825
+
+  OLS vs Kalman:
+              n_trades  win_rate     sharpe  total_pnl
+hedge_method                                          
+ols            46.0625  0.624513  24.614463   929.5825
+
+  Top 10 pairs by net P&L:
+tf symbol_a symbol_b hedge_method  n_trades  win_rate  sharpe  total_pnl
+1h      APP     CRWD          ols        44    0.6818 28.3585    2189.22
+1h      VRT      MTZ          ols        38    0.7105 31.6862    1411.78
+1h      FIX      MLI          ols        43    0.6744 24.2294    1243.01
+1h      LNT      VTR          ols        57    0.5965 23.1654    1232.76
+1h      PFG     STLD          ols        38    0.6579 33.0923    1127.14
+1h     AVGO     CRWD          ols        56    0.5714 21.3887    1034.39
+1h      AME      MAR          ols        61    0.4754 14.4799    1007.77
+1h     UMBF      FHB          ols        40    0.5250 20.7716    1006.92
+1h      MET     TMHC          ols        52    0.6538  9.4722     872.88
+1h     MTSI      WCC          ols        48    0.5625 21.5783     759.41
+
+  Bottom 5 pairs by net P&L:
+tf symbol_a symbol_b hedge_method  n_trades  total_pnl
+1h      AXP     CRWD          ols        51     102.98
+1h      QQQ      MLI          ols        39     393.87
+1h       GS      MLI          ols        40     497.70
+1h      LNT     WELL          ols        40     623.08
+1h      CMS      DUK          ols        47     646.47
+
+  Portfolio-level stats:
+    n_pairs: 16
+    n_trades_total: 737
+    total_pnl_portfolio: 14873.34
+    sharpe_portfolio: 5.1875
+    max_drawdown_portfolio: 313.19
+    max_concentration_pair: APP/CRWD@1h
+    max_concentration_pct: 0.1472
+
+  Bias notes (episodic survivorship + hedge lookahead — see docstring):
+    Full-series run = IN-SAMPLE. Layer 2 holdout run = OOS.
+======================================================================
+
+EXIT:0

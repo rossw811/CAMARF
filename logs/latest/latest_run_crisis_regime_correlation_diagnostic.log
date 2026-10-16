@@ -1,0 +1,3 @@
+08:02:13 INFO  === crisis_regime_correlation_diagnostic.py: does a pair's first-qualifying-window VIX regime predict downstream cointegration confirmation? Pre-registered, reported regardless of direction. ===
+08:02:13 INFO  Loaded 5003637 (pair, window) rows from wrds_deep_history_episodic_scan_tier3_windows.parquet (file mtime: 2026-09-02 14:53:03.799758196)
+08:02:15 INFO  VIX regime series loaded: 9232 labeled trading days, range [1986-01-02, 2026-09-02]

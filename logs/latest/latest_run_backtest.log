@@ -1,0 +1,5 @@
+backtest.py run: layer1_storm_pairsoverride
+layer2_enabled: False
+n_pairs_run: 0
+n_trades_total: 0
+outputs: output/backtest/trades_layer1_storm_pairsoverride.parquet, summary_layer1_storm_pairsoverride.parquet, portfolio_layer1_storm_pairsoverride.parquet

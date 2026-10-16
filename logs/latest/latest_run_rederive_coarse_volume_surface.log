@@ -1,0 +1,18 @@
+tf  status          
+1M  restated            2858
+1Y  already_restated       1
+    restated            2857
+3M  already_restated       1
+    restated            2857
+6M  already_restated       1
+    restated            2857
+7D  already_restated       1
+    restated            2857
+       bars  restated  unknown  mismatch  no_stored_volume
+tf                                                        
+1M  1121650   1079650    16282         0             25718
+1Y    92969     86348     6607        14                 0
+3M   365144    355173     9918        53                 0
+6M   183714    175761     7926        27                 0
+7D  4722290   4676958    44566       766                 0
+-> output\research\rederive_coarse_volume_report.parquet

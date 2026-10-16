@@ -1,0 +1,4 @@
+tf symbol_a symbol_b    q  lambda_L  lambda_U  n_L  n_U  n_obs  reliable      gap  flagged_asymmetric
+
+GATE RESULT: no evidence of tail asymmetry in current confirmed pairs at current history depth ΓÇö do not build a copula-based entry rule on this evidence. Re-run as more history accumulates (small-N tails are inherently noisy; revisit once n_obs grows).
+0/4 (pair, q) combinations flagged as materially asymmetric (|gap| >= 0.15, both tails have >= 10 conditioning observations).

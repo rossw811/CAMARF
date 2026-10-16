@@ -1,0 +1,55 @@
+2026-07-11 04:36:43  INFO      ======================================================================
+2026-07-11 04:36:43  INFO      CAMARF  —  analysis.py  —  Cross-Asset Co-Movement Analysis
+2026-07-11 04:36:43  INFO      ======================================================================
+2026-07-11 04:46:38  INFO      Resuming — 1357 assets already complete (config hash 0c0e67a6b00ff0bb)
+2026-07-11 04:46:38  INFO      Building asset universe...
+2026-07-11 04:46:38  INFO      S&P 500: 503 tickers from cache (1.7h old)
+2026-07-11 04:46:38  INFO        sp400: 400 tickers from cache (1.7h old)
+2026-07-11 04:46:38  INFO        S&P MidCap 400: fetched 400 tickers (net new after S&P 500 overlap removed by dedup)
+2026-07-11 04:46:38  INFO        sp600: 603 tickers from cache (1.7h old)
+2026-07-11 04:46:38  INFO        S&P SmallCap 600: fetched 603 tickers (net new after dedup)
+2026-07-11 04:46:38  INFO        S&P 1500 total equities in universe: 1506
+2026-07-11 04:46:38  INFO        International equities + ADRs + FX spots added: 64 symbols
+2026-07-11 04:46:38  INFO        Total universe: 1614 assets
+2026-07-11 04:46:38  INFO      Exclusion list: skipping 3 assets ['BNY', 'FDXF', 'VLTO']
+2026-07-11 04:46:38  INFO      Universe candidates: 1611 assets
+2026-07-11 04:46:38  INFO      Phase 1 (yfinance daily): 1517 equities + 45 intl equities + 5 crypto + 15 forex/FX + 15 ETFs
+2026-07-11 04:46:53  INFO        Read-only mode (fetch=False): skipping yfinance fetch for 4 uncached + 1581 stale daily assets — using cache as-is
+2026-07-11 04:46:53  INFO        All daily data cached and current — skipping yfinance download
+2026-07-11 04:47:18  INFO        229 equities + 10 forex need IBKR intraday
+2026-07-11 04:47:18  INFO        Read-only mode (fetch=False): 253 assets need intraday data but fetching is disabled — using cache as-is (expected for analysis.py; run data.py to backfill)
+2026-07-11 04:49:35  INFO      Universe complete: 1593 assets passed, 0 excluded
+2026-07-11 04:49:35  INFO      Data keys: 20007 symbol-timeframe combinations (18415 loaded from cache)
+2026-07-11 04:49:35  INFO      Run summary \u2192 C:\Users\RossW\Projects\CAMARF\latest_run_data.log
+2026-07-11 04:49:35  INFO      Universe loaded: 1593 assets, 20007 symbol-TF combinations
+2026-07-11 04:49:35  INFO      ======================================================================
+2026-07-11 04:49:35  INFO      CAMARF — analysis.py — Pipeline start
+2026-07-11 04:49:35  INFO      ======================================================================
+2026-07-11 04:49:35  INFO        Universe: 1593 assets, 20007 symbol-TF combinations
+2026-07-11 04:49:35  INFO      Script hash unchanged (a337730c8294598b) — reusing prior results
+2026-07-11 04:49:35  INFO        Timeframes: ['1m', '2m', '3m', '5m', '15m', '30m', '1h', '4h', '1D', '7D', '1M', '3M', '6M']
+2026-07-11 04:49:35  INFO      ----------------------------------------------------------------------
+2026-07-11 04:49:35  INFO        Timeframe: 1m
+2026-07-11 04:49:35  INFO      ----------------------------------------------------------------------
+2026-07-11 04:49:38  INFO        [1m] 1428 assets have data for this TF
+2026-07-11 04:50:12  INFO        [1m] aligned: 1428 assets
+2026-07-11 04:50:19  INFO        [1m] Computing 1417×1417 correlation matrices (Pearson + Spearman + rolling avg)...
+2026-07-11 04:52:11  INFO        [1m] Pearson 21.7s | Spearman 16.2s | RollingAvg 73.5s
+2026-07-11 04:52:13  INFO        [1m] Candidate pairs: 2211 (244 cross-asset)  threshold |\u03c1| \u2265 0.40  [gold=1051 silver=1000 bronze=160]
+2026-07-11 04:52:13  INFO        [1m] Running EG on 2211 pairs (workers=12, max_lag=10)...
+2026-07-11 04:52:32  INFO        [1m] EG complete in 17.3s
+2026-07-11 04:52:32  INFO        [1m] EG: tested=2211, raw<0.05=7, FDR-adjusted<0.05=0
+2026-07-11 04:52:32  INFO        [1m] filter funnel:
+tf_label                   stage  n_before  n_after  n_removed
+      1m pearson_prefilter_pairs   1018878     2211    1016667
+      1m         eg_bh_fdr_pairs      2211        0       2211
+2026-07-11 04:52:32  INFO        [1m] no pairs survived BH-FDR
+2026-07-11 04:52:33  INFO      ----------------------------------------------------------------------
+2026-07-11 04:52:33  INFO        Timeframe: 2m
+2026-07-11 04:52:33  INFO      ----------------------------------------------------------------------
+2026-07-11 04:52:37  INFO        [2m] 1523 assets have data for this TF
+2026-07-11 04:53:17  INFO        [2m] aligned: 1523 assets
+2026-07-11 04:53:27  INFO        [2m] Computing 1518×1518 correlation matrices (Pearson + Spearman + rolling avg)...
+2026-07-11 04:55:01  INFO        [2m] Pearson 23.7s | Spearman 21.3s | RollingAvg 49.2s
+2026-07-11 04:55:04  INFO        [2m] Candidate pairs: 2463 (577 cross-asset)  threshold |\u03c1| \u2265 0.40  [gold=1046 silver=963 bronze=454]
+2026-07-11 04:55:04  INFO        [2m] Running EG on 2463 pairs (workers=12, max_lag=10)...

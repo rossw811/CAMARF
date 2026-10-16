@@ -1,0 +1,14 @@
+Running cycle detection on 3 confirmed (pair, TF) combinations...
+skip IQV/Q@1day: only 160 clean bars, need >= 180
+
+KVUE/KMB@3min: n=4159
+  dominant period (KVUE): 677.5 bars
+  dominant period (KMB): 677.5 bars
+  mean rolling PLV (window=60): 0.327
+
+PNC/ZION@4hr: n=1510
+  dominant period (PNC): 236.5 bars
+  dominant period (ZION): 265.8 bars
+  mean rolling PLV (window=60): 0.695
+
+Results written to output/research/cycle_detection.parquet

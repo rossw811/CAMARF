@@ -1,0 +1,24 @@
+2026-07-21 17:02:00,626 INFO NumExpr defaulting to 12 threads.
+2026-07-21 17:07:41,545 INFO Resuming — 1357 assets already complete (config hash 86ca897df0541bcf)
+2026-07-21 17:07:41,545 INFO Building asset universe...
+2026-07-21 17:07:41,573 INFO S&P 500: 503 tickers from cache (20.8h old)
+2026-07-21 17:07:41,577 INFO   sp400: 400 tickers from cache (20.8h old)
+2026-07-21 17:07:41,577 INFO   S&P MidCap 400: fetched 400 tickers (net new after S&P 500 overlap removed by dedup)
+2026-07-21 17:07:41,577 INFO   sp600: 603 tickers from cache (20.8h old)
+2026-07-21 17:07:41,577 INFO   S&P SmallCap 600: fetched 603 tickers (net new after dedup)
+2026-07-21 17:07:41,584 INFO   S&P 1500 total equities in universe: 1505
+2026-07-21 17:07:41,584 INFO   International equities + ADRs + FX spots added: 108 symbols
+2026-07-21 17:07:41,584 INFO   Total universe: 1696 assets
+2026-07-21 17:07:41,586 INFO Exclusion list: skipping 3 assets ['BNY', 'FDXF', 'VLTO']
+2026-07-21 17:07:41,586 INFO Universe candidates: 1693 assets
+2026-07-21 17:07:41,589 INFO Phase 1 (yfinance daily): 1516 equities + 89 intl equities + 15 crypto + 25 forex/FX + 21 ETFs
+2026-07-21 17:07:57,657 INFO   Read-only mode (fetch=False): skipping yfinance fetch for 6 uncached + 1660 stale daily assets — using cache as-is
+2026-07-21 17:07:57,657 INFO   All daily data cached and current — skipping yfinance download
+2026-07-21 17:08:19,157 INFO   1278 equities + 19 forex need IBKR intraday
+2026-07-21 17:08:19,157 INFO   Read-only mode (fetch=False): 1324 assets need intraday data but fetching is disabled — using cache as-is (expected for analysis.py; run data.py to backfill)
+2026-07-21 17:12:00,346 INFO Universe complete: 1660 assets passed, 0 excluded
+2026-07-21 17:12:00,359 INFO Data keys: 20423 symbol-timeframe combinations (18764 loaded from cache)
+2026-07-21 17:12:00,360 INFO Run summary \u2192 C:\Users\RossW\Projects\CAMARF\latest_run_data.log
+2026-07-21 17:13:44,315 INFO   [1h] Computing 1535×1535 correlation matrices (Pearson + Spearman + rolling avg)...
+2026-07-21 17:14:13,164 INFO   [1h] Pearson 11.6s | Spearman 13.5s | RollingAvg 3.8s
+2026-07-21 17:14:17,130 INFO   [1h] Candidate pairs: 67525 (7211 cross-asset)  threshold |\u03c1| \u2265 0.40  [gold=15445 silver=18882 bronze=33198]

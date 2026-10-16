@@ -1,0 +1,4 @@
+
+=== cycle_detection (research/cycle_detection.py --plv-window) ===
+    Expected: Finding #13's honest null on KVUE/KMB -- mean_plv should stay low/unremarkable across the grid, not swing to a high value at some window that would flip the conclusion.
+  running --plv-window=30 ... {'mean_plv': 0.4346666666666666, 'n_pairs_reported': 3}

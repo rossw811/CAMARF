@@ -1,0 +1,4 @@
+=== Arm 1: volatility-targeting sizing (per-pair) ===
+
+LNT/VTR: flat total_pnl=204.07 sharpe=4.510 | vol-targeted total_pnl=217.76 sharpe=3.547 (mean size_mult=1.071)
+LNT/WELL: flat total_pnl=204.62 sharpe=3.969 | vol-targeted total_pnl=210.20 sharpe=2.893 (mean size_mult=1.024)

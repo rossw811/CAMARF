@@ -1,0 +1,151 @@
+2026-06-30 08:24:04  INFO      ============================================================
+2026-06-30 08:24:04  INFO      CAMARF  —  data.py  —  Universe Build
+2026-06-30 08:24:04  INFO      ============================================================
+2026-06-30 08:28:56  INFO      Resuming — 1357 assets already complete (config hash 0c0e67a6b00ff0bb)
+2026-06-30 08:28:56  INFO      Building asset universe...
+2026-06-30 08:28:56  INFO      S&P 500: 503 tickers from Wikipedia
+2026-06-30 08:28:57  INFO        S&P MidCap 400: 400 tickers from Wikipedia
+2026-06-30 08:28:57  INFO        S&P MidCap 400: fetched 400 tickers (net new after S&P 500 overlap removed by dedup)
+2026-06-30 08:28:57  INFO        S&P SmallCap 600: 603 tickers from Wikipedia
+2026-06-30 08:28:57  INFO        S&P SmallCap 600: fetched 603 tickers (net new after dedup)
+2026-06-30 08:28:57  INFO        S&P 1500 total equities in universe: 1503
+2026-06-30 08:28:57  INFO        International equities + ADRs + FX spots added: 64 symbols
+2026-06-30 08:28:57  INFO        Total universe: 1611 assets
+2026-06-30 08:28:57  INFO      Exclusion list: skipping 3 assets ['BNY', 'FDXF', 'VLTO']
+2026-06-30 08:28:57  INFO      Universe candidates: 1608 assets
+2026-06-30 08:28:57  INFO      Phase 1 (yfinance daily): 1514 equities + 45 intl equities + 5 crypto + 15 forex/FX + 15 ETFs
+2026-06-30 08:29:04  INFO        Fetching fresh daily data for 3 assets...
+2026-06-30 08:29:04  INFO      yfinance: downloading 3 assets in 1 chunks of 50
+2026-06-30 08:29:04  INFO        Chunk 1/1: HONA \u2192 VGNT (3 tickers)
+2026-06-30 08:29:05  INFO        Retrying 2 failed tickers individually
+2026-06-30 08:29:05  INFO        Incremental refresh for 1543 stale daily assets...
+2026-06-30 08:29:05  INFO      yfinance: downloading 1543 assets in 31 chunks of 50
+2026-06-30 08:29:05  INFO        Chunk 1/31: MMM \u2192 ATO (50 tickers)
+2026-06-30 08:29:09  INFO        Chunk 2/31: ADSK \u2192 CVX (50 tickers)
+2026-06-30 08:29:13  INFO        Chunk 3/31: CMG \u2192 DG (50 tickers)
+2026-06-30 08:29:16  INFO        Chunk 4/31: DLTR \u2192 F (50 tickers)
+2026-06-30 08:29:21  INFO        Chunk 5/31: FTNT \u2192 IBKR (50 tickers)
+2026-06-30 08:29:24  INFO        Chunk 6/31: ICE \u2192 MAS (50 tickers)
+2026-06-30 08:29:28  INFO        Chunk 7/31: MA \u2192 ORCL (50 tickers)
+2026-06-30 08:29:33  INFO        Chunk 8/31: OTIS \u2192 CRM (50 tickers)
+2026-06-30 08:29:36  INFO        Chunk 9/31: SNDK \u2192 TSN (50 tickers)
+2026-06-30 08:29:40  INFO        Chunk 10/31: USB \u2192 ETH (50 tickers)
+2026-06-30 08:29:44  INFO        Chunk 11/31: LTC \u2192 ATI (50 tickers)
+2026-06-30 08:29:47  INFO        Chunk 12/31: ATR \u2192 CNM (50 tickers)
+2026-06-30 08:29:51  INFO        Chunk 13/31: CNO \u2192 EXP (50 tickers)
+2026-06-30 08:29:54  INFO        Chunk 14/31: EXPO \u2192 HXL (50 tickers)
+2026-06-30 08:29:58  INFO        Chunk 15/31: IBOC \u2192 MTSI (50 tickers)
+2026-06-30 08:30:01  INFO        Chunk 16/31: MTZ \u2192 PNFP (50 tickers)
+2026-06-30 08:30:05  INFO        Chunk 17/31: POR \u2192 SOLS (50 tickers)
+2026-06-30 08:30:08  INFO        Chunk 18/31: SON \u2192 WAL (50 tickers)
+2026-06-30 08:30:12  INFO        Chunk 19/31: WBS \u2192 AKR (50 tickers)
+2026-06-30 08:30:15  INFO        Chunk 20/31: ALG \u2192 BKU (50 tickers)
+2026-06-30 08:30:18  INFO        Chunk 21/31: BL \u2192 CRI (50 tickers)
+2026-06-30 08:30:21  INFO        Chunk 22/31: CRK \u2192 ENPH (50 tickers)
+2026-06-30 08:30:24  INFO        Chunk 23/31: ENR \u2192 GOGO (50 tickers)
+2026-06-30 08:30:28  INFO        Chunk 24/31: GOLF \u2192 JBGS (50 tickers)
+2026-06-30 08:30:31  INFO        Chunk 25/31: JBLU \u2192 MATW (50 tickers)
+2026-06-30 08:30:35  INFO        Chunk 26/31: MATX \u2192 NSSC (50 tickers)
+2026-06-30 08:30:38  INFO        Chunk 27/31: NTCT \u2192 PRIM (50 tickers)
+2026-06-30 08:30:42  INFO        Chunk 28/31: PRK \u2192 SEM (50 tickers)
+2026-06-30 08:30:45  INFO        Chunk 29/31: SEZL \u2192 TRN (50 tickers)
+2026-06-30 08:30:49  INFO        Chunk 30/31: TRNO \u2192 WINA (50 tickers)
+2026-06-30 08:30:52  INFO        Chunk 31/31: WKC \u2192 1109.HK (43 tickers)
+2026-06-30 08:31:35  INFO        Incremental refresh: 1543/1543 updated
+2026-06-30 08:32:00  INFO        1512 equities + 10 forex need IBKR intraday
+2026-06-30 08:32:00  INFO        Phase 2A: yfinance intraday sweep (primary pipeline)
+2026-06-30 08:32:00  INFO          [1h] 1534 assets to fetch
+2026-06-30 08:34:28  INFO          [1h] 200/1534 (199 saved | fetch_fail=1 snap_fail=0 cutoff_fail=0)
+2026-06-30 08:36:50  INFO          [1h] 400/1534 (398 saved | fetch_fail=2 snap_fail=0 cutoff_fail=0)
+2026-06-30 08:39:13  INFO          [1h] 600/1534 (598 saved | fetch_fail=2 snap_fail=0 cutoff_fail=0)
+2026-06-30 08:41:31  INFO          [1h] 800/1534 (797 saved | fetch_fail=3 snap_fail=0 cutoff_fail=0)
+2026-06-30 08:43:46  INFO          [1h] 1000/1534 (996 saved | fetch_fail=4 snap_fail=0 cutoff_fail=0)
+2026-06-30 08:45:59  INFO          [1h] 1200/1534 (1195 saved | fetch_fail=5 snap_fail=0 cutoff_fail=0)
+2026-06-30 08:48:16  INFO          [1h] 1400/1534 (1394 saved | fetch_fail=6 snap_fail=0 cutoff_fail=0)
+2026-06-30 08:49:50  INFO          [1h] complete: 1526/1534 saved | fail_fetch=8 fail_snap=0 fail_cutoff=0
+2026-06-30 08:49:50  WARNING       [1h] first failure: fetch:ECHO
+2026-06-30 08:49:50  INFO          [30m] 1534 assets to fetch
+2026-06-30 08:51:05  INFO          [30m] 200/1534 (199 saved | fetch_fail=1 snap_fail=0 cutoff_fail=0)
+2026-06-30 08:52:21  INFO          [30m] 400/1534 (398 saved | fetch_fail=2 snap_fail=0 cutoff_fail=0)
+2026-06-30 08:53:35  INFO          [30m] 600/1534 (598 saved | fetch_fail=2 snap_fail=0 cutoff_fail=0)
+2026-06-30 08:54:48  INFO          [30m] 800/1534 (798 saved | fetch_fail=2 snap_fail=0 cutoff_fail=0)
+2026-06-30 08:56:01  INFO          [30m] 1000/1534 (997 saved | fetch_fail=3 snap_fail=0 cutoff_fail=0)
+2026-06-30 08:57:13  INFO          [30m] 1200/1534 (1196 saved | fetch_fail=4 snap_fail=0 cutoff_fail=0)
+2026-06-30 08:58:26  INFO          [30m] 1400/1534 (1395 saved | fetch_fail=5 snap_fail=0 cutoff_fail=0)
+2026-06-30 08:59:15  INFO          [30m] complete: 1528/1534 saved | fail_fetch=6 fail_snap=0 fail_cutoff=0
+2026-06-30 08:59:15  WARNING       [30m] first failure: fetch:ECHO
+2026-06-30 08:59:15  INFO          [15m] 1534 assets to fetch
+2026-06-30 09:00:35  INFO          [15m] 200/1534 (199 saved | fetch_fail=1 snap_fail=0 cutoff_fail=0)
+2026-06-30 09:01:57  INFO          [15m] 400/1534 (398 saved | fetch_fail=2 snap_fail=0 cutoff_fail=0)
+2026-06-30 09:03:18  INFO          [15m] 600/1534 (598 saved | fetch_fail=2 snap_fail=0 cutoff_fail=0)
+2026-06-30 09:04:39  INFO          [15m] 800/1534 (798 saved | fetch_fail=2 snap_fail=0 cutoff_fail=0)
+2026-06-30 09:05:58  INFO          [15m] 1000/1534 (997 saved | fetch_fail=3 snap_fail=0 cutoff_fail=0)
+2026-06-30 09:07:17  INFO          [15m] 1200/1534 (1196 saved | fetch_fail=4 snap_fail=0 cutoff_fail=0)
+2026-06-30 09:08:38  INFO          [15m] 1400/1534 (1395 saved | fetch_fail=5 snap_fail=0 cutoff_fail=0)
+2026-06-30 09:09:31  INFO          [15m] complete: 1528/1534 saved | fail_fetch=6 fail_snap=0 fail_cutoff=0
+2026-06-30 09:09:31  WARNING       [15m] first failure: fetch:ECHO
+2026-06-30 09:09:31  INFO          [5m] 1534 assets to fetch
+2026-06-30 09:11:39  INFO          [5m] 200/1534 (199 saved | fetch_fail=1 snap_fail=0 cutoff_fail=0)
+2026-06-30 09:13:47  INFO          [5m] 400/1534 (398 saved | fetch_fail=2 snap_fail=0 cutoff_fail=0)
+2026-06-30 09:15:53  INFO          [5m] 600/1534 (598 saved | fetch_fail=2 snap_fail=0 cutoff_fail=0)
+2026-06-30 09:17:57  INFO          [5m] 800/1534 (798 saved | fetch_fail=2 snap_fail=0 cutoff_fail=0)
+2026-06-30 09:19:59  INFO          [5m] 1000/1534 (998 saved | fetch_fail=2 snap_fail=0 cutoff_fail=0)
+2026-06-30 09:22:01  INFO          [5m] 1200/1534 (1197 saved | fetch_fail=3 snap_fail=0 cutoff_fail=0)
+2026-06-30 09:24:04  INFO          [5m] 1400/1534 (1396 saved | fetch_fail=4 snap_fail=0 cutoff_fail=0)
+2026-06-30 09:25:25  INFO          [5m] complete: 1529/1534 saved | fail_fetch=5 fail_snap=0 fail_cutoff=0
+2026-06-30 09:25:25  WARNING       [5m] first failure: fetch:ECHO
+2026-06-30 09:25:26  INFO          [2m] 1534 assets to fetch
+2026-06-30 09:28:08  INFO          [2m] 200/1534 (199 saved | fetch_fail=1 snap_fail=0 cutoff_fail=0)
+2026-06-30 09:30:50  INFO          [2m] 400/1534 (398 saved | fetch_fail=2 snap_fail=0 cutoff_fail=0)
+2026-06-30 09:33:29  INFO          [2m] 600/1534 (598 saved | fetch_fail=2 snap_fail=0 cutoff_fail=0)
+2026-06-30 09:35:59  INFO          [2m] 800/1534 (798 saved | fetch_fail=2 snap_fail=0 cutoff_fail=0)
+2026-06-30 09:38:25  INFO          [2m] 1000/1534 (996 saved | fetch_fail=4 snap_fail=0 cutoff_fail=0)
+2026-06-30 09:39:09  ERROR     $CWEN-A: possibly delisted; no price data found  (period=55d)
+2026-06-30 09:39:09  WARNING   yfinance CWEN-A 2m [period=55d]: returned EMPTY (no exception) — ticker=CWEN-A, interval=2m, rows_returned=0
+2026-06-30 09:39:09  ERROR     $CWEN-A: possibly delisted; no price data found  (2m 2026-05-01 12:39:14-04:00 -> 2026-06-30 12:39:09-04:00)
+2026-06-30 09:39:09  WARNING   yfinance CWEN-A 2m [period=max]: returned EMPTY (no exception) — ticker=CWEN-A, interval=2m, rows_returned=0
+2026-06-30 09:40:44  INFO          [2m] 1200/1534 (1190 saved | fetch_fail=10 snap_fail=0 cutoff_fail=0)
+2026-06-30 09:43:04  INFO          [2m] 1400/1534 (1384 saved | fetch_fail=16 snap_fail=0 cutoff_fail=0)
+2026-06-30 09:44:38  INFO          [2m] complete: 1514/1534 saved | fail_fetch=20 fail_snap=0 fail_cutoff=0
+2026-06-30 09:44:38  WARNING       [2m] first failure: fetch:ECHO
+2026-06-30 09:44:38  INFO          [1m] 1534 assets to fetch
+2026-06-30 09:45:58  INFO          [1m] 200/1534 (198 saved | fetch_fail=2 snap_fail=0 cutoff_fail=0)
+2026-06-30 09:47:21  INFO          [1m] 400/1534 (396 saved | fetch_fail=4 snap_fail=0 cutoff_fail=0)
+2026-06-30 09:48:40  INFO          [1m] 600/1534 (592 saved | fetch_fail=8 snap_fail=0 cutoff_fail=0)
+2026-06-30 09:49:57  INFO          [1m] 800/1534 (783 saved | fetch_fail=17 snap_fail=0 cutoff_fail=0)
+2026-06-30 09:51:12  INFO          [1m] 1000/1534 (961 saved | fetch_fail=39 snap_fail=0 cutoff_fail=0)
+2026-06-30 09:51:35  ERROR     $CWEN-A: possibly delisted; no price data found  (period=5d)
+2026-06-30 09:51:35  WARNING   yfinance CWEN-A 1m [period=5d]: returned EMPTY (no exception) — ticker=CWEN-A, interval=1m, rows_returned=0
+2026-06-30 09:51:35  ERROR     $CWEN-A: possibly delisted; no price data found  (1m 2026-06-22 12:51:40-04:00 -> 2026-06-30 12:51:35-04:00)
+2026-06-30 09:51:35  WARNING   yfinance CWEN-A 1m [period=max]: returned EMPTY (no exception) — ticker=CWEN-A, interval=1m, rows_returned=0
+2026-06-30 09:52:25  INFO          [1m] 1200/1534 (1109 saved | fetch_fail=91 snap_fail=0 cutoff_fail=0)
+2026-06-30 09:53:38  INFO          [1m] 1400/1534 (1260 saved | fetch_fail=140 snap_fail=0 cutoff_fail=0)
+2026-06-30 09:54:27  INFO          [1m] complete: 1364/1534 saved | fail_fetch=170 fail_snap=0 fail_cutoff=0
+2026-06-30 09:54:27  WARNING       [1m] first failure: fetch:AIZ
+2026-06-30 09:54:28  INFO          [3m] 1534 assets to fetch
+2026-06-30 09:55:39  INFO          [3m] 200/1534 (200 saved | fetch_fail=0 snap_fail=0 cutoff_fail=0)
+2026-06-30 09:56:52  INFO          [3m] 400/1534 (400 saved | fetch_fail=0 snap_fail=0 cutoff_fail=0)
+2026-06-30 09:58:01  INFO          [3m] 600/1534 (600 saved | fetch_fail=0 snap_fail=0 cutoff_fail=0)
+2026-06-30 09:59:12  INFO          [3m] 800/1534 (800 saved | fetch_fail=0 snap_fail=0 cutoff_fail=0)
+2026-06-30 10:00:20  INFO          [3m] 1000/1534 (997 saved | fetch_fail=3 snap_fail=0 cutoff_fail=0)
+2026-06-30 10:00:42  ERROR     $CWEN-A: possibly delisted; no price data found  (period=5d)
+2026-06-30 10:00:42  WARNING   yfinance CWEN-A 3m [period=5d]: returned EMPTY (no exception) — ticker=CWEN-A, interval=1m, rows_returned=0
+2026-06-30 10:00:42  ERROR     $CWEN-A: possibly delisted; no price data found  (1m 2026-06-22 13:00:47-04:00 -> 2026-06-30 13:00:42-04:00)
+2026-06-30 10:00:42  WARNING   yfinance CWEN-A 3m [period=max]: returned EMPTY (no exception) — ticker=CWEN-A, interval=1m, rows_returned=0
+2026-06-30 10:01:27  INFO          [3m] 1200/1534 (1179 saved | fetch_fail=21 snap_fail=0 cutoff_fail=0)
+2026-06-30 10:02:35  INFO          [3m] 1400/1534 (1357 saved | fetch_fail=42 snap_fail=0 cutoff_fail=1)
+2026-06-30 10:03:21  INFO          [3m] complete: 1483/1534 saved | fail_fetch=50 fail_snap=0 fail_cutoff=1
+2026-06-30 10:03:21  WARNING       [3m] first failure: fetch:ADAM
+2026-06-30 10:03:52  INFO          [4h] derived: 1526 saved | 8 no 1h source | 0 resample failed | 0 wrong frequency after resample
+2026-06-30 10:03:52  INFO        Phase 2A complete. Run data_ibkr.py for deep IBKR history on confirmed pairs.
+2026-06-30 10:04:50  INFO      Universe complete: 1592 assets passed, 2 excluded
+2026-06-30 10:04:50  INFO      Data keys: 19961 symbol-timeframe combinations (6376 loaded from cache)
+2026-06-30 10:04:50  INFO      Run summary \u2192 C:\Users\RossW\Projects\CAMARF\latest_run_data.log
+2026-06-30 10:04:50  INFO      
+Final universe: 1592 assets
+2026-06-30 10:04:50  INFO      Excluded:       2 assets
+2026-06-30 10:04:50  INFO      Data keys:      19961 symbol-timeframe combinations
+2026-06-30 10:04:50  INFO      
+Exclusion summary (first 20):
+2026-06-30 10:04:50  INFO        HONA         (equity    )  \u2192  no_daily_data_yfinance
+2026-06-30 10:04:50  INFO        VGNT         (equity    )  \u2192  no_daily_data_yfinance

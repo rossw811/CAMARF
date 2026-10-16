@@ -1,0 +1,4 @@
+11:26:16 INFO  === stress_test_replication.py: historical crisis stress test on confirmed pairs (1D resolution) ===
+2026-08-04 11:26:16  INFO      === stress_test_replication.py: historical crisis stress test on confirmed pairs (1D resolution) ===
+11:26:16 INFO  SCOPE: tests cointegration-relationship stability at DAILY resolution during known historical crisis windows ΓÇö does NOT replay the intraday strategy (no cached 1h data reaches back to 2007/2020; see module docstring).
+2026-08-04 11:26:16  INFO      SCOPE: tests cointegration-relationship stability at DAILY resolution during known historical crisis windows ΓÇö does NOT replay the intraday strategy (no cached 1h data reaches back to 2007/2020; see module docstring).

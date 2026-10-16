@@ -1,0 +1,5 @@
+04:59:24 INFO  === era_decay_replication.py: Do & Faff (2010)-style era-decay replication on CAMARF's own data ===
+2026-08-04 04:59:24  INFO      === era_decay_replication.py: Do & Faff (2010)-style era-decay replication on CAMARF's own data ===
+04:59:24 INFO  SCOPE: tests decay + convergence-property (half-life) trend only ΓÇö cannot test the 'crowding' hypothesis (requires external capital-flow data CAMARF does not have). See module docstring.
+2026-08-04 04:59:24  INFO      SCOPE: tests decay + convergence-property (half-life) trend only ΓÇö cannot test the 'crowding' hypothesis (requires external capital-flow data CAMARF does not have). See module docstring.
+04:59:24 WARNING  No pairs.parquet at C:\Users\RossW\Projects\CAMARF\output\results\1hr\pairs.parquet ΓÇö nothing to replicate.

@@ -1,0 +1,22 @@
+=== CAMARF macro.py ===
+date:        2026-10-10 17:49
+runtime_min: 0.0
+
+=== series ===
+  (none)
+
+=== regime_distributions ===
+yield_curve: {'normal': 6064, 'steep': 2977, 'flat_inverted': 1231}
+credit: {nan: 9520, 'normal': 387, 'tight': 365}
+credit_proxy: {'normal': 4644, 'tight': 4338, 'wide': 1289, nan: 1}
+vix: {'normal': 4699, 'calm': 2960, 'elevated': 1248, nan: 1012, 'crisis': 353}
+vix_term_structure: {nan: 5531, 'deep_contango': 2803, 'contango': 1460, 'flat': 297, 'backwardation': 181}
+dollar: {nan: 5303, 'strong': 1946, 'neutral': 1791, 'weak': 1232}
+real_rate: {nan: 4543, 'low': 2046, 'high': 1857, 'normal': 1826}
+inflation_expectation: {nan: 4543, 'normal': 2339, 'high': 1765, 'low': 1625}
+recession: {'expansion': 9518, 'contraction': 754}
+recession_realtime: {'expansion': 8296, 'contraction_risk': 1746, nan: 230}
+cot_es: {'neutral': 5978, nan: 2964, 'crowded_short': 925, 'crowded_long': 405}
+cot_nq: {'neutral': 4406, nan: 3413, 'crowded_long': 1733, 'crowded_short': 720}
+
+=== end ===

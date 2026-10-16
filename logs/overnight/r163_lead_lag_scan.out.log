@@ -1,0 +1,5 @@
+ok    KVUE/KMB@3m: best_lag=0 corr*=0.432(n=4128) corr0=0.432(n=4128) lift=0.000
+ok    PNC/ZION@4h: best_lag=0 corr*=0.807(n=3702) corr0=0.807(n=3702) lift=0.000
+
+0/2 confirmed pairs show a non-zero lag with a correlation lift >= 0.05 over lag 0.
+GATE RESULT: no evidence among current confirmed pairs that a non-zero lag is more informative than lag 0 ΓÇö the contemporaneous assumption looks fine for THIS set. This does not rule out lead-lag structure existing among pairs that fail the lag-0 pre-filter and never reach this confirmed-pairs list at all; that is a separate, much more expensive universe-wide question, not addressed here.

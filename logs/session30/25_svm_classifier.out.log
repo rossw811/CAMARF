@@ -1,0 +1,4 @@
+Total labeled examples: 19
+Class distribution: {'converged': 10, 'not_converged': 9}
+
+INSUFFICIENT DATA for a fair train/test comparison: smallest class has 9 examples, need >= 30 (Config.ML.MIN_CLASS_SAMPLES). Reporting this honestly rather than forcing a comparison the data can't support.

@@ -1,0 +1,98 @@
+16:48:16 INFO  === pit_wfa.py: Point-In-Time Portfolio-Wide Walk-Forward Analysis (1h) ===
+2026-07-14 16:48:16  INFO      === pit_wfa.py: Point-In-Time Portfolio-Wide Walk-Forward Analysis (1h) ===
+16:48:16 INFO  Unlike wfa.py's semi-WFA, pair SELECTION itself is re-derived per fold using only train-window data — see module docstring for exact scope.
+2026-07-14 16:48:16  INFO      Unlike wfa.py's semi-WFA, pair SELECTION itself is re-derived per fold using only train-window data — see module docstring for exact scope.
+16:48:34 INFO  Universe: 1566 symbols with cached 1h data
+2026-07-14 16:48:34  INFO      Universe: 1566 symbols with cached 1h data
+16:48:34 INFO  Analysis window: [2023-07-13, 2026-07-14]
+2026-07-14 16:48:34  INFO      Analysis window: [2023-07-13, 2026-07-14]
+16:48:34 INFO  [split_sweep/split_50_50] screening train window [2023-07-13, 2025-01-12] (point-in-time, no test-period data used)...
+2026-07-14 16:48:34  INFO      [split_sweep/split_50_50] screening train window [2023-07-13, 2025-01-12] (point-in-time, no test-period data used)...
+2026-07-14 16:48:55  INFO        [1h] Computing 1538×1538 correlation matrices (Pearson + Spearman + rolling avg)...
+2026-07-14 16:49:09  INFO        [1h] Pearson 4.0s | Spearman 4.5s | RollingAvg 5.6s
+2026-07-14 16:49:11  INFO        [1h] Candidate pairs: 32625 (0 cross-asset)  threshold |\u03c1| \u2265 0.40  [gold=15124 silver=11458 bronze=6043]
+2026-07-14 16:49:11  INFO        [1h] Running EG on 32625 pairs (workers=8, max_lag=10)...
+2026-07-14 16:53:07  INFO        [1h] EG complete in 235.5s
+2026-07-14 16:53:08  INFO        [1h] EG: tested=32625, raw<0.05=1420, FDR-adjusted<0.05=14
+2026-07-14 16:53:08  INFO        [1h] Rolling coint on 14 pairs (window=252, step=21)...
+2026-07-14 16:53:13  INFO        [1h] Rolling coint complete in 5.6s
+16:53:23 INFO  [split_sweep/split_50_50] 2 pairs point-in-time confirmed (4.8 min)
+2026-07-14 16:53:23  INFO      [split_sweep/split_50_50] 2 pairs point-in-time confirmed (4.8 min)
+16:53:24 INFO  [split_sweep/split_50_50] backtest: 2 pairs traded, 57 trades, portfolio Sharpe=0.8178
+2026-07-14 16:53:24  INFO      [split_sweep/split_50_50] backtest: 2 pairs traded, 57 trades, portfolio Sharpe=0.8178
+16:53:24 INFO  [split_sweep/split_60_40] screening train window [2023-07-13, 2025-05-01] (point-in-time, no test-period data used)...
+2026-07-14 16:53:24  INFO      [split_sweep/split_60_40] screening train window [2023-07-13, 2025-05-01] (point-in-time, no test-period data used)...
+2026-07-14 16:53:47  INFO        [1h] Computing 1547×1547 correlation matrices (Pearson + Spearman + rolling avg)...
+2026-07-14 16:54:02  INFO        [1h] Pearson 4.9s | Spearman 5.5s | RollingAvg 4.5s
+2026-07-14 16:54:06  INFO        [1h] Candidate pairs: 151847 (0 cross-asset)  threshold |\u03c1| \u2265 0.40  [gold=35365 silver=115496 bronze=986]
+2026-07-14 16:54:06  INFO        [1h] Running EG on 151847 pairs (workers=8, max_lag=10)...
+2026-07-14 17:12:25  INFO        [1h] EG complete in 1098.1s
+2026-07-14 17:12:25  INFO        [1h] EG: tested=151847, raw<0.05=5633, FDR-adjusted<0.05=12
+2026-07-14 17:12:25  INFO        [1h] Rolling coint on 12 pairs (window=252, step=21)...
+2026-07-14 17:12:31  INFO        [1h] Rolling coint complete in 6.1s
+17:12:42 INFO  [split_sweep/split_60_40] 3 pairs point-in-time confirmed (19.3 min)
+2026-07-14 17:12:42  INFO      [split_sweep/split_60_40] 3 pairs point-in-time confirmed (19.3 min)
+17:12:43 INFO  [split_sweep/split_60_40] backtest: 3 pairs traded, 27 trades, portfolio Sharpe=-0.2983
+2026-07-14 17:12:43  INFO      [split_sweep/split_60_40] backtest: 3 pairs traded, 27 trades, portfolio Sharpe=-0.2983
+17:12:43 INFO  [split_sweep/split_70_30] screening train window [2023-07-13, 2025-08-19] (point-in-time, no test-period data used)...
+2026-07-14 17:12:43  INFO      [split_sweep/split_70_30] screening train window [2023-07-13, 2025-08-19] (point-in-time, no test-period data used)...
+2026-07-14 17:13:07  INFO        [1h] Computing 1550×1550 correlation matrices (Pearson + Spearman + rolling avg)...
+2026-07-14 17:13:22  INFO        [1h] Pearson 5.7s | Spearman 6.5s | RollingAvg 3.7s
+2026-07-14 17:13:26  INFO        [1h] Candidate pairs: 131532 (0 cross-asset)  threshold |\u03c1| \u2265 0.40  [gold=20759 silver=34361 bronze=76412]
+2026-07-14 17:13:26  INFO        [1h] Running EG on 131532 pairs (workers=8, max_lag=10)...
+2026-07-14 17:31:09  INFO        [1h] EG complete in 1062.4s
+2026-07-14 17:31:09  INFO        [1h] EG: tested=131532, raw<0.05=5010, FDR-adjusted<0.05=4
+2026-07-14 17:31:09  INFO        [1h] Rolling coint on 4 pairs (window=252, step=21)...
+2026-07-14 17:31:13  INFO        [1h] Rolling coint complete in 4.3s
+17:31:18 INFO  [split_sweep/split_70_30] 1 pairs point-in-time confirmed (18.6 min)
+2026-07-14 17:31:18  INFO      [split_sweep/split_70_30] 1 pairs point-in-time confirmed (18.6 min)
+17:31:18 INFO  [split_sweep/split_70_30] backtest: 1 pairs traded, 10 trades, portfolio Sharpe=0.7951
+2026-07-14 17:31:18  INFO      [split_sweep/split_70_30] backtest: 1 pairs traded, 10 trades, portfolio Sharpe=0.7951
+17:31:18 INFO  [split_sweep/split_80_20] screening train window [2023-07-13, 2025-12-07] (point-in-time, no test-period data used)...
+2026-07-14 17:31:18  INFO      [split_sweep/split_80_20] screening train window [2023-07-13, 2025-12-07] (point-in-time, no test-period data used)...
+2026-07-14 17:31:44  INFO        [1h] Computing 1556×1556 correlation matrices (Pearson + Spearman + rolling avg)...
+2026-07-14 17:32:03  INFO        [1h] Pearson 6.7s | Spearman 7.6s | RollingAvg 4.5s
+2026-07-14 17:32:06  INFO        [1h] Candidate pairs: 110604 (0 cross-asset)  threshold |\u03c1| \u2265 0.40  [gold=22656 silver=43595 bronze=44353]
+2026-07-14 17:32:06  INFO        [1h] Running EG on 110604 pairs (workers=8, max_lag=10)...
+2026-07-14 17:48:38  INFO        [1h] EG complete in 991.5s
+2026-07-14 17:48:39  INFO        [1h] EG: tested=110604, raw<0.05=3864, FDR-adjusted<0.05=1
+2026-07-14 17:48:39  INFO        [1h] Rolling coint on 1 pairs (window=252, step=21)...
+2026-07-14 17:48:42  INFO        [1h] Rolling coint complete in 3.2s
+17:48:44 INFO  [split_sweep/split_80_20] 0 pairs point-in-time confirmed (17.4 min)
+2026-07-14 17:48:44  INFO      [split_sweep/split_80_20] 0 pairs point-in-time confirmed (17.4 min)
+17:48:44 INFO  [split_sweep/split_80_20] backtest: 0 pairs traded, 0 trades, portfolio Sharpe=nan
+2026-07-14 17:48:44  INFO      [split_sweep/split_80_20] backtest: 0 pairs traded, 0 trades, portfolio Sharpe=nan
+17:48:44 INFO  [split_sweep/split_90_10] screening train window [2023-07-13, 2026-03-26] (point-in-time, no test-period data used)...
+2026-07-14 17:48:44  INFO      [split_sweep/split_90_10] screening train window [2023-07-13, 2026-03-26] (point-in-time, no test-period data used)...
+2026-07-14 17:49:12  INFO        [1h] Computing 1561×1561 correlation matrices (Pearson + Spearman + rolling avg)...
+2026-07-14 17:49:33  INFO        [1h] Pearson 7.6s | Spearman 8.7s | RollingAvg 4.5s
+2026-07-14 17:49:36  INFO        [1h] Candidate pairs: 88550 (0 cross-asset)  threshold |\u03c1| \u2265 0.40  [gold=18016 silver=28054 bronze=42480]
+2026-07-14 17:49:36  INFO        [1h] Running EG on 88550 pairs (workers=8, max_lag=10)...
+2026-07-14 18:02:19  INFO        [1h] EG complete in 762.4s
+2026-07-14 18:02:19  INFO        [1h] EG: tested=88550, raw<0.05=2964, FDR-adjusted<0.05=2
+2026-07-14 18:02:19  INFO        [1h] Rolling coint on 2 pairs (window=252, step=21)...
+2026-07-14 18:02:24  INFO        [1h] Rolling coint complete in 4.4s
+18:02:26 INFO  [split_sweep/split_90_10] 1 pairs point-in-time confirmed (13.7 min)
+2026-07-14 18:02:26  INFO      [split_sweep/split_90_10] 1 pairs point-in-time confirmed (13.7 min)
+18:02:26 INFO  [split_sweep/split_90_10] backtest: 1 pairs traded, 1 trades, portfolio Sharpe=nan
+2026-07-14 18:02:26  INFO      [split_sweep/split_90_10] backtest: 1 pairs traded, 1 trades, portfolio Sharpe=nan
+18:02:26 INFO  
+ n_pairs  n_trades_total  total_pnl_portfolio  sharpe_portfolio  max_drawdown_portfolio max_concentration_pair  max_concentration_pct wfa_variant        fold  n_pit_confirmed_pairs  n_pairs_with_trades
+     2.0            57.0              1403.07            0.8178                  583.02            FNF/SPGI@1h                 0.7496 split_sweep split_50_50                      2                    2
+     3.0            27.0              -249.36           -0.2983                  525.21               HLI/R@1h                 1.9133 split_sweep split_60_40                      3                    3
+     1.0            10.0               291.91            0.7951                  154.56             ORI/PPL@1h                 1.0000 split_sweep split_70_30                      1                    1
+     NaN             NaN                  NaN               NaN                     NaN                    NaN                    NaN split_sweep split_80_20                      0                    0
+     1.0             1.0                46.63               NaN                    0.00            FELE/MAS@1h                 1.0000 split_sweep split_90_10                      1                    1
+2026-07-14 18:02:26  INFO      
+ n_pairs  n_trades_total  total_pnl_portfolio  sharpe_portfolio  max_drawdown_portfolio max_concentration_pair  max_concentration_pct wfa_variant        fold  n_pit_confirmed_pairs  n_pairs_with_trades
+     2.0            57.0              1403.07            0.8178                  583.02            FNF/SPGI@1h                 0.7496 split_sweep split_50_50                      2                    2
+     3.0            27.0              -249.36           -0.2983                  525.21               HLI/R@1h                 1.9133 split_sweep split_60_40                      3                    3
+     1.0            10.0               291.91            0.7951                  154.56             ORI/PPL@1h                 1.0000 split_sweep split_70_30                      1                    1
+     NaN             NaN                  NaN               NaN                     NaN                    NaN                    NaN split_sweep split_80_20                      0                    0
+     1.0             1.0                46.63               NaN                    0.00            FELE/MAS@1h                 1.0000 split_sweep split_90_10                      1                    1
+18:02:26 INFO  Saved -> output/backtest/pit_wfa_{fold_comparison,portfolio,pair_sets}.parquet
+2026-07-14 18:02:26  INFO      Saved -> output/backtest/pit_wfa_{fold_comparison,portfolio,pair_sets}.parquet
+18:02:26 INFO  ============================================================
+2026-07-14 18:02:26  INFO      ============================================================
+18:02:26 INFO  pit_wfa.py complete (74.2 min)
+2026-07-14 18:02:26  INFO      pit_wfa.py complete (74.2 min)

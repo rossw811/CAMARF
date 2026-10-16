@@ -1,0 +1,72 @@
+22:02:52 INFO  === pit_wfa.py: Point-In-Time Portfolio-Wide Walk-Forward Analysis (1h) ===
+2026-07-14 22:02:52  INFO      === pit_wfa.py: Point-In-Time Portfolio-Wide Walk-Forward Analysis (1h) ===
+22:02:52 INFO  Unlike wfa.py's semi-WFA, pair SELECTION itself is re-derived per fold using only train-window data — see module docstring for exact scope.
+2026-07-14 22:02:52  INFO      Unlike wfa.py's semi-WFA, pair SELECTION itself is re-derived per fold using only train-window data — see module docstring for exact scope.
+22:02:59 INFO  Universe: 1566 symbols with cached 1h data
+2026-07-14 22:02:59  INFO      Universe: 1566 symbols with cached 1h data
+22:02:59 INFO  Analysis window: [2023-07-13, 2026-07-14]
+2026-07-14 22:02:59  INFO      Analysis window: [2023-07-13, 2026-07-14]
+22:02:59 INFO  [checkpoint_sweep/checkpoint_2024-02-01] screening train window [2023-07-13, 2024-01-31] (point-in-time, no test-period data used)...
+2026-07-14 22:02:59  INFO      [checkpoint_sweep/checkpoint_2024-02-01] screening train window [2023-07-13, 2024-01-31] (point-in-time, no test-period data used)...
+2026-07-14 22:03:07  INFO        [1h] Computing 1489×1489 correlation matrices (Pearson + Spearman + rolling avg)...
+2026-07-14 22:03:12  INFO        [1h] Pearson 0.8s | Spearman 0.8s | RollingAvg 3.4s
+2026-07-14 22:03:13  INFO        [1h] Candidate pairs: 58933 (0 cross-asset)  threshold |\u03c1| \u2265 0.40  [gold=33451 silver=22719 bronze=2763]
+2026-07-14 22:03:13  INFO        [1h] Running EG on 58933 pairs (workers=12, max_lag=10)...
+2026-07-14 22:05:35  INFO        [1h] EG complete in 141.8s
+2026-07-14 22:05:35  INFO        [1h] EG: tested=58933, raw<0.05=2976, FDR-adjusted<0.05=76
+2026-07-14 22:05:35  INFO        [1h] Rolling coint on 76 pairs (window=252, step=21)...
+2026-07-14 22:05:40  INFO        [1h] Rolling coint complete in 4.3s
+22:05:54 INFO  [checkpoint_sweep/checkpoint_2024-02-01] 30 pairs point-in-time confirmed (2.9 min)
+2026-07-14 22:05:54  INFO      [checkpoint_sweep/checkpoint_2024-02-01] 30 pairs point-in-time confirmed (2.9 min)
+22:06:04 INFO  [checkpoint_sweep/checkpoint_2024-02-01] backtest: 27 pairs traded, 1234 trades, portfolio Sharpe=-1.9037
+2026-07-14 22:06:04  INFO      [checkpoint_sweep/checkpoint_2024-02-01] backtest: 27 pairs traded, 1234 trades, portfolio Sharpe=-1.9037
+22:06:04 INFO  [checkpoint_sweep/checkpoint_2024-02-01] checkpoint saved (1 folds completed so far)
+2026-07-14 22:06:04  INFO      [checkpoint_sweep/checkpoint_2024-02-01] checkpoint saved (1 folds completed so far)
+22:06:04 INFO  [checkpoint_sweep/checkpoint_2025-01-01] screening train window [2023-07-13, 2025-01-01] (point-in-time, no test-period data used)...
+2026-07-14 22:06:04  INFO      [checkpoint_sweep/checkpoint_2025-01-01] screening train window [2023-07-13, 2025-01-01] (point-in-time, no test-period data used)...
+2026-07-14 22:06:15  INFO        [1h] Computing 1538×1538 correlation matrices (Pearson + Spearman + rolling avg)...
+2026-07-14 22:06:21  INFO        [1h] Pearson 1.4s | Spearman 1.8s | RollingAvg 2.8s
+2026-07-14 22:06:22  INFO        [1h] Candidate pairs: 32568 (0 cross-asset)  threshold |\u03c1| \u2265 0.40  [gold=11710 silver=11603 bronze=9255]
+2026-07-14 22:06:22  INFO        [1h] Running EG on 32568 pairs (workers=12, max_lag=10)...
+2026-07-14 22:08:19  INFO        [1h] EG complete in 116.2s
+2026-07-14 22:08:19  INFO        [1h] EG: tested=32568, raw<0.05=1478, FDR-adjusted<0.05=14
+2026-07-14 22:08:19  INFO        [1h] Rolling coint on 14 pairs (window=252, step=21)...
+2026-07-14 22:08:24  INFO        [1h] Rolling coint complete in 5.0s
+22:08:30 INFO  [checkpoint_sweep/checkpoint_2025-01-01] 3 pairs point-in-time confirmed (2.4 min)
+2026-07-14 22:08:30  INFO      [checkpoint_sweep/checkpoint_2025-01-01] 3 pairs point-in-time confirmed (2.4 min)
+22:08:31 INFO  [checkpoint_sweep/checkpoint_2025-01-01] backtest: 3 pairs traded, 79 trades, portfolio Sharpe=0.4241
+2026-07-14 22:08:31  INFO      [checkpoint_sweep/checkpoint_2025-01-01] backtest: 3 pairs traded, 79 trades, portfolio Sharpe=0.4241
+22:08:31 INFO  [checkpoint_sweep/checkpoint_2025-01-01] checkpoint saved (2 folds completed so far)
+2026-07-14 22:08:31  INFO      [checkpoint_sweep/checkpoint_2025-01-01] checkpoint saved (2 folds completed so far)
+22:08:31 INFO  [checkpoint_sweep/checkpoint_2025-08-01] screening train window [2023-07-13, 2025-08-01] (point-in-time, no test-period data used)...
+2026-07-14 22:08:31  INFO      [checkpoint_sweep/checkpoint_2025-08-01] screening train window [2023-07-13, 2025-08-01] (point-in-time, no test-period data used)...
+2026-07-14 22:08:44  INFO        [1h] Computing 1550×1550 correlation matrices (Pearson + Spearman + rolling avg)...
+2026-07-14 22:08:51  INFO        [1h] Pearson 2.0s | Spearman 2.3s | RollingAvg 2.5s
+2026-07-14 22:08:53  INFO        [1h] Candidate pairs: 135852 (0 cross-asset)  threshold |\u03c1| \u2265 0.40  [gold=28793 silver=48185 bronze=58874]
+2026-07-14 22:08:53  INFO        [1h] Running EG on 135852 pairs (workers=12, max_lag=10)...
+2026-07-14 22:17:40  INFO        [1h] EG complete in 526.4s
+2026-07-14 22:17:40  INFO        [1h] EG: tested=135852, raw<0.05=5065, FDR-adjusted<0.05=4
+2026-07-14 22:17:40  INFO        [1h] Rolling coint on 4 pairs (window=252, step=21)...
+2026-07-14 22:17:45  INFO        [1h] Rolling coint complete in 5.5s
+22:17:49 INFO  [checkpoint_sweep/checkpoint_2025-08-01] 1 pairs point-in-time confirmed (9.3 min)
+2026-07-14 22:17:49  INFO      [checkpoint_sweep/checkpoint_2025-08-01] 1 pairs point-in-time confirmed (9.3 min)
+22:17:49 INFO  [checkpoint_sweep/checkpoint_2025-08-01] backtest: 1 pairs traded, 11 trades, portfolio Sharpe=1.0050
+2026-07-14 22:17:49  INFO      [checkpoint_sweep/checkpoint_2025-08-01] backtest: 1 pairs traded, 11 trades, portfolio Sharpe=1.0050
+22:17:49 INFO  [checkpoint_sweep/checkpoint_2025-08-01] checkpoint saved (3 folds completed so far)
+2026-07-14 22:17:49  INFO      [checkpoint_sweep/checkpoint_2025-08-01] checkpoint saved (3 folds completed so far)
+22:17:49 INFO  
+ n_pairs  n_trades_total  total_pnl_portfolio  sharpe_portfolio  max_drawdown_portfolio max_concentration_pair  max_concentration_pct      wfa_variant                  fold  n_pit_confirmed_pairs  n_pairs_with_trades
+      27            1234            -19753.43           -1.9037                19672.67            APH/SPGI@1h                 0.2347 checkpoint_sweep checkpoint_2024-02-01                     30                   27
+       3              79               717.77            0.4241                  592.13            FNF/SPGI@1h                 0.6642 checkpoint_sweep checkpoint_2025-01-01                      3                    3
+       1              11               406.65            1.0050                  154.56             ORI/PPL@1h                 1.0000 checkpoint_sweep checkpoint_2025-08-01                      1                    1
+2026-07-14 22:17:49  INFO      
+ n_pairs  n_trades_total  total_pnl_portfolio  sharpe_portfolio  max_drawdown_portfolio max_concentration_pair  max_concentration_pct      wfa_variant                  fold  n_pit_confirmed_pairs  n_pairs_with_trades
+      27            1234            -19753.43           -1.9037                19672.67            APH/SPGI@1h                 0.2347 checkpoint_sweep checkpoint_2024-02-01                     30                   27
+       3              79               717.77            0.4241                  592.13            FNF/SPGI@1h                 0.6642 checkpoint_sweep checkpoint_2025-01-01                      3                    3
+       1              11               406.65            1.0050                  154.56             ORI/PPL@1h                 1.0000 checkpoint_sweep checkpoint_2025-08-01                      1                    1
+22:17:49 INFO  Saved -> output/backtest/pit_wfa_{fold_comparison,portfolio,pair_sets}.parquet
+2026-07-14 22:17:49  INFO      Saved -> output/backtest/pit_wfa_{fold_comparison,portfolio,pair_sets}.parquet
+22:17:49 INFO  ============================================================
+2026-07-14 22:17:49  INFO      ============================================================
+22:17:49 INFO  pit_wfa.py complete (15.0 min)
+2026-07-14 22:17:49  INFO      pit_wfa.py complete (15.0 min)

@@ -1,0 +1,59 @@
+04:53:06 INFO  distance.py — Gatev-style SSD baseline
+2026-07-12 04:53:06  INFO      distance.py — Gatev-style SSD baseline
+04:53:06 INFO  ============================================================
+2026-07-12 04:53:06  INFO      ============================================================
+04:53:06 INFO  Loaded 26 confirmed cointegration pairs
+2026-07-12 04:53:06  INFO      Loaded 26 confirmed cointegration pairs
+04:53:06 INFO  
+--- Timeframe: 1h ---
+2026-07-12 04:53:06  INFO      
+--- Timeframe: 1h ---
+04:53:06 INFO    Formation window: 2023-07-24 => 2025-12-06
+2026-07-12 04:53:06  INFO        Formation window: 2023-07-24 => 2025-12-06
+04:53:06 INFO    Trading window:   2025-12-06 => 2026-07-10
+2026-07-12 04:53:06  INFO        Trading window:   2025-12-06 => 2026-07-10
+04:53:06 INFO    Loading prices for 36 symbols (formation <= 2025-12-06)
+2026-07-12 04:53:06  INFO        Loading prices for 36 symbols (formation <= 2025-12-06)
+04:53:07 INFO    36 symbols loaded with sufficient formation data
+2026-07-12 04:53:07  INFO        36 symbols loaded with sufficient formation data
+04:53:09 INFO    Top-20 distance pairs by SSD (lowest = most co-moving):
+2026-07-12 04:53:09  INFO        Top-20 distance pairs by SSD (lowest = most co-moving):
+04:53:09 INFO      CMS/LNT  SSD=4.4624  n=3562
+2026-07-12 04:53:09  INFO          CMS/LNT  SSD=4.4624  n=3562
+04:53:09 INFO      AME/FHB  SSD=22.8441  n=3555
+2026-07-12 04:53:09  INFO          AME/FHB  SSD=22.8441  n=3555
+04:53:09 INFO      MET/TMHC  SSD=25.1904  n=3562
+2026-07-12 04:53:09  INFO          MET/TMHC  SSD=25.1904  n=3562
+04:53:09 INFO      CMS/FHB  SSD=25.4880  n=3557
+2026-07-12 04:53:09  INFO          CMS/FHB  SSD=25.4880  n=3557
+04:53:09 INFO      FHB/LNT  SSD=29.6701  n=3557
+2026-07-12 04:53:09  INFO          FHB/LNT  SSD=29.6701  n=3557
+04:53:09 INFO    Overlap: 3/24 confirmed pairs also selected by distance (top-20)
+2026-07-12 04:53:09  INFO        Overlap: 3/24 confirmed pairs also selected by distance (top-20)
+04:53:09 INFO    Running distance-method OOS simulation...
+2026-07-12 04:53:09  INFO        Running distance-method OOS simulation...
+04:53:10 INFO    Distance portfolio: Sharpe=28.056  n_trades=16  total_pnl=174.08%  WR=81.2%
+2026-07-12 04:53:10  INFO        Distance portfolio: Sharpe=28.056  n_trades=16  total_pnl=174.08%  WR=81.2%
+04:53:10 INFO    Running cointegration OOS via BacktestEngine...
+2026-07-12 04:53:10  INFO        Running cointegration OOS via BacktestEngine...
+04:53:11 INFO    Coint portfolio: pooled_portfolio_Sharpe=8.542  (OLD unweighted mean_pair_Sharpe=20.435, kept for reference only -- see BUG-D59)  n_pairs=21/24 with valid per-pair Sharpe  n_trades_pooled=222
+2026-07-12 04:53:11  INFO        Coint portfolio: pooled_portfolio_Sharpe=8.542  (OLD unweighted mean_pair_Sharpe=20.435, kept for reference only -- see BUG-D59)  n_pairs=21/24 with valid per-pair Sharpe  n_trades_pooled=222
+04:53:11 INFO  
+  === 1h SUMMARY ===
+  Distance (top-20 by SSD):  Sharpe = 28.056  n_trades = 16
+  Cointegration (24 pairs):  POOLED portfolio Sharpe = 8.542  (OLD unweighted mean-of-per-pair-Sharpe = 20.435, see BUG-D59)
+  Pairs in both selections: 3/24
+2026-07-12 04:53:11  INFO      
+  === 1h SUMMARY ===
+  Distance (top-20 by SSD):  Sharpe = 28.056  n_trades = 16
+  Cointegration (24 pairs):  POOLED portfolio Sharpe = 8.542  (OLD unweighted mean-of-per-pair-Sharpe = 20.435, see BUG-D59)
+  Pairs in both selections: 3/24
+04:53:11 INFO  Saved => C:\Users\RossW\Projects\CAMARF\output\stats\distance_baseline.parquet (24 rows)
+2026-07-12 04:53:11  INFO      Saved => C:\Users\RossW\Projects\CAMARF\output\stats\distance_baseline.parquet (24 rows)
+04:53:11 INFO  Saved => C:\Users\RossW\Projects\CAMARF\output\stats\distance_summary.json
+2026-07-12 04:53:11  INFO      Saved => C:\Users\RossW\Projects\CAMARF\output\stats\distance_summary.json
+04:53:11 INFO  ============================================================
+2026-07-12 04:53:11  INFO      ============================================================
+04:53:11 INFO  distance.py complete (0.1 min)
+2026-07-12 04:53:11  INFO      distance.py complete (0.1 min)
+EXIT:0

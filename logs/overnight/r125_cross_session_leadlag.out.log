@@ -1,0 +1,4 @@
+No pairs file at output/results/1hr/pairs.parquet, skipping.
+
+OVERNIGHT-GAP HYPOTHESIS: 0/0 confirmed 1h pairs show a permutation-significant (p<0.05) non-zero-day-lag overnight-gap relationship.
+GATE RESULT: null. Overnight-gap-to-overnight-gap lead-lag across trading days shows no significant structure among the confirmed pair set, mirroring the same-session null result (lead_lag_scan.py) ΓÇö the contemporaneous assumption extends to this different mechanism as well for THIS pair set. Does not rule out the effect existing among pairs that never reach the confirmed list.

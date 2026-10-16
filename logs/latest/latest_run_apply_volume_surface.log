@@ -1,0 +1,10 @@
+status
+already_adjusted      34428
+adjusted_ajexdi       15093
+unmapped                 29
+adjusted                 22
+adjusted_no_events       15
+no_ajexdi                 1
+days with unknown factor (volume NaN): 31,142
+unmapped labels: ['7267.T', '8058.T', 'FX_AUDUSD', 'FX_EURUSD', 'FX_GBPUSD', 'FX_NZDUSD', 'FX_USDAUD', 'FX_USDBRL', 'FX_USDCAD', 'FX_USDCHF', 'FX_USDCNY', 'FX_USDDKK', 'FX_USDGBP', 'FX_USDHKD', 'FX_USDINR', 'FX_USDJPY', 'FX_USDKRW', 'FX_USDLKR', 'FX_USDMXN', 'FX_USDMYR', 'FX_USDNOK', 'FX_USDNZD', 'FX_USDSEK', 'FX_USDSGD', 'FX_USDTHB', 'FX_USDTWD', 'FX_USDVES', 'FX_USDZAR', 'GLCN']
+-> output\research\apply_crsp_volume_adjustment_report.parquet

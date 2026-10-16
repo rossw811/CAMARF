@@ -1,0 +1,114 @@
+22:45:56 INFO  === pit_wfa.py: Point-In-Time Portfolio-Wide Walk-Forward Analysis (1h) ===
+2026-07-14 22:45:56  INFO      === pit_wfa.py: Point-In-Time Portfolio-Wide Walk-Forward Analysis (1h) ===
+22:45:56 INFO  Unlike wfa.py's semi-WFA, pair SELECTION itself is re-derived per fold using only train-window data — see module docstring for exact scope.
+2026-07-14 22:45:56  INFO      Unlike wfa.py's semi-WFA, pair SELECTION itself is re-derived per fold using only train-window data — see module docstring for exact scope.
+22:46:29 INFO  Universe: 1566 symbols with cached 1h data
+2026-07-14 22:46:29  INFO      Universe: 1566 symbols with cached 1h data
+22:46:29 INFO  Analysis window: [2023-07-13, 2026-07-14]
+2026-07-14 22:46:29  INFO      Analysis window: [2023-07-13, 2026-07-14]
+22:46:29 INFO  [persistence_sweep/checkpoint_2024-02-01] screening EARLIER cutoff [2023-07-13, 2023-11-02] (persistence pre-check)...
+2026-07-14 22:46:29  INFO      [persistence_sweep/checkpoint_2024-02-01] screening EARLIER cutoff [2023-07-13, 2023-11-02] (persistence pre-check)...
+2026-07-14 22:46:36  INFO        [1h] Computing 1451×1451 correlation matrices (Pearson + Spearman + rolling avg)...
+2026-07-14 22:46:40  INFO        [1h] Pearson 0.4s | Spearman 0.4s | RollingAvg 2.9s
+2026-07-14 22:46:41  INFO        [1h] Candidate pairs: 63020 (0 cross-asset)  threshold |\u03c1| \u2265 0.40  [gold=50453 silver=10559 bronze=2008]
+2026-07-14 22:46:41  INFO        [1h] Running EG on 63020 pairs (workers=12, max_lag=10)...
+2026-07-14 22:48:51  INFO        [1h] EG complete in 130.0s
+2026-07-14 22:48:51  INFO        [1h] EG: tested=63020, raw<0.05=2840, FDR-adjusted<0.05=69
+2026-07-14 22:48:51  INFO        [1h] Rolling coint on 69 pairs (window=252, step=21)...
+2026-07-14 22:48:55  INFO        [1h] Rolling coint complete in 3.8s
+22:49:03 INFO  [persistence_sweep/checkpoint_2024-02-01] 26 pairs confirmed at earlier cutoff (2.6 min)
+2026-07-14 22:49:03  INFO      [persistence_sweep/checkpoint_2024-02-01] 26 pairs confirmed at earlier cutoff (2.6 min)
+22:49:03 INFO  [persistence_sweep/checkpoint_2024-02-01] screening train window [2023-07-13, 2024-01-31] (point-in-time)...
+2026-07-14 22:49:03  INFO      [persistence_sweep/checkpoint_2024-02-01] screening train window [2023-07-13, 2024-01-31] (point-in-time)...
+2026-07-14 22:49:11  INFO        [1h] Computing 1489×1489 correlation matrices (Pearson + Spearman + rolling avg)...
+2026-07-14 22:49:15  INFO        [1h] Pearson 0.6s | Spearman 0.7s | RollingAvg 3.2s
+2026-07-14 22:49:16  INFO        [1h] Candidate pairs: 58933 (0 cross-asset)  threshold |\u03c1| \u2265 0.40  [gold=33451 silver=22719 bronze=2763]
+2026-07-14 22:49:16  INFO        [1h] Running EG on 58933 pairs (workers=12, max_lag=10)...
+2026-07-14 22:51:53  INFO        [1h] EG complete in 156.0s
+2026-07-14 22:51:53  INFO        [1h] EG: tested=58933, raw<0.05=2976, FDR-adjusted<0.05=76
+2026-07-14 22:51:53  INFO        [1h] Rolling coint on 76 pairs (window=252, step=21)...
+2026-07-14 22:51:58  INFO        [1h] Rolling coint complete in 5.4s
+22:52:13 INFO  [persistence_sweep/checkpoint_2024-02-01] 30 pairs point-in-time confirmed at full cutoff (3.2 min)
+2026-07-14 22:52:13  INFO      [persistence_sweep/checkpoint_2024-02-01] 30 pairs point-in-time confirmed at full cutoff (3.2 min)
+22:52:13 INFO  [persistence_sweep/checkpoint_2024-02-01] 0/30 pairs survive the persistence filter (confirmed at both cutoffs)
+2026-07-14 22:52:13  INFO      [persistence_sweep/checkpoint_2024-02-01] 0/30 pairs survive the persistence filter (confirmed at both cutoffs)
+22:52:13 INFO  [persistence_sweep/checkpoint_2024-02-01] backtest: 0 pairs traded, 0 trades, portfolio Sharpe=nan
+2026-07-14 22:52:13  INFO      [persistence_sweep/checkpoint_2024-02-01] backtest: 0 pairs traded, 0 trades, portfolio Sharpe=nan
+22:52:13 INFO  [persistence_sweep/checkpoint_2024-02-01] checkpoint saved (1 folds completed so far)
+2026-07-14 22:52:13  INFO      [persistence_sweep/checkpoint_2024-02-01] checkpoint saved (1 folds completed so far)
+22:52:13 INFO  [persistence_sweep/checkpoint_2025-01-01] screening EARLIER cutoff [2023-07-13, 2024-10-03] (persistence pre-check)...
+2026-07-14 22:52:13  INFO      [persistence_sweep/checkpoint_2025-01-01] screening EARLIER cutoff [2023-07-13, 2024-10-03] (persistence pre-check)...
+2026-07-14 22:52:24  INFO        [1h] Computing 1527×1527 correlation matrices (Pearson + Spearman + rolling avg)...
+2026-07-14 22:52:31  INFO        [1h] Pearson 1.1s | Spearman 1.6s | RollingAvg 3.7s
+2026-07-14 22:52:32  INFO        [1h] Candidate pairs: 34226 (0 cross-asset)  threshold |\u03c1| \u2265 0.40  [gold=20577 silver=11757 bronze=1892]
+2026-07-14 22:52:32  INFO        [1h] Running EG on 34226 pairs (workers=12, max_lag=10)...
+2026-07-14 22:54:38  INFO        [1h] EG complete in 125.3s
+2026-07-14 22:54:38  INFO        [1h] EG: tested=34226, raw<0.05=1627, FDR-adjusted<0.05=20
+2026-07-14 22:54:38  INFO        [1h] Rolling coint on 20 pairs (window=252, step=21)...
+2026-07-14 22:54:43  INFO        [1h] Rolling coint complete in 5.6s
+22:54:51 INFO  [persistence_sweep/checkpoint_2025-01-01] 3 pairs confirmed at earlier cutoff (2.6 min)
+2026-07-14 22:54:51  INFO      [persistence_sweep/checkpoint_2025-01-01] 3 pairs confirmed at earlier cutoff (2.6 min)
+22:54:51 INFO  [persistence_sweep/checkpoint_2025-01-01] screening train window [2023-07-13, 2025-01-01] (point-in-time)...
+2026-07-14 22:54:51  INFO      [persistence_sweep/checkpoint_2025-01-01] screening train window [2023-07-13, 2025-01-01] (point-in-time)...
+2026-07-14 22:55:02  INFO        [1h] Computing 1538×1538 correlation matrices (Pearson + Spearman + rolling avg)...
+2026-07-14 22:55:07  INFO        [1h] Pearson 1.1s | Spearman 1.5s | RollingAvg 2.6s
+2026-07-14 22:55:08  INFO        [1h] Candidate pairs: 32568 (0 cross-asset)  threshold |\u03c1| \u2265 0.40  [gold=11710 silver=11603 bronze=9255]
+2026-07-14 22:55:08  INFO        [1h] Running EG on 32568 pairs (workers=12, max_lag=10)...
+2026-07-14 22:57:14  INFO        [1h] EG complete in 124.8s
+2026-07-14 22:57:14  INFO        [1h] EG: tested=32568, raw<0.05=1478, FDR-adjusted<0.05=14
+2026-07-14 22:57:14  INFO        [1h] Rolling coint on 14 pairs (window=252, step=21)...
+2026-07-14 22:57:20  INFO        [1h] Rolling coint complete in 5.7s
+22:57:26 INFO  [persistence_sweep/checkpoint_2025-01-01] 3 pairs point-in-time confirmed at full cutoff (2.6 min)
+2026-07-14 22:57:26  INFO      [persistence_sweep/checkpoint_2025-01-01] 3 pairs point-in-time confirmed at full cutoff (2.6 min)
+22:57:26 INFO  [persistence_sweep/checkpoint_2025-01-01] 0/3 pairs survive the persistence filter (confirmed at both cutoffs)
+2026-07-14 22:57:26  INFO      [persistence_sweep/checkpoint_2025-01-01] 0/3 pairs survive the persistence filter (confirmed at both cutoffs)
+22:57:26 INFO  [persistence_sweep/checkpoint_2025-01-01] backtest: 0 pairs traded, 0 trades, portfolio Sharpe=nan
+2026-07-14 22:57:26  INFO      [persistence_sweep/checkpoint_2025-01-01] backtest: 0 pairs traded, 0 trades, portfolio Sharpe=nan
+22:57:26 INFO  [persistence_sweep/checkpoint_2025-01-01] checkpoint saved (2 folds completed so far)
+2026-07-14 22:57:26  INFO      [persistence_sweep/checkpoint_2025-01-01] checkpoint saved (2 folds completed so far)
+22:57:26 INFO  [persistence_sweep/checkpoint_2025-08-01] screening EARLIER cutoff [2023-07-13, 2025-05-03] (persistence pre-check)...
+2026-07-14 22:57:26  INFO      [persistence_sweep/checkpoint_2025-08-01] screening EARLIER cutoff [2023-07-13, 2025-05-03] (persistence pre-check)...
+2026-07-14 22:57:40  INFO        [1h] Computing 1547×1547 correlation matrices (Pearson + Spearman + rolling avg)...
+2026-07-14 22:57:46  INFO        [1h] Pearson 1.5s | Spearman 1.9s | RollingAvg 2.6s
+2026-07-14 22:57:48  INFO        [1h] Candidate pairs: 151918 (0 cross-asset)  threshold |\u03c1| \u2265 0.40  [gold=35509 silver=115451 bronze=958]
+2026-07-14 22:57:48  INFO        [1h] Running EG on 151918 pairs (workers=12, max_lag=10)...
+2026-07-14 23:07:36  INFO        [1h] EG complete in 587.6s
+2026-07-14 23:07:36  INFO        [1h] EG: tested=151918, raw<0.05=5826, FDR-adjusted<0.05=10
+2026-07-14 23:07:36  INFO        [1h] Rolling coint on 10 pairs (window=252, step=21)...
+2026-07-14 23:07:42  INFO        [1h] Rolling coint complete in 5.5s
+23:07:48 INFO  [persistence_sweep/checkpoint_2025-08-01] 2 pairs confirmed at earlier cutoff (10.4 min)
+2026-07-14 23:07:48  INFO      [persistence_sweep/checkpoint_2025-08-01] 2 pairs confirmed at earlier cutoff (10.4 min)
+23:07:48 INFO  [persistence_sweep/checkpoint_2025-08-01] screening train window [2023-07-13, 2025-08-01] (point-in-time)...
+2026-07-14 23:07:48  INFO      [persistence_sweep/checkpoint_2025-08-01] screening train window [2023-07-13, 2025-08-01] (point-in-time)...
+2026-07-14 23:08:00  INFO        [1h] Computing 1550×1550 correlation matrices (Pearson + Spearman + rolling avg)...
+2026-07-14 23:08:06  INFO        [1h] Pearson 1.6s | Spearman 1.9s | RollingAvg 2.4s
+2026-07-14 23:08:08  INFO        [1h] Candidate pairs: 135852 (0 cross-asset)  threshold |\u03c1| \u2265 0.40  [gold=28793 silver=48185 bronze=58874]
+2026-07-14 23:08:08  INFO        [1h] Running EG on 135852 pairs (workers=12, max_lag=10)...
+2026-07-14 23:17:50  INFO        [1h] EG complete in 581.5s
+2026-07-14 23:17:50  INFO        [1h] EG: tested=135852, raw<0.05=5065, FDR-adjusted<0.05=4
+2026-07-14 23:17:50  INFO        [1h] Rolling coint on 4 pairs (window=252, step=21)...
+2026-07-14 23:17:56  INFO        [1h] Rolling coint complete in 5.2s
+23:17:59 INFO  [persistence_sweep/checkpoint_2025-08-01] 1 pairs point-in-time confirmed at full cutoff (10.2 min)
+2026-07-14 23:17:59  INFO      [persistence_sweep/checkpoint_2025-08-01] 1 pairs point-in-time confirmed at full cutoff (10.2 min)
+23:17:59 INFO  [persistence_sweep/checkpoint_2025-08-01] 1/1 pairs survive the persistence filter (confirmed at both cutoffs)
+2026-07-14 23:17:59  INFO      [persistence_sweep/checkpoint_2025-08-01] 1/1 pairs survive the persistence filter (confirmed at both cutoffs)
+23:17:59 INFO  [persistence_sweep/checkpoint_2025-08-01] backtest: 1 pairs traded, 11 trades, portfolio Sharpe=1.0050
+2026-07-14 23:17:59  INFO      [persistence_sweep/checkpoint_2025-08-01] backtest: 1 pairs traded, 11 trades, portfolio Sharpe=1.0050
+23:17:59 INFO  [persistence_sweep/checkpoint_2025-08-01] checkpoint saved (3 folds completed so far)
+2026-07-14 23:17:59  INFO      [persistence_sweep/checkpoint_2025-08-01] checkpoint saved (3 folds completed so far)
+23:17:59 INFO  
+      wfa_variant                  fold  n_pit_confirmed_pairs  n_pairs_with_trades  n_pre_filter_pairs  n_pairs  n_trades_total  total_pnl_portfolio  sharpe_portfolio  max_drawdown_portfolio max_concentration_pair  max_concentration_pct
+persistence_sweep checkpoint_2024-02-01                      0                    0                  30      NaN             NaN                  NaN               NaN                     NaN                    NaN                    NaN
+persistence_sweep checkpoint_2025-01-01                      0                    0                   3      NaN             NaN                  NaN               NaN                     NaN                    NaN                    NaN
+persistence_sweep checkpoint_2025-08-01                      1                    1                   1      1.0            11.0               406.65             1.005                  154.56             ORI/PPL@1h                    1.0
+2026-07-14 23:17:59  INFO      
+      wfa_variant                  fold  n_pit_confirmed_pairs  n_pairs_with_trades  n_pre_filter_pairs  n_pairs  n_trades_total  total_pnl_portfolio  sharpe_portfolio  max_drawdown_portfolio max_concentration_pair  max_concentration_pct
+persistence_sweep checkpoint_2024-02-01                      0                    0                  30      NaN             NaN                  NaN               NaN                     NaN                    NaN                    NaN
+persistence_sweep checkpoint_2025-01-01                      0                    0                   3      NaN             NaN                  NaN               NaN                     NaN                    NaN                    NaN
+persistence_sweep checkpoint_2025-08-01                      1                    1                   1      1.0            11.0               406.65             1.005                  154.56             ORI/PPL@1h                    1.0
+23:17:59 INFO  Saved -> output/backtest/pit_wfa_{fold_comparison,portfolio,pair_sets}.parquet
+2026-07-14 23:17:59  INFO      Saved -> output/backtest/pit_wfa_{fold_comparison,portfolio,pair_sets}.parquet
+23:17:59 INFO  ============================================================
+2026-07-14 23:17:59  INFO      ============================================================
+23:17:59 INFO  pit_wfa.py complete (32.1 min)
+2026-07-14 23:17:59  INFO      pit_wfa.py complete (32.1 min)

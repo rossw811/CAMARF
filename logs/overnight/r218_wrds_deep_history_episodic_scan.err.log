@@ -1,0 +1,4 @@
+11:31:58 INFO  === wrds_deep_history_episodic_scan.py: does WRDS's much deeper daily history reveal cointegrated pairs yfinance's own 1D scan (0 confirmed) lacked the depth/quality to detect? ===
+2026-08-04 11:31:58  INFO      === wrds_deep_history_episodic_scan.py: does WRDS's much deeper daily history reveal cointegrated pairs yfinance's own 1D scan (0 confirmed) lacked the depth/quality to detect? ===
+11:32:58 INFO  Loaded 5846 symbols from output/cache/wrds/: 2843 total-return-adjusted (CRSP), 3003 split-only-adjusted (Compustat Global, disclosed)
+2026-08-04 11:32:58  INFO      Loaded 5846 symbols from output/cache/wrds/: 2843 total-return-adjusted (CRSP), 3003 split-only-adjusted (Compustat Global, disclosed)

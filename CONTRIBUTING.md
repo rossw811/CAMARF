@@ -141,7 +141,7 @@ python.exe` on Windows, `.venv/bin/python` on CachyOS) -- never a bare `python`.
 **Run:** `python data.py` (full sweep) or `python data.py --timeframes 1h` (single TF, for
 iterating on `analysis.py` without waiting on every TF). **Safe to re-run repeatedly** -- appends
 new bars incrementally, never re-fetches full history. Writes `output/cache/{tf}/{symbol}.parquet`
-and `latest_run_data.log` (read this first when diagnosing a fetch issue -- structured, written
+and `logs/latest/latest_run_data.log` (read this first when diagnosing a fetch issue -- structured, written
 automatically every run). Never calls `analysis.py`'s logic and never touches IBKR directly (rule
 1 in `CLAUDE.md`).
 
@@ -174,7 +174,7 @@ SPAC NAV-clustering). Clears `output/results/` whenever its own script hash (or 
 changes, so results always correspond to the code that produced them -- expect a full re-run, not
 incremental, whenever you edit `analysis.py` itself. Reads via `builder.build(connect=False, fetch=False)`,
 never fetches and never mutates the cache (rule 1; since 2026-10-05 read-only mode also skips the cache
-migration/cleanup steps that rename or delete files -- DEV-014). `latest_run_analysis.log` is the structured log to read first.
+migration/cleanup steps that rename or delete files -- DEV-014). `logs/latest/latest_run_analysis.log` is the structured log to read first.
 
 ### `backtest.py` -- event-driven backtest engine, every comparison-arm variant
 **Run:** `python backtest.py` (baseline) or with flags for any variant -- `--pairs-override

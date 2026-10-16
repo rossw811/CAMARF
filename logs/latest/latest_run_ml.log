@@ -1,0 +1,70 @@
+=== CAMARF ml.py ===
+date:        2026-08-24 17:31
+runtime_min: 0.0
+
+=== pairs ===
+  KVUE/KMB@3m              entry_events=138   labeled=0     censored=0     no_half_life=138   future_not_clean=0 perm_robust=True
+  PNC/ZION@4h              entry_events=1     labeled=0     censored=0     no_half_life=0     future_not_clean=1 perm_robust=True
+  AMP/RUSHA@1D             entry_events=18    labeled=15    censored=3     no_half_life=0     future_not_clean=0
+  OVV/DO@1D                entry_events=15    labeled=11    censored=0     no_half_life=0     future_not_clean=0
+  CATY/FRBA@1D             entry_events=30    labeled=25    censored=4     no_half_life=0     future_not_clean=0
+  HSBC/GVKEY015509_06W@1D  entry_events=105   labeled=97    censored=0     no_half_life=0     future_not_clean=0
+  HWC/FRBA@1D              entry_events=30    labeled=22    censored=6     no_half_life=0     future_not_clean=0
+  OGN/PERMNO78892@1D       entry_events=5     labeled=0     censored=0     no_half_life=5     future_not_clean=0
+  OVV/PERMNO82298@1D       entry_events=15    labeled=11    censored=0     no_half_life=0     future_not_clean=0
+  ALTG/FBM@1D              entry_events=8     labeled=8     censored=0     no_half_life=0     future_not_clean=0
+  AISP/GVKEY239599_01W@1D  entry_events=1     labeled=0     censored=0     no_half_life=1     future_not_clean=0
+  CSII/GVKEY355506_01W@1D  entry_events=2     labeled=0     censored=0     no_half_life=2     future_not_clean=0
+  AGCB/LEAP@1D             entry_events=4     labeled=3     censored=0     no_half_life=0     future_not_clean=0
+  ARGO/MEGL@1D             entry_events=12    labeled=11    censored=0     no_half_life=0     future_not_clean=0
+  ATXG/KNBE@1D             entry_events=5     labeled=0     censored=0     no_half_life=5     future_not_clean=0
+  CLAS/MSAI@1D             entry_events=3     labeled=0     censored=0     no_half_life=3     future_not_clean=0
+  CVON/PERMNO91600@1D      entry_events=3     labeled=0     censored=0     no_half_life=3     future_not_clean=0
+  GVKEY101930_01W/GVKEY355506_01W@1D entry_events=4     labeled=0     censored=0     no_half_life=4     future_not_clean=0
+  FNLC/JMSB@1D             entry_events=10    labeled=10    censored=0     no_half_life=0     future_not_clean=0
+  GBNK/SRCE@1D             entry_events=11    labeled=8     censored=0     no_half_life=0     future_not_clean=0
+  GVKEY201229_01W/GVKEY248104_01W@1D entry_events=23    labeled=16    censored=7     no_half_life=0     future_not_clean=0
+  GVKEY204176_01W/GVKEY355326_01W@1D entry_events=4     labeled=0     censored=0     no_half_life=4     future_not_clean=0
+  GVKEY242580_01W/GVKEY325818_01W@1D entry_events=5     labeled=0     censored=0     no_half_life=5     future_not_clean=0
+  GVKEY227396_01W/LLAP@1D  entry_events=3     labeled=0     censored=0     no_half_life=3     future_not_clean=0
+  GVKEY223055_02W/PWM@1D   entry_events=5     labeled=0     censored=0     no_half_life=5     future_not_clean=0
+  GVKEY248220_01W/GVKEY329260_01W@1D entry_events=20    labeled=0     censored=0     no_half_life=20    future_not_clean=0
+  GVKEY259160_01W/LDTC@1D  entry_events=0     labeled=0     censored=0     no_half_life=0     future_not_clean=0
+  GVKEY284837_01W/XBP@1D   entry_events=3     labeled=0     censored=0     no_half_life=3     future_not_clean=0
+  GVKEY327794_01W/GVKEY346377_01W@1D entry_events=5     labeled=0     censored=0     no_half_life=5     future_not_clean=0
+
+=== label_distribution (label_scheme=binary, this is what training/the MIN_CLASS_SAMPLES gate sees) ===
+  not_converged: 161
+  converged: 76
+
+=== granular_label_distribution (always the full 4-class outcome, regardless of label_scheme) ===
+  no_move: 87
+  diverge_further: 74
+  weak_converge: 39
+  strong_converge: 37
+
+=== notes ===
+  Trained: n_train=142 n_test=48 test_accuracy=56.25%
+  Conformal: n_cal=47 avg_set_size=1.94 empirical_coverage=97.92%
+  Model persisted → /home/rw/CAMARF/output/ml/model_stage1.pkl
+
+=== pairs_skipped ===
+  KVUE/KMB@3m: zero labeled entry events
+  PNC/ZION@4h: zero labeled entry events
+  OGN/PERMNO78892@1D: zero labeled entry events
+  AISP/GVKEY239599_01W@1D: zero labeled entry events
+  CSII/GVKEY355506_01W@1D: zero labeled entry events
+  ATXG/KNBE@1D: zero labeled entry events
+  CLAS/MSAI@1D: zero labeled entry events
+  CVON/PERMNO91600@1D: zero labeled entry events
+  GVKEY101930_01W/GVKEY355506_01W@1D: zero labeled entry events
+  GVKEY204176_01W/GVKEY355326_01W@1D: zero labeled entry events
+  GVKEY242580_01W/GVKEY325818_01W@1D: zero labeled entry events
+  GVKEY227396_01W/LLAP@1D: zero labeled entry events
+  GVKEY223055_02W/PWM@1D: zero labeled entry events
+  GVKEY248220_01W/GVKEY329260_01W@1D: zero labeled entry events
+  GVKEY259160_01W/LDTC@1D: zero labeled entry events
+  GVKEY284837_01W/XBP@1D: zero labeled entry events
+  GVKEY327794_01W/GVKEY346377_01W@1D: zero labeled entry events
+
+=== end ===

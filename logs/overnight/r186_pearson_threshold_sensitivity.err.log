@@ -1,0 +1,4 @@
+15:43:11 INFO  === pearson_threshold_sensitivity.py: does loosening the Pearson pre-filter recover confirmed pairs at 1h, or just add multiple-testing burden? ===
+2026-08-11 15:43:11  INFO      === pearson_threshold_sensitivity.py: does loosening the Pearson pre-filter recover confirmed pairs at 1h, or just add multiple-testing burden? ===
+15:43:22 INFO  Loaded 1576 symbols with usable 1h cache
+2026-08-11 15:43:22  INFO      Loaded 1576 symbols with usable 1h cache

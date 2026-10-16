@@ -30,16 +30,10 @@ output/*
 graphify-out/cache/
 graphify-out/.graphify_*
 
-# logs/archive/: ad-hoc raw run logs (underscore-prefixed, e.g.
-# _data_ibkr_run.log) that predate the fixes below and got tracked by the
-# same bug class — same rationale, untracked here.
-logs/archive/*.log
-
-# Run logs (2026-10-15 cleanup): every log stays local -- root latest_run_*.log summaries, logs/, *.pid. They are
-# written by the code at every run (CLAUDE.md: read latest_run_*.log first) but are machine-local run records, not
-# source. Logs cited as evidence before 2026-10-15 resolve at tag snapshot-2026-10-15-pre-cleanup; evidence logs that
-# must travel with a claim go under docs/ (e.g. docs/bug_recheck/*.log), which is not ignored.
+# Run logs (2026-10-16, Ross: keep the files, organized). Every script writes its run summary to
+# logs/latest/latest_run_<script>.log (CLAUDE.md: read these first); older one-off logs are in logs/archive/, batch-run
+# logs in logs/overnight/, logs/session30/ etc. All of logs/ is tracked. Anything written at the repo root is scratch
+# and stays ignored.
 /*.log
 /*.pid
-/logs/
 graphify-out/

@@ -1,0 +1,9 @@
+17:31:33 INFO  === tail_dependence_universe_screen.py: does REAL TAIL dependence exist in the near-miss band (0.25<=|corr|<0.40) the linear pre-filter misses? (tf=1h) ===
+17:31:33 INFO  Loaded 1580 symbols from the merged yfinance+WRDS+Binance+IBKR universe (tf=1h)
+17:31:33 INFO  Aligning to a shared calendar (align_to_common_calendar, lookback_years=10)...
+17:31:35 INFO  Aligned: 1580 symbols
+17:31:35 INFO  Running real production UniverseFilter (Pearson pre-filter, threshold=0.40)...
+17:31:38 INFO  Near-miss pairs (0.25<=|corr|<0.40): 16
+17:31:38 INFO  Screening 16 near-miss pairs for tail dependence at q=[0.05, 0.1] (using the already-aligned returns matrix in memory, not per-pair reload)...
+17:31:38 INFO  Screening done in 0.0s
+17:31:38 INFO  No near-miss pair produced a usable tail-dependence estimate. Nothing to correct/report.

@@ -1,0 +1,20 @@
+=== CAMARF data.py ===
+date:        2026-08-23 19:44
+runtime_min: 4.9
+config_hash: 86ca897df0541bcf
+
+=== universe ===
+candidates:  1694
+resumed:     1357
+excluded:    0
+cache_contamination_cleared: 0
+
+=== phase1_daily ===
+
+=== intraday_tfs ===
+
+=== ibkr ===
+disconnects:    0
+session_killed: False
+
+=== end ===
