@@ -8,9 +8,11 @@ Pure core (tested on synthetic data):
   comovement(x, M)          mean Pearson correlation of series x with each row of M
   did_from_events(events)   per event: (treated post - pre) - mean over controls (post - pre); DiD = mean over events;
                             95% CI by bootstrapping events; pre-trend: the pre period split into PRETREND_BINS bins,
-                            per-event slope of (treated - control) co-movement on bin index, one-sample t-test
+                            per-event slope of (treated - control) co-movement on bin index, sign-flip randomization test
 Real-data driver (after WRDS job 29: CRSP SIC + size): events = S&P 500 additions 1990-2024 from the cached PIT
-membership history; controls = non-members with the same 2-digit SIC, nearest size, nearest pre-period co-movement.
+membership history; controls = stocks with no S&P 500 spell within the event window, same 2-digit SIC, nearest size; a second
+variant also matches on the pre-period run-up (2026-10-15 review; matching on pre-period co-movement, first
+planned here, was dropped: matching on a pre-period outcome level biases a DiD through regression to the mean).
 Disclosed caveat: additions are chosen by a committee on size/liquidity -- matching and the pre-trend test address
 selection only partly. Test: debug/_verify_inclusion_did.py
 """
@@ -47,14 +49,51 @@ def _event_pre_slope(ev, bins=PRETREND_BINS):
     return float(np.polyfit(np.arange(bins), diffs, 1)[0])
 
 
-def did_from_events(events, n_boot: int = N_BOOT, rng=None) -> dict:
+def did_from_events(events, n_boot: int = N_BOOT, rng=None, clusters=None) -> dict:
+    """clusters (e.g. event calendar years): adds a cluster-bootstrap CI beside the event-bootstrap one."""
     rng = rng or np.random.default_rng(0)
     d = np.array([_event_delta(e) for e in events])
-    boot = [d[rng.integers(0, len(d), len(d))].mean() for _ in range(n_boot)]
+    lo, hi = cluster_bootstrap_ci(d, None, n_boot, rng)
     slopes = np.array([_event_pre_slope(e) for e in events])
-    return {"did": float(d.mean()), "ci_low": float(np.quantile(boot, 0.025)), "ci_high": float(np.quantile(boot, 0.975)),
-            "n_events": len(d), "pretrend_slope": float(slopes.mean()),
-            "pretrend_p": signflip_p(slopes, rng)}
+    out = {"did": float(d.mean()), "ci_low": lo, "ci_high": hi, "n_events": len(d),
+           "pretrend_slope": float(slopes.mean()), "pretrend_p": signflip_p(slopes, rng)}
+    if clusters is not None:
+        out["ci_low_year_cluster"], out["ci_high_year_cluster"] = cluster_bootstrap_ci(d, clusters, n_boot, rng)
+        out["n_clusters"] = int(len(np.unique(clusters)))
+    return out
+
+
+def cluster_bootstrap_ci(d, clusters=None, n_boot: int = N_BOOT, rng=None):
+    """95% percentile CI for mean(d). clusters=None resamples events; otherwise whole clusters (calendar years) are
+    resampled, keeping the dependence between events that share a year's market conditions (2026-10-15 review: events
+    overlap in calendar time and share members, so the event bootstrap was too narrow)."""
+    rng = rng or np.random.default_rng(0)
+    d = np.asarray(d, float)
+    if clusters is None:
+        boot = [d[rng.integers(0, len(d), len(d))].mean() for _ in range(n_boot)]
+    else:
+        cl = np.asarray(clusters)
+        groups = [d[cl == u] for u in np.unique(cl)]
+        boot = []
+        for _ in range(n_boot):
+            pick = rng.integers(0, len(groups), len(groups))
+            boot.append(np.concatenate([groups[i] for i in pick]).mean())
+    return float(np.quantile(boot, 0.025)), float(np.quantile(boot, 0.975))
+
+
+def excluded_controls(mem, d, pre_days: int, post_days: int) -> set:
+    """PERMNOs with any S&P 500 membership spell overlapping [d - pre_days, d + post_days]: stocks deleted during the
+    pre-window or added during the post-window are not valid controls (2026-10-15 review)."""
+    import pandas as pd
+    lo, hi = d - pd.Timedelta(days=pre_days), d + pd.Timedelta(days=post_days)
+    st = pd.to_datetime(mem["mbrstartdt"]); en = pd.to_datetime(mem["mbrenddt"]).fillna(pd.Timestamp("2262-01-01"))
+    return set(mem.loc[(st <= hi) & (en >= lo), "permno"].tolist())
+
+
+def nearest_runup(cand_runup: dict, target: float, n: int) -> list:
+    """The n candidates whose pre-period cumulative return is nearest the treated stock's (run-up matching variant;
+    2026-10-15 review: additions follow price run-ups -- Chen, Singal & Whitelaw 2016)."""
+    return sorted(cand_runup, key=lambda p: abs(cand_runup[p] - target))[:n]
 
 
 SIGNFLIP_DRAWS = 5000    # sign-flip randomization draws (registry)
@@ -72,6 +111,8 @@ def signflip_p(x, rng=None, draws: int = SIGNFLIP_DRAWS) -> float:
 
 PRE_BARS, BAND_BARS = 252, 21    # 12-month window; +-1 month excluded around inclusion (definition; registry)
 N_MEMBERS, N_CONTROLS = 50, 3    # incumbent members sampled per event; matched controls per event (registry)
+WINDOW_MARGIN_DAYS = 7           # calendar slack on the control-exclusion window: covers a holiday week (registry)
+RUNUP_SHORTLIST = 10             # run-up variant: size-nearest candidates per control considered (registry)
 
 
 def build_event(R, d, treated, controls, members, pre: int = PRE_BARS, band: int = BAND_BARS):
@@ -94,7 +135,7 @@ def build_event(R, d, treated, controls, members, pre: int = PRE_BARS, band: int
             "t0": pre - band}
 
 
-def main(n_controls: int = None):
+def main(n_controls: int = None, match: str = "size"):
     """S&P 500 additions 1990-2023 -> events; controls = non-members at the date, same 2-digit SIC, common stock
     (shrcd 10/11), nearest log market cap (|prc| x shrout, month-end before the date), complete data."""
     import os
@@ -138,7 +179,10 @@ def main(n_controls: int = None):
             continue
         sic2 = int(sic.iloc[0]) // 100
         members_now = sp500_members_asof(mem, d - pd.Timedelta(days=1)) - {a.permno}
-        pool = nm[(nm["siccd"] // 100 == sic2) & nm["shrcd"].isin([10, 11]) & ~nm["permno"].isin(members_now | {a.permno})]
+        # 2026-10-15 review: no stock with an S&P 500 spell anywhere in the event window may be a control
+        window_days = int(np.ceil(PRE_BARS * 365.25 / 252)) + WINDOW_MARGIN_DAYS
+        bad = members_now | {a.permno} | excluded_controls(mem, d, window_days, window_days)
+        pool = nm[(nm["siccd"] // 100 == sic2) & nm["shrcd"].isin([10, 11]) & ~nm["permno"].isin(bad)]
         sz = size[(size["date"] < d) & (size["date"] >= d - pd.Timedelta(days=40))].drop_duplicates("permno", keep="last")
         sz = pd.to_numeric(sz.set_index("permno")["mcap"], errors="coerce").astype(float)
         sz = sz[np.isfinite(sz) & (sz > 0)]          # no size -> cannot be size-matched (CRSP prc/shrout missing)
@@ -146,7 +190,23 @@ def main(n_controls: int = None):
             continue
         cand = pool[pool["permno"].isin(sz.index)]["permno"].unique()
         cand = sorted(cand, key=lambda p: abs(np.log(sz[p]) - np.log(sz[a.permno])))
-        ctrl = [p for p in cand if ret(p) is not None][:N_CONTROLS * 3]
+        if match == "runup":
+            # run-up variant: among the RUNUP_SHORTLIST x N_CONTROLS size-nearest, the controls whose pre-period cumulative log
+            # return is nearest the treated stock's (pre period = the event's [d - PRE_BARS, d - BAND_BARS) bars)
+            def runup(p):
+                r = ret(p)
+                if r is None:
+                    return None
+                pos = int(r.index.searchsorted(d))
+                seg = r.iloc[max(pos - PRE_BARS, 0):max(pos - BAND_BARS, 0)]
+                return float(seg.sum()) if len(seg) >= PRE_BARS - BAND_BARS and seg.notna().all() else None
+            tr = runup(a.permno)
+            if tr is None:
+                continue
+            ru = {p: v for p in cand[:N_CONTROLS * RUNUP_SHORTLIST] if (v := runup(p)) is not None}
+            ctrl = nearest_runup(ru, tr, N_CONTROLS * 3)
+        else:
+            ctrl = [p for p in cand if ret(p) is not None][:N_CONTROLS * 3]
         mlist = [p for p in rng.permutation(sorted(members_now)) if ret(p) is not None][:N_MEMBERS * 2]
         ids = [a.permno] + ctrl + mlist
         R = pd.concat({p: ret(p) for p in ids}, axis=1).sort_index()
@@ -155,11 +215,14 @@ def main(n_controls: int = None):
             continue
         ev["controls"] = ev["controls"][:n_controls or N_CONTROLS]; ev["members"] = ev["members"][:N_MEMBERS]
         events.append(ev); meta.append({"permno": a.permno, "date": d, "sic2": sic2})
-    res = did_from_events(events, rng=np.random.default_rng(1))
+    years = [m["date"].year for m in meta]
+    res = did_from_events(events, rng=np.random.default_rng(1), clusters=years)
     print(f"events {len(events)} of {len(adds)} additions 1990-2023: {res}")
     M = pd.DataFrame(meta); M["delta"] = [_event_delta(e) for e in events]; M["decade"] = (M["date"].dt.year // 10) * 10
     print(M.groupby("decade")["delta"].agg(["count", "mean"]).to_string())
-    suffix = "" if not n_controls or n_controls == N_CONTROLS else f"_c{n_controls}"
+    suffix = ("" if not n_controls or n_controls == N_CONTROLS else f"_c{n_controls}") + ("" if match == "size" else f"_{match}")
+    pd.DataFrame([{**res, "match": match, "n_controls": n_controls or N_CONTROLS}]).to_parquet(
+        os.path.join(root, "output", "research", f"inclusion_did_summary{suffix}.parquet"))
     M.to_parquet(os.path.join(root, "output", "research", f"inclusion_did_events{suffix}.parquet"))
 
 
@@ -167,4 +230,6 @@ if __name__ == "__main__":
     import argparse
     ap = argparse.ArgumentParser()
     ap.add_argument("--n-controls", type=int, default=None, help="sensitivity: matched controls per event")
-    main(ap.parse_args().n_controls)
+    ap.add_argument("--match", choices=["size", "runup"], default="size", help="control matching variant")
+    a = ap.parse_args()
+    main(a.n_controls, a.match)

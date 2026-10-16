@@ -87,6 +87,30 @@ def main():
         check("event_drops_incomplete_member", ev["members"].shape[0] == 2, ev["members"].shape)
     except ImportError as e:
         check("build_event_exists", False, str(e))
+    # 2026-10-15 independent review fixes (written before the code)
+    try:
+        from research.inclusion_did import cluster_bootstrap_ci, excluded_controls, nearest_runup
+        # (1) events sharing a calendar-year shock: an event bootstrap under-covers, a year-clustered bootstrap does not
+        cov_e, cov_c = [], []
+        for s in range(150):
+            g = np.random.default_rng(100 + s)
+            years = np.repeat(np.arange(30), 6)
+            d = g.normal(0, 0.02, 30)[years] + g.normal(0, 0.005, len(years))       # true mean 0
+            lo_e, hi_e = cluster_bootstrap_ci(d, None, n_boot=400, rng=g)
+            lo_c, hi_c = cluster_bootstrap_ci(d, years, n_boot=400, rng=g)
+            cov_e.append(lo_e <= 0 <= hi_e); cov_c.append(lo_c <= 0 <= hi_c)
+        check("event_bootstrap_undercovers_with_year_shocks", np.mean(cov_e) < 0.80, f"{np.mean(cov_e):.2f}")
+        check("year_cluster_bootstrap_covers", np.mean(cov_c) >= 0.88, f"{np.mean(cov_c):.2f}")
+        # (2) controls: no stock with an S&P 500 spell overlapping [d - pre, d + post]
+        mem = pd.DataFrame({"permno": [1, 2, 3, 4], "mbrstartdt": pd.to_datetime(["1980-01-01", "2010-08-01", "1995-01-01", "2012-01-01"]),
+                            "mbrenddt": pd.to_datetime(["2009-09-01", "2020-01-01", "2000-01-01", "2020-01-01"])})
+        ex = excluded_controls(mem, pd.Timestamp("2010-03-01"), pre_days=400, post_days=400)
+        check("excludes_deleted_in_pre_and_added_in_post", ex == {1, 2}, ex)
+        # (3) run-up matching picks the candidates whose pre-period return is nearest the treated stock's
+        picked = nearest_runup({10: 0.05, 11: 0.60, 12: 0.55, 13: -0.10, 14: 0.20}, 0.58, 2)
+        check("nearest_runup", picked == [11, 12], picked)
+    except ImportError as e:
+        check("review_fix_functions_exist", False, str(e))
     finish()
 
 

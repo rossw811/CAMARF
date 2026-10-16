@@ -356,3 +356,5 @@ stats.py:_MM_C,stats.py,88,4.685,unjustified,,,,
 stats.py:_NOTIONAL_PER_LEG,stats.py,73,5000.0,unjustified,,,,
 stats.py:_N_PERMS,stats.py,77,1000,unjustified,,,,
 stats.py:_PERM_BLOCK_LEN_DAYS,stats.py,82,5,unjustified,,,,
+research/inclusion_did.py:WINDOW_MARGIN_DAYS,research/inclusion_did.py,114,7,engineering,Calendar slack added to the PRE_BARS-in-calendar-days exclusion window so a holiday week cannot let a stock with an S&P 500 spell at the window edge in as a control; only widens the exclusion (conservative).,research/inclusion_did.py main; 2026-10-15 independent review,no,0
+research/inclusion_did.py:RUNUP_SHORTLIST,research/inclusion_did.py,115,10,engineering,Run-up variant considers the 10 x N_CONTROLS size-nearest candidates so the run-up match stays close in size; sensitivity at other values not yet run (disclosed).,research/inclusion_did.py main; 2026-10-15 independent review,no,0
