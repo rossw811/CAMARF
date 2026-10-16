@@ -28959,3 +28959,15 @@ entries above are left as written (history). Fixes queued, failing-first: (b) a 
 sensitivity to the reference variance (calm-period and full-sample); (c) exclude controls deleted from the index in the
 pre-window or added within the post-window, match also on pre-period co-movement (as the docstring promised), bootstrap
 clustered by calendar year, docstring (t-test -> sign-flip), and a synthetic test with a pre-inclusion run-up.
+
+### GGR claim corrected (2026-10-15, outside reviewer + verification)
+PAPER_MAGNITUDE said Gatev, Goetzmann & Rouwenhorst (2006) treat pair selection "as a given input, computed once over
+the full available history" and called full-history screening "the field's standard practice". Wrong. Verified in
+GGR's text (NBER WP 7032, s.III): "We form pairs over a twelve month period (formation period) trade them in the next
+six-month period (trading period)"; s.III.4: trading starts "at the beginning of every month". A Sonnet literature
+search found the cointegration follow-ups it could check (Caldeira & Moura 2013; Huck & Afawubo 2015; Rad, Low & Faff
+2016; Do & Faff 2010) use the same rolling formation/trading design -- from secondary sources only (SSRN/T&F block
+automated reads), so they are NOT cited until read in primary text -- and found no primary-text-confirmed example of
+well-cited work selecting pairs on the full sample. All three passages corrected (s.1 abstract area, s.4, s.6); the
+paper now says full-history screening is a shortcut outside the seminal design, which it measures. Consequence for
+the rewrite: the contribution cannot be framed as correcting the literature's selection practice.

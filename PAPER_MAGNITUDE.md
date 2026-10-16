@@ -141,19 +141,11 @@ provides one directly-confirmed data point (a PIT-confirmed pair set that
 traded and lost money, −1.0121 Sharpe on 32 trades) plus a smaller,
 earlier, independently-run test finding zero overlap with the
 full-history-confirmed set at every checkpoint tried (Sharpe range −0.72
-to −1.04). A full-history screen (the field's standard practice)
-silently certifies pairs whose apparent "confirmation" leaks information
+to −1.04). A full-history screen silently certifies pairs whose apparent "confirmation" leaks information
 from after the point a real decision would have been made. This is not a
 claim that the pairs it finds are spurious; it is evidence that a
 causally-constrained observer would not have found or profited from the
-same pairs a backward-looking screen certifies. The canonical empirical
-pairs-trading literature (e.g. Gatev, Goetzmann & Rouwenhorst, 2006,
-the field's seminal distance-method study, cited in full in
-`PAPER.md`'s shared bibliography) validates its trading rule
-out-of-sample but treats pair *selection* itself as a given input,
-computed once over the full available history rather than causally
-re-derived at each decision point. This paper tests discovery itself,
-not just the rule applied to whatever pairs discovery already produced.
+same pairs a backward-looking screen certifies. The published pairs-trading literature is already causal here: Gatev, Goetzmann & Rouwenhorst (2006, §III) form pairs over a twelve-month formation period, trade them over the next six months and re-form every month. Full-history screening, testing a pair over its entire available history as this project's own original pipeline did, is therefore not the standard set by the field's seminal study; it is a shortcut, and this paper measures what it costs.
 This specific result is at the current ~1,576-symbol WRDS-primary
 universe; a second, corrected-scale re-run at the full ~43,883-symbol,
 daily-bar universe (§4) reaches the same genuinely mixed conclusion, not
@@ -317,11 +309,7 @@ that claim's weight rests on a separate, earlier, independently-run test
 confirmed pairs are spurious. It is evidence that a screening process
 run causally, the way any live deployment must run it, would not have
 discovered and profitably traded the same pairs a backward-looking
-screen certifies. The canonical pairs-trading literature (Gatev,
-Goetzmann & Rouwenhorst, 2006, cited above) treats pair *selection* as
-a given input, computed once over full available history, and validates
-only the trading rule causally: §4 is this paper's case for why
-discovery itself is worth testing the same way. Mechanistically, this is
+screen certifies. The published pairs-trading literature is already causal here: Gatev, Goetzmann & Rouwenhorst (2006, §III) form pairs over a twelve-month formation period, trade them over the next six months and re-form every month. Full-history screening, testing a pair over its entire available history as this project's own original pipeline did, is therefore not the standard set by the field's seminal study; it is a shortcut, and this paper measures what it costs. Mechanistically, this is
 the same failure mode Bailey, Borwein, López de Prado & Zhu (2014/2016)
 formalize as backtest overfitting via the Probability of Backtest
 Overfitting (PBO): a full-history screen is, in effect, selecting the
@@ -1089,13 +1077,11 @@ from the earlier symmetric framing, made because the evidence changed,
 not because §5's own numbers got weaker.
 
 **Why this matters beyond CAMARF, stated as a testable hypothesis, not
-an established fact.** The canonical pairs-trading literature (Gatev,
-Goetzmann & Rouwenhorst, 2006) treats pair discovery as a preprocessing
-step, reported as a static candidate count, then moves on to backtest
-methodology as the object of scrutiny; this paper does not claim every
-paper in the field does the same, only that the field's most-cited
-foundational study does. §4 shows that discovery itself needs the same
-causal discipline normally reserved for the trading rule.
+an established fact.** The published literature already
+selects pairs causally (Gatev, Goetzmann & Rouwenhorst 2006, §III: twelve-month formation, six-month trading,
+re-formed monthly). An earlier draft of this paper said
+the opposite about GGR; that was wrong and is corrected here (2026-10-15). §4 measures how much a full-history screen,
+a shortcut outside that literature, overstates what a causal screen would have found.
 §5 shows that discovery, treated as a dated event rather than a
 filtered-out preprocessing artifact, is a plausible source of real
 signal most pipelines never look for because they never retain the
