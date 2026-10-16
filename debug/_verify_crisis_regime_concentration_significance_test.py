@@ -76,5 +76,31 @@ r_b = max2_share_monte_carlo(sizes2, 29, 27 / 29, n_sim=10_000, rng=np.random.de
 check("identical seed produces identical p-value (deterministic, not flaky)",
       r_a["p_value"] == r_b["p_value"])
 
+# D2 (Ross 2026-10-12, R3.4; added 2026-10-15, written before the code): confirmations that share a stock are not
+# independent. component_max2_test treats each connected group of confirmed pairs (linked by a shared leg) as ONE unit
+# that lands in an episode with probability proportional to episode pair count.
+try:
+    import pandas as pd
+    from research.crisis_regime_concentration_significance_test import confirmation_components, component_max2_test
+    print("Check 6: confirmation_components -- pairs sharing a leg form one unit")
+    cp = pd.DataFrame({"symbol_a": ["A", "B", "X", "P"], "symbol_b": ["B", "C", "Y", "Q"], "episode": [0, 0, 1, 2]})
+    comp = confirmation_components(cp)
+    check("A-B and B-C linked, X-Y and P-Q separate -> 3 units sized [2,1,1]", sorted(comp["size"].tolist()) == [1, 1, 2])
+    print("Check 7: clustered confirmations, no episode effect -> MC false alarm, component test does not")
+    sizes7 = np.array([1000] * 6)
+    rows = [{"symbol_a": "HUB", "symbol_b": f"S{i}", "episode": 0} for i in range(16)]
+    rows += [{"symbol_a": f"U{i}", "symbol_b": f"V{i}", "episode": e} for i, e in enumerate([1, 2, 3, 4])]
+    cp7 = pd.DataFrame(rows)
+    mc7 = max2_share_monte_carlo(sizes7, 20, 17 / 20, n_sim=20_000, rng=np.random.default_rng(3))
+    ct7 = component_max2_test(cp7, sizes7, n_sim=20_000, rng=np.random.default_rng(3))
+    check(f"independent-MC p < 0.01 (false alarm) [{mc7['p_value']:.4f}]", mc7["p_value"] < 0.01)
+    check(f"component test p > 0.2 (one cluster is one unit) [{ct7['p_value']:.4f}]", ct7["p_value"] > 0.2)
+    print("Check 8: genuine concentration across many independent units IS detected")
+    rows8 = [{"symbol_a": f"a{i}", "symbol_b": f"b{i}", "episode": 0 if i < 18 else 1 + i % 5} for i in range(22)]
+    ct8 = component_max2_test(pd.DataFrame(rows8), sizes7, n_sim=20_000, rng=np.random.default_rng(4))
+    check(f"18 of 22 independent confirmations in one of 6 equal episodes -> p < 0.01 [{ct8['p_value']:.4f}]", ct8["p_value"] < 0.01)
+except ImportError as e:
+    check(f"component functions exist ({e})", False)
+
 print(f"\n{passed}/{passed + failed} checks passed")
 sys.exit(0 if failed == 0 else 1)

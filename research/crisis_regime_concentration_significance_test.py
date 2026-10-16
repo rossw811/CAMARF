@@ -24,8 +24,12 @@ in those two is expected even under the null. The real question the earlier
 disclosure left open: is 93.1% MORE concentrated than 54.1% would predict, by
 more than chance?
 
-Two tests, both exact/simulated, no new statistical machinery invented:
-  1. Binomial test: under the null, P(episodes 1+3 jointly capture >= 27 of 29
+D1 / D2 (Ross 2026-10-12, review findings R3.3 / R3.4): the binomial test below fixes the "top 2" episodes from
+the same counts it then tests (post-hoc) -- it is kept for transparency but NOT used for any claim. Both original
+nulls also treat every confirmation as independent, while confirmations sharing a stock move together;
+component_max2_test is the test used: connected groups of confirmations (linked by a shared leg) are the units.
+Original tests, kept:
+  1. Binomial test (POST-HOC, not used): under the null, P(episodes 1+3 jointly capture >= 27 of 29
      confirmations | n=29, p=0.541) -- exact, via scipy.stats.binom.
   2. Monte Carlo simulation: draw 29 confirmations from a multinomial with
      per-episode probability proportional to pair count, N_SIM times, and
@@ -115,6 +119,49 @@ def max2_share_monte_carlo(episode_sizes: np.ndarray, n_total_confirmed: int,
         "n_sim": n_sim,
         "p_value": p_value,
     }
+
+
+def confirmation_components(confirmed: pd.DataFrame) -> pd.DataFrame:
+    """D2 (Ross 2026-10-12, R3.4): connected groups of confirmed pairs linked by a shared leg (union-find over
+    symbols). Returns one row per group: its episode (the mode of its pairs' episodes) and size (number of pairs)."""
+    parent = {}
+
+    def find(x):
+        parent.setdefault(x, x)
+        while parent[x] != x:
+            parent[x] = parent[parent[x]]
+            x = parent[x]
+        return x
+
+    for a, b in zip(confirmed["symbol_a"], confirmed["symbol_b"]):
+        ra, rb = find(a), find(b)
+        if ra != rb:
+            parent[ra] = rb
+    root = [find(a) for a in confirmed["symbol_a"]]
+    g = confirmed.assign(_root=root).groupby("_root")
+    return pd.DataFrame({"episode": g["episode"].agg(lambda e: e.mode().iloc[0]), "size": g.size()}).reset_index(drop=True)
+
+
+def component_max2_test(confirmed: pd.DataFrame, episode_sizes: np.ndarray, n_sim: int = 100_000, rng=None) -> dict:
+    """D2: null = each connected group of confirmations lands in an episode with probability proportional to episode
+    pair count and contributes ALL its confirmations there. Statistic: share of confirmations in the top-2 episodes
+    (identity not fixed). Reduces to max2_share_monte_carlo when no confirmations share a stock."""
+    rng = rng or np.random.default_rng(0)
+    comp = confirmation_components(confirmed)
+    sizes = comp["size"].to_numpy()
+    n_ep = len(episode_sizes)
+    obs_counts = np.bincount(comp["episode"].to_numpy().astype(int), weights=sizes, minlength=n_ep)
+    total = sizes.sum()
+    obs = float(np.sort(obs_counts)[-2:].sum() / total)
+    probs = np.asarray(episode_sizes, float) / np.sum(episode_sizes)
+    draws = rng.choice(n_ep, size=(n_sim, len(sizes)), p=probs)
+    sims = np.zeros((n_sim, n_ep))
+    for j in range(len(sizes)):
+        np.add.at(sims, (np.arange(n_sim), draws[:, j]), sizes[j])
+    sim_max2 = np.sort(sims, axis=1)[:, -2:].sum(axis=1) / total
+    return {"observed_max2_share": obs, "n_units": len(sizes), "n_confirmed": int(total),
+            "largest_unit": int(sizes.max()), "null_mean_max2_share": float(sim_max2.mean()),
+            "p_value": float((sim_max2 >= obs - 1e-12).mean()), "n_sim": n_sim}
 
 
 def main():
