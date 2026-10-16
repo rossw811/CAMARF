@@ -6635,7 +6635,7 @@ the **2026-08-03 block already in this file** (the one just below this entry, "S
 That work is already captured there and isn't repeated here.
 
 After that, Ross said: *"Great, so carry on with what the old session could not finish and or had
-planned. Instead of the 1 am runner, just run it now."* Claude built `run_session30.ps1` (a sequential,
+planned. Instead of the 1 am runner, just run it now."* Claude built `scripts/legacy/run_session30.ps1` (a sequential,
 lower-worker-count re-run of the full pipeline + all research scripts, deliberately throttled to 6
 workers given ~3.5GB free RAM and unrelated jobs already competing for CPU/RAM on the machine). While
 fixing a PowerShell parse error (an em dash breaking PS 5.1's UTF-8 read), Ross asked for a full restate
@@ -6647,7 +6647,7 @@ of:
 > others is -1 kind of like polar opposites? and then maybe have some sort of mean reversion or
 > arbitrage based on this equilibrium"
 
-`run_session30.ps1` was launched detached, and the session hit its **first** usage limit right after.
+`scripts/legacy/run_session30.ps1` was launched detached, and the session hit its **first** usage limit right after.
 Everything below happened across multiple resume-after-limit cycles.
 
 ### Confirmed against repo state — none of this session's new code is committed
@@ -6657,7 +6657,7 @@ Everything below happened across multiple resume-after-limit cycles.
 `research/trig_convergence.py`, `research/inverse_polarity.py`, `research/pit_pair_discovery.py`,
 `research/vix_crisis_hl_robustness_check.py`, `research/sensitivity_research.py`, matching
 `debug/_verify_*.py` for each, and three PowerShell runners (`run_overnight_research.ps1`,
-`run_episodic_scan_overnight.ps1`, `run_session30.ps1`). `ml.py` is modified but uncommitted.
+`scripts/legacy/run_episodic_scan_overnight.ps1`, `scripts/legacy/run_session30.ps1`). `ml.py` is modified but uncommitted.
 `Development.md`, `docs/FINDINGS.md`, `PAPER.md`, and `CLAUDE.md` all show as modified but uncommitted.
 **Nothing from this entire span of work has been committed to git** — it's all sitting in the working
 tree.
@@ -6845,7 +6845,7 @@ project's own precedent for "keep it separate, share conventions only." Noted as
 ### Other real findings from this session
 
 - **The long-standing WRDS-vs-yfinance comparison blocker — resolved.** This file's own 2026-08-03 block
-  below flags this as "blocking across two consecutive handoffs." `run_session30.ps1` finally ran
+  below flags this as "blocking across two consecutive handoffs." `scripts/legacy/run_session30.ps1` finally ran
   `analysis.py` to completion at full scale: **1,660-asset universe, BUG-D105's fix confirmed real** —
   3 confirmed pairs (`KVUE/KMB`@3m known since Session 21, `PNC/ZION`@4h new, `IQV/Q`@1D new, "gold
   tier").

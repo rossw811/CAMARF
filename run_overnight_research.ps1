@@ -28,11 +28,11 @@
 #     `requests` or open a live WRDS/IBKR connection (grepped directly, not
 #     assumed), so all should run safely off already-cached data.
 #
-# Resumability: same pattern as run_session30.ps1 (proven working today) --
+# Resumability: same pattern as scripts/legacy/run_session30.ps1 (proven working today) --
 # each completed stage is appended to $StateFile; re-running this script
 # skips stages already recorded there. Use -Fresh to ignore prior state.
 #
-# Per-stage timeout: unlike run_session30.ps1, this run is unattended
+# Per-stage timeout: unlike scripts/legacy/run_session30.ps1, this run is unattended
 # overnight and includes ~140 scripts of widely varying and unknown
 # runtime -- a single hung script must not consume the whole night. Each
 # stage is killed and marked FAILED (not fatal -- the run continues) if it
@@ -191,7 +191,7 @@ function Invoke-StageUntilSuccess {
     # SAME script (no timeout -- the underlying script's own checkpoints are
     # what make each relaunch cheap, not an outer time limit) until it exits
     # 0 or $MaxAttempts is reached. Absorbs what used to be a SEPARATE,
-    # PARALLEL process (run_episodic_scan_retry_loop.ps1) -- consolidated
+    # PARALLEL process (scripts/legacy/run_episodic_scan_retry_loop.ps1) -- consolidated
     # here 2026-08-11 per Ross's explicit direction that the intraday scan
     # must run and complete BEFORE the adapter/ML/PIT-backtest stages, not
     # alongside them; running both concurrently also meant two processes

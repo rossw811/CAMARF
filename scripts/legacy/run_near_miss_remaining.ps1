@@ -4,7 +4,7 @@
 # entry for the diagnostic history). Safe to delete once task #53 completes.
 $python = "C:\Users\RossW\anaconda3\envs\trading\python.exe"
 $log = "C:\Users\RossW\Projects\CAMARF\near_miss_remaining.log"
-"=== run_near_miss_remaining.ps1 started $(Get-Date) ===" | Out-File -FilePath $log -Append
+"=== scripts/legacy/run_near_miss_remaining.ps1 started $(Get-Date) ===" | Out-File -FilePath $log -Append
 foreach ($tf in @("1h", "4h", "1D", "7D", "1M", "3M", "6M")) {
     "===== TF=$tf START $(Get-Date) =====" | Out-File -FilePath $log -Append
     & $python "C:\Users\RossW\Projects\CAMARF\research\near_miss_lag_scan.py" --tf $tf *>> $log

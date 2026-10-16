@@ -19,7 +19,7 @@
 # infinite loop on a real, non-transient bug rather than an external kill).
 #
 # Usage (from an already-running session, fully detached):
-#   Start-Process powershell.exe -ArgumentList "-ExecutionPolicy","Bypass","-NonInteractive","-File","run_episodic_scan_retry_loop.ps1" -WindowStyle Hidden
+#   Start-Process powershell.exe -ArgumentList "-ExecutionPolicy","Bypass","-NonInteractive","-File","scripts/legacy/run_episodic_scan_retry_loop.ps1" -WindowStyle Hidden
 
 param(
     [int]$Workers = 6,   # reduced from 8 (2026-08-11): this loop and

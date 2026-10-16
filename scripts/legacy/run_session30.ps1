@@ -10,10 +10,10 @@
 # Use -Fresh to ignore prior state and run everything again.
 #
 # Usage:
-#   powershell -ExecutionPolicy Bypass -File run_session30.ps1
-#   powershell -ExecutionPolicy Bypass -File run_session30.ps1 -Workers 4
-#   powershell -ExecutionPolicy Bypass -File run_session30.ps1 -IncludeData    # also refetch data.py
-#   powershell -ExecutionPolicy Bypass -File run_session30.ps1 -Fresh
+#   powershell -ExecutionPolicy Bypass -File scripts/legacy/run_session30.ps1
+#   powershell -ExecutionPolicy Bypass -File scripts/legacy/run_session30.ps1 -Workers 4
+#   powershell -ExecutionPolicy Bypass -File scripts/legacy/run_session30.ps1 -IncludeData    # also refetch data.py
+#   powershell -ExecutionPolicy Bypass -File scripts/legacy/run_session30.ps1 -Fresh
 
 param(
     [int]$Workers = 6,
