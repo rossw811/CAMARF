@@ -124,7 +124,10 @@ else:
 p = OUT_RESEARCH / "crisis_regime_survivorship_confound_test.parquet"
 if p.exists():
     df = pd.read_parquet(p)
-    rec = df.iloc[0].to_dict()
+    # The paper's number is the ALL-REGIME test (R3.10); since D5 (2026-10-17) row 0 is the crisis-first main row.
+    # Known failing on current inputs: BUG-D117's verified PERMNO map moves it to 13.2% / z=1.98 -- M-018/M-073 are
+    # registered for re-derivation (claims_status_overrides.csv); the expected values stay the paper's until then.
+    rec = (df[df["scope"] == "all_regimes"].iloc[0] if "scope" in df.columns else df.iloc[0]).to_dict()
     check("survivorship.rate_both_survived_pct", round(rec["p_a"] * 100, 2), 0.34, tol=0.01, source=p.name)
     check("survivorship.rate_delisted_pct", round(rec["p_b"] * 100, 2), 0.30, tol=0.01, source=p.name)
     check("survivorship.z", round(rec["z"], 2), 1.26, tol=0.01, source=p.name)

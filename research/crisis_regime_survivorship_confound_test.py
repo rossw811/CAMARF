@@ -19,11 +19,19 @@ disproportionately represented among "confirmed" pairs, that's direct
 evidence the diagnostic's own candidate generation (built from a
 present-day symbol cache) systematically favors pairs that survived to
 today -- the confound stated plainly, not glossed over.
+
+D5 / R3.10 (Ross 2026-10-12, fixed 2026-10-17): the claim is about CRISIS-discovered pairs, but the test ran on every
+regime (crisis-first pairs are ~1.8% of the universe, so an effect among them was diluted by the rest). The main row is
+now first_regime == "crisis"; the all-regime row is kept as a labelled reference (the pre-D5 number). Each row also
+carries Fisher's exact p and a small_count flag (min expected cell < 5), since crisis-first confirmations are few.
+Still open: D6 / R3.11 (is_current = still in the S&P 500, not "survived"; exclusion survivorship invisible).
 """
 import os
 import sys
 
+import numpy as np
 import pandas as pd
+from scipy import stats
 
 _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, _ROOT)
@@ -59,6 +67,22 @@ def add_survival_columns(regime_df: pd.DataFrame, permno_map: dict, survival_loo
     return out
 
 
+def survivorship_test(joined: pd.DataFrame, regime=None) -> dict:
+    """Confirmation rate, both legs survived vs at least one leg delisted, among both-trackable pairs; restricted to
+    first_regime == regime (None = all regimes, the pre-D5 reference). Two-proportion z plus Fisher's exact test."""
+    sub = joined[joined["both_trackable"]]
+    if regime is not None:
+        sub = sub[sub["first_regime"] == regime]
+    r = two_proportion_test(sub.assign(pit_confirmed=sub["confirmed"]), "both_survived", True, False)
+    table = np.array([[r["x_a"], r["n_a"] - r["x_a"]], [r["x_b"], r["n_b"] - r["x_b"]]])
+    n = table.sum()
+    expected = np.outer(table.sum(axis=1), table.sum(axis=0)) / n if n else np.full((2, 2), np.nan)
+    fisher_p = float(stats.fisher_exact(table)[1]) if (r["n_a"] and r["n_b"]) else float("nan")
+    min_exp = float(np.nanmin(expected)) if n else float("nan")
+    return {**r, "scope": regime if regime is not None else "all_regimes", "fisher_p": fisher_p,
+            "min_expected": min_exp, "small_count": bool(min_exp < 5)}
+
+
 def main():
     if not (os.path.exists(_REGIME_PATH) and os.path.exists(_MEMBERSHIP_PATH) and os.path.exists(_PERMNO_MAP_PATH)):
         print("ERROR: missing input(s).")
@@ -78,22 +102,21 @@ def main():
           f"({n_trackable/len(joined):.2%}) -- the real, disclosed scope limit this test can "
           f"measure within.")
 
-    trackable = joined[joined["both_trackable"]]
-    if len(trackable) < 50:
-        print(f"Only {len(trackable)} trackable pairs -- too few for a meaningful test. "
-              f"Reporting raw counts only, no z-test.")
-        print(trackable.groupby("both_survived")["confirmed"].agg(["sum", "count"]))
-        return
+    rows = []
+    for regime, label in (("crisis", "MAIN (crisis-first pairs, the claim's population)"),
+                          (None, "reference (all regimes, the pre-D5 number)")):
+        r = survivorship_test(joined, regime=regime)
+        rows.append(r)
+        print(f"\n{label}: n = {r['n_a'] + r['n_b']}")
+        if r["n_a"] == 0 or r["n_b"] == 0:
+            print("  one group empty -- no test")
+            continue
+        print(f"  P(confirmed | both legs survived to present): {r['x_a']}/{r['n_a']} = {r['p_a']:.4%}")
+        print(f"  P(confirmed | at least one leg delisted):      {r['x_b']}/{r['n_b']} = {r['p_b']:.4%}")
+        print(f"  z={r['z']:.4f}, p={r['p_value']:.4f}; Fisher exact p={r['fisher_p']:.4f}; "
+              f"min expected cell {r['min_expected']:.2f}" + ("  [SMALL COUNTS: read the exact p]" if r["small_count"] else ""))
 
-    r = two_proportion_test(
-        trackable.assign(pit_confirmed=trackable["confirmed"]),
-        "both_survived", True, False,
-    )
-    print(f"\nP(§5-confirmed | both legs survived to present): {r['x_a']}/{r['n_a']} = {r['p_a']:.4%}")
-    print(f"P(§5-confirmed | at least one leg delisted):      {r['x_b']}/{r['n_b']} = {r['p_b']:.4%}")
-    print(f"z={r['z']:.4f}, p={r['p_value']:.4f}")
-
-    pd.DataFrame([{**r, "n_total_universe": len(joined), "n_trackable": n_trackable}]).to_parquet(_OUT_PATH)
+    pd.DataFrame([{**r, "n_total_universe": len(joined), "n_trackable": n_trackable} for r in rows]).to_parquet(_OUT_PATH)
     print(f"\nSaved to {_OUT_PATH}")
 
 

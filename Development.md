@@ -28985,3 +28985,21 @@ untouched); the three result files re-added; old -> new hash map in docs/history
 GitHub may keep the old objects reachable by SHA until its garbage collection; a purge request to GitHub Support
 removes them sooner. CachyOS's clone still has the old history -- re-point it (fetch + reset --mixed) after the
 re-run chain finishes, never during.
+
+### D5 survivorship test filtered to crisis-first pairs (2026-10-17; decisions recorded f20754c5)
+R3.10: `research/crisis_regime_survivorship_confound_test.py` tested every regime although the claim is about
+crisis-discovered pairs (1.8% of the 638,095-pair universe, so an effect among them is diluted). New
+`survivorship_test(joined, regime)`: main row = first_regime "crisis", reference row = all regimes (the pre-D5 number),
+each with Fisher's exact p and a small_count flag (min expected cell < 5). Failing-first: new
+`debug/_verify_crisis_regime_survivorship_confound_test.py` 0/1 (function absent) -> 8/8; in its synthetic world (effect
+only among crisis-first pairs, outnumbered 20:1) the old all-regime test gives p 0.58, the crisis-first test p 9.5e-08.
+Real-data code-path run (stale input: the 2026-09-02 diagnostic output, pre-re-run -- not citable): crisis-first n 1,137
+trackable, 2/828 vs 0/309 confirmed, Fisher p 1.0, min expected cell 0.54 -- **the crisis-first question has
+essentially no power within the S&P-500-trackable subset**; this test cannot answer it, whatever the re-run gives,
+unless the trackable population grows (D6). Also found: the paper's all-regime number (M-018/M-073: 20.6% trackable,
+0.34% vs 0.30%, z 1.26, p 0.21) no longer reproduces -- the OLD script on today's inputs gives 13.2%, 0.22% vs 0.16%,
+z 1.98, p 0.048, identical to the new reference row, so the shift is BUG-D117's verified PERMNO map (94461eef), not D5.
+Both claims were already REGISTERED for re-derivation. `debug/_verify_paper_magnitude_claims.py` now reads the
+all-regime row by scope and keeps the paper's values, so it fails 5 checks until re-derivation (explained, deliberate:
+it passed before only because the output on disk predated the map). Tried and corrected: a shell heredoc turned two
+`\n` escapes into real newlines (SyntaxError on the first run), fixed with Edit.
