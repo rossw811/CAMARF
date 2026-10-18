@@ -29062,3 +29062,48 @@ D9 QUALIFY; tests QUALIFY. Reproduced its two D7 claims myself before acting. Ch
   2023-2026 1h data; their 1990s-2010s daily baselines mostly are not cointegrated). Extreme dislocation 5 vs 0 over
   4 units, p 0.125 = its floor (min achievable 0.125). Degenerate-column audit: by-design only (calm_rate 0 is the
   data; t_required set only when 2y < 10m).
+
+### Review of 64d9e9f5 -> D9 gate on every outcome; stale paired file (2026-10-18)
+Adversarial review of 64d9e9f5: D8 ranking, min-p floor, numbers HOLD (size cell m=13/rho .97 re-derived 0.104; D5
+counts re-derived). QUALIFY: (1) the baseline gate covered only `ak_breakdown`; the D9 `extreme_dislocation` arm
+still paired non-cointegrated baselines, contrary to the approved rule ("a pair enters D9 only if both baselines
+pass") -- **fixed**: `build_paired_table` keeps only `baseline_cointegrated` rows for every outcome (per-window
+`extreme_dislocation` stays as a descriptive column). Failing-first: new D9-4 check FAIL (1 row) -> PASS. (2) "The
+screen mainly removes random-walk false alarms" is true for cointegrated cases only: random walks that slip through
+the screen are still flagged at 7.7% / 25.0% / 28.6% (n = 13 / 12 / 14 passers, m = 13 / 50 / 146), so on a pool where
+few baselines pass, breakdown rates among passers can be inflated -- disclosed; also, at rho .97 / T=504, 58% of
+truly cointegrated persistent spreads fail the screen, so survivors lean fast-reverting. Not previously stated: the
+D5 all-regime reference row moved p 0.209 -> 0.0475 (z 1.98) under the new map. (3) D9-3's min-p check compared the
+field to its own formula -- added a check that 6 same-sign units actually reach p = 2^-5. Tests 35 -> 39.
+Found while re-running: when no pair qualifies, `stress_test_replication_paired.parquet` was not rewritten, so the
+earlier ungated n=9 file stayed on disk looking current -- now always rewritten (empty, with a log line). Real-data
+re-run (29 legacy pairs): no pair has a cointegrated baseline in both a crisis and its calm control -> no D9 test.
+
+### D11 / R6.4 + R6.3: EG null calibration rebuilt; universe_loader monthly calendar bug (2026-10-18)
+`research/eg_null_calibration_montecarlo.py`: null pairs now go through the production path -- load_full_universe
+(WRDS priority, IBKR off), align_to_common_calendar (10y, as the screen), CointScanner._build_log_price_map (DATA_GAP
+masked), eg_pvalue_pair (both directions, max p), floor max(MIN_OVERLAP_BY_TF, _eg_worker's 60); pairs drawn without
+repetition; 15m kept as a labelled yfinance-cache side arm (no full-universe 15m source). Failing-first:
+`debug/_verify_eg_null_calibration_d11.py` -- the pre-D11 positional pairing gives p 0.669 on a pair cointegrated by
+date (7-day vs weekday calendars); new 0/1 (missing functions) -> 9/9. Old `_verify_eg_null_calibration.py` and the
+config drift guard still pass.
+**Real data (Surface; 1D needs CachyOS -- 44.7k series), 400 pairs each, seed 20260713:**
+| TF | HEAD script on today's caches (positional, one direction, yfinance cache) | new, forward direction only | new, production max-p |
+| 15m | 9.00% | 6.75% | 1.50% (CI 0.55-3.24) |
+| 1h | 9.25% | 6.75% | 1.75% (CI 0.71-3.57) |
+| 1M | 11.25% | 8.75% | 3.25% (CI 1.74-5.49) |
+(HEAD 1D: 13.25%.) Most of the fall is production's max-of-both-directions rule; alignment/universe/gap-masking
+account for ~2.5 pts. So: a single one-direction EG test over-rejects on real random pairs (as the old study found),
+but the production two-direction screen is BELOW nominal at 15m/1h (CIs exclude 5%), not distinguishable at 1M.
+This reverses the paper's framing (P-011: "FP 7.75-12.75%, Claim A refuted") for the production screen -- needs
+independent review and Ross before any paper text changes. Caveats: pairs share legs (the binomial CI treats them
+as independent, so it is too narrow); the 1M cache is a 2,859-file WRDS monthly subset, not the 45k daily universe
+(992 of 1,392 draws short of 60 months); same-company pairs not excluded beyond identical-series dedupe.
+**universe_loader.align_to_common_calendar bug (found here):** the U3 weekend filter fired on any all-midnight index,
+so monthly (and any period-end) WRDS bars on a Saturday/Sunday month-end were dropped -- 86 of 120 months on the real
+1M cache (exactly 120 x 5/7). Now only for a daily grid (median spacing <= 4 days). Failing-first:
+`_verify_calendar_no_weekend_rows.py` 3/4 (86/120) -> 4/4. Tried and corrected: the first fix compared `asi8`
+against a nanosecond constant, but the index there is not ns-unit, so it still classified monthly as daily (test still
+86/120); replaced by a Timedelta comparison. Loader tests (_verify_universe_calendar_align_and_dedup,
+_verify_loader_timezones, _verify_bh_vs_by_full_universe_1d) pass. No 1M/3M/6M/1Y full-universe outputs found on the
+Surface -- check CachyOS's. One heredoc attempt failed on quoting (nothing written, checked).

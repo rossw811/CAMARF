@@ -166,6 +166,12 @@ try:
           abs(r_ex["p_value"] - r_mc["p_value"]) < 0.005)
     check(f"min achievable p = 2^(1-K) for K = {r_ex['n_units_discordant']} units [{r_ex.get('min_p_achievable')}]",
           np.isclose(r_ex.get("min_p_achievable", np.nan), 2.0 ** (1 - r_ex["n_units_discordant"])))
+    # Review of 64d9e9f5: the line above only checks the field against its own formula; this checks the test reaches it
+    allsame = pd.DataFrame({"symbol_a": [f"u{i}" for i in range(6)], "symbol_b": [f"v{i}" for i in range(6)],
+                            "crisis_outcome": True, "calm_outcome": False})
+    r_all = paired_component_signflip_test(allsame)
+    check(f"6 same-sign units -> exact p reaches the floor 2^-5 [{r_all['p_value']:.5f}]",
+          np.isclose(r_all["p_value"], 2.0 ** -5) and np.isclose(r_all["min_p_achievable"], r_all["p_value"]))
 
     print("Check D9-2: build_paired_table pairs each crisis with its own control only")
     from stress_test_replication import build_paired_table
@@ -181,6 +187,17 @@ try:
     tested_nan["ak_breakdown"] = pd.array([True, None, True, True], dtype="boolean")
     check(f"A/B @ q dropped when its calm baseline fails the precondition [{len(build_paired_table(tested_nan, controls, 'ak_breakdown'))} rows]",
           len(build_paired_table(tested_nan, controls, "ak_breakdown")) == 0)
+    tested_nan["ak_breakdown"] = pd.array([None, False, True, True], dtype="boolean")
+    check("...and when the CRISIS-side baseline fails",
+          len(build_paired_table(tested_nan, controls, "ak_breakdown")) == 0)
+    # Review of 64d9e9f5: the gate covered ak_breakdown only; extreme_dislocation pairs entered D9 ungated
+    tested_g = tested.assign(extreme_dislocation=[True, False, True, True],
+                             baseline_cointegrated=[True, False, True, True])
+    check(f"every D9 outcome is gated: extreme_dislocation drops a pair whose calm baseline fails "
+          f"[{len(build_paired_table(tested_g, controls, 'extreme_dislocation'))} rows]",
+          len(build_paired_table(tested_g, controls, "extreme_dislocation")) == 0)
+    check("...and keeps it when both baselines pass",
+          len(build_paired_table(tested_g.assign(baseline_cointegrated=True), controls, "extreme_dislocation")) == 1)
 
     print("Check D7-5: stress_test_pair uses T = max(2y, 10m) and reports the Andrews-Kim fields")
     import stress_test_replication as mod

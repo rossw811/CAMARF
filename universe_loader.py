@@ -446,7 +446,11 @@ def align_to_common_calendar(merged: dict, lookback_years: int = 10) -> dict:
     # weekend rows that are NaN for every equity, and np.diff log returns then made every equity Monday
     # return NaN (~20% of daily returns, incl. all weekend-news moves). Crypto's weekend move folds into
     # Monday's close-to-close return. Intraday grids are unaffected (they are not all-midnight).
-    if len(canonical_index) and (canonical_index.hour == 0).all() and (canonical_index.minute == 0).all():
+    # Only for a DAILY grid (median spacing <= 4 days): monthly/quarterly/yearly WRDS bars sit on calendar period-ends,
+    # ~2 in 7 of them a Saturday/Sunday, and the all-midnight test alone dropped them (2026-10-18: 86 of 120 months on
+    # the real 1M cache). debug/_verify_calendar_no_weekend_rows.py.
+    _daily = len(canonical_index) > 1 and pd.Series(canonical_index).diff().median() <= pd.Timedelta(days=4)
+    if _daily and (canonical_index.hour == 0).all() and (canonical_index.minute == 0).all():
         canonical_index = canonical_index[canonical_index.dayofweek < 5]
 
     out = {}

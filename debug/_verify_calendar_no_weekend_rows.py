@@ -38,6 +38,13 @@ def main():
     exp = np.log(eq.loc[mon, "close"] / eq.loc[pd.Timestamp("2026-06-05"), "close"])
     check("monday_return_finite_and_correct", np.isfinite(r[mon]) and abs(r[mon] - exp) < 1e-12, f"r_mon={r[mon]}")
     check("crypto_weekdays_kept", out["BTC"]["close"].notna().sum() == len(wk))
+    # 2026-10-18 (found running D11): WRDS monthly bars sit on calendar month-ends, ~2 in 7 of them a Sat/Sun; the
+    # all-midnight test treated them as daily and dropped them (86 of 120 months on the real 1M cache).
+    me = pd.date_range("2016-01-31", "2025-12-31", freq="ME")
+    mo = align_to_common_calendar({"M": pd.DataFrame({"close": np.arange(1.0, len(me) + 1)}, index=me)},
+                                  lookback_years=10)
+    check("monthly_weekend_month_ends_kept", len(mo["M"]) == len(me) and mo["M"]["close"].notna().all(),
+          f"{len(mo['M'])}/{len(me)} months kept ({int((me.dayofweek >= 5).sum())} fall on a weekend)")
     print(); print(f"{len(PASS)}/{len(PASS) + len(FAIL)} checks passed")
     if FAIL:
         print("FAILED:", FAIL); sys.exit(1)

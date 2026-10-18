@@ -246,6 +246,10 @@ def build_paired_table(tested: pd.DataFrame, calm_controls: list, outcome: str, 
     """D9: one row per (pair, crisis) where the pair was TESTED in both the crisis and that crisis's own calm control:
     symbol_a, symbol_b, crisis, crisis_outcome, calm_outcome. Pairs missing either side, or with a missing outcome on
     either side (ak_breakdown is missing when that window's baseline fails the D7 precondition), are dropped."""
+    # D7 precondition applies to EVERY D9 outcome (Ross 2026-10-18: a pair enters only if both baselines pass); the gate
+    # covered ak_breakdown alone until the review of 64d9e9f5. Per-window extreme_dislocation stays ungated (descriptive).
+    if "baseline_cointegrated" in tested.columns:
+        tested = tested[tested["baseline_cointegrated"] == True]  # noqa: E712
     out = []
     for c_name, _, _, for_crisis, _ in calm_controls:
         if crisis is not None and for_crisis != crisis:
@@ -471,9 +475,11 @@ def main():
                      outcome, scope or "all crises", r["n"], 100 * r["crisis_rate"], 100 * r["calm_rate"],
                      r["discordant_crisis_only"], r["discordant_calm_only"], r["n_units_discordant"],
                      r["p_value"], r["min_p_achievable"], r["mcnemar_exact_p"])
-    if paired_rows:
-        pd.DataFrame(paired_rows).to_parquet(os.path.join(_OUT_DIR, "stress_test_replication_paired.parquet"),
-                                             index=False)
+    # Always rewritten: an empty result must replace an earlier file, never leave it standing as if current.
+    if not paired_rows:
+        log.info("D9 paired: no pair has a cointegrated baseline in both a crisis and its calm control -- no test")
+    pd.DataFrame(paired_rows, columns=None if paired_rows else ["outcome", "scope", "n", "p_value"]).to_parquet(
+        os.path.join(_OUT_DIR, "stress_test_replication_paired.parquet"), index=False)
 
     out_path = os.path.join(_OUT_DIR, "stress_test_replication.parquet")
     result_df.to_parquet(out_path, index=False)
