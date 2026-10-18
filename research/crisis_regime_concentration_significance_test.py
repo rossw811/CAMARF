@@ -122,9 +122,8 @@ def max2_share_monte_carlo(episode_sizes: np.ndarray, n_total_confirmed: int,
     }
 
 
-def confirmation_components(confirmed: pd.DataFrame) -> pd.DataFrame:
-    """D2 (Ross 2026-10-12, R3.4): connected groups of confirmed pairs linked by a shared leg (union-find over
-    symbols). Returns one row per group: its episode (the mode of its pairs' episodes) and size (number of pairs)."""
+def pair_component_labels(symbol_a, symbol_b) -> np.ndarray:
+    """D2: connected-component label per pair, pairs linked by a shared leg (union-find over symbols)."""
     parent = {}
 
     def find(x):
@@ -134,11 +133,17 @@ def confirmation_components(confirmed: pd.DataFrame) -> pd.DataFrame:
             x = parent[x]
         return x
 
-    for a, b in zip(confirmed["symbol_a"], confirmed["symbol_b"]):
+    for a, b in zip(symbol_a, symbol_b):
         ra, rb = find(a), find(b)
         if ra != rb:
             parent[ra] = rb
-    root = [find(a) for a in confirmed["symbol_a"]]
+    return np.array([find(a) for a in symbol_a], dtype=object)
+
+
+def confirmation_components(confirmed: pd.DataFrame) -> pd.DataFrame:
+    """D2 (Ross 2026-10-12, R3.4): connected groups of confirmed pairs linked by a shared leg (union-find over
+    symbols). Returns one row per group: its episode (the mode of its pairs' episodes) and size (number of pairs)."""
+    root = pair_component_labels(confirmed["symbol_a"], confirmed["symbol_b"])
     g = confirmed.assign(_root=root).groupby("_root")
     return pd.DataFrame({"episode": g["episode"].agg(lambda e: e.mode().iloc[0]), "size": g.size()}).reset_index(drop=True)
 

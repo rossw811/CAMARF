@@ -13,6 +13,7 @@ Ross 2026-10-16, not started; full suite; 3x/10x break-rule sensitivity; Surface
 **Surface work now, in order:** D5-D13 (docs/decisions/DECISIONS_2026-10-12.md:90-98, approved 10-12) failing-first on
 synthetic data, real runs after the chain; reviewer-queued fixes for arms (b)/(c) (Development.md 2026-10-15 entry);
 verify docs/drafts/parameter_justification_drafts.csv row by row; E3 TRACE design proposal (needs Ross before build).
+**Done 2026-10-17/18 (Surface):** D5 (f7425f7a); D7/D8/D9 (stress test: Andrews-Kim, VIX calm rule, paired test). **Found, queued:** aligned_pair_loader.load_aligned_pair is yfinance-first, WRDS fallback (:180-185) -- reverses rule 2; 50 importers.
 **Ross only:** GitHub Support "remove cached data" request for the rewritten history; check CachyOS in person.
 Note: the Surface has 614 GB free (the 10-16 "2.5 GB free" figure is stale); the suite still runs on CachyOS (memory).
 

@@ -40,6 +40,17 @@ Method, per pair, per crisis window:
      combined, to check whether formal cointegration still holds through
      the stress period, not just whether the OOS z-score stayed bounded.
 
+2026-10-18 (D7/D8/D9, Ross 2026-10-12; details docs/decisions/DECISIONS_2026-10-12.md):
+  D7 (R5.5): step 4's EG is dominated by the ~500 baseline days and cannot see an in-crisis break; it is kept as a
+     labelled legacy column. The test used is Andrews & Kim (2006, JBES) P (R beside it) for cointegration breakdown in
+     the crisis window, subsample p-values from the baseline, baseline T = max(2 years, 10 x m) rows (m/T <= .1, the
+     paper's stated range; pairs without that history are INSUFFICIENT_HISTORY with t_required). Descriptive: beta
+     uses the crisis window by design. Step 3's hedge ratio / z-score now use the same T-row baseline.
+  D8 (R5.6): calm controls derived from VIX (every day below the 1990-2025 30th percentile, same length, same start
+     month, closest in time; the GFC length has no same-month window, so its control is not season-matched).
+  D9 (R5.7): crisis vs each pair's own control is paired: sign-flip randomization over shared-leg components
+     (output/research/stress_test_replication_paired.parquet); replaces the 15-point rule of thumb.
+
 Crisis windows (all well short of the confirmed pairs' full daily history
 for most symbols, per the docstring's real-data check above):
   - Aug 2007 Quant Quake: 2007-08-01 to 2007-08-17 (the acute week plus
@@ -93,16 +104,141 @@ _CRISES = [
 # conditions (most were discovered on 2023-2026 1h data, not historical
 # daily data). Without this control, "0/13 cointegrated during the crisis"
 # is not interpretable as a crisis finding at all.
-_CALM_CONTROLS = [
-    ("calm_control_2015_08", "2015-08-01", "2015-08-17"),      # analog to aug_2007_quant_quake
-    ("calm_control_2016_2017", "2016-09-01", "2017-03-31"),    # analog to 2008_gfc
-    ("calm_control_2018", "2018-02-19", "2018-04-30"),         # analog to 2020_covid_crash
-]
+#
+# D8 (R5.6, 2026-10-18): the hand-picked controls (2015-08-01..17, 2016-09-01..2017-03-31, 2018-02-19..04-30) were
+# chosen after the first run and were not calm (2018 follows the Feb-2018 VIX spike). Controls are now derived from
+# VIX by the pre-registered rule in select_calm_window(); see derive_calm_controls().
+
+
+def derive_calm_controls(vix: pd.Series, crises=None) -> list:
+    """D8: one calm control per crisis, same length in VIX trading days. Returns
+    [(control_name, start, end, crisis_name, season_matched)]."""
+    crises = crises or _CRISES
+    out = []
+    for name, start, end in crises:
+        n_days = int(((vix.dropna().index >= pd.Timestamp(start)) & (vix.dropna().index <= pd.Timestamp(end))).sum())
+        w = select_calm_window(vix, start, n_days, crises)
+        out.append((f"calm_control_for_{name}", str(w["start"].date()), str(w["end"].date()), name, w["season_matched"]))
+    return out
 
 # Same stop-loss convention backtest.py's Layer 1 baseline uses (Config.BACKTEST
 # stop at 3.5 sigma) — used here as the honest yardstick for "extreme" rather
 # than an arbitrary new threshold invented for this script.
 _EXTREME_Z_THRESHOLD = getattr(Config.BACKTEST, "STOP_ZSCORE", 3.5)
+
+
+# --- D7 (Ross 2026-10-12, details 2026-10-17/18): Andrews & Kim (2006), "Tests for Cointegration Breakdown Over a
+# Short Time Period", JBES 24(4) 379-394, verified against the author-hosted PDF. Descriptive: beta uses all T+m obs.
+_AK_MAX_M_OVER_T = 0.1   # the paper: "The P test works well for values [of m/T] as high as .1"
+
+
+def baseline_length(n_rows_two_years: int, m: int) -> int:
+    """D7: baseline rows T = max(2 years of rows, m / 0.1), so m/T stays within the paper's stated range."""
+    return int(max(n_rows_two_years, int(np.ceil(m / _AK_MAX_M_OVER_T))))
+
+
+def andrews_kim_test(y, x, T: int, m: int) -> dict:
+    """P (eq. 8) and R (eqs. 25-26) for a breakdown in obs T..T+m-1 of y = c + beta*x + u, with subsample p-values
+    (eqs. 10-15): P_j uses the leave-ceil(m/2)-out estimator on obs 0..T-1; pv = mean(stat <= stat_j)."""
+    y = np.asarray(y, dtype=float)[:T + m]
+    X = np.column_stack([np.ones(T + m), np.asarray(x, dtype=float)[:T + m]])
+    b_all = np.linalg.lstsq(X, y, rcond=None)[0]
+    u_post = y[T:] - X[T:] @ b_all
+    P = float(u_post @ u_post)
+    R = float(np.sum(np.cumsum(u_post[::-1]) ** 2))
+    h = int(np.ceil(m / 2))
+    n_sub = T - m + 1
+    XT, yT = X[:T], y[:T]
+    cxx = np.concatenate([np.zeros((1, 2, 2)), np.cumsum(np.einsum("ti,tj->tij", XT, XT), axis=0)])
+    cxy = np.concatenate([np.zeros((1, 2)), np.cumsum(XT * yT[:, None], axis=0)])
+    j = np.arange(n_sub)
+    A = cxx[T] - (cxx[j + h] - cxx[j])                               # X'X over obs 0..T-1 minus j..j+h-1
+    rhs = cxy[T] - (cxy[j + h] - cxy[j])
+    B = np.linalg.solve(A, rhs[..., None])[..., 0]                   # (n_sub, 2): leave-ceil(m/2)-out betas
+    win = np.lib.stride_tricks.sliding_window_view(np.arange(T), m)[:n_sub]
+    resid = yT[win] - (B[:, None, 0] + B[:, None, 1] * XT[win, 1])
+    Pj = np.sum(resid ** 2, axis=1)
+    Rj = np.sum(np.cumsum(resid[:, ::-1], axis=1) ** 2, axis=1)
+    return {"P": P, "R": R, "pv_P": float(np.mean(P <= Pj)), "pv_R": float(np.mean(R <= Rj)),
+            "n_subsamples": int(n_sub), "m_over_T": m / T, "beta_full": float(b_all[1])}
+
+
+# --- D8 (Ross 2026-10-12, details 2026-10-18): calm controls derived from VIX, not hand-picked.
+_CALM_VIX_QUANTILE = 0.30
+_CALM_VIX_PERIOD = ("1990-01-01", "2025-12-31")
+
+
+def select_calm_window(vix: pd.Series, crisis_start: str, n_days: int, crises,
+                       q: float = _CALM_VIX_QUANTILE, period=_CALM_VIX_PERIOD) -> dict:
+    """Every VIX day below its `period` q-quantile (descriptive), n_days long, starting in the crisis's month, not
+    overlapping any crisis window; the qualifying window whose start is closest to the crisis start (ties: earlier).
+    No same-month window -> any month, season_matched=False. None at all -> ValueError (never relaxed silently)."""
+    v = vix.dropna().loc[period[0]:period[1]]
+    thr = float(v.quantile(q))
+    n = len(v)
+    if n_days > n:
+        raise ValueError(f"window of {n_days} days longer than the VIX history")
+    run = np.lib.stride_tricks.sliding_window_view((v < thr).to_numpy(), n_days).all(axis=1)
+    starts, ends = v.index[:n - n_days + 1], v.index[n_days - 1:]
+    ok = run.copy()
+    for _, cs, ce in crises:
+        ok &= ~((starts <= pd.Timestamp(ce)) & (ends >= pd.Timestamp(cs)))
+    c0 = pd.Timestamp(crisis_start)
+    for season in (True, False):
+        cand = (ok & (starts.month == c0.month)) if season else ok
+        if cand.any():
+            pos = np.flatnonzero(cand)
+            dist = np.abs((starts[pos] - c0).days)
+            best = pos[np.lexsort((starts[pos].asi8, dist))[0]]
+            return {"start": starts[best], "end": ends[best], "n_days": int(n_days), "threshold": thr,
+                    "season_matched": season}
+    raise ValueError(f"no {n_days}-day window with every VIX day below {thr:.2f} in {period}")
+
+
+# --- D9 (Ross 2026-10-12, details 2026-10-17): each pair's crisis outcome vs its own calm-control outcome is paired.
+def paired_component_signflip_test(df: pd.DataFrame, n_sim: int = 100_000, rng=None, exact_max_units: int = 20) -> dict:
+    """df: one row per (pair, crisis) with bool crisis_outcome / calm_outcome; d = crisis - calm. Null: within each
+    connected component of pairs sharing a leg (the D2 unit, over all crises) crisis/calm labels are exchangeable ->
+    flip the sign of each component's summed d. Exact when <= exact_max_units components are non-zero. Classical
+    exact McNemar (pairs as independent) reported beside it for reference."""
+    from scipy import stats
+    from crisis_regime_concentration_significance_test import pair_component_labels
+    rng = rng or np.random.default_rng(0)
+    d = df["crisis_outcome"].astype(int).to_numpy() - df["calm_outcome"].astype(int).to_numpy()
+    lab = pair_component_labels(df["symbol_a"], df["symbol_b"])
+    D = pd.Series(d).groupby(lab).sum().to_numpy()
+    D = D[D != 0]
+    S = int(d.sum())
+    if len(D) == 0:
+        p = 1.0
+    elif len(D) <= exact_max_units:
+        signs = 1 - 2 * ((np.arange(2 ** len(D))[:, None] >> np.arange(len(D))) & 1)
+        p = float(np.mean(np.abs(signs @ D) >= abs(S)))
+    else:
+        sims = (1 - 2 * rng.integers(0, 2, size=(n_sim, len(D)))) @ D
+        p = float((1 + np.sum(np.abs(sims) >= abs(S))) / (n_sim + 1))
+    b, c = int(np.sum(d == 1)), int(np.sum(d == -1))
+    mc = float(stats.binomtest(b, b + c, 0.5).pvalue) if b + c else 1.0
+    return {"n": int(len(d)), "crisis_rate": float(df["crisis_outcome"].mean()),
+            "calm_rate": float(df["calm_outcome"].mean()), "rate_diff": S / len(d),
+            "discordant_crisis_only": b, "discordant_calm_only": c, "n_units_discordant": int(len(D)),
+            "p_value": p, "mcnemar_exact_p": mc}
+
+
+def build_paired_table(tested: pd.DataFrame, calm_controls: list, outcome: str, crisis=None) -> pd.DataFrame:
+    """D9: one row per (pair, crisis) where the pair was TESTED in both the crisis and that crisis's own calm control:
+    symbol_a, symbol_b, crisis, crisis_outcome, calm_outcome. Pairs missing either side are dropped (counted by caller)."""
+    out = []
+    for c_name, _, _, for_crisis, _ in calm_controls:
+        if crisis is not None and for_crisis != crisis:
+            continue
+        cr = tested[tested["crisis"] == for_crisis].set_index(["symbol_a", "symbol_b"])[outcome]
+        ca = tested[tested["crisis"] == c_name].set_index(["symbol_a", "symbol_b"])[outcome]
+        both = cr.index.intersection(ca.index)
+        out.append(pd.DataFrame({"symbol_a": [k[0] for k in both], "symbol_b": [k[1] for k in both],
+                                 "crisis": for_crisis, "crisis_outcome": cr.loc[both].astype(bool).to_numpy(),
+                                 "calm_outcome": ca.loc[both].astype(bool).to_numpy()}))
+    return pd.concat(out, ignore_index=True) if out else pd.DataFrame()
 
 
 def _setup_logging():
@@ -144,10 +280,16 @@ def stress_test_pair(sym_a: str, sym_b: str, crisis_name: str, crisis_start: str
     if aligned.empty or aligned.index.min() > baseline_start_ts:
         return {"status": "INSUFFICIENT_HISTORY", "data_start": None if aligned.empty else aligned.index.min()}
 
-    baseline = aligned[(aligned.index >= baseline_start_ts) & (aligned.index < crisis_start_ts)]
     crisis = aligned[(aligned.index >= crisis_start_ts) & (aligned.index <= crisis_end_ts)]
-    if len(baseline) < 60 or len(crisis) < 3:
+    pre = aligned[aligned.index < crisis_start_ts]
+    n_two_years = int((pre.index >= baseline_start_ts).sum())
+    if n_two_years < 60 or len(crisis) < 3:
         return {"status": "INSUFFICIENT_HISTORY", "data_start": aligned.index.min()}
+    # D7: T = max(2 years, 10 x m) rows so m/T <= .1 (Andrews-Kim's stated range); too little history -> excluded, listed.
+    t_required = baseline_length(n_two_years, len(crisis))
+    if len(pre) < t_required:
+        return {"status": "INSUFFICIENT_HISTORY", "data_start": aligned.index.min(), "t_required": t_required}
+    baseline = pre.iloc[-t_required:]
 
     # OLS hedge ratio fit on baseline only (no lookahead into the crisis window).
     b_centered = baseline["b"] - baseline["b"].mean()
@@ -166,10 +308,12 @@ def stress_test_pair(sym_a: str, sym_b: str, crisis_name: str, crisis_start: str
     crisis_z = (crisis_spread - spread_mean) / spread_std
     max_abs_z = float(crisis_z.abs().max())
 
-    # Formal EG re-test on baseline+crisis combined, at daily resolution.
-    combined = aligned[(aligned.index >= baseline_start_ts) & (aligned.index <= crisis_end_ts)]
+    # Legacy (R5.5): EG on baseline+crisis combined -- dominated by the baseline days, cannot see an in-crisis break.
+    # Kept as a labelled column for continuity with earlier reports; the D7 breakdown test below is the one used.
+    combined = pd.concat([baseline, crisis])
     eg_result = _eg_worker((sym_a, sym_b, combined["a"].values, combined["b"].values,
                              Config.ANALYSIS.EG_MAX_LAG, _TF_LABEL))
+    ak = andrews_kim_test(combined["a"].values, combined["b"].values, T=len(baseline), m=len(crisis))
 
     return {
         "status": "TESTED",
@@ -183,6 +327,9 @@ def stress_test_pair(sym_a: str, sym_b: str, crisis_name: str, crisis_start: str
         "cointegration_holds": bool(
             eg_result.get("ok") and eg_result.get("pvalue", 1.0) < Config.ANALYSIS.EG_SIGNIFICANCE
         ),
+        "ak_P": ak["P"], "ak_pv_P": ak["pv_P"], "ak_R": ak["R"], "ak_pv_R": ak["pv_R"],
+        "ak_m_over_T": ak["m_over_T"],
+        "ak_breakdown": ak["pv_P"] < Config.ANALYSIS.EG_SIGNIFICANCE,   # descriptive: beta uses the crisis window
     }
 
 
@@ -223,9 +370,15 @@ def main():
                 pairs.append((row["symbol_a"], row["symbol_b"]))
         pairs = sorted(set(pairs))
 
-    all_windows = _CRISES + _CALM_CONTROLS
+    import macro
+    vix = macro.build(series=["VIXCLS"]).data["vix_close"]
+    calm_controls = derive_calm_controls(vix)
+    for c_name, c_start, c_end, for_crisis, season in calm_controls:
+        log.info("D8 calm control for %s: %s..%s (every VIX day below its 1990-2025 30th pct)%s",
+                 for_crisis, c_start, c_end, "" if season else " -- NOT season-matched (no same-month window qualifies)")
+    all_windows = _CRISES + [(c[0], c[1], c[2]) for c in calm_controls]
     log.info("%d pairs to test across %d crisis windows + %d calm controls",
-              len(pairs), len(_CRISES), len(_CALM_CONTROLS))
+              len(pairs), len(_CRISES), len(calm_controls))
 
     rows = []
     for sym_a, sym_b in pairs:
@@ -237,11 +390,11 @@ def main():
             rows.append(row)
             if result["status"] == "TESTED":
                 log.info(
-                    "  %s/%s @ %s: max|z|=%.2f%s, EG p=%.4f (%s)",
+                    "  %s/%s @ %s: max|z|=%.2f%s, Andrews-Kim P p=%.4f (m/T %.3f)%s; legacy EG p=%.4f",
                     sym_a, sym_b, crisis_name, result["max_abs_z_during_crisis"],
                     " [EXTREME]" if result["extreme_dislocation"] else "",
+                    result["ak_pv_P"], result["ak_m_over_T"], " [BREAKDOWN]" if result["ak_breakdown"] else "",
                     result["eg_pvalue_baseline_plus_crisis"],
-                    "cointegration holds" if result["cointegration_holds"] else "cointegration does NOT hold",
                 )
             else:
                 log.info("  %s/%s @ %s: %s", sym_a, sym_b, crisis_name, result["status"])
@@ -257,59 +410,36 @@ def main():
         "daily history) ---", len(tested), len(result_df)
     )
     if not tested.empty:
-        for crisis_name, _, _ in _CRISES + _CALM_CONTROLS:
+        for crisis_name, _, _ in all_windows:
             sub = tested[tested["crisis"] == crisis_name]
             if sub.empty:
                 continue
-            n_extreme = int(sub["extreme_dislocation"].sum())
-            n_coint_holds = int(sub["cointegration_holds"].sum())
             log.info(
-                "  [%s] %d/%d pairs tested: %d extreme dislocation (|z|>%.1f), "
-                "%d/%d still cointegrated through baseline+crisis",
-                crisis_name, len(sub), len(sub), n_extreme, _EXTREME_Z_THRESHOLD, n_coint_holds, len(sub),
+                "  [%s] %d pairs tested: %d Andrews-Kim breakdown (P test, 5%%), %d extreme dislocation (|z|>%.1f); "
+                "legacy EG 'holds' %d", crisis_name, len(sub), int(sub["ak_breakdown"].sum()),
+                int(sub["extreme_dislocation"].sum()), _EXTREME_Z_THRESHOLD, int(sub["cointegration_holds"].sum()),
             )
 
-    # Crisis-vs-calm-control comparison — without this, "0/13 cointegrated
-    # during crisis" is not interpretable: it could reflect crisis-specific
-    # fragility, or simply that a single-shot daily EG test on any arbitrary
-    # old window rarely finds cointegration for pairs discovered on
-    # 2023-2026 1h data. Compare directly before drawing any conclusion.
-    if not tested.empty:
-        crisis_names = [c[0] for c in _CRISES]
-        calm_names = [c[0] for c in _CALM_CONTROLS]
-        crisis_sub = tested[tested["crisis"].isin(crisis_names)]
-        calm_sub = tested[tested["crisis"].isin(calm_names)]
-        if not crisis_sub.empty and not calm_sub.empty:
-            crisis_extreme_rate = crisis_sub["extreme_dislocation"].mean()
-            calm_extreme_rate = calm_sub["extreme_dislocation"].mean()
-            crisis_coint_rate = crisis_sub["cointegration_holds"].mean()
-            calm_coint_rate = calm_sub["cointegration_holds"].mean()
-            log.info(
-                "\n--- Crisis vs. calm-control comparison (the honest read on whether this is a "
-                "crisis-specific finding) ---\n"
-                "  Extreme dislocation rate: crisis=%.0f%% (%d/%d) vs calm=%.0f%% (%d/%d)\n"
-                "  Cointegration-holds rate: crisis=%.0f%% (%d/%d) vs calm=%.0f%% (%d/%d)",
-                crisis_extreme_rate * 100, int(crisis_sub["extreme_dislocation"].sum()), len(crisis_sub),
-                calm_extreme_rate * 100, int(calm_sub["extreme_dislocation"].sum()), len(calm_sub),
-                crisis_coint_rate * 100, int(crisis_sub["cointegration_holds"].sum()), len(crisis_sub),
-                calm_coint_rate * 100, int(calm_sub["cointegration_holds"].sum()), len(calm_sub),
-            )
-            if abs(crisis_extreme_rate - calm_extreme_rate) < 0.15 and abs(crisis_coint_rate - calm_coint_rate) < 0.15:
-                log.warning(
-                    "Crisis and calm-control rates are similar (within 15 pts on both metrics) — "
-                    "this test cannot distinguish crisis-specific fragility from a general property "
-                    "of single-shot daily EG tests on old windows for these pairs. Report this "
-                    "honestly as inconclusive on the crisis-specific question, not as evidence of "
-                    "crisis fragility."
-                )
-            else:
-                log.info(
-                    "Crisis and calm-control rates differ by more than 15 points — some support for "
-                    "a genuine crisis-specific effect, though still confounded by everything else "
-                    "that differs between these specific historical windows."
-                )
-
+    # D9 (R5.7): each pair's crisis outcome against ITS OWN calm control -- paired, significance by sign flips over
+    # connected components of pairs sharing a leg. Replaces the 15-point rule of thumb.
     os.makedirs(_OUT_DIR, exist_ok=True)
+    paired_rows = []
+    for outcome in ("ak_breakdown", "extreme_dislocation"):
+        for scope in [None] + [c[0] for c in _CRISES]:
+            paired = build_paired_table(tested, calm_controls, outcome, crisis=scope)
+            if paired.empty:
+                continue
+            r = paired_component_signflip_test(paired, rng=np.random.default_rng(0))
+            paired_rows.append({"outcome": outcome, "scope": scope or "all_crises", **r})
+            log.info("D9 paired [%s, %s]: n=%d, crisis %.1f%% vs calm %.1f%%, discordant %d/%d over %d units, "
+                     "component sign-flip p=%.4f (classical McNemar p=%.4f, pairs as independent -- reference only)",
+                     outcome, scope or "all crises", r["n"], 100 * r["crisis_rate"], 100 * r["calm_rate"],
+                     r["discordant_crisis_only"], r["discordant_calm_only"], r["n_units_discordant"],
+                     r["p_value"], r["mcnemar_exact_p"])
+    if paired_rows:
+        pd.DataFrame(paired_rows).to_parquet(os.path.join(_OUT_DIR, "stress_test_replication_paired.parquet"),
+                                             index=False)
+
     out_path = os.path.join(_OUT_DIR, "stress_test_replication.parquet")
     result_df.to_parquet(out_path, index=False)
     log.info("Saved -> %s", out_path)

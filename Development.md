@@ -29003,3 +29003,27 @@ Both claims were already REGISTERED for re-derivation. `debug/_verify_paper_magn
 all-regime row by scope and keeps the paper's values, so it fails 5 checks until re-derivation (explained, deliberate:
 it passed before only because the output on disk predated the map). Tried and corrected: a shell heredoc turned two
 `\n` escapes into real newlines (SyntaxError on the first run), fixed with Edit.
+
+### D7/D8/D9 stress-test fixes (2026-10-18; decisions dd2638df, 6ffa93d2)
+`research/stress_test_replication.py`. D7 (R5.5): `andrews_kim_test` -- Andrews & Kim (2006, JBES 24(4) 379-394; checked
+against the author-hosted PDF, eqs. 8, 10-15 and the m/T passage) P and R breakdown tests, subsample p-values at the
+leave-ceil(m/2)-out estimator (prefix-sum batched solve); baseline T = `baseline_length` = max(2-year rows, 10m); the
+legacy baseline+crisis EG kept as a labelled column. D8 (R5.6): `select_calm_window` / `derive_calm_controls` replace the
+three hand-picked controls. D9 (R5.7): `build_paired_table` + `paired_component_signflip_test` replace the 15-point
+rule; the shared-leg union-find was split out of D2 as `pair_component_labels` (crisis_regime_concentration_significance_
+test.py; D2's 11/11 unchanged). Failing-first: new `debug/_verify_stress_test_d7_d8_d9.py` 0/1 -> 27/27; old
+`_verify_stress_test_replication.py` still passes. Measured on synthetic data: P-test size 7.3% (m=13) and 8.7% (m=50)
+at T=500, nominal 5%, 300 sims (MC s.e. ~1.3 pts) -- mild over-rejection, within the paper's own reported range
+(.028-.081 at T=100); disclose. In-crisis drift over 13 days: Andrews-Kim rejects 92/100, the legacy EG still calls 77/100
+"cointegrated". Tried and corrected (all in the test, not the code): the hand-check series length mismatched T+m; the
+"26 vs 4" D9 world actually had 26 vs 0 (4 calm-only rows sat on crisis-True rows); the legacy-EG bar was >= 80 before
+the first run, which gave 77 -- restated as "> 50 (misses most breaks)" and labelled in the test as changed after the
+run; the D8 synthetic VIX's percentile setter overwrote the calm 1995 stretch (caught on reading, before running).
+Two shell heredoc attempts failed on quoting (nothing written; checked with git diff) -- edits done with Edit.
+Real-data code-path run (29 legacy confirmed pairs from output/results/*/pairs.parquet -- NOT the new pools, not
+citable): controls derived 2006-08-31..09-19 (quake), 1995-03-09..10-04 (GFC, not season-matched), 2006-02-28..05-10
+(COVID); 24/156 pair-windows testable; paired Andrews-Kim n=9, 4 vs 1 discordant over 3 units, p 0.25; extreme
+dislocation 5 vs 0 over 4 units, p 0.125. Expect the GFC comparison to stay small on any pool: its 1995 control needs a
+1,460-row baseline back to ~1989. Degenerate-column audit: only by-design findings (t_required set only when 2y < 10m).
+Found in passing, not fixed here: `research/aligned_pair_loader.load_aligned_pair` loads yfinance first and WRDS as a
+fallback (:180-185) -- the reverse of architecture rule 2 (WRDS priority for daily); 50 files import it. Queued.
