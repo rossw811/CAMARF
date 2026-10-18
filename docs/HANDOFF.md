@@ -1,3 +1,21 @@
+## 2026-10-17: RESUME HERE. CachyOS unreachable; Surface-only work under way.
+**CachyOS:** offline (Tailscale last seen ~2026-10-16; Tailscale ping and LAN SSH 10.0.1.9 both time out). The
+Amendment 4 re-run chain (entry below) was on it; state unknown until someone checks the machine (hang or power loss?).
+On return: read latest_run_rerun_20261012.log, find the last completed stage, restart from there if the chain died.
+**Done 2026-10-16 (pushed):** git history rewritten with filter-repo (every output/ data file removed; 5 GB -> 7.7 MB;
+old->new commit map in docs/history/; backup bundle ../CAMARF_history_backup_20261015.bundle; tag
+snapshot-2026-10-15-pre-cleanup keeps old evidence paths); repo cleanup (docs -> docs/archive|decisions|drafts, five
+runners -> scripts/legacy/); run logs back on GitHub, organized (logs/latest, logs/archive; abc60ff0).
+**Waiting for CachyOS (Ross 2026-10-17: leave for CachyOS):** stash@{0} = log-path codemod (65 files -> logs/latest/),
+commit only after the full suite; PIT-pool default in backtest.py/ml.py (k=2 default, --pool k1, full-sample only via
+--full-sample-descriptive; also fixes the whole-history fallbacks from docs/drafts/pit_audit_draft.csv) -- approved by
+Ross 2026-10-16, not started; full suite; 3x/10x break-rule sensitivity; Surface WRDS cache re-sync.
+**Surface work now, in order:** D5-D13 (docs/decisions/DECISIONS_2026-10-12.md:90-98, approved 10-12) failing-first on
+synthetic data, real runs after the chain; reviewer-queued fixes for arms (b)/(c) (Development.md 2026-10-15 entry);
+verify docs/drafts/parameter_justification_drafts.csv row by row; E3 TRACE design proposal (needs Ross before build).
+**Ross only:** GitHub Support "remove cached data" request for the rewritten history; check CachyOS in person.
+Note: the Surface has 614 GB free (the 10-16 "2.5 GB free" figure is stale); the suite still runs on CachyOS (memory).
+
 ## 2026-10-15 (night): RESUME HERE. Re-run chain under Amendment 4 running on CachyOS.
 **Running (CachyOS, code 27b7d4a7+):** debug/_tmp_chain_rerun_20261012.sh, log latest_run_rerun_20261012.log
 (started 14:17; suite gate 390 tests, 0 unexplained failures; discovery Tier 1 908 confirmed, was 891 before BUG-D118).
