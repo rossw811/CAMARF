@@ -50,6 +50,16 @@ Method, per pair, per crisis window:
      month, closest in time; the GFC length has no same-month window, so its control is not season-matched).
   D9 (R5.7): crisis vs each pair's own control is paired: sign-flip randomization over shared-leg components
      (output/research/stress_test_replication_paired.parquet); replaces the 15-point rule of thumb.
+2026-10-18, after adversarial review of 6226c881 (Ross: y):
+  D7 precondition: ak_breakdown is defined only when the baseline alone passes production EG (no lookahead); else
+     None = "no baseline relationship" (independent random walks: 19/100 flagged before, 2/100 after). Pairs enter
+     D9 only if both the crisis and the calm baselines pass. baseline_spread_ar1 reported per pair.
+  D8 ranking: same month, then closest start day-of-month, then closest in time, ties earlier.
+  Disclosed limits: (i) P-test size is above nominal for some spread persistences (see Development.md 2026-10-18 for
+     the measured table); (ii) the D9 test has a floor p of 2^(1-K) over K discordant units (min_p_achievable), and
+     its result is about these six windows only, not crises in general; (iii) baselines can contain other stress
+     periods (the GFC baseline includes Aug 2007); (iv) the aligned frame drops gap-masked rows (dropna), so a window
+     can span a DATA_GAP as if the rows were adjacent.
 
 Crisis windows (all well short of the confirmed pairs' full daily history
 for most symbols, per the docstring's real-data check above):
@@ -130,6 +140,7 @@ _EXTREME_Z_THRESHOLD = getattr(Config.BACKTEST, "STOP_ZSCORE", 3.5)
 # --- D7 (Ross 2026-10-12, details 2026-10-17/18): Andrews & Kim (2006), "Tests for Cointegration Breakdown Over a
 # Short Time Period", JBES 24(4) 379-394, verified against the author-hosted PDF. Descriptive: beta uses all T+m obs.
 _AK_MAX_M_OVER_T = 0.1   # the paper: "The P test works well for values [of m/T] as high as .1"
+_AK_ALPHA = 0.05         # P-test level; its own constant, not borrowed from EG_SIGNIFICANCE (the screen's level)
 
 
 def baseline_length(n_rows_two_years: int, m: int) -> int:
@@ -158,6 +169,8 @@ def andrews_kim_test(y, x, T: int, m: int) -> dict:
     win = np.lib.stride_tricks.sliding_window_view(np.arange(T), m)[:n_sub]
     resid = yT[win] - (B[:, None, 0] + B[:, None, 1] * XT[win, 1])
     Pj = np.sum(resid ** 2, axis=1)
+    # Eq. 25 prints R_j = P_{T+1}(beta_2(j), A_m); the subsample statistic is evaluated on window j..j+m-1 (as P_j in
+    # eq. 11 and as eq. 26's "replace beta_1:(T+m) by beta_2(j)" implies) -- the T+1 subscript is a typo.
     Rj = np.sum(np.cumsum(resid[:, ::-1], axis=1) ** 2, axis=1)
     return {"P": P, "R": R, "pv_P": float(np.mean(P <= Pj)), "pv_R": float(np.mean(R <= Rj)),
             "n_subsamples": int(n_sub), "m_over_T": m / T, "beta_full": float(b_all[1])}
@@ -172,7 +185,9 @@ def select_calm_window(vix: pd.Series, crisis_start: str, n_days: int, crises,
                        q: float = _CALM_VIX_QUANTILE, period=_CALM_VIX_PERIOD) -> dict:
     """Every VIX day below its `period` q-quantile (descriptive), n_days long, starting in the crisis's month, not
     overlapping any crisis window; the qualifying window whose start is closest to the crisis start (ties: earlier).
-    No same-month window -> any month, season_matched=False. None at all -> ValueError (never relaxed silently)."""
+    No same-month window -> any month, season_matched=False. None at all -> ValueError (never relaxed silently).
+    Ranking (Ross 2026-10-18): same month, then closest start day-of-month, then closest in time, then earlier --
+    "closest in time" alone picked month-end starts (2006-08-31, 2006-02-28), i.e. September/March windows."""
     v = vix.dropna().loc[period[0]:period[1]]
     thr = float(v.quantile(q))
     n = len(v)
@@ -189,7 +204,8 @@ def select_calm_window(vix: pd.Series, crisis_start: str, n_days: int, crises,
         if cand.any():
             pos = np.flatnonzero(cand)
             dist = np.abs((starts[pos] - c0).days)
-            best = pos[np.lexsort((starts[pos].asi8, dist))[0]]
+            day_dist = np.abs(starts[pos].day - c0.day) if season else np.zeros(len(pos), dtype=int)
+            best = pos[np.lexsort((starts[pos].asi8, dist, day_dist))[0]]
             return {"start": starts[best], "end": ends[best], "n_days": int(n_days), "threshold": thr,
                     "season_matched": season}
     raise ValueError(f"no {n_days}-day window with every VIX day below {thr:.2f} in {period}")
@@ -200,7 +216,8 @@ def paired_component_signflip_test(df: pd.DataFrame, n_sim: int = 100_000, rng=N
     """df: one row per (pair, crisis) with bool crisis_outcome / calm_outcome; d = crisis - calm. Null: within each
     connected component of pairs sharing a leg (the D2 unit, over all crises) crisis/calm labels are exchangeable ->
     flip the sign of each component's summed d. Exact when <= exact_max_units components are non-zero. Classical
-    exact McNemar (pairs as independent) reported beside it for reference."""
+    exact McNemar (pairs as independent) reported beside it for reference. min_p_achievable = 2^(1-K) for K non-zero
+    units (the all-same-sign outcome): with K < 6 the test cannot reach 0.05 whatever the data."""
     from scipy import stats
     from crisis_regime_concentration_significance_test import pair_component_labels
     rng = rng or np.random.default_rng(0)
@@ -222,18 +239,19 @@ def paired_component_signflip_test(df: pd.DataFrame, n_sim: int = 100_000, rng=N
     return {"n": int(len(d)), "crisis_rate": float(df["crisis_outcome"].mean()),
             "calm_rate": float(df["calm_outcome"].mean()), "rate_diff": S / len(d),
             "discordant_crisis_only": b, "discordant_calm_only": c, "n_units_discordant": int(len(D)),
-            "p_value": p, "mcnemar_exact_p": mc}
+            "p_value": p, "min_p_achievable": float(2.0 ** (1 - len(D))) if len(D) else 1.0, "mcnemar_exact_p": mc}
 
 
 def build_paired_table(tested: pd.DataFrame, calm_controls: list, outcome: str, crisis=None) -> pd.DataFrame:
     """D9: one row per (pair, crisis) where the pair was TESTED in both the crisis and that crisis's own calm control:
-    symbol_a, symbol_b, crisis, crisis_outcome, calm_outcome. Pairs missing either side are dropped (counted by caller)."""
+    symbol_a, symbol_b, crisis, crisis_outcome, calm_outcome. Pairs missing either side, or with a missing outcome on
+    either side (ak_breakdown is missing when that window's baseline fails the D7 precondition), are dropped."""
     out = []
     for c_name, _, _, for_crisis, _ in calm_controls:
         if crisis is not None and for_crisis != crisis:
             continue
-        cr = tested[tested["crisis"] == for_crisis].set_index(["symbol_a", "symbol_b"])[outcome]
-        ca = tested[tested["crisis"] == c_name].set_index(["symbol_a", "symbol_b"])[outcome]
+        cr = tested[tested["crisis"] == for_crisis].set_index(["symbol_a", "symbol_b"])[outcome].dropna()
+        ca = tested[tested["crisis"] == c_name].set_index(["symbol_a", "symbol_b"])[outcome].dropna()
         both = cr.index.intersection(ca.index)
         out.append(pd.DataFrame({"symbol_a": [k[0] for k in both], "symbol_b": [k[1] for k in both],
                                  "crisis": for_crisis, "crisis_outcome": cr.loc[both].astype(bool).to_numpy(),
@@ -304,6 +322,17 @@ def stress_test_pair(sym_a: str, sym_b: str, crisis_name: str, crisis_start: str
     if spread_std <= 0:
         return {"status": "DEGENERATE_BASELINE"}
 
+    # D7 precondition (Ross 2026-10-18): "breakdown" needs a relationship to break. Production EG on the baseline rows
+    # only (no lookahead); a failing pair is "no baseline relationship" and ak_breakdown is None. Without it 22-24% of
+    # independent random walks were flagged as breakdowns (adversarial review of 6226c881, reproduced).
+    eg_base = _eg_worker((sym_a, sym_b, baseline["a"].values, baseline["b"].values,
+                          Config.ANALYSIS.EG_MAX_LAG, _TF_LABEL))
+    baseline_cointegrated = bool(eg_base.get("ok") and eg_base.get("pvalue", 1.0) < Config.ANALYSIS.EG_SIGNIFICANCE)
+    # Baseline spread persistence: the P test over-rejects for persistent spreads (measured size ~10-11% at rho .97,
+    # m = 13-50), so each pair's rho is reported beside its result.
+    s_dm = (baseline_spread - spread_mean).to_numpy()
+    baseline_spread_ar1 = float(np.dot(s_dm[1:], s_dm[:-1]) / np.dot(s_dm[:-1], s_dm[:-1]))
+
     crisis_spread = crisis["a"] - hedge_ratio * crisis["b"]
     crisis_z = (crisis_spread - spread_mean) / spread_std
     max_abs_z = float(crisis_z.abs().max())
@@ -329,7 +358,11 @@ def stress_test_pair(sym_a: str, sym_b: str, crisis_name: str, crisis_start: str
         ),
         "ak_P": ak["P"], "ak_pv_P": ak["pv_P"], "ak_R": ak["R"], "ak_pv_R": ak["pv_R"],
         "ak_m_over_T": ak["m_over_T"],
-        "ak_breakdown": ak["pv_P"] < Config.ANALYSIS.EG_SIGNIFICANCE,   # descriptive: beta uses the crisis window
+        "eg_pvalue_baseline_only": eg_base.get("pvalue"),
+        "baseline_cointegrated": baseline_cointegrated,
+        "baseline_spread_ar1": baseline_spread_ar1,
+        # descriptive (beta uses the crisis window); None = no baseline relationship, not a breakdown
+        "ak_breakdown": bool(ak["pv_P"] < _AK_ALPHA) if baseline_cointegrated else None,
     }
 
 
@@ -393,7 +426,8 @@ def main():
                     "  %s/%s @ %s: max|z|=%.2f%s, Andrews-Kim P p=%.4f (m/T %.3f)%s; legacy EG p=%.4f",
                     sym_a, sym_b, crisis_name, result["max_abs_z_during_crisis"],
                     " [EXTREME]" if result["extreme_dislocation"] else "",
-                    result["ak_pv_P"], result["ak_m_over_T"], " [BREAKDOWN]" if result["ak_breakdown"] else "",
+                    result["ak_pv_P"], result["ak_m_over_T"], (" [NO BASELINE RELATIONSHIP]" if result["ak_breakdown"] is None
+                     else " [BREAKDOWN]" if result["ak_breakdown"] else ""),
                     result["eg_pvalue_baseline_plus_crisis"],
                 )
             else:
@@ -415,8 +449,9 @@ def main():
             if sub.empty:
                 continue
             log.info(
-                "  [%s] %d pairs tested: %d Andrews-Kim breakdown (P test, 5%%), %d extreme dislocation (|z|>%.1f); "
-                "legacy EG 'holds' %d", crisis_name, len(sub), int(sub["ak_breakdown"].sum()),
+                "  [%s] %d pairs tested, %d cointegrated on their baseline: %d Andrews-Kim breakdown (P test, 5%%), "
+                "%d extreme dislocation (|z|>%.1f); legacy EG 'holds' %d", crisis_name, len(sub),
+                int(sub["baseline_cointegrated"].sum()), int((sub["ak_breakdown"] == True).sum()),  # noqa: E712
                 int(sub["extreme_dislocation"].sum()), _EXTREME_Z_THRESHOLD, int(sub["cointegration_holds"].sum()),
             )
 
@@ -432,10 +467,10 @@ def main():
             r = paired_component_signflip_test(paired, rng=np.random.default_rng(0))
             paired_rows.append({"outcome": outcome, "scope": scope or "all_crises", **r})
             log.info("D9 paired [%s, %s]: n=%d, crisis %.1f%% vs calm %.1f%%, discordant %d/%d over %d units, "
-                     "component sign-flip p=%.4f (classical McNemar p=%.4f, pairs as independent -- reference only)",
+                     "component sign-flip p=%.4f (min achievable %.4f) (classical McNemar p=%.4f, pairs as independent -- reference only)",
                      outcome, scope or "all crises", r["n"], 100 * r["crisis_rate"], 100 * r["calm_rate"],
                      r["discordant_crisis_only"], r["discordant_calm_only"], r["n_units_discordant"],
-                     r["p_value"], r["mcnemar_exact_p"])
+                     r["p_value"], r["min_p_achievable"], r["mcnemar_exact_p"])
     if paired_rows:
         pd.DataFrame(paired_rows).to_parquet(os.path.join(_OUT_DIR, "stress_test_replication_paired.parquet"),
                                              index=False)

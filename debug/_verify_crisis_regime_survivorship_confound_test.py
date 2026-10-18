@@ -11,6 +11,7 @@ import numpy as np
 import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "research"))
 
 from research.crisis_regime_survivorship_confound_test import add_survival_columns
 
@@ -75,6 +76,16 @@ try:
     check("fisher_p present and in (0, 1]", 0 < r3["fisher_p"] <= 1)
     check(f"min expected cell {r3['min_expected']:.2f} < 5 -> small_count flag", r3["small_count"] is True)
     check(f"large world not flagged [{r_cri['min_expected']:.1f}]", r_cri["small_count"] is False)
+
+    print("Check D5-4: Fisher p equals scipy on the hand table; reference row equals the pre-D5 computation")
+    from scipy import stats as _st
+    check(f"Fisher p on [[3,197],[1,199]] [{r3['fisher_p']:.6f}]",
+          np.isclose(r3["fisher_p"], _st.fisher_exact([[3, 197], [1, 199]])[1]))
+    from pit_confirmation_vs_regime_interaction import two_proportion_test
+    trackable = joined[joined["both_trackable"]]
+    old = two_proportion_test(trackable.assign(pit_confirmed=trackable["confirmed"]), "both_survived", True, False)
+    check("all_regimes row reproduces the pre-D5 script's numbers exactly",
+          all(r_all[k] == old[k] or (np.isnan(r_all[k]) and np.isnan(old[k])) for k in old))
 except ImportError as e:
     check(f"D5 functions exist ({e})", False)
 

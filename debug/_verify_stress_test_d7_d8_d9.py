@@ -112,8 +112,10 @@ try:
     vix[idx[-2000:]] = np.where(np.arange(2000) % 2 == 0, 25.0, 9.0)
     crises = [("q", "2007-08-01", "2007-08-14"), ("g", "2008-09-01", "2009-03-31")]
     w = select_calm_window(vix, "2007-08-01", 10, crises)
-    check(f"same month, every day below p30, closest to crisis -> 2006-08 window after the spike [{w['start'].date()}]",
-          w["start"].year == 2006 and w["start"].month == 8 and w["start"] > pd.Timestamp("2006-08-10"))
+    # 2026-10-18 (Ross: y): same month, then closest start day-of-month, then closest in time. 2005-08-01 starts on the
+    # crisis's own day (1st); the 2006 windows must start after the 08-10 spike (day >= 11). Pre-fix rule picked 2006-08-18.
+    check(f"same month, closest start day, every day below p30 -> 2005-08-01 [{w['start'].date()}]",
+          w["start"] == pd.Timestamp("2005-08-01"))
     check("season_matched flag True", w["season_matched"] is True)
     check("window length equals the crisis length", w["n_days"] == 10)
     check("every VIX day in the window below the threshold", bool((vix[w["start"]:w["end"]] < w["threshold"]).all()))
@@ -125,6 +127,14 @@ try:
         check("no qualifying window at all -> raises", False)
     except ValueError:
         check("no qualifying window at all -> raises", True)
+
+    print("Check D8-2: tie rule (equal day and equal time distance -> earlier) and overlap exclusion")
+    vt = pd.Series(20.0, index=idx)
+    for s0 in ("2001-08-15", "2002-08-15", "2003-08-15"):
+        vt[pd.bdate_range(s0, periods=10)] = 11.0
+    wt = select_calm_window(vt, "2002-08-15", 10, [("t", "2002-08-15", "2002-08-28")])
+    check(f"crisis's own window excluded; 2001-08-15 and 2003-08-15 both 365 days away -> earlier [{wt['start'].date()}]",
+          wt["start"] == pd.Timestamp("2001-08-15"))
 
     print("Check D9: paired sign-flip over shared-leg components")
     # 20 pairs sharing leg "HUB" all break in crisis, none in calm: one unit, not 20 -> not significant
@@ -146,6 +156,17 @@ try:
     check(f"26 vs 4 discordant over independent pairs -> p < 0.001 [{r['p_value']:.4g}]", r["p_value"] < 0.001)
     check(f"crisis - calm rate difference reported [{r['rate_diff']:.3f}]", np.isclose(r["rate_diff"], 22 / 60))
 
+    print("Check D9-3: exact enumeration agrees with Monte Carlo; minimum achievable p reported")
+    rng9 = np.random.default_rng(11)
+    sm = pd.DataFrame({"symbol_a": [f"p{i}" for i in range(14)], "symbol_b": [f"q{i}" for i in range(14)],
+                       "crisis_outcome": [True] * 10 + [False] * 4, "calm_outcome": [False] * 8 + [True] * 6})
+    r_ex = paired_component_signflip_test(sm, rng=rng9)
+    r_mc = paired_component_signflip_test(sm, n_sim=200_000, rng=rng9, exact_max_units=0)
+    check(f"exact p {r_ex['p_value']:.4f} ~ MC p {r_mc['p_value']:.4f} (|diff| < 0.005)",
+          abs(r_ex["p_value"] - r_mc["p_value"]) < 0.005)
+    check(f"min achievable p = 2^(1-K) for K = {r_ex['n_units_discordant']} units [{r_ex.get('min_p_achievable')}]",
+          np.isclose(r_ex.get("min_p_achievable", np.nan), 2.0 ** (1 - r_ex["n_units_discordant"])))
+
     print("Check D9-2: build_paired_table pairs each crisis with its own control only")
     from stress_test_replication import build_paired_table
     tested = pd.DataFrame({"symbol_a": ["A", "A", "C", "A"], "symbol_b": ["B", "B", "D", "B"],
@@ -154,6 +175,12 @@ try:
     pt = build_paired_table(tested, controls, "ak_breakdown")
     check(f"only A/B @ q has both sides [{len(pt)} rows]", len(pt) == 1 and pt.iloc[0]["crisis"] == "q"
           and bool(pt.iloc[0]["crisis_outcome"]) and not bool(pt.iloc[0]["calm_outcome"]))
+
+    print("Check D9-4: pairs without a baseline relationship (ak_breakdown missing) leave the paired table")
+    tested_nan = tested.copy()
+    tested_nan["ak_breakdown"] = pd.array([True, None, True, True], dtype="boolean")
+    check(f"A/B @ q dropped when its calm baseline fails the precondition [{len(build_paired_table(tested_nan, controls, 'ak_breakdown'))} rows]",
+          len(build_paired_table(tested_nan, controls, "ak_breakdown")) == 0)
 
     print("Check D7-5: stress_test_pair uses T = max(2y, 10m) and reports the Andrews-Kim fields")
     import stress_test_replication as mod
@@ -171,6 +198,23 @@ try:
     check(f"m=100 needs T=1000 > 600 available -> INSUFFICIENT_HISTORY [{long_.get('status')}, "
           f"t_required={long_.get('t_required')}]", long_["status"] == "INSUFFICIENT_HISTORY"
           and long_.get("t_required") == 1000)
+
+    print("Check D7-6: breakdown defined only when the baseline alone is cointegrated (Ross 2026-10-18)")
+    ok_pair = mod.stress_test_pair("YA", "XB", "t", str(idx[600].date()), str(idx[612].date()))
+    check(f"cointegrated baseline -> baseline_cointegrated True, ak_breakdown a bool [{ok_pair.get('baseline_cointegrated')}]",
+          ok_pair.get("baseline_cointegrated") is True and isinstance(ok_pair.get("ak_breakdown"), bool))
+    check(f"baseline spread AR(1) reported, near the simulated 0.4 [{ok_pair.get('baseline_spread_ar1')}]",
+          abs(ok_pair.get("baseline_spread_ar1", np.nan) - 0.4) < 0.15)
+    n_flag = n_nobase = 0
+    for s in range(100):
+        rr = np.random.default_rng(9000 + s)
+        series = {"YA": np.cumsum(rr.normal(scale=0.01, size=700)), "XB": np.cumsum(rr.normal(scale=0.01, size=700))}
+        res = mod.stress_test_pair("YA", "XB", "t", str(idx[600].date()), str(idx[612].date()))
+        n_nobase += res.get("baseline_cointegrated") is False and res.get("ak_breakdown") is None
+        n_flag += res.get("ak_breakdown") is True
+    check(f"independent random walks: most labelled 'no baseline relationship' [{n_nobase}/100]", n_nobase >= 85)
+    check(f"independent random walks flagged as breakdowns <= 5/100 (was ~22/100 before the precondition) [{n_flag}]",
+          n_flag <= 5)
 except ImportError as e:
     check(f"D7/D8/D9 functions exist ({e})", False)
 

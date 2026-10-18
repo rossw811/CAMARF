@@ -29027,3 +29027,38 @@ dislocation 5 vs 0 over 4 units, p 0.125. Expect the GFC comparison to stay smal
 1,460-row baseline back to ~1989. Degenerate-column audit: only by-design findings (t_required set only when 2y < 10m).
 Found in passing, not fixed here: `research/aligned_pair_loader.load_aligned_pair` loads yfinance first and WRDS as a
 fallback (:180-185) -- the reverse of architecture rule 2 (WRDS priority for daily); 50 files import it. Queued.
+
+### D7/D8/D9 review follow-up (2026-10-18; Ross: y; decisions appended to DECISIONS_2026-10-12.md)
+Adversarial review of 6226c881: D7 math HOLDS, as a "breakdown" outcome QUALIFY/near BREAKS; D8 HOLDS (season quibble);
+D9 QUALIFY; tests QUALIFY. Reproduced its two D7 claims myself before acting. Changes in
+`research/stress_test_replication.py`:
+- **Baseline precondition (Ross: y).** `ak_breakdown` is defined only if the baseline alone passes production EG
+  (`eg_pvalue_baseline_only`, `baseline_cointegrated`); else None = "no baseline relationship". `build_paired_table`
+  drops missing outcomes, so a pair enters D9 only if both its crisis and calm baselines pass. Failing-first (D7-6, run
+  against HEAD's module): 4 FAIL, independent random walks flagged 19/100 -> after 2/100 (94/100 labelled no baseline).
+  Pre-test effect, 300 sims (`size_precond.py`, scratchpad): baseline EG passes ~4% of random walks, 100% at rho .4/.9,
+  42% at rho .97 for T=504 (100% at T=1460); P-test rejection among passers 5.0-11.0%, close to unconditional --
+  the screen mainly removes the random-walk false alarms rather than shifting size.
+- **P-test size, 1000 sims, nominal 5% (MC s.e. ~0.8-1.0 pts):** m=13/T=504: 6.6% / 7.8% / 10.4% at rho .4/.9/.97;
+  m=50/T=504: 7.7% / 8.2% / 10.4%; m=146/T=1460: 6.2% / 6.2% / 7.4%. Over-rejection grows with spread persistence;
+  disclosed, `baseline_spread_ar1` reported per pair. **Correction of my own earlier figure:** I told Ross the reviewer's
+  ~11% at GFC length "did not reproduce" (I had 5.0% at rho .97 on 300 sims, one seed set); a second 300-sim set gave
+  8.7-11.0% and the 1000-sim run gives 6.2-7.4% -- the single 300-sim draws were noise, the reviewer's figure was within
+  it, and the 1000-sim table replaces both.
+- **D8 ranking (Ross: y):** same month, then closest start day-of-month, then closest in time, ties earlier. Real
+  controls now 2005-08-01..08-17 (quake) and 2006-02-21..05-03 (COVID); GFC unchanged (1995-03-09, not season-matched).
+- **Mechanical:** `_AK_ALPHA` own constant; eq. 25 typo comment (R_j printed with subscript T+1); D9 `min_p_achievable`
+  = 2^(1-K); docstring discloses the size, the D9 floor and six-window scope, other stress periods inside baselines
+  (GFC baseline includes Aug 2007), and that dropna lets a window span a DATA_GAP as if adjacent.
+- **Tests:** `_verify_stress_test_d7_d8_d9.py` 27 -> 35 checks (D8 day rule FAIL->PASS; D8-2 tie rule + overlap
+  exclusion, D9-3 exact vs MC agreement -- coverage, passed on old code too; D9-3 min-p and D9-4 NaN-drop FAIL/crash ->
+  PASS; D7-6 above). `_verify_crisis_regime_survivorship_confound_test.py` 8 -> 10 (Fisher p equals scipy on the hand
+  table; all-regime row equals the pre-D5 computation -- coverage, passed on old code). Old
+  `_verify_stress_test_replication.py` still exit 0.
+- **D5 disclosure:** the BUG-D117 map shrank the trackable crisis-first set: 5/1221 vs 4/594 (old map) -> 2/828 vs
+  0/309 (now), 1,815 -> 1,137 pairs (-37%).
+- **Real-data code-path re-run** (29 legacy pairs, not citable): 24/156 testable as before, but only 1/24 pair-windows
+  has a cointegrated baseline -> no paired Andrews-Kim comparison exists on this pool (the legacy pairs were found on
+  2023-2026 1h data; their 1990s-2010s daily baselines mostly are not cointegrated). Extreme dislocation 5 vs 0 over
+  4 units, p 0.125 = its floor (min achievable 0.125). Degenerate-column audit: by-design only (calm_rate 0 is the
+  data; t_required set only when 2y < 10m).

@@ -185,3 +185,15 @@ Open details in the approved D-rows, decided before any code or result:
   crisis, same start month; where several qualify, the one closest in time to the crisis. The GFC length (146 days)
   has no qualifying September start (calmest Sept-start window peaks at 16.47, the 43rd pct), so the GFC control drops
   the season match (qualifying starts only in 1994-1995) -- disclosed.
+
+## Ross's answers (2026-10-18, in chat: "y to all") -- after the adversarial review of 6226c881
+
+- **D7 baseline precondition:** a breakdown is defined only for pairs cointegrated on their own pre-crisis baseline
+  (production EG, `Config.ANALYSIS.EG_SIGNIFICANCE`, baseline rows only -- no lookahead). Others are labelled "no
+  baseline relationship" (`ak_breakdown` missing), not counted as breakdowns. Same rule for the calm control; a pair
+  enters the D9 paired comparison only if both baselines pass. Reason: 22-24% of independent random walks were flagged
+  as "breakdowns" without it (reviewer, reproduced: 0.227/0.237/0.223 at m = 13/50/146, 300 sims). The pre-test's
+  effect on the P test's size is measured in simulation and disclosed.
+- **D8 season match tightened:** among same-month qualifying windows, rank by closeness of the start day-of-month to
+  the crisis start day, then by closeness in time, ties earlier. Reason: "closest in time" picked 2006-08-31 and
+  2006-02-28, effectively September and March windows. VIX-only, changed before any outcome was read.
