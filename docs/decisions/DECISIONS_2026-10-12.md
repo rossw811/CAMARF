@@ -145,3 +145,19 @@ Brainstorm 1–20 are already approved; this is their order plus the new items. 
    paper; E1 placebo-discovery design (and the Kamiak request, B3); E3 bond fetch plan; ask the library (C1–C3).
 3. **After A2:** second pass reported beside the first (+ adversarial review) → D-series re-derivations → A6 third
    pass → E4/E5/E6/E7 studies → A5 grids → papers.
+
+## Ross's answers (2026-10-17, in chat: "Y to all")
+
+Open details in the approved D-rows, decided before any code or result:
+- **D12:** main test = randomization inference over episodes (the D3 method); wild cluster bootstrap (Webb weights)
+  reported beside it as a check. Reported as a CI, not a p-value. Expected caveat: with 93% of the signal in 2 of 12
+  clusters, an inconclusive result is a real result.
+- **D8:** calm rule = VIX (FRED VIXCLS) below its 30th percentile over the full 1990-2025 history, labelled
+  "descriptive" (it selects comparison windows, not trades); matched length/season as written.
+- **Arm (b) reference variance:** the D8 calm rule defines the calm period (one definition of "calm" project-wide);
+  full-sample variance as the sensitivity.
+- **Parameter registry:** draft rows that verify as "unjustified" enter as "unjustified, sensitivity test owed"; no
+  value changes without a separate decision from the sensitivity result.
+- No sign-off needed (stated 2026-10-17): D10 block length by Politis-White automatic selection; D6 code built and
+  tested on the Surface, run on CachyOS; research/-only fixes committed after their own failing-first test and
+  neighbouring tests, full suite on CachyOS.
