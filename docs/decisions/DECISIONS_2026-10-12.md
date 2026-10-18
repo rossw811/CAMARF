@@ -161,3 +161,13 @@ Open details in the approved D-rows, decided before any code or result:
 - No sign-off needed (stated 2026-10-17): D10 block length by Politis-White automatic selection; D6 code built and
   tested on the Surface, run on CachyOS; research/-only fixes committed after their own failing-first test and
   neighbouring tests, full suite on CachyOS.
+
+## Ross's answers (2026-10-17, in chat: "Y to all") -- modifications to D7 and D9
+
+- **D7 (modified):** the crisis-window break test is Andrews & Kim (2006, JBES) cointegration-breakdown tests over a
+  short period (known break date, critical values by subsampling the pre-crisis data), replacing both the Chow-type
+  break test (invalid with I(1) regressors) and the in-crisis ADF (no power on 12-146 days). Citation to be verified
+  against the primary text before building.
+- **D9 (modified):** crisis vs matched calm control is a paired design -> McNemar's test on discordant pairs, with
+  significance by randomization over connected components of pairs sharing a stock (the D2 unit), replacing the
+  two-proportion test with cluster bootstrap (3 vs 3 windows gives a cluster bootstrap nothing to resample).
