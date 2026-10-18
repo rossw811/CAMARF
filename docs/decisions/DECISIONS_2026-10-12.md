@@ -171,3 +171,17 @@ Open details in the approved D-rows, decided before any code or result:
 - **D9 (modified):** crisis vs matched calm control is a paired design -> McNemar's test on discordant pairs, with
   significance by randomization over connected components of pairs sharing a stock (the D2 unit), replacing the
   two-proportion test with cluster bootstrap (3 vs 3 windows gives a cluster bootstrap nothing to resample).
+
+## Ross's answers (2026-10-18, in chat: "y to all") -- D7/D8 details (fixed from VIX only, before any outcome)
+
+- **D7 citation verified** against the author-hosted JBES PDF (dido.econ.yale.edu/~dwka/pub/tests-for-cointegration.pdf;
+  JBES 24(4) 379-394; earlier CFDP 1404, 2003): P = post-break SSR at beta fit on all T+m obs (eq. 8); subsample
+  P_j at the leave-ceil(m/2)-out estimator (eqs. 10-11); pv = (T-m+1)^-1 sum 1(P <= P_j) (eq. 15). P is primary
+  (the paper's recommendation), R reported beside it. "Descriptive" label (beta uses the crisis window by design).
+- **D7 baseline length:** T = max(2 years, 10 x m), keeping m/T <= .1 ("The P test works well for values as high as
+  .1, but less than adequately for ratios of .2 or .25", end of s4). GFC baseline ~5.8 years; pairs without that
+  history excluded and listed; the longer baseline's stability assumption disclosed.
+- **D8:** calm = every day of the window has VIXCLS below its 1990-2025 30th percentile (14.67), same length as the
+  crisis, same start month; where several qualify, the one closest in time to the crisis. The GFC length (146 days)
+  has no qualifying September start (calmest Sept-start window peaks at 16.47, the 43rd pct), so the GFC control drops
+  the season match (qualifying starts only in 1994-1995) -- disclosed.
