@@ -29129,3 +29129,24 @@ conservativeness is real (identical symmetric segment both directions; fresh 1,5
   result is the per-test size on random pairs; the screen's |corr| >= 0.6 candidate population is not measured (at
   corr >= 0.3 the max-p rate was 2.25%, n=222; only 9 of 1,500 random pairs reach 0.6).
 - **Stress test:** the empty-rows early return also left earlier output files standing; now removed with a log line.
+**D11 1D (CachyOS, 2026-10-19, code 7ae0f551; 1D is daily-only so 6c2de4f9's loader change does not affect it):**
+46,352 symbols, 400 null pairs (2,842 draws, 2,442 short of 252 days in the 10-year window), median overlap 1,306:
+production max-p 3.00% (12/400, CI 1.56-5.18) -- not distinguishable from 5%; forward direction alone 7.75%; HEAD
+script 13.25%. Output on CachyOS: output/research/eg_null_calibration_montecarlo.parquet (1D row only; the Surface file
+holds 1h/1M/15m). Log: latest_run_eg_null_1D_20261019.log.
+
+### ML gate served with zero-fill, trained with train-median fill (2026-10-19)
+Found reading backtest.py for the PIT-pool default: ml.py imputes missing features with the train split's median
+(`_chronological_split_impute`, BUG-D75), but the saved payload had no median, so `MLConditioner.predict_prob`
+zero-filled (backtest.py:445) -- train/serve skew on every Layer-2 entry with a missing feature (e.g. Hurst during
+warm-up scored as 0.0). Fix: `ml._build_model_payload` stores `impute_median`; MLConditioner fills with it; a model
+saved before the fix still zero-fills, warned once. `debug/_verify_ml_gate_train_median_fill.py` FAIL (no helper,
+no path argument) -> 4/4; `_verify_ml_gate_fail_closed` 3/3 and `_verify_ml_median_imputation_no_leakage` pass.
+Affects every Layer-2 (ML-gated) backtest from now on; the current output/ml model predates the fix (retrain).
+Tried and corrected: the first test read the spy object, but the conditioner holds an unpickled copy -- test fixed.
+Registry: the four new constants of 10-18 (_AK_ALPHA, _AK_MAX_M_OVER_T, _CALM_VIX_QUANTILE, LOOKBACK_YEARS) were
+unregistered (registry test FAIL on main and on the codemod suite run) -- registered with reasons; the removed
+MIN_OVERLAP row dropped; ceiling 339 -> 338.
+Log-path codemod (Surface stash, 62 py + 3 sh -> logs/latest/): full suite on CachyOS on branch codemod-logpaths
+(92bed743): 394 tests, 2 not passing -- _verify_paper_claims (known, chain-exempt) and _verify_parameter_registry
+(same failure on main, fixed above). Merged.

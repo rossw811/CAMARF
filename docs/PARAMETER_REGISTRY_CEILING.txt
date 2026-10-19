@@ -1,1 +1,1 @@
-339  # 2026-10-12: 337 + 2 previously hidden tuple-assigned values (clean_pool MIN_COMMON, SHARE) revealed by the scanner fix; may only go down
+338  # 2026-10-19: 339 - 1 (eg_null_calibration_montecarlo MIN_OVERLAP removed by D11); may only go down

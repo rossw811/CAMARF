@@ -193,10 +193,10 @@ research/decoupling_backtest.py:_SETTLING_BARS,research/decoupling_backtest.py,4
 research/decoupling_contamination_crosscheck.py:_EARNINGS_MATCH_DAYS,research/decoupling_contamination_crosscheck.py,75,1,unjustified,,,,
 research/decoupling_requalification.py:_SETTLING_BARS,research/decoupling_requalification.py,64,60,unjustified,,,,
 research/diversification_basket_test.py:_RNG_SEED,research/diversification_basket_test.py,44,42,unjustified,,,,
-research/eg_null_calibration_montecarlo.py:ALPHA,research/eg_null_calibration_montecarlo.py,51,0.05,unjustified,,,,
-research/eg_null_calibration_montecarlo.py:MIN_OVERLAP,research/eg_null_calibration_montecarlo.py,52,60,unjustified,,,,
-research/eg_null_calibration_montecarlo.py:N_PAIRS_TARGET,research/eg_null_calibration_montecarlo.py,62,400,unjustified,,,,
-research/eg_null_calibration_montecarlo.py:SEED,research/eg_null_calibration_montecarlo.py,53,20260713,unjustified,,,,
+research/eg_null_calibration_montecarlo.py:ALPHA,research/eg_null_calibration_montecarlo.py,66,0.05,unjustified,,,,
+research/eg_null_calibration_montecarlo.py:LOOKBACK_YEARS,research/eg_null_calibration_montecarlo.py,68,10,definition,"Matches research/full_universe_eg_confirmation.py's --lookback-years default: the null calibrates that screen, so it uses its window.",research/full_universe_eg_confirmation.py --lookback-years; debug/_verify_eg_null_calibration_d11.py,no,0
+research/eg_null_calibration_montecarlo.py:N_PAIRS_TARGET,research/eg_null_calibration_montecarlo.py,76,400,unjustified,,,,
+research/eg_null_calibration_montecarlo.py:SEED,research/eg_null_calibration_montecarlo.py,67,20260713,unjustified,,,,
 research/eigenvalue_weighted_position_sizing.py:_TEST_WINDOW,research/eigenvalue_weighted_position_sizing.py,57,21,unjustified,,,,
 research/eigenvalue_weighted_position_sizing.py:_TRAIN_WINDOW,research/eigenvalue_weighted_position_sizing.py,56,252,unjustified,,,,
 research/episodic_duration_degree_usability.py:_EARLY_FRACTION,research/episodic_duration_degree_usability.py,56,0.7,unjustified,,,,
@@ -229,7 +229,9 @@ research/inclusion_did.py:N_CONTROLS,research/inclusion_did.py,74,3,convention,"
 research/inclusion_did.py:N_MEMBERS,research/inclusion_did.py,74,50,engineering,"Incumbent members sampled per event for the mean correlation; the mean of 50 correlations has small sampling error relative to the effects measured, at bounded compute.",research/inclusion_did.py main,no,0
 research/inclusion_did.py:PRETREND_BINS,research/inclusion_did.py,20,12,definition,"One bin per calendar month of the 12-month pre-inclusion period (was 5 with no reason; changed 2026-10-14). Size verified over 1,200 seeds: 4.5% / 6.7%.",research/inclusion_did.py; 600-seed size runs 2026-10-14,no,1
 research/inclusion_did.py:PRE_BARS,research/inclusion_did.py,73,252,definition,One year of trading days on each side of inclusion (the 12-month pre/post windows of Barberis-Shleifer-Wurgler 2005).,research/inclusion_did.py build_event,no,0
+research/inclusion_did.py:RUNUP_SHORTLIST,research/inclusion_did.py,115,10,engineering,Run-up variant considers the 10 x N_CONTROLS size-nearest candidates so the run-up match stays close in size; sensitivity at other values not yet run (disclosed).,research/inclusion_did.py main; 2026-10-15 independent review,no,0
 research/inclusion_did.py:SIGNFLIP_DRAWS,research/inclusion_did.py,60,5000,engineering,"Sign-flip randomization draws; Monte Carlo error of a p-value near 0.05 is ~0.003 with 5,000 draws.",research/inclusion_did.py signflip_p,no,0
+research/inclusion_did.py:WINDOW_MARGIN_DAYS,research/inclusion_did.py,114,7,engineering,Calendar slack added to the PRE_BARS-in-calendar-days exclusion window so a holiday week cannot let a stock with an S&P 500 spell at the window edge in as a control; only widens the exclusion (conservative).,research/inclusion_did.py main; 2026-10-15 independent review,no,0
 research/international_liquidity_filter.py:_TRAILING_DAYS,research/international_liquidity_filter.py,73,504,unjustified,,,,
 research/intraday_episodic_scan.py:_DEFAULT_TIER3_THRESHOLD,research/intraday_episodic_scan.py,273,0.8,unjustified,,,,
 research/intraday_episodic_window_sensitivity.py:ALPHA,research/intraday_episodic_window_sensitivity.py,74,0.05,unjustified,,,,
@@ -320,7 +322,10 @@ research/strategy_variation_comparison.py:MR_ZSCORE_WINDOW,research/strategy_var
 research/strategy_variation_comparison.py:N_BREAKOUT,research/strategy_variation_comparison.py,122,20,unjustified,,,,
 research/strategy_variation_comparison.py:TRAIL_PCT,research/strategy_variation_comparison.py,123,0.02,unjustified,,,,
 research/strategy_variation_comparison.py:TREND_SMA_WINDOW,research/strategy_variation_comparison.py,127,50,unjustified,,,,
-research/stress_test_replication.py:_BASELINE_YEARS,research/stress_test_replication.py,79,2,unjustified,,,,
+research/stress_test_replication.py:_AK_ALPHA,research/stress_test_replication.py,143,0.05,convention,Andrews-Kim P-test level; the paper reports size at 5% and 5% is the project's level for every test.,Andrews & Kim (2006) JBES 24(4) s5; debug/_verify_stress_test_d7_d8_d9.py D7-2,no,0
+research/stress_test_replication.py:_AK_MAX_M_OVER_T,research/stress_test_replication.py,142,0.1,convention,"Andrews & Kim (2006): 'The P test works well for values [of m/T] as high as .1, but less than adequately for ratios of .2 or .25'; baseline T = max(2y, m/0.1). Ross 2026-10-18.",docs/decisions/DECISIONS_2026-10-12.md (2026-10-18 answers); Andrews & Kim (2006) end of s4,no,0
+research/stress_test_replication.py:_BASELINE_YEARS,research/stress_test_replication.py,100,2,unjustified,,,,
+research/stress_test_replication.py:_CALM_VIX_QUANTILE,research/stress_test_replication.py,180,0.3,preregistered,"D8 calm rule (Ross 2026-10-12): every VIX day below its 1990-2025 30th percentile, fixed from VIX only before any stress-test outcome was read.",docs/decisions/DECISIONS_2026-10-12.md D8; debug/_verify_stress_test_d7_d8_d9.py D8,no,0
 research/structural_break_onset_detection.py:MIN_SEGMENT_BARS,research/structural_break_onset_detection.py,67,200,unjustified,,,,
 research/structural_break_onset_detection.py:_MIN_SEGMENT_CALENDAR_DAYS,research/structural_break_onset_detection.py,72,200.0,unjustified,,,,
 research/tail_dependence.py:_MIN_TAIL_N,research/tail_dependence.py,55,10,unjustified,,,,
@@ -356,5 +361,3 @@ stats.py:_MM_C,stats.py,88,4.685,unjustified,,,,
 stats.py:_NOTIONAL_PER_LEG,stats.py,73,5000.0,unjustified,,,,
 stats.py:_N_PERMS,stats.py,77,1000,unjustified,,,,
 stats.py:_PERM_BLOCK_LEN_DAYS,stats.py,82,5,unjustified,,,,
-research/inclusion_did.py:WINDOW_MARGIN_DAYS,research/inclusion_did.py,114,7,engineering,Calendar slack added to the PRE_BARS-in-calendar-days exclusion window so a holiday week cannot let a stock with an S&P 500 spell at the window edge in as a control; only widens the exclusion (conservative).,research/inclusion_did.py main; 2026-10-15 independent review,no,0
-research/inclusion_did.py:RUNUP_SHORTLIST,research/inclusion_did.py,115,10,engineering,Run-up variant considers the 10 x N_CONTROLS size-nearest candidates so the run-up match stays close in size; sensitivity at other values not yet run (disclosed).,research/inclusion_did.py main; 2026-10-15 independent review,no,0

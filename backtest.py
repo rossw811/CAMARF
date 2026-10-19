@@ -403,8 +403,7 @@ class MLConditioner:
         if enabled:
             self._load()
 
-    def _load(self) -> None:
-        model_path = "output/ml/model_stage1.pkl"
+    def _load(self, model_path: str = "output/ml/model_stage1.pkl") -> None:
         if not os.path.exists(model_path):
             log.warning("MLConditioner: no model at %s — ML gate disabled", model_path)
             self.enabled = False
@@ -415,6 +414,9 @@ class MLConditioner:
                 saved = pickle.load(f)
             self._model = saved.get("model")
             self._features = saved.get("feature_names", [])
+            # Train-split median that ml.py imputed with (BUG-D75 convention); None for a model saved before
+            # 2026-10-19 -> zero-fill, warned once. debug/_verify_ml_gate_train_median_fill.py
+            self._impute_median = saved.get("impute_median")
             _classes = saved.get("classes", [])
             self._converge_indices = [
                 i for i, c in enumerate(_classes)
@@ -442,7 +444,15 @@ class MLConditioner:
                 seen.update(new)
                 log.warning("MLConditioner: model features not provided by the caller (zero-filled): %s", sorted(new))
         try:
-            X = pd.DataFrame([features]).reindex(columns=self._features).fillna(0.0)
+            X = pd.DataFrame([features]).reindex(columns=self._features)
+            _med = getattr(self, "_impute_median", None)
+            if _med:
+                X = X.fillna(pd.Series(_med))   # serve with the train median the model was fit with
+            elif X.isna().any().any() and not getattr(self, "impute_fallback_zero", False):
+                self.impute_fallback_zero = True
+                log.warning("MLConditioner: model has no saved impute_median (saved before 2026-10-19) -- missing "
+                            "features zero-filled, unlike training's train-median fill; retrain with ml.py")
+            X = X.fillna(0.0)
             probs = self._model.predict_proba(X)[0]
             if self._converge_indices:
                 return float(sum(probs[i] for i in self._converge_indices))

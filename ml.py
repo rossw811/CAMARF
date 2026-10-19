@@ -816,6 +816,15 @@ class ConformalPredictor:
         ]
 
 
+def _build_model_payload(model, le, feature_names, train_median) -> dict:
+    """What MLConditioner (backtest.py) loads. impute_median (2026-10-19): the train-split median the model was fit
+    with, so serving fills missing features the same way training did -- it used to zero-fill (train/serve skew).
+    debug/_verify_ml_gate_train_median_fill.py"""
+    med = {k: float(v) for k, v in pd.Series(train_median).items() if pd.notna(v)}
+    return {"model": model, "label_encoder": le, "feature_names": list(feature_names),
+            "classes": list(le.classes_) if le is not None else [], "impute_median": med}
+
+
 def _chronological_split_impute(X_raw, y, train_pct: float, val_pct: float):
     """Chronological train/val/test split by row position (rows already sorted by entry_time) with the NaN-imputation
     median fitted on the TRAIN split only and applied to all three. BUG-D75 (2026-07-20 Grand Sweep): the median used
@@ -853,7 +862,7 @@ def _train_and_validate(result: MLResult, summary: MLRunSummary) -> None:
     le = LabelEncoder()
     y = le.fit_transform(df["label_for_training"])
 
-    X_train, y_train, X_val, y_val, X_test, y_test, _ = _chronological_split_impute(
+    X_train, y_train, X_val, y_val, X_test, y_test, train_median = _chronological_split_impute(
         X_raw, y, Config.ML.TRAIN_PCT, Config.ML.VAL_PCT)
 
     if len(X_train) == 0 or len(X_test) == 0:
@@ -1005,12 +1014,7 @@ def _train_and_validate(result: MLResult, summary: MLRunSummary) -> None:
     # never rename or move it) plus a purely-additive timestamped historical archive alongside
     # it -- see _persist_model_with_history's own docstring for why.
     _model_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "output", "ml")
-    _model_payload = {
-        "model": model,
-        "label_encoder": le,
-        "feature_names": _FEATURE_COLS,
-        "classes": list(le.classes_),
-    }
+    _model_payload = _build_model_payload(model, le, _FEATURE_COLS, train_median)
     _pkl_path, _archive_path = _persist_model_with_history(_model_payload, _model_dir)
     log.info("  Model saved → %s", _pkl_path)
     log.info("  Historical copy archived → %s", _archive_path)
