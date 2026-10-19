@@ -39,10 +39,14 @@ D11 / R6.4 + R6.3 (Ross 2026-10-12; fixed 2026-10-18): the pre-D11 study paired 
 sampled the ~1.5k yfinance cache instead of load_full_universe(), called one-direction coint() on raw arrays (no gap
 masking, not production's both-directions max-p), and used a flat 60-bar floor. Now: load_full_universe (WRDS
 priority, IBKR off), align_to_common_calendar (10-year lookback, as the screen), CointScanner._build_log_price_map
-(DATA_GAP masked), analysis.eg_pvalue_pair, MIN_OVERLAP_BY_TF; each unordered pair drawn at most once. 15m has no
+(the screen's own log-price step; with columns=["close"] there is no gap_flag column, so DATA_GAP masking is a no-op
+in BOTH paths -- gaps are handled by NaN plus _eg_worker's longest_gap_respecting_segment), analysis.eg_pvalue_pair, MIN_OVERLAP_BY_TF; each unordered pair drawn at most once. 15m has no
 full-universe source and stays a labelled yfinance-cache side arm. Not excluded: same-company pairs (twins, share
 classes) beyond load_full_universe's identical-series dedupe -- rare among random draws from ~44.7k; disclosed.
 debug/_verify_eg_null_calibration_d11.py.
+Scope (review of 2ec0c521): this is the per-test size on RANDOM pairs. The screen tests only candidates with
+|corr| >= 0.6 after duplicate/structural filters, then applies BH -- the size on that conditioned population is not
+measured here (at corr >= 0.3 the max-p rate was still 2.25%, n=222; too few random pairs reach 0.6).
 """
 import argparse
 import os
@@ -74,7 +78,7 @@ N_PAIRS_TARGET = 400  # per timeframe
 
 def pair_null_pvalue(aligned: dict, sym_a: str, sym_b: str, tf_label: str, lp_cache: dict) -> dict:
     """Production EG on one null pair: frames on one shared calendar (align_to_common_calendar), log closes with
-    DATA_GAP masked (CointScanner._build_log_price_map), both directions, max p (eg_pvalue_pair), and production's
+    log closes via the screen's CointScanner._build_log_price_map, both directions, max p (eg_pvalue_pair), and production's
     MIN_OVERLAP_BY_TF floor. Row i is the same timestamp for both legs -- pairs are matched by date (D11)."""
     for s in (sym_a, sym_b):
         if s not in lp_cache:

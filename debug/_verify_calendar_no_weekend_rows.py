@@ -45,6 +45,26 @@ def main():
                                   lookback_years=10)
     check("monthly_weekend_month_ends_kept", len(mo["M"]) == len(me) and mo["M"]["close"].notna().all(),
           f"{len(mo['M'])}/{len(me)} months kept ({int((me.dayofweek >= 5).sum())} fall on a weekend)")
+    # Review of 2ec0c521: a grid-level median test still drops them when daily and coarse series share one call
+    dly = pd.bdate_range("2016-01-01", "2025-12-31")
+    mix = align_to_common_calendar({"M": pd.DataFrame({"close": np.arange(1.0, len(me) + 1)}, index=me),
+                                    "D": pd.DataFrame({"close": 1.0}, index=dly),
+                                    "BTC": pd.DataFrame({"close": 1.0}, index=pd.date_range("2016-01-01", "2025-12-31"))},
+                                   lookback_years=10)
+    check("mixed_daily_monthly_keeps_every_month", int(mix["M"]["close"].notna().sum()) == len(me),
+          f"{int(mix['M']['close'].notna().sum())}/{len(me)}")
+    wknd_only_crypto = mix["D"].index[(mix["D"].index.dayofweek >= 5)]
+    check("mixed_call_drops_weekend_rows_only_crypto_has", wknd_only_crypto.isin(me).all(),
+          f"{len(wknd_only_crypto)} weekend rows kept, all month-ends")
+    sun = pd.date_range("2016-01-03", periods=260, freq="W-SUN")
+    mon = pd.date_range("2016-01-04", periods=260, freq="W-MON")
+    wk2 = align_to_common_calendar({"S": pd.DataFrame({"close": 1.0}, index=sun),
+                                    "Mo": pd.DataFrame({"close": 1.0}, index=mon)}, lookback_years=10)
+    check("weekly_sunday_bars_kept_beside_monday_bars", int(wk2["S"]["close"].notna().sum()) == len(sun),
+          f"{int(wk2['S']['close'].notna().sum())}/{len(sun)}")
+    qe = pd.date_range("2016-03-31", "2025-12-31", freq="QE")
+    q = align_to_common_calendar({"Q": pd.DataFrame({"close": 1.0}, index=qe)}, lookback_years=10)
+    check("quarterly_weekend_quarter_ends_kept", len(q["Q"]) == len(qe), f"{len(q['Q'])}/{len(qe)}")
     print(); print(f"{len(PASS)}/{len(PASS) + len(FAIL)} checks passed")
     if FAIL:
         print("FAILED:", FAIL); sys.exit(1)

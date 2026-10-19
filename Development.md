@@ -29107,3 +29107,25 @@ against a nanosecond constant, but the index there is not ns-unit, so it still c
 86/120); replaced by a Timedelta comparison. Loader tests (_verify_universe_calendar_align_and_dedup,
 _verify_loader_timezones, _verify_bh_vs_by_full_universe_1d) pass. No 1M/3M/6M/1Y full-universe outputs found on the
 Surface -- check CachyOS's. One heredoc attempt failed on quoting (nothing written, checked).
+
+### Review of 2ec0c521 -> fixes (2026-10-19)
+Adversarial review (resumed after a rate-limit cut): 1h re-derived exactly (7/400 = 1.75%, forward 6.75%); max-p
+conservativeness is real (identical symmetric segment both directions; fresh 1,500-pair draw: forward 6.9%, reverse
+6.1%, max 2.5%; Spearman of the two directions' p 0.34); leg reuse negligible (max 7, median 2). Fixed:
+- **Rule 2 violation in the production screen:** `full_universe_eg_confirmation.py` loaded IBKR unless `--no-ibkr`
+  (reviewer: 84 of 1,581 1h symbols differ with IBKR on); `hedge_blend_test.py` hardcoded `include_ibkr=True`. Now
+  `--include-ibkr` opt-in / False. New guard `debug/_verify_ibkr_off_by_default.py` (scans research/): 3 hits FAIL ->
+  PASS. No chain or script passed `--no-ibkr`, so **every earlier full-universe EG confirmation ran with IBKR on**
+  (1D: WRDS wins collisions, IBKR adds only IBKR-only symbols; 1h: IBKR's deep intraday history for confirmed-pair
+  symbols) -- disclosed; affects results built with that script before today.
+- **Loader weekend rule per series:** the grid-median fix still dropped weekend month-ends in a daily + monthly call
+  (86/120) and every Sunday-dated weekly bar beside Monday-dated ones (0/260). Now a weekend stamp is dropped only if
+  no coarser-than-daily series (own median spacing > 4 days) has a bar on it. `_verify_calendar_no_weekend_rows.py`
+  6/8 -> 8/8 (adds mixed, weekly Sun/Mon, quarterly). Affected TFs were 1M/3M/6M/1Y (28.5-29.5% weekend bars; 7D 0%).
+  Impact check: no 1M/3M/6M/1Y outputs after 2026-09-26 (when the U3 filter was added) on the Surface or CachyOS;
+  near_miss_lag_scan's coarse outputs date from July (pre-U3) and do not call align_to_common_calendar.
+- **D11 wording:** with columns=["close"] no gap_flag column exists, so DATA_GAP flag masking is a no-op in the null
+  AND in the screen; gaps are handled by NaN + longest_gap_respecting_segment. Docstring corrected. Scope stated: the
+  result is the per-test size on random pairs; the screen's |corr| >= 0.6 candidate population is not measured (at
+  corr >= 0.3 the max-p rate was 2.25%, n=222; only 9 of 1,500 random pairs reach 0.6).
+- **Stress test:** the empty-rows early return also left earlier output files standing; now removed with a log line.

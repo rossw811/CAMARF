@@ -77,11 +77,11 @@ def main():
                          "for no result change -- default off, off means unchanged prior "
                          "behavior for any caller that DOES need it, e.g. a future crypto-"
                          "inclusive candidate list)")
-    p.add_argument("--no-ibkr", action="store_true",
-                    help="Skip loading IBKR's ~92-symbol confirmed-pair supplement (added "
-                         "2026-09-10, same RAM-constrained retry rationale as --no-binance -- "
-                         "IBKR's own documented scope is intraday-only, contributes nothing to "
-                         "a 1D run)")
+    p.add_argument("--include-ibkr", action="store_true",
+                    help="Opt in to IBKR's ~92-symbol confirmed-pair supplement -- a labelled side arm only. "
+                         "Off by default (architecture rule 2): it holds only previously confirmed pairs' "
+                         "symbols, so loading it makes data depth depend on earlier results. Was on by "
+                         "default (--no-ibkr) until 2026-10-19; debug/_verify_ibkr_off_by_default.py")
     args = p.parse_args()
 
     # Must match full_universe_correlation_prefilter.py's own naming exactly: that script
@@ -113,7 +113,7 @@ def main():
     t0 = time.time()
     aligned_data = load_full_universe(
         args.tf, columns=["close"],
-        include_binance=not args.no_binance, include_ibkr=not args.no_ibkr,
+        include_binance=not args.no_binance, include_ibkr=args.include_ibkr,
     )
     log.info(f"Loaded {len(aligned_data)} symbols in {time.time()-t0:.1f}s")
 

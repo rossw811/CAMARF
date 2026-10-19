@@ -430,10 +430,15 @@ def align_to_common_calendar(merged: dict, lookback_years: int = 10) -> dict:
     import numpy as np
 
     idx_arrays = []
+    coarse_weekend = []   # weekend stamps of series coarser than daily (period-end bars) -- never dropped
     for sym, df in merged.items():
         if df is None or df.empty:
             continue
-        idx_arrays.append(_to_et_naive(df.index).values)
+        v = _to_et_naive(df.index).values
+        idx_arrays.append(v)
+        if len(v) > 1 and np.median(np.diff(np.sort(v))) > np.timedelta64(4, "D"):
+            w = pd.DatetimeIndex(v)
+            coarse_weekend.append(v[w.dayofweek >= 5])
 
     if not idx_arrays:
         return merged
@@ -446,12 +451,16 @@ def align_to_common_calendar(merged: dict, lookback_years: int = 10) -> dict:
     # weekend rows that are NaN for every equity, and np.diff log returns then made every equity Monday
     # return NaN (~20% of daily returns, incl. all weekend-news moves). Crypto's weekend move folds into
     # Monday's close-to-close return. Intraday grids are unaffected (they are not all-midnight).
-    # Only for a DAILY grid (median spacing <= 4 days): monthly/quarterly/yearly WRDS bars sit on calendar period-ends,
-    # ~2 in 7 of them a Saturday/Sunday, and the all-midnight test alone dropped them (2026-10-18: 86 of 120 months on
-    # the real 1M cache). debug/_verify_calendar_no_weekend_rows.py.
-    _daily = len(canonical_index) > 1 and pd.Series(canonical_index).diff().median() <= pd.Timedelta(days=4)
-    if _daily and (canonical_index.hour == 0).all() and (canonical_index.minute == 0).all():
-        canonical_index = canonical_index[canonical_index.dayofweek < 5]
+    # Only weekend rows that come from DAILY series (own median spacing <= 4 days) are dropped: monthly/quarterly/
+    # yearly WRDS bars sit on calendar period-ends, ~29% of them a Saturday/Sunday (1M 28.5%, 3M 28.6%, 6M 29.1%,
+    # 1Y 29.5%), and the all-midnight test dropped them (2026-10-18: 86 of 120 months on the real 1M cache). Decided
+    # per series, not on the whole grid, so a daily + monthly call or Sunday- beside Monday-dated weekly bars keep
+    # every coarse bar (review of 2ec0c521). debug/_verify_calendar_no_weekend_rows.py.
+    if len(canonical_index) and (canonical_index.hour == 0).all() and (canonical_index.minute == 0).all():
+        keep = canonical_index.dayofweek < 5
+        if coarse_weekend:
+            keep |= canonical_index.isin(pd.DatetimeIndex(np.concatenate(coarse_weekend)))
+        canonical_index = canonical_index[keep]
 
     out = {}
     for sym, df in merged.items():

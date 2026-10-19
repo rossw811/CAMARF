@@ -99,7 +99,7 @@ def main():
     transitions = pd.read_parquet(_TRANSITIONS_PATH)
     not_coint_symbols = latest_state_symbols(transitions)["not_coint"]
     universe = universe_loader.load_full_universe(
-        tf_label="1D", include_yfinance=True, include_wrds=True, include_binance=True, include_ibkr=True,
+        tf_label="1D", include_yfinance=True, include_wrds=True, include_binance=True, include_ibkr=False,  # rule 2: IBKR off (was True until 2026-10-19)
         columns=["close"],
     )
     close_by_symbol = {s: universe[s]["close"] for s in not_coint_symbols

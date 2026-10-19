@@ -438,7 +438,11 @@ def main():
                 log.info("  %s/%s @ %s: %s", sym_a, sym_b, crisis_name, result["status"])
 
     if not rows:
-        log.warning("No pairs produced a result.")
+        # Never leave earlier outputs standing as if current (review of 2ec0c521)
+        for f in ("stress_test_replication.parquet", "stress_test_replication_paired.parquet"):
+            if os.path.exists(os.path.join(_OUT_DIR, f)):
+                os.remove(os.path.join(_OUT_DIR, f))
+        log.warning("No pairs produced a result -- earlier output files removed.")
         return
 
     result_df = pd.DataFrame(rows)
