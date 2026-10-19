@@ -3,7 +3,7 @@
 # outputs to a backup dir), then the grid-phase robustness offsets, then the pre-declared report.
 # stdout goes to separate _stdout files -- never to the scan's own log name (that is how the primary log was lost).
 cd ~/CAMARF || exit 1
-L=latest_run_grid_chain.log
+L=logs/latest/latest_run_grid_chain.log
 S=output/research
 echo "$(date '+%F %T') chain start: $(git log --oneline -1)" >> $L
 echo "$(date '+%F %T') primary (offset 0, exclude) --fresh" >> $L

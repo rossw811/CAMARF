@@ -77,7 +77,7 @@ logging.basicConfig(
 )
 log = logging.getLogger(__name__)
 
-_LOG_PATH = "latest_run_backtest.log"
+_LOG_PATH = "logs/latest/latest_run_backtest.log"
 
 # ---------------------------------------------------------------------------
 # Constants (from Config, overridable by args)

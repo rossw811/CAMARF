@@ -62,7 +62,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s  %(levelname)-8s  %(
 # (stdout only, no file, so nothing was inspectable without terminal access).
 # Fixed same day, mirroring wrds_global_index_universe_fetch.py's own
 # FileHandler convention.
-_LOG_FILE_PATH = "latest_run_international_liquidity_filter.log"
+_LOG_FILE_PATH = "logs/latest/latest_run_international_liquidity_filter.log"
 _fh = logging.FileHandler(_LOG_FILE_PATH, mode="w", encoding="utf-8")
 _fh.setFormatter(logging.Formatter("%(asctime)s  %(levelname)-8s  %(message)s"))
 log.addHandler(_fh)

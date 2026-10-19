@@ -3673,7 +3673,7 @@ class RunSummary:
     """
 
     _LOG_PATH = os.path.join(
-        os.path.dirname(os.path.abspath(__file__)), "latest_run_data.log"
+        os.path.dirname(os.path.abspath(__file__)), "logs/latest/latest_run_data.log"
     )
 
     def __init__(self):

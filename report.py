@@ -1967,7 +1967,7 @@ def main() -> None:
     runtime = (time.time() - t0) / 60
     log.info("Done in %.1f min. Output: %s", runtime, _REPORT_DIR)
     log.info("To compile: cd output/report && pdflatex main.tex && bibtex main && pdflatex main.tex x2")
-    summary.write(os.path.join(_ROOT, "latest_run_report.log"))
+    summary.write(os.path.join(_ROOT, "logs/latest/latest_run_report.log"))
 
 
 if __name__ == "__main__":

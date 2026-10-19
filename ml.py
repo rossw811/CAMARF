@@ -451,7 +451,7 @@ def _tf_dirname(tf_label: str) -> str:
 class MLRunSummary:
     """Same role as macro.py's MacroRunSummary — written to latest_run_ml.log."""
 
-    _LOG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "latest_run_ml.log")
+    _LOG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "logs/latest/latest_run_ml.log")
 
     def __init__(self):
         self.start_time = time.time()

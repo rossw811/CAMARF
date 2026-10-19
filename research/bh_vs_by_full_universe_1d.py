@@ -48,7 +48,7 @@ from universe_loader import load_full_universe, align_to_common_calendar
 _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _CHUNKS_DIR = os.path.join(_ROOT, "output", "research",
                             "full_universe_correlation_prefilter_candidates_10y_chunks")
-_LOG_PATH = os.path.join(_ROOT, "latest_run_bh_vs_by_full_universe_1d.log")
+_LOG_PATH = os.path.join(_ROOT, "logs/latest/latest_run_bh_vs_by_full_universe_1d.log")
 
 SAMPLE_N = 30_000
 SEED = 20260908
