@@ -51,6 +51,8 @@ def _make_series(n=300):
         "z_rolling": z, "half_life_rolling": half_life,
         "squeeze_indicator_a_t": sq_a, "squeeze_indicator_b_t": sq_b,
         "rsi_diff_velocity_t": rsi_diff_velocity,
+        # per-bar hedge columns as every real spread file has (strict PIT needs them at the entry bar, 2026-10-19)
+        "hedge_ratio_ols_t": np.ones(n), "hedge_ratio_kalman_t": np.ones(n),
     }, index=idx)
 
 
