@@ -77,24 +77,30 @@ def engine(strict, ml=None):
 
 
 def main():
-    print("1. pair source")
+    print("1. pair source (one shared resolver, config.resolve_pit_pair_source -- code review of 99bf428f)")
     try:
-        r = bt.resolve_pair_source
-        p, sfx = r(pool="k2", full_sample_descriptive=False, pairs_override=None)
-        check("default_k2_pool", p == Config.DATA.PIT_POOL_PATHS["k2"] and sfx == "", f"{p} {sfx!r}")
-        p, sfx = r(pool="k1", full_sample_descriptive=False, pairs_override=None)
-        check("k1_pool_labelled", p == Config.DATA.PIT_POOL_PATHS["k1"] and sfx == "_pitk1", f"{p} {sfx!r}")
-        p, sfx = r(pool="k2", full_sample_descriptive=True, pairs_override=None)
-        check("descriptive_full_sample", p is None and sfx == "_fullsample_descriptive", f"{p} {sfx!r}")
-        p, sfx = r(pool="k2", full_sample_descriptive=False, pairs_override="x.parquet")
-        check("override_wins", p == "x.parquet" and sfx == "", f"{p} {sfx!r}")
-        try:
-            r(pool="k1", full_sample_descriptive=True, pairs_override=None)
-            check("descriptive_plus_pool_refused", False)
-        except ValueError:
-            check("descriptive_plus_pool_refused", True)
-    except AttributeError as e:
-        check("resolve_pair_source_exists", False, str(e))
+        from config import resolve_pit_pair_source as r
+        s = r()
+        check("default_k2_pool_labelled", s["path"] == Config.DATA.PIT_POOL_PATHS["k2"] and s["label"] == "_pitk2"
+              and s["strict"] and s["canonical_model"], f"{s}")
+        s = r(pool="k1")
+        check("k1_pool_labelled", s["path"] == Config.DATA.PIT_POOL_PATHS["k1"] and s["label"] == "_pitk1", f"{s}")
+        s = r(full_sample_descriptive=True)
+        check("descriptive_full_sample", s["path"] is None and s["label"] == "_fullsample_descriptive"
+              and not s["strict"] and not s["canonical_model"], f"{s}")
+        s = r(pairs_override="x.parquet")
+        check("override_wins_strict", s["path"] == "x.parquet" and s["strict"], f"{s}")
+        for kw, name in ((dict(pool="k1", full_sample_descriptive=True), "descriptive_plus_pool_refused"),
+                         (dict(pairs_override="x.parquet", full_sample_descriptive=True), "descriptive_plus_override_refused"),
+                         (dict(pit_safe=True, pool="k1"), "pit_safe_plus_pool_refused")):
+            try:
+                r(**kw)
+                check(name, False)
+            except ValueError:
+                check(name, True)
+        check("backtest_uses_shared_resolver", bt.resolve_pair_source is r or getattr(bt, "resolve_pit_pair_source", None) is r)
+    except (ImportError, AttributeError, KeyError) as e:
+        check("shared_resolver_exists", False, f"{type(e).__name__}: {e}")
 
     print("2-5. strict engine")
     try:
@@ -119,6 +125,33 @@ def main():
         engine(False, ml=spy2).run(pair(), spread_df(), hedge_method="ols")
         check("descriptive_keeps_scalar_fallback", len(spy2.calls) > 0
               and all(c.get("hurst_exponent") == 0.4 for c in spy2.calls))
+
+        # code review of 99bf428f: the strict skip checked the UNSLICED frame; per-bar hedge finite only in bars the
+        # dropna removes -> the sliced frame has none and the old code traded on a NaN hedge
+        sd = spread_df()
+        sd.iloc[:100, sd.columns.get_loc("z_rolling")] = np.nan
+        h = np.full(len(sd), np.nan)
+        h[:100] = 1.0
+        sd["hedge_ratio_ols_t"], sd["hedge_ratio_kalman_t"] = h, h.copy()
+        t = engine(True).run(pair(), sd, hedge_method="ols")
+        check("strict_skips_when_sliced_frame_has_no_pit_hedge", len(t) == 0, f"{len(t)} trades")
+        # pit_wfa-style callers whose pair-row scalars are train-only (PIT-valid) keep the scalar path
+        kw = dict(cfg=Config.BACKTEST, regime_cond=bt.RegimeConditioner(enabled=False),
+                  ml_cond=bt.MLConditioner(enabled=False), storm_flags={}, mm_hedge_map={})
+        e_valid = bt.BacktestEngine(**kw, scalars_pit_valid=True)
+        check("scalars_pit_valid_keeps_scalar_path",
+              len(e_valid.run(pair(hedge_scalar=-1.0), spread_df(), hedge_method="ols")) == 0
+              and len(e_valid.run(pair(), spread_df(hedge=False), hedge_method="ols")) > 0)
+        # serving features match training (ml.py): signed zscore; squeeze_min / rsi_diff_velocity from per-bar columns
+        sdq = spread_df()
+        sdq["squeeze_indicator_a_t"], sdq["squeeze_indicator_b_t"], sdq["rsi_diff_velocity_t"] = 0.3, 0.7, 0.25
+        spy3 = _SpyML()
+        engine(True, ml=spy3).run(pair(), sdq, hedge_method="ols")
+        zs = [c["zscore"] for c in spy3.calls]
+        check("serving_zscore_signed_like_training", any(v < 0 for v in zs) and any(v > 0 for v in zs),
+              f"{len(zs)} calls, min {min(zs) if zs else None}")
+        check("serving_passes_squeeze_and_rsi", all(c.get("squeeze_min") == 0.3 and c.get("rsi_diff_velocity") == 0.25
+                                                    for c in spy3.calls) and len(spy3.calls) > 0)
     except TypeError as e:
         check("engine_accepts_pit_strict", False, str(e))
 

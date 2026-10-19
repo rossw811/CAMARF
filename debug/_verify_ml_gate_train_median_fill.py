@@ -71,6 +71,14 @@ def main():
           f"a filled with {None if seen is None else seen.loc[0, 'a']}")
     check("supplied_value_kept", seen is not None and seen.loc[0, "b"] == 1.0)
 
+    # code review of 99bf428f: a feature with no train median (all-NaN in the train split) stayed NaN in training;
+    # serving must leave it NaN too, not 0.0 (a different tree branch)
+    p3 = {"model": _Spy(), "feature_names": ["a", "c"], "classes": ["converged", "diverged"], "impute_median": {"a": 5.0}}
+    m3 = _load_payload(p3)
+    m3.predict_prob({"a": np.nan, "c": np.nan})
+    check("no_median_feature_stays_nan", m3._model.seen is not None and np.isnan(m3._model.seen.loc[0, "c"])
+          and m3._model.seen.loc[0, "a"] == 5.0, f"{None if m3._model.seen is None else m3._model.seen.to_dict('records')}")
+
     old = {"model": _Spy(), "feature_names": ["a", "b"], "classes": ["converged", "diverged"]}
     m_old = _load_payload(old)
     m_old.predict_prob({"a": np.nan, "b": 1.0})

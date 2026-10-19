@@ -1155,3 +1155,34 @@ def section_copy(section: type) -> type:
     the same class and setattr on it mutated the global config for the rest of the process (found fixing code-review
     B6). A subclass inherits every value and shadows only what is set on it."""
     return type(f"{section.__name__}Copy", (section,), {})
+
+
+def resolve_pit_pair_source(pool: str = "k2", full_sample_descriptive: bool = False, pairs_override=None,
+                            pit_safe: bool = False) -> dict:
+    """Pair source for backtest.py and ml.py (PIT-pool default, Ross 2026-10-16; one shared resolver after the code
+    review of 99bf428f). Returns {path, strict, label, canonical_model, source}:
+      path            pair file to use; None = the per-TF whole-history pairs.parquet (descriptive only)
+      strict          no whole-history scalar fallbacks (BacktestEngine pit_strict / ml strict)
+      label           output-name suffix: _pitk2 / _pitk1 / _fullsample_descriptive ("" for an explicit override,
+                      which carries its own label)
+      canonical_model ml.py may write the Layer-2 gate model (never for a descriptive run)
+    Refused: --full-sample-descriptive with --pool/--pairs-override/--pit-safe, and --pit-safe with --pool.
+    debug/_verify_backtest_pit_pool_default.py, debug/_verify_ml_pit_pool_default.py"""
+    if full_sample_descriptive and (pool != "k2" or pairs_override or pit_safe):
+        raise ValueError("--full-sample-descriptive uses the whole-history pairs.parquet; it cannot be combined with "
+                         "--pool, --pairs-override or --pit-safe")
+    if pit_safe and pool != "k2":
+        raise ValueError("--pit-safe (episodic adapter) and --pool select different pair sources; pass one")
+    if full_sample_descriptive:
+        return {"path": None, "strict": False, "label": "_fullsample_descriptive", "canonical_model": False,
+                "source": "pairs.parquet (whole-history selection, descriptive)"}
+    if pairs_override:
+        return {"path": pairs_override, "strict": True, "label": "", "canonical_model": True,
+                "source": f"--pairs-override {pairs_override}"}
+    if pit_safe:
+        return {"path": os.path.join(DataConfig.OUTPUT_DIR, "research", "episodic_confirmed_pairs_adapter_output.parquet"),
+                "strict": True, "label": "_pitsafe", "canonical_model": True, "source": "episodic adapter (--pit-safe)"}
+    if pool not in DataConfig.PIT_POOL_PATHS:
+        raise ValueError(f"unknown --pool {pool!r}; choices {sorted(DataConfig.PIT_POOL_PATHS)}")
+    return {"path": DataConfig.PIT_POOL_PATHS[pool], "strict": True, "label": f"_pit{pool}", "canonical_model": True,
+            "source": f"PIT pool {pool}"}

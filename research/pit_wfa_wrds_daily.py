@@ -272,7 +272,8 @@ def backtest_pair_on_test_window(
 
     pair_row = _pair_row(full_pair_result, pair_result, _TF_LABEL)
     engine = BacktestEngine(cfg=Config.BACKTEST, regime_cond=RegimeConditioner(enabled=False),
-                             ml_cond=MLConditioner(enabled=False), legacy_pnl=_LEGACY_PNL)
+                             ml_cond=MLConditioner(enabled=False), legacy_pnl=_LEGACY_PNL,
+                             scalars_pit_valid=True)   # _pair_row -> pit_wfa._pit_pair_row: train-only scalars
     # B2/B3 (Ross 2026-10-03): dollar P&L by default -- applied by the engine itself since 2026-10-07
     trades = engine.run(pair_row, test_slice, hedge_method="ols", holdout_only=False)
     metrics = compute_metrics(trades, _TF_LABEL, sym_a, sym_b, "ols") if trades else {}

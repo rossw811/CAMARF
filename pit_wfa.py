@@ -412,6 +412,7 @@ def backtest_pair_on_test_window(
     engine = BacktestEngine(
         cfg=Config.BACKTEST, regime_cond=RegimeConditioner(enabled=False),
         ml_cond=MLConditioner(enabled=False),
+        scalars_pit_valid=True,   # pair_row scalars are train-only (_pit_pair_row) -- PIT by construction
     )
     trades = engine.run(pair_row, test_slice, hedge_method="ols", holdout_only=False)
     metrics = compute_metrics(trades, _TF_LABEL, sym_a, sym_b, "ols") if trades else {}

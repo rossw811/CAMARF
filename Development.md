@@ -29207,3 +29207,36 @@ ddof=1 as portfolio_math (was numpy ddof=0); log/label say days, not trades. The
 superseded, for its own pinned test. Failing-first: `_verify_pit_wfa_bootstrap_d10.py` 0/1 -> 6/6 (block length AR(.8)
 21.5 vs iid 1.3; 2000/2000 zero-inflated draws kept, 13 all-zero; lag-1 autocorr of draws 0.705). Real run not done:
 it re-screens the 1h universe at two cutoffs (~45-50 min each) -- queued.
+
+### /code-review of 99bf428f -> fixes (2026-10-19)
+Ten findings, all fixed failing-first (backtest PIT test 10 -> 17 checks, ml PIT test 9 -> 11, median-fill 4 -> 5;
+new checks FAILED on 99bf428f -- e.g. 50 trades on a NaN hedge ratio):
+1. `--full-sample-descriptive --pairs-override` ran non-strict with UNLABELLED outputs (overwrote canonical files) ->
+   refused. One shared resolver `config.resolve_pit_pair_source` for backtest.py and ml.py (finding 9: two copies
+   disagreed; `ml.py --pit-safe --pool k1` silently ignored --pool -> refused).
+2. Strict skip checked the unsliced frame; after dropna/holdout slicing a frame with no causal hedge traded on
+   hedge_scalar = NaN -> skipped (and the no-PIT branch `continue`s under strict).
+3. `ml.py --pit-safe` without the adapter file: strict has no pairs.parquet fallback -> now fails loudly.
+4. ML examples ignored the pool's `eligible_from` (the backtest blocks entries before it) -> strict drops examples
+   before it; otherwise the gate learned from entries that exist only because of the later selection.
+5. Strict-by-default NaN'd pit_wfa's train-only (PIT-valid) scalars -> `BacktestEngine(scalars_pit_valid=True)` for
+   pit_wfa.py and research/pit_wfa_wrds_daily.py (both use `_pit_pair_row`); research/pit_wfa_episodic.py builds its
+   row from the train+test result, so strict is correct there -- its results change (it had that lookahead).
+6. Transfer entropy is NaN under strict -> the TE summary is no longer loaded (dead work).
+7./8. Serving skew: squeeze_min and rsi_diff_velocity were never passed by the backtest (always the train median) ->
+   computed per bar exactly as ml.py; a feature with no train median stayed NaN in training but was 0.0 at serving ->
+   left NaN; warning text corrected. Found while fixing (not in the review): serving passed `abs(z)`, training uses the
+   SIGNED z (ml.py `zscore=z_feat`) -> signed.
+10. k2 kept the old unlabelled output names (trades_layer1 etc. from whole-history runs) -> PIT outputs labelled
+   `_pitk2`/`_pitk1`/`_pitsafe`, descriptive `_fullsample_descriptive`; non-holdout sizing fits read
+   `trades_layer1{label}.parquet` of the same source.
+
+### D12 / R6.9: crisis-vs-calm as CIs -- randomization inference (main) + wild cluster bootstrap (check) (2026-10-19)
+`research/crisis_regime_cluster_bootstrap_test.py`: on the D3 clusters (crisis episodes + calm calendar years), MAIN =
+CI by inverting cluster randomization inference (shift crisis clusters by delta, permute the crisis label, keep delta
+with two-sided p > .05), CHECK = wild cluster bootstrap-t (Webb six-point weights, CR1 SE recomputed per draw). No
+p-value; the old "share of draws <= calm rate" column is gone (old resampler kept, superseded, for its pinned test).
+Failing-first `_verify_crisis_regime_cluster_ci_d12.py` 0/1 -> 8/8: no-effect coverage of 0 in 100 heterogeneous
+clustered worlds RI 91/100, wild 94/100; a 0.004 effect over 40+40 clusters -> RI CI [0.00345, 0.00555]; CR1 SE equals
+the pair-level formula. Real run needs D3's crisis_regime_episode_crisis_pairs.parquet (written by
+crisis_regime_episode_clustering_check.py) -- with the regime scripts after the chain.

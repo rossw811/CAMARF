@@ -442,17 +442,21 @@ class MLConditioner:
             new = set(missing) - seen
             if new:
                 seen.update(new)
-                log.warning("MLConditioner: model features not provided by the caller (zero-filled): %s", sorted(new))
+                log.warning("MLConditioner: model features not provided by the caller (train median, else NaN as in "
+                            "training; zero only for a pre-2026-10-19 model): %s", sorted(new))
         try:
             X = pd.DataFrame([features]).reindex(columns=self._features)
             _med = getattr(self, "_impute_median", None)
-            if _med:
-                X = X.fillna(pd.Series(_med))   # serve with the train median the model was fit with
-            elif X.isna().any().any() and not getattr(self, "impute_fallback_zero", False):
-                self.impute_fallback_zero = True
-                log.warning("MLConditioner: model has no saved impute_median (saved before 2026-10-19) -- missing "
-                            "features zero-filled, unlike training's train-median fill; retrain with ml.py")
-            X = X.fillna(0.0)
+            if _med is not None:
+                # serve as trained: train median; a feature with no train median (all-NaN in the train split) stays
+                # NaN, as it did in training (code review of 99bf428f)
+                X = X.fillna(pd.Series(_med))
+            else:
+                if X.isna().any().any() and not getattr(self, "impute_fallback_zero", False):
+                    self.impute_fallback_zero = True
+                    log.warning("MLConditioner: model has no saved impute_median (saved before 2026-10-19) -- missing "
+                                "features zero-filled, unlike training's train-median fill; retrain with ml.py")
+                X = X.fillna(0.0)
             probs = self._model.predict_proba(X)[0]
             if self._converge_indices:
                 return float(sum(probs[i] for i in self._converge_indices))
@@ -491,12 +495,17 @@ class BacktestEngine:
         holdout_date: Optional[pd.Timestamp] = None,
         legacy_pnl: bool = False,
         pit_strict: bool = True,
+        scalars_pit_valid: bool = False,
     ):
         self.cfg = cfg
         # Point-in-time strict mode (Ross 2026-10-16, default): no whole-history scalar ever stands in for a missing
         # per-bar value, and no pair is gated on a whole-history statistic. False only for --full-sample-descriptive
         # runs (outputs labelled). debug/_verify_backtest_pit_pool_default.py
-        self.pit_strict = bool(pit_strict)
+        # scalars_pit_valid: the caller's pair-row scalars are themselves point-in-time (pit_wfa.py's train-only
+        # _pit_pair_row, S4/BUG-D69), so the scalar fallbacks are not lookahead there and stay on (code review of
+        # 99bf428f: strict-by-default had NaN'd them for those callers too).
+        self.scalars_pit_valid = bool(scalars_pit_valid)
+        self.pit_strict = bool(pit_strict) and not self.scalars_pit_valid
         # Dollar P&L at the engine (2026-10-07): run() converts every trade it returns (apply_pnl_basis); 12 callers
         # never applied it and reported the retired spread-unit P&L. legacy_pnl=True keeps spread units, labelled
         # known-wrong. last_pnl_dropped: unpriceable trades dropped by the last run(), by reason.
@@ -872,6 +881,11 @@ class BacktestEngine:
         _pit_col = "hedge_ratio_ols_t" if hedge_method == "ols" else "hedge_ratio_kalman_t"
         _pit_series = df[_pit_col].values if _pit_col in df.columns else None
         _has_pit = _pit_series is not None and np.any(np.isfinite(_pit_series))
+        if self.pit_strict and not _has_pit:
+            # the check on the unsliced frame above can pass while the sliced/dropna'd frame has no causal hedge left
+            # (code review of 99bf428f: the old path then traded on hedge_scalar = NaN)
+            log.debug("SKIP %s/%s@%s: no point-in-time hedge in the evaluated slice (strict PIT)", sym_a, sym_b, tf)
+            return []
 
         # Static pair features for ML gate (constant per pair, avoid recomputing in loop)
         _ml_coint_frac = float(pair_row.get("coint_fraction_rolling", np.nan))
@@ -1068,8 +1082,10 @@ class BacktestEngine:
                     if not np.isfinite(hedge_pit) or (hedge_pit <= 0 and not self.allow_negative_hedge):
                         if self.pit_strict:
                             continue      # warm-up / invalid per-bar hedge: no causal ratio yet -> no entry
-                        hedge_pit = hedge_scalar  # descriptive only: whole-history scalar fallback
+                        hedge_pit = hedge_scalar  # descriptive / PIT-valid scalar fallback
                 else:
+                    if self.pit_strict:
+                        continue
                     hedge_pit = hedge_scalar
 
                 # Layer 2: regime check
@@ -1115,8 +1131,15 @@ class BacktestEngine:
                     continue
 
                 # Layer 2: ML gate — feature names must match ml.py's _FEATURE_COLS exactly
+                # squeeze_min / rsi_diff_velocity as ml.py builds them (per bar; NaN when absent) and the SIGNED
+                # zscore training uses (ml.py zscore=z_feat) -- serving used abs(z) and never passed these two
+                # (code review of 99bf428f + 2026-10-19 check): train/serve skew. debug/_verify_backtest_pit_pool_default.py
+                _sqa = _sq_a_t_arr[i] if _sq_a_t_arr is not None else np.nan
+                _sqb = _sq_b_t_arr[i] if _sq_b_t_arr is not None else np.nan
+                _squeeze_min_at_bar = min(_sqa, _sqb) if (np.isfinite(_sqa) and np.isfinite(_sqb)) else np.nan
+                _rsi_vel_at_bar = _rsi_diff_vel_t_arr[i] if _rsi_diff_vel_t_arr is not None else np.nan
                 ml_features = {
-                    "zscore": abs(z),
+                    "zscore": float(z),
                     "zscore_velocity": float(z_arr[i] - z_arr[max(0, i - 5)]),
                     "half_life_current": hl_at_entry,
                     "hurst_exponent": _hurst_at_bar,
@@ -1124,6 +1147,8 @@ class BacktestEngine:
                     "half_life_trend_slope": _hlslope_at_bar,
                     "mean_reversion_speed": _meanrev_at_bar,
                     "hedge_ratio_drift": hedge_drift_at_bar,
+                    "squeeze_min": _squeeze_min_at_bar,
+                    "rsi_diff_velocity": _rsi_vel_at_bar,
                 }
                 ml_prob = self.ml_cond.predict_prob(ml_features)
                 if self.layer2 and ml_prob < self.cfg.ML_GO_THRESHOLD:
@@ -2352,21 +2377,9 @@ def _pairs_for_tf(tf_dir: str, tf_label: str, _pairs_override_df: Optional[pd.Da
     return pairs
 
 
-def resolve_pair_source(pool: str = "k2", full_sample_descriptive: bool = False,
-                        pairs_override: Optional[str] = None) -> Tuple[Optional[str], str]:
-    """PIT-pool default (Ross 2026-10-16). Returns (path of the pair file to backtest or None for the per-TF
-    pairs.parquet, output-label suffix). --pairs-override (an explicit file) wins; otherwise the point-in-time pool
-    (k2 default, k1 labelled _pitk1); --full-sample-descriptive selects the whole-history pairs.parquet, labelled
-    _fullsample_descriptive, never a decision result. debug/_verify_backtest_pit_pool_default.py"""
-    if full_sample_descriptive and pool != "k2":
-        raise ValueError("--full-sample-descriptive uses pairs.parquet; it cannot be combined with --pool")
-    if pairs_override:
-        return pairs_override, ""
-    if full_sample_descriptive:
-        return None, "_fullsample_descriptive"
-    if pool not in Config.DATA.PIT_POOL_PATHS:
-        raise ValueError(f"unknown --pool {pool!r}; choices {sorted(Config.DATA.PIT_POOL_PATHS)}")
-    return Config.DATA.PIT_POOL_PATHS[pool], ("" if pool == "k2" else f"_pit{pool}")
+# PIT-pool default: one resolver shared with ml.py (config.resolve_pit_pair_source; code review of 99bf428f)
+from config import resolve_pit_pair_source  # noqa: E402
+resolve_pair_source = resolve_pit_pair_source
 
 
 def common_holdout_date(args, _pairs_override_df: Optional[pd.DataFrame], holdout_pct: float) -> Dict[str, pd.Timestamp]:
@@ -2788,7 +2801,9 @@ def main() -> None:
     args = p.parse_args()
 
     _pairs_override_df: Optional[pd.DataFrame] = None
-    _pair_src, _pool_label_sfx = resolve_pair_source(args.pool, args.full_sample_descriptive, args.pairs_override)
+    _src = resolve_pair_source(pool=args.pool, full_sample_descriptive=args.full_sample_descriptive,
+                               pairs_override=args.pairs_override)
+    _pair_src, _pool_label_sfx = _src["path"], _src["label"]
     if args.full_sample_descriptive:
         log.warning("--full-sample-descriptive: pairs selected on their whole history, whole-history scalar fallbacks "
                     "on -- DESCRIPTIVE ONLY, outputs labelled _fullsample_descriptive")
@@ -2839,7 +2854,9 @@ def main() -> None:
     # it needs before engine construction.
     hedge_methods = [args.hedge]
     label = "layer2" if layer2 else "layer1"
-    label += _pool_label_sfx    # PIT pool default: k2 unlabelled, k1 "_pitk1", whole history "_fullsample_descriptive"
+    label += _pool_label_sfx    # _pitk2 / _pitk1 / _fullsample_descriptive: never the old unlabelled name (review)
+    # IS-trades file the non-holdout sizing fits read: the layer-1 run of the SAME pair source
+    _is_trades_path = f"output/backtest/trades_layer1{_pool_label_sfx}.parquet"
     if args.hedge == "kalman":
         label += "_kalman"          # B4: own arm, never written over (or pooled with) the OLS results
     if args.legacy_pnl:
@@ -2955,7 +2972,7 @@ def main() -> None:
             storm_flags={}, mm_hedge_map={}, adv_shares_map={}, earnings_cal=None,
             pit_confidence_weights={}, holdout_date=_holdout_date,
             legacy_pnl=getattr(args, "legacy_pnl", False),
-            pit_strict=not args.full_sample_descriptive,
+            pit_strict=_src["strict"],
         )
         _is_only_trades, _ = _run_all_pairs(
             _fitting_engine, hedge_methods, args, _pairs_override_df, _survivorship,
@@ -2979,12 +2996,12 @@ def main() -> None:
         pnl_cap_by_pair = compute_pnl_cap_thresholds(trades_df=_is_only_df) if args.pnl_cap else {}
     else:
         risk_parity_weights = (
-            compute_hrp_weights() if args.hrp_weight
-            else compute_risk_parity_weights() if args.risk_parity
-            else compute_var_sizing_weights() if args.var_sizing
+            compute_hrp_weights(is_trades_path=_is_trades_path) if args.hrp_weight
+            else compute_risk_parity_weights(is_trades_path=_is_trades_path) if args.risk_parity
+            else compute_var_sizing_weights(is_trades_path=_is_trades_path) if args.var_sizing
             else _resolve_regime_age_decay_rate_weights(args)
         )
-        pnl_cap_by_pair = compute_pnl_cap_thresholds() if args.pnl_cap else {}
+        pnl_cap_by_pair = compute_pnl_cap_thresholds(is_trades_path=_is_trades_path) if args.pnl_cap else {}
 
     # STORM flags
     _storm_all = getattr(args, "storm_all", False)
@@ -3100,7 +3117,7 @@ def main() -> None:
         earnings_cal=earnings_cal,
         pit_confidence_weights=pit_confidence_weights, holdout_date=_holdout_date,
         legacy_pnl=getattr(args, "legacy_pnl", False),
-        pit_strict=not args.full_sample_descriptive,
+        pit_strict=_src["strict"],
     )
 
     # Run over confirmed pairs

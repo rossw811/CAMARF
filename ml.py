@@ -267,6 +267,10 @@ def _build_examples_for_pair(
     entries = _find_entry_events(series["z_rolling"], entry_threshold, clean_mask)
 
     half_life_fallback = np.nan if strict else pair_row.get("half_life_rolling", np.nan)
+    # Strict: no labelled example before the pair's eligible_from (the date its PIT selection allows trading; the
+    # backtest blocks entries before it) -- else the Layer-2 model learns from entries whose existence depends on the
+    # later selection (code review of 99bf428f).
+    _elig = pd.to_datetime(pair_row.get("eligible_from", pd.NaT)) if strict else pd.NaT
     # Point-in-time hedge_ratio_ols_t/kalman_t series (added to spread_series by
     # analysis.py after the same lookahead-bias fix backtest.py already uses,
     # see backtest.py:535-540) -- NOT the static full-sample scalar
@@ -308,6 +312,8 @@ def _build_examples_for_pair(
     n_no_half_life = 0
     n_future_not_clean = 0
     for t in entries:
+        if pd.notna(_elig) and pd.Timestamp(t) < _elig:
+            continue
         pos = series.index.get_loc(t)
         feat_pos = max(0, pos - feature_lag)  # == pos when feature_lag=0 (all real callers)
         z_entry = float(series["z_rolling"].iloc[pos])  # true entry z -- drives the label, never staled
@@ -529,21 +535,7 @@ class MLRunSummary:
 # =============================================================================
 
 
-def resolve_pair_source(pool: str = "k2", full_sample_descriptive: bool = False, pit_safe: bool = False) -> dict:
-    """PIT-pool default (Ross 2026-10-16). path: pair file (None = per-TF pairs.parquet); strict: no whole-history
-    fallbacks; canonical_model: may write output/ml/model_stage1.pkl, the backtest's Layer-2 gate -- a descriptive
-    model never may. debug/_verify_ml_pit_pool_default.py"""
-    if full_sample_descriptive and (pit_safe or pool != "k2"):
-        raise ValueError("--full-sample-descriptive uses pairs.parquet; it cannot be combined with --pool/--pit-safe")
-    if full_sample_descriptive:
-        return {"path": None, "strict": False, "canonical_model": False, "source": "pairs.parquet (descriptive)"}
-    if pit_safe:
-        return {"path": os.path.join(_RESEARCH_DIR, "episodic_confirmed_pairs_adapter_output.parquet"),
-                "strict": True, "canonical_model": True, "source": "episodic adapter (--pit-safe)"}
-    if pool not in Config.DATA.PIT_POOL_PATHS:
-        raise ValueError(f"unknown --pool {pool!r}; choices {sorted(Config.DATA.PIT_POOL_PATHS)}")
-    return {"path": Config.DATA.PIT_POOL_PATHS[pool], "strict": True, "canonical_model": True,
-            "source": f"PIT pool {pool}"}
+from config import resolve_pit_pair_source as resolve_pair_source  # noqa: E402  one resolver (config.py)
 
 
 def model_dir_for(pair_source: Optional[Dict[str, Any]]) -> str:
@@ -574,7 +566,7 @@ def build(min_class_samples: Optional[int] = None, pit_safe: bool = False, pool:
     """
     summary = MLRunSummary()
     _adapter_df = None
-    src = resolve_pair_source(pool, full_sample_descriptive, pit_safe)
+    src = resolve_pair_source(pool=pool, full_sample_descriptive=full_sample_descriptive, pit_safe=pit_safe)
     log.info("ML pair source: %s (strict PIT %s)", src["source"], src["strict"])
     if not pit_safe and src["path"] is not None:
         if not os.path.exists(src["path"]):
@@ -604,6 +596,9 @@ def build(min_class_samples: Optional[int] = None, pit_safe: bool = False, pool:
         # None` disk-read path below already finds them with NO further
         # change needed there.
         _adapter_path = os.path.join(_RESEARCH_DIR, "episodic_confirmed_pairs_adapter_output.parquet")
+        if not os.path.exists(_adapter_path) and src["strict"]:
+            raise FileNotFoundError(f"{_adapter_path} not found -- --pit-safe needs the episodic adapter output (strict "
+                                    f"PIT has no pairs.parquet rows to fall back on); run research/episodic_pairs_adapter.py")
         if os.path.exists(_adapter_path):
             _adapter_df = pd.read_parquet(_adapter_path)
             pairs = list(zip(_adapter_df["symbol_a"], _adapter_df["symbol_b"], _adapter_df["tf_label"]))
@@ -630,8 +625,9 @@ def build(min_class_samples: Optional[int] = None, pit_safe: bool = False, pool:
     # two features, same as any other missing-feature case already handled
     # below via pair_row.get(..., np.nan).
     _te_summary_path = os.path.join(_RESEARCH_DIR, "transfer_entropy_pair_summary.parquet")
+    # Strict: transfer entropy is a whole-history pair statistic, NaN by rule -- not loaded (code review of 99bf428f)
     _te_summary_df = (pd.read_parquet(_te_summary_path)
-                       if os.path.exists(_te_summary_path) else pd.DataFrame())
+                       if os.path.exists(_te_summary_path) and not src["strict"] else pd.DataFrame())
 
     all_events: List[EntryEvent] = []
     pairs_used: List[Tuple[str, str, str]] = []

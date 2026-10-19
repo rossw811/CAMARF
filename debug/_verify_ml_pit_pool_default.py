@@ -73,9 +73,20 @@ def main():
         check("build_examples_accepts_strict", False, str(e))
 
     try:
+        row_late = ROW.copy()
+        row_late["eligible_from"] = pd.Timestamp("2024-01-10")    # after the only entry (2024-01-05 04:00)
+        ev_s = ml._build_examples_for_pair("A", "B", "1h", row_late, ml.MLRunSummary(), series=series(), strict=True)
+        ev_d = ml._build_examples_for_pair("A", "B", "1h", row_late, ml.MLRunSummary(), series=series(), strict=False)
+        check("strict_no_example_before_eligible_from", len(ev_s) == 0 and len(ev_d) == 1,
+              f"strict {len(ev_s)}, descriptive {len(ev_d)}")
+    except TypeError as e:
+        check("eligible_from_supported", False, str(e))
+    try:
         s = ml.resolve_pair_source(pool="k2", full_sample_descriptive=False, pit_safe=False)
         check("default_k2_pool", s["path"] == Config.DATA.PIT_POOL_PATHS["k2"] and s["strict"] and s["canonical_model"],
               f"{s}")
+        from config import resolve_pit_pair_source
+        check("ml_uses_shared_resolver", ml.resolve_pair_source(pool="k1") == resolve_pit_pair_source(pool="k1"))
         s = ml.resolve_pair_source(pool="k1", full_sample_descriptive=False, pit_safe=False)
         check("k1_pool", s["path"] == Config.DATA.PIT_POOL_PATHS["k1"] and s["strict"], f"{s}")
         s = ml.resolve_pair_source(pool="k2", full_sample_descriptive=True, pit_safe=False)
