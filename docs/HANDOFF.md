@@ -1,3 +1,13 @@
+## 2026-10-19: RESUME HERE. Chain restarted on CachyOS; PIT-pool default being built on the Surface.
+**CachyOS (back 2026-10-19 07:44 after the 10-16 10:50 hang):** chain restarted 08:24 at code 9411d97d
+(debug/_tmp_chain_rerun_20261012.sh, log latest_run_rerun_20261012.log -- discovery had never finished). Synced to
+origin/main; its old pre-rewrite history kept LOCALLY ONLY as branch pre-rewrite-backup-20261019 (holds the purged
+data -- never push it); its 10-12 dirty logs in stash "cachy-dirty-logs-20261019"; an unrelated 2026-09-09 WIP stash
+(170 files, base 2026-08-20) is untouched -- for Ross to keep or drop. D11 1D null done there (Development.md).
+**Done 10-19:** codemod suite + merge (9411d97d); ML-gate median fix (3db5f052); review-of-2ec0c521 fixes (6c2de4f9:
+IBKR opt-in in full_universe_eg_confirmation -- earlier full-universe EG confirmations ran WITH IBKR, disclosed).
+**In progress (Surface):** PIT-pool default in backtest.py/ml.py (approved 10-16) + whole-history fallbacks removal.
+
 ## 2026-10-17: RESUME HERE. CachyOS unreachable; Surface-only work under way.
 **CachyOS:** offline (Tailscale last seen ~2026-10-16; Tailscale ping and LAN SSH 10.0.1.9 both time out). The
 Amendment 4 re-run chain (entry below) was on it; state unknown until someone checks the machine (hang or power loss?).
