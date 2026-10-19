@@ -1,12 +1,18 @@
 ## 2026-10-19: RESUME HERE. Chain restarted on CachyOS; PIT-pool default being built on the Surface.
 **CachyOS (back 2026-10-19 07:44 after the 10-16 10:50 hang):** chain restarted 08:24 at code 9411d97d
-(debug/_tmp_chain_rerun_20261012.sh, log latest_run_rerun_20261012.log -- discovery had never finished). Synced to
+(debug/_tmp_chain_rerun_20261012.sh, log logs/latest/latest_run_rerun_20261012.log -- the codemod moved it;
+discovery had never finished; suite gate 08:35 395 tests 0 unexplained; discovery started 08:35). DO NOT pull on
+CachyOS until the chain finishes -- each stage imports the working tree. Synced to
 origin/main; its old pre-rewrite history kept LOCALLY ONLY as branch pre-rewrite-backup-20261019 (holds the purged
 data -- never push it); its 10-12 dirty logs in stash "cachy-dirty-logs-20261019"; an unrelated 2026-09-09 WIP stash
 (170 files, base 2026-08-20) is untouched -- for Ross to keep or drop. D11 1D null done there (Development.md).
 **Done 10-19:** codemod suite + merge (9411d97d); ML-gate median fix (3db5f052); review-of-2ec0c521 fixes (6c2de4f9:
 IBKR opt-in in full_universe_eg_confirmation -- earlier full-universe EG confirmations ran WITH IBKR, disclosed).
-**In progress (Surface):** PIT-pool default in backtest.py/ml.py (approved 10-16) + whole-history fallbacks removal.
+**Done 10-19 (Surface, 99bf428f):** PIT-pool default in backtest.py/ml.py + whole-history fallbacks removed (strict
+by default for all 13 engine callers); D13 (5-year EG power 3-18% at the full-sample effect -- §4.2 reading not
+supported; paper-bound, needs review + Ross); D10 (stationary block bootstrap; real run queued, ~1.5 h of 1h screens).
+**Pending:** /code-review of 99bf428f (running), then adversarial review of PIT-pool + D13 + D10; D12, D6, arm (b)/(c);
+when the chain finishes: pull on CachyOS, re-run arm (a), regime scripts, D10 real run, `--tf 1M/3M` coarse checks.
 
 ## 2026-10-17: RESUME HERE. CachyOS unreachable; Surface-only work under way.
 **CachyOS:** offline (Tailscale last seen ~2026-10-16; Tailscale ping and LAN SSH 10.0.1.9 both time out). The
