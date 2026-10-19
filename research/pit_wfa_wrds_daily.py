@@ -236,7 +236,9 @@ def backtest_pair_on_test_window(
         return [], {}
     aligned = {sym_a: aligned[sym_a].loc[common_idx], sym_b: aligned[sym_b].loc[common_idx]}
 
-    built = AnalysisPipeline._build_pair_result({"symbol_a": sym_a, "symbol_b": sym_b}, aligned, _TF_LABEL)
+    # PIT (Ross 2026-10-19): window lengths from the formation bars only (debug/_verify_spread_prefix_invariance.py): the train window
+    built = AnalysisPipeline._build_pair_result({"symbol_a": sym_a, "symbol_b": sym_b,
+                                                 "eligible_from": test_start - pd.Timedelta(1, "ns")}, aligned, _TF_LABEL)
     if built is None:
         return [], {}
     full_pair_result, per_bar = built

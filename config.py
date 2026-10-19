@@ -550,7 +550,8 @@ class AnalysisConfig:
     # rolling OLS hedge has no value the spread uses the FULL-SAMPLE hedge ratio (and 1.0 if that is missing) --
     # lookahead. Arm = "causal_expanding": OLS on real rows up to each bar only (minimum = half the rolling window, the
     # rolling window's own requirement); no spread before that. debug/_verify_a2_causal_hedge_arm.py
-    HEDGE_FALLBACK = "full_sample"
+    HEDGE_FALLBACK = "causal_expanding"   # Ross 2026-10-19 (was "full_sample": warm-up bars used the full-sample
+                                          # OLS hedge -- later data changed earlier spread bars). PIT rule.
     # Same arm: for daily-or-coarser data, a run of > data._MAX_FILL_BARS missing bars breaks the segment used by
     # level-based tests (longest_gap_respecting_segment), as DATA_GAP does everywhere else. Current: never a break.
     DAILY_GAP_BREAKS = False

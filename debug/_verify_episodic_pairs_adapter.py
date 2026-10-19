@@ -172,6 +172,12 @@ def main():
         if row_full is not None:
             for field in adapter.REQUIRED_FIELDS:
                 val = row_full.get(field)
+                if field == "mean_reversion_speed":
+                    # 2026-10-19: with the causal hedge (now default) this fixture's full-range spread has AR(1) phi
+                    # 1.0003 -> no half-life -> NaN is the correct value; the old full-sample hedge gave phi 0.9993
+                    # (half-life ~1,019 bars), finite only through the hedge lookahead. Present is required.
+                    results.append(check(f"field '{field}' present (NaN allowed: no mean reversion)", field in row_full))
+                    continue
                 results.append(check(f"field '{field}' present and finite", val is not None and np.isfinite(val)))
 
         print("\n=== 3. spread_series file written with the schema _load_spread expects ===")

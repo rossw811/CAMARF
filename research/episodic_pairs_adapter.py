@@ -276,8 +276,9 @@ def build_one_row(sym_a: str, sym_b: str, tf_label: str, as_of_date, source: str
     full_aligned = _load_aligned(sym_a, sym_b, tf_label, as_of_date=None, preloaded=preloaded)
     if full_aligned is None:
         return None
+    # PIT (Ross 2026-10-19): window lengths from the formation bars only (debug/_verify_spread_prefix_invariance.py): the PIT confirmation date
     full_built = AnalysisPipeline._build_pair_result(
-        {"symbol_a": sym_a, "symbol_b": sym_b}, full_aligned, tf_label
+        {"symbol_a": sym_a, "symbol_b": sym_b, "eligible_from": as_of_date}, full_aligned, tf_label
     )
     if full_built is None:
         return None

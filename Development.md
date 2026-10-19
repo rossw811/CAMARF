@@ -29306,3 +29306,28 @@ failed", not "uninformative"; the other pairs carry no full-sample effect to los
 excludes 0 [+0.030%, +0.178%] while the wild CI includes it [-0.256%, +0.456%]; under an era-matched null RI covers 0
 in 31% of 200 worlds (wild 100%) -- cluster exchangeability fails. The debug test's world (similar calm clusters)
 cannot show this. Not to be run or cited until redesigned.
+
+### Upstream PIT spread construction fixed (2026-10-19; Ross decision 1, "y")
+The adversarial review of a51f926c found per-bar series not point-in-time where they are built. New property test
+`debug/_verify_spread_prefix_invariance.py`: two pairs identical up to a date with different futures must get
+identical per-bar values up to that date. On the old code 3/12 -- changing only the FUTURE moved the first 1,500
+bars' spread by up to 1.18, z_rolling by up to 20.5, half_life_rolling_series by 460, and the half-life slope,
+mean-reversion speed and Hurst series. Three leaks: (1) `HEDGE_FALLBACK = "full_sample"` (warm-up spread bars used
+the full-sample OLS hedge); (2) SpreadModel.fit_pair set the z / rolling half-life window from the whole-history
+half-life; (3) _build_pair_result sized the hedge window from the whole series length (`log_a.size // 4`).
+Fix: config `HEDGE_FALLBACK = "causal_expanding"` (existing option, A2 arm); `_build_pair_result` takes the pair's
+formation end from `pd_meta["eligible_from"]` and sizes every window from the formation bars only (`fit_pair(...,
+formation_n=)`); without a formation end the path is the labelled whole-history (descriptive) one. Callers given a
+formation end: research/regenerate_pool_spread_series.py (pool eligible_from; refuses a pool file without it),
+pit_wfa.py, research/pit_wfa_wrds_daily.py and research/pit_wfa_episodic.py (bars before the test window),
+research/episodic_pairs_adapter.py (its as_of_date). 13/13 after (incl. a longer-future case and the rebuild passing
+eligible_from). Tried and corrected (test): one generator for prices and noise made a longer series change the prefix
+draws; a check asserting the descriptive path still leaks was removed (with the causal hedge default and the window
+cap it need not). Production analysis.py screen (5508) stays on the descriptive path (no formation end) -- labelled.
+Chain: a watcher on CachyOS stops the re-run chain when pool_spreads starts; resume from pool_spreads on this code.
+Full Surface suite on the fix: 401 tests, 4 not passing -- `_verify_paper_magnitude_claims` (deliberate, D5),
+`_verify_manifest_lock` (race test, ERROR in the full run, passes alone -- known flaky), `_verify_a2_causal_hedge_arm`
+(pinned the old default; updated to the new one), `_verify_episodic_pairs_adapter` (asserted a finite
+mean_reversion_speed on a fixture whose full-range spread has AR(1) phi 1.0003 under the causal hedge -> NaN is
+correct; the old full-sample hedge gave phi 0.9993, half-life ~1,019 bars, finite only through the hedge lookahead --
+NaN now allowed for that field, presence still required).

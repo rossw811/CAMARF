@@ -41,14 +41,15 @@ def _spread_path(a, b, tf):
 
 def _one(task):
     from analysis import AnalysisPipeline
-    a, b, tf = task
+    a, b, tf, ef = task
     dst = _spread_path(a, b, tf)
     bak = os.path.join(_BACKUP, ad._tf_dir(tf), os.path.basename(dst))
     try:
         al = ad._load_aligned(a, b, tf, as_of_date=None, preloaded=_PRE.get(tf))
         if al is None:
             raise RuntimeError("insufficient data / alignment failed")
-        built = AnalysisPipeline._build_pair_result({"symbol_a": a, "symbol_b": b}, al, tf)
+        # PIT (Ross 2026-10-19): window lengths from the formation bars only (debug/_verify_spread_prefix_invariance.py)
+        built = AnalysisPipeline._build_pair_result({"symbol_a": a, "symbol_b": b, "eligible_from": ef}, al, tf)
         if built is None:
             raise RuntimeError("_build_pair_result returned None")
         ad.write_spread_series(a, b, tf, built[1])
@@ -67,8 +68,10 @@ def main():
     ap.add_argument("--workers", type=int, default=Config.RUNTIME.N_WORKERS)   # derived (T11 2026-10-04), was 8
     args = ap.parse_args()
     P = pd.read_parquet(args.pairs)
-    tasks = list(zip(P["symbol_a"], P["symbol_b"], P["tf_label"]))
-    for a, b, tf in tasks:
+    if "eligible_from" not in P.columns:
+        raise ValueError(f"{args.pairs} has no eligible_from -- PIT pool spreads need each pair's formation end")
+    tasks = list(zip(P["symbol_a"], P["symbol_b"], P["tf_label"], pd.to_datetime(P["eligible_from"])))
+    for a, b, tf, _ef in tasks:
         src = _spread_path(a, b, tf)
         if os.path.exists(src):
             dst = os.path.join(_BACKUP, ad._tf_dir(tf), os.path.basename(src))
@@ -90,7 +93,7 @@ def main():
     res = []
     from analysis import _limit_worker_blas_threads   # 1 BLAS thread per worker (hardware check, 2026-10-10)
     with mp.get_context("fork").Pool(args.workers, initializer=_limit_worker_blas_threads) as pool:
-        for i, r in enumerate(pool.imap_unordered(_one, tasks), 1):
+        for i, r in enumerate(pool.imap_unordered(_one, tasks), 1):  # noqa: B007
             res.append(r)
             if i % 100 == 0 or i == len(tasks):
                 print(f"{i}/{len(tasks)} ({time.time() - t0:.0f}s)", flush=True)

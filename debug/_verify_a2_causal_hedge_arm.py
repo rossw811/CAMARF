@@ -52,7 +52,8 @@ def spread_of(la, lb, idx):
 
 def main():
     cfg = Config.ANALYSIS
-    check("6.defaults_unchanged", getattr(cfg, "HEDGE_FALLBACK", None) == "full_sample"
+    # 2026-10-19 (Ross decision 1): the causal hedge is now the DEFAULT (was "full_sample"); DAILY_GAP_BREAKS unchanged
+    check("6.defaults", getattr(cfg, "HEDGE_FALLBACK", None) == "causal_expanding"
           and getattr(cfg, "DAILY_GAP_BREAKS", None) is False,
           f"HEDGE_FALLBACK={getattr(cfg, 'HEDGE_FALLBACK', None)!r} DAILY_GAP_BREAKS={getattr(cfg, 'DAILY_GAP_BREAKS', None)!r}")
     if not hasattr(HedgeRatioEstimator, "ols_expanding"):

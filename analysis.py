@@ -3148,8 +3148,14 @@ class SpreadModel:
         hedge_static: float,
         clean_mask: Optional[np.ndarray] = None,
         static_fallback: bool = True,
+        formation_n: Optional[int] = None,
     ) -> Dict[str, Any]:
         """
+        formation_n (Ross 2026-10-19, PIT): number of leading bars that make up the pair's formation period (up to its
+        eligible_from). The z-score / rolling half-life window length is set from the half-life of the formation
+        bars only, so later data cannot change earlier bars. None = the whole-history window (descriptive path).
+        debug/_verify_spread_prefix_invariance.py
+
         Compute full spread model for one pair. Returns dict with all
         time series and scalar summaries.
 
@@ -3192,9 +3198,11 @@ class SpreadModel:
         spread_real = spread[real_pos]
 
         cfg = Config.ANALYSIS
-        hl_full = SpreadModel.half_life_ar1(spread_real)
+        hl_full = SpreadModel.half_life_ar1(spread_real)       # descriptive (whole history)
+        hl_window = (SpreadModel.half_life_ar1(spread_real[real_pos < formation_n]) if formation_n is not None
+                     else hl_full)
         mean_window = SpreadModel._adaptive_window(
-            hl_full, cfg.OU_WINDOW_HALFLIFE_MULT_MEAN, cfg.OU_WINDOW_MIN_BARS, cfg.OU_LOOKBACK_DAYS
+            hl_window, cfg.OU_WINDOW_HALFLIFE_MULT_MEAN, cfg.OU_WINDOW_MIN_BARS, cfg.OU_LOOKBACK_DAYS
         )
 
         z_real = SpreadModel.rolling_zscore(spread_real, mean_window)
@@ -5791,8 +5799,15 @@ class AnalysisPipeline:
             log_a = np.where(clean_mask, log_a, np.nan)
             log_b = np.where(clean_mask, log_b, np.nan)
 
+        # PIT (Ross 2026-10-19): a pair with a formation end (pool rows carry eligible_from) gets every window LENGTH
+        # from its formation bars only; without one this is the descriptive whole-history path.
+        _form_end = pd_meta.get("eligible_from")
+        _form_n = None
+        if _form_end is not None and not pd.isna(_form_end):
+            _form_n = int((df_a.index <= pd.Timestamp(_form_end)).sum())
+
         # Hedge ratios
-        hr_window = min(252, max(60, log_a.size // 4))
+        hr_window = min(252, max(60, (_form_n if _form_n is not None else log_a.size) // 4))
         hr = HedgeRatioEstimator.estimate_all_for_pair(log_a, log_b, hr_window)
         # A2 comparison arm (Ross 2026-10-03): where the rolling hedge has no value, use the CAUSAL expanding OLS
         # (real rows up to each bar; minimum = half the rolling window, its own requirement) instead of the
@@ -5804,7 +5819,7 @@ class AnalysisPipeline:
         # Spread model with rolling OLS hedge series as primary
         sm = SpreadModel.fit_pair(
             log_a, log_b, hr["ols_series"], hr["ols_point"], clean_mask=clean_mask,
-            static_fallback=not _causal,
+            static_fallback=not _causal, formation_n=_form_n,
         )
 
         # Half-life — full sample as "expanding", rolling median for primary
