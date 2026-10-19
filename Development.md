@@ -29254,3 +29254,17 @@ docstring. Added the queued synthetic test (coverage of the existing variant, wr
 no inclusion effect, additions picked on pre-period run-up, a latent state drives run-up and later co-movement ->
 random-control DiD 0.179 (spurious), run-up-matched DiD 0.040: matching removes ~78% of this bias, not all --
 disclose with arm (c)'s result. `_verify_inclusion_did.py` 13 -> 15.
+
+### Parameter justification drafts verified row by row (2026-10-19)
+`docs/drafts/parameter_justification_drafts.csv` (151 rows, drafted 10-12): all values match the registry; the draft's
+config.py line numbers are stale (e.g. JOHANSEN_DET_ORDER cited at a line holding an EG comment), so every claim was
+checked by name against the category rules in scripts/build_parameter_registry.py. Accepted 47 (convention 15 with a
+source, engineering 15 that cannot change a result, definition 13, data_constraint 2: IBKR fixed-tier USD 0.005/share
+and the IB Gateway port, calibrated 2: ENTRY_ZSCORE -- outcome-informed, the OOS split used to choose it is no longer
+out-of-sample -- and the measured 120 h closure ceiling). Rejected 32 proposals -> unjustified, "sensitivity test
+owed" (Ross 2026-10-17): result-changing choices labelled calibrated/engineering/preregistered (STOP_ZSCORE,
+SLIPPAGE_BPS, MIN_COINT_FRAC, MIN_PEARSON_CORR, HOLDOUT_PCT, TRIO_MAX_CANDIDATES, GBM_N_ESTIMATORS, RUSSELL_TOP_N, ...),
+"standard" claims with no source I could cite accurately (60/20/20 splits, PCA 95%, VIX 15/25/35, 20-day vol windows,
+stochastic 14, EVT 95th pct), and JOHANSEN_DET_ORDER = -1 (drops the constant for price-level series -- to justify or
+change). 72 rows the draft itself marked unjustified stay so, tagged the same way. Record:
+docs/drafts/parameter_justification_verification_2026-10-19.csv. Registry unjustified 338 -> 291; ceiling lowered.

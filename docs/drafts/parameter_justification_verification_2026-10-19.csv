@@ -1,0 +1,152 @@
+name,draft_category,verdict,category,reason
+AnalysisConfig.EG_MAX_LAG,unjustified,confirmed_unjustified,unjustified,draft found no recorded reason
+AnalysisConfig.EG_SIGNIFICANCE,convention,accepted,convention,Conventional 5% level; only a descriptive log count here -- BH-FDR at FDR_ALPHA is the gate.
+AnalysisConfig.JOHANSEN_DET_ORDER,convention,rejected,unjustified,det_order -1 drops the constant; for price-level series a restricted constant is the usual specification (arm (a) uses one) -- choice to justify or change
+AnalysisConfig.JOHANSEN_K_AR_DIFF,unjustified,confirmed_unjustified,unjustified,draft found no recorded reason
+AnalysisConfig.JOHANSEN_SIGNIFICANCE,convention,accepted,convention,"Conventional 5% level, the project's level for every test."
+AnalysisConfig.N_REGIMES,unjustified,confirmed_unjustified,unjustified,draft found no recorded reason
+AnalysisConfig.OU_LOOKBACK_DAYS,data_constraint,rejected,unjustified,"cap of one trading year is a choice, not forced by the data (draft said data_constraint)"
+AnalysisConfig.OU_WINDOW_HALFLIFE_MULT_MEAN,unjustified,confirmed_unjustified,unjustified,draft found no recorded reason
+AnalysisConfig.OU_WINDOW_MIN_BARS,unjustified,confirmed_unjustified,unjustified,draft found no recorded reason
+AnalysisConfig.OU_ZSCORE_ENTRY,unjustified,confirmed_unjustified,unjustified,draft found no recorded reason
+AnalysisConfig.OU_ZSCORE_EXIT,unjustified,confirmed_unjustified,unjustified,draft found no recorded reason
+AnalysisConfig.TRIO_MAX_CANDIDATES,engineering,rejected,unjustified,"caps which candidates are tested -> changes results, so not engineering"
+AnalysisConfig.TRIO_MIN_PAIR_SHARPE,unjustified,confirmed_unjustified,unjustified,draft found no recorded reason
+AnalysisConfig.VOL_LOOKBACK_LONG,convention,accepted,definition,One trading year of daily bars (252).
+AnalysisConfig.VOL_LOOKBACK_SHORT,convention,rejected,unjustified,20-day window has no cited source
+AnalysisConfig.VOL_RELATIVE_THRESHOLD,unjustified,confirmed_unjustified,unjustified,draft found no recorded reason
+BacktestConfig.COMMISSION_PER_SHARE,calibrated,accepted,data_constraint,"Interactive Brokers' fixed-tier US stock commission, USD 0.005 per share (the broker this project trades through)."
+BacktestConfig.CONSECUTIVE_LOSS_LIMIT,unjustified,confirmed_unjustified,unjustified,draft found no recorded reason
+BacktestConfig.CORR_EXIT_THRESHOLD,unjustified,confirmed_unjustified,unjustified,draft found no recorded reason
+BacktestConfig.CORR_EXIT_WINDOW,unjustified,confirmed_unjustified,unjustified,draft found no recorded reason
+BacktestConfig.DAILY_LOSS_LIMIT_PCT,unjustified,confirmed_unjustified,unjustified,draft found no recorded reason
+BacktestConfig.ENTRY_ZSCORE,calibrated,accepted,calibrated,Set to 3.0 (from 2.0) on 2026-08-17 from a 4x3 entry_z x hedge factorial sweep scored on IS and OOS Sharpe (FINDINGS #27). Outcome-informed: the split used to choose it is no longer out-of-sample for this value.
+BacktestConfig.EXIT_ZSCORE,calibrated,accepted,convention,"Exit when the spread returns to its mean (z = 0), the classic pairs rule (Gatev, Goetzmann & Rouwenhorst 2006: positions close when prices cross)."
+BacktestConfig.FINE_GRID_RADIUS,unjustified,confirmed_unjustified,unjustified,draft found no recorded reason
+BacktestConfig.FINE_GRID_STEPS,unjustified,confirmed_unjustified,unjustified,draft found no recorded reason
+BacktestConfig.FLAT_RISK_PCT,unjustified,confirmed_unjustified,unjustified,draft found no recorded reason
+BacktestConfig.HOLDOUT_PCT,preregistered,rejected,unjustified,"Session-14 Q&A default, not in a pre-registration document (draft said preregistered)"
+BacktestConfig.MAX_CONCENTRATION_PCT,unjustified,confirmed_unjustified,unjustified,draft found no recorded reason
+BacktestConfig.MAX_HALF_LIFE,unjustified,confirmed_unjustified,unjustified,draft found no recorded reason
+BacktestConfig.MAX_HOLD_MULTIPLIER,convention,rejected,unjustified,"Vidyamurthy (2004) motivates a half-life-based hold rule, not the 2.0 multiplier"
+BacktestConfig.MIN_HALF_LIFE_BARS,unjustified,confirmed_unjustified,unjustified,draft found no recorded reason
+BacktestConfig.ML_GO_THRESHOLD,unjustified,confirmed_unjustified,unjustified,draft found no recorded reason
+BacktestConfig.N_SHARES_PER_TRADE,unjustified,confirmed_unjustified,unjustified,draft found no recorded reason
+BacktestConfig.SLIPPAGE_BPS,calibrated,rejected,unjustified,"Session-14 Q&A default, not fitted (draft said calibrated); a cost sweep exists -- cite it as the sensitivity"
+BacktestConfig.STOP_ZSCORE,calibrated,rejected,unjustified,value from the Session-14 Q&A; the OAT sweep showed a real effect but did not set 3.5 (draft said calibrated)
+BacktestConfig.WFA_N_WINDOWS,unjustified,confirmed_unjustified,unjustified,draft found no recorded reason
+BacktestConfig.WFA_TEST_PCT,unjustified,confirmed_unjustified,unjustified,draft found no recorded reason
+BacktestConfig.WFA_TRAIN_PCT,unjustified,confirmed_unjustified,unjustified,draft found no recorded reason
+DataConfig.MAX_MISSING_PCT,unjustified,confirmed_unjustified,unjustified,draft found no recorded reason
+DataConfig.MIN_DOLLAR_VOLUME,unjustified,confirmed_unjustified,unjustified,draft found no recorded reason
+DataConfig.YF_CHUNK_SIZE,engineering,accepted,engineering,"Batch size of yfinance download requests; changes request count, not the data returned."
+IBKRConfig.CLIENT_ID,engineering,accepted,engineering,API client identifier; must only differ between concurrent connections.
+IBKRConfig.CLIENT_ID_ANALYSIS,engineering,accepted,engineering,Second API client identifier so data.py and analysis.py can connect at once.
+IBKRConfig.PORT,data_constraint,accepted,data_constraint,"IB Gateway live-trading port (4001; 4002 paper, 7496/7497 TWS) -- set by the broker's API."
+IBKRConfig.TIMEOUT,engineering,accepted,engineering,"API request timeout (seconds); affects only failures/retries, not values."
+MLConfig.ATR_PERIOD,convention,accepted,convention,Wilder's (1978) 14-period average true range.
+MLConfig.BBANDS_PERIOD,convention,accepted,convention,Bollinger's 20-period band.
+MLConfig.BBANDS_STD,convention,accepted,convention,Bollinger's 2-standard-deviation band width.
+MLConfig.GBM_LEARNING_RATE,unjustified,confirmed_unjustified,unjustified,draft found no recorded reason
+MLConfig.GBM_MAX_DEPTH,unjustified,confirmed_unjustified,unjustified,draft found no recorded reason
+MLConfig.GBM_N_ESTIMATORS,engineering,rejected,unjustified,"a core boosting hyperparameter (with the learning rate), not engineering"
+MLConfig.INDICATOR_CORR_THRESHOLD,unjustified,confirmed_unjustified,unjustified,draft found no recorded reason
+MLConfig.MIN_CLASS_SAMPLES,unjustified,confirmed_unjustified,unjustified,draft found no recorded reason
+MLConfig.MOMENTUM_PERIOD,unjustified,confirmed_unjustified,unjustified,draft found no recorded reason
+MLConfig.RESOLUTION_BARS_MULT,unjustified,confirmed_unjustified,unjustified,draft found no recorded reason
+MLConfig.RESOLUTION_THRESHOLD,definition,rejected,unjustified,"|z| <= 0.5 as 'resolved' is a label choice that changes the training labels, not a definition"
+MLConfig.RF_MAX_DEPTH,unjustified,confirmed_unjustified,unjustified,draft found no recorded reason
+MLConfig.RF_MIN_SAMPLES_LEAF,unjustified,confirmed_unjustified,unjustified,draft found no recorded reason
+MLConfig.RF_N_ESTIMATORS,engineering,rejected,unjustified,no convergence check recorded
+MLConfig.RSI_PERIOD,convention,accepted,convention,Wilder's (1978) 14-period RSI.
+MLConfig.STOCH_PERIOD,convention,rejected,unjustified,14-period stochastic: no source I can cite accurately
+MLConfig.TEST_PCT,convention,rejected,unjustified,60/20/20 has no cited standard
+MLConfig.TRAINING_ENTRY_THRESHOLD,calibrated,rejected,unjustified,"Lopez de Prado motivates training below the trading threshold, not the value 1.5"
+MLConfig.TRAIN_PCT,convention,rejected,unjustified,"60/20/20 has no cited standard (Hastie, Tibshirani & Friedman 2009 s7.2 suggest 50/25/25)"
+MLConfig.VAL_PCT,convention,rejected,unjustified,60/20/20 has no cited standard
+MLConfig.VOLUME_SMA_PERIOD,convention,rejected,unjustified,20-period volume average has no cited source
+MacroConfig.CACHE_MAX_AGE_HOURS,engineering,accepted,engineering,Macro cache refresh age (about one trading day); FRED series update daily at most.
+MacroConfig.COT_NET_LONG_THRESHOLD,unjustified,confirmed_unjustified,unjustified,draft found no recorded reason
+MacroConfig.COT_NET_SHORT_THRESHOLD,unjustified,confirmed_unjustified,unjustified,draft found no recorded reason
+MacroConfig.CREDIT_PROXY_TIGHT_PCT,unjustified,confirmed_unjustified,unjustified,draft found no recorded reason
+MacroConfig.CREDIT_PROXY_WIDE_PCT,unjustified,confirmed_unjustified,unjustified,draft found no recorded reason
+MacroConfig.CREDIT_TIGHT_PCT,unjustified,confirmed_unjustified,unjustified,draft found no recorded reason
+MacroConfig.CREDIT_WIDE_PCT,unjustified,confirmed_unjustified,unjustified,draft found no recorded reason
+MacroConfig.FETCH_RETRY_ATTEMPTS,engineering,accepted,engineering,Network retry count; affects only transient failures.
+MacroConfig.FETCH_RETRY_DELAY_SEC,engineering,accepted,engineering,Delay between network retries.
+MacroConfig.RELATIVE_LEVEL_HIGH_PCTILE,convention,rejected,unjustified,"quartile cut is a choice, no cited source"
+MacroConfig.RELATIVE_LEVEL_LOW_PCTILE,convention,rejected,unjustified,"quartile cut is a choice, no cited source"
+MacroConfig.RELATIVE_LEVEL_MIN_PERIODS,convention,accepted,definition,One trading year of daily bars.
+MacroConfig.RELATIVE_LEVEL_WINDOW,convention,accepted,definition,Two trading years of daily bars (2 x 252).
+MacroConfig.SAHM_TRIGGER,definition,accepted,definition,Sahm rule trigger: 0.5 percentage-point rise in the 3-month average unemployment rate over its prior 12-month low (Sahm 2019).
+MacroConfig.VIX_CALM,convention,rejected,unjustified,VIX 15 'calm' has no cited source; the D8 calm rule (VIX percentile) is the project definition
+MacroConfig.VIX_ELEVATED_HI,convention,rejected,unjustified,no cited source
+MacroConfig.VIX_NORMAL_HI,convention,rejected,unjustified,no cited source
+MacroConfig.VIX_TS_BACKWARDATION,unjustified,confirmed_unjustified,unjustified,draft found no recorded reason
+MacroConfig.VIX_TS_CONTANGO_HI,unjustified,confirmed_unjustified,unjustified,draft found no recorded reason
+MacroConfig.VIX_TS_FLAT_HI,definition,accepted,definition,Futures/spot ratio of 1.0 is the boundary between backwardation and contango.
+MacroConfig.YIELD_CURVE_INVERTED,definition,accepted,definition,A 10y-2y spread below zero is an inverted curve.
+MacroConfig.YIELD_CURVE_STEEP,unjustified,confirmed_unjustified,unjustified,draft found no recorded reason
+OptionsConfig.IV_LOOKBACK_DAYS,unjustified,confirmed_unjustified,unjustified,draft found no recorded reason
+OptionsConfig.IV_SPREAD_ZSCORE_THRESHOLD,unjustified,confirmed_unjustified,unjustified,draft found no recorded reason
+ReportConfig.DPI,engineering,accepted,engineering,Embedded chart resolution; layout only.
+ReportConfig.MARGIN_IN,convention,accepted,engineering,Report page margin; layout only.
+ReportConfig.PAGE_HEIGHT_IN,data_constraint,accepted,engineering,US Letter page height; report layout only.
+ReportConfig.PAGE_WIDTH_IN,data_constraint,accepted,engineering,US Letter page width; report layout only.
+ResearchConfig.ENTRY_Z,unjustified,confirmed_unjustified,unjustified,draft found no recorded reason
+ResearchConfig.EXIT_Z,unjustified,confirmed_unjustified,unjustified,draft found no recorded reason
+ResearchConfig.LEAD_LAG_MAX_LAG,unjustified,confirmed_unjustified,unjustified,draft found no recorded reason
+ResearchConfig.MAX_HOLD_BARS,unjustified,confirmed_unjustified,unjustified,draft found no recorded reason
+ResearchConfig.Z_WINDOW,unjustified,confirmed_unjustified,unjustified,draft found no recorded reason
+StatsConfig.ADV_FILTER_USD,unjustified,confirmed_unjustified,unjustified,draft found no recorded reason
+StatsConfig.FDR_ALPHA,convention,accepted,convention,Benjamini-Hochberg (1995) false discovery rate at the conventional 5%; a 2026-06 change to 0.01 on a wrong rationale was reverted (BUG-D52).
+StatsConfig.KS_ALPHA,convention,accepted,convention,"Conventional 5% level, the project's level for every test."
+StatsConfig.MC_BLOCK_SIZE,unjustified,confirmed_unjustified,unjustified,draft found no recorded reason
+StatsConfig.MC_N_SIMULATIONS,engineering,accepted,engineering,"Monte Carlo draws; standard error of a p-value near 0.05 is 0.0022 at 10,000 draws -- precision only, no decision depends on a smaller gap."
+StatsConfig.MC_STUDENT_T_DF,unjustified,confirmed_unjustified,unjustified,draft found no recorded reason
+StatsConfig.MIN_TRACK_RECORD_ALPHA,convention,accepted,convention,Conventional 5% level (Bailey & Lopez de Prado 2012 minimum track record length).
+StatsConfig.PBO_N_PARTITIONS,unjustified,confirmed_unjustified,unjustified,draft found no recorded reason
+StatsConfig.PCA_VARIANCE_EXPLAINED,convention,rejected,unjustified,95% cumulative-variance cutoff has no cited standard (Jolliffe 2002 discusses 70-90%)
+StatsConfig.PSR_BENCHMARK_SHARPE,definition,accepted,definition,Probabilistic Sharpe ratio against a zero-skill benchmark (Bailey & Lopez de Prado 2012).
+UniverseConfig.MAX_HALF_LIFE_DAYS,unjustified,confirmed_unjustified,unjustified,draft found no recorded reason
+UniverseConfig.MIN_ADF_PVALUE,unjustified,confirmed_unjustified,unjustified,draft found no recorded reason
+UniverseConfig.MIN_COINT_FRAC,calibrated,rejected,unjustified,"restored documented value, checked against 14 pairs' outcomes -- outcome-informed, not calibrated"
+UniverseConfig.MIN_HALF_LIFE_DAYS,unjustified,confirmed_unjustified,unjustified,draft found no recorded reason
+UniverseConfig.MIN_PEARSON_CORR,calibrated,rejected,unjustified,lowered from 0.60 after 0.60 removed every equity; 0.40 not swept -- outcome-informed (research/pearson_threshold_sensitivity.py is the sensitivity)
+UniverseConfig.RUSSELL_TOP_N,engineering,rejected,unjustified,"disables a universe component -> changes results, so not engineering"
+data.py:ROUTINE_CLOSURE_CEILING_HOURS,calibrated,accepted,calibrated,"Five calendar days: headroom above the measured longest routine closure at 1h (93 hours, a long holiday weekend); measured from calendars, not outcomes."
+data.py:_MAINTENANCE_END_ET,data_constraint,rejected,unjustified,draft guessed a provider maintenance window; no source found
+data.py:_MAINTENANCE_START_ET,data_constraint,rejected,unjustified,draft guessed a provider maintenance window; no source found
+data.py:_MAX_FILL_BARS,definition,accepted,definition,DATA_GAP is defined as more than 5 consecutive missing bars (CLAUDE.md architecture rule 3).
+data.py:_SESSION_CLOSE_MIN,definition,accepted,definition,"16:00 ET, the US equity regular-session close, in minutes after midnight."
+data.py:_SESSION_OPEN_MIN,definition,accepted,definition,"09:30 ET, the US equity regular-session open, in minutes after midnight."
+pit_wfa.py:PERSISTENCE_LOOKBACK_DAYS,engineering,rejected,unjustified,90-day gap between the two screens is a design choice with no recorded reason
+pit_wfa.py:WINDOW_SWEEP_ANCHOR_PCT,unjustified,confirmed_unjustified,unjustified,draft found no recorded reason
+research/_regime_features.py:_ADX_WINDOW,convention,accepted,convention,Wilder's (1978) 14-period ADX.
+research/_regime_features.py:_ATR_PCTILE_LOOKBACK,convention,accepted,definition,One trading year of daily bars.
+research/_regime_features.py:_ATR_WINDOW,convention,accepted,convention,Wilder's (1978) 14-period ATR.
+research/_regime_features.py:_BB_WINDOW,convention,accepted,convention,Bollinger's 20-period band.
+research/_regime_features.py:_HURST_WINDOW,unjustified,confirmed_unjustified,unjustified,draft found no recorded reason
+research/_regime_features.py:_VOL_PCTILE_LOOKBACK,convention,accepted,definition,One trading year of daily bars.
+research/_regime_features.py:_VOL_WINDOW,convention,rejected,unjustified,20-day window has no cited source
+research/pair_characteristics_analyzer.py:_HOLDOUT_WINRATE_TOLERANCE_PP,unjustified,confirmed_unjustified,unjustified,draft found no recorded reason
+research/pair_characteristics_analyzer.py:_MIN_N_LEAF,unjustified,confirmed_unjustified,unjustified,draft found no recorded reason
+research/pair_characteristics_analyzer.py:_MIN_TRADES_PER_PAIR,unjustified,confirmed_unjustified,unjustified,draft found no recorded reason
+research/pair_characteristics_analyzer.py:_N_PERMUTATIONS,engineering,accepted,engineering,"Permutation draws; s.e. of a p-value near 0.05 is 0.0069 at 1,000 -- results within ~0.014 of 0.05 are not resolved and must say so."
+research/pair_characteristics_analyzer.py:_PERMUTATION_PCTILE,convention,accepted,convention,95th percentile of the permutation null = one-sided 5% level.
+research/pair_characteristics_analyzer.py:_TREE_MAX_DEPTH,unjustified,confirmed_unjustified,unjustified,draft found no recorded reason
+research/strategy_search.py:CAPITAL,convention,rejected,unjustified,project default capital; matters under the capital constraint -- no recorded reason
+research/strategy_search.py:EMBARGO_PCT,unjustified,confirmed_unjustified,unjustified,draft found no recorded reason
+research/strategy_search.py:N_FOLDS,unjustified,confirmed_unjustified,unjustified,draft found no recorded reason
+research/wrds_deep_history_episodic_scan.py:EPISODIC_STEP_BARS,unjustified,confirmed_unjustified,unjustified,draft found no recorded reason
+research/wrds_deep_history_episodic_scan.py:EPISODIC_WINDOW_BARS,unjustified,confirmed_unjustified,unjustified,draft found no recorded reason
+sensitivity.py:BASELINE_ADV_M,unjustified,confirmed_unjustified,unjustified,draft found no recorded reason
+sensitivity.py:BASELINE_EXIT_Z,unjustified,confirmed_unjustified,unjustified,draft found no recorded reason
+sensitivity.py:BASELINE_MAX_HL,calibrated,accepted,definition,The sweep's baseline is the production value (BacktestConfig.MAX_HALF_LIFE = 50) by construction.
+stats.py:_EVT_PCTILE,convention,rejected,unjustified,95th-percentile peaks-over-threshold cut is a choice (McNeil & Frey 2000 used 90%) -- sensitivity owed
+stats.py:_MC_PATHS,engineering,accepted,engineering,"Monte Carlo paths; s.e. of a probability near 0.05 is 0.0022 at 10,000."
+stats.py:_MIN_GARCH_OBS,unjustified,confirmed_unjustified,unjustified,draft found no recorded reason
+stats.py:_MM_C,definition,accepted,convention,Tukey biweight tuning constant 4.685: 95% asymptotic efficiency at the normal (Beaton & Tukey 1974).
+stats.py:_NOTIONAL_PER_LEG,unjustified,confirmed_unjustified,unjustified,draft found no recorded reason
+stats.py:_N_PERMS,engineering,accepted,engineering,"Permutation draws; s.e. of a p-value near 0.05 is 0.0069 at 1,000 -- marginal results must say so."
+stats.py:_PERM_BLOCK_LEN_DAYS,unjustified,confirmed_unjustified,unjustified,draft found no recorded reason
