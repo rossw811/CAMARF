@@ -54,6 +54,8 @@ def case1_stop_sweep():
         "z_rolling": z,
         "spread": z * 0.5,
         "half_life_rolling": np.full(n, 10.0),
+        # per-bar hedge columns: strict PIT mode (2026-10-19) has no whole-history scalar fallback; every real spread file has them
+        "hedge_ratio_ols_t": 1.0, "hedge_ratio_kalman_t": 1.0,
     }).set_index("timestamp")
 
     row = pd.Series({

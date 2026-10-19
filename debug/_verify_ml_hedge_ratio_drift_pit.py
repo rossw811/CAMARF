@@ -83,9 +83,15 @@ def main() -> None:
                 f"({drifts[-1]}) given kalman_t diverges monotonically over the series"
             )
 
-    # 4. Fallback path: no _t columns present -> uses the scalar, constant across events.
+    # 4. No _t columns. Strict PIT (default since 2026-10-19, debug/_verify_ml_pit_pool_default.py): drift is NaN,
+    #    never the whole-history scalar. Descriptive (strict=False): the old scalar fallback, constant across events.
     series_no_pit = series.drop(columns=["hedge_ratio_ols_t", "hedge_ratio_kalman_t"])
-    events_fallback = _build_examples_for_pair("A", "B", "1h", pair_row, MLRunSummary(), series=series_no_pit)
+    events_strict = _build_examples_for_pair("A", "B", "1h", pair_row, MLRunSummary(), series=series_no_pit)
+    if not events_strict or not all(np.isnan(e.hedge_ratio_drift) for e in events_strict):
+        failures.append(f"strict path (no _t columns) should give NaN drift, got "
+                        f"{[e.hedge_ratio_drift for e in events_strict]}")
+    events_fallback = _build_examples_for_pair("A", "B", "1h", pair_row, MLRunSummary(), series=series_no_pit,
+                                               strict=False)
     if events_fallback:
         fallback_drifts = [e.hedge_ratio_drift for e in events_fallback]
         if not all(np.isclose(d, scalar_drift, atol=1e-9) for d in fallback_drifts):

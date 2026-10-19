@@ -49,6 +49,11 @@ class DataConfig:
     OUTPUT_DIR = os.path.join(os.path.dirname(__file__), "output")
     CACHE_DIR = os.path.join(OUTPUT_DIR, "cache")
     REPORT_DIR = os.path.join(OUTPUT_DIR, "reports")
+    # Point-in-time pair pools (research/purity_pit_eligibility.py -> clean_pool_identity_pairs.py): k = minimum number
+    # of FDR-rejected windows before a pair is eligible. Default pool for backtest.py / ml.py is k2 (Ross 2026-10-16);
+    # research/strategy_search.py runs both.
+    PIT_POOL_PATHS = {"k1": os.path.join(OUTPUT_DIR, "research", "purity_pairs_pit_k1_clean.parquet"),
+                      "k2": os.path.join(OUTPUT_DIR, "research", "purity_pairs_pit_k2_clean.parquet")}
 
     # Timeframes to analyze (IBKR bar size strings)
     # 12 hours removed — not a valid IBKR bar size (confirmed via Error 321)

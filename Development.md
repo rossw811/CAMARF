@@ -29150,3 +29150,60 @@ MIN_OVERLAP row dropped; ceiling 339 -> 338.
 Log-path codemod (Surface stash, 62 py + 3 sh -> logs/latest/): full suite on CachyOS on branch codemod-logpaths
 (92bed743): 394 tests, 2 not passing -- _verify_paper_claims (known, chain-exempt) and _verify_parameter_registry
 (same failure on main, fixed above). Merged.
+
+### PIT-pool default in backtest.py / ml.py; whole-history fallbacks removed (2026-10-19; Ross approved 2026-10-16)
+Rule: CLAUDE.md "Point-in-time for every decision metric" (2026-10-15); audit: docs/drafts/pit_audit_draft.csv.
+- **Pair source.** backtest.py and ml.py now default to the PIT pool k2 (`Config.DATA.PIT_POOL_PATHS`, also used by
+  research/strategy_search.py -- one definition); `--pool k1` (label `_pitk1`); `--full-sample-descriptive` = the old
+  whole-history output/results/*/pairs.parquet with the old fallbacks, labelled `_fullsample_descriptive` (backtest)
+  and saved to output/ml/descriptive/ (ml), so a descriptive model can never become the Layer-2 gate.
+  `--pairs-override` still wins. A missing pool file fails loudly with how to build it.
+- **Strict engine** (`BacktestEngine(pit_strict=True)`, default for EVERY caller -- 13 construct it): no pair gated on
+  its whole-history hedge ratio (gated per bar instead); no per-bar hedge series -> pair skipped; per-bar hedge NaN
+  (warm-up) -> no entry on that bar (was: whole-history scalar); hedge drift, coint fraction, half-life slope,
+  mean-reversion speed, Hurst -> NaN when the per-bar value is missing (was: whole-history scalar); the STORM
+  coint-fraction threshold gate and sizing use the per-bar value (was: a pair-level whole-history gate).
+- **Strict ml.py** (`_build_examples_for_pair(strict=True)`): same per-bar rule; no whole-history half-life for the
+  label horizon (example dropped); transfer entropy (whole-history pair statistic) NaN; and the pair's row comes from
+  its PIT source only -- before, `build()` looked up the whole-history pairs.parquet row FIRST even under --pit-safe.
+- Coverage: all 40 Surface spread files and 200/200 sampled CachyOS files (of 1,783) carry every per-bar column, so
+  real pairs are not dropped by the strict skip.
+- Failing-first: `_verify_backtest_pit_pool_default.py` 0/2 (no resolver, no pit_strict) -> 10/10;
+  `_verify_ml_pit_pool_default.py` 0/2 -> 9/9. Regressions found by running the 42 backtest-importing tests: three
+  fixtures (`_verify_bug_d56_compose`, `_verify_dead_constants_comparison_arms`, `_verify_stop_loss_correlation_caps`)
+  supplied only whole-history scalar hedge ratios, so strict mode skipped their pairs -- given the per-bar columns
+  every real file has (same constant values); they test sizing/exits/stops, not PIT. Tried and corrected (tests):
+  `run()` returns Trade objects, not a frame; `np.isnan` on a None-valued field -> `pd.isna`.
+- Every backtest/ML result from before this change used whole-history selection and fallbacks; results built after
+  it are not comparable without the `--full-sample-descriptive` arm. /code-review owed (backtest.py, ml.py).
+Full Surface suite on the PIT-pool change: 397 tests, 2 not passing -- `_verify_paper_magnitude_claims` (deliberate
+since D5, M-018/M-073 pending re-derivation) and `_verify_ml_hedge_ratio_drift_pit`, whose check 4 asserted the
+whole-history scalar fallback: now asserts NaN under strict and the scalar under strict=False (descriptive).
+
+### D13 / R8.12: power of the 5-year EG test (2026-10-19)
+`research/durability_vs_currency_wrds.py` now reports, per pair, the Monte Carlo power (500 sims) of the last-5-years
+EG test at the effect the full sample estimates (residual AR(1) rho + innovation s.d., hedge ratio, regressor-leg
+return s.d.) and at the window's own estimate (both descriptive); EG call switched to production `eg_pvalue_pair`
+(both directions, max p, EG_MAX_LAG; was one direction, max_lag=None); output dir created (R8.12). The as-published
+one-direction method stays in research/rederive_durability_claims.py. Failing-first: `_verify_durability_power_d13.py`
+0/1 -> 9/9 (rho 1 -> size 0.050; rho .5 -> power 1.00; rho .995 -> 0.12 at n=1,260).
+Real data (Surface WRDS cache 2026-10-03, CRSP US names, close_total_return), n_recent = 1,256:
+| pair | p full (n) | p last 5y | power at full-sample effect (rho) | power at 5y effect (rho) |
+| XOM/CVX | 0.0417 (26,301) | 0.3769 | 0.04 (0.9985) | 0.13 (0.9936) |
+| JPM/BAC | 0.8963 (11,741) | 0.8814 | 0.03 (0.9997) | 0.05 (0.9979) |
+| KO/PEP | 0.1827 (26,301) | 0.9632 | 0.03 (0.9992) | 0.03 (0.9991) |
+| NTRS/STT | 0.0000 (10,098) | 0.5993 | 0.18 (0.9917) | 0.11 (0.9932) |
+| SHW/UNP | 0.0611 (14,238) | 0.0544 | 0.04 (0.9984) | 0.70 (0.9808) |
+At the full-sample effect the 5-year test has 3-18% power: its non-rejection cannot tell "relationship failed" from
+"test cannot see it". The §4.2 durability-vs-currency reading (e.g. NTRS/STT "already failed") is not supported by
+this test -- paper-bound; independent review and Ross before any paper text changes.
+
+### D10 / R5.8: stationary block bootstrap for the fold Sharpe CIs (2026-10-19)
+`research/pit_wfa_trade_bootstrap.py`: daily P&L over the fold's whole test window (zeros incl.; was first-to-last
+exit only, R5.1); stationary block bootstrap (Politis-Romano 1994), mean block length Politis-White (2004)/PPW (2009)
+via arch.bootstrap.optimal_block_length (Ross: no sign-off needed for the block-length rule, 2026-10-17); every draw
+kept -- all-zero draws are Sharpe 0 by definition and counted (were NaN, dropped by np.nanpercentile); Sharpe with
+ddof=1 as portfolio_math (was numpy ddof=0); log/label say days, not trades. The iid function is kept, labelled
+superseded, for its own pinned test. Failing-first: `_verify_pit_wfa_bootstrap_d10.py` 0/1 -> 6/6 (block length AR(.8)
+21.5 vs iid 1.3; 2000/2000 zero-inflated draws kept, 13 all-zero; lag-1 autocorr of draws 0.705). Real run not done:
+it re-screens the 1h universe at two cutoffs (~45-50 min each) -- queued.

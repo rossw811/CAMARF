@@ -51,6 +51,8 @@ def build_spread_df():
             "half_life_rolling": hl,
             "gap_flag_a": 0,
             "gap_flag_b": 0,
+            # per-bar hedge columns: strict PIT mode (2026-10-19) has no whole-history scalar fallback; every real spread file has them
+            "hedge_ratio_ols_t": 1.0, "hedge_ratio_kalman_t": 1.0, "coint_fraction_rolling_t": COINT_FRAC,
         },
         index=idx,
     )

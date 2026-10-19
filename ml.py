@@ -110,6 +110,7 @@ class MLResult:
     holdout_report: Optional[Dict[str, Any]] = None
     feature_importance: Optional[Dict[str, float]] = None
     conformal: Optional["ConformalPredictor"] = None
+    pair_source: Optional[Dict[str, Any]] = None   # resolve_pair_source() output: decides where the model may be saved
 
 
 # =============================================================================
@@ -219,9 +220,14 @@ def _discover_confirmed_pairs() -> List[Tuple[str, str, str]]:
 
 def _build_examples_for_pair(
     symbol_a: str, symbol_b: str, tf_label: str, pair_row: pd.Series, summary: "MLRunSummary",
-    series: Optional[pd.DataFrame] = None, feature_lag: int = 0,
+    series: Optional[pd.DataFrame] = None, feature_lag: int = 0, strict: bool = True,
 ) -> List[EntryEvent]:
     """
+    strict (PIT-pool default, Ross 2026-10-16; debug/_verify_ml_pit_pool_default.py): no whole-history pair scalar
+    ever stands in for a missing per-bar value -- the feature stays NaN (train-median imputed), an example whose entry
+    bar has no per-bar half-life is dropped (its horizon would come from the whole history), and transfer entropy (a
+    whole-history pair statistic with no per-bar series) is NaN. strict=False only for --full-sample-descriptive.
+
     feature_lag: bars to shift the FEATURE snapshot (zscore/half_life_current/
     zscore_velocity — the _FEATURE_COLS actually fed to the model) back from
     the true entry bar. Default 0 preserves exact original behavior for every
@@ -260,7 +266,7 @@ def _build_examples_for_pair(
 
     entries = _find_entry_events(series["z_rolling"], entry_threshold, clean_mask)
 
-    half_life_fallback = pair_row.get("half_life_rolling", np.nan)
+    half_life_fallback = np.nan if strict else pair_row.get("half_life_rolling", np.nan)
     # Point-in-time hedge_ratio_ols_t/kalman_t series (added to spread_series by
     # analysis.py after the same lookahead-bias fix backtest.py already uses,
     # see backtest.py:535-540) -- NOT the static full-sample scalar
@@ -273,8 +279,8 @@ def _build_examples_for_pair(
     if not _has_pit_hedge:
         # Fallback for pre-fix spread_series files with no _t columns, matching
         # backtest.py's own scalar fallback convention.
-        _ols_fallback = pair_row.get("hedge_ratio_ols", np.nan)
-        _kal_fallback = pair_row.get("hedge_ratio_kalman_mean", np.nan)
+        _ols_fallback = np.nan if strict else pair_row.get("hedge_ratio_ols", np.nan)
+        _kal_fallback = np.nan if strict else pair_row.get("hedge_ratio_kalman_mean", np.nan)
 
     # Point-in-time coint_fraction_rolling_t/half_life_trend_slope_t/
     # mean_reversion_speed_t/hurst_rs_t (position-sizing circularity fix,
@@ -347,23 +353,23 @@ def _build_examples_for_pair(
         # Point-in-time lookups at feat_pos (same staled bar zscore/half_life
         # features above already use), scalar fallback when absent/NaN.
         _cfrac_feat = series["coint_fraction_rolling_t"].iloc[feat_pos] if _has_pit_cfrac else np.nan
-        if not np.isfinite(_cfrac_feat):
+        if not np.isfinite(_cfrac_feat) and not strict:
             _cfrac_feat = pair_row.get("coint_fraction_rolling", np.nan)
         _hlslope_feat = series["half_life_trend_slope_t"].iloc[feat_pos] if _has_pit_hlslope else np.nan
-        if not np.isfinite(_hlslope_feat):
+        if not np.isfinite(_hlslope_feat) and not strict:
             _hlslope_feat = pair_row.get("half_life_trend_slope", np.nan)
         _meanrev_feat = series["mean_reversion_speed_t"].iloc[feat_pos] if _has_pit_meanrev else np.nan
-        if not np.isfinite(_meanrev_feat):
+        if not np.isfinite(_meanrev_feat) and not strict:
             _meanrev_feat = pair_row.get("mean_reversion_speed", np.nan)
         _hurst_feat = series["hurst_rs_t"].iloc[feat_pos] if _has_pit_hurst else np.nan
-        if not np.isfinite(_hurst_feat):
+        if not np.isfinite(_hurst_feat) and not strict:
             _hurst_feat = pair_row.get("hurst_rs", np.nan)
         # Transfer entropy has no per-bar PIT series (it's an expensive,
         # pair-level statistic computed once, not per-bar) -- always the
         # scalar pair_row value, same convention as coint_fraction_rolling's
         # own scalar fallback above.
-        _te_diff_feat = pair_row.get("te_directional_diff", np.nan)
-        _te_sig_feat = pair_row.get("te_significance", np.nan)
+        _te_diff_feat = np.nan if strict else pair_row.get("te_directional_diff", np.nan)
+        _te_sig_feat = np.nan if strict else pair_row.get("te_significance", np.nan)
         # Squeeze/momentum, same feat_pos-staled convention as every other
         # feature above -- what the model sees at "decision time," not the
         # true entry bar when feature_lag != 0.
@@ -523,7 +529,32 @@ class MLRunSummary:
 # =============================================================================
 
 
-def build(min_class_samples: Optional[int] = None, pit_safe: bool = False) -> MLResult:
+def resolve_pair_source(pool: str = "k2", full_sample_descriptive: bool = False, pit_safe: bool = False) -> dict:
+    """PIT-pool default (Ross 2026-10-16). path: pair file (None = per-TF pairs.parquet); strict: no whole-history
+    fallbacks; canonical_model: may write output/ml/model_stage1.pkl, the backtest's Layer-2 gate -- a descriptive
+    model never may. debug/_verify_ml_pit_pool_default.py"""
+    if full_sample_descriptive and (pit_safe or pool != "k2"):
+        raise ValueError("--full-sample-descriptive uses pairs.parquet; it cannot be combined with --pool/--pit-safe")
+    if full_sample_descriptive:
+        return {"path": None, "strict": False, "canonical_model": False, "source": "pairs.parquet (descriptive)"}
+    if pit_safe:
+        return {"path": os.path.join(_RESEARCH_DIR, "episodic_confirmed_pairs_adapter_output.parquet"),
+                "strict": True, "canonical_model": True, "source": "episodic adapter (--pit-safe)"}
+    if pool not in Config.DATA.PIT_POOL_PATHS:
+        raise ValueError(f"unknown --pool {pool!r}; choices {sorted(Config.DATA.PIT_POOL_PATHS)}")
+    return {"path": Config.DATA.PIT_POOL_PATHS[pool], "strict": True, "canonical_model": True,
+            "source": f"PIT pool {pool}"}
+
+
+def model_dir_for(pair_source: Optional[Dict[str, Any]]) -> str:
+    """output/ml (the canonical Layer-2 gate model backtest.py loads) for a PIT source; output/ml/descriptive for a
+    --full-sample-descriptive model, which must never become the gate. debug/_verify_ml_pit_pool_default.py"""
+    base = os.path.join(os.path.dirname(os.path.abspath(__file__)), "output", "ml")
+    return base if (pair_source is None or pair_source.get("canonical_model", True)) else os.path.join(base, "descriptive")
+
+
+def build(min_class_samples: Optional[int] = None, pit_safe: bool = False, pool: str = "k2",
+          full_sample_descriptive: bool = False) -> MLResult:
     """
     Discover all confirmed pairs with persisted spread series, build
     labeled entry-event examples, and train a meta-labeler if there's
@@ -543,7 +574,15 @@ def build(min_class_samples: Optional[int] = None, pit_safe: bool = False) -> ML
     """
     summary = MLRunSummary()
     _adapter_df = None
-    if pit_safe:
+    src = resolve_pair_source(pool, full_sample_descriptive, pit_safe)
+    log.info("ML pair source: %s (strict PIT %s)", src["source"], src["strict"])
+    if not pit_safe and src["path"] is not None:
+        if not os.path.exists(src["path"]):
+            raise FileNotFoundError(f"PIT pool not found at {src['path']} -- build it with the pool chain, or pass "
+                                    f"--full-sample-descriptive for the old whole-history pairs.parquet run")
+        _adapter_df = pd.read_parquet(src["path"])
+        pairs = list(zip(_adapter_df["symbol_a"], _adapter_df["symbol_b"], _adapter_df["tf_label"]))
+    elif pit_safe:
         _research_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "research")
         if _research_dir not in sys.path:
             sys.path.insert(0, _research_dir)
@@ -600,7 +639,11 @@ def build(min_class_samples: Optional[int] = None, pit_safe: bool = False) -> ML
 
     for symbol_a, symbol_b, tf_label in pairs:
         row = None
+        # Strict: the pair's row comes from its PIT source only; the whole-history pairs.parquet row (looked up
+        # first before 2026-10-19, even with --pit-safe) is used only by --full-sample-descriptive.
         try:
+            if src["strict"]:
+                raise LookupError("strict PIT: no pairs.parquet row")
             pairs_df = pd.read_parquet(
                 os.path.join(_RESULTS_DIR, _tf_dirname(tf_label), "pairs.parquet")
             )
@@ -641,7 +684,7 @@ def build(min_class_samples: Optional[int] = None, pit_safe: bool = False) -> ML
             continue
 
         try:
-            events = _build_examples_for_pair(symbol_a, symbol_b, tf_label, row, summary)
+            events = _build_examples_for_pair(symbol_a, symbol_b, tf_label, row, summary, strict=src["strict"])
         except Exception as e:
             pairs_skipped.append((symbol_a, symbol_b, tf_label, f"{type(e).__name__}: {e}"))
             continue
@@ -673,7 +716,7 @@ def build(min_class_samples: Optional[int] = None, pit_safe: bool = False) -> ML
     )
     log.info(f"  Total labeled entry events: {len(examples_df)}")
 
-    result = MLResult(examples=examples_df, pairs_used=pairs_used, pairs_skipped=pairs_skipped)
+    result = MLResult(examples=examples_df, pairs_used=pairs_used, pairs_skipped=pairs_skipped, pair_source=src)
 
     min_per_class = (
         min_class_samples if min_class_samples is not None else Config.ML.MIN_CLASS_SAMPLES
@@ -1013,7 +1056,7 @@ def _train_and_validate(result: MLResult, summary: MLRunSummary) -> None:
     # Persist model for Layer 2 backtest gate (MLConditioner._load expects this EXACT path --
     # never rename or move it) plus a purely-additive timestamped historical archive alongside
     # it -- see _persist_model_with_history's own docstring for why.
-    _model_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "output", "ml")
+    _model_dir = model_dir_for(result.pair_source)
     _model_payload = _build_model_payload(model, le, _FEATURE_COLS, train_median)
     _pkl_path, _archive_path = _persist_model_with_history(_model_payload, _model_dir)
     log.info("  Model saved → %s", _pkl_path)
@@ -1021,12 +1064,14 @@ def _train_and_validate(result: MLResult, summary: MLRunSummary) -> None:
     summary.note(f"Model persisted → {_pkl_path}")
 
 
-def main(min_class_samples: Optional[int] = None, pit_safe: bool = False) -> MLResult:
+def main(min_class_samples: Optional[int] = None, pit_safe: bool = False, pool: str = "k2",
+         full_sample_descriptive: bool = False) -> MLResult:
     """Entry point — build labeled examples and train the meta-labeler if viable."""
     log.info("=" * 70)
     log.info("CAMARF  —  ml.py  —  Spread Resolution Meta-Labeler")
     log.info("=" * 70)
-    result = build(min_class_samples=min_class_samples, pit_safe=pit_safe)
+    result = build(min_class_samples=min_class_samples, pit_safe=pit_safe, pool=pool,
+                   full_sample_descriptive=full_sample_descriptive)
     log.info("=" * 70)
     return result
 
@@ -1044,8 +1089,14 @@ if __name__ == "__main__":
     p.add_argument(
         "--pit-safe",
         action="store_true",
-        help="Source pairs from research/pit_pair_discovery.py's PIT-safe episodic screen "
-             "instead of the standard full-history _discover_confirmed_pairs() (task #5).",
+        help="Source pairs from research/episodic_pairs_adapter.py's PIT episodic output instead of the default "
+             "PIT pool (task #5).",
     )
+    p.add_argument("--pool", choices=sorted(Config.DATA.PIT_POOL_PATHS), default="k2",
+                   help="Point-in-time pair pool (default k2; Ross 2026-10-16).")
+    p.add_argument("--full-sample-descriptive", action="store_true",
+                   help="Train on output/results/*/pairs.parquet (whole-history selection) with the old whole-history "
+                        "fallbacks. Descriptive only: the model goes to output/ml/descriptive/, never the Layer-2 gate.")
     args = p.parse_args()
-    main(min_class_samples=args.min_class_samples, pit_safe=args.pit_safe)
+    main(min_class_samples=args.min_class_samples, pit_safe=args.pit_safe, pool=args.pool,
+         full_sample_descriptive=args.full_sample_descriptive)

@@ -193,6 +193,7 @@ research/decoupling_backtest.py:_SETTLING_BARS,research/decoupling_backtest.py,4
 research/decoupling_contamination_crosscheck.py:_EARNINGS_MATCH_DAYS,research/decoupling_contamination_crosscheck.py,75,1,unjustified,,,,
 research/decoupling_requalification.py:_SETTLING_BARS,research/decoupling_requalification.py,64,60,unjustified,,,,
 research/diversification_basket_test.py:_RNG_SEED,research/diversification_basket_test.py,44,42,unjustified,,,,
+research/durability_vs_currency_wrds.py:_N_SIM_POWER,research/durability_vs_currency_wrds.py,32,500,engineering,"Monte Carlo draws per power estimate; s.e. <= 0.022 (worst case p = 0.5), small beside the gaps the power is read for.",debug/_verify_durability_power_d13.py,no,0
 research/eg_null_calibration_montecarlo.py:ALPHA,research/eg_null_calibration_montecarlo.py,66,0.05,unjustified,,,,
 research/eg_null_calibration_montecarlo.py:LOOKBACK_YEARS,research/eg_null_calibration_montecarlo.py,68,10,definition,"Matches research/full_universe_eg_confirmation.py's --lookback-years default: the null calibrates that screen, so it uses its window.",research/full_universe_eg_confirmation.py --lookback-years; debug/_verify_eg_null_calibration_d11.py,no,0
 research/eg_null_calibration_montecarlo.py:N_PAIRS_TARGET,research/eg_null_calibration_montecarlo.py,76,400,unjustified,,,,

@@ -84,6 +84,8 @@ def build_max_half_life_df():
     return pd.DataFrame({
         "z_rolling": z, "spread": spread, "half_life_rolling": hl,
         "gap_flag_a": 0, "gap_flag_b": 0,
+        # per-bar hedge columns: strict PIT mode (2026-10-19) has no whole-history scalar fallback; every real spread file has them
+        "hedge_ratio_ols_t": 1.0, "hedge_ratio_kalman_t": 1.0,
     }, index=idx)
 
 
@@ -104,6 +106,8 @@ def build_real_corr_exit_df():
     return pd.DataFrame({
         "z_rolling": z, "spread": spread, "half_life_rolling": hl,
         "gap_flag_a": 0, "gap_flag_b": 0,
+        # per-bar hedge columns: strict PIT mode (2026-10-19) has no whole-history scalar fallback; every real spread file has them
+        "hedge_ratio_ols_t": 1.0, "hedge_ratio_kalman_t": 1.0,
         "coint_fraction_rolling_t": cfrac,
     }, index=idx)
 
@@ -122,6 +126,8 @@ def build_liquidity_bar_filter_df():
     return idx, pd.DataFrame({
         "z_rolling": z, "spread": spread, "half_life_rolling": hl,
         "gap_flag_a": 0, "gap_flag_b": 0,
+        # per-bar hedge columns: strict PIT mode (2026-10-19) has no whole-history scalar fallback; every real spread file has them
+        "hedge_ratio_ols_t": 1.0, "hedge_ratio_kalman_t": 1.0,
     }, index=idx)
 
 
