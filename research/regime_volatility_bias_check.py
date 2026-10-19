@@ -19,6 +19,10 @@ Market: Fama-French daily mktrf + rf (output/cache/wrds/ff_factors_3_daily.parqu
 Printed: window-to-window jumps (2007 -> 2008, 2009; 2019 -> 2020) for each share, and the rescaled share's excess over
 the constant-beta null per window. The `crisis` column marks windows that contain 2008-09 or 2020-03 -- with 10-year
 windows that is every window from 2008 on, so it is NOT used as a crisis/calm comparison.
+Reference variance (Ross 2026-10-17, fixed 2026-10-19 -- review of 2026-10-15): MAIN = the market variance on D8-calm
+days (VIX below its 1990-2025 30th percentile -- the one project-wide definition of "calm", constants imported from
+stress_test_replication.py); SENSITIVITY = the full-sample variance (columns *_fullref), plus the p25/p75 calendar-year
+references. The earlier code used the full-sample variance as the main reference.
 Output: output/research/regime_volatility_bias_check.parquet. Test: debug/_verify_regime_volatility_bias_check.py
 Usage: python research/regime_volatility_bias_check.py [--n-symbols 2000]
 """
@@ -32,6 +36,8 @@ import pandas as pd
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
+sys.path.insert(0, os.path.join(ROOT, "research"))
+from stress_test_replication import _CALM_VIX_QUANTILE as _CALM_Q, _CALM_VIX_PERIOD as _CALM_PERIOD  # noqa: E402
 _W = os.path.join(ROOT, "output", "cache", "wrds")
 OUT = os.path.join(ROOT, "output", "research", "regime_volatility_bias_check.parquet")
 
@@ -85,12 +91,24 @@ def reference_sds(mkt: pd.Series):
     return float(by_year.quantile(0.25)), float(mkt.std()), float(by_year.quantile(0.75))
 
 
+def reference_variances(mkt: pd.Series, vix: pd.Series) -> dict:
+    """MAIN reference = variance of market returns on D8-calm days (VIX strictly below its _CALM_PERIOD _CALM_Q
+    quantile, as stress_test_replication.select_calm_window); SENSITIVITY = full-sample variance."""
+    v = vix.dropna().loc[_CALM_PERIOD[0]:_CALM_PERIOD[1]]
+    thr = float(v.quantile(_CALM_Q))
+    calm_days = v.index[v < thr]
+    mc = mkt.reindex(calm_days).dropna()
+    return {"main": "calm_d8", "calm_d8": float(mc.var()), "full_sample": float(mkt.var()), "calm_threshold": thr,
+            "n_calm_days": int(len(mc))}
+
+
 def summarize(D: pd.DataFrame):
     """Window-level jumps around the crisis years and the excess over the constant-beta null. (2026-10-13: a crisis/
     calm mean over 10-YEAR windows was misleading -- every window ending 2008-2025 contains 2008-09 or 2020, so the
     flag meant 'post-2008'; it read 66x.)"""
     D = D.assign(year=pd.to_datetime(D["window_end"]).dt.year).set_index("year")
     cols = [c for c in ["raw_share", "adj_share", "rescaled_share", "null_share", "null_rescaled_share",
+                        "rescaled_share_fullref", "null_rescaled_share_fullref",
                         "rescaled_share_ref_p25", "rescaled_share_ref_p75"] if c in D.columns]
     for base, hits in ((2007, (2008, 2009)), (2019, (2020,))):
         if base in D.index:
@@ -120,7 +138,11 @@ def main():
     thr = Config.UNIVERSE.MIN_PEARSON_CORR
     win = 2520
     mkt = _market()
-    ref_var = float(mkt.var())
+    import macro
+    ref = reference_variances(mkt, macro.build(series=["VIXCLS"]).data["vix_close"])
+    ref_var, ref_var_full = ref["calm_d8"], ref["full_sample"]
+    print(f"reference variance: D8-calm days (VIX < {ref['calm_threshold']:.2f}, n={ref['n_calm_days']}) "
+          f"{ref_var:.3g} [MAIN]; full sample {ref_var_full:.3g} [sensitivity]")
     ref_lo, _, ref_hi = reference_sds(mkt)
     rng = np.random.default_rng(20261013)
     labels = sorted(label_permno_map())
@@ -160,6 +182,7 @@ def main():
             continue
         mw = mkt.loc[idx].to_numpy()
         dlt = window_delta(mw, ref_var)
+        dlt_full = window_delta(mw, ref_var_full)
         cols = list(Rw.columns)
         rows.append({"window_end": e, "n_symbols": len(cols), "delta": dlt,
                      "raw_share": candidate_share(Rw.to_numpy().T, thr),
@@ -168,6 +191,12 @@ def main():
                      "null_share": simulate_null_share(mw, [beta[c] for c in cols], [idio[c] for c in cols], thr, rng),
                      "null_rescaled_share": simulate_null_share(mw, [beta[c] for c in cols], [idio[c] for c in cols],
                                                                 thr, rng, ref_sd=float(np.sqrt(ref_var))),
+                     "delta_fullref": dlt_full,
+                     "adj_share_fullref": candidate_share(Rw.to_numpy().T, thr, delta=dlt_full),
+                     "rescaled_share_fullref": rescaled_share(Rw.to_numpy().T, mw, float(np.sqrt(ref_var_full)), thr),
+                     "null_rescaled_share_fullref": simulate_null_share(mw, [beta[c] for c in cols],
+                                                                        [idio[c] for c in cols], thr, rng,
+                                                                        ref_sd=float(np.sqrt(ref_var_full))),
                      **{f"rescaled_share_ref_{k}": rescaled_share(Rw.to_numpy().T, mw, sd, thr)
                         for k, sd in zip(("p25", "p75"), (ref_lo, ref_hi))},
                      "crisis": bool(((idx >= "2008-01-01") & (idx <= "2009-12-31")).any()

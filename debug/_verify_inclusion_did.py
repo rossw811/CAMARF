@@ -109,6 +109,33 @@ def main():
         # (3) run-up matching picks the candidates whose pre-period return is nearest the treated stock's
         picked = nearest_runup({10: 0.05, 11: 0.60, 12: 0.55, 13: -0.10, 14: 0.20}, 0.58, 2)
         check("nearest_runup", picked == [11, 12], picked)
+        # (4) 2026-10-19, queued by the 2026-10-15 review (coverage test of the --match runup variant, written after
+        # it): a world with NO inclusion effect where additions are picked on their pre-period run-up and a latent
+        # state drives both the run-up and a later rise in co-movement (Chen, Singal & Whitelaw 2016) -> DiD with
+        # size-only-style random controls is spuriously positive; run-up-matched controls remove most of it.
+        from research.inclusion_did import did_from_events
+        g = np.random.default_rng(11)
+        T, t0, n = 500, 250, 600
+        m = g.normal(0, 0.01, T)
+        M = m + g.normal(0, 0.01, (30, T))
+        z = g.normal(0, 1, n)
+        beta_post = 0.6 + 0.5 * np.clip(z, 0, None)
+        X = np.empty((n, T))
+        X[:, :t0] = 0.6 * m[:t0] + 0.002 * z[:, None] + g.normal(0, 0.012, (n, t0))
+        X[:, t0:] = beta_post[:, None] * m[t0:] + g.normal(0, 0.012, (n, T - t0))
+        runup = X[:, :t0].sum(1)
+        treated = list(np.argsort(runup)[-25:])
+        pool = [i for i in range(n) if i not in treated]
+        ev_rand, ev_run = [], []
+        for i in treated:
+            rc = g.choice(pool, 5, replace=False)
+            nc = nearest_runup({j: runup[j] for j in pool}, runup[i], 5)
+            ev_rand.append({"t0": t0, "members": M, "treated": X[i], "controls": [X[j] for j in rc]})
+            ev_run.append({"t0": t0, "members": M, "treated": X[i], "controls": [X[j] for j in nc]})
+        d_rand = did_from_events(ev_rand, n_boot=200, rng=np.random.default_rng(1))["did"]
+        d_run = did_from_events(ev_run, n_boot=200, rng=np.random.default_rng(1))["did"]
+        check("runup_selection_biases_unmatched_did", d_rand > 0.05, f"random controls DiD {d_rand:.3f} (true 0)")
+        check("runup_matching_removes_most_bias", abs(d_run) < d_rand / 3, f"run-up matched DiD {d_run:.3f}")
     except ImportError as e:
         check("review_fix_functions_exist", False, str(e))
     finish()

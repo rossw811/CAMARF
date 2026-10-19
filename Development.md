@@ -29240,3 +29240,17 @@ Failing-first `_verify_crisis_regime_cluster_ci_d12.py` 0/1 -> 8/8: no-effect co
 clustered worlds RI 91/100, wild 94/100; a 0.004 effect over 40+40 clusters -> RI CI [0.00345, 0.00555]; CR1 SE equals
 the pair-level formula. Real run needs D3's crisis_regime_episode_crisis_pairs.parquet (written by
 crisis_regime_episode_clustering_check.py) -- with the regime scripts after the chain.
+
+### Arms (b)/(c): remaining review-queued items (2026-10-19)
+**(b)** `research/regime_volatility_bias_check.py`: the rescaled null and the p25/p75 reference sensitivities were
+already in (2026-10-15); missing was Ross's 2026-10-17 reference choice -- MAIN reference variance = market variance
+on D8-calm days (VIX below its 1990-2025 30th percentile; constants imported from stress_test_replication so "calm"
+has one definition), full-sample as the sensitivity (`*_fullref` columns: delta, adj, rescaled, rescaled null). Was:
+full sample as main. Failing-first: `_verify_regime_volatility_bias_check.py` 12/13 (no reference_variances) -> 13/13.
+Tried and corrected (test): a two-valued synthetic VIX made p30 equal its low value, so "strictly below" selected no
+day (NaN) -- fixture given continuous noise. Real run needs the chain's Tier-3 windows file -- after the chain.
+**(c)** `research/inclusion_did.py`: d7a4c7df had done the control exclusion, year-clustered CI, run-up variant and
+docstring. Added the queued synthetic test (coverage of the existing variant, written after it -- not failing-first):
+no inclusion effect, additions picked on pre-period run-up, a latent state drives run-up and later co-movement ->
+random-control DiD 0.179 (spurious), run-up-matched DiD 0.040: matching removes ~78% of this bias, not all --
+disclose with arm (c)'s result. `_verify_inclusion_did.py` 13 -> 15.

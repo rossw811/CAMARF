@@ -25,6 +25,7 @@ import pandas as pd
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
+sys.path.insert(0, os.path.join(ROOT, "research"))
 PASS, FAIL = [], []
 
 
@@ -85,6 +86,23 @@ def main():
         check("reference_sds_ordered_from_data", 0 < lo < hi and lo <= mid <= hi * 1.5, f"{lo:.4f} {mid:.4f} {hi:.4f}")
     except (TypeError, AttributeError) as e:
         check("rescaled_null_and_reference_sds_exist", False, e)
+    # 2026-10-19 (Ross 2026-10-17: "the D8 calm rule defines the calm period ... full-sample variance as the
+    # sensitivity"): the MAIN reference variance is the market variance on D8-calm days (VIX below its 1990-2025 30th
+    # percentile, the same constants stress_test_replication uses); full-sample is the sensitivity.
+    try:
+        idx = pd.bdate_range("1990-01-01", "2025-12-31")
+        rng_v = np.random.default_rng(10)
+        vix = pd.Series(np.where(rng_v.random(len(idx)) < 0.4, 12.0, 25.0) + rng_v.uniform(0, 1, len(idx)), index=idx)  # continuous: a two-value VIX makes p30 = 12 and "strictly below" empty
+        mkt = pd.Series(np.where(vix < 15, rng_v.normal(0, 0.005, len(idx)), rng_v.normal(0, 0.02, len(idx))), index=idx)
+        ref = m.reference_variances(mkt, vix)
+        calm = vix < vix.quantile(0.30)
+        check("main_reference_is_d8_calm", ref["main"] == "calm_d8"
+              and np.isclose(ref["calm_d8"], mkt[calm].var()) and np.isclose(ref["full_sample"], mkt.var()),
+              f"calm {ref['calm_d8']:.3g} vs {mkt[calm].var():.3g}; full {ref['full_sample']:.3g}")
+        import stress_test_replication as st
+        check("one_calm_definition", m._CALM_Q is st._CALM_VIX_QUANTILE and m._CALM_PERIOD is st._CALM_VIX_PERIOD)
+    except (TypeError, AttributeError, KeyError, ImportError) as e:
+        check("calm_reference_exists", False, f"{type(e).__name__}: {e}")
     finish()
 
 
