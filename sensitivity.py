@@ -82,7 +82,7 @@ def _setup_logging():
     ch.setLevel(logging.INFO)
     ch.setFormatter(fmt)
     log.addHandler(ch)
-    fh = logging.FileHandler(os.path.join(_ROOT, "latest_run_sensitivity.log"), mode="w", encoding="utf-8")
+    fh = logging.FileHandler(os.path.join(_ROOT, "logs/latest/latest_run_sensitivity.log"), mode="w", encoding="utf-8")
     fh.setLevel(logging.DEBUG)
     fh.setFormatter(fmt)
     log.addHandler(fh)

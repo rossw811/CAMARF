@@ -52,7 +52,7 @@ from universe_loader import (
 
 log = logging.getLogger("full_universe_eg_confirmation")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s  %(levelname)-8s  %(message)s")
-_LOG_FILE_PATH = "latest_run_full_universe_eg_confirmation.log"
+_LOG_FILE_PATH = "logs/latest/latest_run_full_universe_eg_confirmation.log"
 _fh = logging.FileHandler(_LOG_FILE_PATH, mode="a", encoding="utf-8")
 _fh.setFormatter(logging.Formatter("%(asctime)s  %(levelname)-8s  %(message)s"))
 log.addHandler(_fh)

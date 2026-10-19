@@ -101,7 +101,7 @@ log = logging.getLogger("wrds_deep_history_episodic_scan")
 
 def _log_path():
     """Per-arm log file (2026-10-07: one shared name let the `--d18 include` run overwrite the primary run's log)."""
-    return os.path.join(_ROOT, f"latest_run_wrds_deep_history_episodic_scan{_RUN_SUFFIX}.log")
+    return os.path.join(_ROOT, f"logs/latest/latest_run_wrds_deep_history_episodic_scan{_RUN_SUFFIX}.log")
 
 
 def _rel(path):

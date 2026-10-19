@@ -62,7 +62,7 @@ from pair_source import confirmed_pairs_list
 
 log = logging.getLogger(__name__)
 _OUT_DIR = os.path.join(_ROOT, "output", "research")
-_LOG_PATH = os.path.join(_ROOT, "latest_run_transfer_entropy_lead_lag.log")
+_LOG_PATH = os.path.join(_ROOT, "logs/latest/latest_run_transfer_entropy_lead_lag.log")
 
 
 def discretize(x: np.ndarray, n_bins: int) -> np.ndarray:

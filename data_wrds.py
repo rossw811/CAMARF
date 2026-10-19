@@ -111,7 +111,7 @@ logging.basicConfig(
 log = logging.getLogger(__name__)
 
 _OUT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "output", "cache", "wrds")
-_LOG_PATH = "latest_run_data_wrds.log"
+_LOG_PATH = "logs/latest/latest_run_data_wrds.log"
 
 
 LABEL_PERMNO_MAP_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "output", "cache", "wrds",

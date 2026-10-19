@@ -67,7 +67,7 @@ def _setup_logging():
     ch.setFormatter(fmt)
     log.addHandler(ch)
     fh = logging.FileHandler(os.path.join(os.path.dirname(_RESEARCH_DIR), "..",
-                                           "latest_run_cross_listing_lead_lag.log"),
+                                           "logs/latest/latest_run_cross_listing_lead_lag.log"),
                               mode="w", encoding="utf-8")
     fh.setLevel(logging.DEBUG)
     fh.setFormatter(fmt)

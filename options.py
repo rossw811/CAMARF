@@ -75,7 +75,7 @@ def _setup_logging():
     ch.setLevel(logging.INFO)
     ch.setFormatter(fmt)
     log.addHandler(ch)
-    fh = logging.FileHandler("latest_run_options.log", mode="w", encoding="utf-8")
+    fh = logging.FileHandler("logs/latest/latest_run_options.log", mode="w", encoding="utf-8")
     fh.setLevel(logging.DEBUG)
     fh.setFormatter(fmt)
     log.addHandler(fh)

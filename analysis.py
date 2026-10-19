@@ -6817,7 +6817,7 @@ def _write_analysis_summary(results: Any, universe: Any) -> None:
     import json as _json
 
     _LOG_PATH = os.path.join(
-        os.path.dirname(os.path.abspath(__file__)), "latest_run_analysis.log"
+        os.path.dirname(os.path.abspath(__file__)), "logs/latest/latest_run_analysis.log"
     )
     lines = [
         "=== CAMARF analysis.py ===",

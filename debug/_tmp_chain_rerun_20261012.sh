@@ -3,7 +3,7 @@
 # (label -> PERMNO identity) and the S36 same-company gap (CCM + Capital IQ links). Ross: "fix everything first then
 # resume running scripts and re run what was broken". Every step stops the chain on failure.
 cd ~/CAMARF || exit 1
-L=latest_run_rerun_20261012.log; S=output/research; W=output/cache/wrds
+L=logs/latest/latest_run_rerun_20261012.log; S=output/research; W=output/cache/wrds
 run() { local name=$1; shift; echo "$(date '+%F %T') START $name: $*" >> $L
   "$@" > $S/_stdout_rerun_$name.log 2>&1 || { echo "$(date '+%F %T') FAILED $name -- STOPPED" >> $L; exit 1; }
   echo "$(date '+%F %T') done $name" >> $L; }

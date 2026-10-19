@@ -78,7 +78,7 @@ def _setup_logging():
     ch = logging.StreamHandler()
     ch.setLevel(logging.INFO)
     ch.setFormatter(fmt)
-    fh = logging.FileHandler(os.path.join(_ROOT, "latest_run_ml_model_comparison_purged.log"),
+    fh = logging.FileHandler(os.path.join(_ROOT, "logs/latest/latest_run_ml_model_comparison_purged.log"),
                              mode="w", encoding="utf-8")
     fh.setLevel(logging.DEBUG)
     fh.setFormatter(fmt)

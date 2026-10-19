@@ -101,7 +101,7 @@ def _setup_logging(tf_label):
     ch.setFormatter(fmt)
     log.addHandler(ch)
     fh = logging.FileHandler(
-        os.path.join(_ROOT, f"latest_run_tail_dependence_universe_screen_{tf_label}.log"),
+        os.path.join(_ROOT, f"logs/latest/latest_run_tail_dependence_universe_screen_{tf_label}.log"),
         mode="w", encoding="utf-8"
     )
     fh.setLevel(logging.DEBUG)

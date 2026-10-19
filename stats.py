@@ -1247,7 +1247,7 @@ def main() -> None:
     if len(pairs) == 0:
         log.error("No pairs found in output/results/ — run analysis.py first")
         summary.note("ERROR: No pairs found — analysis.py must run first")
-        summary.write(os.path.join(_ROOT, "latest_run_stats.log"))
+        summary.write(os.path.join(_ROOT, "logs/latest/latest_run_stats.log"))
         return
     log.info("Loaded %d confirmed pairs across %d TFs", len(pairs),
              pairs["tf_label"].nunique() if "tf_label" in pairs.columns else 0)
@@ -1336,7 +1336,7 @@ def main() -> None:
     log.info("Output: %s", _STATS_DIR)
 
     summary.note(f"\nruntime_min: {runtime:.1f}")
-    summary.write(os.path.join(_ROOT, "latest_run_stats.log"))
+    summary.write(os.path.join(_ROOT, "logs/latest/latest_run_stats.log"))
     log.info("Log written → latest_run_stats.log")
 
 

@@ -51,7 +51,7 @@ import ml
 from config import Config
 
 _OUT_DIR = os.path.join(_ROOT, "output", "research")
-_LOG_PATH = os.path.join(_ROOT, "latest_run_sequential_bootstrap_ml_comparison.log")
+_LOG_PATH = os.path.join(_ROOT, "logs/latest/latest_run_sequential_bootstrap_ml_comparison.log")
 
 import logging
 log = logging.getLogger(__name__)

@@ -7,7 +7,7 @@
 # Hardware: every pooled stage defaults to Config.RUNTIME.N_WORKERS with BLAS capped at 1 thread per worker.
 # stdout goes to separate _stdout files, never to a script's own log name.
 cd ~/CAMARF || exit 1
-L=latest_run_pool_chain.log
+L=logs/latest/latest_run_pool_chain.log
 S=output/research
 run() {  # name, command...
   local name=$1; shift

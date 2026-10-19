@@ -692,7 +692,7 @@ class MacroRunSummary:
     """
 
     _LOG_PATH = os.path.join(
-        os.path.dirname(os.path.abspath(__file__)), "latest_run_macro.log"
+        os.path.dirname(os.path.abspath(__file__)), "logs/latest/latest_run_macro.log"
     )
 
     def __init__(self):

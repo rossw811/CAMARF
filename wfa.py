@@ -618,7 +618,7 @@ def main() -> None:
         "Fold structures: expanding=[0-20%/20-50%, 0-50%/50-80%]  rolling=[0-20%/20-50%, 50-70%/70-100%]",
         "=== end ===",
     ]
-    with open(os.path.join(_ROOT, "latest_run_wfa.log"), "w") as f:
+    with open(os.path.join(_ROOT, "logs/latest/latest_run_wfa.log"), "w") as f:
         f.write("\n".join(log_lines))
 
 
