@@ -197,3 +197,19 @@ Open details in the approved D-rows, decided before any code or result:
 - **D8 season match tightened:** among same-month qualifying windows, rank by closeness of the start day-of-month to
   the crisis start day, then by closeness in time, ties earlier. Reason: "closest in time" picked 2006-08-31 and
   2006-02-28, effectively September and March windows. VIX-only, changed before any outcome was read.
+
+## Ross's answers (2026-10-19, in chat: "y to 1-4") -- after the adversarial review of 99bf428f + a51f926c
+
+1. **Upstream PIT gap fixed before the pool spreads are built:** spread warm-up hedge `HEDGE_FALLBACK =
+   "causal_expanding"` (existing option); z-score / rolling half-life window from the spread up to the pair's
+   `eligible_from` only (formation-then-trading, as GGR 2006). The re-run chain is stopped after `clean_pools`, the
+   fix applied, and the chain resumed from `pool_spreads`.
+2. **D12 redesigned:** crisis vs calm discoveries compared within the same calendar year; sign-flip randomization
+   across years (removes the era / right-censoring trend that broke cluster exchangeability). The cluster-RI CI is
+   not run or cited.
+3. **D6 design:** CRSP delisting events fetched (WRDS, Duo); included = securities in the discovery universe,
+   excluded = CRSP common stocks active at the same dates but absent from it; outcome = performance delisting
+   (codes 500-599) vs merger (200s) vs active, compared between the two at each window date.
+4. **Paper wording drafts** (for Ross's review, not applied): D11 -- the production two-direction screen is
+   conservative on random pairs, not yet measured on |corr| >= 0.6 candidates; D13 -- NTRS/STT's 5-year result is weak
+   evidence either way.
