@@ -29268,3 +29268,41 @@ SLIPPAGE_BPS, MIN_COINT_FRAC, MIN_PEARSON_CORR, HOLDOUT_PCT, TRIO_MAX_CANDIDATES
 stochastic 14, EVT 95th pct), and JOHANSEN_DET_ORDER = -1 (drops the constant for price-level series -- to justify or
 change). 72 rows the draft itself marked unjustified stay so, tagged the same way. Record:
 docs/drafts/parameter_justification_verification_2026-10-19.csv. Registry unjustified 338 -> 291; ceiling lowered.
+
+### Adversarial review of 99bf428f + a51f926c (2026-10-19) -> fixes and open items
+Verdicts: PIT-pool QUALIFY ("no whole-history value reaches a decision" BREAKS); D13 QUALIFY; D10 HOLDS (caveats);
+D12 BREAKS as a crisis-effect CI (mechanics correct). Verified myself before acting.
+**Open, Ross's decision (upstream, not fixed):** the per-bar series are not point-in-time where they are BUILT --
+`config.py:553 HEDGE_FALLBACK = "full_sample"` gives spread warm-up bars the full-sample OLS hedge
+(analysis.py compute_spread), and `fit_pair` (analysis.py:3194-3197) sets the z_rolling / half_life_rolling window
+from the whole-history half-life `hl_full`. Strict mode stops scalar SUBSTITUTION only; entry signals, horizons,
+labels and ML features still depend on whole-history data through these two inputs (pit_wfa too: per-bar series
+built on train+test). Every strict result until this is fixed carries that disclosure.
+**Fixed (failing-first):** strict ML examples follow the strict backtest's entry rules -- no example where the
+per-bar hedge is missing at the entry bar (were trained on warm-up bars the backtest skips), MIN_HALF_LIFE_BARS
+floor, z-score velocity over valid bars (5 rows back was often NaN padding on intraday grids); gate model records its
+pair source (`pair_source_label`) and `check_gate_source` refuses a Layer-2 run on another source (a k1/--pit-safe
+ml.py run used to overwrite the gate silently); `--hub-weight` on a PIT pool (counts pairs eligible only later) ->
+labelled `_lookaheadrisk`, warned. ml PIT test 11 -> 16, backtest 17 -> 19 (new checks FAILED before); fixtures of
+`_verify_ml_feature_lag`, `_verify_ml_hedge_ratio_drift_pit` given per-bar hedge columns / strict expectation (no
+causal hedge -> no example). Not changed, intentional and documented: ml.py trains at TRAINING_ENTRY_THRESHOLD 1.5
+vs the backtest's 3.0 entry.
+**Callers whose results change under strict default (outputs unlabelled -- disclose when any is cited):** warm-up bars
+now skipped in research/era_decay_replication, filter_relevance_sweep_1h, distance.py, sensitivity.py,
+fill_timing_sensitivity, stop_loss_correlation_caps, strategy_variation_comparison; decoupling_backtest and
+pit_wfa_episodic scalars NaN (both read whole-history rows: they had that lookahead); run_storm_grid's "CF" arm
+(coint_frac_threshold 0.10) changed from a pair-level whole-history gate to a per-bar gate.
+**D13 (fixed):** Gaussian homoskedastic innovations understated power (real NTRS/STT innovations: excess kurtosis
+~249, |e| lag-1 autocorr 0.28). Added power from contiguous real blocks and P(simulated 5-year p >= observed | full-
+sample effect), and a flag when the full sample detects no effect (then "power" is about the test's size).
+`_verify_durability_power_d13.py` 9 -> 11. Re-run (500 sims): NTRS/STT power 0.18 gaussian / 0.34 blocks,
+P(p >= 0.599) 0.07 / 0.19; XOM/CVX 0.04 / 0.11, P 0.65 / 0.52; JPM/BAC, KO/PEP, SHW/UNP: full sample detects no
+effect (p 0.896 / 0.183 / 0.061). Wording: for NTRS/STT the 5-year result is weak evidence either way -- not "already
+failed", not "uninformative"; the other pairs carry no full-sample effect to lose.
+**D10 caveats (disclose with the real run):** P&L booked on exit days (not marked to market), percentile CI of a ratio
+(not studentized; Ledoit-Wolf), Sharpe-0 for all-zero draws pulls toward 0 (conservative only for a positive estimate).
+**D12 (BREAKS, not fixed -- Ross):** on real-shaped clusters (24 calm years, n 2-84,484; calm confirmation rate falls
+0.46% (2009) -> 0.02% (2022+), consistent with right-censoring; crisis episodes sit in high-rate years) the RI CI
+excludes 0 [+0.030%, +0.178%] while the wild CI includes it [-0.256%, +0.456%]; under an era-matched null RI covers 0
+in 31% of 200 worlds (wild 100%) -- cluster exchangeability fails. The debug test's world (similar calm clusters)
+cannot show this. Not to be run or cited until redesigned.

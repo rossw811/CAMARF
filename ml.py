@@ -307,6 +307,10 @@ def _build_examples_for_pair(
     _has_pit_squeeze = "squeeze_indicator_a_t" in series.columns and "squeeze_indicator_b_t" in series.columns
     _has_pit_rsi_diff_vel = "rsi_diff_velocity_t" in series.columns
 
+    # Strict: z-score velocity over VALID bars (the backtest computes it on the dropna'd series; on padded intraday
+    # grids "5 rows back" was often NaN padding -> median-imputed). Review of a51f926c.
+    _valid_pos = np.flatnonzero(series["z_rolling"].notna().to_numpy()
+                                & (series["spread"].notna().to_numpy() if "spread" in series.columns else True))
     events: List[EntryEvent] = []
     n_censored = 0
     n_no_half_life = 0
@@ -323,6 +327,15 @@ def _build_examples_for_pair(
         if not np.isfinite(hl) or hl <= 0:
             n_no_half_life += 1
             continue  # no usable half-life anywhere — can't set a horizon
+        if strict:
+            # the strict backtest's entry rules (review of a51f926c): no causal hedge at the bar -> no entry; half-life
+            # below MIN_HALF_LIFE_BARS -> no entry. Examples the backtest could never take are not training data.
+            _h = series["hedge_ratio_ols_t"].iloc[pos] if "hedge_ratio_ols_t" in series.columns else np.nan
+            if not (np.isfinite(_h) and _h > 0):
+                continue
+            if hl < Config.BACKTEST.MIN_HALF_LIFE_BARS:
+                n_no_half_life += 1
+                continue
         horizon = max(1, int(round(Config.ML.RESOLUTION_BARS_MULT * hl)))
         future_pos = pos + horizon
         if future_pos >= len(series):
@@ -344,9 +357,14 @@ def _build_examples_for_pair(
         hl_feat = series["half_life_rolling"].iloc[feat_pos]
         if not np.isfinite(hl_feat) or hl_feat <= 0:
             hl_feat = hl
-        zvel = float(
-            series["z_rolling"].iloc[feat_pos] - series["z_rolling"].iloc[max(0, feat_pos - 5)]
-        )
+        if strict:
+            _k = int(np.searchsorted(_valid_pos, feat_pos))
+            _prev = _valid_pos[max(0, _k - 5)] if len(_valid_pos) else feat_pos
+            zvel = float(series["z_rolling"].iloc[feat_pos] - series["z_rolling"].iloc[_prev])
+        else:
+            zvel = float(
+                series["z_rolling"].iloc[feat_pos] - series["z_rolling"].iloc[max(0, feat_pos - 5)]
+            )
         hedge_drift = np.nan
         if _has_pit_hedge:
             ols_t = series["hedge_ratio_ols_t"].iloc[feat_pos]
@@ -855,13 +873,15 @@ class ConformalPredictor:
         ]
 
 
-def _build_model_payload(model, le, feature_names, train_median) -> dict:
+def _build_model_payload(model, le, feature_names, train_median, pair_source=None) -> dict:
     """What MLConditioner (backtest.py) loads. impute_median (2026-10-19): the train-split median the model was fit
     with, so serving fills missing features the same way training did -- it used to zero-fill (train/serve skew).
     debug/_verify_ml_gate_train_median_fill.py"""
     med = {k: float(v) for k, v in pd.Series(train_median).items() if pd.notna(v)}
     return {"model": model, "label_encoder": le, "feature_names": list(feature_names),
-            "classes": list(le.classes_) if le is not None else [], "impute_median": med}
+            "classes": list(le.classes_) if le is not None else [], "impute_median": med,
+            # which pair source trained it; backtest.check_gate_source refuses a Layer-2 run on another (review)
+            "pair_source_label": (pair_source or {}).get("label")}
 
 
 def _chronological_split_impute(X_raw, y, train_pct: float, val_pct: float):
@@ -1053,7 +1073,7 @@ def _train_and_validate(result: MLResult, summary: MLRunSummary) -> None:
     # never rename or move it) plus a purely-additive timestamped historical archive alongside
     # it -- see _persist_model_with_history's own docstring for why.
     _model_dir = model_dir_for(result.pair_source)
-    _model_payload = _build_model_payload(model, le, _FEATURE_COLS, train_median)
+    _model_payload = _build_model_payload(model, le, _FEATURE_COLS, train_median, pair_source=result.pair_source)
     _pkl_path, _archive_path = _persist_model_with_history(_model_payload, _model_dir)
     log.info("  Model saved → %s", _pkl_path)
     log.info("  Historical copy archived → %s", _archive_path)

@@ -68,6 +68,16 @@ def main():
         check("p_recent_is_production_call", np.isclose(r["p_recent"], p_prod), f"{r['p_recent']:.6g} vs {p_prod:.6g}")
         check("power_fields", all(0 <= r[k] <= 1 for k in ("power_recent_at_full_effect", "power_recent_at_recent_effect")),
               f"{r.get('power_recent_at_full_effect')}, {r.get('power_recent_at_recent_effect')}")
+        # Adversarial review of a51f926c: Gaussian homoskedastic innovations understate power on fat-tailed,
+        # clustered real data -> power from contiguous real blocks too, and the evidence quantity
+        # P(p_recent_sim >= p_recent_observed | full-sample effect)
+        eff_s = {**mod.estimate_effect(y, x, return_series=True), "rho": 0.993}   # moderate power: an informative comparison
+        pb = mod.power_at_blocks(eff_s, n=1260, n_sim=200, rng=np.random.default_rng(4))
+        pg = mod.power_at(eff_s, n=1260, n_sim=200, rng=np.random.default_rng(4))
+        check("block_power_matches_gaussian_on_gaussian_data", abs(pb - pg) < 0.12, f"block {pb:.3f} vs gaussian {pg:.3f}")
+        check("p_ge_observed_fields", all(0 <= r[k] <= 1 for k in ("p_ge_observed_gaussian", "p_ge_observed_blocks"))
+              and "power_recent_at_full_effect_blocks" in r and "full_sample_effect_detected" in r,
+              f"{r.get('p_ge_observed_gaussian')}, {r.get('p_ge_observed_blocks')}")
     except (AttributeError, TypeError, KeyError) as e:
         check("d13_functions_exist", False, f"{type(e).__name__}: {e}")
 

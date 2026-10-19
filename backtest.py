@@ -417,6 +417,7 @@ class MLConditioner:
             # Train-split median that ml.py imputed with (BUG-D75 convention); None for a model saved before
             # 2026-10-19 -> zero-fill, warned once. debug/_verify_ml_gate_train_median_fill.py
             self._impute_median = saved.get("impute_median")
+            self.pair_source_label = saved.get("pair_source_label")   # None for a model saved before 2026-10-19
             _classes = saved.get("classes", [])
             self._converge_indices = [
                 i for i, c in enumerate(_classes)
@@ -2377,6 +2378,19 @@ def _pairs_for_tf(tf_dir: str, tf_label: str, _pairs_override_df: Optional[pd.Da
     return pairs
 
 
+def check_gate_source(model_label, run_label) -> None:
+    """A Layer-2 gate model must have been trained on the same pair source as the run it gates (adversarial review
+    of a51f926c: a k1 or --pit-safe ml.py run overwrote output/ml/model_stage1.pkl and a _pitk2 run loaded it
+    unchecked). None = a model saved before provenance was recorded -> warn; a different label -> ValueError."""
+    if model_label is None:
+        log.warning("Layer-2 gate model has no recorded pair source (saved before 2026-10-19) -- retrain with ml.py")
+        return None
+    if model_label != run_label:
+        raise ValueError(f"Layer-2 gate model was trained on pair source {model_label!r}, this run is {run_label!r}; "
+                         f"retrain ml.py on the same source")
+    return None
+
+
 # PIT-pool default: one resolver shared with ml.py (config.resolve_pit_pair_source; code review of 99bf428f)
 from config import resolve_pit_pair_source  # noqa: E402
 resolve_pair_source = resolve_pit_pair_source
@@ -2855,6 +2869,14 @@ def main() -> None:
     hedge_methods = [args.hedge]
     label = "layer2" if layer2 else "layer1"
     label += _pool_label_sfx    # _pitk2 / _pitk1 / _fullsample_descriptive: never the old unlabelled name (review)
+    if layer2 and getattr(ml_cond, "enabled", False) and not args.pairs_override:
+        check_gate_source(getattr(ml_cond, "pair_source_label", None), _pool_label_sfx)
+    # Hub weights count every pool pair, including ones eligible only years later -- lookahead in a sizing input
+    # (review of a51f926c); opt-in, so labelled and warned rather than silently used.
+    if args.hub_weight and _pairs_override_df is not None and "eligible_from" in _pairs_override_df.columns:
+        label += "_lookaheadrisk"
+        log.warning("--hub-weight on a PIT pool counts pairs eligible only later (lookahead) -- output labelled "
+                    "_lookaheadrisk")
     # IS-trades file the non-holdout sizing fits read: the layer-1 run of the SAME pair source
     _is_trades_path = f"output/backtest/trades_layer1{_pool_label_sfx}.parquet"
     if args.hedge == "kalman":

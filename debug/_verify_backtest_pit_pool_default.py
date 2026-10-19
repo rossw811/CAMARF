@@ -152,6 +152,13 @@ def main():
               f"{len(zs)} calls, min {min(zs) if zs else None}")
         check("serving_passes_squeeze_and_rsi", all(c.get("squeeze_min") == 0.3 and c.get("rsi_diff_velocity") == 0.25
                                                     for c in spy3.calls) and len(spy3.calls) > 0)
+        # a Layer-2 run must use a gate model trained on the same pair source (review of a51f926c)
+        try:
+            bt.check_gate_source("_pitk1", "_pitk2")
+            check("gate_source_mismatch_refused", False)
+        except ValueError:
+            check("gate_source_mismatch_refused", True)
+        check("gate_source_match_ok", bt.check_gate_source("_pitk2", "_pitk2") is None)
     except TypeError as e:
         check("engine_accepts_pit_strict", False, str(e))
 

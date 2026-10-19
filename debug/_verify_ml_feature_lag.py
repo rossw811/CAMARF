@@ -41,7 +41,9 @@ def main():
     z = np.full(n, 0.3)
     z[100] = 2.0  # single clean crossing above TRAINING_ENTRY_THRESHOLD=1.5
     series = pd.DataFrame(
-        {"z_rolling": z, "spread": np.zeros(n), "half_life_rolling": np.full(n, 20.0)},
+        {"z_rolling": z, "spread": np.zeros(n), "half_life_rolling": np.full(n, 20.0),
+         # per-bar hedge columns as every real spread file has (strict PIT needs them at the entry bar, 2026-10-19)
+         "hedge_ratio_ols_t": np.ones(n), "hedge_ratio_kalman_t": np.ones(n)},
         index=idx,
     )
     row = pd.Series({

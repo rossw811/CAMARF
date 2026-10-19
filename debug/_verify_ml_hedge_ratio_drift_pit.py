@@ -87,9 +87,9 @@ def main() -> None:
     #    never the whole-history scalar. Descriptive (strict=False): the old scalar fallback, constant across events.
     series_no_pit = series.drop(columns=["hedge_ratio_ols_t", "hedge_ratio_kalman_t"])
     events_strict = _build_examples_for_pair("A", "B", "1h", pair_row, MLRunSummary(), series=series_no_pit)
-    if not events_strict or not all(np.isnan(e.hedge_ratio_drift) for e in events_strict):
-        failures.append(f"strict path (no _t columns) should give NaN drift, got "
-                        f"{[e.hedge_ratio_drift for e in events_strict]}")
+    # 2026-10-19 (review of a51f926c): strict now follows the strict backtest -- no causal hedge, no example
+    if events_strict:
+        failures.append(f"strict path (no _t columns) should give no examples, got {len(events_strict)}")
     events_fallback = _build_examples_for_pair("A", "B", "1h", pair_row, MLRunSummary(), series=series_no_pit,
                                                strict=False)
     if events_fallback:
