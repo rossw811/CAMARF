@@ -11,8 +11,8 @@ Only claims marked **REPLICATED** in [`docs/CLAIMS_REGISTRY.md`](CLAIMS_REGISTRY
 
 | Claim | Status |
 |---|---|
-| C-001 full-sample cointegration can be stale (NTRS/STT) | CORRECTED → **REPLICATED** (sample size corrected to 10,098 days from 1985-12-03; p-values unchanged) |
-| C-002 calendar-padding artifact in rolling z-scores | analytic bound **REPLICATED** 2026-10-05 (= Samuelson's inequality, attained by padding); empirical "4 of 32" part REGISTERED |
+| C-001 full-sample cointegration can be stale (NTRS/STT) | CORRECTED → **REPLICATED** (sample size corrected to 10,098 days from 1985-12-03; p-values unchanged). 2026-10-19: under current rules (S35 mask, both directions) full p < 0.0001 over 10,097 d, last-5y p = 0.599; the 5-year test's power at the full-sample effect is 0.18-0.34, so the recent result is weak evidence either way, and the 'controls show the pattern on neither window' statement is withdrawn (XOM/CVX 0.0415 / 0.3769) |
+| C-002 calendar-padding artifact in rolling z-scores | analytic bound **REPLICATED** 2026-10-05 (= Samuelson's inequality, attained by padding); empirical "4 of 32" part cut 2026-10-19 (an early example set that cannot be re-derived) |
 | C-003 purged ML predicts z-convergence, not profitability | PENDING-DATA |
 | C-004 the engine executes its rules; the rules are defective | PENDING-DATA |
 | C-005 entry clustering | PENDING-DATA |
@@ -50,19 +50,19 @@ Full registries: [`docs/archive/audits/CODE_REVIEW_2026-09-26.md`](archive/audit
 
 | ID | Issue | Effect |
 |---|---|---|
-| A2 / A3 | Where a rolling hedge ratio has no value, the spread uses the full-sample ratio (lookahead); hedge ratios are fitted on prices forward-filled through data outages | Causal comparison arm built (`Config.ANALYSIS.HEDGE_FALLBACK = "causal_expanding"`); default unchanged until the comparison on rebuilt pools |
+| A2 / A3 | Where a rolling hedge ratio has no value, the spread uses the full-sample ratio (lookahead); hedge ratios are fitted on prices forward-filled through data outages | **Fixed 2026-10-19 (Ross):** `HEDGE_FALLBACK = "causal_expanding"` is the default; the causal mode also NaN-masks DATA_GAP prices before hedge fits (89ececc4; `debug/_verify_spread_prefix_invariance.py`) |
 | DEV-003 | CRSP volume was stored in pre-split share units against a split-adjusted price (19% of the discovery ADV gate's passes were reverse-split names; 1,103 split stocks wrongly excluded on some days) | FIXED 2026-10-03: cache restated (33,016 files; raw kept as `volume_raw`), fetches adjust at source; discovery stopped and re-run. Open: Compustat Global files had the same bias (found 2026-10-04 by independent review; code fixed, cache restated after the running scans -- which used raw Compustat volume); 37 ETF/ADR/REIT files get identity-verified PERMNOs (also after the scans); FX files have no volume; coarser 7D/1M/3M/6M/1Y files not restated |
 | B8 | Holdout = last 20% of each pair's own bars, not a common calendar date (cross-pair leakage into fitted weights) | Needs a decision on the holdout definition |
 | B9 | Same-bar fill | Sensitivity study must be re-run on dollar P&L |
 | BUG-D115 (2026-10-10) | The discovery scan dropped crashed EG tests from BH's m (production keeps them at p = 1.0) | Fixed; impact measured on the 2026-10-12 re-run: zero crashed tests in every tier -- no result changed |
 | BUG-D117 (2026-10-12) | Two label -> PERMNO maps named the wrong security for some files (ADRs -> a ticker's old holder; old files -> its current holder): 51 files restated with another security's split factors; the discovery S&P gate checked the wrong company for 147 labels | Fixed; discovery re-run 2026-10-12/13: Tier 2 291 -> 286, Tier 3 687 -> 680 confirmed; superseded outputs kept |
 | BUG-D118 (2026-10-15) | Compustat Global prices are quoted per `qunit` shares and were never divided by it; with other stitched or redenominated listings, 698 of 15,094 series had ~1000x one-day jumps (in 136 of 680 Tier-3 confirmations, 29% of the k = 2 pool) | Fixed: qunit divided at fetch, 104 cached series repaired, remaining > 5x moves split the series (592 split, 64 spike-masked, 20 fragments quarantined); 0 series with a > 5x move after. Discovery, pools and the second pass re-run (Amendment 4). `a8a853ec`, `27b7d4a7` |
-| A4 | Rolling z-score window derived from the full-sample half-life | Open |
+| A4 | Rolling z-score window derived from the full-sample half-life | **Fixed 2026-10-19** for point-in-time paths: window lengths come from the pair's formation bars (pool `eligible_from`, walk-forward train windows); the whole-history production screen keeps the descriptive window, labelled (89ececc4) |
 | Unilever | UL ADR vs its London PLC line drifts 5–11% by year | Investigated, open (INCONSISTENCY_SWEEP) |
 | S6 (verified 2026-10-07) | Gold/Silver/Bronze confirmatory tiers: the "Phillips-Ouliaris proxy" rejects 27.3% of independent random walks at nominal 10% (arch's real PO: 11.2%); KPSS on residuals same class | PAPER.md's tier counts not citable until re-derived (plan S33) |
 | S11 / S12 | The deflated-Sharpe trial registry counts only backtest.py runs, counts identical reruns, pools IS and holdout | Registry-based DSR claims: fix or withdraw (plan W4.3); the pre-registered search has its own DSR |
 | Act 3 (2026-10-07) | PAPER.md's Act 3 numbers match the Surface's 2026-08-14 backtest files; CachyOS's 2026-09-21 rerun differs (IS -1.468 vs -0.679) and both predate dollar P&L | Re-derive or withdraw (plan S18) |
-| Research scripts (bug recheck) | 81 open review findings sit in scripts the papers name (17 confirmed by code, 64 reviewer claims not yet checked); 8 more in scripts no paper names (disclosed, unresolved) | Plan S34: fix the central claims, withdraw the rest |
+| Research scripts (bug recheck) | 81 open review findings sat in scripts the papers name; the 64 unchecked reviewer claims were resolved 2026-10-12 (46 no longer cited, 18 confirmed in code; R1.13, R1.14 fixed); 8 more in scripts no paper names (disclosed, unresolved) | Plan S34: fix the central claims, withdraw the rest |
 | Dormant | Macro release lags/vintages (M10-M12), eigenportfolio gold/silver label (A12/A13), half-life stationarity test (S8) | Not used by any reported result; disclosed |
 | Flaky tests | `_verify_pit_wfa`, `_verify_pit_wfa_wrds_daily_merge_and_save` failed once in full runs, pass alone | Suite now saves failing output to diagnose |
 

@@ -353,7 +353,8 @@ real correlation matrix plus `backtest.py`'s own HRP hierarchical-clustering lin
 for the correlation-cap grouping.
 
 **A real bug found as a byproduct, not the point of this investigation, but disclosed
-regardless.** `sensitivity.py`'s `_portfolio_sharpe()` pools daily P&L via
+regardless.** *(2026-10-19: since fixed -- `sensitivity._portfolio_sharpe` now uses
+`portfolio_math.daily_pnl_from_exits`, business-day zero fill between first and last exit.)* `sensitivity.py`'s `_portfolio_sharpe()` pools daily P&L via
 `groupby(date).sum()` — the exact convention mismatch BUG-D62 already found and fixed in
 `portfolio_sim.py` this session (drops zero-P&L calendar days rather than zero-filling them via
 `resample("1D")`, inflating the Sharpe). That fix was never applied to `sensitivity.py`. This

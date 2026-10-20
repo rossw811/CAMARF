@@ -40,6 +40,11 @@ The C-entries below are claims re-derived one by one on current data.
 - **Claim:** Northern Trust / State Street pass a full-sample Engle-Granger test with p = 0.000046 over 10,098
   overlapping trading days (1985-12-03 to 2025-12-31), but fail the identical test on the last five years
   (p = 0.561, 1,256 days). A full-sample screen cannot tell a deployment whether the relationship is current.
+- **2026-10-19 (claims evaluation, D13):** current rules give last-5y p = 0.599 (10,097 d); at the full-sample effect the
+  5-year test has power 0.18 (Gaussian) / 0.34 (real blocks) and P(p >= 0.599) = 0.07 / 0.20 -- weak evidence either
+  way. The claim stands as 'cannot vouch for the present', not 'has broken'. Controls: XOM/CVX shows the pattern
+  (0.0415 / 0.3769); JPM/BAC (0.8955), KO/PEP (0.1124), SHW/UNP (0.0606) detect no full-sample effect, so they are
+  not controls for losing one.
 - **Falsification:** the full-sample p ≥ 0.05, or the recent-window p < 0.05, on the same data and test.
 - **Data:** CRSP daily `close_total_return` (WRDS cache, labels verified against the CIZ v2 security master after
   the D17 relabel: NTRS = permno 58246, STT = permno 72726). Controls: XOM/CVX, JPM/BAC, KO/PEP, SHW/UNP.
@@ -132,7 +137,8 @@ The C-entries below are claims re-derived one by one on current data.
   (BUG-D68; analysis.py:6324, 6379-6380), which the paper omits. The FANG/OXY worked example (P-089) was verified
   2026-06-23, before BUG-D68 and A5, and must be re-checked against the 756-bar rule before it is cited.
 - **P-091 — REPLICATED.** Production `SpreadModel.rolling_zscore` (ddof=1) gives 15.81151378755267 = 251/√252 at a
-  252-bar window. Caveat: today's window is adaptive (8 × half-life, clipped to [30, 252]); the artifact is
+  252-bar window. Caveat: today's window is adaptive (8 × half-life, clipped to [30, 252]; since 2026-10-19 the half-life comes from
+  the pair's formation bars on point-in-time paths); the artifact is
   (w-1)/√w at window w, and 15.8115 only at the 252 cap. "Matched to 10 significant digits in observed output" is
   not re-checkable here.
 - **M-038 — CORRECTED.** `chunked_pearson_candidate_pairs` returns the same pair set as the direct call (1,800/1,800;

@@ -288,7 +288,7 @@ issues). Confirms itself against real staged changes before trusting it, not a s
 test.
 
 ### `debug/_run_all_verify.py` -- the full verify-suite runner
-**Run:** `python debug/_run_all_verify.py` (every `debug/_verify_*.py`, ~340 as of 2026-10; sequential by
+**Run:** `python debug/_run_all_verify.py` (every `debug/_verify_*.py`, 402 as of 2026-10-19; sequential by
 default; on CachyOS `--workers 2 --timeout 300`; failing tests' full output goes to `--failure-dir`, default
 `output/verify_runs/last_failures/`) or `--pattern <substring>` (subset) or `--workers N` (parallel -- **only on a machine
 with real memory headroom**; running the full suite in parallel OOM-killed a 16GB machine twice
@@ -612,7 +612,7 @@ pair -- it covers 12 independently-togglable factors and is the shared foundatio
 is meant to build on, not a per-script bespoke generator), assert against the known answer, print
 `[PASS]`/`[FAIL]` per check plus a final count, exit nonzero on any failure.
 
-**Don't enumerate all 344 individually here** -- each one's own module docstring states exactly
+**Don't enumerate all 402 individually here** -- each one's own module docstring states exactly
 what it verifies and why, and `research/<name>.py`'s own docstring cross-references its
 `debug/_verify_<name>.py` counterpart. To run one: `python debug/_verify_<name>.py`. To run
 everything: `python debug/_run_all_verify.py` (see its entry in Core production pipeline above).

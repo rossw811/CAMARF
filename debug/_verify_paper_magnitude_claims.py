@@ -67,8 +67,14 @@ else:
 # 2. Cluster-robust bootstrap results (confirmation-rate CI, persistence CI)
 # ---------------------------------------------------------------------------
 p = OUT_RESEARCH / "crisis_regime_cluster_bootstrap.parquet"
-if p.exists():
-    df = pd.read_parquet(p)
+_df_cb = pd.read_parquet(p) if p.exists() else None
+if _df_cb is not None and "metric" in _df_cb.columns:
+    # D12 redesign (Ross 2026-10-19): the script now writes the within-year sign-flip CI; the paper's cluster-
+    # bootstrap numbers (M-020/M-067/M-068: CI [0.022%, 0.398%], p-equivalent 0.25 / 0.032) are obsolete by design and
+    # await re-derivation after the chain -- reported as an explicit failure, like the D5 survivorship rows.
+    check("cluster_bootstrap.paper_numbers_obsolete_D12_rederive_pending", "obsolete", "re-derived", source=p.name)
+elif _df_cb is not None:
+    df = _df_cb
     conf_row = df.loc["confirmation_rate"]
     pers_row = df.loc["reappearance_rate"]
     check("cluster_bootstrap.confirmation.ci_low_pct", round(conf_row["ci_low"] * 100, 3), 0.022, tol=0.002, source=p.name)

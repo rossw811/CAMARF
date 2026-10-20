@@ -29363,3 +29363,13 @@ First pass: 217 already withdrawn (confirm the docs say so), 277 wait on the cha
 the 10-17..19 fixes. Batch 1 (the 33) done: e.g. PAPER-012 WITHDRAW (XOM/CVX shows the NTRS/STT pattern; the other
 controls detect no effect), PAPER-063/README-013 CORRECT (D11 reverses the null-rate result), README-012 WITHDRAW
 (SHW/UNP full p 0.0606 on CRSP), 5 keyword mis-tags reclassified.
+**Claims evaluation -- edits applied (2026-10-19):** factual corrections in README (NTRS/STT current-rules numbers +
+power caveat, SHW/UNP withdrawn, D11 replaces the "refuted, 7.75-12.75%" passage, 291 unjustified, 402 tests, seven
+GapFlag codes, survivorship scoped per path, PIT-pool default, aligned_pair_loader exception), CONTRIBUTING (test
+counts), DATA_SOURCES (FX source and R1.1 status), ERRATA (C-001 D13 note, C-002 "4 of 32" cut, A2/A3 and A4 fixed,
+S34 reviewer findings resolved), PREREGISTRATION (which runs carry A2/A3/A4), PROCESS_OUTLINE (100 broad excepts),
+FINDINGS (sensitivity Sharpe fixed), CLAIMS_REGISTRY (C-001 D13 note, P-091 window). PAPER.md / PAPER_MAGNITUDE.md
+edits are drafted for Ross, not applied (decision 4). `_verify_paper_magnitude_claims` read the old cluster-bootstrap
+layout and crashed after the D12 redesign -- now an explicit failure "paper numbers obsolete, re-derivation pending"
+(6 deliberate failures: that + the 5 D5 survivorship rows). CONTRIB-032 sits in an auto-generated table: fix at its
+source docstring on the next scripts/_build_contributing.py regeneration.

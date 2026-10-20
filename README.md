@@ -14,8 +14,8 @@ it or try to break it.
 > Since this banner was written, B2/B3 (dollar P&L, now the default), B4 (`--hedge both` removed) and the Compustat
 > currency conversion are fixed (2026-09-28 → 2026-10-03); the P&L numbers below remain withdrawn until re-derived.
 >
-> **Current status (2026-10-05).** Every logged bug was rechecked (310 items; a full test suite of ~340
-> verification scripts, each fix with a test that fails on the old code) and an independent review attacked the fixes.
+> **Current status (2026-10-05; test count updated 2026-10-19).** Every logged bug was rechecked (310 items; the full
+> test suite is now 402 verification scripts, each fix with a test that fails on the old code) and an independent review attacked the fixes.
 > Dollar P&L is now the default, a volume split bias in the CRSP and Compustat data was found and fixed (19% of the
 > discovery liquidity gate's passes were reverse-split names), and pair discovery was re-run on the corrected data:
 > 891 / 278 / 703 pairs confirmed in Tiers 1 / 2 / 3. These are discovery counts, not results -- the sensitivity run,
@@ -111,22 +111,24 @@ The project's central, citable contribution is not the trading strategy itself b
 diagnosis of a failure mode in the standard cointegration-screening methodology every
 prior pairs-trading paper relies on:
 
-This project's own original headline confirmed pairs, **NTRS/STT** and **SHW/UNP**,
-pass a full-sample Engle-Granger test with p < 0.005 while *failing* the identical test
-restricted to just the last five years. A full-sample screen over 40–60 years of history
+This project's own original headline confirmed pair **NTRS/STT** passes the production full-sample Engle-Granger test
+(both directions, CRSP total return, 10,097 overlapping days from 1985) with p < 0.0001, while the identical test on
+the last five years gives p = 0.599. (SHW/UNP, once quoted beside it, does not pass on CRSP data: full-sample p =
+0.0606; corrected 2026-10-19.) Caution on the inference: at the effect the full sample estimates, the 5-year test has
+only 18-34% power, so the recent result is weak evidence either way -- it shows a full-sample screen cannot vouch for
+the present, not that the relationship has broken (D13, `research/durability_vs_currency_wrds.py`). A full-sample screen over 40–60 years of history
 is effectively testing whether two price levels stayed cointegrated across decades of
 M&A, sector rotation, and business-model change — a bar a genuinely tradable relationship
 can fail today while still reading "confirmed." A companion observation — that full-sample
 screens at long horizons (1D, 1M) reject candidate pairs at rates far below their expected
 false-positive rate under the null — was initially read as evidence the EG test itself is
-statistically over-conservative at those horizons. That reading was tested directly via a
-Monte Carlo calibration study (`research/eg_null_calibration_montecarlo.py`) and **refuted**:
-the empirical false-positive rate under a genuinely null, by-construction pairing is
-*elevated*, not suppressed (7.75%–12.75% vs. nominal 5%), and grows with horizon — ordinary
-spurious regression from shared market-wide drift, not test miscalibration. The full-sample
-screen's near-total rejection rate at long horizons reflects the test correctly guarding
-against exactly this risk. The durability-vs-currency conflation demonstrated by NTRS/STT
-and SHW/UNP is the real, load-bearing failure mode and needed no such correction — reported
+statistically over-conservative at those horizons. A first Monte Carlo study appeared to refute that (7.75%-12.75%
+false positives vs nominal 5%), but it paired series by position rather than by date, sampled a small yfinance cache
+and ran a one-direction test. Rebuilt on the production path (2026-10-19, `research/eg_null_calibration_montecarlo.py`:
+full universe, calendar-aligned, both directions, max p), random null pairs are rejected at 1.50% (15m), 1.75% (1h),
+3.00% (1D) and 3.25% (1M) -- at or below nominal; a one-direction test gives 6.75-8.75%. So the production screen is
+not over-permissive on random pairs; whether it is too strict on real candidates (|corr| >= 0.6) is not yet measured. The durability-vs-currency conflation illustrated by NTRS/STT
+is the real, load-bearing failure mode and needed no such correction — reported
 here alongside the refuted companion hypothesis rather than silently dropping it, per this
 project's standing verify-before-trusting discipline.
 
@@ -162,8 +164,8 @@ and backtest-specific results.
   The previous second pass (2026-10-14, 0 of 8 pool × split cells met the pre-registered criterion) is superseded by
   BUG-D118 and kept only for provenance.
 - **Overfitting accounting** (approved by Ross): every tunable value is listed in `docs/PARAMETER_REGISTRY.csv`
-  with its justification and whether it was set after seeing a result (339 still lack a recorded justification and
-  are being traced); the strategy search counts all N = 432 trials in its deflated Sharpe and reports PBO; data from
+  with its justification and whether it was set after seeing a result (291 still lack a recorded justification after
+  the 2026-10-19 row-by-row verification, each tagged "sensitivity test owed"); the strategy search counts all N = 432 trials in its deflated Sharpe and reports PBO; data from
   2026-01-01 onward is a sealed holdout.
 - **Endogeneity comparison arms** (approved 2026-10-13; they enter as comparisons, never directly into the pipeline):
   (a) DOLS / FM-OLS hedge ratios and an exactly-sized Johansen test vs OLS + Engle-Granger — validated on synthetic
@@ -307,9 +309,10 @@ FINDINGS.md` #68-#69, #73, `PAPER.md` §7.21-§7.22.
    for *confirmed pairs only* (read from `confirmed_pairs_manifest.json`).
    `ibkr_supplement_reader.py` is a parquet-only reader shared by `data_ibkr.py` and
    `analysis.py` with zero `ib_insync` dependency — this keeps the IBKR fetch boundary
-   fully decoupled from the core pipeline.
-3. **A six-code `GapFlag` system governs all gap handling** (`NONE, FILL, NO_ACTIVITY,
-   HALT, DATA_GAP, SPARSE`). `DATA_GAP` bars are masked to NaN in every downstream
+   fully decoupled from the core pipeline. Known exception, queued: `research/aligned_pair_loader.load_aligned_pair`
+   still loads yfinance first and WRDS as the fallback.
+3. **A seven-code `GapFlag` system governs all gap handling** (`NONE, FILL, NO_ACTIVITY,
+   HALT, DATA_GAP, SPARSE, STRUCTURAL`). `DATA_GAP` bars are masked to NaN in every downstream
    correlation/cointegration calculation, never silently forward-filled.
 4. **Every rolling-window calculation is strictly causal.** All `.rolling()` windows
    across the codebase use pandas' default trailing/right-aligned convention — no
@@ -381,10 +384,12 @@ How to check a result yourself (updated 2026-10-03; open problems: [`docs/ERRATA
 
 ## Known Biases and Limitations (documented, not hidden)
 
-- **Survivorship bias:** the universe is built from *current* S&P Composite 1500
-  constituents, not a point-in-time, delisting-inclusive historical universe.
+- **Survivorship bias:** depends on the path. `data.py`'s default fetch scope is the *current* S&P Composite 1500
+  (survivorship-biased); discovery and research use the full WRDS-merged market including delisted securities
+  (`universe_loader.load_full_universe`). Each result states which it uses.
 - **Point-in-time (PIT) safety of the production pair source — the current headline
-  disclosure.** The confirmed-pair set `backtest.py`/`report.py` actually trade is still sourced
+  disclosure.** Since 2026-10-19 `backtest.py` and `ml.py` default to the point-in-time pool (k = 2;
+  `--full-sample-descriptive` runs the old path, labelled). Results built before that were sourced
   from the standard full-history screen, which is NOT point-in-time-safe (a real deployment at
   any past date would not have discovered or traded that same pair set — a direct PIT re-screen
   found zero pair overlap with the standing set and negative OOS Sharpe in every fold, see

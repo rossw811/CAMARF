@@ -39,7 +39,7 @@ caught by none of them, or if removing a check loses no catches.
      sample counts (C-001: 13,373 vs 10,098); NaN fractions passing a stability filter; fail-open ML gate.
    - *Selection / lookahead:* candidate pools with future information (median eligible_from 2018 vs trades years
      earlier); quality-admission lookahead.
-   - *Silent fallbacks:* 62 broad exception handlers in production modules; stale-file resume; WFA `_stale` fallback.
+   - *Silent fallbacks:* 100 broad `except Exception` handlers in six production modules (analysis, backtest, data, ml, data_wrds, universe_loader; counted 2026-10-19); stale-file resume; WFA `_stale` fallback.
    - *Data fabrication:* liquidity filter forward-filling fabricated bars; cache-time forward fill; futures "roll
      adjustment" doubling real moves.
 4. **The protocol** — verification loop (maker ≠ checker; reproduce first; real-data check; independent check;

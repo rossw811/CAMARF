@@ -120,7 +120,9 @@ test before this addendum (evidence: docs/archive/audits/INCONSISTENCY_SWEEP_202
    216) and the success criterion is evaluated at 432 as declared.
 6. **Known open issues this pass carries (disclosed, not fixed):** A2/A3 — where a rolling hedge ratio is missing the
    spread falls back to the full-sample ratio, and ratios are fitted through forward-filled outages (a causal arm
-   exists but is not adopted); A4 — the rolling z-score window is derived from the full-sample half-life; B9 —
+   exists but is not adopted); A4 — the rolling z-score window is derived from the full-sample half-life
+   [**2026-10-19:** A2/A3 and A4 are fixed (89ececc4) and the Amendment-4 re-run's pool spreads are rebuilt on the
+   fixed code (chain resumed from pool_spreads) -- results from that run do not carry them; earlier passes do]; B9 —
    same-bar fills. (B8, the engine's per-pair 20% holdout, does not apply: the search runs the engine with
    `holdout_only=False` and splits trades by the pre-registered calendar cutoffs, `strategy_search.split_trades`.) Point-in-time S&P 400/600 membership is not applied (disclosed
    limitation; source verification ongoing).
