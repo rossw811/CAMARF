@@ -129,7 +129,7 @@ full universe, calendar-aligned, both directions, max p), random null pairs are 
 3.00% (1D) and 3.25% (1M) -- at or below nominal; a one-direction test gives 6.75-8.75%. So the production screen is
 not over-permissive on random pairs; whether it is too strict on real candidates (|corr| >= 0.6) is not yet measured. The durability-vs-currency conflation illustrated by NTRS/STT
 is the real, load-bearing failure mode and needed no such correction — reported
-here alongside the refuted companion hypothesis rather than silently dropping it, per this
+here alongside the companion hypothesis (now open, not refuted: §4.2.1) rather than silently dropping it, per this
 project's standing verify-before-trusting discipline.
 
 `coint_fraction_rolling` — a scalable rolling-window stability diagnostic — and a
@@ -385,8 +385,9 @@ How to check a result yourself (updated 2026-10-03; open problems: [`docs/ERRATA
 ## Known Biases and Limitations (documented, not hidden)
 
 - **Survivorship bias:** depends on the path. `data.py`'s default fetch scope is the *current* S&P Composite 1500
-  (survivorship-biased); discovery and research use the full WRDS-merged market including delisted securities
-  (`universe_loader.load_full_universe`). Each result states which it uses.
+  (survivorship-biased); discovery and research use the full WRDS-merged market (`universe_loader.load_full_universe`),
+  which includes delisted securities though not completely (ticker-keyed fetches resolve to the latest PERMNO, so an
+  older company whose ticker was reused can be missed; coverage is being measured, D6). Each result states which it uses.
 - **Point-in-time (PIT) safety of the production pair source — the current headline
   disclosure.** Since 2026-10-19 `backtest.py` and `ml.py` default to the point-in-time pool (k = 2;
   `--full-sample-descriptive` runs the old path, labelled). Results built before that were sourced

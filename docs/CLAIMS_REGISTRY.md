@@ -153,3 +153,27 @@ The C-entries below are claims re-derived one by one on current data.
   (pair × window) family, a pair confirmed if at least one window survives (`episodic_bhfdr_confirm`; its docstring
   says it is not point-in-time safe -- the pools use the as-of version, S32).
 
+
+## C-008 — Size of the production EG screen under the null (D11, 2026-10-18/19)
+- **Claim:** on random pairs (full WRDS-merged universe at 1D/1M; the ~1,580-symbol yfinance cache at 15m/1h), the production two-direction EG screen (max p) rejects at or
+  below nominal 5%: 15m 1.50% [0.55, 3.24], 1h 1.75% [0.71, 3.57], 1D 3.00% [1.56, 5.18], 1M 3.25% [1.74, 5.49]
+  (400 pairs each, Clopper-Pearson). One direction alone rejects 6.75% / 6.75% / 7.75% / 8.75%. Replaces the
+  pre-WRDS "7.75-12.75%, EG correctly guarding" result (PAPER.md §4.2.1, README), which paired series by row position,
+  sampled the yfinance cache at 1D/1M and ran one direction.
+- **Falsification:** a re-run on the same path rejecting materially above 5% (lower CI bound > 5%), or the
+  synthetic check failing to recover a date-aligned cointegrated pair.
+- **Data:** `load_full_universe(tf, columns=["close"])` (WRDS priority, IBKR off), `align_to_common_calendar` 10 years;
+  1D 46,352 symbols (CachyOS 2026-10-19); 1M 2,858 symbols (WRDS monthly subset); 1h 1,581 and 15m 1,578 (yfinance).
+- **Parameters:** `eg_pvalue_pair` both directions, max p; overlap floor max(`MIN_OVERLAP_BY_TF`, 60); pairs without
+  repetition; seed 20260713.
+- **Reproduce:** exactly `python research/eg_null_calibration_montecarlo.py --tf 1h 1M 15m --n-pairs 400` (Surface) and
+  `--tf 1D --n-pairs 400` (CachyOS). One random generator runs through the `--tf` list in order, so running the
+  timeframes one at a time gives different draws; each call overwrites
+  `output/research/eg_null_calibration_montecarlo.parquet` (the 1D row exists only in the CachyOS copy). Check
+  `debug/_verify_eg_null_calibration_d11.py`.
+- **Code state:** 2ec0c521's script (Surface parquet written 2026-10-18 12:26, just before the commit; 6c2de4f9's later
+  loader change affects mixed-frequency calls, not these single-TF runs); CachyOS 1D run on HEAD 7ae0f551
+  (a HANDOFF-only commit on top of the same script).
+- **Status:** **REPLICATED (2026-10-19)** for the stated scope: size on random pairs. Not measured: the screen's
+  behaviour on the |corr| >= 0.6 candidate population (needs a correlation-matched null and a power study). CIs treat
+  pairs as independent (legs reused, median 2, max 7, in the 1h review), so they are somewhat too narrow.

@@ -1,4 +1,4 @@
-# Paper edits for Ross's review (2026-10-19)
+# Paper edits for Ross's review (2026-10-19) -- APPLIED 2026-10-20 (Ross "y to all"; review fixes in Development.md)
 
 From the all-claims evaluation (docs/drafts/CLAIMS_EVALUATION_2026-10-19.md) incl. the primary-source literature
 check (docs/drafts/lit_verification_2026-10-19.csv). Decision 4 (Ross, 2026-10-19): paper wording is drafted, not

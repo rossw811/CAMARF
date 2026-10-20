@@ -25,7 +25,8 @@ approved after the genuinely point-in-time-safe 182-pair backtest result
 became the paper's obvious missing conclusion, not a footnote. Prior
 history, kept for provenance: retitled 2026-07-13 after a direct Monte
 Carlo calibration check (§4.2.1) refuted this project's own earlier "test
-miscalibration" reading of a companion observation: the durability-vs-
+miscalibration" reading of a companion observation [2026-10-19: that check was itself flawed and has been rebuilt;
+the reading is open, not refuted, §4.2.1]: the durability-vs-
 currency demonstration itself (§4.2) was always the load-bearing evidence
 and needed no revision; only the paper's own title and framing did.)*
 
@@ -95,8 +96,8 @@ external reader.
   The previous second pass (2026-10-14, 0 of 8 pool × split cells met the pre-registered criterion) is superseded by
   BUG-D118 and kept only for provenance.
 - **Overfitting accounting** (approved by Ross): every tunable value is listed in `docs/PARAMETER_REGISTRY.csv`
-  with its justification and whether it was set after seeing a result (339 still lack a recorded justification and
-  are being traced); the strategy search counts all N = 432 trials in its deflated Sharpe and reports PBO; data from
+  with its justification and whether it was set after seeing a result (291 still lack a recorded justification; 104 of
+  them were checked row by row on 2026-10-19 and tagged "sensitivity test owed", the other 187 are not yet checked); the strategy search counts all N = 432 trials in its deflated Sharpe and reports PBO; data from
   2026-01-01 onward is a sealed holdout.
 - **Endogeneity comparison arms** (approved 2026-10-13; they enter as comparisons, never directly into the pipeline):
   (a) DOLS / FM-OLS hedge ratios and an exactly-sized Johansen test vs OLS + Engle-Granger — validated on synthetic
@@ -169,43 +170,36 @@ with a full-sample Engle-Granger test, a method that scales to
 large-N candidate universes but cannot, by construction, distinguish a
 durable economic relationship from one whose statistical significance is
 borrowed from a regime that no longer holds. This failure mode is
-demonstrated directly and concretely, not asserted from theory, on real
-WRDS/CRSP data (re-derived 2026-09-10, §4.2; the original demonstration
+illustrated directly, not asserted from theory, on real WRDS/CRSP data (a full-sample pass the recent window
+does not confirm) (re-derived 2026-09-10, §4.2; the original demonstration
 predated this project's WRDS-primary sourcing and is not used as evidence
 here): this project's own original headline pair, **NTRS/STT**, passes a
-full-sample Engle-Granger test with overwhelming significance (p≈0.00005,
-10,098 overlapping daily observations since 1985-12-03) while failing the identical
-test restricted to just the last five years (p=0.561, 1,256 days). [Corrected 2026-10-02: an earlier draft said
+full-sample Engle-Granger test with overwhelming significance (production settings: no-trade mask, both
+directions, max p; p ≈ 0.00004 over 10,097 overlapping daily observations since 1985-12-03) while failing the
+identical test restricted to the last five years (p = 0.599, 1,256 days). [Corrected 2026-10-02: an earlier draft said
 "13,373 daily observations since 1972" -- the script counted calendar rows before either stock had a price; the
-p-values were unaffected. docs/CLAIMS_REGISTRY.md C-001.] A full-sample screen
+p-values were unaffected. docs/CLAIMS_REGISTRY.md C-001. Re-derived 2026-10-19 under the production settings (D13);
+the earlier 0.561 ran one direction with a free lag.] A full-sample screen
 over 40 years answers "was this relationship ever cointegrated," not "is
-it cointegrated now," and a pair can clear the former bar while having
-already failed the latter. **SHW/UNP, this project's other original
-headline pair, does not replicate as cleanly on WRDS data as it did under
-the original pre-WRDS demonstration**, reported honestly rather than
-dropped (§4.2 for the full account and the disclosed price-adjustment-
-convention sensitivity behind the difference); NTRS/STT alone, checked
-against three negative-control pairs that show the pattern on neither
-window, is sufficient evidence for the underlying claim. A companion
+it cointegrated now," and a pair can clear the former bar while
+the recent test does not confirm the latter. The recent-window result is weak evidence on its own: at the effect the full sample
+estimates, a five-year test detects it with probability 0.18 (Gaussian simulation) to 0.34 (resampled real
+innovations), so NTRS/STT shows that a full-sample screen cannot vouch for the present, not that this relationship
+has broken (§4.2). **SHW/UNP, this project's other original headline pair, does not replicate on WRDS data**
+(full-sample p = 0.061 on CRSP), reported rather than dropped (§4.2). Of the comparison pairs, XOM/CVX shows the
+same pattern as NTRS/STT (0.041 full sample, 0.377 last five years), and JPM/BAC and KO/PEP detect no full-sample
+relationship, so they cannot test the loss of one. A companion
 observation, that full-sample screens at long horizons (1D, 1M) reject
 candidate pairs at rates far below their nominal false-positive rate, was
-initially read as further evidence the test itself is statistically
-over-conservative at those horizons, compounding the problem by also
-suppressing detection of real, currently-live relationships. That reading
-was tested directly with a Monte Carlo calibration study rather than left
-asserted, and is refuted: the empirical false-positive rate under a
-genuine, by-construction null is *elevated* relative to nominal
-(7.75%-12.75% vs. 5%) and grows with horizon, the opposite of an
-over-conservative test's signature, a signal of ordinary spurious
-regression from shared market-wide drift among randomly-paired real
-assets, not test miscalibration (§4.2.1). **This calibration study itself
-still runs on pre-WRDS data and has not yet been re-derived on WRDS/CRSP
-series**, flagged here as an open item (§4.2.1), not silently carried
-forward as validated. The full-sample screen's near-total rejection rate
-at long horizons in production reflects the test correctly guarding
-against exactly this risk, not a defect, pending that re-derivation. The
-durability-vs-currency conflation demonstrated by NTRS/STT remains the
-real, load-bearing failure mode and needs no such correction.
+initially read as evidence the test itself is over-conservative at those horizons. A first Monte Carlo study
+appeared to refute that (7.75%-12.75% false positives vs. 5% on randomly paired series), but it paired series by
+row position rather than by date, sampled a small yfinance cache and ran one direction of the test. Rebuilt on the
+production path (§4.2.1: the full WRDS-merged universe at 1D/1M, the ~1,580-symbol yfinance cache at 15m/1h;
+calendar-aligned; both directions), random null pairs are
+rejected at 1.50% (15m), 1.75% (1h), 3.00% (1D) and 3.25% (1M): the production screen is at or below nominal size
+on random pairs, not over-permissive. Whether it is too strict on real candidates (|corr| ≥ 0.6), the question the
+low long-horizon rejection rates raise, is not yet measured. The durability-vs-currency point illustrated by
+NTRS/STT does not depend on either reading.
 A scalable rolling-stability diagnostic (`coint_fraction_rolling`) is
 introduced that operationalizes, at the scale required for large candidate
 universes, a question formal econometrics already has tools for at the
@@ -275,8 +269,8 @@ historical.
 
 - Motivation: stat-arb / pairs trading practice and the bulk of the
   academic literature screens for cointegration with a single full-sample
-  test (Vidyamurthy, 2004, "the most cited work on cointegration-based
-  pairs trading," built on an adapted Engle-Granger test).
+  test (e.g. Vidyamurthy, 2004, a practitioner text built on an
+  Engle-Granger-type test). *[Not yet checked against the original text (claims check 2026-10-19); not to be relied on until it is.]*
 - The conventional framing of "does cross-asset cointegration predict
   outcomes" is the wrong question to lead with at this stage of the
   project (ml.py/backtest.py results are still too early/small to carry a
@@ -287,11 +281,10 @@ historical.
 - Contribution claims (each maps to a methodology section below):
   1. Direct empirical demonstration that full-sample EG screening
      conflates durability with currency, on this project's own original
-     headline confirmed pairs (§4.2), plus a direct Monte Carlo
-     calibration check of a companion hypothesis (test miscalibration at
-     long horizons) that the data initially seemed to support and the
-     simulation refutes, reported as a real negative result rather than
-     quietly dropped (§4.2.1).
+     headline confirmed pairs (§4.2), plus a Monte Carlo calibration of
+     the production screen's size on random null pairs: at or below
+     nominal (1.5-3.25% vs. 5%), after a first, flawed version of the
+     same study had reported over-rejection; both are reported (§4.2.1).
   2. A two-tier, scalable stability-screening design (cheap rolling
      diagnostic at scale, formal structural-break corroboration at the
      margin) that makes existing-but-impractical-at-scale econometric
@@ -306,7 +299,8 @@ historical.
 Sections 2.1–2.3 organize the literature into the three methodological
 lineages CAMARF synthesizes. The comparison table in §2.4 summarizes each
 paper's methodology vs. CAMARF's and supports the §1.2 contribution
-argument. All citations were verified by direct source lookup.
+argument. Citations were checked against their primary sources on 2026-10-19
+(`docs/drafts/lit_verification_2026-10-19.csv`); those that could not be read in the original are marked in place.
 
 ### 2.1 Foundational cointegration and structural stability
 
@@ -316,13 +310,13 @@ argument. All citations were verified by direct source lookup.
   built on. A full-sample application of this test, run over horizons
   spanning 40-60+ years, is what produces the durability-vs-currency
   conflation the Strictness Paradox documents directly in §4.2; the test
-  itself is not shown to be miscalibrated (§4.2.1 tests and refutes that
-  separate hypothesis); the issue is what question a full-sample
-  application of it answers.
+  itself is at or below nominal size on random null pairs in its production
+  form (§4.2.1); the issue is what question a full-sample application of
+  it answers.
 - **Vidyamurthy (2004)**, *Pairs Trading: Quantitative Methods and
-  Analysis*, Wiley: the most-cited practitioner/academic framework for
+  Analysis*, Wiley: a practitioner/academic framework for
   cointegration-based pairs trading; builds on an adapted EG test and a
-  VECM formulation. CAMARF's pipeline is the institutional-scale,
+  VECM formulation. *[Not yet checked against the original text (claims check 2026-10-19); not to be relied on until it is.]* CAMARF's pipeline is the institutional-scale,
   multi-TF extension of this architecture.
 - **Gregory & Hansen (1996)**, "Residual-Based Tests for Cointegration in
   Models with Regime Shifts," *Journal of Econometrics*: ADF-/Za-/Zt-type
@@ -354,8 +348,8 @@ argument. All citations were verified by direct source lookup.
   than EG in small samples. Implemented in stats.py Section 1 as PP test
   on EG residuals (the PO Z_t statistic). 2026-06-29 result: 4 Gold-tier
   pairs (EG + KPSS + PO all confirm), 23 Silver, 10 Bronze.
-- **Hakkio & Rush (1991)**, "Cointegration: How Short Is the Short Run?,"
-  *Journal of International Money and Finance* 10(4): establishes that
+- **Hakkio & Rush (1991)**, "Cointegration: How Short Is the Long Run?,"
+  *Journal of International Money and Finance* 10(4), 571-581 *[citation details verified; content not yet read in the original (claims check 2026-10-19), not to be relied on until it is]*: establishes that
   cointegration test power tracks the total **calendar span** covered by
   the data, not sampling frequency; increasing bar frequency within a fixed
   start/end window yields only limited power gains, not the improvement a
@@ -368,7 +362,8 @@ argument. All citations were verified by direct source lookup.
   (§2.3, Harvey/Liu/Zhu) and with Gregory-Hansen's own power/size tradeoff
   under large structural breaks. No source found in that survey
   characterizes this three-way compounding for a multi-timeframe
-  institutional screen, which is exactly this project's terrain. This is
+  institutional screen (the survey's queries were not recorded, so this is a search result, not a claim that
+  none exists), which is exactly this project's terrain. This is
   reported as an open methodological tension this paper does not claim to
   resolve, not a gap CAMARF has already corrected for.
 
@@ -386,7 +381,8 @@ argument. All citations were verified by direct source lookup.
   for Pairs Trading": introduces the OU process model for the spread;
   MLE estimation; compares distance vs. cointegration vs. stochastic
   spread approaches; cointegration + OU outperforms pure distance on
-  risk-adjusted basis. CAMARF adds Kalman PIT hedge estimation, Huber/MM
+  risk-adjusted basis. *[Not located in a primary source (claims check 2026-10-19); not to be relied on until it
+  is.]* CAMARF adds Kalman PIT hedge estimation, Huber/MM
   robustness, multi-TF, and rolling stability filtering.
 - **Avellaneda & Lee (2010)**, "Statistical Arbitrage in the U.S. Equities
   Market," *Quantitative Finance* 10(7), 761-782: PCA-based residual
@@ -397,7 +393,8 @@ argument. All citations were verified by direct source lookup.
   bilateral price-level cointegration). Their own within-sample decay
   corroborates that this is a general property of stat-arb.
 - **Elliott, van der Hoek & Malcolm (2005)**, "Pairs Trading," *Quantitative
-  Finance*: Gaussian Markov chain spread model; Bayesian optimal stopping.
+  Finance* 5(3), 271-276: Gaussian Markov chain spread model (the abstract does not mention the "Bayesian optimal
+  stopping" earlier drafts attributed to it; full text not yet read, 2026-10-19).
   Theoretically principled but model-dependent; CAMARF uses a simpler
   z-score rule with empirical validation at scale.
 - **Krauss (2017)**, "Statistical Arbitrage Pairs Trading Strategies:
@@ -407,7 +404,7 @@ argument. All citations were verified by direct source lookup.
   CAMARF sits in the cointegration category; the marginal contribution is
   a scalability/calibration correction within that category.
 - **Do & Faff (2010)**, "Does Simple Pairs Trading Still Work?," *Financial
-  Analysts Journal* 66(4): a direct replication and extension of GGR's
+  Analysts Journal* 66(4), 83-95: a direct replication and extension of GGR's
   distance-method methodology through 2009 (not the same paper as Do, Faff
   & Hamza 2006 above), finding mean excess returns on the top-20 pairs
   portfolio falling from ~0.86%/month (1962–1988) to ~0.24%/month
@@ -416,7 +413,10 @@ argument. All citations were verified by direct source lookup.
   underlying convergence properties, a mechanism claim that remains
   disputed against the broader limits-to-arbitrage/crowding literature (an
   independent University of Warsaw replication reached the same
-  crowding-rejecting conclusion through 2008). **§7.11 replicates this
+  crowding-rejecting conclusion through 2008). *[2026-10-19: the figures above were read only in a RePEc abstract
+  mirror; there, ">70%" may be the share of the decline attributed to arbitrage risk rather than the size of the
+  decline, and the decline is attributed to arbitrage risks rather than weakening convergence; the Warsaw
+  replication was not found. None of this is to be relied on until checked against the full paper.]* **§7.11 replicates this
   test directly on CAMARF's own confirmed pairs** (not just cited from the
   literature): no decay found across 3 sequential eras of available
   history, and mean half-life fell rather than rose, a genuine null
@@ -450,10 +450,10 @@ argument. All citations were verified by direct source lookup.
 - **Lopez de Prado (2018)**, *Advances in Financial Machine Learning*,
   Wiley: meta-labeling architecture (CAMARF's ml.py is a direct
   implementation: EG z-score = primary signal, XGBoost = meta-labeler on
-  P(converge)), triple-barrier labeling, CPCV, PBO. The addition of
-  conformal predictors for finite-sample coverage guarantees is not present
-  in any pairs trading ML paper found during the 2026-06-29 literature
-  sweep.
+  P(converge)), triple-barrier labeling, CPCV, PBO *[Not yet checked against the original text (claims check 2026-10-19); not to be relied on until it is.]* The addition of
+  conformal predictors for finite-sample coverage guarantees was not found
+  in any pairs trading ML paper during the 2026-06-29 literature sweep
+  (queries not recorded; a search result, not a claim of priority).
 - **Bailey & López de Prado (2014)**, "The Deflated Sharpe Ratio: Correcting
   for Selection Bias, Backtest Overfitting and Non-Normality," *Journal of
   Portfolio Management* 40(5): the specific correction implemented in
@@ -503,9 +503,9 @@ argument. All citations were verified by direct source lookup.
 | Paper | Year | Method | ML? | Key Result | CAMARF Difference |
 |-------|------|---------|-----|------------|-------------------|
 | Gatev/Goetzmann/Rouwenhorst | 2006 | Min-distance price normalization; top-20 pairs; daily bars | No | ~11% ann. excess return | Distance method only; no cointegration, no half-life, no intraday, no regime detection |
-| Do/Faff/Hamza | 2006 | OU process MLE; cointegration vs. distance comparison | No | Cointegration + OU outperforms distance risk-adjusted | CAMARF adds Kalman PIT hedge, Huber/MM robustness, multi-TF, rolling stability filter |
+| Do/Faff/Hamza [not located in a primary source, 2026-10-19] | 2006 | OU process MLE; cointegration vs. distance comparison | No | Cointegration + OU outperforms distance risk-adjusted | CAMARF adds Kalman PIT hedge, Huber/MM robustness, multi-TF, rolling stability filter |
 | Avellaneda/Lee | 2010 | PCA or ETF factor residuals as OU; Sharpe-based entry/exit | No | ETF Sharpe 1.1 (1997-2007); degraded post-2002 | Bilateral cointegration vs. factor residuals; adds regime sizing, multi-TF, ML gate |
-| Elliott/van der Hoek/Malcolm | 2005 | Gaussian Markov chain spread; Bayesian optimal stopping | No | Theoretically optimal stopping rule | CAMARF uses z-score (robust, simpler); adds empirical validation at 10^6-pair scale |
+| Elliott/van der Hoek/Malcolm | 2005 | Gaussian Markov chain spread (optimal stopping not confirmed, 2026-10-19) | No | Model-based trading rule (full text not yet read) | CAMARF uses z-score (robust, simpler); adds empirical validation at 10^6-pair scale |
 | Krauss (survey) | 2017 | Review: distance, cointegration, TS, stochastic control, other | Partial | No dominant approach | CAMARF synthesizes cointegration + OU + regime + ML into one validated framework |
 | Clegg/Krauss | 2018 | Partial cointegration (state-space); MLE; survivor-bias-free | No | >12% ann. after costs (1990-2015) | Same motivating problem; CAMARF marginal claim is Strictness Paradox quantification and scale |
 | Gregory/Hansen | 1996 | ADF/Za/Zt with single unknown structural break | No | Correct size under break; standard EG has size distortion | CAMARF uses Zivot-Andrews; `coint_fraction_rolling` operationalizes at scale |
@@ -522,28 +522,30 @@ argument. All citations were verified by direct source lookup.
 above uses a single timeframe (daily or one intraday TF). CAMARF scans
 14 timeframes (1m-1M) simultaneously across 1,500+ instruments, assigns
 per-TF confirmatory tiers (EG + KPSS + PO), and filters by rolling
-cointegration stability. No found paper does this simultaneously across
-TFs.
+cointegration stability. We did not find a paper that does this
+simultaneously across TFs (2026-06-29/30 literature sweeps; the queries were
+not recorded, so this is a search result, not a claim of priority).
 
 **2. Discovery and quantification of the durability-vs-currency conflation
 in full-sample cointegration screening (the Strictness Paradox).** The
 direct demonstration that a full-sample EG test can confirm a pair with
 overwhelming significance on the strength of a relationship that has since
-broken (§4.2, on this project's own original headline confirmed pairs) is
-not documented in any found paper. Clegg/Krauss (2018) motivate partial
+broken (§4.2, on this project's own original headline confirmed pairs) was
+not found in the literature searched for this paper (queries not recorded). Clegg/Krauss (2018) motivate partial
 cointegration by the episodic nature of the relationship, but do not
 characterize this specific conflation directly. A companion hypothesis,
 that the low raw rejection rate itself reflects statistical test
-miscalibration, not just this conflation, was tested directly via Monte
-Carlo simulation and refuted (§4.2.1); reporting that refutation honestly,
-rather than keeping only the finding that survived, is itself consistent
-with the verification discipline this paper applies throughout (§9).
+miscalibration, not just this conflation, was tested by Monte Carlo
+simulation (§4.2.1). A first version appeared to refute it but was flawed;
+rebuilt on the production path, the screen's size on random pairs is at or
+below nominal, and its power on real candidates is not yet measured, so the
+hypothesis is open, not refuted. Both versions are reported (§9).
 
 **3. Meta-labeling on spread resolution with conformal calibration.**
 CAMARF follows Lopez de Prado's architecture: cointegration z-score is
 the primary signal; XGBoost only filters "will this entry event converge?"
 The addition of conformal predictors for finite-sample coverage guarantees
-is not present in any pairs trading ML paper found. (Note: as of
+was not found in any pairs trading ML paper we searched (queries not recorded). (Note: as of
 2026-06-29, training data is insufficient for the ML result to be
 primary. Report as an architectural contribution with deferred empirical
 support.)
@@ -552,7 +554,8 @@ support.)
 EG+KPSS+PO confirmatory tier system, (b) Huber/MM robust hedge ratios,
 (c) EVT/GPD tail characterization per pair, (d) DCC-GARCH inter-pair
 correlation monitoring, and (e) White's permutation test, in a single
-framework with honest power reporting. No found paper combines all five.
+framework with honest power reporting. We did not find a paper that combines
+all five (search queries not recorded; a search result, not a claim of priority).
 
 **Honest caveats:**
 - `coint_fraction_rolling` and Clegg/Krauss (2018) partial cointegration
@@ -665,7 +668,11 @@ hedge-ratio estimation (OLS/TLS/Kalman) → OU spread fit → eigenportfolio
 decomposition (Marchenko-Pastur factor removal, Gold/Silver confidence
 tier) → `coint_fraction_rolling` stability filter with secondary-evidence
 override → cross-asset structural exclusion (forex triangles, share
-classes).
+classes). Since 2026-10-19 everything that selects, sizes or trades uses point-in-time inputs: `backtest.py` and
+`ml.py` default to the point-in-time pool (k = 2), the engine's strict mode refuses whole-history fallbacks, and
+hedge and z-score window lengths come from each pair's formation bars; the whole-history screen is kept as a
+labelled descriptive comparison. The EG + KPSS + PO confirmatory tiers (§2.1) rest on tier tests later found
+mis-sized (S6); their status is open and they are not used as evidence.
 
 ### 4.2 Durability vs. currency: what a full-sample cointegration test actually answers [Re-derived 2026-09-10 on real WRDS/CRSP data, replacing the original pre-WRDS (yfinance-era) demonstration per Ross's standing instruction: nothing pre-WRDS is considered for writing in this paper]
 
@@ -675,24 +682,37 @@ own production `_eg_worker` unmodified: same test, only the data source
 changes).** Full-sample EG p-value vs. the identical test restricted to
 the last 5 years alone:
 
-| Pair | Full-sample EG p | Last-5y EG p | Full-sample n (days, WRDS/CRSP) |
-|------|------------------|--------------|----------------------------------|
-| XOM/CVX | 0.0823 | 0.4822 | 26,301 (since 1925) |
-| JPM/BAC | 0.9346 | 0.8814 | 11,741 (since 1979) |
-| KO/PEP | 0.1053 | 0.9632 | 26,301 (since 1925) |
-| **NTRS/STT** | **0.0000** | 0.5613 | 10,098 (since 1985) |
-| SHW/UNP | 0.0611 | 0.0544 | 14,238 (since 1969) |
+*(Replaced 2026-10-19 with the production settings: S35 no-trade mask, both directions, max p. Source
+`output/research/durability_vs_currency_wrds.parquet`, 500 simulations per power figure. "Power" = probability that
+the 5-year test rejects at 5% if the full-sample relationship still held, simulated with Gaussian innovations and
+with resampled blocks of the pair's real innovations; it is meaningful only where the full sample detects an
+effect.)*
 
-**NTRS/STT reproduces the demonstration cleanly on real WRDS data**: this
+| Pair | Full-sample EG p | Last-5y EG p (1,256 d) | Full-sample n (days) | Power of 5-y test (Gaussian / real blocks) |
+|------|------------------|------------------------|----------------------|--------------------------------------------|
+| XOM/CVX | 0.0415 | 0.3769 | 26,291 (since 1925) | 0.04 / 0.10 |
+| JPM/BAC | 0.8955 | 0.8814 | 11,738 (since 1979) | n/a (no full-sample effect) |
+| KO/PEP | 0.1124 | 0.9632 | 24,671 (since 1925) | n/a (no full-sample effect) |
+| **NTRS/STT** | **0.00004** | 0.5993 | 10,097 (since 1985) | 0.18 / 0.34 |
+| SHW/UNP | 0.0606 | 0.0544 | 14,237 (since 1969) | n/a (no full-sample effect) |
+
+**NTRS/STT reproduces the demonstration on real WRDS data**: this
 project's own original headline pair passes full-sample EG with
-overwhelming significance (p≈0.00005) while failing the identical test on
-just the last five years (p=0.561). A full-sample screen over 50+ years
+overwhelming significance (p ≈ 0.00004) while failing the identical test on
+just the last five years (p = 0.599). A full-sample screen over ~40 years
 of CRSP history answers a different question than a live deployment
 actually needs answered: "was this relationship ever cointegrated," not
 "is it cointegrated now." NTRS/STT clears the former bar decisively while
-having already failed the latter, because nothing in a full-sample test
+the recent test does not confirm the latter (low power, below), and nothing in a full-sample test
 can distinguish a relationship that held throughout from one that held
-for decades and then broke.
+for decades and then broke. The five-year result is weak evidence on its own: if the full-sample relationship
+still held, the five-year test would detect it only 18-34% of the time (table), and a p-value at least as large as
+0.599 would occur 7-20% of the time. These powers are simulated at the full-sample point estimate of the spread's
+persistence, which residual-based estimates bias toward stationarity, so they are probably upper bounds. The
+demonstration is that a full-sample screen cannot vouch for the present; it does not show that NTRS/STT has broken.
+XOM/CVX shows the same pattern, but its recent test's power (0.04-0.10) is about the test's own size, so its
+recent window carries no information, and its full-sample p (0.041) is marginal among the five pairs tested: at
+most a weak second illustration, not a control.
 
 **SHW/UNP does NOT replicate as cleanly on WRDS data, reported honestly
 rather than dropped or forced to fit.** The original pre-WRDS (yfinance-
@@ -705,42 +725,33 @@ the conventional 0.05 threshold) and its last-5-years p-value is 0.054
 sensitivity of this specific pair's demonstration to the price-adjustment
 convention used (CRSP total-return-adjusted vs. yfinance's own adjusted-
 close, which handle dividends and corporate actions differently over a
-50+-year window), not a bug in the re-derivation or a reason to doubt the
-underlying point: NTRS/STT alone is sufficient to demonstrate that a pair
-can clear a decisive full-sample bar while having already failed a recent
-one, and the negative controls (XOM/CVX, JPM/BAC, KO/PEP) confirm the
-demonstration isn't an artifact of testing at all, since none of them show
-the pattern on either window. [Corrected 2026-10-10, docs/CLAIMS_REGISTRY.md C-001: this table did not use the production test settings -- it ran one direction with a free lag. Under discovery's actual test (no-trade mask, max over both directions, max lag 10) NTRS/STT still holds (0.000039 / 0.599), but XOM/CVX shows the same pattern (0.041 / 0.377), so the sentence about the negative controls does not hold; NTRS/STT's history here is ~40 years, not 50+.] SHW/UNP is kept in the table for
+50+-year window), not a bug in the re-derivation. NTRS/STT illustrates that a pair
+can clear a decisive full-sample bar while failing a recent one. The
+negative-control statement in earlier drafts ("none of them show the pattern
+on either window") is withdrawn (2026-10-19): XOM/CVX shows the pattern, and
+JPM/BAC, KO/PEP and SHW/UNP detect no full-sample relationship, so they
+cannot serve as controls for losing one. [Corrected 2026-10-10, docs/CLAIMS_REGISTRY.md C-001: this table did not use the production test settings -- it ran one direction with a free lag. Under discovery's actual test (no-trade mask, max over both directions, max lag 10) NTRS/STT still holds (0.000039 / 0.599), but XOM/CVX shows the same pattern (0.041 / 0.377), so the sentence about the negative controls does not hold; NTRS/STT's history here is ~40 years, not 50+.] SHW/UNP is kept in the table for
 transparency about what changed, not presented as a second confirming
 case going forward. **Why this is a structural limitation, not just an
 explanation:** `coint_fraction_rolling` is a secondary filter applied only
 to pairs that already pass the primary full-sample screen: a
 rolling-window recency check downstream of a test that cannot itself
-distinguish "held once" from "holds now" is exactly the tool needed to
-close this specific gap, which is why §4.3 builds it directly on this
-finding.
+distinguish "held once" from "holds now". §4.3 builds it as an attempt to
+close this gap; whether it does is untested, and its secondary-evidence
+override had defects (A5/A7/A8).
 
-#### 4.2.1 A companion observation, tested directly rather than left asserted, and refuted [PRE-WRDS, not yet re-derived: flagged 2026-09-10, not silently carried forward]
+#### 4.2.1 A companion observation: the screen's size under the null [Re-derived 2026-10-18/19 on the production path (D11), replacing the pre-WRDS study]
 
-**Disclosure added 2026-09-10**: everything in this subsection, the raw
-rejection-rate table, the Monte Carlo null-construction, and the
-calibration result, runs on this project's pre-WRDS (yfinance-era)
-candidate universe and price cache. Per Ross's standing instruction that
-nothing pre-WRDS is considered for writing, this subsection's own
-conclusion should be read as **historically informative, not as current
-evidence** until it is re-derived against the WRDS/CRSP universe (§3):
-a real, scoped, not-yet-started task (the 400-null-pairs-per-timeframe
-Monte Carlo harness needs re-pointing at WRDS-cached series and a fresh
-synthetic ground-truth check before trusting a re-run, not a quick swap).
-The refutation itself (EG's near-total 1D/1M rejection rate is correct
-test behavior, not over-conservatism) may well still hold on WRDS data;
-it has simply not been checked yet, and this paper does not claim it has.
+**Status (2026-10-19)**: the Monte Carlo study below was rebuilt on the production path and the full
+WRDS-merged universe (D11, `docs/decisions/DECISIONS_2026-10-12.md`); its result reverses this subsection's earlier
+conclusion. The raw rejection-rate table that motivated the study is still the pre-WRDS screen's and is kept as
+the observation, not re-derived.
 
 A second pattern in the same data was initially read as reinforcing
 evidence for the demonstration above: full-sample screens reject candidate
 pairs at long horizons (1D, 1M) at rates far below the ~5% false-positive
 rate a well-calibrated test should show under the null, even accounting
-for a meaningful fraction of true relationships in the candidate universe:
+for a meaningful fraction of true relationships in the candidate universe (pre-WRDS screen counts):
 
 | TF | tested | raw p<0.05 | raw rate | vs. ~5% expected under H₀ |
 |----|--------|-----------|----------|---------------------------|
@@ -749,54 +760,59 @@ for a meaningful fraction of true relationships in the candidate universe:
 | 1D | 122,082 | 2 | 0.0016% | ~3,000x *below* chance |
 | 1M | 34,263 | 9 | 0.026% | ~190x below chance |
 
-The reading initially drawn from this table, that the EG test is itself
-statistically over-conservative at long horizons, and that this
-under-rejection compounds the durability-vs-currency problem above by also
-causing real, currently-live relationships to be missed, was an
-inference from a heuristic comparison, never independently validated. That
-gap was closed directly rather than left as an asserted claim: a Monte
-Carlo calibration study (`research/eg_null_calibration_montecarlo.py`)
-runs the production EG-test code itself against pairs constructed to be
-genuinely null by design: real cached price series, randomly re-paired so
-any true bilateral relationship is destroyed while each series' own real
-volatility, fat tails, and autocorrelation are preserved (400 such null
-pairs per timeframe; a synthetic ground-truth check first confirmed the
-harness recovers a plausible ~5-6% empirical rate on textbook independent
-random walks before trusting it on the harder, real-data-derived case).
+The reading initially drawn from this table was that the EG test is itself over-conservative at long horizons,
+so that real, currently-live relationships are also missed. A first Monte Carlo study (2026-07) appeared to refute
+it: randomly re-paired cached series were rejected at 7.75%-12.75% against a nominal 5%, rising with horizon. That
+study had three faults, found on review (2026-10-18): it paired series by row position rather than by date, so the
+two series' observations were not from the same days; at 1D and 1M it sampled the small yfinance cache rather
+than the full universe (at 15m and 1h the yfinance cache, ~1,580 symbols, is still the universe: WRDS has no intraday
+data and IBKR is off); and it ran one direction of the test, while the production screen runs both and keeps the larger p-value.
 
-**Result: the empirical false-positive rate under a genuine null is
-elevated relative to nominal, not suppressed, and grows with horizon: the
-opposite of what the over-conservative-test reading predicted.**
+The rebuilt study (`research/eg_null_calibration_montecarlo.py`) sends null pairs through the production path:
+`universe_loader.load_full_universe` (WRDS priority, IBKR off), the screen's 10-year common calendar
+(`align_to_common_calendar`), log prices from `CointScanner._build_log_price_map`, and the production
+`eg_pvalue_pair` (both directions, max p) with the screen's minimum-overlap floor. Pairs are drawn at random without
+repetition, 400 per timeframe (seed 20260713). The synthetic check (`debug/_verify_eg_null_calibration_d11.py`) shows
+the old positional pairing misses a pair cointegrated by date (p = 0.669) and the new one does not; on 300
+independent random-walk pairs the production call rejects 2.0% (the check asserts a 1-10% range), and a single
+direction rejects 5.0% on the same draw (computed in review, not asserted by the check).
 
-| TF | null pairs tested | rejected at p<0.05 | empirical rate | 95% CI (Clopper-Pearson) |
+| TF | null pairs | production screen (both directions), 95% CI | one direction only | old script on today's caches |
 |----|---|---|---|---|
-| 15m | 400 | 31 | 7.75% | [5.33%, 10.82%] |
-| 1h | 400 | 31 | 7.75% | [5.33%, 10.82%] |
-| 1D | 400 | 36 | 9.00% | [6.38%, 12.24%] |
-| 1M | 400 | 51 | 12.75% | [9.64%, 16.42%] |
+| 15m (yfinance side arm) | 400 | 1.50% [0.55%, 3.24%] | 6.75% | 9.00% |
+| 1h | 400 | 1.75% [0.71%, 3.57%] | 6.75% | 9.25% |
+| 1D (46,352 symbols) | 400 | 3.00% [1.56%, 5.18%] | 7.75% | 13.25% |
+| 1M | 400 | 3.25% [1.74%, 5.49%] | 8.75% | 11.25% |
 
-Every confidence interval's lower bound sits above nominal 5%, and the
-rate rises with horizon rather than falling. The mechanism is ordinary
-spurious regression, not a defect in the test's own statistical size:
-randomly-paired real equities still share market-wide drift, and that
-shared drift becomes a stronger false-positive driver the longer the
-window over which it accumulates: the same classical spurious-regression
-risk Granger and Newbold (1974) first characterized, here quantified
-directly against this project's own production test code and its own
-candidate universe rather than assumed from theory. **Corrected
-conclusion:** the full-sample screen's near-total rejection rate at 1D/1M
-in production reflects the test correctly guarding against exactly this
-risk (appropriately strict, not miscalibrated), not a defect that
-compounds the durability-vs-currency problem above. The actionable failure
-mode is entirely the one §4.2 already demonstrates directly and does not
-need this companion observation to establish: a pair can pass a
-sufficiently demanding full-sample test on the strength of a relationship
-that has since broken, and only a horizon-appropriate recency check (§4.3)
-can catch that. Reported here, refuted rather than quietly dropped, per
-this project's standing discipline (§9) of treating an unvalidated
-inference as a hypothesis to check, not a fact to keep: including,
-concretely, one drawn in an earlier draft of this project's own headline
-finding.
+(Clopper-Pearson intervals. They treat pairs as independent; pairs share legs (median 2 uses per symbol, max 7, in
+the 1h review), so the intervals are somewhat too narrow. The 10-year window is a lookback cap: median overlap was
+1,306 days at 1D and 2,902 bars at 1h.)
+
+A single one-direction EG test does over-reject on random real pairs, as the first study found: randomly paired
+equities share market-wide drift, the spurious-regression risk Granger and Newbold (1974) described. The production
+screen does not: keeping the larger p-value of the two directions brings its size to or below nominal, below it at
+15m and 1h (the intervals exclude 5%) and not distinguishable from it at 1D and 1M. At 15m, 1h and 1M most of the
+fall comes from the two-direction rule (about 5 points), and calendar alignment, the universe and the overlap floor
+account for about 2-2.5 points, within Monte Carlo noise (each column is a separate 400-pair draw; the difference of
+two ~8% rates has a standard error of about 1.9 points). At 1D the split is 4.75 points (two-direction rule) and
+5.5 points (alignment, universe, floor).
+
+**What this settles and what it does not.** It measures the screen's size on random pairs. It does not say whether
+the screen is too strict on the real candidates (|corr| ≥ 0.6), which is the question the table above raises: only
+9 of 1,500 random pairs reach that correlation, so the candidate population needs a correlation-matched null and a
+power study (as in §4.2), neither run yet. The earlier conclusion, that the near-total 1D/1M rejection is the test
+"correctly guarding against" spurious regression, is withdrawn: the production screen is not over-permissive on
+random pairs. Whether the near-zero long-horizon rates in the table above reflect low power on real candidates, a
+lower null rate among |corr| ≥ 0.6 pairs, or the pre-WRDS screen's different settings and much longer windows is
+not yet measured. Scope: 1M uses a 2,859-file WRDS monthly subset, not
+the full daily universe (2,858 symbols; 992 of 1,392 draws were short of 60 months); same-company pairs are not
+excluded beyond identical-series deduplication. The leg-reuse figures and the 9-of-1,500 correlation count come
+from the 1h review only.
+
+§4.2's point does not depend on this subsection: a pair can pass a full-sample test on the strength of a
+relationship it no longer shows, and only a recency check can catch that. Both versions of the study are reported,
+per this project's discipline (§9) of treating an unvalidated inference as a hypothesis to check: here the
+inference that was overturned was the refutation itself.
 
 ### 4.3 `coint_fraction_rolling`: a scalable stability diagnostic [DRAFTED]
 
@@ -856,9 +872,10 @@ digits, in real entry-signal output before diagnosis: 4 of an early
 at exactly market open, all on the calendar-padding day boundary.
 
 **Why this generalizes beyond CAMARF.** Forward-filling non-trading
-periods onto a continuous calendar is a standard, often default,
-convenience in time-series tooling (e.g. pandas `reindex().ffill()` on a
-calendar-frequency index), not a CAMARF-specific design choice. Any
+periods onto a continuous calendar is a common convenience in time-series
+tooling (pandas does it when asked: `reindex(...).ffill()` onto a
+calendar-frequency index), not a CAMARF-specific design choice; how often
+published work does it is not known to us. Any
 intraday pairs-trading or stat-arb research using fixed-window rolling
 z-scores on a calendar-padded series inherits this exact failure mode,
 recurring at every session boundary, for every asset, by construction.
@@ -950,8 +967,9 @@ checked against an independently-built computation, found to disagree,
 and traced to a specific, fixable cause before being trusted.
 
 This is a different failure mode than the Strictness Paradox (§4.2):
-that section is about cointegration testing being too STRICT at long
-horizons (false negatives: real relationships rejected). This section
+that section is about what a full-sample cointegration test can and cannot
+say about the present (whether the screen is also too STRICT on real
+candidates at long horizons, missing real relationships, is open: §4.2.1). This section
 is about correlation alone being too LOOSE (false positives: unrelated-
 at-the-cointegration-level pairs that look related). Both point to the
 same conclusion: the multi-stage pipeline's calibration matters at every
@@ -1024,7 +1042,7 @@ insufficient spread bars.
 actively drops pairs where either symbol has `thin_info_content=True` from the
 confirmed set (was annotation-only in prior sessions). As of 2026-06-30, this filter
 had zero effect on the 1h set: all confirmed @1h symbols have adequate distinct-price
-density at hourly resolution. The filter is active and running; it primarily blocks
+density at hourly resolution [dated; to be re-derived on the current sets before it is cited, 2026-10-19]. The filter is active and running; it primarily blocks
 sub-5m pairs.
 
 **SPY/VOO flag:** SPY/VOO@1h is confirmed by the pipeline (coint_frac 0.353, gold
@@ -1056,6 +1074,10 @@ price-degeneracy screen available. (Note: this filter is a no-op for any
 timeframe where `research/audit_price_degeneracy.py` hasn't been run
 (see the BUG-D49 mechanism note in §5 above), so this guarantee is
 contingent on that screen being current, not unconditional.)
+
+*[2026-10-19: every number from here to the end of this finding comes from the 2026-06/07 yfinance 1m snapshot
+(1,354 symbols) and has not been re-derived on the current cache; the "third pillar" framing waits on that
+re-derivation.]*
 
 **Scope confirmed universe-wide (2026-06-23)**: a full audit
 (`audit_price_degeneracy.py`) across all 1,354 evaluated 1m symbols
@@ -1108,8 +1130,8 @@ intraday price discovery is much thinner.
 **This is now a real, well-characterized, citable finding with two
 identified factors (market cap dominant, sector independent and
 secondary), not an unexplained anomaly, confirmed as this paper's third
-pillar (2026-07-11)**, alongside the Strictness Paradox (§4.2,
-full-sample test power borrowed from a dead regime) and the pair-selection
+pillar (2026-07-11; pending re-derivation, see the note above)**, alongside the Strictness Paradox (§4.2,
+a full-sample test that cannot vouch for the present) and the pair-selection
 lookahead finding (§7.3.1, the causal re-discovery process finding zero
 overlap with the confirmed set): daily dollar-volume liquidity screening
 silently admits ~32% of a nominally-liquid universe into intraday
@@ -1459,11 +1481,16 @@ data, bringing the current set to 26.
 
 ### 7.1 Layer 1 Baseline: Event-Driven Mean Reversion
 
-Layer 1 is a pure stat-arb signal: enter when |z_rolling| ≥ 2.0σ, exit when
+Layer 1 is a pure stat-arb signal: enter when |z_rolling| ≥ 3.0σ (`ENTRY_ZSCORE`, raised from 2.0 on
+2026-08-17 after results were seen, so outcome-informed; disclosed in `docs/PARAMETER_REGISTRY.csv`), exit when
 z crosses 0.0, stop at 3.5σ, max hold at 2× half-life. Fixed leg sizing,
 both OLS and Kalman hedge ratios run in parallel. No ML conditioning. No regime
-filtering. All hedge ratios are point-in-time causal series persisted by
-analysis.py: no hedge-ratio lookahead bias.
+filtering. Hedge ratios are the causal rolling series persisted by analysis.py. Until 2026-10-19 the warm-up bars
+before the rolling estimate existed fell back to the full-sample ratio, a lookahead; since 89ececc4 the fallback is
+causal (expanding), point-in-time paths size windows from formation bars only, and the strict engine skips bars
+without a point-in-time hedge. **The results below (2026-07-12 run) predate both changes:** they used
+ENTRY_ZSCORE = 2.0 and the full-sample warm-up hedge fallback (the lookahead just described), and have not been
+re-run under the current rules.
 
 **Universe:** 26 confirmed pairs: 24 @1h (including 12 cross-asset pairs and a DD/MLI-hub
 cluster), 1 @3m, 1 @1M international. S&P Composite 1500 + international equities; SPY/VOO is
@@ -1765,7 +1792,8 @@ OOS holdout, then in a full 2⁴ factorial grid:
 - **mm_exec**: Substitute MM-estimator hedge ratio (robust to outliers) for OLS
   when placing orders, using hedge_ratio_comparison.parquet
 - **coint_frac_threshold**: Binary gate: skip pair entries when
-  `coint_fraction_rolling` < 0.10 (threshold tested; continuous sizing not used)
+  `coint_fraction_rolling` < 0.10 (threshold tested; continuous sizing not used). Under the strict default
+  (2026-10-19) the gate is applied per bar; before, it was a whole-history pair-level gate.
 
 **Individual OOS holdout results (2026-06-30, 23 confirmed pairs):**
 
@@ -1862,14 +1890,15 @@ borderline cointegrator so much as an established relationship tested at a
 resolution where even strong cointegrators fail most individual windows,
 if the short-window EG test has low power at n=252 specifically. This is
 a POWER question about a specific, much shorter rolling window than
-anything §4.2.1's Monte Carlo study tested (which measured the full-sample
-test's Type I error/SIZE at each timeframe's actual, much longer available
-history, not a 252-bar sub-window's power to detect a true relationship),
+anything §4.2.1's Monte Carlo study tested (which measured the screen's
+Type I error/SIZE on random pairs over a 10-year lookback cap (median overlap 1,306 days at 1D), not a 252-bar
+sub-window's power to detect a true relationship),
 the two are related but not the same claim, and this one has not been
 put through the same direct calibration check. Until it is, the honest
 framing is that low `coint_fraction_rolling` COULD reflect the rolling
 test's own low power at this window length rather than a weak economic
-relationship, not that it definitely does.
+relationship, not that it definitely does. It can be tested with §4.2's power
+simulation on 252-bar windows; not yet run.
 
 This candidate explanation, if correct, would answer the Skeptic's challenge
 ("won't the hardest-to-confirm pairs blow up OOS?") the same way §4.2's
@@ -1986,8 +2015,8 @@ bug (confirmed directly: the pre- and post-alignment trade rates per calendar da
 mark-to-market exits rather than completed round-trip convergences, a stronger reason for caution
 than the trade count alone. A circular-block bootstrap over this sample gives a 90% confidence
 interval of roughly 26–86 Sharpe, which is not a usable point estimate. The direction
-(cointegration outperforming distance on this universe, consistent with Do, Faff & Hamza (2006)'s
-finding that cointegration+OU outperforms distance on a risk-adjusted basis) is supported; the
+(cointegration outperforming distance on this universe; earlier drafts called this consistent with Do, Faff &
+Hamza (2006), a paper not located in a primary source, 2026-10-19) is supported; the
 specific magnitude of that outperformance is not estimable from this sample and is not cited as a
 headline figure. The cointegration side's own pooled Sharpe (8.542, 222 trades) is the trustworthy
 number in this comparison.
@@ -2197,7 +2226,8 @@ candidate pool.
 
 **Era-decay replication (Do & Faff 2010).** Do & Faff split Gatev-Goetzmann-Rouwenhorst's
 sample into sequential eras and found roughly 70%+ decay in pairs-trading returns, attributing
-it to weakening convergence properties (rising half-life) rather than crowding. CAMARF's own
+it to weakening convergence properties (rising half-life) rather than crowding (as cited; not yet checked against
+the full paper, see §2.2). CAMARF's own
 data cannot test the crowding side of that dispute (it requires external capital-flow data
 this project does not have, explicitly scoped out, not silently ignored), but can test the
 convergence-property side directly: each confirmed @1h pair's available history was split into
@@ -2224,7 +2254,10 @@ data does not exist and is not fabricated here. What is tested, precisely: does 
 pair's cointegration relationship (the same Engle-Granger test and OLS hedge ratio the whole
 strategy rests on) hold up at **daily** resolution through three historical crisis windows
 (Aug 2007 quant quake, 2008 GFC, Feb–Apr 2020 COVID crash), with the hedge ratio and spread
-distribution fit strictly on a 2-year pre-crisis baseline (no lookahead into the crisis itself)?
+distribution fit strictly on a pre-crisis baseline (no lookahead into the crisis itself)? *(Since 2026-10-18 the
+baseline is T = max(2 years, 10 × crisis length), the test is Andrews & Kim's (2006) end-of-sample P-test, and a
+breakdown is counted only where the baseline alone is cointegrated; results below this note predate that and are
+re-derived on the 2026-10-19 chain.)*
 
 **A confound was checked before trusting the headline numbers.** A raw result of "0/13 pairs
 still cointegrated through Aug 2007, 0/13 through the GFC, 1/21 through COVID" is ambiguous on
@@ -2533,8 +2566,9 @@ data, per this project's standing discipline:**
   polar-opposite equilibrium currently exists in this universe. `docs/FINDINGS.md` §18, §20.
 - **Trig-identity convergence/divergence**: maps the polarity scores above onto angles
   (arccos/arcsin), decomposed via a sum-to-product identity. A real design error was caught by
-  synthetic verification before touching real data (the angle *difference*, not the angle *sum*,
-  was initially and incorrectly claimed to be the polar-opposite invariant) and corrected.
+  synthetic verification before touching real data (the angle *difference* was initially and
+  incorrectly claimed to be the polar-opposite invariant; the *sum* is: π under arccos, 0 under arcsin,
+  `research/trig_convergence.py`) and corrected.
   `docs/FINDINGS.md` §19.
 
 **A real PIT-safety gap, found and disclosed, not caught by any single script's own verification:**
@@ -2562,8 +2596,8 @@ a new pattern for this project, applying `sensitivity.py`'s existing parameter-g
 metric discipline to `research/*.py` scripts, not just `backtest.py`. `docs/FINDINGS.md` §20-21
 have the full per-arm results (several genuine findings surfaced this way, not just robustness
 confirmations; see the rough-volatility and options-Greeks summaries above). 34 of the 46
-parameterized research scripts remain unswept, explicit tracked backlog, genuinely multi-session
-work.
+parameterized research scripts remained unswept at the time (2026-08); `research/` has since grown to 259
+scripts, so the coverage must be re-counted before it is cited.
 
 ### 7.18 A Second Hedging Attempt, a New Options-Analytics Capability, and an Honest Negative
 Result on Multi-Factor Position Scoring: 2026-09-07/08 [DRAFTED]
@@ -2796,8 +2830,9 @@ superseded, not this section's own 1,375-pair numbers]
 
 Ross asked directly whether the negative Purity-arm result above could reflect a backtest
 methodology gap rather than pair selection — specifically "the lack of squeeze and momentum" in
-the entry criteria. Confirmed directly: `backtest.py`'s entry gate is purely `|z_rolling| >=
-ENTRY_ZSCORE`; no volatility-squeeze or price-momentum confirmation existed anywhere. A real TTM-
+the entry criteria. Confirmed directly at the time: `backtest.py`'s entry gate was purely `|z_rolling| >=
+ENTRY_ZSCORE`; no volatility-squeeze or price-momentum confirmation existed anywhere (the gates built in
+response, below, now exist in `backtest.py` as opt-in flags). A real TTM-
 style squeeze indicator and RSI momentum were already computed by `analysis.py`'s `VolumeStructure`
 step but never reached the entry logic or `ml.py`'s feature set.
 
@@ -2874,7 +2909,7 @@ not yet a deployable allocation rule. Full account: `docs/FINDINGS.md` #73.
 ## 8. Bias Documentation [OUTLINED, one bias drafted in detail]
 
 Pull directly from `BiasAuditLog` (`output/results/bias_audit.json`,
-62 entries as of the latest run): Kelly lookahead, in-sample stop
+62 entries in the 2026-07 run; re-count at the redraft): Kelly lookahead, in-sample stop
 comparison, survivorship from current-constituent-only universe,
 small-n filtering, reproducibility conditioned on intraday-accumulation
 state at run time. Each entry already has mechanism/remedy/residual-risk
@@ -2889,7 +2924,7 @@ fall within `2 × half_life` bars of each other, so their outcome windows
 overlap substantially. Standard sampling (bootstrap, k-fold) treats these
 as independent observations, which overstates effective sample size:
 material here because the project is already sample-constrained (12-32
-labeled examples to date) and `Config.ML.MIN_CLASS_SAMPLES`'s
+labeled examples when this was written, 2026-07; the point-in-time pool rebuild changes the count) and `Config.ML.MIN_CLASS_SAMPLES`'s
 ≥30-per-class threshold is itself a count of *nominal*, not
 *independence-adjusted*, examples. Currently undocumented as a numerical
 correction (only the rolling-window-overlap *mechanism* itself is
@@ -3020,10 +3055,11 @@ used" ones: several of CAMARF's own non-negotiable architecture rules (data.py f
 does; every methodology/framing decision is the researcher's, not AI's) are exactly the kind of boundary a
 reader should not have to infer from silence.
 
-**AI Tool(s)**: Claude Code (Anthropic). Model versions varied across this project's ~28 sessions
-(June-July 2026) as Anthropic released newer models during the project's lifetime: no single fixed
-version was used throughout; this session ran on Claude Sonnet 5. No third-party AI tool contributed
-to any result in this paper.
+**AI Tool(s)**: Claude Code (Anthropic). Several Claude models were used across the project's sessions
+(June-October 2026) as Anthropic released newer ones; no single fixed version was used throughout. Commits that
+carry a model trailer name Claude Opus 5.5 (209), Claude Sonnet 5 (62) and Claude Sonnet 4.6 (14), counted from
+`git log` on 2026-10-20; 25 commits (June-August 2026) carry no trailer. No third-party AI tool contributed to any result in this
+paper.
 
 **Conceptualization**: Not AI-led. The research thesis, the decision to pursue cross-asset
 co-movement arbitrage, and every subsequent framing decision (including this paper's three pillars)
@@ -3048,8 +3084,10 @@ described throughout this section.
 `data.py` (the sole fetch path) must never be invoked by `analysis.py` or any downstream script, and
 in practice every real data-fetching run (yfinance, and the separate manually-run IBKR supplemental
 script) was executed by the researcher directly or by AI running the exact, unmodified fetch script under
-the researcher's direction: AI never designed a data-collection method, selected a data source, or fetched
-data through any channel other than this project's existing, human-approved scripts.
+the researcher's direction. Every data source and data-collection method was approved by the researcher
+before use: AI proposed some (e.g. SEC EDGAR ETF holdings for point-in-time S&P 400/600 membership) and wrote fetch
+jobs (WRDS queries) that the researcher approved, and it fetched data only through this project's approved
+scripts.
 
 **Execution**: AI-heavy, with a real operational boundary worth disclosing concretely rather than
 abstractly. AI executed the large majority of this project's script runs (analysis, backtest,
@@ -3081,11 +3119,11 @@ before being trusted on real data, a standing project rule cited throughout this
 sources (§9's Data acquisition transparency, below) are public market/macro data, not personal or
 private information, so this category carries a different risk profile than in human-subjects
 research. The relevant real risk this project's own AI-ethics research (this session) surfaced is
-different: AI-assisted code commits carry an elevated credential/secret-leak rate industry-wide (an
-April 2026 ACM Technology Policy Council TechBrief on AI-assisted software development found roughly
-double the baseline GitHub secret-leak rate in AI-assisted commits). This project's mitigation is the
-same one ACM's brief recommends (AI-generated code is treated as a starting point requiring human
-review, not an autonomous production path), consistent with, not separate from, this paper's broader
+different: AI-assisted code commits are reported to carry an elevated credential/secret-leak rate
+industry-wide (roughly double the baseline GitHub rate, apparently from GitGuardian's *State of Secrets Sprawl
+2026*; an earlier draft attributed the figure to an ACM TechBrief, which could not be read)
+*[Not yet checked against the original text (claims check 2026-10-19); not to be relied on until it is.]* This project's mitigation: AI-generated code is treated as a starting point requiring human
+review, not an autonomous production path, consistent with, not separate from, this paper's broader
 verify-before-trusting discipline.
 
 **Interpretation**: Mixed. AI drafted interpretive analysis of statistical results (e.g. explaining
@@ -3093,8 +3131,8 @@ what a given Sharpe correction or degeneracy finding implies), but final interpr
 (what a result means for this paper's thesis, and whether a finding is strong enough to report as a
 pillar rather than a footnote) were the researcher's, per the same boundary described under Conceptualization.
 
-**Visualization**: AI implemented the code that generates this project's 26 report figures
-(`report.py`), but which figures to generate and how to read them was directed by the researcher, not chosen
+**Visualization**: AI implemented the code that generates this project's report figures (`report.py`; 26
+when counted in 2026-07), but which figures to generate and how to read them was directed by the researcher, not chosen
 autonomously by AI.
 
 **Writing, Review & Editing**: AI drafted the large majority of this document's prose, under the researcher's
@@ -3152,7 +3190,7 @@ discipline); first-pass codebase/documentation search, with the explicit
 caveat (example #4) that a negative result from that search is not
 reliable evidence of absence without a second check; maintaining a level
 of contemporaneous, detailed session documentation (this project's
-`Development.md`, now exceeding 10,000 lines across 28 sessions) that
+`Development.md`, 29,375 lines as of 2026-10-20) that
 would be impractical to sustain by hand at the same level of detail over
 the same timespan.
 
@@ -3199,14 +3237,12 @@ re-run or diffed before being cited. One exploratory attempt to use `graphify` (
 architecture navigation was made and is disclosed as attempted-but-not-relied-upon: it hit an
 internal safety guard partway through (refusing to overwrite a richer existing graph with a
 shallower re-extraction) and was abandoned in favor of direct source reading for the remainder of
-that session: no finding in this paper depends on graphify's output. **Web search usage, stated
-precisely rather than as a blanket "never used" (corrected 2026-07-11, an earlier draft of this
-claim was broader than actually true, caught while writing this section's own AID-taxonomy
-disclosure, which itself required web search to research):** Claude Code's web search tool was used
-exactly once in this project's history, on 2026-07-11, exclusively to research current AI-disclosure
-norms and frameworks (including the AID Framework this section cites) in order to write this
-section: never to source, corroborate, or inform any statistical result, comparison arm, market-data
-claim, or literature-review citation elsewhere in this paper. No other external API beyond this
+that session: no finding in this paper depends on graphify's output. **Web search usage** (corrected
+2026-10-19; an earlier draft said it was used exactly once): Claude Code's web search and fetch tools were first
+used on 2026-07-11 to research AI-disclosure norms for this section, and since then for literature work: reading
+primary texts (e.g. Gatev, Goetzmann & Rouwenhorst 2006 on 2026-10-15; Andrews & Kim 2006 on 2026-10-17) and
+checking this paper's citations against their primary sources (2026-10-19). They were never used to source market
+data or any statistical result. No other external API beyond this
 project's own established data sources (below), and no third-party AI tool beyond Claude Code
 itself, contributed to any result reported here.
 
@@ -3219,13 +3255,16 @@ files, exclusively to test a method against a KNOWN ground truth before it is tr
 (the verification discipline cited throughout this paper and `docs/FINDINGS.md`): synthetic results are
 never themselves reported as findings. Real data sources, each already documented in detail in
 `CLAUDE.md`'s "Data Test Range & Reproducibility" section and `README.md`'s "Reproducibility"
-section (repeated here for this section's own completeness, not as a new claim): **yfinance**
-(primary equity/ETF/crypto/forex price data, keyless, no paid subscription), **IBKR/Interactive
-Brokers** (supplemental deep-history intraday data for confirmed pairs only, via a live account
-connection, run manually and separately from the main pipeline), **FRED** (Federal Reserve Economic
+section (repeated here for this section's own completeness, not as a new claim): **WRDS** (Wharton Research
+Data Services, through a university licence: the CRSP US stock files and Compustat Global, the primary source for
+daily and coarser equity data, which wins every symbol collision), **yfinance** (fills symbols WRDS does not
+cover; intraday equity/ETF, crypto, forex; keyless), **IBKR/Interactive Brokers** (supplemental deep-history
+intraday data for confirmed pairs only, via a live account connection, run manually and separately from the main
+pipeline, and off by default in discovery), **Binance** (crypto), **FRED** (Federal Reserve Economic
 Data, public keyless CSV endpoints, for macro regime series), and **CFTC** (Commitment of Traders
-public reporting API, for positioning data). No paid data vendor, no scraped-without-permission
-source, and no data source without a publicly verifiable origin was used anywhere in this project.
+public reporting API, for positioning data). No data was bought for this project (WRDS access comes through the
+university's subscription), and no scraped-without-permission source or source without a publicly verifiable
+origin was used.
 Universe construction (which symbols are even candidates) is documented separately and in full in
 `Development.md`'s universe-growth history: itself written specifically so an independent party
 could reconstruct an equivalent universe without access to this repository's own cached data.
@@ -3273,7 +3312,8 @@ the actual reasoning, not just the name:
   structural bug, not just staleness, Finding #63), and transfer entropy
   was wired into `ml.py` as a genuine feature (`te_directional_diff`,
   `te_significance`), the exact use this candidate's own original entry
-  named. Full account: Finding #65.
+  named. Full account: Finding #65. [2026-10-19: transfer entropy is a whole-history pair statistic, so under
+  the strict point-in-time default it is NaN and feeds only the labelled descriptive ML run.]
 
 **Analyst price-target convergence arbitrage: DONE, 2026-09-08.**
 Originally noted 2026-07-13 as blocked on "a paid or scraped consensus-
@@ -3409,7 +3449,8 @@ running four of them for real:
   predicts showed up on a much longer symbol list than the original 4:
   HRMY, PRDO, TILE, WS, EIG, ACT, CTKB, PRAA, UHT also hit it, motivating
   the universe-wide audit below, which confirmed the pattern affects
-  ~32% of the 1m universe, not a handful of names.
+  ~32% of the 1m universe, not a handful of names (2026-06 yfinance snapshot; not re-derived on the current
+  cache).
 
 - **HMM regime detection: built, ran, confirms regime structure in macro
   series (Session 13).** Gaussian HMMs fit to T10Y2Y, VIXCLS, and COT ES
@@ -3520,11 +3561,10 @@ detail not yet confirmed; do not cite numbers from these until verified.
    [Econometric Society](https://www.econometricsociety.org/publications/econometrica/1987/03/01/co-integration-and-error-correction-representation-estimation) ·
    [JSTOR](https://www.jstor.org/stable/1913236) ·
    [IDEAS/RePEc](https://ideas.repec.org/a/ecm/emetrp/v55y1987i2p251-76.html)
-2. **[VERIFIED 2026-06-23]** Vidyamurthy, G. (2004). *Pairs Trading:
-   Quantitative Methods and Analysis*. Wiley. Described independently as
-   the most-cited work on cointegration-based pairs trading; builds the
-   standard framework on an adapted Engle-Granger test and a VECM
-   formulation.
+2. **[BIBLIOGRAPHIC DETAILS VERIFIED 2026-06-23; content not yet read in the original, 2026-10-19]**
+   Vidyamurthy, G. (2004). *Pairs Trading: Quantitative Methods and Analysis*. Wiley. Builds a
+   framework on an adapted Engle-Granger test and a VECM formulation (not yet confirmed from the
+   book's text; the earlier "most-cited" description is unverifiable and removed).
    [ResearchGate](https://www.researchgate.net/publication/47801548_Pairs_Trading_Quantitative_Methods_and_Analysis_G_Vidyamurthy)
 3. **[VERIFIED 2026-06-23]** Gregory, A. W., & Hansen, B. E. (1996).
    Residual-based tests for cointegration in models with regime shifts.
@@ -3687,6 +3727,6 @@ detail not yet confirmed; do not cite numbers from these until verified.
     as in-sample, not walk-forward validated.
 32. **[TBD]** Blitz, D., Hanauer, M. X., Honarvar, I., Huisman, R., & van
     Vliet, P. (2023). Beyond Fama-French factors: Alpha from short-term
-    signals. *Financial Analysts Journal*, 79(4), 74-95. Reversal +
+    signals. *Financial Analysts Journal*, 79(4), 96-117 (pages corrected 2026-10-19, Crossref). Reversal +
     day-of-week seasonality (no analyst-revision data available, paid-data
     constraint) implemented in `research/short_term_factor_alpha.py` (§7.14).

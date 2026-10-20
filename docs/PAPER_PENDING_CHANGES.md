@@ -50,12 +50,20 @@ category this note already flags, just a new reason on top of the existing PIT-s
 **Target**: PAPER.md §4.2.1 (currently ends "...including, concretely, one drawn in an earlier draft of
 this project's own headline finding.")
 
-**Why**: STORM's econometrician-lens research (Development.md, "Phase 12, perspective 1/4") confirms
+**Superseded 2026-10-19:** §4.2.1's conclusion described below was withdrawn when the study was rebuilt (D11,
+PAPER.md §4.2.1); the common-factor caveat still applies to the rebuilt null.
+
+**Why** (as drafted 2026-07-14): STORM's econometrician-lens research (Development.md, "Phase 12, perspective 1/4") confirms
 §4.2.1's CURRENT conclusion is well-supported — "EG is over-conservative" is not a real literature
 finding, and §4.2.1 already correctly refutes it as "appropriately strict, not miscalibrated." No
 change needed to that core claim. But the research surfaced ONE real, unaddressed vulnerability in the
-Monte Carlo's own null-construction methodology: Richards (1998) found major equity indices share a
-single dominant common stochastic trend (via Johansen tests) — meaning randomly re-paired real equity
+Monte Carlo's own null-construction methodology: Kasa (1992) found major equity indices share a
+single dominant common stochastic trend (via Johansen tests) [citation corrected 2026-10-19/20: earlier drafts said
+"Richards (1998, JIMF)", but the source they linked is Ackert & Racine (1999), "Stochastic trends and cointegration
+in the market for equities", *Journal of Economics and Business* 51(2), 133-143 (Crossref), whose content has not
+been read. The single-common-trend finding for national indices is Kasa (1992), *Journal of Monetary Economics*
+29(1), 95-124; Richards (1995, *JME* 36(3), 631-654) argues against it. The 7.75%-12.75% rate this draft discusses was itself replaced by D11;
+see PAPER.md §4.2.1] — meaning randomly re-paired real equity
 series may retain residual common-factor co-movement even after the true bilateral pairing is
 destroyed, which could bias the measured 7.75%-12.75% empirical rejection rate in either direction
 relative to a genuinely factor-free null. This is a real, citable, currently-unaddressed limitation of
@@ -67,7 +75,7 @@ quietly dropped" sentence):
 > **A caveat on the null construction itself, not yet resolved**: the randomly-re-paired "null" pairs
 > above preserve each series' own real volatility and autocorrelation, but do not explicitly control
 > for residual common-factor exposure — major equity indices are documented to share a single dominant
-> common stochastic trend (Richards 1998, *Journal of International Money and Finance*), so two
+> common stochastic trend (Kasa 1992, *Journal of Monetary Economics* 29(1), 95-124; contested by Richards 1995), so two
 > randomly-paired real equities may retain some genuine co-movement even after their true economic
 > relationship (if any) is destroyed by the shuffle. Whether this inflates the 7.75%-12.75% empirical
 > rate above relative to a genuinely factor-free null — and if so, by how much — is not established
@@ -76,7 +84,9 @@ quietly dropped" sentence):
 
 **Source**: `debug/_ibkr...` — no, source is the STORM research fork itself (Development.md, Phase 12
 perspective 1/4 entry, 2026-07-14), citing Richards, A., "Stochastic trends and cointegration in the
-market for equities," https://www.sciencedirect.com/science/article/abs/pii/S0148619598000319.
+market for equities," https://www.sciencedirect.com/science/article/abs/pii/S0148619598000319 [that URL is
+Ackert, L. F. & Racine, M. D. (1999), *J. Economics and Business* 51(2), 133-143, not Richards; content unverified,
+2026-10-20].
 
 **Status**: drafted, not applied. Low-risk, additive-only change (doesn't alter any existing number or
 conclusion) — reasonable to merge as-is once reviewed, or hold pending the suggested follow-up
@@ -254,7 +264,7 @@ is accurate but can be sharpened with the actual mechanism Do & Faff propose.
 > on anomaly-return decay finds real, quantified capital-crowding effects elsewhere in equity markets —
 > McLean & Pontiff (2016) find 97 documented return predictors show 26% lower returns out-of-sample and
 > 58% lower post-publication, consistent with capital chasing away documented mispricing; Khandani & Lo
-> (2007) show statistical-arbitrage strategies specifically become highly correlated during forced-
+> (2011, *Journal of Financial Markets* 14(1), 1-46; NBER WP 14465, 2008) show statistical-arbitrage strategies specifically become highly correlated during forced-
 > deleveraging events, direct evidence crowding is a real structural feature of this trading space. No
 > study has directly decomposed crowding versus structural decay for pairs trading specifically using
 > capital-flow data — one recent industry discussion states plainly this decomposition "is not
@@ -262,7 +272,7 @@ is accurate but can be sharpened with the actual mechanism Do & Faff propose.
 > with a genuine open question in the field, not a project-specific data limitation alone.
 
 **Source**: Development.md, Phase 12 perspective 4/4, citing Do & Faff (2010), McLean & Pontiff (2016,
-*Journal of Finance*), and Khandani & Lo (2007, NBER working paper).
+*Journal of Finance*), and Khandani & Lo (2011, *JFM*; NBER WP 14465, 2008; corrected 2026-10-19 from "2007").
 
 **Status**: drafted, not applied. Additive-only, strengthens an existing honest caveat with real
 citations — low risk, reasonable to merge once reviewed.

@@ -29373,3 +29373,25 @@ edits are drafted for Ross, not applied (decision 4). `_verify_paper_magnitude_c
 layout and crashed after the D12 redesign -- now an explicit failure "paper numbers obsolete, re-derivation pending"
 (6 deliberate failures: that + the 5 D5 survivorship rows). CONTRIB-032 sits in an auto-generated table: fix at its
 source docstring on the next scripts/_build_contributing.py regeneration.
+
+### Paper edits applied (Ross "y to all", 2026-10-20)
+Applied the 60 drafted items (docs/drafts/PAPER_EDITS_2026-10-19.md) to PAPER.md (57 replacements incl. same-claim
+spots the list did not itemise: intro note, contribution 1, s2.1 EG bullet, "All citations were verified" sentence)
+and PAPER_MAGNITUDE.md (9); PAPER_PENDING_CHANGES.md literature fixes (PENDING-003, -013). New registry entry C-008
+(D11 null size). Scripts: scratchpad apply_paper_edits.py / apply_review_fixes.py (exact-match, count==1 asserts).
+**Independent review (adversarial-reviewer) found 11 issues, all confirmed and fixed:** (1) s7.1 now stated the
+current rules (|z| 3.0, causal hedge) above numbers produced under the old ones (2.0, full-sample warm-up hedge,
+2026-07-12 run) -- note added that they predate both changes; (2) "291 ... each tagged sensitivity test owed" false:
+only 104 of 291 are tagged, 187 unchecked; (3) the "about 2.5 points from alignment" split, copied from a pre-1D
+note, is wrong at 1D (5.5 vs 4.75) and within MC noise elsewhere; (4) "guarding does not explain rates below its null
+rate" overreached -- the candidate-population null is unmeasured and the old screen used other settings/windows;
+(5) "full WRDS-merged universe" true only at 1D/1M (15m/1h are the ~1,580-symbol yfinance cache); (6) the d11 check
+asserts the 2.0% random-walk rate only as a 1-10% range and never reports one-direction (5.0% computed in review);
+(7) C-008 reproduce wrong: one RNG runs through the --tf list, so per-TF calls give different draws, and 6c2de4f9 did
+not produce the parquet; (8) stale "already failed the latter", "dead regime", README "refuted", PENDING "Why",
+s2.4 Elliott/Do-Faff-Hamza rows, s7 Do-Faff-Hamza "consistent with"; (9) the draft's cited "Richards" source is
+Ackert & Racine (1999), JEB 51(2) 133-143 (Crossref, confirmed by hand) -- the lit check had searched only JIMF 1998;
+(10) the 25 untrailered commits are interleaved June-Aug, not "earlier"; (11) Development.md 29,375 lines, 1M 2,858
+symbols, 10-year window is a lookback cap, D13 powers likely upper bounds (rho biased toward stationarity), XOM/CVX's
+recent power equals size, delisted coverage incomplete (ticker -> latest PERMNO). Paper-claim tests unchanged
+(paper_claims pass; paper_magnitude the 6 known failures).

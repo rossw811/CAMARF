@@ -65,8 +65,8 @@ in place, not silently omitted.
   The previous second pass (2026-10-14, 0 of 8 pool × split cells met the pre-registered criterion) is superseded by
   BUG-D118 and kept only for provenance.
 - **Overfitting accounting** (approved by Ross): every tunable value is listed in `docs/PARAMETER_REGISTRY.csv`
-  with its justification and whether it was set after seeing a result (339 still lack a recorded justification and
-  are being traced); the strategy search counts all N = 432 trials in its deflated Sharpe and reports PBO; data from
+  with its justification and whether it was set after seeing a result (291 still lack a recorded justification; 104 of
+  them were checked row by row on 2026-10-19 and tagged "sensitivity test owed", the other 187 are not yet checked); the strategy search counts all N = 432 trials in its deflated Sharpe and reports PBO; data from
   2026-01-01 onward is a sealed holdout.
 - **Endogeneity comparison arms** (approved 2026-10-13; they enter as comparisons, never directly into the pipeline):
   (a) DOLS / FM-OLS hedge ratios and an exactly-sized Johansen test vs OLS + Engle-Granger — validated on synthetic
@@ -239,9 +239,9 @@ decision must actually be made), it is a source of bias serious enough
 to overturn a pair set's profitability. Ignored in the other direction
 (the market regime a pair was first discovered in), it is a real,
 statistically significant predictive signal current practice simply
-throws away. CAMARF's own confirmed-pair count changed by an order of
-magnitude multiple times as successive rounds of methodology correction
-were applied (§3 below): evidence, independent of either finding here,
+throws away. CAMARF's own confirmed-pair count changed repeatedly, sometimes
+by large factors, as successive rounds of methodology correction were
+applied (§3 below): evidence, independent of either finding here,
 that "confirmed" was never as stable a label as it is normally treated.
 
 **1.2 Why scale matters, and an honest caveat about which findings are
@@ -402,8 +402,9 @@ audit, were found this session to be silently sampling from an old,
 narrow, yfinance-only cache directory (~1,566-1,730 symbols) while their
 own docstrings and log messages claimed "full universe" coverage. The
 real, current merged universe (yfinance + WRDS/CRSP + Compustat Global +
-Binance + IBKR, deduplicated) is **~44,700 symbols**
-(`universe_loader.load_full_universe()`, the single project-wide loader
+Binance + IBKR, deduplicated) is **~44,700 symbols** at the time of writing; it moves with the caches
+(`load_full_universe("1D")` returned 46,352 symbols on CachyOS on 2026-10-19), so each result states the date and
+count of the run it uses (`universe_loader.load_full_universe()`, the single project-wide loader
 all such scripts now call). This is stated here as a methodological
 honesty point in its own right, not just a bug-log entry. A "full
 universe" claim in statistical arbitrage research is only as strong as
@@ -423,8 +424,9 @@ derivation is universe-scale-independent by construction. §4, §7.3, and
 §7.4's underlying data are at the corrected, current universe scale.
 
 **Scope of the WRDS-sourced findings specifically** (§4, §5, §7.1, §7.3):
-limited to symbols with a fetched `output/cache/wrds/*_1D.parquet` file, currently
-~43,662 of the ~44,700-symbol merged universe (1,032 files 0-byte or
+limited to symbols with a fetched `output/cache/wrds/*_1D.parquet` file, ~43,662 of the ~44,700-symbol
+merged universe when written (45,419 WRDS 1D files on the Surface on 2026-10-19, none 0-byte; the 1,032-file
+count below is from the earlier interrupted fetch) (1,032 files 0-byte or
 corrupted from an earlier interrupted bulk fetch, skipped and logged, not
 silently dropped; see Development.md). This is a daily-only scope.
 WRDS/CRSP carries no intraday data, so these findings cannot speak to
@@ -457,7 +459,9 @@ re-derived per finding:
   re-evaluation), unioning each window's qualifying pairs across the full
   scan. This was built specifically because a fixed whole-history verdict
   cannot distinguish "cointegrated for 3 of the last 30 years" from
-  "cointegrated throughout." [Corrected 2026-10-10, C-007: "unioning" describes only Tier 3's correlation prefilter; a pair is confirmed by one BH correction over all (pair, window) tests, needing at least one surviving window.]
+  "cointegrated throughout." [Corrected 2026-10-10, C-007: "unioning" describes only Tier 3's correlation prefilter; a pair is confirmed by one BH correction over all (pair, window) tests, needing at least one surviving window.] This
+  is the DESCRIPTIVE whole-history family; the point-in-time confirmation is `episodic_bhfdr_confirm_asof`, which
+  uses only windows ending by the decision date. Each result says which it uses.
 - **Regime-span hysteresis.** A state change (cointegrated vs. not)
   confirms only after persisting for at least 3 consecutive windows
   (`MIN_REGIME_WINDOWS=3`), preventing a single borderline p-value from
@@ -974,13 +978,14 @@ holds up.
 point-in-time-safe regime lookup, and the per-pair table construction
 (first window, confirmation, reappearance) are verified against
 synthetic ground truth before being trusted on real data
-(`debug/_verify_crisis_regime_correlation_diagnostic.py`, 21/21 checks),
+(`debug/_verify_crisis_regime_correlation_diagnostic.py`),
 as are the episode-clustering check
-(`debug/_verify_crisis_regime_episode_clustering_check.py`, 11/11), the
+(`debug/_verify_crisis_regime_episode_clustering_check.py`), the
 concentration-significance test
-(`debug/_verify_crisis_regime_concentration_significance_test.py`, 7/7),
-and the cluster bootstrap
-(`debug/_verify_crisis_regime_cluster_bootstrap_test.py`, 7/7): every
+(`debug/_verify_crisis_regime_concentration_significance_test.py`),
+the cluster bootstrap (`debug/_verify_crisis_regime_cluster_bootstrap_test.py`,
+`debug/_verify_crisis_regime_cluster_ci_d12.py`) and the within-year design that replaces it
+(`debug/_verify_crisis_regime_within_year_d12.py`): every
 number in this section traces to a script verified against synthetic
 ground truth before being trusted on the real 638,095-pair data. A
 related, prior finding (`research/stress_test_replication.py`,
@@ -1207,9 +1212,10 @@ question itself. Flagged for re-derivation, not silently left implying the curre
 **What this pillar contributes as a literature critique, stated plainly.**
 Cross-asset cointegration papers that report "N significant pairs" from a
 correlation-prefiltered candidate pool without disclosing (a) the
-candidate pool size and (b) the multiple-testing correction applied are,
-at this project's demonstrated scale, almost certainly overstating the
-reliability of their headline pair set. This is not a claim about any
+candidate pool size and (b) the multiple-testing correction applied
+cannot be checked for overstated reliability, and at this project's
+demonstrated scale they would be at real risk of it (how common the practice
+is has not been surveyed). This is not a claim about any
 specific published paper, which this project cannot verify without
 access to that paper's own candidate-pool accounting. It is a testable,
 quantified standard this project proposes and holds itself to, stated as
@@ -1424,9 +1430,10 @@ diagnosis: 4 of an early 32-example labeled training set (12.5%) had
 `|z_entry| > 10`, all firing at exactly market open, all on the
 calendar-padding day boundary.
 
-**Why this generalizes beyond CAMARF.** This is a standard, often-default
-convenience in general time-series tooling, not a CAMARF-specific
-choice. Any intraday pairs-trading or stat-arb research using fixed-window
+**Why this generalizes beyond CAMARF.** This is a common convenience in
+time-series tooling (pandas does it when asked: `reindex(...).ffill()` onto
+a calendar-frequency index), not a CAMARF-specific choice; how often
+published work does it is not known to us. Any intraday pairs-trading or stat-arb research using fixed-window
 rolling z-scores on a calendar-padded series inherits this exact failure
 mode at every session boundary, for every asset, by construction. The
 artifact's size (15.8σ) and mathematical cleanness (an exact closed form,
@@ -1735,9 +1742,11 @@ single catch-all section, since each has a different scope:
   inheriting this exact failure mode is explicitly stated as an
   unverified, testable hypothesis, not a checked fact about any specific
   external paper.
-- **Universe-wide**: the equity/ETF universe remains a current-constituent
-  snapshot (survivorship bias, disclosed per this project's standing
-  convention, not corrected away) for all findings in this paper.
+- **Universe-wide**: scope differs by path. The yfinance path's equity/ETF universe is a
+  current-constituent snapshot (survivorship bias, disclosed, not corrected away); the WRDS discovery and
+  research paths include delisted securities, though not completely (ticker-keyed fetches resolve each ticker to
+  its latest PERMNO, `data_wrds.py`, so an older company whose ticker was reused can be missed; delisting coverage
+  is being measured, D6). Each finding states which it uses.
 - **Reproducibility, a real practical barrier not previously stated**:
   §4, §5, and §7.1-§7.3 depend on WRDS/CRSP data, a paywalled
   institutional subscription: an independent researcher without WRDS
