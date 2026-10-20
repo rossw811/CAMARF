@@ -29343,3 +29343,23 @@ within-year effect over 6 years -> CI [0.00024, 0.00661]. Tried and corrected (t
 crisis years evenly over the decline, so the old method showed no bias (99/100) -- moved to early years as in the data.
 Code-path run on the 2026-09-02 pair table (old pool, NOT citable): 11 years with both kinds; confirmation CI
 [-0.131%, +0.271%], reappearance CI [-3.33, +16.66] points -- both include 0. Real run after the chain.
+
+### D13 corrected: S35 no-trade mask was missing (2026-10-19, found by the claims check)
+Checking claims against the registry: durability_vs_currency_wrds gave KO/PEP full p 0.1827 over 26,301 d, the
+registry's current_rules re-derivation 0.112 over 24,671 d. Cause: my D13 script skipped discovery's S35 no-trade
+mask (data_wrds.crsp_no_trade_mask). Failing-first check added (_verify_durability_power_d13 11 -> 12). Masked re-run
+matches the registry: XOM/CVX 0.0415/0.3769 (26,291 d), JPM/BAC 0.8955/0.8814, KO/PEP 0.1124/0.9632 (24,671 d),
+NTRS/STT 0.0000/0.5993 (10,097 d; power 0.18 gaussian / 0.34 blocks, P(p >= observed) 0.07 / 0.20), SHW/UNP
+0.0606/0.0544. Conclusions unchanged; the D13 table above (unmasked) is superseded by these.
+
+### Claims evaluation started (2026-10-19; Ross: "double check and evaluate if they're worth reporting ... every claim,
+all papers and docs")
+Inventory: docs/drafts/claims_inventory_2026-10-19.csv -- 806 claims across 12 reader-facing files (PAPER 270,
+PAPER_MAGNITUDE 146, FINDINGS 146, README 49, CONTRIBUTING 41, ERRATA 37, CLAIMS_REGISTRY 27, PAPER_PENDING_CHANGES
+26, PREREGISTRATION 24, DATA_SOURCES 19, PIT_INDEX 11, PROCESS_OUTLINE 10), extracted read-only by a Sonnet agent.
+Evaluation file: docs/drafts/claims_evaluation_2026-10-19.csv (scripts/triage_claims_inventory.py first-pass tags,
+then verdicts by hand: KEEP / QUALIFY / CORRECT / WITHDRAW / CUT / PENDING_CHAIN, each with reason and evidence).
+First pass: 217 already withdrawn (confirm the docs say so), 277 wait on the chain, 279 checkable now, 33 changed by
+the 10-17..19 fixes. Batch 1 (the 33) done: e.g. PAPER-012 WITHDRAW (XOM/CVX shows the NTRS/STT pattern; the other
+controls detect no effect), PAPER-063/README-013 CORRECT (D11 reverses the null-rate result), README-012 WITHDRAW
+(SHW/UNP full p 0.0606 on CRSP), 5 keyword mis-tags reclassified.

@@ -75,6 +75,20 @@ def main():
         pb = mod.power_at_blocks(eff_s, n=1260, n_sim=200, rng=np.random.default_rng(4))
         pg = mod.power_at(eff_s, n=1260, n_sim=200, rng=np.random.default_rng(4))
         check("block_power_matches_gaussian_on_gaussian_data", abs(pb - pg) < 0.12, f"block {pb:.3f} vs gaussian {pg:.3f}")
+        # 2026-10-19 claims check: the script skipped discovery's S35 no-trade mask (a CRSP day with a total-return
+        # value but no close is a bid/ask midpoint -> NaN), so its p-values differed from the registry's current_rules
+        # re-derivation (KO/PEP full p 0.1827 over 26,301 d vs 0.112 over 24,671 d)
+        import tempfile, importlib
+        tmpd = tempfile.mkdtemp()
+        di = pd.bdate_range("2020-01-01", periods=6)
+        pd.DataFrame({"close": [10.0, np.nan, 11.0, 12.0, np.nan, 13.0],
+                      "close_total_return": [10.0, 10.5, 11.0, 12.0, 12.4, 13.0]}, index=di).to_parquet(
+            os.path.join(tmpd, "ZZZ_1D.parquet"))
+        mod2 = importlib.reload(importlib.import_module("durability_vs_currency_wrds"))
+        mod2.WRDS_CACHE = __import__("pathlib").Path(tmpd)
+        lg, _ = mod2.load_log_close("ZZZ")
+        check("s35_no_trade_days_masked", np.isnan(lg[1]) and np.isnan(lg[4]) and np.isfinite(lg[2]),
+              f"{np.round(lg, 4)}")
         check("p_ge_observed_fields", all(0 <= r[k] <= 1 for k in ("p_ge_observed_gaussian", "p_ge_observed_blocks"))
               and "power_recent_at_full_effect_blocks" in r and "full_sample_effect_detected" in r,
               f"{r.get('p_ge_observed_gaussian')}, {r.get('p_ge_observed_blocks')}")

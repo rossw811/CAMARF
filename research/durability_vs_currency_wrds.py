@@ -40,8 +40,12 @@ PAIRS = [("XOM", "CVX"), ("JPM", "BAC"), ("KO", "PEP"), ("NTRS", "STT"), ("SHW",
 
 
 def load_log_close(symbol):
+    import data_wrds
     df = pd.read_parquet(WRDS_CACHE / f"{symbol}_1D.parquet")
     close = df["close_total_return"].astype(float)
+    # S35 no-trade mask, as discovery (2026-10-19 claims check: was missing, so p-values differed from the registry's
+    # current_rules re-derivation). debug/_verify_durability_power_d13.py
+    close = data_wrds.crsp_no_trade_mask(df, symbol, close)
     return np.log(close.values), df.index
 
 
