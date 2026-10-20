@@ -1,0 +1,159 @@
+# Paper edits for Ross's review (2026-10-19)
+
+From the all-claims evaluation (docs/drafts/CLAIMS_EVALUATION_2026-10-19.md). Decision 4 (Ross, 2026-10-19):
+paper wording is drafted, not applied. Each item: location, current text (as inventoried), verdict, and what
+the replacement must say (the evidence is in claims_evaluation_2026-10-19.csv). CORRECT and WITHDRAW items fix
+statements that are false today; QUALIFY items add a scope or refresh a dated number.
+
+## PAPER.md (40 items: QUALIFY 25, CORRECT 13, WITHDRAW 2)
+
+- **PAPER-006** (line 97, Current state) -- **CORRECT**
+  - now: 339 tunable values lack recorded justification; N = 432 trials in DSR; data from 2026-01-01 sealed holdout.
+  - change: 339 -> 291 unjustified (2026-10-19).
+- **PAPER-010** (line 176, Abstract) -- **QUALIFY**
+  - now: NTRS/STT passes full-sample EG with p~0.00005 over 10,098 overlapping daily observations since 1985-12-03 while failing the identical test on last five years (p=0.561, 1,256 days).
+  - change: As CLAIMSREG-003: p 0.599 (not 0.561), 10,097 d, plus the power caveat.
+- **PAPER-012** (line 187, Abstract) -- **WITHDRAW**
+  - now: NTRS/STT alone, checked against three negative-control pairs that show the pattern on neither window, is sufficient evidence for the underlying claim.
+  - change: False: XOM/CVX shows the pattern (0.0415/0.3769); the other three controls detect no full-sample effect, so they test nothing about losing one; and power is 0.18-0.34.
+- **PAPER-013** (line 190, Abstract) -- **CORRECT**
+  - now: A companion observation that long-horizon screens reject pairs at rates far below nominal was refuted by Monte Carlo: empirical false-positive rate under null is elevated (7.75%-12.75% vs 5%) and grows with horizon.
+  - change: As README-013 (D11 reverses the 'refuted, FP elevated' reading for the production screen).
+- **PAPER-042** (line 521, 2.5 Advances) -- **QUALIFY**
+  - now: CAMARF scans 14 timeframes (1m-1M) simultaneously across 1,500+ instruments with per-TF EG+KPSS+PO tiers and rolling stability; no found paper does this across TFs.
+  - change: Novelty claim ('no found paper does this'): needs a documented literature search (queries, databases, date) before it can stand; until then 'we did not find' with the search recorded.
+- **PAPER-043** (line 528, 2.5 Advances) -- **QUALIFY**
+  - now: Direct demonstration that a full-sample EG test can confirm a pair with overwhelming significance on a since-broken relationship is not documented in any found paper (Clegg/Krauss motivate partial cointegration but not this conflation).
+  - change: Novelty claim ('no found paper does this'): needs a documented literature search (queries, databases, date) before it can stand; until then 'we did not find' with the search recorded.
+- **PAPER-045** (line 551, 2.5 Advances) -- **QUALIFY**
+  - now: End-to-end validation stack: EG+KPSS+PO tiers, Huber/MM hedge ratios, EVT/GPD tails, DCC-GARCH, White's test; no found paper combines all five.
+  - change: Novelty claim ('no found paper does this'): needs a documented literature search (queries, databases, date) before it can stand; until then 'we did not find' with the search recorded.
+- **PAPER-055** (line 662, 4.1 Methodology) -- **QUALIFY**
+  - now: Pipeline: correlation pre-filter -> EG + BH-FDR per TF -> OLS/TLS/Kalman hedge -> OU fit -> Marchenko-Pastur eigenportfolio (Gold/Silver) -> coint_fraction_rolling with secondary-evidence override -> cross-asset structural exclusion.
+  - change: Add the PIT pool default, strict engine and formation-window rule (2026-10-19); tiers rest on S6 (mis-sized tier tests) -- drop or mark open.
+- **PAPER-056** (line 678, 4.2 Table) -- **CORRECT**
+  - now: Full-sample vs last-5y EG p (WRDS/CRSP): XOM/CVX 0.0823 / 0.4822 (26,301 d, since 1925); JPM/BAC 0.9346 / 0.8814 (11,741, 1979); KO/PEP 0.1053 / 0.9632 (26,301, 1925); NTRS/STT 0.0000 / 0.5613 (10,098, 1985); SHW/UNP 0.0611 / 0.0544 (14,238, 1969).
+  - change: Replace with the masked current_rules table (CLAIMSREG-006 row) and the power columns.
+- **PAPER-057** (line 686, 4.2) -- **QUALIFY**
+  - now: NTRS/STT passes full-sample EG (p~0.00005) while failing the last 5 years (p=0.561); full-sample screen over '50+ years' of CRSP history answers 'was it ever cointegrated', not 'is it now'.
+  - change: As PAPER-010; '50+ years' -> ~40 years.
+- **PAPER-059** (line 709, 4.2) -- **WITHDRAW**
+  - now: Negative controls (XOM/CVX, JPM/BAC, KO/PEP) show the pattern on neither window.
+  - change: False: XOM/CVX shows the pattern (0.0415 / 0.3769, D13 masked run); JPM/BAC and KO/PEP detect no full-sample effect.
+- **PAPER-060** (line 715, 4.2) -- **QUALIFY**
+  - now: coint_fraction_rolling is a secondary filter applied only to pairs that already pass the full-sample screen, the tool needed to close the durability gap.
+  - change: Method description holds (secondary filter); 'the tool needed to close the durability gap' is untested and coint-fraction had override defects (A5/A7/A8) -- drop the claim, keep the description.
+- **PAPER-062** (line 757, 4.2.1) -- **CORRECT**
+  - now: Monte Carlo calibration: production EG code on randomly re-paired real series (400 null pairs per TF); synthetic check recovered ~5-6% on independent random walks.
+  - change: D11: production two-direction call, calendar-aligned, full universe (not re-paired cache series); on independent random walks the production call gives ~2% (D11 test), the one-direction call ~5-6%.
+- **PAPER-063** (line 771, 4.2.1 Table) -- **CORRECT**
+  - now: Empirical null false-positive rate: 15m 31/400 = 7.75% [5.33%, 10.82%]; 1h 31/400 = 7.75% [5.33%, 10.82%]; 1D 36/400 = 9.00% [6.38%, 12.24%]; 1M 51/400 = 12.75% [9.64%, 16.42%]; Clopper-Pearson CIs.
+  - change: Old table (7.75-12.75%) replaced by D11's production-call table (1.50/1.75/3.00/3.25%) with one-direction and old-script columns beside it.
+- **PAPER-064** (line 786, 4.2.1) -- **QUALIFY**
+  - now: Mechanism is spurious regression from shared market-wide drift (Granger & Newbold 1974); full-sample screen's near-total 1D/1M rejection reflects the test correctly guarding against this risk, not over-conservatism.
+  - change: Spurious-regression mechanism (Granger & Newbold 1974) is standard; 'near-total 1D/1M rejection reflects the test correctly guarding' must be restated with D11: the production screen is below or at nominal size on random pairs.
+- **PAPER-070** (line 858, 4.5) -- **QUALIFY**
+  - now: Forward-filling non-trading periods is a standard default convenience in time-series tooling, so any intraday pairs-trading research with fixed-window rolling z on a calendar-padded series inherits this failure mode; speculative about other published work.
+  - change: As PM-114 (unverified generalization about other tooling).
+- **PAPER-076** (line 952, 4.7) -- **QUALIFY**
+  - now: Correlation alone is too LOOSE (false positives), cointegration test at long horizons too STRICT (false negatives); pipeline calibration matters at every stage.
+  - change: 'Too strict at long horizons' is supported only as: production screen below nominal on random pairs at 15m/1h, not distinguishable at 1D/1M; the false-negative reading needs the power side (D13-style) on candidates.
+- **PAPER-081** (line 1023, 5) -- **QUALIFY**
+  - now: Price-degeneracy filter (BUG-D49) Step 6d drops thin_info_content pairs; as of 2026-06-30 zero effect on the 1h set.
+  - change: Dated status (2026-06-30) -- re-derive the filter's effect on the current sets before citing.
+- **PAPER-084** (line 1060, 5) -- **QUALIFY**
+  - now: audit_price_degeneracy.py: of 1,354 evaluated 1m symbols 432 (31.9%) flagged (median 14 distinct closes); 2m 24.6%, 3m 30.4%, 5m 10.0%, 15m 1.3%, 30m 0.3%; 10 of 12 (83%) current 1m confirmed pairs have both legs flagged.
+  - change: Price-degeneracy share from an old 1m snapshot; re-derive on the current cache before citing.
+- **PAPER-085** (line 1070, 5) -- **QUALIFY**
+  - now: Market cap dominant explanation for price degeneracy: flagged median $3.0B vs clean $17.3B (~6x); Mann-Whitney p = 1.82e-145 (re-derived 3.65e-145); corr(log market cap, flagged) = -0.629; exchange tier explains nothing (NYSE 64.0% of both groups).
+  - change: Price-degeneracy explanation from a 2026-07 yfinance 1m snapshot; worth reporting as a data-quality finding only after re-derivation on the current cache.
+- **PAPER-086** (line 1083, 5) -- **QUALIFY**
+  - now: Flagged rate by market-cap quintile: 88.5% -> 53.7% -> 16.0% -> 2.6% -> 0.0%, strictly monotone decreasing.
+  - change: As PAPER-085.
+- **PAPER-087** (line 1089, 5) -- **QUALIFY**
+  - now: Sector is a second independent factor: within middle market-cap quintile REIT/Financial Services/Utilities flag at 38.6% vs 8.1% for others (one-sided Mann-Whitney p~0.0000); mechanism plausible but not independently proven.
+  - change: As PAPER-085.
+- **PAPER-088** (line 1108, 5) -- **QUALIFY**
+  - now: Daily dollar-volume liquidity screening silently admits ~32% of a nominally-liquid universe into intraday cointegration testing on trade-frequency-starved data: a third pillar alongside the Strictness Paradox and pair-selection lookahead.
+  - change: ~32% share comes from an old 1m snapshot; re-derive on the current cache before calling it a 'pillar'.
+- **PAPER-109** (line 1462, 7.1) -- **CORRECT**
+  - now: Layer 1: enter |z| >= 2.0, exit z crosses 0.0, stop 3.5 sigma, max hold 2x half-life; all hedge ratios point-in-time causal series persisted by analysis.py, no hedge-ratio lookahead.
+  - change: Entry is |z| >= 3.0 (ENTRY_ZSCORE raised 2026-08-17, calibrated, outcome-informed), not 2.0; and 'no hedge-ratio lookahead' was false until 2026-10-19 (full-sample warm-up fallback) -- true from 89ececc4 on PIT paths.
+- **PAPER-135** (line 1763, 7.4) -- **QUALIFY**
+  - now: STORM factors: session_edge (skip first 30 min / final hour), garch_stop (3.5 -> 3.0 sigma when z std > 2x baseline), mm_exec (MM-estimator hedge ratio), coint_frac_threshold (skip entries when coint_fraction_rolling < 0.10).
+  - change: STORM description holds, except coint_frac_threshold is now a per-bar gate under the strict default (was a pair-level whole-history gate).
+- **PAPER-144** (line 1858, 7.5) -- **QUALIFY**
+  - now: Candidate explanation (untested): short-window (n=252) EG test may have low power, so strong cointegrators fail most windows; relates to power not size (4.2.1 tested Type I error at full-sample).
+  - change: Stated as untested hypothesis -- keep as such; testable with the D13 power code on 252-day windows.
+- **PAPER-168** (line 2222, 7.12) -- **QUALIFY**
+  - now: Confirmed @1h pairs have cached intraday history only back to 2023-07-24 (yfinance 730-day cap), so crisis test uses daily resolution through Aug 2007 quant quake, 2008 GFC, Feb-Apr 2020 COVID with 2-year pre-crisis baseline.
+  - change: Daily-resolution scope holds; baseline is now T = max(2 years, 10 x m) and the test Andrews-Kim (D7, 2026-10-18).
+- **PAPER-203** (line 2534, 7.17) -- **CORRECT**
+  - now: Trig-identity convergence/divergence: angle difference (not sum) is the polar-opposite invariant after correction of a design error caught by synthetic verification.
+  - change: Wrong way round: for a perfect opposite pair theta_A - theta_B = 2 theta_A - pi varies; the SUM is the invariant (pi for arccos, 0 for arcsin) -- research/trig_convergence.py:52-53, as FINDINGS-034 says.
+- **PAPER-206** (line 2560, 7.17) -- **QUALIFY**
+  - now: Parameter sensitivity extended to research/ layer: 12 comparison arms across two batches; 34 of 46 parameterized research scripts remain unswept.
+  - change: Dated sweep coverage; re-count (research/ now has 259 scripts).
+- **PAPER-220** (line 2797, 7.21) -- **CORRECT**
+  - now: backtest.py entry gate is purely |z_rolling| >= ENTRY_ZSCORE; no squeeze or momentum confirmation existed anywhere.
+  - change: Stale: STORM squeeze / momentum / squeeze-momentum entry gates exist in backtest.py (opt-in).
+- **PAPER-228** (line 2876, 8) -- **QUALIFY**
+  - now: BiasAuditLog (output/results/bias_audit.json) has 62 entries as of the latest run: Kelly lookahead, in-sample stop comparison, survivorship, small-n filtering.
+  - change: Bias-audit entry count is a run snapshot; re-count at the redraft.
+- **PAPER-229** (line 2884, 8) -- **QUALIFY**
+  - now: ml.py label rolling-window overlap: each labeled entry event's outcome window spans 2 x half_life bars; consecutive entries within 2x half_life overlap, overstating effective sample size (12-32 labeled examples to date, MIN_CLASS_SAMPLES >= 30).
+  - change: Overlap disclosure holds; the 12-32 example counts are stale (re-derive with the PIT pools).
+- **PAPER-237** (line 3023, 9 AID) -- **CORRECT**
+  - now: AI tool: Claude Code; model versions varied across ~28 sessions (June-July 2026); this session ran on Claude Sonnet 5; no third-party AI tool contributed to any result.
+  - change: Stale AI disclosure: sessions continued through 2026-10 on several models (Opus 5.5 among them) -- regenerate from git trailers.
+- **PAPER-238** (line 3028, 9 AID) -- **QUALIFY**
+  - now: Conceptualization not AI-led; Data Collection Method not AI: AI never designed a data-collection method or selected a data source; Methodology: AI implemented methods but each was approved by the researcher first.
+  - change: 'AI never ... selected a data source': the assistant proposed some sources (e.g. SEC EDGAR ETF holdings for PIT S&P 400/600) that Ross then approved -- word it as 'every data source was approved by the researcher'.
+- **PAPER-241** (line 3096, 9 AID) -- **QUALIFY**
+  - now: AI implemented the code generating the project's 26 report figures (report.py).
+  - change: Figure count is a snapshot (26); re-count at the redraft.
+- **PAPER-243** (line 3155, 9 Appropriate use) -- **CORRECT**
+  - now: Development.md exceeds 10,000 lines across 28 sessions.
+  - change: Development.md is 29,365 lines (2026-10-19), not 'over 10,000 across 28 sessions'.
+- **PAPER-245** (line 3198, 9 Tool transparency) -- **CORRECT**
+  - now: Web search used exactly once (2026-07-11), only for AI-disclosure norms; graphify attempted but not relied upon.
+  - change: False now: web search/fetch has been used many times since (e.g. GGR primary text 2026-10-15, Andrews-Kim PDF 2026-10-17, literature checks 2026-10-19).
+- **PAPER-246** (line 3213, 9 Data acquisition) -- **CORRECT**
+  - now: Every empirical claim traces to real data (yfinance, IBKR, FRED, CFTC); synthetic data only in debug/_verify_*.py; no paid data vendor, no scraped-without-permission source used anywhere.
+  - change: Omits WRDS (CRSP/Compustat), the main data source; free-data statement must say WRDS is a university licence.
+- **PAPER-248** (line 3263, 10 Future work) -- **CORRECT**
+  - now: Transfer entropy done 2026-09-08 (5/5 checks); AMP/RUSHA only working pair; local-cache gap fixed (Finding #63); transfer entropy wired into ml.py as te_directional_diff, te_significance (Finding #65).
+  - change: Transfer entropy is a whole-history pair statistic and is NaN under the strict default (2026-10-19); it feeds only the descriptive ML run.
+- **PAPER-257** (line 3407, 10) -- **QUALIFY**
+  - now: LinAlgError (not positive definite) from BUG-D49 hit HRMY, PRDO, TILE, WS, EIG, ACT, CTKB, PRAA, UHT; universe-wide audit confirmed ~32% of the 1m universe affected.
+  - change: Data-defect finding (~32% of the 1m universe hit by BUG-D49 degeneracy) -- re-derive on the current cache before citing.
+
+## PAPER_MAGNITUDE.md (9 items: QUALIFY 7, CORRECT 2)
+
+- **PM-008** (line 68, Current state) -- **CORRECT**
+  - now: 339 tunable values still lack a recorded justification; strategy search counts N = 432 trials in DSR and reports PBO; data from 2026-01-01 onward is a sealed holdout.
+  - change: 339 -> 291 unjustified (2026-10-19).
+- **PM-030** (line 242, 1.1) -- **QUALIFY**
+  - now: CAMARF's confirmed-pair count changed by an order of magnitude multiple times as methodology corrections were applied, evidence that 'confirmed' was never stable.
+  - change: Process claim with a count: cite the Development.md entries that make the count, or drop the number.
+- **PM-040** (line 405, 2) -- **QUALIFY**
+  - now: The real merged universe is ~44,700 symbols; earlier scripts sampled ~1,566-1,730 symbols (>10x undercount) while claiming 'full universe'.
+  - change: Universe size moves with the caches: load_full_universe('1D') returned 46,352 symbols on CachyOS 2026-10-19 (D11 run); state the date/count of the run each result uses.
+- **PM-041** (line 427, 2) -- **QUALIFY**
+  - now: WRDS-sourced findings limited to ~43,662 of ~44,700 symbols with a fetched *_1D.parquet; 1,032 files 0-byte or corrupted skipped and logged; daily-only scope.
+  - change: As PM-040 (WRDS 1D files on the Surface: 45,419 on 2026-10-19).
+- **PM-044** (line 454, 3) -- **QUALIFY**
+  - now: Episodic confirmation: EPISODIC_WINDOW_BARS = 2520 (~10 trading years), STEP = 252; pair confirmed by one BH correction over all (pair, window) tests needing at least one surviving window.
+  - change: Holds as a description, but this is the DESCRIPTIVE whole-history family; the PIT confirmation is episodic_bhfdr_confirm_asof -- say which a result uses.
+- **PM-081** (line 973, 5 Verification) -- **QUALIFY**
+  - now: Tests verified on synthetic ground truth: 21/21 (correlation diagnostic), 11/11 (episode clustering), 7/7 (concentration), 7/7 (cluster bootstrap).
+  - change: Test counts stale (e.g. cluster test now 8/8 + the within-year D12 test 4/4) -- cite tests by name, not counts.
+- **PM-095** (line 1207, 7.1) -- **QUALIFY**
+  - now: Papers reporting N significant pairs without disclosing candidate-pool size and multiple-testing correction are almost certainly overstating reliability at this scale (a proposed standard, not an accusation).
+  - change: Claim about other papers' practice: needs the documented literature search (as the novelty claims) or soften.
+- **PM-114** (line 1427, 7.5) -- **QUALIFY**
+  - now: This is a standard default convenience in general time-series tooling; any intraday pairs-trading research using fixed-window rolling z on a calendar-padded series inherits the failure mode at every session boundary.
+  - change: 'Standard default in general time-series tooling' is an unverified generalization about other tools -- name the tool behaviour or soften.
+- **PM-133** (line 1738, 8) -- **CORRECT**
+  - now: Equity/ETF universe remains a current-constituent snapshot (survivorship bias disclosed) for all findings.
+  - change: Not 'all findings': WRDS discovery/research use the full CRSP market incl. delisted; the current-constituent snapshot applies to the yfinance path -- scope per result.
