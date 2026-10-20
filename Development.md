@@ -29403,3 +29403,46 @@ stash@{1} (base 2dee40615, 2026-08-20; 170 files) trial-applied onto origin/main
 tier1/tier2 checkpoint layout (since rewritten), universe_loader's hardcoded _IO_WORKERS = 32 and old signature,
 and PAPER.md lines in their pre-punctuation-pass wording. Nothing to recover; dropped. SHA
 30382e527a2168ca5057274fc32d1a2329233374 (recoverable via `git stash apply <sha>` until gc).
+
+### D6 / R3.11: discovery universe vs the CRSP market it left out (2026-10-20) -- FIRST CUT; INTERPRETATION WITHDRAWN after review (see the review entry below)
+Data: CRSP delisting events fetched via WRDS job 33 (Duo approved 07:55): legacy crsp.dsedelist 38,872 rows (100s
+9,740, 200s merger 14,495, 300s 1,069, 400s 2,682, 500s performance 10,886), CIZ crsp.stkdelists 29,833 rows
+(cross-check, unused so far). New `research/survivorship_universe_delisting_d6.py`: CRSP common stocks (shrcd 10/11,
+exchcd 1-3, filtered per name spell) split into included (PERMNO in wrds_label_permno_final, i.e. the discovery
+universe) vs excluded; outcome = last delisting record. Security-level view (each security once, stratum = decade of
+first eligibility; per-decade z-tests + CMH) is primary; by-date year-end view descriptive only (securities recur).
+Failing-first: `debug/_verify_survivorship_universe_d6.py` 0/1 (no module) -> 11/11 (classes, per-spell filter,
+activity window, last record, planted gap recovered with sign, no-gap not flagged, counted once, eligible life).
+**Result:** universe holds 22,740 of 26,760 CRSP common stocks (85.0%). The 4,020 excluded are mostly short-lived
+1970s-90s NASDAQ names (1,394 whose last ticker was later used by an included security -- consistent with the
+ticker -> latest-PERMNO fetch; 483 with no ticker); 2,579 of 9,201 performance-delisted securities (28%) are missing.
+Excluded die far more: MH risk difference in performance-delisting rate -0.357 (OR 0.20, p ~ 0); 1980s cohort 37.6%
+included vs 84.5% excluded. **Scope that matters for discovery** (2520-bar windows need ~10 years): among securities
+with >= 10 eligible years, only 385 of 10,267 (3.75%) are excluded, 344 of them 1970s; MH diff -0.256 (OR 0.32); 1970s
+24.5% vs 48.3%. Reading: the universe is survivorship-biased against failed firms, strongly for short-lived ones
+(which discovery could not test anyway) and modestly for the decade-plus histories discovery uses. Not yet measured:
+how many discovered/confirmed pairs would involve the 385 (needs their prices fetched by PERMNO, not ticker).
+Output: output/research/survivorship_universe_delisting_d6{,_by_date}.parquet.
+
+### Review of the D6 first cut (adversarial-reviewer, 2026-10-20): mechanism and reading withdrawn
+Counts reproduce exactly; what they mean does not. (F1, confirmed by hand) 3,948 of the 4,020 "excluded" securities
+(98.2%; 351 of the 385 with >= 10 years) are the D18 quote-only series: `output/cache/wrds/_quote_only/` holds 4,169
+files flagged `quote_only` (pre-1992 NASDAQ bid/ask midpoints, no CRSP trade price), which discovery skips under
+`--d18 exclude` (wrds_deep_history_episodic_scan.py:187-202). The ticker-reuse mechanism I wrote (1,394 / 483) is
+wrong and was never computed by the script; a PERMNO refetch would return nothing new. (F2) The no-trade rule is
+point-in-time and applied to survivors and failures alike, so "ever had trade data vs never" shows that illiquid
+quote-only names fail more often, NOT that discovery selects on future survival; the sentence "the universe is
+survivorship-biased against failed firms" is withdrawn. At most 72 securities could be survivorship selection proper.
+The decade-cohort primary view also departed from the approved per-window-date design. (F3) Tiers 2/3 test only
+point-in-time S&P 500 members (scan :787-795); only 7 of 1,956 ever-members are excluded. (F4) Discovery's 50-year
+lookback (1975+) and Tier 1's 756-bar floor make the >= 10-year scope the wrong proxy (within-lookback scopes: >= 10y
+235 excluded, MH diff -0.381; >= 3y 1,913, -0.283). (F5) "included" should be discovery's post-filter symbol set, not
+the label map (85 unresolved labels are loaded anyway). (F6) legacy dsedelist is frozen: 310 "active" were delisted in
+2025 per CIZ. (F7) the synthetic test never plants an effect on the security-level/CMH path.
+Checked correct by the reviewer: 500-599 = CIZ performance (10,872/10,886), 200/300/400s match CIZ exactly, exchange
+stratification leaves the gap unchanged, MH weights standard.
+**Redesign (per the approved design, to run on the new chain's discovery output on CachyOS):** at each window date,
+included = discovery's post-filter set (after D18, dedupe, 1975+ lookback, 756-bar Tier 1 floor; S&P 500 gate for
+Tiers 2/3); excluded = CRSP common stocks with a trade price in the window but no usable series; outcomes from CIZ
+where legacy is frozen; report the D18 include arm alongside; plant the effect on the primary path in the test.
+The first-cut script and outputs stay as the record of what was tried.
