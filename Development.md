@@ -29331,3 +29331,15 @@ Full Surface suite on the fix: 401 tests, 4 not passing -- `_verify_paper_magnit
 mean_reversion_speed on a fixture whose full-range spread has AR(1) phi 1.0003 under the causal hedge -> NaN is
 correct; the old full-sample hedge gave phi 0.9993, half-life ~1,019 bars, finite only through the hedge lookahead --
 NaN now allowed for that field, presence still required).
+
+### D12 redesigned: within-year crisis vs calm, sign-flip across years (2026-10-19; Ross decision 2, "y")
+`crisis_regime_cluster_bootstrap_test.within_year_ci` (MAIN): d_y = crisis-first minus calm-first confirmation
+(reappearance) rate within discovery year y, mean over years with both kinds, sign-flip randomization across years
+(exact for <= 16 years), CI by test inversion, min achievable p = 2^(1-K) reported. The cluster-RI / wild CIs are no
+longer run (kept for their tests). Failing-first `_verify_crisis_regime_within_year_d12.py` 0/1 -> 4/4: era-trend
+null (calm rate falling 0.5% -> 0.02%, crisis-first pairs only in early high-rate years, no crisis effect) -- within-
+year CI covers 0 in 98/100 worlds, the old cluster-RI CI in 49/100 (the review's defect, reproduced); a 0.4-point
+within-year effect over 6 years -> CI [0.00024, 0.00661]. Tried and corrected (test): the first era world spread
+crisis years evenly over the decline, so the old method showed no bias (99/100) -- moved to early years as in the data.
+Code-path run on the 2026-09-02 pair table (old pool, NOT citable): 11 years with both kinds; confirmation CI
+[-0.131%, +0.271%], reappearance CI [-3.33, +16.66] points -- both include 0. Real run after the chain.

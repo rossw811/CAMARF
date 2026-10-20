@@ -39,6 +39,13 @@ percentile-t with the CR1 standard error (wild_cluster_ci). CIs only -- no p-val
 clusters an inconclusive CI is a real result. The old resampling function is kept, superseded, for its own test.
 debug/_verify_crisis_regime_cluster_ci_d12.py
 
+D12 REDESIGN (Ross 2026-10-19, "y"; adversarial review of a51f926c): the cluster-RI CI above assumes crisis episodes
+and calm years are exchangeable, but calm confirmation rates fall over time (right-censoring) and crisis episodes sit
+in high-rate years -- under an era-matched null with no crisis effect it covered 0 in 31% of worlds. MAIN now: crisis-
+first vs calm-first discoveries WITHIN the same calendar year, d_y = crisis rate - calm rate, mean over years with
+both kinds, sign-flip randomization across years, CI by test inversion (within_year_ci). ri_ci / wild_cluster_ci are
+kept for their tests only and are NOT run or cited. debug/_verify_crisis_regime_within_year_d12.py
+
 Usage:
     python research/crisis_regime_cluster_bootstrap_test.py
 """
@@ -126,6 +133,36 @@ def ri_ci(n, k, lab, alpha: float = 0.05, n_sim: int = 10_000, rng=None, grid_n:
             "at_grid_edge": bool(len(keep) and (ps[0] > alpha or ps[-1] > alpha)), "n_sim": n_sim}
 
 
+def within_year_ci(df: pd.DataFrame, alpha: float = 0.05, n_sim: int = 20_000, rng=None, grid_n: int = 401,
+                   exact_max_years: int = 16) -> dict:
+    """MAIN (D12 redesign). df: one row per pair with year (discovery calendar year), crisis (bool), confirmed (bool).
+    d_y = crisis rate - calm rate within year y, over years with both kinds; statistic = mean(d_y). Null for a shift
+    delta: d_y - delta symmetric about 0 (sign-flip across years; exact enumeration for <= exact_max_years). CI = the
+    deltas with two-sided p > alpha. min_p_achievable = 2^(1-K) for K years: with K < 6 nothing reaches 5%."""
+    rng = rng or np.random.default_rng(0)
+    g = df.groupby(["year", "crisis"])["confirmed"].agg(["mean", "size"]).unstack("crisis")
+    both = g["mean"].notna().all(axis=1) if g.shape[1] == 4 else pd.Series(False, index=g.index)
+    d = (g.loc[both, ("mean", True)] - g.loc[both, ("mean", False)]).to_numpy(float)
+    K = len(d)
+    out = {"n_years": int(K), "n_years_one_kind_only": int((~both).sum()),
+           "min_p_achievable": float(2.0 ** (1 - K)) if K else 1.0,
+           "rate_diff_mean_within_year": float(d.mean()) if K else float("nan"),
+           "years": [int(y) for y in g.index[both]]}
+    if K == 0:
+        return {**out, "ci_low": float("nan"), "ci_high": float("nan"), "unbounded": True}
+    if K <= exact_max_years:
+        signs = 1 - 2 * ((np.arange(2 ** K)[:, None] >> np.arange(K)) & 1)
+    else:
+        signs = 1 - 2 * rng.integers(0, 2, size=(n_sim, K))
+    span = 3 * max(np.abs(d).max(), 1e-6)
+    grid = np.linspace(d.mean() - span, d.mean() + span, grid_n)
+    ps = np.array([np.mean(np.abs(signs @ (d - dl)) >= abs((d - dl).sum()) - 1e-15) for dl in grid])
+    keep = grid[ps > alpha]
+    lo, hi = (float(keep.min()), float(keep.max())) if len(keep) else (float("nan"), float("nan"))
+    return {**out, "ci_low": lo, "ci_high": hi,
+            "unbounded": bool(len(keep) and (ps[0] > alpha or ps[-1] > alpha)), "exact": bool(K <= exact_max_years)}
+
+
 def webb_weights() -> np.ndarray:
     """Webb (2014) six-point distribution: +-sqrt(1/2), +-1, +-sqrt(3/2), equal probability (mean 0, variance 1)."""
     return np.array([-np.sqrt(1.5), -1.0, -np.sqrt(0.5), np.sqrt(0.5), 1.0, np.sqrt(1.5)])
@@ -185,37 +222,25 @@ def main():
              f"episodes across 30 discovery months) -- calm's own clustering risk is far lower "
              f"and not bootstrapped here; disclosed, not assumed.")
 
-    if not os.path.exists(_CRISIS_PAIRS_PATH):
-        log.error(f"{_CRISIS_PAIRS_PATH} missing -- run crisis_regime_episode_clustering_check.py first (D3 writes it).")
-        sys.exit(1)
-    crisis = pd.read_parquet(_CRISIS_PAIRS_PATH)
-    calm_all = pairs[pairs["first_regime"] != "crisis"].copy()          # same clusters as D3: calm calendar years
-    calm_all["first_window_end_date"] = pd.to_datetime(calm_all["first_window_end_date"])
-    clus = pd.concat([crisis.assign(cluster="crisis_" + crisis["episode"].astype(str), crisis_flag=True),
-                      calm_all.assign(cluster="calm_" + calm_all["first_window_end_date"].dt.year.astype(str),
-                                      crisis_flag=False)], ignore_index=True)
+    # D12 redesign (Ross 2026-10-19): within-year crisis vs calm, sign-flip across years. Cluster RI / wild are not run.
+    pairs["first_window_end_date"] = pd.to_datetime(pairs["first_window_end_date"])
+    base = pairs.assign(year=pairs["first_window_end_date"].dt.year, crisis=pairs["first_regime"] == "crisis")
     rows = []
     for metric, col in [("confirmation_rate", "confirmed"), ("reappearance_rate", "reappears_in_different_regime")]:
-        if col not in clus.columns:
-            log.warning(f"{col} not in the pair tables -- {metric} skipped")
+        if col not in base.columns:
+            log.warning(f"{col} not in the pair table -- {metric} skipped")
             continue
-        g = clus.groupby("cluster").agg(n=(col, "size"), k=(col, "sum"), crisis=("crisis_flag", "first"))
-        n, k, lab = g["n"].to_numpy(float), g["k"].to_numpy(float), g["crisis"].to_numpy(bool)
-        ri = ri_ci(n, k, lab, n_sim=10_000, rng=np.random.default_rng(0))
-        wild = wild_cluster_ci(n, k, lab, n_boot=9_999, rng=np.random.default_rng(0))
-        rc, rm = _rates(n, k, lab)
-        log.info(f"--- {metric} (D12) --- crisis {rc:.4%} vs calm {rm:.4%}, difference {rc - rm:+.4%} over "
-                 f"{int(lab.sum())} crisis episodes and {int((~lab).sum())} calm years")
-        log.info(f"  MAIN randomization-inference 95% CI (test inversion): [{ri['ci_low']:+.4%}, {ri['ci_high']:+.4%}]"
-                 + ("  [CI reaches the grid edge -- widen]" if ri["at_grid_edge"] else ""))
-        log.info(f"  CHECK wild cluster bootstrap-t 95% CI (Webb weights, CR1 SE {wild['se_cr1']:.4%}): "
-                 f"[{wild['ci_low']:+.4%}, {wild['ci_high']:+.4%}]")
-        rows.append({"metric": metric, "observed_crisis_rate": rc, "observed_calm_rate": rm, "rate_diff": rc - rm,
-                     "n_crisis_clusters": int(lab.sum()), "n_calm_clusters": int((~lab).sum()),
-                     "ri_ci_low": ri["ci_low"], "ri_ci_high": ri["ci_high"], "ri_ci_at_grid_edge": ri["at_grid_edge"],
-                     "wild_ci_low": wild["ci_low"], "wild_ci_high": wild["ci_high"], "wild_se_cr1": wild["se_cr1"]})
+        r = within_year_ci(base[["year", "crisis"]].assign(confirmed=base[col].astype(bool)),
+                           rng=np.random.default_rng(0))
+        log.info(f"--- {metric} (D12 within-year) --- mean crisis-minus-calm rate within year "
+                 f"{r['rate_diff_mean_within_year']:+.4%} over {r['n_years']} years with both kinds "
+                 f"({r['n_years_one_kind_only']} years one kind only); 95% CI [{r['ci_low']:+.4%}, {r['ci_high']:+.4%}]"
+                 + ("  [CI unbounded on the grid]" if r["unbounded"] else "")
+                 + f"; min achievable p {r['min_p_achievable']:.4f}")
+        rows.append({"metric": metric, **{k: v for k, v in r.items() if k != "years"},
+                     "years": ",".join(map(str, r["years"]))})
 
-    pd.DataFrame(rows, columns=OUTPUT_COLUMNS).to_parquet(_OUT_PATH, index=False)   # always rewritten
+    pd.DataFrame(rows).to_parquet(_OUT_PATH, index=False)   # always rewritten
     log.info(f"Saved -> {_OUT_PATH}")
     log.info("crisis_regime_cluster_bootstrap_test.py complete")
 
