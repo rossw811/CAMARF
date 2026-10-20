@@ -29395,3 +29395,11 @@ Ackert & Racine (1999), JEB 51(2) 133-143 (Crossref, confirmed by hand) -- the l
 symbols, 10-year window is a lookback cap, D13 powers likely upper bounds (rho biased toward stationarity), XOM/CVX's
 recent power equals size, delisted coverage incomplete (ticker -> latest PERMNO). Paper-claim tests unchanged
 (paper_claims pass; paper_magnitude the 6 known failures).
+
+### CachyOS 2026-09-09 stash dropped (Ross, 2026-10-20: "retry, if not drop")
+stash@{1} (base 2dee40615, 2026-08-20; 170 files) trial-applied onto origin/main in a throwaway worktree
+(/tmp/stash_try_wt, chain's tree untouched): 52 conflicts. Content check per file: 95 identical to main, 48 gone
+(run logs, now untracked), 27 differ -- of the stash's added lines only 76 are absent from main: the scan's old
+tier1/tier2 checkpoint layout (since rewritten), universe_loader's hardcoded _IO_WORKERS = 32 and old signature,
+and PAPER.md lines in their pre-punctuation-pass wording. Nothing to recover; dropped. SHA
+30382e527a2168ca5057274fc32d1a2329233374 (recoverable via `git stash apply <sha>` until gc).
