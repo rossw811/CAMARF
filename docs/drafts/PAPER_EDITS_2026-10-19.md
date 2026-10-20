@@ -1,11 +1,11 @@
 # Paper edits for Ross's review (2026-10-19)
 
-From the all-claims evaluation (docs/drafts/CLAIMS_EVALUATION_2026-10-19.md). Decision 4 (Ross, 2026-10-19):
-paper wording is drafted, not applied. Each item: location, current text (as inventoried), verdict, and what
-the replacement must say (the evidence is in claims_evaluation_2026-10-19.csv). CORRECT and WITHDRAW items fix
-statements that are false today; QUALIFY items add a scope or refresh a dated number.
+From the all-claims evaluation (docs/drafts/CLAIMS_EVALUATION_2026-10-19.md) incl. the primary-source literature
+check (docs/drafts/lit_verification_2026-10-19.csv). Decision 4 (Ross, 2026-10-19): paper wording is drafted, not
+applied. CORRECT / WITHDRAW items fix statements that are false today; QUALIFY items add a scope, refresh a dated
+number, or mark a citation not yet read in the original.
 
-## PAPER.md (40 items: QUALIFY 25, CORRECT 13, WITHDRAW 2)
+## PAPER.md (51 items: QUALIFY 35, CORRECT 14, WITHDRAW 2)
 
 - **PAPER-006** (line 97, Current state) -- **CORRECT**
   - now: 339 tunable values lack recorded justification; N = 432 trials in DSR; data from 2026-01-01 sealed holdout.
@@ -19,6 +19,27 @@ statements that are false today; QUALIFY items add a scope or refresh a dated nu
 - **PAPER-013** (line 190, Abstract) -- **CORRECT**
   - now: A companion observation that long-horizon screens reject pairs at rates far below nominal was refuted by Monte Carlo: empirical false-positive rate under null is elevated (7.75%-12.75% vs 5%) and grows with horizon.
   - change: As README-013 (D11 reverses the 'refuted, FP elevated' reading for the production screen).
+- **PAPER-019** (line 276, 1 Introduction) -- **QUALIFY**
+  - now: Vidyamurthy (2004): the most cited work on cointegration-based pairs trading, built on an adapted Engle-Granger test.
+  - change: Not verified against the primary source (Book exists (Pairs Trading: Quantitative Methods and Analysis, Wiley, Sept 2004, ISBN 978-0-471-46067-1). 'Most cited' is a citation-count claim I could not verify; 'adapted Engle-Granger test' not confirmed from the book text.) -- do not cite until read in the original.
+- **PAPER-025** (line 357, 2.1 Literature) -- **QUALIFY**
+  - now: Hakkio & Rush (1991) J. Intl Money and Finance 10(4): cointegration test power tracks total calendar span, not sampling frequency.
+  - change: Not verified against the primary source (Bib correct: Hakkio & Rush, 'Cointegration: how short is the long run?', JIMF 10(4) 571-581 (1991). Its content could not be read (paywalled; no abstract in Crossref/Semantic Scholar/Fed WP page).) -- do not cite until read in the original.
+- **PAPER-026** (line 364, 2.1 Literature) -- **QUALIFY**
+  - now: No source found characterizes three-way compounding of span-vs-frequency power, multiple-testing burden and Gregory-Hansen size/power tradeoff for a multi-timeframe screen; reported as open tension.
+  - change: Not verified against the primary source (Negative literature-search claim (own 2026-06-30 survey); not verifiable against a primary source.) -- do not cite until read in the original.
+- **PAPER-028** (line 385, 2.2 Literature) -- **QUALIFY**
+  - now: Do, Faff & Hamza (2006): OU spread model, MLE; cointegration + OU outperforms pure distance on risk-adjusted basis.
+  - change: Not verified against the primary source (Could not locate this 2006 Do, Faff & Hamza paper or any text (searches returned nothing); no title given in the claim. Cannot verify the OU/MLE or 'outperforms distance' statements.) -- do not cite until read in the original.
+- **PAPER-030** (line 399, 2.2 Literature) -- **QUALIFY**
+  - now: Elliott, van der Hoek & Malcolm (2005): Gaussian Markov chain spread model, Bayesian optimal stopping.
+  - change: Not verified against the primary source (Bib verified: Quantitative Finance 5(3) 271-276 (2005). Abstract does not mention optimal stopping or Bayesian methods; full text paywalled, so that part is unconfirmed.) -- do not cite until read in the original.
+- **PAPER-032** (line 409, 2.2 Literature) -- **QUALIFY**
+  - now: Do & Faff (2010) FAJ 66(4): mean excess returns on top-20 pairs fell from ~0.86%/month (1962-1988) to ~0.24%/month (2003-2009), >70% decline; rejected capital-crowding as cause; University of Warsaw replication reached same conclusion through 2008.
+  - change: Not verified against the primary source (Bib verified (FAJ 66(4) 83-95). Publisher page and full text unreachable (403/paywall); numbers only from a RePEc mirror. Possible misreading: '70%' appears as share of the decline attributed to arbitrage risk. 'University of Warsaw replication' not found.) -- do not cite until read in the original.
+- **PAPER-036** (line 450, 2.3 Literature) -- **QUALIFY**
+  - now: Lopez de Prado (2018) Advances in Financial ML: meta-labeling, triple-barrier, CPCV, PBO; CAMARF's ml.py is a direct implementation; conformal predictors for finite-sample coverage not present in any pairs-trading ML paper found in 2026-06-29 sweep.
+  - change: Not verified against the primary source (Book is Wiley, 2018. Could not read the TOC from a primary source to confirm meta-labeling, triple-barrier or PBO. Conformal-prediction absence is a negative search claim; CAMARF 'direct implementation' is internal.) -- do not cite until read in the original.
 - **PAPER-042** (line 521, 2.5 Advances) -- **QUALIFY**
   - now: CAMARF scans 14 timeframes (1m-1M) simultaneously across 1,500+ instruments with per-TF EG+KPSS+PO tiers and rolling stability; no found paper does this across TFs.
   - change: Novelty claim ('no found paper does this'): needs a documented literature search (queries, databases, date) before it can stand; until then 'we did not find' with the search recorded.
@@ -85,6 +106,9 @@ statements that are false today; QUALIFY items add a scope or refresh a dated nu
 - **PAPER-144** (line 1858, 7.5) -- **QUALIFY**
   - now: Candidate explanation (untested): short-window (n=252) EG test may have low power, so strong cointegrators fail most windows; relates to power not size (4.2.1 tested Type I error at full-sample).
   - change: Stated as untested hypothesis -- keep as such; testable with the D13 power code on 252-day windows.
+- **PAPER-166** (line 2198, 7.11) -- **QUALIFY**
+  - now: Do & Faff (2010) split GGR sample into eras and found ~70%+ decay attributed to weakening convergence rather than crowding; CAMARF cannot test crowding side.
+  - change: Not verified against the primary source (Primary text unreachable. Mirror suggests decay attributed to arbitrage risks, not 'weakening convergence'; the 70% figure may be the share attributed, not the size of the decay. Wording needs checking against the full paper.) -- do not cite until read in the original.
 - **PAPER-168** (line 2222, 7.12) -- **QUALIFY**
   - now: Confirmed @1h pairs have cached intraday history only back to 2023-07-24 (yfinance 730-day cap), so crisis test uses daily resolution through Aug 2007 quant quake, 2008 GFC, Feb-Apr 2020 COVID with 2-year pre-crisis baseline.
   - change: Daily-resolution scope holds; baseline is now T = max(2 years, 10 x m) and the test Andrews-Kim (D7, 2026-10-18).
@@ -109,6 +133,9 @@ statements that are false today; QUALIFY items add a scope or refresh a dated nu
 - **PAPER-238** (line 3028, 9 AID) -- **QUALIFY**
   - now: Conceptualization not AI-led; Data Collection Method not AI: AI never designed a data-collection method or selected a data source; Methodology: AI implemented methods but each was approved by the researcher first.
   - change: 'AI never ... selected a data source': the assistant proposed some sources (e.g. SEC EDGAR ETF holdings for PIT S&P 400/600) that Ross then approved -- word it as 'every data source was approved by the researcher'.
+- **PAPER-240** (line 3080, 9 AID) -- **QUALIFY**
+  - now: Privacy: April 2026 ACM Technology Policy Council TechBrief found roughly double the baseline GitHub secret-leak rate in AI-assisted commits.
+  - change: Not verified against the primary source (Probable misattribution: the doubling figure is in GitGuardian's State of Secrets Sprawl 2026 (17 Mar 2026). ACM TechBrief 'AI-Assisted Software Development, or Vibe Coding' (30 Apr 2026) could not be read (403/premium) and public coverage does not mention secret leaks.) -- do not cite until read in the original.
 - **PAPER-241** (line 3096, 9 AID) -- **QUALIFY**
   - now: AI implemented the code generating the project's 26 report figures (report.py).
   - change: Figure count is a snapshot (26); re-count at the redraft.
@@ -127,6 +154,12 @@ statements that are false today; QUALIFY items add a scope or refresh a dated nu
 - **PAPER-257** (line 3407, 10) -- **QUALIFY**
   - now: LinAlgError (not positive definite) from BUG-D49 hit HRMY, PRDO, TILE, WS, EIG, ACT, CTKB, PRAA, UHT; universe-wide audit confirmed ~32% of the 1m universe affected.
   - change: Data-defect finding (~32% of the 1m universe hit by BUG-D49 degeneracy) -- re-derive on the current cache before citing.
+- **PAPER-263** (line 3523, References) -- **QUALIFY**
+  - now: Vidyamurthy (2004) Pairs Trading, Wiley: most-cited work on cointegration-based pairs trading.
+  - change: Not verified against the primary source (Same as PAPER-019: 'most-cited' not verifiable. Ref title omits subtitle.) -- do not cite until read in the original.
+- **PAPER-270** (line 3671, References) -- **CORRECT**
+  - now: Costa, Goldberger & Peng (2002) PRL 89(6) 068102; Richman & Moorman (2000) Am. J. Physiology 278(6) H2039-H2049; Maillard, Roncalli & Teiletche (2010) JPM 36(4) 60-70; Pu, Roberts, Dong & Zohren (2023) arXiv:2308.11294; Blitz et al. (2023) FAJ 79(4) 74-95.
+  - change: Citation detail wrong -- correct to: Blitz, Hanauer, Honarvar, Huisman & van Vliet (2023), 'Beyond Fama-French Factors: Alpha from Short-Term Signals', Financial Analysts Journal 79(4) 96-117. Pages 74-95 wrong. Others match: Costa et al PRL 89(6) 068102; Richman&Moorman AJP-Heart 278(6) H2039-H2049; Maillard et al JPM 36(4) 60-70; Pu et al arXiv:2308.11294.
 
 ## PAPER_MAGNITUDE.md (9 items: QUALIFY 7, CORRECT 2)
 

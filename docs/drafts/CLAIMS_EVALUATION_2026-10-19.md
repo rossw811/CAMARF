@@ -26,15 +26,22 @@ claim, that extends to all papers and docs."
 "Worth reporting" = holds after the 2026-10-17..19 fixes, central to a paper's argument or a disclosure the reader
 needs, and robust (survives the sensitivity it was given). Old small-set comparison arms are cut unless re-run.
 
-## Result (760 of 806 judged; 46 literature claims with the primary-source check)
+## Result (all 806 judged)
 
 | | KEEP | QUALIFY | CORRECT | WITHDRAW | CUT | PENDING_CHAIN |
 |---|---|---|---|---|---|---|
-| all files | 183 | 56 | 31 | 220 | 120 | 150 |
+| all files | 214 | 69 | 34 | 220 | 119 | 150 |
 
-220 WITHDRAW = 217 the docs already withdrew + 3 new (PAPER-012, PAPER-059, README-012).
-**90 doc edits** follow (31 CORRECT, 56 QUALIFY, 3 new WITHDRAW): PAPER.md 40, README 11, CONTRIBUTING 10, PAPER_MAGNITUDE
-9, ERRATA 5, CLAIMS_REGISTRY 4, PROCESS_OUTLINE 3, FINDINGS 3, DATA_SOURCES 2, PENDING_CHANGES 2, PREREGISTRATION 1.
+220 WITHDRAW = 217 the docs already withdrew + 3 new (PAPER-012, PAPER-059, README-012). Paper edits drafted for Ross:
+PAPER.md 51 (14 CORRECT, 2 WITHDRAW, 35 QUALIFY), PAPER_MAGNITUDE.md 9 (docs/drafts/PAPER_EDITS_2026-10-19.md).
+Non-paper factual corrections applied (02cfab27).
+
+**Literature (49 claims, primary sources; docs/drafts/lit_verification_2026-10-19.csv):** 33 verified, 13 not
+verifiable from a primary source (QUALIFY: not to be cited until read in the original -- e.g. Do & Faff 2010 figures
+seen only in an abstract mirror, Hakkio & Rush 1991, Haug 2002, Elliott et al. 2005's 'Bayesian optimal stopping'),
+2 wrong details (Blitz et al. FAJ 79(4) pp. 96-117, not 74-95; Khandani & Lo NBER WP 14465 is 2008, published JFM 14(1)
+2011), 1 misattribution (PENDING-003: the single common stochastic trend is Kasa 1992, JME 29(1) 95-124; Richards
+1995 argues against it). The two corrections spot-checked on Crossref by hand: both confirmed.
 
 ## What changed, by cause
 - **D11 reverses a paper result.** "EG false-positive rate under the null is elevated (7.75-12.75%)" (PAPER-013,
