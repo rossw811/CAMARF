@@ -29534,3 +29534,13 @@ with Sonnet searches; GitHub About set; Ross's WRDS page shows no full TAQ/Optio
   comparison is confounded by year. Episode 11 (2025-04, 1,205 pairs, 0 reappearances) is right-censored. Reading
   (to be reviewed before registering): "crisis-first pairs confirm more often" is not supported on the fixed chain;
   the concentration in 2008 and 2011 is significant at the component level.
+- **N6 arm (b), D8-calm reference (CachyOS, `research/regime_volatility_bias_check.py`, sealed on window ends and the
+  market series, failing-first 13/14 -> 14/14; log `logs/arm_b_20261020.log`, output
+  `output/research/regime_volatility_bias_check.parquet`).** Reference: market variance on D8-calm days (VIX < 14.67,
+  n = 2,717) 3.23e-5 [MAIN]; full sample 1.16e-4 [sensitivity]. 21 yearly windows 2005-2025, 109-186 stocks with
+  complete 10-year returns (of 2,000 sampled; long-lived survivors only). Jumps: 2007 -> 2008 raw 4.4x, FR-adjusted 1.4x,
+  rescaled 1.8x (full-ref 2.1x); 2007 -> 2009 raw 8.8x, rescaled 1.9x (full-ref 3.4x); 2019 -> 2020 raw 1.5x, rescaled
+  1.3x (full-ref 0.8x). Rescaled share (MAIN) 0.49-0.57% in 2005-07, 1.2-1.4% in 2010-17, 2.1-3.1% in 2019-25,
+  against a rescaled constant-beta null of 0.00-0.03%. Reading unchanged from 10-14: the crisis spike in prefilter
+  counts is mostly the volatility bias; the persistent rise after 2010 is not. The level is reference-dependent
+  (full-sample reference: 14-31% after 2012), so only ratios and the excess over the matching null are citable.
