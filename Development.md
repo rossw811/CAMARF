@@ -29552,3 +29552,9 @@ with Sonnet searches; GitHub About set; Ross's WRDS page shows no full TAQ/Optio
   20.6% trackable) is stale: the reading (no detectable survivorship confound among S&P-500-trackable pairs) holds;
   every number changes -> CORRECTED at the redraft (after review). The `_verify_paper_magnitude_claims` D5 rows keep
   failing deliberately until the paper is updated.
+- **N13 coarse timeframes.** (1) "Re-derive coarse Compustat files from the repaired daily files": moot -- no
+  Compustat Global coarse file exists (7D/1M/3M/6M/1Y: 0 GVKEY files of 2,858-2,859 each, CachyOS); closed. (2) Every
+  1M/3M/6M output on CachyOS predates the 2026-10-18 weekend-month-end loader fix (2ec0c521): results/1mo, 3mo, 6mo
+  filter funnels 2026-08-23; near_miss/lead_lag/price_degeneracy 2026-06..08. The only paper use is PAPER.md §4.2.1's
+  1M row (34,263 tested, 9 rejected), already labelled "pre-WRDS screen counts". A current 1M re-derivation waits on
+  the loader-level seal decision (load_full_universe 1M merges yfinance monthly bars into 2026).
