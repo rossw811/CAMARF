@@ -29589,3 +29589,15 @@ with Sonnet searches; GitHub About set; Ross's WRDS page shows no full TAQ/Optio
   by a median 7.8x (HK), 54x (L), 118x (T); 7 of 88 now fail the gate (0868.HK, 2688.HK, 0288.HK + 2 more HK; ITRK.L,
   MNG.L), all passed before. Affects production analysis.py runs on the yfinance cache (not the WRDS discovery chain,
   whose rolling ADV was fixed by R1.2).
+- **N9 stress test on the PIT pools** (`research/stress_test_replication.py --pool k1|k2`, 14a56f28; outputs
+  `output/research/stress_test_replication{,_paired}_pool_k{1,2}.parquet`, logs logs/stress_n9_k{1,2}.log). Andrews-Kim
+  P test with the D7 baseline precondition, D8 VIX-calm controls (aug-2007's control 2005-08-01..17; 2008's
+  1995-03-09..10-04, not season-matched). k1: 2,141 of 2,466 pair-windows testable. Baseline-cointegrated / AK
+  breakdown / extreme |z| > 3.5 of tested: Aug 2007 27 / 5 / 53 of 390 (calm 31 / 1 / 3 of 379); 2008 63 / 34 / 279 of
+  376 (calm 27 / 5 / 15 of 228); 2020 36 / 28 / 283 of 388 (calm 24 / 7 / 62 of 380). D9 paired (pairs cointegrated in
+  both a crisis and its own control): n = 13 (k1), 4 (k2) -- AK breakdown 38.5% vs 7.7%, 4/0 discordant over 2
+  components, sign-flip p = 0.50; extreme dislocation 46.2% vs 7.7%, p = 0.125: no test has power. PIT subset (pair
+  eligible before the window): only 2020 has coverage (354 k1 pair-windows: 29 baseline-cointegrated, 22 AK breakdowns,
+  262 extreme); the calm controls precede eligibility, so no PIT paired test can exist. Reading: crisis windows show
+  far more dislocation and breakdown than calm ones in the raw counts (all pairs descriptive), but the paired test that
+  controls for pair identity has n = 13 and cannot separate them; PAPER-169/170 stay qualified until a design with power.
