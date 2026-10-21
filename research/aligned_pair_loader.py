@@ -44,6 +44,9 @@ separate, not-yet-built fix. drop_data_gap_rows stays available on
 DataAligner (default False, unused by this module for now) for if/when
 that fix lands.
 
+Sources (N15, 2026-10-20): each leg comes from universe_loader.load_symbol -- WRDS wins for daily-and-coarser
+timeframes, yfinance otherwise, IBKR only with include_ibkr=True (CLAUDE.md rule 2).
+
 Usage (drop-in replacement for `DataStore.load(symbol, tf_label)` when
 you need a SINGLE pair's two legs on the production-matching
 convention):
@@ -58,7 +61,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from data import DataAligner, DataStore
+from data import DataAligner
 
 # Shared timeframe-directory constants and stale-directory fallback resolver
 # (added 2026-07-05). Previously copy-pasted near-verbatim into ~9 separate
@@ -82,55 +85,14 @@ DIR_TO_LABEL = {
 }
 
 
-_WRDS_CACHE_DIR = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "output", "cache", "wrds")
-
-
-def _load_wrds_or_ibkr(symbol: str, tf_label: str):
-    """Fallback when `DataStore.load` (yfinance-cache-only) has nothing for
-    `symbol` -- added 2026-09-08 after finding this module's callers (this
-    project's whole family of research/*.py lead-lag/comparison scripts)
-    silently returned `no_data` for every WRDS-only symbol (PERMNO<n>
-    fallback tickers, GVKEY<n> international listings) even though this
-    project's own CLAUDE.md rule already states WRDS/CRSP is primary for
-    daily-and-coarser US equity/ETF, not yfinance -- the SAME class of gap
-    already found and fixed in `options.py:load_price_series()` this
-    session, here at the shared research-loader level instead of one
-    narrow caller. Returns a minimal DataFrame with a 'close' column and a
-    DatetimeIndex (sufficient for `DataAligner.align_universe` -- see this
-    module's own docstring: align_intraday computes gap_flag fresh from
-    the index, no other column required), or None if neither source has
-    the symbol. tf_label == "1D" checks WRDS (CRSP total-return-adjusted,
-    this project's stated 1D-primary source); any tf_label also tries the
-    IBKR intraday supplement (`ibkr_supplement_reader`, confirmed-pairs-
-    only, ~92-symbol scope)."""
-    if tf_label == "1D":
-        wrds_path = os.path.join(_WRDS_CACHE_DIR, f"{symbol}_1D.parquet")
-        if os.path.exists(wrds_path):
-            import pandas as pd
-            df = pd.read_parquet(wrds_path)
-            # CRSP US-equity files use 'close_total_return' (total-return-
-            # adjusted, this project's stated preferred column); Compustat
-            # Global international-listing files (GVKEY<n>_<w>W symbols)
-            # have no such column, only a plain 'close' -- found 2026-09-08
-            # when this fallback silently skipped every GVKEY-labeled
-            # symbol despite its cache file existing on disk, because only
-            # 'close_total_return' was checked. Prefer the total-return
-            # column when present; fall back to plain 'close' otherwise.
-            col = "close_total_return" if "close_total_return" in df.columns else (
-                "close" if "close" in df.columns else None)
-            if col:
-                close = df[col].dropna()
-                close.index = pd.to_datetime(close.index)
-                if len(close):
-                    return close.to_frame("close")
-
-    import ibkr_supplement_reader
-    ibkr_df = ibkr_supplement_reader.load_supplement(symbol, tf_label)
-    if ibkr_df is not None and "close" in ibkr_df.columns and len(ibkr_df):
-        return ibkr_df[["close"]]
-
-    return None
+def _load_one(symbol: str, tf_label: str, include_ibkr: bool = False):
+    """One leg with the project's source rules: `universe_loader.load_symbol` (N15, 2026-10-20). Replaces
+    `_load_wrds_or_ibkr` (2026-09-08), which this module called only AFTER `DataStore.load` (the yfinance cache)
+    came back empty -- so yfinance won every 1D collision, against CLAUDE.md rule 2 -- and which read the IBKR
+    supplement by default. WRDS now wins for daily-and-coarser timeframes (total return, Compustat Global in USD,
+    the D17 rule as in load_full_universe); IBKR only with include_ibkr=True."""
+    from universe_loader import load_symbol
+    return load_symbol(symbol, tf_label, include_ibkr=include_ibkr)
 
 
 def resolve_tf_results_dir(tf_dir):
@@ -169,24 +131,17 @@ def align_pair_dataframes(symbol_a, df_a, symbol_b, df_b, tf_label):
     return aligned.get(symbol_a), aligned.get(symbol_b)
 
 
-def load_aligned_pair(symbol_a, symbol_b, tf_label):
-    """Load both legs via DataStore and run them through
+def load_aligned_pair(symbol_a, symbol_b, tf_label, include_ibkr=False):
+    """Load both legs (`_load_one`: WRDS priority, IBKR off) and run them through
     DataAligner.align_universe together, exactly mirroring analysis.py's
     own Step 2. Returns (df_a, df_b), either of which may be None if that
     symbol has no cached data or fails alignment."""
-    # NOTE: `df or fallback` is NOT safe here -- a non-empty DataFrame's
-    # truth value is ambiguous (raises ValueError), so this must be an
-    # explicit None/empty check, not Python's `or`.
-    df_a = DataStore.load(symbol_a, tf_label)
-    if df_a is None or df_a.empty:
-        df_a = _load_wrds_or_ibkr(symbol_a, tf_label)
-    df_b = DataStore.load(symbol_b, tf_label)
-    if df_b is None or df_b.empty:
-        df_b = _load_wrds_or_ibkr(symbol_b, tf_label)
+    df_a = _load_one(symbol_a, tf_label, include_ibkr)
+    df_b = _load_one(symbol_b, tf_label, include_ibkr)
     return align_pair_dataframes(symbol_a, df_a, symbol_b, df_b, tf_label)
 
 
-def load_aligned_symbols(symbols, tf_label):
+def load_aligned_symbols(symbols, tf_label, include_ibkr=False):
     """N-way generalization of load_aligned_pair, for trio/basket comparison
     scripts (added 2026-07-05 — research/reimers_trio_correction.py needed a
     3-symbol version of exactly this gap-flag-aware alignment and was instead
@@ -196,9 +151,7 @@ def load_aligned_symbols(symbols, tf_label):
     the result if it has no cached data or fails alignment."""
     raw = {}
     for sym in symbols:
-        df = DataStore.load(sym, tf_label)
-        if df is None or df.empty:
-            df = _load_wrds_or_ibkr(sym, tf_label)
+        df = _load_one(sym, tf_label, include_ibkr)
         if df is not None and not df.empty:
             raw[sym] = df
     if not raw:

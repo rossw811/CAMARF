@@ -307,6 +307,70 @@ def _use_total_return(df):
     return df.apply(pd.to_numeric, errors="coerce").astype("float64")
 
 
+def _d17_different_security(w, o) -> bool:
+    """D17: a same-label WRDS series `w` and non-WRDS series `o` are different securities if `w` ends before `o`
+    begins, or ends > 1 year before `o` ends (a delisted security cannot still be trading; CRSP's own data end is
+    < 1 year old). The newer listing keeps the label; the WRDS series goes under PERMNO<n>."""
+    return bool(len(w) and len(o) and (w.index.max() < o.index.min()
+                                       or w.index.max() < o.index.max() - pd.Timedelta(days=365)))
+
+
+def load_symbol(sym: str, tf_label: str = "1D", include_ibkr: bool = False, *, wrds_dir: str = None,
+                permno_of: dict = None, yf_load=None, ibkr_load=None):
+    """One label with load_full_universe's source rules (N15, 2026-10-20; research/aligned_pair_loader used to read
+    yfinance first and IBKR by default): WRDS wins for daily-and-coarser timeframes (close_total_return >
+    close_usd > close, `_use_total_return`), subject to the D17 rule; yfinance (DataStore cache) otherwise; IBKR
+    only with include_ibkr=True. `PERMNO<n>` reaches a WRDS series whose label D17 gave to a newer listing.
+    Returns a DataFrame with a float `close` column, or None. Keyword arguments exist for tests."""
+    wrds_dir = wrds_dir or _WRDS_CACHE_DIR
+    if yf_load is None:
+        from data import DataStore
+        yf_load = DataStore.load
+    if ibkr_load is None:
+        def ibkr_load(s, tf):
+            import ibkr_supplement_reader
+            return ibkr_supplement_reader.load_supplement(s, tf)
+
+    def _wrds(label):
+        if tf_label not in _WRDS_SUFFIX:
+            return None
+        f = os.path.join(wrds_dir, f"{label}_{_WRDS_SUFFIX[tf_label]}.parquet")
+        if not os.path.exists(f):
+            return None
+        _, df = _read_one(wrds_dir, os.path.basename(f), label)
+        return None if df is None else _use_total_return(df)
+
+    def _ok(df):
+        return df is not None and not df.empty and "close" in df.columns
+
+    if tf_label in _WRDS_SUFFIX:
+        if permno_of is None:
+            from data_wrds import label_permno_map, LABEL_PERMNO_MAP_PATH
+            p = os.path.join(wrds_dir, os.path.basename(LABEL_PERMNO_MAP_PATH))
+            permno_of = label_permno_map(p) if os.path.exists(p) else {}
+        w = _wrds(sym)
+        if _ok(w):
+            o = yf_load(sym, tf_label) if sym in permno_of else None
+            if not (_ok(o) and _d17_different_security(w, o)):
+                return w
+            return o
+        if sym.startswith("PERMNO"):
+            n = int(sym[len("PERMNO"):]) if sym[len("PERMNO"):].isdigit() else None
+            for label in [k for k, v in permno_of.items() if v == n]:
+                w = _wrds(label)
+                o = yf_load(label, tf_label)
+                if _ok(w) and _ok(o) and _d17_different_security(w, o):
+                    return w
+    o = yf_load(sym, tf_label)
+    if _ok(o):
+        return o
+    if include_ibkr:
+        i = ibkr_load(sym, tf_label)
+        if _ok(i):
+            return i[["close"]]
+    return None
+
+
 LAST_DROPPED: dict = {}  # {(cache_dir, suffix): [symbols whose file was unreadable / had no usable close]}
 
 
@@ -710,11 +774,7 @@ def load_full_universe(tf_label: str = "1D", include_yfinance: bool = True,
         else:
             print(f"universe_loader: WARNING {_lm_path} missing -- D17 PERMNO aliasing skipped")
         for k in [k for k in _wrds if k in merged and k in _permno_of]:
-            w, o = _wrds[k], merged[k]
-            # different securities if the WRDS series ends before the other begins, or ends > 1 year before the
-            # other ends (a delisted security cannot still be trading; CRSP's own data end is < 1 year old)
-            if len(w) and len(o) and (w.index.max() < o.index.min()
-                                      or w.index.max() < o.index.max() - pd.Timedelta(days=365)):
+            if _d17_different_security(_wrds[k], merged[k]):
                 _wrds[f"PERMNO{int(_permno_of[k])}"] = _wrds.pop(k)
         merged.update({k: _use_total_return(v) for k, v in _wrds.items()})
     # One label per security (2026-09-27): drop labels whose return series is identical to another's
