@@ -1,3 +1,14 @@
+## 2026-10-21: RESUME HERE. Re-derivation batch done; two new defects block the search re-run (Ross).
+**Decisions needed (Ross):** (1) Amendment 5 + full chain re-run for BUG-D119 (trades booked across multi-year price
+holes; k2's holdout positivity is one such trade) and BUG-D120 (pool membership from a whole-history BH cutoff);
+(2) sealed holdout at the loader for every source + a forward seal for intraday; (3) Johansen trios: restricted-constant
+arm (the approved det_order 0 over-rejects, 11.7%); (4) report.py LaTeX narrative: retire; (5) N14 null design.
+**Done since 10-20 afternoon:** N3, N4, N6, N7, N9, N10, N11 (098/099; multivariate re-running after the
+_build_pair_result A1 fix), N12, N13, N15, N16, N18; S31 (c), S33, X-M09, X-M15, W5.6b, W6.4, X-C04/05/17, D38, D15 at
+load, DEV-022/025, R4.11/R5.3/R6.5/R8.1; GitHub Actions CI (389 synthetic tests; found requirements.txt unresolvable and
+two callers I broke). Independent review of C-006: verdict holds, reading corrected (registry, ERRATA).
+**Running (CachyOS):** research/multivariate_pit_predictors.py (log logs/n11_multivariate_20261021.log).
+
 ## 2026-10-20 (afternoon): RESUME HERE. Ross's decisions in (docs/decisions/DECISIONS_2026-10-20.md).
 **Running on CachyOS:** sealed strategy-search eval (PID 120771, log logs/strategy_search_eval_sealed_20261020.log;
 unsealed output kept in output/research/strategy_search/_SUPERSEDED_unsealed_20261020/); arm (a) (logs/arm_a_20261020.log).
