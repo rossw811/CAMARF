@@ -54,6 +54,9 @@ class DataConfig:
     # research/strategy_search.py runs both.
     PIT_POOL_PATHS = {"k1": os.path.join(OUTPUT_DIR, "research", "purity_pairs_pit_k1_clean.parquet"),
                       "k2": os.path.join(OUTPUT_DIR, "research", "purity_pairs_pit_k2_clean.parquet")}
+    # Sealed holdout (Ross, DECISIONS_2026-10-12 E13): no CAMARF result may be computed on data dated on/after this
+    # until the final pre-registered test. CRSP ends 2025-12-31; Compustat Global and yfinance intraday run past it.
+    SEALED_FROM = "2026-01-01"
 
     # Timeframes to analyze (IBKR bar size strings)
     # 12 hours removed — not a valid IBKR bar size (confirmed via Error 321)

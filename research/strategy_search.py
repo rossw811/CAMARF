@@ -158,6 +158,17 @@ def split_trades(trades, t0, T, s, embargo_pct=EMBARGO_PCT):
     return dev, hold, c
 
 
+def _naive(ts):
+    ts = pd.to_datetime(ts)
+    return ts.dt.tz_localize(None) if getattr(ts.dt, "tz", None) is not None else ts
+
+
+def seal_trades(trades, sealed_from=Config.DATA.SEALED_FROM):
+    """Drop every trade that touches the sealed holdout (exit on/after `sealed_from`, local wall time; entry < exit,
+    so entries are covered too). Pool eligibility is point-in-time, so what remains used pre-seal data only."""
+    return trades[_naive(trades["exit_time"]) < pd.Timestamp(sealed_from)]
+
+
 def fold_edges(t0, c, n=N_FOLDS):
     return [t0 + (c - t0) * i / n for i in range(n + 1)]
 
@@ -238,7 +249,7 @@ def eval_phase():
                 cache[cid] = T
                 continue
             D = pnl_dollar.add_dollar_pnl(T)
-            cache[cid] = D[D["pnl_dollar_status"] == "ok"]
+            cache[cid] = seal_trades(D[D["pnl_dollar_status"] == "ok"])   # sealed holdout (E13; missing until 2026-10-20)
         T_end = max(pd.to_datetime(d["exit_time"]).max() for d in cache.values() if len(d))
         for s in SPLITS:
             per = {}

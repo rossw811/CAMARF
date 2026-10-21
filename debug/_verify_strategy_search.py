@@ -40,6 +40,23 @@ def main():
     dev2, hold2, _ = split_trades(tr, t0, T, 0.5, embargo_pct=0.0)
     check("split.holdout_without_embargo", sorted(hold2["entry_time"].tolist()) == sorted(pd.to_datetime(["2015-01-05", "2015-02-01"]).tolist()))
 
+    # 5. sealed holdout (DECISIONS_2026-10-12 E13): no trade that touches data on/after SEALED_FROM enters the eval
+    try:
+        from config import Config
+        from research.strategy_search import seal_trades
+        sealed = pd.Timestamp(Config.DATA.SEALED_FROM)
+        st = pd.DataFrame({"entry_time": pd.to_datetime(["2025-06-01", "2025-12-20", "2026-02-01"]),
+                           "exit_time": pd.to_datetime(["2025-07-01", "2026-01-05", "2026-03-01"])})
+        kept = seal_trades(st, sealed)
+        check("sealed.from_is_2026", sealed == pd.Timestamp("2026-01-01"), f"{sealed}")
+        check("sealed.drops_trades_exiting_on_or_after", kept["entry_time"].tolist() == [pd.Timestamp("2025-06-01")],
+              f"{kept.entry_time.tolist()}")
+        stz = st.assign(entry_time=st.entry_time.dt.tz_localize("America/New_York"),
+                        exit_time=st.exit_time.dt.tz_localize("America/New_York"))
+        check("sealed.tz_aware_times", len(seal_trades(stz, sealed)) == 1, f"{len(seal_trades(stz, sealed))}")
+    except Exception as ex:  # noqa: BLE001
+        check("sealed.helper_exists", False, f"{type(ex).__name__}: {ex}")
+
     e = fold_edges(pd.Timestamp("2010-01-01"), pd.Timestamp("2014-01-01"), 4)
     ft = pd.DataFrame({"entry_time": pd.to_datetime(["2010-06-01", "2010-12-30", "2011-03-01"]),
                        "exit_time": pd.to_datetime(["2010-07-01", "2011-01-15", "2011-04-01"])})
