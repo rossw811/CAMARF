@@ -39,10 +39,11 @@ Verified directly: CATY/UCB@1h correlation reverted from the correct
 exact bug this module exists to fix, reopened through a different
 mechanism. Fixing this properly needs _gap_aware_returns/_clean_close
 to ALSO check the real time gap between surviving rows (not just
-gap_flag at each position) before any row-dropping can be safe — a
-separate, not-yet-built fix. drop_data_gap_rows stays available on
-DataAligner (default False, unused by this module for now) for if/when
-that fix lands.
+gap_flag at each position) before any row-dropping can be safe. That fix
+landed in _gap_aware_returns on 2026-06-27 (0ca85a97: any return spanning
+> 4x the median bar interval is masked), and the episodic adapter uses
+drop_data_gap_rows=True on that basis; this module still keeps the rows
+(default False), which is correct either way.
 
 Sources (N15, 2026-10-20): each leg comes from universe_loader.load_symbol -- WRDS wins for daily-and-coarser
 timeframes, yfinance otherwise, IBKR only with include_ibkr=True (CLAUDE.md rule 2).

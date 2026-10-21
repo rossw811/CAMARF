@@ -29505,3 +29505,12 @@ with Sonnet searches; GitHub About set; Ross's WRDS page shows no full TAQ/Optio
 - Process slip: I started a full-universe load on the Surface (RAM-heavy; the standing rule says CachyOS) and stopped
   it within 10 min; re-run on CachyOS. A wait loop used `pgrep -f` over ssh, which matched its own shell; replaced
   with `kill -0 <pid>`.
+- **N3 (audits on the 10-20 chain, CachyOS).** `pipeline_contracts.py`: 1 violation in 6,003 spread files --
+  `output/results/3min/spread_series_KVUE_KMB.parquet` half_life_rolling 100% NaN, a stale IBKR 3min side-arm file
+  (A10; IBKR off), not in any pool. `degenerate_column_audit.py` on 1,736 1D spread files: ALL_ZERO 1,368 (all
+  gap_flag_a/b: legs with no gaps; codes seen across all files are only 0 = NONE 28.15M bars and 1 = FILL 0.53M -- no
+  DATA_GAP rows because the adapter aligns with drop_data_gap_rows=True, safe since `_gap_aware_returns` masks any
+  return spanning > 4x the median bar, 0ca85a97 2026-06-27); ZERO_VARIANCE 24 (coint_fraction_rolling_t all 1.0:
+  ADR-vs-home and other same-company pairs, plus SPAC pairs ALTG/FBM, AGCB/LEAP, GOAC/HIGA); HIGH_NAN 2 (the two SPAC
+  pairs). None of the 26 flagged files is a k1/k2 clean-pool pair. aligned_pair_loader's docstring still called the
+  elapsed-time fix "not yet built"; corrected.

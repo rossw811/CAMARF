@@ -69,6 +69,13 @@ def main():
     pool = pool[pool["tf_label"].astype(str) == "1D"]
     w = pd.read_parquet(os.path.join(_R, "wrds_deep_history_episodic_scan_tier3_windows.parquet"),
                         columns=["symbol_a", "symbol_b", "window_end_date"])
+    # Sealed holdout (E13; enforced 2026-10-20): no window ending on/after SEALED_FROM
+    from config import Config
+    sealed = pd.Timestamp(Config.DATA.SEALED_FROM)
+    n0, m0 = len(pool), len(w)
+    pool = pool[pd.to_datetime(pool["eligible_from"]) < sealed]
+    w = w[pd.to_datetime(w["window_end_date"]) < sealed]
+    print(f"sealed holdout: dropped {n0 - len(pool)} pool pairs and {m0 - len(w)} candidate windows ending on/after {sealed.date()}")
     contrast = w.sample(len(pool), random_state=20261014)
     rows = []
     for kind, frame, endcol in (("pool", pool, "eligible_from"), ("contrast", contrast, "window_end_date")):
