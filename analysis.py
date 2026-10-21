@@ -5760,8 +5760,15 @@ class AnalysisPipeline:
         df_b = aligned_data.get(sym_b)
         if df_a is None or df_b is None:
             return None
+        # A1 residual (2026-10-20): research callers pass align_universe's per-symbol spans; the arrays below pair
+        # the legs by POSITION (different lengths crashed, equal lengths with shifted dates paired different days).
+        # One union index for the pair, no fill -- no-op when the index is already shared (analysis.py's own path).
+        # debug/_verify_build_pair_result_common_index.py
+        if not df_a.index.equals(df_b.index):
+            _pair = align_to_common_index({sym_a: df_a, sym_b: df_b})
+            df_a, df_b = _pair[sym_a], _pair[sym_b]
 
-        # Build log-price arrays from the SHARED index (already aligned)
+        # Build log-price arrays from the SHARED index
         close_a = df_a["close"].values
         close_b = df_b["close"].values
         with np.errstate(invalid="ignore", divide="ignore"):
