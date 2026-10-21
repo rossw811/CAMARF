@@ -57,13 +57,22 @@ try:
 except TypeError as e:
     check("usd_dollar_volume takes a symbol", False, f"{type(e).__name__}: {e}")
 
+# 7. days before the FX series starts are skipped, not counted as zero dollar volume
+try:
+    long = pd.DataFrame({"close": [100.0] * 4, "volume": [10.0] * 4},
+                        index=pd.to_datetime(["2000-01-03", "2000-01-04", "2025-01-02", "2025-01-03"]))
+    m = dv.mean_daily_dollar_volume(long, "HSBA.L", fx_loader=load)
+    check("7. pre-FX days skipped in the daily mean", np.isclose(m, 12.5), f"{m}")
+except AttributeError as e:
+    check("7. mean_daily_dollar_volume exists", False, str(e))
+
 import analysis  # noqa: E402
 src_a = inspect.getsource(analysis)
 i = src_a.find("def _compute_adv(")
-check("6a. analysis._compute_adv uses usd_dollar_volume(_df, sym)", i >= 0 and
-      "usd_dollar_volume(_df, sym" in src_a[i:i + 1500], "")
+check("6a. analysis._compute_adv uses mean_daily_dollar_volume(_df, sym)", i >= 0 and
+      "mean_daily_dollar_volume(_df, sym" in src_a[i:i + 1500], "")
 src_s = open(os.path.join(ROOT, "sensitivity.py"), encoding="utf-8").read()
-check("6b. sensitivity.py uses usd_dollar_volume(hr, sym)", "usd_dollar_volume(hr, sym" in src_s)
+check("6b. sensitivity.py uses mean_daily_dollar_volume(hr, sym)", "mean_daily_dollar_volume(hr, sym" in src_s)
 
 print(f"\n{passed}/{passed + failed} checks passed")
 sys.exit(1 if failed else 0)

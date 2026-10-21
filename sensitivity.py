@@ -121,10 +121,8 @@ def load_pairs_and_spreads(tf_dir: str, tf_label: str):
             hr = pd.read_parquet(fpath)
             if "close" in hr.columns and "volume" in hr.columns:
                 hr.index = pd.to_datetime(hr.index)
-                from dollar_volume import usd_dollar_volume
-                dv = usd_dollar_volume(hr, sym)   # W5.6b: local currency / pence -> USD
-                daily_dv = dv.groupby(hr.index.date).sum()
-                adv_map[sym] = float(daily_dv.mean()) if len(daily_dv) > 0 else float("nan")
+                from dollar_volume import mean_daily_dollar_volume
+                adv_map[sym] = mean_daily_dollar_volume(hr, sym)   # W5.6b: local currency / pence -> USD
             else:
                 adv_map[sym] = float("nan")
         except Exception:

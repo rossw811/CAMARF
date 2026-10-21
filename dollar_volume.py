@@ -60,3 +60,11 @@ def usd_dollar_volume(df: pd.DataFrame, symbol: str = None, fx_loader=None) -> p
         px = pd.to_numeric(df["close"], errors="coerce").abs().to_numpy() / units
         return pd.Series(px * rate * vol.to_numpy(), index=df.index, dtype=float)
     return (usd_price(df) * vol).astype(float)
+
+
+def mean_daily_dollar_volume(df: pd.DataFrame, symbol: str = None, fx_loader=None) -> float:
+    """Mean over calendar days of the day's summed USD dollar volume (intraday bars are summed per day). Days with no
+    USD value (before the FX series starts, missing price) are skipped, not counted as zero (2026-10-20)."""
+    v = usd_dollar_volume(df, symbol, fx_loader=fx_loader)
+    daily = v.groupby(pd.to_datetime(df.index).date).sum(min_count=1)
+    return float(daily.mean()) if daily.notna().any() else float("nan")
