@@ -29616,3 +29616,14 @@ with Sonnet searches; GitHub About set; Ross's WRDS page shows no full TAQ/Optio
   persistence is an outcome of the same p-value series). FINDINGS-099 (bar system, 15/15): 28,532 bars / 23,257 pairs at
   entry 1.0 (was 122,051 / 96,546) down to 4,817 / 4,603 at 2.0; mean length 2.03-2.06 windows; in-bar persist
   10.7-10.9% vs baseline 5.21%. Multivariate PIT predictors (FINDINGS-140) running.
+- **A1 residual in `_build_pair_result` (found by the N11 multivariate re-run, 2026-10-20 23:14).**
+  `multivariate_pit_predictors.py` crashed in `pit_wfa_wrds_daily.screen_universe_at_cutoff`: "operands could not be
+  broadcast together with shapes (360,) (504,)". At 1D `DataAligner.align_universe` returns per-symbol spans (synthetic:
+  488 vs 363 bars); analysis.py reindexes with `align_to_common_index` (A1), and the A1 guards went into
+  `_build_log_price_map` and `CointScanner.scan`, but not into `_build_pair_result`, which pairs the legs by position.
+  Unequal lengths crashed (callers that catch exceptions dropped the pair silently); equal lengths with shifted dates
+  would pair different days. Fix: one union index per pair inside `_build_pair_result` (no-op when shared).
+  Failing-first `_verify_build_pair_result_common_index.py` 1/3 -> 3/3; 11 related tests pass. Pool spread series are
+  unaffected (the adapter intersects the legs' dates first). Callers exposed: pit_wfa_wrds_daily (screen and pair row),
+  threshold_relevance_pit_test, filter_relevance_sweep_1h, promote_full_universe_pairs, pit_wfa_episodic,
+  decoupling_backtest -- their earlier outputs are pre-fix (already cut from the papers unless re-run).
