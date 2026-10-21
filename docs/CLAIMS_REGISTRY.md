@@ -152,7 +152,10 @@ The C-entries below are claims re-derived one by one on current data.
   1,843/1,843 with 30% NaNs) with correlations agreeing to ~1e-15 (floating-point summation order) -- equivalent,
   not "bit-exact". A pair could flip only within ~1e-15 of the threshold; none of 7,140 test pairs was within 1e-12.
 - **M-039 — CORRECTED.** Same max-over-directions rule as `CointScanner.scan`, but the discovery scan dropped
-  crashed tests from BH's m until BUG-D115 (fixed 2026-10-10; effect on the existing runs not yet measured).
+  crashed tests from BH's m until BUG-D115 (fixed 2026-10-10). Effect measured, matching ERRATA: zero crashed tests
+  on the 2026-10-12 re-run, and again on the 2026-10-20 1D discovery (CachyOS
+  `logs/latest/latest_run_wrds_deep_history_episodic_scan.log`: Tier 1 `n_crashed_counted_p1: 0` of 1,058,994, Tier 2
+  and Tier 3 "counted as p=1.0 in BH's m: 0"). The intraday scans do not log the count (not measured there).
 - **M-040 — REPLICATED.** `_benjamini_hochberg` matches statsmodels `fdr_bh` exactly (20 × 500 p-values; ties,
   p = 0/1, p = kα/m). FDR_ALPHA = 0.05. Shared caveat: a NaN p-value makes every adjusted p-value NaN in both.
 - **M-041 — CORRECTED.** EPISODIC_WINDOW_BARS = 2520 and STEP = 252 are right, but "unioning each window's

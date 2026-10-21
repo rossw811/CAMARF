@@ -84,6 +84,15 @@ try:
     out = mod.run_timeframe("1D", rw, n_pairs_target=300, rng=np.random.default_rng(0))
     check(f"300 null pairs tested [{out['n_null_pairs_tested']}]", out["n_null_pairs_tested"] == 300)
     check(f"empirical rate {out['empirical_rate']:.3f} in [0.01, 0.10]", 0.01 <= out["empirical_rate"] <= 0.10)
+    # N16 (review finding 6, 2026-10-20): the one-direction rate is reported and asserted, not just the max-p rate.
+    # max p >= forward p for every pair, so max-p rejections are a subset of forward rejections (rate_max <= rate_fwd);
+    # on independent random walks one direction should sit near nominal 5% (99% binomial band for 300 pairs).
+    from scipy.stats import binom
+    lo, hi = binom.ppf(0.005, 300, 0.05) / 300, binom.ppf(0.995, 300, 0.05) / 300
+    fwd = out["rate_forward_direction_only"]
+    check(f"one-direction rate reported {fwd:.3f}, max-p rate {out['empirical_rate']:.3f} <= it",
+          np.isfinite(fwd) and out["empirical_rate"] <= fwd)
+    check(f"one-direction rate {fwd:.3f} inside the 99% band for nominal 5% [{lo:.3f}, {hi:.3f}]", lo <= fwd <= hi)
     check("source label recorded", out.get("source") == "load_full_universe")
     check("each unordered pair drawn at most once",
           out["n_null_pairs_tested"] + out["n_skipped_short_overlap"] + out["n_errors"] == out["attempts"]
