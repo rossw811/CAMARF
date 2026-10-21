@@ -200,9 +200,12 @@ def _spans_hole(F: pd.DataFrame, entry, exit_, intraday: bool) -> bool:
         e, x = e.normalize(), x.normalize()
     i0 = v.searchsorted(e, side="right") - 1
     if i0 < 0:
-        return True
+        return False                    # no valid bar at or before entry at all: missing_price, not a hole
     i1 = v.searchsorted(x, side="right")
-    days = np.append(v[i0:i1].normalize().values.astype("datetime64[D]"), np.datetime64(x.date(), "D"))
+    days = v[i0:i1].normalize().values.astype("datetime64[D]")
+    xd = np.datetime64(x.date(), "D")
+    if days[-1] < xd:                   # exit date has no valid bar: it counts as missing (review F3)
+        days = np.append(days, xd + 1)
     missing = np.busday_count(days[:-1] + 1, days[1:])
     return bool(len(missing) and missing.max() > _MAX_FILL_BARS)
 
@@ -238,12 +241,14 @@ def add_dollar_pnl(trades: pd.DataFrame, commission_per_share: float = None, sli
             status[i] = "non_usd_leg"; continue
         if A is None or B is None or pd.isna(t.exit_time):
             status[i] = "missing_price"; continue
+        # BUG-D119 (Amendment 5): checked BEFORE the price lookups, so a stale entry/exit price is a hole, not
+        # missing_price (review F3); excluded from P&L and counted
+        if _spans_hole(A, t.entry_time, t.exit_time, tf != "1D") or _spans_hole(B, t.entry_time, t.exit_time, tf != "1D"):
+            status[i] = "unrealizable_gap"; continue
         ae, ax, be, bx = (_look(A, t.entry_time), _look(A, t.exit_time),
                           _look(B, t.entry_time), _look(B, t.exit_time))
         if any(v is None for v in (ae, ax, be, bx)):
             status[i] = "missing_price"; continue
-        if _spans_hole(A, t.entry_time, t.exit_time, tf != "1D") or _spans_hole(B, t.entry_time, t.exit_time, tf != "1D"):
-            status[i] = "unrealizable_gap"; continue      # BUG-D119: excluded from P&L and counted (Amendment 5)
         vals = [ae["close"], be["close"], ae["tr"], ax["tr"], be["tr"], bx["tr"]]
         if not all(np.isfinite(vals)) or ae["close"] <= 0 or be["close"] <= 0 or ae["tr"] <= 0 or be["tr"] <= 0:
             status[i] = "missing_price"; continue

@@ -46,7 +46,7 @@ drop_data_gap_rows=True on that basis; this module still keeps the rows
 (default False), which is correct either way.
 
 Sources (N15, 2026-10-20): each leg comes from universe_loader.load_symbol -- WRDS wins for daily-and-coarser
-timeframes, yfinance otherwise, IBKR only with include_ibkr=True (CLAUDE.md rule 2).
+timeframes, yfinance otherwise, IBKR only when the caller opts in (include_ibkr) (CLAUDE.md rule 2).
 
 Usage (drop-in replacement for `DataStore.load(symbol, tf_label)` when
 you need a SINGLE pair's two legs on the production-matching
@@ -91,7 +91,7 @@ def _load_one(symbol: str, tf_label: str, include_ibkr: bool = False):
     `_load_wrds_or_ibkr` (2026-09-08), which this module called only AFTER `DataStore.load` (the yfinance cache)
     came back empty -- so yfinance won every 1D collision, against CLAUDE.md rule 2 -- and which read the IBKR
     supplement by default. WRDS now wins for daily-and-coarser timeframes (total return, Compustat Global in USD,
-    the D17 rule as in load_full_universe); IBKR only with include_ibkr=True."""
+    the D17 rule as in load_full_universe); IBKR only when the caller opts in (include_ibkr)."""
     from universe_loader import load_symbol
     return load_symbol(symbol, tf_label, include_ibkr=include_ibkr)
 

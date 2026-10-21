@@ -46,6 +46,7 @@ hmmlearn==0.3.3
 # --- core (shared) ---
 pandas==3.0.3
 numpy==2.4.6
+matplotlib==3.10.9  # report.py figures (found 2026-10-21: missing from this file; the CachyOS venv had no matplotlib)
 scipy==1.17.1
 
 # --- macro.py ---

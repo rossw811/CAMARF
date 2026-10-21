@@ -73,9 +73,13 @@ check("4a daily windows on/after SEALED_FROM ignored", ("UUU", "VVV", "1D") not 
 check("4b intraday: 2026-03 window kept, post-SEALED_FROM_INTRADAY window ignored",
       ("HA", "HB", "1h") in keys and ("HC", "HD", "1h") not in keys, str(sorted(k for k in keys if k[2] == "1h")))
 r3 = P1[(P1["symbol_a"] == "SSS") & (P1["symbol_b"] == "TTT")]
-check("5 windows' symbol order kept; metadata joined across order (TTT/SSS -> 3.0)",
-      len(r3) == 1 and r3["hedge_ratio_ols"].iloc[0] == 3.0 and bool(r3["in_whole_history_set"].iloc[0]),
+check("5 windows' symbol order kept; reversed (TTT/SSS) row flagged but its hedge ratio NOT copied (review F5)",
+      len(r3) == 1 and pd.isna(r3["hedge_ratio_ols"].iloc[0]) and bool(r3["in_whole_history_set"].iloc[0]),
       str(r3.to_dict("records")))
+r6 = ppe.build_pit_pool({"1D": w1d}, 1, pd.DataFrame({"symbol_a": ["SSS"], "symbol_b": ["TTT"], "tf_label": ["1D"],
+                                                       "hedge_ratio_ols": [4.0]}))
+r6 = r6[r6["symbol_a"] == "SSS"]
+check("5b same orientation: metadata joined", len(r6) == 1 and r6["hedge_ratio_ols"].iloc[0] == 4.0, str(r6.to_dict("records")))
 
 print(f"\n{passed} passed, {failed} failed")
 sys.exit(1 if failed else 0)

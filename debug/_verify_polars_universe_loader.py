@@ -47,7 +47,11 @@ candidates = (
     + rng.sample(all_binance, min(15, len(all_binance)))
     + rng.sample(all_ibkr, min(15, len(all_ibkr)))
 )
-candidates = [f for f in candidates if os.path.getsize(f) > 0 and "_meta.parquet" not in f]
+import pyarrow.parquet as _pq
+# price files only (a "close" column): macro / map / membership parquets in the same dirs are never passed to
+# _read_one by _load_dir's suffix filter (found 2026-10-21: a seeded draw shifted onto fred_USREC_daily on CachyOS)
+candidates = [f for f in candidates if os.path.getsize(f) > 0 and "_meta.parquet" not in f
+              and "close" in _pq.read_schema(f).names]
 print(f"Sampling {len(candidates)} real files across yfinance/wrds/binance/ibkr caches "
       f"(seeded, reproducible; excludes _meta.parquet files, which _load_dir's own suffix "
       f"filtering never passes to _read_one in production -- these are metadata sidecars, "

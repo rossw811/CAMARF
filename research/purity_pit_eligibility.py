@@ -133,10 +133,16 @@ def build_pit_pool(windows_by_tf: dict, k: int, whole_history_pool: pd.DataFrame
         W["key_a"], W["key_b"] = wa.where(wa <= wb, wb), wb.where(wa <= wb, wa)
         meta = [c for c in W.columns if c not in ("symbol_a", "symbol_b", "tf_label", "key_a", "key_b",
                                                   "eligible_from", "n_rejected")]
-        W = W.drop_duplicates(["key_a", "key_b", "tf_label"])[["key_a", "key_b", "tf_label"] + meta]
+        W["_wa"] = wa
+        W = W.drop_duplicates(["key_a", "key_b", "tf_label"])[["key_a", "key_b", "tf_label", "_wa"] + meta]
         W["in_whole_history_set"] = True
         P = P.drop(columns="in_whole_history_set").merge(W, on=["key_a", "key_b", "tf_label"], how="left")
         P["in_whole_history_set"] = P["in_whole_history_set"].eq(True)
+        # metadata (hedge ratios ...) only where the orientation matches: a (B, A) row's hedge ratio is not A on B
+        # (review of 2c0c0f6a, F5); membership flag either way
+        flip = P["in_whole_history_set"] & (P["_wa"].astype(str) != P["symbol_a"].astype(str))
+        P.loc[flip, meta] = np.nan
+        P = P.drop(columns="_wa")
     return P.drop(columns=["key_a", "key_b"])[cols + [c for c in P.columns if c not in cols + ["key_a", "key_b"]]]
 
 

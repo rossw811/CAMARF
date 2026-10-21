@@ -5334,26 +5334,12 @@ class AnalysisPipeline:
         )
 
     @staticmethod
-    def _run_one_tf(
-        universe: UniverseResult,
-        tf_label: str,
-        asset_class_map: Dict[str, str],
-        run_calibration: bool,
-        n_workers: int,
-    ) -> Tuple[
-        List[PairResult],
-        List[TrioResult],
-        List[RegimeResult],
-        List[PairResult],
-        Dict[str, Any],
-    ]:
-        """Process one timeframe end-to-end."""
-
-        # Step 1: extract TF data
-        # Cap shallow TFs to last N bars per asset to prevent OOM.
-        # Also explicitly skip any symbol in universe.exclusion_set —
-        # belt-and-suspenders guard so excluded assets (VLTO, BNY, etc.)
-        # cannot enter analysis results even if they have cached data.
+    def _extract_tf_data(universe: UniverseResult, tf_label: str) -> Tuple[Dict[str, pd.DataFrame], List[str]]:
+        """Step 1 of _run_one_tf, factored out so it is testable (BUG-A06 / X-C02,
+        debug/_verify_tf_extract_exclusions_a06.py). Returns ({sym: frame}, frequency-mismatched symbols).
+        Skips any symbol in universe.exclusion_set -- belt-and-suspenders guard so excluded assets (VLTO, BNY, etc.)
+        cannot enter analysis results even if they have cached data -- and caps shallow TFs to the last N bars per
+        asset to prevent OOM."""
         _SHALLOW_CAP = {"1m": 5_000, "2m": 5_000, "3m": 5_000}
         _exclusions = getattr(universe, "exclusion_set", set()) or set()
         tf_data_raw = {}
@@ -5375,6 +5361,26 @@ class AnalysisPipeline:
             if cap and len(df) > cap:
                 df = df.iloc[-cap:]
             tf_data_raw[sym] = df
+        return tf_data_raw, _freq_mismatches
+
+    @staticmethod
+    def _run_one_tf(
+        universe: UniverseResult,
+        tf_label: str,
+        asset_class_map: Dict[str, str],
+        run_calibration: bool,
+        n_workers: int,
+    ) -> Tuple[
+        List[PairResult],
+        List[TrioResult],
+        List[RegimeResult],
+        List[PairResult],
+        Dict[str, Any],
+    ]:
+        """Process one timeframe end-to-end."""
+
+        # Step 1: extract TF data (AnalysisPipeline._extract_tf_data: exclusions, frequency check, shallow cap)
+        tf_data_raw, _freq_mismatches = AnalysisPipeline._extract_tf_data(universe, tf_label)
         if _freq_mismatches:
             log.warning(
                 f"  [{tf_label}] {len(_freq_mismatches)} assets skipped (frequency mismatch "

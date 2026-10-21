@@ -43,7 +43,7 @@ def main():
             check("missing_raises", True)
     files = {"research/wrds_deep_history_episodic_scan.py": "load_membership_gate",
              "universe_loader.py": None, "research/apply_crsp_volume_adjustment.py": "main",
-             "research/clean_pool_identity_pairs.py": "main"}
+             "research/clean_pool_identity_pairs.py": "build_company_ids"}   # main delegates to it (2026-10-20 refactor)
     for path, fn in files.items():
         s = open(os.path.join(ROOT, path), encoding="utf-8").read()
         body = s

@@ -49,7 +49,10 @@ cases = {"AAPL_1day.parquet": "daily", "AAPL_1hr.parquet": "intraday", "wrds/AAP
          "wrds/GVKEY1_01W_1M.parquet": "daily", "binance/ADA_1m.parquet": "intraday", "binance/ADA_1d.parquet": "daily",
          "ibkr_supplement/ACAD_15min_deep.parquet": "intraday", "ibkr_supplement/7267.T_1day_deep.parquet": "daily",
          "AAPL_3mo.parquet": "daily", "binance/ADA_3m.parquet": "intraday", "AAPL_meta.parquet": None,
-         "wrds/full_us_market_label_map.parquet": None}
+         "wrds/full_us_market_label_map.parquet": None,
+         # review F7/F8: macro caches (DataStore keys "daily"/"weekly") and DataStore's 1Y name are sealed too
+         "fred_BAA10Y_daily.parquet": "daily", "cot_es_weekly.parquet": "daily", "AAPL_1yr.parquet": "daily",
+         "yf_period_0700.HK_1h_meta.parquet": None, "wrds/index_membership_DAX_recheck.parquet": None}
 bad = {k: (seal.kind_of_path(k), v) for k, v in cases.items() if seal.kind_of_path(k) != v}
 check("1 kind_of_path per source naming", not bad, str(bad))
 
@@ -126,6 +129,19 @@ with tempfile.TemporaryDirectory() as td:
 
         check("3c the vault lives inside the (redirected) cache dir",
               os.path.commonpath([vp, Config.DATA.CACHE_DIR]) == Config.DATA.CACHE_DIR and seal.VAULT_SUBDIR in vp)
+
+        # 8. macro feeds: a fresh FRED / COT fetch is returned without sealed rows (it fed regime labels in memory)
+        import macro  # noqa: E402
+        fr = pd.DataFrame({"BAA10Y": [1.0, 2.0]}, index=pd.to_datetime(["2025-12-30", "2026-03-02"]))
+        orig_fetch = macro.FREDFeed._fetch_with_retry
+        macro.FREDFeed._fetch_with_retry = staticmethod(lambda sid, summary=None: fr)
+        macro.FREDFeed._SESSION_CACHE.clear()
+        try:
+            got = macro.FREDFeed.get_series("BAA10Y", force_refresh=True)
+        finally:
+            macro.FREDFeed._fetch_with_retry = orig_fetch
+        check("8 macro FRED fetch returned without sealed rows", got is not None and got.index.max() < D,
+              str(None if got is None else got.index.max()))
 
         # 7
         full = seal.read_full(p)

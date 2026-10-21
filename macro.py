@@ -30,6 +30,7 @@ import requests
 
 from config import Config
 from data import DataAligner, DataStore
+import seal
 
 logging.basicConfig(
     level=logging.INFO,
@@ -137,7 +138,7 @@ class FREDFeed:
             result = cached
         else:
             DataStore.save(cache_key, "daily", fresh)
-            result = fresh
+            result = seal.drop_sealed(fresh, "daily")   # sealed holdout: the fresh fetch reaches 2026 (review F7)
             if summary:
                 summary.record_series(series_id, rows=len(fresh), source="fred")
 
@@ -523,7 +524,7 @@ class COTFeed:
             result = cached
         else:
             DataStore.save(cache_key, "weekly", fresh)
-            result = fresh
+            result = seal.drop_sealed(fresh, "daily")   # sealed holdout (review F7)
             if summary:
                 summary.record_series(cache_key, rows=len(fresh), source="cftc")
 

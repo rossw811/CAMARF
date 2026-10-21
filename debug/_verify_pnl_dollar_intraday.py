@@ -67,7 +67,8 @@ def main():
         check("1a.hedged_move_zero", st[0] == "ok" and np.isclose(g[0], 0.0), f"{st[0]} gross={g[0]}")
         check("1b.unhedged_leg_400", st[1] == "ok" and np.isclose(g[1], 400.0), f"{st[1]} gross={g[1]}")
         check("2.at_or_before_within_day", st[2] == "ok" and np.isclose(g[2], 400.0), f"{st[2]} gross={g[2]}")
-        check("3.stale_price_missing", st[3] == "missing_price", st[3])
+        # Amendment 5 (2026-10-21, review F3): a stale price (> 5 business days old) is an unrealizable hole, not missing
+        check("3.stale_price_unrealizable", st[3] == "unrealizable_gap", st[3])
         check("4.non_usd_leg", st[4] == "non_usd_leg", st[4])
     finally:
         pnl_dollar.load_intraday_prices = orig

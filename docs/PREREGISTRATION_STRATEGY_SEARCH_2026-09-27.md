@@ -218,3 +218,23 @@ Amendment 4 result is reported as superseded, never as the result. Changes, each
 Discovery, intraday, adapter, pools, spreads and the search are re-run in full (`debug/_tmp_chain_a5_20261021.sh`).
 Unchanged: everything else in Amendments 2-4 -- grid (216 per pool, N = 432), splits, embargo, selection rule,
 DSR/PBO, success criterion, and the disclosed evaluation deviations of Amendment 4 item 3.
+
+### Amendment 5 addendum (2026-10-21, after an independent review of the Amendment 5 code; committed before ANY result of the re-run exists -- the chain is in its discovery step)
+Implementation corrections, each with a failing-first test; the rules above are unchanged except where stated:
+- **Counting (item 1).** The engine drops unpriceable trades before the trade file is saved
+  (backtest.apply_pnl_basis), so counting the saved files alone would have reported zero unrealizable trades. The
+  run phase now saves every dropped trade (`strategy_search/<pool>/_dropped/<config>.parquet`) and the eval counts
+  them with the kept ones; a missing log is reported as its own status, never as zero. `_verify_strategy_search.py`
+  13/14 -> 15/15 (engine-level check).
+- **Hole count (item 1).** The exit date counts as missing when it has no valid bar (the count was one day short), and
+  the hole check runs before the price lookups, so a stale entry or exit price is `unrealizable_gap` on both the daily
+  and intraday paths (it was `missing_price` intraday). `_verify_pnl_unrealizable_gap_d119.py` 9/11 -> 11/11.
+- **Spreads.** A pair whose spread series cannot be rebuilt is left without one and reported; the pre-run file (built
+  from the previous data) is no longer restored. `_verify_regenerate_no_restore.py`.
+- **Seal (item 4).** FRED and CFTC COT caches and their fresh fetches are sealed too (regime inputs); two fetch scripts
+  that wrote WRDS price files directly now go through the seal writer. Column-dated reference data (Compustat
+  fundamentals, IBES, Fama-French factors) is not sealed by this mechanism and is not used by the search.
+- **Disclosed, not changed:** the 5-day rule counts weekdays, so an exchange closure longer than five weekdays (Lunar
+  New Year on some Asian listings: 6-7) counts as a hole, as it already does for backtest.py's B1 exit (proposal to
+  Ross pending, see the decision log); pool metadata from the whole-history file is joined only where the pair's
+  orientation matches.

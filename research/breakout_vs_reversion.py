@@ -190,6 +190,13 @@ def _summarize(trades, label):
     }
 
 
+
+def pooled_sharpe_like(trades) -> float:
+    """BUG-D90: one Sharpe-like ratio over every pair's trades POOLED (mean / s.d. of the trade pnl_z), never the
+    average of per-pair ratios. debug/_verify_pooled_sharpe_d90.py"""
+    pnls = np.array([t["pnl_z"] for t in trades]) if trades else np.array([])
+    return float(pnls.mean() / pnls.std()) if len(pnls) > 1 and pnls.std() > 1e-9 else np.nan
+
 def main():
     p = argparse.ArgumentParser(description="Mean-reversion vs breakout comparison arm (2026-07-14)")
     p.add_argument("--tf", default="1hr")
@@ -240,10 +247,8 @@ def main():
         # A single low-trade-count pair's noisy per-pair ratio could
         # otherwise dominate the aggregate the way a naive per-pair average
         # does. Pool here the same way.
-        pooled_sharpe = {}
-        for label, trades in (("mean_reversion", all_mr_trades), ("breakout", all_bo_trades)):
-            pnls = np.array([t["pnl_z"] for t in trades]) if trades else np.array([])
-            pooled_sharpe[label] = float(pnls.mean() / pnls.std()) if len(pnls) > 1 and pnls.std() > 1e-9 else np.nan
+        pooled_sharpe = {label: pooled_sharpe_like(trades)
+                         for label, trades in (("mean_reversion", all_mr_trades), ("breakout", all_bo_trades))}
         agg["pooled_sharpe_like"] = agg.index.map(pooled_sharpe)
         print(f"\nAggregate across {len(pairs_to_run)} pairs:")
         print(agg.to_string())

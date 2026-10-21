@@ -34,7 +34,7 @@ import pnl_dollar  # noqa: E402
 
 
 def series(days, drop=(), nan=()):
-    idx = pd.bdate_range("2023-01-02", "2026-06-30")
+    idx = pd.bdate_range("2019-01-01", "2026-06-30")
     px = pd.Series(np.linspace(10, 20, len(idx)), index=idx)
     for a, b in drop:
         px = px[(px.index < pd.Timestamp(a)) | (px.index > pd.Timestamp(b))]
@@ -88,8 +88,21 @@ try:
     pnl_dollar.load_intraday_prices = lambda s, tf: {"A": ifull, "B": ifull}[s]
     s, _ = run(None, None, "2025-01-17 15:00", "2025-01-21 10:00", tf="1h")   # over a weekend + MLK day
     check("7b intraday overnight/weekend is not a hole -> ok", s == "ok", s)
+    # review of 2c0c0f6a, F3: a stale intraday exit (last bar a week before exit) is unrealizable_gap, not missing_price
+    ist = ifull[ifull.index < "2025-02-04"]
+    pnl_dollar.load_intraday_prices = lambda s, tf: {"A": ifull, "B": ist}[s]
+    s, _ = run(None, None, "2025-01-15 11:00", "2025-02-11 14:00", tf="1h")
+    check("7c intraday stale exit -> unrealizable_gap (not missing_price)", s == "unrealizable_gap", s)
 finally:
     pnl_dollar.load_intraday_prices = orig
+
+# review F3: the exit date itself counts when it has no valid bar. Last valid Mon 2020-02-03, exit Tue 2020-02-11:
+# Tue 02-04 .. Tue 02-11 = 6 business days without a valid price -> unrealizable; exit Mon 02-10 = 5 -> ok.
+G = series(None, nan=[("2020-02-04", "2020-02-28")])
+s6, _ = run(G, full, "2020-01-20", "2020-02-11")
+s5, _ = run(G, full, "2020-01-20", "2020-02-10")
+check("8 stale tail counts the exit date: 6 -> unrealizable, 5 -> ok... ", s6 == "unrealizable_gap", f"{s6}")
+check("8b ... but 5 with the exit date's bar missing is not > 5", s5 != "unrealizable_gap", f"{s5}")
 
 print(f"\n{passed} passed, {failed} failed")
 sys.exit(1 if failed else 0)

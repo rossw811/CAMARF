@@ -19,7 +19,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import backtest as bt
-bt.apply_pnl_basis = lambda trades, legacy=False, cfg=None: (trades, {})   # synthetic symbols carry no prices
+bt.apply_pnl_basis = lambda trades, legacy=False, cfg=None, **_kw: (trades, {})   # synthetic symbols carry no prices
 
 import numpy as np
 import pandas as pd

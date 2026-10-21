@@ -3871,7 +3871,7 @@ explicitly; don't rely on bare `python` resolving correctly.
    with no hint why. ml.py's own docstring says it "never fetches or
    re-runs analysis"; importing `data.py` for a 13-entry dict violated that
    in spirit even when it happened to work. Fixed by duplicating the tiny
-   `_TF_SAFE` map locally in ml.py — zero dependency on data.py/yfinance.
+   `_TF_SAFE` map locally in ml.py — zero dependency on data.py/yfinance. [Corrected 2026-10-21 (X-C02, bug recheck 2026-10-07): false -- ml.py imports data.GapFlag (ml.py:259), and data.py imports yfinance.]
 2. **Stale-directory glob leak.** `_discover_confirmed_pairs()` globbed
    `output/results/*/pairs.parquet`, which also matches leftover
    `{tf}_stale_*` snapshot directories from `clear_stale_results()`'s

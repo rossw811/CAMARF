@@ -23,6 +23,7 @@ EXCEPTIONS = {
     ("research/coint_strength_bar_system.py", "Z_WINDOW"): "Finding #49's study parameter (20), not the production z window",
     ("research/pdr_calmar_comparison.py", "SIZING_METHODS"): "the comparison's own sweep set (a superset), not Config's",
     ("research/eg_null_calibration_montecarlo.py", "TIMEFRAMES"): "the study's own {label: file suffix} map of its 3 TFs",
+    ("research/strategy_search.py", "EMBARGO_PCT"): "pre-registered (Amendment 2): must not move with Config.ML's split",
 }
 
 

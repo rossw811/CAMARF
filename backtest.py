@@ -157,7 +157,8 @@ class Trade:
     notional_dollar_entry: float = np.nan
 
 
-def apply_pnl_basis(trades: List["Trade"], legacy: bool = False, cfg=None) -> Tuple[List["Trade"], Dict[str, int]]:
+def apply_pnl_basis(trades: List["Trade"], legacy: bool = False, cfg=None,
+                    dropped_out: Optional[list] = None) -> Tuple[List["Trade"], Dict[str, int]]:
     """B2/B3 (code review 2026-09-26; Ross 2026-10-03: "dollar P&L the default everywhere; legacy only behind an
     explicit flag, labelled known-wrong"). The engine books spread-unit P&L with a hedge ratio re-estimated every bar
     -- on 2,062 real trades the beta drift was ALL of the positive gross P&L -- in log units mixed with dollar costs.
@@ -182,7 +183,8 @@ def apply_pnl_basis(trades: List["Trade"], legacy: bool = False, cfg=None) -> Tu
     if len(done) == len(trades):
         return trades, {}
     if done:
-        rest, dropped = apply_pnl_basis([t for t in trades if getattr(t, "pnl_basis", None) != "dollar"], cfg=cfg)
+        rest, dropped = apply_pnl_basis([t for t in trades if getattr(t, "pnl_basis", None) != "dollar"], cfg=cfg,
+                                        dropped_out=dropped_out)
         return done + rest, dropped
     import pnl_dollar
     _kw = {} if cfg is None else {"commission_per_share": cfg.COMMISSION_PER_SHARE, "slippage_bps": cfg.SLIPPAGE_BPS}
@@ -193,6 +195,10 @@ def apply_pnl_basis(trades: List["Trade"], legacy: bool = False, cfg=None) -> Tu
     for t, r in zip(trades, D.itertuples(index=False)):
         if r.pnl_dollar_status != "ok":
             dropped[r.pnl_dollar_status] = dropped.get(r.pnl_dollar_status, 0) + 1
+            if dropped_out is not None:   # Amendment 5: the dropped trades themselves, so callers can count them by date
+                dropped_out.append({"symbol_a": t.symbol_a, "symbol_b": t.symbol_b, "tf": t.tf,
+                                    "entry_time": t.entry_time, "exit_time": t.exit_time,
+                                    "exit_reason": getattr(t, "exit_reason", None), "pnl_dollar_status": r.pnl_dollar_status})
             continue
         t.pnl_legacy_gross, t.pnl_legacy_cost, t.pnl_legacy_net = t.pnl_gross, t.pnl_cost, t.pnl_net
         t.pnl_gross, t.pnl_cost, t.pnl_net = (float(r.pnl_dollar_gross), float(r.pnl_dollar_cost),
@@ -513,6 +519,9 @@ class BacktestEngine:
         # debug/_verify_engine_dollar_default.py
         self.legacy_pnl = bool(legacy_pnl)
         self.last_pnl_dropped: Dict[str, int] = {}
+        # Every trade dropped by the P&L basis over the engine's lifetime, one record each (Amendment 5: the strategy
+        # search counts unrealizable_gap trades by exit date; the per-run totals above lose that).
+        self.pnl_dropped_log: List[dict] = []
         # T14.7 (2026-10-04): the regime conditioner reads THIS engine's cfg (overrides are no longer global)
         regime_cond.cfg = cfg
         # B8 comparison arm (Ross 2026-10-04): one calendar cutoff for every pair (see common_holdout_date);
@@ -568,7 +577,8 @@ class BacktestEngine:
         built with legacy_pnl=True. Unpriceable trades are dropped and counted in self.last_pnl_dropped."""
         trades = self._run_unconverted(pair_row, spread_df, hedge_method, holdout_only=holdout_only,
                                        is_only=is_only, oos_end_date=oos_end_date)
-        trades, self.last_pnl_dropped = apply_pnl_basis(trades, legacy=self.legacy_pnl, cfg=self.cfg)
+        trades, self.last_pnl_dropped = apply_pnl_basis(trades, legacy=self.legacy_pnl, cfg=self.cfg,
+                                                        dropped_out=self.pnl_dropped_log)
         return trades
 
     def _run_unconverted(

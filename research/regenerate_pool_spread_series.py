@@ -9,8 +9,8 @@ at all (deleted by an earlier cleanup; they silently never traded). No new analy
 adapter's own path (_load_aligned -> AnalysisPipeline._build_pair_result -> write_spread_series), with the
 adapter's own once-in-the-parent preload for placeholder (PERMNO/GVKEY) symbols.
 
-Every existing spread file is MOVED to output/results/_spread_backup_20260927/{tf_dir}/ first; a pair that
-fails to rebuild gets its original moved back and is reported. After this, re-run
+Every existing spread file is MOVED to output/results/_spread_backup_<timestamp>/{tf_dir}/ first; a pair that
+fails to rebuild is left WITHOUT a spread file and reported (2026-10-21: restoring the pre-run file mixed data versions). After this, re-run
 research/squeeze_momentum_features.py --pairs-file <pool> to restore the gate columns.
 
 Usage (CachyOS): python research/regenerate_pool_spread_series.py [--pairs ...] [--workers N]
@@ -55,10 +55,11 @@ def _one(task):
         ad.write_spread_series(a, b, tf, built[1])
         return a, b, tf, "rebuilt", len(built[1]["index"])
     except Exception as e:
-        if os.path.exists(bak) and not os.path.exists(dst):
-            shutil.move(bak, dst)
-            return a, b, tf, f"FAILED, original restored: {e}", 0
-        return a, b, tf, f"FAILED, no original: {e}", 0
+        # Never restore the pre-run file (review of 2c0c0f6a, F4): it was built from the previous data, so it would
+        # trade as if current. The pair is left without a spread file (it cannot trade) and reported; the pre-run
+        # file stays in this run's backup folder. debug/_verify_regenerate_no_restore.py
+        kept = "pre-run file kept in backup" if os.path.exists(bak) else "no pre-run file"
+        return a, b, tf, f"FAILED, no spread file ({kept}): {e}", 0
 
 
 def main():

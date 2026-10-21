@@ -62,10 +62,46 @@ def main():
         from research.strategy_search import status_counts
         sd = pd.DataFrame({"exit_time": pd.to_datetime(["2020-01-02", "2021-01-04", "2022-01-03", "2026-02-02"]),
                            "pnl_dollar_status": ["ok", "unrealizable_gap", "unrealizable_gap", "unrealizable_gap"]})
-        got = {r["status"]: r["n"] for r in status_counts(sd, "pit_k1", "c1")}
+        got = {r["status"]: r["n"] for r in status_counts(sd, "pit_k1", "c1", dropped=sd.iloc[0:0])}
         check("a5.status_counts_pre_seal", got == {"ok": 1, "unrealizable_gap": 2}, str(got))
     except Exception as ex:  # noqa: BLE001
         check("a5.status_counts_exists", False, f"{type(ex).__name__}: {ex}")
+
+    # 7. Amendment 5 counting goes through the ENGINE (review of 2c0c0f6a, F1: backtest.apply_pnl_basis drops
+    # unpriceable trades before the trade file is saved, so counting the saved file alone always read 0)
+    try:
+        import numpy as np
+        import pnl_dollar as P
+        import backtest as bt
+        from research.strategy_search import status_counts
+        idx = pd.bdate_range("2020-01-01", "2020-12-31")
+        A = pd.DataFrame({"close": 100.0, "tr": 100.0}, index=idx); A.attrs["usd"] = True
+        B = A.copy(); B.loc["2020-03-02":"2020-04-30"] = np.nan; B.attrs["usd"] = True
+        orig_load = P.load_daily_prices
+        P.load_daily_prices = lambda s: {"AAA": A, "BBB": B}[s]
+        P._cache.clear()
+
+        class _T:
+            pass
+
+        def mk(e, x):
+            t = _T(); t.tf = "1D"; t.symbol_a = "AAA"; t.symbol_b = "BBB"; t.hedge_ratio = 1.0
+            t.entry_time, t.exit_time = pd.Timestamp(e), pd.Timestamp(x)
+            t.side = "long"; t.n_shares_a = 10; t.pnl_gross = t.pnl_cost = t.pnl_net = 0.0; t.exit_reason = "data_gap"
+            return t
+        log = []
+        kept, _ = bt.apply_pnl_basis([mk("2020-02-03", "2020-05-15"), mk("2020-06-01", "2020-07-01")], dropped_out=log)
+        P.load_daily_prices = orig_load
+        saved = pd.DataFrame([{k: getattr(t, k) for k in ("tf", "symbol_a", "symbol_b", "hedge_ratio", "entry_time",
+                                                           "exit_time", "side", "n_shares_a")} for t in kept])
+        D = pd.DataFrame({"exit_time": saved["exit_time"], "pnl_dollar_status": "ok"})
+        got = {r["status"]: r["n"] for r in status_counts(D, "pit_k1", "c1", dropped=pd.DataFrame(log))}
+        miss = {r["status"]: r["n"] for r in status_counts(D, "pit_k1", "c1", dropped=None)}
+        check("a5.engine_dropped_trades_counted", len(kept) == 1 and len(log) == 1
+              and got == {"ok": 1, "unrealizable_gap": 1}, str(got))
+        check("a5.missing_dropped_log_reported_not_zero", miss.get("dropped_log_missing") == 1, str(miss))
+    except Exception as ex:  # noqa: BLE001
+        check("a5.engine_counting", False, f"{type(ex).__name__}: {ex}")
 
     e = fold_edges(pd.Timestamp("2010-01-01"), pd.Timestamp("2014-01-01"), 4)
     ft = pd.DataFrame({"entry_time": pd.to_datetime(["2010-06-01", "2010-12-30", "2011-03-01"]),

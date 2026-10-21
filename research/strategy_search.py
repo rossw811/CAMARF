@@ -104,6 +104,13 @@ def check_pool_dir(d: str, fp: str, fresh: bool = False):
 _POOL_DF = {}
 
 
+_DROPPED_COLS = ["symbol_a", "symbol_b", "tf", "entry_time", "exit_time", "exit_reason", "pnl_dollar_status"]
+
+
+def dropped_log_path(pool_name, cid):
+    return os.path.join(_OUT, pool_name, "_dropped", f"{cid}.parquet")
+
+
 def _run_one(task):
     import copy
     import backtest as bt
@@ -124,6 +131,13 @@ def _run_one(task):
                                   log_pairs=False)
     df = pd.DataFrame([vars(t) for t in trades])
     os.makedirs(os.path.dirname(out), exist_ok=True)
+    # Amendment 5: trades the P&L basis dropped (unrealizable_gap, missing_price, ...) are counted in eval, so keep
+    # them -- in a subdirectory, outside the run guard's count of 216 trade files per pool. Written before the trade
+    # file, so a cached trade file always has its log.
+    dpath = dropped_log_path(pool_name, c["id"])
+    os.makedirs(os.path.dirname(dpath), exist_ok=True)
+    pd.DataFrame(eng.pnl_dropped_log, columns=_DROPPED_COLS).to_parquet(dpath + ".tmp")
+    os.replace(dpath + ".tmp", dpath)
     df.to_parquet(out + ".tmp")
     os.replace(out + ".tmp", out)
     return c["id"], len(df)
@@ -169,12 +183,23 @@ def seal_trades(trades, sealed_from=Config.DATA.SEALED_FROM):
     return trades[_naive(trades["exit_time"]) < pd.Timestamp(sealed_from)]
 
 
-def status_counts(D, pool, cid, sealed_from=Config.DATA.SEALED_FROM):
+def status_counts(D, pool, cid, sealed_from=Config.DATA.SEALED_FROM, dropped=None):
     """Amendment 5: trades excluded from P&L are COUNTED, per status (unrealizable_gap = BUG-D119), over the trades
-    the evaluation could see (exits before the seal)."""
-    v = D[_naive(D["exit_time"]) < pd.Timestamp(sealed_from)] if len(D) else D
-    vc = v["pnl_dollar_status"].value_counts() if len(v) else pd.Series(dtype=int)
-    return [{"pool": pool, "config": cid, "status": k, "n": int(n)} for k, n in vc.items()]
+    the evaluation could see (exits before the seal). The engine drops unpriceable trades BEFORE the trade file is
+    saved (backtest.apply_pnl_basis), so those come from the run phase's dropped log; a missing log is reported as
+    status "dropped_log_missing", never as zero (review of 2c0c0f6a, F1)."""
+    parts = [D[["exit_time", "pnl_dollar_status"]]] if len(D) else []
+    if dropped is not None and len(dropped):
+        parts.append(dropped[["exit_time", "pnl_dollar_status"]])
+    rows = []
+    if dropped is None:
+        rows.append({"pool": pool, "config": cid, "status": "dropped_log_missing", "n": 1})
+    if not parts:
+        return rows
+    A = pd.concat(parts, ignore_index=True)
+    v = A[_naive(A["exit_time"]) < pd.Timestamp(sealed_from)]
+    rows += [{"pool": pool, "config": cid, "status": k, "n": int(n)} for k, n in v["pnl_dollar_status"].value_counts().items()]
+    return rows
 
 
 def fold_edges(t0, c, n=N_FOLDS):
@@ -253,11 +278,14 @@ def eval_phase():
             if not os.path.exists(f):
                 continue
             T = pd.read_parquet(f)
+            dp = dropped_log_path(pname, cid)
+            dropped = pd.read_parquet(dp) if os.path.exists(dp) else None
             if len(T) == 0:
+                status_rows.extend(status_counts(T, pname, cid, dropped=dropped))
                 cache[cid] = T
                 continue
             D = pnl_dollar.add_dollar_pnl(T)
-            status_rows.extend(status_counts(D, pname, cid))           # Amendment 5: excluded AND counted
+            status_rows.extend(status_counts(D, pname, cid, dropped=dropped))      # Amendment 5: excluded AND counted
             cache[cid] = seal_trades(D[D["pnl_dollar_status"] == "ok"])   # sealed holdout (E13; missing until 2026-10-20)
         T_end = max(pd.to_datetime(d["exit_time"]).max() for d in cache.values() if len(d))
         for s in SPLITS:

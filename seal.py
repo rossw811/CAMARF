@@ -28,8 +28,9 @@ from config import Config
 # Binance "1m" is one minute, WRDS "1M" is one month.
 _INTRADAY = {"1min", "2min", "3min", "5min", "15min", "30min", "1hr", "4hr",
              "1m", "2m", "3m", "5m", "15m", "30m", "1h", "4h"}
-_DAILY = {"1day", "7day", "1mo", "3mo", "6mo", "1D", "7D", "1W", "1M", "3M", "6M", "1Y", "1d", "1w"}
-_TOKEN_RE = re.compile(r"_([0-9]+[A-Za-z]+)(?:_deep)?\.parquet$")
+_DAILY = {"1day", "7day", "1mo", "3mo", "6mo", "1yr", "1D", "7D", "1W", "1M", "3M", "6M", "1Y", "1d", "1w",
+          "daily", "weekly"}        # macro.py's FRED / COT caches (DataStore keys "daily" / "weekly"; review F7)
+_TOKEN_RE = re.compile(r"_([0-9]*[A-Za-z]+)(?:_deep)?\.parquet$")
 
 # Live price-cache directories, relative to Config.DATA.CACHE_DIR ("" is the yfinance cache itself). Backup
 # directories (`_backup_*`, `_wrds_pre_sync_*`, ...) are not read by any pipeline and are not swept.
@@ -175,9 +176,14 @@ def _max_date(path: str) -> Optional[pd.Timestamp]:
 def audit(cache_root: Optional[str] = None) -> dict:
     """Counts of live cache files still holding sealed rows, by kind. Pipeline chains refuse to run unless both are 0."""
     cache_root = cache_root or Config.DATA.CACHE_DIR
-    out = {"daily": 0, "intraday": 0, "files_checked": 0, "examples": []}
+    out = {"daily": 0, "intraday": 0, "files_checked": 0, "unreadable": 0, "examples": []}
     for p, k in _price_files(cache_root):
         out["files_checked"] += 1
+        try:
+            pd.read_parquet(p, columns=[])
+        except Exception:   # counted, never silently passed (review F8)
+            out["unreadable"] += 1
+            continue
         t = _max_date(p)
         if t is not None and t >= sealed_from(k):
             out[k] += 1

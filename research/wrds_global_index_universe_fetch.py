@@ -49,6 +49,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import pandas as pd
 
+import seal  # noqa: E402
 from data_wrds import (
     _connect, _OUT_DIR, fetch_index_membership_history_global,
     fetch_symbols_bulk_global, build_global_symbol_label,
@@ -150,7 +151,7 @@ def main():
             n_fetched_this_attempt = 0
             for label, df in fetch_symbols_bulk_global(db, to_fetch, start=args.start,
                                                           batch_size=args.batch_size):
-                df.to_parquet(os.path.join(_OUT_DIR, f"{label}_1D.parquet"))
+                seal.write_parquet(df, os.path.join(_OUT_DIR, f"{label}_1D.parquet"))   # sealed rows -> vault
                 n_fetched_total += 1
                 n_fetched_this_attempt += 1
                 if n_fetched_total % 200 == 0:
