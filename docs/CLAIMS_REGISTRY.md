@@ -6,7 +6,8 @@ when its status is **REPLICATED** on the current data. Anyone may attack any ent
 under the entry and in the errata (docs/archive/audits/CODE_REVIEW_2026-09-26.md, docs/archive/audits/INCONSISTENCY_SWEEP_2026-09-27.md).
 
 **Fields:** claim · hypothesis / falsification test (what result would refute it) · data & universe snapshot ·
-exact parameters · how to reproduce (script, command, output path) · lineage seed or commit · status · history.
+exact parameters · how to reproduce (script, command, output path) · lineage seed or commit · status · history ·
+**market-structure reading** (what about market structure would make the claim fail; Ross 2026-10-20).
 **Statuses:** REGISTERED (stated, not yet re-derived on current data) · REPLICATED (re-derived on current data by
 the reproduce command, numbers below) · CORRECTED (re-derivation changed the claim; old and new kept) ·
 WITHDRAWN (refuted or unsupportable) · PENDING-DATA (waits on a data fix or run in progress).
@@ -75,6 +76,7 @@ The C-entries below are claims re-derived one by one on current data.
   days -- not checked against WRDS whether CRSP has returns for those days. "50+ years" in the NTRS/STT paragraph
   (PAPER.md §4.2) should read ~40. Checked by an independent adversarial review (2026-10-10), which found the lag
   error in the first version of the re-derivation script; fixed and re-run.
+- **Market-structure reading:** fails if the recent-window loss of cointegration is a structural change in the two custody banks' businesses (an economic break the market priced), not test staleness; and at power 0.18-0.34 the last-5-years p = 0.599 cannot separate the two.
 
 ## C-002 — Calendar-padding artifact in rolling z-scores
 - **Claim:** a z-score over a window padded with calendar (non-trading) rows is bounded by (n−1)/√n
@@ -86,6 +88,7 @@ The C-entries below are claims re-derived one by one on current data.
   **Samuelson's inequality** (Samuelson 1968, "How deviant can you be?", JASA 63) for the sample standard deviation
   (ddof = 1) -- cite it as such, not as a new result; the contribution is the padding mechanism that attains it.
   The empirical "4 of 32 examples |z| > 10" (PAPER.md:803-812) is still REGISTERED: re-derive on current intraday data.
+- **Market-structure reading:** fails if none for the bound itself (arithmetic); its relevance needs calendar mismatch in production paths (legs on exchanges with different holidays), which the common-calendar alignment may already remove.
 
 ## C-003 — Purged ML predicts z-convergence, not profitability
 - **Claim:** with purged + 1%-embargoed CV, AUC ≈ 0.61 (RF 0.6085 [0.600, 0.616]) for z-convergence after a
@@ -95,6 +98,7 @@ The C-entries below are claims re-derived one by one on current data.
   (+ `_trials.json`).
 - **Status:** PENDING-DATA — computed before the D13-D19 data fixes (labels, identities, FX, total return).
   Re-derive on the re-run pools.
+- **Market-structure reading:** fails if the AUC comes from mechanical convergence -- stale or nonsynchronous prices in thin legs, bid-ask bounce at intraday bars -- rather than information; that would make 'predicts convergence' an artifact of quoting, not of the pairs.
 
 ## C-004 — The engine executes its rules; the rules are defective
 - **Claim:** 0 rule violations in 101,700 trades; 54-68% of entries at or past the stop; 32-40% stopped after a
@@ -102,12 +106,14 @@ The C-entries below are claims re-derived one by one on current data.
 - **Reproduce:** `python research/strategy_rule_invariants.py` → `output/research/strategy_rule_invariants.parquet`
   (reads `output/backtest/trades_layer1*storm_*gate_pairsoverride.parquet`).
 - **Status:** PENDING-DATA (pre-fix pools); the invariant code (`research/strategy_rule_invariants.py`) is unchanged.
+- **Market-structure reading:** fails if entries at or past the stop are caused by price discreteness (overnight gaps, opening jumps, limit moves) that any stop rule faces, so the defect is the market's, not the rules'.
 
 ## C-005 — Entry clustering
 - **Claim:** entries per business day are negative binomial (mean 1.90, variance 5.15), so iid nulls are misspecified.
 - **Reproduce:** `python research/distribution_fits.py` → `output/research/distribution_fits.parquet` (default trades
   `output/backtest/trades_layer1_storm_momgate_pairsoverride.parquet`).
 - **Status:** PENDING-DATA (pre-fix pools). Basis for the planned Hawkes null.
+- **Market-structure reading:** fails if the clustering is a common market-wide volatility shock hitting every spread at once; if conditioning on market volatility removes it, a volatility-conditioned iid null suffices and the Hawkes null is unneeded.
 
 ## C-006 — Pre-registered strategy search: no robust signal (first pass)
 - **Claim:** no configuration met the pre-registered criterion (holdout > 0, DSR ≥ 0.95, PBO < 0.20 in all four
@@ -121,6 +127,7 @@ The C-entries below are claims re-derived one by one on current data.
   BUG-D118 (Compustat Global price breaks; 29% of the k = 2 pool affected) and is being re-run under Amendment 4
   (committed 27b7d4a7 before any result). Disclosed evaluation deviations (kept for comparability): the DSR uses the
   selected configuration's unconstrained development Sharpe, and Var[SR] is over 216 trials while N = 432.
+- **Market-structure reading:** fails if the cost and execution model is wrong for the pool: too harsh for liquid US large caps (a hidden signal), or too lenient for thin Compustat Global legs, borrow-constrained shorts and non-synchronous home-market closes (a hidden loss).
 
 ## C-007 — Code and arithmetic claims (S34 central; re-derived 2026-10-10)
 - **Reproduce:** `python research/rederive_code_claims.py` → `output/research/rederive_code_claims.parquet` (production
@@ -152,6 +159,7 @@ The C-entries below are claims re-derived one by one on current data.
   qualifying pairs" describes only Tier 3's correlation prefilter. Confirmation is one BH correction over the whole
   (pair × window) family, a pair confirmed if at least one window survives (`episodic_bhfdr_confirm`; its docstring
   says it is not point-in-time safe -- the pools use the as-of version, S32).
+- **Market-structure reading:** fails if none: statements about code and arithmetic.
 
 
 ## C-008 — Size of the production EG screen under the null (D11, 2026-10-18/19)
@@ -177,3 +185,4 @@ The C-entries below are claims re-derived one by one on current data.
 - **Status:** **REPLICATED (2026-10-19)** for the stated scope: size on random pairs. Not measured: the screen's
   behaviour on the |corr| >= 0.6 candidate population (needs a correlation-matched null and a power study). CIs treat
   pairs as independent (legs reused, median 2, max 7, in the 1h review), so they are somewhat too narrow.
+- **Market-structure reading:** fails if random pairs understate size on the real candidate set: cross-sectional dependence (industry and factor co-movement) among |corr| >= 0.6 pairs, and non-synchronous closes across exchanges, can inflate rejection there (N14 measures it).
