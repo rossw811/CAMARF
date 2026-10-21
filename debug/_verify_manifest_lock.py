@@ -27,11 +27,19 @@ def check(name, cond, detail=""):
     print(f"[{'PASS' if cond else 'FAIL'}] {name} {detail}")
 
 
+_BARRIER = None
+
+
+def _init(barrier):
+    global _BARRIER
+    _BARRIER = barrier
+
+
 def _worker(args):
     path, k, locked = args
     import time
     import analysis
-    for r in range(N_ROUNDS):
+    for r in range(N_ROUNDS if locked else 1):   # control: ONE barrier-forced round (deterministic, see below)
         syms = [f"S{k}_{j}" for j in range(3)]
         if locked:
             analysis._update_confirmed_manifest(path, f"TF{k}", syms)
@@ -46,7 +54,13 @@ def _worker(args):
             for e in m.values():
                 if f"TF{k}" in e["tfs"]:
                     e["tfs"].remove(f"TF{k}")
-            time.sleep(0.002)                   # widen the race window like a slow disk
+            if _BARRIER is not None:
+                # 2026-10-21: every process READS (an empty file) before any WRITES, so the last os.replace wins and
+                # exactly N_PROC - 1 updates are lost -- deterministic; the timing-based version never hit the race on
+                # CI's Linux runner in 5 attempts.
+                _BARRIER.wait()
+            else:
+                time.sleep(0.002)
             for s in syms:
                 m.setdefault(s, {"tfs": [], "added": f"TF{k}"})["tfs"].append(f"TF{k}")
             tmp = f"{path}.tmp.{os.getpid()}"
@@ -63,8 +77,13 @@ def run(locked):
     d = tempfile.mkdtemp(prefix="manifest_lock_")
     path = os.path.join(d, "confirmed_pairs_manifest.json")
     try:
-        with mp.get_context("spawn").Pool(N_PROC) as pool:
-            pool.map(_worker, [(path, k, locked) for k in range(N_PROC)])
+        ctx = mp.get_context("spawn")
+        mgr = ctx.Manager() if not locked else None
+        barrier = mgr.Barrier(N_PROC) if mgr else None
+        with ctx.Pool(N_PROC, initializer=_init, initargs=(barrier,)) as pool:
+            pool.map(_worker, [(path, k, locked) for k in range(N_PROC)], chunksize=1)
+        if mgr:
+            mgr.shutdown()
         m = json.load(open(path))
         missing = [k for k in range(N_PROC) if any(f"TF{k}" not in m.get(f"S{k}_{j}", {}).get("tfs", []) for j in range(3))]
         return missing
@@ -86,7 +105,7 @@ def main():
             break
     lost_locked = run(True)
     check("no_update_lost_with_lock", lost_locked == [], f"lost = {lost_locked}")
-    check("control_shows_the_race", len(lost_unlocked) > 0,
+    check("control_shows_the_race (exactly N_PROC - 1 lost)", len(lost_unlocked) == N_PROC - 1,
           f"(race shown on attempt {attempt} of 5; failing means it never triggered in 5 attempts)")
     finish()
 
