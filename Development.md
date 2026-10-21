@@ -29665,3 +29665,9 @@ with Sonnet searches; GitHub About set; Ross's WRDS page shows no full TAQ/Optio
   (split 0.8) / 10.2% (0.5) of k2 configs positive. Market correlation negative; costs applied. ERRATA counts are rows
   summed over 216 configs (reworded). Minor lookahead noted: split_level_breaks uses up to 5 future days. Registry,
   ERRATA updated; BUG-D119/D120 open pending Ross (amendment + re-run).
+- **CI green (2026-10-21 run, 388/388, 438 s).** Two more CI-only findings on the way: `_verify_macro_regimes` calls
+  macro.build() (live FRED/CFTC) -- removed from the list; `_verify_manifest_lock`'s unlocked control relied on timing
+  and never raced on the Linux runner -- now one barrier-forced round (exactly N_PROC-1 updates lost, 5/5 runs on Windows
+  and Linux). One intermittent native abort at interpreter exit (`_verify_liquid_bar_mask_sources`, rc -6 after 4/4
+  passed; 0/30 on CachyOS, passed on the next CI run) -- not explained; PYTHONFAULTHANDLER=1 set so a recurrence prints
+  its native traceback.
