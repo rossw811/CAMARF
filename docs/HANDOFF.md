@@ -1,4 +1,14 @@
-## 2026-10-20: RESUME HERE. Chain complete; re-derivation under way. Master plan: docs/PLAN_MASTER_2026-10-20.md
+## 2026-10-20 (afternoon): RESUME HERE. Ross's decisions in (docs/decisions/DECISIONS_2026-10-20.md).
+**Running on CachyOS:** sealed strategy-search eval (PID 120771, log logs/strategy_search_eval_sealed_20261020.log;
+unsealed output kept in output/research/strategy_search/_SUPERSEDED_unsealed_20261020/); arm (a) (logs/arm_a_20261020.log).
+**Found today:** (1) the sealed holdout (2026-01-01) was never enforced: Compustat Global and yfinance intraday run past
+it; search eval fixed (seal_trades), loader-level enforcement + intraday seal = ROSS. (2) Windowed discovery tiers gate
+CRSP legs to point-in-time S&P 500 members (papers say ~44,700 symbols) = ERRATA, gate-off arm = ROSS. (3) D14 twins:
+discovery finds 1 of 10. **Done:** N12, N15, N16, N3, D15; market-structure field; About text; librarian email and
+AI-disclosure drafts. **Next:** register C-006 with the sealed numbers + independent review; arm (a) result; N4 regime
+scripts; D17 waits on the intraday-seal decision.
+
+## 2026-10-20: Chain complete; re-derivation under way. Master plan: docs/PLAN_MASTER_2026-10-20.md
 Chain finished on CachyOS 10:07 on the fixed code (suite gate 403/0). Pre-registered search: no selection passes
 (DSR 0.00-0.42). Paper edits applied + reviewed (0ec68ff6). D6 first cut withdrawn on review (D18 rule, not
 survivorship). 09-09 stash dropped (SHA in Development.md). WRDS: jobs 33/34 done; OptionMetrics/TAQ sample-only.
