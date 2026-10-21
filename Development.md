@@ -29679,3 +29679,40 @@ with Sonnet searches; GitHub About set; Ross's WRDS page shows no full TAQ/Optio
   p 0.056: "more overlap and higher coint_fraction -> LOWER OOS holding-up") does not reproduce -> CORRECTED/withdrawn.
   The new hedge-ratio-CV association rests on 24 positive events in one fold (median CV 0.229 held-up vs 0.009 not),
   counterintuitive, and the OOS backtests are exposed to BUG-D119 (trades across price holes): not citable.
+
+### Session 2026-10-21 (afternoon): Ross signs off on all five decisions; Amendment 5 built and running
+
+Ross: "i sign off on those" (docs/decisions/DECISIONS_2026-10-21.md).
+- **#2 Sealed holdout at the data layer (`seal.py`, c2471ebd).** Filtering in each reader would have left ~70 scripts
+  that read price caches directly to remember the rule, so sealed rows now live outside the working caches: writers
+  (DataStore.save, data_wrds fetch, data_ibkr, data_crypto) route them to `output/cache/_sealed_vault/` (inside
+  CACHE_DIR so a redirected cache carries its vault; "_" dirs are not data by convention), `seal.py` sweeps and audits,
+  universe_loader/_read_one, DataStore.load and the IBKR reader drop them as a backstop, needs_refresh reads the vault's
+  last bar. Daily seal 2026-01-01, intraday 2026-10-21. `_verify_seal_data_layer.py` 15/15 (old code: writer, loader
+  and IBKR reader all let sealed rows through). Tried and corrected on the way: the first vault location
+  (`output/cache_sealed`, a config path) let two tests that redirect CACHE_DIR write synthetic 2026 rows into the REAL
+  vault (found by listing it; files checked synthetic and removed); a first test version wrote into the real IBKR
+  supplement dir through the reader's import-time constant (found, checked synthetic, removed; the test now redirects
+  it). Four tests had 2026 fixture dates the loader now hides (moved before the seal). CachyOS sweep: 1,717,363 rows from
+  18,850 daily files (34 entirely 2026); audit 0 of 82,489.
+- **#1 Amendment 5** (pre-registration, committed before any result): BUG-D119 `unrealizable_gap` in pnl_dollar
+  (> 5 business days without a valid price in either leg inside a trade, incl. stale entry/exit; excluded and counted,
+  `trade_status_counts.parquet`), 3/8 -> 8/8; real Amendment-4 trades: the reviewed GVKEY010137/015736 trade (2023 ->
+  2025-12-17 data_gap) flagged, 8 rows over 12 configs per pool. D118 rule on consecutive valid prices + rebuild from
+  originals (pre-seal) + residual quarantine, 16/16 (old code also misread a spike after NaN rows as a break). The
+  chain's first rebuild crashed on two close spikes (masking one hid the next; my new code) -- reproduced, fixed
+  (2c0c0f6a), dry-run over all 15,082 labels clean (599 split, 832 segment files vs Amendment 4's 836), chain restarted.
+  BUG-D120 `build_pit_pool` 7/7; on the Amendment-4 windows k1 774 (443 in the whole-history set), k2 81 (69).
+  The search keeps one evaluation end (2025-12-31) for every timeframe: its splits are calendar fractions of one span.
+  Chain: `debug/_tmp_chain_a5_20261021.sh` (Amendment 4 eval outputs and pools kept in output/research/_superseded_a4_20261020).
+- **#4 report.py figures only (b19b11ea).** Generated LaTeX paper, tables and bib removed (997 of 1,974 lines left); the
+  stale output/report/main.tex (still 7 "Strictness/miscalibrated" mentions) moved to _retired_latex_20261021/;
+  reproduce.py's "ML gate deferred" strings (X-C14). `_verify_report_figures_only.py` 0/2 -> 2/2.
+- **#3 Johansen trios, restricted-constant arm (ffbc2f7f).** n-variate case-2 trace test, critical values simulated per
+  number of common trends with a 1/T response surface. Synthetic trios T 500: size 4.0% (statsmodels det 0: 7.7%);
+  power with intercept 20: 100% vs production det -1 3.3% -- production's trio test is close to powerless on
+  intercept-bearing relations. ERRATA row added (PAPER.md's Reimers / trace-vs-max-eig / weak-exogeneity results rest on
+  det -1). Real-trio comparison script ready; runs once the Amendment-5 pools exist.
+- **#5 N14** `research/eg_null_correlation_matched_n14.py` (stationary block bootstrap of joint returns; power arm with
+  AR(1) spreads of half-life 10/40/120 at the pair's own residual scale); synthetic 5/5 (0/1 without the module). 1h
+  running on the Surface; 1D on CachyOS after the chain (both RAM-heavy steps must not overlap).

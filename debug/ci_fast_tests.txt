@@ -396,3 +396,4 @@ debug/_verify_pnl_unrealizable_gap_d119.py
 debug/_verify_pit_pool_membership_d120.py
 debug/_verify_report_figures_only.py
 debug/_verify_johansen_trio_restricted.py
+debug/_verify_eg_null_correlation_matched_n14.py
