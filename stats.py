@@ -174,7 +174,8 @@ def _load_spread_series(symbol_a: str, symbol_b: str, tf_label: str) -> Optional
             spread = df["spread"].dropna()
             if len(spread) >= 20:
                 return spread
-        except Exception:
+        except Exception as e:   # W6.4 (2026-10-20): was silent
+            log.warning(f"_load_spread_series: unreadable {path} ({type(e).__name__}: {e}) -- trying the next candidate")
             continue
     return None
 
@@ -200,7 +201,8 @@ def _load_spread_df(symbol_a: str, symbol_b: str, tf_label: str) -> Optional[pd.
                 df = df.loc[(df["gap_flag_a"] != 4) & (df["gap_flag_b"] != 4)]
             if len(df) >= 20:
                 return df
-        except Exception:
+        except Exception as e:   # W6.4 (2026-10-20): was silent
+            log.warning(f"_load_spread_df: unreadable {path} ({type(e).__name__}: {e}) -- trying the next candidate")
             continue
     return None
 
@@ -519,7 +521,8 @@ def _fit_gpd(values: np.ndarray) -> Tuple[float, float, float, int]:
     try:
         xi, loc, sigma = genpareto.fit(exceedances, floc=0)
         return float(xi), float(sigma), float(threshold), len(exceedances)
-    except Exception:
+    except Exception as e:   # W6.4 (2026-10-20): was silent
+        log.warning(f"_fit_gpd: GPD fit failed on {len(exceedances)} exceedances ({type(e).__name__}: {e}) -- NaN")
         return np.nan, np.nan, float(threshold), len(exceedances)
 
 
@@ -629,7 +632,8 @@ def _fit_garch_residuals(series: np.ndarray) -> Optional[np.ndarray]:
         resid = res.resid
         std_resid = resid / np.where(cond_vol > 1e-10, cond_vol, 1e-10)
         return std_resid
-    except Exception:
+    except Exception as e:   # W6.4 (2026-10-20): was silent
+        log.warning(f"_fit_garch_residuals: GARCH(1,1) fit failed on {len(series)} obs ({type(e).__name__}: {e})")
         return None
 
 
@@ -806,8 +810,8 @@ def run_montecarlo(trades: pd.DataFrame, daily_pnl: pd.DataFrame) -> Dict[str, p
                     "log_lik": log_lik_g, "aic": aic_g, "bic": bic_g, "params": str(params_g),
                 })
                 log.info("    garch11_normal_resid: AIC=%.1f  BIC=%.1f", aic_g, bic_g)
-            except Exception:
-                pass
+            except Exception as e:   # W6.4 (2026-10-20): was silent
+                log.warning(f"    garch11_normal_resid row skipped ({type(e).__name__}: {e})")
 
     dist_df = pd.DataFrame(dist_rows)
     if len(dist_df):
@@ -1032,8 +1036,8 @@ def run_permutation_test(
         try:
             port = pd.read_parquet(port_path)
             backtest_sharpe = float(port.iloc[0]["sharpe_portfolio"])
-        except Exception:
-            pass
+        except Exception as e:   # W6.4 (2026-10-20): was silent -- the reference Sharpe stays NaN, said so
+            log.warning(f"  [S6 Permutation] reference Sharpe unreadable from {port_path} ({type(e).__name__}: {e})")
 
     # Build realized closed-trade daily P&L, zero-filled via portfolio_math
     # (NOT a plain groupby(exit_date), which silently drops zero-P&L calendar
