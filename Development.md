@@ -29457,3 +29457,51 @@ x 4 splits = 1,728 trials, guard 216 fresh trade files per pool) -> search eval.
 k1 0.7 +0.240 / 0.070 / 0.55; k1 0.8 -0.039 / 0.422 / 0.21; k2 0.5 +0.250 / 0.004 / 0.85; k2 0.6 +0.421 / 0.001 / 0.77;
 k2 0.7 +0.359 / 0.089 / 0.61; k2 0.8 -0.456 / 0.138 / 0.21. Best single holdout trial 0.859 (k1) -- post hoc, not a
 selection. C-006 ("no robust signal") holds on the PIT-fixed pools; to be registered with these numbers.
+
+### Session 2026-10-20 (afternoon): Ross's decisions; sealed-holdout breach found and fixed in the eval; N15, N12, N16, D14/D15
+**Decisions** (docs/decisions/DECISIONS_2026-10-20.md): six rules and every proposed row approved; IBKR at scale dropped
+(confirmed); Singha / HLPPL dropped; jump-model regimes yes (comparison arm vs HMM); market-structure field yes; Opus
+with Sonnet searches; GitHub About set; Ross's WRDS page shows no full TAQ/OptionMetrics entitlement; no memtest.
+- **GitHub About.** The approved triage text said "US market (~45,000 securities)"; ~44,700 is the merged universe
+  incl. Compustat Global, so I set "a ~44,700-symbol WRDS universe (CRSP US incl. delisted + Compustat Global)".
+- **Market-structure reading** added to every claims-registry entry (C-001..C-008) and to the Fields line.
+- **Sealed holdout breach (found registering C-006).** The 2026-10-12 declaration (no result on data dated
+  2026-01-01+) assumed every cache ends 2025-12-31. CRSP does; Compustat Global 1D runs to 2026-08-11 and yfinance
+  intraday to 2026-08-21, and no code enforced the date. The Amendment-4 eval took T_end = the last trade exit
+  (2026-08-11): k1 8,841 / k2 1,507 trade exits on sealed dates (all 1D Compustat Global in the sampled config).
+  Discovery: 24,898 of 1,715,890 1D and 155,407 of 287,170 1h Tier-3 windows end on sealed dates (rejected: 1 and
+  5; the 5 k1 pairs eligible only from 2026-08-31). Pool eligibility is point-in-time (BH at each month-end over
+  windows concluded by then, `purity_pit_eligibility.pit_kth_rejection_dates`), so pre-seal eligibility does not
+  depend on sealed data. Fix: `Config.DATA.SEALED_FROM = "2026-01-01"`, `strategy_search.seal_trades` drops every trade
+  exiting on/after it (tz-safe); failing-first `_verify_strategy_search.py` 9/10 -> 12/12 (6b7f7d0a). The unsealed
+  output is kept in `output/research/strategy_search/_SUPERSEDED_unsealed_20261020/` (CachyOS); the sealed eval is
+  re-running. ERRATA row added. OPEN (Ross): enforcement at the loader for every source, and Compustat Global /
+  intraday 2026-01..08 can no longer serve as an untouched holdout.
+- **N15 aligned_pair_loader.** Read the yfinance cache first (WRDS only if yfinance had nothing) and the IBKR
+  supplement by default -- rule 2 twice -- and used Compustat Global's local `close` when `close_usd` existed. New
+  `universe_loader.load_symbol` applies load_full_universe's rules (WRDS priority via `_use_total_return`, the D17
+  rule now in one helper `_d17_different_security` used by both, PERMNO<n> reachable, IBKR opt-in); aligned_pair_loader
+  routes through it. Failing-first `_verify_load_symbol_priority.py` 0/1 -> 8/8 (ff15233c). Real data (CachyOS):
+  NTRS/STT/AAPL/KO now equal load_full_universe exactly (WRDS TR to 2025-12-31); the old path returned yfinance to
+  2026-09-25 (shorter history, sealed dates). 68 research files import the loader; their earlier 1D outputs were on
+  yfinance and are pre-fix (already cut from the papers unless re-run).
+- **N12.** Registry M-039 now matches ERRATA: BUG-D115 zero crashes on the 10-12 run and on the 10-20 1D discovery
+  (log: Tier 1 `n_crashed_counted_p1: 0` of 1,058,994; Tier 2/3 "counted as p=1.0 in BH's m: 0"). Intraday scans do
+  not log the count. **N16.** D11 check asserts the one-direction rate (5.0%, inside the 99% band; max-p 2.0% <= it).
+- **D15:** no pair in k1/k2 (raw or clean) touches any of the 85 unresolved labels. Clean step: k1 443 -> 416 (26
+  same-company, 1 structural), k2 69 -> 48 (20, 1); 0 dual-listed twins and 0 unverified legs reached the pools.
+- **D14 positive controls** (`research/dlc_positive_controls_d14.py`, check 6/6; output
+  `output/research/dlc_positive_controls_d14.parquet`): 10 dual-listed companies have both sides in the data, 22
+  twin label pairs. Discovery finds 1 company (Unilever: two GVKEY-vs-UN pairs Tier 1 FDR-confirmed); 0 twin pairs have
+  any Tier-3 window tested. Causes measured so far: 13 of 22 pairs have < 2,520 common bars (Compustat Global
+  coverage of the DLC sides is short, e.g. Rio Tinto 1985-1995, ABB 1988-1999); daily return correlations are low where
+  the legs close in different time zones (Rio 0.14-0.25, ABB 0.11-0.26, Carnival 0.30). Eight pairs clear 2,520 bars
+  and corr 0.6 (Unilever x4, Shell x2, RELX, Mondi) and still had 0 windows tested -- a later Tier-3 gate removed them
+  (S&P 500 membership gate for CRSP legs, rolling ADV, candidacy date): NOT yet diagnosed which. Queued: per-gate
+  counts for these 8 via build_rolling_eg_tasks. This bears on E1 (power of the screen on known pairs).
+- **AI-disclosure lookup** (Sonnet search): docs/drafts/AI_DISCLOSURE_POLICIES_2026-10-20.md -- no program has an AI
+  field; all require the application text to be the applicant's own; Columbia items unverified (403).
+- **Librarian email** redraft: docs/drafts/LIBRARIAN_EMAIL_2026-10-20.md (for Ross to send).
+- Process slip: I started a full-universe load on the Surface (RAM-heavy; the standing rule says CachyOS) and stopped
+  it within 10 min; re-run on CachyOS. A wait loop used `pgrep -f` over ssh, which matched its own shell; replaced
+  with `kill -0 <pid>`.
