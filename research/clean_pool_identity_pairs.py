@@ -122,6 +122,17 @@ def dlc_twin(a: str, b: str, ids: dict, sides: dict) -> bool:
     return any((ia & A and ib & B) or (ia & B and ib & A) for A, B in sides.values())
 
 
+def discovery_arm(a: str, b: str, tf_label: str = "1D") -> str:
+    """S31 / R1.3 option (c) (Ross 2026-10-10): which discovery arm a pool pair belongs to. The 1D scan's point-in-time
+    S&P 500 membership gate applies only when both legs resolve to a CRSP PERMNO (US-US); a Compustat Global (GVKEY)
+    leg is never gated; the intraday scans have no membership gate. Results are reported per arm, never pooled across
+    gated and ungated pairs. debug/_verify_pool_arm_s31.py"""
+    if str(tf_label) != "1D":
+        return "intraday_ungated"
+    g = str(a).startswith("GVKEY") + str(b).startswith("GVKEY")
+    return {0: "us_us_gated", 1: "mixed", 2: "international"}[g]
+
+
 def structural_pair(a: str, b: str) -> bool:
     """Amendment 4 (Ross 2026-10-15): production's structural-pair whitelists (analysis.CrossAssetTagger: ETFs tracking
     the same index, share classes of one company). The pool step never called them; SPY/VOO@1h reached the k=2 pool."""
@@ -206,6 +217,8 @@ def main():
                          "n_common": n, "identity": ident, "same_company": same, "unverified_leg": unver, "dlc_twin": twin, "structural": structural})
             keep.append(not ident and not same and not unver and not twin and not structural)
         C = P[np.array(keep)].reset_index(drop=True)
+        C["arm"] = [discovery_arm(a, b, t) for a, b, t in zip(C["symbol_a"], C["symbol_b"],
+                                                               C.get("tf_label", pd.Series("1D", index=C.index)))]
         C.to_parquet(os.path.join(_R, f"purity_pairs_pit_k{k}_clean.parquet"))
         R = pd.DataFrame([x for x in rows if x["k"] == k])
         print(f"k={k}: {len(P)} -> {len(C)} (removed {int(R['identity'].sum())} identity pairs, "
