@@ -29655,3 +29655,13 @@ with Sonnet searches; GitHub About set; Ross's WRDS page shows no full TAQ/Optio
   X-C04 dead loss limits removed; X-C05 portfolio_sim docstring; DEV-022 .ps1 runner removed; DEV-025 annotations;
   N18 CONTRIB-032; D15 at load (unresolved labels dropped in load_full_universe / load_symbol); S31 (c) pool arm column;
   S33 tiers (PO on the legs, KPSS out of the tier).
+- **Independent review of the seal fix + C-006 (adversarial-reviewer, 2026-10-21; scripts /tmp/a1-a10.py on CachyOS).**
+  CLAIM A (seal) QUALIFY: enforced correctly, no selection effect from dropping straddlers (re-added at the 2025-12-31
+  mark: k2 positive shares 0.968/0.977/0.935/0.880; selected Sharpes unchanged except split 0.7 0.436 -> 0.444); but
+  "eligibility is PIT, so only pre-seal data" over-claims: pool membership is whole-history (BUG-D120). CLAIM B (C-006)
+  numbers reproduce exactly; verdict holds; the "pool-level effect" reading REFUTED: k2 positivity is one pair's trade
+  across an 810-day price hole (BUG-D119; re-checked by hand: leg B GVKEY015736_01W largest gap 810 days, TR 175.88 ->
+  11.56, trade 71 of e2.5_legacy45_rearm1_x0.5_mh3_none +$21,957.82, exit_reason data_gap). Without the top 5 pairs 1.4%
+  (split 0.8) / 10.2% (0.5) of k2 configs positive. Market correlation negative; costs applied. ERRATA counts are rows
+  summed over 216 configs (reworded). Minor lookahead noted: split_level_breaks uses up to 5 future days. Registry,
+  ERRATA updated; BUG-D119/D120 open pending Ross (amendment + re-run).

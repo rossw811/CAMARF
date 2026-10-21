@@ -144,10 +144,17 @@ The C-entries below are claims re-derived one by one on current data.
   k1 0.5 -0.353 / 0.000 / 0.60; 0.6 +0.428 / 0.011 / 0.52; 0.7 -0.015 / 0.034 / 0.28; 0.8 -0.135 / 0.000 / 0.17;
   k2 0.5 +0.284 / 0.000 / 0.31; 0.6 +0.314 / 0.000 / 0.92; 0.7 +0.436 / 0.069 / 0.84; 0.8 +0.438 / 0.215 / 0.64.
   Reported regardless (not significant): 80.3% of all 1,728 trials have a positive holdout Sharpe (median 0.303, best
-  1.036 = k1 0.7 e2.0_legacy45_rearm0_x0.5_mh1_momentum, post hoc); k2 89-97% positive in every split, k1 58-74%. That
-  nearly every k2 configuration is positive points to a pool-level effect (common exposure, cost model, the shared
-  2021-10..2025-12 holdout -- the four holdouts are nested), not to selection skill; it is to be diagnosed, not read as
-  a signal. Output `output/research/strategy_search/{summary,all_trials}.parquet` (CachyOS, 2026-10-20 21:54).
+  1.036 = k1 0.7 e2.0_legacy45_rearm0_x0.5_mh1_momentum, post hoc); k2 89-97% positive in every split, k1 58-74%. **Independent review (2026-10-21) --
+  verdict QUALIFY, the "pool-level effect" reading REFUTED:** k2's near-universal positivity is one Compustat Global pair
+  (GVKEY010137_01W / GVKEY015736_01W), mostly one trade carried through an 810-day hole in leg B's prices (no valid
+  close_total_return 2023-09-29 -> 2025-12-17; total return 175.88 -> 11.56) and booked at exit_reason `data_gap` for
+  +$21,958 per $10k (e2.5_legacy45_rearm1_x0.5_mh3_none; re-checked by hand). Without the top 5 pairs the share of k2
+  configurations with a positive summed holdout falls from 84.3% to 1.4% (split 0.8) and from 96.3% to 10.2% (split 0.5);
+  k1 82.4% -> 65.7%. Holdout P&L is NEGATIVELY correlated with the market (k2 -0.09 to -0.14; k1 split 0.8 -0.38); costs
+  are applied ($0.005/share + 5 bps per side). Straddling trades dropped by the seal do not change the reading
+  (marked at 2025-12-31 and added back: k2 positive shares 0.968/0.977/0.935/0.880). Two defects behind it (BUG-D119,
+  BUG-D120, ERRATA): trades booked across multi-year price holes, and pool MEMBERSHIP set by a whole-history BH cutoff
+  (only the eligibility DATE is point-in-time). The verdict "no robust signal" stands; both defects inflate, not hide. Output `output/research/strategy_search/{summary,all_trials}.parquet` (CachyOS, 2026-10-20 21:54).
 - **Market-structure reading:** fails if the cost and execution model is wrong for the pool: too harsh for liquid US large caps (a hidden signal), or too lenient for thin Compustat Global legs, borrow-constrained shorts and non-synchronous home-market closes (a hidden loss).
 
 ## C-007 — Code and arithmetic claims (S34 central; re-derived 2026-10-10)
