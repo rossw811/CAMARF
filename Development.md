@@ -29568,3 +29568,13 @@ with Sonnet searches; GitHub About set; Ross's WRDS page shows no full TAQ/Optio
 - **reproduce.py / report.py.** report.py's generated LaTeX paper (output/report/main.tex) still states withdrawn
   results (Gold/Silver/Bronze tiers, the White Reality Check p, "ML gate deferred, n = 40", "no CRSP survivorship
   correction", "international not explored"). Fixing only the ML strings (X-C14) would be a bandaid; decision for Ross.
+- **X-M21 JOHANSEN_DET_ORDER: approved fix ("det_order 0") NOT applied -- it is wrong.** Simulation (statsmodels
+  coint_johansen, k_ar_diff 1, n = 500, 300 reps, 5% trace test at r = 0): two cointegrated random walks with spread
+  intercept c and AR(0.7) noise -- power det -1 / det 0: c = 0 1.00 / 1.00; c = 5 1.00 / 1.00; c = 20 0.57 / 1.00
+  (in log prices the intercept is large relative to daily noise, so -1 loses power on real pairs). Independent random
+  walks (size): det -1 5.7%, det 0 11.7% -- statsmodels' det_order 0 is the unrestricted constant (case 3 critical
+  values), which over-rejects when the levels have no drift. The correct specification is the restricted constant
+  (case 2), as arm (a) uses (`research/cointegration_estimator_arms.johansen_trace` + simulated `johansen_crit`), but
+  that is bivariate; production's Johansen runs on trios (analysis.py:4674, 4961; research/reimers_trio_correction.py,
+  weak_exogeneity_test.py). Recommendation to Ross: build the restricted-constant trio test as a comparison arm
+  (simulated critical values per rank and window length), compare on the real trios, then switch. Until then -1 stays.
