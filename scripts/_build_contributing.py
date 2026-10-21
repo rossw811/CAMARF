@@ -243,12 +243,11 @@ flags that generated it) or `python reproduce.py --verify-only` (confirm outputs
 without re-running anything). The reproducibility chain -- use this before citing any `PAPER.md`
 number to confirm it's still backed by a real, current output file.
 
-### `run_overnight_research.py` / `run_overnight_research.ps1` -- unattended multi-script orchestration
-**Run:** `python run_overnight_research.py --help` for flags (cross-platform, works on CachyOS/
-Linux where PowerShell doesn't exist) or the `.ps1` version on Windows. Both write to the same
-`logs/overnight/` layout and share the same `_completed_stages.txt` state file, so a run started
-by one can be resumed by the other. Parallelizes the ~13 `backtest.py` variant stages as one batch
-(`.py` version only).
+### `run_overnight_research.py` -- unattended multi-script orchestration
+**Run:** `python run_overnight_research.py --help` for flags (cross-platform: Windows and CachyOS/Linux).
+Writes to `logs/overnight/` with a plain-text `_completed_stages.txt` state file (resumable), and
+parallelizes the ~13 `backtest.py` variant stages as one batch. (The original `run_overnight_research.ps1`
+was removed 2026-10-20, DEV-022: it lacked the fix excluding the discovery scan from the research stages.)
 
 ### `scripts/pre_commit_verify.py` -- targeted pre-commit verify-suite gate
 **Run:** wired as a git pre-commit hook; standalone via `python scripts/pre_commit_verify.py`.
@@ -437,13 +436,9 @@ For a single-timeframe debug run instead of the full ~13-timeframe sweep:
 python analysis.py --timeframes 1h
 ```
 
-**Running the full non-fetch pipeline unattended (overnight/multi-script):** two orchestrators
-exist, both write to the same `logs/overnight/` layout and share the same plain-text
-`_completed_stages.txt` state file, so a run started by one can be resumed by the other --
-`run_overnight_research.ps1` (Windows/PowerShell, the original) and `run_overnight_research.py`
-(cross-platform, works on CachyOS/Linux where PowerShell doesn't exist at all; also parallelizes
-the 13 `backtest.py` variant stages as one batch instead of running them sequentially). Use
-whichever matches your OS; `python run_overnight_research.py --help` for flags.
+**Running the full non-fetch pipeline unattended (overnight/multi-script):** `run_overnight_research.py`
+(cross-platform; writes `logs/overnight/` with a resumable `_completed_stages.txt`; parallelizes the 13
+`backtest.py` variant stages as one batch). `python run_overnight_research.py --help` for flags.
 
 **Linting:** `pyproject.toml`/`[tool.ruff]` is currently a report-only pyflakes+syntax-error
 check, not enforced automatically -- `ruff check .` from the project root to see current findings.

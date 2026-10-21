@@ -1,11 +1,11 @@
 """
-run_overnight_research.py -- cross-platform (Windows + Linux) replacement for
+run_overnight_research.py -- cross-platform (Windows + Linux) orchestrator, the replacement for
 run_overnight_research.ps1, built 2026-08-20 (software optimization audit
 item 4, plus Ross's direct request that the project's orchestration be
-usable on CachyOS, not just the Windows box).
+usable on CachyOS, not just the Windows box). The .ps1 was removed 2026-10-20
+(DEV-022: it never got the fix excluding the discovery scan); this is the one orchestrator.
 
-WHY A NEW FILE, NOT AN EDIT TO THE .ps1: run_overnight_research.ps1 stays
-exactly as-is -- the Windows box still uses it, and it has a real, hard-won
+WHY A NEW FILE, NOT AN EDIT TO THE .ps1 (history): the .ps1 had a real, hard-won
 bug history (documented inline there: ExitCode misreporting, an async-read
 deadlock, a .NET 5+-only Kill(true) overload that silently did nothing on
 Windows PowerShell 5.1) that this file does NOT need to re-litigate, since

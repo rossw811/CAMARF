@@ -501,8 +501,9 @@ class UniverseConfig:
     # 0.40 surfaces equity pairs (0.60 was too
     # restrictive — filtered all equities at daily)
     MIN_ADF_PVALUE = 0.10  # spread must show ADF p < 0.10 to proceed
-    MAX_HALF_LIFE_DAYS = 90  # OU half-life ceiling — beyond this, not tradeable
-    MIN_HALF_LIFE_DAYS = 1  # OU half-life floor — below this, too noisy
+    # Not read by any code (DEV-025, re-checked 2026-10-20): no pair is filtered on these; kept only as stated values.
+    MAX_HALF_LIFE_DAYS = 90  # (unused) OU half-life ceiling
+    MIN_HALF_LIFE_DAYS = 1  # (unused) OU half-life floor
 
     # Episodic-cointegration defense (post-EG, applied in analysis.py's
     # coint_frac filter). Documented design has always said 0.70; this
@@ -759,7 +760,8 @@ class BacktestConfig:
     # limit that is not enforced misleads).
 
     # Layer 1 event-driven baseline (Ross Q&A 2026-06-28)
-    MAX_HALF_LIFE = 50           # pair-selection ceiling: half_life_rolling > this → excluded
+    MAX_HALF_LIFE = 50           # entry ceiling on half_life_at_entry, applied ONLY with the STORM arm flag
+                                 # --storm-max-half-life-filter (off by default; DEV-025, re-checked 2026-10-20)
     ENTRY_ZSCORE = 3.0           # |z_rolling| >= this triggers entry. Raised from 2.0, 2026-08-17
         # (Ross: "if the increased z score yields better results let's do that"), per
         # docs/FINDINGS.md #27 (Thread G Phase 2, real 4x3 factorial, IS+OOS, 182-pair Purity

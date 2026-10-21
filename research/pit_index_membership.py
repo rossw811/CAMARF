@@ -1,7 +1,8 @@
 """
 research/pit_index_membership.py -- point-in-time S&P MidCap 400 / SmallCap 600 holdings from free SEC filings of
-index ETFs (DEV-058; Ross 2026-10-03: "verify more, then a comparison arm"). Source rationale and the first check
-(37/38 announced changes agree on the 2019-09-23 rebalance): docs/PIT_INDEX_MEMBERSHIP_SOURCES.md.
+index ETFs (DEV-058; Ross 2026-10-03: "verify more, then a comparison arm"). Source rationale and the check against S&P's
+announcements (76/78 changes agree, 2012-09 -> 2026-01; the first check was 37/38 on the 2019-09-23 rebalance):
+docs/PIT_INDEX_MEMBERSHIP_SOURCES.md.
 
 What it does
 ------------
