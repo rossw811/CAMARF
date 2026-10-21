@@ -88,7 +88,7 @@ def main():
     )
 
     # Confirm the actual function runs cleanly end-to-end on this synthetic setup.
-    null_pvals = _circular_shift_null(a, b, max_lag=5, n_perm=20, rng=np.random.default_rng(4))
+    null_pvals = _circular_shift_null(a, b, max_lag=5, n_perm=20, rng=np.random.default_rng(4), tf_label="1D")
     print(f"\n_circular_shift_null produced {len(null_pvals)}/20 usable null p-values.")
     assert len(null_pvals) > 0, "Fixed function produced no usable null draws"
 

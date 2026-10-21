@@ -48,12 +48,11 @@ import sys
 
 import numpy as np
 import pandas as pd
-from statsmodels.tsa.stattools import coint
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from aligned_pair_loader import load_aligned_pair
-from analysis import Config
+from analysis import Config, eg_pvalue_pair, longest_gap_respecting_segment
 from data import _clean_close
 
 _TF_DIRS = [
@@ -77,19 +76,23 @@ def _gap_masked_log_price(df):
     return log_p
 
 
-def _eg_pvalue(a, b, max_lag):
-    mask = np.isfinite(a) & np.isfinite(b)
-    a_, b_ = a[mask], b[mask]
+def _segment(a, b, tf_label):
+    """The production EG segment: the longest common run that never spans a genuine data gap (as _eg_worker uses).
+    X-M15 (2026-10-20): this script used to splice a[isfinite(a)&isfinite(b)] across gaps and run one direction."""
+    keep = longest_gap_respecting_segment(np.isfinite(a) & np.isfinite(b), tf_label)
+    return a[keep], b[keep]
+
+
+def _eg_pvalue(a, b, max_lag, tf_label):
+    """Production EG p-value (analysis.eg_pvalue_pair: both directions, max p) on the production segment."""
+    a_, b_ = _segment(a, b, tf_label)
     if a_.size < 60:
         return None
-    try:
-        _, pval, _ = coint(a_, b_, trend="c", maxlag=max_lag, autolag="aic")
-        return float(pval)
-    except Exception:
-        return None
+    p, _ = eg_pvalue_pair(a_, b_, max_lag, tf_label)
+    return p
 
 
-def _circular_shift_null(a, b, max_lag, n_perm, rng):
+def _circular_shift_null(a, b, max_lag, n_perm, rng, tf_label):
     """Shift b by a random amount (wrap-around) WITHIN the fixed real-data
     overlap mask, preserving b's own autocorrelation structure (within that
     overlap) while breaking temporal alignment with a.
@@ -108,8 +111,7 @@ def _circular_shift_null(a, b, max_lag, n_perm, rng):
     share the exact same N and the exact same set of (a,b) positions,
     isolating the temporal-alignment-breaking effect this permutation is
     meant to test."""
-    fixed_mask = np.isfinite(a) & np.isfinite(b)
-    a_fixed, b_fixed = a[fixed_mask], b[fixed_mask]
+    a_fixed, b_fixed = _segment(a, b, tf_label)   # the same segment as the real-data test (X-M15)
     n = len(b_fixed)
     if n < 60:
         return np.array([])
@@ -117,11 +119,9 @@ def _circular_shift_null(a, b, max_lag, n_perm, rng):
     for _ in range(n_perm):
         shift = rng.integers(1, n)  # never shift==0 (that's the real data)
         b_shifted = np.roll(b_fixed, shift)
-        try:
-            _, pval, _ = coint(a_fixed, b_shifted, trend="c", maxlag=max_lag, autolag="aic")
+        pval, _ = eg_pvalue_pair(a_fixed, b_shifted, max_lag, tf_label)
+        if pval is not None:
             null_pvals.append(float(pval))
-        except Exception:
-            continue
     return np.array(null_pvals)
 
 
@@ -157,11 +157,11 @@ def main():
                 continue
             a_vals, b_vals = joined["a"].values, joined["b"].values
 
-            real_p = _eg_pvalue(a_vals, b_vals, max_lag)
+            real_p = _eg_pvalue(a_vals, b_vals, max_lag, tf_label)
             if real_p is None:
                 print(f"SKIP {sym_a}/{sym_b}@{tf_label}: EG failed on real data")
                 continue
-            null_pvals = _circular_shift_null(a_vals, b_vals, max_lag, args.n_perm, rng)
+            null_pvals = _circular_shift_null(a_vals, b_vals, max_lag, args.n_perm, rng, tf_label)
             if len(null_pvals) == 0:
                 print(f"SKIP {sym_a}/{sym_b}@{tf_label}: all permutations failed")
                 continue
