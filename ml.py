@@ -563,6 +563,22 @@ def model_dir_for(pair_source: Optional[Dict[str, Any]]) -> str:
     return base if (pair_source is None or pair_source.get("canonical_model", True)) else os.path.join(base, "descriptive")
 
 
+def _seal_examples(df: pd.DataFrame) -> pd.DataFrame:
+    """Sealed holdout (E13; enforced 2026-10-20): drop examples whose entry or label end is on/after
+    Config.DATA.SEALED_FROM, and those with an unknown label end (cannot be shown to stay before it)."""
+    if df.empty:
+        return df
+    sealed = pd.Timestamp(Config.DATA.SEALED_FROM)
+    def _naive(c):
+        t = pd.to_datetime(df[c])
+        return t.dt.tz_localize(None) if getattr(t.dt, "tz", None) is not None else t
+    keep = (_naive("entry_time") < sealed) & (_naive("label_end_time") < sealed)
+    if (~keep).any():
+        log.info(f"  sealed holdout: dropped {int((~keep).sum())} of {len(df)} examples on/after {sealed.date()} "
+                 f"or with no label end")
+    return df[keep].reset_index(drop=True)
+
+
 def build(min_class_samples: Optional[int] = None, pit_safe: bool = False, pool: str = "k2",
           full_sample_descriptive: bool = False) -> MLResult:
     """
@@ -709,7 +725,7 @@ def build(min_class_samples: Optional[int] = None, pit_safe: bool = False, pool:
             pairs_skipped.append((symbol_a, symbol_b, tf_label, "zero labeled entry events"))
     summary.pairs_skipped = pairs_skipped
 
-    examples_df = pd.DataFrame([vars(e) for e in all_events])
+    examples_df = _seal_examples(pd.DataFrame([vars(e) for e in all_events]))
     if not examples_df.empty:
         # label stays the granular 4-class outcome on every record regardless
         # of training scheme — nothing is lost by collapsing for training.
