@@ -127,6 +127,20 @@ The C-entries below are claims re-derived one by one on current data.
   BUG-D118 (Compustat Global price breaks; 29% of the k = 2 pool affected) and is being re-run under Amendment 4
   (committed 27b7d4a7 before any result). Disclosed evaluation deviations (kept for comparability): the DSR uses the
   selected configuration's unconstrained development Sharpe, and Var[SR] is over 216 trials while N = 432.
+- **Amendment 4 result (2026-10-20, sealed; REGISTERED pending independent review).** Re-run chain on the fixed code
+  (PIT pools, PIT spread fix 89ececc4, strict engine; HEAD bae863a9 for the run, eval re-run on 6b7f7d0a). Pools: k1 416
+  clean pairs (411 1D + 5 1h), k2 48 (1D); 216 configurations x 2 pools x 4 splits = 1,728 trials (N = 432 per split).
+  The first eval used trades to 2026-08-11 (Compustat Global runs past CRSP's end; the 2026-01-01 seal was never
+  enforced -- ERRATA); it is kept as superseded (`output/research/strategy_search/_SUPERSEDED_unsealed_20261020/`) and
+  the eval was re-run with every trade exiting on/after 2026-01-01 dropped (`strategy_search.seal_trades`). **Result: no
+  selection passes in either pool.** Dev-selected configuration per split (holdout capital-sim Sharpe / DSR / PBO):
+  k1 0.5 -0.353 / 0.000 / 0.60; 0.6 +0.428 / 0.011 / 0.52; 0.7 -0.015 / 0.034 / 0.28; 0.8 -0.135 / 0.000 / 0.17;
+  k2 0.5 +0.284 / 0.000 / 0.31; 0.6 +0.314 / 0.000 / 0.92; 0.7 +0.436 / 0.069 / 0.84; 0.8 +0.438 / 0.215 / 0.64.
+  Reported regardless (not significant): 80.3% of all 1,728 trials have a positive holdout Sharpe (median 0.303, best
+  1.036 = k1 0.7 e2.0_legacy45_rearm0_x0.5_mh1_momentum, post hoc); k2 89-97% positive in every split, k1 58-74%. That
+  nearly every k2 configuration is positive points to a pool-level effect (common exposure, cost model, the shared
+  2021-10..2025-12 holdout -- the four holdouts are nested), not to selection skill; it is to be diagnosed, not read as
+  a signal. Output `output/research/strategy_search/{summary,all_trials}.parquet` (CachyOS, 2026-10-20 21:54).
 - **Market-structure reading:** fails if the cost and execution model is wrong for the pool: too harsh for liquid US large caps (a hidden signal), or too lenient for thin Compustat Global legs, borrow-constrained shorts and non-synchronous home-market closes (a hidden loss).
 
 ## C-007 — Code and arithmetic claims (S34 central; re-derived 2026-10-10)

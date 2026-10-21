@@ -29558,3 +29558,13 @@ with Sonnet searches; GitHub About set; Ross's WRDS page shows no full TAQ/Optio
   filter funnels 2026-08-23; near_miss/lead_lag/price_degeneracy 2026-06..08. The only paper use is PAPER.md §4.2.1's
   1M row (34,263 tested, 9 rejected), already labelled "pre-WRDS screen counts". A current 1M re-derivation waits on
   the loader-level seal decision (load_full_universe 1M merges yfinance monthly bars into 2026).
+- **C-006 sealed eval (CachyOS, finished 21:54; log logs/strategy_search_eval_sealed_20261020.log).** No selection passes
+  (both pools "no robust signal found"). Selected holdout Sharpe / DSR / PBO: k1 -0.353/0.000/0.60, +0.428/0.011/0.52,
+  -0.015/0.034/0.28, -0.135/0.000/0.17; k2 +0.284/0.000/0.31, +0.314/0.000/0.92, +0.436/0.069/0.84, +0.438/0.215/0.64.
+  Sealing moved the cutoffs earlier (T_end 2026-08-11 -> 2025-12-31) and changed k2 0.8 from -0.456 to +0.438. Trials:
+  80.3% positive holdout (median 0.303; best 1.036, post hoc); k2 89-97% positive in every split. Registered in C-006
+  (REGISTERED pending review). Open: what drives the near-universal k2 positivity (market beta of the pool P&L, cost
+  model, nested holdouts) -- part of the review.
+- **reproduce.py / report.py.** report.py's generated LaTeX paper (output/report/main.tex) still states withdrawn
+  results (Gold/Silver/Bronze tiers, the White Reality Check p, "ML gate deferred, n = 40", "no CRSP survivorship
+  correction", "international not explored"). Fixing only the ML strings (X-C14) would be a bandaid; decision for Ross.
