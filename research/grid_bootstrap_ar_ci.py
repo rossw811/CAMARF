@@ -73,7 +73,12 @@ def grid_bootstrap_ci(z, n_grid=60, n_boot=200, conf_level=0.90, rng=None, grid_
         return {"ok": False, "error": "insufficient_obs"}
 
     c_hat, rho_hat, resid_hat, se_hat = _ols_ar1(z_lag, z_t)
-    grid = np.linspace(max(rho_hat - grid_halfwidth, -0.999), min(rho_hat + grid_halfwidth, 0.999), n_grid)
+    # R6.5 (fixed 2026-10-20, debug/_verify_grid_bootstrap_unit_root_r65.py): the grid was capped at 0.999 and
+    # rho_hat +/- 0.15, so the set could never contain the unit root -- the point of Hansen (1999). Now: half-width
+    # max(grid_halfwidth, 6 se), and the upper end reaches past 1 (to 1.01, which keeps explosive bootstrap paths
+    # finite) whenever rho_hat + half-width does; a set touching either grid end is flagged, not reported as a bound.
+    h = max(grid_halfwidth, 6.0 * se_hat)
+    grid = np.linspace(max(rho_hat - h, -0.999), min(rho_hat + h, 1.01), n_grid)
     alpha = 1 - conf_level
 
     included = []
@@ -105,10 +110,13 @@ def grid_bootstrap_ci(z, n_grid=60, n_boot=200, conf_level=0.90, rng=None, grid_
 
     if not included:
         return {"ok": True, "rho_hat": rho_hat, "ci_lo": np.nan, "ci_hi": np.nan,
-                "n_obs": int(n), "note": "empty_confidence_set_widen_grid"}
+                "n_obs": int(n), "note": "empty_confidence_set_widen_grid", "ci_at_grid_edge": True}
+    lo, hi = float(min(included)), float(max(included))
+    # an end of the set on the grid's own end is a grid limit, not a bound -- except the deliberate 1.01 cap
+    at_edge = bool(np.isclose(lo, grid[0]) and grid[0] > -0.999) or bool(np.isclose(hi, grid[-1]) and grid[-1] < 1.01)
     return {
-        "ok": True, "rho_hat": rho_hat, "ci_lo": float(min(included)),
-        "ci_hi": float(max(included)), "n_obs": int(n),
+        "ok": True, "rho_hat": rho_hat, "ci_lo": lo,
+        "ci_hi": hi, "n_obs": int(n), "ci_at_grid_edge": at_edge,
     }
 
 
