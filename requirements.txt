@@ -81,3 +81,8 @@ arch==8.0.0
 #      DEVELOPMENT.md as the Lopez de Prado alternative feature-importance
 #      method, doesn't depend on numba).
 # =============================================================================
+
+# --- research/lstm_attention_*.py (LSTM/attention comparison arm, 2026-09-21; CachyOS) ---
+# Missing from this file until 2026-10-20 (found by the first CI run). Large; install only for that arm:
+#     pip install tensorflow==2.21.0
+# (not in the CI subset -- debug/ci_fast_tests.txt lists why)

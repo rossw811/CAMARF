@@ -212,7 +212,7 @@ debug/_verify_loader_timezones.py
 debug/_verify_loader_wrds_total_return.py
 debug/_verify_load_symbol_priority.py
 debug/_verify_log_price_map_common_index.py
-debug/_verify_lstm_attention_architecture.py
+# debug/_verify_lstm_attention_architecture.py -- needs tensorflow (optional install, requirements.txt); not in CI
 debug/_verify_lstm_attention_training.py
 debug/_verify_macro_daily_cot_availability.py
 debug/_verify_macro_regimes.py

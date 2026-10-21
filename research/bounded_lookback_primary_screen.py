@@ -61,7 +61,6 @@ import pandas as pd
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from statsmodels.tsa.stattools import coint
 
 from aligned_pair_loader import TF_DIRS, DIR_TO_LABEL, resolve_tf_results_dir, load_aligned_pair
 from data import GapFlag, clean_close
@@ -95,13 +94,17 @@ def _setup_logging():
     log.addHandler(fh)
 
 
-def eg_tier_on_window(log_a: np.ndarray, log_b: np.ndarray, index: pd.DatetimeIndex) -> Optional[dict]:
+def eg_tier_on_window(log_a: np.ndarray, log_b: np.ndarray, index: pd.DatetimeIndex,
+                      tf_label: str = "1D") -> Optional[dict]:
     """
     Full EG + hedge ratio + KPSS/PO tiering on one (log_a, log_b) window.
     Pure function — no I/O — so debug/_verify_bounded_lookback_primary_screen.py
     can call it directly on synthetic arrays. Returns None if insufficient data.
     """
-    mask = np.isfinite(log_a) & np.isfinite(log_b)
+    # 2026-10-20 (X-M15): production EG (both directions, max p) on production's longest gap-respecting segment --
+    # was one-direction coint() on a[isfinite(a)&isfinite(b)], splicing across gaps
+    from analysis import eg_pvalue_pair, longest_gap_respecting_segment
+    mask = longest_gap_respecting_segment(np.isfinite(log_a) & np.isfinite(log_b), tf_label)
     a = log_a[mask]
     b = log_b[mask]
     idx = index[mask]
@@ -109,7 +112,9 @@ def eg_tier_on_window(log_a: np.ndarray, log_b: np.ndarray, index: pd.DatetimeIn
     if n < 60:
         return None
 
-    t_stat, eg_pval, _crit = coint(a, b, trend="c", maxlag=_EG_MAX_LAG, autolag="aic")
+    eg_pval, _n = eg_pvalue_pair(a, b, _EG_MAX_LAG, tf_label)
+    if eg_pval is None:
+        return None
 
     b_c = b - b.mean()
     a_c = a - a.mean()
@@ -119,7 +124,7 @@ def eg_tier_on_window(log_a: np.ndarray, log_b: np.ndarray, index: pd.DatetimeIn
         return None
 
     spread = pd.Series(a - hr * b, index=idx)
-    tests = _run_coint_tests(spread, eg_pval)
+    tests = _run_coint_tests(a, b, spread, eg_pval)   # S33: PO on the legs
     tests["n_bars"] = n
     tests["hedge_ratio"] = hr
     tests["window_start"] = idx.min()
@@ -166,7 +171,7 @@ def main():
                 log_b = np.where(close_b > 0, np.log(close_b), np.nan)
             idx = common_idx
 
-            full = eg_tier_on_window(log_a, log_b, idx)
+            full = eg_tier_on_window(log_a, log_b, idx, tf_label)
             if full is None:
                 log.warning("SKIP %s/%s@%s: insufficient overlap for full-sample EG", sym_a, sym_b, tf_label)
                 continue
@@ -182,7 +187,7 @@ def main():
             for yrs in _LOOKBACK_YEARS:
                 cutoff = pd.Timestamp(idx.max()) - pd.Timedelta(days=int(yrs * 365.25))
                 bounded_mask = idx >= cutoff
-                bounded = eg_tier_on_window(log_a[bounded_mask], log_b[bounded_mask], idx[bounded_mask])
+                bounded = eg_tier_on_window(log_a[bounded_mask], log_b[bounded_mask], idx[bounded_mask], tf_label)
                 prefix = f"y{yrs}"
                 if bounded is None:
                     rec[f"{prefix}_tier"] = "insufficient_data"

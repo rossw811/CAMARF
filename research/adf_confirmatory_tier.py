@@ -1,4 +1,8 @@
 """
+STATUS 2026-10-20 (S33): the tiers this compares against changed (PO on the legs, KPSS out of the tier), and a
+standalone ADF on the ESTIMATED spread with univariate (Dickey-Fuller) critical values is mis-sized the same way the
+old PO proxy was (residual-based critical values are needed). Results from this script are not citable.
+
 CAMARF adf_confirmatory_tier.py — comparison/diagnostic method, NOT part of the
 production pipeline (research/ convention: reads existing spread_series_*.parquet,
 never fetches, never recomputes hedge ratios).
@@ -77,12 +81,15 @@ def run_adf_test(spread: np.ndarray) -> dict:
     return result
 
 
-def _kpss_po(spread: np.ndarray) -> dict:
+def _kpss_po(sym_a: str, sym_b: str, tf_label: str, spread: np.ndarray) -> dict:
     """Reuse stats.py's own KPSS+PO implementation directly (not a reimplementation)
     so the agreement comparison is apples-to-apples against what production actually
-    computes."""
+    computes. Since S33 (2026-10-20) PO runs on the legs, loaded the way stats.py loads them."""
     import stats as _stats_module
-    return _stats_module._run_coint_tests(pd.Series(spread), eg_pval=0.0)
+    log_a, log_b = _stats_module._load_leg_log_prices(sym_a, sym_b, tf_label)
+    if log_a is None:
+        return {"kpss_pval": np.nan, "po_pval": np.nan}
+    return _stats_module._run_coint_tests(log_a, log_b, pd.Series(spread), eg_pval=0.0)
     # eg_pval=0.0 forces eg_ok=True unconditionally here -- we only want this
     # helper's kpss/po numbers, not its n_confirm/tier (computed fresh below using
     # the real eg_pval from pairs.parquet).
@@ -116,15 +123,16 @@ def main():
 
             eg_pval = float(row.get("coint_pvalue_adjusted", 1.0))
             eg_ok = eg_pval < 0.05
-            kp = _kpss_po(spread)
+            kp = _kpss_po(sym_a, sym_b, tf_label, spread)
             kpss_ok = not np.isnan(kp["kpss_pval"]) and kp["kpss_pval"] > 0.05
             po_ok = not np.isnan(kp["po_pval"]) and kp["po_pval"] < 0.10
 
             adf = run_adf_test(spread)
             adf_ok = adf["adf_confirms"]
 
-            n_confirm_existing = int(eg_ok) + int(kpss_ok) + int(po_ok)
-            tier_existing = "gold" if n_confirm_existing == 3 else ("silver" if n_confirm_existing == 2 else "bronze")
+            # S33 (2026-10-20): the production tier is EG + PO (KPSS reported only); kpss_ok kept in the row
+            n_confirm_existing = int(eg_ok) + int(po_ok)
+            tier_existing = "gold" if n_confirm_existing == 2 else "bronze"
             n_confirm_with_adf = n_confirm_existing + int(adf_ok)
             tier_with_adf = "gold" if n_confirm_with_adf >= 4 else ("gold" if n_confirm_with_adf == 3 else ("silver" if n_confirm_with_adf == 2 else "bronze"))
 
