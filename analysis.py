@@ -5402,7 +5402,8 @@ class AnalysisPipeline:
                         if "close" not in _df.columns or "volume" not in _df.columns:
                             continue
                         _df.index = pd.to_datetime(_df.index)
-                        _dv = _df["close"] * _df["volume"]
+                        from dollar_volume import usd_dollar_volume
+                        _dv = usd_dollar_volume(_df, sym)   # W5.6b: local currency / pence -> USD
                         _daily_dv = _dv.groupby(_df.index.date).sum()
                         if len(_daily_dv) > 0:
                             return float(_daily_dv.mean())
