@@ -126,6 +126,7 @@ def screen_anti_correlated_pair(
     df_a: "pd.DataFrame",
     df_b: "pd.DataFrame",
     corr_threshold: float = -0.40,
+    tf_label: str = "1D",
 ) -> dict:
     """
     Real-data screen for one aligned pair (as returned by
@@ -163,7 +164,10 @@ def screen_anti_correlated_pair(
         return out
 
     la, lb = log_a[pmask], log_b[pmask]
-    t_stat, p_value, _crit = coint(la, lb, trend="c", maxlag=1, autolag="aic")
+    # X-M15 (2026-10-20): production EG -- analysis.eg_pvalue_segment (both directions, max p, gap-respecting segment); was one-direction coint() at maxlag 1
+    from analysis import eg_pvalue_segment
+    p_value, _n = eg_pvalue_segment(log_a, log_b, 1, tf_label)   # uncompacted: the segment respects genuine gaps
+    p_value = float(p_value) if p_value is not None else float("nan")
     # Same OLS the coint() test itself runs internally, to recover hedge sign
     # (coint() reports the test statistic, not the fitted coefficient).
     hedge = float(
@@ -277,7 +281,7 @@ def full_universe_negative_candidates(
             continue
         common_idx = df_a.index.intersection(df_b.index)
         result = screen_anti_correlated_pair(
-            df_a.loc[common_idx], df_b.loc[common_idx], corr_threshold=corr_threshold,
+            df_a.loc[common_idx], df_b.loc[common_idx], corr_threshold=corr_threshold, tf_label=tf_label,
         )
         result.update(symbol_a=sym_a, symbol_b=sym_b, tf_label=tf_label)
         rows.append(result)
@@ -349,7 +353,7 @@ def main():
         df_a = df_a.loc[common_idx]
         df_b = df_b.loc[common_idx]
         result = screen_anti_correlated_pair(
-            df_a, df_b, corr_threshold=args.corr_threshold,
+            df_a, df_b, corr_threshold=args.corr_threshold, tf_label=tf_label,
         )
         result.update(symbol_a=symbol_a, symbol_b=symbol_b, tf_label=tf_label)
         rows.append(result)

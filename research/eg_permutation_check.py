@@ -85,10 +85,8 @@ def _segment(a, b, tf_label):
 
 def _eg_pvalue(a, b, max_lag, tf_label):
     """Production EG p-value (analysis.eg_pvalue_pair: both directions, max p) on the production segment."""
-    a_, b_ = _segment(a, b, tf_label)
-    if a_.size < 60:
-        return None
-    p, _ = eg_pvalue_pair(a_, b_, max_lag, tf_label)
+    from analysis import eg_pvalue_segment
+    p, _ = eg_pvalue_segment(a, b, max_lag, tf_label, min_n=60)
     return p
 
 

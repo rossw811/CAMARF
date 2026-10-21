@@ -89,10 +89,11 @@ OUT_PATH = "output/research/trend_dominance_diagnostic.parquet"
 SEED = 20260713
 
 
-def eg_pvalue(a: np.ndarray, b: np.ndarray) -> float:
-    """Exact production call (analysis.py _pair_coint_worker)."""
-    _t, p, _c = coint(a, b, trend="c", maxlag=Config.ANALYSIS.EG_MAX_LAG, autolag="aic")
-    return float(p)
+def eg_pvalue(a: np.ndarray, b: np.ndarray, tf_label: str = "1D") -> float:
+    """X-M15 (2026-10-20): production EG -- analysis.eg_pvalue_segment (both directions, max p, gap-respecting segment); was one direction, called "exact production" though production takes the max over both."""
+    from analysis import eg_pvalue_segment
+    p, _ = eg_pvalue_segment(a, b, Config.ANALYSIS.EG_MAX_LAG, tf_label)
+    return float(p) if p is not None else float("nan")
 
 
 def load_log_close(symbol: str, suffix: str) -> np.ndarray:

@@ -390,3 +390,4 @@ debug/_verify_za_breakdate_index.py
 debug/_verify_unresolved_labels_excluded_d15.py
 debug/_verify_tiers_po_s33.py
 debug/_verify_dsr_trial_family_xm09.py
+debug/_verify_research_eg_is_production_xm15.py

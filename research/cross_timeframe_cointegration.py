@@ -113,7 +113,10 @@ def method_a_downsample_eg(coarse_df: pd.DataFrame, fine_df: pd.DataFrame) -> di
 
     log_coarse = np.log(coarse_close[mask])
     log_fine_ds = np.log(downsampled[mask])
-    t_stat, p_value, _crit = coint(log_coarse, log_fine_ds, trend="c", maxlag=1, autolag="aic")
+    # X-M15 (2026-10-20): production EG -- analysis.eg_pvalue_segment (both directions, max p, gap-respecting segment); was one-direction coint() at maxlag 1
+    from analysis import eg_pvalue_segment
+    p_value, _n = eg_pvalue_segment(log_coarse, log_fine_ds, 1, "1D")
+    t_stat = np.nan   # the two-direction test reports the max p, not one direction's statistic
     return {"method": "A_downsample_eg", "n": int(mask.sum()), "coint_pvalue": float(p_value)}
 
 

@@ -96,15 +96,14 @@ def _gap_masked_log_price(df):
     return log_p
 
 
-def _eg_pvalue(a, b, max_eg_lag):
-    mask = np.isfinite(a) & np.isfinite(b)
-    a_, b_ = a[mask], b[mask]
-    if a_.size < _MIN_EG_N:
-        return None, a_.size
+def _eg_pvalue(a, b, max_eg_lag, tf_label="1D"):
+    """X-M15 (2026-10-20): production EG -- analysis.eg_pvalue_segment (both directions, max p, gap-respecting segment); was one-direction coint() on gap-spliced arrays. Callers that do not pass tf_label get production's
+    daily segmenting (routine closures bridged)."""
+    from analysis import eg_pvalue_segment
     try:
-        _, pval, _ = coint(a_, b_, trend="c", maxlag=max_eg_lag, autolag="aic")
-        return float(pval), a_.size
+        return eg_pvalue_segment(a, b, max_eg_lag, tf_label, min_n=_MIN_EG_N)
     except Exception as e:
+        a_ = np.asarray(a)[np.isfinite(a) & np.isfinite(b)]
         # Tier 6 fix (Grand Sweep 2026-07-20): previously swallowed silently
         # (bare except, no logging) -- shared by 7 consumer files, so an EG
         # failure anywhere in the pipeline was invisible. Logged at DEBUG

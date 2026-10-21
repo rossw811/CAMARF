@@ -1701,6 +1701,20 @@ def eg_pvalue_pair(log_a, log_b, max_lag: int, tf_label: str) -> Tuple[Optional[
     return None, n
 
 
+def eg_pvalue_segment(log_a, log_b, max_lag: int, tf_label: str, min_n: int = 60) -> Tuple[Optional[float], int]:
+    """eg_pvalue_pair on production's own segment: the longest common run that never spans a genuine data gap
+    (longest_gap_respecting_segment, as _eg_worker uses). For research callers that hold NaN-masked, positionally
+    aligned log prices (SWEEP-C4-2 / X-M15, 2026-10-20: several scripts ran one-direction statsmodels coint() on
+    a[isfinite(a)&isfinite(b)], splicing across gaps). Returns (pvalue or None, segment length)."""
+    a, b = np.asarray(log_a, float), np.asarray(log_b, float)
+    keep = longest_gap_respecting_segment(np.isfinite(a) & np.isfinite(b), tf_label)
+    n = int(keep.sum())
+    if n < min_n:
+        return None, n
+    p, _ = eg_pvalue_pair(a[keep], b[keep], max_lag, tf_label)
+    return p, n
+
+
 def _combine_eg_directions(candidate_pairs, results):
     """Combine per-direction EG results into one BH hypothesis per candidate pair.
 

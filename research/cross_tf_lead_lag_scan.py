@@ -155,20 +155,15 @@ def scan_pair_cross_tf_lead_lag(
     result["eg_tested"] = True
     result["eg_pvalue_at_kstar"] = None
     result["eg_pvalue_at_lag0"] = None
+    # X-M15 (2026-10-20): production EG (analysis.eg_pvalue_pair: both directions, max p) at the coarse leg's
+    # frequency; was one-direction coint(). The joined frames are already gap-free inner joins at that frequency.
+    from analysis import eg_pvalue_pair
     if len(joined_star) >= _MIN_EG_N:
-        try:
-            _, p_star, _ = coint(joined_star.iloc[:, 0].values, joined_star.iloc[:, 1].values,
-                                  trend="c", maxlag=eg_max_lag, autolag="aic")
-            result["eg_pvalue_at_kstar"] = float(p_star)
-        except Exception as e:
-            log.debug("EG at k*=%d failed: %s", k_star, e)
+        p_star, _ = eg_pvalue_pair(joined_star.iloc[:, 0].values, joined_star.iloc[:, 1].values, eg_max_lag, "1D")
+        result["eg_pvalue_at_kstar"] = float(p_star) if p_star is not None else None
     if len(joined_0) >= _MIN_EG_N:
-        try:
-            _, p0, _ = coint(joined_0.iloc[:, 0].values, joined_0.iloc[:, 1].values,
-                              trend="c", maxlag=eg_max_lag, autolag="aic")
-            result["eg_pvalue_at_lag0"] = float(p0)
-        except Exception as e:
-            log.debug("EG at lag0 failed: %s", e)
+        p0, _ = eg_pvalue_pair(joined_0.iloc[:, 0].values, joined_0.iloc[:, 1].values, eg_max_lag, "1D")
+        result["eg_pvalue_at_lag0"] = float(p0) if p0 is not None else None
 
     p_star, p0 = result["eg_pvalue_at_kstar"], result["eg_pvalue_at_lag0"]
     result["lagged_is_better"] = (

@@ -97,19 +97,11 @@ from research.lead_lag_scan import (
 )
 
 
-def _eg_pvalue_fixed_maxlag(a, b, maxlag):
-    """Like lead_lag_scan._eg_pvalue but with a FIXED maxlag (autolag=None)
-    instead of an autolag="aic" search -- see module docstring for why."""
-    mask = np.isfinite(a) & np.isfinite(b)
-    a_, b_ = a[mask], b[mask]
-    if a_.size < _MIN_EG_N:
-        return None, a_.size
-    try:
-        _, pval, _ = coint(a_, b_, trend="c", maxlag=maxlag, autolag=None)
-        return float(pval), a_.size
-    except Exception as e:
-        log.debug("EG coint() failed on a %d-obs series: %s", a_.size, e)
-        return None, a_.size
+def _eg_pvalue_fixed_maxlag(a, b, maxlag, tf_label="1D"):
+    """X-M15 (2026-10-20): production EG -- analysis.eg_pvalue_segment (both directions, max p, gap-respecting segment). The fixed-maxlag (autolag=None) shortcut is gone: production selects the lag by AIC up to maxlag,
+    so this now matches the discovery screen (slower; the name is kept for its callers)."""
+    from analysis import eg_pvalue_segment
+    return eg_pvalue_segment(a, b, maxlag, tf_label, min_n=_MIN_EG_N)
 
 
 def build_eligible_pairs(x):
