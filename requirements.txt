@@ -29,7 +29,14 @@ pyarrow==24.0.0
 # Found missing from this file entirely (2026-08-08) despite being a real, actively-used
 # import (`import wrds` inside data_wrds.py's connection helper) -- verified against the
 # actual installed "trading" env via `pip show wrds`, not assumed.
-wrds==3.5.0
+# 2026-10-20 (found by the first CI run): wrds 3.5.0 declares pandas<2.3, which conflicts with pandas==3.0.3 below, so
+# `pip install -r requirements.txt` was unresolvable. Both working environments run wrds 3.5.0 on pandas 3.0.3
+# (installed without its pin). Install it separately, after this file:
+#     pip install --no-deps wrds==3.5.0
+# Its other dependencies are pinned here at the versions the environment runs:
+psycopg2-binary==2.9.12
+SQLAlchemy==2.0.44
+ipython==9.6.0
 
 # --- analysis.py ---
 statsmodels==0.14.6

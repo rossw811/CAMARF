@@ -21,6 +21,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
+          pip install --no-deps wrds==3.5.0
       - name: Run the fast synthetic suite
         run: python debug/_run_all_verify.py --list debug/ci_fast_tests.txt --workers 4 --timeout 120 --fail-on-error
       - name: Upload failure output
