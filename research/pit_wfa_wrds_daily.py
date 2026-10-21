@@ -133,7 +133,9 @@ def _tz_naive(ts: pd.Timestamp) -> pd.Timestamp:
 def determine_analysis_window(universe: Dict[str, pd.DataFrame]) -> Tuple[pd.Timestamp, pd.Timestamp]:
     starts = [_tz_naive(df.index.min()) for df in universe.values() if df is not None and not df.empty]
     ends = [_tz_naive(df.index.max()) for df in universe.values() if df is not None and not df.empty]
-    return min(starts), max(ends)
+    # sealed holdout (E13, enforced 2026-10-20): Compustat Global runs past CRSP's 2025-12-31 end
+    last_open = pd.Timestamp(Config.DATA.SEALED_FROM) - pd.Timedelta(days=1)
+    return min(starts), min(max(ends), last_open)
 
 
 def screen_universe_at_cutoff(

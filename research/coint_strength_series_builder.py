@@ -97,6 +97,15 @@ def build_coint_strength_series(windows: pd.DataFrame, z_window: int = COINT_Z_W
                "coint_strength", "coint_strength_z", "coint_decay_rate"]]
 
 
+def load_windows(path: str = _WINDOWS_PATH) -> pd.DataFrame:
+    """Tier-3 (pair, window) rows, minus windows ending on/after the sealed holdout (E13, enforced 2026-10-20)."""
+    from config import Config
+    w = pd.read_parquet(path)
+    keep = pd.to_datetime(w["window_end_date"]) < pd.Timestamp(Config.DATA.SEALED_FROM)
+    log.info(f"Sealed holdout: dropped {int((~keep).sum())} windows ending on/after {Config.DATA.SEALED_FROM}")
+    return w[keep].reset_index(drop=True)
+
+
 def main():
     _setup_logging()
     log.info("=== coint_strength_series_builder.py: continuous cointegration-strength series, "
@@ -107,7 +116,7 @@ def main():
                   f"research/wrds_deep_history_episodic_scan.py first.")
         sys.exit(1)
 
-    windows = pd.read_parquet(_WINDOWS_PATH)
+    windows = load_windows(_WINDOWS_PATH)
     log.info(f"Loaded {len(windows)} (pair, window) rows across "
              f"{windows[['symbol_a','symbol_b']].drop_duplicates().shape[0]} pairs.")
 

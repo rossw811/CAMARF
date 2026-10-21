@@ -208,10 +208,12 @@ def load_universe_1h() -> Dict[str, pd.DataFrame]:
 
 
 def determine_analysis_window(universe: Dict[str, pd.DataFrame]) -> Tuple[pd.Timestamp, pd.Timestamp]:
-    """Overall [min_date, max_date] across the whole cached universe."""
+    """Overall [min_date, max_date] across the whole cached universe, the end capped before the sealed holdout
+    (E13, enforced 2026-10-20: Compustat Global runs past CRSP's 2025-12-31 end). debug/_verify_sealed_analysis_window.py"""
     starts = [df.index.min() for df in universe.values()]
     ends = [df.index.max() for df in universe.values()]
-    return min(starts), max(ends)
+    last_open = pd.Timestamp(Config.DATA.SEALED_FROM) - pd.Timedelta(days=1)
+    return min(starts), min(max(ends), last_open)
 
 
 def compute_fold_dates(
