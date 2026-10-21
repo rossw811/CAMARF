@@ -29514,3 +29514,23 @@ with Sonnet searches; GitHub About set; Ross's WRDS page shows no full TAQ/Optio
   ADR-vs-home and other same-company pairs, plus SPAC pairs ALTG/FBM, AGCB/LEAP, GOAC/HIGA); HIGH_NAN 2 (the two SPAC
   pairs). None of the 26 flagged files is a k1/k2 clean-pool pair. aligned_pair_loader's docstring still called the
   elapsed-time fix "not yet built"; corrected.
+- **N4 arm (a), new pools (CachyOS, `research/cointegration_estimator_comparison.py`, sealed filter added; output
+  `output/research/cointegration_estimator_comparison.parquet`).** 411 k1 1D pool pairs (window = 2,520 bars ending at
+  eligible_from) and 411 random pre-seal Tier-3 candidate windows (24,898 sealed windows excluded first). Hedge ratios:
+  median |DOLS-OLS|/|OLS| 0.003 (90th pct 0.014 pool / 0.023 candidates), FM-OLS 0.002 / 0.005, 0 sign flips. Tests,
+  5%: pool EG 408 of 411, Johansen 411, Johansen agrees on all 408; candidates EG 20 (4.9%), Johansen 49 (11.9%),
+  both 14. Same reading as 10-14: keep OLS + EG; Johansen agreement is a robustness result. Note: 3 of 411 pool windows
+  that discovery's BH rejected do not reject in this single re-test (series path / window alignment differ: adapter
+  `_load_symbol` + pairwise dropna vs the scan's common-calendar matrix) -- not yet traced.
+- **N4 regime scripts, new chain (sealed: 24,898 windows ending 2026+ dropped at load, failing-first 21/22 -> 22/22;
+  log `logs/regime_n4_20261020.log`).** 281,806 pairs by first-window VIX regime. Pair level: crisis-first confirmation
+  0.253% (12 / 4,736) vs calm 0.148% (212 / 143,297), z = 1.84, p = 0.066; reappearance 68.3% vs 69.6%, p = 0.066.
+  D3 episode-level randomization inference (12 crisis episodes vs 34 calm years): +0.00100, p = 0.059. Concentration:
+  all 12 crisis confirmations in 2 of 12 episodes (2008-09..2009-05: 8; 2011-08..11: 4); D2 component-level test (the
+  one used; 6 independent units, largest 7): top-2 share 1.000 vs null 0.826, p = 0.038; D4 stable over gap rules
+  1-6 months (p 0.037-0.040). D12 within-year (MAIN, sign-flip CI over 12 years with both kinds): confirmation
+  +0.034 pts, 95% CI [-0.227, +0.399] -- no crisis effect; reappearance +7.28 pts [+1.82, +13.19] -- within year
+  crisis-first pairs reappear MORE, while the pooled pair-level rate is slightly LOWER (68.3 vs 69.6): the pooled
+  comparison is confounded by year. Episode 11 (2025-04, 1,205 pairs, 0 reappearances) is right-censored. Reading
+  (to be reviewed before registering): "crisis-first pairs confirm more often" is not supported on the fixed chain;
+  the concentration in 2008 and 2011 is significant at the component level.
