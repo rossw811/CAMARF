@@ -163,6 +163,23 @@ def deflated_sharpe_z_stat(
 # DATA LOADING
 # =============================================================================
 
+def trial_family(trials: list, holdout: bool) -> list:
+    """The trials that deflate one Sharpe (X-M09 / code review S12, 2026-10-20): in-sample and holdout evaluations are
+    separate families (a holdout Sharpe is not a variant of an in-sample one), and identical reruns -- same label,
+    Sharpe and trade count -- are one trial, not several. Different results under one label stay separate trials.
+    debug/_verify_dsr_trial_family_xm09.py"""
+    seen, out = set(), []
+    for t in trials:
+        if ("_holdout" in str(t.get("label", ""))) != holdout:
+            continue
+        key = (t.get("label"), round(float(t["sharpe"]), 10), int(t.get("n_trades", 0) or 0))
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(t)
+    return out
+
+
 def _backfill_trial_registry() -> int:
     """Scan every output/backtest/portfolio_*.parquet not already in
     trial_registry.json and record it as a historical trial (timestamp_run
@@ -289,6 +306,14 @@ def main():
             log.warning("  [%s] no usable trades at %s — skipping", suffix, trades_path)
             continue
         sr_hat, t_obs, skew, kurt = stats_tuple
+        fam = trial_family(trials, holdout=suffix.endswith("_holdout"))   # X-M09: own family, reruns once
+        n_trials = len(fam)
+        if n_trials < 2:
+            log.warning("  [%s] fewer than 2 distinct trials in its family -- DSR not meaningful, skipped", suffix)
+            continue
+        var_sr = float(np.var(np.array([t["sharpe"] for t in fam], dtype=float) / _ANNUALIZATION, ddof=1))
+        log.info("  [%s] family: %d distinct %s trials (of %d registry entries), Var[SR] = %.6f", suffix, n_trials,
+                 "holdout" if suffix.endswith("_holdout") else "in-sample", len(trials), var_sr)
         dsr = deflated_sharpe_ratio(sr_hat, t_obs, skew, kurt, n_trials, var_sr)
         z_stat = deflated_sharpe_z_stat(sr_hat, t_obs, skew, kurt, n_trials, var_sr)
         log.info(
