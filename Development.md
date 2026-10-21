@@ -29635,3 +29635,23 @@ with Sonnet searches; GitHub About set; Ross's WRDS page shows no full TAQ/Optio
   silver). Failing-first `_verify_tiers_po_s33.py` 0/2 -> 5/5. PAPER.md's "4 Gold / 23 Silver / 10 Bronze" was on the
   old analysis.py pairs and stays WITHDRAWN; re-deriving the tiers on the PIT pools needs a stats.py source switch
   (it reads output/results/*/pairs.parquet) -- with the redraft.
+- **E21 CI (GitHub Actions, `.github/workflows/verify.yml`).** The CI subset was chosen empirically: a fresh depth-1
+  clone on CachyOS with no output/ data ran every debug/_verify_*.py (60 s cap): 391 of 413 pass, 386 under 20 s ->
+  `debug/ci_fast_tests.txt` (+3 new synthetic tests). `_run_all_verify.py` gained `--list` and `--fail-on-error`.
+  First run: `pip install -r requirements.txt` was UNRESOLVABLE -- wrds 3.5.0 declares pandas<2.3 against the pinned
+  pandas 3.0.3; both working envs run wrds 3.5.0 on pandas 3.0.3 (installed without the pin). requirements.txt now says
+  `pip install --no-deps wrds==3.5.0` and pins its real deps (psycopg2-binary 2.9.12, SQLAlchemy 2.0.44, ipython 9.6.0).
+  Second run: 387/389 -- it caught (1) my S33 signature change breaking two callers I had not grepped for
+  (bounded_lookback_primary_screen, adf_confirmatory_tier; fixed, and the former moved to production two-direction EG,
+  X-M15; the latter marked not citable), (2) tensorflow missing from requirements (documented as an optional install
+  for the LSTM arm; that test is out of the CI list). Lesson already in CLAUDE.md, missed here: grep every caller
+  before changing a signature.
+- **Review fixes, failing-first each (2026-10-20/21):** R8.1 news-impact "narrowing" = |z| falling (old code missed a
+  planted 2x volatility asymmetry: ratio 0.94, p 0.26; the old test planted asymmetry under the wrong definition, fixed);
+  R6.5 grid bootstrap grid reaches 1.01 and flags grid-edge sets (could never contain the unit root); R5.3 precision
+  grouped per (pair, tf, hedge_method); R4.11 canonical pair order before the regime join; R5.10 already fixed;
+  X-M09 DSR families (IS / holdout separate, reruns once); W6.4 last silent handlers in stats.py; X-C17 file_lock
+  delete-pending PermissionError (the "flaky" manifest test was a real Windows bug); BUG-D38 period-cache guard;
+  X-C04 dead loss limits removed; X-C05 portfolio_sim docstring; DEV-022 .ps1 runner removed; DEV-025 annotations;
+  N18 CONTRIB-032; D15 at load (unresolved labels dropped in load_full_universe / load_symbol); S31 (c) pool arm column;
+  S33 tiers (PO on the legs, KPSS out of the tier).
