@@ -78,10 +78,10 @@ decision) · **DATA** (needs data we do not have) · **LATER** (after a stated d
 | A5 | Grid-offset re-runs 63/126/189 on corrected code | LATER: robustness check after N2 |
 | A6 | Third labelled pass with A2/A4/B8/B9 | this re-run chain is that pass; record it as such |
 | A7 | Dollar-P&L re-runs (pit_wfa, wrds_daily, distance, sensitivity) | LATER, with D16 |
-| B1 | CachyOS memtest86+ | ROSS (physical; hangs recur) |
+| B1 | CachyOS memtest86+ | CLOSED: Ross said no (2026-10-12, DECISIONS round 2) |
 | B2 | Windows admin fix | ROSS, when convenient |
-| B3 | Kamiak HPC sponsor request | ROSS (I drafted it before; needs a faculty sponsor) |
-| B4 | Bloomberg spot-check protocol (20 claim-critical prices) | NOW to draft; ROSS to run on a terminal |
+| B3 | Kamiak HPC sponsor request | ROSS: maybe, via the linear-algebra instructor (2026-10-12) |
+| B4 | Bloomberg spot-check protocol | CLOSED: Ross said no (2026-10-12) |
 | C1-C6 | Full TAQ, full OptionMetrics, Capital IQ events, CIQ Pro, FactSet/MSCI/ISS, PitchBook | DATA: confirmed 2026-10-20 (job 34) only samples readable; ask the library |
 
 ## 5. Explorations E1-E21 (approved list, 2026-10-12)
@@ -132,4 +132,6 @@ decision) · **DATA** (needs data we do not have) · **LATER** (after a stated d
 6. TAQ: does your WRDS account page show a full TAQ entitlement (only samples read)?
 7. D18 specification-curve ranges: OK for me to propose them with the registry work?
 8. E3 bond/credit design: approve the written proposal?
-9. B1 memtest on CachyOS when you are next at the machine (hangs recur).
+9. (withdrawn: memtest was already a no on 2026-10-12)
+
+Every deferred/later item (241 rows) now has a decision: docs/DEFERRED_DECISIONS_2026-10-20.md.
