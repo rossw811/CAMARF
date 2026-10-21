@@ -12,9 +12,9 @@ trigger is mis-specified.
 
 Method actually implemented (a permutation-based two-group variance
 comparison, NOT the textbook multi-term sign-bias regression): split
-dz_t (bar-to-bar change in z_rolling) into two groups by the SIGN of the
-prior move, dz_{t-1} — "after narrowing" (dz_{t-1}<0) vs. "after widening"
-(dz_{t-1}>=0) — and test whether Var(dz_t | after narrowing) differs from
+dz_t (bar-to-bar change in z_rolling) into two groups by the DIRECTION of the
+prior move relative to zero — "after narrowing" (|z_{t-1}| < |z_{t-2}|) vs. "after widening"
+(otherwise; R8.1, corrected 2026-10-20: this used to be the sign of dz_{t-1}) — and test whether Var(dz_t | after narrowing) differs from
 Var(dz_t | after widening) via a label-permutation test on the variance
 ratio. This directly answers CAMARF's actual question ("does volatility
 spike more after widening than after narrowing") without regression
@@ -59,15 +59,13 @@ from aligned_pair_loader import (
 )
 
 
-def news_impact_asymmetry_test(z, n_perm=1000, rng=None, already_diffed=False):
+def news_impact_asymmetry_test(z, n_perm=1000, rng=None):
     """
-    z: 1-D array. By default the entry-signal LEVEL series (e.g.
-    z_rolling), real bars only, and dz=np.diff(z) is computed here. If
-    `already_diffed` is True, `z` is instead treated as the already-
-    gap-masked delta series itself (Tier 2.11 fix, Grand Sweep
-    2026-07-20 -- the caller must diff BEFORE dropping gap-flagged rows,
-    not after, so this function no longer does the diff itself in that
-    path).
+    z: 1-D LEVEL series (e.g. z_rolling), NaN at every masked bar (DATA_GAP, non-finite). R8.1 (fixed 2026-10-20,
+    debug/_verify_news_impact_narrowing_r81.py): "after narrowing" is a prior move TOWARD zero, |z_{t-1}| < |z_{t-2}|
+    (was dz_{t-1} < 0, which with z on both sides of 0 mixes narrowing and widening half and half and pulls the ratio
+    to 1 by construction). Only rows whose z_t, z_{t-1}, z_{t-2} are all finite are used, so no lag spans a mask (the
+    caller used to compact the deltas first).
 
     Returns var_after_narrow, var_after_widen, variance_ratio (narrow/widen),
     and a two-sided permutation p-value for the ratio departing from 1.0.
@@ -75,14 +73,15 @@ def news_impact_asymmetry_test(z, n_perm=1000, rng=None, already_diffed=False):
     if rng is None:
         rng = np.random.default_rng(0)
     z = np.asarray(z, dtype=float)
-    dz = z if already_diffed else np.diff(z)
-    n = dz.size
+    if z.size < 62:
+        return {"ok": False, "error": "insufficient_obs"}
+    z0, z1, z2 = z[2:], z[1:-1], z[:-2]              # z_t, z_{t-1}, z_{t-2}
+    valid = np.isfinite(z0) & np.isfinite(z1) & np.isfinite(z2)
+    dz_t = (z0 - z1)[valid]
+    after_narrow = (np.abs(z1) < np.abs(z2))[valid]
+    n = dz_t.size
     if n < 60:
         return {"ok": False, "error": "insufficient_obs"}
-
-    dz_t = dz[1:]
-    dz_lag = dz[:-1]
-    after_narrow = dz_lag < 0
     n_narrow, n_widen = int(after_narrow.sum()), int((~after_narrow).sum())
     if min(n_narrow, n_widen) < 20:
         return {"ok": False, "error": "insufficient_obs_per_group"}
@@ -144,18 +143,11 @@ def main():
             # diffing the full series first, then masking any diff whose
             # start or end bar is DATA_GAP-flagged, mirroring
             # data.py::_gap_aware_returns' convention.
+            # R8.1 (2026-10-20): pass the LEVEL series with NaN at DATA_GAP bars; the test itself uses only rows whose
+            # z_t, z_{t-1}, z_{t-2} are all present, so no move or lag spans a gap (no compaction here).
             z_raw = df["z_rolling"].to_numpy(dtype=float)
-            finite_mask = np.isfinite(z_raw)
             gap_bad = ((df["gap_flag_a"].to_numpy() == 4) | (df["gap_flag_b"].to_numpy() == 4))
-            z_for_diff = np.where(finite_mask, z_raw, np.nan)
-            delta = np.diff(z_for_diff, prepend=np.nan)
-            bad_delta = gap_bad | np.roll(gap_bad, 1)
-            bad_delta[0] = False
-            delta = np.where(bad_delta, np.nan, delta)
-            keep = finite_mask & ~gap_bad
-            z_delta = delta[keep]
-            z_delta = z_delta[np.isfinite(z_delta)]
-            r = news_impact_asymmetry_test(z_delta, n_perm=1000, rng=rng, already_diffed=True)
+            r = news_impact_asymmetry_test(np.where(gap_bad, np.nan, z_raw), n_perm=1000, rng=rng)
             r.update({"symbol_a": sym_a, "symbol_b": sym_b, "tf_label": tf_label})
             rows.append(r)
             if r["ok"]:

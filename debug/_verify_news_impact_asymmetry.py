@@ -53,10 +53,12 @@ n2 = 3000
 z2 = np.zeros(n2)
 TRUE_STD_RATIO = 3.0     # narrow-group STD is 3x the widen-group STD...
 TRUE_VAR_RATIO = TRUE_STD_RATIO ** 2  # ...so the true VARIANCE ratio is 9x
-for t in range(1, n2):
-    prev_dz = z2[t - 1] - (z2[t - 2] if t > 1 else 0.0)
-    vol = TRUE_STD_RATIO if prev_dz < 0 else 1.0  # 3x higher STD after narrowing
-    z2[t] = z2[t - 1] + rng2.normal(scale=vol)
+for t in range(2, n2):
+    # R8.1 (2026-10-20): narrowing = the prior move went TOWARD zero, |z_{t-1}| < |z_{t-2}| (was the sign of dz_{t-1},
+    # the very definition R8.1 found wrong -- this case used to plant asymmetry under it)
+    narrowed = abs(z2[t - 1]) < abs(z2[t - 2])
+    vol = TRUE_STD_RATIO if narrowed else 1.0  # 3x higher STD after narrowing
+    z2[t] = 0.95 * z2[t - 1] + rng2.normal(scale=vol)
 r2 = news_impact_asymmetry_test(z2, n_perm=1000, rng=np.random.default_rng(43))
 print(f"Case 2 (genuine asymmetry, narrowing->{TRUE_STD_RATIO}x std / {TRUE_VAR_RATIO}x variance): "
       f"var_ratio(narrow/widen)={r2['variance_ratio_narrow_over_widen']:.3f}, "
