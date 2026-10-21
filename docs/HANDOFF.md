@@ -1,3 +1,9 @@
+## 2026-10-20: RESUME HERE. Chain complete; re-derivation under way. Master plan: docs/PLAN_MASTER_2026-10-20.md
+Chain finished on CachyOS 10:07 on the fixed code (suite gate 403/0). Pre-registered search: no selection passes
+(DSR 0.00-0.42). Paper edits applied + reviewed (0ec68ff6). D6 first cut withdrawn on review (D18 rule, not
+survivorship). 09-09 stash dropped (SHA in Development.md). WRDS: jobs 33/34 done; OptionMetrics/TAQ sample-only.
+Next: section 1 of the master plan (N1 onward), on CachyOS (now free to pull).
+
 ## 2026-10-19: RESUME HERE. Chain restarted on CachyOS; PIT-pool default being built on the Surface.
 **CachyOS (back 2026-10-19 07:44 after the 10-16 10:50 hang):** chain restarted 08:24 at code 9411d97d
 (debug/_tmp_chain_rerun_20261012.sh, log logs/latest/latest_run_rerun_20261012.log -- the codemod moved it;

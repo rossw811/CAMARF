@@ -29446,3 +29446,14 @@ included = discovery's post-filter set (after D18, dedupe, 1975+ lookback, 756-b
 Tiers 2/3); excluded = CRSP common stocks with a trade price in the window but no usable series; outcomes from CIZ
 where legacy is frozen; report the D18 include arm alongside; plant the effect on the primary path in the test.
 The first-cut script and outputs stay as the record of what was tried.
+
+### Re-run chain complete (CachyOS, 2026-10-20 10:07) + pre-registered strategy search result (Amendment 4)
+Stages: discovery (--d18 exclude, 22 h) -> intraday -> adapter -> comparison arms -> PIT eligibility -> clean pools ->
+STOPPED at pool_spreads (watcher) -> resumed on fixed code (89ececc4+, HEAD bae863a9) -> suite gate 403 tests, 0
+unexplained failures -> pool_spreads -> squeeze -> degenerate audit -> contracts -> search run (216 configs x 2 pools
+x 4 splits = 1,728 trials, guard 216 fresh trade files per pool) -> search eval. Log logs/latest/latest_run_rerun_20261012.log.
+**Search (output/research/strategy_search/summary.parquet, CachyOS):** no selection passes. Per pool/split
+(dev-selected config -> holdout capsim Sharpe, DSR, PBO): k1 0.5 +0.128 / 0.000 / 0.65; k1 0.6 -0.600 / 0.016 / 0.58;
+k1 0.7 +0.240 / 0.070 / 0.55; k1 0.8 -0.039 / 0.422 / 0.21; k2 0.5 +0.250 / 0.004 / 0.85; k2 0.6 +0.421 / 0.001 / 0.77;
+k2 0.7 +0.359 / 0.089 / 0.61; k2 0.8 -0.456 / 0.138 / 0.21. Best single holdout trial 0.859 (k1) -- post hoc, not a
+selection. C-006 ("no robust signal") holds on the PIT-fixed pools; to be registered with these numbers.
