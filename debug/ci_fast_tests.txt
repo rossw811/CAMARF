@@ -215,7 +215,7 @@ debug/_verify_log_price_map_common_index.py
 # debug/_verify_lstm_attention_architecture.py -- needs tensorflow (optional install, requirements.txt); not in CI
 debug/_verify_lstm_attention_training.py
 debug/_verify_macro_daily_cot_availability.py
-debug/_verify_macro_regimes.py
+# debug/_verify_macro_regimes.py -- calls macro.build() (live FRED/CFTC fetch, or the local cache); not in CI
 debug/_verify_macro_release_lags.py
 debug/_verify_manifest_lock.py
 debug/_verify_manifest_pruning.py
