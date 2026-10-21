@@ -29606,3 +29606,13 @@ with Sonnet searches; GitHub About set; Ross's WRDS page shows no full TAQ/Optio
   dropped). 21,695 events, pos rate 0.616; purged split train 11,768 / val 2,654 / test 3,766 (boundaries 2010-01-28,
   2016-06-03). Test AUC: RF 0.587 [0.572, 0.603], XGB 0.576 [0.562, 0.591], logreg 0.575, kNN 0.584, LightGBM 0.571, SVM
   0.567, MLP 0.555 (positional split within ~0.005). C-003 re-derived: shape holds, value lower than 0.61.
+- **N11 (part 1) on the new chain (CachyOS, log logs/n11_20261020.log; sealed at the builder's window load, 24,898
+  windows dropped, failing-first `_verify_sealed_analysis_window.py` 0/3 -> 3/3 -- also caps both walk-forward
+  `determine_analysis_window` copies before 2026-01-01).** coint_strength series: 1,690,992 rows / 281,806 pairs
+  (FINDINGS-098 had 5,003,637). FINDINGS-098 (coint_decay_rate_signal_test, 13/13): 1,409,186 rows with a next-window
+  outcome; persist rate with signal vs baseline -- z_window 5 / thr 1.0: 8.36% vs 4.93% (1.7x); 10/1.0 10.34% vs 4.59%
+  (2.3x); 10/2.0 8.49%; 15/1.0 10.64% vs 4.33% (2.5x); 20/1.0 11.31% vs 4.19% (2.7x); decay_rate < 0: 2.90% vs 4.93%.
+  Shape as published, numbers change; the claims-evaluation caveats stand (pooled z ignores pair/window dependence;
+  persistence is an outcome of the same p-value series). FINDINGS-099 (bar system, 15/15): 28,532 bars / 23,257 pairs at
+  entry 1.0 (was 122,051 / 96,546) down to 4,817 / 4,603 at 2.0; mean length 2.03-2.06 windows; in-bar persist
+  10.7-10.9% vs baseline 5.21%. Multivariate PIT predictors (FINDINGS-140) running.
