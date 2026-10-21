@@ -29544,3 +29544,11 @@ with Sonnet searches; GitHub About set; Ross's WRDS page shows no full TAQ/Optio
   against a rescaled constant-beta null of 0.00-0.03%. Reading unchanged from 10-14: the crisis spike in prefilter
   counts is mostly the volatility bias; the persistent rise after 2010 is not. The level is reference-dependent
   (full-sample reference: 14-31% after 2012), so only ratios and the excess over the matching null are citable.
+- **N7 D5 survivorship on the new chain** (`research/crisis_regime_survivorship_confound_test.py`, check 10/10, inputs
+  = the sealed regime diagnostic's pair table). 281,806 pairs; both legs S&P-500-trackable 111,312 (39.50%; paper
+  20.6%). MAIN (crisis-first, n = 3,099): confirmed 4/2,251 = 0.178% (both survived) vs 4/848 = 0.472% (a leg
+  delisted), z = -1.44, Fisher p = 0.226 (small counts). All-regime reference (the paper's number): 0.284% (183/64,450)
+  vs 0.254% (119/46,862), z = 0.95, p = 0.342. PAPER_MAGNITUDE Finding #66 Tier A (0.34% vs 0.30%, z 1.26, p 0.21,
+  20.6% trackable) is stale: the reading (no detectable survivorship confound among S&P-500-trackable pairs) holds;
+  every number changes -> CORRECTED at the redraft (after review). The `_verify_paper_magnitude_claims` D5 rows keep
+  failing deliberately until the paper is updated.
