@@ -378,7 +378,12 @@ def main():
                           "NOTE: this is a real compute-scale jump (~700 pairs vs. a handful) since "
                           "every pair is tested across 3 crisis windows + 3 calm controls — hold "
                           "this for a time when it won't contend with other running jobs.")
+    ap.add_argument("--pool", choices=["k1", "k2"], default=None,
+                    help="N9 (2026-10-20): the point-in-time pool (Config.DATA.PIT_POOL_PATHS, 1D pairs). Every pool "
+                         "pair is tested in every window (DESCRIPTIVE: a pair can be eligible only after the window); "
+                         "the PIT subset (eligible_from before the window starts) is reported beside it.")
     args = ap.parse_args()
+    eligible_from = {}
 
     _setup_logging()
     t0 = time.time()
@@ -387,7 +392,14 @@ def main():
              "historical crisis windows — does NOT replay the intraday strategy (no cached 1h data "
              "reaches back to 2007/2020; see module docstring).")
 
-    if args.pit_safe:
+    if args.pool:
+        from config import Config
+        P = pd.read_parquet(Config.DATA.PIT_POOL_PATHS[args.pool])
+        P = P[P["tf_label"].astype(str) == "1D"]
+        pairs = sorted(set(zip(P["symbol_a"], P["symbol_b"])))
+        eligible_from = {(a, b): pd.Timestamp(e) for a, b, e in zip(P["symbol_a"], P["symbol_b"], P["eligible_from"])}
+        log.info("Using the PIT pool %s: %d 1D pairs", args.pool, len(pairs))
+    elif args.pit_safe:
         sys.path.insert(0, os.path.join(_ROOT, "research"))
         from pit_pair_discovery import discover_pit_confirmed_pairs
         pit_pairs = discover_pit_confirmed_pairs()
@@ -417,6 +429,7 @@ def main():
     log.info("%d pairs to test across %d crisis windows + %d calm controls",
               len(pairs), len(_CRISES), len(calm_controls))
 
+    _sfx = f"_pool_{args.pool}" if args.pool else ""
     rows = []
     for sym_a, sym_b in pairs:
         for crisis_name, start, end in all_windows:
@@ -424,6 +437,10 @@ def main():
             if result is None:
                 continue
             row = {"symbol_a": sym_a, "symbol_b": sym_b, "crisis": crisis_name, **result}
+            if eligible_from:
+                ef = eligible_from.get((sym_a, sym_b))
+                row["eligible_from"] = ef
+                row["eligible_before_window"] = bool(ef is not None and ef < pd.Timestamp(start))
             rows.append(row)
             if result["status"] == "TESTED":
                 log.info(
@@ -439,7 +456,7 @@ def main():
 
     if not rows:
         # Never leave earlier outputs standing as if current (review of 2ec0c521)
-        for f in ("stress_test_replication.parquet", "stress_test_replication_paired.parquet"):
+        for f in (f"stress_test_replication{_sfx}.parquet", f"stress_test_replication_paired{_sfx}.parquet"):
             if os.path.exists(os.path.join(_OUT_DIR, f)):
                 os.remove(os.path.join(_OUT_DIR, f))
         log.warning("No pairs produced a result -- earlier output files removed.")
@@ -467,14 +484,18 @@ def main():
     # connected components of pairs sharing a leg. Replaces the 15-point rule of thumb.
     os.makedirs(_OUT_DIR, exist_ok=True)
     paired_rows = []
-    for outcome in ("ak_breakdown", "extreme_dislocation"):
+    subsets = [("all", tested)]
+    if eligible_from:   # PIT subset: the pair was eligible before the crisis window AND before its calm control
+        subsets.append(("pit", tested[tested["eligible_before_window"]]))
+    for subset, T_ in subsets:
+      for outcome in ("ak_breakdown", "extreme_dislocation"):
         for scope in [None] + [c[0] for c in _CRISES]:
-            paired = build_paired_table(tested, calm_controls, outcome, crisis=scope)
+            paired = build_paired_table(T_, calm_controls, outcome, crisis=scope)
             if paired.empty:
                 continue
             r = paired_component_signflip_test(paired, rng=np.random.default_rng(0))
-            paired_rows.append({"outcome": outcome, "scope": scope or "all_crises", **r})
-            log.info("D9 paired [%s, %s]: n=%d, crisis %.1f%% vs calm %.1f%%, discordant %d/%d over %d units, "
+            paired_rows.append({"subset": subset, "outcome": outcome, "scope": scope or "all_crises", **r})
+            log.info("D9 paired [" + subset + "] [%s, %s]: n=%d, crisis %.1f%% vs calm %.1f%%, discordant %d/%d over %d units, "
                      "component sign-flip p=%.4f (min achievable %.4f) (classical McNemar p=%.4f, pairs as independent -- reference only)",
                      outcome, scope or "all crises", r["n"], 100 * r["crisis_rate"], 100 * r["calm_rate"],
                      r["discordant_crisis_only"], r["discordant_calm_only"], r["n_units_discordant"],
@@ -483,9 +504,9 @@ def main():
     if not paired_rows:
         log.info("D9 paired: no pair has a cointegrated baseline in both a crisis and its calm control -- no test")
     pd.DataFrame(paired_rows, columns=None if paired_rows else ["outcome", "scope", "n", "p_value"]).to_parquet(
-        os.path.join(_OUT_DIR, "stress_test_replication_paired.parquet"), index=False)
+        os.path.join(_OUT_DIR, f"stress_test_replication_paired{_sfx}.parquet"), index=False)
 
-    out_path = os.path.join(_OUT_DIR, "stress_test_replication.parquet")
+    out_path = os.path.join(_OUT_DIR, f"stress_test_replication{_sfx}.parquet")
     result_df.to_parquet(out_path, index=False)
     log.info("Saved -> %s", out_path)
     log.info("Reported honestly regardless of outcome direction: extreme z excursions during a "
