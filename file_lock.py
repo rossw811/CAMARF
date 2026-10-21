@@ -28,6 +28,14 @@ def exclusive_lock(path: str, timeout: float = 120.0, stale_after: float = 600.0
             os.write(fd, f"{os.getpid()} {time.time():.3f}".encode())
             os.close(fd)
             break
+        except PermissionError as e:
+            # Windows: creating a lock file another process is deleting raises PermissionError (delete pending), not
+            # FileExistsError -- contention, so wait like FileExistsError (X-C17, 2026-10-20: this crashed
+            # _verify_manifest_lock's locked run). A genuine permission problem ends in TimeoutError with this cause.
+            if time.time() > deadline:
+                raise TimeoutError(f"could not lock {path} within {timeout:.0f}s ({lock}: {e})") from e
+            time.sleep(poll)
+            continue
         except FileExistsError:
             try:
                 age = time.time() - os.path.getmtime(lock)
