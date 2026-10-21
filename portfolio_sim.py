@@ -29,16 +29,18 @@ current marked equity, not just realized-to-date P&L). At every entry-candidate 
   4. available = current_equity - committed_capital. A signal that can't be fully funded is
      downsized (scaled to whatever's available) or skipped entirely if nothing remains.
 
-Two sizing methods:
+Sizing methods (docstring corrected 2026-10-20, X-C05: it said the risk-based sizers were not implemented):
   - "fixed": try to take every trade at its ORIGINAL size (matches BacktestEngine's fixed
     N_SHARES_PER_TRADE) — isolates the pure capital-constraint effect.
   - "equity_proportional": target size scales linearly with CURRENT mark-to-market equity
     relative to starting capital (Ross's day-1-$10k/day-10-$15k example).
-
-NOT implemented this pass, flagged rather than rushed: flat_2pct/half_kelly/full_kelly
-(`Config.BACKTEST.SIZING_METHODS`, long-defined in config.py, never implemented anywhere) need a
-real stop-distance-in-dollars risk model — estimating that without lookahead requires rolling
-spread volatility AT ENTRY TIME, not yet built. See Development.md for the phasing decision.
+  - "flat_2pct" and the Kelly family ("quarter_kelly", "third_kelly", "half_kelly", "full_kelly"):
+    risk a fraction of current equity per trade over a causal stop distance
+    (`stop_distance_dollars_per_share`, spread units -> dollars at entry); a trade with no finite
+    risk estimate is skipped. Kelly's fraction comes from the trades CLOSED before this entry
+    (`_kelly_fraction`); below `_KELLY_MIN_TRADES` (60) closed trades it falls back to flat_2pct.
+    Legacy (spread-unit) P&L only: pnl_mode="dollar" accepts "fixed" and "equity_proportional" and
+    raises for these.
 
 Usage:
     python portfolio_sim.py --account-size 100000 --sizing fixed
