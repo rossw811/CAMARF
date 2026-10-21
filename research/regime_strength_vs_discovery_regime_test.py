@@ -59,12 +59,22 @@ def _setup_logging():
     log.addHandler(ch)
 
 
+def _canonical_pair_order(df: pd.DataFrame) -> pd.DataFrame:
+    """R4.11 (2026-10-20): (symbol_a, symbol_b) sorted within each row, so the two tables join whatever order each
+    stored a pair in (the ordered inner merge dropped reversed pairs). debug/_verify_regime_join_order_r411.py"""
+    d = df.copy()
+    a, b = d["symbol_a"].astype(str), d["symbol_b"].astype(str)
+    swap = a > b
+    d.loc[swap, "symbol_a"], d.loc[swap, "symbol_b"] = b[swap], a[swap]
+    return d
+
+
 def strongest_span_per_pair(segments: pd.DataFrame) -> pd.DataFrame:
     """Reduces the (possibly many-rows-per-pair) regime-segments table to one
     row per pair: its STRONGEST coint-span strength label (strong beats
     moderate beats weak), for pairs with at least one genuine "coint" span.
     Pairs with only "not_coint" spans are excluded (nothing to characterize)."""
-    coint = segments[segments["state"] == "coint"].copy()
+    coint = _canonical_pair_order(segments[segments["state"] == "coint"])
     coint["strength_rank"] = coint["strength"].map(_STRENGTH_RANK)
     idx = coint.groupby(["symbol_a", "symbol_b"])["strength_rank"].idxmax()
     return coint.loc[idx, ["symbol_a", "symbol_b", "strength"]].reset_index(drop=True)
@@ -75,7 +85,8 @@ def build_joined_table(segments: pd.DataFrame, discovery: pd.DataFrame) -> pd.Da
     first-discovery regime. Inner join -- a pair must appear in both
     (have a coint span AND a recorded discovery regime) to be included."""
     strongest = strongest_span_per_pair(segments)
-    disc = discovery[["symbol_a", "symbol_b", "first_regime"]]
+    disc = _canonical_pair_order(discovery[["symbol_a", "symbol_b", "first_regime"]]).drop_duplicates(
+        ["symbol_a", "symbol_b"])
     return strongest.merge(disc, on=["symbol_a", "symbol_b"], how="inner")
 
 
