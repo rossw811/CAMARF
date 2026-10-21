@@ -50,35 +50,43 @@ def binomial_sharpe(precision, frequency_per_year):
     return float(sr_per_bet), float(sr_annualized)
 
 
+def precision_table(trades: pd.DataFrame, min_trades: int = 10) -> pd.DataFrame:
+    """Precision, frequency and implied Sharpe per (pair, timeframe, hedge method). R5.3 (fixed 2026-10-20,
+    debug/_verify_risk_precision_grouping_r53.py): grouping by pair alone pooled OLS and Kalman copies of the same
+    trades (B4): frequency doubled (Sharpe x sqrt 2) and duplication could pass the n >= min_trades gate."""
+    t = trades.copy()
+    t["pair_key"] = t["symbol_a"] + "/" + t["symbol_b"]
+    t["exit_time"] = pd.to_datetime(t["exit_time"])
+    t["entry_time"] = pd.to_datetime(t["entry_time"])
+    keys = ["pair_key"] + [c for c in ("tf", "hedge_method") if c in t.columns]
+    rows = []
+    for k, grp in t.groupby(keys):
+        k = k if isinstance(k, tuple) else (k,)
+        label = dict(zip(keys, k))
+        n_trades = len(grp)
+        if n_trades < min_trades:
+            print(f"SKIP {label}: only {n_trades} trades, too few for a stable precision estimate")
+            continue
+        precision = float((grp["pnl_net"] > 0).mean())
+        span_days = (grp["exit_time"].max() - grp["entry_time"].min()).days
+        span_years = max(span_days / 365.25, 1 / 365.25)
+        frequency = n_trades / span_years
+        sr_per_bet, sr_annualized = binomial_sharpe(precision, frequency)
+        rows.append({**label, "n_trades": n_trades, "precision": precision, "frequency_per_year": frequency,
+                     "sharpe_per_bet": sr_per_bet, "sharpe_annualized_implied": sr_annualized})
+        print(f"{label}: n={n_trades} precision={precision:.3f} freq/yr={frequency:.1f} "
+              f"implied_annual_SR={sr_annualized:.3f}")
+    return pd.DataFrame(rows)
+
+
 def main():
     trades_path = "output/backtest/trades_layer1.parquet"
     if not os.path.exists(trades_path):
         print(f"No trades file at {trades_path} — run backtest.py first.")
         return
     trades = pd.read_parquet(trades_path)
-    trades["pair_key"] = trades["symbol_a"] + "/" + trades["symbol_b"]
-    trades["exit_time"] = pd.to_datetime(trades["exit_time"])
-    trades["entry_time"] = pd.to_datetime(trades["entry_time"])
-
-    rows = []
-    for pair_key, grp in trades.groupby("pair_key"):
-        n_trades = len(grp)
-        if n_trades < 10:
-            print(f"SKIP {pair_key}: only {n_trades} trades, too few for a stable precision estimate")
-            continue
-        precision = float((grp["pnl_net"] > 0).mean())
-        span_days = (grp["exit_time"].max() - grp["entry_time"].min()).days
-        span_years = max(span_days / 365.25, 1 / 365.25)
-        frequency = n_trades / span_years
-
-        sr_per_bet, sr_annualized = binomial_sharpe(precision, frequency)
-        rows.append({
-            "pair_key": pair_key, "n_trades": n_trades, "precision": precision,
-            "frequency_per_year": frequency,
-            "sharpe_per_bet": sr_per_bet, "sharpe_annualized_implied": sr_annualized,
-        })
-        print(f"{pair_key}: n={n_trades} precision={precision:.3f} "
-              f"freq/yr={frequency:.1f} implied_annual_SR={sr_annualized:.3f}")
+    out_df = precision_table(trades)
+    rows = out_df.to_dict("records")
 
     if not rows:
         # Found live 2026-08-24: every pair had <10 trades (all SKIPped above), leaving rows
