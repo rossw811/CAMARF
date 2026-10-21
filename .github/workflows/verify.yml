@@ -23,6 +23,8 @@ jobs:
           pip install -r requirements.txt
           pip install --no-deps wrds==3.5.0
       - name: Run the fast synthetic suite
+        env:
+          PYTHONFAULTHANDLER: "1"   # a native abort at exit (seen once: _verify_liquid_bar_mask_sources rc -6) prints its traceback
         run: python debug/_run_all_verify.py --list debug/ci_fast_tests.txt --workers 4 --timeout 600 --fail-on-error
       - name: Upload failure output
         if: failure()
