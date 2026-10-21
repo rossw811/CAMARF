@@ -29671,3 +29671,11 @@ with Sonnet searches; GitHub About set; Ross's WRDS page shows no full TAQ/Optio
   and Linux). One intermittent native abort at interpreter exit (`_verify_liquid_bar_mask_sources`, rc -6 after 4/4
   passed; 0/30 on CachyOS, passed on the next CI run) -- not explained; PYTHONFAULTHANDLER=1 set so a recurrence prints
   its native traceback.
+- **N11 (part 2) FINDINGS-140 multivariate PIT predictors, re-run after the A1 fix (CachyOS, log
+  logs/n11_multivariate_20261021.log; output/research/multivariate_pit_predictors_1D.parquet; analysis window capped
+  before the seal).** 642 observations (573 in the fits) / 327 pairs, ONE fold (2020-12-31), only 25 held_up (3.9%).
+  GEE (exchangeable, robust SE): actual_n_overlap -0.021 (p 0.918), pearson_corr +0.137 (0.213), coint_fraction_rolling
+  -0.176 (0.269), hedge_ratio_cv +0.438 (0.001). The published finding (overlap -0.895, p 0.015; coint_fraction -0.732,
+  p 0.056: "more overlap and higher coint_fraction -> LOWER OOS holding-up") does not reproduce -> CORRECTED/withdrawn.
+  The new hedge-ratio-CV association rests on 24 positive events in one fold (median CV 0.229 held-up vs 0.009 not),
+  counterintuitive, and the OOS backtests are exposed to BUG-D119 (trades across price holes): not citable.
