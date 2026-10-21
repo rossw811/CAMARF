@@ -8,7 +8,7 @@
 # reproducible from saved parquets without re-running the pipeline.
 #
 # Sections (run in order):
-#   1. Confirmatory cointegration   — KPSS + Phillips-Ouliaris → Gold/Silver/Bronze tiers
+#   1. Confirmatory cointegration   — EG + Phillips-Ouliaris on the legs → gold/bronze tiers (KPSS reported; S33)
 #   2. Robust hedge ratios          — Huber + MM alongside OLS/TLS/Kalman
 #   3. EVT / GPD tail risk          — shape parameter ξ per pair
 #   4. DCC-GARCH dynamic correlation— Engle (2002) two-step on pair P&L
@@ -222,32 +222,26 @@ def _load_portfolio(suffix: str = "layer1") -> pd.DataFrame:
 
 
 # =============================================================================
-# SECTION 1 — CONFIRMATORY COINTEGRATION (KPSS + Phillips-Ouliaris proxy)
+# SECTION 1 — CONFIRMATORY COINTEGRATION (EG + Phillips-Ouliaris; KPSS reported)
 # =============================================================================
 #
-# Phillips-Ouliaris Z_t implemented as the Phillips-Perron test on OLS residuals
-# (the spread series), which IS the PO statistic for a bivariate cointegrating
-# regression — see Phillips & Ouliaris (1990).  arch.unitroot.PhillipsPerron uses
-# MacKinnon (2010) response surfaces for critical values.
-#
-# KPSS null: series IS stationary.  Fail to reject (p > 0.05) → stationarity
-# not ruled out → cointegration consistent.
-# PO (PP on residuals) null: unit root.  Reject (p < 0.10) → stationary residuals
-# → cointegration confirmed.
-# EG: already in pairs.parquet as coint_pvalue_adjusted.
+# S33 (fixed 2026-10-20, debug/_verify_tiers_po_s33.py). The old "Phillips-Ouliaris proxy" was PhillipsPerron on the
+# estimated spread with univariate critical values: 27.3% rejections at nominal 10% on independent random walks
+# (2026-10-07, 400 runs, n = 500), because the spread is estimated. PO is now
+# arch.unitroot.cointegration.phillips_ouliaris (Z_t) on the two legs' log prices, with residual-based critical values
+# (~11-12% at nominal 10% on the same null). KPSS on the spread has the same problem (residual-based critical values
+# need Shin 1994): it is still computed and reported, but no longer enters the tier until a Shin version is verified.
 #
 # Tier assignment:
-#   n_confirm = (EG p < 0.05) + (KPSS p > 0.05) + (PO p < 0.10)
-#   Gold   = n_confirm == 3
-#   Silver = n_confirm == 2
-#   Bronze = n_confirm == 1  (EG-only)
-#   Flagged = KPSS rejects stationarity AND EG confirms cointegration (conflict)
+#   n_confirm = (EG p < 0.05) + (PO p < 0.10)
+#   gold   = both;   bronze = EG only   ("silver" was the old KPSS-dependent level; no longer produced)
+#   flagged_conflict = KPSS rejects stationarity (p < 0.05) while EG confirms -- reported, not a tier input
 
 
-def _run_coint_tests(spread: pd.Series, eg_pval: float) -> Dict:
-    """Run KPSS and PP (PO proxy) on the spread, combine with EG for tier."""
+def _run_coint_tests(log_a, log_b, spread: pd.Series, eg_pval: float) -> Dict:
+    """PO on the legs (log_a on log_b, constant), KPSS on the spread (reported only), combined with EG for the tier."""
     from arch.unitroot import KPSS as ArchKPSS
-    from arch.unitroot import PhillipsPerron
+    from arch.unitroot.cointegration import phillips_ouliaris
 
     vals = spread.values.astype(float)
     result = {
@@ -262,44 +256,54 @@ def _run_coint_tests(spread: pd.Series, eg_pval: float) -> Dict:
     }
 
     try:
-        kpss = ArchKPSS(vals)  # lags=None → data-dependent selection (arch 8)
+        kpss = ArchKPSS(vals)  # lags=None -> data-dependent selection (arch 8)
         result["kpss_stat"] = float(kpss.stat)
         result["kpss_pval"] = float(kpss.pvalue)
     except Exception as e:
-        log.debug("KPSS failed: %s", e)
+        log.warning("KPSS failed: %s", e)
 
     try:
-        pp = PhillipsPerron(vals, trend="c")  # lags=None → data-dependent selection
-        result["po_stat"] = float(pp.stat)
-        result["po_pval"] = float(pp.pvalue)
+        po = phillips_ouliaris(np.asarray(log_a, float), np.asarray(log_b, float), trend="c", test_type="Zt")
+        result["po_stat"] = float(po.stat)
+        result["po_pval"] = float(po.pvalue)
     except Exception as e:
-        log.debug("PP/PO failed: %s", e)
+        log.warning("Phillips-Ouliaris failed: %s", e)
 
     eg_ok = float(eg_pval) < 0.05
-    kpss_ok = not np.isnan(result["kpss_pval"]) and result["kpss_pval"] > 0.05
     po_ok = not np.isnan(result["po_pval"]) and result["po_pval"] < 0.10
-
-    n_confirm = int(eg_ok) + int(kpss_ok) + int(po_ok)
+    n_confirm = int(eg_ok) + int(po_ok)
     result["n_confirm"] = n_confirm
+    result["stats_tier"] = "gold" if n_confirm == 2 else "bronze"
 
-    if n_confirm == 3:
-        result["stats_tier"] = "gold"
-    elif n_confirm == 2:
-        result["stats_tier"] = "silver"
-    else:
-        result["stats_tier"] = "bronze"
-
-    # Conflict: EG confirms cointegration but KPSS also rejects stationarity
-    # (suggests possible structural break rather than weaker evidence)
+    # Reported, not a tier input: EG confirms but KPSS (univariate critical values) rejects stationarity
     if eg_ok and not np.isnan(result["kpss_pval"]) and result["kpss_pval"] < 0.05:
         result["flagged_conflict"] = True
 
     return result
 
 
+def _load_leg_log_prices(a: str, b: str, tf: str):
+    """Both legs' log prices on production's EG segment (WRDS-first loader, DATA_GAP masked, longest
+    gap-respecting run), or (None, None)."""
+    from analysis import longest_gap_respecting_segment
+    from data import _clean_close
+    from research.aligned_pair_loader import load_aligned_pair
+    df_a, df_b = load_aligned_pair(a, b, tf)
+    if df_a is None or df_b is None:
+        return None, None
+    j = pd.DataFrame({"a": _clean_close(df_a)}, index=df_a.index).join(
+        pd.DataFrame({"b": _clean_close(df_b)}, index=df_b.index), how="inner")
+    with np.errstate(invalid="ignore", divide="ignore"):
+        la, lb = np.log(j["a"].to_numpy(float)), np.log(j["b"].to_numpy(float))
+    keep = longest_gap_respecting_segment(np.isfinite(la) & np.isfinite(lb), tf)
+    if keep.sum() < 60:
+        return None, None
+    return la[keep], lb[keep]
+
+
 def run_confirmatory_cointegration(pairs: pd.DataFrame) -> pd.DataFrame:
-    """Run KPSS + PO for all pairs.  Returns augmented DataFrame with tier column."""
-    log.info("=== Section 1: Confirmatory Cointegration (KPSS + PO) ===")
+    """EG + Phillips-Ouliaris tiers (KPSS reported) for all pairs (S33, 2026-10-20). Returns the augmented DataFrame."""
+    log.info("=== Section 1: Confirmatory Cointegration (EG + PO on the legs; KPSS reported) ===")
     rows = []
     counts = {"gold": 0, "silver": 0, "bronze": 0, "no_spread": 0, "conflict": 0}
 
@@ -320,7 +324,17 @@ def run_confirmatory_cointegration(pairs: pd.DataFrame) -> pd.DataFrame:
             rows.append(base)
             continue
 
-        tests = _run_coint_tests(spread, eg_pval)
+        log_a, log_b = _load_leg_log_prices(a, b, tf)
+        if log_a is None:
+            base.update({
+                "eg_pval": eg_pval, "kpss_stat": np.nan, "kpss_pval": np.nan,
+                "po_stat": np.nan, "po_pval": np.nan, "n_confirm": 0,
+                "stats_tier": "bronze", "flagged_conflict": False,
+            })
+            counts["no_spread"] += 1
+            rows.append(base)
+            continue
+        tests = _run_coint_tests(log_a, log_b, spread, eg_pval)
         base.update(tests)
         tier = tests["stats_tier"]
         counts[tier] = counts.get(tier, 0) + 1
