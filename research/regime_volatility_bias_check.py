@@ -123,6 +123,14 @@ def summarize(D: pd.DataFrame):
           .round(4).to_string())
 
 
+def yearly_window_ends(e_all: pd.Series, sealed_from: pd.Timestamp) -> list:
+    """The last Tier-3 window end in each calendar year, dropping every end on/after the sealed holdout (E13; enforced
+    2026-10-20 -- Compustat Global window ends run into 2026)."""
+    e = pd.Series(pd.to_datetime(e_all))
+    e = e[e < pd.Timestamp(sealed_from)]
+    return sorted(e.groupby(e.dt.year).max())
+
+
 def _market():
     f = pd.read_parquet(os.path.join(_W, "ff_factors_3_daily.parquet"))
     f["date"] = pd.to_datetime(f["date"])
@@ -138,6 +146,7 @@ def main():
     thr = Config.UNIVERSE.MIN_PEARSON_CORR
     win = 2520
     mkt = _market()
+    mkt = mkt[mkt.index < pd.Timestamp(Config.DATA.SEALED_FROM)]   # sealed holdout, before any reference variance
     import macro
     ref = reference_variances(mkt, macro.build(series=["VIXCLS"]).data["vix_close"])
     ref_var, ref_var_full = ref["calm_d8"], ref["full_sample"]
@@ -170,7 +179,8 @@ def main():
     e_all = pd.Series(pd.to_datetime(pd.read_parquet(
         os.path.join(ROOT, "output", "research", "wrds_deep_history_episodic_scan_tier3_windows.parquet"),
         columns=["window_end_date"])["window_end_date"]).unique())
-    ends = sorted(e_all.groupby(e_all.dt.year).max())
+    sealed = pd.Timestamp(Config.DATA.SEALED_FROM)
+    ends = yearly_window_ends(e_all, sealed)
     rows = []
     for e in ends:
         idx = mkt.index[mkt.index <= e][-win:]

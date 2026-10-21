@@ -103,6 +103,13 @@ def main():
         check("one_calm_definition", m._CALM_Q is st._CALM_VIX_QUANTILE and m._CALM_PERIOD is st._CALM_VIX_PERIOD)
     except (TypeError, AttributeError, KeyError, ImportError) as e:
         check("calm_reference_exists", False, f"{type(e).__name__}: {e}")
+    # sealed holdout (E13, 2026-10-20): one window end per year, none on/after SEALED_FROM
+    try:
+        e_all = pd.Series(pd.to_datetime(["2024-03-01", "2024-11-29", "2025-12-31", "2026-02-02", "2026-08-11"]))
+        ends = m.yearly_window_ends(e_all, pd.Timestamp("2026-01-01"))
+        check("sealed_yearly_window_ends", [str(x.date()) for x in ends] == ["2024-11-29", "2025-12-31"], f"{ends}")
+    except (TypeError, AttributeError) as e:
+        check("sealed_yearly_window_ends", False, f"{type(e).__name__}: {e}")
     finish()
 
 
