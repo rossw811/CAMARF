@@ -1,3 +1,16 @@
+## 2026-10-21 (afternoon): RESUME HERE. Ross signed off on all five decisions; Amendment 5 re-run running.
+**Running (CachyOS):** `debug/_tmp_chain_a5_20261021.sh` (log logs/latest/latest_run_rerun_a5_20261021.log; step
+stdout output/research/_stdout_a5_<step>.log). Seal sweep + audit done (1,717,363 rows / 18,850 daily files to
+output/cache/_sealed_vault), D118 rebuild, suite, discovery (~22 h last time), intraday, adapter, pools (PIT-eligible
+set), spreads, search run + eval. Amendment 4 outputs kept in output/research/_superseded_a4_20261020/.
+**Running (Surface):** N14 1h (logs/n14_1h_20261021.log). Independent review of the Amendment 5 code in progress.
+**After the chain (CachyOS, in this order; never alongside discovery):** N14 1D (`research/eg_null_correlation_matched_n14.py
+--tf 1D`); Johansen trio comparison (`research/johansen_trio_arm_comparison.py`); N13 1M re-derivation; N5 (D10 real
+run). Surface caches: run `python seal.py` (not yet swept; readers' backstop already hides sealed rows).
+**Done 10-21 afternoon:** seal.py (data-layer seal), Amendment 5 code + prereg text, report.py figures only, Johansen
+restricted-constant arm (production det -1 has 3.3% power with an intercept: ERRATA), N14 script, D17 (FANG/OXY still
+kept under the 756-bar rule). Decision record: docs/decisions/DECISIONS_2026-10-21.md.
+
 ## 2026-10-21: RESUME HERE. Re-derivation batch done; two new defects block the search re-run (Ross).
 **Decisions needed (Ross):** (1) Amendment 5 + full chain re-run for BUG-D119 (trades booked across multi-year price
 holes; k2's holdout positivity is one such trade) and BUG-D120 (pool membership from a whole-history BH cutoff);
