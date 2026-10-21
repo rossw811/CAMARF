@@ -29627,3 +29627,11 @@ with Sonnet searches; GitHub About set; Ross's WRDS page shows no full TAQ/Optio
   unaffected (the adapter intersects the legs' dates first). Callers exposed: pit_wfa_wrds_daily (screen and pair row),
   threshold_relevance_pit_test, filter_relevance_sweep_1h, promote_full_universe_pairs, pit_wfa_episodic,
   decoupling_backtest -- their earlier outputs are pre-fix (already cut from the papers unless re-run).
+- **S33 confirmatory tiers fixed (stats.py).** PO = `arch.unitroot.cointegration.phillips_ouliaris` (Z_t, constant) on
+  the legs' log prices, loaded WRDS-first (`load_aligned_pair`, N15) on production's longest gap-respecting segment;
+  measured size at nominal 10% on independent random walks 9.0% (200 runs) / 12% (300 runs), against the old
+  spread-PhillipsPerron proxy's 27.3%. KPSS (univariate critical values on an estimated residual) is still computed and
+  reported but out of the tier until a Shin (1994) version is verified. Tiers: gold = EG + PO, bronze = EG only (no
+  silver). Failing-first `_verify_tiers_po_s33.py` 0/2 -> 5/5. PAPER.md's "4 Gold / 23 Silver / 10 Bronze" was on the
+  old analysis.py pairs and stays WITHDRAWN; re-deriving the tiers on the PIT pools needs a stats.py source switch
+  (it reads output/results/*/pairs.parquet) -- with the redraft.
