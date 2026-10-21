@@ -90,35 +90,8 @@ def _setup_logging():
 # Split
 # ---------------------------------------------------------------------------
 
-def purged_embargoed_split(df: pd.DataFrame, purge: bool = True, embargo: pd.Timedelta = pd.Timedelta(0),
-                           train_pct: float = None, val_pct: float = None) -> dict:
-    """Chronological train/val/test split of an events frame with `entry_time` and
-    `label_end_time`. Returns {"train","val","test"} -> index labels of `df`.
-
-    Boundaries are the entry_time found at positional rows int(n*train_pct) and
-    int(n*(train_pct+val_pct)) of the time-sorted frame; membership is by timestamp
-    (< boundary), so events sharing an entry_time never straddle a boundary.
-    purge: drop train events with label_end_time >= val boundary, and val events with
-    label_end_time >= test boundary. embargo: drop val events with entry_time < val
-    boundary + embargo, and test events with entry_time < test boundary + embargo."""
-    train_pct = Config.ML.TRAIN_PCT if train_pct is None else train_pct
-    val_pct = Config.ML.VAL_PCT if val_pct is None else val_pct
-    d = df.sort_values("entry_time", kind="mergesort")
-    n = len(d)
-    t = d["entry_time"]
-    b_val = t.iloc[int(n * train_pct)]
-    b_test = t.iloc[int(n * (train_pct + val_pct))]
-    train = d[t < b_val]
-    val = d[(t >= b_val) & (t < b_test)]
-    test = d[t >= b_test]
-    if purge:
-        train = train[train["label_end_time"] < b_val]
-        val = val[val["label_end_time"] < b_test]
-    if embargo > pd.Timedelta(0):
-        val = val[val["entry_time"] >= b_val + embargo]
-        test = test[test["entry_time"] >= b_test + embargo]
-    return {"train": train.index, "val": val.index, "test": test.index,
-            "boundary_val": b_val, "boundary_test": b_test}
+# The split lives in ml.py (2026-10-20, R2.3: one definition, used by ml._train_and_validate too)
+from ml import purged_embargoed_split  # noqa: E402,F401
 
 
 # ---------------------------------------------------------------------------

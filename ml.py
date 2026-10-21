@@ -884,12 +884,57 @@ def _build_model_payload(model, le, feature_names, train_median, pair_source=Non
             "pair_source_label": (pair_source or {}).get("label")}
 
 
-def _chronological_split_impute(X_raw, y, train_pct: float, val_pct: float):
-    """Chronological train/val/test split by row position (rows already sorted by entry_time) with the NaN-imputation
-    median fitted on the TRAIN split only and applied to all three. BUG-D75 (2026-07-20 Grand Sweep): the median used
-    to be computed over train+val+test, leaking val/test feature distributions into the training fill. Extracted
-    2026-10-07 so debug/_verify_ml_median_imputation_no_leakage.py tests this code, not a copy. (No purge/embargo
-    between the splits -- code review R2.3, open.) Returns (X_train, y_train, X_val, y_val, X_test, y_test, median)."""
+def purged_embargoed_split(df: pd.DataFrame, purge: bool = True, embargo: pd.Timedelta = pd.Timedelta(0),
+                           train_pct: float = None, val_pct: float = None) -> dict:
+    """Chronological train/val/test split of an events frame with `entry_time` and
+    `label_end_time`. Returns {"train","val","test"} -> index labels of `df`.
+
+    Boundaries are the entry_time found at positional rows int(n*train_pct) and
+    int(n*(train_pct+val_pct)) of the time-sorted frame; membership is by timestamp
+    (< boundary), so events sharing an entry_time never straddle a boundary.
+    purge: drop train events with label_end_time >= val boundary, and val events with
+    label_end_time >= test boundary. embargo: drop val events with entry_time < val
+    boundary + embargo, and test events with entry_time < test boundary + embargo."""
+    train_pct = Config.ML.TRAIN_PCT if train_pct is None else train_pct
+    val_pct = Config.ML.VAL_PCT if val_pct is None else val_pct
+    d = df.sort_values("entry_time", kind="mergesort")
+    n = len(d)
+    t = d["entry_time"]
+    b_val = t.iloc[int(n * train_pct)]
+    b_test = t.iloc[int(n * (train_pct + val_pct))]
+    train = d[t < b_val]
+    val = d[(t >= b_val) & (t < b_test)]
+    test = d[t >= b_test]
+    if purge:
+        train = train[train["label_end_time"] < b_val]
+        val = val[val["label_end_time"] < b_test]
+    if embargo > pd.Timedelta(0):
+        val = val[val["entry_time"] >= b_val + embargo]
+        test = test[test["entry_time"] >= b_test + embargo]
+    return {"train": train.index, "val": val.index, "test": test.index,
+            "boundary_val": b_val, "boundary_test": b_test}
+
+
+def _chronological_split_impute(X_raw, y, train_pct: float, val_pct: float, times: pd.DataFrame = None,
+                                embargo_pct: float = 0.0):
+    """Chronological train/val/test split with the NaN-imputation median fitted on the TRAIN split only and applied to
+    all three. BUG-D75 (2026-07-20 Grand Sweep): the median used to be computed over train+val+test, leaking val/test
+    feature distributions into the training fill. Extracted 2026-10-07 so debug/_verify_ml_median_imputation_no_leakage.py
+    tests this code, not a copy. R2.3 (fixed 2026-10-20, debug/_verify_ml_purged_split.py): with `times` (entry_time,
+    label_end_time; same index as X_raw) the split is purged_embargoed_split -- purge plus an embargo of
+    embargo_pct x the entry-time span -- which _train_and_validate always uses; without it, the old positional split
+    (kept for its unit test). Returns (X_train, y_train, X_val, y_val, X_test, y_test, median)."""
+    if times is not None:
+        t = times.assign(entry_time=pd.to_datetime(times["entry_time"]),
+                         label_end_time=pd.to_datetime(times["label_end_time"]))
+        emb = (t["entry_time"].max() - t["entry_time"].min()) * embargo_pct
+        s = purged_embargoed_split(t, purge=True, embargo=emb, train_pct=train_pct, val_pct=val_pct)
+        pos = {k: X_raw.index.get_indexer(s[k]) for k in ("train", "val", "test")}
+        y = np.asarray(y)
+        train_median = X_raw.iloc[pos["train"]].median()
+        X = X_raw.fillna(train_median)
+        return (X.iloc[pos["train"]], y[pos["train"]], X.iloc[pos["val"]], y[pos["val"]],
+                X.iloc[pos["test"]], y[pos["test"]], train_median)
     n = len(X_raw)
     train_end = int(n * train_pct)
     val_end = train_end + int(n * val_pct)
@@ -922,7 +967,8 @@ def _train_and_validate(result: MLResult, summary: MLRunSummary) -> None:
     y = le.fit_transform(df["label_for_training"])
 
     X_train, y_train, X_val, y_val, X_test, y_test, train_median = _chronological_split_impute(
-        X_raw, y, Config.ML.TRAIN_PCT, Config.ML.VAL_PCT)
+        X_raw, y, Config.ML.TRAIN_PCT, Config.ML.VAL_PCT, times=df[["entry_time", "label_end_time"]],
+        embargo_pct=Config.ML.EMBARGO_PCT)   # R2.3: purged + embargoed (was positional)
 
     if len(X_train) == 0 or len(X_test) == 0:
         summary.note("Chronological split left an empty train or test fold — skipping training.")

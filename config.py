@@ -666,6 +666,9 @@ class MLConfig:
     # Train / validation / test split (no overlap, time-ordered)
     TRAIN_PCT = 0.60
     VAL_PCT = 0.20
+    # R2.3 (2026-10-20): embargo after each split boundary, as a share of the events' entry-time span (AFML ch.7;
+    # research/ml_model_comparison_purged.py measured 1% = ~214 days on the 09-26 events)
+    EMBARGO_PCT = 0.01
     TEST_PCT = 0.20
 
     # Minimum class count to train (skip pair if any class has fewer samples)
