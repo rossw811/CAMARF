@@ -152,15 +152,10 @@ def _log_returns(df):
     return np.log(c).diff().dropna()
 
 
-def main():
-    from episodic_pairs_adapter import _load_symbol
-    from pipeline_stages import stage
-    st = stage("clean_pools")
-    cache, rows = {}, []
-    # S36 (Ross 2026-10-10): same-company pairs (share classes, Compustat listings of one GVKEY) are removed and counted
+def build_company_ids(labels) -> dict:
+    """company_ids() fed from the real caches (the content-verified label map, CRSP names + v2 master, the CCM link,
+    Capital IQ links). Shared by main() and research/dlc_positive_controls_d14.py."""
     _w = os.path.join(_ROOT, "output", "cache", "wrds")
-    # 2026-10-12: the content-verified label -> PERMNO map (full_us_market_label_map named reused tickers' old holders:
-    # TM -> Toastmaster), PERMCO/CUSIP from the FULL CRSP names history (the v2 master has no ADRs), Capital IQ links
     from data_wrds import label_permno_map
     _lmap = label_permno_map()
     _lm = pd.DataFrame({"label": list(_lmap), "permno": list(_lmap.values())})
@@ -170,19 +165,30 @@ def main():
     _cus = dict(_names.sort_values("nameenddt").dropna(subset=["ncusip"]).groupby("permno")["ncusip"].last())
     _link = pd.read_parquet(_CCM_LINK) if os.path.exists(_CCM_LINK) else None
     _cg = os.path.join(_w, "ciq_link_gvkey.parquet"); _cc = os.path.join(_w, "ciq_link_cusip.parquet")
-    _ciq_g = pd.read_parquet(_cg, columns=["gvkey", "companyid"]) if os.path.exists(_cg) else None
-    _ciq_c = pd.read_parquet(_cc, columns=["cusip", "companyid"]) if os.path.exists(_cc) else None
+    if not (os.path.exists(_cg) and os.path.exists(_cc)):
+        raise SystemExit("Capital IQ link files missing (output/cache/wrds/ciq_link_gvkey/cusip.parquet; WRDS job "
+                         "24_fetch_ciq_company_links) -- ADR-vs-home-listing pairs cannot be checked")
+    return company_ids(labels, _lm, _master, _link, ciq_gvkey=pd.read_parquet(_cg, columns=["gvkey", "companyid"]),
+                       ciq_cusip=pd.read_parquet(_cc, columns=["cusip", "companyid"]), cusip_by_permno=_cus)
+
+
+def main():
+    from episodic_pairs_adapter import _load_symbol
+    from pipeline_stages import stage
+    st = stage("clean_pools")
+    cache, rows = {}, []
+    # S36 (Ross 2026-10-10): same-company pairs (share classes, Compustat listings of one GVKEY) are removed and counted
+    # 2026-10-12: the content-verified label -> PERMNO map (full_us_market_label_map named reused tickers' old holders:
+    # TM -> Toastmaster), PERMCO/CUSIP from the FULL CRSP names history (the v2 master has no ADRs), Capital IQ links
+    # -- built in build_company_ids (2026-10-20, shared with the D14 positive controls)
+    _link = pd.read_parquet(_CCM_LINK) if os.path.exists(_CCM_LINK) else None
     from data_wrds import LABEL_PERMNO_MAP_PATH
     _unverified = unverified_labels(pd.read_parquet(LABEL_PERMNO_MAP_PATH))   # D15
     _dlc = load_dlc_sides()                                                      # D14
     for k in (1, 2):
         P = pd.read_parquet(os.path.join(_R, f"purity_pairs_pit_k{k}.parquet"))
         require_link_for_mixed(zip(P["symbol_a"], P["symbol_b"]), _link)
-        if _ciq_g is None or _ciq_c is None:
-            raise SystemExit("Capital IQ link files missing (output/cache/wrds/ciq_link_gvkey/cusip.parquet; WRDS job "
-                             "24_fetch_ciq_company_links) -- ADR-vs-home-listing pairs cannot be checked")
-        ids = company_ids(pd.concat([P["symbol_a"], P["symbol_b"]]).unique(), _lm, _master, _link,
-                          ciq_gvkey=_ciq_g, ciq_cusip=_ciq_c, cusip_by_permno=_cus)
+        ids = build_company_ids(pd.concat([P["symbol_a"], P["symbol_b"]]).unique())
         keep = []
         for r in P.itertuples():
             for s in (r.symbol_a, r.symbol_b):
