@@ -97,6 +97,13 @@ The C-entries below are claims re-derived one by one on current data.
 - **Reproduce:** `python research/ml_model_comparison_purged.py` → `output/research/ml_model_comparison_purged.parquet`
   (+ `_trials.json`).
 - **Status:** PENDING-DATA — computed before the D13-D19 data fixes (labels, identities, FX, total return).
+- **Re-derived 2026-10-20 (N10; REGISTERED pending review, CORRECTED value).** `research/ml_model_comparison_purged.py`
+  on the fixed chain: ml.build(pit_safe=True) on the k2 PIT pool, 21,695 events (109 dropped by the sealed holdout),
+  positive (converged) rate 0.616; purged + 1% embargo split (R2.3 now also in ml.py): train 11,768 / val 2,654 / test
+  3,766, test boundary 2016-06-03 (test ends 2025-12-31). Test AUC [bootstrap 95% CI]: random forest 0.587 [0.572,
+  0.603], XGBoost 0.576 [0.562, 0.591], logistic L2 0.575 [0.559, 0.590], kNN 0.584, LightGBM 0.571, SVM 0.567, MLP 0.555.
+  The claim's shape holds (above-chance prediction of z-convergence; profitability not addressed); the value is lower
+  than the pre-fix 0.61. Log logs/ml_n10_20261020.log (CachyOS).
   Re-derive on the re-run pools.
 - **Market-structure reading:** fails if the AUC comes from mechanical convergence -- stale or nonsynchronous prices in thin legs, bid-ask bounce at intraday bars -- rather than information; that would make 'predicts convergence' an artifact of quoting, not of the pairs.
 

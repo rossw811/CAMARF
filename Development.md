@@ -29601,3 +29601,8 @@ with Sonnet searches; GitHub About set; Ross's WRDS page shows no full TAQ/Optio
   262 extreme); the calm controls precede eligibility, so no PIT paired test can exist. Reading: crisis windows show
   far more dislocation and breakdown than calm ones in the raw counts (all pairs descriptive), but the paired test that
   controls for pair identity has n = 13 and cannot separate them; PAPER-169/170 stay qualified until a design with power.
+- **N10 ML gate on the PIT pool (CachyOS, `research/ml_model_comparison_purged.py`, log logs/ml_n10_20261020.log).**
+  Sealed holdout added to ml.build first (`ml._seal_examples`, failing-first 0/2 -> 2/2: 109 of 21,804 examples
+  dropped). 21,695 events, pos rate 0.616; purged split train 11,768 / val 2,654 / test 3,766 (boundaries 2010-01-28,
+  2016-06-03). Test AUC: RF 0.587 [0.572, 0.603], XGB 0.576 [0.562, 0.591], logreg 0.575, kNN 0.584, LightGBM 0.571, SVM
+  0.567, MLP 0.555 (positional split within ~0.005). C-003 re-derived: shape holds, value lower than 0.61.
