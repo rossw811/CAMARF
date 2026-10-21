@@ -754,13 +754,9 @@ class BacktestConfig:
     WFA_TRAIN_PCT = 0.70
     WFA_TEST_PCT = 0.30
 
-    # Circuit breakers (applied during backtest simulation)
-    # DEAD (Tier 6 fix, Grand Sweep 2026-07-20): confirmed unused anywhere
-    # in backtest.py's actual event loop — no daily-loss-limit or
-    # consecutive-loss circuit breaker is currently enforced. Not deleted
-    # -- genuinely aspirational risk-management features, not yet wired in.
-    DAILY_LOSS_LIMIT_PCT = 0.03  # halt day if drawdown > 3% of account
-    CONSECUTIVE_LOSS_LIMIT = 5  # halt if 5 consecutive losses
+    # No daily-loss-limit or consecutive-loss circuit breaker is enforced by the engine. DAILY_LOSS_LIMIT_PCT (0.03) and
+    # CONSECUTIVE_LOSS_LIMIT (5) stood here unused since before 2026-07-20; removed 2026-10-20 (X-C04, Ross: a stated
+    # limit that is not enforced misleads).
 
     # Layer 1 event-driven baseline (Ross Q&A 2026-06-28)
     MAX_HALF_LIFE = 50           # pair-selection ceiling: half_life_rolling > this → excluded
