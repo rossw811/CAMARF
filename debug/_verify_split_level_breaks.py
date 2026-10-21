@@ -60,6 +60,50 @@ def main():
     check("spike_masked_not_split", len(sp) == 1 and pd.isna(sp[0][1]["close"].iloc[20]) and sp[0][1]["volume"].iloc[20] == 100.0)
     whole = m.split_frame(frame(base), "GVKEY000003_01W")
     check("no_break_unchanged", len(whole) == 1 and whole[0][0] == "GVKEY000003_01W" and np.allclose(whole[0][1]["close"], base))
+
+    # Amendment 5 (BUG-D119 review, 2026-10-21): the rule compares CONSECUTIVE VALID prices. Real case GVKEY015736:
+    # 175.88 -> 11.56 (15x) with an 810-day hole of NaN rows between them escaped it (diff() is NaN across NaN rows).
+    hid = base.copy(); hid[30:] /= 15; hid[25:30] = np.nan          # 15x drop hidden behind 5 NaN rows
+    hb = m.find_breaks(frame(hid)["close_total_return"])
+    check("A5_break_behind_nan_hole_found", hb["breaks"] == [frame(hid).index[30]], hb)
+    hs = m.split_frame(frame(hid), "GVKEY000004_01W")
+    check("A5_split_at_first_valid_bar_after_hole", [len(d) for _, d in hs] == [30, 30], [len(d) for _, d in hs])
+    sk = base.copy(); sk[22] *= 50; sk[20:22] = np.nan               # spike after a NaN pair, reverts next valid day
+    ss = m.find_breaks(frame(sk)["close_total_return"])
+    check("A5_spike_after_nan_still_a_spike", not ss["breaks"] and ss["spikes"] == [frame(sk).index[22]], ss)
+    sm = m.split_frame(frame(sk), "GVKEY000005_01W")
+    # (how many days after the spike get masked is the pre-existing argmin-of-|cumsum| rule, unchanged here)
+    check("A5_spike_masked_on_valid_bar", len(sm) == 1 and pd.isna(sm[0][1]["close"].iloc[22])
+          and sm[0][1]["close"].iloc[:20].notna().all() and sm[0][1]["close"].iloc[30:].notna().all())
+
+    # rebuild: originals come from the backup when one exists, stale _seg files of the label are removed, and only
+    # pre-seal rows are segmented (sealed rows stay with the label in the vault)
+    import tempfile
+    from config import Config
+    with tempfile.TemporaryDirectory() as td:
+        w = os.path.join(td, "wrds"); bak = os.path.join(w, "_pre_split_backup"); os.makedirs(bak)
+        orig = frame(hid)
+        orig.to_parquet(os.path.join(bak, "GVKEY000006_01W_1D.parquet"))
+        frame(base[:30]).to_parquet(os.path.join(w, "GVKEY000006_01W_1D.parquet"))       # old, wrong pass output
+        frame(base[:10]).to_parquet(os.path.join(w, "GVKEY000006_01W_seg1_1D.parquet"))  # stale segment
+        frame(base[:10]).to_parquet(os.path.join(w, "GVKEY000006_01W_seg2_1D.parquet"))  # stale segment
+        plan = m.rebuild_label("GVKEY000006_01W", w, dry_run=False)
+        files = sorted(f for f in os.listdir(w) if f.endswith(".parquet"))
+        check("A5_rebuild_from_backup_removes_stale_segments",
+              files == ["GVKEY000006_01W_1D.parquet", "GVKEY000006_01W_seg1_1D.parquet"]
+              and len(pd.read_parquet(os.path.join(w, "GVKEY000006_01W_1D.parquet"))) == 30, f"{files} {plan}")
+        late = frame(base); late.index = pd.bdate_range("2025-11-03", periods=60)          # runs into 2026
+        late.to_parquet(os.path.join(w, "GVKEY000007_01W_1D.parquet"))
+        m.rebuild_label("GVKEY000007_01W", w, dry_run=False)
+        got = pd.read_parquet(os.path.join(w, "GVKEY000007_01W_1D.parquet"))
+        check("A5_rebuild_writes_only_pre_seal_rows", got.index.max() < pd.Timestamp(Config.DATA.SEALED_FROM),
+              str(got.index.max()))
+        bad = base.copy(); bad[10] *= 40; bad[12] /= 40                          # two jumps 2 days apart: neither
+        frame(bad).to_parquet(os.path.join(w, "GVKEY000008_01W_seg1_1D.parquet"))   # a clean spike nor a split
+        J = m.residual_jumps(w)
+        n = m.quarantine_residuals(w, J)
+        check("A5_residuals_quarantined", n >= 1 and len(m.residual_jumps(w)) == 0
+              and os.path.exists(os.path.join(w, "_quarantine_d118_a5", "GVKEY000008_01W_seg1_1D.parquet")), f"{n}")
     finish()
 
 

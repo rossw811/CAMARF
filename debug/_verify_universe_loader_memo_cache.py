@@ -34,7 +34,7 @@ import universe_loader
 
 def _write_symbol(cache_dir, symbol, suffix, n_rows=5):
     os.makedirs(cache_dir, exist_ok=True)
-    idx = pd.date_range("2026-01-01", periods=n_rows, freq="D")
+    idx = pd.date_range("2020-01-01", periods=n_rows, freq="D")   # pre-seal: the loader hides 2026+ daily rows
     df = pd.DataFrame({"close": range(n_rows)}, index=idx)
     df.to_parquet(os.path.join(cache_dir, f"{symbol}_{suffix}.parquet"))
 

@@ -57,6 +57,16 @@ def main():
     except Exception as ex:  # noqa: BLE001
         check("sealed.helper_exists", False, f"{type(ex).__name__}: {ex}")
 
+    # 6. Amendment 5: trades excluded from P&L are counted per status, over pre-seal exits only
+    try:
+        from research.strategy_search import status_counts
+        sd = pd.DataFrame({"exit_time": pd.to_datetime(["2020-01-02", "2021-01-04", "2022-01-03", "2026-02-02"]),
+                           "pnl_dollar_status": ["ok", "unrealizable_gap", "unrealizable_gap", "unrealizable_gap"]})
+        got = {r["status"]: r["n"] for r in status_counts(sd, "pit_k1", "c1")}
+        check("a5.status_counts_pre_seal", got == {"ok": 1, "unrealizable_gap": 2}, str(got))
+    except Exception as ex:  # noqa: BLE001
+        check("a5.status_counts_exists", False, f"{type(ex).__name__}: {ex}")
+
     e = fold_edges(pd.Timestamp("2010-01-01"), pd.Timestamp("2014-01-01"), 4)
     ft = pd.DataFrame({"entry_time": pd.to_datetime(["2010-06-01", "2010-12-30", "2011-03-01"]),
                        "exit_time": pd.to_datetime(["2010-07-01", "2011-01-15", "2011-04-01"])})

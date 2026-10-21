@@ -79,6 +79,7 @@ log = logging.getLogger("CAMARF")
 # ---------------------------------------------------------------------------
 # Paths
 # ---------------------------------------------------------------------------
+import seal
 from ibkr_supplement_reader import (
     SUPPLEMENT_DIR,
     supplement_path,
@@ -345,7 +346,7 @@ class IBKRSupplementPipeline:
                 # Save
                 out_path = supplement_path(sym, tf_label)
                 try:
-                    merged.to_parquet(out_path)
+                    seal.write_parquet(merged, out_path)   # sealed holdout: sealed bars go to the vault
                     sym_saved += 1
                     n_saved += 1
                     date_range = (

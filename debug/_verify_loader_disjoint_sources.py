@@ -42,7 +42,7 @@ def main():
         d["yf"], d["wrds"], d["bin"], d["ibkr"], d["memo"])
     try:
         old = pd.bdate_range("2010-01-04", periods=300)
-        new = pd.bdate_range("2026-01-05", periods=150)
+        new = pd.bdate_range("2023-01-05", periods=150)   # pre-seal (2026+ daily rows are sealed, seal.py)
         pd.DataFrame({"close": 50.0, "volume": 1.0}, index=new).to_parquet(os.path.join(d["yf"], "VSNT_1day.parquet"))
         pd.DataFrame({"close": 7.0, "volume": 1.0}, index=old).to_parquet(os.path.join(d["wrds"], "VSNT_1D.parquet"))
         both = pd.bdate_range("2024-01-02", periods=200)
@@ -50,7 +50,7 @@ def main():
         pd.DataFrame({"close": 11.0, "volume": 1.0}, index=both).to_parquet(os.path.join(d["wrds"], "OVL_1D.parquet"))
         pd.DataFrame({"close": 3.0, "volume": 1.0}, index=old).to_parquet(os.path.join(d["wrds"], "ONLY_1D.parquet"))
         dead = pd.bdate_range("2011-06-15", "2019-01-31")
-        live = pd.bdate_range("2015-01-02", "2026-09-25")
+        live = pd.bdate_range("2015-01-02", "2025-09-25")
         pd.DataFrame({"close": 4.0, "volume": 1.0}, index=dead).to_parquet(os.path.join(d["wrds"], "P_1D.parquet"))
         pd.DataFrame({"close": 40.0, "volume": 1.0}, index=live).to_parquet(os.path.join(d["yf"], "P_1day.parquet"))
         # the loader reads the content-verified label -> PERMNO map since BUG-D117 (2026-10-12)

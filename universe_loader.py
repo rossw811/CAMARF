@@ -58,6 +58,7 @@ import pandas as pd
 import pyarrow.parquet as pq
 
 from config import Config
+import seal
 from instrument_labels import instrument_label
 
 try:
@@ -262,6 +263,16 @@ def _read_one_polars(path: str, columns):
 
 
 def _read_one(cache_dir: str, filename: str, sym: str, columns=None):
+    """One cache file -> (sym, frame or None). Sealed rows are dropped here as the readers' backstop to seal.py
+    (DECISIONS_2026-10-21 #2), whichever reader path below succeeds."""
+    sym, df = _read_one_unsealed(cache_dir, filename, sym, columns)
+    if df is None:
+        return sym, None
+    df = seal.drop_sealed(df, seal.kind_of_path(filename))
+    return (sym, df) if not df.empty else (sym, None)
+
+
+def _read_one_unsealed(cache_dir: str, filename: str, sym: str, columns=None):
     path = os.path.join(cache_dir, filename)
     if _POLARS_AVAILABLE:
         try:

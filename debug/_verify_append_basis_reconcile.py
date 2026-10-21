@@ -46,7 +46,7 @@ def main():
     orig = Config.DATA.CACHE_DIR
     Config.DATA.CACHE_DIR = tmp
     try:
-        idx = pd.bdate_range("2026-01-02", periods=180)
+        idx = pd.bdate_range("2024-01-02", periods=180)    # pre-seal (2026+ daily rows are sealed, seal.py)
         true = 50 * np.exp(np.cumsum(np.random.default_rng(0).normal(0, 0.01, len(idx))))
         vol = np.full(len(idx), 1e6)
         cut, start_new = 170, 150           # cache ends at bar 169; the refresh re-fetches bars 150..179

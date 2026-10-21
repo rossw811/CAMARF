@@ -39,6 +39,7 @@ nest_asyncio.apply()
 import ib_insync as ibi
 
 from config import Config
+import seal
 from period_bars import resample_to_period_end
 from instrument_labels import instrument_label, root_symbol
 
@@ -216,15 +217,16 @@ class DataStore:
         if df is None or df.empty:
             return
         path = DataStore._path(symbol, tf_label)
-        df.to_parquet(path, index=True, compression="snappy")
-        log.debug(f"Cached  {symbol} {tf_label}  →  {len(df)} bars")
+        # Sealed holdout (DECISIONS_2026-10-21 #2): sealed bars go to the vault, never the cache.
+        n_open, n_sealed = seal.write_parquet(df, path)
+        log.debug(f"Cached  {symbol} {tf_label}  →  {n_open} bars ({n_sealed} sealed → vault)")
 
     @staticmethod
     def load(symbol: str, tf_label: str) -> Optional[pd.DataFrame]:
         path = DataStore._path(symbol, tf_label)
         if not os.path.exists(path):
             return None
-        return pd.read_parquet(path)
+        return seal.drop_sealed(pd.read_parquet(path), seal.kind_of_path(path))
 
     @staticmethod
     def needs_refresh(symbol: str, tf_label: str) -> bool:
@@ -250,10 +252,10 @@ class DataStore:
         _INCREMENTAL_TFS = {"1D", "7D", "1M"}
         if tf_label not in _INCREMENTAL_TFS:
             return False  # intraday staleness is handled by is_fresh() + intraday_max_age_hours(), not here
-        cached = DataStore.load(symbol, tf_label)
-        if cached is None or cached.empty:
+        # Cache and vault together: the cache stops at the seal, so its own last bar would read as stale forever.
+        last_bar = seal.last_bar_including_vault(DataStore._path(symbol, tf_label))
+        if last_bar is None:
             return True
-        last_bar = cached.index[-1]
         # Convert to date for comparison
         if hasattr(last_bar, "date"):
             last_date = last_bar.date()

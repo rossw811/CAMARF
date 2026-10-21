@@ -57,6 +57,9 @@ class DataConfig:
     # Sealed holdout (Ross, DECISIONS_2026-10-12 E13): no CAMARF result may be computed on data dated on/after this
     # until the final pre-registered test. CRSP ends 2025-12-31; Compustat Global and yfinance intraday run past it.
     SEALED_FROM = "2026-01-01"
+    # Intraday seal (Ross, DECISIONS_2026-10-21 #2): every yfinance intraday bar is 2024+, so a 2026-01-01 seal would
+    # leave two years of development data; intraday's holdout is instead the bars forward-recorded from this date.
+    SEALED_FROM_INTRADAY = "2026-10-21"
 
     # Timeframes to analyze (IBKR bar size strings)
     # 12 hours removed — not a valid IBKR bar size (confirmed via Error 321)

@@ -46,8 +46,8 @@ def _ohlcv(idx, seed):
 
 def main():
     orig_dir, orig_dl = Config.DATA.CACHE_DIR, data.yf.download
-    days = pd.bdate_range("2025-03-03", "2026-06-30")
-    hist, recent = days[days <= "2026-06-17"], days[days > "2026-06-01"]
+    days = pd.bdate_range("2024-03-04", "2025-06-30")      # pre-seal (2026+ daily rows are sealed, seal.py)
+    hist, recent = days[days <= "2025-06-17"], days[days > "2025-06-01"]
     calls = []
 
     def fake_download(tickers, period=None, interval=None, **kw):

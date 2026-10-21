@@ -14,6 +14,9 @@ first date the pair could have been known to be confirmed k times), from the Tie
   k = 2 : >= 2 rejected windows required (Ross-approved stricter arm).
 Pool pairs with no rejected window in the Tier-3 files are REPORTED (not silently kept).
 
+Amendment 5 (BUG-D120, 2026-10-21): the pool is now the point-in-time-eligible set itself (`build_pit_pool`), not the
+whole-history rejection set dated point-in-time; windows on/after the seal of their timeframe are ignored.
+
 Outputs: output/research/purity_pairs_pit_k1.parquet, purity_pairs_pit_k2.parquet, and a coverage report.
 Verified first: debug/_verify_purity_pit_eligibility.py.
 """
@@ -26,6 +29,7 @@ import pandas as pd
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from config import Config
+import seal
 
 _TIER3 = {
     "1D": os.path.join("output", "research", "wrds_deep_history_episodic_scan_tier3_windows.parquet"),
@@ -92,6 +96,50 @@ def pit_kth_rejection_dates(windows: pd.DataFrame, k: int, alpha: float = None) 
                          "n_rejected": last_count[keep]})
 
 
+def _seal_windows(w: pd.DataFrame, tf: str) -> pd.DataFrame:
+    """Windows ending before the seal of their timeframe only (seal.py: daily 2026-01-01, intraday 2026-10-21)."""
+    kind = "intraday" if tf in ("1m", "2m", "3m", "5m", "15m", "30m", "1h", "4h") else "daily"
+    return w[pd.to_datetime(w["window_end_date"]) < seal.sealed_from(kind)]
+
+
+def build_pit_pool(windows_by_tf: dict, k: int, whole_history_pool: pd.DataFrame = None) -> pd.DataFrame:
+    """Amendment 5 (BUG-D120, Ross 2026-10-21): the pool IS the point-in-time-eligible set -- every pair with >= k
+    rejections under the as-of BH family at some month-end before the seal, per timeframe. Membership no longer comes
+    from the whole-history rejection set (purity_pairs.parquet), which excluded 330 of 767 pairs k1-eligible before
+    2026. Symbol order is the windows file's (discovery's). Adapter columns from `whole_history_pool` are joined
+    where the pair exists there in either order (metadata only: backtest's pit_strict ignores those whole-history
+    scalars), and `in_whole_history_set` records which pairs the old rule would have kept.
+    debug/_verify_pit_pool_membership_d120.py"""
+    out = []
+    for tf, w in windows_by_tf.items():
+        w = _seal_windows(w, tf)
+        e = pit_kth_rejection_dates(w, k)
+        if e.empty:
+            continue
+        a, b = w["symbol_a"].astype(str), w["symbol_b"].astype(str)
+        order = pd.DataFrame({"key_a": a.where(a <= b, b), "key_b": b.where(a <= b, a), "symbol_a": a, "symbol_b": b})
+        order = order.drop_duplicates(["key_a", "key_b"], keep="first")
+        e = e.merge(order, on=["key_a", "key_b"], how="left")
+        e["tf_label"] = tf
+        out.append(e)
+    cols = ["symbol_a", "symbol_b", "tf_label", "eligible_from", "n_rejected", "in_whole_history_set"]
+    if not out:
+        return pd.DataFrame(columns=cols)
+    P = pd.concat(out, ignore_index=True)
+    P["in_whole_history_set"] = False
+    if whole_history_pool is not None and len(whole_history_pool):
+        W = whole_history_pool.copy()
+        wa, wb = W["symbol_a"].astype(str), W["symbol_b"].astype(str)
+        W["key_a"], W["key_b"] = wa.where(wa <= wb, wb), wb.where(wa <= wb, wa)
+        meta = [c for c in W.columns if c not in ("symbol_a", "symbol_b", "tf_label", "key_a", "key_b",
+                                                  "eligible_from", "n_rejected")]
+        W = W.drop_duplicates(["key_a", "key_b", "tf_label"])[["key_a", "key_b", "tf_label"] + meta]
+        W["in_whole_history_set"] = True
+        P = P.drop(columns="in_whole_history_set").merge(W, on=["key_a", "key_b", "tf_label"], how="left")
+        P["in_whole_history_set"] = P["in_whole_history_set"].eq(True)
+    return P.drop(columns=["key_a", "key_b"])[cols + [c for c in P.columns if c not in cols + ["key_a", "key_b"]]]
+
+
 def attach_eligibility(pool: pd.DataFrame, windows_by_tf: dict, k: int):
     out, missing = [], []
     for tf, g in pool.groupby("tf_label"):
@@ -112,18 +160,19 @@ def attach_eligibility(pool: pd.DataFrame, windows_by_tf: dict, k: int):
 
 
 def main():
-    pool = pd.read_parquet(os.path.join("output", "research", "purity_pairs.parquet"))
+    whole = pd.read_parquet(os.path.join("output", "research", "purity_pairs.parquet"))
     windows = {}
     for tf, path in _TIER3.items():
         if os.path.exists(path):
             windows[tf] = pd.read_parquet(path, columns=["symbol_a", "symbol_b", "window_end_date", "pvalue"])
     for k in (1, 2):
-        res, missing = attach_eligibility(pool, windows, k)
+        res = build_pit_pool(windows, k, whole)      # Amendment 5: the PIT-eligible set itself (BUG-D120)
         path = os.path.join("output", "research", f"purity_pairs_pit_k{k}.parquet")
         res.to_parquet(path)
-        print(f"k={k}: {len(res)} of {len(pool)} pairs eligible -> {path}")
-        for tf, n, why in missing:
-            print(f"   excluded tf={tf}: {n} ({why})")
+        n_old = int(res["in_whole_history_set"].sum())
+        print(f"k={k}: {len(res)} pairs PIT-eligible -> {path}; {n_old} were in the whole-history set "
+              f"({len(whole)} pairs), {len(res) - n_old} were not")
+        print(f"   by tf: {res['tf_label'].value_counts().to_dict()}")
         if len(res):
             ef = pd.to_datetime(res["eligible_from"])
             print(f"   eligible_from range {ef.min().date()} .. {ef.max().date()}; median {ef.median().date()}; "

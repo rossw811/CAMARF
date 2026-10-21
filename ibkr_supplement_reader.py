@@ -16,6 +16,8 @@ from typing import Optional
 
 import pandas as pd
 
+import seal
+
 # Mirror of DataStore._TF_SAFE — kept in sync manually, not imported from
 # data.py, to avoid pulling in ib_insync (which data.py imports at top level).
 _TF_SAFE: dict = {
@@ -94,7 +96,7 @@ def load_supplement(symbol: str, tf_label: str) -> Optional[pd.DataFrame]:
     p = supplement_path(symbol, tf_label)
     if os.path.exists(p):
         try:
-            df = pd.read_parquet(p)
+            df = seal.drop_sealed(pd.read_parquet(p), seal.kind_of_path(p))
             return df if not df.empty else None
         except Exception:
             return None

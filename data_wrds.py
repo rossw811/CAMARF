@@ -98,6 +98,7 @@ import pandas as pd
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from config import Config
+import seal
 from dollar_volume import usd_dollar_volume
 from period_bars import resample_to_period_end, restamp_to_period_end
 
@@ -1833,7 +1834,7 @@ def main():
         os.makedirs(_OUT_DIR, exist_ok=True)
         fx_series = fetch_fx_wrds(db)
         for label, series in fx_series.items():
-            series.to_frame("close").to_parquet(os.path.join(_OUT_DIR, f"FX_{label}_1D.parquet"))
+            seal.write_parquet(series.to_frame("close"), os.path.join(_OUT_DIR, f"FX_{label}_1D.parquet"))
         log.info(f"--only-fx complete: {len(fx_series)} FX series saved to output/cache/wrds/FX_*_1D.parquet")
         return
 
@@ -1874,11 +1875,11 @@ def main():
         # 1D-only version, just more files written per symbol.
         n_saved = 0
         for sym, df in fetch_symbols_bulk(db, permno_by_symbol, start=args.start, batch_size=args.batch_size):
-            df.to_parquet(os.path.join(_OUT_DIR, f"{sym}_1D.parquet"))
+            seal.write_parquet(df, os.path.join(_OUT_DIR, f"{sym}_1D.parquet"))
             for tf in derived_tfs:
                 resampled = resample_daily_to(df, tf)
                 if resampled is not None and not resampled.empty:
-                    resampled.to_parquet(os.path.join(_OUT_DIR, f"{sym}_{tf}.parquet"))
+                    seal.write_parquet(resampled, os.path.join(_OUT_DIR, f"{sym}_{tf}.parquet"))
             n_saved += 1
 
         n_failed = len(symbols) - n_saved
@@ -1893,7 +1894,7 @@ def main():
         t1 = time.time()
         n_monthly = 0
         for sym, df in fetch_monthly_bulk(db, permno_by_symbol, start=args.start, batch_size=args.batch_size):
-            df.to_parquet(os.path.join(_OUT_DIR, f"{sym}_1M.parquet"))
+            seal.write_parquet(df, os.path.join(_OUT_DIR, f"{sym}_1M.parquet"))
             n_monthly += 1
         log.info(f"Native monthly pass complete in {(time.time()-t1)/60:.1f} min: {n_monthly} saved")
     else:
@@ -1928,15 +1929,15 @@ def main():
 
         n_delisted_daily = 0
         for label, df in fetch_symbols_bulk(db, delisted_permno_by_label, start=args.start, batch_size=args.batch_size):
-            df.to_parquet(os.path.join(_OUT_DIR, f"{label}_1D.parquet"))
+            seal.write_parquet(df, os.path.join(_OUT_DIR, f"{label}_1D.parquet"))
             for tf in derived_tfs:
                 resampled = resample_daily_to(df, tf)
                 if resampled is not None and not resampled.empty:
-                    resampled.to_parquet(os.path.join(_OUT_DIR, f"{label}_{tf}.parquet"))
+                    seal.write_parquet(resampled, os.path.join(_OUT_DIR, f"{label}_{tf}.parquet"))
             n_delisted_daily += 1
         n_delisted_monthly = 0
         for label, df in fetch_monthly_bulk(db, delisted_permno_by_label, start=args.start, batch_size=args.batch_size):
-            df.to_parquet(os.path.join(_OUT_DIR, f"{label}_1M.parquet"))
+            seal.write_parquet(df, os.path.join(_OUT_DIR, f"{label}_1M.parquet"))
             n_delisted_monthly += 1
         log.info(f"Survivorship-bias fix complete in {(time.time()-t2)/60:.1f} min: "
                  f"{n_delisted_daily} delisted S&P 500 symbols fetched (daily+derived), "

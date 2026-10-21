@@ -183,3 +183,38 @@ RE-RUN under this amendment; the 2026-10-14 output is kept and reported as super
    taken across the 216 trials of one pool while N = 432.
 Discovery, intraday, pools and the search are re-run in full (`debug/_tmp_chain_rerun_20261012.sh`). Unchanged:
 everything else in Amendments 2-3 -- grid (N = 432), splits, embargo, selection rule, DSR/PBO, success criterion.
+
+## Amendment 5 (approved by Ross 2026-10-21, DECISIONS_2026-10-21 #1-2; committed before ANY result of the re-run below exists)
+The Amendment 4 re-run completed 2026-10-20 (0 of 8 cells pass). Its independent review (2026-10-21) held the verdict
+and found two defects, both of which make results look better (ERRATA): BUG-D119, a trade booked across an 810-day
+hole in one leg's prices that carries most of k = 2's holdout positivity, and BUG-D120, pool membership from one BH
+over the whole window family. The sealed holdout had also not been enforced in code (eval fixed 2026-10-20). The
+Amendment 4 result is reported as superseded, never as the result. Changes, each with a failing-first test:
+1. **Unrealizable trades (BUG-D119).** A trade during which either leg has no valid price (close and total return
+   finite, > 0) for more than 5 business days (data._MAX_FILL_BARS, the DATA_GAP rule) -- counted from the leg's last
+   valid bar at or before entry to the exit date, so a stale entry or exit price counts -- gets pnl status
+   `unrealizable_gap`: excluded from P&L and COUNTED per pool and configuration
+   (`strategy_search/trade_status_counts.parquet`, printed in the eval log). Disclosed: the excluded trades' outcomes
+   are unknowable; positions caught in a halt or delisting often lose, so excluding them can flatter the result.
+   `debug/_verify_pnl_unrealizable_gap_d119.py`.
+2. **BUG-D118 rule on consecutive valid prices.** The > 5x split rule compares consecutive VALID prices (a NaN hole
+   hid GVKEY015736's 175.88 -> 11.56). Every Compustat Global label is re-segmented from its original series
+   (`_pre_split_backup` where one exists), pre-seal rows only; stale `_segN` files are removed; files still holding a
+   > 5x move are quarantined (`output/cache/wrds/_quarantine_d118_a5/`, Amendment 4 moved its 20 by hand) and the
+   chain stops unless 0 remain. `debug/_verify_split_level_breaks.py`.
+3. **The pool is the point-in-time-eligible set (BUG-D120).** Per timeframe, every pair with >= k rejections under
+   the as-of BH family at some month-end (`purity_pit_eligibility.build_pit_pool`), windows ending before the seal
+   of their timeframe only. Membership no longer passes through the whole-history rejection set; its pairs are
+   flagged (`in_whole_history_set`). Cleaning unchanged (Amendment 3 order, Amendment 4 structural exclusions);
+   arms reported separately (S31 (c)). `debug/_verify_pit_pool_membership_d120.py`.
+4. **Sealed holdout enforced at the data layer** (`seal.py`, DECISIONS_2026-10-21 #2). No live price cache holds a
+   sealed row: writers route sealed rows to `output/cache/_sealed_vault/`, a sweep moves any already there, shared
+   readers drop them as a backstop, and the chain stops unless the audit counts 0. Daily-and-coarser data is sealed
+   from 2026-01-01; intraday from 2026-10-21 (all yfinance intraday is 2024+; its holdout is forward-recorded bars).
+   The search's evaluation span still ends 2025-12-31 for EVERY timeframe (`seal_trades`): its splits are calendar
+   fractions of one common span. Disclosed: the 2026 Compustat Global and January-August 2026 intraday data were
+   already used by the Amendment 4 run and its discovery, so they cannot serve as an untouched holdout.
+   `debug/_verify_seal_data_layer.py`.
+Discovery, intraday, adapter, pools, spreads and the search are re-run in full (`debug/_tmp_chain_a5_20261021.sh`).
+Unchanged: everything else in Amendments 2-4 -- grid (216 per pool, N = 432), splits, embargo, selection rule,
+DSR/PBO, success criterion, and the disclosed evaluation deviations of Amendment 4 item 3.

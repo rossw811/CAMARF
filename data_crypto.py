@@ -79,6 +79,7 @@ from typing import List, Optional
 import pandas as pd
 
 from config import Config
+import seal
 
 _BASE_URL = "https://api.binance.us/api/v3"
 _CACHE_DIR = os.path.join(Config.DATA.CACHE_DIR, "binance")
@@ -185,7 +186,7 @@ def run(symbols: Optional[List[str]] = None, intervals: Optional[List[str]] = No
                 _save_checkpoint(checkpoint)
                 continue
             out_path = os.path.join(_CACHE_DIR, f"{symbol}_{interval}.parquet")
-            df.to_parquet(out_path)
+            seal.write_parquet(df, out_path)   # sealed holdout: sealed bars go to the vault
             checkpoint[key] = "done"
             _save_checkpoint(checkpoint)
             print(f"  {key}: {len(df)} bars, {df.index.min()} -> {df.index.max()} -> {out_path}")

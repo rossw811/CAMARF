@@ -169,6 +169,14 @@ def seal_trades(trades, sealed_from=Config.DATA.SEALED_FROM):
     return trades[_naive(trades["exit_time"]) < pd.Timestamp(sealed_from)]
 
 
+def status_counts(D, pool, cid, sealed_from=Config.DATA.SEALED_FROM):
+    """Amendment 5: trades excluded from P&L are COUNTED, per status (unrealizable_gap = BUG-D119), over the trades
+    the evaluation could see (exits before the seal)."""
+    v = D[_naive(D["exit_time"]) < pd.Timestamp(sealed_from)] if len(D) else D
+    vc = v["pnl_dollar_status"].value_counts() if len(v) else pd.Series(dtype=int)
+    return [{"pool": pool, "config": cid, "status": k, "n": int(n)} for k, n in vc.items()]
+
+
 def fold_edges(t0, c, n=N_FOLDS):
     return [t0 + (c - t0) * i / n for i in range(n + 1)]
 
@@ -231,7 +239,7 @@ def eval_phase():
     from deflated_sharpe import deflated_sharpe_ratio
     from scipy import stats as st
     grid = {c["id"]: c for c in build_grid()}
-    rows, summary = [], []
+    rows, summary, status_rows = [], [], []
     for pname, ppath in POOLS.items():
         d = os.path.join(_OUT, pname)
         if _read_fp(d) != pool_fingerprint(ppath):
@@ -249,6 +257,7 @@ def eval_phase():
                 cache[cid] = T
                 continue
             D = pnl_dollar.add_dollar_pnl(T)
+            status_rows.extend(status_counts(D, pname, cid))           # Amendment 5: excluded AND counted
             cache[cid] = seal_trades(D[D["pnl_dollar_status"] == "ok"])   # sealed holdout (E13; missing until 2026-10-20)
         T_end = max(pd.to_datetime(d["exit_time"]).max() for d in cache.values() if len(d))
         for s in SPLITS:
@@ -285,6 +294,13 @@ def eval_phase():
                             "passes": bool(per[best]["holdout"] > 0 and dsr >= 0.95 and pbo < 0.20)})
             print(summary[-1], flush=True)
     pd.DataFrame(rows).to_parquet(os.path.join(_OUT, "all_trials.parquet"))
+    SC = pd.DataFrame(status_rows, columns=["pool", "config", "status", "n"])
+    SC.to_parquet(os.path.join(_OUT, "trade_status_counts.parquet"))
+    for pname, g in SC.groupby("pool"):
+        tot = g.groupby("status")["n"].sum()
+        print(f"{pname}: trade rows by pnl status over {g['config'].nunique()} configs (pre-seal exits): "
+              f"{tot.to_dict()}; configs with >= 1 unrealizable_gap trade: "
+              f"{int((g[g['status'] == 'unrealizable_gap']['n'] > 0).sum())}")
     S = pd.DataFrame(summary)
     S.to_parquet(os.path.join(_OUT, "summary.parquet"))
     for pname in POOLS:

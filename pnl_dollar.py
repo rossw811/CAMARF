@@ -32,6 +32,8 @@ Scope limits, returned as an explicit per-trade status rather than a number:
     symbols in the current 1,375-pair pool are GVKEY.
   * "intraday": only daily bars are marked here (1D is >99.8% of current trades).
   * "missing_price" / "bad_hedge": no usable price or hedge ratio.
+  * "unrealizable_gap" (BUG-D119, Amendment 5, 2026-10-21): either leg has no valid price for more than
+    data._MAX_FILL_BARS business days inside the trade (incl. a stale entry/exit price); excluded and counted.
 
 The original pnl_gross / pnl_cost / pnl_net columns are left untouched (comparison arm).
 Verified against hand-computed cases: debug/_verify_pnl_dollar.py.
@@ -177,6 +179,34 @@ def _at_or_before_intraday(df: pd.DataFrame, ts: pd.Timestamp):
     return row if "tr" in row.index else pd.Series({"close": row["close"], "tr": row["close"]})
 
 
+_valid_cache = {}
+
+
+def _spans_hole(F: pd.DataFrame, entry, exit_, intraday: bool) -> bool:
+    """BUG-D119 / Amendment 5: True if the leg has no valid price (close and tr finite, > 0) for more than
+    data._MAX_FILL_BARS business days anywhere from its last valid bar at or before entry up to the exit date --
+    the DATA_GAP rule backtest.py's B1 exit uses. Such a trade could not have been closed at the booked prices."""
+    from data import _MAX_FILL_BARS
+    hit = _valid_cache.get(id(F))
+    if hit is None or hit[0] is not F:                  # once per price frame (kept alive with it; not in .attrs,
+        tr = F["tr"] if "tr" in F.columns else F["close"]                             # which pandas deep-copies)
+        hit = (F, F.index[(F["close"] > 0).to_numpy() & (tr > 0).to_numpy()])
+        _valid_cache[id(F)] = hit
+    v = hit[1]
+    e, x = pd.Timestamp(entry), pd.Timestamp(exit_)
+    e = e.tz_localize(None) if e.tz is not None else e
+    x = x.tz_localize(None) if x.tz is not None else x
+    if not intraday:
+        e, x = e.normalize(), x.normalize()
+    i0 = v.searchsorted(e, side="right") - 1
+    if i0 < 0:
+        return True
+    i1 = v.searchsorted(x, side="right")
+    days = np.append(v[i0:i1].normalize().values.astype("datetime64[D]"), np.datetime64(x.date(), "D"))
+    missing = np.busday_count(days[:-1] + 1, days[1:])
+    return bool(len(missing) and missing.max() > _MAX_FILL_BARS)
+
+
 def add_dollar_pnl(trades: pd.DataFrame, commission_per_share: float = None, slippage_bps: float = None,
                    price_loader: Callable[[str], Optional[pd.DataFrame]] = None,
                    sizing: str = "fixed_notional", notional_per_trade: float = 10_000.0) -> pd.DataFrame:
@@ -212,6 +242,8 @@ def add_dollar_pnl(trades: pd.DataFrame, commission_per_share: float = None, sli
                           _look(B, t.entry_time), _look(B, t.exit_time))
         if any(v is None for v in (ae, ax, be, bx)):
             status[i] = "missing_price"; continue
+        if _spans_hole(A, t.entry_time, t.exit_time, tf != "1D") or _spans_hole(B, t.entry_time, t.exit_time, tf != "1D"):
+            status[i] = "unrealizable_gap"; continue      # BUG-D119: excluded from P&L and counted (Amendment 5)
         vals = [ae["close"], be["close"], ae["tr"], ax["tr"], be["tr"], bx["tr"]]
         if not all(np.isfinite(vals)) or ae["close"] <= 0 or be["close"] <= 0 or ae["tr"] <= 0 or be["tr"] <= 0:
             status[i] = "missing_price"; continue
