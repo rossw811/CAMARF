@@ -1,0 +1,31 @@
+# Fast synthetic verification subset on every push and pull request (plan E21, Ross 2026-10-20).
+# Runs the debug/_verify_*.py scripts listed in debug/ci_fast_tests.txt -- the ones that need no output/ data
+# (licensed WRDS data is never in the repo) and finish in < 20 s each. The full suite, including the real-data
+# checks, still runs on CachyOS before every chain (debug/_run_all_verify.py).
+name: verify
+on:
+  push:
+    branches: [main]
+  pull_request:
+jobs:
+  fast-synthetic-suite:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      - name: Run the fast synthetic suite
+        run: python debug/_run_all_verify.py --list debug/ci_fast_tests.txt --workers 4 --timeout 120 --fail-on-error
+      - name: Upload failure output
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: verify-failures
+          path: output/verify_runs/last_failures/

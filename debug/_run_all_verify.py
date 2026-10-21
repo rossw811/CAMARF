@@ -109,9 +109,23 @@ def main():
     p.add_argument("--failure-dir", default=os.path.join("output", "verify_runs", "last_failures"),
                    help="Full output of every FAIL/ERROR is saved here (2026-10-03: two tests failed once inside a "
                         "full run and passed alone; the runner had kept only the FAIL line, so the cause was lost)")
+    p.add_argument("--list", default=None,
+                   help="Run exactly the scripts listed in this file (one repo-relative path per line, # comments) -- "
+                        "the CI subset, debug/ci_fast_tests.txt (2026-10-20)")
+    p.add_argument("--fail-on-error", action="store_true",
+                   help="Exit non-zero on ERROR as well as FAIL (CI: a missing dependency must not pass silently)")
     args = p.parse_args()
 
-    scripts = discover_verify_scripts(args.pattern)
+    if args.list:
+        with open(args.list, encoding="utf-8") as fh:
+            listed = [l.strip() for l in fh if l.strip() and not l.lstrip().startswith("#")]
+        scripts = [os.path.join(_ROOT, l) for l in listed]
+        missing = [l for l, s_ in zip(listed, scripts) if not os.path.exists(s_)]
+        if missing:
+            print(f"--list names {len(missing)} missing script(s): {missing[:5]}")
+            sys.exit(1)
+    else:
+        scripts = discover_verify_scripts(args.pattern)
     if not scripts:
         print("No matching debug/_verify_*.py scripts found.")
         sys.exit(1)
@@ -170,7 +184,7 @@ def main():
             first_line = next((l for l in r["output"].splitlines() if l.strip()), "")
             print(f"  {r['name']}: {first_line[:100]}")
 
-    sys.exit(1 if failed else 0)
+    sys.exit(1 if failed or (args.fail_on_error and errored) else 0)
 
 
 if __name__ == "__main__":
