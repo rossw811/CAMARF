@@ -898,6 +898,14 @@ _TF_LABEL_MINUTES = {
 ROUTINE_CLOSURE_CEILING_HOURS = 120.0
 
 
+def _resolve_yf_period(default: str, cached) -> str:
+    """BUG-D38 guard (2026-10-20): the period to request for a ticker/interval given the cached yf_period_* value.
+    get_intraday_fallback tries [default, "max"] and caches the one that worked, so a cached value other than the
+    default or "max" is stale (written under an older default, e.g. "60d" at 1h -> 420 bars, below MIN_BARS_REQUIRED,
+    silently rejected forever) and is ignored. debug/_verify_yf_period_cache_d38.py"""
+    return "max" if cached == "max" else default
+
+
 def is_genuine_data_gap(run_length_bars: int, tf_label: str) -> bool:
     """
     True if a GapFlag.DATA_GAP run of this length, at this timeframe,
@@ -2396,12 +2404,18 @@ class YFinanceFeed:
 
         # Load cached working period for this ticker/interval
         _pkey = f"yf_period_{symbol.replace(' ','_')}_{yf_interval}"
+        _cached = None
         try:
             _pmeta = DataStore.load(_pkey, "meta")
             if _pmeta is not None and not _pmeta.empty:
-                period = str(_pmeta.iloc[0]["period"])
+                _cached = str(_pmeta.iloc[0]["period"])
         except Exception as _e:  # T1.8 2026-10-03: was silent
             log.debug(f"period cache {_pkey} unreadable ({_e}) -- using the default period")
+        _resolved = _resolve_yf_period(period, _cached)
+        if _cached is not None and _resolved != _cached:
+            log.info(f"yfinance {symbol} {tf_label}: ignoring stale cached period {_cached!r} "
+                     f"(default {period!r}; BUG-D38)")
+        period = _resolved
 
         # Download via yf.Ticker().history() — NOT yf.download().
         #
