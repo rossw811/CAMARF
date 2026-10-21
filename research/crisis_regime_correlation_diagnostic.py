@@ -127,7 +127,12 @@ def load_tier3_windows(path: str = _TIER3_WINDOWS_PATH) -> pd.DataFrame:
     mtime = pd.Timestamp(os.path.getmtime(path), unit="s")
     log.info(f"Loaded {len(df)} (pair, window) rows from "
              f"wrds_deep_history_episodic_scan_tier3_windows.parquet (file mtime: {mtime})")
-    return df
+    # Sealed holdout (E13, enforced 2026-10-20): Compustat Global runs past CRSP's 2025-12-31 end
+    from config import Config
+    sealed = pd.Timestamp(Config.DATA.SEALED_FROM)
+    keep = pd.to_datetime(df["window_end_date"]) < sealed
+    log.info(f"Sealed holdout: dropped {int((~keep).sum())} windows ending on/after {sealed.date()}")
+    return df[keep].reset_index(drop=True)
 
 
 def build_vix_regime_lookup() -> pd.Series:

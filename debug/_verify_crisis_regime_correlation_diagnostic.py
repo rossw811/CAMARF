@@ -189,5 +189,16 @@ monotonic_summary = summarize(monotonic_table)
 check("a genuine clean gradient is correctly flagged as monotonic",
       monotonic_summary["confirmation_rate_monotonic_across_regime_severity"] is True)
 
+print("Check 8: load_tier3_windows drops windows ending on/after the sealed holdout (E13; 2026-10-20)")
+import tempfile  # noqa: E402
+from research.crisis_regime_correlation_diagnostic import load_tier3_windows  # noqa: E402
+with tempfile.TemporaryDirectory() as _td:
+    _p = os.path.join(_td, "w.parquet")
+    pd.DataFrame({"symbol_a": ["A", "A", "B"], "symbol_b": ["B", "B", "C"], "pvalue": [0.01, 0.02, 0.03],
+                  "window_end_date": pd.to_datetime(["2025-06-30", "2026-01-02", "2025-12-31"])}).to_parquet(_p)
+    _w = load_tier3_windows(_p)
+check("only pre-2026 windows kept", sorted(pd.to_datetime(_w["window_end_date"]).dt.strftime("%Y-%m-%d"))
+      == ["2025-06-30", "2025-12-31"])
+
 print(f"\n{passed}/{passed + failed} checks passed")
 sys.exit(0 if failed == 0 else 1)
