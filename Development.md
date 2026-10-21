@@ -29578,3 +29578,14 @@ with Sonnet searches; GitHub About set; Ross's WRDS page shows no full TAQ/Optio
   that is bivariate; production's Johansen runs on trios (analysis.py:4674, 4961; research/reimers_trio_correction.py,
   weak_exogeneity_test.py). Recommendation to Ross: build the restricted-constant trio test as a comparison arm
   (simulated critical values per rank and window length), compare on the real trios, then switch. Until then -1 stays.
+- **W5.6b ADV in USD (1651ec86, 89458182).** analysis.py's ADV gate (`_compute_adv`) and sensitivity.py multiplied
+  yfinance close by volume and compared it with the USD threshold. 88 yfinance non-US equities (34 .L, 30 .T, 24 .HK;
+  London quoted in pence, confirmed on real files: HSBA.L 1512.2 = GBP 15.12). `dollar_volume.usd_dollar_volume(df,
+  symbol)` now converts by suffix with the cached daily FX ({CCY}USD=X_1day.parquet, as of each date; forex labels
+  like AUD.JPY unchanged; unknown suffix or missing FX -> NaN), and `mean_daily_dollar_volume` (one definition, both
+  callers) skips days with no USD rate -- my first version counted them as zero (HSBA.L history from 1988, GBP FX from
+  2003), caught on the real-data check. Failing-first `_verify_usd_dollar_volume_yfinance.py` 0/3 -> 10/10 -> (zero-day
+  check added) 8/11 -> 11/11; `_verify_usd_dollar_volume.py` 8/8. Real data (CachyOS, $25M gate): old ADV overstated
+  by a median 7.8x (HK), 54x (L), 118x (T); 7 of 88 now fail the gate (0868.HK, 2688.HK, 0288.HK + 2 more HK; ITRK.L,
+  MNG.L), all passed before. Affects production analysis.py runs on the yfinance cache (not the WRDS discovery chain,
+  whose rolling ADV was fixed by R1.2).
