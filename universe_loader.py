@@ -307,6 +307,18 @@ def _use_total_return(df):
     return df.apply(pd.to_numeric, errors="coerce").astype("float64")
 
 
+def _unresolved_wrds_labels(wrds_dir: str = None) -> set:
+    """D15 at load (Ross 2026-10-12; enforced here 2026-10-20): CRSP-labelled WRDS files whose security could not be
+    identified (wrds_label_permno_final.parquet rows with no PERMNO) -- unresolved != eligible, never guessed.
+    Empty set if the map is missing (load_full_universe already warns about that)."""
+    from data_wrds import LABEL_PERMNO_MAP_PATH
+    p = os.path.join(wrds_dir or _WRDS_CACHE_DIR, os.path.basename(LABEL_PERMNO_MAP_PATH))
+    if not os.path.exists(p):
+        return set()
+    m = pd.read_parquet(p, columns=["label", "permno"])
+    return set(m.loc[m["permno"].isna(), "label"].astype(str))
+
+
 def _d17_different_security(w, o) -> bool:
     """D17: a same-label WRDS series `w` and non-WRDS series `o` are different securities if `w` ends before `o`
     begins, or ends > 1 year before `o` ends (a delisted security cannot still be trading; CRSP's own data end is
@@ -348,7 +360,7 @@ def load_symbol(sym: str, tf_label: str = "1D", include_ibkr: bool = False, *, w
             from data_wrds import label_permno_map, LABEL_PERMNO_MAP_PATH
             p = os.path.join(wrds_dir, os.path.basename(LABEL_PERMNO_MAP_PATH))
             permno_of = label_permno_map(p) if os.path.exists(p) else {}
-        w = _wrds(sym)
+        w = None if sym in _unresolved_wrds_labels(wrds_dir) else _wrds(sym)   # D15
         if _ok(w):
             o = yf_load(sym, tf_label) if sym in permno_of else None
             if not (_ok(o) and _d17_different_security(w, o)):
@@ -773,6 +785,12 @@ def load_full_universe(tf_label: str = "1D", include_yfinance: bool = True,
             _permno_of = label_permno_map(_lm_path)
         else:
             print(f"universe_loader: WARNING {_lm_path} missing -- D17 PERMNO aliasing skipped")
+        _unres = _unresolved_wrds_labels()
+        _dropped = sorted(k for k in _wrds if k in _unres)
+        for k in _dropped:
+            _wrds.pop(k)
+        if _dropped:
+            print(f"universe_loader: {len(_dropped)} unresolved WRDS labels dropped at load (D15; e.g. {_dropped[:5]})")
         for k in [k for k in _wrds if k in merged and k in _permno_of]:
             if _d17_different_security(_wrds[k], merged[k]):
                 _wrds[f"PERMNO{int(_permno_of[k])}"] = _wrds.pop(k)
