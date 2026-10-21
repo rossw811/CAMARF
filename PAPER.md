@@ -827,7 +827,7 @@ session's bug hunt; see `Development.md` Session 10). [Corrected 2026-10-10, doc
 
 A pair below the 0.70 threshold is kept anyway if `half_life_trend_slope
 ≤ 0` (the spread's mean-reversion speed is improving, not decaying) AND
-neither Zivot-Andrews nor CUSUM detects a structural break in the spread, [Corrected 2026-10-10, C-007: the code also requires at least 756 overlapping bars (BUG-D68) before the override can apply; the worked example below predates that rule and is not re-checked.]
+neither Zivot-Andrews nor CUSUM detects a structural break in the spread, [Corrected 2026-10-10, C-007: the code also requires at least 756 overlapping bars (BUG-D68) before the override can apply. Re-checked 2026-10-21 (D17) through the production functions on the current 1m cache (2026-06-12 to 2026-08-14, before the intraday seal): FANG/OXY has 14,333 overlapping bars, coint_fraction_rolling 0.235 (583 windows of 252, step 21), half_life_trend_slope -0.0026, no Zivot-Andrews or CUSUM break -> decision "override", still kept. The table's 0.27 / -0.617 are from the 2026-06-23 data and are superseded by these values; the D/NEE and SPY/VOO rows are not re-checked.]
 i.e., corroboration against the two single-pair structural-break tests
 already in the pipeline, not a softer threshold. Real worked example,
 verified directly against the persisted post-fix data this session:
