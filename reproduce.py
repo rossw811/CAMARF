@@ -34,8 +34,8 @@ Pipeline order (respects data dependencies)
 8.  wfa.py          — Walk-forward robustness (§7.3)
 9.  distance.py     — Gatev GGR distance baseline (§7.7)
 10. sensitivity.py  — Parameter sensitivity sweep (§7.8)
-11. ml.py           — ML meta-labeler gate (§7.9, deferred)
-12. report.py       — PDF / figures
+11. ml.py           — ML meta-labeler gate (§7.9; trains on the PIT k2 pool)
+12. report.py       — figures (the generated LaTeX paper was retired 2026-10-21)
 """
 
 import argparse
@@ -339,7 +339,7 @@ _step(
 # 12. ML gate (optional — may fail if insufficient training data) ----------
 _step(
     name="ml",
-    section="§7.9 ML gate (deferred — needs ≥30 examples/class)",
+    section="§7.9 ML gate (reports 'insufficient data' below Config.ML.MIN_CLASS_SAMPLES per class)",
     cmd=[PYTHON, "ml.py"],
     outputs=["output/ml/model_stage1.pkl"],
     optional=True,
