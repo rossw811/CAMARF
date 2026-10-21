@@ -68,8 +68,8 @@ def split_frame(df: pd.DataFrame, label: str, factor: float = LEVEL_BREAK_FACTOR
     col = "close_total_return" if "close_total_return" in df.columns else "close"
     f = find_breaks(df[col], factor)
     out = df.copy()
+    v = _valid(df[col])          # every spike located on the ORIGINAL valid series (masking one must not hide the next)
     for t in f["spikes"]:
-        v = _valid(out[col])
         i = v.index.get_loc(t)
         lr = np.log(v.abs()).diff().iloc[i:i + 1 + REVERT_DAYS]
         k = int(np.argmin(np.abs(lr.cumsum().to_numpy())))           # last masked day: where it has reverted

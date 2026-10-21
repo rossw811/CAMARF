@@ -72,6 +72,14 @@ def main():
     ss = m.find_breaks(frame(sk)["close_total_return"])
     check("A5_spike_after_nan_still_a_spike", not ss["breaks"] and ss["spikes"] == [frame(sk).index[22]], ss)
     sm = m.split_frame(frame(sk), "GVKEY000005_01W")
+    # real crash (CachyOS 2026-10-21, chain step d118_rebuild): two spikes close together -- masking the first removed
+    # the second's date from the valid series (KeyError). Every spike is located on the ORIGINAL valid series.
+    two = base.copy(); two[20] *= 50; two[22] *= 50
+    try:
+        tw = m.split_frame(frame(two), "GVKEY000009_01W")
+        check("A5_close_spikes_no_crash", len(tw) == 1 and pd.isna(tw[0][1]["close"].iloc[20]), [len(d) for _, d in tw])
+    except KeyError as e:
+        check("A5_close_spikes_no_crash", False, f"KeyError {e}")
     # (how many days after the spike get masked is the pre-existing argmin-of-|cumsum| rule, unchanged here)
     check("A5_spike_masked_on_valid_bar", len(sm) == 1 and pd.isna(sm[0][1]["close"].iloc[22])
           and sm[0][1]["close"].iloc[:20].notna().all() and sm[0][1]["close"].iloc[30:].notna().all())
