@@ -83,6 +83,36 @@ def survivorship_test(joined: pd.DataFrame, regime=None) -> dict:
             "min_expected": min_exp, "small_count": bool(min_exp < 5)}
 
 
+def survivorship_test_stratified(joined: pd.DataFrame, regime=None) -> dict:
+    """Comparison arm (review of N7, 2026-10-22): the pooled test is confounded by discovery year -- pairs first found
+    recently are mostly both-current AND right-censored (few windows, no time to confirm). Mantel-Haenszel common odds
+    ratio (survived vs delisted) stratified by the year of the pair's first window; strata without both groups or
+    without any variation in the outcome carry no information and are dropped (counted). OR > 1 = survivors confirm
+    more often within a year, the direction survivorship bias predicts."""
+    from statsmodels.stats.contingency_tables import StratifiedTable
+    sub = joined[joined["both_trackable"]]
+    if regime is not None:
+        sub = sub[sub["first_regime"] == regime]
+    tabs, dropped = [], 0
+    for _, g in sub.groupby(pd.to_datetime(sub["first_window_end_date"]).dt.year):
+        s_ = g[g["both_survived"]]["confirmed"]
+        d_ = g[~g["both_survived"]]["confirmed"]
+        t = np.array([[s_.sum(), len(s_) - s_.sum()], [d_.sum(), len(d_) - d_.sum()]], dtype=float)
+        if len(s_) == 0 or len(d_) == 0 or t[:, 0].sum() == 0 or t[:, 1].sum() == 0:
+            dropped += 1
+            continue
+        tabs.append(t)
+    out = {"scope": regime if regime is not None else "all_regimes", "n_strata": len(tabs), "n_strata_dropped": dropped,
+           "mh_or": np.nan, "mh_ci_lo": np.nan, "mh_ci_hi": np.nan, "mh_p": np.nan,
+           "n_events": int(sum(t[:, 0].sum() for t in tabs))}
+    if tabs:
+        st_ = StratifiedTable(tabs)
+        lo, hi = st_.oddsratio_pooled_confint()
+        out.update(mh_or=float(st_.oddsratio_pooled), mh_ci_lo=float(lo), mh_ci_hi=float(hi),
+                   mh_p=float(st_.test_null_odds().pvalue))
+    return out
+
+
 def main():
     if not (os.path.exists(_REGIME_PATH) and os.path.exists(_MEMBERSHIP_PATH) and os.path.exists(_PERMNO_MAP_PATH)):
         print("ERROR: missing input(s).")
@@ -116,6 +146,12 @@ def main():
         print(f"  z={r['z']:.4f}, p={r['p_value']:.4f}; Fisher exact p={r['fisher_p']:.4f}; "
               f"min expected cell {r['min_expected']:.2f}" + ("  [SMALL COUNTS: read the exact p]" if r["small_count"] else ""))
 
+    for regime in ("crisis", None):
+        m = survivorship_test_stratified(joined, regime=regime)
+        rows[0 if regime == "crisis" else 1].update({k: v for k, v in m.items() if k != "scope"})
+        print(f"\nyear-stratified MH ({m['scope']}): OR {m['mh_or']:.3f} [{m['mh_ci_lo']:.3f}, {m['mh_ci_hi']:.3f}], "
+              f"p {m['mh_p']:.2e}; {m['n_strata']} year strata ({m['n_strata_dropped']} uninformative dropped), "
+              f"{m['n_events']} confirmations")
     pd.DataFrame([{**r, "n_total_universe": len(joined), "n_trackable": n_trackable} for r in rows]).to_parquet(_OUT_PATH)
     print(f"\nSaved to {_OUT_PATH}")
 

@@ -89,5 +89,28 @@ try:
 except ImportError as e:
     check(f"D5 functions exist ({e})", False)
 
+# Review of N7 (2026-10-22): the pooled comparison is confounded by discovery year (recent pairs: mostly both-current
+# AND right-censored). Year-stratified Mantel-Haenszel arm. Simpson world: within each year survivors confirm 2x as
+# often, but survivors are concentrated in a low-rate year, so the pooled comparison reverses.
+print("Check D5-5: year-stratified Mantel-Haenszel recovers the within-year effect the pooled test hides")
+try:
+    from crisis_regime_survivorship_confound_test import survivorship_test_stratified
+    rows = []
+    for year, base, n_surv, n_del in ((2008, 0.04, 500, 4500), (2022, 0.005, 9000, 1000)):
+        for surv, n in ((True, n_surv), (False, n_del)):
+            p = base * (2.0 if surv else 1.0)
+            k = int(round(p * n))
+            rows += [{"first_window_end_date": pd.Timestamp(f"{year}-06-30"), "first_regime": "calm",
+                      "both_trackable": True, "both_survived": surv, "confirmed": i < k} for i in range(n)]
+    W = pd.DataFrame(rows)
+    pooled = survivorship_test(W)
+    st_ = survivorship_test_stratified(W)
+    check(f"pooled points the OTHER way (survivors lower) [{pooled['p_a']:.4f} vs {pooled['p_b']:.4f}]",
+          pooled["p_a"] < pooled["p_b"])
+    check(f"MH common OR ~2, CI excludes 1 [{st_['mh_or']:.2f} ({st_['mh_ci_lo']:.2f}, {st_['mh_ci_hi']:.2f})]",
+          1.6 < st_["mh_or"] < 2.5 and st_["mh_ci_lo"] > 1 and st_["mh_p"] < 0.01 and st_["n_strata"] == 2)
+except ImportError as e:
+    check(f"stratified arm exists ({e})", False)
+
 print(f"\n{passed}/{passed + failed} checks passed")
 sys.exit(0 if failed == 0 else 1)
