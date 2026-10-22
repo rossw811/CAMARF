@@ -170,6 +170,13 @@ def component_max2_test(confirmed: pd.DataFrame, episode_sizes: np.ndarray, n_si
             "p_value": float((sim_max2 >= obs - 1e-12).mean()), "n_sim": n_sim}
 
 
+def episode_window_weights(crisis_pairs: pd.DataFrame) -> np.ndarray:
+    """Opportunity weights (review of N4, 2026-10-22): total windows tested per episode. "Confirmed" means any FDR
+    rejection over all of a pair's windows, so episodes whose pairs have more windows have more chances to confirm;
+    the pair-count null ignores that (episode 11, 2025-04: a quarter of all crisis pairs, every one with one window)."""
+    return crisis_pairs.groupby("episode")["n_windows_tested"].sum().sort_index().to_numpy()
+
+
 def main():
     _setup_logging()
     log.info("=== crisis_regime_concentration_significance_test.py: is the top-2-of-12-episode "
@@ -213,6 +220,11 @@ def main():
                  f"{comp_result['n_confirmed']} confirmations (largest unit {comp_result['largest_unit']}); observed "
                  f"top-2 share {comp_result['observed_max2_share']:.3f}, null mean "
                  f"{comp_result['null_mean_max2_share']:.3f}, p = {comp_result['p_value']:.5f}")
+        comp_w = component_max2_test(conf, episode_window_weights(cp), n_sim=100_000, rng=np.random.default_rng(0))
+        log.info(f"D2 arm, null weighted by windows tested per episode: p = {comp_w['p_value']:.5f} "
+                 f"(null mean top-2 share {comp_w['null_mean_max2_share']:.3f})")
+        comp_result["p_value_window_weighted"] = comp_w["p_value"]
+        comp_result["null_mean_max2_share_window_weighted"] = comp_w["null_mean_max2_share"]
     else:
         log.warning(f"{_CRISIS_PAIRS_PATH} missing -- run crisis_regime_episode_clustering_check.py first (D2 not run)")
     pd.DataFrame([{**{f"binom_posthoc_unused_{k}": v for k, v in binom_result.items()},

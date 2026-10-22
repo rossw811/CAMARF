@@ -82,6 +82,24 @@ def main():
     except (AttributeError, TypeError) as e:
         check("d12_functions_exist", False, f"{type(e).__name__}: {e}")
 
+    # Review of N4 (2026-10-22): (1) "calm" must be calm-first pairs, not every non-crisis pair; (2) the published
+    # reappearance counts only later windows in a DIFFERENT regime, which short crisis spells satisfy mechanically --
+    # a symmetric arm counts any later window.
+    try:
+        import pandas as pd
+        P = pd.DataFrame({"first_window_end_date": pd.to_datetime(["2008-03-31"] * 4),
+                          "first_regime": ["crisis", "calm", "normal", "elevated"],
+                          "confirmed": [True, False, False, False], "n_windows_tested": [3, 3, 1, 2],
+                          "reappears_in_different_regime": [True, False, False, True]})
+        cal = mod.comparison_frame(P, "calm")
+        non = mod.comparison_frame(P, "non_crisis")
+        check("calm reference = calm-first only", len(cal) == 2 and set(P.loc[cal.index, "first_regime"]) == {"crisis", "calm"})
+        check("non_crisis reference = all others", len(non) == 4 and int(non["crisis"].sum()) == 1)
+        check("symmetric reappearance = any later window",
+              cal["reappears_any"].tolist() == [True, True] and non["reappears_any"].tolist() == [True, True, False, True])
+    except AttributeError as e:
+        check("comparison_frame_exists", False, str(e))
+
     print(); print(f"{len(PASS)}/{len(PASS) + len(FAIL)} checks passed")
     if FAIL:
         print("FAILED:", FAIL); sys.exit(1)

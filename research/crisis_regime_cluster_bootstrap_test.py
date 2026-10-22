@@ -163,6 +163,17 @@ def within_year_ci(df: pd.DataFrame, alpha: float = 0.05, n_sim: int = 20_000, r
             "unbounded": bool(len(keep) and (ps[0] > alpha or ps[-1] > alpha)), "exact": bool(K <= exact_max_years)}
 
 
+def comparison_frame(pairs: pd.DataFrame, reference: str) -> pd.DataFrame:
+    """Rows for crisis-first vs the reference group (review of N4, 2026-10-22): "calm" = calm-first pairs only (what the
+    claim says; the earlier run used every non-crisis pair), "non_crisis" = every other pair (kept as an arm).
+    Adds year, crisis and reappears_any: any later window (n_windows_tested > 1) -- the symmetric reappearance arm; the
+    published reappears_in_different_regime counts only later windows in another regime, which short crisis spells
+    satisfy mechanically."""
+    p = pairs if reference == "non_crisis" else pairs[pairs["first_regime"].isin(["crisis", "calm"])]
+    d = pd.to_datetime(p["first_window_end_date"])
+    return p.assign(year=d.dt.year, crisis=p["first_regime"] == "crisis", reappears_any=p["n_windows_tested"] > 1)
+
+
 def webb_weights() -> np.ndarray:
     """Webb (2014) six-point distribution: +-sqrt(1/2), +-1, +-sqrt(3/2), equal probability (mean 0, variance 1)."""
     return np.array([-np.sqrt(1.5), -1.0, -np.sqrt(0.5), np.sqrt(0.5), 1.0, np.sqrt(1.5)])
@@ -224,21 +235,23 @@ def main():
 
     # D12 redesign (Ross 2026-10-19): within-year crisis vs calm, sign-flip across years. Cluster RI / wild are not run.
     pairs["first_window_end_date"] = pd.to_datetime(pairs["first_window_end_date"])
-    base = pairs.assign(year=pairs["first_window_end_date"].dt.year, crisis=pairs["first_regime"] == "crisis")
     rows = []
-    for metric, col in [("confirmation_rate", "confirmed"), ("reappearance_rate", "reappears_in_different_regime")]:
-        if col not in base.columns:
-            log.warning(f"{col} not in the pair table -- {metric} skipped")
-            continue
-        r = within_year_ci(base[["year", "crisis"]].assign(confirmed=base[col].astype(bool)),
-                           rng=np.random.default_rng(0))
-        log.info(f"--- {metric} (D12 within-year) --- mean crisis-minus-calm rate within year "
-                 f"{r['rate_diff_mean_within_year']:+.4%} over {r['n_years']} years with both kinds "
-                 f"({r['n_years_one_kind_only']} years one kind only); 95% CI [{r['ci_low']:+.4%}, {r['ci_high']:+.4%}]"
-                 + ("  [CI unbounded on the grid]" if r["unbounded"] else "")
-                 + f"; min achievable p {r['min_p_achievable']:.4f}")
-        rows.append({"metric": metric, **{k: v for k, v in r.items() if k != "years"},
-                     "years": ",".join(map(str, r["years"]))})
+    for reference in ("calm", "non_crisis"):
+        base = comparison_frame(pairs, reference)
+        for metric, col in [("confirmation_rate", "confirmed"), ("reappearance_rate", "reappears_in_different_regime"),
+                            ("reappearance_any_rate", "reappears_any")]:
+            if col not in base.columns:
+                log.warning(f"{col} not in the pair table -- {metric} skipped")
+                continue
+            r = within_year_ci(base[["year", "crisis"]].assign(confirmed=base[col].astype(bool)),
+                               rng=np.random.default_rng(0))
+            log.info(f"--- {metric}, crisis vs {reference} (D12 within-year) --- mean difference within year "
+                     f"{r['rate_diff_mean_within_year']:+.4%} over {r['n_years']} years with both kinds "
+                     f"({r['n_years_one_kind_only']} years one kind only); 95% CI [{r['ci_low']:+.4%}, {r['ci_high']:+.4%}]"
+                     + ("  [CI unbounded on the grid]" if r["unbounded"] else "")
+                     + f"; min achievable p {r['min_p_achievable']:.4f}")
+            rows.append({"metric": metric, "reference": reference, **{k: v for k, v in r.items() if k != "years"},
+                         "years": ",".join(map(str, r["years"]))})
 
     pd.DataFrame(rows).to_parquet(_OUT_PATH, index=False)   # always rewritten
     log.info(f"Saved -> {_OUT_PATH}")

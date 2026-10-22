@@ -102,5 +102,21 @@ try:
 except ImportError as e:
     check(f"component functions exist ({e})", False)
 
+# Review of N4 (2026-10-22): "confirmed" = any FDR rejection over all of a pair's windows, so an episode whose pairs have
+# more windows has more chances; the pair-count null ignores that. Opportunity-weighted arm: episode weight = windows.
+try:
+    from research.crisis_regime_concentration_significance_test import episode_window_weights
+    cp = pd.DataFrame({"episode": [0, 0, 1, 1, 1], "n_windows_tested": [10, 12, 1, 1, 1]})
+    w = episode_window_weights(cp)
+    check(f"window weights per episode [{w.tolist()}]", w.tolist() == [22, 3])
+    # 12 confirmations in episode 0: the pair-count null (2 of 14 pairs) finds that surprising; weighting by windows
+    # (22 of 26) expects it
+    rows9 = [{"symbol_a": f"c{i}", "symbol_b": f"d{i}", "episode": 0} for i in range(12)]
+    pc = component_max2_test(pd.DataFrame(rows9), np.array([2, 3, 3, 3, 3]), n_sim=20_000, rng=np.random.default_rng(5))
+    ww = component_max2_test(pd.DataFrame(rows9), np.array([22, 1, 1, 1, 1]), n_sim=20_000, rng=np.random.default_rng(5))
+    check(f"opportunity weighting raises p [{pc['p_value']:.4f} -> {ww['p_value']:.4f}]", ww["p_value"] > pc["p_value"])
+except ImportError as e:
+    check(f"window-weighted arm exists ({e})", False)
+
 print(f"\n{passed}/{passed + failed} checks passed")
 sys.exit(0 if failed == 0 else 1)
