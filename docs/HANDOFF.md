@@ -1,3 +1,19 @@
+## 2026-10-22: RESUME HERE. Amendment 5 chain in discovery; work through the queue below without waiting (Ross).
+**Running (CachyOS):** `debug/_tmp_chain_a5_20261021.sh` restarted 12:43 (log logs/latest/latest_run_rerun_a5_20261021.log);
+gate passed 13:04 (433 tests); discovery started 13:04 (~22 h), then intraday, adapter, PIT pools, spreads, market
+calendars (needs output/cache/wrds/global_security_exchange.parquet -- present on CachyOS), search run + eval.
+WRDS session server running on the Surface (connected 12:43; queue output/wrds_jobs/queue/).
+**Queue (in order; one agent at a time; CachyOS jobs never alongside discovery):**
+1. When the chain finishes: register C-006 (Amendment 5 result), independent review, ERRATA/registry.
+2. CachyOS: N14 `--tf 1h` then `--tf 1D` (eg_null_correlation_matched_n14.py); Johansen real trios
+   (johansen_trio_arm_comparison.py) -> decision for Ross on switching production; N13 1M re-derivation; N5 (D10).
+3. S33 tiers on the new pools; S11: pre-2012 S&P 400 announcements (Sonnet search) -> more rebalances checked.
+4. Paper numbers after review: N7 survivorship (Finding #66 Tier A), N4 crisis regime (review running 2026-10-22);
+   discovery scope / arm counts from the new pools; C-006.
+5. Redraft, then the 5-lens council. Later: E1, mem_guard re-test.
+**Done 10-22:** trading-calendar hole rule (Amendment 5 addendum 2), macro calendar capped before the seal, WRDS job 35,
+PAPER.md trio claims labelled, Surface seal sweep (running), feedback memory: keep working without being pushed.
+
 ## 2026-10-21 (afternoon): RESUME HERE. Ross signed off on all five decisions; Amendment 5 re-run running.
 **Running (CachyOS):** `debug/_tmp_chain_a5_20261021.sh` (log logs/latest/latest_run_rerun_a5_20261021.log; step
 stdout output/research/_stdout_a5_<step>.log). Seal sweep + audit done (1,717,363 rows / 18,850 daily files to
