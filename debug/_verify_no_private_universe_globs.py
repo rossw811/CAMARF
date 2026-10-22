@@ -59,6 +59,10 @@ _RESEARCH_DIR = os.path.join(_ROOT, "research")
 # would still be caught) but its already-reviewed glob/loader pattern is
 # not re-flagged every run.
 EXPECTED_FLAGS = {
+    "build_market_calendars.py": (
+        "Reviewed 2026-10-22: reads each listing's valid DATES to derive per-exchange trading calendars "
+        "(market_calendar.py); it builds no analysis universe."
+    ),
     "dlc_positive_controls_d14.py": (
         "Reviewed 2026-10-21: lists output/cache/wrds labels only to locate dual-listed parents in the discovery "
         "scan's own universe (the directory wrds_deep_history_episodic_scan reads); it builds no analysis universe."
