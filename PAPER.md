@@ -2332,7 +2332,11 @@ an honest null given the trios' large sample sizes (thousands of bars), where sm
 corrections are expected to matter least. A companion check (trace vs. max-eigenvalue test,
 computed from the same already-open Johansen call at no extra cost) finds 2/502 trios disagree
 between the two test statistics (TER/DD/AMKR@1h, TER/DD/ATI@1h, both sharing the TER/DD base
-pair), flagged as borderline/methodology-sensitive cases.
+pair), flagged as borderline/methodology-sensitive cases. [Corrected 2026-10-22, ERRATA "Johansen trio specification":
+these results use production's Johansen specification with no deterministic term (det_order -1), which has almost no
+power when the cointegrating relation has an intercept, as log-price relations do (3.3% vs 100% for the
+restricted-constant test on simulated trios); the 502-trio file no longer exists. Not citable until re-run under the
+restricted-constant comparison arm (`research/johansen_trio_arm_comparison.py`).]
 
 **Grid bootstrap confidence intervals for the AR coefficient (Hansen, 1999):** gives a genuine
 confidence interval (not just a pass/fail test) for each pair's own spread mean-reversion
@@ -2377,7 +2381,8 @@ the way are in Development.md; headline results only here.
 **Weak exogeneity** (Johansen VECM, `pvalues_alpha`): (20-pair confirmed set as of 2026-07-10;
 not re-verified against the current 26-pair set) 14/20 confirmed pairs show `symbol_a` leading
 (weakly exogenous, doesn't respond to disequilibrium, `symbol_b` does the adjusting), 2 bidirectional,
-2 `symbol_b`-leads, 2 neither adjusts, a consistent, non-random 70% skew.
+2 `symbol_b`-leads, 2 neither adjusts, a consistent, non-random 70% skew. [Corrected 2026-10-22: the VECM uses the
+same no-constant specification (ERRATA "Johansen trio specification"); not citable until re-run.]
 
 **Financial Turbulence Index** (Kritzman & Li 2010, Mahalanobis distance, Ledoit-Wolf-shrunk
 covariance): 15,381 days computed across the confirmed-pair universe; 90th-percentile threshold=57.70,
