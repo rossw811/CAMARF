@@ -64,6 +64,16 @@ Schedule of Investments (continued) September 30, 2007</td></tr>
 <p>Average Annual Return since inception April 27, 1995: 12,345 percent</p></body></html>"""
 
 
+N30D_2010 = """<html><body><p>SPDR S&amp;P MidCap 400 ETF Trust Schedule of Investments September 30, 2010</p>
+<table><tr><td>Common Stock</td><td>Shares</td><td>Value</td></tr>
+<tr><td>Green Mountain Coffee Roasters, Inc.*</td><td>1,183,318</td><td>36,907,688</td></tr>
+<tr><td>The accompanying notes are an integral part of these financial statements. 5 SPDR S&amp;P MidCap 400 ETF Trust
+Schedule of Investments September 30, 2010</td></tr>
+<tr><td>Common Stock</td><td>Shares</td><td>Value</td></tr>
+<tr><td>Greenhill &amp; Co., Inc.</td><td>261,278</td><td>$ 20,724,571</td></tr>
+<tr><td>Totals</td><td></td><td>$ 57,632,259</td></tr></table></body></html>"""
+
+
 TXT_DOTS = """                             SCHEDULE OF INVESTMENTS
                                SEPTEMBER 30, 2003
 
@@ -113,6 +123,11 @@ def main():
           str(h["as_of"].iloc[0]) if len(h) else "")
     check("3.narrative_ignored", not any("Trust" in n or "Return" in n for n in names))
     check("4.footer_not_a_holding", not any("accompanying" in n.lower() or "schedule of" in n.lower() for n in names), str(names))
+    # 2010 report (2026-10-22, S11 check: Greenhill & Co. read as "SPDR S&P MidCap 400 ETF Trust Greenhill & Co., Inc."
+    # in 10 rows): page header with the fund's NEW name and no "(continued)"
+    h10 = parse_n30d(N30D_2010)
+    n10 = h10["name"].tolist() if len(h10) else []
+    check("2b.n30d_2010_header_new_trust_name", n10 == ["Green Mountain Coffee Roasters, Inc.", "Greenhill & Co., Inc."], str(n10))
     t1, t2 = parse_n30d(TXT_DOTS), parse_n30d(TXT_STAR)
     check("5a.text_dot_leaders", t1["name"].tolist() == ["3Com Corp.", "99 (Cents) Only Stores", "A.G. Edwards"]
           and t1["value_usd"].tolist() == [13411773.80, 14235421.20, 18853702.14]

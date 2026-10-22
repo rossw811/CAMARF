@@ -111,7 +111,9 @@ def parse_n30d(htm: str) -> pd.DataFrame:
     start = re.search(r"Common Stocks?\s+Shares\s+Value", t, re.I)
     if start:   # any other page header inside the schedule ("MidCap SPDR Trust, Series 1 Schedule of Investments
         # September 30, 2008", 2007-2010 reports) -- from the trust name to the date
-        body = re.sub(r"(?:MidCap SPDR Trust.{0,40}?)?Schedule of Investments(?:\s*\(continued\))?\s*(?:"
+        # the trust's name changed (2010: "SPDR S&P MidCap 400 ETF Trust"); both names are page headers (S11, 2026-10-22)
+        body = re.sub(r"(?:(?:MidCap SPDR Trust|SPDR S&P MidCap 400 ETF Trust).{0,40}?)?Schedule of Investments"
+                      r"(?:\s*\(continued\))?\s*(?:"
                       + _MONTHS + r") \d{1,2}, \d{4}", " ", t[start.end():], flags=re.I)
         # rest of a page break (2009/2010 reports: footer + page number, then the column header repeated) -- left in,
         # it merged into the next holding's name and that holding was dropped (10 per report)

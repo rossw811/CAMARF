@@ -76,3 +76,17 @@ member by the inclusive rule below). Caveat: the 20 SP600 changes of 2019-09-23 
 post-bankruptcy Unit Corp/Frontier, acquisition stubs) and genuinely tiny members (KLX Energy, HighPoint, CBL in
 March 2020; Wolfspeed 2025) overlap — 18 of 38,402 rows; no weight threshold separates them. Effect on a universe
 filter is at most those names on those dates; disclose, or resolve each against the announcement record.
+
+## Pre-2012 verification (2026-10-22, S11)
+36 more S&P MidCap 400 changes from 15 announcement dates, 2002-2011 (S&P release text: PR Newswire 2010-2011;
+verbatim reproductions on company IR sites / Mondo Visione for 2002-2008; three dates from news articles, labelled
+`secondary` in the `note` column; where a release gave the effective date as "to be announced" the announcement date
+is used, which is safe against annual snapshots). Two candidates were left out because their source text could not
+be read (2004-02-23 M&T/Cephalon, 2005-02-23 Banknorth/Martek). No source found for 2001, 2003 or 2009 (searches by a
+Sonnet agent; web.archive.org copies of standardandpoors.com are the untried route).
+**Result: 112/114 announced changes agree** (all 36 new ones). The one first-pass miss (Greenhill & Co., added
+2010-03-12) was a parser defect, not a disagreement: the 2010 report's page header uses the trust's new name ("SPDR
+S&P MidCap 400 ETF Trust") and was glued onto the next holding in 10 rows. Fixed with a failing-first case
+(`_verify_pit_index_membership.py` 12/13 -> 13/13); holdings re-parsed (still 38,402 rows; 0 glued names). The 2
+remaining are the known Valaris rename and Ascena leftover. S&P 600 before 2019 is still uncovered (IJR NPORT starts
+2019-09).
