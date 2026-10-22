@@ -196,7 +196,7 @@ subscription can actually track point-in-time (no equivalent product
 exists for S&P 400/600), confirmation rate does not differ significantly
 by survivorship status (0.34% survived vs. 0.30% delisted, z=1.26,
 p=0.21), a real, honest, partial answer; the other 79% of the universe
-remains genuinely untested, not assumed clean.
+remains genuinely untested, not assumed clean. [Corrected 2026-10-22: see the §5 box -- year-stratified OR 1.60 [1.27, 2.01]; the pooled 0.34% vs 0.30% figures are superseded.]
 
 **The claim, stated with its actual weight.** A discovery event's timing
 is not incidental metadata a confirmed-pair label can safely discard.
@@ -357,7 +357,7 @@ effect sits in the factor-explained subset: the confound is real, not
 total. The second (survivorship of crisis-discovered pairs) has since
 been tested (§7, Finding #66): no significant confound within the 20.6%
 of the universe trackable at all (z=1.26, p=0.21), the other 79%
-untested, not assumed clean. Taken by itself, this is the opposite
+untested, not assumed clean. [Corrected 2026-10-22: see the §5 box -- year-stratified OR 1.60 [1.27, 2.01]; the pooled 0.34% vs 0.30% figures are superseded.] Taken by itself, this is the opposite
 practical implication of §4: where §4 shows discovery timing must be
 corrected for, §5 suggests discovery context may be informative and
 worth investigating further, not that it should already be acted on;
@@ -683,6 +683,26 @@ the underlying fold-to-fold sign disagreement: full account in §4/§10.
 
 ## 5. Finding 2: Discovery Regime Is an Exploitable Signal [DRAFTED, Finding #41, 2026-09-02]
 
+> **Re-derived and independently reviewed, 2026-10-22 (N4/N7; sealed holdout; 281,806 pairs on the current chain;
+> outputs on CachyOS: `crisis_regime_cluster_bootstrap.parquet`, `crisis_regime_concentration_significance.parquet`,
+> `crisis_regime_survivorship_confound_test.parquet`). The section's reading does not survive; the redraft replaces it:**
+> - **Confirmation:** within the same discovery year, crisis-first vs calm-first confirmation differs by +0.010 pts,
+>   95% CI [-0.154, +0.336] (6 years with both kinds); vs every non-crisis pair +0.034 [-0.227, +0.399] (12 years).
+>   Uninformative: the CI's upper end is about 2x the calm base rate, so neither an effect nor its absence is shown.
+> - **Concentration:** all 12 crisis-first confirmations fall in the 2008-09 and 2011 episodes (6 independent units).
+>   p = 0.038 under the null that spreads confirmations by pair count, 0.124 when each episode is weighted by the windows
+>   it tested (its chances to confirm; the 2025-04 episode is a quarter of all crisis pairs, each with one window).
+>   Not significant once opportunity is accounted for.
+> - **Persistence / reappearance: WITHDRAWN.** The metric counted only later windows in a *different* regime; short
+>   crisis spells satisfy that mechanically. With a symmetric metric (any later window) the within-year difference is
+>   +1.12 pts, 95% CI [-2.76, +4.56]. Every reappearance number below (91.0% vs 78.7%, the factor-split 88.26% vs
+>   78.41%, the per-episode 84-100%) measures regime duration, not the pairs.
+> - **Survivorship (Finding #66):** pooled, no difference (0.284% vs 0.254%, p 0.34). Stratified by discovery year
+>   (pairs found recently are mostly current members AND right-censored), pairs whose legs are both still S&P 500
+>   members confirm more often: Mantel-Haenszel OR 1.60, 95% CI [1.27, 2.01], p 4e-5 (20 years, 302 confirmations).
+>   "Survived" = still an index member in 2026, not company delisting. The crisis stratum (8 events) is uninformative.
+>   Trackable share 39.5% of the sealed 281,806 pairs (the 20.6% below was a different, larger pair set).
+
 > **Correction pending re-derivation (2026-10-15, M-058; wording revised after independent review).** Correlations
 > rise mechanically when volatility rises (Forbes & Rigobon, 2002). With each stock's market component rescaled to the
 > full-sample market variance (`research/regime_volatility_bias_check.py`; ~450 long-lived US CRSP stocks with
@@ -772,7 +792,7 @@ promotion requires.
    this specific sub-claim does not hold up.
 2. **Persistence: significant under BOTH the naive and the
    cluster-robust test, though considerably weaker under the honest
-   one.** Crisis-first pairs reappear as a candidate in a later,
+   one.** [WITHDRAWN 2026-10-22: the reappearance metric counts only different-regime windows, which short crisis spells satisfy mechanically; symmetric metric +1.12 pts [-2.76, +4.56]. See the §5 box.] Crisis-first pairs reappear as a candidate in a later,
    different-regime window far more often than calm-first pairs (91.0%
    vs. 78.7%). The naive pooled z-test (z=32.2, p≈0) overstates
    confidence the same way the confirmation-rate test did. The
@@ -839,7 +859,7 @@ above the calm-period rate.
 
 **Is the top-2-of-12 concentration itself just what a small, right-skewed
 count distribution produces by chance? Tested directly, not left as an
-open question.** `research/crisis_regime_concentration_significance_test.py`
+open question.** [Corrected 2026-10-22: on the current chain the component-level p is 0.038 by pair count and 0.124 weighted by windows tested -- not significant once opportunity is accounted for. See the §5 box.] `research/crisis_regime_concentration_significance_test.py`
 (verified first, `debug/_verify_crisis_regime_concentration_significance_
 test.py`, 7/7 checks) runs two tests against the null that confirmation
 probability is constant per pair regardless of episode (so confirmations
@@ -871,7 +891,7 @@ special? vs. pooled-crisis-level: does crisis generally predict
 confirmation?) that this paper originally conflated into one number.
 
 The persistence/reappearance effect fares much better under the same
-episode-level scrutiny: excluding the 2 most recent episodes (2024, 2025;
+episode-level scrutiny: [WITHDRAWN 2026-10-22: the reappearance metric counts only different-regime windows, which short crisis spells satisfy mechanically; symmetric metric +1.12 pts [-2.76, +4.56]. See the §5 box.] excluding the 2 most recent episodes (2024, 2025;
 too little subsequent history has elapsed to observe reappearance
 yet, a real right-censoring risk, not a weaker effect) reappearance rate
 ranges 84%-100% (median 95.6%) across every remaining episode, including
@@ -903,7 +923,7 @@ the OLS residual, the direct version of the same-sector proxy test
 below, isolating co-movement that survives removing the shared market
 factor entirely rather than inferring it from sector membership. Result:
 the crisis-regime reappearance gap is **real but only partly a factor
-artifact**. Of the 638,095 pairs, 42,715 (6.7%) still clear
+artifact**. [WITHDRAWN 2026-10-22: the reappearance metric counts only different-regime windows, which short crisis spells satisfy mechanically; symmetric metric +1.12 pts [-2.76, +4.56]. See the §5 box.] Of the 638,095 pairs, 42,715 (6.7%) still clear
 `|residual correlation| >= 0.4` after the factor is regressed out; in
 that subset, crisis reappearance is still elevated (88.26% vs. calm's
 78.41%, n=1,559 crisis / 14,555 calm, z=9.13). But most of the raw
@@ -951,7 +971,7 @@ throughout this paper; no equivalent point-in-time product for S&P
 survivorship status (0.34% both-survived vs. 0.30% at-least-one-delisted,
 z=1.26, p=0.21): no strong confound detected in the measurable slice;
 the other 79% of the universe remains genuinely untested, not assumed
-clean. See §8 for the same disclosure at the section level.
+clean. [Corrected 2026-10-22: see the §5 box -- year-stratified OR 1.60 [1.27, 2.01]; the pooled 0.34% vs 0.30% figures are superseded.] See §8 for the same disclosure at the section level.
 
 **Two further robustness checks, both run this session.** The
 episode-clustering gap rule (3 consecutive months with no new crisis-
@@ -1003,7 +1023,7 @@ clustering check above, the confirmation-rate half of this finding is
 better read as "the 2008-09 and 2011 crises specifically produced
 unusually durable candidate pairs" than "crisis conditions generally
 predict confirmation." The persistence/reappearance half is the
-stronger, more broadly-replicated claim. Taken together, conditional on
+stronger, more broadly-replicated claim. [WITHDRAWN 2026-10-22: the reappearance metric counts only different-regime windows, which short crisis spells satisfy mechanically; symmetric metric +1.12 pts [-2.76, +4.56]. See the §5 box.] Taken together, conditional on
 a pair having already cleared the correlation prefilter, the regime it
 first cleared that filter in carries real predictive information about
 its downstream behavior that current practice (treating "confirmed" as
@@ -1674,7 +1694,7 @@ single catch-all section, since each has a different scope:
   product exists for S&P 400/600 in this WRDS subscription), no
   significant confound (0.34% vs. 0.30% confirmation rate, z=1.26,
   p=0.21), a real, honest, partial answer; the other 79% remains
-  genuinely untested, not assumed clean. **Most important limitation,
+  genuinely untested, not assumed clean. [Corrected 2026-10-22: see the §5 box -- year-stratified OR 1.60 [1.27, 2.01]; the pooled 0.34% vs 0.30% figures are superseded.] **Most important limitation,
   added 2026-09-09**: §5's relationship to §4 is not independence-tested
   and not assumed independent: the opposite. A direct test (Finding #65,
   §6) found §5-confirmed pairs are PIT-reconfirmed (§4's criterion) at

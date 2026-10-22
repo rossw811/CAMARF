@@ -29716,3 +29716,17 @@ Ross: "i sign off on those" (docs/decisions/DECISIONS_2026-10-21.md).
 - **#5 N14** `research/eg_null_correlation_matched_n14.py` (stationary block bootstrap of joint returns; power arm with
   AR(1) spreads of half-life 10/40/120 at the pair's own residual scale); synthetic 5/5 (0/1 without the module). 1h
   running on the Surface; 1D on CachyOS after the chain (both RAM-heavy steps must not overlap).
+
+### Session 2026-10-22: holiday-aware holes, chain restarts, N4/N7 reviewed and corrected
+- **Ross 2026-10-22 "yes to all":** holes counted on each market's trading calendar (Amendment 5 addendum 2;
+  `market_calendar.py`, WRDS job 35 exchange codes, 15,095/15,195 listings); N14 moved to CachyOS (the Surface run
+  was killed for low memory -- my mistake to start it there); Ross: "i feel as if i have to push you" -> memory rule.
+- **Chain gate stopped it twice, both my misses:** macro calendar ran past the seal (CPI "stale" 192 days; fixed by
+  `macro._sealed_end_date`) and the new calendar script tripped the universe-glob guard. Discovery started 13:04.
+- **N4/N7 independent review -> re-derived by me (CachyOS):** survivorship year-stratified MH OR 1.598
+  [1.270, 2.012], p 4.2e-5 (pooled 0.284% vs 0.254%, p 0.342; crisis stratum OR 1.22 [0.31, 4.86], 8 events);
+  within-year crisis vs calm-only confirmation +0.0098 pts [-0.1535, +0.3363] (6 years), vs non-crisis +0.0339
+  [-0.2266, +0.3986]; reappearance (different-regime) +7.28 [+1.82, +13.19] vs symmetric +1.12 [-2.76, +4.56];
+  concentration component p 0.03811 (pair count) vs 0.12429 (windows tested). Arms in the scripts, failing-first.
+  PAPER_MAGNITUDE §5 box, ERRATA, claims table (M-018, M-073, M-067 CORRECTED). The reviewer's MH run was a /tmp
+  script; these numbers are mine from the committed code.
