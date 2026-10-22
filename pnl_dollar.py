@@ -47,6 +47,7 @@ import numpy as np
 import pandas as pd
 
 from config import Config
+import market_calendar
 
 log = logging.getLogger("pnl_dollar")
 
@@ -182,7 +183,7 @@ def _at_or_before_intraday(df: pd.DataFrame, ts: pd.Timestamp):
 _valid_cache = {}
 
 
-def _spans_hole(F: pd.DataFrame, entry, exit_, intraday: bool) -> bool:
+def _spans_hole(F: pd.DataFrame, entry, exit_, intraday: bool, cal=None) -> bool:
     """BUG-D119 / Amendment 5: True if the leg has no valid price (close and tr finite, > 0) for more than
     data._MAX_FILL_BARS business days anywhere from its last valid bar at or before entry up to the exit date --
     the DATA_GAP rule backtest.py's B1 exit uses. Such a trade could not have been closed at the booked prices."""
@@ -206,7 +207,9 @@ def _spans_hole(F: pd.DataFrame, entry, exit_, intraday: bool) -> bool:
     xd = np.datetime64(x.date(), "D")
     if days[-1] < xd:                   # exit date has no valid bar: it counts as missing (review F3)
         days = np.append(days, xd + 1)
-    missing = np.busday_count(days[:-1] + 1, days[1:])
+    # trading days of the leg's own market (Ross 2026-10-22: a market closure is not a hole); cal None -> weekdays
+    from market_calendar import missing_trading_days
+    missing = missing_trading_days(days, cal)
     return bool(len(missing) and missing.max() > _MAX_FILL_BARS)
 
 
@@ -243,7 +246,8 @@ def add_dollar_pnl(trades: pd.DataFrame, commission_per_share: float = None, sli
             status[i] = "missing_price"; continue
         # BUG-D119 (Amendment 5): checked BEFORE the price lookups, so a stale entry/exit price is a hole, not
         # missing_price (review F3); excluded from P&L and counted
-        if _spans_hole(A, t.entry_time, t.exit_time, tf != "1D") or _spans_hole(B, t.entry_time, t.exit_time, tf != "1D"):
+        if (_spans_hole(A, t.entry_time, t.exit_time, tf != "1D", market_calendar.calendar_for(t.symbol_a))
+                or _spans_hole(B, t.entry_time, t.exit_time, tf != "1D", market_calendar.calendar_for(t.symbol_b))):
             status[i] = "unrealizable_gap"; continue
         ae, ax, be, bx = (_look(A, t.entry_time), _look(A, t.exit_time),
                           _look(B, t.entry_time), _look(B, t.exit_time))

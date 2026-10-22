@@ -64,6 +64,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from config import Config
 from data import GapFlag, _MAX_FILL_BARS
+import market_calendar
 
 warnings.filterwarnings("ignore")
 
@@ -155,6 +156,15 @@ class Trade:
     pnl_legacy_cost: float = np.nan
     pnl_legacy_net: float = np.nan
     notional_dollar_entry: float = np.nan
+
+
+def gap_before_flags(days: np.ndarray, cal=None) -> np.ndarray:
+    """B1 rule per bar: True if more than data._MAX_FILL_BARS trading days (of `cal`; weekdays if None) passed with no
+    bar before this one. debug/_verify_market_calendar_holes.py"""
+    out = np.zeros(len(days), dtype=bool)
+    if len(days) > 1:
+        out[1:] = market_calendar.missing_trading_days(days, cal) > _MAX_FILL_BARS
+    return out
 
 
 def apply_pnl_basis(trades: List["Trade"], legacy: bool = False, cfg=None,
@@ -673,12 +683,11 @@ class BacktestEngine:
         # BUSINESS DAYS with no valid bar, so closures are never outages; the position exits at the FIRST valid bar
         # after the hole (closing before it would need to know the gap was coming). Not caught: an intraday outage
         # shorter than one trading day. debug/_verify_backtest_data_gap_exit.py
+        # 2026-10-22 (Ross): counted in TRADING days of the days both legs' markets were open (market_calendar), so
+        # an exchange closure (Lunar New Year: 6-7 weekdays) is not an outage; weekdays where a calendar is unknown.
         _d = df.index.tz_localize(None) if getattr(df.index, "tz", None) is not None else df.index
         _days = _d.normalize().values.astype("datetime64[D]")
-        _missing_days = np.zeros(len(_days), dtype=int)
-        if len(_days) > 1:
-            _missing_days[1:] = np.maximum(np.busday_count(_days[:-1] + 1, _days[1:]), 0)
-        df["_gap_before"] = _missing_days > _MAX_FILL_BARS
+        df["_gap_before"] = gap_before_flags(_days, market_calendar.pair_calendar(sym_a, sym_b))
 
         # Holdout split (chronological)
         _hd = (self.holdout_date.get(tf) if isinstance(self.holdout_date, dict) else self.holdout_date)

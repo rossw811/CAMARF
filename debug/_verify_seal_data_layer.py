@@ -142,6 +142,10 @@ with tempfile.TemporaryDirectory() as td:
             macro.FREDFeed._fetch_with_retry = orig_fetch
         check("8 macro FRED fetch returned without sealed rows", got is not None and got.index.max() < D,
               str(None if got is None else got.index.max()))
+        # 8b. macro.build's calendar ends before the seal (else every sealed day reads as stale: CPI 192 days, chain
+        # suite 2026-10-21)
+        ok8b = hasattr(macro, "_sealed_end_date") and pd.Timestamp(macro._sealed_end_date(None)) < D             and pd.Timestamp(macro._sealed_end_date("2026-06-30")) < D             and macro._sealed_end_date("2020-06-30") == "2020-06-30"
+        check("8b macro.build end date capped before the seal", ok8b)
 
         # 7
         full = seal.read_full(p)

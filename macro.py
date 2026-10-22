@@ -768,6 +768,15 @@ class MacroRunSummary:
 # =============================================================================
 
 
+def _sealed_end_date(end_date: Optional[str]) -> str:
+    """Latest date build() aligns to: the requested end (default today), capped at the day before the sealed holdout
+    (seal.py: FRED/COT rows from Config.DATA.SEALED_FROM are not available, so a calendar running past it would read
+    every sealed day as stale). debug/_verify_seal_data_layer.py"""
+    last_open = (pd.Timestamp(Config.DATA.SEALED_FROM) - pd.Timedelta(days=1)).strftime("%Y-%m-%d")
+    end_date = end_date or datetime.now().strftime("%Y-%m-%d")
+    return min(end_date, last_open)
+
+
 def build(
     series: Optional[List[str]] = None,
     force_refresh: bool = False,
@@ -786,11 +795,11 @@ def build(
                        (Config.MACRO.CACHE_MAX_AGE_HOURS).
         start_date:    Earliest date to align to (default:
                        Config.MACRO.MIN_HISTORY_START).
-        end_date:      Latest date to align to (default: today).
+        end_date:      Latest date to align to (default: today), capped before the sealed holdout.
     """
     summary = MacroRunSummary()
     start_date = start_date or Config.MACRO.MIN_HISTORY_START
-    end_date = end_date or datetime.now().strftime("%Y-%m-%d")
+    end_date = _sealed_end_date(end_date)
 
     daily_ids = [s for s in Config.MACRO.FRED_SERIES_DAILY if series is None or s in series]
     monthly_ids = [

@@ -238,3 +238,12 @@ Implementation corrections, each with a failing-first test; the rules above are 
   New Year on some Asian listings: 6-7) counts as a hole, as it already does for backtest.py's B1 exit (proposal to
   Ross pending, see the decision log); pool metadata from the whole-history file is joined only where the pair's
   orientation matches.
+
+### Amendment 5 addendum 2 (Ross 2026-10-22: "yes to all"; committed before ANY result of the re-run exists)
+Holes are counted in the leg's own market TRADING days, not weekdays, both in item 1 (`unrealizable_gap`) and in
+backtest.py's existing B1 data-gap exit (which uses the days both legs' markets were open), so an exchange closure is
+never a hole: US listings on the NYSE calendar, crypto every day, forex weekdays, Compustat Global by exchange
+(comp.g_security.exchg) and yfinance non-US by ticker suffix on calendars derived from the group's own pre-seal data
+(a weekday is a trading day if at least half the group's live listings have a price; fewer than 5 live listings ->
+every weekday, the previous rule). `market_calendar.py`, `research/build_market_calendars.py`,
+`debug/_verify_market_calendar_holes.py`. The chain stops before the search if the exchange codes are missing.

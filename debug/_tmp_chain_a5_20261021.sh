@@ -38,6 +38,9 @@ run pool_spreads $PY -u research/regenerate_pool_spread_series.py --pairs $S/pur
 run squeeze $PY -u research/squeeze_momentum_features.py --pairs-file $S/purity_pairs_pit_k1_clean.parquet
 run audit_degenerate $PY -u research/degenerate_column_audit.py --dir output/results/1day --pattern "spread_series_*.parquet" --out $S/degenerate_column_audit_a5.parquet
 run audit_contracts $PY -u research/pipeline_contracts.py
+# Ross 2026-10-22: holes counted on each market's trading calendar; Compustat Global exchanges come from WRDS job 35
+[ -s $W/global_security_exchange.parquet ] || { echo "$(date '+%F %T') GUARD: $W/global_security_exchange.parquet missing (WRDS job 35) -- STOPPED before the search" >> $L; exit 1; }
+run market_calendars $PY -u research/build_market_calendars.py
 seal_gate before_search
 T0=$(date +%s)
 run search_run $PY -u research/strategy_search.py run --fresh
