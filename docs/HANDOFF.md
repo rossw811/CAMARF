@@ -6,7 +6,8 @@ WRDS session server running on the Surface (connected 12:43; queue output/wrds_j
 **Queue (in order; one agent at a time; CachyOS jobs never alongside discovery):**
 1. When the chain finishes: register C-006 (Amendment 5 result), independent review, ERRATA/registry.
 2. CachyOS: N14 `--tf 1h` then `--tf 1D` (eg_null_correlation_matched_n14.py); Johansen real trios
-   (johansen_trio_arm_comparison.py) -> decision for Ross on switching production; N13 1M re-derivation; N5 (D10).
+   (johansen_trio_arm_comparison.py) -> decision for Ross on switching production; N5 (D10); §4.2.1 1D raw rate
+   (full-universe screen --tf 1D --skip-wrds-check, as N13 1M: DONE 2026-10-22, 3.05%).
 3. S33 tiers on the new pools; S11: pre-2012 S&P 400 announcements (Sonnet search) -> more rebalances checked.
 4. Paper numbers after review: N7 survivorship (Finding #66 Tier A), N4 crisis regime (review running 2026-10-22);
    discovery scope / arm counts from the new pools; C-006.
