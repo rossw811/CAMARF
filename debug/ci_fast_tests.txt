@@ -401,3 +401,4 @@ debug/_verify_regenerate_no_restore.py
 debug/_verify_tf_extract_exclusions_a06.py
 debug/_verify_pooled_sharpe_d90.py
 debug/_verify_market_calendar_holes.py
+debug/_verify_full_universe_screen_paths_by_tf.py

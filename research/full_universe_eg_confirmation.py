@@ -89,8 +89,9 @@ def main():
     # then .replace(".parquet", "_chunks")), producing "..._candidates_5y_chunks", not
     # "..._candidates_chunks_5y" -- fixed 2026-08-15 after this exact mismatch caused the 5y EG
     # run to fail with "No candidate chunk files found" against a directory that was never written.
-    candidates_dir = _CANDIDATES_DIR.replace("_chunks", f"_{args.lookback_years}y_chunks")
-    out_path = _OUT_PATH.replace(".parquet", f"_{args.lookback_years}y.parquet")
+    from full_universe_correlation_prefilter import screen_paths   # one definition of the paths, per timeframe
+    _paths = screen_paths(args.tf, args.lookback_years)
+    candidates_dir, out_path = _paths["chunks"], _paths["confirmed"]
 
     chunk_files = sorted(glob.glob(os.path.join(candidates_dir, "*.parquet")))
     if not chunk_files:

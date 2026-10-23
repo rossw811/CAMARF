@@ -72,6 +72,16 @@ log.addHandler(_fh)
 _OUT_PATH = "output/research/full_universe_correlation_prefilter_candidates.parquet"
 
 
+def screen_paths(tf: str, lookback_years: int) -> dict:
+    """Output paths of the full-universe screen (prefilter candidates, their chunk dir, EG-confirmed pairs). 1D keeps
+    the original names; other timeframes add "_<tf>" so a 1M run never overwrites the 1D files (N13, 2026-10-22).
+    debug/_verify_full_universe_screen_paths_by_tf.py"""
+    t = "" if tf == "1D" else f"_{tf}"
+    cand = _OUT_PATH.replace(".parquet", f"{t}_{lookback_years}y.parquet")
+    return {"candidates": cand, "chunks": cand.replace(".parquet", "_chunks"),
+            "confirmed": f"output/research/full_universe_eg_confirmed_pairs{t}_{lookback_years}y.parquet"}
+
+
 def _asset_class_for(symbol: str, source_hint: str) -> str:
     """Coarse asset-class tagging for cross-asset-class flagging in
     candidate_pairs() -- exact classification is not load-bearing for the
@@ -178,7 +188,7 @@ def main():
     # (44,840 symbols) measured memory growing from 8.36GB to 9.66GB in 20s -- a rate
     # that would have OOM-crashed within ~90 more seconds. Fixed in UniverseFilter.
     # run_chunked() itself (see its own docstring); this driver just passes flush_path.
-    out_path = _OUT_PATH.replace(".parquet", f"_{args.lookback_years}y.parquet")
+    out_path = screen_paths(args.tf, args.lookback_years)["candidates"]
     flush_dir = out_path.replace(".parquet", "_chunks") if not args.limit else \
         out_path.replace(".parquet", f"_limit{args.limit}_chunks")
     log.info(f"Running chunked correlation pre-filter: {len(aligned_data)} symbols, "
