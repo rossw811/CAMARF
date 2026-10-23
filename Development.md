@@ -29740,3 +29740,10 @@ Ross: "i sign off on those" (docs/decisions/DECISIONS_2026-10-21.md).
   the union) left 42 returns/symbol; fixed (`candidate_returns`, test 6/6) and re-running. Same blind spot exists in
   gap_aware_returns / build_returns_matrix on align_to_common_calendar's 1h output -- no current claim uses that path
   (the intraday scan builds its own US-only union); noted for any future 1h full-universe prefilter.
+- **N14 1h (CachyOS 2026-10-22, output/research/eg_null_correlation_matched_n14_1h.parquet; 300 pairs x 5 draws per
+  threshold, seed 20261021).** Size of the production EG screen on correlation-matched null pairs (joint stationary
+  block bootstrap, median block length 1.9-2.0 bars): thr 0.6 3.33% [2.47, 4.20] (pair-cluster CI), thr 0.4 2.47%
+  [1.73, 3.27]; short-block half 3.07% / 2.27%. Power (AR(1) spread at the pair's own residual scale): half-life
+  10 / 40 / 120 bars 91.8 / 80.4 / 31.5% (0.6), 81.3 / 62.5 / 21.9% (0.4). Real candidates' own rejection rate 5.0% /
+  6.3%. Reading: the screen holds its size on its own candidate population at 1h (extends C-008); power falls
+  steeply for slow reversion. Not yet reviewed; 1D after the chain, then one independent review of both.
