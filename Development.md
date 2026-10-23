@@ -29730,3 +29730,13 @@ Ross: "i sign off on those" (docs/decisions/DECISIONS_2026-10-21.md).
   concentration component p 0.03811 (pair count) vs 0.12429 (windows tested). Arms in the scripts, failing-first.
   PAPER_MAGNITUDE §5 box, ERRATA, claims table (M-018, M-073, M-067 CORRECTED). The reviewer's MH run was a /tmp
   script; these numbers are mine from the committed code.
+- **N13 1M re-derivation (CachyOS 2026-10-22; logs/n13_1M_thr06_20261022.log, output/research/_n13_thr040/).** The
+  full-universe screen's outputs were not named per timeframe (a 1M run overwrote the 1D files) -- fixed first
+  (`screen_paths`, test 0/1 -> 3/3). The prefilter's alias check logs into WRDS live and the login guard refused an
+  unattended login; run with --skip-wrds-check (exact duplicates and structural pairs still dropped). 2,856 symbols.
+  thr 0.6: 43,101 candidates, 40,120 tested, 1,225 raw p<0.05 (3.05%), 3 FDR. thr 0.40: 365,550 candidates, 335,353
+  tested, 8,849 raw (2.64%), 2 FDR. PAPER.md §4.2.1's 1M row (34,263 / 9 / 0.026%, "~190x below chance") superseded.
+- **N14 first 1h run invalid (13-14 pairs):** adjacent-row returns on the sparse 1h common calendar (crypto hours in
+  the union) left 42 returns/symbol; fixed (`candidate_returns`, test 6/6) and re-running. Same blind spot exists in
+  gap_aware_returns / build_returns_matrix on align_to_common_calendar's 1h output -- no current claim uses that path
+  (the intraday scan builds its own US-only union); noted for any future 1h full-universe prefilter.

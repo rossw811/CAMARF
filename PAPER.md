@@ -760,6 +760,14 @@ for a meaningful fraction of true relationships in the candidate universe (pre-W
 | 1D | 122,082 | 2 | 0.0016% | ~3,000x *below* chance |
 | 1M | 34,263 | 9 | 0.026% | ~190x below chance |
 
+[Re-derived 2026-10-22 (N13) for 1M on the current full-universe screen (`research/full_universe_correlation_prefilter.py`
+then `full_universe_eg_confirmation.py --tf 1M`, 10-year common calendar, 2,856 WRDS monthly series, production
+two-direction EG + BH, CachyOS; the live WRDS alias check was skipped, exact duplicates and structural pairs removed):
+at the screen's 0.6 correlation threshold 40,120 tested, 1,225 raw p<0.05 (3.05%), 3 after BH; at 0.40, 335,353
+tested, 8,849 (2.64%), 2 after BH. The 1M row above is superseded: the raw rate sits just below 5%, consistent with
+the measured size of the test (C-008: 3.25% at 1M), not ~190x below chance. The 1D row is re-derived after the
+Amendment 5 run frees CachyOS; until then the table's 1D/15m/1h rows are the pre-WRDS observation only.]
+
 The reading initially drawn from this table was that the EG test is itself over-conservative at long horizons,
 so that real, currently-live relationships are also missed. A first Monte Carlo study (2026-07) appeared to refute
 it: randomly re-paired cached series were rejected at 7.75%-12.75% against a nominal 5%, rising with horizon. That
