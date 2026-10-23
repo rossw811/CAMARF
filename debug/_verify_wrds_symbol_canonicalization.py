@@ -76,6 +76,15 @@ try:
     filtered = {s: df for s, df in aligned_data.items() if s not in canon2}
     check("integration.drops_only_alias_symbols",
           set(filtered.keys()) == {"VRT", "AAPL"}, f"got {set(filtered.keys())}")
+    # 2026-10-22: without a live login the check uses the content-verified label -> PERMNO map (BUG-D117: the live
+    # ticker -> PERMNO resolution named the wrong security for 2,122 labels), so no WRDS login is needed
+    try:
+        from data_wrds import resolve_symbol_canonicalization as _rsc
+        cm = _rsc(db=None, symbols=["VRT", "PERMNO17987", "AAPL", "PERMNO99", "GVKEY001_01W"],
+                  permno_of={"VRT": 17987, "AAPL": 14593, "PERMNO99": 99})
+        check("label_map.alias_found_without_login", cm.get("PERMNO17987") == "VRT" and "PERMNO99" not in cm, str(cm))
+    except TypeError as e:
+        check("label_map.alias_found_without_login", False, str(e))
 finally:
     shutil.rmtree(tmp, ignore_errors=True)
 

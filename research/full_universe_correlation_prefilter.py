@@ -166,10 +166,9 @@ def main():
             canon = data_wrds.resolve_symbol_canonicalization(
                 db=None, symbols=all_syms, alias_file=args.alias_file
             )
-        else:
-            db = data_wrds._connect()
-            canon = data_wrds.resolve_symbol_canonicalization(db=db, symbols=all_syms)
-            db.close()
+        else:   # content-verified label -> PERMNO map; no WRDS login (2026-10-22)
+            canon = data_wrds.resolve_symbol_canonicalization(
+                db=None, symbols=all_syms, permno_of=data_wrds.label_permno_map())
         if canon:
             before_n = len(aligned_data)
             aligned_data = {s: df for s, df in aligned_data.items() if s not in canon}

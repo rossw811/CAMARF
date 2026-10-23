@@ -257,6 +257,7 @@ def resolve_symbol_canonicalization(
     db,
     symbols: List[str],
     alias_file: Optional[str] = None,
+    permno_of: Optional[Dict[str, int]] = None,
 ) -> Dict[str, str]:
     """
     Returns {permno_alias_symbol: canonical_ticker} for every "PERMNO<n>"-labeled
@@ -277,9 +278,8 @@ def resolve_symbol_canonicalization(
     independently-maintained copy (the exact kind of drift tonight's `stats.py`
     `_TF_DIR_MAP` bug came from).
 
-    `db=None` requires `alias_file` (a machine with only cached price data, no WRDS
-    auth, can't run `resolve_permnos_bulk` itself -- same constraint the original
-    version had).
+    `db=None` requires `alias_file` or `permno_of` (the content-verified label -> PERMNO map, preferred: no login,
+    and BUG-D117 showed live ticker resolution names the wrong security for some labels).
     """
     all_syms_now = sorted(set(symbols))
     plain_syms = [s for s in all_syms_now if not s.startswith("PERMNO") and not s.startswith("GVKEY")]
@@ -292,6 +292,13 @@ def resolve_symbol_canonicalization(
         for alias, ticker in precomputed.items():
             if alias in permno_syms:
                 canon[alias] = ticker
+    elif permno_of is not None:
+        # 2026-10-22: the content-verified label -> PERMNO map (label_permno_map) -- no WRDS login, and more reliable
+        # than live ticker resolution (BUG-D117: it named the wrong security for 2,122 labels)
+        for ticker in plain_syms:
+            p = permno_of.get(ticker)
+            if p is not None and f"PERMNO{int(p)}" in permno_syms:
+                canon[f"PERMNO{int(p)}"] = ticker
     elif db is not None:
         resolved = resolve_permnos_bulk(db, plain_syms)
         for ticker, permno in resolved.items():
