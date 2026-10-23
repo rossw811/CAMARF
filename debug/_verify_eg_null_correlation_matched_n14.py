@@ -79,5 +79,21 @@ check("5 candidates distinct, |corr| >= threshold, no exact duplicates",
       len(pairs) > 0 and len(set(map(frozenset, pairs))) == len(pairs) and min(cs) >= 0.6 and max(cs) < 0.999999,
       f"n {len(pairs)} corr [{min(cs):.3f}, {max(cs):.6f}]")
 
+# 6. (CachyOS 1h run, 2026-10-22: 13 of 300 pairs found) the 1h common calendar is sparse per symbol (crypto's 24/7
+# hours in the union); returns from adjacent grid rows were almost all NaN (gap_aware_returns / build_returns_matrix too).
+# Candidate returns are taken between each symbol's own consecutive valid prices.
+g = pd.date_range("2025-01-02 10:00", periods=4000, freq="30min")
+zz = rng.normal(size=(2000, 2)) @ np.linalg.cholesky([[1, 0.8], [0.8, 1]]).T * 0.01
+pa = pd.Series(np.nan, index=g)
+pb = pd.Series(np.nan, index=g)
+pa.iloc[::2] = np.exp(np.cumsum(zz[:, 0]))
+pb.iloc[::2] = np.exp(np.cumsum(zz[:, 1]))          # same stamps, NaN rows in between
+alg = {"PA": pd.DataFrame({"close": pa}), "PB": pd.DataFrame({"close": pb})}
+naive = pd.DataFrame({k: np.diff(np.log(v["close"].to_numpy())) for k, v in alg.items()})
+cr = n14.candidate_returns(alg, 100) if hasattr(n14, "candidate_returns") else None
+cc = cr["PA"].corr(cr["PB"]) if cr is not None else float("nan")
+check("6 sparse calendar: adjacent-row diffs give no returns, own-price returns recover the correlation",
+      naive["PA"].notna().sum() == 0 and abs(cc - 0.8) < 0.05, f"naive finite {naive['PA'].notna().sum()}, corr {cc:.3f}")
+
 print(f"\n{passed} passed, {failed} failed")
 sys.exit(1 if failed else 0)

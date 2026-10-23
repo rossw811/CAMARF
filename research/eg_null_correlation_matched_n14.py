@@ -119,6 +119,27 @@ def sample_candidates(rets: pd.DataFrame, threshold: float, n_pairs: int, rng: n
     return out
 
 
+def candidate_returns(aligned: dict, min_obs: int) -> pd.DataFrame:
+    """Returns for candidate correlations: each symbol's log returns between ITS OWN consecutive valid prices, placed
+    on the union of timestamps (pairwise-complete correlation then uses bars both legs have). This equals the intraday
+    discovery scan's returns for US listings sharing session timestamps (research/intraday_episodic_scan.py).
+    2026-10-22: differencing adjacent rows of the common calendar -- which is also what gap_aware_returns /
+    UniverseFilter.build_returns_matrix do -- gave almost no returns at 1h, where the union of timestamps includes
+    crypto's 24/7 hours and non-US sessions (42 finite returns per symbol on CachyOS). Symbols with fewer than min_obs
+    returns are dropped."""
+    cols = {}
+    for s_, df in aligned.items():
+        if df is None or "close" not in df.columns:
+            continue
+        c = pd.to_numeric(df["close"], errors="coerce")
+        c = c[np.isfinite(c.to_numpy()) & (c.to_numpy() > 0)]
+        r = np.log(c).diff().iloc[1:]
+        r = r[~r.index.duplicated(keep="last")]
+        if len(r) >= min_obs:
+            cols[s_] = r
+    return pd.DataFrame(cols)
+
+
 def _cluster_ci(rej: pd.Series, groups: pd.Series, rng: np.random.Generator, reps: int = 2000):
     g = pd.DataFrame({"r": rej.astype(float).to_numpy(), "g": groups.to_numpy()}).groupby("g")["r"].agg(["sum", "count"])
     s, c = g["sum"].to_numpy(), g["count"].to_numpy()
@@ -135,9 +156,9 @@ def run(tf: str, thresholds, n_pairs: int, draws: int):
     rng = np.random.default_rng(SEED)
     aligned = load_aligned(tf)
     lp = CointScanner._build_log_price_map(aligned, sorted(aligned))
-    del aligned
-    rets = pd.DataFrame({s: np.diff(v) for s, v in lp.items() if v is not None})
     floor = max(Config.STATS.MIN_OVERLAP_BY_TF.get(tf, 252), 60)
+    rets = candidate_returns(aligned, floor)
+    del aligned
     rows = []
     for thr in thresholds:
         cand = sample_candidates(rets, thr, n_pairs * 2, rng, min_obs=floor)
