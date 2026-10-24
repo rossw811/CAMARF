@@ -29752,8 +29752,11 @@ Ross: "i sign off on those" (docs/decisions/DECISIONS_2026-10-21.md).
 Chain: seal sweep + audit 0, D118 rebuild, suite 433/0, discovery 13:04 -> next day, intraday, adapter, PIT pools
 (k1 759 = 753 1D + 6 1h; k2 64), spreads, squeeze, audits, market calendars, 432 fresh backtests (1,755 s), eval.
 0 of 8 cells pass; selected holdout Sharpes k1 -0.33/-0.23/+0.05/-0.67, k2 +0.08/-0.11/+0.30/+0.55; DSR <= 0.33.
-Positive-holdout share of trials k1 53.0%, k2 63.5% (A4: ~80%). Dropped trades: 0 in both pools; the BUG-D119 pair is
-still in k2 (hypothesis: the D118 rebuild splits GVKEY015736 at the jump after its hole, so the trade no longer
-exists). Registered in C-006 pending the independent review. Queue started on CachyOS (N14 1D -> Johansen trios ->
+Positive-holdout share of trials k1 53.0%, k2 63.5% (A4: 66.9% / 93.75% -- my first note said "~80%", wrong; corrected
+after review). Dropped trades: 0 in both pools. **Independent review 2026-10-24: verdict HOLDS**; corrections taken
+into C-006: the BUG-D119 pair now trades on GVKEY015736_01W_seg2 (pre-hole segment; my "still in k2" was imprecise);
+5 of 6 1h pairs are eligible 2026-08 (no evaluated trades); pool-rule properties disclosed (2018 burst, pairs never
+removed, multiple looks); the k2 drop is on the same pairs; cite the code range, not one commit. Re-checked by me:
+A4 shares 0.669 / 0.9375, the seg2 label, the 1h eligibility dates, 474/759 eligible in 2018. Queue started on CachyOS (N14 1D -> Johansen trios ->
 1D raw rate -> E1, `debug/_tmp_queue_20261024.sh`, log logs/latest/latest_run_queue_20261024.log). E1 built
 (`research/placebo_discovery_e1.py`, test 6/6; Ross 2026-10-24 "build, yes to all").

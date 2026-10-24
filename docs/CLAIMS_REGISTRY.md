@@ -155,17 +155,32 @@ The C-entries below are claims re-derived one by one on current data.
   (marked at 2025-12-31 and added back: k2 positive shares 0.968/0.977/0.935/0.880). Two defects behind it (BUG-D119,
   BUG-D120, ERRATA): trades booked across multi-year price holes, and pool MEMBERSHIP set by a whole-history BH cutoff
   (only the eligibility DATE is point-in-time). The verdict "no robust signal" stands; both defects inflate, not hide. Output `output/research/strategy_search/{summary,all_trials}.parquet` (CachyOS, 2026-10-20 21:54).
-- **Amendment 5 result (2026-10-23, CachyOS chain `debug/_tmp_chain_a5_20261021.sh`, HEAD dee7fcb5+; REGISTERED
-  pending independent review, running 2026-10-24).** Fixes: BUG-D119 unrealizable trades excluded and counted (holes
+- **Amendment 5 result (2026-10-23, CachyOS chain `debug/_tmp_chain_a5_20261021.sh`; code range 4496aa2c..e0bb7f9f --
+  CachyOS fast-forwarded during discovery, only data_wrds.resolve_symbol_canonicalization gained an optional path;
+  REVIEWED 2026-10-24: verdict HOLDS, descriptions corrected below).** Fixes: BUG-D119 unrealizable trades excluded and counted (holes
   in each market's trading days), BUG-D118 rule on consecutive valid prices (15,082 labels re-segmented), BUG-D120 pool
   = the point-in-time-eligible set, sealed holdout at the data layer. Pools: k1 759 clean pairs (753 1D + 6 1h; arms
   547 US-US gated / 153 international / 53 mixed / 6 intraday), k2 64 (1D; 43 / 15 / 6). 432 fresh backtests.
   **Result: no robust signal in either pool; 0 of 8 cells pass.** Holdout capital-sim Sharpe / DSR / PBO of the
   dev-selected configuration: k1 0.5 -0.326 / 0.000 / 0.46; 0.6 -0.228 / 0.000 / 0.65; 0.7 +0.047 / 0.006 / 0.61;
   0.8 -0.668 / 0.000 / 0.04; k2 0.5 +0.076 / 0.004 / 0.37; 0.6 -0.110 / 0.031 / 0.84; 0.7 +0.300 / 0.125 / 0.83;
-  0.8 +0.546 / 0.327 / 0.78. Positive-holdout share of trials: k1 53.0% (median +0.04), k2 63.5% (median +0.09), down
-  from ~80% in Amendment 4. Trades dropped by the P&L basis: 0 in both pools (all 432 dropped logs empty). Amendment 4
-  outputs kept in `output/research/_superseded_a4_20261020/`.
+  0.8 +0.546 / 0.327 / 0.78. Positive-holdout share of trials: k1 53.0% (median +0.04), k2 63.5% (median +0.09);
+  Amendment 4: k1 66.9%, k2 93.75%. The k2 drop happened on the SAME pairs (46 pairs common to both pools: 63.5%
+  positive; the 18 new pairs 73%) -- consistent with the BUG-D119 trade's removal plus the data/calendar changes, not
+  separated. Trades dropped by the P&L basis: 0 in both pools (all 432 dropped logs empty) -- real: the reviewer read all
+  483 1D legs' raw files, every hole > 5 trading days ends before its pair's eligible_from, and no trade exits at
+  `data_gap`; the drop logging itself was exercised only by the synthetic test. The BUG-D119 pair now trades on the
+  pre-hole segment (`GVKEY010137_01W / GVKEY015736_01W_seg2`, 2004-02-19 .. 2023-09-29): the 2023 -> 2025-12-17 trade
+  cannot exist. Seal: every 1D eligibility and trade before 2026; 5 of the 6 1h pairs become eligible 2026-08-31
+  (intraday seal 2026-10-21) and contribute no evaluated trade (the 1h arm is effectively CMS/PPL). **Disclosed
+  properties of the pre-registered pool rule ("k rejections at some month-end", never removed):** (a) the pool forms in
+  a burst -- 474 of 759 k1 pairs become eligible in 2018 (H2 2018 windows add many tiny p-values and loosen the as-of BH
+  cutoff from 2.0e-5 to 5.9e-5), so splits 0.5/0.6 are developed on ~120-170 pre-2018 pairs; seven pairs become
+  eligible after a leg's data ended (never trade); (b) pairs stay after they stop being confirmed -- under the 2025-12
+  family 338 of 759 k1 pairs have zero rejected windows and 36 of 64 k2 pairs fewer than 2 -- and with ~260 monthly looks
+  the pool's FDR is not 5%. Both dilute: read the verdict as "no signal under this pool rule". Every cell fails DSR >=
+  0.95 (max 0.327); k1 0.8 alone passes PBO (0.037) with a holdout of -0.67. Amendment 4 outputs kept in
+  `output/research/_superseded_a4_20261020/`.
 - **Market-structure reading:** fails if the cost and execution model is wrong for the pool: too harsh for liquid US large caps (a hidden signal), or too lenient for thin Compustat Global legs, borrow-constrained shorts and non-synchronous home-market closes (a hidden loss).
 
 ## C-007 — Code and arithmetic claims (S34 central; re-derived 2026-10-10)
