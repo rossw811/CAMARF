@@ -155,6 +155,17 @@ The C-entries below are claims re-derived one by one on current data.
   (marked at 2025-12-31 and added back: k2 positive shares 0.968/0.977/0.935/0.880). Two defects behind it (BUG-D119,
   BUG-D120, ERRATA): trades booked across multi-year price holes, and pool MEMBERSHIP set by a whole-history BH cutoff
   (only the eligibility DATE is point-in-time). The verdict "no robust signal" stands; both defects inflate, not hide. Output `output/research/strategy_search/{summary,all_trials}.parquet` (CachyOS, 2026-10-20 21:54).
+- **Amendment 5 result (2026-10-23, CachyOS chain `debug/_tmp_chain_a5_20261021.sh`, HEAD dee7fcb5+; REGISTERED
+  pending independent review, running 2026-10-24).** Fixes: BUG-D119 unrealizable trades excluded and counted (holes
+  in each market's trading days), BUG-D118 rule on consecutive valid prices (15,082 labels re-segmented), BUG-D120 pool
+  = the point-in-time-eligible set, sealed holdout at the data layer. Pools: k1 759 clean pairs (753 1D + 6 1h; arms
+  547 US-US gated / 153 international / 53 mixed / 6 intraday), k2 64 (1D; 43 / 15 / 6). 432 fresh backtests.
+  **Result: no robust signal in either pool; 0 of 8 cells pass.** Holdout capital-sim Sharpe / DSR / PBO of the
+  dev-selected configuration: k1 0.5 -0.326 / 0.000 / 0.46; 0.6 -0.228 / 0.000 / 0.65; 0.7 +0.047 / 0.006 / 0.61;
+  0.8 -0.668 / 0.000 / 0.04; k2 0.5 +0.076 / 0.004 / 0.37; 0.6 -0.110 / 0.031 / 0.84; 0.7 +0.300 / 0.125 / 0.83;
+  0.8 +0.546 / 0.327 / 0.78. Positive-holdout share of trials: k1 53.0% (median +0.04), k2 63.5% (median +0.09), down
+  from ~80% in Amendment 4. Trades dropped by the P&L basis: 0 in both pools (all 432 dropped logs empty). Amendment 4
+  outputs kept in `output/research/_superseded_a4_20261020/`.
 - **Market-structure reading:** fails if the cost and execution model is wrong for the pool: too harsh for liquid US large caps (a hidden signal), or too lenient for thin Compustat Global legs, borrow-constrained shorts and non-synchronous home-market closes (a hidden loss).
 
 ## C-007 — Code and arithmetic claims (S34 central; re-derived 2026-10-10)
