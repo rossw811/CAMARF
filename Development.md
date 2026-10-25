@@ -29760,3 +29760,11 @@ removed, multiple looks); the k2 drop is on the same pairs; cite the code range,
 A4 shares 0.669 / 0.9375, the seg2 label, the 1h eligibility dates, 474/759 eligible in 2018. Queue started on CachyOS (N14 1D -> Johansen trios ->
 1D raw rate -> E1, `debug/_tmp_queue_20261024.sh`, log logs/latest/latest_run_queue_20261024.log). E1 built
 (`research/placebo_discovery_e1.py`, test 6/6; Ross 2026-10-24 "build, yes to all").
+- **Post-chain queue (CachyOS 2026-10-24, logs/queue_*.log).** N14 1D (300 pairs x 5 draws): size thr 0.6 4.67%
+  [3.60, 5.73], thr 0.4 3.87% [2.93, 4.87] (short-block half 2.53% / 4.13%; median block 3.3-3.4 days); power hl
+  10/40/120 days 81.1/61.1/16.6% (0.6), 58.9/31.3/9.5% (0.4); real candidates' own rejection 7.7% / 6.0%. Johansen
+  trios: 9,135 real candidate trios, rank-0 rejected restricted 45.6% / production det -1 42.9% / det 0 29.1%,
+  restricted vs production agree 79.8%. 1D raw rate (full-universe screen, thr 0.6, Sept-13 files kept in
+  output/research/_superseded_fu_screen_1D_20260913/): 66,987 tested, 3,947 raw (5.89%), 192 BH. E1 first build used a
+  68-day mean block (Politis-White on the equal-weight index: stale prices autocorrelate it) -- stopped 4 h into
+  discovery, block length now the median per-series estimate (test 7/7), rebuilt 21:20.

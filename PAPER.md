@@ -765,8 +765,11 @@ then `full_universe_eg_confirmation.py --tf 1M`, 10-year common calendar, 2,856 
 two-direction EG + BH, CachyOS; PERMNO aliases (none at 1M), exact duplicates and structural pairs removed):
 at the screen's 0.6 correlation threshold 40,120 tested, 1,225 raw p<0.05 (3.05%), 3 after BH; at 0.40, 335,353
 tested, 8,849 (2.64%), 2 after BH. The 1M row above is superseded: the raw rate sits just below 5%, consistent with
-the measured size of the test (C-008: 3.25% at 1M), not ~190x below chance. The 1D row is re-derived after the
-Amendment 5 run frees CachyOS; until then the table's 1D/15m/1h rows are the pre-WRDS observation only.]
+the measured size of the test (C-008: 3.25% at 1M), not ~190x below chance. 1D (re-derived 2026-10-24, same path,
+46,256 symbols, threshold 0.6): 67,431 candidates, 66,987 tested, 3,947 raw p<0.05 (5.89%), 192 after BH (181 after
+the overlap filter) -- the 1D row above (122,082 / 2 / 0.0016%) is superseded too. On today's data the screen rejects
+correlated candidates at about the nominal rate at both horizons; the "far below chance" observation does not hold.
+The 15m/1h rows remain the pre-WRDS observation.]
 
 The reading initially drawn from this table was that the EG test is itself over-conservative at long horizons,
 so that real, currently-live relationships are also missed. A first Monte Carlo study (2026-07) appeared to refute
