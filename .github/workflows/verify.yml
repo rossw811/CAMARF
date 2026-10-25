@@ -24,7 +24,13 @@ jobs:
           pip install --no-deps wrds==3.5.0
       - name: Run the fast synthetic suite
         env:
-          PYTHONFAULTHANDLER: "1"   # a native abort at exit (seen once: _verify_liquid_bar_mask_sources rc -6) prints its traceback
+          PYTHONFAULTHANDLER: "1"   # a native abort at exit prints its traceback
+          # 3 native aborts AFTER every check had passed ("terminate called without an active exception", rc -6, no Python
+          # frame; _verify_liquid_bar_mask_sources 10-21, _verify_degenerate_column_audit and _verify_delisting_registry
+          # 10-23), all pyarrow users, never on Windows / CachyOS (0/30). Hypothesis, not confirmed: pyarrow's jemalloc
+          # background thread at interpreter teardown. The system allocator has none. Recurrences are tracked in
+          # Development.md; if one appears with this set, the hypothesis is wrong.
+          ARROW_DEFAULT_MEMORY_POOL: "system"
         run: python debug/_run_all_verify.py --list debug/ci_fast_tests.txt --workers 4 --timeout 600 --fail-on-error
       - name: Upload failure output
         if: failure()

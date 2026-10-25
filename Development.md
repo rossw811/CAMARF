@@ -29774,3 +29774,9 @@ A4 shares 0.669 / 0.9375, the seg2 label, the 1h eligibility dates, 474/759 elig
   CWEN-A/PERMNO14030 and QQQ/NQ=F at the top). Not taken: "provenance of the old 1D screen files lost" -- they were
   moved to output/research/_superseded_fu_screen_1D_20260913/ before the run. PAPER.md §4.2.1 note rewritten.
   Next (after E1): N14 v2 and the screen with the same-company rule.
+- **GitHub CI failures (Ross 2026-10-25: "I keep getting emails").** Since 03cb6c23 every run failed on
+  `_verify_parameter_registry` (E1's four constants unregistered -- my miss: I ran E1's own test, not the fast list);
+  justified and registered (10/10). Earlier one-offs: 3 native aborts at interpreter exit after all checks passed
+  (rc -6, "terminate called without an active exception"; liquid_bar_mask_sources 10-21, degenerate_column_audit and
+  delisting_registry 10-23; artifacts read). Mitigation under test: ARROW_DEFAULT_MEMORY_POOL=system in CI (hypothesis:
+  pyarrow's jemalloc background thread at teardown; unconfirmed). Rule kept: run the whole fast list before pushing.
