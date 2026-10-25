@@ -29768,3 +29768,9 @@ A4 shares 0.669 / 0.9375, the seg2 label, the 1h eligibility dates, 474/759 elig
   output/research/_superseded_fu_screen_1D_20260913/): 66,987 tested, 3,947 raw (5.89%), 192 BH. E1 first build used a
   68-day mean block (Politis-White on the equal-weight index: stale prices autocorrelate it) -- stopped 4 h into
   discovery, block length now the median per-series estimate (test 7/7), rebuilt 21:20.
+- **Review of N14 + raw rates (adversarial-reviewer, 2026-10-24): counts hold, readings QUALIFY / FAIL.** Taken in
+  full (ERRATA row "N14 + full-universe screen raw rates"). Re-checked by me: the old §4.2.1 table is the ~1,500-asset
+  full-history pipeline (Development.md:3460-3475); 66 of the 181 1D BH pairs are same-GVKEY issues (MOG-A/MOG,
+  CWEN-A/PERMNO14030 and QQQ/NQ=F at the top). Not taken: "provenance of the old 1D screen files lost" -- they were
+  moved to output/research/_superseded_fu_screen_1D_20260913/ before the run. PAPER.md §4.2.1 note rewritten.
+  Next (after E1): N14 v2 and the screen with the same-company rule.
