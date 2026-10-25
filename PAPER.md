@@ -2347,7 +2347,9 @@ pair), flagged as borderline/methodology-sensitive cases. [Corrected 2026-10-22,
 these results use production's Johansen specification with no deterministic term (det_order -1), which has almost no
 power when the cointegrating relation has an intercept, as log-price relations do (3.3% vs 100% for the
 restricted-constant test on simulated trios); the 502-trio file no longer exists. Not citable until re-run under the
-restricted-constant comparison arm (`research/johansen_trio_arm_comparison.py`).]
+restricted-constant comparison arm (`research/johansen_trio_arm_comparison.py`). Re-run 2026-10-25 on 9,135 point-in-time-pool trios
+(descriptive, not yet reviewed): trace and max-eigenvalue rank decisions disagree on 18.6%; Reimers' correction is not
+needed with critical values simulated at each length (ERRATA "Johansen trio specification").]
 
 **Grid bootstrap confidence intervals for the AR coefficient (Hansen, 1999):** gives a genuine
 confidence interval (not just a pass/fail test) for each pair's own spread mean-reversion
@@ -2393,7 +2395,9 @@ the way are in Development.md; headline results only here.
 not re-verified against the current 26-pair set) 14/20 confirmed pairs show `symbol_a` leading
 (weakly exogenous, doesn't respond to disequilibrium, `symbol_b` does the adjusting), 2 bidirectional,
 2 `symbol_b`-leads, 2 neither adjusts, a consistent, non-random 70% skew. [Corrected 2026-10-22: the VECM uses the
-same no-constant specification (ERRATA "Johansen trio specification"); not citable until re-run.]
+same no-constant specification (ERRATA "Johansen trio specification"); not citable until re-run. Re-run 2026-10-25 (restricted
+constant, point-in-time pool, descriptive, not yet reviewed): the 70% skew does not replicate -- "symbol_a leads" 284 vs
+"symbol_b leads" 229 of 759, and which leg is "a" is an ordering rule; exactly one leg adjusts in 67.6%.]
 
 **Financial Turbulence Index** (Kritzman & Li 2010, Mahalanobis distance, Ledoit-Wolf-shrunk
 covariance): 15,381 days computed across the confirmed-pair universe; 90th-percentile threshold=57.70,
