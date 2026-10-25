@@ -10,6 +10,8 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import numpy as np
 import pandas as pd
 import backtest as bt
+bt.apply_pnl_basis = lambda trades, legacy=False, cfg=None, **_kw: (trades, {})  # 2026-10-25: the dollar conversion drops
+# every trade on symbols with no price files; the fixture used real tickers "A"/"B" and passed only on local cache prices.
 from config import Config
 
 PASS, FAIL = [], []
@@ -37,7 +39,7 @@ def run(hl_value):
                             ml_cond=bt.MLConditioner(enabled=False), layer2_enabled=False)
     h = Cap(); bt.log.addHandler(h)
     try:
-        tr = eng.run(pd.Series({"symbol_a": "A", "symbol_b": "B", "tf_label": "1D", "hedge_ratio_ols": 1.0,
+        tr = eng.run(pd.Series({"symbol_a": "ZZSYNA", "symbol_b": "ZZSYNB", "tf_label": "1D", "hedge_ratio_ols": 1.0,
                                 "hedge_ratio_kalman_mean": 1.0, "hurst_rs": 0.3}), sp, "ols")
     finally:
         bt.log.removeHandler(h)

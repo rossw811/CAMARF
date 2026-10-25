@@ -18,6 +18,9 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import numpy as np
 import pandas as pd
 
+import backtest as _bt_basis  # 2026-10-25: run() converts to dollar P&L, which drops every trade on symbols with no
+_bt_basis.apply_pnl_basis = lambda trades, legacy=False, cfg=None, **_kw: (trades, {})  # price files (CI). The fixture
+# used "A"/"B", real tickers with local cache files, so it passed locally on real prices and failed on CI with 0 trades.
 from backtest import BacktestEngine, MLConditioner, RegimeConditioner
 from config import Config
 
@@ -40,7 +43,7 @@ def main():
     cfg.ENTRY_ZSCORE, cfg.STOP_ZSCORE, cfg.EXIT_ZSCORE = 3.0, 3.5, 0.0
     eng = BacktestEngine(cfg=cfg, regime_cond=RegimeConditioner(enabled=False), ml_cond=MLConditioner(enabled=False),
                          layer2_enabled=False)
-    base = {"symbol_a": "A", "symbol_b": "B", "tf_label": "1D", "hedge_ratio_ols": 1.0,
+    base = {"symbol_a": "ZZSYNA", "symbol_b": "ZZSYNB", "tf_label": "1D", "hedge_ratio_ols": 1.0,
             "hedge_ratio_kalman_mean": 1.0, "hurst_rs": 0.3}
     ent = lambda tr: [idx.get_loc(t.entry_time) for t in tr]
     no_col = ent(eng.run(pd.Series(base), sp, "ols"))
