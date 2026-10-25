@@ -247,3 +247,19 @@ never a hole: US listings on the NYSE calendar, crypto every day, forex weekdays
 (a weekday is a trading day if at least half the group's live listings have a price; fewer than 5 live listings ->
 every weekday, the previous rule). `market_calendar.py`, `research/build_market_calendars.py`,
 `debug/_verify_market_calendar_holes.py`. The chain stops before the search if the exchange codes are missing.
+
+## Amendment 6 (approved by Ross 2026-10-25, "yes to all"; committed before ANY result of this arm exists)
+A **sensitivity arm** on pool membership, run alongside the Amendment 5 result (which stays the registered result).
+The independent review of Amendment 5 (2026-10-24, C-006) showed two properties of the pre-registered rule "a pair
+enters once it has >= k rejections at some month-end and is never removed": the pool forms in a burst (474 of 759 k1
+pairs become eligible in 2018) and pairs stay after they stop being confirmed (338 of 759 k1 pairs have zero rejected
+windows under the 2025-12 family). Both dilute. This arm re-decides membership every month:
+1. **Rule.** At each month-end T, the same as-of BH family as Amendment 5 (windows concluded by T, before the seal of
+   their timeframe); a pair is ACTIVE for the month after T if >= k of its windows are rejected under that family.
+   New entries are allowed only on bars inside an active month; a position already open exits by the normal rules.
+   Pairs, cleaning, spreads, grid (216 configurations), splits, embargo, selection rule, DSR/PBO and the success
+   criterion are exactly Amendment 5's.
+2. **Pools** `pit_k1_dyn`, `pit_k2_dyn`: the Amendment 5 clean pools with each pair's active months attached.
+3. **Multiple testing.** This arm is its own family (2 pools x 216 = 432 trials per split) and is ALSO reported with
+   N = 864 (Amendment 5 plus this arm), the honest count of configurations tried on these pairs.
+4. **Reported regardless of outcome**, next to Amendment 5; it does not replace it.
