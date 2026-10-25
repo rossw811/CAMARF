@@ -89,5 +89,35 @@ check("6 compare_trio: restricted rejects, fields present",
       r["restricted_reject0"] and r["restricted_rank"] >= 1 and {"prod_det_m1_reject0", "det0_reject0", "n_bars"} <= set(r),
       str({k: r[k] for k in ("prod_det_m1_reject0", "det0_reject0", "restricted_reject0", "restricted_rank")}))
 
+# 7-10 (2026-10-25): max-eigenvalue statistic under the same restricted constant, its own committed table, and the
+# small-sample size check that retires the Reimers re-run (critical values are simulated at each T already)
+import johansen as jo  # noqa: E402
+if not hasattr(jo, "johansen_maxeig_n"):
+    check("7 johansen_maxeig_n exists", False)
+else:
+    Y3 = np.column_stack([y, x, np.cumsum(rng.normal(size=400))])
+    tr3, mx3 = jo.johansen_trace_n(Y3), jo.johansen_maxeig_n(Y3)
+    check("7 max-eig: trace(r) = sum of max-eig(i >= r); equal at the last rank",
+          np.allclose(tr3, np.cumsum(mx3[::-1])[::-1]) and np.isclose(tr3[-1], mx3[-1]), f"{tr3} {mx3}")
+    ok8 = os.path.exists(jo.MAXEIG_TABLE)
+    if ok8:
+        same = all(np.isclose(jo.crit_from_table(TT, 1, 0.05, stat="maxeig"), jo.crit_from_table(TT, 1, 0.05))
+                   for TT in jo.JOHANSEN_T_GRID)
+        g8 = np.random.default_rng(12)
+        rej = sum(jo.johansen_rank_restricted(np.cumsum(g8.normal(size=(T, 3)), axis=0), stat="maxeig",
+                                              crit=lambda TT, m, lev, k: jo.crit_from_table(TT, m, lev, k, stat="maxeig"))
+                  ["rank"] >= 1 for _ in range(R))
+        check("8 max-eig table: m = 1 equals the trace table (same draws, same statistic); size at 5%",
+              same and 0.025 <= rej / R <= 0.08, f"same {same}, size {rej / R:.3f}")
+    else:
+        check("8 max-eig table committed", False, jo.MAXEIG_TABLE)
+    g9 = np.random.default_rng(13)
+    rej100 = sum(jo.johansen_test(np.cumsum(g9.normal(size=(100, 3)), axis=0))["rank"] >= 1 for _ in range(R))
+    check("9 T = 100: table critical values hold size without a Reimers factor", 0.025 <= rej100 / R <= 0.08,
+          f"{rej100 / R:.3f}")
+    r10 = compare_trio(Y, crit=cfun)
+    check("10 compare_trio reports the max-eig rank and the trace/max-eig agreement",
+          {"restricted_maxeig_rank", "restricted_maxeig_reject0"} <= set(r10), str(sorted(r10)))
+
 print(f"\n{passed} passed, {failed} failed")
 sys.exit(1 if failed else 0)

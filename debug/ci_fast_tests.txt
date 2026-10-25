@@ -408,3 +408,4 @@ debug/_verify_dynamic_pool_amendment6.py
 debug/_verify_eligible_from_gate.py
 debug/_verify_churn_fix_arms.py
 debug/_verify_half_life_skip_attribution.py
+debug/_verify_weak_exogeneity_restricted.py

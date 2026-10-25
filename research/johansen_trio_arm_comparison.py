@@ -29,14 +29,16 @@ sys.path.insert(0, ROOT)
 
 from config import Config  # noqa: E402
 from data import longest_gap_respecting_segment  # noqa: E402
-from research.cointegration_estimator_arms import johansen_rank_restricted  # noqa: E402
+from johansen import crit_from_table, johansen_rank_restricted  # noqa: E402
 
 _COL = {0.10: 0, 0.05: 1, 0.01: 2}
 OUT = os.path.join(ROOT, "output", "research", "johansen_trio_arm_comparison.parquet")
 
 
-def compare_trio(Y: np.ndarray, level: float = 0.05, k_ar_diff: int = None, crit=None) -> dict:
-    """Rank-0 decision and sequential rank under the three specifications on one (T x 3) log-level matrix."""
+def compare_trio(Y: np.ndarray, level: float = 0.05, k_ar_diff: int = None, crit=None, crit_maxeig=None) -> dict:
+    """Rank-0 decision and sequential rank under the three specifications on one (T x 3) log-level matrix, plus the
+    restricted-constant max-eigenvalue rank (2026-10-25; replaces the legacy trace/max-eigenvalue agreement check, which
+    ran on production's old no-constant spec). Max-eig critical values: johansen.MAXEIG_TABLE unless given."""
     from statsmodels.tsa.vector_ar.vecm import coint_johansen
     k = Config.ANALYSIS.JOHANSEN_K_AR_DIFF if k_ar_diff is None else k_ar_diff
     c = _COL[round(level, 4)]
@@ -50,6 +52,10 @@ def compare_trio(Y: np.ndarray, level: float = 0.05, k_ar_diff: int = None, crit
     r = johansen_rank_restricted(Y, level, k, crit=crit)
     out["restricted_trace0"], out["restricted_crit0"] = float(r["trace"][0]), float(r["crit"][0])
     out["restricted_reject0"], out["restricted_rank"] = bool(r["rank"] >= 1), int(r["rank"])
+    cm = crit_maxeig or (lambda T, m, lev, kk: crit_from_table(T, m, lev, kk, stat="maxeig"))
+    x = johansen_rank_restricted(Y, level, k, crit=cm, stat="maxeig")
+    out["restricted_maxeig0"], out["restricted_maxeig_crit0"] = float(x["trace"][0]), float(x["crit"][0])
+    out["restricted_maxeig_reject0"], out["restricted_maxeig_rank"] = bool(x["rank"] >= 1), int(x["rank"])
     return out
 
 
@@ -103,6 +109,9 @@ def main():
     for s in ("prod_det_m1", "det0", "restricted"):
         print(f"  {s}: rank-0 rejected {int(ok[f'{s}_reject0'].sum())} ({ok[f'{s}_reject0'].mean():.1%}); "
               f"rank distribution {ok[f'{s}_rank'].value_counts().sort_index().to_dict()}")
+    print(f"  restricted max-eig: rank-0 rejected {int(ok['restricted_maxeig_reject0'].sum())} "
+          f"({ok['restricted_maxeig_reject0'].mean():.1%}); trace/max-eig rank disagree on "
+          f"{int((ok['restricted_rank'] != ok['restricted_maxeig_rank']).sum())} trios")
     print("  agreement (restricted vs production):")
     print(pd.crosstab(ok["restricted_reject0"], ok["prod_det_m1_reject0"], rownames=["restricted"], colnames=["prod -1"]))
     print(f"-> {OUT}")

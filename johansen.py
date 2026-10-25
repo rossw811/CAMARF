@@ -20,13 +20,15 @@ import pandas as pd
 
 JOHANSEN_CRIT_REPS = 4000
 CRIT_TABLE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "research", "johansen_restricted_crit.csv")
+MAXEIG_TABLE = CRIT_TABLE.replace("_crit.csv", "_maxeig_crit.csv")   # max-eigenvalue statistic, same draws
+_STAT = {"trace": lambda Y, k: johansen_trace_n(Y, k), "maxeig": lambda Y, k: johansen_maxeig_n(Y, k)}
 
 
-def johansen_trace_n(Y, k_ar_diff: int = None) -> np.ndarray:
-    """Johansen trace statistics for ranks r = 0 .. n-1 of an (T x n) level matrix, RESTRICTED constant (constant
+def johansen_eigs_n(Y, k_ar_diff: int = None):
+    """Eigenvalues lambda_1 >= .. >= lambda_n of an (T x n) level matrix and the effective T, RESTRICTED constant (constant
     inside the cointegrating relation -- Johansen's case 2, for price levels without trend; 2026-10-13: statsmodels'
     det_order=0 puts the constant outside with drift critical values and over-rejected 11-12% at a nominal 5% on
-    driftless random walks at every T tried). trace(r) = -T * sum_{i > r} log(1 - lambda_i).
+    driftless random walks at every T tried).
     Reduced-rank regression: R0 = residual of dY_t, R1 = residual of [Y_{t-1}, 1], both on k lagged differences."""
     from config import Config
     k = Config.ANALYSIS.JOHANSEN_K_AR_DIFF if k_ar_diff is None else k_ar_diff
@@ -48,8 +50,22 @@ def johansen_trace_n(Y, k_ar_diff: int = None) -> np.ndarray:
     S00, S01, S11 = R0.T @ R0 / T, R0.T @ R1 / T, R1.T @ R1 / T
     M = np.linalg.solve(S11, S01.T) @ np.linalg.solve(S00, S01)
     lam = np.sort(np.clip(np.real(np.linalg.eigvals(M)), 0, 1 - 1e-12))[::-1][:n]
+    return lam, T
+
+
+def johansen_trace_n(Y, k_ar_diff: int = None) -> np.ndarray:
+    """Johansen trace statistics for ranks r = 0 .. n-1, restricted constant: trace(r) = -T * sum_{i > r} log(1 - lambda_i)
+    (johansen_eigs_n)."""
+    lam, T = johansen_eigs_n(Y, k_ar_diff)
     tail = np.cumsum(np.log(1 - lam)[::-1])[::-1]          # tail[r] = sum_{i >= r} log(1 - lambda_i)
     return -T * tail
+
+
+def johansen_maxeig_n(Y, k_ar_diff: int = None) -> np.ndarray:
+    """Max-eigenvalue statistics for ranks r = 0 .. n-1, restricted constant: maxeig(r) = -T * log(1 - lambda_{r+1}),
+    H0 rank r against rank r + 1. Same eigenvalues as johansen_trace_n; null quantiles from MAXEIG_TABLE."""
+    lam, T = johansen_eigs_n(Y, k_ar_diff)
+    return -T * np.log(1 - lam)
 
 
 # n-variate critical values and rank (DECISIONS_2026-10-21 #3). Under H0 rank = r the trace statistic's null depends on the m = n - r
@@ -85,11 +101,14 @@ def johansen_crit_n_interp(T: int, m: int, level: float = 0.05, k_ar_diff: int =
     return float(c_lo + w * (c_hi - c_lo))
 
 
-def johansen_rank_restricted(Y, level: float = 0.05, k_ar_diff: int = None, crit=None) -> dict:
-    """Sequential trace test, restricted constant: the rank is the first r whose trace(r) does not exceed the
-    critical value for n - r trends (n if every one does). Returns rank, trace statistics, critical values."""
+def johansen_rank_restricted(Y, level: float = 0.05, k_ar_diff: int = None, crit=None, stat: str = "trace") -> dict:
+    """Sequential test, restricted constant: the rank is the first r whose statistic (trace, or max-eigenvalue with
+    stat="maxeig") does not exceed the critical value for n - r trends (n if every one does). Returns rank, the
+    statistics (key "trace" for either) and critical values. `crit` must match `stat` (default: trace simulation)."""
+    if crit is None and stat != "trace":
+        raise ValueError("pass the max-eigenvalue critical values (crit_from_table(..., stat='maxeig'))")
     crit = crit or johansen_crit_n_interp
-    tr = johansen_trace_n(Y, k_ar_diff)
+    tr = _STAT[stat](Y, k_ar_diff)
     n, T = len(tr), np.asarray(Y).shape[0]
     cv = np.array([crit(T, n - r, level, k_ar_diff) for r in range(n)])
     above = tr > cv
@@ -98,18 +117,18 @@ def johansen_rank_restricted(Y, level: float = 0.05, k_ar_diff: int = None, crit
 
 
 
-@lru_cache(maxsize=1)
-def _table() -> pd.DataFrame:
-    return pd.read_csv(CRIT_TABLE)
+@lru_cache(maxsize=2)
+def _table(stat: str = "trace") -> pd.DataFrame:
+    return pd.read_csv({"trace": CRIT_TABLE, "maxeig": MAXEIG_TABLE}[stat])
 
 
-def crit_from_table(T: int, m: int, level: float = 0.05, k_ar_diff: int = None) -> float:
-    """Critical value from the committed table, linear in 1/T between grid points (nearest grid point outside it).
-    Same response surface as johansen_crit_n_interp, without simulating."""
-    t = _table()
+def crit_from_table(T: int, m: int, level: float = 0.05, k_ar_diff: int = None, stat: str = "trace") -> float:
+    """Critical value from the committed table (trace, or max-eigenvalue with stat="maxeig"), linear in 1/T between
+    grid points (nearest grid point outside it). Same response surface as johansen_crit_n_interp, without simulating."""
+    t = _table(stat)
     g = t[(t["m"] == m) & np.isclose(t["level"], level)].sort_values("T")
     if g.empty:
-        raise ValueError(f"no tabulated critical value for m={m}, level={level} ({CRIT_TABLE})")
+        raise ValueError(f"no tabulated critical value for m={m}, level={level} ({stat} table)")
     Ts, cs = g["T"].to_numpy(float), g["crit"].to_numpy(float)
     if T <= Ts[0]:
         return float(cs[0])
