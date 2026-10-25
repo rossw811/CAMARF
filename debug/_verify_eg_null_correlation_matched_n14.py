@@ -95,5 +95,25 @@ cc = cr["PA"].corr(cr["PB"]) if cr is not None else float("nan")
 check("6 sparse calendar: adjacent-row diffs give no returns, own-price returns recover the correlation",
       naive["PA"].notna().sum() == 0 and abs(cc - 0.8) < 0.05, f"naive finite {naive['PA'].notna().sum()}, corr {cc:.3f}")
 
+# 7. N14 v2 (review 2026-10-24): pairs sampled UNIFORMLY from the screen's own candidate list (the anchor sampler
+# over-weighted low-degree symbols), after the screen's filters incl. the same-company rule; power at fixed spread s.d.
+if hasattr(n14, "screen_sample"):
+    g7 = np.random.default_rng(7)
+    pop = pd.DataFrame({"symbol_a": [f"T{i}" for i in range(750)] + [f"GVKEY{i:06d}_01W" for i in range(250)],
+                        "symbol_b": [f"U{i}" for i in range(750)] + [f"GVKEY{i + 500000:06d}_01W" for i in range(250)],
+                        "pearson_corr": 0.7})
+    pop.loc[0, ["symbol_a", "symbol_b"]] = ["GVKEY000001_01W", "GVKEY000001_02W"]     # same company
+    ids = {"GVKEY000001_01W": frozenset({"g1"}), "GVKEY000001_02W": frozenset({"g1"})}
+    smp = n14.screen_sample(pop, 300, g7, ids=ids)
+    tt = np.mean([not a.startswith("GVKEY") for a in smp["symbol_a"]])
+    check("7a uniform over the screen's pairs (type mix ~ population 75%)", abs(tt - 0.75) < 0.07 and len(smp) == 300,
+          f"{tt:.3f}")
+    check("7b same-company pair never sampled", not (smp["symbol_a"] == "GVKEY000001_01W").any())
+    A7, B7 = n14.cointegrated_version(la, lb, 20, np.random.default_rng(8), 1.0, spread_sd=0.02)
+    x7 = B7 - np.polyval(np.polyfit(A7, B7, 1), A7)
+    check("7c fixed spread s.d. honoured", 0.012 < np.std(x7) < 0.03, f"{np.std(x7):.4f}")
+else:
+    check("7 screen_sample exists", False)
+
 print(f"\n{passed} passed, {failed} failed")
 sys.exit(1 if failed else 0)

@@ -68,14 +68,16 @@ def joint_bootstrap(la: np.ndarray, lb: np.ndarray, mean_block: float, rng: np.r
             np.concatenate([[lb[0]], lb[0] + np.cumsum(rs[:, 1])]))
 
 
-def cointegrated_version(la, lb, half_life: float, rng: np.random.Generator, mean_block: float = None):
+def cointegrated_version(la, lb, half_life: float, rng: np.random.Generator, mean_block: float = None,
+                         spread_sd: float = None):
     """Power arm: bootstrapped A, and B = mu + beta * A + AR(1) spread with the given half-life whose stationary s.d.
-    equals the real pair's OLS residual s.d."""
+    is `spread_sd` (v2: a fixed grid -- review 2026-10-24: at the pair's own levels-residual s.d., power was mostly a
+    signal-to-noise artefact) or, when None, the real pair's OLS residual s.d. (v1)."""
     L = block_length(la, lb) if mean_block is None else mean_block
     A, _ = joint_bootstrap(la, lb, L, rng)
     X = np.column_stack([np.ones(len(la)), la])
     (mu, beta), *_ = np.linalg.lstsq(X, lb, rcond=None)
-    s = float(np.std(lb - X @ np.array([mu, beta])))
+    s = float(np.std(lb - X @ np.array([mu, beta]))) if spread_sd is None else float(spread_sd)
     phi = 0.5 ** (1.0 / half_life)
     u = np.zeros(len(la))
     eps = rng.normal(size=len(la)) * s * np.sqrt(1 - phi ** 2)
@@ -140,6 +142,26 @@ def candidate_returns(aligned: dict, min_obs: int) -> pd.DataFrame:
     return pd.DataFrame(cols)
 
 
+SPREAD_SDS = (0.02, 0.05, 0.10)   # v2 power grid, log-price units
+
+
+def screen_sample(cands: pd.DataFrame, n: int, rng: np.random.Generator, ids: dict = None) -> pd.DataFrame:
+    """v2 (review 2026-10-24): n pairs drawn UNIFORMLY from the screen's own candidate list after the screen's filters
+    (exact duplicates |corr| >= DUP_CORR, filter_structural_pairs with the correlations, the same-company rule) -- the
+    anchor sampler weighted pairs by ~1/degree."""
+    from universe_loader import filter_structural_pairs
+    sys.path.insert(0, os.path.join(ROOT, "research"))
+    from full_universe_eg_confirmation import drop_same_company
+    c = cands[cands["pearson_corr"].abs() < DUP_CORR] if "pearson_corr" in cands.columns else cands
+    recs = c.to_dict("records")
+    recs, _ = filter_structural_pairs(recs)
+    if ids is not None:
+        recs, _ = drop_same_company(recs, ids)
+    k = min(n, len(recs))
+    pick = rng.choice(len(recs), size=k, replace=False)
+    return pd.DataFrame([recs[i] for i in sorted(pick)])
+
+
 def _cluster_ci(rej: pd.Series, groups: pd.Series, rng: np.random.Generator, reps: int = 2000):
     g = pd.DataFrame({"r": rej.astype(float).to_numpy(), "g": groups.to_numpy()}).groupby("g")["r"].agg(["sum", "count"])
     s, c = g["sum"].to_numpy(), g["count"].to_numpy()
@@ -148,7 +170,7 @@ def _cluster_ci(rej: pd.Series, groups: pd.Series, rng: np.random.Generator, rep
     return float(np.quantile(est, 0.025)), float(np.quantile(est, 0.975))
 
 
-def run(tf: str, thresholds, n_pairs: int, draws: int):
+def run(tf: str, thresholds, n_pairs: int, draws: int, candidates_dir: str = None):
     from analysis import CointScanner, eg_pvalue_pair
     from data import longest_gap_respecting_segment
     from research.eg_null_calibration_montecarlo import load_aligned
@@ -157,15 +179,30 @@ def run(tf: str, thresholds, n_pairs: int, draws: int):
     aligned = load_aligned(tf)
     lp = CointScanner._build_log_price_map(aligned, sorted(aligned))
     floor = max(Config.STATS.MIN_OVERLAP_BY_TF.get(tf, 252), 60)
-    rets = candidate_returns(aligned, floor)
+    if candidates_dir is None:
+        rets = candidate_returns(aligned, floor)
     del aligned
     rows = []
-    for thr in thresholds:
-        cand = sample_candidates(rets, thr, n_pairs * 2, rng, min_obs=floor)
-        cand_d = [{"symbol_a": a, "symbol_b": b} for a, b in cand]
-        kept, dropped = filter_structural_pairs(cand_d)
-        pairs = [(p["symbol_a"], p["symbol_b"]) for p in kept][:n_pairs]
-        print(f"[{tf} thr {thr}] {len(cand)} candidates sampled, {len(dropped)} structural dropped, testing {len(pairs)}")
+    sample_sets = []
+    if candidates_dir is not None:   # v2: the screen's own candidates, uniformly; the screen's 60-bar EG floor
+        import glob as _g
+        sys.path.insert(0, os.path.join(ROOT, "research"))
+        from clean_pool_identity_pairs import build_company_ids
+        C = pd.concat([pd.read_parquet(f) for f in sorted(_g.glob(os.path.join(candidates_dir, "*.parquet")))],
+                      ignore_index=True)
+        ids = build_company_ids(sorted(set(C["symbol_a"]) | set(C["symbol_b"])))
+        S_ = screen_sample(C, n_pairs, rng, ids=ids)
+        floor = 60
+        thr_label = float(round(C["pearson_corr"].abs().min(), 2)) if "pearson_corr" in C.columns else -1.0
+        print(f"[{tf}] v2: {len(C)} screen candidates in {candidates_dir}; testing {len(S_)} uniform pairs")
+        sample_sets.append((thr_label, list(zip(S_["symbol_a"], S_["symbol_b"]))))
+    else:
+        for thr in thresholds:
+            cand = sample_candidates(rets, thr, n_pairs * 2, rng, min_obs=floor)
+            kept, dropped = filter_structural_pairs([{"symbol_a": a, "symbol_b": b} for a, b in cand])
+            print(f"[{tf} thr {thr}] {len(cand)} candidates sampled (anchor sampler), {len(dropped)} structural dropped")
+            sample_sets.append((thr, [(p["symbol_a"], p["symbol_b"]) for p in kept][:n_pairs]))
+    for thr, pairs in sample_sets:
         for a, b in pairs:
             keep = longest_gap_respecting_segment(np.isfinite(lp[a]) & np.isfinite(lp[b]), tf)
             la, lb = lp[a][keep], lp[b][keep]
@@ -180,11 +217,14 @@ def run(tf: str, thresholds, n_pairs: int, draws: int):
                 p0, _ = eg_pvalue_pair(A, B, Config.ANALYSIS.EG_MAX_LAG, tf)
                 row = {**base, "draw": d, "p_null": p0}
                 for h in HALF_LIVES:
-                    A1, B1 = cointegrated_version(la, lb, h, rng, L)
-                    row[f"p_power_hl{h}"] = eg_pvalue_pair(A1, B1, Config.ANALYSIS.EG_MAX_LAG, tf)[0]
+                    for sd in ((None,) + SPREAD_SDS if candidates_dir is not None else (None,)):
+                        A1, B1 = cointegrated_version(la, lb, h, rng, L, spread_sd=sd)
+                        key = f"p_power_hl{h}" if sd is None else f"p_power_hl{h}_sd{sd}"
+                        row[key] = eg_pvalue_pair(A1, B1, Config.ANALYSIS.EG_MAX_LAG, tf)[0]
                 rows.append(row)
     D = pd.DataFrame(rows)
-    out = os.path.join(ROOT, "output", "research", f"eg_null_correlation_matched_n14_{tf}.parquet")
+    v2 = "_v2" if candidates_dir is not None else ""
+    out = os.path.join(ROOT, "output", "research", f"eg_null_correlation_matched_n14_{tf}{v2}.parquet")
     D.to_parquet(out)
     S = []
     for thr, g in D.groupby("threshold"):
@@ -198,6 +238,18 @@ def run(tf: str, thresholds, n_pairs: int, draws: int):
              "real_rejection_rate": float((g.drop_duplicates(["symbol_a", "symbol_b"])["p_real"] < 0.05).mean())}
         for h in HALF_LIVES:
             s[f"power_hl{h}"] = float((g[f"p_power_hl{h}"] < 0.05).mean())
+            for sd in SPREAD_SDS:
+                c = f"p_power_hl{h}_sd{sd}"
+                if c in g.columns:
+                    s[f"power_hl{h}_sd{sd}"] = float((g[c] < 0.05).mean())
+        q = pd.qcut(g["block_length"].rank(method="first"), 4, labels=False)   # review D2: size by block length
+        for i in range(4):
+            gi = g[q == i]
+            s[f"size_block_q{i + 1}"] = float((gi["p_null"] < 0.05).mean())
+            s[f"block_q{i + 1}_median"] = float(gi["block_length"].median())
+        long_ = g[g["n_bars"] >= 252]
+        s["size_nbars_ge252"] = float((long_["p_null"] < 0.05).mean()) if len(long_) else float("nan")
+        s["sampling"] = "uniform over screen candidates" if candidates_dir is not None else "anchor (one per anchor)"
         S.append(s)
         print({k: (round(v, 4) if isinstance(v, float) else v) for k, v in s.items()})
     pd.DataFrame(S).to_parquet(out.replace(".parquet", "_summary.parquet"))
@@ -210,8 +262,10 @@ def main():
     ap.add_argument("--threshold", type=float, nargs="+", default=[0.6, Config.UNIVERSE.MIN_PEARSON_CORR])
     ap.add_argument("--n-pairs", type=int, default=300)
     ap.add_argument("--draws", type=int, default=5)
+    ap.add_argument("--candidates-dir", default=None,
+                    help="v2: sample uniformly from this screen candidate chunk dir (the screen's own population)")
     a = ap.parse_args()
-    run(a.tf, a.threshold, a.n_pairs, a.draws)
+    run(a.tf, a.threshold, a.n_pairs, a.draws, a.candidates_dir)
 
 
 if __name__ == "__main__":

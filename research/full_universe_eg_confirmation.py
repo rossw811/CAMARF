@@ -61,6 +61,16 @@ _CANDIDATES_DIR = "output/research/full_universe_correlation_prefilter_candidate
 _OUT_PATH = "output/research/full_universe_eg_confirmed_pairs.parquet"
 
 
+def drop_same_company(pairs: list, ids: dict):
+    """(kept, dropped): pairs whose legs are the same company under clean_pool_identity_pairs.same_company.
+    debug/_verify_screen_same_company_filter.py"""
+    from clean_pool_identity_pairs import same_company
+    kept, dropped = [], []
+    for p in pairs:
+        (dropped if same_company(p["symbol_a"], p["symbol_b"], ids) else kept).append(p)
+    return kept, dropped
+
+
 def main():
     import argparse
     p = argparse.ArgumentParser(description="Full-universe EG/BH-FDR confirmation")
@@ -109,6 +119,13 @@ def main():
     candidate_pairs, dropped_structural = filter_structural_pairs(candidate_pairs)
     log.info(f"Structural-pair filter (index-tracking/share-class/GVKEY-cross-listing): dropped "
              f"{len(dropped_structural)} candidates, {len(candidate_pairs)} real candidates remain")
+
+    # Same-company rule (S36, the pool step's; review 2026-10-24: 66 of 181 BH passes were share issues of one company)
+    from clean_pool_identity_pairs import build_company_ids
+    _ids = build_company_ids(sorted({p["symbol_a"] for p in candidate_pairs} | {p["symbol_b"] for p in candidate_pairs}))
+    candidate_pairs, dropped_same = drop_same_company(candidate_pairs, _ids)
+    log.info(f"Same-company rule (PERMCO / CCM GVKEY / Capital IQ ids intersect): dropped {len(dropped_same)} "
+             f"candidates, {len(candidate_pairs)} remain")
 
     log.info(f"Loading full merged universe for tf={args.tf} (same source as the pre-filter stage)...")
     t0 = time.time()
