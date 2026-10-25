@@ -52,6 +52,16 @@ def main():
         check(f"sig_{sig}_column_{col}", r.get("crit_column") == col, r.get("crit_column"))
     r = analysis._johansen_worker(("A", "B", "C", a, b, c, 0, 1, "1h", 0.07))
     check("unsupported_level_refused", r.get("ok") is False and "sig_level" in str(r.get("error", "")), r.get("error"))
+    # 2026-10-25 (Ross "yes to all"): production's trio test is the restricted-constant Johansen (johansen.py). A trio
+    # whose relation has an intercept of 20 is cointegrated; statsmodels det_order -1 (the old production spec) misses it
+    g = np.random.default_rng(3)
+    w, z = np.cumsum(g.normal(size=500)), np.cumsum(g.normal(size=500))
+    e = np.zeros(500)
+    for t in range(1, 500):
+        e[t] = 0.7 * e[t - 1] + g.normal()
+    r = analysis._johansen_worker(("A", "B", "C", w + 0.8 * z + 20 + e, w, z, -1, 1, "1D", 0.05))
+    check("restricted_constant_detects_intercept_relation", r.get("ok") is True and r.get("spec") == "restricted_constant",
+          f"{r.get('ok')} {r.get('spec')} trace {r.get('trace_stat')} crit {r.get('crit_5pct')}")
     finish()
 
 

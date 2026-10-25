@@ -35,6 +35,16 @@ _OUT = os.path.join("output", "research", "strategy_search")
 # Pre-registration Amendment 1: identity-pair-free pools
 from config import Config  # noqa: E402
 POOLS = {f"pit_{k}": v for k, v in sorted(Config.DATA.PIT_POOL_PATHS.items())}   # one definition (config.py)
+
+
+def pools_for_arm(arm: str) -> dict:
+    """Amendment 5 pools ("a5", the registered search) or the Amendment 6 sensitivity arm ("dyn": the same clean pools
+    with active_month_ends, research/build_dynamic_pools.py)."""
+    if arm == "a5":
+        return dict(POOLS)
+    if arm == "dyn":
+        return {f"{k}_dyn": v.replace("_clean.parquet", "_clean_dyn.parquet") for k, v in POOLS.items()}
+    raise ValueError(f"unknown arm {arm!r}")
 SPLITS = (0.5, 0.6, 0.7, 0.8)
 N_FOLDS = 4
 EMBARGO_PCT = 0.01
@@ -143,12 +153,13 @@ def _run_one(task):
     return c["id"], len(df)
 
 
-def run_phase(workers, fresh=False):
+def run_phase(workers, fresh=False, pools=None):
     import multiprocessing as mp
-    for name, path in POOLS.items():
+    pools = POOLS if pools is None else pools
+    for name, path in pools.items():
         check_pool_dir(os.path.join(_OUT, name), pool_fingerprint(path), fresh=fresh)
         _POOL_DF[name] = pd.read_parquet(path)
-    tasks = [(p, c) for p in POOLS for c in build_grid()]
+    tasks = [(p, c) for p in pools for c in build_grid()]
     print(f"{len(tasks)} runs, {workers} workers", flush=True)
     t0 = time.time()
     from analysis import _limit_worker_blas_threads   # 1 BLAS thread per worker (hardware check, 2026-10-10)
@@ -258,14 +269,17 @@ def _capsim_sharpe(trades, start, end):
     return sharpe_daily(d.to_numpy()), r["n_taken"]
 
 
-def eval_phase():
+def eval_phase(pools=None, suffix="", n_trials_combined=None):
+    """suffix/n_trials_combined: the Amendment 6 arm writes *_dyn outputs and also reports the DSR with the combined
+    family (N = 864: Amendment 5 plus this arm)."""
+    pools = POOLS if pools is None else pools
     import pnl_dollar
     import portfolio_math as pm
     from deflated_sharpe import deflated_sharpe_ratio
     from scipy import stats as st
     grid = {c["id"]: c for c in build_grid()}
     rows, summary, status_rows = [], [], []
-    for pname, ppath in POOLS.items():
+    for pname, ppath in pools.items():
         d = os.path.join(_OUT, pname)
         if _read_fp(d) != pool_fingerprint(ppath):
             raise SystemExit(f"{d}: trade files were not built from the current {ppath} (fingerprint mismatch) -- "
@@ -315,28 +329,33 @@ def eval_phase():
             ids = sorted(per)
             M = pd.concat([per[k]["dev_daily"].rename(k) for k in ids], axis=1).fillna(0.0).to_numpy()
             pbo, _ = cscv_pbo(M)
+            dsr_comb = (deflated_sharpe_ratio(sr_per.get(best, np.nan), len(x), float(st.skew(x)),
+                                              float(st.kurtosis(x, fisher=False)), n_trials=n_trials_combined,
+                                              var_sr_across_trials=float(np.var(list(sr_per.values()))))
+                        if n_trials_combined else np.nan)
             hold_rank = pd.Series({k: v["holdout"] for k, v in per.items()}).rank(ascending=False)[best]
             summary.append({"pool": pname, "split": s, "cutoff": str(c.date()), "selected": best,
                             "dev_score": scored[best]["score"], "holdout_capsim_sharpe": per[best]["holdout"],
-                            "holdout_rank": float(hold_rank), "n_configs": len(per), "dsr": dsr, "pbo": pbo,
+                            "holdout_rank": float(hold_rank), "n_configs": len(per), "dsr": dsr,
+                            "dsr_combined_family": dsr_comb, "pbo": pbo,
                             "passes": bool(per[best]["holdout"] > 0 and dsr >= 0.95 and pbo < 0.20)})
             print(summary[-1], flush=True)
-    pd.DataFrame(rows).to_parquet(os.path.join(_OUT, "all_trials.parquet"))
+    pd.DataFrame(rows).to_parquet(os.path.join(_OUT, f"all_trials{suffix}.parquet"))
     SC = pd.DataFrame(status_rows, columns=["pool", "config", "status", "n"])
-    SC.to_parquet(os.path.join(_OUT, "trade_status_counts.parquet"))
+    SC.to_parquet(os.path.join(_OUT, f"trade_status_counts{suffix}.parquet"))
     for pname, g in SC.groupby("pool"):
         tot = g.groupby("status")["n"].sum()
         print(f"{pname}: trade rows by pnl status over {g['config'].nunique()} configs (pre-seal exits): "
               f"{tot.to_dict()}; configs with >= 1 unrealizable_gap trade: "
               f"{int((g[g['status'] == 'unrealizable_gap']['n'] > 0).sum())}")
     S = pd.DataFrame(summary)
-    S.to_parquet(os.path.join(_OUT, "summary.parquet"))
-    for pname in POOLS:
+    S.to_parquet(os.path.join(_OUT, f"summary{suffix}.parquet"))
+    for pname in pools:
         sub = S[S["pool"] == pname]
         verdict = "REAL SIGNAL (passes every split)" if len(sub) == len(SPLITS) and sub["passes"].all() \
             else "no robust signal found"
         print(f"{pname}: {verdict}")
-    with open(os.path.join(_OUT, "trials.json"), "w") as fh:
+    with open(os.path.join(_OUT, f"trials{suffix}.json"), "w") as fh:
         json.dump({"n_trials": len(rows), "prereg": "docs/PREREGISTRATION_STRATEGY_SEARCH_2026-09-27.md"}, fh)
 
 
@@ -347,8 +366,16 @@ def main():
     ap.add_argument("--workers", type=int, default=Config.RUNTIME.N_WORKERS)   # was cpu_count // 2 (hardware check 2026-10-10)
     ap.add_argument("--fresh", action="store_true",
                     help="move trade dirs built from a different pool to a backup and rebuild (run phase)")
+    ap.add_argument("--arm", default="a5", choices=["a5", "dyn"],
+                    help="a5: the registered Amendment 5 search; dyn: the Amendment 6 sensitivity arm")
     a = ap.parse_args()
-    run_phase(a.workers, fresh=a.fresh) if a.phase == "run" else eval_phase()
+    pools = pools_for_arm(a.arm)
+    if a.phase == "run":
+        run_phase(a.workers, fresh=a.fresh, pools=pools)
+    elif a.arm == "a5":
+        eval_phase(pools)
+    else:
+        eval_phase(pools, suffix="_dyn", n_trials_combined=4 * len(build_grid()))
 
 
 if __name__ == "__main__":

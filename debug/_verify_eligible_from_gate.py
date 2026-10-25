@@ -51,6 +51,11 @@ def main():
     check("nat_unchanged", nat == [60, 120], f"{nat}")
     check("entries_before_eligible_from_blocked", gated == [120], f"{gated}")
     check("entry_on_eligible_date_allowed", on_day == [120], f"{on_day}")
+    # Amendment 6 (2026-10-25): active_month_ends gates entries to the month after an active month-end
+    apr = ent(eng.run(pd.Series({**base, "active_month_ends": [pd.Timestamp("2020-03-31")]}), sp, "ols"))
+    mar = ent(eng.run(pd.Series({**base, "active_month_ends": [pd.Timestamp("2020-02-29")]}), sp, "ols"))
+    none_ = ent(eng.run(pd.Series({**base, "active_month_ends": []}), sp, "ols"))
+    check("a6_active_month_gates_entries", apr == [120] and mar == [60] and none_ == [], f"{apr} {mar} {none_}")
     print()
     print(f"{len(PASS)}/{len(PASS) + len(FAIL)} checks passed")
     if FAIL:

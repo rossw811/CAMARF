@@ -29780,3 +29780,13 @@ A4 shares 0.669 / 0.9375, the seg2 label, the 1h eligibility dates, 474/759 elig
   (rc -6, "terminate called without an active exception"; liquid_bar_mask_sources 10-21, degenerate_column_audit and
   delisting_registry 10-23; artifacts read). Mitigation under test: ARROW_DEFAULT_MEMORY_POOL=system in CI (hypothesis:
   pyarrow's jemalloc background thread at teardown; unconfirmed). Rule kept: run the whole fast list before pushing.
+- **Johansen trios switched to the restricted constant (Ross 2026-10-25 "yes to all").** Core module `johansen.py`
+  (n-variate case-2 trace test moved from the comparison arm, which now re-imports it); production reads a committed,
+  seeded critical-value table (`research/build_johansen_restricted_crit.py`, 72 rows: m 1-3 x T grid x 3 levels;
+  5% values at T 12,800 match the published asymptotes to ~1%). Found on the way: the function formed the T x T
+  projection matrix (~1.3 GB per call at T 12,800; the first table build ran the Surface short of memory) -- residuals
+  now by least squares, values identical to 1e-12. analysis._johansen_worker test 6/6 (intercept-20 trio detected).
+- **Amendment 6 built (pre-registration text committed first, 357fd826):** purity_pit_eligibility.pit_active_months,
+  backtest.active_at + entry gate on `active_month_ends`, strategy_search `--arm dyn` (own outputs *_dyn, DSR also at
+  N = 864), research/build_dynamic_pools.py; tests 4/4 and the engine gate 5/5 (fails on the old engine). Chain
+  `debug/_tmp_chain_a6_20261025.sh` waits for E1 and queue2 on CachyOS.

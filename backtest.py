@@ -158,6 +158,15 @@ class Trade:
     notional_dollar_entry: float = np.nan
 
 
+def active_at(active_month_ends, ts) -> bool:
+    """Amendment 6: an entry on any day of month M is allowed iff the month-end of M-1 is an active month-end (a
+    month-end's status is known only after it). debug/_verify_dynamic_pool_amendment6.py"""
+    t = pd.Timestamp(ts)
+    t = t.tz_localize(None) if t.tz is not None else t
+    prev = (t.normalize().replace(day=1) - pd.Timedelta(days=1)).normalize()
+    return bool(len(active_month_ends)) and bool(pd.DatetimeIndex(active_month_ends).normalize().isin([prev]).any())
+
+
 def gap_before_flags(days: np.ndarray, cal=None) -> np.ndarray:
     """B1 rule per bar: True if more than data._MAX_FILL_BARS trading days (of `cal`; weekdays if None) passed with no
     bar before this one. debug/_verify_market_calendar_holes.py"""
@@ -820,6 +829,11 @@ class BacktestEngine:
         # before it -- the pair could not have been known to be confirmed yet. Absent/NaT = legacy.
         _eligible_from = pd.to_datetime(pair_row.get("eligible_from", pd.NaT)) if hasattr(pair_row, "get") else pd.NaT
         _eligible_from = None if pd.isna(_eligible_from) else _eligible_from
+        # Amendment 6 (dynamic pool): entries only in months after an active month-end (pool column active_month_ends)
+        _am = pair_row.get("active_month_ends", None) if hasattr(pair_row, "get") else None
+        _active_set = None
+        if _am is not None and not (isinstance(_am, float) and np.isnan(_am)):
+            _active_set = {pd.Timestamp(x).normalize() for x in list(_am)}
         _rolling_z_std = None
         _hist_z_std_arr = None
         if _garch_stop:
@@ -1028,6 +1042,11 @@ class BacktestEngine:
 
                 if _eligible_from is not None and ts < _eligible_from:
                     continue
+                if _active_set is not None:
+                    _t = pd.Timestamp(ts)
+                    _t = _t.tz_localize(None) if _t.tz is not None else _t
+                    if (_t.normalize().replace(day=1) - pd.Timedelta(days=1)).normalize() not in _active_set:
+                        continue      # Amendment 6: not active this month
                 if _reentry_rearm and not _armed:
                     if abs(z) < self.cfg.ENTRY_ZSCORE:
                         _armed = True  # spread reset below the entry band -- pair may re-enter later

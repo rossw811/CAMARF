@@ -150,6 +150,7 @@ research/bh_vs_by_full_universe_1d.py:SEED,research/bh_vs_by_full_universe_1d.py
 research/bounded_lookback_primary_screen.py:_EG_MAX_LAG,research/bounded_lookback_primary_screen.py,76,20,unjustified,,,,
 research/breakout_vs_reversion.py:BREAKOUT_TARGET_DELTA,research/breakout_vs_reversion.py,76,1.0,unjustified,,,,
 research/bug_d45_decoupled_std_retest.py:_OU_WINDOW_HALFLIFE_MULT_VOL,research/bug_d45_decoupled_std_retest.py,39,2.0,unjustified,,,,
+research/build_johansen_restricted_crit.py:M_MAX,research/build_johansen_restricted_crit.py,22,3,unjustified,,,,
 research/capital_sim_selection_mechanism.py:_N_BOOTSTRAP,research/capital_sim_selection_mechanism.py,39,5000,unjustified,,,,
 research/capital_sim_selection_mechanism.py:_SEED,research/capital_sim_selection_mechanism.py,40,20260713,unjustified,,,,
 research/caviar_dynamic_var.py:_MIN_CALIBRATION_DAYS,research/caviar_dynamic_var.py,62,30,unjustified,,,,
@@ -164,7 +165,7 @@ research/coint_strength_bar_system.py:PVALUE_COINT_CUTOFF,research/coint_strengt
 research/coint_strength_bar_system.py:Z_WINDOW,research/coint_strength_bar_system.py,47,20,unjustified,,,,
 research/coint_strength_series_builder.py:COINT_Z_WINDOW,research/coint_strength_series_builder.py,52,10,unjustified,,,,
 research/cointegration_estimator_arms.py:DOLS_LEADS_LAGS,research/cointegration_estimator_arms.py,25,2,convention,Stock-Watson (1993) DOLS uses a small fixed number of leads/lags of the differenced regressor; k = 2 removes the endogeneity bias on synthetic data (mean |beta error| 0.058 -> 0.028).,debug/_verify_cointegration_estimator_arms.py dols_beats_ols,no,0
-research/cointegration_estimator_arms.py:JOHANSEN_CRIT_REPS,research/cointegration_estimator_arms.py,109,4000,engineering,"Simulation draws for the 95% quantile of the null trace statistic; 4,000 gives a Monte Carlo error well below the gap between the simulated value (~20.2-20.5) and a test statistic near it; size verified 0.050.",debug/_verify_cointegration_estimator_arms.py johansen_size,no,0
+research/cointegration_estimator_arms.py:JOHANSEN_CRIT_REPS,research/cointegration_estimator_arms.py,81,4000,engineering,"Simulation draws for the 95% quantile of the null trace statistic; 4,000 gives a Monte Carlo error well below the gap between the simulated value (~20.2-20.5) and a test statistic near it; size verified 0.050.",debug/_verify_cointegration_estimator_arms.py johansen_size,no,0
 research/cointegration_regime_segmentation.py:ALPHA,research/cointegration_regime_segmentation.py,60,0.05,unjustified,,,,
 research/cointegration_regime_segmentation.py:MIN_REGIME_WINDOWS,research/cointegration_regime_segmentation.py,59,3,unjustified,,,,
 research/comomentum.py:_CROWD_QUANTILE,research/comomentum.py,58,0.75,unjustified,,,,
@@ -320,9 +321,9 @@ research/smoothing_comparison.py:_MIN_EG_N,research/smoothing_comparison.py,58,6
 research/split_level_breaks.py:LEVEL_BREAK_FACTOR,research/split_level_breaks.py,37,5.0,calibrated,One-day move above which a Compustat Global total-return series is split: the 2026-10-14 audit threshold (698 series; qunit explains 103). Approved by Ross 2026-10-15; results to be checked at 3x and 10x.,output/research/compustat_global_level_jumps.parquet; unexplained_jump_kinds.parquet,yes,0
 research/split_level_breaks.py:REVERT_DAYS,research/split_level_breaks.py,38,5,convention,A bad print must revert within one trading week to be masked rather than split.,research/split_level_breaks.py find_breaks,no,0
 research/split_level_breaks.py:REVERT_TOL,research/split_level_breaks.py,39,0.5,convention,"|log| distance from the pre-jump level that counts as reverted (0.5 = within ~1.6x), loose enough for an intervening real move, far below the 5x break.",research/split_level_breaks.py find_breaks,no,0
-research/strategy_search.py:CAPITAL,research/strategy_search.py,41,100000.0,unjustified,sensitivity test owed (verified 2026-10-19): project default capital; matters under the capital constraint -- no recorded reason,,,
-research/strategy_search.py:EMBARGO_PCT,research/strategy_search.py,40,0.01,unjustified,sensitivity test owed (verified 2026-10-19): draft found no recorded reason,,,
-research/strategy_search.py:N_FOLDS,research/strategy_search.py,39,4,unjustified,sensitivity test owed (verified 2026-10-19): draft found no recorded reason,,,
+research/strategy_search.py:CAPITAL,research/strategy_search.py,51,100000.0,unjustified,sensitivity test owed (verified 2026-10-19): project default capital; matters under the capital constraint -- no recorded reason,,,
+research/strategy_search.py:EMBARGO_PCT,research/strategy_search.py,50,0.01,unjustified,sensitivity test owed (verified 2026-10-19): draft found no recorded reason,,,
+research/strategy_search.py:N_FOLDS,research/strategy_search.py,49,4,unjustified,sensitivity test owed (verified 2026-10-19): draft found no recorded reason,,,
 research/strategy_variation_comparison.py:BREAKOUT_MAX_HOLD_BARS,research/strategy_variation_comparison.py,124,60,unjustified,,,,
 research/strategy_variation_comparison.py:DCA_INTERVAL_BARS,research/strategy_variation_comparison.py,126,10,unjustified,,,,
 research/strategy_variation_comparison.py:MR_MAX_HOLD_BARS,research/strategy_variation_comparison.py,130,60,unjustified,,,,

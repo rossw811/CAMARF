@@ -404,3 +404,5 @@ debug/_verify_market_calendar_holes.py
 debug/_verify_full_universe_screen_paths_by_tf.py
 debug/_verify_placebo_discovery_e1.py
 debug/_verify_screen_same_company_filter.py
+debug/_verify_dynamic_pool_amendment6.py
+debug/_verify_eligible_from_gate.py

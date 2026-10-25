@@ -55,6 +55,8 @@ import pandas as pd
 from scipy import stats as scipy_stats
 from scipy.linalg import svd as scipy_svd
 
+from johansen import crit_from_table, johansen_test, johansen_trace_n  # restricted-constant trio test (2026-10-25)
+
 try:
     from statsmodels.tsa.stattools import coint, adfuller
     from statsmodels.tsa.stattools import mackinnonp
@@ -4564,13 +4566,14 @@ def _johansen_worker(args) -> Dict[str, Any]:
                 "n_bars": n,
             }
         X = np.column_stack([a, b, c])
-        result = coint_johansen(X, det_order=det_order, k_ar_diff=k_ar_diff)
-        # trace stat for r=0 (at least one cointegrating vector)
-        trace_stat = float(result.lr1[0])
+        # Restricted-constant Johansen (johansen.py; Ross 2026-10-25 "yes to all", after the comparison arm): statsmodels'
+        # det_order -1 had ~no power with an intercept, det_order 0 over-rejects. det_order is ignored (kept in the args).
+        jt = johansen_test(X, level=float(sig_level), k_ar_diff=k_ar_diff)
+        trace_stat = float(jt["trace0"])
         # critical value at the requested level (A11; the variable name is kept for the fields below)
-        crit_5pct = float(result.cvt[0, _col])
-        # Number of cointegrating vectors: count r where lr1[r] > cvt[r, col]
-        n_coint = int(np.sum(result.lr1 > result.cvt[:, _col]))
+        crit_5pct = float(jt["crit0"])
+        # Number of cointegrating vectors: the sequential trace rank
+        n_coint = int(jt["rank"])
         # Approximate p-value: use trace_stat / crit_5pct ratio as a proxy
         # (Johansen doesn't have closed-form p; report stat + crit instead)
         passes = trace_stat > crit_5pct
@@ -4589,6 +4592,7 @@ def _johansen_worker(args) -> Dict[str, Any]:
             "trace_stat": trace_stat,
             "crit_5pct": crit_5pct,
             "crit_column": _col,  # A11: 0=10%, 1=5%, 2=1%
+            "spec": "restricted_constant",
             "approx_p": approx_p,
             "n_coint_vec": n_coint,
             "n_bars": int(n),
@@ -4989,9 +4993,10 @@ class ThresholdCalibrator:
                 X = np.column_stack([la[mask], lb[mask], lc[mask]])
                 if X.shape[0] < 60:
                     continue
-                r = coint_johansen(X, det_order=det, k_ar_diff=kar)
-                all_traces.append(r.lr1[0])  # r=0 trace
-                all_crits.append(r.cvt[0])  # 3-element array
+                # restricted-constant Johansen (johansen.py), crit at 10% / 5% / 1% in coint_johansen's column order
+                tr0 = float(johansen_trace_n(X, kar)[0])
+                all_traces.append(tr0)  # r=0 trace
+                all_crits.append(np.array([crit_from_table(len(X), 3, lv, kar) for lv in (0.10, 0.05, 0.01)]))
             except Exception:
                 continue
 

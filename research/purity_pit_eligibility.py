@@ -96,6 +96,37 @@ def pit_kth_rejection_dates(windows: pd.DataFrame, k: int, alpha: float = None) 
                          "n_rejected": last_count[keep]})
 
 
+def pit_active_months(windows: pd.DataFrame, k: int, alpha: float = None, keys: set = None) -> pd.DataFrame:
+    """Amendment 6 (Ross 2026-10-25): the month-ends at which a pair has >= k rejected windows under the as-of BH
+    family (windows concluded by that month-end) -- the same family as pit_kth_rejection_dates, but re-decided every
+    month instead of "eligible from the first such month, forever". keys: optional {(key_a, key_b)} to keep (pool
+    pairs). Returns key_a, key_b, active_month_ends (list of Timestamps, ascending; may be empty).
+    debug/_verify_dynamic_pool_amendment6.py"""
+    alpha = Config.STATS.FDR_ALPHA if alpha is None else alpha
+    w = windows[["symbol_a", "symbol_b", "window_end_date", "pvalue"]].copy()
+    w["window_end_date"] = pd.to_datetime(w["window_end_date"])
+    w = w.dropna(subset=["window_end_date", "pvalue"]).sort_values("window_end_date").reset_index(drop=True)
+    a, b = w["symbol_a"].astype(str), w["symbol_b"].astype(str)
+    w["key_a"], w["key_b"] = a.where(a <= b, b), b.where(a <= b, a)
+    codes, uniq = pd.factorize(pd.Series(list(zip(w["key_a"], w["key_b"]))))
+    want = np.arange(len(uniq)) if keys is None else np.array([i for i, u in enumerate(uniq) if u in keys], dtype=int)
+    ends = w["window_end_date"].to_numpy()
+    p = w["pvalue"].to_numpy(dtype=float)
+    months = pd.date_range(w["window_end_date"].min(), w["window_end_date"].max() + pd.offsets.MonthEnd(0), freq="ME")
+    active = {int(i): [] for i in want}
+    for T in months:
+        n = int(np.searchsorted(ends, np.datetime64(T), side="right"))
+        if n == 0:
+            continue
+        cut = _bh_cutoff(np.sort(p[:n]), alpha)
+        rej = p[:n] <= cut
+        counts = np.bincount(codes[:n][rej], minlength=len(uniq))
+        for i in want[counts[want] >= k]:
+            active[int(i)].append(pd.Timestamp(T))
+    return pd.DataFrame({"key_a": [uniq[i][0] for i in want], "key_b": [uniq[i][1] for i in want],
+                         "active_month_ends": [active[int(i)] for i in want]})
+
+
 def _seal_windows(w: pd.DataFrame, tf: str) -> pd.DataFrame:
     """Windows ending before the seal of their timeframe only (seal.py: daily 2026-01-01, intraday 2026-10-21)."""
     kind = "intraday" if tf in ("1m", "2m", "3m", "5m", "15m", "30m", "1h", "4h") else "daily"
