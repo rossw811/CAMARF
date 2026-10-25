@@ -8,8 +8,9 @@ SHARED by every series, so returns keep their cross-sectional (and crisis-year) 
 long-run relation. Each series keeps its own dates (listing span, real holes) and its real volume (the liquidity
 gates see real liquidity); its placebo log price starts at its real first value. Where the shared path lands on a date
 the series has no return (e.g. it listed mid-year), one of its own returns from the same year is drawn instead
-(counted: `fallback_share`). Mean block length: Politis & White (2004) / Patton, Politis & White (2009) on an
-equal-weight index of the universe's returns. Pre-seal data only (the caches hold no sealed rows).
+(counted: `fallback_share`). Mean block length: the median of per-series Politis & White (2004) / Patton, Politis &
+White (2009) estimates over a seeded sample (not one estimate on an index: 68 days, 2026-10-24 -- see
+choose_block_length). Pre-seal data only (the caches hold no sealed rows).
 Plants: N_PLANTS Compustat Global series (>= 10 years) get a partner B = mu + beta * A + AR(1) spread with half-life
 in HALF_LIVES (trading days), spread s.d. PLANT_SD in log price, labelled GVKEY9xxxxx_01W (an unused GVKEY range; no
 CCM/Capital IQ link, so the same-company rule never removes them; Compustat-style legs are not S&P-gated, so they are
@@ -39,6 +40,19 @@ HALF_LIVES = (5, 20, 60, 120)
 PLANT_SD = 0.05
 PLANT_MIN_DAYS = 2520
 PRICE_COLS = ("open", "high", "low", "close", "close_usd", "close_total_return")
+
+
+def choose_block_length(returns_by_series: dict) -> float:
+    """Median of the per-series Politis-White stationary-bootstrap block lengths (as N14 uses per pair). 2026-10-24: one
+    estimate on an equal-weight index gave 68 days (stale prices make the index autocorrelated) -- blocks that long keep
+    a real pair's error correction inside each block, so the placebo was not a null."""
+    from arch.bootstrap import optimal_block_length
+    Ls = []
+    for r in returns_by_series.values():
+        x = pd.Series(r).dropna().to_numpy()
+        if len(x) >= 250:
+            Ls.append(float(optimal_block_length(x)["stationary"].iloc[0]))
+    return float(max(1.0, np.median(Ls))) if Ls else 1.0
 
 
 def year_index_paths(cal: pd.DatetimeIndex, mean_block: float, seed: int = SEED) -> dict:
@@ -137,7 +151,6 @@ def _log_price(df: pd.DataFrame) -> pd.Series:
 
 def build(src: str, dst: str, seed: int = SEED):
     import seal
-    from arch.bootstrap import optimal_block_length
     os.makedirs(dst, exist_ok=True)
     files = sorted(glob.glob(os.path.join(src, "*_1D.parquet")))
     rng = np.random.default_rng(seed)
@@ -146,8 +159,7 @@ def build(src: str, dst: str, seed: int = SEED):
     rets = pd.concat({os.path.basename(f): _log_price(pd.read_parquet(f)).diff() for f in sample}, axis=1)
     cal = pd.DatetimeIndex(rets.index).sort_values()
     cal = cal[cal.dayofweek < 5]
-    ew = rets.mean(axis=1).dropna()
-    L = float(max(1.0, optimal_block_length(ew.to_numpy())["stationary"].iloc[0]))
+    L = choose_block_length({c: rets[c] for c in rets.columns})
     paths = year_index_paths(cal, L, seed)
     src_pos = source_positions(cal, paths)
     print(f"{len(files)} 1D files; calendar {cal.min().date()}..{cal.max().date()} ({len(cal)} days); mean block {L:.2f}")

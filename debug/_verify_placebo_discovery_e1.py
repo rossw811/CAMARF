@@ -84,5 +84,16 @@ with tempfile.TemporaryDirectory() as td:
           (d["volume"] == 5.0).all() and np.allclose(d["close_usd"], np.exp(np.linspace(0, 0.1, 50)))
           and np.allclose(d["open"], d["close"]), str(list(d.columns)))
 
+# 6. (CachyOS build 2026-10-24: mean block 68 days from the equal-weight index -- stale prices make the index
+# autocorrelated -- long enough to keep a real pair's within-block error correction) block length = median of the
+# per-series Politis-White estimates, as N14 uses per pair.
+g6 = np.random.default_rng(6)
+series = {f"S{i}": pd.Series(g6.normal(0, 0.01, 1500)) for i in range(40)}
+L = e1.choose_block_length(series) if hasattr(e1, "choose_block_length") else float("nan")
+stale = {f"T{i}": pd.Series(np.repeat(g6.normal(0, 0.01, 300), 5)) for i in range(5)}   # 5-day stale prints
+L2 = e1.choose_block_length({**series, **stale}) if hasattr(e1, "choose_block_length") else float("nan")
+check("6 block length = median per-series estimate (iid -> short; a few stale series do not set it)",
+      1.0 <= L <= 3.0 and L2 <= 3.0, f"{L:.2f} {L2:.2f}")
+
 print(f"\n{passed} passed, {failed} failed")
 sys.exit(1 if failed else 0)
