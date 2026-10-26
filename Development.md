@@ -29833,5 +29833,9 @@ A4 shares 0.669 / 0.9375, the seg2 label, the 1h eligibility dates, 474/759 elig
   `debug/_tmp_chain_e1_v2.sh` after edge accounting; v1 outputs kept in ~/CAMARF_e1_runs/v1_ad855c8a.
 - **Amendment 6 (CachyOS):** 432 runs done 19:41 (216 fresh files per pool); eval running (~94 min under Amendment 5).
   First cell (k1, split 0.5): holdout capital-sim Sharpe 0.12, rank 151.5 / 216, DSR ~0, PBO 0.39, does not pass.
+  **Final (20:50): 0 of 8 cells pass, DSR <= 0.071 (C-006). Review HOLDS; reading qualified:** the positive-holdout
+  share rise (58.3% -> 67.5%) is a k1 effect from removing broad losing trades, depends on down-market months (SPY
+  correlation ~-0.31 in both arms), and is post hoc on a holdout the arm's motivation had seen; N = 864 DSR uses the
+  216-config Sharpe variance. Edge accounting started 20:55 (whole-history pools: k1 421, k2 28 after cleaning).
 - **Surface:** two background watches were stopped by Claude Code's low-memory reaper (the Surface, not CachyOS);
   restarted at Ross's request as a light ssh poll.
