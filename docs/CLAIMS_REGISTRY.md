@@ -182,7 +182,7 @@ The C-entries below are claims re-derived one by one on current data.
   0.95 (max 0.327); k1 0.8 alone passes PBO (0.037) with a holdout of -0.67. Amendment 4 outputs kept in
   `output/research/_superseded_a4_20261020/`.
 - **Amendment 6 result (sensitivity arm, 2026-10-25, CachyOS `debug/_tmp_chain_a6_20261025.sh`, code 8b44e622;
-  REGISTERED pending independent review).** Same pairs, cleaning, spreads, grid, splits and criterion as Amendment 5;
+  REVIEWED 2026-10-25: claim HOLDS, reading QUALIFIED as below).** Same pairs, cleaning, spreads, grid, splits and criterion as Amendment 5;
   membership re-decided monthly (a pair may open trades only in the month after a month-end at which >= k of its windows
   are rejected under the as-of BH family). 432 fresh backtests (216 per pool, guard passed). **Result: 0 of 8 cells
   pass.** Holdout capital-sim Sharpe / DSR / DSR at N = 864 / PBO of the dev-selected configuration: k1 0.5 +0.120 /
@@ -191,9 +191,21 @@ The C-entries below are claims re-derived one by one on current data.
   0.89; 0.8 -0.042 / 0.071 / 0.054 / 0.80. Reported regardless (not a test; trials are strongly dependent):
   positive-holdout share of trials k1 81.0 / 70.4 / 65.3 / 63.9% by split (Amendment 5: 60.2 / 48.6 / 52.3 / 50.9%),
   k2 68.5 / 71.8 / 75.9 / 43.1% (Amendment 5: 73.6 / 59.3 / 66.7 / 54.6%); overall 67.5% of 1,728 (Amendment 5:
-  58.3%). The dev-selected k1 configuration ranks 137.5-153.5 of 216 on the holdout in every split -- development
-  selection picks below the median, the PBO pattern. k2 0.6/0.7 select near the top (rank 1.5 / 7.5) with PBO
-  0.85 / 0.89. Trades dropped by the P&L basis: 0 (all rows `ok`). Outputs `output/research/strategy_search/
+  58.3%; 1,166 vs 1,007 trials). **Review reading:** (i) a k1 effect -- k2 fell at splits 0.5 and 0.8, and k2's
+  removed trades were net winners (losses concentrated in 5 pairs); (ii) in k1 the gate removes ~28% of holdout
+  trades, which lose on average (reviewer, averaged over configurations: -$56.6 per removed trade vs +$49.5 kept, split
+  0.5; removed P&L negative in 93.5% of configurations; spread over 317 pairs and 9 of 11 entry years; one configuration
+  re-checked by hand: 1,248 of 4,515 removed, -$42.2 vs +$10.3) -- broad, not a few pairs; (iii) k1 holdout P&L
+  correlates about -0.31 with SPY in both arms and its gain comes from down-market months, so the positive holdout
+  depends on market declines; (iv) post hoc: the arm was designed after a review that used the 2025-12 family, i.e. the
+  same holdout span, so the rise is not out-of-sample evidence for the rule. The dev-selected k1 configuration ranks
+  151.5 / 147.5 / 137.5 / 153.5 of 216 (Amendment 5: 202.5 / 156.5 / 103.5 / 205.0); development PBO does not predict
+  it (k1 0.8: PBO 0.054, rank 153.5). k2 0.6/0.7 select near the top (rank 1.5 / 7.5) with PBO 0.85 / 0.89.
+  Disclosed: the DSR at N = 864 uses the across-trial Sharpe variance of the pool's 216 configurations only (not all
+  864); every DSR <= 0.071, so the verdict is unaffected. Checked on real data: 0 of 566,528 entries fall in an inactive
+  month; 97.3-99.7% of the arm's trades equal an Amendment 5 trade (pair, entry, side, exit); first active month =
+  eligible_from for all 823 pairs; the engine gate (backtest.py, inline) has no synthetic test of its own beyond
+  `_verify_eligible_from_gate` check 5. Trades dropped by the P&L basis: 0 (all rows `ok`). Outputs `output/research/strategy_search/
   {pit_k1_dyn,pit_k2_dyn}/`, `summary_dyn.parquet`, `all_trials_dyn.parquet`, `trials_dyn.json`.
 - **Market-structure reading:** fails if the cost and execution model is wrong for the pool: too harsh for liquid US large caps (a hidden signal), or too lenient for thin Compustat Global legs, borrow-constrained shorts and non-synchronous home-market closes (a hidden loss).
 
