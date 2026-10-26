@@ -183,11 +183,12 @@ def build_company_ids(labels) -> dict:
                        ciq_cusip=pd.read_parquet(_cc, columns=["cusip", "companyid"]), cusip_by_permno=_cus)
 
 
-def main():
+def clean_pool(P: pd.DataFrame, k, cache: dict = None):
+    """The pool cleaning rules on one pool frame: returns (cleaned pool with its discovery arm, one report row per
+    pair). Shared by main (the PIT pools) and research/edge_accounting.py (the whole-history pool)."""
     from episodic_pairs_adapter import _load_symbol
-    from pipeline_stages import stage
-    st = stage("clean_pools")
-    cache, rows = {}, []
+    cache = {} if cache is None else cache
+    rows = []
     # S36 (Ross 2026-10-10): same-company pairs (share classes, Compustat listings of one GVKEY) are removed and counted
     # 2026-10-12: the content-verified label -> PERMNO map (full_us_market_label_map named reused tickers' old holders:
     # TM -> Toastmaster), PERMCO/CUSIP from the FULL CRSP names history (the v2 master has no ADRs), Capital IQ links
@@ -196,29 +197,38 @@ def main():
     from data_wrds import LABEL_PERMNO_MAP_PATH
     _unverified = unverified_labels(pd.read_parquet(LABEL_PERMNO_MAP_PATH))   # D15
     _dlc = load_dlc_sides()                                                      # D14
+    require_link_for_mixed(zip(P["symbol_a"], P["symbol_b"]), _link)
+    ids = build_company_ids(pd.concat([P["symbol_a"], P["symbol_b"]]).unique())
+    keep = []
+    for r in P.itertuples():
+        for s in (r.symbol_a, r.symbol_b):
+            if s not in cache:
+                df = _load_symbol(s, getattr(r, "tf_label", "1D"))
+                cache[s] = _log_returns(df) if df is not None and len(df) else None
+        ra, rb = cache[r.symbol_a], cache[r.symbol_b]
+        share, n = (np.nan, 0) if ra is None or rb is None else identity_share(ra, rb)
+        ident = bool(np.isfinite(share) and share >= SHARE)
+        same = same_company(r.symbol_a, r.symbol_b, ids)
+        unver = r.symbol_a in _unverified or r.symbol_b in _unverified
+        twin = dlc_twin(r.symbol_a, r.symbol_b, ids, _dlc)
+        structural = structural_pair(r.symbol_a, r.symbol_b)
+        rows.append({"k": k, "symbol_a": r.symbol_a, "symbol_b": r.symbol_b, "identical_share": share,
+                     "n_common": n, "identity": ident, "same_company": same, "unverified_leg": unver, "dlc_twin": twin, "structural": structural})
+        keep.append(not ident and not same and not unver and not twin and not structural)
+    C = P[np.array(keep, dtype=bool)].reset_index(drop=True)
+    C["arm"] = [discovery_arm(a, b, t) for a, b, t in zip(C["symbol_a"], C["symbol_b"],
+                                                           C.get("tf_label", pd.Series("1D", index=C.index)))]
+    return C, rows
+
+
+def main():
+    from pipeline_stages import stage
+    st = stage("clean_pools")
+    cache, rows = {}, []
     for k in (1, 2):
         P = pd.read_parquet(os.path.join(_R, f"purity_pairs_pit_k{k}.parquet"))
-        require_link_for_mixed(zip(P["symbol_a"], P["symbol_b"]), _link)
-        ids = build_company_ids(pd.concat([P["symbol_a"], P["symbol_b"]]).unique())
-        keep = []
-        for r in P.itertuples():
-            for s in (r.symbol_a, r.symbol_b):
-                if s not in cache:
-                    df = _load_symbol(s, getattr(r, "tf_label", "1D"))
-                    cache[s] = _log_returns(df) if df is not None and len(df) else None
-            ra, rb = cache[r.symbol_a], cache[r.symbol_b]
-            share, n = (np.nan, 0) if ra is None or rb is None else identity_share(ra, rb)
-            ident = bool(np.isfinite(share) and share >= SHARE)
-            same = same_company(r.symbol_a, r.symbol_b, ids)
-            unver = r.symbol_a in _unverified or r.symbol_b in _unverified
-            twin = dlc_twin(r.symbol_a, r.symbol_b, ids, _dlc)
-            structural = structural_pair(r.symbol_a, r.symbol_b)
-            rows.append({"k": k, "symbol_a": r.symbol_a, "symbol_b": r.symbol_b, "identical_share": share,
-                         "n_common": n, "identity": ident, "same_company": same, "unverified_leg": unver, "dlc_twin": twin, "structural": structural})
-            keep.append(not ident and not same and not unver and not twin and not structural)
-        C = P[np.array(keep)].reset_index(drop=True)
-        C["arm"] = [discovery_arm(a, b, t) for a, b, t in zip(C["symbol_a"], C["symbol_b"],
-                                                               C.get("tf_label", pd.Series("1D", index=C.index)))]
+        C, r_k = clean_pool(P, k, cache)
+        rows += r_k
         C.to_parquet(os.path.join(_R, f"purity_pairs_pit_k{k}_clean.parquet"))
         R = pd.DataFrame([x for x in rows if x["k"] == k])
         print(f"k={k}: {len(P)} -> {len(C)} (removed {int(R['identity'].sum())} identity pairs, "

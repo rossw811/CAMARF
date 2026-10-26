@@ -76,7 +76,9 @@ def main():
     except ImportError as e:
         check("d15_unverified_labels_exists", False, str(e))
     src = open(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "research", "clean_pool_identity_pairs.py"), encoding="utf-8").read()
-    check("d15_applied_in_main", "unverified_labels(" in src[src.index("def main("):])
+    # 2026-10-25: the cleaning loop moved into clean_pool (shared with research/edge_accounting.py); main calls it
+    _cp = src[src.index("def clean_pool("):src.index("def main(")]
+    check("d15_applied_in_main", "unverified_labels(" in _cp and "clean_pool(" in src[src.index("def main("):])
     # D14 (Ross 2026-10-12): dual-listed twins (research/dual_listed_companies.csv, de Jong et al. 2009 et al.;
     # identifiers in research/dual_listed_companies_ids.csv) are excluded from the pools: one leg on side A and the
     # other on side B of the same DLC; a DLC parent paired with an unrelated company is kept

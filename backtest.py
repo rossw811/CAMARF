@@ -231,8 +231,11 @@ def apply_pnl_basis(trades: List["Trade"], legacy: bool = False, cfg=None,
 # ---------------------------------------------------------------------------
 # Spread series loader
 # ---------------------------------------------------------------------------
+SPREAD_ROOT = "output/results"   # edge accounting points the whole-history arm elsewhere (never changed in production)
+
+
 def _spread_path(tf_dir: str, sym_a: str, sym_b: str) -> str:
-    return f"output/results/{tf_dir}/spread_series_{sym_a}_{sym_b}.parquet"
+    return f"{SPREAD_ROOT}/{tf_dir}/spread_series_{sym_a}_{sym_b}.parquet"
 
 
 def _load_spread(tf_dir: str, sym_a: str, sym_b: str) -> Optional[pd.DataFrame]:

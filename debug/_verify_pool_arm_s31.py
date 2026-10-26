@@ -30,6 +30,7 @@ try:
     check("mixed", c.discovery_arm("ASML", "GVKEY061214_01W") == "mixed")
 except AttributeError as e:
     check("discovery_arm exists", False, str(e))
-check("main() writes the arm column", '"arm"' in inspect.getsource(c.main))
+# 2026-10-25: the cleaning loop (and the arm column) moved into clean_pool, which main calls
+check("main() writes the arm column", '"arm"' in inspect.getsource(c.clean_pool) and "clean_pool(" in inspect.getsource(c.main))
 print(f"\n{passed}/{passed + failed} checks passed")
 sys.exit(1 if failed else 0)

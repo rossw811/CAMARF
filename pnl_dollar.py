@@ -215,9 +215,12 @@ def _spans_hole(F: pd.DataFrame, entry, exit_, intraday: bool, cal=None) -> bool
 
 def add_dollar_pnl(trades: pd.DataFrame, commission_per_share: float = None, slippage_bps: float = None,
                    price_loader: Callable[[str], Optional[pd.DataFrame]] = None,
-                   sizing: str = "fixed_notional", notional_per_trade: float = 10_000.0) -> pd.DataFrame:
+                   sizing: str = "fixed_notional", notional_per_trade: float = 10_000.0,
+                   check_holes: bool = True) -> pd.DataFrame:
     """Returns a copy of `trades` with pnl_dollar_gross / pnl_dollar_cost / pnl_dollar_net /
-    notional_dollar_entry / n_shares_b_dollar / pnl_dollar_status added."""
+    notional_dollar_entry / n_shares_b_dollar / pnl_dollar_status added.
+    check_holes=False skips the BUG-D119 hole rule and prices across holes at the last valid bar -- known wrong,
+    only for the edge-accounting "error present" cells (docs/EDGE_ACCOUNTING_DESIGN_2026-10-25.md)."""
     commission_per_share = Config.BACKTEST.COMMISSION_PER_SHARE if commission_per_share is None else commission_per_share
     slippage_bps = Config.BACKTEST.SLIPPAGE_BPS if slippage_bps is None else slippage_bps
     loader = price_loader or load_daily_prices
@@ -246,7 +249,7 @@ def add_dollar_pnl(trades: pd.DataFrame, commission_per_share: float = None, sli
             status[i] = "missing_price"; continue
         # BUG-D119 (Amendment 5): checked BEFORE the price lookups, so a stale entry/exit price is a hole, not
         # missing_price (review F3); excluded from P&L and counted
-        if (_spans_hole(A, t.entry_time, t.exit_time, tf != "1D", market_calendar.calendar_for(t.symbol_a))
+        if check_holes and (_spans_hole(A, t.entry_time, t.exit_time, tf != "1D", market_calendar.calendar_for(t.symbol_a))
                 or _spans_hole(B, t.entry_time, t.exit_time, tf != "1D", market_calendar.calendar_for(t.symbol_b))):
             status[i] = "unrealizable_gap"; continue
         ae, ax, be, bx = (_look(A, t.entry_time), _look(A, t.exit_time),

@@ -370,3 +370,4 @@ stats.py:_MM_C,stats.py,88,4.685,convention,Tukey biweight tuning constant 4.685
 stats.py:_NOTIONAL_PER_LEG,stats.py,73,5000.0,unjustified,sensitivity test owed (verified 2026-10-19): draft found no recorded reason,,,
 stats.py:_N_PERMS,stats.py,77,1000,engineering,"Permutation draws; s.e. of a p-value near 0.05 is 0.0069 at 1,000 -- marginal results must say so.",binomial s.e.,no,
 stats.py:_PERM_BLOCK_LEN_DAYS,stats.py,82,5,unjustified,sensitivity test owed (verified 2026-10-19): draft found no recorded reason,,,
+research/edge_accounting.py:BOOT_REPS,research/edge_accounting.py,41,2000,convention,"2,000 joint bootstrap draws: percentile 95% endpoints from 50 draws in each tail; fixed in the design doc before any result.",docs/EDGE_ACCOUNTING_DESIGN_2026-10-25.md,no,
