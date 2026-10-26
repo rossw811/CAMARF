@@ -181,6 +181,20 @@ The C-entries below are claims re-derived one by one on current data.
   the pool's FDR is not 5%. Both dilute: read the verdict as "no signal under this pool rule". Every cell fails DSR >=
   0.95 (max 0.327); k1 0.8 alone passes PBO (0.037) with a holdout of -0.67. Amendment 4 outputs kept in
   `output/research/_superseded_a4_20261020/`.
+- **Amendment 6 result (sensitivity arm, 2026-10-25, CachyOS `debug/_tmp_chain_a6_20261025.sh`, code 8b44e622;
+  REGISTERED pending independent review).** Same pairs, cleaning, spreads, grid, splits and criterion as Amendment 5;
+  membership re-decided monthly (a pair may open trades only in the month after a month-end at which >= k of its windows
+  are rejected under the as-of BH family). 432 fresh backtests (216 per pool, guard passed). **Result: 0 of 8 cells
+  pass.** Holdout capital-sim Sharpe / DSR / DSR at N = 864 / PBO of the dev-selected configuration: k1 0.5 +0.120 /
+  0.000 / 0.000 / 0.39; 0.6 +0.031 / 0.001 / 0.000 / 0.59; 0.7 +0.031 / 0.015 / 0.011 / 0.54; 0.8 -0.090 / 0.000 /
+  0.000 / 0.05; k2 0.5 +0.222 / 0.001 / 0.000 / 0.52; 0.6 +0.534 / 0.003 / 0.002 / 0.85; 0.7 +0.481 / 0.005 / 0.003 /
+  0.89; 0.8 -0.042 / 0.071 / 0.054 / 0.80. Reported regardless (not a test; trials are strongly dependent):
+  positive-holdout share of trials k1 81.0 / 70.4 / 65.3 / 63.9% by split (Amendment 5: 60.2 / 48.6 / 52.3 / 50.9%),
+  k2 68.5 / 71.8 / 75.9 / 43.1% (Amendment 5: 73.6 / 59.3 / 66.7 / 54.6%); overall 67.5% of 1,728 (Amendment 5:
+  58.3%). The dev-selected k1 configuration ranks 137.5-153.5 of 216 on the holdout in every split -- development
+  selection picks below the median, the PBO pattern. k2 0.6/0.7 select near the top (rank 1.5 / 7.5) with PBO
+  0.85 / 0.89. Trades dropped by the P&L basis: 0 (all rows `ok`). Outputs `output/research/strategy_search/
+  {pit_k1_dyn,pit_k2_dyn}/`, `summary_dyn.parquet`, `all_trials_dyn.parquet`, `trials_dyn.json`.
 - **Market-structure reading:** fails if the cost and execution model is wrong for the pool: too harsh for liquid US large caps (a hidden signal), or too lenient for thin Compustat Global legs, borrow-constrained shorts and non-synchronous home-market closes (a hidden loss).
 
 ## C-007 — Code and arithmetic claims (S34 central; re-derived 2026-10-10)
