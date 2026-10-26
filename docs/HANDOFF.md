@@ -3,13 +3,13 @@
 discovery from 2026-10-24 21:44, then adapter, comparison arms, PIT eligibility, clean pools, score). Then
 `debug/_tmp_queue2_20261024.sh` (1D screen confirmation with the same-company rule, then N14 v2 on 1D with
 `--candidates-dir`), then `debug/_tmp_chain_a6_20261025.sh` (build_dynamic_pools, search `--arm dyn --fresh`, eval).
-Trio diagnostics (weak exogeneity k1/k2, trio arms with max-eig) running alongside, light (logs/weak_exog_*.log,
-logs/trio_arms_maxeig_k1.log, done flag logs/diag_20261025.done).
+Trio diagnostics done (ERRATA "Johansen trio specification"). Then `debug/_tmp_chain_edge_20261025.sh` (edge accounting).
 **Done 10-24/25:** production trio test -> restricted-constant Johansen (johansen.py + committed table); max-eig table;
 Reimers retired (simulated finite-T critical values hold size: 4.3% at T = 100); weak exogeneity rebuilt (VECM "ci",
 gap-respecting segment, PIT pool, symmetric reading); Amendment 6 prereg + code; CI green (registry gate: E1
 constants; pyarrow system allocator; three engine tests that passed only on real cache prices fixed, f3c9e7b5).
 Rule: full fast list before every push, then watch the run.
+**Decided 10-25 (docs/decisions/DECISIONS_2026-10-25.md):** one-paper framing; edge accounting (chain queued after A6).
 **Next:** each result as it lands (E1 score -> independent review; N14 v2 + same-company screen -> review; Amendment 6
 -> register + review). Paper: framing recommendation for Ross (lead paper's section 5 regime pillar no longer
 stands after the N4 corrections) before any restructure; then redraft, then the 5-lens council.
