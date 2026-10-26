@@ -18,7 +18,7 @@ The practice (full-history screening, a confirmed pair as a timeless fact), why 
 the result. Positioned against Gatev, Goetzmann & Rouwenhorst (2006: formation/trading split, already causal),
 Do & Faff (2010, 2012: declining profits), Rad, Low & Faff (2016), Farago & Hjalmarsson (2019: little pairwise
 cointegration), Krauss (2017 survey); multiple testing: Harvey, Liu & Zhu (2016), Bailey & López de Prado (2014).
-Engage the papers that report positive recent results (from the second-pass search).
+Engage the papers that report positive recent results; novelty wording and prior art (incl. 2026 GitHub projects): docs/LIT_NOVELTY_2026-10-25.md.
 
 ## 2. Data
 Universe (WRDS CRSP + Compustat Global in USD + yfinance + Binance; IBKR off), sealed holdout (daily from 2026-01-01,
