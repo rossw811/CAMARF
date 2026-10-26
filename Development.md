@@ -29839,3 +29839,37 @@ A4 shares 0.669 / 0.9375, the seg2 label, the 1h eligibility dates, 474/759 elig
   216-config Sharpe variance. Edge accounting started 20:55 (whole-history pools: k1 421, k2 28 after cleaning).
 - **Surface:** two background watches were stopped by Claude Code's low-memory reaper (the Surface, not CachyOS);
   restarted at Ross's request as a light ssh poll.
+
+### 2026-10-25 (night) -> 2026-10-26: edge accounting result (unreviewed); E1 v2 stopped by its own guard
+The 10-25 session ended at 22:09 when a Windows update restarted the Surface. The third watch was reaped at 21:09 and
+not restarted (Claude Code's note: restart only on request). Both CachyOS chains ran on unattended; read 2026-10-26.
+- **Edge accounting complete (21:25; design 2e40275a, code e256a734, chain `debug/_tmp_chain_edge_20261025.sh`).**
+  Pools 20:56 (whole-history k1 421, k2 28 after cleaning), old-style spreads 421/421 in 1,523 s, run 96 s, eval 41 s.
+  Seal audit: 0 daily, 0 intraday rows past the seal in 82,489 files. Hole status: whole-history k1 19,546 trades
+  (19,524 ok, 16 missing price, 6 unrealizable gap), k2 1,342 (2 gap); PIT k1 7,389 and k2 622, all ok.
+  Equal-notional annualised Sharpe by cell (S, P, X; 1 = corrected), from ~/CAMARF/logs/edge_eval.log:
+
+  | pool | 000 | 001 | 010 | 011 | 100 | 101 | 110 | 111 |
+  |---|---|---|---|---|---|---|---|---|
+  | k1 | -1.671 | -1.672 | -1.012 | -1.008 | -0.907 | -0.907 | -0.046 | -0.046 |
+  | k2 | -0.243 | -0.247 | -0.537 | -0.535 | -0.398 | -0.398 | -0.000 | -0.000 |
+
+  Shapley (joint stationary block bootstrap, 2,000 reps): k1 S +0.864 [0.545, 1.146], P +0.761 [0.267, 1.261],
+  X +0.000 [-0.001, 0.003] (block 169); k2 S +0.191 [0.008, 0.396], P +0.053 [-0.171, 0.305], X -0.001 [-0.005, 0.000]
+  (block 17). Capital-sim ($100k), dollar basis, holes dropped: k1 whole-history -0.38 (20 trades), PIT -0.22 (1,230);
+  k2 whole-history -0.29 (11), PIT -0.04 (492).
+  **Not reviewed; not for the paper yet.** The design's question presumes the old pipeline showed an edge for the
+  errors to explain. At this fixed production config it shows none (every cell <= 0): the corrections move a loss
+  toward zero, so "the errors account for X of the edge" is not a reading this result supports. Open points for the
+  independent review: the legacy basis's mean trade return of -7.6% (k1) vs -0.56% in dollars looks too large to be
+  costs alone; the book spans 24,631 business days, mostly zero-return days, so Sharpe depends on trade density and S
+  changes the trade count (19,530 vs 7,389); capital-sim prices 20 of ~19.5k whole-history trades, unexplained.
+- **E1 v2 stopped at build (seed 20261024, 21:26 -> 21:42).** `choose_plant_bases` (research/placebo_discovery_e1.py:208)
+  found 98 US but only 3 international bases clearing the gates (n_days >= PLANT_MIN_DAYS, ADV-gate share >= 0.5);
+  `build` raised `only 3 international plant bases clear the gates; 64 needed`. This is v1's illiquid-plant problem,
+  now stopped by the guard instead of yielding a recovery rate that measures the gate. The synthetic test (8/8)
+  could not see it: it runs on toy data. v1 outputs archived to ~/CAMARF_e1_runs/v1_ad855c8a before the stop; no v2
+  seed produced output. Next: a read-only diagnostic of which gate binds for international bases, then one
+  recommendation to Ross (PLANT_MIN_ADV_SHARE is a registered constant).
+- **Status 2026-10-26 07:54:** CachyOS idle (up 7 days, 44 GB free), at 3d7e361f. Surface seal sweep (started 10-22) has an
+  empty log, so whether it finished is unverified.

@@ -1,4 +1,38 @@
-## 2026-10-25: RESUME HERE. E1 discovery running; queue2 and the Amendment 6 chain wait behind it (CachyOS).
+## 2026-10-26: RESUME HERE. Edge accounting done (NOT yet reviewed); E1 v2 stopped at its first step. CachyOS idle.
+**Session break:** the 10-25 session died to a Windows update on the Surface (last activity 22:09). Nothing was lost in
+the repo (last commit 3d7e361f; Amendment 6 registered + reviewed). The two CachyOS chains ran on unattended:
+**Edge accounting: complete 2026-10-25 21:25** (chain log ~/CAMARF/logs/latest/latest_run_edge_20261025.log; results in
+~/CAMARF/logs/edge_eval.log; seal audit 0 daily / 0 intraday rows past the seal in 82,489 files). Descriptive only,
+not yet reviewed. Equal-notional Sharpe, old -> corrected cell (S selection, P P&L basis, X holes):
+- k1: all-old -1.67 (19,530 trades) -> all-corrected -0.05 (7,389). Shapley S +0.86 [0.54, 1.15], P +0.76 [0.27, 1.26],
+  X +0.00 [-0.00, 0.00] (block 169, 2,000 reps). Capital-sim dollar/holes-dropped: whole-history -0.38 (20 trades),
+  PIT -0.22 (1,230).
+- k2: all-old -0.24 (1,342) -> -0.00 (622). Shapley S +0.19 [0.01, 0.40], P +0.05 [-0.17, 0.30], X -0.00. Capital-sim:
+  whole-history -0.29 (11 trades), PIT -0.04 (492).
+- **Reading problem for the review:** the design asks how much of the old pipeline's edge each error explains, but at
+  this fixed production config the old pipeline has no edge (every cell <= 0); the corrections move a loss toward zero.
+  Reviewer must also check: legacy mean trade return -7.6% (k1) looks too large (log-unit cost mixing?); the book spans
+  24,631 business days with mostly zero-return days (sparse books shrink toward 0 Sharpe, and S changes trade count
+  19,530 vs 7,389); capital-sim prices only 20 of ~19.5k whole-history trades -- explain before any number is used.
+**E1 v2: FAILED at build, seed 20261024, 21:42** (log ~/CAMARF/logs/latest/latest_run_e1_v2.log; stdout
+~/CAMARF_e1/output/research/_stdout_e1v2_build.log): `RuntimeError: only 3 international plant bases clear the gates;
+64 needed` (US: 98 clear). Gate = `choose_plant_bases` (research/placebo_discovery_e1.py:208): n_days >= PLANT_MIN_DAYS
+and ADV-gate share >= PLANT_MIN_ADV_SHARE 0.5 (registered). Same cause as v1's illiquid plants, now caught by the guard
+instead of producing a meaningless recovery rate; the synthetic test (8/8) could not see it. No seed ran; v1 is safe in
+~/CAMARF_e1_runs/v1_ad855c8a. Seeds 2 and 3 not started.
+**Next (in order):** (1) read-only diagnostic of the international bases' n_days / ADV-share distribution (which gate
+binds, how many clear at what share), then one recommendation to Ross -- changing a registered E1 constant is his call;
+(2) independent review of edge accounting (points above) before any write-up; (3) E1 v2 re-run (3 x ~20 h), score,
+review, per-arm false share, final claim wording ("selection carries signal for US pairs, not international; no robust
+trading edge" -- approved pending E1 v2). Later: full texts of key papers before any novelty claim; redraft per
+docs/PAPER_OUTLINE_2026-10-25.md, then the 5-lens council; pit_wfa/N5, S33 tiers.
+**Unverified:** Surface seal sweep (started 2026-10-22 13:01; logs/seal_sweep_surface_20261022.log is empty, vault
+populated) -- confirm it finished. logs/n14_1h_20261021.log is also empty (N14 1h result is in Development.md 10-22).
+**Surface memory:** Claude Code's low-memory reaper killed background watches 3x on 10-25 (the jobs themselves, on
+CachyOS, were unaffected). Start Claude Code with CLAUDE_CODE_DISABLE_BG_SHELL_PRESSURE_REAP=1 to stop it.
+**Ross's own items:** librarian email, AI-disclosure checks, Windows admin/Kamiak, removing GitHub cached data.
+
+## 2026-10-25: RESUME HERE (superseded by 10-26). E1 discovery running; queue2 and the Amendment 6 chain wait behind it (CachyOS).
 **Running (CachyOS):** E1 (`debug/_tmp_chain_e1.sh`, worktree ~/CAMARF_e1, log ~/CAMARF/logs/latest/latest_run_e1.log;
 discovery from 2026-10-24 21:44, then adapter, comparison arms, PIT eligibility, clean pools, score). Then
 `debug/_tmp_queue2_20261024.sh` (1D screen confirmation with the same-company rule, then N14 v2 on 1D with
