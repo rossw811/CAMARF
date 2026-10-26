@@ -411,3 +411,4 @@ debug/_verify_half_life_skip_attribution.py
 debug/_verify_weak_exogeneity_restricted.py
 debug/_verify_edge_accounting.py
 debug/_verify_pool_arm_s31.py
+debug/_verify_placebo_discovery_e1_v2.py

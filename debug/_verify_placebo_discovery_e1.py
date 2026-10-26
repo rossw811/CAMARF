@@ -80,8 +80,9 @@ with tempfile.TemporaryDirectory() as td:
     out = os.path.join(td, "X_1D.parquet")
     e1.write_placebo_file(src, pd.Series(np.linspace(0, 0.1, 50), index=cal[:50]), out)
     d = pd.read_parquet(out)
-    check("5 volume kept, every price column = exp(placebo log price)",
-          (d["volume"] == 5.0).all() and np.allclose(d["close_usd"], np.exp(np.linspace(0, 0.1, 50)))
+    # v2 (2026-10-25): volume is rescaled so USD dollar volume (close_usd x volume here) stays the real one
+    check("5 dollar volume kept, every price column = exp(placebo log price)",
+          np.allclose(d["volume"] * d["close_usd"], 5.0) and np.allclose(d["close_usd"], np.exp(np.linspace(0, 0.1, 50)))
           and np.allclose(d["open"], d["close"]), str(list(d.columns)))
 
 # 6. (CachyOS build 2026-10-24: mean block 68 days from the equal-weight index -- stale prices make the index
