@@ -29790,3 +29790,48 @@ A4 shares 0.669 / 0.9375, the seg2 label, the 1h eligibility dates, 474/759 elig
   backtest.active_at + entry gate on `active_month_ends`, strategy_search `--arm dyn` (own outputs *_dyn, DSR also at
   N = 864), research/build_dynamic_pools.py; tests 4/4 and the engine gate 5/5 (fails on the old engine). Chain
   `debug/_tmp_chain_a6_20261025.sh` waits for E1 and queue2 on CachyOS.
+
+### 2026-10-25 (afternoon/evening): diagnostics, decisions, E1 v1 result + review, E1 v2, Amendment 6 running
+- **CI: three engine tests passed locally only on real prices (f3c9e7b5).** `_verify_eligible_from_gate` (new to CI)
+  failed on GitHub with 0 trades. Cause: the fixture used "A"/"B", real tickers (Agilent, Barnes) with local cache files,
+  so `BacktestEngine.run`'s dollar conversion priced them locally and dropped every trade on CI. Reproduced locally by
+  renaming the fixture's symbols (0/5); fixed as the other engine tests do (stub `apply_pnl_basis`, synthetic names).
+  Same hidden dependency in `_verify_churn_fix_arms` (1/5 with synthetic names) and `_verify_half_life_skip_attribution`
+  (4/5); both fixed and added to CI so a missing cache now catches the class.
+- **Trio diagnostics under the restricted constant (399f7a0d, efb815c3; descriptive, not yet reviewed).** Max-eigenvalue
+  statistic with its own seeded table (same draws; the trace table reproduced byte-identical only after the builder used
+  `johansen_trace_n`'s own summation order -- `log(1-lam).sum()` moved 6 values by 1e-14). On 9,135 k1 trios trace and
+  max-eig rank decisions disagree on 18.6% (old 2/502 not comparable). Reimers retired, not re-run: the critical values
+  are simulated at each length; size 4.3% at T = 100. Weak exogeneity rebuilt (VECM "ci", gap-respecting segment, PIT
+  pool): the old "70% symbol_a leads" does not replicate (284 vs 229 of 759) and was order-dependent. A first attempt
+  registered a new 60-bar floor as "unjustified"; the registry ratchet refused it, so the script uses the existing
+  `Config.STATS.MIN_OVERLAP_BY_TF` instead (the same literal 60 recurs in the trio script and N14: backlog).
+- **Decisions (docs/decisions/DECISIONS_2026-10-25.md):** one paper, one claim; edge accounting. Literature novelty notes
+  in docs/LIT_NOVELTY_2026-10-25.md (two Sonnet passes, abstracts only; close non-peer-reviewed 2026 repositories to cite).
+  Outline docs/PAPER_OUTLINE_2026-10-25.md.
+- **Edge accounting built (design 2e40275a before code; code e256a734, test 6/6).** 2 x 2 x 2 factorial (selection,
+  P&L basis, executability), Shapley attribution with joint block-bootstrap intervals; `pnl_dollar.add_dollar_pnl
+  (check_holes=)`, `backtest.SPREAD_ROOT`, `clean_pool` extracted from `clean_pool_identity_pairs.main` (two source-text
+  checks followed it). The legacy capital sim skips legs with no price, so the factorial uses an equal-notional book and
+  capital-sim only for the dollar corners. Chain `debug/_tmp_chain_edge_20261025.sh` after Amendment 6.
+- **E1 v1 (run ad855c8a) result and review: QUALIFY; its power design was my error.** Pool counts on the placebo: k1 324
+  (real 753), k2 4 (real 64). Planted recovery 2/48 measured the liquidity gate, not power: 44 of 48 plant bases never
+  clear the $25M ADV gate (traced stage by stage: every plant passed Tier 1 and the Tier-3 prefilter, 3 got windows).
+  The review (adversarial-reviewer; key numbers re-derived independently) found the placebo tested 43% fewer US Tier-1
+  candidates (the global-calendar `diff` left US holidays and the day after NaN, so ~8% of returns were random draws that
+  weakened correlation), placebo ADV inflated (+0.43 log), D18 masking off, one seed. Window-level reading: no tail
+  excess over placebo in the international arm (p < 1e-4: 0.043% real vs 0.050%); US 0.115% vs 0.037%. ERRATA rows.
+- **N14 v2 1D and the same-company screen (queue2).** Null size 3.15% [2.35, 4.09]; real 7.38% on the same pairs, 5.71%
+  on the full screen; excess 1.4-2.4x, all between p 0.01 and 0.05. The 1D screen with the same-company rule confirms
+  40 (32 after the overlap filter), down from 192. The earlier reading "barely more than chance" (v1 size 4.67%) is
+  withdrawn; claim to be restated after E1 v2.
+- **E1 v2 built (b52a0ffd, tests 8/8 + v1 7/7; Ross "yes to all").** Own bar-to-bar returns with a shared deterministic
+  fallback (hole-spanning returns never sources; dates outside a series' coverage map by rank), real USD dollar volume,
+  D18 close NaN and quote_only kept, plants per arm from gate-clearing bases on a 4 x 4 half-life x s.d. grid (0.05-0.20)
+  with US plants as fake PERMNOs carrying their base's membership spells (reference symlinks replaced by copies first),
+  tier-1 candidate guard (stop below 0.8 of real per arm), window tail rates and per-arm false share; 3 seeds. Chain
+  `debug/_tmp_chain_e1_v2.sh` after edge accounting; v1 outputs kept in ~/CAMARF_e1_runs/v1_ad855c8a.
+- **Amendment 6 (CachyOS):** 432 runs done 19:41 (216 fresh files per pool); eval running (~94 min under Amendment 5).
+  First cell (k1, split 0.5): holdout capital-sim Sharpe 0.12, rank 151.5 / 216, DSR ~0, PBO 0.39, does not pass.
+- **Surface:** two background watches were stopped by Claude Code's low-memory reaper (the Surface, not CachyOS);
+  restarted at Ross's request as a light ssh poll.
