@@ -18,7 +18,8 @@ essentially unaffected; to confirm on strategy-search trades in the review).
 (14.2% of rows), giving 81% NaN ADV. Discovery reads it with `.asof()` (wrds_deep_history_episodic_scan.py:804),
 which takes the last valid value: the international liquidity gate uses ADV a median 904 trading days old (p90
 ~14 years; real k1 international legs median 604). Causal, not lookahead, but the gate does little for the
-international arm the paper's US-vs-international claim rests on. US not yet measured.
+international arm the paper's US-vs-international claim rests on. US: median file current, but 18% of
+long-history US files are > 21 trading days stale at the median (p90 of file medians 526).
 **E1 v2 stop explained:** its plant gate counts NaN ADV as failing (3 of 10,823 long-history international bases
 clear 0.5) while discovery's asof reading clears 585, and 154 of the 188 real k1 international legs. A measurement
 mismatch, not a constant problem: PLANT_MIN_ADV_SHARE stays.

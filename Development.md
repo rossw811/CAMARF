@@ -29931,7 +29931,9 @@ not restarted (Claude Code's note: restart only on request). Both CachyOS chains
   (wrds_deep_history_episodic_scan.py:804-807), which returns the last VALID value: over 10,823 international
   files with >= 2,520 days, the ADV checked is a median 904 trading days old (median p90 3,646; real k1 international
   legs median 604). Causal (no lookahead) but the gate largely judges international liquidity from years earlier.
-  US CRSP files rarely miss volume; their staleness not yet measured.
+  US (1,110 sampled CRSP files with >= 2,520 rows): median file 0 days stale, but 18.4% of files have a median
+  staleness above 21 trading days and the p90 of file medians is 526 (volume NaN mean 10%, concentrated in some
+  files). So the defect is mostly international but not only.
 - **E1 v2 stop explained by the same function.** The plant gate's `(adv >= thr).mean()` counts NaN as failing: 3
   international bases clear 0.5 that way, 585 under discovery's asof reading; 154 of the 188 real k1 international
   legs clear it under asof, 0 under the plant gate's reading. The plant gate measured liquidity differently from the
