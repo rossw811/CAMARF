@@ -1,3 +1,14 @@
+## 2026-10-27: RESUME HERE (reconciliation after the 10-26 evening session died without a close-out)
+Everything from 10-26 is committed; see the "2026-10-27: Session-recovery reconciliation" section at the end of
+Development.md for what was lost and how it was checked. **State now:**
+- CI green on `3fa6532e` (run 40445354929). `7b1ed8c3` + this reconciliation commit are local, **not pushed** (push on Ross's word).
+- BUG-D121 (commission share count) fixed; BUG-D122 (voided/stale `rolling_adv`) open -- both now in docs/ERRATA.md and docs/BUG_LOG.md.
+- CachyOS idle, watchdog still NOT armed (CLAUDE.md corrected). No results waiting there.
+**Decisions still waiting on Ross (unchanged from the 10-26 midday block below, none taken):** (1) fix `rolling_adv` with the
+gap-rule mean and re-run discovery (~22 h, amendment); (2) E1 plant gate then uses it, E1 v2 re-run (3 x ~20 h); (3) edge
+accounting re-run with the commission fix, each arm on its own span plus a same-era comparison; (4) the CachyOS sudo
+watchdog command. The independent review of edge accounting already ran (QUALIFY, close to FAILS for attribution).
+
 ## 2026-10-26 (midday): RESUME HERE. Two pipeline defects found; decisions needed (Ross) before E1 v2 / re-runs.
 **Edge accounting review (adversarial-reviewer): QUALIFY, close to FAILS for the attribution.** Arithmetic reproduces.
 The S > P ranking comes from (a) one 1931-2025 grid for both arms (PIT book zero-padded 1931-2005: own-span PIT 110

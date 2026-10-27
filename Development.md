@@ -29944,3 +29944,27 @@ not restarted (Claude Code's note: restart only on request). Both CachyOS chains
 - **gpu-unlock (Ross asked to install it on CachyOS): not installed.** Its device table (kernel/gpu_unlock/recipes.c)
   lists GA102-GA106 IDs only; CachyOS's card is an RTX 4080 (AD103, 10de:2704), which the module would log and
   ignore, after rebuilding the initramfs and changing the boot line on a remote machine.
+
+### 2026-10-27: Session-recovery reconciliation (the 10-26 evening session's transcript ended without a close-out)
+
+The 10-26 session (transcript c8cae93d) ended at 20:44 PDT, three minutes after its last commit, with its final summary
+unanswered. The code and the findings were all committed; what was lost was bookkeeping. Reconciled here against the git
+log, GitHub Actions and CachyOS, not against the old write-ups:
+- **CI on `3fa6532e` (the commission fix): green**, run 40445354929, `verify`, 7m53s, completed 2026-10-27T03:47Z. The
+  session had pushed it, been told by Claude Code's low-memory reaper (fourth time) that its CI watch was killed, and
+  never recorded the outcome.
+- **`7b1ed8c3` (US ADV staleness numbers) was committed locally and never pushed.** Pushed state at reconciliation:
+  origin/main = `3fa6532e`.
+- **No user reply is recorded after the final message**, so none of the four pending decisions was taken (rolling_adv
+  fix and its ~22 h discovery re-run as an amendment; E1 plant gate to use the same function; edge-accounting re-run with
+  the commission fix; CachyOS watchdog sudo command). HANDOFF's decision list stands as written.
+- **CachyOS watchdog re-verified not armed 2026-10-27** (`RuntimeWatchdogUSec=0`). CLAUDE.md said it was armed; corrected
+  there (the session had held that edit until Ross confirmed arming; the claim itself was already known false).
+- **The two defects had no registry ids.** Assigned BUG-D121 (commission share count, fixed `3fa6532e`) and BUG-D122
+  (stale/voided rolling ADV, OPEN) and added to docs/ERRATA.md (section 2 and 3) and docs/BUG_LOG.md. The write-ups
+  above stay the canonical record.
+- **Nothing found missing in the repo.** CachyOS `~/CAMARF` is still at `3d7e361f` with only untracked scratch
+  (`debug/_tmp_*`, `_d11_null_test.parquet`) and modified `logs/latest/*` -- no results exist there that are absent
+  here. The 10-22 Surface seal sweep log is still empty (completion unconfirmed, as before).
+- **Process note:** Claude Code stopped background watches four times in the 10-26 session for low memory on the Surface
+  (the CachyOS jobs were unaffected). A CI wait is better a single `gh run view` poll than a long `gh run watch`.

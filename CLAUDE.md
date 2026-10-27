@@ -97,8 +97,9 @@ itself is current. Check `& "C:\Program Files\Tailscale\tailscale.exe" status` f
 last-seen before assuming a hang. LAN fallback: `rw@10.0.1.9` (IP as of 2026-08-23 — check
 `docs/HANDOFF.md` if stale; a `10.0.1.0/24` port-22 scan finds it if the IP has moved again). CachyOS
 has also shown recurring hard hangs with no diagnosable cause (non-ECC RAM, no EDAC/thermal trail) —
-an Intel TCO watchdog (`iTCO_wdt`) is armed so a hang auto-recovers in ~30-60s instead of needing a
-physical power-cycle; a prolonged Tailscale "offline" reading may mean a hang the watchdog didn't
+**the hardware watchdog is NOT armed** (verified 2026-10-26 and 2026-10-27: `intel_oc_wdt` inactive, systemd
+`RuntimeWatchdogUSec=0`, `iTCO_wdt` blacklisted), so a hang does not self-recover; the fix is
+`RuntimeWatchdogSec=60` in `/etc/systemd/system.conf.d/` (needs sudo, Ross) -- until then a hang needs a physical power-cycle; a prolonged Tailscale "offline" reading may mean a hang the watchdog didn't
 catch, not just a network issue. **CachyOS has no `pip` binary — `.venv/bin/pip` does not exist
 there.** Its Fish shell is also incompatible with inline bash syntax (write the script to a file,
 `scp` it over, `ssh host bash script.sh`). Use `uv pip install --python .venv/bin/python <package>`
