@@ -279,6 +279,7 @@ debug/_verify_pit_wfa_wrds_daily_pair_row.py
 debug/_verify_pit_wfa_wrds_daily.py
 debug/_verify_pnl_dollar_intraday.py
 debug/_verify_pnl_dollar.py
+debug/_verify_pnl_dollar_share_count.py
 debug/_verify_pool_chain_hardware.py
 debug/_verify_pooled_equity_fold_window.py
 debug/_verify_portfolio_math_business_days.py

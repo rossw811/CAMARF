@@ -19,7 +19,12 @@ split-ADJUSTED close: a fixed 100 shares of AMAT in 1991 (adjusted $0.42) is a $
 share-based sizing gives early trades negligible weight and a per-share commission out of all
 proportion (found hand-checking real trades, 2026-09-27). Sharpe is invariant to the fixed amount.
     N_a        = notional_per_trade  |  n_shares_a * P_a(entry)
-    n_b        = beta_entry * N_a / P_b(entry)                 (beta-weighted dollar hedge)
+    n_a, n_b   = N_a / S_a(entry), beta_entry * N_a / S_b(entry)   (beta-weighted dollar hedge)
+    S          = the TRADED price for share counts (2026-10-26): adjusted close x the cache's split factor
+                 (volume_adj_factor, else volume / volume_raw). Before, S was the adjusted close, so the commission
+                 was charged on fictitious share counts (PEP 1931: 674k shares per $10k). With no known factor
+                 (yfinance, intraday, CRSP rows with an unknown factor) S is the adjusted close and the trade is
+                 flagged in pnl_dollar_share_fallback.
     gross      = side * N_a * (r_a - beta_entry * r_b)          (side = +1 long spread = long A/short B)
     cost       = commission * (n_a + |n_b|) * 2 + slippage_bps/1e4 * N_a * (1 + |beta|) * 2
 where r = total return over [entry date, exit date] from a dividend-inclusive series (WRDS
@@ -73,8 +78,9 @@ READ_FAILURES: dict = {}  # {path: error} for price files that could not be read
 
 
 def load_daily_prices(symbol: str) -> Optional[pd.DataFrame]:
-    """DataFrame[close, tr] on a date index, or None. WRDS first (close = split-adjusted price,
-    tr = close_total_return), then the yfinance daily cache (adjusted close for both)."""
+    """DataFrame[close, tr, share_px] on a date index, or None. WRDS first (close = split-adjusted price,
+    tr = close_total_return, share_px = traded price for share counts, NaN where no split factor is known), then the
+    yfinance daily cache (adjusted close for both; share_px NaN)."""
     if symbol in _cache:
         return _cache[symbol]
     out = None
@@ -106,8 +112,25 @@ def load_daily_prices(symbol: str) -> Optional[pd.DataFrame]:
             px = d["close"]
             tr = d[tr_col] if tr_col and tr_col in d.columns else d["close"]
             usd = is_usd_symbol(symbol)
-        out = pd.DataFrame({"close": pd.to_numeric(px, errors="coerce").astype(float),
-                            "tr": pd.to_numeric(tr, errors="coerce").astype(float)})
+        px = pd.to_numeric(px, errors="coerce").astype(float)
+        # 2026-10-26 (edge-accounting review): the price actually traded, for commission share counts. close /
+        # close_usd are split-ADJUSTED; x the cache's split factor (CRSP / Compustat) gives the traded price
+        # (PEP 1931-08-03: 0.0148 x 354 = $5.25). No or missing factor -> the adjusted close (yfinance files).
+        # data_wrds.py writes volume_raw but not volume_adj_factor (only research/apply_crsp_volume_adjustment.py
+        # does), so a re-fetched file derives the same factor as volume / volume_raw (review 2026-10-26).
+        share_px = pd.Series(np.nan, index=px.index)
+        fac = None
+        if "volume_adj_factor" in d.columns:
+            fac = pd.to_numeric(d["volume_adj_factor"], errors="coerce").astype(float)
+        elif {"volume", "volume_raw"} <= set(d.columns):
+            fac = (pd.to_numeric(d["volume"], errors="coerce").astype(float)
+                   / pd.to_numeric(d["volume_raw"], errors="coerce").astype(float))
+        if fac is not None:
+            ok = np.isfinite(fac.to_numpy()) & (fac.to_numpy() > 0)
+            share_px[ok] = px[ok] * fac[ok]
+        # unknown factor -> NaN here; add_dollar_pnl then uses the adjusted close and flags the trade
+        out = pd.DataFrame({"close": px, "tr": pd.to_numeric(tr, errors="coerce").astype(float),
+                            "share_px": share_px})
         out.index = pd.to_datetime(out.index).tz_localize(None).normalize() if getattr(out.index, "tz", None) \
             else pd.to_datetime(out.index).normalize()
         out = out[~out.index.duplicated(keep="last")].sort_index()
@@ -115,6 +138,14 @@ def load_daily_prices(symbol: str) -> Optional[pd.DataFrame]:
         break
     _cache[symbol] = out
     return out
+
+
+def _share_px(row):
+    """(price, fell_back): the traded (unadjusted) price of a looked-up row for share counts, or the adjusted close
+    with fell_back=True when no split factor is known (yfinance and intraday rows, CRSP rows with an unknown factor)."""
+    v = row.get("share_px", np.nan) if hasattr(row, "get") else np.nan
+    v = float(v) if pd.notna(v) else np.nan
+    return (v, False) if np.isfinite(v) and v > 0 else (float(row["close"]), True)
 
 
 def _at_or_before(df: pd.DataFrame, ts: pd.Timestamp):
@@ -228,6 +259,7 @@ def add_dollar_pnl(trades: pd.DataFrame, commission_per_share: float = None, sli
     cols = {k: np.full(len(out), np.nan) for k in
             ("pnl_dollar_gross", "pnl_dollar_cost", "pnl_dollar_net", "notional_dollar_entry", "n_shares_b_dollar")}
     status = np.array(["ok"] * len(out), dtype=object)
+    share_fallback = np.zeros(len(out), dtype=bool)
     for i, t in enumerate(out.itertuples(index=False)):
         tf = str(t.tf)
         if tf == "1D":
@@ -262,13 +294,15 @@ def add_dollar_pnl(trades: pd.DataFrame, commission_per_share: float = None, sli
         side = 1.0 if t.side == "long" else -1.0
         if sizing == "fixed_notional":
             N_a = float(notional_per_trade)
-            n_a = N_a / ae["close"]
         elif sizing == "shares":
-            n_a = float(t.n_shares_a)
-            N_a = n_a * ae["close"]
+            N_a = float(t.n_shares_a) * ae["close"]
         else:
             raise ValueError(f"unknown sizing {sizing!r}")
-        n_b = beta * N_a / be["close"]
+        # commission shares at the traded price, not the split-adjusted one (2026-10-26; share_px, else close)
+        (spa, fa), (spb, fb) = _share_px(ae), _share_px(be)
+        n_a = N_a / spa
+        n_b = beta * N_a / spb
+        share_fallback[i] = fa or fb
         r_a = ax["tr"] / ae["tr"] - 1.0
         r_b = bx["tr"] / be["tr"] - 1.0
         gross = side * N_a * (r_a - beta * r_b)
@@ -281,4 +315,8 @@ def add_dollar_pnl(trades: pd.DataFrame, commission_per_share: float = None, sli
     for k, v in cols.items():
         out[k] = v
     out["pnl_dollar_status"] = status
+    out["pnl_dollar_share_fallback"] = share_fallback     # commission shares from the adjusted close (counted)
+    if share_fallback.any():
+        log.info("pnl_dollar: %d of %d trades priced commission shares on the adjusted close (no split factor)",
+                 int(share_fallback.sum()), len(out))
     return out

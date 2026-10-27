@@ -1,4 +1,38 @@
-## 2026-10-26: RESUME HERE. Edge accounting done (NOT yet reviewed); E1 v2 stopped at its first step. CachyOS idle.
+## 2026-10-26 (midday): RESUME HERE. Two pipeline defects found; decisions needed (Ross) before E1 v2 / re-runs.
+**Edge accounting review (adversarial-reviewer): QUALIFY, close to FAILS for the attribution.** Arithmetic reproduces.
+The S > P ranking comes from (a) one 1931-2025 grid for both arms (PIT book zero-padded 1931-2005: own-span PIT 110
+-1.95 not -0.907); same era: k1 S 0.60 / P 1.86, k2 S -0.03 / P 0.56; and (b) a commission bug (below). Legacy
+"returns" are a different quantity from dollar returns (per-trade corr -0.01; AIG/MRK -1,806%). X touches 6 and 2
+trades: uninformative. Window-length part of S is inert (whole-history spreads identical to production). Reading:
+"at this config there was no edge to explain", not an S/P/X decomposition.
+**Defect 1, FIXED (test debug/_verify_pnl_dollar_share_count.py 8/8, fails on the old code; independent review
+HOLDS/QUALIFY, its two follow-ups applied: factor derived as volume / volume_raw when data_wrds.py's re-fetch omits
+the column, and a per-trade `pnl_dollar_share_fallback` flag -- only the 1h intraday trades fall back; full fast
+list 410/410 on CachyOS):** pnl_dollar.add_dollar_pnl counted commission shares at
+the split-adjusted close (PEP 1931: $0.0148 -> 690k shares, ~$6.9k commission per $10k leg; NVDA 2015 40x).
+Fix: `share_px` = close (close_usd) x volume_adj_factor. Real data (all 4 edge trade files): gross and status
+unchanged; cost/notional whole-history k1 0.46% -> 0.15%, k2 2.0% -> 0.19%; PIT k1 0.140% -> 0.138% (C-006 era
+essentially unaffected; to confirm on strategy-search trades in the review).
+**Defect 2, FOUND (not fixed; production gate -> Ross):** `rolling_adv` (research/rolling_adv_comparison.py:114) is a
+252-day mean with min_periods = 252, so one missing volume day voids a year. International files miss ~3%/yr
+(14.2% of rows), giving 81% NaN ADV. Discovery reads it with `.asof()` (wrds_deep_history_episodic_scan.py:804),
+which takes the last valid value: the international liquidity gate uses ADV a median 904 trading days old (p90
+~14 years; real k1 international legs median 604). Causal, not lookahead, but the gate does little for the
+international arm the paper's US-vs-international claim rests on. US not yet measured.
+**E1 v2 stop explained:** its plant gate counts NaN ADV as failing (3 of 10,823 long-history international bases
+clear 0.5) while discovery's asof reading clears 585, and 154 of the 188 real k1 international legs. A measurement
+mismatch, not a constant problem: PLANT_MIN_ADV_SHARE stays.
+**Decisions for Ross:** (1) fix rolling_adv: mean over days with volume in the trailing 252, NaN only if the window
+holds a DATA_GAP (> data._MAX_FILL_BARS = 5 consecutive missing days, the existing GapFlag rule); this changes
+discovery -> re-run (~22 h) and downstream, as an amendment; (2) E1 plant gate then uses the same function (follows);
+(3) edge accounting: re-run run+eval with the commission fix, each arm on its own span plus a same-era comparison,
+reported as "no edge to explain at this config"; (4) CachyOS watchdog is NOT armed (intel_oc_wdt inactive,
+RuntimeWatchdogUSec=0, iTCO_wdt blacklisted): one sudo command in chat sets RuntimeWatchdogSec=60.
+Diagnostics: /tmp/e1_intl_diag.parquet, /tmp/e1_intl_asof.parquet on CachyOS; scripts in the session scratchpad.
+**Not done:** gpu-unlock (Ross asked): the RTX 4080 (AD103, 10de:2704) is not in its device table (GA102-GA106 only)
+-- would be "logged and ignored"; not installed.
+
+## 2026-10-26: Edge accounting done (NOT yet reviewed); E1 v2 stopped at its first step. CachyOS idle.
 **Session break:** the 10-25 session died to a Windows update on the Surface (last activity 22:09). Nothing was lost in
 the repo (last commit 3d7e361f; Amendment 6 registered + reviewed). The two CachyOS chains ran on unattended:
 **Edge accounting: complete 2026-10-25 21:25** (chain log ~/CAMARF/logs/latest/latest_run_edge_20261025.log; results in

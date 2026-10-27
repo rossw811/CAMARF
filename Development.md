@@ -29873,3 +29873,72 @@ not restarted (Claude Code's note: restart only on request). Both CachyOS chains
   recommendation to Ross (PLANT_MIN_ADV_SHARE is a registered constant).
 - **Status 2026-10-26 07:54:** CachyOS idle (up 7 days, 44 GB free), at 3d7e361f. Surface seal sweep (started 10-22) has an
   empty log, so whether it finished is unverified.
+
+### 2026-10-26: edge-accounting review, a commission bug in pnl_dollar (fixed), and a stale international ADV gate (found)
+- **Edge accounting review (adversarial-reviewer): QUALIFY, close to FAILS for the attribution.** All 8 cells and the
+  Shapley values re-derived independently (match to 3 decimals). Three points sink the decomposition as reported:
+  (1) `phase_eval` (research/edge_accounting.py:222-225) scores both arms on one business-day grid from the earliest
+  exit of either (1931-08-05), so the PIT book (exits from 2005-05-16) is zero for 74 years and its |Sharpe| shrinks
+  by ~sqrt(5383/24631) = 0.47; with every cell negative that looks like a gain from S. Own span: PIT 100 -1.95 (not
+  -0.907), 110 -0.097 (not -0.046). Same era (whole-history cut to 2005-04-20 on): k1 S 0.60 / P 1.86; k2 S -0.03 /
+  P 0.56. Per-trade, mean-return and active-days metrics all rank P above S. (2) The commission bug below: 90% of
+  the whole-history k2 dollar loss was commission; the k2 S interval [0.008, 0.396] is that artefact. (3) The
+  legacy basis is not a noisy dollar return (per-trade correlation -0.013 / -0.09; AIG/MRK 2019-08-14 -> 2020-06-19
+  legacy -1,806% vs dollar -28.7%, hedge_ratio_ols_t 0.06 -> 3.88; bottom 1% of trades = 47% of the legacy loss).
+  Also: the window-length part of S is inert (all 416 whole-history daily spread files identical to production;
+  hr_window = min(252, ...) saturates at analysis.py:5841), the whole-history pool is a strict subset of the PIT pool,
+  X touches 6 and 2 trades (uninformative about BUG-D119), 17/4 pre-1952 Saturday exits drop out of `daily_series`,
+  block length immaterial. Capital-sim whole-history numbers were ruin in 1931 (first 15 PEP/RTX trades lose
+  $7-8k each on $14-18k notional, almost all commission). Seal and eligible_from: HOLD. Reading adopted: at this
+  config neither pipeline shows an edge; this is not a decomposition of any earlier positive headline (the
+  beta-drift term was ALL of the positive gross on the 2,062 momentum-gate trades, negative here). Not re-run yet:
+  the grid choice is a design change (Ross).
+- **Commission share counts at the split-adjusted price (pnl_dollar.add_dollar_pnl; FIXED; independent review: all
+  five claims HOLD/QUALIFY, two follow-ups applied, below; full fast list 410/410 on CachyOS, twice).** `n_a = N_a / ae["close"]` with close split-ADJUSTED, so the $0.005/share
+  commission was charged on fictitious share counts: PEP 1931-08-03 adjusted $0.0148 (traded $5.25, factor 354):
+  674,285 shares per $10k, ~$6.7k round-trip commission; AAPL 2005 28x, NVDA 2015 40x. The module docstring had
+  already named this problem for share-based sizing (2026-09-27) and moved sizing to fixed notional, but the
+  commission still used the adjusted count. Fix: `load_daily_prices` adds `share_px` = close (close_usd for
+  Compustat Global) x the cache's `volume_adj_factor` (finite, > 0; else the adjusted close, e.g. yfinance files),
+  used only for n_a / n_b. Verified the factor's meaning on real files: adjusted series smooth through a split,
+  x factor jumps by the split ratio (6 GVKEY splits incl. reverse; PEP/AAPL/AMAT/NVDA implied prices match history).
+  Reproducing test debug/_verify_pnl_dollar_share_count.py: 2/6 on the old code, 6/6 on the new; existing
+  pnl_dollar (13/13), intraday (6/6), engine default (8/8) and edge-accounting (6/6) tests pass. Real-data check on
+  all 4 edge trade files: the old module reproduces the stored pnl_dollar_net exactly; gross and status unchanged;
+  cost/notional whole-history k1 0.463% -> 0.151% (max 212% -> 2.8%), k2 2.01% -> 0.19%; PIT k1 0.140% -> 0.138%,
+  PIT k2 0.139% -> 0.140%; PIT cell 111 k1 -0.046 -> -0.042. So C-006 (PIT era) is essentially unaffected.
+  Review (adversarial-reviewer, reproduced the real-data numbers independently on CachyOS): factor direction right
+  for CRSP (cumulative_factor normalised to the last date; crsp_volume_split_adjustment.py:44-79) and Compustat
+  (ajexdi; close x factor = prccd / qunit); 0 volume / volume_raw / factor mismatches; 17,136 CRSP and 11,333
+  Compustat split events behave, 6 and 19 double-jump (close itself not adjusted for the event; share counts off by
+  the split ratio there), 41 / 200 with a jumping adjusted close (close-series data issue, not this fix). 20 sampled
+  strategy-search files (all four C-006 pools): cost/notional moves <= 0.00005, mean net per trade <= ~$0.7 (C-006
+  eval not re-run: unchanged rankings/DSR is an inference). Costs move both ways (reverse splits raise share counts).
+  Follow-ups applied: (1) data_wrds.py writes volume_raw but never volume_adj_factor (only
+  research/apply_crsp_volume_adjustment.py does, and it skips files already holding volume_raw), so a re-fetch
+  would have brought the bug back silently -- the loader now derives the factor as volume / volume_raw when the
+  column is missing (check 6); (2) a fallback to the adjusted close was silent -- now `pnl_dollar_share_fallback` per
+  trade plus a log count (check 7). Test 8/8 (2 of 8 fail on the first fix, 4 of 6 on the original). Re-check: 130 of
+  19,530 whole-history k1 and 7 of 7,389 PIT k1 trades fall back -- exactly the 1h intraday trades (yfinance
+  intraday has no split factor: a 1h trade before a split inside the 730-day window is still over-charged by the
+  split ratio, disclosed); 0 daily legs fall back. 40 CRSP files carry an unknown factor on 228,223 valid-price rows
+  (cumulative_factor's rule before a cash / partial-liquidation event; e.g. MCD 10,139 of 14,973 rows); no current
+  trade touches them; they now fall back flagged.
+- **Stale international ADV gate (FOUND, not fixed: production gate, Ross's decision).** `rolling_adv` is a 252-day
+  mean with min_periods = 252 (research/rolling_adv_comparison.py:114), so one missing volume day voids the whole
+  trailing year. Compustat Global files miss volume on ~3% of days a year (14.2% of rows over 300 sampled files),
+  giving 81.0% NaN ADV (12.3% if missing days were skipped). Discovery reads ADV with `Series.asof(window_start)`
+  (wrds_deep_history_episodic_scan.py:804-807), which returns the last VALID value: over 10,823 international
+  files with >= 2,520 days, the ADV checked is a median 904 trading days old (median p90 3,646; real k1 international
+  legs median 604). Causal (no lookahead) but the gate largely judges international liquidity from years earlier.
+  US CRSP files rarely miss volume; their staleness not yet measured.
+- **E1 v2 stop explained by the same function.** The plant gate's `(adv >= thr).mean()` counts NaN as failing: 3
+  international bases clear 0.5 that way, 585 under discovery's asof reading; 154 of the 188 real k1 international
+  legs clear it under asof, 0 under the plant gate's reading. The plant gate measured liquidity differently from the
+  pipeline it imitates; the registered constant is not the problem.
+- **CachyOS watchdog not armed** (CLAUDE.md says it is): /sys/class/watchdog/watchdog0 is intel_oc_wdt, state
+  inactive; systemd RuntimeWatchdogUSec=0; iTCO_wdt blacklisted. A hard hang does not self-recover. Fix needs sudo
+  (RuntimeWatchdogSec=60 in /etc/systemd/system.conf.d/), given to Ross.
+- **gpu-unlock (Ross asked to install it on CachyOS): not installed.** Its device table (kernel/gpu_unlock/recipes.c)
+  lists GA102-GA106 IDs only; CachyOS's card is an RTX 4080 (AD103, 10de:2704), which the module would log and
+  ignore, after rebuilding the initramfs and changing the boot line on a remote machine.
