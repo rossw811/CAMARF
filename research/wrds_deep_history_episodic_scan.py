@@ -79,7 +79,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config import Config
 from analysis import (UniverseFilter, _eg_worker, _benjamini_hochberg, CointScanner, _limit_worker_blas_threads,
                       _combine_eg_directions)
-from research.rolling_adv_comparison import rolling_adv, load_wrds_universe_ohlcv
+from research.rolling_adv_comparison import rolling_adv, adv_at, load_wrds_universe_ohlcv
 from data_wrds import sp500_members_asof
 
 _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -801,8 +801,8 @@ def build_rolling_eg_tasks(pairs, log_price_df, max_lag, window=EPISODIC_WINDOW_
             if adv_by_symbol is not None:
                 adv_a_series = adv_by_symbol.get(sym_a)
                 adv_b_series = adv_by_symbol.get(sym_b)
-                adv_a_val = adv_a_series.asof(window_start_date) if adv_a_series is not None else np.nan
-                adv_b_val = adv_b_series.asof(window_start_date) if adv_b_series is not None else np.nan
+                adv_a_val = adv_at(adv_a_series, window_start_date) if adv_a_series is not None else np.nan
+                adv_b_val = adv_at(adv_b_series, window_start_date) if adv_b_series is not None else np.nan
                 liquid = (pd.notna(adv_a_val) and adv_a_val >= thr
                           and pd.notna(adv_b_val) and adv_b_val >= thr)
                 if not liquid:

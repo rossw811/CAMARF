@@ -29968,3 +29968,29 @@ log, GitHub Actions and CachyOS, not against the old write-ups:
   here. The 10-22 Surface seal sweep log is still empty (completion unconfirmed, as before).
 - **Process note:** Claude Code stopped background watches four times in the 10-26 session for low memory on the Surface
   (the CachyOS jobs were unaffected). A CI wait is better a single `gh run view` poll than a long `gh run watch`.
+
+### 2026-10-27: BUG-D122 fixed in code (rolling_adv gap rule + exact-row ADV lookup); discovery re-run NOT started
+
+Ross ("yes to all", 2026-10-27) approved decisions 1-3 of the 10-26 list. Done so far, with the verification loop:
+- **Reproducing test** `debug/_verify_rolling_adv_gap_rule.py`: failed 4 of 8 on the old `rolling_adv`; now 12/12 (checks 7a-7e
+  added after the review, below; 7b/7c/7d/7e error on the old code because `adv_at` did not exist). Related tests (12 files touching
+  the scan / rolling_adv) exit 0. Registered in `debug/ci_fast_tests.txt`; full fast list on CachyOS not yet re-run.
+- **Fix 1 (`research/rolling_adv_comparison.py::rolling_adv`):** mean over the days that have volume in the trailing 252;
+  NaN only if the window holds a DATA_GAP (> `data._MAX_FILL_BARS` = 5 consecutive missing days) or lacks a full window of history.
+- **Real data (60 international + 60 US files with >= 2,520 rows):** NaN rate international 77.7% -> 14.1%, US 43.3% -> 15.6%;
+  median staleness of the `.asof` value international 1,065 rows -> 0.
+- **Independent review (adversarial-reviewer): claims 1-3 HOLD** (6,000 random cases vs a brute-force per-window check, 0 mismatches;
+  causal by truncation on 300 series; no-NaN input identical to the old function). **Claim 5a FAILED the main point:** `Series.asof`
+  skips NaN, so across a genuine gap the gate still read a pre-gap ADV (7.5% of 2,747 international window starts, median 223 days,
+  p90 1,245). **Fix 2:** `adv_at(adv, date)` (rolling_adv_comparison.py) reads the last row at or before the date and does NOT skip NaN;
+  the discovery gate (`wrds_deep_history_episodic_scan.py:804-805`) now calls it. On the 83 + 120 sampled starts: pass rate unchanged
+  (international 0.0%, US 16.7%; the random sample is illiquid-dominated, so this shows nothing about the effect on discovery), while
+  9.6% (international) and 27.5% (US) of starts now read NaN where the old gate read a stale value.
+- **Open qualifications from the review, NOT fixed (decision for Ross, before the amendment is signed):**
+  (a) *missing volume = zero or no data?* 99.4% of NaN-volume rows have a close. Averaging present days overstates ADV if those are
+  no-trade days (up to ~1/(1 - missing share); a file with 60% missing and no run > 5 days is not voided and could be ~2.5x too high).
+  Not tested. Options are disclosure only, or a comparison arm that treats missing volume as zero; a minimum-coverage constant would
+  be a new parameter. (b) *Absent dates are invisible to the gap rule* (119 international files: mean 24.8 calendar gaps > 5 days per
+  file, 5.5 > 10 days; holidays included), so a 252-row window can span more than a year. Not measured on a reindexed calendar.
+- **E1:** the plant gate calls the same `rolling_adv`, so it follows fix 1; its `(adv >= thr).mean()` still counts NaN as failing
+  (now far fewer NaN). Not yet re-run.

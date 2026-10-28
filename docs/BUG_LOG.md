@@ -309,6 +309,6 @@ the full context stays in `Development.md`.
 - **BUG-D121** (2026-10-26): `pnl_dollar.add_dollar_pnl` charged per-share commission on shares counted at the split-adjusted
   close (PEP 1931: ~$6.9k commission per $10k leg). Fixed `3fa6532e` (`share_px` = close x `volume_adj_factor`; per-trade
   `pnl_dollar_share_fallback`); test 8/8, fast list 410/410, CI green. Write-up in `Development.md` ("Commission share counts").
-- **BUG-D122** (2026-10-26, OPEN): `rolling_adv` voids a year of ADV on one missing volume day and discovery reads it with
+- **BUG-D122** (2026-10-26; code fixed 2026-10-27, discovery re-run pending): `rolling_adv` voids a year of ADV on one missing volume day and discovery reads it with
   `.asof()`, so the international liquidity gate uses ADV a median 904 trading days old (US: 18% of long-history files > 21
-  days stale). Fix proposed (gap-rule mean), awaiting Ross; needs a ~22 h discovery re-run as an amendment.
+  days stale). Fixed: gap-rule mean + `adv_at` (not `.asof`); open: missing-volume = zero question. Needs a ~22 h discovery re-run as an amendment.

@@ -4,6 +4,7 @@ Development.md for what was lost and how it was checked. **State now:**
 - CI green on `3fa6532e` (run 40445354929). `7b1ed8c3` + this reconciliation commit are local, **not pushed** (push on Ross's word).
 - BUG-D121 (commission share count) fixed; BUG-D122 (voided/stale `rolling_adv`) open -- both now in docs/ERRATA.md and docs/BUG_LOG.md.
 - CachyOS idle, watchdog still NOT armed (CLAUDE.md corrected). No results waiting there.
+**Update 2026-10-27 later:** Ross said "yes to all"; BUG-D122 is fixed in code (rolling_adv gap rule + `adv_at`; test 12/12, review caught and I fixed the `.asof` hole). NOT started: the Amendment-7 text and the ~22 h CachyOS chain -- blocked on one question for Ross: is missing volume a no-trade day (zero) or no data? (Development.md 2026-10-27 BUG-D122 section). Watchdog sudo still needed first.
 **Decisions still waiting on Ross (unchanged from the 10-26 midday block below, none taken):** (1) fix `rolling_adv` with the
 gap-rule mean and re-run discovery (~22 h, amendment); (2) E1 plant gate then uses it, E1 v2 re-run (3 x ~20 h); (3) edge
 accounting re-run with the commission fix, each arm on its own span plus a same-era comparison; (4) the CachyOS sudo

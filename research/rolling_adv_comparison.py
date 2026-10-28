@@ -46,6 +46,7 @@ import pandas as pd
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from config import Config
+from data import _MAX_FILL_BARS
 from dollar_volume import usd_dollar_volume
 
 _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -111,7 +112,41 @@ def rolling_adv(df: pd.DataFrame, window: int = ROLLING_ADV_WINDOW) -> pd.Series
     if "close" not in df.columns or "volume" not in df.columns:
         return pd.Series(dtype=float)
     dollar_volume = usd_dollar_volume(df)   # R1.2 (2026-10-07): USD price, not Compustat's local-currency close
-    return dollar_volume.astype(float).rolling(window=window, min_periods=window).mean()
+    dv = dollar_volume.astype(float)
+    # BUG-D122 (2026-10-27): min_periods == window voided a whole trailing year on ONE missing volume day (international
+    # files miss ~3% of days -> 81% NaN), and the discovery gate's Series.asof() then fell back to an ADV years old.
+    # GapFlag rule (CLAUDE.md rule 3, data._MAX_FILL_BARS): average the days that have volume; the value is NaN only if
+    # the trailing window holds a DATA_GAP (> _MAX_FILL_BARS consecutive missing days) or lacks a full window of history.
+    mean = dv.rolling(window=window, min_periods=1).mean()
+    miss = dv.isna().to_numpy()
+    n = len(dv)
+    bad = np.zeros(n + 1, dtype=np.int64)       # difference array over window END positions t
+    i = 0
+    while i < n:
+        if not miss[i]:
+            i += 1
+            continue
+        j = i
+        while j + 1 < n and miss[j + 1]:
+            j += 1
+        if j - i + 1 > _MAX_FILL_BARS:          # run [i, j]: windows ending t in [i+MAX, j-MAX+window-1] hold > MAX of it
+            lo, hi = i + _MAX_FILL_BARS, min(j - _MAX_FILL_BARS + window - 1, n - 1)
+            bad[lo] += 1
+            bad[hi + 1] -= 1
+        i = j + 1
+    has_gap = np.cumsum(bad[:n]) > 0
+    short = np.arange(n) < window - 1
+    return mean.where(~(has_gap | short))
+
+
+def adv_at(adv: pd.Series, date) -> float:
+    """ADV at the last row at or before `date`, NaN if that row's value is NaN. Unlike Series.asof this does NOT skip
+    back over NaN to an older valid value: across a genuine DATA_GAP the ADV is unknown, not what it was years ago
+    (BUG-D122 review, 2026-10-27: asof returned a median 223-day-old value for 7.5% of international window starts)."""
+    if adv is None or len(adv) == 0:
+        return float("nan")
+    pos = adv.index.searchsorted(pd.Timestamp(date), side="right") - 1
+    return float(adv.iloc[pos]) if pos >= 0 else float("nan")
 
 
 def load_wrds_universe_ohlcv():

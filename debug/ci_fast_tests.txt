@@ -311,6 +311,7 @@ debug/_verify_ridge_hedge_ratio_comparison.py
 debug/_verify_risk_neutral_density.py
 debug/_verify_rmt_feature_denoising.py
 debug/_verify_rolling_adv_comparison.py
+debug/_verify_rolling_adv_gap_rule.py
 debug/_verify_rolling_coint_batched.py
 debug/_verify_rough_volatility.py
 debug/_verify_run_all_verify.py
