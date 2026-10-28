@@ -75,6 +75,19 @@ t_ok = d.index[79]
 ok &= check("7c. adv_at equals the value at the exact row when valid", rac.adv_at(r, t_ok) == r.loc[t_ok])
 ok &= check("7d. adv_at on a non-trading day uses the last row at or before it", rac.adv_at(r, t_ok + pd.Timedelta(days=1)) == r.loc[t_ok])
 ok &= check("7e. adv_at before the first row is NaN", np.isnan(rac.adv_at(r, d.index[0] - pd.Timedelta(days=5))))
+# 8. --adv-missing zero comparison arm (Ross 2026-10-28): a priced day without volume counts as 0
+v = base.copy(); v[30] = np.nan
+z = rac.rolling_adv(mk(v), window=W, missing_volume="zero")
+ok &= check("8a. zero arm: one priced no-volume day enters as 0", np.isclose(z.iloc[30], 1000.0 * (W - 1) / W))
+v = base.copy(); v[30:36] = np.nan
+d8 = mk(v); z6 = rac.rolling_adv(d8, window=W, missing_volume="zero")
+ok &= check("8b. zero arm: 6 priced no-volume days are zeros, not a DATA_GAP", z6.iloc[W - 1:].notna().all())
+d8.loc[d8.index[30:36], "close"] = np.nan
+ok &= check("8c. zero arm: 6 days with no price still void the window (DATA_GAP)", rac.rolling_adv(d8, window=W, missing_volume="zero").iloc[35:50].isna().all())
+try:
+    rac.rolling_adv(mk(base), window=W, missing_volume="bogus"); ok &= check("8d. unknown mode raises", False)
+except ValueError:
+    ok &= check("8d. unknown mode raises", True)
 ok &= check("0. gap limit is the project's rule", data._MAX_FILL_BARS == 5)
 
 print("ALL PASS" if ok else "FAILURES")

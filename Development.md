@@ -29994,3 +29994,24 @@ Ross ("yes to all", 2026-10-27) approved decisions 1-3 of the 10-26 list. Done s
   file, 5.5 > 10 days; holidays included), so a 252-row window can span more than a year. Not measured on a reindexed calendar.
 - **E1:** the plant gate calls the same `rolling_adv`, so it follows fix 1; its `(adv >= thr).mean()` still counts NaN as failing
   (now far fewer NaN). Not yet re-run.
+
+### 2026-10-28: missing-volume comparison arm built (`--adv-missing zero`); NielsenIQ access check inconclusive
+
+**Ross (2026-10-28) took the recommendation** on the BUG-D122 review's open point (a): keep the primary ADV as the mean
+over days that have volume, disclose the assumption, and run a comparison arm that counts a priced day without volume
+as a zero-volume (no-trade) day. No minimum-coverage constant was added.
+- `rolling_adv(..., missing_volume="zero")`: priced no-volume days enter as 0; rows with no price stay missing and still
+  count toward the DATA_GAP rule. Scan flag `--adv-missing zero` -> `_advzero` outputs; like the grid arm it reuses the
+  primary run's Tier 1 and Tier 3 candidate files (neither reads ADV) and is guarded to the primary arm (exclude, offset
+  0). Lineage stage `episodic_scan_advzero` declared in research/pipeline_stages.py.
+- Test `debug/_verify_rolling_adv_gap_rule.py` checks 8a-8d (zero arm enters 0; 6 priced no-volume days are zeros, not a
+  gap; 6 days with no price still void; unknown mode raises): 16/16. CLI guards fire; _verify_lineage, grid_offset,
+  checkpoint_order, resume_guard, arm_logging exit 0.
+- **Real data (60 international + 60 US files, >= 2,520 rows):** ADV skip/zero ratio international median 1.043 (p90
+  1.068, max 1.18); US 1.000 everywhere. The level bias the review bounded at up to ~2.5x does not appear in this sample;
+  the arm's real effect is coverage: +18.2% of international rows valid (long priced-no-volume runs stop being gaps).
+- **Open point (b), absent dates invisible to the gap rule:** disclosed, not changed.
+- **NielsenIQ (Ross asked whether he has access):** checked from WRDS with Ross's go-ahead for one attended login. Run 1
+  authenticated, then my query failed (psycopg2 read the `%` in ILIKE patterns as parameter markers; output truncated
+  before the library listing). Run 2 (fixed query) did not authenticate: WRDS asked for the username interactively. I
+  stopped there to avoid a lockout. Script for Ross to run with `!`: session scratchpad `niq_check.py`. Unknown so far.

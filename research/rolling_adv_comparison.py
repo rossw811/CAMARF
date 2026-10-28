@@ -98,7 +98,7 @@ def flat_adv(df: pd.DataFrame) -> float:
     return float("nan") if pd.isna(result) else float(result)
 
 
-def rolling_adv(df: pd.DataFrame, window: int = ROLLING_ADV_WINDOW) -> pd.Series:
+def rolling_adv(df: pd.DataFrame, window: int = ROLLING_ADV_WINDOW, missing_volume: str = "skip") -> pd.Series:
     """
     Trailing (NOT centered) rolling average daily dollar volume, indexed by
     date. The value at date T is computed using ONLY rows up to and
@@ -113,6 +113,13 @@ def rolling_adv(df: pd.DataFrame, window: int = ROLLING_ADV_WINDOW) -> pd.Series
         return pd.Series(dtype=float)
     dollar_volume = usd_dollar_volume(df)   # R1.2 (2026-10-07): USD price, not Compustat's local-currency close
     dv = dollar_volume.astype(float)
+    if missing_volume == "zero":
+        # Comparison arm (Ross 2026-10-28): a priced day with no volume is a no-trade day (0), not missing data. Rows
+        # with no price stay missing and still count toward the DATA_GAP rule below.
+        priced = pd.to_numeric(df["close"], errors="coerce").notna()
+        dv = dv.where(~(dv.isna() & priced), 0.0)
+    elif missing_volume != "skip":
+        raise ValueError(f"missing_volume must be 'skip' or 'zero', got {missing_volume!r}")
     # BUG-D122 (2026-10-27): min_periods == window voided a whole trailing year on ONE missing volume day (international
     # files miss ~3% of days -> 81% NaN), and the discovery gate's Series.asof() then fell back to an ADV years old.
     # GapFlag rule (CLAUDE.md rule 3, data._MAX_FILL_BARS): average the days that have volume; the value is NaN only if

@@ -1144,10 +1144,19 @@ if _GRID_OFFSET:
         raise SystemExit(f"--grid-offset must be one of {_DECLARED_GRID_OFFSETS}, got {_GRID_OFFSET}")
     if _D18_ARM != "exclude":
         raise SystemExit("--grid-offset is declared for the exclude arm only (D18 decision 2026-10-07)")
-_RUN_SUFFIX = _ARM_SUFFIX + (f"_grid{_GRID_OFFSET}" if _GRID_OFFSET else "")
+# Missing-volume arm (Ross 2026-10-28, BUG-D122 review): the primary ADV averages the days that HAVE volume (a priced
+# day without volume = no data); `--adv-missing zero` treats such a day as a zero-volume (no-trade) day. Only the Tier
+# 2/3 liquidity gate reads ADV, so like the grid arm it reuses the primary run's Tier 1 and Tier 3 candidate files.
+_ADV_MISSING = sys.argv[sys.argv.index("--adv-missing") + 1] if "--adv-missing" in sys.argv else "skip"
+if _ADV_MISSING not in ("skip", "zero"):
+    raise SystemExit(f"--adv-missing must be 'skip' or 'zero', got {_ADV_MISSING!r}")
+if _ADV_MISSING == "zero" and (_GRID_OFFSET or _D18_ARM != "exclude"):
+    raise SystemExit("--adv-missing zero is declared for the primary arm only (exclude, offset 0)")
+_REUSES_PRIMARY = bool(_GRID_OFFSET) or _ADV_MISSING == "zero"   # Tier 1 / Tier 3 candidates read, not computed
+_RUN_SUFFIX = _ARM_SUFFIX + (f"_grid{_GRID_OFFSET}" if _GRID_OFFSET else "") + ("_advzero" if _ADV_MISSING == "zero" else "")
 
 _SCAN_OUTPUTS = [os.path.join(_OUT_DIR, f"wrds_deep_history_episodic_scan_{n}{_RUN_SUFFIX}.parquet")
-                 for n in (("tier2_windows", "tier2_confirmed", "tier3_windows", "tier3_confirmed") if _GRID_OFFSET else
+                 for n in (("tier2_windows", "tier2_confirmed", "tier3_windows", "tier3_confirmed") if _REUSES_PRIMARY else
                            ("tier1", "tier2_windows", "tier2_confirmed", "tier3_pairs", "tier3_windows", "tier3_confirmed"))]
 
 
@@ -1161,8 +1170,8 @@ def _run_checkpoint_files():
     """THIS run's checkpoint files only, by their exact names (2026-10-07: a `checkpoint_{cid}{suffix}*` glob also
     matched other arms' / grids' checkpoints, e.g. the primary's caught checkpoint_tier2_rolling_d18incl_*)."""
     out = []
-    # a grid run never computes Tier 1 (it reads the offset-0 file), so it never owns a Tier 1 checkpoint
-    for cid in (("tier2_rolling", "tier3_rolling") if _GRID_OFFSET else
+    # a grid / adv-zero run never computes Tier 1 (it reads the primary file), so it never owns a Tier 1 checkpoint
+    for cid in (("tier2_rolling", "tier3_rolling") if _REUSES_PRIMARY else
                 ("tier1_fullsample", "tier2_rolling", "tier3_rolling")):
         run_id = cid + _RUN_SUFFIX
         out += [p for p in _checkpoint_paths(run_id) if os.path.exists(p)]
@@ -1215,7 +1224,7 @@ def main():
     # load_wrds_universe deliberately doesn't carry.
     log.info("Building rolling ADV series for the liquidity gate (separate load pass, needs volume)...")
     ohlcv_universe = load_wrds_universe_ohlcv()
-    adv_by_symbol = {sym: rolling_adv(df) for sym, df in ohlcv_universe.items()}
+    adv_by_symbol = {sym: rolling_adv(df, missing_volume=_ADV_MISSING) for sym, df in ohlcv_universe.items()}
     log.info(f"Rolling ADV computed for {len(adv_by_symbol)} symbols "
              f"(threshold ${Config.STATS.ADV_FILTER_USD/1e6:.0f}M, applied to Tier 2/3 only -- "
              f"Tier 1's full-sample test is unchanged, production-identical)")
@@ -1277,8 +1286,8 @@ def main():
     # reconstructing `pairs` from it is lossless. Delete the output file first to force a genuine
     # from-scratch Tier 1 re-run.
     _tier1_output_path = os.path.join(_OUT_DIR, f"wrds_deep_history_episodic_scan_tier1{_ARM_SUFFIX}.parquet")
-    if _GRID_OFFSET and not os.path.exists(_tier1_output_path):
-        raise SystemExit(f"--grid-offset reuses the offset-0 Tier 1 output, missing: {_tier1_output_path}")
+    if _REUSES_PRIMARY and not os.path.exists(_tier1_output_path):
+        raise SystemExit(f"--grid-offset / --adv-missing zero reuse the offset-0 Tier 1 output, missing: {_tier1_output_path}")
     if os.path.exists(_tier1_output_path):
         log.info(f"[TIER 1] Found existing output at {_tier1_output_path} -- resuming from it "
                  f"instead of re-running correlation+EG from scratch. Delete this file first to "
@@ -1414,8 +1423,8 @@ def main():
     # `tier3_pairs` to its own checkpoint file immediately after computing it, and skip
     # recomputation on a future relaunch if that file already exists.
     _tier3_pairs_path = os.path.join(_OUT_DIR, f"wrds_deep_history_episodic_scan_tier3_pairs{_ARM_SUFFIX}.parquet")
-    if _GRID_OFFSET and not os.path.exists(_tier3_pairs_path):
-        raise SystemExit(f"--grid-offset reuses the offset-0 Tier 3 candidate list, missing: {_tier3_pairs_path}")
+    if _REUSES_PRIMARY and not os.path.exists(_tier3_pairs_path):
+        raise SystemExit(f"--grid-offset / --adv-missing zero reuse the offset-0 Tier 3 candidate list, missing: {_tier3_pairs_path}")
     if os.path.exists(_tier3_pairs_path):
         log.info(f"[TIER 3] Found existing candidate-pairs cache at {_tier3_pairs_path} -- "
                  f"resuming from it instead of re-running the multi-hour rolling correlation "

@@ -56,6 +56,16 @@ def _declare(lin: Lineage) -> Lineage:
                   outputs=[f"{_R}/wrds_deep_history_episodic_scan_{n}_grid{off}.parquet" for n in
                            ("tier2_windows", "tier2_confirmed", "tier3_windows", "tier3_confirmed")],
                   params={"lookback_years": 50, "d18_arm": "exclude", "grid_offset": off})
+    # Missing-volume arm (Ross 2026-10-28, BUG-D122): priced days without volume count as zero in the Tier 2/3 ADV gate;
+    # Tier 1 and Tier 3's candidate list are the primary run's files (neither reads ADV).
+    lin.stage("episodic_scan_advzero",
+              code=["research/wrds_deep_history_episodic_scan.py", "data_wrds.py",
+                    "research/rolling_adv_comparison.py"] + _CORE,
+              inputs=["output/cache/wrds", f"{_R}/wrds_deep_history_episodic_scan_tier1.parquet",
+                      f"{_R}/wrds_deep_history_episodic_scan_tier3_pairs.parquet"],
+              outputs=[f"{_R}/wrds_deep_history_episodic_scan_{n}_advzero.parquet" for n in
+                       ("tier2_windows", "tier2_confirmed", "tier3_windows", "tier3_confirmed")],
+              params={"lookback_years": 50, "d18_arm": "exclude", "adv_missing": "zero"})
     for tf in ("1h", "4h"):
         lin.stage(f"intraday_scan_{tf}", code=["research/intraday_episodic_scan.py",
                                                "research/wrds_deep_history_episodic_scan.py"] + _CORE,
