@@ -30015,3 +30015,16 @@ as a zero-volume (no-trade) day. No minimum-coverage constant was added.
   authenticated, then my query failed (psycopg2 read the `%` in ILIKE patterns as parameter markers; output truncated
   before the library listing). Run 2 (fixed query) did not authenticate: WRDS asked for the username interactively. I
   stopped there to avoid a lockout. Script for Ross to run with `!`: session scratchpad `niq_check.py`. Unknown so far.
+
+### 2026-10-28: Surface run blocked -- the Surface cache is not CachyOS's; sync attempt failed and was rolled back
+
+Ross: run the discovery re-run on the Surface, not CachyOS. Pre-flight parity check (names + sizes of output/cache/wrds and
+_sealed_vault): CachyOS 46,218 1D files / 18,865 sealed; Surface 45,407 / 18,603. 23,676 files differ in size, 1,897 exist
+only on CachyOS, 11,632 only on the Surface (9,382 of them 1D files the scan's glob would load, mostly old `PERMNO*` /
+`dup_PERMNO*` labels that the BUG-D117 relabeling retired on CachyOS). A run on the Surface copy would scan a different,
+partly mislabelled universe, not comparable to Amendments 4-6. US spot checks (AAPL, PEP, NTRS, KMB) are byte-identical.
+Sync attempt: moved the 35,308 Surface-only / to-be-replaced files aside, streamed the 3.7 GB list over `tar` -- and my
+list file had CRLF line endings (Python text mode on Windows), so CachyOS's tar found none of the names; only the last
+line (no terminator) copied. CachyOS then went offline on Tailscale mid-session (likely a hard hang; watchdog not armed).
+Rolled back: all files moved back, the one overwritten file restored, listing byte-for-byte equal to the pre-sync listing.
+Next: when CachyOS is back, redo the sync with an LF list (and re-verify names+sizes), then Amendment 7 + Surface chain.
