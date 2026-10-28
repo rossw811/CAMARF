@@ -30028,3 +30028,23 @@ list file had CRLF line endings (Python text mode on Windows), so CachyOS's tar 
 line (no terminator) copied. CachyOS then went offline on Tailscale mid-session (likely a hard hang; watchdog not armed).
 Rolled back: all files moved back, the one overwritten file restored, listing byte-for-byte equal to the pre-sync listing.
 Next: when CachyOS is back, redo the sync with an LF list (and re-verify names+sizes), then Amendment 7 + Surface chain.
+
+### 2026-10-28 (evening): CachyOS out for a few days -- what the Surface can and cannot run
+
+Ross: CachyOS unavailable for a few days; do the processing on the Surface. Checked every queued compute job against
+what the Surface holds:
+- **Discovery re-run (Amendment 7): cannot run comparably here.** Beyond the label drift above, the Surface's Compustat
+  Global 1D files (15,082; columns open..close_usd, volume_raw, volume_adj_factor, last written 2026-10-22) have no
+  `close_total_return`, and 14,642 of the 15,218 size-differing WRDS files are larger on CachyOS (later restatements:
+  `_trfd` total return, qunit repair, volume adjustment). 1,633 GVKEY 1D files exist only on CachyOS (fetched there;
+  re-fetching needs an attended WRDS login). Rebuilding by replaying ~5 transforms + a fetch would give a third snapshot
+  that cannot be checked against CachyOS's until it is back. Not done; the chain waits for the sync.
+- **Edge accounting re-run: inputs absent on the Surface** (`output/research/edge_accounting_*`,
+  `output/results_wholehistory/`, `purity_pairs_pit_k{1,2}_clean.parquet` all built on CachyOS). Waits.
+- **E1 plant gate (decision 2): no code change needed.** `choose_plant_bases` reads `rolling_adv(src_df)`
+  (research/placebo_discovery_e1.py:309), the fixed function, and counts NaN as failing -- the same reading discovery's
+  gate now makes (`adv_at`, NaN fails, wrds_deep_history_episodic_scan.py:804-807). **Real-data check (indicative:
+  Surface cache, not the run snapshot):** long-history (>= PLANT_MIN_DAYS) international bases 11,108; clearing
+  PLANT_MIN_ADV_SHARE 0.5 at $25M: **543** (was 3 of 10,823 on CachyOS before the fix; 64 needed). Share quantiles
+  p50 0 / p75 0 / p90 0.203 / p99 0.822. E1 v2 is unblocked without touching a registered constant; recount on the run
+  snapshot at build time (the guard does this). Script: session scratchpad `plant_count.py`.
