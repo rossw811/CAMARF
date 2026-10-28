@@ -22,7 +22,10 @@ saved = open(os.path.join("output", "research", "a7_cachyos_cache_listing.tsv"),
 cur = {}
 for r, _, fs in os.walk(root):
     for f in fs:
-        p = os.path.join(r, f); cur[os.path.relpath(p, root).replace("\\", "/")] = os.path.getsize(p)
+        p = os.path.join(r, f); rel = os.path.relpath(p, root).replace("\\", "/"); t = rel.split("/")[0]
+        if "/" in rel and t.startswith("_") and t != "_sealed_vault":
+            continue                         # backups / derived memos: not mirrored (sync_cache.py, same rule)
+        cur[rel] = os.path.getsize(p)
 now = "".join(f"{p}\t{cur[p]}\n" for p in sorted(cur))
 h = hashlib.sha256(saved.encode()).hexdigest()
 print(f"parity ({sys.argv[1]}): {len(cur)} files; listing sha256 {h}; {'MATCH' if now == saved else 'DIFFERS'}")
