@@ -263,3 +263,35 @@ windows under the 2025-12 family). Both dilute. This arm re-decides membership e
 3. **Multiple testing.** This arm is its own family (2 pools x 216 = 432 trials per split) and is ALSO reported with
    N = 864 (Amendment 5 plus this arm), the honest count of configurations tried on these pairs.
 4. **Reported regardless of outcome**, next to Amendment 5; it does not replace it.
+
+## Amendment 7 (approved by Ross 2026-10-27 "yes to all" and 2026-10-28; committed before ANY result of the re-run below exists)
+Two defects found after the Amendment 5/6 results were in, so both are RE-RUN under this amendment; the Amendment 5
+result and the Amendment 6 arm are kept and reported as superseded, never as the result.
+1. **Liquidity gate ADV (BUG-D122).** `rolling_adv` was a 252-day mean with min_periods = 252, so one missing volume day
+   voided a year (81% of international ADV rows NaN), and discovery's `.asof` lookup then used the last valid value
+   (median 904 trading days old for international legs). Now: the mean over days with volume in the trailing 252,
+   NaN only where the window holds a DATA_GAP (> data._MAX_FILL_BARS = 5 consecutive missing days, the GapFlag rule)
+   or fewer than 252 rows exist; the gate reads the value on the window-start row exactly (`adv_at`), and NaN fails.
+   Disclosed: a priced day without volume counts as no data, not zero volume, which can raise the ADV of an
+   intermittently traded listing. `debug/_verify_rolling_adv_gap_rule.py` (fails 4/8 on the old code).
+2. **Commission share count (BUG-D121).** Dollar P&L counted commission shares at the split-adjusted close (PEP 1931:
+   ~$6.9k commission per $10k leg); shares are now counted at the traded price (close x volume_adj_factor).
+   `debug/_verify_pnl_dollar_share_count.py` (fails on the old code).
+3. **Comparison arm on item 1 (`--adv-missing zero`, outputs `_advzero`).** A priced day with no volume counts as zero
+   volume. It re-runs discovery's Tier 2/3 only (Tier 1 and Tier 3 candidates reused from the primary run, as the
+   grid-offset arm does) and is reported as a discovery-level comparison next to the primary: confirmed pairs, overlap
+   with the primary, US and international separately. It does not feed pools or the search, so it adds no search
+   trials. Real data before any run: international ADV ratio skip/zero median 1.043 (p90 1.068, max 1.18), US 1.000;
+   international rows with a valid ADV +18.2%.
+4. **Trial count.** This re-run's search is its own family (2 pools x 216 = 432 per split), and is ALSO reported with
+   N = 1,296: Amendment 5 (432), the Amendment 6 arm (432) and this re-run (432), the honest count of configurations
+   tried on these data.
+5. **Run machine and data snapshot.** Run on the Surface (CachyOS unavailable), from a copy of CachyOS's
+   `output/cache/wrds` and `output/cache/_sealed_vault` mirrored by names and sizes; replaced and Surface-only files
+   are kept in a dated backup folder; CachyOS's `output/research` (the Amendment 5/6 outputs, kept as superseded) is
+   copied alongside without removing Surface-only files. The chain records the SHA-256 of the sorted (path, size) listing at start and stops
+   if names or sizes differ from CachyOS's listing, or if the seal audit counts any sealed row.
+Discovery (`--fresh --d18 exclude`), the item-3 arm, intraday, adapter, market calendars, pools, spreads and the search
+are re-run in full. Unchanged: everything else in Amendments 2-5 -- grid, splits, embargo, selection rule, DSR/PBO,
+success criterion and the disclosed evaluation deviations of Amendment 4 item 3. The Amendment 6 sensitivity arm is
+not re-run in this chain.
