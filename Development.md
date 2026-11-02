@@ -30093,3 +30093,22 @@ what the Surface holds:
    (check 1 reproduces "cannot find context for 'fork'"). Real data: 2 configs x 3 A5 k2 pairs under spawn = the
    in-process result (37 trades, files identical). The other chain pools (ProcessPoolExecutor: discovery, adapter,
    analysis) pass their data in the tasks and already use spawn on Windows (c138aff2).
+
+### 2026-11-02: Surface discovery thrashed; Amendment 7 moved to CachyOS; queue A7 -> edge accounting -> E1 v2
+
+- **What happened:** the Surface chain's discovery logged "Building rolling ADV series" at 21:00 on 11-01 and nothing
+  after. At 08:50 on 11-02: python private memory 15.2 GB on 16 GB RAM, commit 31.8 / 32.6 GB, ~8,500 pages/s, 1,210
+  CPU-seconds in 12.5 hours -- paging, not computing. This is the RAM limit the standing note "use CachyOS for
+  RAM-heavy work" describes (Ross had overridden it for the CachyOS outage). Stopped by hand (launcher, chain, the
+  waiting edge chain, discovery); both Surface logs record why. No result was produced.
+- **Moved to CachyOS** (Ross 11-02: "yes run them on cachy"): Amendment 7 addendum (0b1bef97) names CachyOS; data
+  unchanged -- CachyOS's own cache matched the 11-01 listing before launch (131,094 files, sha256 bc405018...a110) and
+  the chain gates on it again. `debug/_tmp_queue_cachyos_20261102.sh` runs one heavy job at a time:
+  `_tmp_chain_a7_cachyos_20261102.sh` (the Surface chain with CachyOS paths), then edge accounting (4 phases, 10-25
+  outputs kept), then E1 v2 (`_tmp_chain_e1_v2_20261102.sh`, 3 seeds). Started 08:50 on 0b1bef97. Logs:
+  logs/latest/latest_run_queue_cachyos_20261102.log, latest_run_rerun_a7_cachyos_20261102.log,
+  latest_run_edge_cachyos_20261102.log, latest_run_e1_v2_20261102.log.
+- **E1 v2** was started first (08:48) and paused by hand in its build step (08:49) to keep one heavy job at a time.
+  Pre-flight on CachyOS: `_verify_placebo_discovery_e1_v2` 8/8, `_verify_mp_pool_spawn` 4/4. Its `score` false share
+  compares with CachyOS's A5 real tier-3 windows; re-score each seed against the A7 windows (cheap, from saved outputs).
+  Tier 1 (the guard's input) is computed before the ADV gate, so BUG-D122 does not affect that guard.
