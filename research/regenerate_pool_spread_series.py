@@ -92,8 +92,8 @@ def main():
             print(f"{tf}: resolved {len(_PRE[tf])}/{len(needed)}", flush=True)
     t0 = time.time()
     res = []
-    from analysis import _limit_worker_blas_threads   # 1 BLAS thread per worker (hardware check, 2026-10-10)
-    with mp.get_context("fork").Pool(args.workers, initializer=_limit_worker_blas_threads) as pool:
+    import mp_pool   # fork on Linux, spawn on Windows; workers get the parent's _PRE / _BACKUP either way
+    with mp_pool.worker_pool(args.workers, _one, {"_PRE": _PRE, "_BACKUP": _BACKUP}) as pool:
         for i, r in enumerate(pool.imap_unordered(_one, tasks), 1):  # noqa: B007
             res.append(r)
             if i % 100 == 0 or i == len(tasks):

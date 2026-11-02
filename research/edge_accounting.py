@@ -214,9 +214,9 @@ def phase_spreads(workers):
             _PRE[tf] = {s: fu[s] for s in needed if s in fu}
             del fu
             print(f"{tf}: pre-resolved {len(_PRE[tf])}/{len(needed)} placeholder symbols", flush=True)
-    from analysis import _limit_worker_blas_threads
+    import mp_pool   # fork on Linux, spawn on Windows; workers get the parent's _PRE either way
     t0, res = time.time(), []
-    with mp.get_context("fork").Pool(workers, initializer=_limit_worker_blas_threads) as pool:
+    with mp_pool.worker_pool(workers, _wh_one, {"_PRE": _PRE}) as pool:
         for i, r in enumerate(pool.imap_unordered(_wh_one, tasks), 1):
             res.append(r)
             if i % 100 == 0 or i == len(tasks):

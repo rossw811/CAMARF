@@ -162,8 +162,8 @@ def run_phase(workers, fresh=False, pools=None):
     tasks = [(p, c) for p in pools for c in build_grid()]
     print(f"{len(tasks)} runs, {workers} workers", flush=True)
     t0 = time.time()
-    from analysis import _limit_worker_blas_threads   # 1 BLAS thread per worker (hardware check, 2026-10-10)
-    with mp.get_context("fork").Pool(workers, initializer=_limit_worker_blas_threads) as pool:
+    import mp_pool   # fork on Linux, spawn on Windows; workers get the parent's _POOL_DF either way
+    with mp_pool.worker_pool(workers, _run_one, {"_POOL_DF": _POOL_DF}) as pool:
         for i, (cid, n) in enumerate(pool.imap_unordered(_run_one, tasks), 1):
             if i % 10 == 0 or i == len(tasks):
                 print(f"{i}/{len(tasks)} done ({time.time() - t0:.0f}s); last {cid}: {n}", flush=True)
