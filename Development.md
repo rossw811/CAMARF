@@ -30069,3 +30069,27 @@ what the Surface holds:
 - **Chain:** `debug/_tmp_launch_a7_surface.ps1` -> `debug/_tmp_chain_a7_surface_20261028.sh`, started 2026-11-01 18:05
   on code 485be68f as a detached process (a scheduled task was refused by the permission check). Log
   logs/latest/latest_run_rerun_a7_surface_20261028.log; parity gate at start MATCH.
+- **Chain progress 11-01:** seal audit 0 sealed rows (2 h on the Surface: 131k files, Defender scans); A5/A6 outputs
+  kept (11 files, `output/research/_superseded_a5_a6_20261028/`); suite 442 tests, 0 unexplained failures (only the
+  known paper-claims checks); discovery started 20:23.
+
+### 2026-11-01: Two changes while discovery runs -- edge accounting spans; fork-only pools (would have stopped the chain)
+
+1. **Edge accounting spans (Ross 10-26 decision 3).** `edge_accounting.eval_spans` / `span_table` (c3cd4bd4): each
+   selection arm on its own span (first-to-last pre-seal exit of its common-universe trades); the S/P/X Shapley split
+   and joint bootstrap on the overlap ("same_era"), where both arms trade; the 10-25 single grid kept as "union".
+   `_verify_edge_accounting.py` 6/8 -> 8/8. Real data (10-25 trade files, still pre-BUG-D121): union reproduces the
+   10-25 run (k1 all-old -1.671; S 0.864, P 0.761); own-span PIT k1 -1.952; same-era k1 S 0.601 / P 1.851 / X 0.000,
+   k2 S -0.034 / P 0.565 -- the independent review's numbers. The result needs the run phase re-done with the
+   commission fix: queued after the A7 chain (`debug/_tmp_chain_edge_surface_20261101.sh`, all four phases since A7
+   rebuilds the pools and spreads; 10-25 outputs kept in `output/research/_superseded_edge_20261025/`).
+2. **Fork-only process pools (found by checking the chain's later steps before they run).** regenerate_pool_spread_series
+   (chain step pool_spreads), strategy_search run and edge_accounting spreads used `mp.get_context("fork")`, which
+   does not exist on Windows: the Surface chain would have stopped at pool_spreads, after ~a day of discovery. New
+   `mp_pool.worker_pool`: fork where available (CachyOS, CI: unchanged), else spawn, passing the parent globals the
+   workers read (_PRE, _BACKUP -- an import-time timestamp a re-import would change -- and _POOL_DF). First version
+   failed its own check: a spawned child runs the main script through runpy, so the worker function's `__globals__`
+   is a different dict from `__mp_main__.__dict__`; the helper now updates both. `_verify_mp_pool_spawn.py` 1/2 -> 4/4
+   (check 1 reproduces "cannot find context for 'fork'"). Real data: 2 configs x 3 A5 k2 pairs under spawn = the
+   in-process result (37 trades, files identical). The other chain pools (ProcessPoolExecutor: discovery, adapter,
+   analysis) pass their data in the tasks and already use spawn on Windows (c138aff2).
