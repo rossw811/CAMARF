@@ -30048,3 +30048,24 @@ what the Surface holds:
   PLANT_MIN_ADV_SHARE 0.5 at $25M: **543** (was 3 of 10,823 on CachyOS before the fix; 64 needed). Share quantiles
   p50 0 / p75 0 / p90 0.203 / p99 0.822. E1 v2 is unblocked without touching a registered constant; recount on the run
   snapshot at build time (the guard does this). Script: session scratchpad `plant_count.py`.
+
+### 2026-11-01: Cache synced CachyOS -> Surface; Amendment 7 chain started on the Surface
+
+- **Sync** (session scratchpad `sync_cache.py`; logs/sync_cache_a7_20261028.log, logs/sync_cache_a7_20261101.log): output/cache
+  mirrored by names + sizes, excluding top-level `_*` backup/derived folders (the 141 GB `_universe_loader_memo` is
+  rebuilt on demand; the Surface's copy was set aside so a stale memo cannot be served). 35,423 replaced / Surface-only
+  files moved to `output/_cache_backup_presync_20261028/` (not deleted). LF file list this time. Result: 131,094 files
+  (12.09 GB) identical in name and size on both machines (`--verify` PARITY OK, 10-28 and again 11-01). CachyOS listing
+  saved to output/research/a7_cachyos_cache_listing.tsv (sha256 bc405018...a110). CachyOS `output/research` (7,893 files,
+  4.0 GB; 349 Surface files replaced, backed up; 1,507 Surface-only kept) and `output/results_wholehistory` (421 files)
+  copied additively. CachyOS logs, E1 v1 runs, output/results (A5 spreads), untracked repo files, its working-tree diff
+  and HEAD (3d7e361f) kept in `output/_cachyos_snapshot_20261028/` (byte totals match).
+- **Incidents:** Claude Code's low-memory reaper killed the 10-28 sync script mid-copy (its tar|ssh kept running and
+  finished; parity then verified). 11-01: CachyOS's Tailscale had not come up after boot; found it at 10.0.5.203 by a
+  /21 port-22 scan and confirmed the host key equals the stored 100.64.64.126 key before connecting.
+- **CI:** the two failures on 10-28 (`_verify_degenerate_column_audit`, `_verify_squeeze_momentum_features`) passed every
+  check and aborted at interpreter exit ("terminate called without an active exception", pyarrow teardown); re-run of
+  40741130060 passed. Flaky exit, not a code failure.
+- **Chain:** `debug/_tmp_launch_a7_surface.ps1` -> `debug/_tmp_chain_a7_surface_20261028.sh`, started 2026-11-01 18:05
+  on code 485be68f as a detached process (a scheduled task was refused by the permission check). Log
+  logs/latest/latest_run_rerun_a7_surface_20261028.log; parity gate at start MATCH.
