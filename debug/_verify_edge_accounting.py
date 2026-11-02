@@ -110,5 +110,47 @@ check("5 SPREAD_ROOT moves the spread path; whole-history root is not output/res
 import clean_pool_identity_pairs as cpi  # noqa: E402
 check("6 clean_pool reusable", callable(getattr(cpi, "clean_pool", None)))
 
+# --- Spans (Ross 2026-10-26 decision 3, after the review: one 1931-2025 grid zero-padded the PIT book) ---
+def book(start, end, n, seed, mu=0.002):
+    r = np.random.default_rng(seed)
+    ex = pd.to_datetime(r.choice(pd.bdate_range(start, end), size=n, replace=False))
+    return pd.DataFrame({"exit_time": ex, "pnl_net": r.normal(mu, 0.01, n) * 10, "n_shares_a": 10, "hedge_ratio": 0.0,
+                         "status_holes": "ok", "status_noholes": "ok", "pnl_dollar_net": r.normal(mu, 0.01, n) * 1000,
+                         "notional_dollar_entry": 1000.0})
+
+
+WH = book("1931-01-02", "2025-12-31", 3000, 11)
+PIT = pd.concat([book("2006-01-03", "2025-12-31", 1500, 12),
+                 book("2026-01-05", "2026-03-31", 40, 13)], ignore_index=True)   # past the seal: never counted
+try:
+    sp = ea.eval_spans({"wh": WH, "pit": PIT}, "2026-01-01")
+    ok7 = (sp["own"]["pit"][0] >= pd.Timestamp("2006-01-03") and sp["own"]["pit"][1] <= pd.Timestamp("2025-12-31")
+           and sp["own"]["wh"][0] < pd.Timestamp("1932-01-01")
+           and sp["same_era"] == (max(sp["own"]["wh"][0], sp["own"]["pit"][0]), min(sp["own"]["wh"][1], sp["own"]["pit"][1]))
+           and sp["union"] == (min(sp["own"]["wh"][0], sp["own"]["pit"][0]), max(sp["own"]["wh"][1], sp["own"]["pit"][1])))
+    det7 = str(sp)
+except AttributeError as e:
+    ok7, det7, sp = False, str(e), None
+check("7 spans: own per arm (pre-seal exits), same_era = overlap, union = old single grid", ok7, det7)
+
+try:
+    tab, mats = ea.span_table({"wh": WH, "pit": PIT}, "2026-01-01")
+    own_pit = tab[(tab["span"] == "own") & (tab["S"] == 1) & (tab["P"] == 1) & (tab["X"] == 1)].iloc[0]
+    uni_pit = tab[(tab["span"] == "union") & (tab["S"] == 1) & (tab["P"] == 1) & (tab["X"] == 1)].iloc[0]
+    C = ea.cell_returns(PIT, True, True)
+    d_own = ea.daily_series(C, pd.bdate_range(*sp["own"]["pit"]))
+    se = tab[tab["span"] == "same_era"]
+    n_wh_in = int(((WH["exit_time"] >= sp["same_era"][0]) & (WH["exit_time"] <= sp["same_era"][1])).sum())
+    ok8 = (np.isclose(own_pit["sharpe"], ea.sharpe(d_own)) and own_pit["n_days"] == len(d_own)
+           and abs(uni_pit["sharpe"]) < abs(own_pit["sharpe"])                       # zero-padding shrinks it
+           and se["n_days"].nunique() == 1 and int(se[(se.S == 0) & (se.P == 1) & (se.X == 1)]["n_trades"].iloc[0]) == n_wh_in
+           and own_pit["n_trades"] == 1500 and set(mats) == {"same_era", "union"}
+           and mats["same_era"].shape == (int(se["n_days"].iloc[0]), 8))
+    det8 = (f"own pit {own_pit['sharpe']:.3f} ({own_pit['n_days']} d, {own_pit['n_trades']} tr) vs union "
+            f"{uni_pit['sharpe']:.3f}; same-era wh n {se[(se.S == 0)]['n_trades'].tolist()} expect {n_wh_in}")
+except AttributeError as e:
+    ok8, det8 = False, str(e)
+check("8 span_table: own = arm's own days; union shrinks the PIT book; same-era one calendar, trades in span only", ok8, det8)
+
 print(f"\n{passed} passed, {failed} failed")
 sys.exit(1 if failed else 0)

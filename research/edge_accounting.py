@@ -107,6 +107,51 @@ def shapley(v: dict) -> dict:
     return out
 
 
+def _exits(T: pd.DataFrame) -> pd.Series:
+    t = pd.to_datetime(T["exit_time"])
+    return (t.dt.tz_localize(None) if getattr(t.dt, "tz", None) is not None else t).dt.normalize()
+
+
+def eval_spans(T: dict, sealed_from) -> dict:
+    """Evaluation calendars (Ross 2026-10-26 decision 3). One 1931-2025 grid for both selection arms zero-padded the
+    PIT book's empty pre-2006 years (review: own-span PIT k1 -1.95, not -0.907), so each arm gets its own span (first
+    to last pre-seal exit of its common-universe trades); the S/P/X decomposition uses the overlap ("same_era"), where
+    both arms trade; "union" is the original single grid, kept for comparison with the 10-25 numbers."""
+    end_cap = pd.Timestamp(sealed_from) - pd.Timedelta(days=1)
+    own = {}
+    for arm, t in T.items():
+        e = _exits(t[in_universe(t)])
+        e = e[e <= end_cap]
+        own[arm] = (e.min(), e.max())
+    starts, ends = [s for s, _ in own.values()], [e for _, e in own.values()]
+    return {"own": own, "same_era": (max(starts), min(ends)), "union": (min(starts), max(ends))}
+
+
+def span_table(T: dict, sealed_from):
+    """Per (span, cell): trades exiting inside the span, days, mean trade return, Sharpe. Returns (table, matrices):
+    matrices[span] = days x 8 cells (CELLS order) for the spans that share one calendar across cells -- same_era and
+    union, the only ones a Shapley split or joint bootstrap is defined on ("own" changes the era along with S)."""
+    sp = eval_spans(T, sealed_from)
+    rows, mats = [], {}
+    for span in ("own", "same_era", "union"):
+        cols = []
+        for s, p, x in CELLS:
+            arm = "pit" if s else "wh"
+            lo, hi = sp["own"][arm] if span == "own" else sp[span]
+            days = pd.bdate_range(lo, hi)
+            C = cell_returns(T[arm], bool(p), bool(x))
+            e = _exits(C)
+            C = C[((e >= lo) & (e <= hi)).to_numpy()]
+            d = daily_series(C, days)
+            cols.append(d)
+            rows.append({"span": span, "S": s, "P": p, "X": x, "start": lo.date(), "end": hi.date(), "n_days": len(days),
+                         "n_trades": len(C), "mean_trade_ret": float(C["ret"].mean()) if len(C) else float("nan"),
+                         "sharpe": sharpe(d), "n_excluded": n_excluded(T[arm])})
+        if span != "own":
+            mats[span] = np.column_stack(cols)
+    return pd.DataFrame(rows), mats
+
+
 def joint_bootstrap_sharpes(M: np.ndarray, block: float, reps: int = BOOT_REPS, seed: int = 20261025) -> np.ndarray:
     """(reps x cells) Sharpes, each draw one stationary-bootstrap day path applied to every cell (column)."""
     from eg_null_correlation_matched_n14 import stationary_indices
@@ -219,49 +264,46 @@ def phase_eval():
             print(f"k{k}: trades missing, skipped", flush=True)
             continue
         T = {a: pd.read_parquet(trades_path(a, k)) for a in ("wh", "pit")}
-        ex = pd.concat([pd.to_datetime(t["exit_time"]) for t in T.values()])
-        ex = ex.dt.tz_localize(None) if ex.dt.tz is not None else ex
-        days = pd.bdate_range(ex.min().normalize(), min(ex.max().normalize(),
-                                                        pd.Timestamp(Config.DATA.SEALED_FROM) - pd.Timedelta(days=1)))
-        rows, cols = [], []
-        for s, p, x in CELLS:
-            C = cell_returns(T["pit" if s else "wh"], bool(p), bool(x))
-            d = daily_series(C, days)
-            cols.append(d)
-            rows.append({"S": s, "P": p, "X": x, "n_trades": len(C), "mean_trade_ret": float(C["ret"].mean()),
-                         "sharpe": sharpe(d), "n_excluded": n_excluded(T["pit" if s else "wh"])})
-        M = np.column_stack(cols)
-        cells = pd.DataFrame(rows)
-        v = {(r.S, r.P, r.X): r.sharpe for r in cells.itertuples()}
-        sh = shapley(v)
-        block = max(1, int(round(politis_white_block_length(M[:, CELLS.index((0, 0, 0))]))))
-        B = joint_bootstrap_sharpes(M, block)
-        Bsh = np.array([[shapley({c: B[r, j] for j, c in enumerate(CELLS)})[f] for f in FACTORS] for r in range(len(B))])
-        S = pd.DataFrame({"factor": FACTORS, "shapley": [sh[f] for f in FACTORS],
-                          "lo95": np.nanpercentile(Bsh, 2.5, axis=0), "hi95": np.nanpercentile(Bsh, 97.5, axis=0),
-                          "alone_from_all_old": [v[tuple(int(i == j) for j in range(3))] - v[(0, 0, 0)] for i in range(3)],
-                          "block": block})
+        cells, mats = span_table(T, Config.DATA.SEALED_FROM)
         cells.to_parquet(os.path.join(R_DIR, f"edge_accounting_k{k}.parquet"), index=False)
-        S.to_parquet(os.path.join(R_DIR, f"edge_accounting_shapley_k{k}.parquet"), index=False)
-        fwd = [v[(0, 0, 0)], v[(1, 0, 0)], v[(1, 1, 0)], v[(1, 1, 1)]]
-        print(f"\nk{k}: {len(days)} business days, block {block}")
+        print(f"\nk{k}: cells per span (own = each selection arm on its own span; descriptive, no decomposition)")
         print(cells.to_string(index=False))
-        print(S.to_string(index=False))
-        print(f"forward S -> P -> X: " + " -> ".join(f"{x:.2f}" for x in fwd))
-        _capsim_corners(T, k, days)
+        shap_rows = []
+        for span in ("same_era", "union"):              # same_era is the headline; union = the 10-25 single grid
+            M = mats[span]
+            v = {c: cells[(cells.span == span) & (cells.S == c[0]) & (cells.P == c[1]) & (cells.X == c[2])]["sharpe"].iloc[0]
+                 for c in CELLS}
+            sh = shapley(v)
+            block = max(1, int(round(politis_white_block_length(M[:, CELLS.index((0, 0, 0))]))))
+            B = joint_bootstrap_sharpes(M, block)
+            Bsh = np.array([[shapley({c: B[r, j] for j, c in enumerate(CELLS)})[f] for f in FACTORS] for r in range(len(B))])
+            S = pd.DataFrame({"span": span, "factor": FACTORS, "shapley": [sh[f] for f in FACTORS],
+                              "lo95": np.nanpercentile(Bsh, 2.5, axis=0), "hi95": np.nanpercentile(Bsh, 97.5, axis=0),
+                              "alone_from_all_old": [v[tuple(int(i == j) for j in range(3))] - v[(0, 0, 0)] for i in range(3)],
+                              "block": block, "n_days": M.shape[0]})
+            shap_rows.append(S)
+            fwd = [v[(0, 0, 0)], v[(1, 0, 0)], v[(1, 1, 0)], v[(1, 1, 1)]]
+            print(f"\nk{k} {span}: {M.shape[0]} business days, block {block}")
+            print(S.to_string(index=False))
+            print(f"forward S -> P -> X: " + " -> ".join(f"{x:.2f}" for x in fwd))
+        pd.concat(shap_rows).to_parquet(os.path.join(R_DIR, f"edge_accounting_shapley_k{k}.parquet"), index=False)
+        _capsim_corners(T, k, eval_spans(T, Config.DATA.SEALED_FROM))
 
 
-def _capsim_corners(T, k, days):
-    """Capital-constrained ($100k fixed) Sharpe for the two dollar-basis, holes-dropped corner cells (S old / new)."""
+def _capsim_corners(T, k, sp):
+    """Capital-constrained ($100k fixed) Sharpe for the two dollar-basis, holes-dropped corner cells (S old / new), on
+    each arm's own span and on the same-era span."""
     from strategy_search import _capsim_sharpe
     for arm in ("wh", "pit"):
         U = T[arm][(T[arm]["status_holes"] == "ok")].copy()
         U["pnl_net"], U["pnl_basis"] = U["pnl_dollar_net"], "dollar"
-        try:
-            sr, n = _capsim_sharpe(U, days[0], days[-1])
-            print(f"  capital-sim ($100k fixed), {arm} k{k}, dollar, holes dropped: Sharpe {sr:.2f} on {n} trades")
-        except Exception as e:  # noqa: BLE001 -- reported, the corner cells are supplementary
-            print(f"  capital-sim {arm} k{k}: {type(e).__name__}: {e}")
+        for label, (lo, hi) in (("own span", sp["own"][arm]), ("same era", sp["same_era"])):
+            try:
+                sr, n = _capsim_sharpe(U, lo, hi)
+                print(f"  capital-sim ($100k fixed), {arm} k{k}, dollar, holes dropped, {label} {lo.date()}..{hi.date()}: "
+                      f"Sharpe {sr:.2f} on {n} trades")
+            except Exception as e:  # noqa: BLE001 -- reported, the corner cells are supplementary
+                print(f"  capital-sim {arm} k{k} {label}: {type(e).__name__}: {e}")
 
 
 def main():
