@@ -295,3 +295,11 @@ Discovery (`--fresh --d18 exclude`), the item-3 arm, intraday, adapter, market c
 are re-run in full. Unchanged: everything else in Amendments 2-5 -- grid, splits, embargo, selection rule, DSR/PBO,
 success criterion and the disclosed evaluation deviations of Amendment 4 item 3. The Amendment 6 sensitivity arm is
 not re-run in this chain.
+
+### Amendment 7 addendum (2026-11-02; committed before ANY result of the re-run exists)
+**Run machine: CachyOS, not the Surface (item 5).** The Surface chain started 2026-11-01 18:05 passed its gates (cache
+parity, seal audit, suite 442 tests) and then stalled in discovery's ADV pass: 15.2 GB private memory on 16 GB RAM,
+~8,500 pages/s, 20 CPU-minutes in 12.5 hours. It was stopped before Tier 1 finished; it produced no result. CachyOS is
+available again (Ross 2026-11-02). The data are unchanged: the chain checks CachyOS's own `output/cache` against the
+listing saved at the sync (131,094 files, sha256 bc405018...a110) and stops on any difference. Everything else in
+Amendment 7 is unchanged.
