@@ -8,6 +8,12 @@ Development.md for what was lost and how it was checked. **State now:**
 **Update 2026-10-28:** Ross took the recommendation: primary ADV stays mean-over-days-with-volume (disclosed); comparison arm `--adv-missing zero` built and tested (16/16); real data: ADV level differs by a median 4% (international), coverage +18%. Next: Amendment 7 text + CachyOS chain (primary discovery re-run, then the `_advzero` arm, then downstream). Watchdog sudo still needed. NielsenIQ access: unknown (WRDS login prompted; script to run with `!`).
 **Update 2026-10-28 later:** Surface run blocked: the Surface cache differs from CachyOS's (23,676 files differ, 9,382 stale-label 1D files only here). Sync failed (CRLF in my file list) and was rolled back to the exact prior state. CachyOS went offline mid-transfer (hang; needs a power-cycle). Redo the sync when it is back, then Amendment 7 + chain.
 **Update 2026-10-28 evening:** CachyOS out for a few days (Ross). Nothing in the compute queue can run comparably on the Surface: discovery needs CachyOS's cache (Surface international files lack `close_total_return` and later repairs; 1,633 files only there); edge accounting's inputs exist only on CachyOS. E1 plant gate already uses the fixed `rolling_adv` -- indicative Surface count 543 international bases clear (was 3; 64 needed), so E1 v2 is unblocked. When CachyOS is back: LF-list sync, Amendment 7, chain.
+## 2026-11-03: MSCI climate on WRDS is sample-only (research/wrds_msci_climate_inventory.py; DATA_SOURCES_SURVEY C table):
+~80 issuers, FY2024 only, one snapshot. Integration waits on full access (Ross: ask WRDS/library whether the subscription
+is pending). Design Ross liked (when data exists): climate transition exposure as an explanatory study of co-movement and
+breaks around Paris 2015 / 2016 election / IRA 2022 (endogeneity rules, placebo pairs), plus a transition factor arm in E8.
+Queue ETA (from A5/E1 v1 durations): A7 discovery ~19:00 11-03, chain ~00:00 11-04, edge ~00:30, E1 v2 seeds ~21:30 11-04,
+~18:30 11-05, ~15:30 11-06. Target Thursday 11-05 night (Ross): A7 + edge reported and reviewed, E1 v2 seeds 1-2.
 ## 2026-11-02: RESUME HERE. Queue running on CachyOS: Amendment 7 -> edge accounting -> E1 v2
 **Do NOT `git pull` on CachyOS until the queue finishes** -- main now has the parquet_io rewrite (5fe9ed1e, 250 files;
 CI exit-abort fix); the running chain must keep the code it started with (fb8929e3). After the queue: pull, and the
