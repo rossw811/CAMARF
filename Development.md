@@ -30112,3 +30112,19 @@ what the Surface holds:
   Pre-flight on CachyOS: `_verify_placebo_discovery_e1_v2` 8/8, `_verify_mp_pool_spawn` 4/4. Its `score` false share
   compares with CachyOS's A5 real tier-3 windows; re-score each seed against the A7 windows (cheap, from saved outputs).
   Tier 1 (the guard's input) is computed before the ADV gate, so BUG-D122 does not affect that guard.
+- **Two stops before discovery, both caught by the chain's gates (evening 11-02):**
+  1. *Suite gate, 09:11:* `debug/_verify_pool_chain_hardware.py` failed 4/6 -- it reads the source for
+     `ProcessPoolExecutor(...)`/`.Pool(...)` with a BLAS initializer and found no pool in regenerate_pool_spread_series /
+     strategy_search after c138aff2 moved them to `mp_pool.worker_pool` (whose initializer does cap BLAS). CI had
+     flagged the same test on every push since c138aff2 and it was not checked then -- the lesson: read CI on each push,
+     not only the local check that was written for the change. Fix 5973c447: the check counts `worker_pool(...)` and
+     runs one, requiring 1 BLAS thread in the worker (negative control: a plain pool's workers report 16); edge_accounting
+     added. 9/9 on CachyOS and the Surface.
+  2. *Parity gate on relaunch, 20:09:* the 09:07 suite had saved live downloads into the real cache --
+     `_verify_cot_contract_history` (`force_refresh=True`) and `_verify_macro_regimes` (`macro.build()` re-fetches FRED
+     older than 20 h): 11 sealed-vault files + live `fred_BAMLH0A0HYM2`. The Surface's 11-01 suite did the same (its
+     files carry 20:06-20:11 mtimes), after that chain's start gate. No chain step reads these files (no macro import;
+     `RegimeConditioner` never constructed). The old bytes had no backup, so the listing was re-saved (Amendment 7
+     addendum 2, fb8929e3; sha256 35b51993...9515, diff kept). Fix: both tests run on a temporary cache (Surface: every
+     FRED series fetched live, real files unchanged by size + mtime); the chain re-checks parity right after the suite.
+     Relaunched 20:15; start gate MATCH.
