@@ -13,6 +13,7 @@ import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+import parquet_io
 import pnl_dollar
 import portfolio_math as pm
 from config import Config
@@ -27,7 +28,7 @@ def main():
     for f in sorted(glob.glob("output/research/churn_arms_2026-09-27/*.parquet")):
         name = os.path.basename(f)[:-8]
         arm, split = name.rsplit("_", 1)
-        T = pd.read_parquet(f)
+        T = parquet_io.read_parquet(f)
         T = T[T["hedge_method"] == "ols"]
         inv = check_trade_invariants(T, P)["counts"]
         D = pnl_dollar.add_dollar_pnl(T)

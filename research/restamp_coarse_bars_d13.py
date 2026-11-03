@@ -22,6 +22,7 @@ import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+import parquet_io
 import data_wrds as dw
 from config import Config
 from data import DataStore, YFinanceFeed
@@ -54,7 +55,7 @@ def main():
     yf_files = sorted(e.name for e in os.scandir(yf_dir) if e.is_file() and e.name.endswith("_1day.parquet"))
     for i, name in enumerate(yf_files[: args.limit], 1):
         sym = name[: -len("_1day.parquet")]
-        df = pd.read_parquet(os.path.join(yf_dir, name))
+        df = parquet_io.read_parquet(os.path.join(yf_dir, name))
         for tf, d in YFinanceFeed._resample_from_daily(df).items():
             if d is not None and not d.empty:
                 _write(d, DataStore._path(sym, tf), "yf", stats, "yf", tf)
@@ -74,13 +75,13 @@ def main():
         if args.limit and done > args.limit:
             break
         if derived:
-            df = pd.read_parquet(os.path.join(wdir, f"{label}_1D.parquet"))
+            df = parquet_io.read_parquet(os.path.join(wdir, f"{label}_1D.parquet"))
             for tf in derived:
                 d = dw.resample_daily_to(df, tf)
                 if d is not None and not d.empty:
                     _write(d, os.path.join(wdir, f"{label}_{tf}.parquet"), "wrds", stats, "wrds", tf)
         if has_1m:
-            m = pd.read_parquet(os.path.join(wdir, f"{label}_1M.parquet"))
+            m = parquet_io.read_parquet(os.path.join(wdir, f"{label}_1M.parquet"))
             _write(restamp_to_period_end(m, "1M"), os.path.join(wdir, f"{label}_1M.parquet"), "wrds", stats, "wrds",
                    "1M_native")
         if done % 500 == 0:

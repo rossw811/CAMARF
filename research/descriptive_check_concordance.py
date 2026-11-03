@@ -66,6 +66,7 @@ from scipy.stats import spearmanr
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+import parquet_io
 from analysis import Config
 from adf_confirmatory_tier import run_adf_test
 from eg_permutation_check import _circular_shift_null, _eg_pvalue, _gap_masked_log_price
@@ -98,7 +99,7 @@ def load_all_candidates():
     for f in sorted(glob.glob(os.path.join(_RESULTS_DIR, "*", "all_candidates.parquet"))):
         if "_stale_" in f:
             continue
-        df = pd.read_parquet(f)
+        df = parquet_io.read_parquet(f)
         df["_source_dir"] = os.path.basename(os.path.dirname(f))
         frames.append(df)
     if not frames:
@@ -110,7 +111,7 @@ def _load_spread(tf_dir, sym_a, sym_b):
     path = os.path.join(_RESULTS_DIR, tf_dir, f"spread_series_{sym_a}_{sym_b}.parquet")
     if not os.path.exists(path):
         return None
-    return pd.read_parquet(path)
+    return parquet_io.read_parquet(path)
 
 
 def main():

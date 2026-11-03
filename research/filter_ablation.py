@@ -49,6 +49,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import pandas as pd
 
+import parquet_io
 from analysis import CrossAssetTagger
 from backtest import _TF_DIRS
 
@@ -90,7 +91,7 @@ def _run_backtest_override(pairs_df: pd.DataFrame, tf_label: str, holdout: bool)
         portfolio_path = os.path.join("output", "backtest", f"portfolio_{label}.parquet")
         if not os.path.exists(portfolio_path):
             return {"status": "no_trades"}
-        stats = pd.read_parquet(portfolio_path).iloc[0].to_dict()
+        stats = parquet_io.read_parquet(portfolio_path).iloc[0].to_dict()
         os.remove(portfolio_path)  # don't let counterfactual runs pollute real output dir
         return {"status": "ok", **stats}
     finally:
@@ -109,8 +110,8 @@ def main():
                   f"(rerun analysis.py with the Phase-1 persistence change)")
             continue
 
-        all_candidates = pd.read_parquet(cand_path)
-        confirmed = pd.read_parquet(pairs_path)
+        all_candidates = parquet_io.read_parquet(cand_path)
+        confirmed = parquet_io.read_parquet(pairs_path)
         confirmed_keys = set(zip(confirmed["symbol_a"], confirmed["symbol_b"]))
 
         is_structural = all_candidates.apply(

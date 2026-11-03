@@ -69,6 +69,7 @@ import numpy as np
 import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import parquet_io
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "research"))
 
 from wrds_deep_history_episodic_scan import episodic_bhfdr_confirm_asof
@@ -95,7 +96,7 @@ def _load_pit_safe_rows(checkpoint_paths=_DEFAULT_CHECKPOINT_PATHS) -> list:
     for path in checkpoint_paths:
         if not os.path.exists(path):
             continue
-        df = pd.read_parquet(path)
+        df = parquet_io.read_parquet(path)
         if "window_end_date" not in df.columns:
             skipped_files.append(path)
             continue

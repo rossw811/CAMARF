@@ -28,6 +28,7 @@ def check(name, cond, detail=""):
     print(f"[{'PASS' if cond else 'FAIL'}] {name} {detail}")
 
 
+import parquet_io
 from config import Config  # noqa: E402
 try:
     import seal  # noqa: E402
@@ -76,10 +77,10 @@ with tempfile.TemporaryDirectory() as td:
         p = os.path.join(Config.DATA.CACHE_DIR, "wrds", "X_1D.parquet")
         n_open, n_sealed = seal.write_parquet(daily, p)
         vp = seal.vault_path(p)
-        check("3a write_parquet split", (n_open, n_sealed) == (2, 1) and pd.read_parquet(p).index.max() < D
-              and len(pd.read_parquet(vp)) == 1)
+        check("3a write_parquet split", (n_open, n_sealed) == (2, 1) and parquet_io.read_parquet(p).index.max() < D
+              and len(parquet_io.read_parquet(vp)) == 1)
         seal.write_parquet(frame(["2025-12-31", "2026-01-02", "2026-01-05"]), p)
-        v = pd.read_parquet(vp)
+        v = parquet_io.read_parquet(vp)
         check("3b second write merges the vault without duplicates", len(v) == 2 and v.index.is_unique, str(list(v.index)))
 
         # 4
@@ -98,7 +99,7 @@ with tempfile.TemporaryDirectory() as td:
         import data  # noqa: E402
         data.DataStore.save("Z", "1D", daily)
         zp = data.DataStore._path("Z", "1D")
-        zc = pd.read_parquet(zp)
+        zc = parquet_io.read_parquet(zp)
         check("5a DataStore.save keeps sealed rows out of the cache",
               zc.index.max() < D and os.path.exists(seal.vault_path(zp)), str(zc.index.max()))
         import datetime as _dt

@@ -53,6 +53,7 @@ import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+import parquet_io
 from config import Config
 from analysis import _eg_worker
 
@@ -90,7 +91,7 @@ def load_price_series(label: str):
     path = os.path.join(_WRDS_CACHE_DIR, f"{label}_1D.parquet")
     if not os.path.exists(path):
         return None
-    df = pd.read_parquet(path)
+    df = parquet_io.read_parquet(path)
     if "close_total_return" in df.columns and df["close_total_return"].notna().any():
         close = df["close_total_return"]
     else:
@@ -143,7 +144,7 @@ def load_confirmed_pairs(tier: int):
         path = os.path.join(_RESEARCH_DIR, "wrds_deep_history_episodic_scan_tier1.parquet")
         if not os.path.exists(path):
             return []
-        df = pd.read_parquet(path)
+        df = parquet_io.read_parquet(path)
         if "fdr_confirmed" not in df.columns:
             return []
         df = df[df["fdr_confirmed"] == True]  # noqa: E712
@@ -152,7 +153,7 @@ def load_confirmed_pairs(tier: int):
         path = os.path.join(_RESEARCH_DIR, f"wrds_deep_history_episodic_scan_tier{tier}_confirmed.parquet")
         if not os.path.exists(path):
             return []
-        df = pd.read_parquet(path)
+        df = parquet_io.read_parquet(path)
         return list(zip(df["symbol_a"], df["symbol_b"]))
 
 

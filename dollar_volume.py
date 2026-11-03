@@ -16,6 +16,7 @@ import os
 import re
 
 import pandas as pd
+import parquet_io
 
 # yfinance exchange suffix -> (currency, price units per currency unit). Only suffixes present in the cache are listed.
 _YF_SUFFIX_CCY = {"T": ("JPY", 1.0), "HK": ("HKD", 1.0), "L": ("GBP", 100.0)}   # .L: GBp (pence)
@@ -29,7 +30,7 @@ def _cached_fx(ccy: str):
     f = os.path.join(Config.DATA.CACHE_DIR, f"{ccy}USD=X_1day.parquet")
     if not os.path.exists(f):
         return None
-    d = pd.read_parquet(f)
+    d = parquet_io.read_parquet(f)
     s = pd.to_numeric(d["close"], errors="coerce")
     s.index = pd.to_datetime(d.index)
     return s.dropna().sort_index()

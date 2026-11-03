@@ -47,6 +47,7 @@ import pandas as pd
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+import parquet_io
 from stats import _fit_garch_residuals, _dcc_update, _build_daily_pnl, _MIN_GARCH_OBS
 
 _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -194,7 +195,7 @@ def main():
     if not os.path.exists(_REAL_TRADES_PATH):
         log.info("  No real trades file found at %s -- skipping real-data check.", _REAL_TRADES_PATH)
     else:
-        trades = pd.read_parquet(_REAL_TRADES_PATH)
+        trades = parquet_io.read_parquet(_REAL_TRADES_PATH)
         trades = trades.copy()
         trades["pair"] = trades["symbol_a"] + "/" + trades["symbol_b"]
         daily = _build_daily_pnl(trades)

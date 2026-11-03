@@ -50,6 +50,7 @@ from statsmodels.stats.multitest import multipletests
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "research"))
 
+import parquet_io
 from earnings import EarningsCalendar
 from data import DataStore
 
@@ -60,7 +61,7 @@ def _load_all_candidates():
     frames = []
     for f in files:
         try:
-            df = pd.read_parquet(
+            df = parquet_io.read_parquet(
                 f, columns=["symbol_a", "symbol_b", "tf_label",
                             "zivot_andrews_break", "cusum_first_excursion"]
             )

@@ -23,6 +23,7 @@ from typing import Dict, Optional
 
 import numpy as np
 import pandas as pd
+import parquet_io
 
 from config import Config
 
@@ -58,7 +59,7 @@ def _is_crypto(s: str) -> bool:
 def _exchange_by_label() -> Dict[str, str]:
     if not os.path.exists(EXCHANGE_PATH):
         return {}
-    e = pd.read_parquet(EXCHANGE_PATH, columns=["gvkey", "iid", "exchg"]).dropna(subset=["exchg"])
+    e = parquet_io.read_parquet(EXCHANGE_PATH, columns=["gvkey", "iid", "exchg"]).dropna(subset=["exchg"])
     return {f"GVKEY{str(g).zfill(6)}_{i}": str(int(x)) if str(x).replace(".0", "").isdigit() else str(x)
             for g, i, x in zip(e["gvkey"], e["iid"], e["exchg"])}
 
@@ -87,7 +88,7 @@ def derive_calendar(valid_dates_by_member: Dict[str, pd.DatetimeIndex], min_grou
 def _derived() -> Dict[str, pd.DatetimeIndex]:
     if not os.path.exists(CALENDARS_PATH):
         return {}
-    c = pd.read_parquet(CALENDARS_PATH)
+    c = parquet_io.read_parquet(CALENDARS_PATH)
     return {m: pd.DatetimeIndex(g["date"]).sort_values() for m, g in c.groupby("market")}
 
 

@@ -52,6 +52,7 @@ import pandas as pd
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from aligned_pair_loader import load_aligned_pair
+import parquet_io
 from analysis import Config
 from data import DataStore, _gap_aware_returns
 from lead_lag_scan import _eg_pvalue, _gap_masked_log_price, best_lag, lagged_corr_scan
@@ -142,7 +143,7 @@ def main():
     args = p.parse_args()
 
     if args.pairs_file:
-        pairs_df = pd.read_parquet(args.pairs_file)
+        pairs_df = parquet_io.read_parquet(args.pairs_file)
         targets = list(zip(pairs_df["symbol_a"], pairs_df["symbol_b"]))
     elif args.symbol_a and args.symbol_b:
         targets = [(args.symbol_a, args.symbol_b)]

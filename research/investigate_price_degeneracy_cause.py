@@ -25,6 +25,9 @@ import time
 
 import numpy as np
 import pandas as pd
+import sys
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # project root, for parquet_io
+import parquet_io
 import yfinance as yf
 
 _INTER_REQUEST_DELAY = 0.3
@@ -56,7 +59,7 @@ def main():
     if not os.path.exists(audit_path):
         print(f"Missing {audit_path} — run audit_price_degeneracy.py --tf 1m first.")
         return
-    audit = pd.read_parquet(audit_path)
+    audit = parquet_io.read_parquet(audit_path)
     audit["distinct_ratio"] = audit["n_distinct_close"] / audit["n_non_nan"]
     audit["flagged"] = (audit["n_distinct_close"] < 20) | (audit["distinct_ratio"] < 0.02)
 

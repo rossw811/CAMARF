@@ -57,6 +57,7 @@ import numpy as np
 import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import parquet_io
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))  # for aligned_pair_loader
 
 from aligned_pair_loader import (
@@ -91,7 +92,7 @@ def analyze_pair_jumps(results_dir: str, sym_a: str, sym_b: str) -> dict:
     path = os.path.join(results_dir, f"spread_series_{sym_a}_{sym_b}.parquet")
     if not os.path.exists(path):
         return {}
-    df = pd.read_parquet(path)
+    df = parquet_io.read_parquet(path)
     z_raw = df["z_rolling"].to_numpy(dtype=float)
     finite_mask = np.isfinite(z_raw)
     gap_bad = ((df["gap_flag_a"].to_numpy() == 4) | (df["gap_flag_b"].to_numpy() == 4))
@@ -150,7 +151,7 @@ def trade_outcomes_near_jumps(jump_timestamps_by_pair: dict) -> dict:
     trades_path = os.path.join(_BACKTEST_DIR, "trades_layer1.parquet")
     if not os.path.exists(trades_path):
         return {}
-    tr = pd.read_parquet(trades_path)
+    tr = parquet_io.read_parquet(trades_path)
     tr = tr[tr["hedge_method"] == "ols"].copy()
     if tr.empty:
         return {}
@@ -195,7 +196,7 @@ def main():
         if is_stale:
             print(f"NOTE {tf_dir}: using archived {results_dir}")
         tf_label = _DIR_TO_LABEL[tf_dir]
-        pairs_df = pd.read_parquet(pairs_path)
+        pairs_df = parquet_io.read_parquet(pairs_path)
         for _, row in pairs_df.iterrows():
             sym_a, sym_b = row["symbol_a"], row["symbol_b"]
             result = analyze_pair_jumps(results_dir, sym_a, sym_b)

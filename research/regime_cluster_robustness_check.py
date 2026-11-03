@@ -49,6 +49,7 @@ import pandas as pd
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "research"))
 
+import parquet_io
 from macro import build as macro_build
 from hmm_gmm_regime_trade_features import (
     build_trade_features, fit_gmm, performance_by_state, _clean_feature_matrix, _FEATURE_COLS,
@@ -167,12 +168,12 @@ def main():
     if not os.path.exists(_IS_TRADES):
         print(f"{_IS_TRADES} not found — cannot run.")
         return
-    is_trades = pd.read_parquet(_IS_TRADES)
+    is_trades = parquet_io.read_parquet(_IS_TRADES)
     macro_df = macro_build(force_refresh=False).data
 
     holdout_result = None
     if os.path.exists(_HOLDOUT_TRADES):
-        holdout_trades = pd.read_parquet(_HOLDOUT_TRADES)
+        holdout_trades = parquet_io.read_parquet(_HOLDOUT_TRADES)
         holdout_result = run_holdout_check(is_trades, holdout_trades, macro_df)
     else:
         print(f"{_HOLDOUT_TRADES} not found — skipping holdout check.")

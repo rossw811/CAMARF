@@ -61,6 +61,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import numpy as np
 import pandas as pd
 
+import parquet_io
 from config import Config
 from dollar_volume import usd_dollar_volume
 
@@ -82,7 +83,7 @@ def liquid_bar_mask(symbol: str, threshold: float = None, cache_dir: str = None,
     for path in (os.path.join(wrds_dir, f"{symbol}_1D.parquet"), os.path.join(cache_dir, f"{symbol}_1day.parquet")):
         if not os.path.exists(path):
             continue
-        df = pd.read_parquet(path)
+        df = parquet_io.read_parquet(path)
         if "volume" not in df.columns or not ({"close", "close_usd"} & set(df.columns)):
             continue
         idx = pd.to_datetime(df.index)
@@ -134,8 +135,8 @@ def recompute_correlation_bar_masked(sym_a: str, sym_b: str, threshold: float = 
     if not (os.path.exists(path_a) and os.path.exists(path_b)):
         return {"ok": False, "reason": "missing_cache"}
 
-    df_a = pd.read_parquet(path_a)
-    df_b = pd.read_parquet(path_b)
+    df_a = parquet_io.read_parquet(path_a)
+    df_b = parquet_io.read_parquet(path_b)
     df_a.index = pd.to_datetime(df_a.index)
     df_b.index = pd.to_datetime(df_b.index)
 
@@ -197,7 +198,7 @@ def main():
     p.add_argument("--threshold", type=float, default=None)
     args = p.parse_args()
 
-    pairs = pd.read_parquet(args.pairs_file)
+    pairs = parquet_io.read_parquet(args.pairs_file)
     results = []
     for _, row in pairs.drop_duplicates(subset=["symbol_a", "symbol_b"]).iterrows():
         r = recompute_correlation_bar_masked(row["symbol_a"], row["symbol_b"], args.threshold)

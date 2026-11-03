@@ -26,6 +26,7 @@ import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
 import numpy as np
 import pandas as pd
+import parquet_io
 
 warnings.filterwarnings("ignore")
 logging.basicConfig(
@@ -128,39 +129,39 @@ def _savefig(fig, name: str) -> str:
 
 def _load_tiers() -> pd.DataFrame:
     p = os.path.join(_STATS_DIR, "cointegration_tiers.parquet")
-    return pd.read_parquet(p) if os.path.exists(p) else pd.DataFrame()
+    return parquet_io.read_parquet(p) if os.path.exists(p) else pd.DataFrame()
 
 
 def _load_evt() -> pd.DataFrame:
     p = os.path.join(_STATS_DIR, "evt_tail_risk.parquet")
-    return pd.read_parquet(p) if os.path.exists(p) else pd.DataFrame()
+    return parquet_io.read_parquet(p) if os.path.exists(p) else pd.DataFrame()
 
 
 def _load_hedge() -> pd.DataFrame:
     p = os.path.join(_STATS_DIR, "hedge_ratio_comparison.parquet")
-    return pd.read_parquet(p) if os.path.exists(p) else pd.DataFrame()
+    return parquet_io.read_parquet(p) if os.path.exists(p) else pd.DataFrame()
 
 
 def _load_dcc_peak() -> pd.DataFrame:
     p = os.path.join(_STATS_DIR, "dcc_peak_correlation.parquet")
-    return pd.read_parquet(p) if os.path.exists(p) else pd.DataFrame()
+    return parquet_io.read_parquet(p) if os.path.exists(p) else pd.DataFrame()
 
 
 def _load_dcc_rolling() -> pd.DataFrame:
     p = os.path.join(_STATS_DIR, "dcc_rolling_correlation.parquet")
-    return pd.read_parquet(p) if os.path.exists(p) else pd.DataFrame()
+    return parquet_io.read_parquet(p) if os.path.exists(p) else pd.DataFrame()
 
 
 
 
 def _load_mc_slippage() -> pd.DataFrame:
     p = os.path.join(_STATS_DIR, "montecarlo_slippage.parquet")
-    return pd.read_parquet(p) if os.path.exists(p) else pd.DataFrame()
+    return parquet_io.read_parquet(p) if os.path.exists(p) else pd.DataFrame()
 
 
 def _load_mc_quality() -> pd.DataFrame:
     p = os.path.join(_STATS_DIR, "montecarlo_trade_quality.parquet")
-    return pd.read_parquet(p) if os.path.exists(p) else pd.DataFrame()
+    return parquet_io.read_parquet(p) if os.path.exists(p) else pd.DataFrame()
 
 
 def _load_perm(suffix: str) -> dict:
@@ -173,17 +174,17 @@ def _load_perm(suffix: str) -> dict:
 
 def _load_trades(suffix: str = "layer1_holdout") -> pd.DataFrame:
     p = os.path.join(_BACKTEST_DIR, f"trades_{suffix}.parquet")
-    return pd.read_parquet(p) if os.path.exists(p) else pd.DataFrame()
+    return parquet_io.read_parquet(p) if os.path.exists(p) else pd.DataFrame()
 
 
 def _load_summary(suffix: str = "layer1_holdout") -> pd.DataFrame:
     p = os.path.join(_BACKTEST_DIR, f"summary_{suffix}.parquet")
-    return pd.read_parquet(p) if os.path.exists(p) else pd.DataFrame()
+    return parquet_io.read_parquet(p) if os.path.exists(p) else pd.DataFrame()
 
 
 def _load_portfolio(suffix: str = "layer1_holdout") -> pd.DataFrame:
     p = os.path.join(_BACKTEST_DIR, f"portfolio_{suffix}.parquet")
-    return pd.read_parquet(p) if os.path.exists(p) else pd.DataFrame()
+    return parquet_io.read_parquet(p) if os.path.exists(p) else pd.DataFrame()
 
 
 def _build_equity_curve(trades: pd.DataFrame) -> pd.Series:

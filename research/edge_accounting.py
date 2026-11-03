@@ -32,6 +32,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 sys.path.insert(0, os.path.join(ROOT, "research"))
 
+import parquet_io
 from config import Config  # noqa: E402
 
 R_DIR = os.path.join(ROOT, "output", "research")
@@ -169,7 +170,7 @@ def joint_bootstrap_sharpes(M: np.ndarray, block: float, reps: int = BOOT_REPS, 
 
 def phase_pools():
     import clean_pool_identity_pairs as cpi
-    W = pd.read_parquet(os.path.join(R_DIR, "purity_pairs.parquet"))
+    W = parquet_io.read_parquet(os.path.join(R_DIR, "purity_pairs.parquet"))
     cache = {}
     for k in (1, 2):
         P = W[W["n_windows_fdr_rejected"] >= k].drop(columns=["eligible_from"], errors="ignore").reset_index(drop=True)
@@ -204,7 +205,7 @@ def phase_spreads(workers):
     import episodic_pairs_adapter as ad
     from data import DataStore
     ad._RESULTS_DIR = WH_RESULTS
-    P = pd.concat([pd.read_parquet(wh_pool_path(k)) for k in (1, 2)]).drop_duplicates(["symbol_a", "symbol_b", "tf_label"])
+    P = pd.concat([parquet_io.read_parquet(wh_pool_path(k)) for k in (1, 2)]).drop_duplicates(["symbol_a", "symbol_b", "tf_label"])
     tasks = list(zip(P["symbol_a"], P["symbol_b"], P["tf_label"]))
     for tf in sorted(set(P["tf_label"])):
         syms = set(P.loc[P["tf_label"] == tf, "symbol_a"]) | set(P.loc[P["tf_label"] == tf, "symbol_b"])
@@ -227,7 +228,7 @@ def phase_spreads(workers):
 
 
 def _pool_for(arm, k):
-    return pd.read_parquet(wh_pool_path(k) if arm == "wh" else Config.DATA.PIT_POOL_PATHS[f"k{k}"])
+    return parquet_io.read_parquet(wh_pool_path(k) if arm == "wh" else Config.DATA.PIT_POOL_PATHS[f"k{k}"])
 
 
 def phase_run():
@@ -263,7 +264,7 @@ def phase_eval():
         if not all(os.path.exists(trades_path(a, k)) for a in ("wh", "pit")):
             print(f"k{k}: trades missing, skipped", flush=True)
             continue
-        T = {a: pd.read_parquet(trades_path(a, k)) for a in ("wh", "pit")}
+        T = {a: parquet_io.read_parquet(trades_path(a, k)) for a in ("wh", "pit")}
         cells, mats = span_table(T, Config.DATA.SEALED_FROM)
         cells.to_parquet(os.path.join(R_DIR, f"edge_accounting_k{k}.parquet"), index=False)
         print(f"\nk{k}: cells per span (own = each selection arm on its own span; descriptive, no decomposition)")

@@ -104,6 +104,7 @@ import pandas as pd
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+import parquet_io
 from config import Config
 from data import GapFlag
 from backtest import (
@@ -152,7 +153,7 @@ def load_all_candidates():
     for f in sorted(glob.glob(os.path.join(_RESULTS_DIR, "*", "all_candidates.parquet"))):
         if "_stale_" in f:
             continue
-        df = pd.read_parquet(f)
+        df = parquet_io.read_parquet(f)
         df["_source_dir"] = os.path.basename(os.path.dirname(f))
         frames.append(df)
     if not frames:

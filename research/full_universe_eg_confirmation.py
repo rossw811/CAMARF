@@ -43,6 +43,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import pandas as pd
 
+import parquet_io
 from analysis import CointScanner
 from config import Config
 from universe_loader import (
@@ -107,7 +108,7 @@ def main():
     if not chunk_files:
         log.error(f"No candidate chunk files found in {candidates_dir}")
         sys.exit(1)
-    candidates_df = pd.concat([pd.read_parquet(f) for f in chunk_files], ignore_index=True)
+    candidates_df = pd.concat([parquet_io.read_parquet(f) for f in chunk_files], ignore_index=True)
     candidate_pairs_raw = candidates_df.to_dict("records")
     log.info(f"Loaded {len(candidate_pairs_raw)} candidate pairs from {len(chunk_files)} chunk files "
              f"in {candidates_dir}")

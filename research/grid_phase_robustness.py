@@ -25,6 +25,7 @@ import sys
 import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import parquet_io
 
 _RES = os.path.join("output", "research")
 OUT = os.path.join(_RES, "grid_phase_robustness.parquet")
@@ -68,7 +69,7 @@ def main():
                                    f"{'' if off == 0 else f'_grid{off}'}.parquet")
             if not os.path.exists(p):
                 raise SystemExit(f"missing {p} -- run the scan with --grid-offset {off} first")
-            conf[off] = pd.read_parquet(p, columns=["symbol_a", "symbol_b"])
+            conf[off] = parquet_io.read_parquet(p, columns=["symbol_a", "symbol_b"])
         per = count_grids(conf).assign(tier=tier)
         s = summary(per, offsets)
         print(f"Tier {tier}: offset-0 confirmed {s['offset0_confirmed']}; grid-robust {s['grid_robust']} "

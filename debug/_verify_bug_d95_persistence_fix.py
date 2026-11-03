@@ -29,6 +29,7 @@ import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+import parquet_io
 from analysis import AnalysisPipeline, PairResult, _output_dir
 
 _TF = "__TEST_D95__"
@@ -120,7 +121,7 @@ def main():
             failures.append("BUG-D95 NOT FIXED: spread_series_*.parquet was not persisted for all pairs")
 
         if all_candidates_exists:
-            cdf = pd.read_parquet(all_candidates_path)
+            cdf = parquet_io.read_parquet(all_candidates_path)
             candidate_keys = set(zip(cdf["symbol_a"], cdf["symbol_b"]))
             expected_keys = {("PNCTEST", "ZIONTEST"), ("SPYTEST", "VOOTEST")}
             print(f"all_candidates.parquet contains: {candidate_keys}")

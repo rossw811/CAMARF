@@ -40,6 +40,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(
 import numpy as np
 import pandas as pd
 
+import parquet_io
 from data import DataStore, _clean_close
 from structural_break_onset_detection import find_all_breaks, compute_ols_spread
 
@@ -77,7 +78,7 @@ def run(trades_path: str):
     backtest.py::compute_regime_age_weights (added 2026-08-23, Thread Q Idea 1 Path A) reads,
     keeping backtest.py decoupled from importing research/ code directly (this project's own
     established dependency direction: research/ imports from root, not the reverse)."""
-    trades = pd.read_parquet(trades_path)
+    trades = parquet_io.read_parquet(trades_path)
     trades["entry_time"] = pd.to_datetime(trades["entry_time"])
 
     onset_cache = {}

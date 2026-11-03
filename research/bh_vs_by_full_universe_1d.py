@@ -40,6 +40,7 @@ import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+import parquet_io
 from config import Config
 from analysis import _eg_worker, _benjamini_hochberg, CointScanner
 from research.bh_fdr_dependence_check import benjamini_yekutieli
@@ -60,7 +61,7 @@ def load_candidate_sample(n=SAMPLE_N, seed=SEED) -> pd.DataFrame:
     if not files:
         raise FileNotFoundError(f"No candidate chunks found at {_CHUNKS_DIR} -- run "
                                  f"full_universe_correlation_prefilter.py --tf 1D --lookback-years 10 first.")
-    full = pd.concat([pd.read_parquet(f) for f in files], ignore_index=True)
+    full = pd.concat([parquet_io.read_parquet(f) for f in files], ignore_index=True)
     rng = random.Random(seed)
     idx = rng.sample(range(len(full)), min(n, len(full)))
     return full.iloc[sorted(idx)].reset_index(drop=True), len(full)

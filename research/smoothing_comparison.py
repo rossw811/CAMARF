@@ -49,6 +49,7 @@ import pandas as pd
 from statsmodels.tsa.stattools import coint
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import parquet_io
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "research"))
 
 from aligned_pair_loader import load_aligned_pair
@@ -150,7 +151,7 @@ def main():
               "sanity-check leg of this comparison will be empty.")
     pairs = list(sanity_pairs)
     if os.path.exists(near_miss_path):
-        nm = pd.read_parquet(near_miss_path, columns=["symbol_a", "symbol_b"])
+        nm = parquet_io.read_parquet(near_miss_path, columns=["symbol_a", "symbol_b"])
         sample = nm.sample(n=min(args.n_sample, len(nm)), random_state=args.seed)
         pairs.extend(list(zip(sample["symbol_a"], sample["symbol_b"])))
     else:

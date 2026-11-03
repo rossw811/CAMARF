@@ -18,6 +18,7 @@ import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+import parquet_io
 from period_bars import resample_to_period_end
 import research.repair_coarse_identity as r
 
@@ -61,7 +62,7 @@ def main():
                                                for tf in r.COARSE))
         check("1M_not_rebuilt", not os.path.exists(os.path.join(d, "BAD_1M.parquet")))
         for tf in r.DERIVED:
-            c = pd.read_parquet(os.path.join(d, f"BAD_{tf}.parquet"))
+            c = parquet_io.read_parquet(os.path.join(d, f"BAD_{tf}.parquet"))
             agree = r.close_agreement(bad, c, tf)
             truth = resample_to_period_end(bad[["close", "volume"]], tf)["volume"]
             raw_truth = resample_to_period_end(bad.assign(volume=bad["volume_raw"])[["close", "volume"]], tf)["volume"]

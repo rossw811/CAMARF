@@ -35,6 +35,7 @@ from scipy import stats
 
 _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, _ROOT)
+import parquet_io
 sys.path.insert(0, os.path.join(_ROOT, "research"))
 
 from pit_confirmation_vs_regime_interaction import two_proportion_test
@@ -118,8 +119,8 @@ def main():
         print("ERROR: missing input(s).")
         return
 
-    regime_df = pd.read_parquet(_REGIME_PATH)
-    membership_df = pd.read_parquet(_MEMBERSHIP_PATH)
+    regime_df = parquet_io.read_parquet(_REGIME_PATH)
+    membership_df = parquet_io.read_parquet(_MEMBERSHIP_PATH)
     from data_wrds import label_permno_map
     _m = label_permno_map(_PERMNO_MAP_PATH)
     permno_map_df = pd.DataFrame({"symbol": list(_m), "permno": list(_m.values())})

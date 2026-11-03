@@ -42,6 +42,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import numpy as np
 import pandas as pd
 
+import parquet_io
 from config import Config
 
 _RESULTS_GLOB = os.path.join("output", "results", "*", "spread_series_*.parquet")
@@ -73,7 +74,7 @@ def _adaptive_window_bars(half_life_series: pd.Series) -> pd.Series:
 
 
 def compare_pair(path: str) -> dict:
-    df = pd.read_parquet(path)
+    df = parquet_io.read_parquet(path)
     if "z_rolling" not in df.columns or "half_life_rolling" not in df.columns:
         return None
     hl = df["half_life_rolling"].bfill().ffill()

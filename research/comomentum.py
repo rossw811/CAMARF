@@ -46,6 +46,7 @@ import numpy as np
 import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import parquet_io
 
 _OUT_INDEX = "output/research/comomentum_index.parquet"
 _OUT_CORR = "output/research/comomentum_pairwise.parquet"
@@ -75,7 +76,7 @@ def _spread_returns(sym_a, sym_b, tf_dir):
     series_path = os.path.join("output", "results", tf_dir, f"spread_series_{sym_a}_{sym_b}.parquet")
     if not os.path.exists(series_path):
         return None
-    series = pd.read_parquet(series_path)
+    series = parquet_io.read_parquet(series_path)
     if "spread" not in series.columns or len(series) < 120:
         return None
     spread_ret = series["spread"].diff()
@@ -90,7 +91,7 @@ def main():
         print(f"No pairs.parquet at {path}")
         return
 
-    pairs = pd.read_parquet(path)
+    pairs = parquet_io.read_parquet(path)
     print(f"Loading spread returns for {len(pairs)} confirmed {_FOCUS_TF} pairs...")
 
     spread_rets = {}

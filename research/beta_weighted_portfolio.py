@@ -36,6 +36,7 @@ import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+import parquet_io
 from options import load_price_series
 from portfolio_math import daily_pnl_from_trades, sharpe_from_daily_pnl, sortino_from_daily_pnl, \
     calmar_from_daily_pnl, rolling_sharpe
@@ -55,7 +56,7 @@ def _setup_logging():
 def load_spy_returns() -> pd.Series:
     """WRDS total-return-adjusted SPY daily log returns -- this project's priority data source
     (CLAUDE.md: 'WRDS takes complete priority over other providers of data')."""
-    df = pd.read_parquet(_SPY_WRDS_PATH)
+    df = parquet_io.read_parquet(_SPY_WRDS_PATH)
     close = df["close_total_return"].dropna()
     close.index = pd.to_datetime(close.index)
     return np.log(close).diff().dropna()
@@ -145,7 +146,7 @@ def main():
     if not os.path.exists(trades_path):
         log.warning(f"No trades found at {trades_path} -- run backtest.py first.")
         return
-    trades = pd.read_parquet(trades_path)
+    trades = parquet_io.read_parquet(trades_path)
     trades = trades[trades["hedge_method"] == "ols"].copy()
     trades["entry_time"] = pd.to_datetime(trades["entry_time"])
     trades["exit_time"] = pd.to_datetime(trades["exit_time"])

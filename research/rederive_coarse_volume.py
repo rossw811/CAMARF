@@ -27,6 +27,7 @@ import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+import parquet_io
 from period_bars import TIMEFRAMES, period_end_index
 
 _WRDS = os.path.join("output", "cache", "wrds")
@@ -68,8 +69,8 @@ def rederive(root: str) -> pd.DataFrame:
                    "no_stored_volume": 0}
             dpath = os.path.join(root, f"{label}_1D.parquet")
             try:
-                coarse = pd.read_parquet(path)
-                daily = pd.read_parquet(dpath, columns=["volume", "volume_raw"]) if os.path.exists(dpath) else None
+                coarse = parquet_io.read_parquet(path)
+                daily = parquet_io.read_parquet(dpath, columns=["volume", "volume_raw"]) if os.path.exists(dpath) else None
             except Exception as e:
                 rec["status"] = f"unreadable: {type(e).__name__}"; rows.append(rec); continue
             if "volume" not in coarse.columns:
@@ -93,7 +94,7 @@ def _daily_check(root: str) -> list:
     bad = []
     for lab in sorted(labels):
         p = os.path.join(root, f"{lab}_1D.parquet")
-        if os.path.exists(p) and "volume_raw" not in pd.read_parquet(p).columns:
+        if os.path.exists(p) and "volume_raw" not in parquet_io.read_parquet(p).columns:
             bad.append(lab)
     return bad
 

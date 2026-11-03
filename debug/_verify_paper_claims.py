@@ -11,6 +11,9 @@ import sys
 from pathlib import Path
 
 import pandas as pd
+import os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # project root, for parquet_io
+import parquet_io
 
 ROOT = Path(__file__).resolve().parent.parent
 OUT_BACKTEST = ROOT / "output" / "backtest"
@@ -32,14 +35,14 @@ def check(label, actual, expected, tol=None, source=""):
 # ---------------------------------------------------------------------------
 p = OUT_BACKTEST / "portfolio_layer1_pairsoverride_capsim_fixed_100000.parquet"
 if p.exists():
-    df = pd.read_parquet(p)
+    df = parquet_io.read_parquet(p)
     check("act3.purity.is_sharpe", round(df["sharpe_portfolio"].iloc[0], 3), -0.679, tol=0.001, source=p.name)
 else:
     print(f"[SKIP] {p.name} not found")
 
 p = OUT_BACKTEST / "portfolio_layer1_holdout_pairsoverride_capsim_fixed_100000.parquet"
 if p.exists():
-    df = pd.read_parquet(p)
+    df = parquet_io.read_parquet(p)
     check("act3.purity.oos_sharpe", round(df["sharpe_portfolio"].iloc[0], 3), -0.834, tol=0.001, source=p.name)
 else:
     print(f"[SKIP] {p.name} not found")
@@ -62,14 +65,14 @@ all_negative_is, all_negative_oos = True, True
 for f in sizing_variants_is:
     fp = OUT_BACKTEST / f
     if fp.exists():
-        s = pd.read_parquet(fp)["sharpe_portfolio"].iloc[0]
+        s = parquet_io.read_parquet(fp)["sharpe_portfolio"].iloc[0]
         if s >= 0:
             all_negative_is = False
         print(f"    IS  {f}: sharpe={s:.4f}")
 for f in sizing_variants_oos:
     fp = OUT_BACKTEST / f
     if fp.exists():
-        s = pd.read_parquet(fp)["sharpe_portfolio"].iloc[0]
+        s = parquet_io.read_parquet(fp)["sharpe_portfolio"].iloc[0]
         if s >= 0:
             all_negative_oos = False
         print(f"    OOS {f}: sharpe={s:.4f}")
@@ -85,7 +88,7 @@ check("act3.robustness.all_capital_sizing_variants_negative_oos", all_negative_o
 # ---------------------------------------------------------------------------
 p = OUT_BACKTEST / "baseline_portfolio_layer1_holdout.parquet"
 if p.exists():
-    df = pd.read_parquet(p)
+    df = parquet_io.read_parquet(p)
     row = df.iloc[0]
     matches_old_headline = (int(row["n_trades_total"]) == 449 and int(row["n_pairs"]) == 26)
     check("act1.disclosure_accurate.current_cache_does_not_match_2026_07_12_headline",

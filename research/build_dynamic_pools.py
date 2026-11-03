@@ -15,16 +15,17 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 sys.path.insert(0, os.path.join(ROOT, "research"))
 
+import parquet_io
 from config import Config  # noqa: E402
 import purity_pit_eligibility as ppe  # noqa: E402
 
 
 def main():
-    windows = {tf: ppe._seal_windows(pd.read_parquet(p, columns=["symbol_a", "symbol_b", "window_end_date", "pvalue"]), tf)
+    windows = {tf: ppe._seal_windows(parquet_io.read_parquet(p, columns=["symbol_a", "symbol_b", "window_end_date", "pvalue"]), tf)
                for tf, p in ppe._TIER3.items() if os.path.exists(p)}
     for k in (1, 2):
         src = Config.DATA.PIT_POOL_PATHS[f"k{k}"]
-        P = pd.read_parquet(src)
+        P = parquet_io.read_parquet(src)
         a, b = P["symbol_a"].astype(str), P["symbol_b"].astype(str)
         P["key_a"], P["key_b"] = a.where(a <= b, b), b.where(a <= b, a)
         parts = []

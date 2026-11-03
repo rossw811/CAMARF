@@ -46,6 +46,7 @@ from typing import Dict, List, Optional
 
 import numpy as np
 import pandas as pd
+import parquet_io
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
@@ -83,7 +84,7 @@ def confirmed_universe_symbols() -> List[str]:
     symbols = set()
     for path in glob.glob(os.path.join(_RESULTS_DIR, "*", "pairs.parquet")):
         try:
-            df = pd.read_parquet(path, columns=["symbol_a", "symbol_b"])
+            df = parquet_io.read_parquet(path, columns=["symbol_a", "symbol_b"])
             symbols.update(df["symbol_a"])
             symbols.update(df["symbol_b"])
         except Exception as e:
@@ -100,7 +101,7 @@ def _load_daily_log_returns(symbols: List[str]) -> pd.DataFrame:
         path = os.path.join(_CACHE_DIR, f"{sym}_1day.parquet")
         if not os.path.exists(path):
             continue
-        df = pd.read_parquet(path)
+        df = parquet_io.read_parquet(path)
         if "close" not in df.columns:
             continue
         close = df["close"].dropna()

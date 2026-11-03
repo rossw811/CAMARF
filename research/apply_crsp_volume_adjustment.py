@@ -24,6 +24,7 @@ import re
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import parquet_io
 
 import numpy as np
 import pandas as pd
@@ -51,8 +52,8 @@ def _apply_compustat(path: str, label: str, root: str, rec: dict) -> dict:
     if not os.path.exists(fpath):
         rec["status"] = "no_ajexdi"; return rec
     try:
-        df = pd.read_parquet(path)
-        fac = pd.read_parquet(fpath, columns=["ajexdi"])["ajexdi"].astype(float)
+        df = parquet_io.read_parquet(path)
+        fac = parquet_io.read_parquet(fpath, columns=["ajexdi"])["ajexdi"].astype(float)
     except Exception as e:
         rec["status"] = f"unreadable: {type(e).__name__}"; return rec
     if "volume_raw" in df.columns:
@@ -94,7 +95,7 @@ def apply(root: str, events: pd.DataFrame, label_map: pd.DataFrame, extra_maps=N
             rec["status"] = "unmapped"; rows.append(rec); continue
         rec["permno"] = p
         try:
-            df = pd.read_parquet(path)
+            df = parquet_io.read_parquet(path)
         except Exception as e:
             rec["status"] = f"unreadable: {type(e).__name__}"; rows.append(rec); continue
         if "volume_raw" in df.columns:
@@ -127,7 +128,7 @@ def reapply_mismatched(root: str, events: pd.DataFrame, mapping: dict, report: p
         if p_true is None or pd.isna(r["permno"]) or int(r["permno"]) == int(p_true):
             continue
         path = os.path.join(root, r["path"])
-        df = pd.read_parquet(path)
+        df = parquet_io.read_parquet(path)
         if "volume_raw" not in df.columns:
             continue
         f = cumulative_factor(pd.DatetimeIndex(pd.to_datetime(df.index)), by_permno.get(int(p_true)))
@@ -142,16 +143,16 @@ def reapply_mismatched(root: str, events: pd.DataFrame, mapping: dict, report: p
 
 
 def main():
-    events = pd.read_parquet(FACPR_PATH)
+    events = parquet_io.read_parquet(FACPR_PATH)
     # 2026-10-12: the content-verified map; the old extra maps (price-verified) only fill labels it leaves unresolved
     from data_wrds import label_permno_map
     mapping = label_permno_map()
     label_map = pd.DataFrame({"label": list(mapping), "permno": list(mapping.values())})
     extras = [m[~m["label"].isin(mapping)] for m in
-              (pd.read_parquet(p) for p in sorted(glob.glob(os.path.join(_WRDS, "extra_permno_map_*.parquet"))))]
+              (parquet_io.read_parquet(p) for p in sorted(glob.glob(os.path.join(_WRDS, "extra_permno_map_*.parquet"))))]
     rep = apply(_WRDS, events, label_map, extra_maps=extras)
     if os.path.exists(REPORT):   # files restated earlier with another security's factors
-        prev = pd.read_parquet(REPORT)
+        prev = parquet_io.read_parquet(REPORT)
         fixed = reapply_mismatched(_WRDS, events, mapping, prev)
         print(f"re-restated with the correct PERMNO: {int((fixed['status'] == 'reapplied').sum())} files")
         rep = pd.concat([fixed[~fixed["label"].isin(rep.loc[rep["status"] != "already_adjusted", "label"])],

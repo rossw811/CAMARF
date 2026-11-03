@@ -53,6 +53,7 @@ import sys
 
 import numpy as np
 import pandas as pd
+import parquet_io
 
 
 import portfolio_math  # single source of truth for daily P&L (code review P1)
@@ -125,7 +126,7 @@ def get_price_at(symbol: str, ts: pd.Timestamp) -> float:
         if symbol not in _price_cache:
             path = os.path.join(_CACHE_DIR, f"{symbol}_1hr.parquet")
             try:
-                _price_cache[symbol] = pd.read_parquet(path)
+                _price_cache[symbol] = parquet_io.read_parquet(path)
             except Exception:
                 _price_cache[symbol] = None
         df = _price_cache[symbol]
@@ -145,7 +146,7 @@ def _load_spread_series(symbol_a: str, symbol_b: str, tf_label: str) -> "pd.Data
         tf_dir = _TF_SAFE.get(tf_label, tf_label.lower())
         path = os.path.join(_RESULTS_DIR, tf_dir, f"spread_series_{symbol_a}_{symbol_b}.parquet")
         try:
-            _spread_cache[key] = pd.read_parquet(path)[["spread"]]
+            _spread_cache[key] = parquet_io.read_parquet(path)[["spread"]]
         except Exception:
             _spread_cache[key] = None
     return _spread_cache[key]
@@ -718,7 +719,7 @@ def main():
                    help="KNOWN WRONG (code review B2/B3): spread-unit P&L. Only to reproduce old numbers.")
     args = p.parse_args()
 
-    trades_df = pd.read_parquet(args.trades_path)
+    trades_df = parquet_io.read_parquet(args.trades_path)
     trades_df["entry_time"] = pd.to_datetime(trades_df["entry_time"])
     trades_df["exit_time"] = pd.to_datetime(trades_df["exit_time"])
 

@@ -37,6 +37,7 @@ from scipy import stats
 
 _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, _ROOT)
+import parquet_io
 
 _REGIME_PATH = os.path.join(_ROOT, "output", "research", "crisis_regime_correlation_diagnostic_pairs.parquet")
 _PIT_PATH = os.path.join(_ROOT, "output", "backtest", "pit_wfa_wrds_daily_pair_sets.parquet")
@@ -88,8 +89,8 @@ def main():
               f"pit={os.path.exists(_PIT_PATH)}")
         return
 
-    regime_df = pd.read_parquet(_REGIME_PATH)
-    pit_df = pd.read_parquet(_PIT_PATH)
+    regime_df = parquet_io.read_parquet(_REGIME_PATH)
+    pit_df = parquet_io.read_parquet(_PIT_PATH)
     joined = build_joined_table(regime_df, pit_df)
 
     n_overlap = int(joined["pit_confirmed"].sum())

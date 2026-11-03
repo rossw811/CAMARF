@@ -41,6 +41,7 @@ import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import parquet_io
 
 import numpy as np
 import pandas as pd
@@ -65,7 +66,7 @@ def load_all_spread_series(results_dir: str) -> dict:
                 continue
             sym_a, sym_b = parts[0], "_".join(parts[1:])
             try:
-                df = pd.read_parquet(f, columns=["coint_fraction_rolling_t"])
+                df = parquet_io.read_parquet(f, columns=["coint_fraction_rolling_t"])
             except Exception:
                 continue
             if "coint_fraction_rolling_t" in df.columns and not df["coint_fraction_rolling_t"].isna().all():
@@ -126,7 +127,7 @@ def pnl_reallocation_estimate(series_map: dict, trades_path: str) -> dict:
     if not os.path.exists(trades_path):
         return {"sufficient_data": False,
                 "note": f"Trades file not found: {trades_path} -- run backtest.py first."}
-    trades = pd.read_parquet(trades_path)
+    trades = parquet_io.read_parquet(trades_path)
     if trades.empty:
         return {"sufficient_data": False, "note": "Trades file is empty."}
 

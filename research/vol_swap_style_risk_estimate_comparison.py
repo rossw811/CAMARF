@@ -45,6 +45,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import numpy as np
 import pandas as pd
 
+import parquet_io
 from config import Config
 
 _RESULTS_GLOB = os.path.join("output", "results", "*", "spread_series_*.parquet")
@@ -70,7 +71,7 @@ def vol_swap_style_diff_vol(spread: pd.Series, window: int) -> pd.Series:
 
 
 def compare_pair(path: str, window: int = 60) -> dict:
-    df = pd.read_parquet(path)
+    df = parquet_io.read_parquet(path)
     if "spread" not in df.columns or "z_rolling" not in df.columns:
         return None
     spread = df["spread"]

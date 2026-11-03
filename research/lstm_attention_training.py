@@ -43,6 +43,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import numpy as np
 import pandas as pd
 
+import parquet_io
 import ml
 from config import Config
 from research.lstm_attention_architecture import (
@@ -95,7 +96,7 @@ def build_sequences(examples: pd.DataFrame, lookback_bars: int):
         if not os.path.exists(series_path):
             n_dropped_missing_file += len(group)
             continue
-        series = pd.read_parquet(series_path)
+        series = parquet_io.read_parquet(series_path)
         if not all(c in series.columns for c in _SEQ_FEATURES):
             n_dropped_missing_cols += len(group)
             continue

@@ -34,6 +34,7 @@ import pandas as pd
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from aligned_pair_loader import load_aligned_pair
+import parquet_io
 from data import _clean_close
 
 _OUT = "output/research/sample_entropy_spreads.parquet"
@@ -80,7 +81,7 @@ def main():
         path = f"output/results/{tf_dir}/pairs.parquet"
         if not os.path.exists(path):
             continue
-        pairs = pd.read_parquet(path)
+        pairs = parquet_io.read_parquet(path)
         for _, row in pairs.iterrows():
             sym_a, sym_b = row["symbol_a"], row["symbol_b"]
             hedge = float(row.get("hedge_ratio_ols", np.nan))

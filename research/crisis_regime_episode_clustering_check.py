@@ -37,6 +37,7 @@ import numpy as np
 import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import parquet_io
 
 _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _PAIRS_PATH = os.path.join(_ROOT, "output", "research",
@@ -145,7 +146,7 @@ def main():
                   f"research/crisis_regime_correlation_diagnostic.py first.")
         sys.exit(1)
 
-    df = pd.read_parquet(_PAIRS_PATH)
+    df = parquet_io.read_parquet(_PAIRS_PATH)
     df["first_window_end_date"] = pd.to_datetime(df["first_window_end_date"])
     crisis = df[df["first_regime"] == "crisis"].copy()
     crisis["episode"] = cluster_into_episodes(crisis["first_window_end_date"])

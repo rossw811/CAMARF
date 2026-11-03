@@ -10,6 +10,7 @@ import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import parquet_io
 
 import pandas as pd
 
@@ -22,7 +23,7 @@ def main():
         path = f"output/results/{tf}/pairs.parquet"
         if not os.path.exists(path):
             continue
-        df = pd.read_parquet(path)
+        df = parquet_io.read_parquet(path)
         rows.append(df[["symbol_a", "symbol_b", "coint_fraction_rolling"]].assign(tf=tf))
     if not rows:
         print("No pairs.parquet files found — run analysis.py first.")

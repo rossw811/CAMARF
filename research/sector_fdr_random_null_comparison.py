@@ -46,6 +46,7 @@ import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+import parquet_io
 from gics import load_gics_tags
 from research.fdr_method_comparison import apply_all_methods
 from research.sector_restricted_fdr_rescan import restrict_to_same_sector
@@ -121,7 +122,7 @@ def main():
         log.error("Missing %s -- run research/fdr_method_comparison.py first", _RAW_PATH)
         sys.exit(1)
 
-    raw = pd.read_parquet(_RAW_PATH)
+    raw = parquet_io.read_parquet(_RAW_PATH)
     log.info("Loaded %d candidate pairs from the full-universe EG run", len(raw))
 
     tags = load_gics_tags()

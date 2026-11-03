@@ -57,6 +57,7 @@ from scipy import stats
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+import parquet_io
 from deflated_sharpe import (
     expected_max_sharpe_null, deflated_sharpe_ratio, deflated_sharpe_z_stat,
 )
@@ -148,7 +149,7 @@ def _daily_pnl_stats(trades_path: str) -> Optional[Tuple[float, int, float, floa
     kept byte-identical on purpose so results are directly comparable."""
     if not os.path.exists(trades_path):
         return None
-    trades = pd.read_parquet(trades_path)
+    trades = parquet_io.read_parquet(trades_path)
     if trades.empty or "pnl_net" not in trades.columns:
         return None
     daily = portfolio_math.daily_pnl_from_trades(trades)

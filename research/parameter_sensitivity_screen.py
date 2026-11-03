@@ -43,6 +43,8 @@ import sys
 import time
 
 import pandas as pd
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # project root, for parquet_io
+import parquet_io
 
 _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _PYTHON = sys.executable
@@ -172,7 +174,7 @@ def run_one(param_kwarg, value, holdout, timeout=1800, override_name=None,
     if not fresh:
         return None, "no fresh portfolio_*_capsim_*.parquet found after run"
     newest = max(fresh, key=os.path.getmtime)
-    df = pd.read_parquet(newest)
+    df = parquet_io.read_parquet(newest)
     if df.empty:
         return None, f"{newest} is empty (0 trades taken)"
     row = df.iloc[0].to_dict()
@@ -296,7 +298,7 @@ def main():
 
     results_path = os.path.join(_ARCHIVE_DIR, f"{_tier_prefix}_oat_results.parquet")
     if os.path.exists(results_path):
-        existing = pd.read_parquet(results_path)
+        existing = parquet_io.read_parquet(results_path)
         existing = existing[~existing["param"].isin(new_df["param"].unique())]
         out_df = pd.concat([existing, new_df], ignore_index=True)
     else:

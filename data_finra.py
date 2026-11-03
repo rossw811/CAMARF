@@ -25,6 +25,7 @@ import logging
 import os
 
 import pandas as pd
+import parquet_io
 import requests
 
 log = logging.getLogger("data_finra")
@@ -59,7 +60,7 @@ def cache_short_interest(settlement_date: str) -> "pd.DataFrame | None":
     date_str = settlement_date.replace("-", "")
     cache_path = os.path.join(_OUT_DIR, f"short_interest_{date_str}.parquet")
     if os.path.exists(cache_path):
-        return pd.read_parquet(cache_path)
+        return parquet_io.read_parquet(cache_path)
     df = fetch_short_interest(settlement_date)
     if df is None:
         return None

@@ -16,6 +16,7 @@ import sys, os, logging
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
+import parquet_io
 from data import UniverseBuilder, DataStore, DataAligner
 from analysis import UniverseFilter, Config
 
@@ -68,7 +69,7 @@ if _adv_threshold > 0:
             _adv_map[sym] = float("nan")
             continue
         try:
-            _hr = pd.read_parquet(_hr_path)
+            _hr = parquet_io.read_parquet(_hr_path)
             if "close" in _hr.columns and "volume" in _hr.columns:
                 _hr.index = pd.to_datetime(_hr.index)
                 _dv = _hr["close"] * _hr["volume"]

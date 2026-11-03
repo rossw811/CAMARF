@@ -39,6 +39,7 @@ from statsmodels.stats.contingency_tables import StratifiedTable
 
 _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, _ROOT)
+import parquet_io
 
 _W = os.path.join(_ROOT, "output", "cache", "wrds")
 _OUT = os.path.join(_ROOT, "output", "research", "survivorship_universe_delisting_d6.parquet")
@@ -160,9 +161,9 @@ def compare_groups(tab: pd.DataFrame, outcome: str = "performance") -> pd.DataFr
 
 
 def main():
-    names = pd.read_parquet(os.path.join(_W, "crsp_stocknames_all.parquet"))
-    lab = pd.read_parquet(os.path.join(_W, "wrds_label_permno_final.parquet"))
-    dl = pd.read_parquet(os.path.join(_W, "crsp_delisting_legacy.parquet"))
+    names = parquet_io.read_parquet(os.path.join(_W, "crsp_stocknames_all.parquet"))
+    lab = parquet_io.read_parquet(os.path.join(_W, "wrds_label_permno_final.parquet"))
+    dl = parquet_io.read_parquet(os.path.join(_W, "crsp_delisting_legacy.parquet"))
     spells = common_stock_spells(names)
     included = set(pd.to_numeric(lab["permno"], errors="coerce").dropna().astype(int))
     outcomes = outcome_by_permno(dl)

@@ -18,6 +18,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import pandas as pd
 
+import parquet_io
 from analysis import FilterFunnel, FilterFunnelStage, _output_dir
 
 TF_LABEL = "_verify_funnel_tf"
@@ -70,7 +71,7 @@ def main():
     if not os.path.exists(saved_path):
         failures.append(f"save() did not write {saved_path}")
     else:
-        reloaded = pd.read_parquet(saved_path)
+        reloaded = parquet_io.read_parquet(saved_path)
         if not reloaded.equals(df.reset_index(drop=True)):
             failures.append("reloaded parquet does not match in-memory dataframe")
 

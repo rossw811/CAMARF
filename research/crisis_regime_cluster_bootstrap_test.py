@@ -57,6 +57,7 @@ import numpy as np
 import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import parquet_io
 
 _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _PAIRS_PATH = os.path.join(_ROOT, "output", "research", "crisis_regime_correlation_diagnostic_pairs.parquet")
@@ -222,10 +223,10 @@ def main():
                   "and crisis_regime_correlation_diagnostic.py first.")
         sys.exit(1)
 
-    episodes = pd.read_parquet(_EPISODES_PATH)
+    episodes = parquet_io.read_parquet(_EPISODES_PATH)
     episode_sizes = episodes["n_pairs"].to_numpy()
 
-    pairs = pd.read_parquet(_PAIRS_PATH)
+    pairs = parquet_io.read_parquet(_PAIRS_PATH)
     calm = pairs[pairs["first_regime"] == "calm"]
     calm["first_window_end_date"] = pd.to_datetime(calm["first_window_end_date"])
     n_calm_months = calm["first_window_end_date"].dt.to_period("M").nunique()

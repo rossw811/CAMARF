@@ -18,6 +18,7 @@ import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import parquet_io
 
 import pandas as pd
 
@@ -49,7 +50,7 @@ def run_combo(entry_z, hedge, holdout):
     if not fresh:
         return None, "no fresh portfolio_*_capsim_*.parquet found after run"
     newest = max(fresh, key=os.path.getmtime)
-    df = pd.read_parquet(newest)
+    df = parquet_io.read_parquet(newest)
     if df.empty:
         return None, f"{newest} is empty (0 trades taken)"
     row = df.iloc[0].to_dict()

@@ -77,6 +77,7 @@ import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+import parquet_io
 from config import Config
 from data import DataStore
 from analysis import UniverseFilter
@@ -133,7 +134,7 @@ def load_universe(tf_label: str, min_bars: int) -> dict:
         raise FileNotFoundError(
             f"{_COVERAGE_PATH} not found -- run debug/_check_intraday_cache_coverage.py first."
         )
-    coverage = pd.read_parquet(_COVERAGE_PATH)
+    coverage = parquet_io.read_parquet(_COVERAGE_PATH)
     eligible = coverage[(coverage["tf"] == tf_label) & (coverage["n_bars"] >= min_bars)]
     out = {}
     for symbol in eligible["symbol"]:
@@ -208,8 +209,8 @@ def run_scan(tf_label: str, window_config_name: str, workers: int = None, tier3_
     tier2_paths = _tier_paths("tier2")
     if all(os.path.exists(p) for p in tier2_paths.values()):
         log.info(f"[{tf_label}][TIER 2] already complete on disk, loading rather than re-running")
-        results["tier2_windows"] = pd.read_parquet(tier2_paths["tier2_windows"])
-        results["tier2_confirmed"] = pd.read_parquet(tier2_paths["tier2_confirmed"])
+        results["tier2_windows"] = parquet_io.read_parquet(tier2_paths["tier2_windows"])
+        results["tier2_confirmed"] = parquet_io.read_parquet(tier2_paths["tier2_confirmed"])
     elif static_pairs:
         tier2_flat = run_rolling_eg_pool(
             static_pairs, log_price_df, max_lag, window=window, step=step,
@@ -242,8 +243,8 @@ def run_scan(tf_label: str, window_config_name: str, workers: int = None, tier3_
     tier3_paths = _tier_paths("tier3")
     if all(os.path.exists(p) for p in tier3_paths.values()):
         log.info(f"[{tf_label}][TIER 3] already complete on disk, loading rather than re-running")
-        results["tier3_windows"] = pd.read_parquet(tier3_paths["tier3_windows"])
-        results["tier3_confirmed"] = pd.read_parquet(tier3_paths["tier3_confirmed"])
+        results["tier3_windows"] = parquet_io.read_parquet(tier3_paths["tier3_windows"])
+        results["tier3_confirmed"] = parquet_io.read_parquet(tier3_paths["tier3_confirmed"])
     else:
         log.info(f"[{tf_label}][TIER 3] Rolling correlation prefilter (threshold={tier3_threshold})...")
         tier3_pairs = rolling_correlation_candidate_pairs(

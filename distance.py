@@ -31,6 +31,7 @@ from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
+import parquet_io
 
 warnings.filterwarnings("ignore")
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -98,7 +99,7 @@ def _load_prices(symbol: str, tf_dir: str) -> Optional[pd.Series]:
     fpath = os.path.join(_CACHE_DIR, f"{symbol}_{suffix}.parquet")
     if not os.path.exists(fpath):
         return None
-    df = pd.read_parquet(fpath)
+    df = parquet_io.read_parquet(fpath)
     if "close" not in df.columns:
         return None
     s = df["close"].dropna()
@@ -279,7 +280,7 @@ def run_coint_pair_oos_trades(pair_row: pd.Series, tf_dir: str) -> list:
     if not os.path.exists(spread_path):
         return []
 
-    spread_df = pd.read_parquet(spread_path)
+    spread_df = parquet_io.read_parquet(spread_path)
     engine = BacktestEngine(
         cfg=__import__("config").Config.BACKTEST,
         regime_cond=RegimeConditioner(enabled=False),
@@ -341,7 +342,7 @@ def main():
         log.error("cointegration_tiers.parquet not found — run stats.py first")
         return
 
-    tiers = pd.read_parquet(tiers_path)
+    tiers = parquet_io.read_parquet(tiers_path)
     log.info("Loaded %d confirmed cointegration pairs", len(tiers))
 
     all_results = []
@@ -364,7 +365,7 @@ def main():
             sp = os.path.join(_RESULTS_DIR, tf_dir,
                               f"spread_series_{row['symbol_a']}_{row['symbol_b']}.parquet")
             if os.path.exists(sp):
-                sample_spreads.append(pd.read_parquet(sp))
+                sample_spreads.append(parquet_io.read_parquet(sp))
 
         if not sample_spreads:
             log.warning("  No spread files found for %s — skipping", tf_label)

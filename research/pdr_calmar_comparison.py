@@ -20,6 +20,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import pandas as pd
 
+import parquet_io
 from portfolio_sim import (
     replay_portfolio, portfolio_sharpe_from_replay, max_drawdown_pct,
     profit_factor_from_replay, pdr_from_replay, calmar_from_replay,
@@ -35,7 +36,7 @@ def main():
     p.add_argument("--trades-path", default="output/backtest/trades_layer1.parquet")
     args = p.parse_args()
 
-    trades_df = pd.read_parquet(args.trades_path)
+    trades_df = parquet_io.read_parquet(args.trades_path)
     trades_df["entry_time"] = pd.to_datetime(trades_df["entry_time"])
     trades_df["exit_time"] = pd.to_datetime(trades_df["exit_time"])
     print(f"Loaded {len(trades_df)} trades from {args.trades_path}, "

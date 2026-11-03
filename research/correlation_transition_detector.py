@@ -44,6 +44,7 @@ import numpy as np
 import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import parquet_io
 
 _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _SEGMENTS_PATH = os.path.join(_ROOT, "output", "research", "cointegration_regime_segments.parquet")
@@ -133,7 +134,7 @@ def main():
                   f"research/cointegration_regime_segmentation.py first.")
         sys.exit(1)
 
-    segments = pd.read_parquet(_SEGMENTS_PATH)
+    segments = parquet_io.read_parquet(_SEGMENTS_PATH)
     log.info(f"Loaded {len(segments)} regime spans across "
              f"{segments[['symbol_a','symbol_b']].drop_duplicates().shape[0]} pairs.")
 

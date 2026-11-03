@@ -30,6 +30,7 @@ import shutil
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+import parquet_io
 from analysis import AnalysisPipeline, PairResult, _output_dir
 
 _TF = "__TEST_SAVE__"
@@ -113,7 +114,7 @@ def main():
     on_disk_keys = set()
     if os.path.exists(on_disk_path):
         import pandas as pd
-        df = pd.read_parquet(on_disk_path)
+        df = parquet_io.read_parquet(on_disk_path)
         on_disk_keys = set(zip(df["symbol_a"], df["symbol_b"]))
 
     failures = []

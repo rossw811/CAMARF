@@ -20,6 +20,7 @@ import pandas as pd
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
+import parquet_io
 PASS, FAIL = [], []
 
 
@@ -99,11 +100,11 @@ def main():
         files = sorted(f for f in os.listdir(w) if f.endswith(".parquet"))
         check("A5_rebuild_from_backup_removes_stale_segments",
               files == ["GVKEY000006_01W_1D.parquet", "GVKEY000006_01W_seg1_1D.parquet"]
-              and len(pd.read_parquet(os.path.join(w, "GVKEY000006_01W_1D.parquet"))) == 30, f"{files} {plan}")
+              and len(parquet_io.read_parquet(os.path.join(w, "GVKEY000006_01W_1D.parquet"))) == 30, f"{files} {plan}")
         late = frame(base); late.index = pd.bdate_range("2025-11-03", periods=60)          # runs into 2026
         late.to_parquet(os.path.join(w, "GVKEY000007_01W_1D.parquet"))
         m.rebuild_label("GVKEY000007_01W", w, dry_run=False)
-        got = pd.read_parquet(os.path.join(w, "GVKEY000007_01W_1D.parquet"))
+        got = parquet_io.read_parquet(os.path.join(w, "GVKEY000007_01W_1D.parquet"))
         check("A5_rebuild_writes_only_pre_seal_rows", got.index.max() < pd.Timestamp(Config.DATA.SEALED_FROM),
               str(got.index.max()))
         bad = base.copy(); bad[10] *= 40; bad[12] /= 40                          # two jumps 2 days apart: neither

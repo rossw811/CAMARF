@@ -39,6 +39,7 @@ import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+import parquet_io
 import portfolio_math
 
 _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -138,7 +139,7 @@ def main():
               f"(with the taken-trades persistence, 2026-09-08+) first.")
         return
 
-    trades_df = pd.read_parquet(_TRADES_PATH)
+    trades_df = parquet_io.read_parquet(_TRADES_PATH)
     print(f"Loaded {len(trades_df)} taken trades: "
           f"{trades_df.groupby(['wfa_variant', 'fold']).size().to_dict()}")
 

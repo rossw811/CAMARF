@@ -33,6 +33,7 @@ import numpy as np
 import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import parquet_io
 
 log = logging.getLogger("diversification_basket_test")
 
@@ -89,7 +90,7 @@ def main():
               "assets show a REAL diversification benefit vs a correlated or random basket? ===")
     import universe_loader
 
-    transitions = pd.read_parquet(_TRANSITIONS_PATH)
+    transitions = parquet_io.read_parquet(_TRANSITIONS_PATH)
     state_symbols = latest_state_symbols(transitions)
     log.info(f"Symbol pool: {len(state_symbols['not_coint'])} symbols in currently-decoupled "
              f"pairs, {len(state_symbols['coint'])} in currently-coupled pairs.")

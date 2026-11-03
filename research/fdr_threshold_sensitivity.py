@@ -21,6 +21,7 @@ import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import parquet_io
 
 import pandas as pd
 
@@ -42,7 +43,7 @@ def main():
         sys.exit(1)
 
     print(f"Loading {_WINDOWS_PATH} ...")
-    df = pd.read_parquet(_WINDOWS_PATH)
+    df = parquet_io.read_parquet(_WINDOWS_PATH)
     print(f"{len(df)} (pair, window) rows loaded")
 
     # Fresh rows per alpha -- episodic_bhfdr_confirm mutates its input dicts in place

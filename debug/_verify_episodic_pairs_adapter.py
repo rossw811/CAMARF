@@ -33,6 +33,7 @@ import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+import parquet_io
 import data as data_mod
 import research.episodic_pairs_adapter as adapter
 
@@ -194,7 +195,7 @@ def main():
                 _pr, per_bar = built
                 out_path = adapter.write_spread_series("SYNA", "SYNB", "1h", per_bar)
                 results.append(check("spread_series file was written", os.path.exists(out_path)))
-                spread_df = pd.read_parquet(out_path)
+                spread_df = parquet_io.read_parquet(out_path)
                 required_cols = {"spread", "z_rolling", "half_life_rolling"}
                 results.append(check(
                     "spread_series has the columns backtest.py::_load_spread's SpreadModel-consuming "

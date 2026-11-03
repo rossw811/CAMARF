@@ -36,6 +36,7 @@ import pandas as pd
 from scipy import stats
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import parquet_io
 
 _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _PAIRS_PATH = os.path.join(_ROOT, "output", "research", "crisis_regime_correlation_diagnostic_pairs.parquet")
@@ -110,7 +111,7 @@ def main():
 
     import gics
     gics_tags = gics.load_gics_tags()
-    pairs = pd.read_parquet(_PAIRS_PATH)
+    pairs = parquet_io.read_parquet(_PAIRS_PATH)
     log.info(f"Loaded {len(pairs)} pairs, {len(gics_tags)} GICS-tagged symbols "
              f"(S&P 1500 scope, per gics.py's own disclosed coverage limit).")
 

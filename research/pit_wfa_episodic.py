@@ -81,6 +81,7 @@ import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+import parquet_io
 from analysis import AnalysisPipeline, CointScanner
 from backtest import BacktestEngine, RegimeConditioner, MLConditioner, compute_metrics, aggregate_portfolio
 from config import Config
@@ -128,7 +129,7 @@ def load_tier3_windows(path: str = _TIER3_WINDOWS_PATH) -> Tuple[List[Dict], flo
             f"{path} does not exist -- run research/wrds_deep_history_episodic_scan.py "
             f"first (Tier 3 writes this file). Cannot compute anything without it."
         )
-    df = pd.read_parquet(path)
+    df = parquet_io.read_parquet(path)
     mtime = os.path.getmtime(path)
     rows = df[["symbol_a", "symbol_b", "pvalue", "window_end_date"]].to_dict("records")
     return rows, mtime
@@ -146,7 +147,7 @@ def load_symbol_close(symbol: str) -> pd.DataFrame:
     if not os.path.exists(path):
         return pd.DataFrame()
     try:
-        df = pd.read_parquet(path)
+        df = parquet_io.read_parquet(path)
     except Exception:
         return pd.DataFrame()
     if df.empty:

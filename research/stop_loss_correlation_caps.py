@@ -33,6 +33,7 @@ warnings.filterwarnings("ignore")
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+import parquet_io
 from config import Config
 from sensitivity import load_pairs_and_spreads  # noqa: E402
 
@@ -189,7 +190,7 @@ def main():
               "run research/portfolio_effective_bets.py first. Aborting Part 2.")
         cluster_results = None
     else:
-        corr_df = pd.read_parquet(corr_matrix_path)
+        corr_df = parquet_io.read_parquet(corr_matrix_path)
         clusters = identify_correlation_clusters(corr_df, corr_threshold=0.5)
         n_clusters = len(set(clusters.values()))
         print(f"Loaded real {corr_df.shape[0]}-pair correlation matrix. "
@@ -209,7 +210,7 @@ def main():
                   "real Sharpe comparison for Part 2.")
             cluster_results = {"n_clusters": n_clusters, "cluster_sizes": cluster_sizes.to_dict()}
         else:
-            trades = pd.read_parquet(trades_path)
+            trades = parquet_io.read_parquet(trades_path)
             trades["pair_key"] = trades["symbol_a"] + "_" + trades["symbol_b"]
             base_weights = {k: 1.0 for k in trades["pair_key"].unique()}
             capped_weights = apply_cluster_exposure_cap(base_weights, clusters, max_cluster_exposure=1.0)

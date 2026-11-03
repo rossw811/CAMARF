@@ -42,6 +42,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import pandas as pd
 
+import parquet_io
 from data_wrds import _connect, _OUT_DIR
 
 log = logging.getLogger("thread_k_part2_fund_membership_fetch")
@@ -149,7 +150,7 @@ def main():
 
     log.info(f"Fetch complete. Assembling final output from all {len(batches)} checkpoints...")
     all_dfs = [
-        pd.read_parquet(os.path.join(_CHECKPOINT_DIR, f"batch_{i}.parquet"))
+        parquet_io.read_parquet(os.path.join(_CHECKPOINT_DIR, f"batch_{i}.parquet"))
         for i in range(len(batches))
     ]
     combined = pd.concat(all_dfs, ignore_index=True)

@@ -68,6 +68,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from aligned_pair_loader import load_aligned_pair
+import parquet_io
 from analysis import Config
 from bh_fdr_dependence_check import benjamini_yekutieli
 from data import _gap_aware_returns
@@ -111,7 +112,7 @@ def main():
         print(f"No near-miss scan output at {near_miss_path} -- run near_miss_lag_scan.py --tf {args.tf} first.")
         return
 
-    near_miss_df = pd.read_parquet(near_miss_path)
+    near_miss_df = parquet_io.read_parquet(near_miss_path)
     flagged = near_miss_df[near_miss_df["flagged"]].copy() if "flagged" in near_miss_df.columns else near_miss_df.copy()
     flagged = flagged[flagged["lift"] >= args.min_lift] if "lift" in flagged.columns else flagged
     print(f"Near-miss scan: {len(near_miss_df)} total near-miss pairs, {len(flagged)} flagged "

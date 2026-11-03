@@ -78,6 +78,7 @@ import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+import parquet_io
 from analysis import AnalysisPipeline, CointScanner
 from config import Config
 from data import DataAligner, DataStore
@@ -158,7 +159,7 @@ def _load_symbol(symbol: str, tf_label: str, preloaded: dict = None):
         _wp = os.path.join(_ul._WRDS_CACHE_DIR, f"{symbol}_{tf_label}.parquet")
         if os.path.exists(_wp) and os.path.getsize(_wp) > 0:
             try:
-                _w = pd.read_parquet(_wp)
+                _w = parquet_io.read_parquet(_wp)
                 # CRSP total return (US) > close_usd (Compustat Global in USD, R1.1) > plain close
                 for _col in ("close_total_return", "close_usd"):
                     if _col in _w.columns and _w[_col].notna().any():
@@ -336,7 +337,7 @@ def build_adapter_rows(
     rows = []
     done_keys = set()
     if os.path.exists(progress_path):
-        prior = pd.read_parquet(progress_path)
+        prior = parquet_io.read_parquet(progress_path)
         prior_rows = prior.to_dict("records")
         # BUG (found live, 2026-08-12, while rebuilding the adapter post-
         # BUG-D112): a prior checkpoint can contain rows for pairs that are

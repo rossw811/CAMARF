@@ -41,6 +41,7 @@ import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+import parquet_io
 from backtest import BacktestEngine, RegimeConditioner, MLConditioner, compute_metrics
 from config import Config
 from portfolio_math import sharpe_from_trades
@@ -68,7 +69,7 @@ def main():
     if not os.path.exists(pairs_path):
         print(f"No pairs.parquet at {pairs_path} — run analysis.py first.")
         return
-    pairs = pd.read_parquet(pairs_path)
+    pairs = parquet_io.read_parquet(pairs_path)
     if "tf_label" not in pairs.columns:
         pairs["tf_label"] = _TF_LABEL
 
@@ -86,7 +87,7 @@ def main():
         series_path = f"output/results/{_TF_DIR}/spread_series_{sym_a}_{sym_b}.parquet"
         if not os.path.exists(series_path):
             continue
-        spread_df = pd.read_parquet(series_path)
+        spread_df = parquet_io.read_parquet(series_path)
 
         trades_same_bar = engine.run(row, spread_df, "ols")
         trades_lagged = engine.run(row, build_lagged_spread_df(spread_df), "ols")

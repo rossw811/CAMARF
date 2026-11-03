@@ -38,6 +38,7 @@ import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+import parquet_io
 from analysis import AnalysisPipeline
 from backtest import BacktestEngine, RegimeConditioner, MLConditioner, compute_metrics
 from config import Config
@@ -171,7 +172,7 @@ def main():
     if not os.path.exists(requal_path):
         log.warning("No %s — run decoupling_requalification.py first.", requal_path)
         return
-    requal = pd.read_parquet(requal_path)
+    requal = parquet_io.read_parquet(requal_path)
     to_test = requal[requal["requalifies"]]
     log.info("%d re-qualified pairs to build and backtest", len(to_test))
 

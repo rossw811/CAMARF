@@ -42,6 +42,7 @@ import numpy as np
 import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import parquet_io
 
 _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _WRDS_CACHE_DIR = os.path.join(_ROOT, "output", "cache", "wrds")
@@ -110,7 +111,7 @@ def main():
     p.add_argument("--model", choices=["3", "5"], default="5")
     args = p.parse_args()
 
-    trades_df = pd.read_parquet(args.trades)
+    trades_df = parquet_io.read_parquet(args.trades)
     returns = build_daily_return_series(trades_df, args.starting_capital)
     print(f"Built {len(returns)}-day return series from {len(trades_df)} trades "
           f"({returns.index.min()} to {returns.index.max()})")
@@ -119,7 +120,7 @@ def main():
     if not os.path.exists(ff_path):
         print(f"ERROR: {ff_path} not found -- run research/build_wrds_supplementary_data.py first.")
         return
-    ff = pd.read_parquet(ff_path)
+    ff = parquet_io.read_parquet(ff_path)
     ff["date"] = pd.to_datetime(ff["date"])
     ff = ff.set_index("date")
     # Verified directly against the cached data (2026-08-11): WRDS's ff

@@ -49,6 +49,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from aligned_pair_loader import load_aligned_pair
+import parquet_io
 from analysis import Config
 from data import DataStore, _gap_aware_returns
 from lead_lag_scan import _eg_pvalue, _gap_masked_log_price, lagged_corr_scan
@@ -171,14 +172,14 @@ def main():
     near_miss_path = os.path.join(root, "output", "research", f"near_miss_lag_scan_{args.tf}.parquet")
     near_miss_pairs = []
     if os.path.exists(near_miss_path):
-        nm = pd.read_parquet(near_miss_path, columns=["symbol_a", "symbol_b"])
+        nm = parquet_io.read_parquet(near_miss_path, columns=["symbol_a", "symbol_b"])
         near_miss_pairs = list(zip(nm["symbol_a"], nm["symbol_b"]))
     else:
         print(f"WARNING: {near_miss_path} not found -- comparison group will have no real near-miss pairs.")
     comparison_pairs = near_miss_pairs + _negative_control_pairs(confirmed_pairs)
 
     if args.pairs_file:
-        pf = pd.read_parquet(args.pairs_file)
+        pf = parquet_io.read_parquet(args.pairs_file)
         confirmed_pairs = []
         comparison_pairs = list(zip(pf["symbol_a"], pf["symbol_b"]))
 

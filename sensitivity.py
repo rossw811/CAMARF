@@ -27,6 +27,7 @@ from typing import List, Dict, Any, Optional
 
 import numpy as np
 import pandas as pd
+import parquet_io
 
 
 import portfolio_math  # single source of truth for daily P&L (code review P1)
@@ -95,13 +96,13 @@ def load_pairs_and_spreads(tf_dir: str, tf_label: str):
     if not os.path.exists(pairs_path):
         return [], {}
 
-    pairs = pd.read_parquet(pairs_path)
+    pairs = parquet_io.read_parquet(pairs_path)
     if "tf_label" not in pairs.columns:
         pairs["tf_label"] = tf_label
 
     # Merge half_life_rolling from tiers so we can use it for max_hl filter
     if os.path.exists(tiers_path):
-        tiers = pd.read_parquet(tiers_path)
+        tiers = parquet_io.read_parquet(tiers_path)
         tier_tf = tiers[tiers["tf_label"] == tf_label][
             ["symbol_a", "symbol_b", "tf_label", "half_life_rolling"]
         ]
@@ -118,7 +119,7 @@ def load_pairs_and_spreads(tf_dir: str, tf_label: str):
             adv_map[sym] = float("nan")
             continue
         try:
-            hr = pd.read_parquet(fpath)
+            hr = parquet_io.read_parquet(fpath)
             if "close" in hr.columns and "volume" in hr.columns:
                 hr.index = pd.to_datetime(hr.index)
                 from dollar_volume import mean_daily_dollar_volume
@@ -134,7 +135,7 @@ def load_pairs_and_spreads(tf_dir: str, tf_label: str):
         a, b = row["symbol_a"], row["symbol_b"]
         sp_path = os.path.join(_RESULTS_DIR, tf_dir, f"spread_series_{a}_{b}.parquet")
         if os.path.exists(sp_path):
-            spreads[f"{a}_{b}"] = pd.read_parquet(sp_path)
+            spreads[f"{a}_{b}"] = parquet_io.read_parquet(sp_path)
 
     return pairs, spreads, adv_map
 

@@ -26,6 +26,10 @@ from typing import Callable, Optional
 
 import numpy as np
 import pandas as pd
+import os
+import sys
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # project root, for parquet_io
+import parquet_io
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -122,7 +126,7 @@ TRADES_CONTRACT = TableContract(
 
 def _check_file(path: Path, contract: TableContract):
     try:
-        df = pd.read_parquet(path)
+        df = parquet_io.read_parquet(path)
     except Exception as e:
         return [f"{path}: UNREADABLE ({e})"]
     return [f"{path}: {v}" for v in validate(df, contract)]

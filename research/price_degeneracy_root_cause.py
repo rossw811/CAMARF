@@ -36,6 +36,7 @@ from scipy import stats as sp_stats
 _ROOT = os.path.dirname(os.path.abspath(__file__))
 _ROOT = os.path.dirname(_ROOT)
 sys.path.insert(0, _ROOT)
+import parquet_io
 
 _OUT_DIR = os.path.join(_ROOT, "output", "research")
 _INPUT_PATH = os.path.join(_OUT_DIR, "price_degeneracy_with_metadata.parquet")
@@ -67,7 +68,7 @@ def main():
         log.error("Missing %s — run investigate_price_degeneracy_cause.py first.", _INPUT_PATH)
         return
 
-    df = pd.read_parquet(_INPUT_PATH)
+    df = parquet_io.read_parquet(_INPUT_PATH)
     df = df[df["fetch_ok"] == True].copy()
     log.info("%d symbols with valid metadata, %d flagged (%.1f%%)",
               len(df), df["flagged"].sum(), 100 * df["flagged"].mean())

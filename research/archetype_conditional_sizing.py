@@ -46,6 +46,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(
 from aligned_pair_loader import load_aligned_pair
 from lead_lag_scan import _gap_masked_log_price
 from spread_construction import full_sample_ols_spread
+import parquet_io
 from config import Config
 
 ENTRY_Z = Config.RESEARCH.ENTRY_Z
@@ -179,7 +180,7 @@ def main():
     if not os.path.exists(_CHAR_PATH):
         print(f"{_CHAR_PATH} not found.")
         return
-    char_df = pd.read_parquet(_CHAR_PATH)
+    char_df = parquet_io.read_parquet(_CHAR_PATH)
     pairs_with_score = char_df[char_df["regime_sensitivity_score"].notna()][["symbol_a", "symbol_b"]].drop_duplicates()
     print(f"Pairs with a real regime_sensitivity_score: {len(pairs_with_score)} "
           f"(honest scope: this is a {len(pairs_with_score)}-pair test, not a general claim)\n")

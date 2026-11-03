@@ -145,9 +145,9 @@ def main(n_controls: int = None, match: str = "size"):
     sys.path.insert(0, root)
     from data_wrds import label_permno_map, sp500_members_asof, crsp_no_trade_mask
     W = os.path.join(root, "output", "cache", "wrds")
-    mem = pd.read_parquet(os.path.join(W, "sp500_membership_history.parquet"))
-    names = pd.read_parquet(os.path.join(W, "crsp_msenames_sic.parquet"))
-    size = pd.read_parquet(os.path.join(W, "crsp_msf_size.parquet"))
+    mem = parquet_io.read_parquet(os.path.join(W, "sp500_membership_history.parquet"))
+    names = parquet_io.read_parquet(os.path.join(W, "crsp_msenames_sic.parquet"))
+    size = parquet_io.read_parquet(os.path.join(W, "crsp_msf_size.parquet"))
     size["date"] = pd.to_datetime(size["date"]); size["mcap"] = size["prc"].abs() * size["shrout"]
     lab = {}
     for l, p in label_permno_map().items():
@@ -162,7 +162,7 @@ def main(n_controls: int = None, match: str = "size"):
             if not f or not os.path.exists(f):
                 cache[p] = None
             else:
-                df = pd.read_parquet(f)
+                df = parquet_io.read_parquet(f)
                 px = crsp_no_trade_mask(df, l, df["close_total_return"].astype(float)).abs()
                 r = np.log(px).diff(); r.index = pd.to_datetime(r.index)
                 cache[p] = r[~r.index.duplicated(keep="last")]
@@ -224,6 +224,7 @@ def main(n_controls: int = None, match: str = "size"):
     pd.DataFrame([{**res, "match": match, "n_controls": n_controls or N_CONTROLS}]).to_parquet(
         os.path.join(root, "output", "research", f"inclusion_did_summary{suffix}.parquet"))
     M.to_parquet(os.path.join(root, "output", "research", f"inclusion_did_events{suffix}.parquet"))
+import parquet_io
 
 
 if __name__ == "__main__":

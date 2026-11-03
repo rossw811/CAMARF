@@ -59,6 +59,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import numpy as np
 import pandas as pd
 
+import parquet_io
 from data_wrds import _connect
 from research.fama_french_risk_decomposition import build_daily_return_series, run_regression
 
@@ -197,7 +198,7 @@ def main():
     args = p.parse_args()
 
     if os.path.exists(_RAW_PANEL_PATH) and not args.refetch:
-        panel = pd.read_parquet(_RAW_PANEL_PATH)
+        panel = parquet_io.read_parquet(_RAW_PANEL_PATH)
         print(f"Loaded cached panel: {len(panel)} rows")
     else:
         db = _connect()
@@ -215,7 +216,7 @@ def main():
     # independently-sourced Fama-French/Carhart 'umd' factor.
     ff_path = os.path.join(_WRDS_CACHE_DIR, "ff_factors_5_daily.parquet")
     if os.path.exists(ff_path) and "momentum" in factors.columns:
-        ff = pd.read_parquet(ff_path)
+        ff = parquet_io.read_parquet(ff_path)
         ff["date"] = pd.to_datetime(ff["date"])
         ff_monthly_umd = (1 + ff.set_index("date")["umd"]).resample("ME").prod() - 1
         joined = pd.DataFrame({

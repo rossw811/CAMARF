@@ -27,6 +27,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import numpy as np
 import pandas as pd
 
+import parquet_io
 from analysis import AnalysisPipeline
 
 CASES = [
@@ -48,7 +49,7 @@ def main():
             print(f"SKIP {sym_a}/{sym_b}@{tf_dir}: {path} does not exist "
                   f"(no pairs survived coint_frac filtering for this TF)")
             continue
-        df = pd.read_parquet(path)
+        df = parquet_io.read_parquet(path)
         row = df[(df["symbol_a"] == sym_a) & (df["symbol_b"] == sym_b)]
         if row.empty:
             print(f"SKIP {sym_a}/{sym_b}@{tf_dir}: not found in {path} "

@@ -32,6 +32,7 @@ import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import parquet_io
 
 import numpy as np
 import pandas as pd
@@ -119,7 +120,7 @@ def main():
     if not os.path.exists(spread_path):
         print(f"FATAL: {spread_path} not found")
         sys.exit(1)
-    df = pd.read_parquet(spread_path)
+    df = parquet_io.read_parquet(spread_path)
     z_series = df["z_rolling"].dropna()
 
     cal = EarningsCalendar.load_or_build([args.symbol_a, args.symbol_b])

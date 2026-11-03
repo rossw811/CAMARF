@@ -50,6 +50,7 @@ from typing import Dict, List, Optional, Tuple, Set, Any, Union
 
 import numpy as np
 import pandas as pd
+import parquet_io
 
 # Statistical libraries
 from scipy import stats as scipy_stats
@@ -5423,7 +5424,7 @@ class AnalysisPipeline:
                     if not os.path.exists(_path):
                         continue
                     try:
-                        _df = pd.read_parquet(_path)
+                        _df = parquet_io.read_parquet(_path)
                         if "close" not in _df.columns or "volume" not in _df.columns:
                             continue
                         _df.index = pd.to_datetime(_df.index)
@@ -6117,7 +6118,7 @@ class AnalysisPipeline:
         deg_path = os.path.join(research_dir, f"price_degeneracy_flagged_{safe_tf}.parquet")
         if os.path.exists(deg_path):
             try:
-                deg_df = pd.read_parquet(deg_path)
+                deg_df = parquet_io.read_parquet(deg_path)
                 if "symbol" in deg_df.columns:
                     degenerate_syms = set(deg_df["symbol"].tolist())
             except Exception as e:   # T1.8 / W6.4 (2026-10-07): an existing but unreadable screen file used to
@@ -6132,7 +6133,7 @@ class AnalysisPipeline:
         meta_path = os.path.join(research_dir, "price_degeneracy_with_metadata.parquet")
         if os.path.exists(meta_path):
             try:
-                meta_df = pd.read_parquet(meta_path)
+                meta_df = parquet_io.read_parquet(meta_path)
                 for _, row in meta_df.iterrows():
                     risk_lookup[row["symbol"]] = AnalysisPipeline._predict_degeneracy_risk(
                         row.get("market_cap"), row.get("sector")
@@ -6153,7 +6154,7 @@ class AnalysisPipeline:
         perm_path = os.path.join(research_dir, "eg_permutation_check.parquet")
         if os.path.exists(perm_path):
             try:
-                perm_df = pd.read_parquet(perm_path)
+                perm_df = parquet_io.read_parquet(perm_path)
                 perm_tf = perm_df[perm_df["tf"] == tf_label]
                 for _, row in perm_tf.iterrows():
                     key = (row["symbol_a"], row["symbol_b"])
@@ -6241,7 +6242,7 @@ class AnalysisPipeline:
             """
             wrds_path = os.path.join(Config.DATA.CACHE_DIR, "wrds", f"{symbol}_{tf}.parquet")
             if os.path.exists(wrds_path):
-                wdf = pd.read_parquet(wrds_path)
+                wdf = parquet_io.read_parquet(wrds_path)
                 col = "close_total_return" if "close_total_return" in wdf.columns else (
                     "close" if "close" in wdf.columns else None)
                 if col:

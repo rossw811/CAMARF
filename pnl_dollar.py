@@ -50,6 +50,7 @@ from typing import Callable, Optional
 
 import numpy as np
 import pandas as pd
+import parquet_io
 
 from config import Config
 import market_calendar
@@ -91,7 +92,7 @@ def load_daily_prices(symbol: str) -> Optional[pd.DataFrame]:
         if not os.path.exists(path) or os.path.getsize(path) == 0:
             continue
         try:
-            d = pd.read_parquet(path)
+            d = parquet_io.read_parquet(path)
         except Exception as e:
             # Inconsistency sweep 2026-09-28: an unreadable WRDS file used to switch this leg to the yfinance
             # source silently. Fallback kept, but recorded and logged.
@@ -172,7 +173,7 @@ def load_intraday_prices(symbol: str, tf: str) -> Optional[pd.DataFrame]:
         path = os.path.join(_YF_DIR, f"{symbol}_{suffix}.parquet")
         if os.path.exists(path) and os.path.getsize(path) > 0:
             try:
-                frames.append(pd.read_parquet(path, columns=["close"]))
+                frames.append(parquet_io.read_parquet(path, columns=["close"]))
             except Exception as e:
                 READ_FAILURES[path] = f"{type(e).__name__}: {e}"[:200]
                 log.warning("pnl_dollar: %s unreadable (%s)", path, READ_FAILURES[path])

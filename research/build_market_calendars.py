@@ -20,12 +20,13 @@ import pandas as pd
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 
+import parquet_io
 import market_calendar as mc  # noqa: E402
 from config import Config  # noqa: E402
 
 
 def _valid_dates(path: str) -> pd.DatetimeIndex:
-    d = pd.read_parquet(path)
+    d = parquet_io.read_parquet(path)
     col = next((c for c in ("close_total_return", "close_usd", "close") if c in d.columns), None)
     if col is None:
         return pd.DatetimeIndex([])

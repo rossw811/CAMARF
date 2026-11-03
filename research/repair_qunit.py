@@ -22,6 +22,8 @@ import sys
 
 import numpy as np
 import pandas as pd
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # project root, for parquet_io
+import parquet_io
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _W = os.path.join(ROOT, "output", "cache", "wrds")
@@ -53,9 +55,9 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--dry-run", action="store_true")
     a = ap.parse_args()
-    runs = pd.read_parquet(os.path.join(_W, "compustat_global_qunit_runs.parquet"))
+    runs = parquet_io.read_parquet(os.path.join(_W, "compustat_global_qunit_runs.parquet"))
     runs["gvkey"] = runs["gvkey"].astype(str).str.zfill(6)
-    man = pd.read_parquet(os.path.join(_W, "global_universe_manifest.parquet"))
+    man = parquet_io.read_parquet(os.path.join(_W, "global_universe_manifest.parquet"))
     man["gvkey"] = man["gvkey"].astype(str).str.zfill(6)
     lab = {(g, i): l for l, g, i in zip(man["label"], man["gvkey"], man["iid"])}
     bak = os.path.join(_W, "_pre_qunit_backup")
@@ -68,7 +70,7 @@ def main():
         f = os.path.join(_W, f"{l}_1D.parquet") if l else None
         if not f or not os.path.exists(f):
             rows.append({"label": l, "status": "no_file"}); continue
-        df = pd.read_parquet(f); df.index = pd.to_datetime(df.index)
+        df = parquet_io.read_parquet(f); df.index = pd.to_datetime(df.index)
         before = float(np.log(df["close_total_return"].astype(float).abs()).diff().abs().max()) if "close_total_return" in df else np.nan
         fixed = repair_frame(df, rr)
         after = float(np.log(fixed["close_total_return"].astype(float).abs()).diff().abs().max()) if "close_total_return" in fixed else np.nan

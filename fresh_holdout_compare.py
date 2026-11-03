@@ -30,6 +30,7 @@ import os
 
 import numpy as np
 import pandas as pd
+import parquet_io
 
 import portfolio_math
 
@@ -129,7 +130,7 @@ def combined_split(holdout: pd.DataFrame, fresh_fraction: float = _TIME_FRESH_FR
 
 
 def main():
-    holdout = pd.read_parquet("output/backtest/trades_layer1_holdout.parquet")
+    holdout = parquet_io.read_parquet("output/backtest/trades_layer1_holdout.parquet")
     holdout["entry_time"] = pd.to_datetime(holdout["entry_time"])
     holdout["exit_time"] = pd.to_datetime(holdout["exit_time"])
     log.info("Loaded %d holdout trades, %s to %s", len(holdout),

@@ -34,6 +34,9 @@ import glob
 import os
 
 import pandas as pd
+import sys
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # project root, for parquet_io
+import parquet_io
 
 _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _RESULTS_DIR = os.path.join(_ROOT, "output", "results")
@@ -45,7 +48,7 @@ def _load_glob(pattern: str) -> pd.DataFrame:
         if "_stale_" in f:
             continue
         try:
-            df = pd.read_parquet(f)
+            df = parquet_io.read_parquet(f)
         except Exception:
             continue
         if df.empty:

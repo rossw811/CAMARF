@@ -43,6 +43,7 @@ import sys
 import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import parquet_io
 
 _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _WINDOWS_PATH = os.path.join(_ROOT, "output", "research",
@@ -100,7 +101,7 @@ def build_coint_strength_series(windows: pd.DataFrame, z_window: int = COINT_Z_W
 def load_windows(path: str = _WINDOWS_PATH) -> pd.DataFrame:
     """Tier-3 (pair, window) rows, minus windows ending on/after the sealed holdout (E13, enforced 2026-10-20)."""
     from config import Config
-    w = pd.read_parquet(path)
+    w = parquet_io.read_parquet(path)
     keep = pd.to_datetime(w["window_end_date"]) < pd.Timestamp(Config.DATA.SEALED_FROM)
     log.info(f"Sealed holdout: dropped {int((~keep).sum())} windows ending on/after {Config.DATA.SEALED_FROM}")
     return w[keep].reset_index(drop=True)

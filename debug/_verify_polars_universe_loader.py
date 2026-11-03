@@ -16,6 +16,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import numpy as np
 import pandas as pd
 
+import parquet_io
 from universe_loader import _read_one_polars, _POLARS_AVAILABLE
 
 checks = []
@@ -60,7 +61,7 @@ print(f"Sampling {len(candidates)} real files across yfinance/wrds/binance/ibkr 
 n_tested = 0
 for path in candidates:
     for columns in (None, ["close"], ["close", "volume"]):
-        ref = pd.read_parquet(path, columns=columns)
+        ref = parquet_io.read_parquet(path, columns=columns)
         got = _read_one_polars(path, columns)
         n_tested += 1
         label = f"{os.path.basename(path)} columns={columns}"

@@ -16,6 +16,7 @@ import sys
 import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import parquet_io
 
 import research.pit_wfa_wrds_daily as pw
 
@@ -43,7 +44,7 @@ expanding_df = pd.DataFrame([
     {"wfa_variant": "expanding", "fold": "fold2_exp", "sharpe": 0.1918},
 ])
 pw._merge_and_save(expanding_df, tmp_path)
-result1 = pd.read_parquet(tmp_path)
+result1 = parquet_io.read_parquet(tmp_path)
 check("2 rows written on first call", len(result1) == 2)
 
 print("Check 2: writing a DIFFERENT variant preserves the first variant's rows (the real bug: "
@@ -53,7 +54,7 @@ rolling_df = pd.DataFrame([
     {"wfa_variant": "rolling", "fold": "fold2_roll", "sharpe": 0.2175},
 ])
 pw._merge_and_save(rolling_df, tmp_path)
-result2 = pd.read_parquet(tmp_path)
+result2 = parquet_io.read_parquet(tmp_path)
 check("all 4 rows present (2 expanding + 2 rolling) -- expanding's rows survived",
       len(result2) == 4)
 check("both expanding rows are still exactly as originally written",
@@ -68,7 +69,7 @@ expanding_rerun_df = pd.DataFrame([
     {"wfa_variant": "expanding", "fold": "fold2_exp", "sharpe": 0.8888},
 ])
 pw._merge_and_save(expanding_rerun_df, tmp_path)
-result3 = pd.read_parquet(tmp_path)
+result3 = parquet_io.read_parquet(tmp_path)
 check("still exactly 4 rows total (2 expanding + 2 rolling) -- no duplicates from the re-run",
       len(result3) == 4)
 check("expanding's rows now reflect the RE-RUN's new values, not the stale originals",

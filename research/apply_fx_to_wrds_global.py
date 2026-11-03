@@ -20,6 +20,7 @@ import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+import parquet_io
 from fx_convert import currency_on_dates, to_usd
 
 _WRDS = os.path.join("output", "cache", "wrds")
@@ -29,9 +30,9 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--limit", type=int, default=None)
     args = ap.parse_args()
-    man = pd.read_parquet(os.path.join(_WRDS, "global_universe_manifest.parquet"))
-    per = pd.read_parquet(os.path.join(_WRDS, "_fx", "gvkey_currency_periods.parquet"))
-    fx = pd.read_parquet(os.path.join(_WRDS, "_fx", "g_exrt_dly.parquet"))
+    man = parquet_io.read_parquet(os.path.join(_WRDS, "global_universe_manifest.parquet"))
+    per = parquet_io.read_parquet(os.path.join(_WRDS, "_fx", "gvkey_currency_periods.parquet"))
+    fx = parquet_io.read_parquet(os.path.join(_WRDS, "_fx", "g_exrt_dly.parquet"))
     per["gvkey"] = per["gvkey"].astype(str)
     groups = {k: g for k, g in per.groupby(["gvkey", "iid"])}
     rows = man[["label", "gvkey", "iid"]].drop_duplicates("label")
@@ -45,7 +46,7 @@ def main():
         g = groups.get((str(r.gvkey), str(r.iid)))
         if g is None:
             stats.append((r.label, "no_currency_periods", np.nan, "")); continue
-        df = pd.read_parquet(path)
+        df = parquet_io.read_parquet(path)
         close = df["close"].astype(float)
         cur = currency_on_dates(g, close.index)
         usd = to_usd(close, cur, fx)

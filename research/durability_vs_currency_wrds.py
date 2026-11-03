@@ -30,6 +30,7 @@ import pandas as pd
 from scipy.signal import lfilter
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+import parquet_io
 from analysis import eg_pvalue_pair
 from config import Config
 
@@ -41,7 +42,7 @@ PAIRS = [("XOM", "CVX"), ("JPM", "BAC"), ("KO", "PEP"), ("NTRS", "STT"), ("SHW",
 
 def load_log_close(symbol):
     import data_wrds
-    df = pd.read_parquet(WRDS_CACHE / f"{symbol}_1D.parquet")
+    df = parquet_io.read_parquet(WRDS_CACHE / f"{symbol}_1D.parquet")
     close = df["close_total_return"].astype(float)
     # S35 no-trade mask, as discovery (2026-10-19 claims check: was missing, so p-values differed from the registry's
     # current_rules re-derivation). debug/_verify_durability_power_d13.py

@@ -37,6 +37,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))  # for aligned_pair_loader (lives in research/)
 
 from aligned_pair_loader import load_aligned_symbols, resolve_tf_results_dir as _resolve_tf_results_dir
+import parquet_io
 from config import Config
 
 # Narrower than aligned_pair_loader.TF_DIRS deliberately, not a drift — these
@@ -65,7 +66,7 @@ def main():
         if is_stale:
             print(f"NOTE {tf_dir}: using archived {results_dir}")
         tf_label = _DIR_TO_LABEL[tf_dir]
-        trios_df = pd.read_parquet(trios_path)
+        trios_df = parquet_io.read_parquet(trios_path)
 
         for _, row in trios_df.iterrows():
             sym_a, sym_b, sym_c = row["symbol_a"], row["symbol_b"], row["symbol_c"]

@@ -19,6 +19,7 @@ import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import parquet_io
 
 import numpy as np
 import pandas as pd
@@ -34,13 +35,13 @@ def check(name, cond, detail=""):
 def main():
     import backtest
     from config import Config
-    pairs = pd.read_parquet("output/results/1day/pairs.parquet")
+    pairs = parquet_io.read_parquet("output/results/1day/pairs.parquet")
     found = None
     for _, row in pairs.iterrows():
         p = f"output/results/1day/spread_series_{row['symbol_a']}_{row['symbol_b']}.parquet"
         if not os.path.exists(p):
             continue
-        sp = pd.read_parquet(p)
+        sp = parquet_io.read_parquet(p)
         eng = backtest.BacktestEngine(cfg=Config.BACKTEST, regime_cond=backtest.RegimeConditioner(enabled=False),
                                       ml_cond=backtest.MLConditioner(enabled=False))
         tr = eng.run(row, sp, hedge_method="ols", holdout_only=False)

@@ -43,6 +43,8 @@ import sys
 
 import numpy as np
 import pandas as pd
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # project root, for parquet_io
+import parquet_io
 
 _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _PYTHON = sys.executable
@@ -119,7 +121,7 @@ def _extract_trig_convergence(text: str, run_dir) -> dict:
     out_path = os.path.join(_ROOT, "output", "research", "trig_convergence.parquet")
     if not os.path.exists(out_path):
         return {"mean_sum_deviation": float("nan"), "mean_break_signal_z": float("nan")}
-    df = pd.read_parquet(out_path)
+    df = parquet_io.read_parquet(out_path)
     return {
         "mean_sum_deviation": float(df["mean_theta_sum_deviation_from_invariant"].mean()) if len(df) else float("nan"),
         "mean_break_signal_z": float(df["mean_break_signal_abs_z"].mean()) if len(df) else float("nan"),
@@ -142,7 +144,7 @@ def _extract_tail_dependence(text: str, run_dir) -> dict:
     out_path = os.path.join(_ROOT, "output", "research", "tail_dependence_summary.parquet")
     if not os.path.exists(out_path):
         return {"n_rows": 0, "mean_lambda_L": float("nan"), "mean_lambda_U": float("nan"), "gate_flagged": False}
-    df = pd.read_parquet(out_path)
+    df = parquet_io.read_parquet(out_path)
     gate_flagged = "GATE RESULT: at least one pair" in text
     return {
         "n_rows": len(df),
@@ -353,7 +355,7 @@ def main():
     # invocations left only the LAST one's rows on disk). Replace rows for
     # comparison_arm(s) just re-run, keep everything else untouched.
     if os.path.exists(out_path):
-        existing = pd.read_parquet(out_path)
+        existing = parquet_io.read_parquet(out_path)
         existing = existing[~existing["comparison_arm"].isin(new_df["comparison_arm"].unique())]
         out_df = pd.concat([existing, new_df], ignore_index=True)
     else:

@@ -61,6 +61,7 @@ from statsmodels.tsa.stattools import kpss
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+import parquet_io
 from config import Config
 from data import DataAligner
 from analysis import CointScanner
@@ -162,7 +163,7 @@ def main():
     for sym in needed_symbols:
         path = os.path.join(_CACHE_DIR, f"{sym}_1hr.parquet")
         if os.path.exists(path):
-            df = pd.read_parquet(path)
+            df = parquet_io.read_parquet(path)
             if df is not None and not df.empty and "close" in df.columns:
                 tf_data_raw[sym] = df
     missing = set(needed_symbols) - set(tf_data_raw)

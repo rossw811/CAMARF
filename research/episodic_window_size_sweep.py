@@ -51,6 +51,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import pandas as pd
 
+import parquet_io
 from config import Config
 from research.wrds_deep_history_episodic_scan import (
     _setup_logging, _OUT_DIR, load_wrds_universe, load_wrds_universe_ohlcv,
@@ -151,7 +152,7 @@ def main():
     else:
         _liquid_path = os.path.join("output", "research", "international_liquid_universe.parquet")
         if os.path.exists(_liquid_path):
-            liquid_labels = set(pd.read_parquet(_liquid_path, columns=["label"])["label"])
+            liquid_labels = set(parquet_io.read_parquet(_liquid_path, columns=["label"])["label"])
             before = len(close_by_symbol)
             close_by_symbol = {
                 s: v for s, v in close_by_symbol.items()

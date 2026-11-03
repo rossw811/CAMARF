@@ -60,6 +60,7 @@ import pandas as pd
 from scipy import stats
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import parquet_io
 
 _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _RESULTS_DIR = os.path.join(_ROOT, "output", "results")
@@ -119,7 +120,7 @@ def load_all_confirmed_pairs():
     for f in sorted(glob.glob(os.path.join(_RESULTS_DIR, "*", "pairs.parquet"))):
         if "_stale_" in f:
             continue
-        df = pd.read_parquet(f)
+        df = parquet_io.read_parquet(f)
         if df.empty:
             continue
         df["_source_dir"] = os.path.basename(os.path.dirname(f))
@@ -147,7 +148,7 @@ def main():
                     "prior-only (0 OOS trades). Run backtest.py first for a real update.", holdout_path)
         trades = pd.DataFrame(columns=["symbol_a", "symbol_b", "tf", "pnl_net"])
     else:
-        trades = pd.read_parquet(holdout_path)
+        trades = parquet_io.read_parquet(holdout_path)
         log.info("Loaded %d OOS holdout trades across %d unique pairs",
                   len(trades), trades[["symbol_a", "symbol_b", "tf"]].drop_duplicates().shape[0])
 

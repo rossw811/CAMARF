@@ -34,6 +34,7 @@ import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import parquet_io
 
 import pandas as pd
 
@@ -81,7 +82,7 @@ def main():
     if not os.path.exists(_SEGMENTS_PATH):
         print(f"FATAL: {_SEGMENTS_PATH} not found -- run cointegration_regime_segmentation.py first")
         sys.exit(1)
-    segments_df = pd.read_parquet(_SEGMENTS_PATH)
+    segments_df = parquet_io.read_parquet(_SEGMENTS_PATH)
     print(f"Loaded {len(segments_df)} regime segments")
 
     rows = load_window_rows(["tier3"])

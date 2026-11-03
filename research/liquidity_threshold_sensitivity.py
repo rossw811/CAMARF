@@ -23,6 +23,7 @@ import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import parquet_io
 
 import numpy as np
 import pandas as pd
@@ -71,7 +72,7 @@ def main():
     if not os.path.exists(_LIQ_PATH):
         print(f"FATAL: {_LIQ_PATH} not found -- run international_liquidity_filter.py first")
         sys.exit(1)
-    liq_df = pd.read_parquet(_LIQ_PATH)
+    liq_df = parquet_io.read_parquet(_LIQ_PATH)
 
     print(f"=== Pass-rate sensitivity across MIN_DOLLAR_VOLUME thresholds "
           f"({liq_df['avg_dollar_volume_usd'].notna().sum()} symbols with a valid ADV) ===")
@@ -84,7 +85,7 @@ def main():
         for split in ["is", "oos"]:
             path = os.path.join(_STEP5_DIR, f"real_{arm}_{split}_trades_capsim.parquet")
             if os.path.exists(path):
-                df = pd.read_parquet(path)
+                df = parquet_io.read_parquet(path)
                 if "actual_notional" in df.columns and not df.empty:
                     all_notionals.append(df["actual_notional"])
     if all_notionals:

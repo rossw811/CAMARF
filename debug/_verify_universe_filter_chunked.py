@@ -33,6 +33,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import numpy as np
 import pandas as pd
 
+import parquet_io
 from analysis import UniverseFilter
 
 
@@ -128,7 +129,7 @@ def main():
                              f"happening incrementally")
         else:
             streamed_df = pd.concat(
-                [pd.read_parquet(os.path.join(flush_dir, f)) for f in chunk_files], ignore_index=True
+                [parquet_io.read_parquet(os.path.join(flush_dir, f)) for f in chunk_files], ignore_index=True
             )
             keys_streamed = {tuple(sorted([r["symbol_a"], r["symbol_b"]]))
                               for _, r in streamed_df.iterrows()}

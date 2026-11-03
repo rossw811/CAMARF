@@ -17,6 +17,7 @@ import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import parquet_io
 
 import numpy as np
 import pandas as pd
@@ -36,7 +37,7 @@ def d13():
     for tf, rule in (("1M", "M"), ("3M", "Q"), ("6M", None), ("1Y", "Y")):
         for p in sorted(glob.glob(os.path.join(W, f"*_{tf}.parquet")))[:300]:
             try:
-                idx = pd.DatetimeIndex(pd.read_parquet(p, columns=[]).index)
+                idx = pd.DatetimeIndex(parquet_io.read_parquet(p, columns=[]).index)
             except Exception:
                 continue
             if len(idx) == 0:
@@ -55,7 +56,7 @@ def d16():
         p = os.path.join(W, f"{sym}_1D.parquet")
         if not os.path.exists(p):
             ev.append(f"{sym}: no WRDS file"); continue
-        c = pd.read_parquet(p, columns=["close"])["close"].dropna()
+        c = parquet_io.read_parquet(p, columns=["close"])["close"].dropna()
         last = float(c.iloc[-1]) if len(c) else float("nan")
         good = lo <= abs(last) <= hi
         ok &= good
@@ -71,7 +72,7 @@ def d17():
         p = os.path.join(W, f"{sym}_1D.parquet")
         if not os.path.exists(p):
             ev.append(f"{sym}: missing"); ok = False; continue
-        c = pd.read_parquet(p, columns=["close"])["close"].dropna()
+        c = parquet_io.read_parquet(p, columns=["close"])["close"].dropna()
         last = pd.Timestamp(c.index.max()) if len(c) else None
         recent = last is not None and last >= pd.Timestamp("2025-01-01")
         ok &= recent
@@ -85,7 +86,7 @@ def d19():
         if os.path.basename(p).startswith("GVKEY"):
             continue
         try:
-            d = pd.read_parquet(p, columns=["close"])
+            d = parquet_io.read_parquet(p, columns=["close"])
         except Exception:
             continue
         if d["close"].notna().sum() == 0:
@@ -96,7 +97,7 @@ def d19():
     # (2026-10-04); 4,173 found, all ending <= 1992.
     late = []
     for b in empty:
-        d = pd.read_parquet(os.path.join(W, b), columns=["close"])
+        d = parquet_io.read_parquet(os.path.join(W, b), columns=["close"])
         if len(d) and pd.Timestamp(d.index.max()) > pd.Timestamp("1992-12-31"):
             late.append(b)
     verdict("D19", len(late) == 0, f"main-cache CRSP daily files with no valid close: {len(empty)}, of which ending "

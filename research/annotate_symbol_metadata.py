@@ -29,6 +29,9 @@ import os
 import time
 
 import pandas as pd
+import sys
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # project root, for parquet_io
+import parquet_io
 import yfinance as yf
 
 _DELAY_SECONDS = 0.3
@@ -64,7 +67,7 @@ def main():
     args = p.parse_args()
 
     if args.pairs_file:
-        df = pd.read_parquet(args.pairs_file)
+        df = parquet_io.read_parquet(args.pairs_file)
         if args.flagged_only and "flagged" in df.columns:
             df = df[df["flagged"]]
         symbols = sorted(set(df["symbol_a"]) | set(df["symbol_b"]))

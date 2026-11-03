@@ -52,6 +52,7 @@ import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+import parquet_io
 from analysis import _eg_worker
 from config import Config
 from aligned_pair_loader import load_aligned_pair
@@ -136,11 +137,11 @@ def main():
     for cand_path in sorted(glob.glob(os.path.join(_RESULTS_DIR, "*", "all_candidates.parquet"))):
         tf_dir = os.path.basename(os.path.dirname(cand_path))
         tf_label = tf_dir.replace("hr", "h").replace("min", "m").replace("day", "D").replace("mo", "M")
-        candidates = pd.read_parquet(cand_path)
+        candidates = parquet_io.read_parquet(cand_path)
         pairs_path = os.path.join(_RESULTS_DIR, tf_dir, "pairs.parquet")
         confirmed_keys = set()
         if os.path.exists(pairs_path):
-            confirmed = pd.read_parquet(pairs_path)
+            confirmed = parquet_io.read_parquet(pairs_path)
             confirmed_keys = set(zip(confirmed["symbol_a"], confirmed["symbol_b"]))
 
         # VECTORIZED (2026-09-02, optimization sweep): the original row-wise

@@ -33,6 +33,7 @@ import sys
 import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import parquet_io
 
 _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _WRDS_CACHE_DIR = os.path.join(_ROOT, "output", "cache", "wrds")
@@ -57,12 +58,12 @@ def load_fundamentals_cache():
     permno_map = pd.DataFrame({"symbol": list(_m), "permno": list(_m.values())})
     permno_by_symbol = dict(zip(permno_map["symbol"], permno_map["permno"]))
 
-    funda = pd.read_parquet(_FUNDA_PATH)
+    funda = parquet_io.read_parquet(_FUNDA_PATH)
     funda["datadate"] = pd.to_datetime(funda["datadate"])
     funda["available_date"] = funda["datadate"] + pd.Timedelta(days=_REPORTING_LAG_DAYS)
     funda["permno"] = funda["permno"].astype("Int64")
 
-    company = pd.read_parquet(_COMPANY_PATH)
+    company = parquet_io.read_parquet(_COMPANY_PATH)
     company_by_gvkey = company.set_index("gvkey")[["sic", "gsector", "gind", "conm"]].to_dict("index")
 
     return permno_by_symbol, funda, company_by_gvkey
@@ -129,7 +130,7 @@ def main():
         print("Fundamentals cache unavailable -- run research/build_wrds_supplementary_data.py first.")
         return
 
-    pairs_df = pd.read_parquet(args.pairs)
+    pairs_df = parquet_io.read_parquet(args.pairs)
     rows = []
     for _, r in pairs_df.iterrows():
         as_of = r.get("as_of_date", pd.Timestamp.now())

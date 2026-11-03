@@ -51,6 +51,7 @@ from typing import Optional
 import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import parquet_io
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from data_contamination_scan import scan_series_for_jumps, JUMP_THRESHOLD
@@ -117,7 +118,7 @@ def find_candidates_path(tf_dir: str = "1hr") -> Optional[str]:
     live = os.path.join(_ROOT, "output", "results", tf_dir, "all_candidates.parquet")
     if os.path.exists(live):
         try:
-            if len(pd.read_parquet(live)) > 10:
+            if len(parquet_io.read_parquet(live)) > 10:
                 return live
         except Exception:
             pass
@@ -139,7 +140,7 @@ def main():
         log.warning("No 1hr all_candidates.parquet found (live or archived). Nothing to check.")
         return
     log.info("Using candidates file: %s", cand_path)
-    df = pd.read_parquet(cand_path)
+    df = parquet_io.read_parquet(cand_path)
     total = len(df)
 
     def _involves_contam(row):

@@ -58,6 +58,7 @@ from statsmodels.tsa.stattools import adfuller
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+import parquet_io
 from data import _clean_close
 from research.aligned_pair_loader import load_aligned_pair
 
@@ -173,7 +174,7 @@ def load_confirmed_pairs(tf_label: str):
     path = os.path.join(_RESULTS_DIR, tf_dir_map.get(tf_label, tf_label), "pairs.parquet")
     if not os.path.exists(path):
         return []
-    df = pd.read_parquet(path)
+    df = parquet_io.read_parquet(path)
     return list(zip(df["symbol_a"], df["symbol_b"]))
 
 

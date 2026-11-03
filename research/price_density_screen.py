@@ -23,6 +23,7 @@ import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+import parquet_io
 from config import Config
 from data import DataStore
 
@@ -69,7 +70,7 @@ def main():
     if not os.path.exists(pairs_path):
         print(f"No confirmed pairs file at {pairs_path} — nothing to compare.")
         return
-    pairs = pd.read_parquet(pairs_path)
+    pairs = parquet_io.read_parquet(pairs_path)
 
     print(f"Applying price_density_screen to {len(cached)} symbols cached at {tf_label}...")
     screen_results = {sym: passes_price_density(sym, tf_label) for sym in cached}

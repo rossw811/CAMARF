@@ -17,6 +17,7 @@ import pandas as pd
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
+import parquet_io
 sys.argv = [sys.argv[0]]   # the scan module parses --d18 / --grid-offset at import
 
 
@@ -27,7 +28,7 @@ def main():
     R = os.path.join(ROOT, "output", "research")
     samp = []
     for tier, n in ((2, 300), (3, 200)):
-        w = pd.read_parquet(os.path.join(R, f"wrds_deep_history_episodic_scan_tier{tier}_windows.parquet"),
+        w = parquet_io.read_parquet(os.path.join(R, f"wrds_deep_history_episodic_scan_tier{tier}_windows.parquet"),
                             columns=["symbol_a", "symbol_b", "window_start", "pvalue"])
         samp.append(w.sample(n=n, random_state=20261010).assign(tier=tier))
     S = pd.concat(samp, ignore_index=True)

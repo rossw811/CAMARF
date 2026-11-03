@@ -7,6 +7,7 @@ Runs on the OOS holdout slice. Outputs wfa/backtest-style comparison table.
 import os, sys, itertools, warnings
 import numpy as np
 import pandas as pd
+import parquet_io
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 warnings.filterwarnings("ignore")
@@ -27,7 +28,7 @@ _TF_DIRS = [
 
 def load_all_pairs():
     """Load pairs from each tf_dir results folder, same as backtest.py main()."""
-    tiers = pd.read_parquet(os.path.join(_ROOT, "output", "stats", "cointegration_tiers.parquet"))
+    tiers = parquet_io.read_parquet(os.path.join(_ROOT, "output", "stats", "cointegration_tiers.parquet"))
     cf_map = {(r.symbol_a, r.symbol_b, r.tf_label): r.coint_fraction_rolling
               for _, r in tiers.iterrows()}
     all_pairs = []
@@ -35,7 +36,7 @@ def load_all_pairs():
         ppath = os.path.join(_ROOT, "output", "results", tf_dir, "pairs.parquet")
         if not os.path.exists(ppath):
             continue
-        pairs = pd.read_parquet(ppath)
+        pairs = parquet_io.read_parquet(ppath)
         if "tf_label" not in pairs.columns:
             pairs["tf_label"] = tf_label
         pairs["_tf_dir"] = tf_dir
@@ -51,7 +52,7 @@ def load_spread(tf_dir, sym_a, sym_b):
                         f"spread_series_{sym_a}_{sym_b}.parquet")
     if not os.path.exists(path):
         return None
-    return pd.read_parquet(path)
+    return parquet_io.read_parquet(path)
 
 
 def portfolio_sharpe(trades):

@@ -38,6 +38,7 @@ import pandas as pd
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
+import parquet_io
 _W = os.path.join(ROOT, "output", "cache", "wrds")
 OUT = os.path.join(_W, "wrds_label_permno_canonical.parquet")
 TOL_DAYS = 10   # same tolerance as research/relabel_wrds_by_recency_d17.py (listing-date vs first-trade offsets)
@@ -84,7 +85,7 @@ def file_spans(root: str = _W) -> pd.DataFrame:
         if lab.startswith("GVKEY"):
             continue
         try:
-            idx = pd.to_datetime(pd.read_parquet(p, columns=["close"]).dropna().index)
+            idx = pd.to_datetime(parquet_io.read_parquet(p, columns=["close"]).dropna().index)
         except Exception:
             continue
         if len(idx):
@@ -122,7 +123,7 @@ def pick(scores: dict):
 
 
 def resolve_input():
-    r = pd.read_parquet(OUT)
+    r = parquet_io.read_parquet(OUT)
     r = r[r["status"] != "self"]
     agree = r["permno"].notna() & r["permno_label_map"].notna() & (r["permno"] == r["permno_label_map"])
     rows = []
@@ -130,7 +131,7 @@ def resolve_input():
         cands = sorted({int(p) for p in (x.permno, x.permno_label_map, x.permno_symbol_map) if pd.notna(p)})
         if not cands:
             continue
-        d = pd.read_parquet(os.path.join(_W, f"{x.label}_1D.parquet"), columns=["close"]).dropna()
+        d = parquet_io.read_parquet(os.path.join(_W, f"{x.label}_1D.parquet"), columns=["close"]).dropna()
         d.index = pd.to_datetime(d.index)
         if len(d) < 20:
             continue
@@ -142,13 +143,13 @@ def resolve_input():
 
 
 def finalize():
-    c = pd.read_parquet(OUT)
-    inp = pd.read_parquet(RESOLVE_INPUT)
-    px = pd.read_parquet(RESOLVE_RETURNS); px["date"] = pd.to_datetime(px["date"])
+    c = parquet_io.read_parquet(OUT)
+    inp = parquet_io.read_parquet(RESOLVE_INPUT)
+    px = parquet_io.read_parquet(RESOLVE_RETURNS); px["date"] = pd.to_datetime(px["date"])
     by = {p: g.groupby("date")["ret"].last().astype(float) for p, g in px.groupby("permno")}
     resolved = {}
     for lab, g in inp.groupby("label"):
-        d = pd.read_parquet(os.path.join(_W, f"{lab}_1D.parquet"), columns=["close"]); d.index = pd.to_datetime(d.index)
+        d = parquet_io.read_parquet(os.path.join(_W, f"{lab}_1D.parquet"), columns=["close"]); d.index = pd.to_datetime(d.index)
         f = d["close"].astype(float).abs().pct_change()
         sc = {int(p): (return_match_share(f, by[p], gp["date"]) if p in by else np.nan) for p, gp in g.groupby("permno")}
         resolved[lab] = pick(sc) + (str({k: (round(v, 3) if pd.notna(v) else None) for k, v in sc.items()}),)
@@ -174,15 +175,15 @@ def main():
         return resolve_input()
     if step == "finalize":
         return finalize()
-    names = pd.read_parquet(os.path.join(_W, "crsp_stocknames_all.parquet"))
+    names = parquet_io.read_parquet(os.path.join(_W, "crsp_stocknames_all.parquet"))
     for c in ("namedt", "nameenddt"):
         names[c] = pd.to_datetime(names[c])
     names_end = names["nameenddt"].max()
     spans = file_spans()
     print(f"{len(spans):,} CRSP-labelled files; names table ends {names_end.date()}")
     res = identify(spans, names, names_end=names_end, data_end=spans["last"].max())
-    lm = pd.read_parquet(os.path.join(_W, "full_us_market_label_map.parquet"))
-    sm = pd.read_parquet(os.path.join(_W, "symbol_permno_map.parquet"))
+    lm = parquet_io.read_parquet(os.path.join(_W, "full_us_market_label_map.parquet"))
+    sm = parquet_io.read_parquet(os.path.join(_W, "symbol_permno_map.parquet"))
     res["permno_label_map"] = res["label"].map(dict(zip(lm["label"], lm["permno"])))
     res["permno_symbol_map"] = res["label"].map(dict(zip(sm["symbol"], sm["permno"])))
     res.to_parquet(OUT)

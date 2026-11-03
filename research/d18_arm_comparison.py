@@ -27,6 +27,7 @@ import numpy as np
 import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import parquet_io
 
 _RES = os.path.join("output", "research")
 _WRDS = os.path.join("output", "cache", "wrds")
@@ -55,7 +56,7 @@ def _key(a, b):
 def load_leg(label: str):
     for p in (os.path.join(_WRDS, f"{label}_1D.parquet"), os.path.join(_WRDS, "_quote_only", f"{label}_1D.parquet")):
         if os.path.exists(p):
-            return pd.read_parquet(p)
+            return parquet_io.read_parquet(p)
     return None
 
 
@@ -142,7 +143,7 @@ def compare_tier(tier: int, windows: dict, confirmed: dict) -> pd.DataFrame:
 
 
 def _read(tier, arm, part, cols=None):
-    return pd.read_parquet(os.path.join(_RES, f"wrds_deep_history_episodic_scan_tier{tier}_{part}{ARMS[arm]}.parquet"),
+    return parquet_io.read_parquet(os.path.join(_RES, f"wrds_deep_history_episodic_scan_tier{tier}_{part}{ARMS[arm]}.parquet"),
                            columns=cols)
 
 

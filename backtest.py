@@ -55,6 +55,7 @@ from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
+import parquet_io
 
 import portfolio_math  # single source of truth for daily P&L (code review P1)
 from scipy.cluster.hierarchy import linkage
@@ -242,7 +243,7 @@ def _load_spread(tf_dir: str, sym_a: str, sym_b: str) -> Optional[pd.DataFrame]:
     p = _spread_path(tf_dir, sym_a, sym_b)
     if not os.path.exists(p):
         return None
-    df = pd.read_parquet(p)
+    df = parquet_io.read_parquet(p)
     # Require minimum columns
     required = {"spread", "z_rolling", "half_life_rolling"}
     if not required.issubset(df.columns):
@@ -337,7 +338,7 @@ class RegimeConditioner:
     def _load(self) -> None:
         hmm_path = "output/research/hmm_regimes.parquet"
         if os.path.exists(hmm_path):
-            self._hmm = pd.read_parquet(hmm_path)
+            self._hmm = parquet_io.read_parquet(hmm_path)
             log.info("RegimeConditioner: loaded HMM states (%d rows)", len(self._hmm))
         try:
             from macro import build as macro_build
@@ -1644,7 +1645,7 @@ def load_mm_hedge_map() -> Dict[str, float]:
     if not os.path.exists(p):
         log.warning("MM hedge map: %s not found — mm_exec disabled", p)
         return {}
-    df = pd.read_parquet(p)
+    df = parquet_io.read_parquet(p)
     result: Dict[str, float] = {}
     for _, row in df.iterrows():
         key = f"{row['symbol_a']}/{row['symbol_b']}"
@@ -1671,7 +1672,7 @@ def load_adv_shares_map(symbols: List[str]) -> Dict[str, float]:
         if not os.path.exists(p):
             continue
         try:
-            df = pd.read_parquet(p, columns=["volume"])
+            df = parquet_io.read_parquet(p, columns=["volume"])
             df.index = pd.to_datetime(df.index)
             daily_vol = df["volume"].groupby(df.index.date).sum()
             if len(daily_vol) > 0:
@@ -1714,7 +1715,7 @@ def compute_hub_weights(tf_dirs: List[Tuple[str, str]], tf_filter: Optional[str]
         ppath = f"output/results/{tf_dir}/pairs.parquet"
         if not os.path.exists(ppath):
             continue
-        pairs = pd.read_parquet(ppath)
+        pairs = parquet_io.read_parquet(ppath)
         for _, row in pairs.iterrows():
             sym_a, sym_b = row["symbol_a"], row["symbol_b"]
             symbol_counts[sym_a] += 1
@@ -1757,7 +1758,7 @@ def compute_risk_parity_weights(
         if not os.path.exists(is_trades_path):
             log.warning("Risk parity: IS trades not found at %s — flat sizing", is_trades_path)
             return {}
-        trades = pd.read_parquet(is_trades_path)
+        trades = parquet_io.read_parquet(is_trades_path)
     if trades.empty:
         log.warning("Risk parity: no IS trades available — flat sizing")
         return {}
@@ -1815,7 +1816,7 @@ def compute_regime_age_weights(
             log.warning("Regime-age sizing: detail file not found at %s — flat sizing "
                         "(run research/regime_age_at_entry_diagnostic.py first)", detail_path)
             return {}
-        trades = pd.read_parquet(detail_path)
+        trades = parquet_io.read_parquet(detail_path)
     if trades.empty or "regime_age_days" not in trades.columns:
         log.warning("Regime-age sizing: no usable regime_age_days data — flat sizing")
         return {}
@@ -1903,7 +1904,7 @@ def compute_decay_rate_weights(
             log.warning("Decay-rate sizing: detail file not found at %s — flat sizing "
                         "(run research/decay_rate_at_entry_diagnostic.py first)", detail_path)
             return {}
-        trades = pd.read_parquet(detail_path)
+        trades = parquet_io.read_parquet(detail_path)
     if trades.empty or col not in trades.columns:
         log.warning("Decay-rate sizing: no usable %s data — flat sizing", col)
         return {}
@@ -2047,7 +2048,7 @@ def compute_var_sizing_weights(
         if not os.path.exists(is_trades_path):
             log.warning("VaR sizing: IS trades not found at %s — flat sizing", is_trades_path)
             return {}
-        trades = pd.read_parquet(is_trades_path)
+        trades = parquet_io.read_parquet(is_trades_path)
     if trades.empty:
         log.warning("VaR sizing: no IS trades available — flat sizing")
         return {}
@@ -2234,7 +2235,7 @@ def compute_hrp_weights(
         if not os.path.exists(is_trades_path):
             log.warning("HRP: IS trades not found at %s — flat sizing", is_trades_path)
             return {}
-        trades = pd.read_parquet(is_trades_path)
+        trades = parquet_io.read_parquet(is_trades_path)
     if trades.empty:
         log.warning("HRP: IS trades are empty — flat sizing")
         return {}
@@ -2359,7 +2360,7 @@ def compute_pnl_cap_thresholds(
         if not os.path.exists(is_trades_path):
             log.warning("P&L cap: IS trades not found at %s — cap disabled", is_trades_path)
             return {}
-        trades = pd.read_parquet(is_trades_path)
+        trades = parquet_io.read_parquet(is_trades_path)
     if trades.empty:
         log.warning("P&L cap: no IS trades available — cap disabled")
         return {}
@@ -2410,7 +2411,7 @@ def _pairs_for_tf(tf_dir: str, tf_label: str, _pairs_override_df: Optional[pd.Da
     pairs_path = f"output/results/{tf_dir}/pairs.parquet"
     if not os.path.exists(pairs_path):
         return None
-    pairs = pd.read_parquet(pairs_path)
+    pairs = parquet_io.read_parquet(pairs_path)
     # Ensure tf_label column exists
     if "tf_label" not in pairs.columns:
         pairs["tf_label"] = tf_label
@@ -2869,7 +2870,7 @@ def main() -> None:
     if _pair_src is not None:
         _pairs_override_df = (
             pd.read_csv(_pair_src) if _pair_src.endswith(".csv")
-            else pd.read_parquet(_pair_src)
+            else parquet_io.read_parquet(_pair_src)
         )
         missing_cols = {"tf_label", "symbol_a", "symbol_b"} - set(_pairs_override_df.columns)
         if missing_cols:
@@ -3140,7 +3141,7 @@ def main() -> None:
                     continue
                 _p = f"output/results/{tf_dir}/pairs.parquet"
                 if os.path.exists(_p):
-                    _df = pd.read_parquet(_p, columns=["symbol_a", "symbol_b"])
+                    _df = parquet_io.read_parquet(_p, columns=["symbol_a", "symbol_b"])
                     _earn_symbols.update(_df["symbol_a"])
                     _earn_symbols.update(_df["symbol_b"])
         earnings_cal = EarningsCalendar.load_or_build(sorted(_earn_symbols))
@@ -3160,7 +3161,7 @@ def main() -> None:
                     continue
                 _p = f"output/results/{tf_dir}/pairs.parquet"
                 if os.path.exists(_p):
-                    _df = pd.read_parquet(_p, columns=["symbol_a", "symbol_b"])
+                    _df = parquet_io.read_parquet(_p, columns=["symbol_a", "symbol_b"])
                     _adv_symbols.update(_df["symbol_a"])
                     _adv_symbols.update(_df["symbol_b"])
         adv_shares_map = load_adv_shares_map(sorted(_adv_symbols))

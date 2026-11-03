@@ -36,6 +36,7 @@ import pandas as pd
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
+import parquet_io
 sys.path.insert(0, os.path.join(ROOT, "research"))
 from stress_test_replication import _CALM_VIX_QUANTILE as _CALM_Q, _CALM_VIX_PERIOD as _CALM_PERIOD  # noqa: E402
 _W = os.path.join(ROOT, "output", "cache", "wrds")
@@ -132,7 +133,7 @@ def yearly_window_ends(e_all: pd.Series, sealed_from: pd.Timestamp) -> list:
 
 
 def _market():
-    f = pd.read_parquet(os.path.join(_W, "ff_factors_3_daily.parquet"))
+    f = parquet_io.read_parquet(os.path.join(_W, "ff_factors_3_daily.parquet"))
     f["date"] = pd.to_datetime(f["date"])
     return (f.set_index("date")["mktrf"] + f.set_index("date")["rf"]).astype(float).sort_index()
 
@@ -159,7 +160,7 @@ def main():
     pick = rng.choice(labels, size=min(a.n_symbols, len(labels)), replace=False)
     rets = {}
     for l in pick:
-        d = pd.read_parquet(os.path.join(_W, f"{l}_1D.parquet"))
+        d = parquet_io.read_parquet(os.path.join(_W, f"{l}_1D.parquet"))
         d.index = pd.to_datetime(d.index)
         px = crsp_no_trade_mask(d, l, d["close_total_return"].astype(float))   # as arm (c); 2026-10-15 review
         r = np.log(px.abs()).diff()
@@ -176,7 +177,7 @@ def main():
         beta[l], idio[l] = b, float(np.std(y - b * x))
     # one window per year: the scan steps EPISODIC_STEP_BARS (252) bars; per-pair end dates differ by days, so take the
     # last Tier-3 window end in each calendar year (2026-10-13: the first run iterated every distinct daily end date)
-    e_all = pd.Series(pd.to_datetime(pd.read_parquet(
+    e_all = pd.Series(pd.to_datetime(parquet_io.read_parquet(
         os.path.join(ROOT, "output", "research", "wrds_deep_history_episodic_scan_tier3_windows.parquet"),
         columns=["window_end_date"])["window_end_date"]).unique())
     sealed = pd.Timestamp(Config.DATA.SEALED_FROM)

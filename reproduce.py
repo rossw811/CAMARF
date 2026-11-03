@@ -46,6 +46,7 @@ import json
 import io
 from pathlib import Path
 from typing import Optional
+import parquet_io
 
 # Force UTF-8 output on Windows so section symbols survive the console codec.
 if hasattr(sys.stdout, "reconfigure"):
@@ -105,7 +106,7 @@ def _read_parquet_summary(path: str, cols: list[str]) -> Optional[dict]:
         return None
     try:
         import pandas as pd
-        df = pd.read_parquet(full)
+        df = parquet_io.read_parquet(full)
         return {c: df[c].iloc[0] if c in df.columns and len(df) > 0 else None for c in cols}
     except Exception as e:
         print(f"  WARN: could not read {path}: {e}")
@@ -522,7 +523,7 @@ def verify_metrics() -> None:
     # OOS holdout summary
     import pandas as pd
     try:
-        oos = pd.read_parquet(ROOT / "output/backtest/summary_layer1_holdout.parquet")
+        oos = parquet_io.read_parquet(ROOT / "output/backtest/summary_layer1_holdout.parquet")
         if len(oos) > 0:
             sharpe = oos["sharpe"].iloc[0] if "sharpe" in oos.columns else "?"
             trades = oos["n_trades"].iloc[0] if "n_trades" in oos.columns else "?"
@@ -534,7 +535,7 @@ def verify_metrics() -> None:
 
     # Sensitivity grid — confirm entry_z=2.0 is top row
     try:
-        grid = pd.read_parquet(ROOT / "output/sensitivity/sensitivity_grid.parquet")
+        grid = parquet_io.read_parquet(ROOT / "output/sensitivity/sensitivity_grid.parquet")
         if len(grid) > 0:
             print(f"\n  ✓  §7.8 Sensitivity grid — {len(grid)} rows")
             if "entry_z" in grid.columns and "sharpe" in grid.columns:

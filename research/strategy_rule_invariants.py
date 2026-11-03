@@ -38,6 +38,7 @@ import numpy as np
 import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import parquet_io
 
 _ENGINE_EXIT_REASONS = ("stop", "signal_exit", "max_hold", "corr_exit", "real_corr_exit",
                         "decoupling_avoidance_exit", "data_gap", "eod")
@@ -92,7 +93,7 @@ def check_gates_at_entry(trades: pd.DataFrame, gate: str, results_dir="output/re
         k = (tr.symbol_a, tr.symbol_b, tfd)
         if k not in cache:
             p = os.path.join(results_dir, tfd, f"spread_series_{tr.symbol_a}_{tr.symbol_b}.parquet")
-            cache[k] = pd.read_parquet(p) if os.path.exists(p) else None
+            cache[k] = parquet_io.read_parquet(p) if os.path.exists(p) else None
         d = cache[k]
         ts = pd.Timestamp(tr.entry_time)
         if d is None or ts not in d.index:
@@ -121,7 +122,7 @@ def main():
     for f in sorted(glob.glob("output/backtest/trades_layer1*storm_*gate_pairsoverride.parquet")):
         name = os.path.basename(f).replace("trades_layer1_", "").replace("_pairsoverride.parquet", "")
         gate = "combined" if "sqzmomgate" in name else "squeeze" if "sqzgate" in name else "momentum"
-        T = pd.read_parquet(f)
+        T = parquet_io.read_parquet(f)
         r = check_trade_invariants(T, P)
         g = check_gates_at_entry(T[T["hedge_method"] == "ols"], gate)
         row = {"file": name, "n": r["n"], **r["counts"], **g, "never_fired": ",".join(r["never_fired"])}

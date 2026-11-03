@@ -46,6 +46,7 @@ import pandas as pd
 from scipy.optimize import minimize
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import parquet_io
 
 
 def _sample_acf(x, max_lag=2):
@@ -100,7 +101,7 @@ def main():
     if not os.path.exists(trades_path):
         print(f"No trades file at {trades_path} — run backtest.py first.")
         return
-    trades = pd.read_parquet(trades_path)
+    trades = parquet_io.read_parquet(trades_path)
     trades["exit_date"] = pd.to_datetime(trades["exit_time"]).dt.date
     trades["pair_key"] = trades["symbol_a"] + "/" + trades["symbol_b"]
 

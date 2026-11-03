@@ -55,6 +55,7 @@ import pickle
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import pandas as pd
+import parquet_io
 import pyarrow.parquet as pq
 
 from config import Config
@@ -282,7 +283,7 @@ def _read_one_unsealed(cache_dir: str, filename: str, sym: str, columns=None):
         except Exception:
             pass  # fall through to the pandas path below -- never guess, never crash on one file
     try:
-        df = pd.read_parquet(path, columns=columns)
+        df = parquet_io.read_parquet(path, columns=columns)
     except Exception:
         # Real, checked reason this bare except stays broad rather than catching a specific
         # exception type: a `columns=` read fails with different exception classes depending on
@@ -293,7 +294,7 @@ def _read_one_unsealed(cache_dir: str, filename: str, sym: str, columns=None):
         # itself was the problem (e.g. an older cache file missing a requested non-critical column).
         if columns is not None:
             try:
-                df = pd.read_parquet(os.path.join(cache_dir, filename))
+                df = parquet_io.read_parquet(os.path.join(cache_dir, filename))
             except Exception:
                 return sym, None
         else:
@@ -326,7 +327,7 @@ def _unresolved_wrds_labels(wrds_dir: str = None) -> set:
     p = os.path.join(wrds_dir or _WRDS_CACHE_DIR, os.path.basename(LABEL_PERMNO_MAP_PATH))
     if not os.path.exists(p):
         return set()
-    m = pd.read_parquet(p, columns=["label", "permno"])
+    m = parquet_io.read_parquet(p, columns=["label", "permno"])
     return set(m.loc[m["permno"].isna(), "label"].astype(str))
 
 

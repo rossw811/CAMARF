@@ -24,6 +24,7 @@ import sys
 import tempfile
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import parquet_io
 
 import numpy as np
 import pandas as pd
@@ -55,21 +56,21 @@ def main():
                                "disfacpr": [1.0, 1.0, -0.3, 1.0], "distype": ["FRS", "FRS", "CP", "FRS"]})
         label_map = pd.DataFrame({"label": ["AAA", "CASHY"], "permno": [111, 333]})
         rep = ap.apply(root, events, label_map)
-        a = pd.read_parquet(os.path.join(root, "AAA_1D.parquet"))
+        a = parquet_io.read_parquet(os.path.join(root, "AAA_1D.parquet"))
         before = idx < pd.Timestamp("2020-03-02")
         check("1.adjusted_raw_kept", np.allclose(a.loc[before, "volume"], 200.0) and np.allclose(a.loc[~before, "volume"], 100.0)
               and np.allclose(a["volume_raw"], 100.0) and np.allclose(a.loc[before, "volume_adj_factor"], 2.0)
               and np.allclose(a["close"], 50.0), a.head(3).to_string())
         rep2 = ap.apply(root, events, label_map)
-        a2 = pd.read_parquet(os.path.join(root, "AAA_1D.parquet"))
+        a2 = parquet_io.read_parquet(os.path.join(root, "AAA_1D.parquet"))
         check("2.idempotent", a2.equals(a) and (rep2.set_index("label").loc["AAA", "status"] == "already_adjusted"))
-        p = pd.read_parquet(os.path.join(root, "PERMNO222_1D.parquet"))
+        p = parquet_io.read_parquet(os.path.join(root, "PERMNO222_1D.parquet"))
         check("3.permno_label", np.allclose(p.loc[before, "volume"], 200.0))
-        n = pd.read_parquet(os.path.join(root, "NOMAP_1D.parquet"))
+        n = parquet_io.read_parquet(os.path.join(root, "NOMAP_1D.parquet"))
         check("4.unmapped_untouched", "volume_raw" not in n.columns and rep.set_index("label").loc["NOMAP", "status"] == "unmapped")
-        c = pd.read_parquet(os.path.join(root, "CASHY_1D.parquet"))
+        c = parquet_io.read_parquet(os.path.join(root, "CASHY_1D.parquet"))
         check("5.cash_event_unknown", c.loc[before, "volume"].isna().all() and np.allclose(c.loc[~before, "volume"], 100.0))
-        q = pd.read_parquet(os.path.join(root, "_quote_only", "PERMNO444_1D.parquet"))
+        q = parquet_io.read_parquet(os.path.join(root, "_quote_only", "PERMNO444_1D.parquet"))
         check("6.quote_only_adjusted", np.allclose(q.loc[before, "volume"], 200.0))
     finally:
         shutil.rmtree(root, ignore_errors=True)
@@ -82,7 +83,7 @@ def main():
                             "distype": ["FRS", "FRS"]})
         extra = pd.DataFrame({"label": ["ETFX", "BADX"], "permno": [555, 666], "identity_ok": [True, False]})
         r8 = ap.apply(root2, ev2, pd.DataFrame(columns=["label", "permno"]), extra_maps=[extra]).set_index("label")
-        e = pd.read_parquet(os.path.join(root2, "ETFX_1D.parquet"))
+        e = parquet_io.read_parquet(os.path.join(root2, "ETFX_1D.parquet"))
         check("8.extra_map", r8.loc["ETFX", "status"] == "adjusted" and np.allclose(e.loc[idx2 < "2020-03-02", "volume"], 200.0)
               and r8.loc["BADX", "status"] == "unmapped", r8["status"].to_dict())
     finally:
@@ -97,7 +98,7 @@ def main():
         pd.DataFrame({"trfd": 1.0, "ajexdi": [5.0, 5.0, 1.0, 1.0, 1.0]}, index=idx3).to_parquet(
             os.path.join(root3, "_trfd", "GVKEY019661_01W.parquet"))
         r9 = ap.apply(root3, pd.DataFrame(columns=["permno", "disexdt", "disfacpr"]), pd.DataFrame(columns=["label", "permno"])).set_index("label")
-        g = pd.read_parquet(os.path.join(root3, "GVKEY019661_01W_1D.parquet"))
+        g = parquet_io.read_parquet(os.path.join(root3, "GVKEY019661_01W_1D.parquet"))
         check("9.compustat_ajexdi", r9.loc["GVKEY019661_01W", "status"] == "adjusted_ajexdi"
               and np.allclose(g["volume"].iloc[:2], [26_810_000.0, 37_817_000.0]) and np.allclose(g["volume"].iloc[2:], g["volume_raw"].iloc[2:])
               and r9.loc["GVKEY000002_01W", "status"] == "no_ajexdi", r9["status"].to_dict())
@@ -123,7 +124,7 @@ def main():
         report = pd.DataFrame({"label": ["TM", "OK"], "path": ["TM_1D.parquet", "OK_1D.parquet"],
                                "permno": [77456, 5], "status": ["adjusted", "adjusted"], "unknown_days": [0, 0]})
         out = ap.reapply_mismatched(root4, ev4, {"TM": 76655, "OK": 5}, report).set_index("label")
-        t = pd.read_parquet(os.path.join(root4, "TM_1D.parquet")); o = pd.read_parquet(os.path.join(root4, "OK_1D.parquet"))
+        t = parquet_io.read_parquet(os.path.join(root4, "TM_1D.parquet")); o = parquet_io.read_parquet(os.path.join(root4, "OK_1D.parquet"))
         before4 = t.index < "2020-03-02"
         check("10.reapplied_correct_permno", np.allclose(t.loc[before4, "volume"], 200.0) and np.allclose(t.loc[~before4, "volume"], 100.0)
               and out.loc["TM", "permno"] == 76655 and out.loc["TM", "status"] == "reapplied", out.loc["TM"].to_dict())

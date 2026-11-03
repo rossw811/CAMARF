@@ -26,6 +26,7 @@ import pandas as pd
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
+import parquet_io
 passed = failed = 0
 
 
@@ -85,7 +86,7 @@ with tempfile.TemporaryDirectory() as td:
     pl = pd.Series(np.log(np.linspace(30, 40, 60)), index=d0)
     out = os.path.join(td, "ABC_1D.parquet")
     e1.write_placebo_file(src, pl, out, label="ABC")
-    d = pd.read_parquet(out)
+    d = parquet_io.read_parquet(out)
     from dollar_volume import usd_dollar_volume
     real_dv, pl_dv = usd_dollar_volume(src), usd_dollar_volume(d)
     ok_dv = np.allclose(real_dv.dropna(), pl_dv.reindex(real_dv.dropna().index))
@@ -130,10 +131,10 @@ with tempfile.TemporaryDirectory() as td:
             linked = False
     plants = pd.DataFrame({"plant": ["PERMNO990000"], "base": ["BBB"], "arm": ["us"]})
     e1.install_us_plant_refs(dst, plants)
-    M2 = pd.read_parquet(os.path.join(dst, "sp500_membership_history.parquet"))
-    L2 = pd.read_parquet(os.path.join(dst, "wrds_label_permno_final.parquet"))
-    real_unchanged = len(pd.read_parquet(os.path.join(real, "sp500_membership_history.parquet"))) == 2 and \
-        len(pd.read_parquet(os.path.join(real, "wrds_label_permno_final.parquet"))) == 2
+    M2 = parquet_io.read_parquet(os.path.join(dst, "sp500_membership_history.parquet"))
+    L2 = parquet_io.read_parquet(os.path.join(dst, "wrds_label_permno_final.parquet"))
+    real_unchanged = len(parquet_io.read_parquet(os.path.join(real, "sp500_membership_history.parquet"))) == 2 and \
+        len(parquet_io.read_parquet(os.path.join(real, "wrds_label_permno_final.parquet"))) == 2
     sp = M2[M2["permno"] == 990000]
     check("6 US plant refs: copies not links, real unchanged, fake PERMNO has the base's spells",
           not os.path.islink(os.path.join(dst, "sp500_membership_history.parquet")) and real_unchanged

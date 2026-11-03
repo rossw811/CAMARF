@@ -59,6 +59,7 @@ import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+import parquet_io
 from analysis import VolumeStructure
 from backtest import _TF_DIRS, _spread_path
 from research.episodic_pairs_adapter import _load_symbol
@@ -93,7 +94,7 @@ def augment_pair(sym_a: str, sym_b: str, tf_label: str, symbol_feature_cache: di
     path = _spread_path(tf_dir, sym_a, sym_b)
     if not os.path.exists(path):
         return False
-    spread_df = pd.read_parquet(path)
+    spread_df = parquet_io.read_parquet(path)
     if spread_df.empty:
         return False
 
@@ -126,7 +127,7 @@ def main():
     p.add_argument("--pairs-file", required=True, help="Parquet with [tf_label, symbol_a, symbol_b] columns")
     args = p.parse_args()
 
-    pairs_df = pd.read_parquet(args.pairs_file)
+    pairs_df = parquet_io.read_parquet(args.pairs_file)
     missing = {"tf_label", "symbol_a", "symbol_b"} - set(pairs_df.columns)
     if missing:
         print(f"FATAL: {args.pairs_file} missing columns: {missing}")

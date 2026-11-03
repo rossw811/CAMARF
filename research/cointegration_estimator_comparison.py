@@ -21,6 +21,7 @@ import pandas as pd
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
+import parquet_io
 sys.path.insert(0, os.path.join(ROOT, "research"))
 _R = os.path.join(ROOT, "output", "research")
 OUT = os.path.join(_R, "cointegration_estimator_comparison.parquet")
@@ -65,9 +66,9 @@ def _window(sym_a, sym_b, end):
 
 
 def main():
-    pool = pd.read_parquet(os.path.join(_R, "purity_pairs_pit_k1_clean.parquet"))
+    pool = parquet_io.read_parquet(os.path.join(_R, "purity_pairs_pit_k1_clean.parquet"))
     pool = pool[pool["tf_label"].astype(str) == "1D"]
-    w = pd.read_parquet(os.path.join(_R, "wrds_deep_history_episodic_scan_tier3_windows.parquet"),
+    w = parquet_io.read_parquet(os.path.join(_R, "wrds_deep_history_episodic_scan_tier3_windows.parquet"),
                         columns=["symbol_a", "symbol_b", "window_end_date"])
     # Sealed holdout (E13; enforced 2026-10-20): no window ending on/after SEALED_FROM
     from config import Config

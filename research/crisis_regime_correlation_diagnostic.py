@@ -87,6 +87,7 @@ from scipy import stats
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+import parquet_io
 import macro
 from research.wrds_deep_history_episodic_scan import episodic_bhfdr_confirm
 from config import Config
@@ -123,7 +124,7 @@ def load_tier3_windows(path: str = _TIER3_WINDOWS_PATH) -> pd.DataFrame:
             f"{path} does not exist -- run research/wrds_deep_history_episodic_scan.py "
             f"first (Tier 3 writes this file)."
         )
-    df = pd.read_parquet(path)
+    df = parquet_io.read_parquet(path)
     mtime = pd.Timestamp(os.path.getmtime(path), unit="s")
     log.info(f"Loaded {len(df)} (pair, window) rows from "
              f"wrds_deep_history_episodic_scan_tier3_windows.parquet (file mtime: {mtime})")

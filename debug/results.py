@@ -1,10 +1,13 @@
 import pandas as pd, os
+import sys
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # project root, for parquet_io
+import parquet_io
 
 results_dir = r"output\results"
 for tf in ["1m", "2m", "3m", "15m", "1h", "4h", "1D", "7D", "1M"]:
     path = os.path.join(results_dir, tf, "pairs.parquet")
     if os.path.exists(path):
-        df = pd.read_parquet(path)
+        df = parquet_io.read_parquet(path)
         print(f"\n{tf}:")
         print(
             df[

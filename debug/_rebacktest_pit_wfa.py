@@ -16,6 +16,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import pandas as pd
 
+import parquet_io
 from pit_wfa import (
     load_universe_1h, determine_analysis_window, compute_fold_dates,
     backtest_pair_on_test_window, FOLD_EXPANDING, FOLD_ROLLING,
@@ -26,7 +27,7 @@ _OUT_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__
 
 
 def main():
-    pair_sets = pd.read_parquet(os.path.join(_OUT_DIR, "pit_wfa_pair_sets.parquet"))
+    pair_sets = parquet_io.read_parquet(os.path.join(_OUT_DIR, "pit_wfa_pair_sets.parquet"))
     universe = load_universe_1h()
     print(f"Universe: {len(universe)} symbols")
     start, end = determine_analysis_window(universe)

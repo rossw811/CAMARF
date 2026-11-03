@@ -49,6 +49,7 @@ import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import parquet_io
 
 import numpy as np
 import pandas as pd
@@ -189,7 +190,7 @@ def main():
     if not os.path.exists(_WINDOWS_PATH):
         print(f"FATAL: {_WINDOWS_PATH} not found")
         sys.exit(1)
-    df = pd.read_parquet(_WINDOWS_PATH)
+    df = parquet_io.read_parquet(_WINDOWS_PATH)
     print(f"Loaded {len(df)} real per-window rows across "
           f"{df[['symbol_a', 'symbol_b']].drop_duplicates().shape[0]} pairs")
 

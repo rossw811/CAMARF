@@ -50,6 +50,7 @@ import pandas as pd
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+import parquet_io
 from analysis import AnalysisPipeline, UniverseFilter, CointScanner, CrossAssetTagger
 from backtest import BacktestEngine, RegimeConditioner, MLConditioner, compute_metrics, aggregate_portfolio
 from config import Config
@@ -492,7 +493,7 @@ def _merge_and_save(new_df: pd.DataFrame, path: str) -> None:
     if len(new_df) == 0:
         return
     if os.path.exists(path):
-        old_df = pd.read_parquet(path)
+        old_df = parquet_io.read_parquet(path)
         key_cols = [c for c in ("wfa_variant", "fold") if c in new_df.columns]
         if key_cols:
             new_keys = new_df[key_cols].drop_duplicates()

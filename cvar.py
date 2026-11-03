@@ -33,6 +33,7 @@ import time
 
 import numpy as np
 import pandas as pd
+import parquet_io
 from scipy import stats as sp_stats
 
 import portfolio_math
@@ -62,7 +63,7 @@ def _setup_logging():
 def daily_pnl_series(trades_path: str) -> "pd.Series | None":
     if not os.path.exists(trades_path):
         return None
-    trades = pd.read_parquet(trades_path)
+    trades = parquet_io.read_parquet(trades_path)
     if trades.empty or "pnl_net" not in trades.columns:
         return None
     daily = portfolio_math.daily_pnl_from_trades(trades)

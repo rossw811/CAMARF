@@ -21,6 +21,7 @@ import re
 from typing import Optional, Tuple
 
 import pandas as pd
+import parquet_io
 
 from config import Config
 
@@ -105,7 +106,7 @@ def _atomic_write(df: pd.DataFrame, path: str) -> None:
 
 def _merge_into_vault(sealed: pd.DataFrame, vpath: str) -> None:
     if os.path.exists(vpath):
-        old = pd.read_parquet(vpath)
+        old = parquet_io.read_parquet(vpath)
         sealed = pd.concat([old, sealed])
         sealed = sealed[~sealed.index.duplicated(keep="last")].sort_index()
     _atomic_write(sealed, vpath)
@@ -130,7 +131,7 @@ def write_parquet(df: pd.DataFrame, path: str, kind: Optional[str] = None) -> Tu
 
 def read_full(path: str) -> Optional[pd.DataFrame]:
     """Cache file plus its vault rows. Data maintenance and the final pre-registered test only."""
-    parts = [pd.read_parquet(p) for p in (path, vault_path(path)) if os.path.exists(p)]
+    parts = [parquet_io.read_parquet(p) for p in (path, vault_path(path)) if os.path.exists(p)]
     if not parts:
         return None
     df = pd.concat(parts)
@@ -142,7 +143,7 @@ def last_bar_including_vault(path: str) -> Optional[pd.Timestamp]:
     last = None
     for p in (path, vault_path(path)):
         if os.path.exists(p):
-            idx = pd.read_parquet(p, columns=[]).index
+            idx = parquet_io.read_parquet(p, columns=[]).index
             if len(idx) and isinstance(idx, pd.DatetimeIndex):
                 t = _naive(idx).max()
                 last = t if last is None or t > last else last
@@ -165,7 +166,7 @@ def _price_files(cache_root: str):
 def _max_date(path: str) -> Optional[pd.Timestamp]:
     """Last index timestamp (index-only read)."""
     try:
-        idx = pd.read_parquet(path, columns=[]).index
+        idx = parquet_io.read_parquet(path, columns=[]).index
     except Exception:
         return None
     if not isinstance(idx, pd.DatetimeIndex) or not len(idx):
@@ -180,7 +181,7 @@ def audit(cache_root: Optional[str] = None) -> dict:
     for p, k in _price_files(cache_root):
         out["files_checked"] += 1
         try:
-            pd.read_parquet(p, columns=[])
+            parquet_io.read_parquet(p, columns=[])
         except Exception:   # counted, never silently passed (review F8)
             out["unreadable"] += 1
             continue
@@ -200,7 +201,7 @@ def sweep(cache_root: Optional[str] = None, dry_run: bool = False) -> dict:
         t = _max_date(p)
         if t is None or t < sealed_from(k):
             continue
-        df = pd.read_parquet(p)
+        df = parquet_io.read_parquet(p)
         _, sealed_part = split(df, k)
         if not len(sealed_part):
             continue

@@ -38,6 +38,7 @@ import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+import parquet_io
 from portfolio_math import sharpe_from_trades
 
 
@@ -93,8 +94,8 @@ def main():
     p.add_argument("--seed", type=int, default=0)
     args = p.parse_args()
 
-    full_trades = pd.read_parquet(args.full_trades)
-    gate_trades = pd.read_parquet(args.gate_trades)
+    full_trades = parquet_io.read_parquet(args.full_trades)
+    gate_trades = parquet_io.read_parquet(args.gate_trades)
 
     result = validate_gate(full_trades, gate_trades, args.gate_name, args.n_draws, args.seed)
 

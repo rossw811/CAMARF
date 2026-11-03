@@ -37,6 +37,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import numpy as np
 import pandas as pd
 
+import parquet_io
 from config import Config
 from data import DataCleaner
 
@@ -49,7 +50,7 @@ def _load_wrds_symbol_tf(symbol: str, tf_label: str):
     path = os.path.join(_WRDS_CACHE_DIR, f"{symbol}_{tf_label}.parquet")
     if not os.path.exists(path):
         return None
-    raw = pd.read_parquet(path)
+    raw = parquet_io.read_parquet(path)
     if raw.empty or "close_total_return" not in raw.columns:
         return None
     out = raw.drop(columns=["close"], errors="ignore").rename(
@@ -84,7 +85,7 @@ def main():
             print(f"  {_TEST_SYMBOL}_{tf_label}: no cache file present, skipping (not a failure — machine-dependent)")
             continue
 
-        raw_original = pd.read_parquet(raw_path)
+        raw_original = parquet_io.read_parquet(raw_path)
         cleaned_input = _load_wrds_symbol_tf(_TEST_SYMBOL, tf_label)
         if cleaned_input is None:
             failures.append(f"{tf_label}: _load_wrds_symbol_tf returned None despite file existing")

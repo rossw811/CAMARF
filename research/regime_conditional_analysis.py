@@ -49,6 +49,7 @@ from scipy import stats
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from aligned_pair_loader import load_aligned_pair
+import parquet_io
 from data import _clean_close
 from macro import build as macro_build
 
@@ -101,7 +102,7 @@ def main():
         path = f"output/results/{tf_dir}/pairs.parquet"
         if not os.path.exists(path):
             continue
-        pairs = pd.read_parquet(path)
+        pairs = parquet_io.read_parquet(path)
         print(f"\n[{tf_label}] {len(pairs)} pairs")
 
         for _, pair_row in pairs.iterrows():

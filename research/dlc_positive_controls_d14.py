@@ -22,6 +22,7 @@ import pandas as pd
 
 _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, _ROOT)
+import parquet_io
 sys.path.insert(0, os.path.join(_ROOT, "research"))
 
 _R = os.path.join(_ROOT, "output", "research")
@@ -75,12 +76,12 @@ def main():
     sides = load_dlc_sides()
     twins = twin_label_pairs(ids, sides)
     print(f"{len(sides)} dual-listed companies with both sides in the data; {len(twins)} twin label pairs")
-    tier1 = pd.read_parquet(os.path.join(_R, "wrds_deep_history_episodic_scan_tier1.parquet"),
+    tier1 = parquet_io.read_parquet(os.path.join(_R, "wrds_deep_history_episodic_scan_tier1.parquet"),
                             columns=["symbol_a", "symbol_b", "pvalue", "fdr_confirmed"])
-    t3p = pd.read_parquet(os.path.join(_R, "wrds_deep_history_episodic_scan_tier3_pairs.parquet"),
+    t3p = parquet_io.read_parquet(os.path.join(_R, "wrds_deep_history_episodic_scan_tier3_pairs.parquet"),
                           columns=["symbol_a", "symbol_b"])
     names = set(twins["symbol_a"]) | set(twins["symbol_b"])
-    t3w = pd.read_parquet(os.path.join(_R, "wrds_deep_history_episodic_scan_tier3_windows.parquet"),
+    t3w = parquet_io.read_parquet(os.path.join(_R, "wrds_deep_history_episodic_scan_tier3_windows.parquet"),
                           columns=["symbol_a", "symbol_b", "window_end_date", "fdr_rejected"])
     t3w = t3w[t3w["symbol_a"].isin(names) & t3w["symbol_b"].isin(names)]
     rec = discovery_record(twins, tier1, t3p, t3w)

@@ -48,6 +48,7 @@ import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+import parquet_io
 from portfolio_math import sharpe_from_trades
 from research.squeeze_momentum_signal_validation import random_subsample_null
 
@@ -110,8 +111,8 @@ def main():
     p.add_argument("--seed", type=int, default=0)
     args = p.parse_args()
 
-    full_trades = pd.read_parquet(args.full_trades)
-    taken_trades = pd.read_parquet(args.taken_trades)
+    full_trades = parquet_io.read_parquet(args.full_trades)
+    taken_trades = parquet_io.read_parquet(args.taken_trades)
 
     taken_subset, skipped = split_taken_skipped(full_trades, taken_trades)
     if len(taken_subset) != len(taken_trades):

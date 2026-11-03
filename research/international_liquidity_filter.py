@@ -53,6 +53,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import numpy as np
 import pandas as pd
 
+import parquet_io
 from config import Config
 from data_wrds import _connect, _OUT_DIR
 
@@ -184,7 +185,7 @@ def main():
     if not os.path.exists(_MANIFEST_PATH):
         print(f"FATAL: {_MANIFEST_PATH} not found -- run wrds_global_index_universe_fetch.py first")
         sys.exit(1)
-    manifest = pd.read_parquet(_MANIFEST_PATH)
+    manifest = parquet_io.read_parquet(_MANIFEST_PATH)
 
     cached = manifest[manifest["label"].apply(
         lambda lbl: os.path.exists(os.path.join(_OUT_DIR, f"{lbl}_1D.parquet")))]
@@ -227,7 +228,7 @@ def main():
         mult = usd_mult_by_ccy.get(ccy, float("nan")) if isinstance(ccy, str) and ccy else float("nan")
         path = os.path.join(_OUT_DIR, f"{r['label']}_1D.parquet")
         try:
-            df = pd.read_parquet(path)
+            df = parquet_io.read_parquet(path)
         except Exception as e:
             log.warning(f"  {r['label']}: could not read {path} ({e})")
             continue

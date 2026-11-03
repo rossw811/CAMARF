@@ -53,6 +53,7 @@ import pandas as pd
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+import parquet_io
 from backtest import (
     BacktestEngine, RegimeConditioner, MLConditioner,
     _load_spread, compute_metrics, aggregate_portfolio,
@@ -105,7 +106,7 @@ def main():
     if not os.path.exists(pairs_path):
         log.warning("No pairs.parquet at %s — nothing to replicate.", pairs_path)
         return
-    pairs = pd.read_parquet(pairs_path)
+    pairs = parquet_io.read_parquet(pairs_path)
     if "tf_label" not in pairs.columns:
         pairs["tf_label"] = _TF_LABEL
 

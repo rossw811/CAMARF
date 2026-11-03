@@ -19,6 +19,7 @@ from scipy import stats
 
 _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, _ROOT)
+import parquet_io
 sys.path.insert(0, os.path.join(_ROOT, "research"))
 
 import price_target_pairs_overlay as pto
@@ -28,9 +29,9 @@ _OUT_PATH = os.path.join(_ROOT, "output", "research", "price_target_convergence_
 
 
 def main():
-    trades = pd.read_parquet(_TRADES_PATH)
+    trades = parquet_io.read_parquet(_TRADES_PATH)
     permno_map = pto.load_permno_map()
-    ibes_df = pd.read_parquet(pto._IBES_PATH)
+    ibes_df = parquet_io.read_parquet(pto._IBES_PATH)
 
     print(f"Computing relative divergence for {len(trades)} trades (reusing price_target_"
           f"pairs_overlay.py's exact causal/staleness-gated lookup)...")

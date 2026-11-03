@@ -52,6 +52,7 @@ import pandas as pd
 from scipy import stats
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import parquet_io
 
 _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _PAIRS_PATH = os.path.join(_ROOT, "output", "research", "crisis_regime_correlation_diagnostic_pairs.parquet")
@@ -159,8 +160,8 @@ def main():
         log.error(f"{_SPY_PATH} does not exist -- SPY daily data required as the market factor.")
         sys.exit(1)
 
-    pairs = pd.read_parquet(_PAIRS_PATH)
-    spy = pd.read_parquet(_SPY_PATH)
+    pairs = parquet_io.read_parquet(_PAIRS_PATH)
+    spy = parquet_io.read_parquet(_SPY_PATH)
     spy_returns = safe_log_returns(spy["close"])
     log.info(f"Loaded {len(pairs)} candidate pairs, SPY factor series "
              f"({len(spy_returns)} daily returns, {spy_returns.index.min().date()} to "
@@ -178,7 +179,7 @@ def main():
             n_failed += 1
             continue
         try:
-            df = pd.read_parquet(path)
+            df = parquet_io.read_parquet(path)
             returns_by_symbol[sym] = safe_log_returns(df["close"])
             n_loaded += 1
         except Exception:

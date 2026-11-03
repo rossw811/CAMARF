@@ -42,6 +42,7 @@ from sklearn.preprocessing import StandardScaler
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+import parquet_io
 from macro import build as macro_build
 
 _OUT = "output/research/hmm_gmm_regime_trade_features.parquet"
@@ -199,7 +200,7 @@ def expanding_window_stability_check(t: pd.DataFrame, ok_mask: np.ndarray, n_che
 def main():
     warnings.filterwarnings("ignore")
     print("Loading trades and macro data...")
-    trades = pd.read_parquet(_TRADES)
+    trades = parquet_io.read_parquet(_TRADES)
     macro_df = macro_build(force_refresh=False).data
 
     t = build_trade_features(trades, macro_df)

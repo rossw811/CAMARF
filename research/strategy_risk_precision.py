@@ -36,6 +36,7 @@ import numpy as np
 import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import parquet_io
 
 
 def binomial_sharpe(precision, frequency_per_year):
@@ -84,7 +85,7 @@ def main():
     if not os.path.exists(trades_path):
         print(f"No trades file at {trades_path} — run backtest.py first.")
         return
-    trades = pd.read_parquet(trades_path)
+    trades = parquet_io.read_parquet(trades_path)
     out_df = precision_table(trades)
     rows = out_df.to_dict("records")
 

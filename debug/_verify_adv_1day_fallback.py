@@ -34,6 +34,7 @@ import tempfile
 import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import parquet_io
 
 
 def _compute_adv(cache_dir, sym):
@@ -43,7 +44,7 @@ def _compute_adv(cache_dir, sym):
         if not os.path.exists(_path):
             continue
         try:
-            _df = pd.read_parquet(_path)
+            _df = parquet_io.read_parquet(_path)
             if "close" not in _df.columns or "volume" not in _df.columns:
                 continue
             _df.index = pd.to_datetime(_df.index)

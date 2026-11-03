@@ -38,6 +38,7 @@ import pandas as pd
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from aligned_pair_loader import load_aligned_pair
+import parquet_io
 from data import _gap_aware_returns
 
 _TF_DIRS = [
@@ -94,7 +95,7 @@ def main():
         if not os.path.exists(path):
             continue
         tf_label = _DIR_TO_LABEL[tf_dir]
-        df = pd.read_parquet(path)
+        df = parquet_io.read_parquet(path)
         for _, row in df.iterrows():
             sym_a, sym_b = row["symbol_a"], row["symbol_b"]
             df_a, df_b = load_aligned_pair(sym_a, sym_b, tf_label)

@@ -45,6 +45,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import pandas as pd
 
+import parquet_io
 import seal  # noqa: E402
 from data_wrds import (
     _connect, _OUT_DIR, fetch_full_crsp_security_master, fetch_symbols_bulk,
@@ -141,11 +142,11 @@ def main():
         master_df = fetch_full_crsp_security_master(db0)
         db0.close()
     else:
-        master_df = pd.read_parquet(_MASTER_PATH)
+        master_df = parquet_io.read_parquet(_MASTER_PATH)
     log.info(f"Security master: {master_df['permno'].nunique()} distinct permnos")
 
     if os.path.exists(_LABEL_MAP_PATH):
-        label_map_df = pd.read_parquet(_LABEL_MAP_PATH)
+        label_map_df = parquet_io.read_parquet(_LABEL_MAP_PATH)
         label_by_permno = dict(zip(label_map_df["label"], label_map_df["permno"]))
     else:
         label_by_permno = build_full_market_label_map(master_df)

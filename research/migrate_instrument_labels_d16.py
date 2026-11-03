@@ -29,6 +29,7 @@ import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+import parquet_io
 from config import Config
 from instrument_labels import instrument_label
 
@@ -43,7 +44,7 @@ def _daily_close(df):
 
 
 def _classify(path, stock):
-    return _classify_series(_daily_close(pd.read_parquet(path, columns=["close"])), stock)
+    return _classify_series(_daily_close(parquet_io.read_parquet(path, columns=["close"])), stock)
 
 
 def _classify_series(d, stock):
@@ -81,11 +82,11 @@ def main():
         # Only roots that are ALSO equities in the current universe could have been written as a stock under the
         # bare label; other WRDS files with the same ticker are different (historical) companies never fetched here.
         if root in equity_roots and os.path.exists(wp):
-            w = pd.read_parquet(wp)
+            w = parquet_io.read_parquet(wp)
             stock = _daily_close(w[["close"]])
             yfp = os.path.join(_CACHE, f"{root}_1day.parquet")   # extends the reference past WRDS's last date
             if os.path.exists(yfp):
-                y = _daily_close(pd.read_parquet(yfp, columns=["close"]))
+                y = _daily_close(parquet_io.read_parquet(yfp, columns=["close"]))
                 common = y.index.intersection(stock.index)
                 if _classify_series(y, stock)[0] == "stock":
                     stock = pd.concat([stock, y[y.index > stock.index.max()]])

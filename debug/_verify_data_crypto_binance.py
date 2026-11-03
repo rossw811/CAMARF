@@ -26,13 +26,14 @@ import pandas as pd
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+import parquet_io
 from config import Config
 from data import DataStore
 
 
 def test_ohlc_internal_consistency():
     path = os.path.join(Config.DATA.CACHE_DIR, "binance", "BTC_1d.parquet")
-    df = pd.read_parquet(path)
+    df = parquet_io.read_parquet(path)
     bad_high = (df["high"] < df[["open", "close"]].max(axis=1)).sum()
     bad_low = (df["low"] > df[["open", "close"]].min(axis=1)).sum()
     print(f"OHLC consistency: {bad_high} bars with high < max(open,close), "
@@ -42,7 +43,7 @@ def test_ohlc_internal_consistency():
 
 def test_no_unexpected_gaps():
     path = os.path.join(Config.DATA.CACHE_DIR, "binance", "BTC_1d.parquet")
-    df = pd.read_parquet(path)
+    df = parquet_io.read_parquet(path)
     gaps = df.index.to_series().diff().dropna()
     max_gap_days = gaps.max().total_seconds() / 86400
     n_gt_1day = (gaps > pd.Timedelta(days=1)).sum()
@@ -53,7 +54,7 @@ def test_no_unexpected_gaps():
 
 def test_agrees_with_yfinance_within_tolerance():
     binance_path = os.path.join(Config.DATA.CACHE_DIR, "binance", "BTC_1d.parquet")
-    df_binance = pd.read_parquet(binance_path)
+    df_binance = parquet_io.read_parquet(binance_path)
     df_binance.index = df_binance.index.tz_localize(None) if df_binance.index.tz is not None else df_binance.index
 
     df_yf = DataStore.load("BTC-USD", "1D")  # D16 (2026-09-27): crypto labels are namespaced "<SYM>-USD"

@@ -32,6 +32,9 @@ import os
 
 import numpy as np
 import pandas as pd
+import sys
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # project root, for parquet_io
+import parquet_io
 from scipy import stats
 
 log = logging.getLogger("coint_decay_rate_signal_test")
@@ -130,7 +133,7 @@ def main():
     log.info("=== coint_decay_rate_signal_test.py: does coint_strength_z / coint_decay_rate "
               "predict next-window cointegration persistence? WITH/WITHOUT comparison arms, "
               "not a single fixed design ===")
-    df = pd.read_parquet(_SERIES_PATH)
+    df = parquet_io.read_parquet(_SERIES_PATH)
     log.info(f"Loaded {len(df)} rows, {df.groupby(['symbol_a', 'symbol_b']).ngroups} pairs.")
     df = add_next_window_persists(df)
     n_defined = int(df["persists_next"].notna().sum())

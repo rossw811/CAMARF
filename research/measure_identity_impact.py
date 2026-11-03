@@ -21,21 +21,22 @@ import pandas as pd
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
+import parquet_io
 _W = os.path.join(ROOT, "output", "cache", "wrds")
 _R = os.path.join(ROOT, "output", "research")
 
 
 def main():
     from data_wrds import sp500_members_asof
-    final = pd.read_parquet(os.path.join(_W, "wrds_label_permno_final.parquet"))
+    final = parquet_io.read_parquet(os.path.join(_W, "wrds_label_permno_final.parquet"))
     fmap = dict(zip(final["label"], final["permno"]))
-    sm = pd.read_parquet(os.path.join(_W, "symbol_permno_map.parquet"))
+    sm = parquet_io.read_parquet(os.path.join(_W, "symbol_permno_map.parquet"))
     smap = dict(zip(sm["symbol"], sm["permno"]))
-    mem = pd.read_parquet(os.path.join(_W, "sp500_membership_history.parquet"))
+    mem = parquet_io.read_parquet(os.path.join(_W, "sp500_membership_history.parquet"))
     dates = set()
     tested = {}
     for tier in (2, 3):
-        w = pd.read_parquet(os.path.join(_R, f"wrds_deep_history_episodic_scan_tier{tier}_windows.parquet"),
+        w = parquet_io.read_parquet(os.path.join(_R, f"wrds_deep_history_episodic_scan_tier{tier}_windows.parquet"),
                             columns=["symbol_a", "symbol_b", "window_end_date"])
         dates |= set(pd.to_datetime(w["window_end_date"]).unique())
         tested[tier] = w
@@ -65,7 +66,7 @@ def main():
               f"distinct pairs {w.loc[hit, ['symbol_a', 'symbol_b']].drop_duplicates().shape[0]:,}")
         cf = os.path.join(_R, f"wrds_deep_history_episodic_scan_tier{tier}_confirmed.parquet")
         if os.path.exists(cf):
-            c = pd.read_parquet(cf)
+            c = parquet_io.read_parquet(cf)
             ch = c["symbol_a"].isin(flipped) | c["symbol_b"].isin(flipped)
             print(f"  confirmed pairs involving a flipped label: {int(ch.sum()):,} of {len(c):,}")
     print(R.sort_values("n_flip_dates", ascending=False).head(15).to_string(index=False))

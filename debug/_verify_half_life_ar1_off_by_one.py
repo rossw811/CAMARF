@@ -24,6 +24,7 @@ os.chdir(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import numpy as np
 import pandas as pd
 
+import parquet_io
 from analysis import SpreadModel
 
 checks = []
@@ -62,7 +63,7 @@ check("synthetic.29_points_still_nan", np.isnan(hl_29), f"got {hl_29}")
 #    investigation were 0.56-1.04, mostly well inside (0,1)).
 path = "output/results/3min/spread_series_KVUE_KMB.parquet"
 if os.path.exists(path):
-    df = pd.read_parquet(path)
+    df = parquet_io.read_parquet(path)
     spread = df["spread"].values
     clean_mask = (df["gap_flag_a"].values == 0) & (df["gap_flag_b"].values == 0)
     real_pos = np.flatnonzero(clean_mask & np.isfinite(spread))

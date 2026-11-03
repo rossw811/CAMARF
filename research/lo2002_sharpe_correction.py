@@ -33,6 +33,7 @@ import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import parquet_io
 
 import numpy as np
 import pandas as pd
@@ -41,7 +42,7 @@ Q = 252  # daily -> annual, matches backtest.py's sqrt(252) convention
 
 
 def daily_pnl_from_trades(path: str) -> pd.Series:
-    df = pd.read_parquet(path)
+    df = parquet_io.read_parquet(path)
     sorted_trades = df.sort_values("entry_time")
     pnl_series = pd.Series(
         sorted_trades["pnl_net"].values,

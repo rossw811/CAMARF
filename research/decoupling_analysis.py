@@ -70,6 +70,7 @@ import pandas as pd
 from scipy import stats as sp_stats
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import parquet_io
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from aligned_pair_loader import TF_DIRS as _TF_DIRS, resolve_tf_results_dir as _resolve_tf_results_dir
@@ -184,7 +185,7 @@ def _load_spread_array(results_dir: str, sym_a: str, sym_b: str) -> Optional[pd.
     path = os.path.join(results_dir, f"spread_series_{sym_a}_{sym_b}.parquet")
     if not os.path.exists(path):
         return None
-    df = pd.read_parquet(path)
+    df = parquet_io.read_parquet(path)
     # spread_series_*.parquet is persisted on the full calendar-padded grid —
     # DATA_GAP bars are forward-filled, not NaN, so they must be excluded by
     # gap_flag before any computation (same convention as threshold_cointegration.py/
@@ -209,7 +210,7 @@ def main():
         if is_stale:
             log.info("NOTE %s: no live output/results/%s, using archived %s instead",
                       tf_dir, tf_dir, results_dir)
-        candidates = pd.read_parquet(cand_path)
+        candidates = parquet_io.read_parquet(cand_path)
         with_break = candidates[candidates["zivot_andrews_break"].notna()]
         log.info("[%s] %d/%d candidates have a detected Zivot-Andrews break",
                   tf_dir, len(with_break), len(candidates))

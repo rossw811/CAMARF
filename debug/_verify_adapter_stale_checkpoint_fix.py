@@ -23,6 +23,7 @@ import sys
 import tempfile
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import parquet_io
 
 import pandas as pd
 
@@ -99,7 +100,7 @@ def main():
 
     # Checkpoint file itself should now be pruned (only A/B, since G/H gets
     # appended during the build loop too).
-    pruned = pd.read_parquet(progress_path)
+    pruned = parquet_io.read_parquet(progress_path)
     pruned_keys = set(zip(pruned["symbol_a"], pruned["symbol_b"]))
     if ("C", "D") in pruned_keys or ("E", "F") in pruned_keys:
         failures.append(f"Checkpoint file itself should be pruned of stale C/D, E/F rows, "

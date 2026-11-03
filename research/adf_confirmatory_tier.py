@@ -41,6 +41,7 @@ import pandas as pd
 from statsmodels.tsa.stattools import adfuller
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import parquet_io
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
 
 from aligned_pair_loader import (
@@ -106,14 +107,14 @@ def main():
         if not os.path.exists(pairs_path):
             continue
         tf_label = _DIR_TO_LABEL[tf_dir]
-        pairs_df = pd.read_parquet(pairs_path)
+        pairs_df = parquet_io.read_parquet(pairs_path)
         for _, row in pairs_df.iterrows():
             sym_a, sym_b = row["symbol_a"], row["symbol_b"]
             series_path = os.path.join(results_dir, f"spread_series_{sym_a}_{sym_b}.parquet")
             if not os.path.exists(series_path):
                 print(f"SKIP {sym_a}/{sym_b}@{tf_label}: no spread_series file")
                 continue
-            series_df = pd.read_parquet(series_path)
+            series_df = parquet_io.read_parquet(series_path)
             real_bar_mask = (series_df["gap_flag_a"] != 4) & (series_df["gap_flag_b"] != 4)
             spread = series_df.loc[real_bar_mask, "spread"].to_numpy(dtype=float)
             spread = spread[np.isfinite(spread)]

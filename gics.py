@@ -17,6 +17,7 @@ from io import StringIO
 from typing import Dict, List, Optional
 
 import pandas as pd
+import parquet_io
 import requests
 
 _ROOT = os.path.dirname(os.path.abspath(__file__))
@@ -172,7 +173,7 @@ def main():
     # Quick coverage check vs confirmed pairs
     tiers_path = os.path.join(_ROOT, "output", "stats", "cointegration_tiers.parquet")
     if os.path.exists(tiers_path):
-        tiers = pd.read_parquet(tiers_path)
+        tiers = parquet_io.read_parquet(tiers_path)
         syms = set(tiers.symbol_a) | set(tiers.symbol_b)
         covered = syms & set(tags["symbol"])
         missing = syms - covered

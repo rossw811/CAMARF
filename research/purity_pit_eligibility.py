@@ -28,6 +28,7 @@ import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+import parquet_io
 from config import Config
 import seal
 
@@ -197,11 +198,11 @@ def attach_eligibility(pool: pd.DataFrame, windows_by_tf: dict, k: int):
 
 
 def main():
-    whole = pd.read_parquet(os.path.join("output", "research", "purity_pairs.parquet"))
+    whole = parquet_io.read_parquet(os.path.join("output", "research", "purity_pairs.parquet"))
     windows = {}
     for tf, path in _TIER3.items():
         if os.path.exists(path):
-            windows[tf] = pd.read_parquet(path, columns=["symbol_a", "symbol_b", "window_end_date", "pvalue"])
+            windows[tf] = parquet_io.read_parquet(path, columns=["symbol_a", "symbol_b", "window_end_date", "pvalue"])
     for k in (1, 2):
         res = build_pit_pool(windows, k, whole)      # Amendment 5: the PIT-eligible set itself (BUG-D120)
         path = os.path.join("output", "research", f"purity_pairs_pit_k{k}.parquet")

@@ -44,6 +44,7 @@ import pandas as pd
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "research"))
 
+import parquet_io
 from data import DataStore, DataAligner, GapFlag
 from data_contamination_scan import list_price_cache_files
 
@@ -98,7 +99,7 @@ def run(top_n, n_peers, seed):
         print(f"{scan_path} not found — run research/data_contamination_scan.py first.")
         return
 
-    scan = pd.read_parquet(scan_path)
+    scan = parquet_io.read_parquet(scan_path)
     unexplained = scan[scan["explained"] == False].copy()
     print(f"Source scan: {len(scan)} total events, {len(unexplained)} unexplained.")
     top = unexplained.sort_values("magnitude", ascending=False).head(top_n)

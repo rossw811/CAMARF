@@ -34,6 +34,7 @@ import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+import parquet_io
 from config import Config
 from data import DataStore, UniverseBuilder, YFinanceFeed, _to_yf_ticker
 
@@ -99,7 +100,7 @@ def main():
     os.makedirs("output/research", exist_ok=True)
     out = "output/research/refetch_yfinance_daily_report.parquet"
     if args.sample and os.path.exists(out):
-        rep = pd.concat([pd.read_parquet(out), rep]).drop_duplicates("symbol", keep="last")
+        rep = pd.concat([parquet_io.read_parquet(out), rep]).drop_duplicates("symbol", keep="last")
     rep.to_parquet(out)
     ok = rep[~rep["restored_original"]]
     print(f"regenerated {len(ok)}, restored originals for {n_restored}")

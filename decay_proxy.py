@@ -53,6 +53,7 @@ from typing import Dict, Optional
 
 import numpy as np
 import pandas as pd
+import parquet_io
 
 _ROOT = os.path.dirname(os.path.abspath(__file__))
 _BACKTEST_DIR = os.path.join(_ROOT, "output", "backtest")
@@ -148,7 +149,7 @@ def main():
     if not os.path.exists(trades_path):
         log.warning("No IS trades at %s — run backtest.py first.", trades_path)
         return
-    trades = pd.read_parquet(trades_path)
+    trades = parquet_io.read_parquet(trades_path)
     trades["pair_key"] = trades["symbol_a"] + "/" + trades["symbol_b"]
     trades = trades.sort_values("entry_time")
 

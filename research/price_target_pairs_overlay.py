@@ -38,6 +38,7 @@ _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, _ROOT)
 sys.path.insert(0, os.path.join(_ROOT, "research"))
 
+import parquet_io
 import options
 from beta_weighted_portfolio import value_at_date
 
@@ -132,9 +133,9 @@ def main():
               f"permno_map={os.path.exists(_PERMNO_MAP_PATH)}, ibes={os.path.exists(_IBES_PATH)}")
         return
 
-    trades = pd.read_parquet(_TRADES_PATH)
+    trades = parquet_io.read_parquet(_TRADES_PATH)
     permno_map = load_permno_map()
-    ibes_df = pd.read_parquet(_IBES_PATH)
+    ibes_df = parquet_io.read_parquet(_IBES_PATH)
 
     print(f"Loaded {len(trades)} real trades, {len(permno_map)} symbol->permno mappings, "
           f"{len(ibes_df)} IBES price-target rows.")

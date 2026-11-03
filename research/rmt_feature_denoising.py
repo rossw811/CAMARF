@@ -66,6 +66,7 @@ from sklearn.metrics import silhouette_score
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))  # for aligned_pair_loader
 
+import parquet_io
 import ml
 from aligned_pair_loader import TF_DIRS as _TF_DIRS, DIR_TO_LABEL as _DIR_TO_LABEL
 from aligned_pair_loader import resolve_tf_results_dir as _resolve_tf_results_dir_tuple
@@ -96,7 +97,7 @@ def gather_real_examples():
             if not os.path.exists(pairs_path):
                 continue
             tf_label = _DIR_TO_LABEL[tf_dir]
-            pairs_df = pd.read_parquet(pairs_path)
+            pairs_df = parquet_io.read_parquet(pairs_path)
             ml._tf_dirname = lambda _tfl, _rn=resolved_name: _rn
             for _, row in pairs_df.iterrows():
                 try:

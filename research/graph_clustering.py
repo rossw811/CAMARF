@@ -35,6 +35,7 @@ from networkx.algorithms.community import louvain_communities, modularity
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+import parquet_io
 from analysis import Config, DataAligner, DataStore, UniverseFilter
 from data import UniverseBuilder
 
@@ -80,7 +81,7 @@ def _load_confirmed_pairs(tf_label):
     path = os.path.join(Config.DATA.OUTPUT_DIR, "results", safe, "pairs.parquet")
     if not os.path.exists(path):
         return []
-    df = pd.read_parquet(path)
+    df = parquet_io.read_parquet(path)
     return list(zip(df["symbol_a"], df["symbol_b"]))
 
 

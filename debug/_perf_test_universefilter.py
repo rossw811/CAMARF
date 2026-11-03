@@ -22,6 +22,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import numpy as np
 import pandas as pd
 
+import parquet_io
 from data import DataAligner
 import analysis
 from analysis import UniverseFilter
@@ -42,7 +43,7 @@ def load_real_universe(n_symbols, tf, offset=0):
     raw = {}
     for f in files:
         sym = os.path.basename(f).replace(f"_{tf}.parquet", "")
-        df = pd.read_parquet(f)
+        df = parquet_io.read_parquet(f)
         if df is None or df.empty or "close" not in df.columns:
             continue
         raw[sym] = df

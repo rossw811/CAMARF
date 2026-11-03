@@ -31,6 +31,7 @@ import pandas as pd
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
+import parquet_io
 import seal  # noqa: E402
 from config import Config  # noqa: E402
 _W = os.path.join(ROOT, "output", "cache", "wrds")
@@ -95,7 +96,7 @@ def rebuild_label(label: str, wdir: str = _W, dry_run: bool = False, factor: flo
     cur = os.path.join(wdir, f"{label}_1D.parquet")
     src = os.path.join(bak, f"{label}_1D.parquet")
     src = src if os.path.exists(src) else cur
-    df = pd.read_parquet(src)
+    df = parquet_io.read_parquet(src)
     df.index = pd.to_datetime(df.index)
     df = df[df.index < pd.Timestamp(Config.DATA.SEALED_FROM)]
     segs = split_frame(df, label, factor)
@@ -119,7 +120,7 @@ def residual_jumps(wdir: str = _W, factor: float = LEVEL_BREAK_FACTOR) -> pd.Dat
     """Every GVKEY daily file (segments included) that still has a > factor move between consecutive valid prices."""
     rows = []
     for f in sorted(glob.glob(os.path.join(wdir, "GVKEY*_1D.parquet"))):
-        d = pd.read_parquet(f)
+        d = parquet_io.read_parquet(f)
         col = "close_total_return" if "close_total_return" in d.columns else "close"
         lr = np.log(_valid(d[col]).abs()).diff().abs()
         if len(lr) and lr.max() > np.log(factor):

@@ -43,6 +43,7 @@ import numpy as np
 import pandas as pd
 from scipy.stats import spearmanr
 
+import parquet_io
 from data import DataStore
 from aligned_pair_loader import load_aligned_pair, resolve_tf_results_dir
 from lead_lag_scan import _gap_masked_log_price
@@ -66,7 +67,7 @@ def _raw_level_series(sym_a, sym_b, tf_label, signal):
             return None, None
         col = "coint_fraction_rolling_t" if signal == "coint_fraction" else "half_life_rolling_series"
         try:
-            df = pd.read_parquet(path, columns=[col])
+            df = parquet_io.read_parquet(path, columns=[col])
         except Exception:
             return None, None
         if col not in df.columns or df[col].isna().all():
@@ -112,7 +113,7 @@ def _bucket(decay_rate):
 
 def run(trades_path: str):
     """Returns (bucket_summary_df, correlation_df, trades_with_decay_rate_df)."""
-    trades = pd.read_parquet(trades_path)
+    trades = parquet_io.read_parquet(trades_path)
     trades["entry_time"] = pd.to_datetime(trades["entry_time"])
 
     combo_cols = []

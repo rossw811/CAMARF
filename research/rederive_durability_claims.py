@@ -25,6 +25,7 @@ import pandas as pd
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
+import parquet_io
 from analysis import _eg_worker  # noqa: E402
 from config import Config  # noqa: E402
 from data import longest_gap_respecting_segment  # noqa: E402
@@ -36,7 +37,7 @@ PAIRS = [("XOM", "CVX"), ("JPM", "BAC"), ("KO", "PEP"), ("NTRS", "STT"), ("SHW",
 
 
 def load_close(symbol: str, mask_no_trade: bool) -> pd.Series:
-    df = pd.read_parquet(WRDS_CACHE / f"{symbol}_1D.parquet")
+    df = parquet_io.read_parquet(WRDS_CACHE / f"{symbol}_1D.parquet")
     px = df["close_total_return"].astype(float)
     if mask_no_trade:
         px = dw.crsp_no_trade_mask(df, symbol, px)

@@ -49,6 +49,7 @@ from sklearn.cluster import AgglomerativeClustering
 from sklearn.tree import DecisionTreeClassifier, _tree
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import parquet_io
 
 _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _BACKTEST_DIR = os.path.join(_ROOT, "output", "backtest")
@@ -229,7 +230,7 @@ def main():
     for fname in ("trades_layer1.parquet", "trades_layer1_holdout.parquet"):
         fpath = os.path.join(_BACKTEST_DIR, fname)
         if os.path.exists(fpath):
-            frames.append(pd.read_parquet(fpath))
+            frames.append(parquet_io.read_parquet(fpath))
     if not frames:
         log.warning("No trades_layer1*.parquet found — run backtest.py first.")
         return

@@ -56,6 +56,7 @@ import sys
 
 import numpy as np
 import pandas as pd
+import parquet_io
 from scipy.stats import norm
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -228,7 +229,7 @@ def load_price_series(symbol: str) -> "pd.Series | None":
     briefly earlier in this same session, not a bug, a deliberate scope narrowing."""
     wrds_path = os.path.join(_CACHE_DIR, "wrds", f"{symbol}_1D.parquet")
     if os.path.exists(wrds_path):
-        df = pd.read_parquet(wrds_path)
+        df = parquet_io.read_parquet(wrds_path)
         # 2026-09-08: Compustat Global international-listing files (GVKEY<n>
         # symbols) have no 'close_total_return' column, only plain 'close' --
         # this branch previously silently fell through to IBKR (and then
@@ -315,7 +316,7 @@ def main():
     if not os.path.exists(trades_path):
         log.warning("No trades found at %s — run backtest.py first.", trades_path)
         return
-    trades = pd.read_parquet(trades_path)
+    trades = parquet_io.read_parquet(trades_path)
     trades = trades[trades["hedge_method"] == "ols"].copy()
     if trades.empty:
         log.warning("No OLS trades found.")

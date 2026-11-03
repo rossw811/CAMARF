@@ -42,6 +42,7 @@ from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
+import parquet_io
 
 
 import portfolio_math  # single source of truth for daily P&L (code review P1)
@@ -116,7 +117,7 @@ def _load_spread(sym_a: str, sym_b: str, tf_label: str) -> Optional[pd.DataFrame
     # is reported, never used.
     p = os.path.join(_ROOT, "output", "results", tf_dir, f"spread_series_{sym_a}_{sym_b}.parquet")
     if os.path.exists(p):
-        df = pd.read_parquet(p)
+        df = parquet_io.read_parquet(p)
         if {"spread"}.issubset(df.columns):
             return df
     stale = os.path.join(_ROOT, "output", "results", tf_dir + "_stale", f"spread_series_{sym_a}_{sym_b}.parquet")
@@ -509,7 +510,7 @@ def main() -> None:
     if not os.path.exists(tiers_path):
         log.error("cointegration_tiers.parquet not found — run stats.py first")
         sys.exit(1)
-    tiers = pd.read_parquet(tiers_path)
+    tiers = parquet_io.read_parquet(tiers_path)
     log.info("Loaded %d confirmed pairs", len(tiers))
 
     os.makedirs(_OUT_DIR, exist_ok=True)
@@ -518,7 +519,7 @@ def main() -> None:
     mm_hedge_map: Dict[str, float] = {}
     mm_path = os.path.join(_ROOT, "output", "stats", "hedge_ratio_comparison.parquet")
     if os.path.exists(mm_path):
-        mm_df = pd.read_parquet(mm_path)
+        mm_df = parquet_io.read_parquet(mm_path)
         for _, row in mm_df.iterrows():
             key = f"{row['symbol_a']}/{row['symbol_b']}"
             beta_mm = float(row.get("beta_mm", np.nan))
@@ -594,7 +595,7 @@ def main() -> None:
         print(pivot.round(3).to_string())
 
     try:
-        cmp = pd.read_parquet(os.path.join(_OUT_DIR, "wfa_fold_comparison.parquet"))
+        cmp = parquet_io.read_parquet(os.path.join(_OUT_DIR, "wfa_fold_comparison.parquet"))
         print("\n=== FOLD-LEVEL AVERAGES (baseline only) ===")
         for wfav in ["expanding", "rolling"]:
             sub = cmp[(cmp["wfa_variant"] == wfav) & (cmp["strategy"] == "baseline")]

@@ -94,6 +94,7 @@ import warnings
 from typing import Dict, List, Optional, Tuple
 
 import pandas as pd
+import parquet_io
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
@@ -129,7 +130,7 @@ def label_permno_map(path: str = None) -> dict:
     path = path or LABEL_PERMNO_MAP_PATH
     if not os.path.exists(path):
         raise FileNotFoundError(f"{path} missing -- build it with research/identify_wrds_files.py")
-    m = pd.read_parquet(path)
+    m = parquet_io.read_parquet(path)
     m = m[m["permno"].notna()]
     return {str(l): int(p) for l, p in zip(m["label"], m["permno"])}
 
@@ -950,7 +951,7 @@ def compute_symbol_adv_wrds(label: str, window_days: int = 252) -> float:
     if not os.path.exists(path):
         return float("nan")
     try:
-        df = pd.read_parquet(path)
+        df = parquet_io.read_parquet(path)
         if "close" not in df.columns or "volume" not in df.columns:
             return float("nan")
         recent = df.tail(window_days)
@@ -985,7 +986,7 @@ def build_illiquid_exclusion_list(permno_by_label: Dict[str, int], threshold: Op
     new_df = pd.DataFrame(rows)
 
     if os.path.exists(_ILLIQUID_EXCLUSION_CACHE):
-        existing_df = pd.read_parquet(_ILLIQUID_EXCLUSION_CACHE)
+        existing_df = parquet_io.read_parquet(_ILLIQUID_EXCLUSION_CACHE)
         combined = pd.concat([existing_df, new_df], ignore_index=True).drop_duplicates(
             subset="permno", keep="last"
         )
@@ -1008,7 +1009,7 @@ def load_illiquid_permnos() -> set:
     been fetched at least once."""
     if not os.path.exists(_ILLIQUID_EXCLUSION_CACHE):
         return set()
-    df = pd.read_parquet(_ILLIQUID_EXCLUSION_CACHE)
+    df = parquet_io.read_parquet(_ILLIQUID_EXCLUSION_CACHE)
     return set(df.loc[df["is_illiquid"], "permno"].astype(int))
 
 
@@ -1562,7 +1563,7 @@ def fetch_compustat_fundamentals(db):
         log.warning(f"{permno_map_path} not found -- run build_symbol_permno_map() "
                     f"first. Skipping Compustat fundamentals.")
         return
-    permno_map = pd.read_parquet(permno_map_path)
+    permno_map = parquet_io.read_parquet(permno_map_path)
     permnos = permno_map["permno"].dropna().astype(int).unique().tolist()
     log.info(f"Fetching Compustat fundamentals for {len(permnos)} permnos (via CRSP-Compustat "
              f"Merged link, standard indfmt/datafmt/popsrc/consol filter)...")
@@ -1703,7 +1704,7 @@ def fetch_ibes_price_targets(db):
         log.warning(f"{permno_map_path} not found -- run build_symbol_permno_map() first. "
                     f"Skipping IBES price targets.")
         return
-    permno_map = pd.read_parquet(permno_map_path)
+    permno_map = parquet_io.read_parquet(permno_map_path)
     permnos = permno_map["permno"].dropna().astype(int).unique().tolist()
     permnos_sql = ",".join(str(p) for p in permnos)
 

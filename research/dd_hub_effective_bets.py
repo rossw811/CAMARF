@@ -57,6 +57,7 @@ import numpy as np
 import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import parquet_io
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))  # for aligned_pair_loader
 
 from aligned_pair_loader import resolve_tf_results_dir as _resolve_tf_results_dir_tuple
@@ -114,7 +115,7 @@ def _load_real_bar_series(results_dir, sym_a, sym_b, column="z_rolling"):
     path = os.path.join(results_dir, f"spread_series_{sym_a}_{sym_b}.parquet")
     if not os.path.exists(path):
         return None
-    df = pd.read_parquet(path)
+    df = parquet_io.read_parquet(path)
     gap_bad = (df["gap_flag_a"] == 4) | (df["gap_flag_b"] == 4)
     s = df[column].where(~gap_bad & np.isfinite(df[column]))
     return s

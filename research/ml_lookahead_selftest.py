@@ -53,6 +53,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import pandas as pd
 
+import parquet_io
 import ml
 from ml import (
     MLResult, MLRunSummary, _build_examples_for_pair, _discover_confirmed_pairs,
@@ -72,7 +73,7 @@ def build_examples(feature_lag: int) -> MLResult:
 
     for symbol_a, symbol_b, tf_label in pairs:
         try:
-            pairs_df = pd.read_parquet(
+            pairs_df = parquet_io.read_parquet(
                 os.path.join(_RESULTS_DIR, _tf_dirname(tf_label), "pairs.parquet")
             )
             row = pairs_df[
@@ -88,7 +89,7 @@ def build_examples(feature_lag: int) -> MLResult:
             _RESULTS_DIR, _tf_dirname(tf_label), f"spread_series_{symbol_a}_{symbol_b}.parquet"
         )
         try:
-            series = pd.read_parquet(series_path)
+            series = parquet_io.read_parquet(series_path)
         except Exception as e:
             pairs_skipped.append((symbol_a, symbol_b, tf_label, f"series load failed: {e}"))
             continue

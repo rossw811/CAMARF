@@ -28,6 +28,7 @@ import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+import parquet_io
 from analysis import _benjamini_hochberg
 
 
@@ -73,7 +74,7 @@ def benjamini_yekutieli(pvalues: np.ndarray, alpha: float):
 
 def characterize_dd_hub_dominance(candidates_path: str = "output/results/1hr/all_candidates.parquet"):
     """Quantify the DD-leg dominance in the real 1h candidate set."""
-    df = pd.read_parquet(candidates_path)
+    df = parquet_io.read_parquet(candidates_path)
     dd_mask = (df.symbol_a == "DD") | (df.symbol_b == "DD")
     dd_rows = df[dd_mask]
     non_dd = df[~dd_mask]

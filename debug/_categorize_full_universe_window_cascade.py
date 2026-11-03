@@ -30,6 +30,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import pandas as pd
 
+import parquet_io
 from analysis import CrossAssetTagger
 
 _OUT_DIR = os.path.join("output", "research")
@@ -93,7 +94,7 @@ def main():
     all_novel = {}
     for window in ["3y", "5y", "10y"]:
         path = os.path.join(_OUT_DIR, f"full_universe_eg_confirmed_pairs_{window}.parquet")
-        df = pd.read_parquet(path)
+        df = parquet_io.read_parquet(path)
         cat_df = categorize(df)
         counts = cat_df["category"].value_counts().to_dict()
         novel = cat_df[cat_df["category"] == "novel"]

@@ -45,6 +45,7 @@ import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+import parquet_io
 from config import Config
 from data import _MAX_FILL_BARS
 from dollar_volume import usd_dollar_volume
@@ -168,7 +169,7 @@ def load_wrds_universe_ohlcv():
         # 2026-08-24): 1032/44694 WRDS cache files are 0-byte from an interrupted bulk fetch
         # during an earlier session crash -- skip and log, don't crash the whole scan.
         try:
-            df = pd.read_parquet(f)
+            df = parquet_io.read_parquet(f)
         except Exception:
             skipped_unreadable.append(sym)
             continue

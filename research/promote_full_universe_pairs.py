@@ -62,6 +62,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import numpy as np
 import pandas as pd
 
+import parquet_io
 from config import Config
 from analysis import CointScanner, AnalysisPipeline
 import data_wrds
@@ -113,7 +114,7 @@ def main():
         print(f"Source file not found: {args.source}")
         sys.exit(1)
 
-    source = pd.read_parquet(args.source)
+    source = parquet_io.read_parquet(args.source)
     keep_cols = [c for c in ("symbol_a", "symbol_b", "pearson_corr") if c in source.columns]
     candidates_raw_df = source[keep_cols].drop_duplicates(subset=["symbol_a", "symbol_b"])
     candidates_raw_dicts = candidates_raw_df.to_dict("records")
@@ -366,7 +367,7 @@ def main():
     os.makedirs(results_dir, exist_ok=True)
 
     if os.path.exists(pairs_path):
-        existing_df = pd.read_parquet(pairs_path)
+        existing_df = parquet_io.read_parquet(pairs_path)
         existing_keys = set(zip(existing_df["symbol_a"], existing_df["symbol_b"]))
     else:
         existing_df = pd.DataFrame()

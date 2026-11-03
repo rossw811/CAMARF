@@ -84,6 +84,7 @@ import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+import parquet_io
 from analysis import _eg_worker
 from config import Config
 from aligned_pair_loader import load_aligned_pair
@@ -394,7 +395,7 @@ def main():
 
     if args.pool:
         from config import Config
-        P = pd.read_parquet(Config.DATA.PIT_POOL_PATHS[args.pool])
+        P = parquet_io.read_parquet(Config.DATA.PIT_POOL_PATHS[args.pool])
         P = P[P["tf_label"].astype(str) == "1D"]
         pairs = sorted(set(zip(P["symbol_a"], P["symbol_b"])))
         eligible_from = {(a, b): pd.Timestamp(e) for a, b, e in zip(P["symbol_a"], P["symbol_b"], P["eligible_from"])}
@@ -414,7 +415,7 @@ def main():
         import glob
         pairs = []
         for pairs_path in sorted(glob.glob(os.path.join(_ROOT, "output", "results", "*", "pairs.parquet"))):
-            df = pd.read_parquet(pairs_path)
+            df = parquet_io.read_parquet(pairs_path)
             for _, row in df.iterrows():
                 pairs.append((row["symbol_a"], row["symbol_b"]))
         pairs = sorted(set(pairs))

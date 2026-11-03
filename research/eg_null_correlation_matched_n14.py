@@ -35,6 +35,7 @@ import pandas as pd
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 
+import parquet_io
 from config import Config  # noqa: E402
 
 SEED = 20261021
@@ -188,7 +189,7 @@ def run(tf: str, thresholds, n_pairs: int, draws: int, candidates_dir: str = Non
         import glob as _g
         sys.path.insert(0, os.path.join(ROOT, "research"))
         from clean_pool_identity_pairs import build_company_ids
-        C = pd.concat([pd.read_parquet(f) for f in sorted(_g.glob(os.path.join(candidates_dir, "*.parquet")))],
+        C = pd.concat([parquet_io.read_parquet(f) for f in sorted(_g.glob(os.path.join(candidates_dir, "*.parquet")))],
                       ignore_index=True)
         ids = build_company_ids(sorted(set(C["symbol_a"]) | set(C["symbol_b"])))
         S_ = screen_sample(C, n_pairs, rng, ids=ids)

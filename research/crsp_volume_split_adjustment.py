@@ -34,6 +34,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import numpy as np
 import pandas as pd
 
+import parquet_io
 from config import Config
 
 _WRDS = os.path.join("output", "cache", "wrds")
@@ -90,7 +91,7 @@ def impact(threshold: float = None, window: int = None):
     from research.rolling_adv_comparison import ROLLING_ADV_WINDOW
     thr = threshold if threshold is not None else Config.STATS.ADV_FILTER_USD
     win = window or ROLLING_ADV_WINDOW
-    ev = pd.read_parquet(FACPR_PATH)
+    ev = parquet_io.read_parquet(FACPR_PATH)
     by_permno = {p: g for p, g in ev.groupby("permno")}
     from data_wrds import label_permno_map
     permno_of = label_permno_map(LABEL_MAP_PATH)
@@ -101,7 +102,7 @@ def impact(threshold: float = None, window: int = None):
         if p is None:
             continue
         try:
-            d = pd.read_parquet(path, columns=["close", "volume"])
+            d = parquet_io.read_parquet(path, columns=["close", "volume"])
         except Exception:
             continue
         d.index = pd.to_datetime(d.index)

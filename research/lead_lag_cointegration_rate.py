@@ -90,6 +90,7 @@ sys.path.insert(0, _PROJECT_ROOT)
 sys.path.insert(0, os.path.join(_PROJECT_ROOT, "research"))
 
 from aligned_pair_loader import load_aligned_pair
+import parquet_io
 from analysis import Config, _benjamini_hochberg, _limit_worker_blas_threads
 from data import _gap_aware_returns
 from research.lead_lag_scan import (
@@ -116,7 +117,7 @@ def build_eligible_pairs(x):
         if not os.path.exists(path):
             continue
         tf_label = _DIR_TO_LABEL[tf_dir]
-        df = pd.read_parquet(path)
+        df = parquet_io.read_parquet(path)
         for _, row in df.iterrows():
             sym_a, sym_b = row["symbol_a"], row["symbol_b"]
             df_a, df_b = load_aligned_pair(sym_a, sym_b, tf_label)

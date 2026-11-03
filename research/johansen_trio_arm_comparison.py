@@ -27,6 +27,7 @@ import pandas as pd
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 
+import parquet_io
 from config import Config  # noqa: E402
 from data import longest_gap_respecting_segment  # noqa: E402
 from johansen import crit_from_table, johansen_rank_restricted  # noqa: E402
@@ -72,7 +73,7 @@ def main():
     ap.add_argument("--level", type=float, default=Config.ANALYSIS.JOHANSEN_SIGNIFICANCE)
     a = ap.parse_args()
     import universe_loader as ul
-    pool = pd.read_parquet(Config.DATA.PIT_POOL_PATHS[a.pool])
+    pool = parquet_io.read_parquet(Config.DATA.PIT_POOL_PATHS[a.pool])
     trios = candidate_trios(pool)
     print(f"pool {a.pool}: {len(pool)} pairs -> {len(trios)} candidate 1D trios (production rule, uncapped)")
     cache = {}

@@ -50,6 +50,7 @@ import numpy as np
 import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import parquet_io
 
 _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _OUT_DIR = os.path.join(_ROOT, "output", "research")
@@ -84,7 +85,7 @@ def load_standard_pairs() -> pd.DataFrame:
         path = os.path.join(_RESULTS_DIR, tf_dir, "pairs.parquet")
         if not os.path.exists(path):
             continue
-        df = pd.read_parquet(path)
+        df = parquet_io.read_parquet(path)
         if df.empty:
             continue
         if "tf_label" not in df.columns:
@@ -101,7 +102,7 @@ def load_episodic_pairs() -> pd.DataFrame:
             f"{_ADAPTER_OUTPUT_PATH} not found -- run research/episodic_pairs_adapter.py first "
             "(Thread A Step 3)."
         )
-    return pd.read_parquet(_ADAPTER_OUTPUT_PATH)
+    return parquet_io.read_parquet(_ADAPTER_OUTPUT_PATH)
 
 
 def _pair_key_set(df: pd.DataFrame) -> set:

@@ -46,6 +46,7 @@ import pandas as pd
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from aligned_pair_loader import align_pair_dataframes, load_aligned_pair
+import parquet_io
 from data import _gap_aware_returns
 from data_ibkr import load_supplement, merge_with_yfinance
 from tail_dependence import _empirical_tail_dependence
@@ -178,7 +179,7 @@ def main():
             path = f"output/results/{tf_dir}/pairs.parquet"
             if not os.path.exists(path):
                 continue
-            df = pd.read_parquet(path)
+            df = parquet_io.read_parquet(path)
             for _, row in df.iterrows():
                 rows.append(compare_pair(row["symbol_a"], row["symbol_b"], tf_label, q=args.q))
 

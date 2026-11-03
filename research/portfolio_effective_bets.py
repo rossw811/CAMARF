@@ -37,6 +37,7 @@ import numpy as np
 import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import parquet_io
 
 from research.dd_hub_effective_bets import (
     grinold_kahn_breadth,
@@ -53,7 +54,7 @@ def _load_trades(suffix: str) -> pd.DataFrame:
     path = os.path.join(_BACKTEST_DIR, f"trades_{suffix}.parquet")
     if not os.path.exists(path):
         return pd.DataFrame()
-    return pd.read_parquet(path)
+    return parquet_io.read_parquet(path)
 
 
 def build_daily_pnl_panel(trades: pd.DataFrame) -> pd.DataFrame:

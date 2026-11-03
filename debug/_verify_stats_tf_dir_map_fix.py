@@ -24,6 +24,7 @@ import pandas as pd
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 os.chdir(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+import parquet_io
 from data import DataStore
 import stats
 
@@ -58,7 +59,7 @@ for tf, want in expected.items():
 # reasons (HuberRegressor non-convergence, degenerate spread variance), but
 # it must not be NaN for ALL of them purely from a missing file.
 found_and_read = False
-pairs_1d = pd.read_parquet("output/results/1day/pairs.parquet")
+pairs_1d = parquet_io.read_parquet("output/results/1day/pairs.parquet")
 for _, row in pairs_1d.head(15).iterrows():
     pairs_df = pd.DataFrame([{"symbol_a": row["symbol_a"], "symbol_b": row["symbol_b"], "tf_label": "1D"}])
     result = stats.run_robust_hedge_ratios(pairs_df)

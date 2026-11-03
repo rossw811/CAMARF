@@ -29,6 +29,7 @@ import numpy as np
 import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import parquet_io
 
 FEATURES = ["zscore", "zscore_velocity", "half_life_current", "hurst_exponent", "coint_fraction_rolling",
             "half_life_trend_slope", "mean_reversion_speed", "hedge_ratio_drift", "squeeze_min",
@@ -131,13 +132,13 @@ def main():
         k = (a, b, tf)
         if k not in cache:
             p = os.path.join("output", "results", _TF_DIR.get(tf, "x"), f"spread_series_{a}_{b}.parquet")
-            cache[k] = pd.read_parquet(p) if os.path.exists(p) else None
+            cache[k] = parquet_io.read_parquet(p) if os.path.exists(p) else None
         return cache[k]
 
     out, trials = [], []
     for f in sorted(glob.glob("output/backtest/trades_layer1_storm_*gate_pairsoverride.parquet")):
         gate = os.path.basename(f).replace("trades_layer1_storm_", "").replace("_pairsoverride.parquet", "")
-        T = pd.read_parquet(f)
+        T = parquet_io.read_parquet(f)
         T = T[(T["hedge_method"] == "ols") & (T["tf"] == "1D")]
         D = pnl_dollar.add_dollar_pnl(T)
         st = D["pnl_dollar_status"].value_counts().to_dict()

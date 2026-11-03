@@ -29,6 +29,7 @@ import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import parquet_io
 
 import numpy as np
 import pandas as pd
@@ -64,7 +65,7 @@ _MAX_ZERO_MONTH_FRAC = 0.30  # real finding, 2026-08-14: baseline/tiered arms' r
 
 
 def monthly_returns_from_trades(trades_path: str) -> pd.Series:
-    trades_df = pd.read_parquet(trades_path)
+    trades_df = parquet_io.read_parquet(trades_path)
     if trades_df.empty:
         return pd.Series(dtype=float)
     daily_returns = build_daily_return_series(trades_df, _STARTING_CAPITAL)
@@ -75,7 +76,7 @@ def monthly_returns_from_trades(trades_path: str) -> pd.Series:
 
 
 def monthly_rf_series() -> pd.Series:
-    ff = pd.read_parquet(_FF5_DAILY_PATH)
+    ff = parquet_io.read_parquet(_FF5_DAILY_PATH)
     ff["date"] = pd.to_datetime(ff["date"])
     daily_rf = ff.set_index("date")["rf"]
     return (1.0 + daily_rf).resample("ME").prod() - 1.0
@@ -153,7 +154,7 @@ def _option_b_results(db) -> dict:
             trades_path = os.path.join(_STEP5_DIR, f"real_{arm}_{split}_trades_capsim.parquet")
             if not os.path.exists(trades_path):
                 continue
-            trades_df = pd.read_parquet(trades_path)
+            trades_df = parquet_io.read_parquet(trades_path)
             trades_by_arm_split[(arm, split)] = trades_df
             for _, row in trades_df[["symbol_a", "symbol_b"]].drop_duplicates().iterrows():
                 all_pairs.add((row["symbol_a"], row["symbol_b"]))
@@ -180,7 +181,7 @@ def _option_b_results(db) -> dict:
 
 
 def main():
-    factors_df = pd.read_parquet(_FACTORS_PATH)
+    factors_df = parquet_io.read_parquet(_FACTORS_PATH)
     rf = monthly_rf_series()
 
     from data_wrds import _connect

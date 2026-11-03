@@ -25,6 +25,7 @@ import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+import parquet_io
 from period_bars import period_end_index, resample_to_period_end
 from research.rederive_coarse_volume import restate_coarse
 
@@ -51,7 +52,7 @@ def find_mismatched(root: str) -> list:
         dp = os.path.join(root, f"{label}_1D.parquet")
         if not os.path.exists(dp):
             continue
-        a = close_agreement(pd.read_parquet(dp, columns=["close"]), pd.read_parquet(p, columns=["close"]), "3M")
+        a = close_agreement(parquet_io.read_parquet(dp, columns=["close"]), parquet_io.read_parquet(p, columns=["close"]), "3M")
         if a < AGREE_MIN:
             out.append((label, a))
     return out
@@ -65,7 +66,7 @@ def rebuild(root: str, label: str, qdir: str) -> dict:
         if os.path.exists(p):
             os.replace(p, os.path.join(qdir, os.path.basename(p)))
             moved.append(tf)
-    daily = pd.read_parquet(os.path.join(root, f"{label}_1D.parquet"))
+    daily = parquet_io.read_parquet(os.path.join(root, f"{label}_1D.parquet"))
     raw_daily = daily.assign(volume=daily["volume_raw"]) if "volume_raw" in daily.columns else daily
     keep = [c for c in ("open", "high", "low", "close", "volume", "close_total_return", "close_usd") if c in raw_daily]
     built = []

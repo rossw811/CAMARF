@@ -34,6 +34,7 @@ from scipy import stats
 _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, _ROOT)
 
+import parquet_io
 from portfolio_sim import replay_portfolio  # noqa: E402
 
 _N_BOOTSTRAP = 5000
@@ -129,7 +130,7 @@ def run_tier(trades_df: pd.DataFrame, account_size: float, rng: np.random.Genera
 
 
 def main():
-    trades_df = pd.read_parquet(os.path.join(_ROOT, "output", "backtest", "trades_layer1.parquet"))
+    trades_df = parquet_io.read_parquet(os.path.join(_ROOT, "output", "backtest", "trades_layer1.parquet"))
     trades_df["entry_time"] = pd.to_datetime(trades_df["entry_time"])
     trades_df["exit_time"] = pd.to_datetime(trades_df["exit_time"])
 

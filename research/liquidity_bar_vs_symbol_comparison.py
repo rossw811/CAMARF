@@ -35,6 +35,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import numpy as np
 import pandas as pd
 
+import parquet_io
 from config import Config
 from data_wrds import _OUT_DIR
 from research.international_liquidity_filter import usd_conversion_rate
@@ -53,7 +54,7 @@ def compare_bar_vs_symbol(label: str, currency: str, usd_mult: float,
     path = os.path.join(_OUT_DIR, f"{label}_1D.parquet")
     if not os.path.exists(path):
         return None
-    df = pd.read_parquet(path)
+    df = parquet_io.read_parquet(path)
     if df.empty:
         return None
     recent = df.tail(trailing_days)
@@ -80,7 +81,7 @@ def compare_bar_vs_symbol(label: str, currency: str, usd_mult: float,
 
 def main():
     threshold = Config.DATA.MIN_DOLLAR_VOLUME
-    liq_df = pd.read_parquet(_LIQ_PATH)
+    liq_df = parquet_io.read_parquet(_LIQ_PATH)
     valid = liq_df.dropna(subset=["avg_dollar_volume_usd", "currency", "usd_conversion_rate"])
     print(f"Comparing bar-level vs symbol-level liquidity filtering for "
           f"{len(valid)} symbols at threshold=${threshold:,.0f}")

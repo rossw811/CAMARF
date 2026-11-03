@@ -37,6 +37,7 @@ import pandas as pd
 from scipy import stats
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import parquet_io
 
 _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _SEGMENTS_PATH = os.path.join(_ROOT, "output", "research", "cointegration_regime_segments.parquet")
@@ -109,8 +110,8 @@ def main():
                   "and crisis_regime_correlation_diagnostic.py first.")
         sys.exit(1)
 
-    segments = pd.read_parquet(_SEGMENTS_PATH)
-    discovery = pd.read_parquet(_DISCOVERY_PATH)
+    segments = parquet_io.read_parquet(_SEGMENTS_PATH)
+    discovery = parquet_io.read_parquet(_DISCOVERY_PATH)
     log.info(f"Loaded {len(segments)} regime-segment rows, {len(discovery)} discovery-regime rows.")
 
     joined = build_joined_table(segments, discovery)

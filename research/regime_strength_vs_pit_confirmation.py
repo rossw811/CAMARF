@@ -18,6 +18,7 @@ import pandas as pd
 
 _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, _ROOT)
+import parquet_io
 sys.path.insert(0, os.path.join(_ROOT, "research"))
 
 from pit_confirmation_vs_regime_interaction import build_joined_table, two_proportion_test
@@ -32,8 +33,8 @@ def main():
         print("ERROR: missing input(s).")
         return
 
-    strength_df = pd.read_parquet(_STRENGTH_PATH)
-    pit_df = pd.read_parquet(_PIT_PATH)
+    strength_df = parquet_io.read_parquet(_STRENGTH_PATH)
+    pit_df = parquet_io.read_parquet(_PIT_PATH)
 
     joined = build_joined_table(strength_df, pit_df)
     n_overlap = int(joined["pit_confirmed"].sum())

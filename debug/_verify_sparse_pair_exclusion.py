@@ -23,6 +23,7 @@ os.chdir(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import numpy as np
 import pandas as pd
 
+import parquet_io
 from analysis import AnalysisPipeline, SpreadModel
 from data import DataAligner
 
@@ -39,8 +40,8 @@ def check(name, cond, detail=""):
 raw_a_path = "output/cache/wrds/GVKEY101930_01W_1D.parquet"
 raw_b_path = "output/cache/wrds/GVKEY355506_01W_1D.parquet"
 if os.path.exists(raw_a_path) and os.path.exists(raw_b_path):
-    df_a = pd.read_parquet(raw_a_path)
-    df_b = pd.read_parquet(raw_b_path)
+    df_a = parquet_io.read_parquet(raw_a_path)
+    df_b = parquet_io.read_parquet(raw_b_path)
     sym_a, sym_b = "GVKEY101930_01W", "GVKEY355506_01W"
     aligned = DataAligner.align_universe({f"{sym_a}_1D": df_a, f"{sym_b}_1D": df_b}, "1D")
     common_idx = aligned[sym_a].index.intersection(aligned[sym_b].index)

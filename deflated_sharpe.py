@@ -60,6 +60,7 @@ from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
+import parquet_io
 from scipy import stats
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -193,7 +194,7 @@ def _backfill_trial_registry() -> int:
         if label in existing_labels:
             continue
         try:
-            df = pd.read_parquet(path)
+            df = parquet_io.read_parquet(path)
             if df.empty:
                 continue
             sharpe = df.iloc[0].get("sharpe_portfolio")
@@ -217,7 +218,7 @@ def _daily_pnl_stats(trades_path: str) -> Optional[Tuple[float, int, float, floa
     calendar days; see BUG-D62/D64 and the 2026-07-20 Grand Sweep recurrence)."""
     if not os.path.exists(trades_path):
         return None
-    trades = pd.read_parquet(trades_path)
+    trades = parquet_io.read_parquet(trades_path)
     if trades.empty or "pnl_net" not in trades.columns:
         return None
     daily = portfolio_math.daily_pnl_from_trades(trades)

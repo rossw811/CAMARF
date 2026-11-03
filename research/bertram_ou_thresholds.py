@@ -46,6 +46,7 @@ import numpy as np
 import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import parquet_io
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))  # for aligned_pair_loader
 
 from aligned_pair_loader import (
@@ -148,13 +149,13 @@ def main():
         if is_stale:
             print(f"NOTE {tf_dir}: using archived {results_dir}")
         tf_label = _DIR_TO_LABEL[tf_dir]
-        pairs_df = pd.read_parquet(pairs_path)
+        pairs_df = parquet_io.read_parquet(pairs_path)
         for _, row in pairs_df.iterrows():
             sym_a, sym_b = row["symbol_a"], row["symbol_b"]
             series_path = os.path.join(results_dir, f"spread_series_{sym_a}_{sym_b}.parquet")
             if not os.path.exists(series_path):
                 continue
-            df = pd.read_parquet(series_path)
+            df = parquet_io.read_parquet(series_path)
             real_mask = (df["gap_flag_a"] != 4) & (df["gap_flag_b"] != 4)
             z = df.loc[real_mask, "spread"].to_numpy(dtype=float)
             z = z[np.isfinite(z)]

@@ -63,6 +63,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 
 from aligned_pair_loader import TF_DIRS, DIR_TO_LABEL, resolve_tf_results_dir, load_aligned_pair
+import parquet_io
 from data import GapFlag, clean_close
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -148,7 +149,7 @@ def main():
             log.info("NOTE %s: no live output/results/%s, using archived %s instead",
                       tf_dir, tf_dir, results_dir)
         tf_label = DIR_TO_LABEL[tf_dir]
-        pairs_df = pd.read_parquet(pairs_path)
+        pairs_df = parquet_io.read_parquet(pairs_path)
 
         for _, row in pairs_df.iterrows():
             sym_a, sym_b = row["symbol_a"], row["symbol_b"]

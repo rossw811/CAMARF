@@ -42,6 +42,7 @@ import pandas as pd
 from scipy.optimize import minimize
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import parquet_io
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from portfolio_effective_bets import build_daily_pnl_panel, _load_trades
@@ -120,7 +121,7 @@ def main():
     if not os.path.exists(cluster_path):
         print(f"Missing {cluster_path} — run research/graphical_lasso_clusters.py first.")
         return
-    cluster_df = pd.read_parquet(cluster_path).set_index("pair")
+    cluster_df = parquet_io.read_parquet(cluster_path).set_index("pair")
     cluster_df = cluster_df.reindex(pair_names)
     if cluster_df["cluster_marginal"].isna().any():
         print("Cluster assignment missing for some pairs — pair sets may have drifted "

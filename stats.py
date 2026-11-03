@@ -33,6 +33,7 @@ from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
+import parquet_io
 from scipy import stats as sp_stats
 from scipy.stats import genpareto
 from sklearn.linear_model import HuberRegressor
@@ -134,7 +135,7 @@ def _load_all_pairs() -> pd.DataFrame:
         if "stale" in dir_name or "_" in dir_name:
             continue  # skip stale and any other timestamped directory
         try:
-            df = pd.read_parquet(pth)
+            df = parquet_io.read_parquet(pth)
             frames.append(df)
         except Exception as e:
             log.warning("Could not read %s: %s", pth, e)
@@ -164,7 +165,7 @@ def _load_spread_series(symbol_a: str, symbol_b: str, tf_label: str) -> Optional
 
     for path in candidates:
         try:
-            df = pd.read_parquet(path)
+            df = parquet_io.read_parquet(path)
             # spread_series_*.parquet is on the full calendar-padded grid — DATA_GAP
             # bars are forward-filled, not NaN, so .dropna() alone does not remove
             # them (BUG-D54, found in this session's data-hygiene sweep; same class
@@ -193,7 +194,7 @@ def _load_spread_df(symbol_a: str, symbol_b: str, tf_label: str) -> Optional[pd.
         candidates = non_stale if non_stale else all_matches
     for path in candidates:
         try:
-            df = pd.read_parquet(path)
+            df = parquet_io.read_parquet(path)
             # Same DATA_GAP calendar-padding exclusion as _load_spread_series above
             # (BUG-D54) — half_life_rolling is a rolling stat and gets distorted by
             # frozen forward-filled padding just like the spread column would.
@@ -211,14 +212,14 @@ def _load_trades(suffix: str = "layer1") -> pd.DataFrame:
     pth = os.path.join(_BACKTEST_DIR, f"trades_{suffix}.parquet")
     if not os.path.exists(pth):
         return pd.DataFrame()
-    return pd.read_parquet(pth)
+    return parquet_io.read_parquet(pth)
 
 
 def _load_portfolio(suffix: str = "layer1") -> pd.DataFrame:
     pth = os.path.join(_BACKTEST_DIR, f"portfolio_{suffix}.parquet")
     if not os.path.exists(pth):
         return pd.DataFrame()
-    return pd.read_parquet(pth)
+    return parquet_io.read_parquet(pth)
 
 
 # =============================================================================
@@ -451,8 +452,8 @@ def run_robust_hedge_ratios(pairs: pd.DataFrame) -> pd.DataFrame:
 
         try:
             if os.path.exists(cache_a) and os.path.exists(cache_b):
-                pa = pd.read_parquet(cache_a)[["close"]].rename(columns={"close": "a"})
-                pb = pd.read_parquet(cache_b)[["close"]].rename(columns={"close": "b"})
+                pa = parquet_io.read_parquet(cache_a)[["close"]].rename(columns={"close": "a"})
+                pb = parquet_io.read_parquet(cache_b)[["close"]].rename(columns={"close": "b"})
                 aligned = pa.join(pb, how="inner").dropna()
                 if len(aligned) >= 20:
                     log_a = np.log(aligned["a"].values)
@@ -1048,7 +1049,7 @@ def run_permutation_test(
     port_path = os.path.join(_BACKTEST_DIR, f"portfolio_{portfolio_parquet_suffix}.parquet")
     if os.path.exists(port_path):
         try:
-            port = pd.read_parquet(port_path)
+            port = parquet_io.read_parquet(port_path)
             backtest_sharpe = float(port.iloc[0]["sharpe_portfolio"])
         except Exception as e:   # W6.4 (2026-10-20): was silent -- the reference Sharpe stays NaN, said so
             log.warning(f"  [S6 Permutation] reference Sharpe unreadable from {port_path} ({type(e).__name__}: {e})")

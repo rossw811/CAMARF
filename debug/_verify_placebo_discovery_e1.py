@@ -36,6 +36,7 @@ except ImportError as e:
     check("module exists", False, str(e))
     print(f"\n{passed} passed, {failed} failed")
     sys.exit(1)
+import parquet_io
 from analysis import eg_pvalue_pair  # noqa: E402
 from config import Config  # noqa: E402
 
@@ -79,7 +80,7 @@ with tempfile.TemporaryDirectory() as td:
     src.index.name = "datadate"
     out = os.path.join(td, "X_1D.parquet")
     e1.write_placebo_file(src, pd.Series(np.linspace(0, 0.1, 50), index=cal[:50]), out)
-    d = pd.read_parquet(out)
+    d = parquet_io.read_parquet(out)
     # v2 (2026-10-25): volume is rescaled so USD dollar volume (close_usd x volume here) stays the real one
     check("5 dollar volume kept, every price column = exp(placebo log price)",
           np.allclose(d["volume"] * d["close_usd"], 5.0) and np.allclose(d["close_usd"], np.exp(np.linspace(0, 0.1, 50)))

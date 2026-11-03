@@ -39,6 +39,7 @@ import numpy as np
 import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import parquet_io
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from aligned_pair_loader import TF_DIRS, DIR_TO_LABEL, resolve_tf_results_dir
@@ -104,7 +105,7 @@ def _spread_velocity_lookup(sym_a: str, sym_b: str, tf_label: str) -> dict:
     path = os.path.join(results_dir, f"spread_series_{sym_a}_{sym_b}.parquet")
     if not os.path.exists(path):
         return {}
-    df = pd.read_parquet(path)
+    df = parquet_io.read_parquet(path)
     if "spread" not in df.columns:
         return {}
     vel = spread_velocity(df["spread"])
@@ -121,7 +122,7 @@ def main():
     for fname in ("trades_layer1.parquet", "trades_layer1_holdout.parquet"):
         fpath = os.path.join(_BACKTEST_DIR, fname)
         if os.path.exists(fpath):
-            frames.append(pd.read_parquet(fpath))
+            frames.append(parquet_io.read_parquet(fpath))
     if not frames:
         log.warning("No trades_layer1*.parquet found — run backtest.py first.")
         return

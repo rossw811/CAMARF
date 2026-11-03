@@ -22,6 +22,7 @@ import pandas as pd
 
 _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, _ROOT)
+import parquet_io
 sys.path.insert(0, os.path.join(_ROOT, "research"))
 
 from crisis_regime_cluster_bootstrap_test import cluster_bootstrap_confirmation_rate
@@ -49,8 +50,8 @@ def main():
               "crisis_regime_episode_clustering_check.py first.")
         return
 
-    residual_df = pd.read_parquet(_RESIDUAL_PATH)
-    episodes = pd.read_parquet(_EPISODES_PATH)
+    residual_df = parquet_io.read_parquet(_RESIDUAL_PATH)
+    episodes = parquet_io.read_parquet(_EPISODES_PATH)
 
     confirmed = residual_df[residual_df["confirmed"] == True].copy()
     confirmed["first_window_end_date"] = pd.to_datetime(confirmed["first_window_end_date"])

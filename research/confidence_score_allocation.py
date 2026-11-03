@@ -50,6 +50,7 @@ import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+import parquet_io
 from portfolio_math import daily_pnl_from_trades, sharpe_from_daily_pnl, sortino_from_daily_pnl, \
     calmar_from_daily_pnl
 
@@ -160,7 +161,7 @@ def main():
         log.warning("Missing required Phase 1/3 output -- run those scripts first.")
         return
 
-    trades = pd.read_parquet(trades_path)
+    trades = parquet_io.read_parquet(trades_path)
     trades = trades[trades["hedge_method"] == "ols"].copy()
     trades["entry_time"] = pd.to_datetime(trades["entry_time"])
     trades["exit_time"] = pd.to_datetime(trades["exit_time"])

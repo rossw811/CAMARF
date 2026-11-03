@@ -45,6 +45,7 @@ import numpy as np
 import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import parquet_io
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from portfolio_effective_bets import build_daily_pnl_panel, _load_trades
@@ -171,7 +172,7 @@ def main():
     cluster_labels = None
     cluster_path = "output/research/graphical_lasso_clusters.parquet"
     if os.path.exists(cluster_path):
-        cluster_df = pd.read_parquet(cluster_path).set_index("pair").reindex(pair_names)
+        cluster_df = parquet_io.read_parquet(cluster_path).set_index("pair").reindex(pair_names)
         if not cluster_df["cluster_marginal"].isna().any():
             cluster_labels = cluster_df["cluster_marginal"].to_numpy()
 

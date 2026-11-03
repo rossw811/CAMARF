@@ -38,6 +38,9 @@ import os
 
 import numpy as np
 import pandas as pd
+import sys
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # project root, for parquet_io
+import parquet_io
 from scipy import stats
 
 log = logging.getLogger("decoupling_meta_analysis")
@@ -85,8 +88,8 @@ def main():
     _setup_logging()
     log.info("=== decoupling_meta_analysis.py: Phase 3 -- combining the decoupling_"
               "requalification.py/decoupling_backtest.py chain's own underpowered results ===")
-    requal = pd.read_parquet(_REQUAL_PATH)
-    backtest = pd.read_parquet(_BACKTEST_PATH)
+    requal = parquet_io.read_parquet(_REQUAL_PATH)
+    backtest = parquet_io.read_parquet(_BACKTEST_PATH)
     log.info(f"Requalification stage: {len(requal)} pairs, {int(requal['requalifies'].sum())} "
              f"pass EG at 0.05. Backtest stage: {len(backtest)} pairs backtested.")
 

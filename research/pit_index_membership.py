@@ -31,6 +31,8 @@ import sys
 import time
 
 import pandas as pd
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # project root, for parquet_io
+import parquet_io
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(ROOT, "output", "research", "pit_membership")
@@ -209,7 +211,7 @@ def download():
 
 
 def parse():
-    fl = pd.read_parquet(os.path.join(OUT, "filings.parquet"))
+    fl = parquet_io.read_parquet(os.path.join(OUT, "filings.parquet"))
     parts, summary = [], []
     for row in fl.itertuples():
         path = os.path.join(RAW, f"{row.fund}_{row.accession}{'.xml' if row.form == 'NPORT-P' else '.htm'}")
@@ -296,7 +298,7 @@ def check_announcements(hold: pd.DataFrame, ann: pd.DataFrame, index_sizes: dict
 
 
 def check():
-    hold = pd.read_parquet(os.path.join(OUT, "holdings.parquet"))
+    hold = parquet_io.read_parquet(os.path.join(OUT, "holdings.parquet"))
     ann = pd.read_csv(os.path.join(ROOT, "docs", "pit_membership", "announcements.csv"))
     sizes = {f["index"]: f["index_size"] for f in FUNDS.values()}
     res = check_announcements(hold, ann, sizes)

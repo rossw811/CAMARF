@@ -73,6 +73,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "research"))
 
 from aligned_pair_loader import load_aligned_pair
+import parquet_io
 from data import _gap_aware_returns
 from comparison_arm_scaffold import walk_forward_windows
 
@@ -127,7 +128,7 @@ def main():
         print(f"lead_lag_scan.parquet not found at {_LEAD_LAG_SRC} — run lead_lag_scan.py first")
         return
 
-    ll = pd.read_parquet(_LEAD_LAG_SRC)
+    ll = parquet_io.read_parquet(_LEAD_LAG_SRC)
     # Only process pairs with meaningful lead-lag flagged or positive best_lag
     candidates = ll[ll["flagged_lag_worth_checking"] | (ll["best_lag"] > 0)].copy()
     print(f"Testing {len(candidates)} lead-lag candidate pairs from lead_lag_scan.parquet")

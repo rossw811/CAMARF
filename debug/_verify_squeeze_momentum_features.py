@@ -19,6 +19,7 @@ import numpy as np
 import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+import parquet_io
 
 from research.squeeze_momentum_features import augment_pair, _TF_LABEL_TO_DIR
 
@@ -68,7 +69,7 @@ def test_augment_pair_adds_expected_columns():
             ok = augment_pair("A", "B", "1D", cache)
             check("augment_pair.returns_true_when_file_exists", ok is True)
 
-            result = pd.read_parquet(os.path.join(results_dir, "spread_series_A_B.parquet"))
+            result = parquet_io.read_parquet(os.path.join(results_dir, "spread_series_A_B.parquet"))
             expected_new_cols = {"squeeze_indicator_a_t", "squeeze_indicator_b_t",
                                   "rsi_14_a_t", "rsi_14_b_t", "rsi_diff_t",
                                   "rsi_diff_velocity_t"}
@@ -129,7 +130,7 @@ def test_augment_pair_reindexes_onto_spread_series_index_not_feature_index():
             cache = {("P", "1D"): feat_wide, ("Q", "1D"): feat_wide}
             ok = augment_pair("P", "Q", "1D", cache)
             check("augment_pair.reindex.returns_true", ok is True)
-            result = pd.read_parquet(p)
+            result = parquet_io.read_parquet(p)
             check("augment_pair.reindex.output_length_matches_spread_series_not_feature",
                   len(result) == 20, f"got {len(result)}, expected 20")
             check("augment_pair.reindex.output_index_matches_spread_series",

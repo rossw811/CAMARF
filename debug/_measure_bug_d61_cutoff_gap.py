@@ -22,6 +22,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import pandas as pd
 
+import parquet_io
 from config import Config
 
 _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -39,7 +40,7 @@ def per_pair_cutoff_date(symbol_a: str, symbol_b: str, tf_dir: str):
     )
     if not os.path.exists(spread_path):
         return None
-    spread_df = pd.read_parquet(spread_path)
+    spread_df = parquet_io.read_parquet(spread_path)
     df = spread_df.dropna(subset=["z_rolling", "spread"]).copy()
     df = df[df["z_rolling"] != 0.0]
     if len(df) < 60:
@@ -59,7 +60,7 @@ def distance_global_formation_end(tf_pairs: pd.DataFrame, tf_dir: str) -> pd.Tim
             f"spread_series_{row['symbol_a']}_{row['symbol_b']}.parquet",
         )
         if os.path.exists(sp):
-            sample_spreads.append(pd.read_parquet(sp))
+            sample_spreads.append(parquet_io.read_parquet(sp))
     all_idx = pd.concat([s.index.to_frame() for s in sample_spreads], ignore_index=True)
     all_idx = pd.to_datetime(all_idx.iloc[:, 0])
     full_start = all_idx.min()
@@ -76,7 +77,7 @@ def distance_all_pairs_formation_end(tf_pairs: pd.DataFrame, tf_dir: str) -> pd.
             f"spread_series_{row['symbol_a']}_{row['symbol_b']}.parquet",
         )
         if os.path.exists(sp):
-            all_spreads.append(pd.read_parquet(sp))
+            all_spreads.append(parquet_io.read_parquet(sp))
     if not all_spreads:
         return None
     all_idx = pd.concat([s.index.to_frame() for s in all_spreads], ignore_index=True)
@@ -88,7 +89,7 @@ def distance_all_pairs_formation_end(tf_pairs: pd.DataFrame, tf_dir: str) -> pd.
 
 def main():
     tiers_path = os.path.join(_STATS_DIR, "cointegration_tiers.parquet")
-    tiers = pd.read_parquet(tiers_path)
+    tiers = parquet_io.read_parquet(tiers_path)
     print(f"Loaded {len(tiers)} confirmed pairs total across all timeframes")
 
     for tf_label, tf_dir in [("1h", "1hr")]:

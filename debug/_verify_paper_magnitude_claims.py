@@ -17,6 +17,9 @@ import sys
 from pathlib import Path
 
 import pandas as pd
+import os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # project root, for parquet_io
+import parquet_io
 
 ROOT = Path(__file__).resolve().parent.parent
 OUT_RESEARCH = ROOT / "output" / "research"
@@ -43,7 +46,7 @@ def pct_close(a, b, tol=1e-4):
 # ---------------------------------------------------------------------------
 p = OUT_RESEARCH / "crisis_regime_correlation_diagnostic_summary.parquet"
 if p.exists():
-    df = pd.read_parquet(p)
+    df = parquet_io.read_parquet(p)
     row = df.set_index("first_regime") if "first_regime" in df.columns else None
     if row is not None:
         for regime, exp_n, exp_confirmed, exp_conf_rate, exp_reapp in [
@@ -67,7 +70,7 @@ else:
 # 2. Cluster-robust bootstrap results (confirmation-rate CI, persistence CI)
 # ---------------------------------------------------------------------------
 p = OUT_RESEARCH / "crisis_regime_cluster_bootstrap.parquet"
-_df_cb = pd.read_parquet(p) if p.exists() else None
+_df_cb = parquet_io.read_parquet(p) if p.exists() else None
 if _df_cb is not None and "metric" in _df_cb.columns:
     # D12 redesign (Ross 2026-10-19): the script now writes the within-year sign-flip CI; the paper's cluster-
     # bootstrap numbers (M-020/M-067/M-068: CI [0.022%, 0.398%], p-equivalent 0.25 / 0.032) are obsolete by design and
@@ -92,7 +95,7 @@ else:
 # ---------------------------------------------------------------------------
 p = OUT_RESEARCH / "pit_confirmation_vs_regime_interaction.parquet"
 if p.exists():
-    df = pd.read_parquet(p)
+    df = parquet_io.read_parquet(p)
     by_test = {row["test"]: row for _, row in df.iterrows()}
     t1 = by_test.get("first_regime: crisis vs calm")
     t2 = next((v for k, v in by_test.items() if "confirmed flag" in k), None)
@@ -112,7 +115,7 @@ else:
 # ---------------------------------------------------------------------------
 p = OUT_RESEARCH / "bh_vs_by_full_universe_1d_summary.parquet"
 if p.exists():
-    df = pd.read_parquet(p)
+    df = parquet_io.read_parquet(p)
     print(f"[INFO] {p.name}: {df.to_dict(orient='records')}")
     rec = df.iloc[0].to_dict() if len(df) else {}
     if "n_usable" in rec:
@@ -129,7 +132,7 @@ else:
 # ---------------------------------------------------------------------------
 p = OUT_RESEARCH / "crisis_regime_survivorship_confound_test.parquet"
 if p.exists():
-    df = pd.read_parquet(p)
+    df = parquet_io.read_parquet(p)
     # The paper's number is the ALL-REGIME test (R3.10); since D5 (2026-10-17) row 0 is the crisis-first main row.
     # Known failing on current inputs: BUG-D117's verified PERMNO map moves it to 13.2% / z=1.98 -- M-018/M-073 are
     # registered for re-derivation (claims_status_overrides.csv); the expected values stay the paper's until then.
@@ -147,7 +150,7 @@ else:
 # ---------------------------------------------------------------------------
 p = OUT_RESEARCH / "regime_strength_vs_pit_confirmation.parquet"
 if p.exists():
-    df = pd.read_parquet(p)
+    df = parquet_io.read_parquet(p)
     rec = df.iloc[0].to_dict()
     check("regime_strength.strong_confirmed_count", int(rec["x_a"]), 16, source=p.name)
     check("regime_strength.weak_confirmed_count", int(rec["x_b"]), 0, source=p.name)
@@ -161,7 +164,7 @@ else:
 # ---------------------------------------------------------------------------
 p = OUT_RESEARCH / "crisis_regime_credit_proxy_comparison.parquet"
 if p.exists():
-    df = pd.read_parquet(p)
+    df = parquet_io.read_parquet(p)
     rec = df.iloc[0].to_dict() if len(df) else {}
     print(f"[INFO] {p.name}: {rec}")
     if "p_a" in rec:
@@ -179,7 +182,7 @@ else:
 # ---------------------------------------------------------------------------
 p = OUT_BACKTEST / "pit_wfa_wrds_daily_pooled_sharpe.parquet"
 if p.exists():
-    df = pd.read_parquet(p).set_index("wfa_variant")
+    df = parquet_io.read_parquet(p).set_index("wfa_variant")
     check("pooled_sharpe.rolling.calendar_weighted", round(df.loc["rolling", "pooled_sharpe"], 4), 0.1845, tol=0.0001, source=p.name)
     check("pooled_sharpe.expanding.calendar_weighted", round(df.loc["expanding", "pooled_sharpe"], 4), 0.1285, tol=0.0001, source=p.name)
     check("pooled_sharpe.rolling.equal_weighted", round(df.loc["rolling", "equal_weighted_mean_sharpe"], 4), -0.1302, tol=0.0001, source=p.name)
@@ -193,7 +196,7 @@ else:
 # ---------------------------------------------------------------------------
 p = OUT_BACKTEST / "pit_wfa_wrds_daily_taken_trades.parquet"
 if p.exists():
-    df = pd.read_parquet(p)
+    df = parquet_io.read_parquet(p)
     if "fold" in df.columns:
         counts = df.groupby("fold").size().to_dict()
         check("taken_trades.per_fold_counts", counts,

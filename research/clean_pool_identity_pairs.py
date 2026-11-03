@@ -22,6 +22,7 @@ import pandas as pd
 
 _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, _ROOT)
+import parquet_io
 sys.path.insert(0, os.path.join(_ROOT, "research"))
 
 
@@ -170,17 +171,17 @@ def build_company_ids(labels) -> dict:
     from data_wrds import label_permno_map
     _lmap = label_permno_map()
     _lm = pd.DataFrame({"label": list(_lmap), "permno": list(_lmap.values())})
-    _names = pd.read_parquet(os.path.join(_w, "crsp_stocknames_all.parquet"))
+    _names = parquet_io.read_parquet(os.path.join(_w, "crsp_stocknames_all.parquet"))
     _master = pd.concat([_names[["permno", "permco"]],
-                         pd.read_parquet(os.path.join(_w, "crsp_full_security_master_v2.parquet"), columns=["permno", "permco"])])
+                         parquet_io.read_parquet(os.path.join(_w, "crsp_full_security_master_v2.parquet"), columns=["permno", "permco"])])
     _cus = dict(_names.sort_values("nameenddt").dropna(subset=["ncusip"]).groupby("permno")["ncusip"].last())
-    _link = pd.read_parquet(_CCM_LINK) if os.path.exists(_CCM_LINK) else None
+    _link = parquet_io.read_parquet(_CCM_LINK) if os.path.exists(_CCM_LINK) else None
     _cg = os.path.join(_w, "ciq_link_gvkey.parquet"); _cc = os.path.join(_w, "ciq_link_cusip.parquet")
     if not (os.path.exists(_cg) and os.path.exists(_cc)):
         raise SystemExit("Capital IQ link files missing (output/cache/wrds/ciq_link_gvkey/cusip.parquet; WRDS job "
                          "24_fetch_ciq_company_links) -- ADR-vs-home-listing pairs cannot be checked")
-    return company_ids(labels, _lm, _master, _link, ciq_gvkey=pd.read_parquet(_cg, columns=["gvkey", "companyid"]),
-                       ciq_cusip=pd.read_parquet(_cc, columns=["cusip", "companyid"]), cusip_by_permno=_cus)
+    return company_ids(labels, _lm, _master, _link, ciq_gvkey=parquet_io.read_parquet(_cg, columns=["gvkey", "companyid"]),
+                       ciq_cusip=parquet_io.read_parquet(_cc, columns=["cusip", "companyid"]), cusip_by_permno=_cus)
 
 
 def clean_pool(P: pd.DataFrame, k, cache: dict = None):
@@ -193,9 +194,9 @@ def clean_pool(P: pd.DataFrame, k, cache: dict = None):
     # 2026-10-12: the content-verified label -> PERMNO map (full_us_market_label_map named reused tickers' old holders:
     # TM -> Toastmaster), PERMCO/CUSIP from the FULL CRSP names history (the v2 master has no ADRs), Capital IQ links
     # -- built in build_company_ids (2026-10-20, shared with the D14 positive controls)
-    _link = pd.read_parquet(_CCM_LINK) if os.path.exists(_CCM_LINK) else None
+    _link = parquet_io.read_parquet(_CCM_LINK) if os.path.exists(_CCM_LINK) else None
     from data_wrds import LABEL_PERMNO_MAP_PATH
-    _unverified = unverified_labels(pd.read_parquet(LABEL_PERMNO_MAP_PATH))   # D15
+    _unverified = unverified_labels(parquet_io.read_parquet(LABEL_PERMNO_MAP_PATH))   # D15
     _dlc = load_dlc_sides()                                                      # D14
     require_link_for_mixed(zip(P["symbol_a"], P["symbol_b"]), _link)
     ids = build_company_ids(pd.concat([P["symbol_a"], P["symbol_b"]]).unique())
@@ -226,7 +227,7 @@ def main():
     st = stage("clean_pools")
     cache, rows = {}, []
     for k in (1, 2):
-        P = pd.read_parquet(os.path.join(_R, f"purity_pairs_pit_k{k}.parquet"))
+        P = parquet_io.read_parquet(os.path.join(_R, f"purity_pairs_pit_k{k}.parquet"))
         C, r_k = clean_pool(P, k, cache)
         rows += r_k
         C.to_parquet(os.path.join(_R, f"purity_pairs_pit_k{k}_clean.parquet"))

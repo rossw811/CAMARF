@@ -37,6 +37,9 @@ import os
 
 import numpy as np
 import pandas as pd
+import sys
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # project root, for parquet_io
+import parquet_io
 
 log = logging.getLogger("coint_strength_bar_system")
 
@@ -135,7 +138,7 @@ def main():
     _setup_logging()
     log.info("=== coint_strength_bar_system.py: entry/exit 'bar' system on coint_strength_z, "
               "mirroring this project's own price-bar ENTRY_ZSCORE/EXIT_ZSCORE convention ===")
-    df = pd.read_parquet(_SERIES_PATH)
+    df = parquet_io.read_parquet(_SERIES_PATH)
     log.info(f"Loaded {len(df)} rows, {df.groupby(['symbol_a', 'symbol_b']).ngroups} pairs.")
     df["coint_strength_z_fixed"] = add_rolling_z(df, Z_WINDOW)
     baseline_persist_rate = float((df["pvalue"] < PVALUE_COINT_CUTOFF).mean())

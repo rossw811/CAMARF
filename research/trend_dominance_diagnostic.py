@@ -82,6 +82,7 @@ import pandas as pd
 from statsmodels.tsa.stattools import coint
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import parquet_io
 from config import Config
 
 CACHE_DIR = Config.DATA.CACHE_DIR  # DEV-023 (2026-10-05): from Config, not a duplicated literal (a relative path also breaks outside the root, cf. U1)
@@ -97,7 +98,7 @@ def eg_pvalue(a: np.ndarray, b: np.ndarray, tf_label: str = "1D") -> float:
 
 
 def load_log_close(symbol: str, suffix: str) -> np.ndarray:
-    df = pd.read_parquet(os.path.join(CACHE_DIR, f"{symbol}_{suffix}.parquet"))
+    df = parquet_io.read_parquet(os.path.join(CACHE_DIR, f"{symbol}_{suffix}.parquet"))
     close = df["close"].astype(float).values
     close = close[np.isfinite(close) & (close > 0)]
     return np.log(close)
@@ -106,7 +107,7 @@ def load_log_close(symbol: str, suffix: str) -> np.ndarray:
 def load_log_close_series(symbol: str, suffix: str) -> pd.Series:
     """Log close WITH its timestamps (M-1 same-dates null, 2026-10-03): the date-aligned counterpart of
     load_log_close, which drops the index."""
-    df = pd.read_parquet(os.path.join(CACHE_DIR, f"{symbol}_{suffix}.parquet"))
+    df = parquet_io.read_parquet(os.path.join(CACHE_DIR, f"{symbol}_{suffix}.parquet"))
     close = pd.to_numeric(df["close"], errors="coerce").astype(float)
     close.index = pd.to_datetime(df.index)
     close = close[np.isfinite(close) & (close > 0)]
@@ -347,7 +348,7 @@ def main():
     cand_path = "output/results/1hr/all_candidates.parquet"
     before_after = None
     if os.path.exists(cand_path):
-        cand = pd.read_parquet(cand_path)
+        cand = parquet_io.read_parquet(cand_path)
         dd_mask = (cand["symbol_a"] == "DD") | (cand["symbol_b"] == "DD")
         dd_cand = cand.loc[dd_mask].copy()
         raw_p = dd_cand["coint_pvalue_raw"].values

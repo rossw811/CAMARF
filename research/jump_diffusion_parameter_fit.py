@@ -50,6 +50,7 @@ from scipy.special import gammaln
 from scipy.stats import norm
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import parquet_io
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))  # for aligned_pair_loader
 
 from aligned_pair_loader import (
@@ -166,7 +167,7 @@ def _load_z_delta(results_dir: str, sym_a: str, sym_b: str) -> np.ndarray:
     path = os.path.join(results_dir, f"spread_series_{sym_a}_{sym_b}.parquet")
     if not os.path.exists(path):
         return np.array([])
-    df = pd.read_parquet(path)
+    df = parquet_io.read_parquet(path)
     z_raw = df["z_rolling"].to_numpy(dtype=float)
     finite_mask = np.isfinite(z_raw)
     gap_bad = ((df["gap_flag_a"].to_numpy() == 4) | (df["gap_flag_b"].to_numpy() == 4))

@@ -47,6 +47,9 @@ import os
 
 import numpy as np
 import pandas as pd
+import sys
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # project root, for parquet_io
+import parquet_io
 
 _STATS_DIR = "output/stats"
 _BACKTEST_DIR = "output/backtest"
@@ -63,7 +66,7 @@ def _load_portfolio_sharpe(label):
     path = os.path.join(_BACKTEST_DIR, f"portfolio_{label}.parquet")
     if not os.path.exists(path):
         return None
-    df = pd.read_parquet(path)
+    df = parquet_io.read_parquet(path)
     if df.empty:
         return None
     return float(df.iloc[0].get("sharpe_portfolio", np.nan))

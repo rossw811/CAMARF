@@ -27,6 +27,7 @@ import pandas as pd
 
 _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, _ROOT)
+import parquet_io
 sys.path.insert(0, os.path.join(_ROOT, "research"))
 
 from full_us_market_price_fetch import build_full_market_label_map
@@ -48,8 +49,8 @@ def main():
     # CIZ v2 master (stksecurityinfohist, current to 2025-12-31) when present: the legacy stocknames master is frozen at
     # 2024-12-31 and lacks 2025 listings (e.g. SanDisk's 2025 spin-off holds SNDK today, not the 1995-2016 SanDisk).
     _v2 = os.path.join(_W, "crsp_full_security_master_v2.parquet")
-    master = pd.read_parquet(_v2 if os.path.exists(_v2) else os.path.join(_W, "crsp_full_security_master.parquet"))
-    old_map = pd.read_parquet(os.path.join(_W, "full_us_market_label_map.parquet"))
+    master = parquet_io.read_parquet(_v2 if os.path.exists(_v2) else os.path.join(_W, "crsp_full_security_master.parquet"))
+    old_map = parquet_io.read_parquet(os.path.join(_W, "full_us_market_label_map.parquet"))
     new_map = build_full_market_label_map(master)                      # {label: permno}
     new_label = {p: l for l, p in new_map.items()}
     span = master.groupby("permno").agg(s=("namedt", "min"), e=("nameenddt", "max"), cur=("is_current", "max"))
@@ -74,7 +75,7 @@ def main():
         cands = by_ticker.get(lab)
         if not cands:
             continue                      # not a CRSP ticker label (e.g. international/other source) -- untouched
-        idx = pd.read_parquet(os.path.join(_W, f"{lab}_1D.parquet"), columns=["close"]).dropna().index
+        idx = parquet_io.read_parquet(os.path.join(_W, f"{lab}_1D.parquet"), columns=["close"]).dropna().index
         if len(idx) == 0:
             rows.append((lab, None, np.nan, np.nan, "empty")); continue
         f0, f1 = idx.min(), idx.max()

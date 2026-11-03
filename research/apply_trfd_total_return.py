@@ -21,6 +21,9 @@ import time
 
 import numpy as np
 import pandas as pd
+import sys
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # project root, for parquet_io
+import parquet_io
 
 _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _W = os.path.join(_ROOT, "output", "cache", "wrds")
@@ -42,17 +45,17 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--limit", type=int, default=None)
     args = ap.parse_args()
-    man = pd.read_parquet(os.path.join(_W, "global_universe_manifest.parquet"))[["label"]].drop_duplicates()
+    man = parquet_io.read_parquet(os.path.join(_W, "global_universe_manifest.parquet"))[["label"]].drop_duplicates()
     labels = man["label"].tolist()[: args.limit]
     rows, t0 = [], time.time()
     for i, lab in enumerate(labels, 1):
         f1, ft = os.path.join(_W, f"{lab}_1D.parquet"), os.path.join(_W, "_trfd", f"{lab}.parquet")
         if not (os.path.exists(f1) and os.path.exists(ft)):
             rows.append((lab, "missing_file", np.nan)); continue
-        df = pd.read_parquet(f1)
+        df = parquet_io.read_parquet(f1)
         if "close_usd" not in df.columns or not df["close_usd"].notna().any():
             rows.append((lab, "no_close_usd", np.nan)); continue
-        tr = total_return_usd(df["close_usd"].astype(float), pd.read_parquet(ft)["trfd"])
+        tr = total_return_usd(df["close_usd"].astype(float), parquet_io.read_parquet(ft)["trfd"])
         df["close_total_return"] = tr.to_numpy()
         df.to_parquet(f1 + ".tmp")
         os.replace(f1 + ".tmp", f1)

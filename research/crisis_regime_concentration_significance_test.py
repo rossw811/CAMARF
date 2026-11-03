@@ -52,6 +52,7 @@ import pandas as pd
 from scipy import stats
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import parquet_io
 
 _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _EPISODES_PATH = os.path.join(_ROOT, "output", "research", "crisis_regime_episode_clustering.parquet")
@@ -187,7 +188,7 @@ def main():
                   f"research/crisis_regime_episode_clustering_check.py first.")
         sys.exit(1)
 
-    episodes = pd.read_parquet(_EPISODES_PATH)
+    episodes = parquet_io.read_parquet(_EPISODES_PATH)
     episode_sizes = episodes["n_pairs"].to_numpy()
     episode_confirms = episodes["n_confirmed"].to_numpy()
     log.info(f"Loaded {len(episodes)} episodes, {episode_sizes.sum()} total crisis-first pairs, "
@@ -212,7 +213,7 @@ def main():
 
     comp_result = {}
     if os.path.exists(_CRISIS_PAIRS_PATH):
-        cp = pd.read_parquet(_CRISIS_PAIRS_PATH)
+        cp = parquet_io.read_parquet(_CRISIS_PAIRS_PATH)
         sizes = cp.groupby("episode").size().sort_index().to_numpy()
         conf = cp[cp["confirmed"].astype(bool)][["symbol_a", "symbol_b", "episode"]]
         comp_result = component_max2_test(conf, sizes, n_sim=100_000, rng=np.random.default_rng(0))

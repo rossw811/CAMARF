@@ -50,6 +50,7 @@ import pandas as pd
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
+import parquet_io
 
 SEED = 20261024
 HALF_LIVES = (5, 20, 60, 120)
@@ -234,7 +235,7 @@ _REF_MEMBERSHIP, _REF_LABELMAP = "sp500_membership_history.parquet", "wrds_label
 def _replace_link_with_copy(path: str) -> pd.DataFrame:
     """Read a (possibly symlinked) reference file and turn the link into a private copy, so a later write never
     reaches the real file the link points at."""
-    df = pd.read_parquet(path)
+    df = parquet_io.read_parquet(path)
     if os.path.islink(path):
         os.remove(path)                      # removes the link only
         df.to_parquet(path, index=False)
@@ -285,7 +286,7 @@ def build(src: str, dst: str, seed: int = SEED):
     rng = np.random.default_rng(seed)
     # calendar + block length from a seeded sample (memory: never all series at once)
     sample = rng.choice(files, size=min(800, len(files)), replace=False)
-    rets = pd.concat({os.path.basename(f): _log_price(pd.read_parquet(f)).diff() for f in sample}, axis=1)
+    rets = pd.concat({os.path.basename(f): _log_price(parquet_io.read_parquet(f)).diff() for f in sample}, axis=1)
     cal = pd.DatetimeIndex(rets.index).sort_values()
     cal = cal[cal.dayofweek < 5]
     L = choose_block_length({c: rets[c] for c in rets.columns})
@@ -293,12 +294,12 @@ def build(src: str, dst: str, seed: int = SEED):
     src_pos = source_positions(cal, paths)
     print(f"{len(files)} 1D files; calendar {cal.min().date()}..{cal.max().date()} ({len(cal)} days); mean block {L:.2f}")
     thr = Config.STATS.ADV_FILTER_USD
-    mb = pd.read_parquet(os.path.join(src, _REF_MEMBERSHIP))
-    lmap = pd.read_parquet(os.path.join(src, _REF_LABELMAP)).dropna(subset=["permno"]).set_index("label")["permno"]
+    mb = parquet_io.read_parquet(os.path.join(src, _REF_MEMBERSHIP))
+    lmap = parquet_io.read_parquet(os.path.join(src, _REF_LABELMAP)).dropna(subset=["permno"]).set_index("label")["permno"]
     stats, cand = {}, []
     for i, f in enumerate(files):
         lab = os.path.basename(f)[:-len("_1D.parquet")]
-        src_df = pd.read_parquet(f)
+        src_df = parquet_io.read_parquet(f)
         lp = _log_price(src_df)
         if len(lp) < 2:
             continue
@@ -329,8 +330,8 @@ def build(src: str, dst: str, seed: int = SEED):
         G.loc[G["arm"] == arm, "base"] = rng.choice(sorted(pool), size=need, replace=False)
     plants = []
     for k, r in enumerate(G.itertuples()):
-        base_src = pd.read_parquet(os.path.join(src, f"{r.base}_1D.parquet"))
-        A = _log_price(pd.read_parquet(os.path.join(dst, f"{r.base}_1D.parquet")))
+        base_src = parquet_io.read_parquet(os.path.join(src, f"{r.base}_1D.parquet"))
+        A = _log_price(parquet_io.read_parquet(os.path.join(dst, f"{r.base}_1D.parquet")))
         B_lp, info = plant_pair(A, r.half_life, np.random.default_rng(seed + 10_000 + k), sd=r.spread_sd)
         write_placebo_file(base_src.drop(columns=["quote_only"], errors="ignore"), B_lp,
                            os.path.join(dst, f"{r.plant}_1D.parquet"), label=r.plant)
@@ -384,7 +385,7 @@ def false_share_by_arm(real_w: pd.DataFrame, placebo_w: pd.DataFrame) -> pd.Data
 
 def _windows_by_arm(path: str, cols=("symbol_a", "symbol_b", "pvalue", "fdr_rejected")) -> pd.DataFrame:
     from research.clean_pool_identity_pairs import discovery_arm
-    W = pd.read_parquet(path, columns=list(cols))
+    W = parquet_io.read_parquet(path, columns=list(cols))
     keys = W["symbol_a"].astype(str) + "|" + W["symbol_b"].astype(str)
     m = {k: discovery_arm(*k.split("|")) for k in pd.unique(keys)}
     W["arm"] = keys.map(m).to_numpy()
@@ -394,7 +395,7 @@ def _windows_by_arm(path: str, cols=("symbol_a", "symbol_b", "pvalue", "fdr_reje
 def score(research: str, dst: str, real_research: str = None) -> dict:
     """Pool counts by arm (false positives = non-plant pairs), planted-pair recovery by arm x half-life x spread s.d.
     (tested = at least one Tier-3 window), placebo window tail rates by arm, and the real run's false share by arm."""
-    plants = pd.read_parquet(os.path.join(dst, "_e1_plants.parquet"))
+    plants = parquet_io.read_parquet(os.path.join(dst, "_e1_plants.parquet"))
     pkey = [frozenset((r.plant, r.base)) for r in plants.itertuples()]
     plant_syms = set(plants["plant"])
     W = _windows_by_arm(os.path.join(research, "wrds_deep_history_episodic_scan_tier3_windows.parquet"))
@@ -403,7 +404,7 @@ def score(research: str, dst: str, real_research: str = None) -> dict:
     pool_rows, rec = [], []
     for k in (1, 2):
         p = os.path.join(research, f"purity_pairs_pit_k{k}_clean.parquet")
-        P = pd.read_parquet(p) if os.path.exists(p) else pd.DataFrame(columns=["symbol_a", "symbol_b", "tf_label", "arm"])
+        P = parquet_io.read_parquet(p) if os.path.exists(p) else pd.DataFrame(columns=["symbol_a", "symbol_b", "tf_label", "arm"])
         P = P[P["tf_label"] == "1D"] if len(P) else P
         keys = [frozenset((a, b)) for a, b in zip(P["symbol_a"], P["symbol_b"])]
         arms = P["arm"].tolist() if "arm" in P.columns else [""] * len(keys)
@@ -447,8 +448,8 @@ def main():
     elif a.phase == "check_tier1":
         f = "wrds_deep_history_episodic_scan_tier1.parquet"
         cols = ["symbol_a", "symbol_b"]
-        ratios, ok = tier1_arm_ratios(pd.read_parquet(os.path.join(a.research, f), columns=cols),
-                                      pd.read_parquet(os.path.join(a.real_research, f), columns=cols))
+        ratios, ok = tier1_arm_ratios(parquet_io.read_parquet(os.path.join(a.research, f), columns=cols),
+                                      parquet_io.read_parquet(os.path.join(a.real_research, f), columns=cols))
         print(f"tier-1 placebo / real candidates by arm: {ratios} -> {'OK' if ok else 'BELOW ' + str(TIER1_MIN_RATIO)}")
         sys.exit(0 if ok else 1)
     else:

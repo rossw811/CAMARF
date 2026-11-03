@@ -27,6 +27,7 @@ import pandas as pd
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import parquet_io
 from config import Config  # noqa: E402
 
 CACHE_DIR = Config.DATA.CACHE_DIR  # DEV-023 (2026-10-05): from Config, not a duplicated literal (a relative path also breaks outside the root, cf. U1)
@@ -128,7 +129,7 @@ def scan_series_for_jumps(path: str, threshold: float = JUMP_THRESHOLD):
     """Returns a list of jump-event dicts (empty if none), or None + an error
     string on a read/shape failure."""
     try:
-        df = pd.read_parquet(path)
+        df = parquet_io.read_parquet(path)
     except Exception as e:  # pragma: no cover - real IO failures only
         return None, f"read_error: {e}"
 

@@ -46,6 +46,7 @@ from statsmodels.tsa.vector_ar.vecm import VECM
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 
+import parquet_io
 from config import Config  # noqa: E402
 from data import longest_gap_respecting_segment  # noqa: E402
 
@@ -108,7 +109,7 @@ def main():
     ap.add_argument("--pool", default="k2", choices=sorted(Config.DATA.PIT_POOL_PATHS))
     a = ap.parse_args()
     import universe_loader as ul
-    pool = pd.read_parquet(Config.DATA.PIT_POOL_PATHS[a.pool])
+    pool = parquet_io.read_parquet(Config.DATA.PIT_POOL_PATHS[a.pool])
     cache = {}
 
     def logp(sym, tf):

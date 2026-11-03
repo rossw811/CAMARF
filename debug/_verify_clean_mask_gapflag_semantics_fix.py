@@ -25,6 +25,7 @@ os.chdir(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import numpy as np
 import pandas as pd
 
+import parquet_io
 from analysis import SpreadModel, GapFlag
 
 checks = []
@@ -68,7 +69,7 @@ check("synthetic.correct_mask_keeps_more_bars_than_old",
 #    confirm it now matches the documented-correct convention.
 path = "output/results/4hr/spread_series_SPY_VOO.parquet"
 if os.path.exists(path):
-    df = pd.read_parquet(path)
+    df = parquet_io.read_parquet(path)
     ga = df["gap_flag_a"].values
     gb = df["gap_flag_b"].values
     fixed_mask = (ga != GapFlag.DATA_GAP) & (gb != GapFlag.DATA_GAP)

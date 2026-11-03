@@ -33,6 +33,7 @@ import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+import parquet_io
 from backtest import Trade, compute_metrics
 
 log = logging.getLogger("regenerate_summary_layer1_sharpe_fix")
@@ -48,7 +49,7 @@ def _setup_logging():
 def regenerate_one(summary_path: str, trades_path: str) -> pd.DataFrame:
     """Rebuilds one summary file's rows from its matching trades file via the fixed
     compute_metrics(), grouped by (tf, symbol_a, symbol_b, hedge_method)."""
-    trades_df = pd.read_parquet(trades_path)
+    trades_df = parquet_io.read_parquet(trades_path)
     rows = []
     for (tf, sa, sb, hm), g in trades_df.groupby(["tf", "symbol_a", "symbol_b", "hedge_method"]):
         trade_objs = [Trade(**{k: r[k] for k in _TRADE_FIELDS if k in r}) for _, r in g.iterrows()]
@@ -79,7 +80,7 @@ def main():
             n_skipped_no_trades_file += 1
             continue
 
-        trades_cols = pd.read_parquet(trades_path).columns
+        trades_cols = parquet_io.read_parquet(trades_path).columns
         required = {"tf", "symbol_a", "symbol_b", "hedge_method"}
         if not required.issubset(trades_cols):
             # Real case found live: wfa_summary_{expanding,rolling}.parquet's matching trades
@@ -92,7 +93,7 @@ def main():
             n_skipped_no_trades_file += 1
             continue
 
-        old = pd.read_parquet(summary_path)
+        old = parquet_io.read_parquet(summary_path)
         new = regenerate_one(summary_path, trades_path)
         if len(new) == 0:
             n_skipped_no_change += 1

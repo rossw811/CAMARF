@@ -26,6 +26,7 @@ import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+import parquet_io
 from config import Config
 
 _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -53,7 +54,7 @@ def scan_tf(tf_label: str) -> pd.DataFrame:
         # Raise, don't skip, on a bad read -- a silently-skipped unreadable
         # file would understate coverage without anyone noticing (this is
         # exactly the failure mode the plan's docstring called out).
-        df = pd.read_parquet(p)
+        df = parquet_io.read_parquet(p)
         if df.empty:
             rows.append(
                 dict(symbol=symbol, tf=tf_label, n_bars=0, span_days=0,

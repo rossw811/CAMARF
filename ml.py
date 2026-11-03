@@ -34,6 +34,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
+import parquet_io
 
 from config import Config
 
@@ -205,7 +206,7 @@ def _discover_confirmed_pairs() -> List[Tuple[str, str, str]]:
         if "_stale_" in tf_dir:
             continue
         try:
-            df = pd.read_parquet(pairs_path)
+            df = parquet_io.read_parquet(pairs_path)
         except Exception:
             continue
         for _, row in df.iterrows():
@@ -242,7 +243,7 @@ def _build_examples_for_pair(
         series_path = os.path.join(
             _RESULTS_DIR, _tf_dirname(tf_label), f"spread_series_{symbol_a}_{symbol_b}.parquet"
         )
-        series = pd.read_parquet(series_path)
+        series = parquet_io.read_parquet(series_path)
     # Deliberately the training-only threshold, not the live OU_ZSCORE_ENTRY
     # (2.0) — see Config.ML.TRAINING_ENTRY_THRESHOLD's comment.
     entry_threshold = Config.ML.TRAINING_ENTRY_THRESHOLD
@@ -606,7 +607,7 @@ def build(min_class_samples: Optional[int] = None, pit_safe: bool = False, pool:
         if not os.path.exists(src["path"]):
             raise FileNotFoundError(f"PIT pool not found at {src['path']} -- build it with the pool chain, or pass "
                                     f"--full-sample-descriptive for the old whole-history pairs.parquet run")
-        _adapter_df = pd.read_parquet(src["path"])
+        _adapter_df = parquet_io.read_parquet(src["path"])
         pairs = list(zip(_adapter_df["symbol_a"], _adapter_df["symbol_b"], _adapter_df["tf_label"]))
     elif pit_safe:
         _research_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "research")
@@ -634,7 +635,7 @@ def build(min_class_samples: Optional[int] = None, pit_safe: bool = False, pool:
             raise FileNotFoundError(f"{_adapter_path} not found -- --pit-safe needs the episodic adapter output (strict "
                                     f"PIT has no pairs.parquet rows to fall back on); run research/episodic_pairs_adapter.py")
         if os.path.exists(_adapter_path):
-            _adapter_df = pd.read_parquet(_adapter_path)
+            _adapter_df = parquet_io.read_parquet(_adapter_path)
             pairs = list(zip(_adapter_df["symbol_a"], _adapter_df["symbol_b"], _adapter_df["tf_label"]))
             log.info(f"Using PIT-safe episodic pair discovery (adapter output): {len(pairs)} pairs")
         else:
@@ -660,7 +661,7 @@ def build(min_class_samples: Optional[int] = None, pit_safe: bool = False, pool:
     # below via pair_row.get(..., np.nan).
     _te_summary_path = os.path.join(_RESEARCH_DIR, "transfer_entropy_pair_summary.parquet")
     # Strict: transfer entropy is a whole-history pair statistic, NaN by rule -- not loaded (code review of 99bf428f)
-    _te_summary_df = (pd.read_parquet(_te_summary_path)
+    _te_summary_df = (parquet_io.read_parquet(_te_summary_path)
                        if os.path.exists(_te_summary_path) and not src["strict"] else pd.DataFrame())
 
     all_events: List[EntryEvent] = []
@@ -674,7 +675,7 @@ def build(min_class_samples: Optional[int] = None, pit_safe: bool = False, pool:
         try:
             if src["strict"]:
                 raise LookupError("strict PIT: no pairs.parquet row")
-            pairs_df = pd.read_parquet(
+            pairs_df = parquet_io.read_parquet(
                 os.path.join(_RESULTS_DIR, _tf_dirname(tf_label), "pairs.parquet")
             )
             match = pairs_df[

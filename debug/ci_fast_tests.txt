@@ -415,3 +415,4 @@ debug/_verify_edge_accounting.py
 debug/_verify_pool_arm_s31.py
 debug/_verify_placebo_discovery_e1_v2.py
 debug/_verify_mp_pool_spawn.py
+debug/_verify_parquet_io.py

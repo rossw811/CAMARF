@@ -35,6 +35,10 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+import os
+import sys
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # project root, for parquet_io
+import parquet_io
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -54,7 +58,7 @@ def _is_expected_high_nan(col_name: str) -> bool:
 def audit_file(path: Path, nan_threshold: float) -> list:
     findings = []
     try:
-        df = pd.read_parquet(path)
+        df = parquet_io.read_parquet(path)
     except Exception as e:
         return [{"file": str(path), "column": None, "flag": "UNREADABLE", "detail": str(e)}]
 

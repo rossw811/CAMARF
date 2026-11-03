@@ -26,6 +26,7 @@ from io import StringIO
 import asyncio
 import numpy as np
 import pandas as pd
+import parquet_io
 import yfinance as yf
 import pandas_market_calendars as mcal
 from datetime import datetime, timedelta, timezone
@@ -226,7 +227,7 @@ class DataStore:
         path = DataStore._path(symbol, tf_label)
         if not os.path.exists(path):
             return None
-        return seal.drop_sealed(pd.read_parquet(path), seal.kind_of_path(path))
+        return seal.drop_sealed(parquet_io.read_parquet(path), seal.kind_of_path(path))
 
     @staticmethod
     def needs_refresh(symbol: str, tf_label: str) -> bool:
@@ -3882,7 +3883,7 @@ class UniverseBuilder:
                 expected_gap, tol = checks[matched_safe]
                 fpath = os.path.join(Config.DATA.CACHE_DIR, fname)
                 try:
-                    df = pd.read_parquet(fpath, columns=["close"])
+                    df = parquet_io.read_parquet(fpath, columns=["close"])
                     if len(df) < 10:
                         continue
                     idx = pd.to_datetime(df.index)
@@ -4176,7 +4177,7 @@ class UniverseBuilder:
                 if not os.path.exists(path):
                     return None
                 try:
-                    raw = pd.read_parquet(path)
+                    raw = parquet_io.read_parquet(path)
                 except Exception as e:
                     log.debug(f"  WRDS cache read failed for {symbol}_{tf_label}: {e}")
                     return None
@@ -4251,7 +4252,7 @@ class UniverseBuilder:
                 if not os.path.exists(path):
                     return None
                 try:
-                    raw = pd.read_parquet(path)
+                    raw = parquet_io.read_parquet(path)
                 except Exception as e:
                     log.debug(f"  Global WRDS cache read failed for {symbol}_{tf_label}: {e}")
                     return None
@@ -5412,7 +5413,7 @@ class UniverseBuilder:
                 Config.DATA.CACHE_DIR, "wrds", "global_universe_manifest.parquet"
             )
             if os.path.exists(manifest_path):
-                _global_manifest = pd.read_parquet(manifest_path, columns=["label"])
+                _global_manifest = parquet_io.read_parquet(manifest_path, columns=["label"])
                 for label in _global_manifest["label"]:
                     add(label, "equity_global_wrds")
             else:

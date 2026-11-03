@@ -53,6 +53,7 @@ from statsmodels.tsa.stattools import coint, mackinnonp
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+import parquet_io
 from analysis import _batched_eg_fixed_lag_tstat
 from aligned_pair_loader import load_aligned_pair
 from data import _clean_close
@@ -129,7 +130,7 @@ def load_confirmed_pairs(tf_label):
     path = os.path.join("output", "results", tf_dir, "pairs.parquet")
     if not os.path.exists(path):
         return []
-    df = pd.read_parquet(path)
+    df = parquet_io.read_parquet(path)
     return list(zip(df["symbol_a"], df["symbol_b"]))
 
 

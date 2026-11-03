@@ -31,6 +31,7 @@ import numpy as np
 import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import parquet_io
 
 log = logging.getLogger("hedge_blend_test")
 
@@ -91,12 +92,12 @@ def main():
     import universe_loader
     from research.diversification_basket_test import latest_state_symbols
 
-    trades = pd.read_parquet(_TRADES_PATH)
+    trades = parquet_io.read_parquet(_TRADES_PATH)
     pair_returns = pair_strategy_daily_returns(trades, STARTING_CAPITAL)
     log.info(f"Pair-trading strategy: {len(trades)} trades, {len(pair_returns)} daily-return "
               f"observations, {pair_returns.index.min().date()} to {pair_returns.index.max().date()}.")
 
-    transitions = pd.read_parquet(_TRANSITIONS_PATH)
+    transitions = parquet_io.read_parquet(_TRANSITIONS_PATH)
     not_coint_symbols = latest_state_symbols(transitions)["not_coint"]
     universe = universe_loader.load_full_universe(
         tf_label="1D", include_yfinance=True, include_wrds=True, include_binance=True, include_ibkr=False,  # rule 2: IBKR off (was True until 2026-10-19)

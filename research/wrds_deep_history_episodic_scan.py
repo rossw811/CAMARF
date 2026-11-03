@@ -76,6 +76,7 @@ import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+import parquet_io
 from config import Config
 from analysis import (UniverseFilter, _eg_worker, _benjamini_hochberg, CointScanner, _limit_worker_blas_threads,
                       _combine_eg_directions)
@@ -144,7 +145,7 @@ def load_membership_gate():
         log.warning("Point-in-time membership gate UNAVAILABLE (missing %s) -- candidate generation will NOT be "
                     "filtered by index-membership date this run.", _SP500_MEMBERSHIP_PATH)
         return None, {}
-    membership_df = pd.read_parquet(_SP500_MEMBERSHIP_PATH)
+    membership_df = parquet_io.read_parquet(_SP500_MEMBERSHIP_PATH)
     # 2026-10-12: the content-verified label -> PERMNO map (the old symbol -> PERMNO map mapped 2,122 labels to another
     # security -- e.g. the SNS file (Sundstrand) to Biglari -- so the gate checked the wrong company's membership)
     from data_wrds import label_permno_map
@@ -194,7 +195,7 @@ def load_wrds_universe(d18_arm: str = "exclude"):
         # rolling_adv_comparison.py) over one bad symbol. Skip and log, don't crash the scan;
         # re-fetching the missing data is a separate follow-up needing live WRDS access.
         try:
-            df = pd.read_parquet(f)
+            df = parquet_io.read_parquet(f)
         except Exception as e:
             skipped_unreadable.append(sym)
             continue
@@ -416,12 +417,12 @@ def _load_checkpoint(checkpoint_id):
         n_done = int(f.read().strip())
     part_files = sorted(glob.glob(_checkpoint_part_glob(checkpoint_id)))
     if part_files:
-        dfs = [pd.read_parquet(p) for p in part_files]
+        dfs = [parquet_io.read_parquet(p) for p in part_files]
         records = pd.concat(dfs, ignore_index=True).to_dict("records") if dfs else []
         return records, n_done
     old_data_path = _checkpoint_paths(checkpoint_id)[0]
     if os.path.exists(old_data_path):
-        return pd.read_parquet(old_data_path).to_dict("records"), n_done
+        return parquet_io.read_parquet(old_data_path).to_dict("records"), n_done
     return None, 0
 
 
@@ -994,10 +995,10 @@ def run_rolling_eg_pool(pairs, log_price_df, max_lag, window=EPISODIC_WINDOW_BAR
         # count instead of 2-3x that.
         part_files = sorted(glob.glob(_checkpoint_part_glob(checkpoint_id)))
         if part_files:
-            df = pd.concat([pd.read_parquet(p) for p in part_files], ignore_index=True)
+            df = pd.concat([parquet_io.read_parquet(p) for p in part_files], ignore_index=True)
         else:
             old_data_path = _checkpoint_paths(checkpoint_id)[0]
-            df = (pd.read_parquet(old_data_path) if os.path.exists(old_data_path)
+            df = (parquet_io.read_parquet(old_data_path) if os.path.exists(old_data_path)
                   else pd.DataFrame(columns=["symbol_a", "symbol_b", "window_start", "direction",
                                               "pvalue", "window_end_date"]))
         # DEDUP (added 2026-09-02, code-quality council review): the OLD dict-based reconstruction
@@ -1292,7 +1293,7 @@ def main():
         log.info(f"[TIER 1] Found existing output at {_tier1_output_path} -- resuming from it "
                  f"instead of re-running correlation+EG from scratch. Delete this file first to "
                  f"force a genuine re-run.")
-        tier1_df = pd.read_parquet(_tier1_output_path)
+        tier1_df = parquet_io.read_parquet(_tier1_output_path)
         pairs = tier1_df[["symbol_a", "symbol_b", "pearson_corr"]].to_dict("records")
         n_confirmed = int(tier1_df["fdr_confirmed"].sum())
         log.info(f"[TIER 1] Loaded {len(pairs)} candidate pairs, {n_confirmed} full-sample "
@@ -1385,7 +1386,7 @@ def main():
         log.info(f"[TIER 2] Found existing output at {_tier2_windows_path} -- resuming from it "
                  f"instead of re-running rolling EG from scratch. Delete this file first to force "
                  f"a genuine re-run.")
-        tier2_flat = pd.read_parquet(_tier2_windows_path).to_dict("records")
+        tier2_flat = parquet_io.read_parquet(_tier2_windows_path).to_dict("records")
     else:
         log.info(f"[TIER 2] Rolling-window EG discovery on the SAME {len(pairs)} static-corr-prefiltered "
                  f"candidate pairs as Tier 1 -- no full-sample EG gate.")
@@ -1429,7 +1430,7 @@ def main():
         log.info(f"[TIER 3] Found existing candidate-pairs cache at {_tier3_pairs_path} -- "
                  f"resuming from it instead of re-running the multi-hour rolling correlation "
                  f"prefilter. Delete this file first to force a genuine re-run.")
-        tier3_pairs = pd.read_parquet(_tier3_pairs_path).to_dict("records")
+        tier3_pairs = parquet_io.read_parquet(_tier3_pairs_path).to_dict("records")
     else:
         log.info("[TIER 3] Rolling correlation prefilter (pair qualifies if correlated in >=1 "
                  "window, not the whole history)...")

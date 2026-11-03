@@ -44,6 +44,7 @@ import pandas as pd
 from scipy import optimize, stats
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import parquet_io
 
 _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _OUT_DIR = os.path.join(_ROOT, "output", "research")
@@ -219,7 +220,7 @@ def main():
     rng = np.random.default_rng(42)
     results = {}
 
-    T = pd.read_parquet(args.trades)
+    T = parquet_io.read_parquet(args.trades)
     n_all = len(T)
     T = T[(T["hedge_method"] == "ols") & (T["tf"] == "1D")].copy()
     T["entry_time"] = pd.to_datetime(T["entry_time"])

@@ -22,6 +22,7 @@ import numpy as np
 import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import parquet_io
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "research"))
 
 from data_contamination_scan import list_price_cache_files
@@ -38,7 +39,7 @@ def main():
         print(f"{scan_path} not found — run research/data_contamination_scan.py first.")
         return
 
-    scan = pd.read_parquet(scan_path)
+    scan = parquet_io.read_parquet(scan_path)
     unexplained = scan[(scan["explained"] == False) & (scan["symbol"].isin(FLAGGED_SYMBOLS))].copy()
     print(f"Source scan: {len(scan)} total events. {len(unexplained)} unexplained events across "
           f"the {len(FLAGGED_SYMBOLS)} flagged confirmed-pair symbols.")

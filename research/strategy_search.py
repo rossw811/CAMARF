@@ -33,6 +33,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 _OUT = os.path.join("output", "research", "strategy_search")
 # Pre-registration Amendment 1: identity-pair-free pools
+import parquet_io
 from config import Config  # noqa: E402
 POOLS = {f"pit_{k}": v for k, v in sorted(Config.DATA.PIT_POOL_PATHS.items())}   # one definition (config.py)
 
@@ -158,7 +159,7 @@ def run_phase(workers, fresh=False, pools=None):
     pools = POOLS if pools is None else pools
     for name, path in pools.items():
         check_pool_dir(os.path.join(_OUT, name), pool_fingerprint(path), fresh=fresh)
-        _POOL_DF[name] = pd.read_parquet(path)
+        _POOL_DF[name] = parquet_io.read_parquet(path)
     tasks = [(p, c) for p in pools for c in build_grid()]
     print(f"{len(tasks)} runs, {workers} workers", flush=True)
     t0 = time.time()
@@ -284,16 +285,16 @@ def eval_phase(pools=None, suffix="", n_trials_combined=None):
         if _read_fp(d) != pool_fingerprint(ppath):
             raise SystemExit(f"{d}: trade files were not built from the current {ppath} (fingerprint mismatch) -- "
                              f"run the 'run' phase (with --fresh) first")
-        pool = pd.read_parquet(ppath)
+        pool = parquet_io.read_parquet(ppath)
         t0 = pd.to_datetime(pool["eligible_from"]).min().normalize()
         cache = {}
         for cid in grid:
             f = os.path.join(_OUT, pname, f"{cid}.parquet")
             if not os.path.exists(f):
                 continue
-            T = pd.read_parquet(f)
+            T = parquet_io.read_parquet(f)
             dp = dropped_log_path(pname, cid)
-            dropped = pd.read_parquet(dp) if os.path.exists(dp) else None
+            dropped = parquet_io.read_parquet(dp) if os.path.exists(dp) else None
             if len(T) == 0:
                 status_rows.extend(status_counts(T, pname, cid, dropped=dropped))
                 cache[cid] = T

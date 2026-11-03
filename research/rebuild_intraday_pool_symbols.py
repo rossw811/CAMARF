@@ -29,6 +29,7 @@ import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+import parquet_io
 from config import Config
 from data import DataStore, YFinanceFeed
 
@@ -52,7 +53,7 @@ def main():
     if args.symbols:
         syms = sorted(args.symbols)
     else:
-        p = pd.read_parquet(args.pairs)
+        p = parquet_io.read_parquet(args.pairs)
         tfc = "tf_label" if "tf_label" in p.columns else [c for c in p.columns if c.startswith("tf")][0]
         i = p[p[tfc].isin(_TFS)]
         syms = sorted(set(i["symbol_a"]) | set(i["symbol_b"]))
