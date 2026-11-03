@@ -30141,3 +30141,14 @@ what the Surface holds:
   work and output), but a nonzero exit could stop a chain step on Linux (never seen on CachyOS, 0/30+). Fix not made
   yet -- 567 `read_parquet` calls in 273 files; proposed to Ross: one shared reader that passes the path to Arrow's
   native file (no Python handle), checked by re-running the probe (3 aborts / ~600 runs now; target 0).
+  **Fixed (Ross: "yes fix it"), 5fe9ed1e + c76b7e0a:** `parquet_io.read_parquet` = `pd.read_parquet(abspath,
+  filesystem=LocalFileSystem)` for local paths (anything else passes through). 530 calls in 250 tracked files rewritten
+  by token scan; import placed where the project root is importable (18 files got the standard sys.path line); Python
+  diff = only the read_parquet lines + imports. `debug/_verify_parquet_io.py` (CI list): before 9/11 (DataStore.load
+  handed Arrow a `BufferedReader`), after 11/11 (str + LocalFileSystem; identical frames incl. tz index, columns,
+  filters, partitioned directory, relative/pathlib paths; same FileNotFoundError; ratchet: no `pd.read_parquet(` left).
+  Evidence: probe on the fixed code 0 aborts in 600 runs (run 41582268333, full 6 min; before: 3 by run ~106);
+  CI 412/413 with no exit abort (the one failure was the ratchet counting the test's own reference calls -> fixed).
+  Surface full suite: 241/443 ran, 0 failures, then the low-memory reaper stopped it (the Surface should not run the
+  full suite -- standing rule). **Not on CachyOS yet:** do not pull until the A7 -> edge -> E1 v2 queue is done
+  (later chain steps import code at start); the next chain's suite gate runs the real-data remainder.
