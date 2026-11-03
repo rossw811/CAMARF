@@ -58,7 +58,7 @@ def pd_calls_outside_helper():
     files = subprocess.run(["git", "ls-files", "*.py"], cwd=ROOT, capture_output=True, text=True).stdout.split()
     hits = []
     for f in files:
-        if f == "parquet_io.py" or "archive" in f:
+        if f in ("parquet_io.py", "debug/_verify_parquet_io.py") or "archive" in f:   # this file: pd = the reference
             continue
         with open(os.path.join(ROOT, f), "rb") as fh:
             try:
