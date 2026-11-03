@@ -30127,4 +30127,17 @@ what the Surface holds:
      `RegimeConditioner` never constructed). The old bytes had no backup, so the listing was re-saved (Amendment 7
      addendum 2, fb8929e3; sha256 35b51993...9515, diff kept). Fix: both tests run on a temporary cache (Surface: every
      FRED series fetched live, real files unchanged by size + mtime); the chain re-checks parity right after the suite.
-     Relaunched 20:15; start gate MATCH.
+     Relaunched 20:15; start gate MATCH. Then seal audit clean, suite 443 / 0 unexplained, parity after the suite MATCH,
+     discovery started 20:34.
+- **CI exit-time abort: cause found (raw evidence, not a third guess).** The jemalloc hypothesis was falsified (run
+  41576393346: two aborts with `ARROW_DEFAULT_MEMORY_POOL=system`). `.github/workflows/teardown_abort_probe.yml` ran four
+  tests that had aborted under gdb (run 41577379785): 3 aborts captured, all after every check passed, all the same
+  stack -- an Arrow thread-pool worker finishes a late parquet-scan callback during interpreter finalization, releases
+  the last reference to a Python-backed Arrow object (`arrow::py::PyReadableFile` x2, `arrow::py::PyBuffer` x1),
+  whose destructor calls `PyGILState_Ensure`; a finalizing CPython makes that thread `pthread_exit`, the forced unwind
+  crosses a noexcept C++ destructor, and `std::terminate` aborts (rc -6). The Python object comes from pandas: for a
+  local path with no `filesystem=` argument, `pandas.io.parquet._get_path_or_handle` opens a Python file handle and
+  hands it to Arrow (verified in pandas 3.0.3 source). Not a result-correctness problem (it happens after the script's
+  work and output), but a nonzero exit could stop a chain step on Linux (never seen on CachyOS, 0/30+). Fix not made
+  yet -- 567 `read_parquet` calls in 273 files; proposed to Ross: one shared reader that passes the path to Arrow's
+  native file (no Python handle), checked by re-running the probe (3 aborts / ~600 runs now; target 0).
