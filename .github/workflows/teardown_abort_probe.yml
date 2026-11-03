@@ -1,0 +1,52 @@
+# Manual probe for the CI-only native abort at interpreter exit (2026-11-02). After every check has passed, ~2 of the
+# 412 fast tests per run end with "terminate called without an active exception" (rc -6, no Python frame). Never seen
+# on Windows or CachyOS. The jemalloc hypothesis is falsified: two aborts in run 41576393346 with
+# ARROW_DEFAULT_MEMORY_POOL=system set (Development.md 2026-11-02). Instead of a third guess, this job collects the raw
+# evidence: it runs tests that have aborted under gdb, 4 at a time like the suite, and saves every thread's native
+# backtrace at the SIGABRT -- which library's thread is still alive at teardown.
+name: teardown-abort-probe
+on:
+  workflow_dispatch:
+    inputs:
+      iterations:
+        description: "Runs per test"
+        default: "150"
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install dependencies
+        run: |
+          sudo apt-get install -y gdb
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install --no-deps wrds==3.5.0
+      - name: Run under gdb until 3 aborts
+        env:
+          ARROW_DEFAULT_MEMORY_POOL: "system"
+          PYTHONFAULTHANDLER: "1"
+          N: ${{ github.event.inputs.iterations }}
+        run: |
+          mkdir -p probe_out
+          one() {   # $1 = test, $2 = iteration
+            [ "$(ls probe_out | wc -l)" -ge 3 ] && return 0
+            o=$(gdb -q -batch -ex "set pagination off" -ex "handle SIGPIPE nostop noprint" -ex run \
+                  -ex "info sharedlibrary" -ex "thread apply all bt 40" --args python "debug/$1" 2>&1)
+            if printf '%s' "$o" | grep -q "SIGABRT"; then printf '%s\n' "$o" > "probe_out/${1}_$2.txt"; echo "ABORT $1 #$2"; fi
+          }
+          export -f one
+          for i in $(seq 1 "$N"); do for t in _verify_degenerate_column_audit.py _verify_liquidity_bar_vs_symbol_comparison.py \
+            _verify_capital_size_sweep.py _verify_delisting_registry.py; do echo "$t $i"; done; done \
+            | xargs -P4 -n2 bash -c 'one "$0" "$1"'
+          echo "aborts captured: $(ls probe_out | wc -l)"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: teardown-abort-backtraces
+          path: probe_out/
