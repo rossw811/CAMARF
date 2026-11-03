@@ -303,3 +303,26 @@ parity, seal audit, suite 442 tests) and then stalled in discovery's ADV pass: 1
 available again (Ross 2026-11-02). The data are unchanged: the chain checks CachyOS's own `output/cache` against the
 listing saved at the sync (131,094 files, sha256 bc405018...a110) and stops on any difference. Everything else in
 Amendment 7 is unchanged.
+
+### Amendment 7 addendum 2 (2026-11-02 evening; committed before ANY result of the re-run exists)
+**The suite inside the chain rewrote 12 macro files; the cache listing is re-saved.** The CachyOS chain's first run
+(08:50) matched the listing, then its pre-discovery suite stopped it on a failing test (fixed in 5973c447: a hardware
+check that did not recognise `mp_pool.worker_pool`). The relaunch (20:09) stopped at the parity gate: during that suite
+(09:07-09:08), `debug/_verify_cot_contract_history.py` (a live CFTC fetch with `force_refresh=True`) and
+`debug/_verify_macro_regimes.py` (`macro.build()`, which re-fetches FRED series older than 20 h) had saved fresh
+downloads into the real `output/cache`. Same file count (131,094); 12 sizes differ:
+
+| file | 11-01 listing (bytes) | now |
+|---|---|---|
+| `_sealed_vault/` cot_es, cot_nq weekly; fred BAA10Y, BAMLH0A0HYM2, DCOILWTICO, DFII10, DTWEXBGS, T10Y2Y, T10YIE, VIXCLS, VXVCLS daily (11 files) | 2813 / 2813 / 4210 / 4340 / 5061 / 4445 / 5531 / 4236 / 4131 / 4900 / 4820 | 2844 / 2844 / 4267 / 4459 / 5119 / 4508 / 5620 / 4300 / 4194 / 4990 / 4899 |
+| `fred_BAMLH0A0HYM2_daily.parquet` (live) | 8215 | 8108 (FRED serves this ICE series as a rolling window) |
+
+None of these files is read by any step of the Amendment 7 chain: no script the chain runs imports `macro` or reads a
+`fred_`/`cot_` file, and the only library path to macro data (`backtest.RegimeConditioner`, Layer 2) is never
+constructed (`LAYER2_ENABLED = False`); the vault holds sealed rows, which no pipeline reads. The exact 11-01 bytes are
+not recoverable (no backup holds them), so the cache is not restored; the listing is re-saved instead
+(`output/research/a7_cachyos_cache_listing_20261102.tsv`, 131,094 files, sha256 35b51993...9515; the 12-row
+difference in `..._20261102_diff.tsv`; the 11-01 listing is kept). Fixes: both tests now run on a temporary cache
+(verified on the Surface: every FRED series fetched live, every real `fred_`/`cot_` file unchanged by size and
+mtime), and the chain checks parity again right after the suite, so a test that writes the real cache stops it before
+discovery. Everything else in Amendment 7 is unchanged.

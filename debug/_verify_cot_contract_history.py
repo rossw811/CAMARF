@@ -28,13 +28,30 @@ def check(name, cond, detail=""):
     print(f"[{'PASS' if cond else 'FAIL'}] {name} {detail}")
 
 
+def _live_fetch(key):
+    """Live CFTC fetch into a temporary cache: the fetch saves the series and moves rows from the sealed holdout into
+    the vault, and neither may land in the real output/cache (2026-11-02: the suite inside the Amendment 7 chain
+    rewrote the real COT files and broke its cache parity gate). The vault follows CACHE_DIR (seal.vault_root)."""
+    import tempfile
+    from config import Config
+    old = Config.DATA.CACHE_DIR
+    with tempfile.TemporaryDirectory() as td:
+        Config.DATA.CACHE_DIR = os.path.join(td, "cache")
+        os.makedirs(Config.DATA.CACHE_DIR)
+        try:
+            COTFeed._SESSION_CACHE.pop(key, None)
+            return COTFeed.get_net_spec(key, force_refresh=True)
+        finally:
+            Config.DATA.CACHE_DIR = old
+
+
 def main():
     w = COTFeed._where_clause("NQ")
     check("nq_where_has_2000_2022_name", "NASDAQ-100 STOCK INDEX (MINI) - CHICAGO MERCANTILE EXCHANGE" in w
           and w.count("'") == 8, w[:120])
     check("es_where_three_names", COTFeed._where_clause("ES").count("'") == 6)
     for key, first_year in (("NQ", 1999), ("ES", 1997)):
-        d = COTFeed.get_net_spec(key, force_refresh=True)
+        d = _live_fetch(key)
         ok = d is not None and len(d) > 0
         gaps = None
         if ok:

@@ -19,7 +19,7 @@ seal_gate() { $PY seal.py --audit > $S/_stdout_a7_seal_audit_$1.log 2>&1 \
 parity_gate() { $PY - "$1" >> $L 2>&1 <<'EOF' || { echo "$(date '+%F %T') GUARD: cache differs from CachyOS's listing -- STOPPED" >> $L; exit 1; }
 import hashlib, os, sys
 root = os.path.join("output", "cache")
-saved = open(os.path.join("output", "research", "a7_cachyos_cache_listing.tsv"), encoding="utf-8").read()
+saved = open(os.path.join("output", "research", "a7_cachyos_cache_listing_20261102.tsv"), encoding="utf-8").read()
 cur = {}
 for r, _, fs in os.walk(root):
     for f in fs:
@@ -34,7 +34,8 @@ sys.exit(0 if now == saved else 1)
 EOF
 }
 echo "$(date '+%F %T') start: $(git log --oneline -1) on $(hostname)" >> $L
-[ -s $S/a7_cachyos_cache_listing.tsv ] || { echo "no saved CachyOS listing (run sync_cache.py --apply) -- STOPPED" >> $L; exit 1; }
+# Listing re-saved 2026-11-02 (addendum 2): the first suite run rewrote 12 macro files; the 11-01 listing is kept.
+[ -s $S/a7_cachyos_cache_listing_20261102.tsv ] || { echo "no saved CachyOS listing -- STOPPED" >> $L; exit 1; }
 for f in wrds_label_permno_final crsp_stocknames_all ciq_link_gvkey ciq_link_cusip crsp_ccm_link global_security_exchange; do
   [ -s $W/$f.parquet ] || { echo "missing $W/$f.parquet -- STOPPED" >> $L; exit 1; }; done
 parity_gate start
@@ -52,6 +53,7 @@ FAILS=$(grep -E "\] (FAIL|TIMEOUT|ERROR) " docs/bug_recheck/suite_20261102_a7_ca
   | grep -v "_verify_paper_claims.py\|_verify_paper_magnitude_claims.py" | wc -l)
 echo "$(date '+%F %T') suite: $(grep -cE '\] (PASS|FAIL|TIMEOUT|ERROR) ' docs/bug_recheck/suite_20261102_a7_cachyos.log) tests, unexplained failures: $FAILS" >> $L
 [ "$FAILS" -eq 0 ] || { echo "unexplained suite failures -- STOPPED" >> $L; exit 1; }
+parity_gate after_suite   # a test that writes the real cache stops the chain here (2026-11-02, addendum 2)
 run discovery $PY -u research/wrds_deep_history_episodic_scan.py --fresh --d18 exclude
 run discovery_advzero $PY -u research/wrds_deep_history_episodic_scan.py --d18 exclude --adv-missing zero
 run intraday $PY -u research/intraday_episodic_scan.py --tf both --fresh

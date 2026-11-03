@@ -2,9 +2,27 @@ import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-import macro
+import glob
+import shutil
+import tempfile
 
-result = macro.build()
+import macro
+from config import Config
+
+# macro.build() re-fetches any FRED/COT series older than CACHE_MAX_AGE_HOURS and saves it (rows from the sealed
+# holdout go to the vault), so it runs on a temporary copy of the real macro files, never on output/cache itself
+# (2026-11-02: the suite inside the Amendment 7 chain rewrote 12 real macro files and broke its cache parity gate).
+_real = Config.DATA.CACHE_DIR
+_td = tempfile.mkdtemp()
+Config.DATA.CACHE_DIR = os.path.join(_td, "cache")
+os.makedirs(Config.DATA.CACHE_DIR)
+for _f in glob.glob(os.path.join(_real, "fred_*.parquet")) + glob.glob(os.path.join(_real, "cot_*.parquet")):
+    shutil.copy2(_f, Config.DATA.CACHE_DIR)
+try:
+    result = macro.build()
+finally:
+    Config.DATA.CACHE_DIR = _real
+    shutil.rmtree(_td, ignore_errors=True)
 df = result.data
 
 print("columns:", list(df.columns))
