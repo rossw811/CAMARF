@@ -14,6 +14,9 @@ is pending). Design Ross liked (when data exists): climate transition exposure a
 breaks around Paris 2015 / 2016 election / IRA 2022 (endogeneity rules, placebo pairs), plus a transition factor arm in E8.
 Queue ETA (from A5/E1 v1 durations): A7 discovery ~19:00 11-03, chain ~00:00 11-04, edge ~00:30, E1 v2 seeds ~21:30 11-04,
 ~18:30 11-05, ~15:30 11-06. Target Thursday 11-05 night (Ross): A7 + edge reported and reviewed, E1 v2 seeds 1-2.
+No separate E1 v2 re-score needed: `score --real-research $MAIN/output/research` reads
+wrds_deep_history_episodic_scan_tier3_windows.parquet, which the A7 primary discovery writes before E1 v2 starts (the
+--adv-missing zero arm writes `_advzero` files, research/wrds_deep_history_episodic_scan.py:1157).
 ## 2026-11-02: RESUME HERE. Queue running on CachyOS: Amendment 7 -> edge accounting -> E1 v2
 **Do NOT `git pull` on CachyOS until the queue finishes** -- main now has the parquet_io rewrite (5fe9ed1e, 250 files;
 CI exit-abort fix); the running chain must keep the code it started with (fb8929e3). After the queue: pull, and the
