@@ -71,6 +71,9 @@ def main():
         check("disc_tier3", tuple(T.loc["tier3_confirmed", ["primary", "_advzero", "both"]]) == (1, 2, 1))
         check("disc_windows", T.loc["tier3_windows (fdr-rejected windows / tested)", "primary"] == "2 / 3"
               and T.loc["tier3_windows (fdr-rejected windows / tested)", "_advzero"] == "1 / 3")
+        md = C._md(C.discovery_table(d, "_advzero"))
+        check("md_counts_as_int_nan_blank", "| tier2_confirmed | 2 | 2 | 1 | 1 | 1 |" in md and "nan" not in md
+              and "0.5000" in C._md(pd.DataFrame({"x": [0.5]})), md.splitlines()[2])
 
     print(); print(f"{len(PASS)}/{len(PASS) + len(FAIL)} checks passed")
     if FAIL:

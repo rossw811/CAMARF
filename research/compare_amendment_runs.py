@@ -80,7 +80,11 @@ def discovery_table(d: str, arm: str, base: str = "") -> pd.DataFrame:
 
 def _md(df: pd.DataFrame) -> str:
     cols = list(df.columns)
-    fmt = lambda v: f"{v:.4f}" if isinstance(v, float) else str(v)   # noqa: E731
+    def fmt(v):
+        # counts become floats when another row is NaN (pandas upcasts the column); print them as integers
+        if isinstance(v, float):
+            return "" if pd.isna(v) else (str(int(v)) if v.is_integer() else f"{v:.4f}")
+        return str(v)
     return "\n".join(["| " + " | ".join(cols) + " |", "|" + "---|" * len(cols)] +
                      ["| " + " | ".join(fmt(v) for v in r) + " |" for r in df.itertuples(index=False)])
 
