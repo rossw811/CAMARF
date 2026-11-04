@@ -152,5 +152,33 @@ except AttributeError as e:
     ok8, det8 = False, str(e)
 check("8 span_table: own = arm's own days; union shrinks the PIT book; same-era one calendar, trades in span only", ok8, det8)
 
+# --- Capital-sim corners (review 2026-11-04: the same-era run replayed the whole 1931- capital path and only clipped the
+# scoring grid, so pre-era losses set the era's cash; wh k1 entered 2005 with ~$2.7k and took 74 trades) ---
+import types
+seen = []
+fake = types.ModuleType("strategy_search")
+fake._capsim_sharpe = lambda U, lo, hi: (seen.append((U.copy(), lo, hi)), (0.0, len(U)))[1]
+real_ss = sys.modules.get("strategy_search")
+sys.modules["strategy_search"] = fake
+try:
+    Tc = {a: b.assign(entry_time=b["exit_time"] - pd.Timedelta(days=20)) for a, b in (("wh", WH), ("pit", PIT))}
+    spc = ea.eval_spans(Tc, "2026-01-01")
+    ea._capsim_corners(Tc, 1, spc)
+    lo_se, hi_se = spc["same_era"]
+    calls = {(round(len(U)), lo, hi) for U, lo, hi in seen}
+    era = [U for U, lo, hi in seen if (lo, hi) == (lo_se, hi_se)]
+    own_wh = [U for U, lo, hi in seen if (lo, hi) == spc["own"]["wh"]]
+    ok9 = (len(era) == 2 and all((pd.to_datetime(U["entry_time"]) >= lo_se).all() and
+                                 (pd.to_datetime(U["exit_time"]) <= hi_se).all() for U in era)
+           and len(own_wh) == 1 and len(own_wh[0]) == int((WH["status_holes"] == "ok").sum()))
+    det9 = f"same-era trade counts {[len(U) for U in era]}, min entry {[str(pd.to_datetime(U['entry_time']).min().date()) for U in era]} vs era start {lo_se.date()}"
+finally:
+    if real_ss is not None:
+        sys.modules["strategy_search"] = real_ss
+    else:
+        sys.modules.pop("strategy_search", None)
+check("9 capital-sim same era: fresh book, only trades entering and exiting inside the era; own span keeps the full path",
+      ok9, det9)
+
 print(f"\n{passed} passed, {failed} failed")
 sys.exit(1 if failed else 0)

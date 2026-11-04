@@ -108,9 +108,13 @@ def shapley(v: dict) -> dict:
     return out
 
 
-def _exits(T: pd.DataFrame) -> pd.Series:
-    t = pd.to_datetime(T["exit_time"])
+def _naive_day(s: pd.Series) -> pd.Series:
+    t = pd.to_datetime(s)
     return (t.dt.tz_localize(None) if getattr(t.dt, "tz", None) is not None else t).dt.normalize()
+
+
+def _exits(T: pd.DataFrame) -> pd.Series:
+    return _naive_day(T["exit_time"])
 
 
 def eval_spans(T: dict, sealed_from) -> dict:
@@ -293,14 +297,18 @@ def phase_eval():
 
 def _capsim_corners(T, k, sp):
     """Capital-constrained ($100k fixed) Sharpe for the two dollar-basis, holes-dropped corner cells (S old / new), on
-    each arm's own span and on the same-era span."""
+    each arm's own span and on the same-era span. The same-era book starts fresh at the era start with only the trades
+    that enter and exit inside it: the replay carries cash across the whole path, so clipping only the scoring grid let
+    pre-era losses set the era's capital (review 2026-11-04: wh k1 entered 2005 with ~$2.7k and took 74 trades)."""
     from strategy_search import _capsim_sharpe
     for arm in ("wh", "pit"):
         U = T[arm][(T[arm]["status_holes"] == "ok")].copy()
         U["pnl_net"], U["pnl_basis"] = U["pnl_dollar_net"], "dollar"
-        for label, (lo, hi) in (("own span", sp["own"][arm]), ("same era", sp["same_era"])):
+        lo_e, hi_e = sp["same_era"]
+        inside = (_naive_day(U["entry_time"]) >= lo_e) & (_exits(U) <= hi_e)
+        for label, (lo, hi), V in (("own span", sp["own"][arm], U), ("same era", (lo_e, hi_e), U[inside])):
             try:
-                sr, n = _capsim_sharpe(U, lo, hi)
+                sr, n = _capsim_sharpe(V, lo, hi)
                 print(f"  capital-sim ($100k fixed), {arm} k{k}, dollar, holes dropped, {label} {lo.date()}..{hi.date()}: "
                       f"Sharpe {sr:.2f} on {n} trades")
             except Exception as e:  # noqa: BLE001 -- reported, the corner cells are supplementary

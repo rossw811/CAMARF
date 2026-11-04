@@ -30211,3 +30211,41 @@ what the Surface holds:
 - **Review:** adversarial-reviewer, read-only, re-derived every figure on CachyOS (scratch /tmp/review_a7/); no claim
   broken; one documentation statement wrong (11-03 entry, corrected in place). compare_amendment_runs.py formatter fix
   93f798fd (counts as integers; test 8/8, fails 7/8 on the old formatter).
+
+### Session 2026-11-04 (cont.): edge accounting rerun (A7 pools + BUG-D121 + spans) -- reviewed; same-era capital-sim bug fixed
+- **Run (CachyOS, fb8929e3; queue 06:22-07:06):** pools / spreads / run / eval; 10-25 outputs kept in
+  output/research/_superseded_edge_20261025. Eval log ~/CAMARF/logs/edge_cachyos_eval.log.
+- **Same-era cells (2005-05-16..2025-12-31, equal-notional Sharpe; S, P, X; 1 = corrected), all <= 0:**
+
+  | pool | 000 | 001 | 010 | 011 | 100 | 101 | 110 | 111 |
+  |---|---|---|---|---|---|---|---|---|
+  | k1 | -2.640 | -2.639 | -0.636 | -0.634 | -2.042 | -2.041 | -0.028 | -0.025 |
+  | k2 | -0.549 | -0.545 | -0.198 | -0.189 | -0.861 | -0.857 | -0.061 | -0.053 |
+
+  Shapley (joint block bootstrap): k1 S 0.603 [0.077, 1.077], P 2.010 [1.042, 2.973], X 0.002 (block 57); k2 S -0.087
+  [-0.420, 0.274], P 0.578 [0.072, 1.087], X 0.006 (block 9). Reading: no cell shows an edge; the corrections move a loss
+  toward zero, the P&L basis most.
+- **Review (adversarial-reviewer, read-only, figures re-derived):** cells, Shapley values and PIT cleanliness CONFIRMED
+  (0 trades off-pool, 0 before eligible_from, 0 exits at/after the seal; PIT pools are A7's 797 / 69). Deltas vs 10-25:
+  whole-history trades on the 413 / 27 common pairs identical, only `pnl_dollar_net` changed (commission, BUG-D121;
+  matched wh k1 dollar P&L -$2.11M -> -$0.71M); the rest is the A7 pools (wh 421 -> 457 pairs; 38 new PIT k1 trades on 6
+  pairs whose eligible_from moved earlier). Like-for-like wh k1 trade count 21,085 vs 19,530 (not 19,546, the raw count).
+- **WRONG, fixed: same-era capital-sim.** `_capsim_corners` passed every trade since 1931 and clipped only the scoring
+  grid; the replay carries cash, so wh k1 entered 2005 with ~$2.7k (pre-era P&L -$97k) and took 74 trades in the era
+  while reporting "2,088". Fix: the same-era book starts fresh with only trades entering and exiting inside the era
+  (research/edge_accounting.py `_capsim_corners`; test debug/_verify_edge_accounting.py check 9: fails on the old code --
+  all 3,000 synthetic trades from 1930 and PIT trades past the seal passed -- 9/9 after). Real data (patched module run
+  read-only on CachyOS): wh k1 -0.33 on "2,088" -> **-0.21 on 1,977**; wh k2 -0.25 on "1,156" -> **-0.40 on 645**; PIT k1
+  same era -0.10 on 1,619 (own span -0.02 on 1,678: 59 trades enter before the era start); PIT k2 -0.22 on 487. Own-span
+  figures unchanged. Matches the reviewer's independent replay. Outputs on disk still hold the old printout only (the
+  capital-sim lines are printed, not saved); next eval run reproduces the corrected lines.
+- **Disclosures the review requires:**
+  1. **S partly measures trade count, not selection.** The equal-notional book sums trade returns per exit day, so a
+     losing book's Sharpe shrinks toward 0 with fewer trades. Legacy basis, k1: PIT loses more per trade (-0.0892 vs
+     -0.0783) yet its Sharpe is higher (-2.04 vs -2.64) on 7,959 vs 12,049 trades; sqrt-scaling alone gives -2.15. Only
+     on the dollar basis does PIT lose less per trade (-0.00009 vs -0.00178). Report mean trade return next to Sharpe.
+  2. **X touches 1 trade per arm in the era** -- not estimable, rather than shown negligible.
+  3. k2 has no spread files of its own; for 68 of 69 pairs its spreads use k1's earlier eligible_from (0-2,222 days
+     earlier). No future data, but formed on less data than k2's own decision date allows.
+  4. `n_excluded=16` on same-era k1 rows is an arm-level count (all 16 exit 1931-1992; none in the era).
+- **Unverified:** that the dollar P&L change is BUG-D121 alone (fits a commission-only change; component not diffed).
