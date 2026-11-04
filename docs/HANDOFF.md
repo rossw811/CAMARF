@@ -16,7 +16,7 @@ Edge accounting complete 07:06 and reviewed: every cell <= 0 (same-era 111: k1 -
 same-era capital-sim carried pre-2005 cash (fixed 53e2e459: wh k1 -0.21, k2 -0.40). Disclose: S partly = trade count;
 X touches 1 trade. Development.md 2026-11-04 (cont.). E1 v2 seed 1 started 07:06 on a0b1e172 -- the E1 chain script pulls
 main by design, after A7 + edge ended; the suite gate on a0b1e172 for CachyOS still to run after the queue.
-Open: one Tier 2 candidate-list inconsistency between fresh and resumed arms (no effect on this run; Development.md).
+Tier 2 candidate-list inconsistency between fresh and resumed arms: FIXED df678e1b (`tier2_candidates`; no result changed).
 ## 2026-11-03: MSCI climate on WRDS is sample-only (research/wrds_msci_climate_inventory.py; DATA_SOURCES_SURVEY C table):
 ~80 issuers, FY2024 only, one snapshot. Integration waits on full access (Ross: ask WRDS/library whether the subscription
 is pending). Design Ross liked (when data exists): climate transition exposure as an explanatory study of co-movement and
