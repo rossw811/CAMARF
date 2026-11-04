@@ -30249,3 +30249,17 @@ what the Surface holds:
      earlier). No future data, but formed on less data than k2's own decision date allows.
   4. `n_excluded=16` on same-era k1 rows is an arm-level count (all 16 exit 1931-1992; none in the era).
 - **Unverified:** that the dollar P&L change is BUG-D121 alone (fits a commission-only change; component not diffed).
+- **Fixes from the two reviews (same day):**
+  1. **Tier 2 candidate list, one definition** (`tier2_candidates`, research/wrds_deep_history_episodic_scan.py): fresh
+     runs used all Pearson candidates (A7: 1,096,062), resumed arms the Tier 1 rows (1,070,361). Both now use the Tier 1
+     rows. No result changes: a pair Tier 1 drops has < 60 overlapping bars over the full sample (analysis.py:1808; on 1D
+     no gap breaks a segment by default, so the count binds), so every window fails the same floor (review: none of the
+     25,701 produced a window in A5, A7 or advzero). It also closes a latent resume bug: the Tier 2 checkpoint is keyed by
+     position in `pairs` (line 544 docstring), and a fresh run resumed mid-Tier 2 would have read a shorter, shifted list.
+     The SUMMARY line's "of N pairs" for Tier 1/2 now reads 1,070,361 (the m actually tested). Test
+     debug/_verify_tier2_candidates.py 3/3 (checks 1-2 fail on the old code; 3 is the overlap property); 22 scan tests pass.
+  2. **Capital-sim corners saved** (`edge_accounting_capsim_k{1,2}.parquet`: arm, span, trades offered/taken, Sharpe,
+     error) instead of printed only; check 9 extended (9/9).
+  3. `n_excluded` column renamed `n_excluded_arm` (arm-level count over all history, not per span).
+  Not changed (method, Ross's call): adding a per-trade metric next to the equal-notional Sharpe so S is not read off
+  trade count; k2 spread files of its own.

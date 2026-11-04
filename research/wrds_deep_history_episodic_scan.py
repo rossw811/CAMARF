@@ -334,6 +334,14 @@ def build_log_prices_and_returns_bounded(close_by_symbol, lookback_years=25, dty
     return log_price_df[valid_cols], returns[valid_cols]
 
 
+def tier2_candidates(tier1_rows) -> list:
+    """Tier 2's candidate list, one definition for fresh and resumed runs: the Tier 1 rows (pairs the full-sample test
+    kept after `_combine_eg_directions`), as {symbol_a, symbol_b, pearson_corr}. A pair Tier 1 excluded for
+    insufficient overlap (< 60 bars in its longest gap-respecting segment, analysis.py:1808) cannot have a window
+    that passes the same floor, since every window's segment lies inside the full sample's."""
+    return [{"symbol_a": r["symbol_a"], "symbol_b": r["symbol_b"], "pearson_corr": r["pearson_corr"]} for r in tier1_rows]
+
+
 def _window_row(meta, r):
     """One EG direction's result -> a per-direction p-value row, under production's rule
     (analysis._combine_eg_directions, code review A1/S2): ok -> its p-value; "insufficient_overlap" -> None (never a
@@ -1294,7 +1302,7 @@ def main():
                  f"instead of re-running correlation+EG from scratch. Delete this file first to "
                  f"force a genuine re-run.")
         tier1_df = parquet_io.read_parquet(_tier1_output_path)
-        pairs = tier1_df[["symbol_a", "symbol_b", "pearson_corr"]].to_dict("records")
+        pairs = tier2_candidates(tier1_df.to_dict("records"))
         n_confirmed = int(tier1_df["fdr_confirmed"].sum())
         log.info(f"[TIER 1] Loaded {len(pairs)} candidate pairs, {n_confirmed} full-sample "
                  f"confirmed (from existing file, not recomputed)")
@@ -1366,6 +1374,10 @@ def main():
 
         os.makedirs(_OUT_DIR, exist_ok=True)
         pd.DataFrame(rows).to_parquet(_tier1_output_path, index=False)
+        # Tier 2 gets the same candidate list a resumed run reads back from this file (A7 review 2026-11-04: fresh runs
+        # passed all Pearson candidates, 1,096,062, resumed arms the 1,070,361 Tier 1 kept; the dropped pairs lack the
+        # overlap any window needs, so no result changed, but the two paths must not differ).
+        pairs = tier2_candidates(rows)
         log.info(f"[TIER 1] Saved -> {_rel(_tier1_output_path)} "
                  f"({len(rows)} candidate pairs, {n_confirmed} full-sample confirmed)")
 

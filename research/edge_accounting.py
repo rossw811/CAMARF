@@ -151,7 +151,9 @@ def span_table(T: dict, sealed_from):
             cols.append(d)
             rows.append({"span": span, "S": s, "P": p, "X": x, "start": lo.date(), "end": hi.date(), "n_days": len(days),
                          "n_trades": len(C), "mean_trade_ret": float(C["ret"].mean()) if len(C) else float("nan"),
-                         "sharpe": sharpe(d), "n_excluded": n_excluded(T[arm])})
+                         "sharpe": sharpe(d),
+                         # arm-level count over all history (not this span): trades the P/X rules could not price
+                         "n_excluded_arm": n_excluded(T[arm])})
         if span != "own":
             mats[span] = np.column_stack(cols)
     return pd.DataFrame(rows), mats
@@ -292,27 +294,36 @@ def phase_eval():
             print(S.to_string(index=False))
             print(f"forward S -> P -> X: " + " -> ".join(f"{x:.2f}" for x in fwd))
         pd.concat(shap_rows).to_parquet(os.path.join(R_DIR, f"edge_accounting_shapley_k{k}.parquet"), index=False)
-        _capsim_corners(T, k, eval_spans(T, Config.DATA.SEALED_FROM))
+        _capsim_corners(T, k, eval_spans(T, Config.DATA.SEALED_FROM)).to_parquet(
+            os.path.join(R_DIR, f"edge_accounting_capsim_k{k}.parquet"), index=False)
 
 
 def _capsim_corners(T, k, sp):
     """Capital-constrained ($100k fixed) Sharpe for the two dollar-basis, holes-dropped corner cells (S old / new), on
     each arm's own span and on the same-era span. The same-era book starts fresh at the era start with only the trades
     that enter and exit inside it: the replay carries cash across the whole path, so clipping only the scoring grid let
-    pre-era losses set the era's capital (review 2026-11-04: wh k1 entered 2005 with ~$2.7k and took 74 trades)."""
+    pre-era losses set the era's capital (review 2026-11-04: wh k1 entered 2005 with ~$2.7k and took 74 trades).
+    Returns one row per (arm, span), saved by phase_eval; a failed corner is a row with its error, not a gap."""
     from strategy_search import _capsim_sharpe
+    out = []
     for arm in ("wh", "pit"):
         U = T[arm][(T[arm]["status_holes"] == "ok")].copy()
         U["pnl_net"], U["pnl_basis"] = U["pnl_dollar_net"], "dollar"
         lo_e, hi_e = sp["same_era"]
         inside = (_naive_day(U["entry_time"]) >= lo_e) & (_exits(U) <= hi_e)
         for label, (lo, hi), V in (("own span", sp["own"][arm], U), ("same era", (lo_e, hi_e), U[inside])):
+            row = {"k": k, "arm": arm, "span": label, "start": lo.date(), "end": hi.date(), "n_offered": len(V),
+                   "n_taken": 0, "sharpe": float("nan"), "error": ""}
             try:
                 sr, n = _capsim_sharpe(V, lo, hi)
+                row.update(sharpe=float(sr), n_taken=int(n))
                 print(f"  capital-sim ($100k fixed), {arm} k{k}, dollar, holes dropped, {label} {lo.date()}..{hi.date()}: "
-                      f"Sharpe {sr:.2f} on {n} trades")
-            except Exception as e:  # noqa: BLE001 -- reported, the corner cells are supplementary
-                print(f"  capital-sim {arm} k{k} {label}: {type(e).__name__}: {e}")
+                      f"Sharpe {sr:.2f} on {n} trades taken of {len(V)}")
+            except Exception as e:  # noqa: BLE001 -- recorded, the corner cells are supplementary
+                row["error"] = f"{type(e).__name__}: {e}"
+                print(f"  capital-sim {arm} k{k} {label}: {row['error']}")
+            out.append(row)
+    return pd.DataFrame(out)
 
 
 def main():

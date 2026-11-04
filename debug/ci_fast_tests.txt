@@ -417,3 +417,4 @@ debug/_verify_placebo_discovery_e1_v2.py
 debug/_verify_mp_pool_spawn.py
 debug/_verify_parquet_io.py
 debug/_verify_compare_amendment_runs.py
+debug/_verify_tier2_candidates.py

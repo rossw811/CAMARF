@@ -163,14 +163,17 @@ sys.modules["strategy_search"] = fake
 try:
     Tc = {a: b.assign(entry_time=b["exit_time"] - pd.Timedelta(days=20)) for a, b in (("wh", WH), ("pit", PIT))}
     spc = ea.eval_spans(Tc, "2026-01-01")
-    ea._capsim_corners(Tc, 1, spc)
+    cap = ea._capsim_corners(Tc, 1, spc)
+    ok9_saved = (list(cap[["arm", "span"]].itertuples(index=False, name=None)) ==
+                 [("wh", "own span"), ("wh", "same era"), ("pit", "own span"), ("pit", "same era")]
+                 and (cap["error"] == "").all() and (cap["n_taken"] == cap["n_offered"]).all())
     lo_se, hi_se = spc["same_era"]
     calls = {(round(len(U)), lo, hi) for U, lo, hi in seen}
     era = [U for U, lo, hi in seen if (lo, hi) == (lo_se, hi_se)]
     own_wh = [U for U, lo, hi in seen if (lo, hi) == spc["own"]["wh"]]
     ok9 = (len(era) == 2 and all((pd.to_datetime(U["entry_time"]) >= lo_se).all() and
                                  (pd.to_datetime(U["exit_time"]) <= hi_se).all() for U in era)
-           and len(own_wh) == 1 and len(own_wh[0]) == int((WH["status_holes"] == "ok").sum()))
+           and len(own_wh) == 1 and len(own_wh[0]) == int((WH["status_holes"] == "ok").sum()) and ok9_saved)
     det9 = f"same-era trade counts {[len(U) for U in era]}, min entry {[str(pd.to_datetime(U['entry_time']).min().date()) for U in era]} vs era start {lo_se.date()}"
 finally:
     if real_ss is not None:
