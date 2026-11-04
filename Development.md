@@ -30152,3 +30152,24 @@ what the Surface holds:
   Surface full suite: 241/443 ran, 0 failures, then the low-memory reaper stopped it (the Surface should not run the
   full suite -- standing rule). **Not on CachyOS yet:** do not pull until the A7 -> edge -> E1 v2 queue is done
   (later chain steps import code at start); the next chain's suite gate runs the real-data remainder.
+
+### Session 2026-11-03: MSCI climate is sample-only; A7 primary discovery done; A7-vs-A5 report script
+- **MSCI climate (Ross: "WRDS got MSCI climate transition data").** Attended probe (research/wrds_msci_climate_inventory.py,
+  Ross approved Duo): new libraries `msci_climate_samp` / `msci_esg_samp` / `msci_common_samp` are samples -- ~80
+  issuers (names A...), FY2024 only, one snapshot (as_of 2026-04-30); 7-147 rows per climate table. Nothing to
+  integrate; Ross to ask the library whether the full subscription is pending. Output files kept local (licensed rows;
+  the push of them was blocked, correctly). Design Ross liked, for when data exists: HANDOFF 2026-11-03.
+- **A7 primary discovery done 2026-11-03 16:53 (CachyOS, fb8929e3; log output/research/_stdout_a7_discovery.log).**
+  Same candidates as A5 (Tier 1 1,070,361 -> 925 full-sample confirmed, identical: ADV does not enter Tier 1; Tier 3
+  9,627,169 candidate pairs). Tier 2: 444,366 (pair, window) tests -> 328 confirmed (A5 388,509 -> 281). Tier 3:
+  1,842,274 -> 493 (A5 1,668,328 -> 442). +14% / +10% tests: windows the stale/voided ADV used to skip now pass the
+  gate (BUG-D122 fix). Pair-level A5 discovery files were overwritten by `--fresh` (counts from the A5 log); the A5
+  pools and search outputs are kept in output/research/_superseded_a5_a6_20261102 for the pair-level comparison.
+  Not yet reviewed. `_advzero` arm running (Tier 2 done 18:26, Tier 3 since 18:28).
+- **research/compare_amendment_runs.py** (test debug/_verify_compare_amendment_runs.py 7/7, CI list): search cells,
+  positive-holdout share, pool overlap (unordered pairs) old vs new; discovery primary vs a suffixed arm. Real-data
+  check: A5 vs itself reproduces 0.530 / 0.635, pools 759 / 64, 0/8 passing.
+- **E1 v2 needs no separate re-score:** its `score` reads the main tier-3 windows file, which A7 primary writes before
+  E1 v2 starts (the advzero arm writes `_advzero` files, wrds_deep_history_episodic_scan.py:1157).
+- **ETA corrected (my first estimate left out the advzero arm, ~16 h):** advzero ~10:30 11-04, chain ~15:30, edge
+  ~16:00, E1 v2 seeds ~13:00 11-05, ~10:00 11-06, ~07:00 11-07. By Thursday night: A7 + edge reported/reviewed, E1 v2 seed 1.

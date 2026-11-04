@@ -12,8 +12,9 @@ Development.md for what was lost and how it was checked. **State now:**
 ~80 issuers, FY2024 only, one snapshot. Integration waits on full access (Ross: ask WRDS/library whether the subscription
 is pending). Design Ross liked (when data exists): climate transition exposure as an explanatory study of co-movement and
 breaks around Paris 2015 / 2016 election / IRA 2022 (endogeneity rules, placebo pairs), plus a transition factor arm in E8.
-Queue ETA (from A5/E1 v1 durations): A7 discovery ~19:00 11-03, chain ~00:00 11-04, edge ~00:30, E1 v2 seeds ~21:30 11-04,
-~18:30 11-05, ~15:30 11-06. Target Thursday 11-05 night (Ross): A7 + edge reported and reviewed, E1 v2 seeds 1-2.
+A7 primary discovery DONE 16:53 11-03 (Tier 2 328, Tier 3 493 confirmed; A5 281 / 442 -- Development.md 2026-11-03).
+Queue ETA (corrected: the advzero arm takes ~16 h): advzero ~10:30 11-04, chain ~15:30, edge ~16:00, E1 v2 seeds
+~13:00 11-05, ~10:00 11-06, ~07:00 11-07. Target Thursday 11-05 night (Ross): A7 + edge reported and reviewed, E1 v2 seed 1.
 No separate E1 v2 re-score needed: `score --real-research $MAIN/output/research` reads
 wrds_deep_history_episodic_scan_tier3_windows.parquet, which the A7 primary discovery writes before E1 v2 starts (the
 --adv-missing zero arm writes `_advzero` files, research/wrds_deep_history_episodic_scan.py:1157).
