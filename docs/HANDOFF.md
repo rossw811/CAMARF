@@ -8,6 +8,13 @@ Development.md for what was lost and how it was checked. **State now:**
 **Update 2026-10-28:** Ross took the recommendation: primary ADV stays mean-over-days-with-volume (disclosed); comparison arm `--adv-missing zero` built and tested (16/16); real data: ADV level differs by a median 4% (international), coverage +18%. Next: Amendment 7 text + CachyOS chain (primary discovery re-run, then the `_advzero` arm, then downstream). Watchdog sudo still needed. NielsenIQ access: unknown (WRDS login prompted; script to run with `!`).
 **Update 2026-10-28 later:** Surface run blocked: the Surface cache differs from CachyOS's (23,676 files differ, 9,382 stale-label 1D files only here). Sync failed (CRLF in my file list) and was rolled back to the exact prior state. CachyOS went offline mid-transfer (hang; needs a power-cycle). Redo the sync when it is back, then Amendment 7 + chain.
 **Update 2026-10-28 evening:** CachyOS out for a few days (Ross). Nothing in the compute queue can run comparably on the Surface: discovery needs CachyOS's cache (Surface international files lack `close_total_return` and later repairs; 1,633 files only there); edge accounting's inputs exist only on CachyOS. E1 plant gate already uses the fixed `rolling_adv` -- indicative Surface count 543 international bases clear (was 3; 64 needed), so E1 v2 is unblocked. When CachyOS is back: LF-list sync, Amendment 7, chain.
+## 2026-11-04: Amendment 7 COMPLETE (06:21) and independently reviewed -- 0 of 8 cells pass, same verdict as A5
+Positive-holdout share pit_k1 0.534 / pit_k2 0.639 (A5 0.530 / 0.635); `--adv-missing zero` arm agrees with primary
+(325 of 328 Tier 2, 490 of 493 Tier 3 pairs shared). Review confirmed every figure; the gain in pairs is the ADV gate alone
+but the fix also removed ~6-7% of A5's windows (14 A5 pairs lost, all international). Full entry: Development.md 2026-11-04.
+Edge accounting complete 07:06 (report/review next). E1 v2 seed 1 started 07:06 on a0b1e172 -- the E1 chain script pulls
+main by design, after A7 + edge ended; the suite gate on a0b1e172 for CachyOS still to run after the queue.
+Open: one Tier 2 candidate-list inconsistency between fresh and resumed arms (no effect on this run; Development.md).
 ## 2026-11-03: MSCI climate on WRDS is sample-only (research/wrds_msci_climate_inventory.py; DATA_SOURCES_SURVEY C table):
 ~80 issuers, FY2024 only, one snapshot. Integration waits on full access (Ross: ask WRDS/library whether the subscription
 is pending). Design Ross liked (when data exists): climate transition exposure as an explanatory study of co-movement and

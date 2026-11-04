@@ -30163,7 +30163,10 @@ what the Surface holds:
   Same candidates as A5 (Tier 1 1,070,361 -> 925 full-sample confirmed, identical: ADV does not enter Tier 1; Tier 3
   9,627,169 candidate pairs). Tier 2: 444,366 (pair, window) tests -> 328 confirmed (A5 388,509 -> 281). Tier 3:
   1,842,274 -> 493 (A5 1,668,328 -> 442). +14% / +10% tests: windows the stale/voided ADV used to skip now pass the
-  gate (BUG-D122 fix). Pair-level A5 discovery files were overwritten by `--fresh` (counts from the A5 log); the A5
+  gate (BUG-D122 fix). ~~Pair-level A5 discovery files were overwritten by `--fresh` (counts from the A5 log)~~
+  **WRONG (corrected 11-04 by the A7 review):** `--fresh` moves old outputs aside (`_guard_stale_resume`,
+  wrds_deep_history_episodic_scan.py:1196-1200); the A5 tier files are intact in
+  output/research/_episodic_scan_backup_20261102_203411/. The A5
   pools and search outputs are kept in output/research/_superseded_a5_a6_20261102 for the pair-level comparison.
   Not yet reviewed. `_advzero` arm running (Tier 2 done 18:26, Tier 3 since 18:28).
 - **research/compare_amendment_runs.py** (test debug/_verify_compare_amendment_runs.py 7/7, CI list): search cells,
@@ -30173,3 +30176,38 @@ what the Surface holds:
   E1 v2 starts (the advzero arm writes `_advzero` files, wrds_deep_history_episodic_scan.py:1157).
 - **ETA corrected (my first estimate left out the advzero arm, ~16 h):** advzero ~10:30 11-04, chain ~15:30, edge
   ~16:00, E1 v2 seeds ~13:00 11-05, ~10:00 11-06, ~07:00 11-07. By Thursday night: A7 + edge reported/reviewed, E1 v2 seed 1.
+
+### Session 2026-11-04: Amendment 7 complete -- 0/8 cells pass (same as A5); independent review confirms every figure
+- **Chain complete 2026-11-04 06:21 (CachyOS, fb8929e3 throughout; reflog: next pull 07:06, by the E1 v2 chain script
+  `_tmp_chain_e1_v2_20261102.sh:9`, after A7 and edge accounting ended). Cache parity at end MATCH (131,094 files).**
+- **Strategy search (registered result):** 0 of 8 cells pass (2 pools x splits 0.5-0.8; criterion holdout > 0, DSR >= 0.95,
+  PBO < 0.20, strategy_search.py:341 at fb8929e3), same as A5. Share of the 864 trials per pool with positive holdout
+  capsim Sharpe: pit_k1 0.5336 (A5 0.5301), pit_k2 0.6389 (A5 0.6354). Best cell pit_k2 0.7: holdout Sharpe 0.388, DSR
+  0.11, PBO 0.98. Pools: pit_k1 797 pairs (A5 759; 744 shared, 51 of them with a changed `eligible_from`), pit_k2 69
+  (A5 64; 61 shared, 9 changed). Report: output/research/compare_a7_vs_a5.md (CachyOS).
+- **Discovery A7 vs A5, pair level** (review, from the A5 backup dir): Tier 2 275 in both / 6 only A5 / 53 only A7;
+  Tier 3 434 / 8 / 59. 45 of 53 and 51 of 59 new pairs have an international (GVKEY) leg. Tier 1 and tier3_pairs files
+  are byte-identical to A5 (md5).
+- **The change is the ADV gate alone (exact accounting, review):** same symbols (46,218 / 46,192 with ADV / 30,485 with
+  >= 756 bars) and candidates; p-values identical on every shared window; membership and BUG-D112 causal gate skip counts
+  identical in A5, A7 and advzero. ADV skips fell by 55,857 (Tier 2) and 173,946 (Tier 3), equal to the net window
+  change. **Turnover goes both ways:** the fix added 80,812 / 289,833 windows and removed 24,955 / 115,887 (6.4% / 6.9%
+  of A5's), the `adv_at` part of the fix no longer reading past NaN to a stale ADV. All 6 + 8 pairs A5 had and A7 lost
+  depended on a now-gated window; all are international. (The 11-03 line "windows the stale ADV used to skip now pass"
+  told only half of this.)
+- **`--adv-missing zero` arm:** Tier 2 330 vs primary 328 (325 both), Tier 3 499 vs 493 (490 both); Tier 3 FDR-rejected
+  windows 757 / 1,823,725 vs 746 / 1,842,274; shared windows identical p-values; window differences equal the ADV-skip
+  difference exactly. Report output/research/compare_a7_advzero.md. **Limits:** discovery only (advzero was not carried
+  through pools/search, so it says nothing about the 0/8 verdict); not a one-sided bound (it also passes 1,782 / 8,201
+  windows the primary gates out, as zero-filled days escape the DATA_GAP void); does not test BUG-D122 review
+  qualification (b), absent dates invisible to the gap rule. Sharing tier1 / tier3_pairs files between arms is valid
+  (neither reads ADV).
+- **Not attributable to BUG-D122 alone:** the A7 search also includes the BUG-D121 commission fix (3fa6532e), so changes
+  in holdout share or selected configs mix both fixes.
+- **Latent inconsistency, no effect here:** primary Tier 2 runs on the in-memory pairs list (1,096,062), a resumed arm on
+  the tier1 file (1,070,361 after `_combine_eg_directions`, wrds_deep_history_episodic_scan.py:1296 vs 1307). None of the
+  25,701 dropped pairs produced a window in any run. Open item: give both paths the same list.
+- **Disclosed, unchanged:** DSR uses N = 432 across seven-plus sequential passes made with earlier outcomes known.
+- **Review:** adversarial-reviewer, read-only, re-derived every figure on CachyOS (scratch /tmp/review_a7/); no claim
+  broken; one documentation statement wrong (11-03 entry, corrected in place). compare_amendment_runs.py formatter fix
+  93f798fd (counts as integers; test 8/8, fails 7/8 on the old formatter).
