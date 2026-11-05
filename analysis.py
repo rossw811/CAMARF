@@ -3104,6 +3104,46 @@ class SpreadModel:
         return hl
 
     @staticmethod
+    def half_life_coint(log_a: np.ndarray, log_b: np.ndarray) -> float:
+        """BUG-D123 (2026-11-05): half-life of the pair's cointegrating residual within one estimation window --
+        OLS hedge of log_a on log_b fitted on that window's rows and held fixed, then half_life_ar1 of
+        log_a - h * log_b. An AR(1) on the trading spread (hedge re-estimated daily) reads a planted 5-day pair as
+        100-800 days: the hedge's wobble times the log-price level makes the spread level drift.
+        debug/_verify_half_life_hedge_consistency.py"""
+        m = np.isfinite(log_a) & np.isfinite(log_b)
+        if m.sum() < 30:
+            return np.nan
+        a, b = log_a[m], log_b[m]
+        b_c = b - b.mean()
+        var_b = np.dot(b_c, b_c)
+        if var_b <= 0:
+            return np.nan
+        h = float(np.dot(a - a.mean(), b_c) / var_b)
+        return SpreadModel.half_life_ar1(a - h * b)
+
+    @staticmethod
+    def rolling_half_life_hedged(
+        log_a: np.ndarray,
+        log_b: np.ndarray,
+        hedge: np.ndarray,
+        window: int = 252,
+        step: int = 21,
+    ) -> np.ndarray:
+        """rolling_half_life's schedule (refresh every `step` bars, forward-filled; NaN before the first full window).
+        BUG-D123: the estimate at t is half_life_ar1 of log_a - h_t * log_b over the trailing `window` rows, with h_t
+        the hedge traded at t held FIXED across the window (causal: h_t uses rows <= t), instead of the trading spread
+        whose hedge changes inside the window. Where h_t is not finite, the window's own OLS hedge (half_life_coint)."""
+        n = log_a.size
+        hl = np.full(n, np.nan, dtype=float)
+        if n < window:
+            return hl
+        for t in range(window - 1, n, step):
+            a, b = log_a[t - window + 1: t + 1], log_b[t - window + 1: t + 1]
+            h = hedge[t]
+            hl[t] = SpreadModel.half_life_ar1(a - h * b) if np.isfinite(h) else SpreadModel.half_life_coint(a, b)
+        return pd.Series(hl).ffill().values
+
+    @staticmethod
     def half_life_trend_slope(hl_series: np.ndarray) -> float:
         """
         Linear regression of half-life on time index.
@@ -3215,16 +3255,25 @@ class SpreadModel:
         spread_real = spread[real_pos]
 
         cfg = Config.ANALYSIS
-        hl_full = SpreadModel.half_life_ar1(spread_real)       # descriptive (whole history)
-        hl_window = (SpreadModel.half_life_ar1(spread_real[real_pos < formation_n]) if formation_n is not None
-                     else hl_full)
+        # BUG-D123: every half-life uses ONE hedge held fixed inside its estimation window (an AR(1) on the trading
+        # spread, whose hedge is re-estimated daily, overstated a planted 5-day half-life 20-1000x): whole history ->
+        # the static hedge (descriptive); formation -> OLS on the formation rows; rolling -> the hedge traded at the
+        # window's last bar. Same real rows as the spread. debug/_verify_half_life_hedge_consistency.py
+        la_real, lb_real = log_a[real_pos], log_b[real_pos]
+        h_bar = np.where(np.isfinite(hedge_series), hedge_series,
+                         hedge_static if (static_fallback and np.isfinite(hedge_static)) else np.nan)
+        h_real = h_bar[real_pos]
+        hl_full = (SpreadModel.half_life_ar1(la_real - hedge_static * lb_real) if np.isfinite(hedge_static)
+                   else SpreadModel.half_life_coint(la_real, lb_real))       # descriptive (whole history)
+        hl_window = (SpreadModel.half_life_coint(la_real[real_pos < formation_n], lb_real[real_pos < formation_n])
+                     if formation_n is not None else hl_full)
         mean_window = SpreadModel._adaptive_window(
             hl_window, cfg.OU_WINDOW_HALFLIFE_MULT_MEAN, cfg.OU_WINDOW_MIN_BARS, cfg.OU_LOOKBACK_DAYS
         )
 
         z_real = SpreadModel.rolling_zscore(spread_real, mean_window)
         z_exp_real = SpreadModel.expanding_zscore(spread_real)
-        hl_roll_real = SpreadModel.rolling_half_life(spread_real, window=mean_window)
+        hl_roll_real = SpreadModel.rolling_half_life_hedged(la_real, lb_real, h_real, window=mean_window)
 
         # Trip-wire (2026-09-10, item #4 of the bug-catching plan, docs/HANDOFF.md):
         # a column that should carry real signal silently degenerating to 100% NaN
