@@ -1,36 +1,22 @@
 === CAMARF macro.py ===
-date:        2026-11-02 21:09
+date:        2026-10-19 10:02
 runtime_min: 0.0
 
 === series ===
-  T10Y2Y         rows=13155  source=fred
-  BAMLH0A0HYM2   rows=792    source=fred
-  VIXCLS         rows=9609   source=fred
-  VXVCLS         rows=4934   source=fred
-  DCOILWTICO     rows=10649  source=fred
-  BAA10Y         rows=10652  source=fred
-  DTWEXBGS       rows=5435   source=fred
-  DFII10         rows=6217   source=fred
-  T10YIE         rows=6218   source=fred
-  FEDFUNDS       rows=868    source=fred
-  CPIAUCSL       rows=957    source=fred
-  USREC          rows=2063   source=fred
-  UNRATE         rows=945    source=fred
-  cot_es         rows=1472   source=cache
-  cot_nq         rows=1384   source=cache
+  (none)
 
 === regime_distributions ===
-yield_curve: {'normal': 5870, 'steep': 2977, 'flat_inverted': 1231}
-credit: {nan: 9538, 'normal': 334, 'tight': 206}
-credit_proxy: {'normal': 4644, 'tight': 4144, 'wide': 1289, nan: 1}
-vix: {'normal': 4537, 'calm': 2942, 'elevated': 1234, nan: 1012, 'crisis': 353}
-vix_term_structure: {nan: 5531, 'deep_contango': 2660, 'contango': 1419, 'flat': 289, 'backwardation': 179}
-dollar: {nan: 5303, 'strong': 1946, 'neutral': 1739, 'weak': 1090}
-real_rate: {nan: 4543, 'low': 2028, 'high': 1754, 'normal': 1753}
-inflation_expectation: {nan: 4543, 'normal': 2240, 'high': 1709, 'low': 1586}
-recession: {'expansion': 9324, 'contraction': 754}
-recession_realtime: {'expansion': 8296, 'contraction_risk': 1746, nan: 36}
-cot_es: {'neutral': 5789, nan: 2964, 'crowded_short': 920, 'crowded_long': 405}
-cot_nq: {'neutral': 4227, nan: 3413, 'crowded_long': 1723, 'crowded_short': 715}
+yield_curve: {'normal': 6070, 'steep': 2977, 'flat_inverted': 1231}
+credit: {nan: 9528, 'normal': 385, 'tight': 365}
+credit_proxy: {'normal': 4644, 'tight': 4344, 'wide': 1289, nan: 1}
+vix: {'normal': 4704, 'calm': 2961, 'elevated': 1248, nan: 1012, 'crisis': 353}
+vix_term_structure: {nan: 5531, 'deep_contango': 2808, 'contango': 1461, 'flat': 297, 'backwardation': 181}
+dollar: {nan: 5303, 'strong': 1946, 'neutral': 1797, 'weak': 1232}
+real_rate: {nan: 4543, 'low': 2046, 'high': 1863, 'normal': 1826}
+inflation_expectation: {nan: 4543, 'normal': 2345, 'high': 1765, 'low': 1625}
+recession: {'expansion': 9524, 'contraction': 754}
+recession_realtime: {'expansion': 8296, 'contraction_risk': 1746, nan: 236}
+cot_es: {'neutral': 5984, nan: 2964, 'crowded_short': 925, 'crowded_long': 405}
+cot_nq: {'neutral': 4406, nan: 3413, 'crowded_long': 1739, 'crowded_short': 720}
 
 === end ===
