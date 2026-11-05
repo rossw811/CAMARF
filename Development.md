@@ -30248,7 +30248,14 @@ what the Surface holds:
   3. k2 has no spread files of its own; for 68 of 69 pairs its spreads use k1's earlier eligible_from (0-2,222 days
      earlier). No future data, but formed on less data than k2's own decision date allows.
   4. `n_excluded=16` on same-era k1 rows is an arm-level count (all 16 exit 1931-1992; none in the era).
-- **Unverified:** that the dollar P&L change is BUG-D121 alone (fits a commission-only change; component not diffed).
+- ~~**Unverified:** that the dollar P&L change is BUG-D121 alone (fits a commission-only change; component not diffed).~~
+  **Verified 2026-11-04 (later):** on every matched trade (same pair, entry, exit, side, hedge ratio, shares) the change
+  is the commission alone. Current `pnl_dollar` re-run on the matched trades reproduces the 11-04 file's
+  `pnl_dollar_net` exactly (max difference $0.00), and the same run with `_share_px` forced back to the adjusted close
+  (the pre-fix share count) reproduces the 10-25 file exactly; gross is identical between the two. Matched / net change =
+  commission change: wh k1 19,136 / +$1,404,386.27 (the review's -$2.11M -> -$0.71M); wh k2 1,294 / +$709,639.82; PIT k1
+  7,346 / +$2,432.10; PIT k2 598 / -$103.92 (commission rose: traded price below the adjusted close means more
+  shares). Script debug/_tmp_edge_d121_commission_diff.py (read-only, CachyOS, run at nice 19 during E1 v2).
 - **Fixes from the two reviews (same day):**
   1. **Tier 2 candidate list, one definition** (`tier2_candidates`, research/wrds_deep_history_episodic_scan.py): fresh
      runs used all Pearson candidates (A7: 1,096,062), resumed arms the Tier 1 rows (1,070,361). Both now use the Tier 1

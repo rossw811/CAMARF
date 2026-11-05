@@ -314,7 +314,9 @@ The C-entries below are claims re-derived one by one on current data.
   more per trade, -0.0892 vs -0.0783, yet has the higher Sharpe on 7,959 vs 12,049 trades). (2) X touches one trade per
   arm in the era: not estimable, rather than shown negligible. (3) k2 has no spread files of its own; 68 of 69 pairs use
   k1's spreads, formed from an earlier eligible_from (no future data, but less data than k2's decision date allows).
-  (4) Unverified: that the dollar-P&L change against the 10-25 run is the BUG-D121 commission fix alone.
+  (4) The dollar-P&L change against the 10-25 run is the BUG-D121 commission fix alone on every matched trade (verified
+  2026-11-04: both versions reproduced to $0.00, gross identical; debug/_tmp_edge_d121_commission_diff.py); the other
+  differences are the A7 pools (new pairs and moved eligible_from dates).
 - **Market-structure reading:** fails if the cost model sets the sign: every book loses after $0.005/share + 5 bps per
   side, so a cheaper execution venue for liquid US legs could flip the corrected corners positive and turn "no edge" into
   "an edge eaten by costs", which would make the attribution a different question.
