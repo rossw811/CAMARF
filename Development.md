@@ -30363,7 +30363,7 @@ what the Surface holds:
   by the project's rules.
 - **The 54 full-sample-only k1 pairs had a fair chance:** median 9 gated windows each (IQR 5-10), none rejected under
   the whole-history BH family, none in the raw PIT pool; best-window p median 0.012, only 4% below 1e-4. The windowed BH
-  family is ~1.8M windows (cutoff ~2-6e-5, A5 notes), the full-sample family 76,406 pairs on ~4x longer samples.
+  family is ~1.8M windows (cutoff ~2-6e-5, A5 notes), the full-sample family 76,406 pairs on each pair's full overlap (windows are 2,520 bars; full-overlap lengths of these pairs not measured).
 - **Reading:** like for like, the screens still disagree (10% / 2% overlap), so "the full-sample screen certifies pairs
   the point-in-time process does not confirm" holds on the current pipeline, and the PIT process confirms many pairs
   (263) the full-sample screen does not (consistent with transient relationships). But for the full-sample-only pairs
