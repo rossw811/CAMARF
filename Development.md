@@ -30298,7 +30298,11 @@ what the Surface holds:
   with one > 25 trading days), often early semiannual-only stretches where ADV is below the threshold anyway.
 - **Reading:** point (b) is real but immaterial to the ADV gate (<= 0.04% of pool passes; no US effect). Disclosed, not
   changed.
-- **New open item (not measured): the 1984-01-02 stub row can reach discovery.** When both legs of an international pair
-  carry it, the aligned mask keeps it, and the earliest window's first bar sits ~20 years before its second (on 1D no gap
-  breaks a segment unless DAILY_GAP_BREAKS). At most one bar per affected window; size of the effect on EG p-values and
-  which pairs are affected not yet checked. Origin of the stub (Compustat Global fetch start date?) also not checked.
+- ~~**New open item (not measured): the 1984-01-02 stub row can reach discovery.**~~ **Checked same day: it cannot.**
+  The stub row is EMPTY: every price column NaN (e.g. GVKEY297962_01W: close, close_usd, close_total_return NaN on
+  1984-01-02; next row 2011-05-26). Discovery keeps only dates where both legs have a finite log price
+  (research/wrds_deep_history_episodic_scan.py:773 `mask = np.isfinite(lp_a) & np.isfinite(lp_b)`), so the row never
+  enters a window. Prevalence: 1,262 of 1,500 sampled GVKEY files (84.1%); A7 pools: k1 180 of 797 pairs carry it on both
+  legs, 62 on one; k2 15 / 9 of 69. Likely the Compustat Global fetch's start date emitting one empty row (origin not
+  traced). Consumers that read a file's first index date as its start instead of its first valid price would be
+  misled; none found in this pass, not audited.
