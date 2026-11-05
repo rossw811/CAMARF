@@ -320,3 +320,31 @@ The C-entries below are claims re-derived one by one on current data.
 - **Market-structure reading:** fails if the cost model sets the sign: every book loses after $0.005/share + 5 bps per
   side, so a cheaper execution venue for liquid US legs could flip the corrected corners positive and turn "no edge" into
   "an edge eaten by costs", which would make the attribution a different question.
+
+## C-010 — Full-sample screen vs point-in-time pools, like for like (N2, 2026-11-04)
+- **Claim (descriptive; wording allowed by the independent review):** restricted to the 76,406 pairs that pass the
+  point-in-time liquidity / membership / candidacy gates in at least one window, and cleaned identically, a full-sample
+  Engle-Granger BH screen confirms 60 pairs and the point-in-time k1 pool contains 268 daily-data pairs from the same set;
+  6 are in both (k2: 25 in the set, 2 shared). The 54 full-sample-only pairs are marginal full-sample survivors (median p
+  1.7e-5 against a cutoff of 5.5e-5) whose best 10-year window has median p 0.012, far from the point-in-time cutoffs of
+  2-8e-5. The full-sample test uses about twice as much data as the gated windows, so these pairs show weak evidence
+  within any decade, not relationship breakdown. Of the point-in-time-only pairs, 82% are not significant even at
+  p < 0.05 over the full sample, consistent with transient relationships. **Not** a multiple-testing effect.
+- **Replaces:** the pre-fix "zero pair overlap" (README-047, PAPER.md 7.3.1) and the first cut's "6 of 925 (0.65%)",
+  which mostly measured the gates (842 of the 925 never have a gated window) and same-company pairs (925 -> 714 cleaned).
+- **Falsification:** a like-for-like re-run with materially higher overlap (e.g. most full-sample pairs confirmed in some
+  gated window), or the full-sample-only pairs showing strong window evidence.
+- **Data:** Amendment 7 discovery outputs (CachyOS, fb8929e3): Tier 1 (m = 1,070,361, 925 confirmed), Tier 2 / Tier 3
+  windows, `purity_pairs_pit_k{1,2}_clean.parquet`; all data before the 2026-01-01 seal.
+- **Parameters:** family = Tier 1 pairs with >= 1 Tier 2 window (windows are written only after every gate); BH at
+  Config.STATS.FDR_ALPHA 0.05 over the family (cutoff 5.52e-5); `clean_pool_identity_pairs.clean_pool`; unordered label
+  matching. PIT pool: a pair counts if eligible at any month-end (the full-sample screen decides once, at the end).
+- **Reproduce:** `python research/fullsample_gated_arm.py` → `output/research/fullsample_gated_arm_{pairs,summary}.parquet`
+  (CachyOS). Check `debug/_verify_fullsample_gated_arm.py` (9/9).
+- **Status:** **REPLICATED (2026-11-04; independent review QUALIFY, corrections adopted, key figures re-checked).**
+- **Disclosures:** the 54 are not independent (ICE in 7, GVKEY030581_01W in 4, GVKEY019591_02W in 3); the set is sensitive to
+  small changes in the family (they sit just under the cutoff); one 1h PIT pair (CMS/PPL) is in the 269 (daily-only 268 /
+  262); the gated windows cover a median 54% of the full-sample-only pairs' windows.
+- **Market-structure reading:** fails if the disagreement comes from the gates' coverage rather than time: liquidity and
+  index membership change slowly for the same firms whose co-movement is stable, so a screen gated on them samples the
+  calmer, more liquid decades of each pair's history.

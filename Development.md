@@ -30367,7 +30367,31 @@ what the Surface holds:
 - **Reading:** like for like, the screens still disagree (10% / 2% overlap), so "the full-sample screen certifies pairs
   the point-in-time process does not confirm" holds on the current pipeline, and the PIT process confirms many pairs
   (263) the full-sample screen does not (consistent with transient relationships). But for the full-sample-only pairs
-  the windows' evidence is weak rather than absent (median best p 0.012): part of the gap is power and multiplicity
-  (shorter samples, a 24x larger family), not shown to be breakdown. Same caveat as C-001. Supersedes the first cut's
+  the windows' evidence is weak rather than absent (median best p 0.012): ~~part of the gap is power and multiplicity
+  (shorter samples, a 24x larger family)~~ [WRONG on review: not multiplicity -- see the review entry below], not shown to be breakdown. Same caveat as C-001. Supersedes the first cut's
   "0.65%" headline (gates) for any paper use.
-- **Status:** test 9/9 + real run; independent review next (paper-bound). Not registered yet.
+- ~~**Status:** test 9/9 + real run; independent review next (paper-bound). Not registered yet.~~
+- **Independent review (adversarial-reviewer, read-only, re-derived on CachyOS from the raw A7 files; scripts
+  /tmp/review_n2/a{1,2,3}.py): verdict QUALIFY.** Numbers CONFIRMED (family 76,406; 89 BH rejections at cutoff 5.52e-5;
+  83 original flags in family; k1 269 / k2 25 in family; 6 / 2 shared; 54 full-sample-only with median 9 gated windows,
+  none rejected, best-window p median 0.0116). Family definition outcome-free (a window is written only after the
+  causal, membership and ADV gates, scan :795-819; no gate reads a cointegration result). Labels and seal CONFIRMED.
+  **Corrections, all adopted:**
+  1. **The multiplicity reading above is WRONG.** The PIT pools' month-end as-of BH cutoff is 2.0e-5 at 2025-12 (m =
+     1,842,274; re-checked by me: 2.00e-05), median 3.5e-5 over months with > 100k windows (IQR 2.7-4.7e-5), up to
+     7.9e-5 -- not far from the gated full-sample cutoff 5.5e-5. BH's cutoff depends on the number of discoveries, not
+     only m. A best-window p of 0.012 fails either cutoff by 200-600x. The gap is evidence per test: the full-sample-only
+     pairs' full overlap is a median 7,158 bars (re-checked) vs 2,520 per window, and their gated windows cover a median
+     54% of their windows (IQR 29-83%) -- the full-sample test also uses the periods the gates exclude.
+  2. "Under the same gates" overstates it: the arm restricts to pairs that pass the gates at least once; the full-sample
+     p still uses the whole history. "Had a fair chance" likewise overstated (about half the history is outside gated windows).
+  3. The 54 are marginal full-sample survivors: full-sample p median 1.69e-5, max 5.52e-5 = the cutoff (re-checked).
+  4. They are not independent: ICE is in 7 of them (and 3 of the 6 shared), GVKEY030581_01W in 4, GVKEY019591_02W in 3.
+  5. The 269 includes one 1h pair (CMS/PPL) matched to a daily full-sample test; daily-only counts 268 / 262.
+  6. Asymmetry: a PIT pair counts if eligible at any month-end; the full-sample screen decides once at the end.
+  7. Added: the 263 PIT-only pairs mostly fail even a lenient full-sample test -- full-sample p median 0.55, 17.5% below
+     0.05 (re-checked), on longer histories (n_overlap median 8,250, reviewer) -- consistent with transient relationships.
+- **Corrected reading:** like for like the screens disagree; the full-sample-only pairs are marginal full-sample survivors
+  with weak evidence inside any gated decade (shorter windows and the gated share of history), not shown to have broken
+  down; the PIT-only pairs are mostly not significant over the full sample. Not a multiple-testing effect. Descriptive.
+  Registered as C-010.
