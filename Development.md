@@ -30334,3 +30334,40 @@ what the Surface holds:
   like-for-like comparison with Tier 1 run under the same gates.
 - **Status:** UNREVIEWED; not registered; README-047 / PM-004 / PM-051..053 stay PENDING until an independent review and the
   missing splits above. Paper-bound, so it goes to adversarial-reviewer before any wording changes.
+
+### Session 2026-11-04 (cont.): N2 comparison arm -- full-sample screen under the PIT gates and cleaning (Ross: "make the comparison arm and test")
+- **Arm** (`research/fullsample_gated_arm.py`, descriptive): Tier 1's tested pairs (one max-over-directions p each)
+  restricted to pairs with >= 1 window that passed every gate in Tier 2 (Tier 2 tests exactly Tier 1's candidate list, so
+  the restriction uses the gates only); BH at FDR_ALPHA 0.05 over that family; `clean_pool` (identity, same company,
+  unverified leg, DLC twin, structural); compared with the clean PIT pools restricted to the same family. Sensitivity
+  family Tier 2 or Tier 3 is identical here (76,406 pairs: every Tier 1 pair with a Tier 3 window also has a Tier 2 one).
+- **Test** `debug/_verify_fullsample_gated_arm.py` 9/9 (gating, BH over the family only and equal to
+  `analysis._benjamini_hochberg` on the subset, family-size effect, cleaner counts, leg-order-free PIT matching,
+  pairs outside the family not counted). First run 7/9: two fixture errors in the test (a PIT pair labelled B1/A11, not a
+  Tier 1 pair); fixed the fixture, code unchanged.
+- **Real run (CachyOS, A7 outputs at fb8929e3, nice 19 during E1 v2; outputs output/research/fullsample_gated_arm_{pairs,
+  summary}.parquet on CachyOS):**
+
+  | | k1 | k2 |
+  |---|---|---|
+  | full-sample screen, gated family m = 76,406: BH-confirmed -> clean | 89 -> 60 | 89 -> 60 |
+  | PIT pool (clean) / of it inside the family | 797 / 269 | 69 / 25 |
+  | in both | 6 | 2 |
+  | full-sample only / PIT only | 54 / 263 | 58 / 23 |
+  | share of full-sample found by PIT / of PIT found by full-sample | 10.0% / 2.2% | 3.3% / 8.0% |
+
+  Ungated: 925 confirmed -> 714 after the same cleaning (211 removed). Tier 1's own flags inside the family: 83 (BH over
+  the smaller family confirms 89). Shared k1 pairs: ADP/ICE, ICE/SPGI, ICE/PAYX (eligible 2018-11-30), HIG/PERMNO68144
+  (2010-12-31), GVKEY015724_01W/GVKEY205699_01W (2016-04-30), GVKEY063120_01W/MET (2020-06-30); median eligible 2018-11-30.
+  The cleaning rules keep HIG/PERMNO68144 and GVKEY063120_01W/MET, so the first cut's "look like identity pairs" was wrong
+  by the project's rules.
+- **The 54 full-sample-only k1 pairs had a fair chance:** median 9 gated windows each (IQR 5-10), none rejected under
+  the whole-history BH family, none in the raw PIT pool; best-window p median 0.012, only 4% below 1e-4. The windowed BH
+  family is ~1.8M windows (cutoff ~2-6e-5, A5 notes), the full-sample family 76,406 pairs on ~4x longer samples.
+- **Reading:** like for like, the screens still disagree (10% / 2% overlap), so "the full-sample screen certifies pairs
+  the point-in-time process does not confirm" holds on the current pipeline, and the PIT process confirms many pairs
+  (263) the full-sample screen does not (consistent with transient relationships). But for the full-sample-only pairs
+  the windows' evidence is weak rather than absent (median best p 0.012): part of the gap is power and multiplicity
+  (shorter samples, a 24x larger family), not shown to be breakdown. Same caveat as C-001. Supersedes the first cut's
+  "0.65%" headline (gates) for any paper use.
+- **Status:** test 9/9 + real run; independent review next (paper-bound). Not registered yet.
