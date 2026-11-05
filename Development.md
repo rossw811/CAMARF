@@ -30306,3 +30306,31 @@ what the Surface holds:
   legs, 62 on one; k2 15 / 9 of 69. Likely the Compustat Global fetch's start date emitting one empty row (origin not
   traced). Consumers that read a file's first index date as its start instead of its first valid price would be
   misled; none found in this pass, not audited.
+
+### Session 2026-11-04 (cont.): N2 first cut -- full-sample screen vs point-in-time pools on the A7 outputs (UNREVIEWED)
+- **Plan status check (master plan section 1):** HANDOFF lists N1, N3, N4, N6, N7, N9-N13, N15, N16, N18 done. No completion
+  evidence found for **N2** (this entry), **N5** (D10 bootstrap: code done 10-19, real run never made; queued after E1 v2),
+  **N8** (D6 redesign: first cut withdrawn 10-20, redesign not run), N14 (v2 queued), N17 (registry before redraft).
+- **What README-047 / PM-004 / PM-051..053 rest on:** "a full-history screen certifies pairs a PIT re-screen would not
+  have found" (old evidence: zero overlap, pre-fix pipeline). Read-only counts on CachyOS A7 outputs (fb8929e3):
+  1. Tier 1 (full-sample EG, BH-FDR, no ADV / membership gate) confirms **925** pairs. PIT pool k1 (clean) 797 pairs: **6**
+     of them full-sample confirmed (0.65% of 925); k2 69: 2.
+  2. **Gates dominate the non-overlap:** only **83 of 925** (9.0%) have any tested window in Tier 2 or Tier 3 (same 83 in
+     both); the rest never face a point-in-time test (ADV, PIT S&P 500 membership for CRSP legs, causal-candidacy, or too
+     short). So 0.65% measures the gates far more than discovery timing.
+  3. Of the 83 testable: 33 have >= 1 rejected window under the whole-history BH family (23 >= 2); 34 are in
+     purity_pairs.parquet; **36 in the raw PIT k1 pool, 30 of which the identity cleaning removes** -- the same company
+     listed twice (RD, VOD, UN/UL, ASML, SHEL, STM, RIO, MT, AZN and local lines; SPY/VOO). Of the 6 left, GVKEY063120_01W/MET
+     and HIG/PERMNO68144 look like identity pairs too (not checked); the clear cross-company ones are ICE with PAYX, SPGI, ADP.
+  4. Side check: edge accounting's "whole-history pool" is NOT the full-sample screen -- it is the same windowed output
+     under the end-of-history BH cutoff (`phase_pools`: purity_pairs n_windows_fdr_rejected >= k), and 452 of its 457 k1
+     pairs (30 of 30 k2) are in the PIT pool. Its S factor is "whole-history vs as-of BH cutoff on the same windows", and
+     the papers must not describe it as the full-sample screen. PIT k2's `in_whole_history_set` = whole-history >= 1
+     rejection (60 of 69), not >= 2 (30): checked.
+- **Reading (first cut):** the full-sample screen's certified set is mostly (a) pairs the point-in-time process cannot test
+  under its liquidity/membership gates and (b) identity pairs both methods find. The old "zero overlap" claim does not
+  re-derive as stated; "the screens disagree" holds, but the cause is mostly the gates, not timing. Not yet measured: how
+  many of the 925 are identity pairs overall (Tier 1 is not cleaned); how the 842 untestable split across the gates; a
+  like-for-like comparison with Tier 1 run under the same gates.
+- **Status:** UNREVIEWED; not registered; README-047 / PM-004 / PM-051..053 stay PENDING until an independent review and the
+  missing splits above. Paper-bound, so it goes to adversarial-reviewer before any wording changes.
