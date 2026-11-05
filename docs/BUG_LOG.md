@@ -312,7 +312,7 @@ the full context stays in `Development.md`.
 - **BUG-D122** (2026-10-26; code fixed 2026-10-27; discovery re-run done = Amendment 7, 2026-11-04: 0/8 cells pass, Development.md 2026-11-04; open point (b), absent dates, measured 2026-11-04: immaterial, 0.04% of pool gate passes flip): `rolling_adv` voids a year of ADV on one missing volume day and discovery reads it with
   `.asof()`, so the international liquidity gate uses ADV a median 904 trading days old (US: 18% of long-history files > 21
   days stale). Fixed: gap-rule mean + `adv_at` (not `.asof`); open: missing-volume = zero question. Needs a ~22 h discovery re-run as an amendment.
-- **BUG-D123** (2026-11-05; fixed `a0e3676e`, unreviewed): every spread-model half-life was an AR(1) on the trading spread, whose
+- **BUG-D123** (2026-11-05; PARTLY fixed `a0e3676e`, review QUALIFY: rolling half-life now biased short for slow pairs/noise, decision pending): every spread-model half-life was an AR(1) on the trading spread, whose
   rolling hedge is re-estimated daily; the hedge wobble x price level made a planted 5-day half-life read 107-815 days. Pinned the
   z-score window at 252 bars and inflated the backtest time stop. Now one hedge held fixed per estimation window; test 2/12 -> 12/12;
-  128 plants recover truth (98% within 0.6-1.5x). Re-run of adapter + backtests pending. Write-up: Development.md 2026-11-05.
+  128 plants: full-history half-life within 0.6-1.5x for 98% (rolling estimate does not separate 60-120-day pairs from noise). Re-run of adapter + backtests pending. Write-up: Development.md 2026-11-05.

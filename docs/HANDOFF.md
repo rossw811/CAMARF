@@ -3,8 +3,8 @@
   (~20 h), then 20261026. Chain `debug/_tmp_chain_e1_v2_20261102.sh` in ~/CAMARF_e1. One heavy job at a time.
 - Ross 2026-11-05 decided (effective after 3 seeds + review): k2 primary pool; fast mean-reversion scope with a
   half-life-filter arm; placebo-calibrated cutoff arm. Validity checks V1-V6 (Development.md 2026-11-05).
-- BUG-D123 (`a0e3676e`): half-lives were 20-1000x too long (rolling-hedge spread). Fixed + tested; needs code review,
-  then adapter + backtest re-runs after the seeds, and an ERRATA entry.
+- BUG-D123 (`a0e3676e`): half-lives were 20-1000x too long. Review QUALIFY: full/formation fixed; rolling (time stop,
+  min-half-life filter) now biased short and blind above ~20-30 days. Two choices for Ross, then test + re-runs + ERRATA.
 - OPEN QUESTION for Ross: under the fixed estimator the real pools are SLOW even inside their discovery windows (k2 median
   205 days, 7% <= 60 days, 0% <= 20) -- a fast-pair filter on the current pool keeps ~nothing. Fast pairs need shorter
   discovery windows (methodology change, needs buy-in) -- see the chat of 2026-11-05.

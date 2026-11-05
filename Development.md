@@ -30429,8 +30429,9 @@ but broke `_verify_pipeline_end_to_end_synthetic` (2 of 5): that test hands `fit
 in short windows ignored it, adding noise (a 20-day pair read 8.5-13). Root cause of the bias, not the hedge choice.
 Fix kept (`a0e3676e`, unreviewed): one hedge held fixed inside each estimation window -- whole history: the static hedge
 (descriptive); formation: OLS on the formation rows (`half_life_coint`); rolling: the hedge traded at the window's last
-bar (`rolling_half_life_hedged`, causal). The trading spread itself is unchanged; with a constant hedge the result is
-identical to the old code. Test `debug/_verify_half_life_hedge_consistency.py`: 2/12 on the old code (shown), 12/12 now;
+bar (`rolling_half_life_hedged`, causal). The trading spread itself is unchanged; ~~with a constant hedge the result is
+identical to the old code~~ [WRONG on review: only when formation_n is None -- the formation half-life refits OLS on the
+formation rows and ignores the supplied hedge (constant true hedge, formation_n=1000: window 150 vs 176)]. Test `debug/_verify_half_life_hedge_consistency.py`: 2/12 on the old code (shown), 12/12 now;
 related tests pass (end-to-end synthetic 5/5, prefix invariance 13/13, A2 causal hedge 6/6, off-by-one 5/5, sparse 3/3,
 gap-mask semantics 7/7, hedge gap mask 1/1).
 Real-data check (CachyOS, `debug/_tmp_d123_realcheck.py`, production hedge path on close_total_return): all 128 seed-2
@@ -30448,3 +30449,30 @@ power (<= 12% recovery at 60-120 days) and where its false positives sit. A half
 keep almost nothing -- see the open question in docs/HANDOFF.md.
 Still to do for D123: independent code review; re-run the adapter and backtests (every spread_series file carries the
 old half-lives) after the E1 seeds finish (one heavy job at a time); ERRATA entry for results that used the old values.
+
+**BUG-D123 review (adversarial-reviewer, 2026-11-05): QUALIFY -- adopted; D123 is PARTLY fixed.** Each point re-checked
+by me before adopting (production path, `planted()` DGP, formation_n=1500, bars after formation):
+1. The rolling half-life (the decision-path series: backtest time stop, min-half-life filter, ML features and label
+   horizon) now has a NEW downward bias for slow pairs and noise. In production the hedge at t is fitted on the same
+   252 rows as the half-life window, so the AR(1) runs on an in-sample residual. Re-check: rolling medians 5-day
+   3.4-4.2, 10-day 6.9-8.6, 20-day 11.0-13.8, 60-day 19.0-21.6, 120-day 20.8-26.7, independent random walks 16.2-30.9.
+   The write-up's "AR(1) small-sample bias" is right only for the fast plants. Alternative tested (252-bar window, 6
+   seeds): hedge fitted on the rows BEFORE the window -- 5 -> 8.2, 20 -> 22.3, 60 -> 32.0, 120 -> 34.9, noise -> 33.8
+   (in-sample: 8.1 / 15.7 / 19.6 / 21.3 / 19.8). Less biased for 20 days, but neither separates 60-120-day pairs from
+   noise: a one-year rolling half-life is informative only below ~20-30 days whatever the hedge. Choice of hedge for the
+   rolling estimate: Ross (methodology).
+2. Not disclosed: under the fix a true 5-day pair's rolling half-life is < MIN_HALF_LIFE_BARS (5, config.py) on 61-74% of
+   bars (10-day: 17-30%), so the backtest's min-half-life filter (backtest.py ~1105) and ML strict mode (ml.py ~337) would
+   block most entries on exactly the fast pairs Decision 2 targets. Floor vs bias correction: Ross (methodology).
+3. False sentence ("identical with a constant hedge") struck above.
+4. On the real pools the z-score window does NOT change: full-history half-life q10 is 119 days, so clip(8 x hl, 30, 252)
+   stays 252 for every A7 pair. On real data D123 changes the rolling series, not z_rolling.
+5. "Plants recover truth" (BUG_LOG, commit 1d5eb7e4 title) holds for the full-history (descriptive) and formation
+   half-lives only, not the rolling one. The test's rolling tolerance (0.4-1.6x, 5- and 20-day only) cannot see point 1;
+   null check #4 tests half_life_full only.
+No new lookahead (rolling hedge causal under causal_expanding; prefix invariance passes). Pre-existing, unchanged in
+kind: static_fallback=True paths (IBKR deep-history caller) use the full-sample hedge for early bars; the scalar
+mean_reversion_speed (full-sample, descriptive) still feeds the ML fallback in non-strict mode (masked under pit_strict).
+All 8 related tests re-run by the reviewer: pass.
+Before D123 is done: Ross's two choices (rolling hedge; MIN_HALF_LIFE_BARS vs a small-sample correction), then a test of
+the rolling series against null and 60/120-day plants, then the adapter + backtest re-runs (after the E1 seeds).
