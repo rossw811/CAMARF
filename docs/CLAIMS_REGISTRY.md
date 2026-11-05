@@ -207,6 +207,20 @@ The C-entries below are claims re-derived one by one on current data.
   eligible_from for all 823 pairs; the engine gate (backtest.py, inline) has no synthetic test of its own beyond
   `_verify_eligible_from_gate` check 5. Trades dropped by the P&L basis: 0 (all rows `ok`). Outputs `output/research/strategy_search/
   {pit_k1_dyn,pit_k2_dyn}/`, `summary_dyn.parquet`, `all_trials_dyn.parquet`, `trials_dyn.json`.
+- **Amendment 7 result (2026-11-04, CachyOS, code fb8929e3 throughout; REPLICATED: an independent adversarial review
+  re-derived every figure on CachyOS and broke none).** Re-run after BUG-D122 (the ADV gate read past NaN to a stale ADV)
+  and BUG-D121 (commission); same grid, splits and criterion. **Result: 0 of 8 cells pass, same as Amendment 5.** Best cell
+  pit_k2 0.7: holdout capital-sim Sharpe 0.388, DSR 0.11, PBO 0.98. Positive-holdout share of the 864 trials per pool:
+  k1 53.36% (A5 53.01%), k2 63.89% (A5 63.54%). Pools: k1 797 pairs (A5 759; 744 shared, 51 with a changed
+  eligible_from), k2 69 (A5 64; 61 shared, 9 changed). Discovery: the change is the ADV gate alone (same symbols,
+  candidates and p-values on every shared window; ADV skips fell by 55,857 Tier 2 / 173,946 Tier 3 windows, equal to the
+  net window change); turnover goes both ways (80,812 / 289,833 windows added, 24,955 / 115,887 removed); 45 of 53 new
+  Tier 2 pairs and 51 of 59 new Tier 3 pairs have an international leg. **Not attributable to BUG-D122 alone:** the search
+  also includes the BUG-D121 fix, so changes in holdout share or selected configurations mix both. `--adv-missing zero`
+  arm: discovery only (Tier 2 330 vs 328, Tier 3 499 vs 493), not carried into pools or search, so it does not test the
+  verdict. Still open: dates with no row at all are invisible to the gap rule (BUG-D122 review qualification b).
+  Disclosed, unchanged: DSR uses N = 432 across seven-plus sequential passes made with earlier outcomes known. Reports
+  `output/research/compare_a7_vs_a5.md`, `compare_a7_advzero.md` (CachyOS); write-up DEVELOPMENT.md "Session 2026-11-04".
 - **Market-structure reading:** fails if the cost and execution model is wrong for the pool: too harsh for liquid US large caps (a hidden signal), or too lenient for thin Compustat Global legs, borrow-constrained shorts and non-synchronous home-market closes (a hidden loss).
 
 ## C-007 — Code and arithmetic claims (S34 central; re-derived 2026-10-10)
@@ -269,3 +283,38 @@ The C-entries below are claims re-derived one by one on current data.
   behaviour on the |corr| >= 0.6 candidate population (needs a correlation-matched null and a power study). CIs treat
   pairs as independent (legs reused, median 2, max 7, in the 1h review), so they are somewhat too narrow.
 - **Market-structure reading:** fails if random pairs understate size on the real candidate set: cross-sectional dependence (industry and factor co-movement) among |corr| >= 0.6 pairs, and non-synchronous closes across exchanges, can inflate rejection there (N14 measures it).
+
+## C-009 — Edge accounting: no corner of the error factorial shows an edge (2026-11-04)
+- **Claim (descriptive, development data only; never a decision input):** in the 2 x 2 x 2 factorial of the three
+  identified errors (S pair selection whole-history vs point-in-time, P P&L basis legacy spread units vs dollar at entry
+  hedge, X trades across > 5-day holes kept vs dropped), every cell's same-era (2005-05-16..2025-12-31) equal-notional
+  Sharpe is <= 0. The corrections move a loss toward zero rather than revealing or removing an edge; the P&L basis moves
+  it most. There is no edge for the decomposition to explain.
+- **Falsification:** any cell with a same-era Sharpe > 0, or a Shapley interval for P that includes 0, on the same
+  pools, configuration and spans.
+- **Numbers (cells S P X, 1 = corrected):** k1 000 -2.640, 001 -2.639, 010 -0.636, 011 -0.634, 100 -2.042, 101 -2.041,
+  110 -0.028, 111 -0.025; k2 -0.549 / -0.545 / -0.198 / -0.189 / -0.861 / -0.857 / -0.061 / -0.053. Shapley (joint
+  stationary block bootstrap): k1 S 0.603 [0.077, 1.077], P 2.010 [1.042, 2.973], X 0.002 (block 57); k2 S -0.087
+  [-0.420, 0.274], P 0.578 [0.072, 1.087], X 0.006 (block 9). Capital-sim corners (same era, fresh book of in-era
+  trades): whole-history k1 -0.21 (1,977 trades), k2 -0.40 (645); PIT k1 -0.10 (1,619), k2 -0.22 (487).
+- **Data and pools:** Amendment 7 PIT pools (k1 797, k2 69 pairs) and whole-history pools cleaned by the same rules
+  (k1 457, k2 30 pairs; CachyOS files read 2026-11-04); sealed rows never read. One production configuration (Config.BACKTEST defaults, OLS).
+- **Reproduce:** `python research/edge_accounting.py pools`, then `spreads`, `run`, `eval` (CachyOS) →
+  `output/research/edge_accounting_k{1,2}.parquet`, `edge_accounting_shapley_k{1,2}.parquet`,
+  `edge_accounting_capsim_k{1,2}.parquet`. Design committed before any result: docs/EDGE_ACCOUNTING_DESIGN_2026-10-25.md.
+  Check `debug/_verify_edge_accounting.py` (9/9).
+- **Code state:** run on fb8929e3; same-era capital-sim fixed in 53e2e459, capital-sim file added in df678e1b.
+- **Status:** **REPLICATED (cells, Shapley; independent review 2026-11-04) / CORRECTED (same-era capital-sim).** The
+  first same-era capital-sim fed every trade since 1931 into a replay that carries cash, so the era started with ~$2.7k
+  (e.g. whole-history k1 read -0.33 on "2,088" trades, actually 74 taken); corrected figures above come from the fixed
+  module run read-only on CachyOS and match the reviewer's independent replay. `edge_accounting_capsim_k{1,2}.parquet`
+  does not exist yet on disk: the next `eval` run writes it.
+- **Disclosures that travel with the claim:** (1) S partly measures trade count, not selection: the equal-notional book
+  sums trade returns per exit day, so a losing book's Sharpe shrinks toward 0 with fewer trades (legacy k1: PIT loses
+  more per trade, -0.0892 vs -0.0783, yet has the higher Sharpe on 7,959 vs 12,049 trades). (2) X touches one trade per
+  arm in the era: not estimable, rather than shown negligible. (3) k2 has no spread files of its own; 68 of 69 pairs use
+  k1's spreads, formed from an earlier eligible_from (no future data, but less data than k2's decision date allows).
+  (4) Unverified: that the dollar-P&L change against the 10-25 run is the BUG-D121 commission fix alone.
+- **Market-structure reading:** fails if the cost model sets the sign: every book loses after $0.005/share + 5 bps per
+  side, so a cheaper execution venue for liquid US legs could flip the corrected corners positive and turn "no edge" into
+  "an edge eaten by costs", which would make the attribution a different question.
