@@ -30270,3 +30270,35 @@ what the Surface holds:
   3. `n_excluded` column renamed `n_excluded_arm` (arm-level count over all history, not per span).
   Not changed (method, Ross's call): adding a per-trade metric next to the equal-notional Sharpe so S is not read off
   trade count; k2 spread files of its own.
+
+### Session 2026-11-04 (cont.): BUG-D122 open point (b) measured -- absent dates barely move the ADV gate; new item: 1984-01-02 stub rows
+- **Question:** `rolling_adv`'s DATA_GAP rule counts consecutive NaN rows; a date with no row at all is invisible, so the
+  252-row window can reach over a long hole without being voided. Measurement only, discovery unchanged:
+  `research/absent_dates_adv_gap.py` (check `debug/_verify_absent_dates_adv_gap.py` 5/5: a 10-trading-day hole flips
+  246 passing rows, a 3-day hole none). Per file, against its market calendar (`market_calendar.calendar_for`): the gate
+  verdict ADV >= $25M at every pre-seal priced row (a superset of window starts, which always fall on rows both legs
+  have), as discovery computes it vs with the absent days inserted as empty rows. Rows on/after 2026-01-01 dropped first.
+- **Run (CachyOS, read-only, nice 19 during E1 v2; code = this commit; output /tmp/absent/absent_dates_adv_gap.parquet,
+  not kept in the repo):** all 515 1D legs of the A7 PIT pools + seeded samples (seed 20261104) of 1,000 US and 1,000
+  non-US other files; 0 errors.
+
+  | group | files | any hole > 5 | absent days / priced rows | gate rows | passes flipped to fail | fail -> pass |
+  |---|---|---|---|---|---|---|
+  | pool US | 300 | 0% | 0.00% | 3,644,912 | 0 | 0 |
+  | pool non-US | 215 | 60.5% | 12.63% | 1,909,355 | 422 (0.04%) | 114 |
+  | sample US | 848 | 0% | 0.00% | 2,270,126 | 0 | 0 |
+  | sample non-US | 991 | 83.1% | 56.06% | 4,674,017 | 588 (0.27%) | 146 |
+
+  ADV level where both versions are valid: median ratio 1.0000 in every group. (Sample counts are 848 / 991 of 1,000:
+  files without close+volume, or with no pre-seal priced rows, are not counted.)
+- **Why so many absent days move so little:** 91-92% of them are ONE pattern -- a single stub row dated 1984-01-02
+  followed by a hole to the real series start (2005-2007 typically; up to 5,426 trading days). 99 of the 130 pool non-US
+  files with a hole have it (all 1984-01-02), 696 of 712 in the sample. After it the first 251 rows have no full window
+  (NaN by the history rule anyway), so counting the hole changes nothing. Holes after the first row: 72 pool files (32
+  with one > 25 trading days), often early semiannual-only stretches where ADV is below the threshold anyway.
+- **Reading:** point (b) is real but immaterial to the ADV gate (<= 0.04% of pool passes; no US effect). Disclosed, not
+  changed.
+- **New open item (not measured): the 1984-01-02 stub row can reach discovery.** When both legs of an international pair
+  carry it, the aligned mask keeps it, and the earliest window's first bar sits ~20 years before its second (on 1D no gap
+  breaks a segment unless DAILY_GAP_BREAKS). At most one bar per affected window; size of the effect on EG p-values and
+  which pairs are affected not yet checked. Origin of the stub (Compustat Global fetch start date?) also not checked.
