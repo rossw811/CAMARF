@@ -30395,3 +30395,56 @@ what the Surface holds:
   with weak evidence inside any gated decade (shorter windows and the gated share of history), not shown to have broken
   down; the PIT-only pairs are mostly not significant over the full sample. Not a multiple-testing effect. Descriptive.
   Registered as C-010.
+
+### Session 2026-11-05: E1 v2 seed 1 scored (UNREVIEWED); Ross's three decisions; BUG-D123 (half-life) found and fixed
+
+**E1 v2 seed 1 (20261024) complete 04:19** (`~/CAMARF_e1_runs/v2_seed20261024/`, score log `research/_stdout_e1v2_score.log`
+on CachyOS). One seed, unreviewed -- seeds 20261025 (running) and 20261026 follow. Daily pools, placebo vs real A7:
+k1 731 pairs of which 578 false positives (real A7 k1: 791; by arm FP vs real -- US 302/549, international 215/184,
+mixed 61/58); k2 69 of which 7 false positives (real A7 k2: 69). Plants found (k1): half-life 5/20 days 56-88%,
+60/120 days <= 12%. Placebo window tail rate at p < 1e-4: 0.026-0.059% (nominal 0.01%). Window-level false share at
+the real run's final BH cutoff (~2.0e-5): international 0.67, US 0.65, mixed 0.21 (conservative: every real window
+treated as null). Tier-1 placebo/real candidate ratios 0.91 / 1.30 / 1.11 (US / international / mixed): the
+international false-positive COUNT is overstated by the extra candidates; the rate-based share is not.
+
+**Ross's decisions (2026-11-05, "let's do the decisions you just recommended"), each to take effect after the three
+seeds and an independent review:** (1) k2 becomes the primary pool; no claims drawn from k1. (2) Thesis scoped to fast
+mean reversion, with a half-life filter as a comparison arm (not a slow-pair detector: a 10-year window holds ~20
+half-lives of a 120-day pair, below any test's power, and slow pairs trade worse). (3) A placebo-calibrated
+significance cutoff as a comparison arm beside the BH cutoff. Also: validity checks V1-V6 and bug checks.
+(Decision 2 needs revisiting -- see the window-level half-lives below.)
+
+**BUG-D123 (found by V4, the half-life check against the plants).** Every spread-model half-life (`half_life_full` ->
+`mean_reversion_speed`, the formation half-life that sets the z-score window, and the rolling half-life the backtest's
+time stop and min-half-life filter read) was an AR(1) on the trading spread `log_a - h_t * log_b`, with `h_t` the
+rolling OLS hedge re-estimated daily. The hedge's wobble (s.d. ~0.1-0.3) times the log-price level shifts the spread
+level, so the AR(1) sees a near unit root. Evidence: planted pairs read 5-day -> 107-815 days and 20-day -> up to 33,691
+with the rolling-hedge spread vs 5.2 / 19.8-21.1 with one fixed hedge (seed-2 placebo cache, every price column gives
+5.2, so the data are right). Consequences: the z-score window was pinned at the 252-bar ceiling (a 5-day pair should get
+~40); the backtest time stop (MAX_HOLD_MULTIPLIER x half-life at entry) and min-half-life filter read inflated values;
+the sparse-pair exclusion (`half_life_rolling_median` NaN -> pair dropped) fired more often than it should. E1 pool
+membership does NOT depend on half-life (discovery is EG p-values), so the E1 scores stand.
+First fix attempt (reverted before commit): re-fit an OLS hedge inside every estimation window. It passed the new test
+but broke `_verify_pipeline_end_to_end_synthetic` (2 of 5): that test hands `fit_pair` the TRUE hedge, and re-fitting
+in short windows ignored it, adding noise (a 20-day pair read 8.5-13). Root cause of the bias, not the hedge choice.
+Fix kept (`a0e3676e`, unreviewed): one hedge held fixed inside each estimation window -- whole history: the static hedge
+(descriptive); formation: OLS on the formation rows (`half_life_coint`); rolling: the hedge traded at the window's last
+bar (`rolling_half_life_hedged`, causal). The trading spread itself is unchanged; with a constant hedge the result is
+identical to the old code. Test `debug/_verify_half_life_hedge_consistency.py`: 2/12 on the old code (shown), 12/12 now;
+related tests pass (end-to-end synthetic 5/5, prefix invariance 13/13, A2 causal hedge 6/6, off-by-one 5/5, sparse 3/3,
+gap-mask semantics 7/7, hedge gap mask 1/1).
+Real-data check (CachyOS, `debug/_tmp_d123_realcheck.py`, production hedge path on close_total_return): all 128 seed-2
+plants fitted; full-history half-life within 0.6-1.5x truth for 98.4% (median by true half-life 5/20/60/120 ->
+5.1/19.9/58.0/108.7). Rolling (window = clip(8 x half-life, 30, 252)) reads 3.3/11.9/18.9/19.6: AR(1) small-sample bias
+in short windows (the end-to-end test given the TRUE hedge shows the same, 12.0 for 20) and a ~20-day ceiling in a
+252-bar window; on synthetic data two independent random walks read ~22 in a 252-bar window. Disclosed; a bias
+correction would be a separate comparison arm.
+Real A7 pools under the fix: full-history half-life k2 median 290 days (q10-q90 119-726), k1 (120 sampled) 543
+(157-1,806); none <= 30 days; old column (ln 2 / mean_reversion_speed) read ~3,100-3,400. **Inside the Tier 3 windows
+where each pair was FDR-rejected** (fastest window per pair, `half_life_coint` on that window): k2 (60 pairs matched)
+median 205 days, q10 68, share <= 60 days 7%, <= 20 days 0%; k1 (72 matched of 120 sampled) median 415, <= 60 days 3%.
+Reading (unreviewed): the real discoveries are slow pairs, the half-life range where E1 shows the pipeline has little
+power (<= 12% recovery at 60-120 days) and where its false positives sit. A half-life filter on the current pool would
+keep almost nothing -- see the open question in docs/HANDOFF.md.
+Still to do for D123: independent code review; re-run the adapter and backtests (every spread_series file carries the
+old half-lives) after the E1 seeds finish (one heavy job at a time); ERRATA entry for results that used the old values.

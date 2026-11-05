@@ -1,3 +1,13 @@
+## 2026-11-05: RESUME HERE. E1 v2 seed 1 scored (unreviewed); Ross's 3 decisions recorded; BUG-D123 fixed (unreviewed)
+- E1 v2: seed 20261024 done 04:19 (k1 pool 578/731 false positives, k2 7/69); seed 20261025 in discovery since 04:42
+  (~20 h), then 20261026. Chain `debug/_tmp_chain_e1_v2_20261102.sh` in ~/CAMARF_e1. One heavy job at a time.
+- Ross 2026-11-05 decided (effective after 3 seeds + review): k2 primary pool; fast mean-reversion scope with a
+  half-life-filter arm; placebo-calibrated cutoff arm. Validity checks V1-V6 (Development.md 2026-11-05).
+- BUG-D123 (`a0e3676e`): half-lives were 20-1000x too long (rolling-hedge spread). Fixed + tested; needs code review,
+  then adapter + backtest re-runs after the seeds, and an ERRATA entry.
+- OPEN QUESTION for Ross: under the fixed estimator the real pools are SLOW even inside their discovery windows (k2 median
+  205 days, 7% <= 60 days, 0% <= 20) -- a fast-pair filter on the current pool keeps ~nothing. Fast pairs need shorter
+  discovery windows (methodology change, needs buy-in) -- see the chat of 2026-11-05.
 ## 2026-10-27: RESUME HERE (reconciliation after the 10-26 evening session died without a close-out)
 Everything from 10-26 is committed; see the "2026-10-27: Session-recovery reconciliation" section at the end of
 Development.md for what was lost and how it was checked. **State now:**
