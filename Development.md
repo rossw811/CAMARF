@@ -30602,3 +30602,22 @@ the two probes below (scratchpad review/episodic_power.py, ffill_probe.py).
 6. Unrelated-walk numbers depend on the construction: reviewer's (drifting a, independent b) 38.3 primary / 99.3 arm,
    mine 35.8 / 66.1. Both are far above the in-window hedge's ~20. Real-data check numbers were not re-derived by the
    reviewer (CachyOS only).
+
+### Session 2026-11-11 (cont.): failed half-life refreshes no longer carry the older estimate (Ross: "yes to all") (UNREVIEWED)
+Ross approved the three 11-11 questions: (1) stop forward-filling a refresh that finds no mean reversion -- done below;
+(2) write up a smaller-family confirmatory test for short-lived fast episodes, for his buy-in, after the three seeds;
+(3) leave the whole-history sparse exclusion as is, disclosed (above).
+`SpreadModel.rolling_half_life_hedged` (analysis.py): each bar carries the MOST RECENT refresh's value; a failed refresh
+(phi outside (0, 1), or no prior hedge) leaves the bars up to the next refresh NaN. The backtest already skips entries on
+NaN-half-life bars, so a pair is not traded while its latest window shows no mean reversion. Test check 9 (stationary,
+then a convex trend): new 21/21; old code (134459f1, temp worktree) 20/21, 9b fails (stale 3.4 carried into the trend).
+Related tests re-run, all pass (same 20 as above). Real pools (CachyOS, whole-history descriptive fit; bars after each
+pair's first estimate):
+
+| pool | primary: bars with no half-life, median | Kendall arm: bars with no half-life, median |
+|---|---|---|
+| k2 (69) | 0.000 -> 0.022, 28.1 -> 27.4 | 0.000 -> 0.305, 54.1 -> 39.6 |
+| k1 (150 sampled) | 0.000 -> 0.028, 30.5 -> 30.1 | 0.000 -> 0.342, 59.9 -> 43.9 |
+
+No pair becomes all-NaN. The arm's median falls because the stale values it used to carry came from just before a failed
+(slow-reading) refresh; with ~1/3 of its bars untradeable it will trade far less than the primary -- part of the comparison.

@@ -3137,7 +3137,7 @@ class SpreadModel:
         step: int = 21,
         bias_correct: bool = False,
     ) -> np.ndarray:
-        """rolling_half_life's schedule (refresh every `step` bars, forward-filled; NaN before the first estimate).
+        """rolling_half_life's schedule (refresh every `step` bars, held until the next refresh; NaN before the first estimate).
         BUG-D123: the estimate at t is half_life_ar1 of log_a - h * log_b over the trailing `window` rows
         [t-window+1, t], with h held FIXED across the window, instead of the trading spread whose hedge changes inside
         the window.
@@ -3147,17 +3147,24 @@ class SpreadModel:
         path, 8 seeds): 60-day plant 31.7, 120-day 35.5, unrelated walks 35.8 -- a 252-bar window still cannot tell
         slow from unrelated; that separation is discovery's job. Where no finite prior hedge exists (the first
         window), NaN -- never an in-window fallback. bias_correct: see half_life_ar1 (comparison arm).
+        Each bar carries the MOST RECENT refresh's value, including a failed one (Ross 2026-11-11): a refresh that finds
+        no mean reversion (phi outside (0, 1)) or has no prior hedge leaves the bars up to the next refresh NaN. A plain
+        forward-fill used to skip failed refreshes and carry the older estimate, so "no mean reversion now" read as the
+        last half-life (review 2026-11-11: 18-45% of the Kendall arm's refreshes; 0-5% of the primary's).
         debug/_verify_half_life_hedge_consistency.py"""
         n = log_a.size
         hl = np.full(n, np.nan, dtype=float)
         if n < window:
             return hl
+        last_refresh = np.full(n, -1, dtype=np.int64)
         for t in range(window - 1, n, step):
+            last_refresh[t] = t
             if t - window < 0 or not np.isfinite(hedge[t - window]):
                 continue
             a, b = log_a[t - window + 1: t + 1], log_b[t - window + 1: t + 1]
             hl[t] = SpreadModel.half_life_ar1(a - hedge[t - window] * b, bias_correct=bias_correct)
-        return pd.Series(hl).ffill().values
+        last_refresh = np.maximum.accumulate(last_refresh)
+        return np.where(last_refresh >= 0, hl[np.maximum(last_refresh, 0)], np.nan)
 
     @staticmethod
     def half_life_trend_slope(hl_series: np.ndarray) -> float:

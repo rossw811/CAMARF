@@ -131,6 +131,19 @@ sm = production_fit(*planted(5, seed=0))
 check("8b fit_pair returns half_life_rolling_bc_series", "half_life_rolling_bc_series" in sm
       and np.isfinite(sm["half_life_rolling_bc_series"]).any())
 
+# 9. (Ross 2026-11-11) A refresh that finds no mean reversion leaves the bars up to the next refresh NaN; it does not
+#    carry the previous estimate. Spread = a (hedge 0, b = 0): stationary AR(1) up to bar 600, then a convex trend that
+#    makes every later window's phi > 1.
+rng = np.random.default_rng(4); n9 = 900; a9 = np.zeros(n9)
+for i in range(1, n9):
+    a9[i] = 0.8 * a9[i - 1] + rng.normal(0, 0.01)
+a9[600:] += 1e-4 * np.arange(n9 - 600) ** 2
+r9 = SpreadModel.rolling_half_life_hedged(a9, np.zeros(n9), np.zeros(n9), window=100, step=21)
+t_ok, t_bad = 498, 750                                   # refresh bars: 99 + 21k; window of 750 lies in the trend
+check("9a stationary stretch has an estimate", np.isfinite(r9[t_ok + 5]), r9[t_ok + 5])
+check("9b failed refresh is not filled with the old estimate", np.isnan(r9[t_bad]) and np.isnan(r9[t_bad + 10]),
+      (r9[t_bad], r9[t_bad + 10]))
+
 print(f"\n{len(PASS)}/{len(PASS) + len(FAIL)} checks passed")
 if FAIL:
     print("FAILED:", FAIL)
