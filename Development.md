@@ -30552,17 +30552,17 @@ check 3 (the full-sample method's lookahead is detected) still passes, so check 
 the WHOLE history, so data after date T can remove a pair that existed at T. True before today too; the in-window first
 estimate used to keep most such pairs. The backtest already skips entries without a half-life bar by bar, which is the
 causal version. Also pre-existing: a refresh whose AR(1) gives phi >= 1 (NaN) is forward-filled with the previous
-estimate, so "no mean reversion now" reads as the last half-life; the Kendall arm hits this more (64-85% finite at
-refreshes for slow / unrelated pairs).
+estimate, so "no mean reversion now" reads as the last half-life; the Kendall arm hits this more (~~64-85%~~ [WRONG on
+review: 82% finite refreshes for 5-day pairs, 55-64% for slow / unrelated]).
 **3. One-year discovery window arm -- DROPPED before any run (my recommendation was wrong).** Built (`--window-bars 252`,
 suffix `_w252`, lineage stage, 12/14-check test) and backed out after its power check failed. Measured with
 debug/_measure_eg_power_by_window.py (production coint, max over both directions, 200 reps each; p<2e-5 ~ the real Tier 3
 BH cutoff): spread s.d. 0.10 -- 252-bar windows: half-life 1: 0.06, 2: 0.07, 3: 0.02, 5/10/20: 0.00; 2520-bar windows:
 5: 1.00, 20: 0.84, 60: 0.01, 120: 0.00. Tighter spreads, 252 bars: s.d. 0.02 -- 2: 0.84, 5: 0.06, 10: 0.01; s.d. 0.05 --
-2: 0.41, 5+: 0.00. So one-year windows only pass the real cutoff for ~2-day pairs (below the 5-bar floor), and the
-premise was wrong: 10-year windows already find 5-20-day pairs almost always (E1 agrees: tested fast plants found ~100%).
-The real pools being slow (BUG-D123 real check: k2 median 290 days) is a finding about the market, not a blind spot of
-the window length. Reverted patch kept outside the repo; rebuilding is a few lines (pattern of the grid-offset arm).
+2: 0.41, 5+: 0.00. So one-year windows only pass the real cutoff for ~2-day pairs (below the 5-bar floor).
+~~The premise was wrong: 10-year windows already find 5-20-day pairs almost always ... the real pools being slow is a
+finding about the market, not a blind spot of the window length.~~ [WRONG on review 2026-11-11: true only for
+relationships that last the whole 10 years -- see the review below.] Reverted patch kept outside the repo; rebuilding is a few lines (pattern of the grid-offset arm).
 **Real-data check (CachyOS, e53db23c, whole-history descriptive fit, debug/_tmp_d123_rolling_realcheck.py there).**
 Real A7 pools (output/research/purity_pairs_pit_k{2,1}_clean.parquet, 1D): k2 69/69 fitted, rolling median q10/50/90
 old 13.5/16.8/18.8 -> new 22.6/28.1/33.8 -> Kendall arm 37.8/54.1/69.9; k1 (150 sampled) old 17.2 -> new 30.5 -> arm 59.9
@@ -30571,3 +30571,34 @@ finite bars below 5: k2 1.9% -> 0.4% (arm 0.2%). z/rolling window 252 for every 
 stop (2 x half-life at entry) roughly doubles on the real pools (~34 -> ~56 bars; arm ~108), so the adapter + backtest
 re-runs after the E1 seeds will move. Real pools read near unrelated walks (36) on this estimator: on 252-bar windows it
 sets the holding clock, it does not grade pair quality.
+
+**Independent review 2026-11-11 (adversarial-reviewer, maker != checker): items 1 CONFIRM (primary, no lookahead:
+hedge[t-w] is the real row strictly before the window, rolling OLS at i uses rows <= i; 19/19 new, 12/19 on 001d29c9
+reproduced) with side effects; 2-4 QUALIFY; 5 CONFIRM the drop, REJECT the conclusion.** Re-run by me before adopting:
+the two probes below (scratchpad review/episodic_power.py, ffill_probe.py).
+1. Short-lived fast relationships are a blind spot of BOTH window lengths (the struck sentence above). A 5- or 20-day
+   relationship lasting 504 or 1,260 bars inside a 2520-bar span, prices drifting apart independently outside it
+   (40 reps each, production EG, max over directions), share rejected at p < 2e-5: 10-year window 0.00-0.25, the
+   in-episode one-year window 0.00-0.05. At p < 1e-3 the one-year window finds tight (s.d. 0.02) 5-day episodes
+   28-35% of the time -- the size of the test family, not the window, is the binding limit. So the slow real pools
+   say: fast relationships that persist ~10 years are rare; they say nothing about fast episodes of 2-5 years, which
+   this discovery design cannot see. The one-year arm stays dropped (it cannot see them either at the real cutoff).
+2. Kendall arm: phi_bc >= 1 refreshes are NaN and forward-filled with the previous value. Finite refreshes primary / arm:
+   5-day 1.00 / 0.82, 20-day 0.99 / 0.76, 60-day 0.98 / 0.64, 120-day 0.97 / 0.57, unrelated 0.95 / 0.55. The dropped
+   refreshes are the slow-reading ones, so the arm's medians are biased down and its over-correction is larger than
+   the table shows. Check 8a tests a pure AR(1) (no hedge error), not the production path.
+3. The arm swaps only the half-life column behind the time stop / floor / ML half-life gate and feature;
+   mean_reversion_speed_t and half_life_trend_slope_t stay on the primary series (analysis.py fit_pair), and
+   research/meta_label_capital_sim.py hardcodes half_life_rolling. Under the arm those features disagree with the
+   column used. Spread files written outside the adapter (analysis.py's own writer, the IBKR path) lack the column: the
+   arm then raises KeyError (backtest.py, ml.py), it does not mix files silently.
+4. A2 mechanism has a second channel: the 0.8 drift also makes the whole-history half_life_full NaN, so the descriptive
+   (formation_n=None) window jumps 30 -> 252; with n=400 no refresh exists before the drift. The PIT path sets
+   formation_n, so its window does not depend on later data.
+5. Side effects not in the write-up: a first finite rolling estimate now needs ~window + the hedge warm-up (+ up to one
+   21-bar step), e.g. bar 314 for n=400, window 252 -- pairs with ~252-315 real bars are newly dropped by the
+   whole-history sparse exclusion (the 10-year A7 pools lose none). On the static_fallback=True (IBKR deep-history,
+   off by default) path, one more window-length of refreshes uses the full-sample hedge where the rolling hedge is NaN.
+6. Unrelated-walk numbers depend on the construction: reviewer's (drifting a, independent b) 38.3 primary / 99.3 arm,
+   mine 35.8 / 66.1. Both are far above the in-window hedge's ~20. Real-data check numbers were not re-derived by the
+   reviewer (CachyOS only).

@@ -1,4 +1,13 @@
-## 2026-11-10: RESUME HERE. CachyOS hung 11-06 10:07 in seed 3; seed 3 re-running (pinned a0b1e172); seeds 1-2 agree
+## 2026-11-11: RESUME HERE. Ross took the 11-05 recommendations; two built, the one-year arm dropped (Development.md 2026-11-11)
+- Rolling half-life now uses the hedge from before each window (e53db23c; test 19/19, old code 12/19; review CONFIRM for
+  the primary path). Real pools: k2 rolling median 16.8 -> 28.1, time stop ~doubles, no pair lost. Kendall-corrected arm:
+  column half_life_rolling_bc, `--override HALF_LIFE_COLUMN=half_life_rolling_bc` (review: biased by the forward-fill).
+- One-year discovery arm dropped: ~0 power at the real cutoff. Review: short-lived (2-5 year) fast relationships are a
+  blind spot of BOTH window lengths -- the binding limit is the test-family size. Raised with Ross.
+- Two questions for Ross (chat 2026-11-11): stop forward-filling a refresh that finds no mean reversion; whether to
+  design a smaller-family confirmatory test for fast episodes. Whole-history sparse exclusion still flagged (no live loss).
+- Seed 3 re-run: build identical to the hung run's (plants and build table equal); discovery in Tier 3 at 10:06 11-11.
+## 2026-11-10: CachyOS hang. CachyOS hung 11-06 10:07 in seed 3; seed 3 re-running (pinned a0b1e172); seeds 1-2 agree
 - Seed 20261025 completed 11-06 00:40. Seed 20261026 hung in Tier 3's candidate stage (not checkpointed; resume impossible).
   Hung state kept in ~/CAMARF_e1_runs/v2_seed20261026_hung_20261106/. Re-run started 11-10 20:11 with
   ~/CAMARF_e1_runs/chain_seed3_rerun_20261110.sh: the original chain minus `git pull`/checkout, so seed 3 runs on the same
