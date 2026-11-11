@@ -232,6 +232,7 @@ def write_spread_series(sym_a: str, sym_b: str, tf_label: str, per_bar: dict) ->
             "z_rolling": per_bar["z_rolling"],
             "z_expanding": per_bar["z_expanding"],
             "half_life_rolling": per_bar["half_life_rolling_series"],
+            "half_life_rolling_bc": per_bar.get("half_life_rolling_bc_series"),   # comparison arm, Ross 2026-11-11
             "gap_flag_a": per_bar["gap_flag_a"],
             "gap_flag_b": per_bar["gap_flag_b"],
             "hedge_ratio_ols_t": per_bar.get("hedge_ratio_ols_t"),

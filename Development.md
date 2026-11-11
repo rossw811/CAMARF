@@ -30511,3 +30511,55 @@ correlation prefilter). Same picture as seed 1: the pipeline finds fast pairs it
 Window false share at the real BH cutoff (~2e-5): international 0.67 / 0.52, mixed 0.21 / 0.25, US 0.65 / 0.83. Tail rates
 p<1e-4: 0.0004/0.0003 international, 0.0003/0.0003 mixed, 0.0006/0.0006 US -- 3-6x nominal in both seeds (V3 asks why).
 V3 itself did not run: the Surface's low-memory guard killed it 11-05 before any output; re-run on CachyOS after seed 3.
+
+### Session 2026-11-11: Ross took the three 11-05 recommendations ("i like your recommendations, continue") -- two built, one dropped on evidence (UNREVIEWED)
+**1. Rolling half-life hedge (BUG-D123 completion).** `SpreadModel.rolling_half_life_hedged` (analysis.py) now holds the
+hedge at its value just before each window, `hedge[t - window]`, instead of `hedge[t]` (inside the window). Where no
+finite prior hedge exists (the first window), NaN -- no in-window fallback. Probe through `fit_pair` (8 seeds, n=3000,
+production adaptive window: 42 bars for a 5-day pair, 252 for slow ones), median of per-pair rolling medians:
+
+| truth | in-window hedge (was) | hedge before window (now) | now + Kendall (arm) |
+|---|---|---|---|
+| 5 | 3.5 | 3.6 | 6.1 |
+| 10 | 7.3 | 8.0 | 13.2 |
+| 20 | 13.1 | 15.9 | 28.0 |
+| 60 | 20.6 | 31.7 | 71.0 |
+| 120 | 21.7 | 35.5 | 75.9 |
+| unrelated walks | 21.6 | 35.8 | 66.1 |
+
+Read as: the in-window hedge pulled slow pairs and unrelated walks to ~20 days (the Engle-Granger effect); the prior
+hedge removes that. Short windows still bias fast pairs short (small-sample AR(1) bias, which only the correction moves).
+A 252-bar window cannot tell slow from unrelated with either estimator -- that separation stays with discovery. For
+fast pairs, ~half of a true 5-day pair's bars fall below MIN_HALF_LIFE_BARS=5 even with the TRUE hedge (fixed 252-bar
+probe: oracle 61% below 5): sampling noise around a floor set at the truth, not an estimator bug.
+**2. Kendall small-sample correction, comparison arm.** `half_life_ar1(..., bias_correct=True)`:
+phi_bc = (T phi_hat + 1)/(T - 3) (Kendall 1954, AR(1) with intercept). fit_pair returns `half_life_rolling_bc_series`;
+`_build_pair_result` and `episodic_pairs_adapter.write_spread_series` carry it as column `half_life_rolling_bc`.
+`Config.BACKTEST.HALF_LIFE_COLUMN` (default "half_life_rolling") picks the column behind the time stop and the floor:
+backtest.py via `--override HALF_LIFE_COLUMN=half_life_rolling_bc` (fails loud if the column is missing); ml.py reads the
+global Config value (an ML-gated arm must set it in config). Over-corrects at 20 days (28) -- arm, not primary.
+**Tests.** debug/_verify_half_life_hedge_consistency.py checks 6-8 added: new code 19/19; old code (001d29c9, temp
+worktree) 12/19, all 7 new checks fail. Related tests pass on the new code: pipeline end-to-end 5/5, prefix invariance
+13/13, AR(1) off-by-one 5/5, sparse exclusion 3/3, hedge-gap mask 1/1, half-life skip attribution 5/5, D101, D56, D61, D95,
+ML feature lag / gate fail-closed 3/3 / PIT pool 16/16 / sealed 2/2, backtest common holdout 3/3 / data-gap exit 6/6 /
+PIT pool 19/19 / pnl cap 5/5 / risk parity.
+**A2 test changed (disclosed).** debug/_verify_a2_causal_hedge_arm.py check 2 ("spread up to t0 unchanged when only the
+future changes") failed: its future change (a 0.8 drift after t0) ends the relationship, the pair then has no finite
+rolling half-life (all windows with a prior hedge come after the drift), and the sparse-pair exclusion in
+`_build_pair_result` returns None. The spread itself has no lookahead. The future change is now fresh noise after t0;
+check 3 (the full-sample method's lookahead is detected) still passes, so check 2 can still see lookahead. 6/6.
+**For Ross (not changed):** that exclusion (2026-09-12 decision: no rolling half-life anywhere -> drop the pair) decides on
+the WHOLE history, so data after date T can remove a pair that existed at T. True before today too; the in-window first
+estimate used to keep most such pairs. The backtest already skips entries without a half-life bar by bar, which is the
+causal version. Also pre-existing: a refresh whose AR(1) gives phi >= 1 (NaN) is forward-filled with the previous
+estimate, so "no mean reversion now" reads as the last half-life; the Kendall arm hits this more (64-85% finite at
+refreshes for slow / unrelated pairs).
+**3. One-year discovery window arm -- DROPPED before any run (my recommendation was wrong).** Built (`--window-bars 252`,
+suffix `_w252`, lineage stage, 12/14-check test) and backed out after its power check failed. Measured with
+debug/_measure_eg_power_by_window.py (production coint, max over both directions, 200 reps each; p<2e-5 ~ the real Tier 3
+BH cutoff): spread s.d. 0.10 -- 252-bar windows: half-life 1: 0.06, 2: 0.07, 3: 0.02, 5/10/20: 0.00; 2520-bar windows:
+5: 1.00, 20: 0.84, 60: 0.01, 120: 0.00. Tighter spreads, 252 bars: s.d. 0.02 -- 2: 0.84, 5: 0.06, 10: 0.01; s.d. 0.05 --
+2: 0.41, 5+: 0.00. So one-year windows only pass the real cutoff for ~2-day pairs (below the 5-bar floor), and the
+premise was wrong: 10-year windows already find 5-20-day pairs almost always (E1 agrees: tested fast plants found ~100%).
+The real pools being slow (BUG-D123 real check: k2 median 290 days) is a finding about the market, not a blind spot of
+the window length. Reverted patch kept outside the repo; rebuilding is a few lines (pattern of the grid-offset arm).

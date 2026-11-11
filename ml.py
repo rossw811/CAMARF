@@ -322,7 +322,7 @@ def _build_examples_for_pair(
         pos = series.index.get_loc(t)
         feat_pos = max(0, pos - feature_lag)  # == pos when feature_lag=0 (all real callers)
         z_entry = float(series["z_rolling"].iloc[pos])  # true entry z -- drives the label, never staled
-        hl = series["half_life_rolling"].iloc[pos]
+        hl = series[Config.BACKTEST.HALF_LIFE_COLUMN].iloc[pos]   # same column as the backtest (arm 2026-11-11)
         if not np.isfinite(hl) or hl <= 0:
             hl = half_life_fallback
         if not np.isfinite(hl) or hl <= 0:
@@ -355,7 +355,7 @@ def _build_examples_for_pair(
         # if the staled bar itself has no usable half-life, so the horizon
         # computed above never changes with feature_lag.
         z_feat = float(series["z_rolling"].iloc[feat_pos])
-        hl_feat = series["half_life_rolling"].iloc[feat_pos]
+        hl_feat = series[Config.BACKTEST.HALF_LIFE_COLUMN].iloc[feat_pos]
         if not np.isfinite(hl_feat) or hl_feat <= 0:
             hl_feat = hl
         if strict:

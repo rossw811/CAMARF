@@ -3045,11 +3045,15 @@ class SpreadModel:
         return z.values
 
     @staticmethod
-    def half_life_ar1(spread: np.ndarray) -> float:
+    def half_life_ar1(spread: np.ndarray, bias_correct: bool = False) -> float:
         """
         Half-life from AR(1) fit:
             spread_t = α + φ * spread_{t-1} + ε
             half_life = -ln(2) / ln(φ),  valid when 0 < φ < 1
+        bias_correct (comparison arm, Ross 2026-11-11): Kendall (1954) small-sample correction for AR(1) with an
+        intercept, E[φ_hat] ≈ φ - (1 + 3φ)/T, solved for φ: φ_bc = (T φ_hat + 1) / (T - 3), T = number of
+        (lag, now) pairs. OLS φ is biased toward 0 in short windows, so uncorrected half-lives read short
+        (production 42-bar window, planted 5-day pair: median 3.6; corrected 6.1). NaN when φ_bc >= 1.
         """
         s = spread[np.isfinite(spread)]
         if s.size < 30:
@@ -3075,6 +3079,9 @@ class SpreadModel:
         if var_lag <= 0:
             return np.nan
         phi = float(np.dot(s_lag_c, s_now_c) / var_lag)
+        if bias_correct:
+            T = s_lag.size
+            phi = (T * phi + 1.0) / (T - 3.0)
         if phi <= 0 or phi >= 1:
             return np.nan
         return float(-np.log(2) / np.log(phi))
@@ -3128,19 +3135,28 @@ class SpreadModel:
         hedge: np.ndarray,
         window: int = 252,
         step: int = 21,
+        bias_correct: bool = False,
     ) -> np.ndarray:
-        """rolling_half_life's schedule (refresh every `step` bars, forward-filled; NaN before the first full window).
-        BUG-D123: the estimate at t is half_life_ar1 of log_a - h_t * log_b over the trailing `window` rows, with h_t
-        the hedge traded at t held FIXED across the window (causal: h_t uses rows <= t), instead of the trading spread
-        whose hedge changes inside the window. Where h_t is not finite, the window's own OLS hedge (half_life_coint)."""
+        """rolling_half_life's schedule (refresh every `step` bars, forward-filled; NaN before the first estimate).
+        BUG-D123: the estimate at t is half_life_ar1 of log_a - h * log_b over the trailing `window` rows
+        [t-window+1, t], with h held FIXED across the window, instead of the trading spread whose hedge changes inside
+        the window.
+        h = hedge[t - window], the hedge as it stood just before the window opened (Ross 2026-11-11). A hedge fitted on
+        the window's own rows (hedge[t], or an in-window OLS) makes the residual look more stationary than it is
+        (the Engle-Granger effect) and read slow pairs and unrelated walks as ~20 days. With the prior hedge (fit_pair
+        path, 8 seeds): 60-day plant 31.7, 120-day 35.5, unrelated walks 35.8 -- a 252-bar window still cannot tell
+        slow from unrelated; that separation is discovery's job. Where no finite prior hedge exists (the first
+        window), NaN -- never an in-window fallback. bias_correct: see half_life_ar1 (comparison arm).
+        debug/_verify_half_life_hedge_consistency.py"""
         n = log_a.size
         hl = np.full(n, np.nan, dtype=float)
         if n < window:
             return hl
         for t in range(window - 1, n, step):
+            if t - window < 0 or not np.isfinite(hedge[t - window]):
+                continue
             a, b = log_a[t - window + 1: t + 1], log_b[t - window + 1: t + 1]
-            h = hedge[t]
-            hl[t] = SpreadModel.half_life_ar1(a - h * b) if np.isfinite(h) else SpreadModel.half_life_coint(a, b)
+            hl[t] = SpreadModel.half_life_ar1(a - hedge[t - window] * b, bias_correct=bias_correct)
         return pd.Series(hl).ffill().values
 
     @staticmethod
@@ -3257,8 +3273,8 @@ class SpreadModel:
         cfg = Config.ANALYSIS
         # BUG-D123: every half-life uses ONE hedge held fixed inside its estimation window (an AR(1) on the trading
         # spread, whose hedge is re-estimated daily, overstated a planted 5-day half-life 20-1000x): whole history ->
-        # the static hedge (descriptive); formation -> OLS on the formation rows; rolling -> the hedge traded at the
-        # window's last bar. Same real rows as the spread. debug/_verify_half_life_hedge_consistency.py
+        # the static hedge (descriptive); formation -> OLS on the formation rows; rolling -> the hedge as it stood
+        # just before the window opened (Ross 2026-11-11; was the hedge at the window's last bar). Same real rows as the spread. debug/_verify_half_life_hedge_consistency.py
         la_real, lb_real = log_a[real_pos], log_b[real_pos]
         h_bar = np.where(np.isfinite(hedge_series), hedge_series,
                          hedge_static if (static_fallback and np.isfinite(hedge_static)) else np.nan)
@@ -3274,6 +3290,10 @@ class SpreadModel:
         z_real = SpreadModel.rolling_zscore(spread_real, mean_window)
         z_exp_real = SpreadModel.expanding_zscore(spread_real)
         hl_roll_real = SpreadModel.rolling_half_life_hedged(la_real, lb_real, h_real, window=mean_window)
+        # comparison arm (Ross 2026-11-11): same estimate with the small-sample AR(1) correction; read by the backtest
+        # only under Config.BACKTEST.HALF_LIFE_COLUMN = "half_life_rolling_bc"
+        hl_roll_bc_real = SpreadModel.rolling_half_life_hedged(la_real, lb_real, h_real, window=mean_window,
+                                                               bias_correct=True)
 
         # Trip-wire (2026-09-10, item #4 of the bug-catching plan, docs/HANDOFF.md):
         # a column that should carry real signal silently degenerating to 100% NaN
@@ -3298,6 +3318,8 @@ class SpreadModel:
         z_rolling[real_pos] = z_real
         z_expanding[real_pos] = z_exp_real
         hl_rolling[real_pos] = hl_roll_real
+        hl_rolling_bc = np.full(n, np.nan, dtype=float)
+        hl_rolling_bc[real_pos] = hl_roll_bc_real
 
         hl_rolling_median = (
             float(np.nanmedian(hl_roll_real))
@@ -3328,6 +3350,7 @@ class SpreadModel:
             "z_expanding": z_expanding,
             "half_life_full": hl_full,
             "half_life_rolling_series": hl_rolling,
+            "half_life_rolling_bc_series": hl_rolling_bc,
             "half_life_rolling_median": hl_rolling_median,
             "half_life_trend_slope": trend_slope,
             "mean_reversion_speed": theta,
@@ -5994,6 +6017,7 @@ class AnalysisPipeline:
             "z_rolling": sm["z_rolling"],
             "z_expanding": sm["z_expanding"],
             "half_life_rolling_series": sm["half_life_rolling_series"],
+            "half_life_rolling_bc_series": sm["half_life_rolling_bc_series"],
             "gap_flag_a": gap_flag_a,
             "gap_flag_b": gap_flag_b,
             "hedge_ratio_ols_t": hr["ols_series"],

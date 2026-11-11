@@ -80,7 +80,12 @@ def main():
     idx = pd.bdate_range("2015-01-02", periods=n)
     t0 = 250
     la2 = la.copy()
-    la2[t0 + 1:] += np.linspace(0, 0.8, n - t0 - 1)      # change only the FUTURE (after t0)
+    # change only the FUTURE (after t0). 2026-11-11: was a 0.8 drift, which ends the relationship after t0; since the
+    # rolling half-life takes its hedge from before each window, the pair then has no finite rolling half-life and the
+    # whole-history sparse-pair exclusion (analysis._build_pair_result) drops it -- a pair-INCLUSION effect of future
+    # data (flagged to Ross, Development.md 2026-11-11), not the spread lookahead this check is about. Fresh noise after
+    # t0 still moves the full-sample hedge (check 3 proves the check can see lookahead) and keeps the pair.
+    la2[t0 + 1:] += np.random.default_rng(6).normal(0, 0.01, n - t0 - 1)
     orig = (cfg.HEDGE_FALLBACK, cfg.DAILY_GAP_BREAKS)
     try:
         cfg.HEDGE_FALLBACK = "causal_expanding"

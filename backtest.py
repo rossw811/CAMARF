@@ -742,7 +742,10 @@ class BacktestEngine:
 
         z_arr = df["z_rolling"].values
         spread_arr = df["spread"].values
-        hl_arr = df["half_life_rolling"].values
+        _hl_col = getattr(self.cfg, "HALF_LIFE_COLUMN", "half_life_rolling")
+        if _hl_col not in df.columns:   # fail loud: an arm on spread files that predate the column is not that arm
+            raise KeyError(f"HALF_LIFE_COLUMN={_hl_col!r} not in spread series for {sym_a}/{sym_b} -- re-run the adapter")
+        hl_arr = df[_hl_col].values
         timestamps = df.index
         n = len(df)
 

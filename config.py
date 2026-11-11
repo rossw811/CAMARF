@@ -785,6 +785,10 @@ class BacktestConfig:
     CORR_EXIT_THRESHOLD = 0.20   # rolling correlation drops below this → structural breakdown exit
     CORR_EXIT_WINDOW = 60        # bars for rolling correlation check
     MIN_HALF_LIFE_BARS = 5       # skip entry if half_life_at_entry < this (degenerate)
+    HALF_LIFE_COLUMN = "half_life_rolling"   # spread-series column behind the time stop and the floor above.
+        # Comparison arm (Ross 2026-11-11): "half_life_rolling_bc" = the same estimate with Kendall's small-sample
+        # AR(1) correction (analysis.SpreadModel.half_life_ar1). Select with --override HALF_LIFE_COLUMN=half_life_rolling_bc
+        # (backtest.py). ml.py reads the global Config value, so an ML-gated arm must set it in config, not --override.
 
     # Capital concentration (per pair)
     # DEAD (Tier 6 fix, Grand Sweep 2026-07-20): confirmed unused anywhere
