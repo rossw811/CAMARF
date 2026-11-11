@@ -30476,3 +30476,38 @@ mean_reversion_speed (full-sample, descriptive) still feeds the ML fallback in n
 All 8 related tests re-run by the reviewer: pass.
 Before D123 is done: Ross's two choices (rolling hedge; MIN_HALF_LIFE_BARS vs a small-sample correction), then a test of
 the rolling series against null and 60/120-day plants, then the adapter + backtest re-runs (after the E1 seeds).
+
+### Session 2026-11-10: CachyOS hang in E1 v2 seed 3; seed 3 re-run pinned to seeds 1-2's code; two-seed V1 (UNREVIEWED)
+**Hang.** CachyOS hung 2026-11-06 10:07 (journal boot -2 ends 10:07:24), nine hours into seed 20261026's discovery, while
+Tier 3 was building its candidate list (rolling correlation, window end 2010-06-02, 140/231 block-pairs). That stage has no
+checkpoint and the scan refuses to resume over existing outputs without `--fresh` (research/wrds_deep_history_episodic_scan.py
+~1194), so seed 3 is re-run from scratch. Hung state kept: ~/CAMARF_e1_runs/v2_seed20261026_hung_20261106/ (plants, logs).
+Watchdog still not armed, so the machine sat hung until Ross power-cycled it (up again 11-10 20:02).
+**Re-run** (started 11-10 20:11): ~/CAMARF_e1_runs/chain_seed3_rerun_20261110.sh = the original chain
+(debug/_tmp_chain_e1_v2_20261102.sh) with three changes, checked by diff: no `git pull`, no worktree checkout (a guard stops
+it unless the worktree is at a0b1e172), loop over seed 20261026 only. Reason: the original chain moves the worktree to
+current main, which now includes the BUG-D123 half-life fix; seed 3 would then run different code from seeds 1-2.
+Real inputs it scores against are unchanged since 11-04 (latest real Tier 3 windows 11-03 16:53). A free check when it lands:
+the rebuilt `_e1_plants.parquet` against the hung run's copy (same seed, so it should be identical).
+**V1, seeds 1-2 (seed 3 pending; independent review V6 after all three).** From ~/CAMARF_e1_runs/v2_seed2026102{4,5}/_e1_score_*.parquet
+and the real A7 pools (output/research/purity_pairs_pit_k{1,2}_clean.parquet on CachyOS, 1D):
+
+| pool | arm | placebo false positives s1 / s2 | real pool pairs |
+|---|---|---|---|
+| k1 | international | 215 / 151 | 184 |
+| k1 | mixed | 61 / 69 | 58 |
+| k1 | US gated | 302 / 364 | 549 |
+| k2 | international | 5 / 1 | 17 |
+| k2 | mixed | 0 / 2 | 7 |
+| k2 | US gated | 2 / 1 | 45 |
+
+Totals: k1 578 / 584 null pairs from a universe with no long-run relations, against 791 real; k2 7 / 4 against 69 (~6-10%).
+Read as: the k1 pool is mostly what noise alone produces; k2 is not. Caveat: placebo counts are one draw each, the real pool
+is not all-null, so the ratio is a rough upper-side false share, not an estimate with an interval; international k2 rests on
+single digits.
+Plant recovery, both seeds (found / tested, k2): 5-day 10/10 + 9/9 (s1), 11/11 + 6/6 (s2); 20-day 14/14 + 11/13, 12/13 + 13/14;
+60-day 1/16 + 2/11, 1/15 + 1/13; 120-day 0 in both. Untested fast plants are mostly the 0.15-0.20 spread s.d. ones (they fail the
+correlation prefilter). Same picture as seed 1: the pipeline finds fast pairs it tests and almost never slow ones.
+Window false share at the real BH cutoff (~2e-5): international 0.67 / 0.52, mixed 0.21 / 0.25, US 0.65 / 0.83. Tail rates
+p<1e-4: 0.0004/0.0003 international, 0.0003/0.0003 mixed, 0.0006/0.0006 US -- 3-6x nominal in both seeds (V3 asks why).
+V3 itself did not run: the Surface's low-memory guard killed it 11-05 before any output; re-run on CachyOS after seed 3.

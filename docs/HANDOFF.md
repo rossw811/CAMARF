@@ -1,4 +1,13 @@
-## 2026-11-05: RESUME HERE. E1 v2 seed 1 scored (unreviewed); Ross's 3 decisions recorded; BUG-D123 fixed (unreviewed)
+## 2026-11-10: RESUME HERE. CachyOS hung 11-06 10:07 in seed 3; seed 3 re-running (pinned a0b1e172); seeds 1-2 agree
+- Seed 20261025 completed 11-06 00:40. Seed 20261026 hung in Tier 3's candidate stage (not checkpointed; resume impossible).
+  Hung state kept in ~/CAMARF_e1_runs/v2_seed20261026_hung_20261106/. Re-run started 11-10 20:11 with
+  ~/CAMARF_e1_runs/chain_seed3_rerun_20261110.sh: the original chain minus `git pull`/checkout, so seed 3 runs on the same
+  code as seeds 1-2 (a0b1e172, before the BUG-D123 fix). Real inputs unchanged since 11-04. ETA ~20:00 Wed 11-11.
+  When it lands: compare its `_e1_plants.parquet` with the hung run's copy (build determinism), V1 three-seed table, V6 review.
+- Two-seed V1 (unreviewed, Development.md 2026-11-10): k2 placebo false positives 7 / 4 against 69 real k2 pairs (~6-10%);
+  k1 578 / 584 against 791 real (~73%). Plant recovery agrees across seeds. Supports decision 1 (k2 primary).
+- V3 (EG null calibration) not run: killed on the Surface by the low-memory guard 11-05. Re-run on CachyOS after seed 3.
+## 2026-11-05: E1 v2 seed 1 scored (unreviewed); Ross's 3 decisions recorded; BUG-D123 fixed (unreviewed)
 - E1 v2: seed 20261024 done 04:19 (k1 pool 578/731 false positives, k2 7/69); seed 20261025 in discovery since 04:42
   (~20 h), then 20261026. Chain `debug/_tmp_chain_e1_v2_20261102.sh` in ~/CAMARF_e1. One heavy job at a time.
 - Ross 2026-11-05 decided (effective after 3 seeds + review): k2 primary pool; fast mean-reversion scope with a
