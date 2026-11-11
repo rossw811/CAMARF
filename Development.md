@@ -30563,3 +30563,11 @@ BH cutoff): spread s.d. 0.10 -- 252-bar windows: half-life 1: 0.06, 2: 0.07, 3: 
 premise was wrong: 10-year windows already find 5-20-day pairs almost always (E1 agrees: tested fast plants found ~100%).
 The real pools being slow (BUG-D123 real check: k2 median 290 days) is a finding about the market, not a blind spot of
 the window length. Reverted patch kept outside the repo; rebuilding is a few lines (pattern of the grid-offset arm).
+**Real-data check (CachyOS, e53db23c, whole-history descriptive fit, debug/_tmp_d123_rolling_realcheck.py there).**
+Real A7 pools (output/research/purity_pairs_pit_k{2,1}_clean.parquet, 1D): k2 69/69 fitted, rolling median q10/50/90
+old 13.5/16.8/18.8 -> new 22.6/28.1/33.8 -> Kendall arm 37.8/54.1/69.9; k1 (150 sampled) old 17.2 -> new 30.5 -> arm 59.9
+(median). Pairs with an all-NaN rolling series (dropped by the sparse exclusion): 0 old, 0 new, both pools. Share of
+finite bars below 5: k2 1.9% -> 0.4% (arm 0.2%). z/rolling window 252 for every pair (unchanged). Consequence: the time
+stop (2 x half-life at entry) roughly doubles on the real pools (~34 -> ~56 bars; arm ~108), so the adapter + backtest
+re-runs after the E1 seeds will move. Real pools read near unrelated walks (36) on this estimator: on 252-bar windows it
+sets the holding clock, it does not grade pair quality.
