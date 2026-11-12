@@ -31006,3 +31006,35 @@ NOT re-sized after the result (that would be a new pre-registered family with it
   classes; same-index ETFs need a declared list (survivorship: today's ETFs) -- to be designed and shown before building.
 Order (unchanged): power and false share on the E1 v3 placebo -> pre-register the family -> real data. No real price
 has been read for P2.
+
+### Session 2026-11-12 (cont.): E1 v3 seed 1 STOPPED by its tier-1 guard -- v3 breaks the volatility-correlation link (design flaw)
+Chain launched 05:46 (main c91c984a); build done 06:06 (v3, EWMA lambda 0.965, mean block 3.50); discovery killed by the
+guard 07:49: tier-1 placebo / real candidates US 0.598 (floor 0.8), international 0.811, mixed 1.148. v2 on the SAME seed:
+US 0.915 (other v2 seeds 0.859-0.892).
+**Cause, measured (CachyOS, 150 US series with >= 99% bars 2006-2015, daily log total returns, pairwise):**
+| series | mean corr | share of pairs >= 0.4 |
+|---|---|---|
+| real | 0.217 | 0.125 |
+| real / own causal EWMA vol (lambda 0.965) | 0.176 | 0.050 |
+| v3 placebo (seed 20261024) | 0.186 | 0.065 |
+| v2 placebo (seed 20261025) | 0.212 | 0.123 |
+v3 resamples vol-standardised residuals and multiplies back by each series' vol on the TARGET day, so the strongly
+co-moving residuals of high-vol days land on random-vol days. Real correlation is higher when vol is high; that link is
+what lifts raw 10-year correlations over the prefilter threshold, and v3 removes it -- its raw correlations look like the
+real STANDARDISED ones. The synthetic GARCH-t check (P1) used one pair with constant correlation, so it could not see
+this. Not a code bug: the approved P1 design is wrong for the prefilter stage. A placebo that under-produces candidates
+understates the null's false-discovery count -- the guard (built after E1 v1's 43% gap) caught exactly this.
+**Orphaned workers:** the guard's `kill $DPID` stopped only the parent; 15 multiprocessing workers of the discovery scan
+(cwd ~/CAMARF_e1, ppid 1, ~0% CPU) still hold ~27 GB. My attempt to stop them was denied by the permission classifier --
+left for Ross. FIXED for future runs: the three E1 chains start discovery with `setsid` (own process group, $! = PGID) and
+the guard runs `kill -- -$DPID`; mechanism checked on CachyOS (3 group members -> 0). The v2 chain files carry the same fix
+(not re-run).
+**Proposal for Ross (not built): v3b = v3 + volatility-matched source days.** Keep v3's standardise -> resample ->
+multiply-back, but draw each block's source days only from days in the same year whose MARKET volatility state (cross-
+sectional median of each series' causal EWMA vol relative to its own trailing median) is in the same quantile bin as the
+target block's start day. High-vol target days then get high-vol (high-correlation) residuals, so each series keeps its own
+vol path AND the vol-correlation link; long-run relations are still broken (sources are other days). Checks before any
+build: (1) synthetic -- a 2-regime factor model whose correlation rises with vol: v3 loses the link, v3b keeps share >= 0.4
+within sampling error; GARCH-t far-tail check still passes; (2) real, cheap (the table above, no discovery): v3b's share
+>= 0.4 and mean corr within 10% of real on the same 150 series, then the tier-1 guard ratio on a full build. Cost: ~1 day
+of code + checks, then 5 x ~20 h.

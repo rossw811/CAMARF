@@ -40,11 +40,13 @@ m, pm = load_membership_gate()
 bad = [r.plant for r in us.itertuples() if pm.get(r.plant) is None or m[m.permno == pm[r.plant]].empty]
 print(len(us), 'US plants;', len(bad), 'unresolved', bad[:5]); sys.exit(1 if bad or len(us) == 0 else 0)"
   echo "$(date '+%F %T') [$SEED] START discovery" >> $L
-  $PY -u research/wrds_deep_history_episodic_scan.py --fresh --d18 exclude > $O/_stdout_e1v2_discovery.log 2>&1 &
+  # own process group (setsid execs in place, so $! = PGID): the guard kills the pool workers too (2026-11-12: a
+  # plain kill left 15 orphaned workers holding ~27 GB on CachyOS)
+  setsid $PY -u research/wrds_deep_history_episodic_scan.py --fresh --d18 exclude > $O/_stdout_e1v2_discovery.log 2>&1 &
   DPID=$!
   until grep -q "\[TIER 1\] Saved ->" $O/_stdout_e1v2_discovery.log 2>/dev/null || ! kill -0 $DPID 2>/dev/null; do sleep 60; done
   if ! $PY -u research/placebo_discovery_e1.py check_tier1 --research $O --real-research $MAIN/output/research >> $L 2>&1; then
-    kill $DPID 2>/dev/null; echo "$(date '+%F %T') [$SEED] GUARD: tier-1 candidate gap -- discovery killed, STOPPED" >> $L; exit 1
+    kill -- -$DPID 2>/dev/null; echo "$(date '+%F %T') [$SEED] GUARD: tier-1 candidate gap -- discovery killed, STOPPED" >> $L; exit 1
   fi
   wait $DPID || { echo "$(date '+%F %T') [$SEED] FAILED discovery -- STOPPED" >> $L; exit 1; }
   echo "$(date '+%F %T') [$SEED] done discovery" >> $L
