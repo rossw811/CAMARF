@@ -96,14 +96,32 @@ have client isolation enabled, which silently breaks LAN-IP SSH independent of w
 itself is current. Check `& "C:\Program Files\Tailscale\tailscale.exe" status` for reachability/
 last-seen before assuming a hang. LAN fallback: `rw@10.0.1.9` (IP as of 2026-08-23 — check
 `docs/HANDOFF.md` if stale; a `10.0.1.0/24` port-22 scan finds it if the IP has moved again). CachyOS
-has also shown recurring hard hangs with no diagnosable cause (non-ECC RAM, no EDAC/thermal trail) —
-**the hardware watchdog is NOT armed** (verified 2026-10-26 and 2026-10-27: `intel_oc_wdt` inactive, systemd
+had recurring hard hangs; **cause found by Ross (2026-11-12): an unstable overclock, now reverted** — if
+hangs return, suspect first the `gpu_unlock` kernel module (DKMS, installed 2026-11-12, "experimental" on RTX 40;
+see GPU below). **The hardware watchdog is NOT armed** (verified 2026-10-26 and 2026-10-27: `intel_oc_wdt` inactive, systemd
 `RuntimeWatchdogUSec=0`, `iTCO_wdt` blacklisted), so a hang does not self-recover; the fix is
 `RuntimeWatchdogSec=60` in `/etc/systemd/system.conf.d/` (needs sudo, Ross) -- until then a hang needs a physical power-cycle; a prolonged Tailscale "offline" reading may mean a hang the watchdog didn't
 catch, not just a network issue. **CachyOS has no `pip` binary — `.venv/bin/pip` does not exist
 there.** Its Fish shell is also incompatible with inline bash syntax (write the script to a file,
 `scp` it over, `ssh host bash script.sh`). Use `uv pip install --python .venv/bin/python <package>`
 for any new dependency (confirmed 2026-09-21 installing `tensorflow` for the LSTM/attention work).
+
+**GPU (CachyOS RTX 4080, 16 GB; standing rule, Ross 2026-11-12): build new modules GPU-first.** Any new module (or a
+module being rewritten) whose heavy part is dense array math -- matrix products, correlation/covariance matrices,
+eigendecompositions, neural nets, large vectorized simulations -- uses the GPU by default with automatic CPU fallback:
+take the array module from `gpu_backend.get_array_module(...)` / decide with `gpu_backend.should_use_gpu(n)` (checks
+size crossover, device, and free VRAM right now; never raises; the Surface has no CUDA and must run unchanged), and
+TensorFlow uses the GPU on its own. Three conditions, all required: (1) **measured faster** -- benchmark GPU vs CPU at
+the real problem size before making GPU the default; Python-loop / statsmodels-bound work (EG, ADF, Johansen per pair)
+was measured SLOWER on the GPU (2026-08 batched EG 0.6x) and stays on the CPU; (2) **identical decisions** -- anything
+that thresholds, ranks or selects on a GPU-computed number either recomputes the near-threshold cases on the CPU (as
+`UniverseFilter._recheck_threshold_band_cpu`) or proves the selection identical in its `debug/_verify_*` test; GPU
+float64 differs in the last digits, TF32/FP16 by far more (never use reduced precision for a statistic that feeds a
+decision); (3) **a verify test that runs the CPU path everywhere and the GPU path on CachyOS** (report SKIPPED, not
+PASS-by-fallback, when no GPU). VRAM is shared: TF runs with `TF_FORCE_GPU_ALLOW_GROWTH=true` (set in the CachyOS venv's
+`sitecustomize.py`, which also preloads `libcusolver.so.11` -- without it TF silently ran CPU-only until 2026-11-12).
+The `gpu_unlock` module gives FP16/TF32 tensor math with FP32 accumulation at full rate (measured 181.6 TFLOPS, vs ~97
+capped); it does not speed up FP64 or memory-bound work.
 
 ## Working Style
 

@@ -152,5 +152,30 @@ check("6. v2b: corr within 10% of real, clustering > v2 by 3 paired SE, planted 
       f"corr {np.mean(c2b):.3f} vs real {real.mean():.3f} ({rel2b:.1%}); ACF|r| v2b {np.mean(a2b):.3f} "
       f"v2 {np.mean(a2):.3f}; placebo median p {np.median(p2b):.3f}")
 
+# 7. v2c (top volatility bin without replacement): every top-bin day of each year is a source exactly once; the other
+#    bins are untouched (same draws as v2b would not hold -- only structure is checked); correlation within 10% of
+#    real; planted cointegration broken.
+once_ok, c2c, p2c = True, [], []
+for s_ in SEEDS:
+    lp, _ = dgp(s_)
+    rets = pd.DataFrame({k: lp[k].diff() for k in names})
+    lam = m.choose_ewma_lambda({c: rets[c] for c in rets.columns})
+    state = m.market_vol_state(rets, lam)
+    paths = m.vol_matched_paths(cal, state, BLOCK, n_bins=m.VOL_BINS, seed=s_, stress_once=True)
+    st, years = state.reindex(cal).to_numpy(), cal.year.to_numpy()
+    for y, path in paths.items():
+        pos = np.flatnonzero(years == y)
+        rank = np.empty(len(pos), int)
+        rank[np.argsort(st[pos], kind="stable")] = np.arange(len(pos))
+        top = (rank * m.VOL_BINS) // len(pos) == m.VOL_BINS - 1
+        once_ok &= sorted(path[top].tolist()) == sorted(pos[top].tolist())
+    pc = placebo(lp, paths, None)
+    c2c.append(mean_corr(pc, names))
+    p2c.append(coint(pc["S0"], pc["P1"])[1])
+rel2c = abs(np.mean(c2c) - real.mean()) / real.mean()
+check("7. v2c: each top-bin day used exactly once; corr within 10% of real; planted cointegration broken",
+      once_ok and rel2c <= 0.10 and np.median(p2c) > 0.10,
+      f"once {once_ok}; corr {np.mean(c2c):.3f} vs real {real.mean():.3f} ({rel2c:.1%}); placebo median p {np.median(p2c):.3f}")
+
 print(f"\n{passed}/{passed + failed} checks passed")
 sys.exit(1 if failed else 0)
