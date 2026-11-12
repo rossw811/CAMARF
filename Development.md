@@ -30759,3 +30759,30 @@ STOPPED before any re-run step. All three fixed and re-run on the Surface:
    the cache -- a descriptive data-file audit, added to the reviewed exceptions with its reason.
 3. `debug/_verify_parquet_io.py`: debug/_tmp_edge_d121_commission_diff.py (after the A7 suite) and my new
    debug/_verify_placebo_score_null_pairs.py read parquet directly -- both now use parquet_io.
+
+### Session 2026-11-11 (cont.): PROPOSALS for Ross (not built) -- E1 v3 placebo, and a test that can see short fast episodes
+**P1. E1 v3: a placebo that keeps the real volatility path (prerequisite for decision 3, the placebo-calibrated cutoff).**
+Problem (V3 + V6): Engle-Granger's far tail over-rejects under persistent volatility clustering; the v2 placebo keeps
+each year's volatility level but not the within-year persistence, so it may UNDERSTATE the real null tail, and a cutoff
+calibrated on it could be anti-conservative. Seed-to-seed variation is also large and unexplained (3 seeds = a range).
+Design: (1) per series, standardise returns by a causal EWMA volatility (RiskMetrics lambda 0.94); (2) resample the
+standardised residuals with the existing shared within-year stationary bootstrap (keeps cross-section, breaks long-run
+relations); (3) multiply back by each series' REAL volatility path, so clustering, crises and fat tails stay exactly
+where they were in history while cointegration is still broken. Plus episodic plants (a 5/20-day relationship that holds
+for 2 or 5 years inside an otherwise null pair) so recovery is measured for the kind of pair the real pools contain, and
+5 seeds instead of 3. Check first, synthetic: a GARCH-t null pair through the v3 placebo keeps the input's far-tail
+rate (V3 scenario C ~6x at 1e-4), the v2 placebo does not. Cost: ~20 h of CachyOS per seed (~4 days for 5).
+Recommendation: build P1 before the calibrated-cutoff arm; the arm then calibrates on v3 with the largest rate across
+seeds (conservative), as a comparison arm next to BH.
+**P2. A confirmatory test that can see 2-5-year fast episodes (Ross 2026-11-11: write up after the seeds).**
+Problem: at the real BH cutoff (~2e-5, ~1.8M tests) neither 10-year nor one-year windows find fast relationships that
+last 2-5 years (0-25% / 0-5%). BH's cutoff is roughly alpha x R / m, so power needs a small family, not a shorter window.
+Design (point-in-time, yearly): at each year-end T, (1) candidates = pairs with a declared economic link (same SIC
+industry group from WRDS, both legs liquid by the existing ADV gate, both listed >= 2 years) whose trailing one-year
+return correlation >= 0.6 -- decided with data <= T only; (2) one test per candidate: EG on the trailing 252 bars ending
+at T; BH over that year's family only (m ~ hundreds to a few thousand); (3) a pair confirmed at T is tradeable during
+year T+1 only (out of sample by construction); (4) power and false share measured on the v3 placebo with episodic plants
+before any real result is read. Expected: with m ~ 2,000 and tens of discoveries the cutoff is ~5e-4, where the probe
+found 28-45% power for tight 5-day episodes -- still modest; the honest outcome may be "fast episodes are rare or
+undetectable", which is itself a thesis result. Pre-registered as a new search family (its own trial count) only after
+the placebo check. Recommendation: approve P2's design for a placebo-only feasibility run first (no real data read).
