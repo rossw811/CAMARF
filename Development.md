@@ -31093,3 +31093,38 @@ in ~/CAMARF_e1_runs/v3_seed20261024_STOPPED_guard/.
   _verify_half_life_hedge_consistency.py: all six mutants fail 27-check test), research/p2_gated_pairs_20261112.csv.
 - Running: E1 v2b chain on CachyOS since 09:37 (seed 20261024 build); detached (setsid nohup), unaffected by a Surface
   restart. Nothing runs on the Surface.
+
+### Session 2026-11-12 (cont.): GPU -- gpu_unlock verified, TensorFlow on the GPU for the first time, prefilter GPU-auto + 50x CPU fix; GPU-first rule
+Ross installed `gpu_unlock` (github.com/Zagitta/gpu-unlock 2.0.0, GPL; DKMS module + firmware on CachyOS, 12:07;
+"experimental" on RTX 40). Kernel log 12:18: four register passes ret=0, "gpu_unlock: unlocked". Measured (CuPy,
+8192^2 FP16 matmul): FP32 accumulate 181.6 TFLOPS vs FP16 accumulate 183.4 -- a capped GeForce gives ~half in FP32-acc
+(spec ~97.5): the unlock is real. FP32 matmul (no tensor cores) 35.7 TFLOPS. It does not change FP64 or memory-bound work.
+Ross: CachyOS's earlier hard hangs were an unstable overclock, now reverted (CLAUDE.md updated).
+1. **TensorFlow had never used the GPU on CachyOS** (`list_physical_devices('GPU') == []`; every TF job -- LSTM/attention,
+   AE/VAE -- ran on the CPU). Cause: TF 2.21's loader searches the pip NVIDIA wheels but misses nvidia/cusolver/lib
+   ("Could not load dynamic library 'libcusolver.so.11'"). Fix: `uv pip install "tensorflow[and-cuda]==2.21.0"` (added
+   cupti / nvcc / cudnn 9.28; freeze before at ~/venv_freeze_before_tf_cuda_20261112.txt) + the venv's
+   sitecustomize.py preloads libcusolver.so.11 by absolute path and sets TF_FORCE_GPU_ALLOW_GROWTH=true (TF otherwise
+   reserves ~all 16 GB VRAM -- the 2026-08-23 collision class). TF matmul 4096^2: GPU 56.3 TFLOPS vs CPU 0.97.
+   debug/_verify_factor_autoencoders.py on the GPU: 6/6 in 6m35s (s-score AE 0.672 vs PCA 0.692; CPU run on the Surface
+   0.655 -- GPU arithmetic differs, check still passes); CPU-only timing on CachyOS for a fair comparison: pending.
+2. **UniverseFilter.candidate_pairs** looped in Python over every cell of each block (~4.5M per 3000^2 block, ~435
+   blocks per prefilter pass). Hit search vectorized (np.nonzero on the upper triangle -- row-major, same order):
+   identical output (debug/_verify_candidate_pairs_vectorized.py 2/2, incl. NaN, +/- exact-threshold cells, tags);
+   3000^2 block 0.09 s vs 4.30 s (50x, Surface). Benefits every machine and production analysis.py too.
+3. **chunked_pearson_candidate_pairs** (discovery Tier 1 and the Tier-3 rolling prefilter): use_gpu=None = automatic per
+   block via gpu_backend.should_use_gpu; GPU cells within GPU_THRESHOLD_BAND = 1e-9 of the threshold are recomputed on
+   the CPU (_recheck_threshold_band_cpu), so the selected set is the CPU one. debug/_verify_chunked_pearson_gpu_exact.py
+   3/3 on CachyOS: 838,047 pairs, identical set to the CPU run, max |gpu - cpu| 5.11e-15; on the Surface check 3 is
+   reported SKIPPED. 9 related tests pass (chunked matrix 15/15, run_chunked equivalence, pit_wfa, BH threshold subsets...).
+4. **Stays on the CPU (measured, not assumed):** Engle-Granger / ADF / Johansen loops -- the 2026-08 batched-EG GPU
+   variant ran at 0.6x CPU (memory/launch bound; research/gpu_batched_eg_fixed_lag.py), and the unlock does not help that.
+   Production analysis.py run() keeps CPU correlation (Surface has no CUDA; n ~1,660); eigendecomposition GPU benchmark
+   at real sizes pending.
+**Standing rule (Ross 2026-11-12), now in CLAUDE.md:** new modules with dense array math are built GPU-first with CPU
+fallback, subject to (1) measured faster, (2) identical decisions (near-threshold CPU recheck or a proof in the test;
+no reduced precision for decision statistics), (3) a verify test with the CPU path everywhere and the GPU path on CachyOS.
+**E1 v2c** (Ross: "I'll take your recommendation"): v2b + top volatility bin without replacement (every stress day exactly
+once). Synthetic 7/7 (check 7: exactly-once structure, corr 0.469 vs real 0.471, planted cointegration broken p 0.317).
+5-seed whole-history real check running (~/e1_v2c_realcheck_20261112.parquet); the chain launches only if v2c closes the
+gap there.
