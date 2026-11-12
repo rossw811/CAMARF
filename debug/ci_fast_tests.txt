@@ -428,3 +428,4 @@ debug/_verify_stochastic_vol_models.py
 debug/_verify_nelson_siegel.py
 debug/_verify_factor_residuals.py
 debug/_verify_graph_autoencoder.py
+debug/_verify_placebo_e1_v3.py

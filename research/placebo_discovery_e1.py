@@ -36,7 +36,16 @@ v2 (review 2026-10-25, Ross "yes to all"; docs/ERRATA.md "E1 placebo discovery v
     never written).
   - reading: window-level tail rates by arm and false_share_by_arm (placebo tail rate x real windows tested / real
     windows at or below the arm's BH cutoff), per seed; tier1_arm_ratios guards the candidate-count gap.
-Usage: python research/placebo_discovery_e1.py build --dst <dir> [--seed 20261024]
+v3 (Ross 2026-11-11, "yes to all" on proposal P1; `build --version v3`; v2 stays the default):
+  - the real VOLATILITY PATH is kept: each series' own returns are standardized by its own causal EWMA volatility
+    (RiskMetrics form, decay chosen by QLIKE fit, median over the seeded sample -- choose_ewma_lambda), the
+    standardized returns are resampled on the shared path, and the placebo return on own date t is the resampled
+    standardized return times the series' own volatility AT t. Crises stay where they happened (v2 moved a crisis
+    stretch's returns across its year, removing within-year volatility persistence -- V3, 2026-11-11), while the
+    resampling still breaks every long-run relation.
+  - episodic plants (EPISODE_YEARS): the planted spread is a random walk outside a 2-5 year episode and AR(1) around
+    its entry level inside it, so power is measured for the short fast relations the persistent plants do not cover.
+Usage: python research/placebo_discovery_e1.py build --dst <dir> [--seed 20261024] [--version v3]
        python research/placebo_discovery_e1.py score --research <checkout>/output/research --dst <dir>
 Check: debug/_verify_placebo_discovery_e1.py
 """
@@ -62,6 +71,43 @@ PLANT_MIN_MEMBER_SHARE = 0.5
 TIER1_MIN_RATIO = 0.8
 US_PLANT_PERMNO0 = 990000
 PRICE_COLS = ("open", "high", "low", "close", "close_usd", "close_total_return")
+EWMA_LAMBDA_GRID = tuple(np.round(np.arange(0.80, 0.996, 0.005), 3))
+EWMA_WARMUP = 20                      # own returns that seed the first variance
+EPISODE_YEARS = (2, 3, 5)
+EPISODE_HALF_LIVES = (5, 20)
+EPISODE_SPREAD_SDS = (0.05, 0.10)
+PLANTS_PER_EPISODE_CELL = 2
+
+
+def ewma_sigma(r: np.ndarray, lam: float) -> np.ndarray:
+    """Causal EWMA volatility: sigma2[t] = lam * sigma2[t-1] + (1 - lam) * r[t-1]^2 (returns BEFORE t only); a NaN
+    return leaves the variance unchanged. Seeded with the mean square of the first EWMA_WARMUP finite returns."""
+    r = np.asarray(r, float)
+    fin = r[np.isfinite(r)]
+    v = float(np.mean(fin[:EWMA_WARMUP] ** 2)) if fin.size else 0.0
+    if not v > 0:
+        v = float(np.mean(fin ** 2)) if fin.size and np.mean(fin ** 2) > 0 else 1e-8
+    out = np.empty(len(r))
+    for t in range(len(r)):
+        out[t] = v
+        if np.isfinite(r[t]):
+            v = lam * v + (1 - lam) * r[t] * r[t]
+    return np.sqrt(np.maximum(out, 1e-16))
+
+
+def choose_ewma_lambda(returns_by_series: dict) -> float:
+    """Median over series of the decay minimizing QLIKE (mean of r^2 / s2 + log s2) on that series' own returns."""
+    best = []
+    for r in returns_by_series.values():
+        x = pd.Series(r).dropna().to_numpy()
+        if len(x) < 250 or not np.any(x != 0):
+            continue
+        q = []
+        for lam in EWMA_LAMBDA_GRID:
+            s2 = ewma_sigma(x, lam)[EWMA_WARMUP:] ** 2
+            q.append(np.mean(x[EWMA_WARMUP:] ** 2 / s2 + np.log(s2)))
+        best.append(EWMA_LAMBDA_GRID[int(np.argmin(q))])
+    return float(np.median(best)) if best else 0.94
 
 
 def choose_block_length(returns_by_series: dict) -> float:
@@ -112,7 +158,7 @@ def own_valid_returns(lp: pd.Series) -> pd.Series:
 
 
 def placebo_series(log_price: pd.Series, cal: pd.DatetimeIndex, paths: dict, rng=None, stats: dict = None,
-                   src_pos: np.ndarray = None) -> pd.Series:
+                   src_pos: np.ndarray = None, vol_lambda: float = None) -> pd.Series:
     """Placebo log price on the series' own valid dates: the return on own date t is the series' own valid return at
     the shared path's source date for t, or at its next own bar that year when it has none there (v2: one shared,
     deterministic rule -- no random draws; `rng` is unused, kept for the v1 signature). Source dates outside the
@@ -124,6 +170,12 @@ def placebo_series(log_price: pd.Series, cal: pd.DatetimeIndex, paths: dict, rng
     R = own_valid_returns(lp)
     ok = np.isfinite(R.to_numpy())
     vd, vv = R.index[ok], R.to_numpy()[ok]
+    # v3 (`vol_lambda` set): source value = own return / own EWMA volatility at the source bar; placebo return at t =
+    # that x own EWMA volatility at t -- the real volatility path is kept.
+    sig_t = None
+    if vol_lambda is not None:
+        sig_t = ewma_sigma(R.to_numpy(), vol_lambda)       # aligned with R.index = lp.index[1:] = the target dates
+        vv = vv / sig_t[ok]
     t = lp.index[1:]
     pos = np.clip(cal.searchsorted(t, side="right") - 1, 0, len(cal) - 1)   # calendar day at or before t
     S = cal[src_pos[pos]]
@@ -144,7 +196,7 @@ def placebo_series(log_price: pd.Series, cal: pd.DatetimeIndex, paths: dict, rng
             cy = np.flatnonzero(cal_years == y)
             rank = cal.get_indexer(Sy[outside]) - cy[0]
             j[outside] = np.minimum((rank * len(Vy)) // max(len(cy), 1), len(Vy) - 1)
-        out[sel] = vals[j]
+        out[sel] = vals[j] if sig_t is None else vals[j] * sig_t[sel]
         n_shift += int((Vy[j] != Sy).sum())
     if stats is not None:
         stats["shifted"] = stats.get("shifted", 0) + n_shift
@@ -169,6 +221,31 @@ def plant_pair(A: pd.Series, half_life: float, rng, sd: float = SPREAD_SDS[0]):
     for t in range(1, len(A)):
         u[t] = phi * u[t - 1] + eps[t]
     return pd.Series(mu + beta * A.to_numpy() + u, index=A.index), {"beta": beta, "mu": mu, "half_life": half_life}
+
+
+def plant_pair_episodic(A: pd.Series, half_life: float, rng, sd: float, episode_years: float):
+    """B = mu + beta * A + u on A's dates; u is a random walk (increments of the AR(1)'s innovation size) outside one
+    episode of `episode_years` (252 bars a year, start uniform among the positions that fit) and, inside it, an AR(1)
+    with the given half-life around u's level at entry. Returns (B, info incl. episode_start / episode_end)."""
+    n = len(A)
+    L = int(round(252 * episode_years))
+    if n < L + 2:
+        raise ValueError(f"base has {n} bars; a {episode_years}-year episode needs {L}")
+    beta = float(rng.uniform(0.5, 1.5))
+    mu = float(rng.normal(0, 0.5))
+    phi = 0.5 ** (1.0 / half_life)
+    e = rng.normal(size=n) * sd * np.sqrt(1 - phi ** 2)
+    s0 = int(rng.integers(1, n - L + 1))
+    u = np.empty(n)
+    u[0] = rng.normal() * sd
+    c = 0.0
+    for t in range(1, n):
+        if t == s0:
+            c = u[t - 1]                                    # AR(1) around the level at entry
+        u[t] = c + phi * (u[t - 1] - c) + e[t] if s0 <= t < s0 + L else u[t - 1] + e[t]
+    return pd.Series(mu + beta * A.to_numpy() + u, index=A.index), {
+        "beta": beta, "mu": mu, "half_life": half_life, "episode_years": float(episode_years),
+        "episode_start": A.index[s0], "episode_end": A.index[s0 + L - 1]}
 
 
 def write_placebo_file(src: pd.DataFrame, placebo_log_price: pd.Series, out_path: str, label: str = None) -> None:
@@ -214,18 +291,30 @@ def choose_plant_bases(C: pd.DataFrame) -> pd.DataFrame:
     return C[ok].reset_index(drop=True)
 
 
-def plant_grid() -> pd.DataFrame:
-    """One row per plant: arm x half-life x spread s.d. x PLANTS_PER_CELL. Labels: US PERMNO99xxxx (fake PERMNO,
-    unused range), international GVKEY9xxxxx_01W."""
+def plant_grid(episodic: bool = False) -> pd.DataFrame:
+    """One row per plant: arm x half-life x spread s.d. x PLANTS_PER_CELL (persistent, episode_years NaN); with
+    `episodic` also arm x EPISODE_HALF_LIVES x EPISODE_SPREAD_SDS x EPISODE_YEARS x PLANTS_PER_EPISODE_CELL. Labels:
+    US PERMNO99xxxx (fake PERMNO, unused range), international GVKEY9xxxxx_01W. Persistent plants come first in each
+    arm, so a v3 grid's persistent rows carry the same labels as v2's."""
     rows, k = [], {"us": 0, "international": 0}
+
+    def add(arm, hl, sd, ep):
+        i = k[arm]
+        lab = f"PERMNO{US_PLANT_PERMNO0 + i}" if arm == "us" else plant_label(i)
+        rows.append({"plant": lab, "arm": arm, "half_life": hl, "spread_sd": sd, "episode_years": ep})
+        k[arm] += 1
+
     for arm in ("us", "international"):
         for hl in HALF_LIVES:
             for sd in SPREAD_SDS:
                 for _ in range(PLANTS_PER_CELL):
-                    i = k[arm]
-                    lab = f"PERMNO{US_PLANT_PERMNO0 + i}" if arm == "us" else plant_label(i)
-                    rows.append({"plant": lab, "arm": arm, "half_life": hl, "spread_sd": sd})
-                    k[arm] += 1
+                    add(arm, hl, sd, np.nan)
+        if episodic:
+            for hl in EPISODE_HALF_LIVES:
+                for sd in EPISODE_SPREAD_SDS:
+                    for ep in EPISODE_YEARS:
+                        for _ in range(PLANTS_PER_EPISODE_CELL):
+                            add(arm, hl, sd, float(ep))
     return pd.DataFrame(rows)
 
 
@@ -277,7 +366,7 @@ def _member_share(dates: pd.DatetimeIndex, spells: pd.DataFrame) -> float:
     return float(inside.mean())
 
 
-def build(src: str, dst: str, seed: int = SEED):
+def build(src: str, dst: str, seed: int = SEED, version: str = "v2"):
     import seal
     from config import Config
     from research.rolling_adv_comparison import rolling_adv
@@ -292,7 +381,9 @@ def build(src: str, dst: str, seed: int = SEED):
     L = choose_block_length({c: rets[c] for c in rets.columns})
     paths = year_index_paths(cal, L, seed)
     src_pos = source_positions(cal, paths)
-    print(f"{len(files)} 1D files; calendar {cal.min().date()}..{cal.max().date()} ({len(cal)} days); mean block {L:.2f}")
+    lam = choose_ewma_lambda({c: rets[c] for c in rets.columns}) if version == "v3" else None
+    print(f"{len(files)} 1D files; calendar {cal.min().date()}..{cal.max().date()} ({len(cal)} days); mean block {L:.2f}; "
+          f"version {version}" + (f", EWMA lambda {lam:.3f}" if lam is not None else ""))
     thr = Config.STATS.ADV_FILTER_USD
     mb = parquet_io.read_parquet(os.path.join(src, _REF_MEMBERSHIP))
     lmap = parquet_io.read_parquet(os.path.join(src, _REF_LABELMAP)).dropna(subset=["permno"]).set_index("label")["permno"]
@@ -303,7 +394,7 @@ def build(src: str, dst: str, seed: int = SEED):
         lp = _log_price(src_df)
         if len(lp) < 2:
             continue
-        pl = placebo_series(lp, cal, paths, stats=stats, src_pos=src_pos)
+        pl = placebo_series(lp, cal, paths, stats=stats, src_pos=src_pos, vol_lambda=lam)
         write_placebo_file(src_df, pl, os.path.join(dst, os.path.basename(f)), label=lab)
         if "_seg" not in lab and len(pl) >= PLANT_MIN_DAYS and "volume" in src_df.columns:
             arm = "international" if lab.startswith("GVKEY") else "us"
@@ -319,7 +410,7 @@ def build(src: str, dst: str, seed: int = SEED):
             print(f"  {i + 1}/{len(files)}", flush=True)
     C = pd.DataFrame(cand)
     B = choose_plant_bases(C)
-    G = plant_grid()
+    G = plant_grid(episodic=(version == "v3"))
     G["base"] = ""
     for arm in ("us", "international"):
         pool = B.loc[B["arm"] == arm, "label"].to_numpy()
@@ -332,7 +423,11 @@ def build(src: str, dst: str, seed: int = SEED):
     for k, r in enumerate(G.itertuples()):
         base_src = parquet_io.read_parquet(os.path.join(src, f"{r.base}_1D.parquet"))
         A = _log_price(parquet_io.read_parquet(os.path.join(dst, f"{r.base}_1D.parquet")))
-        B_lp, info = plant_pair(A, r.half_life, np.random.default_rng(seed + 10_000 + k), sd=r.spread_sd)
+        prng = np.random.default_rng(seed + 10_000 + k)
+        if np.isfinite(r.episode_years):
+            B_lp, info = plant_pair_episodic(A, r.half_life, prng, sd=r.spread_sd, episode_years=r.episode_years)
+        else:
+            B_lp, info = plant_pair(A, r.half_life, prng, sd=r.spread_sd)
         write_placebo_file(base_src.drop(columns=["quote_only"], errors="ignore"), B_lp,
                            os.path.join(dst, f"{r.plant}_1D.parquet"), label=r.plant)
         plants.append({"plant": r.plant, "base": r.base, "arm": r.arm, "spread_sd": r.spread_sd, **info})
@@ -348,7 +443,7 @@ def build(src: str, dst: str, seed: int = SEED):
     P.to_parquet(os.path.join(dst, "_e1_plants.parquet"), index=False)
     C.to_parquet(os.path.join(dst, "_e1_plant_candidates.parquet"), index=False)
     n = max(stats.get("returns", 1), 1)
-    pd.DataFrame([{"seed": seed, "mean_block": L, "n_files": len(files), "n_plants": len(P),
+    pd.DataFrame([{"seed": seed, "version": version, "ewma_lambda": lam, "mean_block": L, "n_files": len(files), "n_plants": len(P),
                    "shifted_share": stats.get("shifted", 0) / n, "zero_share": stats.get("zero", 0) / n,
                    "random_share": 0.0, "n_reference_links": n_link}]).to_parquet(os.path.join(dst, "_e1_build.parquet"))
     print(f"placebo written to {dst}: {len(P)} plants; source dates shifted to the next own bar "
@@ -424,7 +519,7 @@ def score(research: str, dst: str, real_research: str = None) -> dict:
                               "pool_pairs": sum(1 for aa in arms if aa == a)})
         for kk, r in zip(pkey, plants.itertuples()):
             rec.append({"pool": f"k{k}", "arm": r.arm, "half_life": r.half_life, "spread_sd": r.spread_sd,
-                        "tested": kk in tested, "found": kk in found})
+                        "episode_years": getattr(r, "episode_years", np.nan), "tested": kk in tested, "found": kk in found})
     out = {"pool": pd.DataFrame(pool_rows), "recovery": pd.DataFrame(rec)}
     Wn = W[~is_own]
     rates = [{"arm": a, "n_windows": len(g), **{f"p<{t:g}": float((g["pvalue"] < t).mean()) for t in (0.05, 1e-3, 1e-4)}}
@@ -438,6 +533,10 @@ def score(research: str, dst: str, real_research: str = None) -> dict:
         if name == "recovery":
             print(D.groupby(["pool", "arm", "half_life"])[["tested", "found"]].mean().unstack("half_life").round(2).to_string())
             print(D.groupby(["pool", "arm", "spread_sd"])["found"].mean().unstack("spread_sd").round(2).to_string())
+            ep = D.dropna(subset=["episode_years"])
+            if len(ep):
+                print(ep.groupby(["pool", "arm", "half_life", "episode_years"])["found"].mean()
+                      .unstack("episode_years").round(2).to_string())
         else:
             print(D.to_string(index=False))
     return out
@@ -451,9 +550,10 @@ def main():
     ap.add_argument("--research", default=None)
     ap.add_argument("--real-research", default=None)
     ap.add_argument("--seed", type=int, default=SEED)
+    ap.add_argument("--version", choices=["v2", "v3"], default="v2")
     a = ap.parse_args()
     if a.phase == "build":
-        build(a.src, a.dst, a.seed)
+        build(a.src, a.dst, a.seed, a.version)
     elif a.phase == "check_tier1":
         f = "wrds_deep_history_episodic_scan_tier1.parquet"
         cols = ["symbol_a", "symbol_b"]
