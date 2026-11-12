@@ -30635,10 +30635,10 @@ pairs per scenario, 2520 bars, the production coint call; production p = max ove
 
 (min-direction p: A 1.7-2.0x, D up to 63x.) Read: with steady Gaussian volatility the max-of-directions p is conservative;
 volatility clustering and fat tails make the far tail over-reject, and a crisis stretch more so -- the Engle-Granger
-critical values assume homoskedastic errors. The placebo's 3-6x at 1e-4 sits between C and D, so it is what real-like
-volatility does, not a placebo defect. Consequence: on real data the nominal p near the BH cutoff (~2e-5) understates
-false discoveries; the placebo keeps volatility clustering, so its rates include this -- direct support for decision 3
-(placebo-calibrated cutoff arm). Counts at 1e-4 are small for A-C (1-24); D (98) is firm.
+critical values assume homoskedastic errors. ~~The placebo's 3-6x at 1e-4 sits between C and D, so it is what real-like
+volatility does, not a placebo defect.~~ [REJECTED by V6: seed 3 is 0.8-1.2x; see the review below.] Consequence: on real data the nominal p near the BH cutoff (~2e-5) understates
+false discoveries; ~~the placebo keeps volatility clustering, so its rates include this -- direct support for decision 3
+(placebo-calibrated cutoff arm).~~ [WRONG: a 3.5-day block bootstrap within years removes clustering beyond days.] Counts at 1e-4 are small for A-C (1-24); D (98) is firm.
 
 ### Session 2026-11-11 (cont.): E1 v2 three seeds complete -- V1 (seed agreement) and V5 (pair evidence) (UNREVIEWED; V6 next)
 Seed 20261026 re-run completed 16:25:48 (discovery 1154.5 min). Its Tier 1 log lines (983,250 Pearson candidates,
@@ -30655,7 +30655,8 @@ table are identical -- the re-run is the same experiment. Outputs: ~/CAMARF_e1_r
 | k2 | mixed | 0 / 2 / 0 | 7 |
 | k2 | US gated | 2 / 1 / 0 | 45 |
 
-Totals k1 578 / 584 / 113 vs 791 real (14-74%); k2 7 / 4 / 0 vs 69 (0-10%). k2 is cleaner than k1 in every seed and arm
+~~Totals k1 578 / 584 / 113 vs 791 real (14-74%); k2 7 / 4 / 0 vs 69 (0-10%).~~ [UNDERCOUNTED -- V6 review: plant-with-other
+pairs are null and were left out; corrected below.] k2 is cleaner than k1 in every seed and arm
 (decision 1 holds). Plant recovery in k2 (found / tested, both arms): 5-day 19/19, 17/17, 16/17; 20-day 25/27, 25/27, 25/26;
 60-day 3/27, 2/28, 1/29; 120-day 0 in all. Recovery agrees across seeds; tested fast plants are found at all spread sizes
 (0.89-1.00), 60/120-day almost never.
@@ -30664,7 +30665,7 @@ Totals k1 578 / 584 / 113 vs 791 real (14-74%); k2 7 / 4 / 0 vs 69 (0-10%). k2 i
 files, 128 plants, mean block 3.50 / 3.75 / 3.55 days). Cause: every placebo series shares ONE resampled calendar (that
 is how cross-sectional correlation is kept), so a seed is one alternative market history -- in effect three draws, not
 millions of windows; whether the draw holds volatile stretches drives the far tail (V3: volatility clustering is what
-inflates it). Consequence for decision 3 (placebo-calibrated cutoff): a cutoff from three seeds is unstable; it needs
+inflates it). ~~"Cause: ... explained"~~ [V6: a hypothesis, untested -- see the review below.] Consequence for decision 3 (placebo-calibrated cutoff): a cutoff from three seeds is unstable; it needs
 more seeds or a conservative rule (e.g. the largest rate across seeds), to be proposed to Ross.
 **V5 (do real pool pairs look like planted true pairs or placebo noise?)** Per pair, from each run's Tier 3 windows:
 
@@ -30682,3 +30683,48 @@ most of the 69 are more than noise, but discovery cannot say which. Caveat: the 
 constant relationship for 50 years); a real relationship that holds for one decade looks exactly like a real k2 pair.
 Implication for E1: plant relationships that come and go (episodic plants) to measure recovery of the kind of pair the
 real pools contain.
+
+**V6 independent review of the three-seed write-up (adversarial-reviewer, 2026-11-11): V1 QUALIFY (undercount -- a bug,
+fixed), seed-3 equivalence CONFIRM, seed-3 explanation QUALIFY, V3 bracket REJECTED, V5 QUALIFY.** Re-derived by me:
+1. **BUG in `score()` (fixed).** False positives counted only pool pairs WITHOUT a plant symbol; a plant paired with
+   another symbol is null too (B = mu + beta*A + stationary spread; (A, X) null => (B, X) null) but counted nowhere, and
+   its windows were left out of the null tail rates. Now null = not an own-base plant pair (research/placebo_discovery_e1.py
+   score(), new column null_with_plant); debug/_verify_placebo_score_null_pairs.py 3/3 (1/3 on the old code); E1 tests
+   7/7 and 8/8 still pass. Three seeds re-scored (originals kept; `_e1_score_*_rescored_20261111.parquet` in each seed dir):
+
+| pool | arm | null pairs s1 / s2 / s3 (of which plant-with-other) | real |
+|---|---|---|---|
+| k1 | international | 301 / 173 / 67 (86 / 22 / 14) | 184 |
+| k1 | mixed | 72 / 74 / 13 (11 / 5 / 2) | 58 |
+| k1 | US gated | 307 / 371 / 53 (5 / 7 / 4) | 549 |
+| k2 | international | 19 / 4 / 3 (14 / 3 / 3) | 17 |
+| k2 | mixed | 1 / 3 / 0 (1 / 1 / 0) | 7 |
+| k2 | US gated | 2 / 1 / 1 (0 / 0 / 1) | 45 |
+
+   Totals k2 22 / 8 / 4 vs 69 real (6-32%), k1 680 / 618 / 133 vs 791 (17-86%). Seed-level 95% upper bound for k2
+   (t, 2 df): ~35 null pairs = ~half the pool -- "an excess over noise is likely; its size is undetermined". By arm the
+   picture is sharper: US gated k2 is clean in every seed (1-2 vs 45 real); international k2 is not (seed 1: 19 null
+   pairs vs 17 real). Bounds, not one number: plant-with-other nulls exist because each plant is a near-copy of its base
+   (128 near-duplicate series the real universe lacks), so the no-plant count (7 / 4 / 0) is a lower bound and the
+   all-null count an upper bound. Re-scored window false share at the real cutoff: international 0.95 / 0.59 / 0.32,
+   mixed 0.24 / 0.27 / 0.05, US 0.64 / 0.82 / 0.12. Also: each run's pool uses its own BH cutoff (seeds 1-2 ~2.5e-5,
+   seed 3 ~1.5e-5, real 2.0e-5), so pool counts are not at one threshold (false share is); and the placebo tests 10-16%
+   more international windows than the real run (859-909k vs 781k) -- not yet explained, nor the slightly different D18
+   masked-day counts by seed.
+2. **Seed variation is NOT explained.** `year_index_paths` resamples days within each calendar year, so every seed keeps
+   each year's days (the crisis years are in every draw); what differs is the arrangement within a year and how often
+   extreme days are drawn. Plausible, untested (test: count each seed's draws of the top market-move days). BH also
+   adapts to the run: fewer tiny p-values lower the cutoff, which removes more pairs (amplifies the gap).
+3. **V3 bracket rejected; the placebo does not keep volatility clustering.** Seed 3's p<1e-4 rate is 0.8-1.2x nominal
+   (between B and C), so across seeds 0.8-6x. A mean block of ~3.5 days within years removes clustering beyond a few
+   days (scenario C has GARCH persistence 0.98). What survives of V3: a mechanism demonstration -- heteroskedasticity
+   and fat tails inflate the EG far tail (D firm at 98 counts; A-C counts 1-24 too small to bracket against).
+   CONSEQUENCE for decision 3: if real data's persistent clustering inflates the real null tail, the placebo UNDERSTATES
+   it, and a placebo-calibrated cutoff could be anti-conservative. Needs a placebo that keeps volatility persistence
+   without keeping cointegration -- raised with Ross before building the cutoff arm.
+4. **V5 groups corrected in reading.** The "plants in k2 (true)" group of 156 held 133 own-base pairs plus the 23
+   plant-with-other nulls; those nulls look like noise (median 2-3.5 rejected windows), so the conclusion's direction
+   is unchanged. Different tests: V5 counts `fdr_rejected` in the Tier 3 windows file (whole-history BH), while k2
+   membership is decided by as-of month-end BH (research/purity_pit_eligibility.py ~137-139) -- that is why 39 of 69 real
+   k2 pairs show < 2 rejected windows there. "One or two windows just past the cutoff" describes the whole-history test,
+   not the test that admitted the pairs.

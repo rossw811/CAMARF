@@ -393,14 +393,22 @@ def _windows_by_arm(path: str, cols=("symbol_a", "symbol_b", "pvalue", "fdr_reje
 
 
 def score(research: str, dst: str, real_research: str = None) -> dict:
-    """Pool counts by arm (false positives = non-plant pairs), planted-pair recovery by arm x half-life x spread s.d.
-    (tested = at least one Tier-3 window), placebo window tail rates by arm, and the real run's false share by arm."""
+    """Pool counts by arm, planted-pair recovery by arm x half-life x spread s.d. (tested = at least one Tier-3 window),
+    placebo window tail rates by arm, and the real run's false share by arm.
+    The only TRUE relationships in a placebo universe are plants with their OWN base. Every other pair is null, including
+    a plant paired with any other symbol (B = mu + beta*A + stationary spread, and (A, X) is null, so (B, X) is too).
+    2026-11-11 (V6 review): false positives counted only pairs without a plant symbol, so plant-with-other pairs were
+    neither false nor found (k2: 15 / 4 / 4 left out across the three v2 seeds); the null windows behind the tail rates
+    and the false share dropped them the same way. Now null = not an own-base plant pair; plant-with-other pairs are also
+    reported on their own (`null_with_plant`). debug/_verify_placebo_score_null_pairs.py"""
     plants = parquet_io.read_parquet(os.path.join(dst, "_e1_plants.parquet"))
     pkey = [frozenset((r.plant, r.base)) for r in plants.itertuples()]
     plant_syms = set(plants["plant"])
     W = _windows_by_arm(os.path.join(research, "wrds_deep_history_episodic_scan_tier3_windows.parquet"))
-    is_plant = W["symbol_a"].isin(plant_syms) | W["symbol_b"].isin(plant_syms)
-    tested = {frozenset(x) for x in zip(W.loc[is_plant, "symbol_a"], W.loc[is_plant, "symbol_b"])}
+    own = set(pkey)
+    wkeys = [frozenset(x) for x in zip(W["symbol_a"], W["symbol_b"])]
+    is_own = np.fromiter((k in own for k in wkeys), dtype=bool, count=len(wkeys))
+    tested = {k for k, o in zip(wkeys, is_own) if o}
     pool_rows, rec = [], []
     for k in (1, 2):
         p = os.path.join(research, f"purity_pairs_pit_k{k}_clean.parquet")
@@ -410,14 +418,15 @@ def score(research: str, dst: str, real_research: str = None) -> dict:
         arms = P["arm"].tolist() if "arm" in P.columns else [""] * len(keys)
         found = set(keys) & set(pkey)
         for a in sorted(set(arms)):
-            fp = sum(1 for kk, aa in zip(keys, arms) if aa == a and not (kk & plant_syms))
-            pool_rows.append({"pool": f"k{k}", "arm": a, "false_positives": fp,
+            fp = sum(1 for kk, aa in zip(keys, arms) if aa == a and kk not in own)
+            wp = sum(1 for kk, aa in zip(keys, arms) if aa == a and kk not in own and (kk & plant_syms))
+            pool_rows.append({"pool": f"k{k}", "arm": a, "false_positives": fp, "null_with_plant": wp,
                               "pool_pairs": sum(1 for aa in arms if aa == a)})
         for kk, r in zip(pkey, plants.itertuples()):
             rec.append({"pool": f"k{k}", "arm": r.arm, "half_life": r.half_life, "spread_sd": r.spread_sd,
                         "tested": kk in tested, "found": kk in found})
     out = {"pool": pd.DataFrame(pool_rows), "recovery": pd.DataFrame(rec)}
-    Wn = W[~is_plant]
+    Wn = W[~is_own]
     rates = [{"arm": a, "n_windows": len(g), **{f"p<{t:g}": float((g["pvalue"] < t).mean()) for t in (0.05, 1e-3, 1e-4)}}
              for a, g in Wn.groupby("arm")]
     out["placebo_rates"] = pd.DataFrame(rates)

@@ -1,4 +1,13 @@
-## 2026-11-11: RESUME HERE. Ross took the 11-05 recommendations; two built, the one-year arm dropped (Development.md 2026-11-11)
+## 2026-11-11 evening: RESUME HERE. E1 three seeds done + reviewed (V6); score() undercount fixed; A8 chain running
+- A8 (BUG-D123 re-run, prereg Amendment 8, 2ffc4362) running on CachyOS since 16:34 (~7.5 h): suite -> adapter -> pools
+  -> spreads -> search primary + `--arm hlbc`. Log logs/latest/latest_run_rerun_a8_cachyos_20261111.log. A7 kept in
+  output/research/_superseded_a7_20261111/. When done: report + independent review.
+- E1 v2 final (Development.md 2026-11-11, V6 section): k2 null pairs 22 / 8 / 4 vs 69 real (6-32%, upper bound ~half);
+  US k2 clean (1-2 vs 45), international k2 not (19 vs 17 in seed 1). V3 bracket rejected; the placebo removes volatility
+  clustering, so a placebo-calibrated cutoff may be anti-conservative -> question for Ross before building decision 3.
+- V3 done (debug/_measure_eg_null_calibration.py). V5 done (real k2 pairs carry noise-like window evidence).
+- Open: seed-variation test (top market-move days per seed); international window-count gap (placebo +10-16%).
+## 2026-11-11: Ross took the 11-05 recommendations. Ross took the 11-05 recommendations; two built, the one-year arm dropped (Development.md 2026-11-11)
 - Rolling half-life now uses the hedge from before each window (e53db23c; test 19/19, old code 12/19; review CONFIRM for
   the primary path). Real pools: k2 rolling median 16.8 -> 28.1, time stop ~doubles, no pair lost. Kendall-corrected arm:
   column half_life_rolling_bc, `--override HALF_LIFE_COLUMN=half_life_rolling_bc` (review: biased by the forward-fill).
