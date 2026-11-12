@@ -1,6 +1,6 @@
 # Errata and known limitations — one index
 
-Last updated 2026-10-15. This page is the entry point for anyone checking this project's results. It does not repeat
+Last updated 2026-11-12. This page is the entry point for anyone checking this project's results. It does not repeat
 the details; it says what is wrong, fixed, withdrawn or still open, and links to where the evidence lives.
 **Found a hole?** Open an issue with `.github/ISSUE_TEMPLATE/find_a_hole.md`. Every report is verified, then fixed or
 disclosed, and the outcome is logged here and on the affected claim.
@@ -16,7 +16,7 @@ Only claims marked **REPLICATED** in [`docs/CLAIMS_REGISTRY.md`](CLAIMS_REGISTRY
 | C-003 purged ML predicts z-convergence, not profitability | PENDING-DATA |
 | C-004 the engine executes its rules; the rules are defective | PENDING-DATA |
 | C-005 entry clustering | PENDING-DATA |
-| C-006 pre-registered strategy search: no robust signal (first pass) | REGISTERED for the first pass. Second pass run 2026-10-14 (0 of 8 cells pass) is SUPERSEDED by BUG-D118; re-run under pre-registration Amendment 4 in progress (started 2026-10-15) |
+| C-006 pre-registered strategy search: no robust signal (first pass) | REGISTERED for the first pass. Second pass run 2026-10-14 (0 of 8 cells pass) is SUPERSEDED by BUG-D118; re-run under pre-registration Amendment 4 in progress (started 2026-10-15). **2026-11-12: current result = Amendment 8** (BUG-D123 re-run, reviewed): 0 of 8 cells pass in the primary and 0 of 8 in the Kendall-corrected arm; max DSR 0.152. Amendments 5 and 7 (0/8 each) are superseded. Caveat: with corrected half-lives the registered max-hold grid makes ~62% of exits time stops (was ~27%), so the result is for the registered grid, not a re-sized one (Development.md 2026-11-12) |
 
 **Every P&L-derived number published before 2026-10-03** (Sharpe, DSR, capital-sim, luck check, quality admission)
 is withdrawn pending re-derivation — see §2 (B2/B3/B4). PAPER.md / PAPER_MAGNITUDE.md are being redrafted to cite
@@ -46,6 +46,7 @@ Full registries: [`docs/archive/audits/CODE_REVIEW_2026-09-26.md`](archive/audit
 (126 BUG ids; index [`docs/BUG_LOG.md`](BUG_LOG.md)), [`docs/bug_recheck/inventory.csv`](bug_recheck/inventory.csv)
 (every logged bug, its tests, its recheck status).
 | BUG-D121 (2026-10-26, edge-accounting review) | `pnl_dollar.add_dollar_pnl` counted the $0.005/share commission on shares = notional / split-ADJUSTED close (PEP 1931: adjusted $0.0148, traded $5.25 -> ~$6.9k commission per $10k leg; AAPL 2005 28x, NVDA 2015 40x) | **Fixed `3fa6532e`**: `share_px` = close (close_usd) x `volume_adj_factor` (else volume / volume_raw), per-trade `pnl_dollar_share_fallback` flag (only 1h intraday trades fall back). `debug/_verify_pnl_dollar_share_count.py` 8/8 (fails on old code); independent review HOLDS/QUALIFY; fast list 410/410 on CachyOS; CI run 40445354929 green. Real data: gross and status unchanged; cost/notional whole-history k1 0.46% -> 0.15%, k2 2.0% -> 0.19%; PIT k1 0.140% -> 0.138% (C-006 era essentially unaffected). |
+| BUG-D123 (2026-11-05, found by the E1 v2 plant check) | Every spread-model half-life was an AR(1) on a spread whose hedge is re-estimated daily: a planted 5-day pair read 107-815 days; on the real pools the median of per-pair rolling half-lives was ~172 days. It set the backtest's time stop (2 x half-life at entry) and the 5-bar floor | **Fixed** `a0e3676e` (full / formation), `e53db23c` (rolling: hedge from before each window), `2aa51cbb` (failed refresh -> NaN, not forward-filled); `debug/_verify_half_life_hedge_consistency.py` 21/21 (12/19 and 20/21 on the two earlier versions); review 2026-11-11 CONFIRM for the first two; `2aa51cbb` review pending. Re-run as pre-registration Amendment 8 (2026-11-12, reviewed): pools identical, median half-life 172 -> 30 days, 0/16 cells pass (C-006). Kendall-corrected `half_life_rolling_bc` is a comparison arm only. Discovery reads no half-life and was not re-run. The prereg's own "~17 -> ~28" figure compared an intermediate version (disclosed in Development.md 2026-11-12) |
 
 ## 3. Open — known, not yet fixed
 
