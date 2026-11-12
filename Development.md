@@ -30890,3 +30890,52 @@ PCAModel mean-bug diagnosis. Findings and outcomes:
 8. LOW -- disclosed: dominant-root NaN for mixed AR(2) roots; VAE beta not a calibrated ELBO weight; FRED maturity set
    changes over time (real-data NS stage must fix one set).
 Commits: bd0b0486 (3, 5, 6, 8) and the AE/VAE commit after this entry.
+
+### Session 2026-11-12: A8 result (prereg Amendment 8, BUG-D123 re-run) -- NO CELL PASSES, either arm (UNREVIEWED)
+Chain debug/_tmp_chain_a8_cachyos_20261111.sh (relaunch 5), CachyOS, main at b9e45ecc; complete 2026-11-12 03:09:43.
+Log logs/latest/latest_run_rerun_a8_cachyos_20261111.log (CachyOS). Gates: seal audit 0 sealed rows (start, before
+search); cache parity 131,094 files MATCH after the suite and at the end; pools identical to A7 (k1 797, k2 69, pairs +
+eligible_from); degenerate-column and pipeline-contract audits ran. Outputs (CachyOS): output/research/strategy_search/
+summary{,_hlbc}.parquet, all_trials{,_hlbc}.parquet, trade_status_counts{,_hlbc}.parquet. A7 in _superseded_a7_20261111/.
+`dsr` = own family (432 per split); `dsr_combined_family` = N 1,728 (primary) / 2,160 (arm), passed on the CLI
+(strategy_search.py:361). trials{,_hlbc}.json "n_trials: 1728" counts evaluated rows (2 pools x 4 splits x 216), not
+the DSR N -- both files read 1728 by construction.
+
+Primary (half_life_rolling), holdout capital-sim Sharpe / DSR / PBO, A7 (superseded) -> A8:
+| pool | split | Sharpe A7 | Sharpe A8 | DSR A8 | DSR A8 (N 1,728) | PBO A7 | PBO A8 |
+|---|---|---|---|---|---|---|---|
+| pit_k1 | 0.5 | -0.077 | -0.217 | 2.7e-8 | 2.5e-9 | 0.454 | 0.107 |
+| pit_k1 | 0.6 | -0.194 | -0.216 | 4.1e-8 | 4.5e-9 | 0.667 | 0.158 |
+| pit_k1 | 0.7 | -0.131 | -0.214 | 5.4e-6 | 8.8e-7 | 0.496 | 0.179 |
+| pit_k1 | 0.8 | -0.140 | +0.018 | 6.5e-7 | 3.0e-8 | 0.030 | 0.021 |
+| pit_k2 | 0.5 | -0.322 | -0.480 | 0.0145 | 0.0052 | 0.265 | 0.382 |
+| pit_k2 | 0.6 | +0.238 | +0.137 | 0.0845 | 0.0524 | 0.773 | 0.603 |
+| pit_k2 | 0.7 | +0.388 | -0.083 | 0.1366 | 0.0998 | 0.977 | 0.697 |
+| pit_k2 | 0.8 | +0.349 | +0.156 | 0.0206 | 0.0107 | 0.646 | 0.713 |
+Selected config differs from A7 in 8/8 cells. Arm hlbc (half_life_rolling_bc, Kendall), no A7 counterpart:
+| pool | split | Sharpe | DSR | DSR (N 2,160) | PBO |
+|---|---|---|---|---|---|
+| pit_k1 | 0.5 | +0.092 | 1.7e-9 | 4.9e-11 | 0.220 |
+| pit_k1 | 0.6 | +0.262 | 7.6e-5 | 1.7e-5 | 0.516 |
+| pit_k1 | 0.7 | -0.185 | 1.8e-4 | 2.4e-5 | 0.246 |
+| pit_k1 | 0.8 | -0.209 | 1.2e-4 | 1.1e-5 | 0.046 |
+| pit_k2 | 0.5 | +0.065 | 5.3e-5 | 1.6e-6 | 0.231 |
+| pit_k2 | 0.6 | +0.169 | 6.5e-4 | 2.0e-4 | 0.638 |
+| pit_k2 | 0.7 | +0.310 | 6.2e-3 | 2.8e-3 | 0.461 |
+| pit_k2 | 0.8 | +0.244 | 0.152 | 0.102 | 0.503 |
+Read as: the BUG-D123 fix does not rescue the strategy. Largest DSR anywhere 0.152; a cell passes only with holdout
+Sharpe > 0 AND DSR >= 0.95 AND PBO < 0.20 (strategy_search.py:369; prereg line 136), and a pool only if every split
+passes. No cell is near: k1 cells have PBO < 0.20 but DSR <= 5e-6. k2's positive A7 holdouts (0.24-0.39 at 0.6-0.8) shrink or flip. The arm's k2 holdouts are positive
+in 4/4 splits (0.07-0.31) but with DSR <= 0.15 and PBO ~0.5 -- not evidence of skill, and the arm is a comparison only.
+Trades (sum over configs and splits): k1 757,153 -> 898,108 (+19%), k2 75,366 -> 91,634 (+22%); arm k1 543,745, k2
+56,286 (~1/3 of bars have no corrected half-life, as disclosed in the prereg).
+Real-data check of the trade increase (A7 vs A8 spread files, all 797): entry-eligible bars (finite, >= the 5-bar floor)
+FELL 3.4% (6,656,616 -> 6,431,889; finite bars -2.9%), so the floor is not the cause; the median of per-pair median
+half-lives fell 171.7 -> 30.0 days (k2: 171.6 -> 27.4; pooled bars 166.2 -> 27.4). The time stop (2 x half-life at
+entry) therefore shortens ~6x, trades close sooner and pairs re-enter more often -- consistent with +19-22%.
+**Prereg text correction (disclosed, prereg not edited after the fact):** Amendment 8 item 1 says "on the real pools the
+rolling median moves ~17 -> ~28 days and ~2% of bars lose their half-life". 28 matches A8 (27.4), but ~17 was the
+INTERMEDIATE D123 code (in-window hedge, a0e3676e), not what A7 ran: A7 used the pre-fix daily-hedge AR(1) (median ~172 on
+these pools, the 107-815-day reading D123 was found by). Bars losing their half-life: 2.9%, not ~2%. The time stop
+therefore shortened ~6x, not lengthened as "17 -> 28" implies.
+Next: independent review (adversarial-reviewer), then ERRATA / D123 close-out.

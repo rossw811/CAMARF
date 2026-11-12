@@ -1,4 +1,11 @@
-## 2026-11-11 evening: RESUME HERE. E1 three seeds done + reviewed (V6); score() undercount fixed; A8 chain running
+## 2026-11-12: RESUME HERE. A8 done -- no cell passes (either arm); E1 v3 chain running on CachyOS
+- A8 complete 03:09 (Development.md 2026-11-12): primary and hlbc arm, 0/16 cells pass; max DSR 0.152. Gates all clean;
+  pools identical to A7. Half-life median on the pools 172 -> 30 days (prereg's "~17 -> ~28" compared the intermediate
+  D123 code, disclosed). Needs: independent review, then ERRATA / D123 close-out.
+- E1 v3 (P1) chain launched 2026-11-12 05:46 on CachyOS (debug/_tmp_chain_e1_v3_20261111.sh, main c91c984a), seed
+  20261024 building; log logs/latest/latest_run_e1_v3_20261111.log; ~20 h/seed, 5 seeds.
+- Waiting on Ross: P2 family choice (one-year EG power ~0.3-0.5 even for volatile legs in a family of 100).
+## 2026-11-11 evening (superseded by the entry above): E1 three seeds done + reviewed (V6); score() undercount fixed; A8 chain running
 - A8 (BUG-D123 re-run, prereg Amendment 8, 2ffc4362) running on CachyOS since 16:34 (~7.5 h): suite -> adapter -> pools
   -> spreads -> search primary + `--arm hlbc`. Log logs/latest/latest_run_rerun_a8_cachyos_20261111.log. A7 kept in
   output/research/_superseded_a7_20261111/. When done: report + independent review.
