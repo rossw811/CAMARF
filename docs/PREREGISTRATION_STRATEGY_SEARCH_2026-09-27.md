@@ -370,3 +370,14 @@ not covered by that fix; it now runs on a temporary copy of the macro files (ver
 changed). As there: no step of this chain reads a `fred_`/`cot_` file or imports `macro` (Layer 2 is off), so the cache is
 not restored; the relaunch (17:50) saved its own start listing (sha256 deaa43b1..., 131,094 files; the 32-line
 difference from Amendment 7's listing is these 16 files' sizes). Everything else in Amendment 8 is unchanged.
+
+### Amendment 8 addendum 2 (2026-11-11 evening; committed before ANY result of the re-run exists)
+**The adapter's lineage guard flagged the Amendment 7 discovery outputs as stale; they are used with
+`--allow-stale-upstream`, as item 1 intends.** The relaunch passed its gates (suite 451 tests, 0 unexplained failures;
+cache parity after the suite MATCH) and stopped at the adapter (17:57): `episodic_scan` code changed since those outputs
+(fb8929e3). Every change to the stage's code since then, checked: a0e3676e / e53db23c / 2aa51cbb (BUG-D123: SpreadModel
+half-lives in analysis.py -- the scan, the intraday scan, rolling_adv_comparison.py and data_wrds.py reference no
+SpreadModel, fit_pair, _build_pair_result or half-life); 5fe9ed1e (parquet_io.read_parquet in place of pd.read_parquet --
+same data); df678e1b (one Tier 2 candidate list for fresh and resumed scans; its review: the dropped pairs lack the
+overlap any window needs, no result changed). None can change a discovery output, so discovery is not re-run. The
+adapter prints the stale-upstream warning into its log; no other chain step has this guard.
