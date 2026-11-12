@@ -27,8 +27,17 @@ import numpy as np
 os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "2")
 
 
-def _tf(seed):
+def _tf(seed, use_gpu: bool = False):
+    """use_gpu=False (default) hides the GPU from TF. Measured 2026-11-12 on CachyOS (RTX 4080 vs i7-10700K),
+    debug/_verify_factor_autoencoders.py: GPU 6m35s, CPU 3m43s -- these small networks (N ~400 inputs, batch 32) are
+    launch-overhead bound -- and the CPU run reproduces the Surface's numbers exactly (s-score corr 0.655; GPU 0.672).
+    GPU-first rule (CLAUDE.md): GPU only where measured faster."""
     import tensorflow as tf
+    if not use_gpu:
+        try:
+            tf.config.set_visible_devices([], "GPU")
+        except (RuntimeError, ValueError):
+            pass                        # TF already initialised its devices in this process; leave as is
     tf.keras.utils.set_random_seed(seed)
     try:
         tf.config.experimental.enable_op_determinism()
