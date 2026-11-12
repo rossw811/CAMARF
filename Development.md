@@ -30828,3 +30828,31 @@ Next (real-data stage, CachyOS after A8; each needs Ross's go on the design of t
 ARMA vs AR(1) half-lives on the k2 pool spreads; Heston/SABR nulls in the V3 calibration; FRED Treasury curve via
 macro.py for Nelson-Siegel factors; PCA vs AE vs VAE residual s-scores on the PIT universe; GAE predicting next year's
 pool pairs from this year's graph. Independent review of the synthetic stage pending.
+
+### Session 2026-11-11 (cont.): P1 built (E1 v3 placebo) and P2 feasibility engine built -- not yet run on real/placebo data (UNREVIEWED)
+
+Ross: "yes to all" (P1, P2), then "i like your ideas, let's get to work".
+
+P1 -- research/placebo_discovery_e1.py `build --version v3` (v2 stays the default; existing E1 tests 7/7, 8/8, 3/3):
+each series' returns are standardized by its own causal EWMA volatility (lambda fitted by QLIKE, median over the seeded
+sample), resampled on the shared path, and rescaled by the series' own volatility at the target date; plus episodic
+plants (2/3/5-year episodes, half-life 5/20, spread s.d. 0.05/0.10, 2 per cell per arm: 176 plants, US needs 88 of the
+98 eligible bases). debug/_verify_placebo_e1_v3.py 6/6: crisis/calm volatility ratio over 20 GARCH-t series v2 0.98,
+v3 2.50 (real 3); cointegrated pairs through v3 reject at 0.05 in 4/20 (the kept volatility clustering is meant to
+reproduce the real EG over-rejection, V3); lambda recovered 0.945 (true 0.94).
+Tried and changed: check 1 first used one step-shaped crisis with lambda fixed and required > 3 (v3 1.90; even the TRUE
+volatility gave 3.12). The estimator was then compared on GARCH(1,1)-t(5) data with a crisis (20 series): causal EWMA
+(fitted lambda) log-sigma RMSE 0.155, two-sided EWMA 0.200, centered 41/21/11-bar windows 0.224/0.256/0.333 (centered
+windows leave clustering: ARCH p < 0.05 in 2-20/20) -- causal EWMA kept, check redesigned on GARCH-t with derived bounds.
+Chain: debug/_tmp_chain_e1_v3_20261111.sh, 5 seeds (first 3 = v2's bootstrap seeds), ~20 h/seed, not launched until A8
+finishes. Caveat: v3 runs current code; no discovery change since v2's, but pool steps now use the D123 half-lives.
+
+P2 -- research/yearly_family_test.py (engine only; the REAL declared family is Ross's decision). debug/
+_verify_yearly_family_test.py 5/5. FEASIBILITY FINDING: one year of Engle-Granger is weak even inside a clean episode
+(half-life 5, spread s.d. 0.05): typical p ~5e-3 (ADF ~ -4.2 at T = 252), against a BH cutoff ~1.5e-3 with ~3 true
+episodes in a family of 100 -> power 0.43 with legs at 3% daily vol, 0.03-0.13 with calm 1.5% legs (errors-in-variables:
+the leg moves about as much within a year as the spread, so the hedge is attenuated). The proposal's 30-45% estimate
+holds only for volatile legs. Check 2 first asserted > 0.6 (a guess); raw in-episode p-values (both regression
+directions alike) confirmed the derivation; the bound is now derived ([0.25, 0.7]) and the calm-leg number reported.
+Implication for Ross: P2 needs a family well under 100, or a more powerful one-year test (e.g. a fixed hedge from a
+pre-registered relation such as a dual listing's 1:1, which removes the errors-in-variables loss), to be worth running.
