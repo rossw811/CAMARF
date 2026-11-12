@@ -60,7 +60,7 @@ echo "$(date '+%F %T') suite: $(grep -cE '\] (PASS|FAIL|TIMEOUT|ERROR) ' docs/bu
 [ "$FAILS" -eq 0 ] || { echo "unexplained suite failures -- STOPPED" >> $L; exit 1; }
 parity after_suite || { echo "GUARD: a test changed the real cache -- STOPPED" >> $L; exit 1; }
 
-run adapter $PY -u research/episodic_pairs_adapter.py --fresh
+run adapter $PY -u research/episodic_pairs_adapter.py --fresh --allow-stale-upstream   # Amendment 8 addendum 2
 run comparison_arms $PY -u research/build_comparison_arm_pairs.py
 run pit_eligibility $PY -u research/purity_pit_eligibility.py
 run clean_pools $PY -u research/clean_pool_identity_pairs.py
