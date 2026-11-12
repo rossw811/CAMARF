@@ -127,5 +127,30 @@ check("4. own volatility path kept as well as v3 (paired: v3b-v3 > -3SE, v3b-v2 
 check("5. planted cointegration broken (real p < 0.01 every seed; placebo median p > 0.10)",
       max(p_real) < 0.01 and np.median(p_pl) > 0.10, f"real max {max(p_real):.1e}; placebo median {np.median(p_pl):.3f}")
 
+
+# 6. v2b (vol-matched paths on RAW returns, the variant chosen on the real check): correlation within 10% of real,
+#    volatility clustering (mean ACF of |r|, lags 1-20) above v2 by > 3 paired SE, planted cointegration broken.
+def acf_abs(lp_):
+    return np.mean([[lp_[k].diff().abs().autocorr(lag) for lag in range(1, 21)] for k in names], axis=1)
+
+
+c2b, a2b, a2, p2b = [], [], [], []
+for s_ in SEEDS:
+    lp, _ = dgp(s_)
+    rets = pd.DataFrame({k: lp[k].diff() for k in names})
+    lam = m.choose_ewma_lambda({c: rets[c] for c in rets.columns})
+    pb = placebo(lp, m.vol_matched_paths(cal, m.market_vol_state(rets, lam), BLOCK, n_bins=m.VOL_BINS, seed=s_), None)
+    p2 = placebo(lp, m.year_index_paths(cal, BLOCK, seed=s_), None)
+    c2b.append(mean_corr(pb, names))
+    a2b += list(acf_abs(pb))
+    a2 += list(acf_abs(p2))
+    p2b.append(coint(pb["S0"], pb["P1"])[1])
+da = np.array(a2b) - np.array(a2)
+rel2b = abs(np.mean(c2b) - real.mean()) / real.mean()
+check("6. v2b: corr within 10% of real, clustering > v2 by 3 paired SE, planted cointegration broken",
+      rel2b <= 0.10 and da.mean() > 3 * da.std(ddof=1) / np.sqrt(len(da)) and np.median(p2b) > 0.10,
+      f"corr {np.mean(c2b):.3f} vs real {real.mean():.3f} ({rel2b:.1%}); ACF|r| v2b {np.mean(a2b):.3f} "
+      f"v2 {np.mean(a2):.3f}; placebo median p {np.median(p2b):.3f}")
+
 print(f"\n{passed}/{passed + failed} checks passed")
 sys.exit(1 if failed else 0)

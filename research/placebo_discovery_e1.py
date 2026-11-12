@@ -55,7 +55,14 @@ v3b (Ross 2026-11-12, "do the fix"; `build --version v3b`): v3's seed-1 run stop
   calm day only borrows from calm days of the same year and a crisis day from crisis days. Each series keeps its own vol
   path and the vol-correlation link; long-run relations are still broken (sources are other days). n_bins is chosen from
   VOL_BINS_GRID by the check in debug/_verify_placebo_e1_v3b.py, not tuned on discovery output.
-Usage: python research/placebo_discovery_e1.py build --dst <dir> [--seed 20261024] [--version v3|v3b]
+v2b (2026-11-12, chosen over v3b on the real-data check): the same volatility-matched paths on RAW returns -- v2 with
+  vol_matched_paths, no standardise / multiply-back. Each source day's whole cross-section moves together, so the
+  correlation (and its rise with volatility) is exactly the real one; calm days borrow from calm days and stress days
+  from stress days of the same year, which restores most of the clustering v2 lost. Real check (150 US series
+  2006-2015, 5 seeds; ~/e1_v3b_realcheck_20261112.parquet on CachyOS): share of pairs with corr >= 0.4 / mean ACF of
+  |r| lags 1-20: real 0.125 / 0.190; v2 0.122 / 0.117; v3 0.067 / 0.163; v3b(5) 0.093 / 0.166; v2b(5) 0.124 / 0.165.
+  Each series' own vol path is kept only through the market state, not per series (v3's per-series property).
+Usage: python research/placebo_discovery_e1.py build --dst <dir> [--seed 20261024] [--version v3|v3b|v2b]
        python research/placebo_discovery_e1.py score --research <checkout>/output/research --dst <dir>
 Check: debug/_verify_placebo_discovery_e1.py
 """
@@ -436,15 +443,16 @@ def build(src: str, dst: str, seed: int = SEED, version: str = "v2"):
     cal = pd.DatetimeIndex(rets.index).sort_values()
     cal = cal[cal.dayofweek < 5]
     L = choose_block_length({c: rets[c] for c in rets.columns})
-    lam = choose_ewma_lambda({c: rets[c] for c in rets.columns}) if version in ("v3", "v3b") else None
-    if version == "v3b":
+    lam = choose_ewma_lambda({c: rets[c] for c in rets.columns}) if version in ("v3", "v3b", "v2b") else None
+    vol_lam = lam if version in ("v3", "v3b") else None         # v2b: lam only sets the market state; raw returns
+    if version in ("v3b", "v2b"):
         paths = vol_matched_paths(cal, market_vol_state(rets.reindex(cal), lam), L, VOL_BINS, seed)
     else:
         paths = year_index_paths(cal, L, seed)
     src_pos = source_positions(cal, paths)
     print(f"{len(files)} 1D files; calendar {cal.min().date()}..{cal.max().date()} ({len(cal)} days); mean block {L:.2f}; "
           f"version {version}" + (f", EWMA lambda {lam:.3f}" if lam is not None else "")
-          + (f", vol bins {VOL_BINS}" if version == "v3b" else ""))
+          + (f", vol bins {VOL_BINS}" if version in ("v3b", "v2b") else ""))
     thr = Config.STATS.ADV_FILTER_USD
     mb = parquet_io.read_parquet(os.path.join(src, _REF_MEMBERSHIP))
     lmap = parquet_io.read_parquet(os.path.join(src, _REF_LABELMAP)).dropna(subset=["permno"]).set_index("label")["permno"]
@@ -455,7 +463,7 @@ def build(src: str, dst: str, seed: int = SEED, version: str = "v2"):
         lp = _log_price(src_df)
         if len(lp) < 2:
             continue
-        pl = placebo_series(lp, cal, paths, stats=stats, src_pos=src_pos, vol_lambda=lam)
+        pl = placebo_series(lp, cal, paths, stats=stats, src_pos=src_pos, vol_lambda=vol_lam)
         write_placebo_file(src_df, pl, os.path.join(dst, os.path.basename(f)), label=lab)
         if "_seg" not in lab and len(pl) >= PLANT_MIN_DAYS and "volume" in src_df.columns:
             arm = "international" if lab.startswith("GVKEY") else "us"
@@ -471,7 +479,7 @@ def build(src: str, dst: str, seed: int = SEED, version: str = "v2"):
             print(f"  {i + 1}/{len(files)}", flush=True)
     C = pd.DataFrame(cand)
     B = choose_plant_bases(C)
-    G = plant_grid(episodic=(version in ("v3", "v3b")))
+    G = plant_grid(episodic=(version in ("v3", "v3b", "v2b")))
     G["base"] = ""
     for arm in ("us", "international"):
         pool = B.loc[B["arm"] == arm, "label"].to_numpy()
@@ -504,7 +512,7 @@ def build(src: str, dst: str, seed: int = SEED, version: str = "v2"):
     P.to_parquet(os.path.join(dst, "_e1_plants.parquet"), index=False)
     C.to_parquet(os.path.join(dst, "_e1_plant_candidates.parquet"), index=False)
     n = max(stats.get("returns", 1), 1)
-    pd.DataFrame([{"seed": seed, "version": version, "ewma_lambda": lam, "vol_bins": VOL_BINS if version == "v3b" else np.nan, "mean_block": L, "n_files": len(files), "n_plants": len(P),
+    pd.DataFrame([{"seed": seed, "version": version, "ewma_lambda": lam, "vol_bins": VOL_BINS if version in ("v3b", "v2b") else np.nan, "mean_block": L, "n_files": len(files), "n_plants": len(P),
                    "shifted_share": stats.get("shifted", 0) / n, "zero_share": stats.get("zero", 0) / n,
                    "random_share": 0.0, "n_reference_links": n_link}]).to_parquet(os.path.join(dst, "_e1_build.parquet"))
     print(f"placebo written to {dst}: {len(P)} plants; source dates shifted to the next own bar "
@@ -611,7 +619,7 @@ def main():
     ap.add_argument("--research", default=None)
     ap.add_argument("--real-research", default=None)
     ap.add_argument("--seed", type=int, default=SEED)
-    ap.add_argument("--version", choices=["v2", "v3", "v3b"], default="v2")
+    ap.add_argument("--version", choices=["v2", "v3", "v3b", "v2b"], default="v2")
     a = ap.parse_args()
     if a.phase == "build":
         build(a.src, a.dst, a.seed, a.version)

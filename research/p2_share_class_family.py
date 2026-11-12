@@ -49,3 +49,21 @@ def share_class_family(names: pd.DataFrame, have_permnos, T, min_listed_years: i
 def family_by_year(names: pd.DataFrame, have_permnos, years, min_listed_years: int = MIN_LISTED_YEARS) -> dict:
     """{year: pairs} with each year's family decided at that year's Dec 31 (the yearly test's decision date)."""
     return {int(y): share_class_family(names, have_permnos, f"{int(y)}-12-31", min_listed_years) for y in years}
+
+
+CLASSIFICATION_CSV = "research/p2_share_class_classification.csv"
+
+
+def apply_classification(family: dict, cls: pd.DataFrame) -> tuple:
+    """Keep a pair in year y only if it is declared same-claim from that year (`same_claim_from_year` <= y).
+    Tracking stocks (two different businesses under one PERMCO) and years with a charter difference in economics are
+    dropped. FAIL-CLOSED: a pair with no row in `cls` is dropped and returned in `unclassified`, never kept silently.
+    The classification comes from charters / filings (research/p2_share_class_classification.csv, sources per row,
+    2026-11-12), never from prices. Returns (kept {year: pairs}, unclassified {year: pairs})."""
+    key = {(int(min(a, b)), int(max(a, b))): r for a, b, r in
+           zip(cls["permno_a"], cls["permno_b"], pd.to_numeric(cls["same_claim_from_year"], errors="coerce"))}
+    kept, unclassified = {}, {}
+    for y, prs in family.items():
+        kept[y] = [p for p in prs if p in key and pd.notna(key[p]) and key[p] <= y]
+        unclassified[y] = [p for p in prs if p not in key]
+    return kept, unclassified

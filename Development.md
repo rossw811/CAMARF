@@ -31054,3 +31054,29 @@ Genuine share-class pairs that survive the gate include GOOG/GOOGL, BRK A/B, CMC
 FOXA/FOX, TFCFA/TFCF, LBRDA/LBRDK, HEI/HEI.A. Family after exclusion is expected at ~0-8 pairs a year: BH over so few
 tests is close to per-test alpha, so power is not the constraint; the number of pairs is.
 Open for Ross with the results: gated family primary (tradeable), ungated family as a descriptive power check.
+
+### Session 2026-11-12 (cont.): E1 placebo fix -- v3b built, then v2b chosen on a 5-seed real check; v2b chain launched
+Ross 2026-11-12: "do the fix, and continue" (and permission to stop the 15 orphaned workers over Tailscale: done, 0 left,
+CachyOS 41 GB free).
+v3b (vol-matched day paths + v3's standardise / multiply-back; commit 54f824a9): synthetic 5/5. Real check (CachyOS,
+reproduces build's own sampling per seed: 800 files, calendar, block 3.50, lambda 0.965; same 150 US series 2006-2015;
+5 seeds 20261024-28; ~/e1_v3b_realcheck_20261112.parquet), mean over seeds (sd):
+| variant | mean corr | share corr >= 0.4 | ACF of abs(r), lags 1-20 |
+|---|---|---|---|
+| real | 0.217 | 0.125 | 0.190 |
+| v2 | 0.215 (0.009) | 0.122 (0.017) | 0.117 (0.010) |
+| v3 | 0.181 (0.010) | 0.067 (0.011) | 0.163 (0.005) |
+| v3b 3 / 5 / 10 bins | 0.196 / 0.194 / 0.192 | 0.105 / 0.093 / 0.089 | 0.168 / 0.166 / 0.161 |
+| v2b 3 / 5 / 10 bins | 0.219 / 0.217 / 0.213 | 0.134 / 0.124 / 0.116 | 0.160 / 0.165 / 0.168 |
+A single-seed v3b reading (3 bins 0.121, 5 bins 0.083, 10 bins 0.096) was not monotonic -- one path draw is too noisy to
+choose from; hence 5 seeds. v3b recovers only part of the correlation. **v2b** (the same vol-matched paths on RAW
+returns, no standardisation) keeps the real correlation (0.124 vs 0.125) AND v3's clustering (0.165 vs v3 0.163, v2
+0.117; real 0.190 is not reached by any variant). Chosen: v2b, VOL_BINS 5 (all three bin counts within 10% on correlation;
+clustering differences between them ~1 sd, so the synthetic choice 5 is kept). Trade-off disclosed: v2b keeps each
+series' own vol path only through the market state, not per series as v3 did.
+Synthetic (debug/_verify_placebo_e1_v3b.py 6/6): check 6 -- v2b corr 0.477 vs real 0.471 (1.5%), ACF|r| 0.135 vs v2
+0.059 (paired > 3 SE), planted cointegration broken (median p 0.398). Check 4's first draft used a fixed 0.8 bar on the
+own-vol-path correlation; v3 itself scores 0.778, so the check now compares paired against v3 and v2.
+Chain debug/_tmp_chain_e1_v2b_20261112.sh (from the v3 chain: group-kill guard, re-exec after pull; 5 seeds; outputs
+~/CAMARF_e1_runs/v2b_seed<seed>/; log logs/latest/latest_run_e1_v2b_20261112.log). The stopped v3 seed-1 outputs are kept
+in ~/CAMARF_e1_runs/v3_seed20261024_STOPPED_guard/.

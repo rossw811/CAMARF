@@ -1,0 +1,63 @@
+issuer,tracking_group,tickers,exchange,first_traded,last_traded,end_event,confidence,source_url
+General Motors Corp,Class E (Electronic Data Systems),GME,NYSE,1984-01,1996-06,EDS split off from GM June 1996; Class E exchanged for EDS shares,medium,https://en.wikipedia.org/wiki/Tracking_stock
+General Motors Corp,Class H (Hughes Electronics),GMH,NYSE,1985-11,2003-12,Hughes sold to News Corp (DirecTV); Class H exchanged for News Corp ADR/shares Dec 2003,medium,https://www.cfo.com/news/making-tracks/684327/
+General Motors Corp,$1 2/3 par common (parent class; counterpart in GME/GMH pairs),GM,NYSE,,,parent class for GME/GMH pairs,low,https://en.wikipedia.org/wiki/Tracking_stock
+USX Corp,Marathon Group,MIR/MRO (ticker uncertain),NYSE,1991-03,2001-12,USX recapitalized: US Steel separated Dec 31 2001; Marathon Group stock became Marathon Oil common,medium,https://www.journalofaccountancy.com/issues/1999/jul/banham/
+USX Corp,U.S. Steel Group,X,NYSE,1991-03,2001-12,Became United States Steel Corp common on 2001-12-31 separation,medium,https://www.journalofaccountancy.com/issues/1999/jul/banham/
+USX Corp,Delhi Group,DGP,NYSE,1992-12,1997-,Delhi Gas Pipeline sold to Western Gas Resources 1995; Delhi Group stock exchanged/redeemed ~1997,low,
+CMS Energy Corp,Consumers Gas Group (CMS Gas Group),,NYSE,1995-07,1999-,Retired (recombined/redeemed) around 1999,low,https://www.cfo.com/news/making-tracks/684327/
+CMS Energy Corp,Panhandle Group,,NYSE,1999-,2001-,Panhandle sold to Southern Union 2003; tracker retired ~2001 (dates uncertain),low,
+Ralston Purina Co,Continental Baking Group,,NYSE,1993-,1997-,Continental Baking sold to Interstate Bakeries 1995; group stock retired,low,https://www.journalofaccountancy.com/issues/1999/jul/banham/
+Ralston Purina Co,Ralston Energy Systems/Ralston Resources Group (Ralcorp-era groups; exact names uncertain),,NYSE,,,Ralcorp Holdings spun off Jan 1994; Ralston Purina Group tracker wound down,low,https://www.journalofaccountancy.com/issues/1999/jul/banham/
+Pittston Co,Pittston Brink's Group,PZB,NYSE,1993-,2003-,Renamed/recapitalized into Brink's Co common 2003 (Pittston changed name to Brink's),medium,
+Pittston Co,Pittston Minerals Group,PZM,NYSE,1989-,1999-12,Minerals Group stock retired/recapitalized end 1999 (exchange into Brink's Group),low,
+Pittston Co,Pittston Burlington Group,PZX,NYSE,1989-,2000-,Burlington Group stock retired into Brink's Group ~2000 (BAX Group),low,
+Tele-Communications Inc (TCI),TCI Group (Series A/B),TCOMA/TCOMB,Nasdaq,1994-08,1999-03,AT&T acquired TCI March 1999,medium,https://en.wikipedia.org/wiki/Tele-Communications_Inc.
+Tele-Communications Inc (TCI),Liberty Media Group (Series A/B),LBTYA/LBTYB,Nasdaq,1994-08,1999-03,AT&T acquired TCI; Liberty Media Group became AT&T tracking stock,medium,https://en.wikipedia.org/wiki/Tele-Communications_Inc.
+Tele-Communications Inc (TCI),TCI Ventures Group (Series A/B),TCIVA/TCIVB,Nasdaq,1997-08,1999-03,AT&T acquired TCI; exchanged into AT&T Liberty Media Group,medium,https://en.wikipedia.org/wiki/Tele-Communications_Inc.
+AT&T Corp,Liberty Media Group (Class A/B),LMG.A/LMG.B,NYSE,1999-03,2001-08,Split off from AT&T as Liberty Media Corp 2001-08,medium,https://www.cfo.com/news/making-tracks/684327/
+AT&T Corp,AT&T Wireless Group,AWE,NYSE,2000-04,2001-07,Split off as AT&T Wireless Services July 2001,high,https://en.wikipedia.org/wiki/Tracking_stock
+US West Inc,US West Media Group,UMG,NYSE,1998-06,2000-06,Qwest merger June 2000,medium,https://iro.uiowa.edu/esploro/outputs/workingPaper/The-Market-Performance-of-Tracking-Stocks/9984380628802771
+US West Inc,US West Communications Group,USW,NYSE,1998-06,2000-06,Qwest merger June 2000 (parent-like group stock; the pair-counterpart of UMG),medium,https://iro.uiowa.edu/esploro/outputs/workingPaper/The-Market-Performance-of-Tracking-Stocks/9984380628802771
+Sprint Corp,Sprint FON Group (Series 1 FON; also Series 2 non-publicly traded),FON,NYSE,1998-11,2004-04,FON and PCS groups recombined/FON common and PCS common converted April 2004 (Sprint Nextel merger 2005),medium,https://www.cfo.com/news/making-tracks/684327/
+Sprint Corp,Sprint PCS Group (Series 1 PCS),PCS,NYSE,1998-11,2004-04,PCS tracking stock converted to Sprint common April 2004,medium,https://www.cfo.com/news/making-tracks/684327/
+Applera Corp (formerly Perkin-Elmer),Applera-Applied Biosystems Group,ABI,NYSE,1999-05,2008-07,Applera renamed Applied Biosystems; Celera spun off,medium,https://en.wikipedia.org/wiki/Tracking_stock
+Applera Corp (formerly Perkin-Elmer),Applera-Celera Genomics Group,CRA,NYSE,1999-05,2008-07,Celera group stock split off as Celera Corp 2008-07,medium,https://en.wikipedia.org/wiki/Tracking_stock
+Fletcher Challenge Ltd (NZ; ADRs),Fletcher Challenge Building,,NYSE (ADR),1996-03,2001-,Group shares converted/consolidated 1999-2001 (Building Division sold; Forests merged into Norske/UPM),low,https://www.cfo.com/news/making-tracks/684327/
+Fletcher Challenge Ltd (NZ; ADRs),Fletcher Challenge Forests / Paper / Energy (other divisional shares; exact US-listed ADR coverage unverified),,NYSE (ADR),,,unverified,low,
+Circuit City Stores,CarMax Group,KMX,NYSE,1997-02,2002-10,CarMax split off from Circuit City Oct 2002,high,https://www.cfo.com/news/making-tracks/684327/
+Circuit City Stores,Circuit City Group (parent-like group),CC,NYSE,1997-02,2002-10,Reclassified as common after CarMax split-off,medium,https://www.cfo.com/news/making-tracks/684327/
+Georgia-Pacific Corp,The Timber Company,TGP,NYSE,1997-12,2001-10,Merged with Plum Creek Timber Oct 2001,high,https://en.wikipedia.org/wiki/Georgia-Pacific
+Georgia-Pacific Corp,Georgia-Pacific Group,GP,NYSE,1997-12,2001-10,Parent-like group stock; reclassified into GP common,medium,https://en.wikipedia.org/wiki/Georgia-Pacific
+Genzyme Corp,Genzyme General Division,GENZ,Nasdaq,1991-,2003-07,All divisions recapitalized into Genzyme Corp common 2003-07,medium,https://en.wikipedia.org/wiki/Genzyme
+Genzyme Corp,Genzyme Tissue Repair Division,GZTR,Nasdaq,1994-12,2000-06,Combined into Genzyme Biosurgery Division June 2000,medium,https://en.wikipedia.org/wiki/Genzyme
+Genzyme Corp,Genzyme Molecular Oncology Division,GZMO,Nasdaq,1997-12,2003-07,Eliminated in 2003 recapitalization,medium,https://en.wikipedia.org/wiki/Genzyme
+Genzyme Corp,Genzyme Biosurgery Division,GZBX,Nasdaq,2000-06,2003-07,Eliminated in 2003 recapitalization into Genzyme General,medium,https://en.wikipedia.org/wiki/Genzyme
+Ziff-Davis Inc,ZDNet Group,ZDZ,NYSE,1999-03,2000-10,CNET acquired Ziff-Davis (ZDNet) Oct 2000,medium,https://www.cfo.com/news/making-tracks/684327/
+Quantum Corp,DLT and Storage Systems Group,DSS,NYSE,1999-08,,Became Quantum common after HDD group sold to Maxtor 2001-04 (ticker later QTM),medium,https://en.wikipedia.org/wiki/Tracking_stock
+Quantum Corp,Hard Disk Drive Group,HDD,NYSE,1999-08,2001-04,Maxtor acquired HDD business April 2001; stock exchanged into Maxtor,medium,https://en.wikipedia.org/wiki/Tracking_stock
+Walt Disney Co,go.com (Internet Group),GO,NYSE,1999-11,2001-03,Retired by Disney March 2001,medium,https://en.wikipedia.org/wiki/Tracking_stock
+Donaldson Lufkin & Jenrette,DLJdirect,DIR,NYSE,1999-05,2001,After CSFB acquired DLJ (Nov 2000) became CSFBdirect tracker; retired 2001,medium,https://www.cfo.com/news/making-tracks/684327/
+Cablevision Systems Corp,Rainbow Media Group,RMG,NYSE,2001-,2002-,Rainbow Media Group tracker retired March 2002,low,
+Cablevision Systems Corp,Cablevision NY Group (parent class),CVC,NYSE,,,Class A of Cablevision after RMG tracker created; not a tracker itself,low,
+Snyder Communications Inc,Circle.com Group,,NYSE,1999-10,2000-,Vivendi acquired Snyder (Circle.com) 2000,low,https://www.cfo.com/news/making-tracks/684327/
+WorldCom Inc,MCI Group,MCIT,Nasdaq,2001-06,2002-04,MCI Group stock recombined into WorldCom Group April 2002,medium,https://en.wikipedia.org/wiki/WorldCom
+WorldCom Inc,WorldCom Group,WCOM,Nasdaq,2001-06,2002-04,Parent-like group; WorldCom bankruptcy July 2002,medium,https://en.wikipedia.org/wiki/WorldCom
+Staples Inc,Staples.com,SPLC,Nasdaq,1999-,2001-,Staples.com tracker retired 2001 (dates uncertain),low,
+Loews Corp,Carolina Group,CG,NYSE,2002-02,2008-06,Lorillard split off via exchange offer June 2008,high,https://en.wikipedia.org/wiki/Loews_Corporation
+Liberty Media Corp (original),Liberty Media Group (see AT&T Liberty Media Group) / Series A,L,NYSE,2001-08,2006-,Not a tracker after 2001 (full company); included to avoid ticker confusion,low,
+Liberty Media Holding Corp / Liberty Media Corp,Liberty Interactive Group (LINTA/LINTB),LINTA/LINTB,Nasdaq,2006-05,2018-03,Interactive group stock became Qurate Retail Series A/B common March 2018; renamed QVC Group (QVCA/QVCB) in between (dates uncertain),medium,https://en.wikipedia.org/wiki/Tracking_stock
+Liberty Media Holding Corp / Liberty Media Corp,Liberty Capital Group (LCAPA/LCAPB),LCAPA/LCAPB,Nasdaq,2006-05,2011-09,Liberty Media Corp spun off from Liberty Interactive Sept 2011; Liberty Capital tracker became Liberty Media Corp LMCA/B,medium,https://en.wikipedia.org/wiki/Tracking_stock
+Liberty Media Holding Corp / Liberty Media Corp,Liberty Entertainment Group (LMDIA/LMDIB),LMDIA/LMDIB,Nasdaq,2006-05,2009-11,Split off to DirecTV merger Nov 2009 (LEI),medium,https://en.wikipedia.org/wiki/Tracking_stock
+Liberty Interactive Corp,Liberty Starz Group,LSTZA/LSTZB,Nasdaq,2011-,2013-01,Starz split off Jan 2013 as Starz,medium,https://en.wikipedia.org/wiki/Tracking_stock
+Liberty Interactive Corp,Liberty Ventures Group,LVNTA/LVNTB,Nasdaq,2012-08,2018-03,Redeemed after GCI Liberty split-off March 2018,high,https://en.wikipedia.org/wiki/Tracking_stock
+Liberty Interactive Corp,QVC Group,QVCA/QVCB (also QVCGA/QVCGB; ticker history uncertain),Nasdaq,,2018-03,Became Qurate Retail common QRTEA/QRTEB March 2018,low,https://en.wikipedia.org/wiki/Tracking_stock
+Liberty Media Corp (2011-),Liberty SiriusXM Group,LSXMA/LSXMB/LSXMK,Nasdaq,2016-04,2024-09,Merged into SiriusXM Holdings (SIRI) 2024-09,high,https://en.wikipedia.org/wiki/Tracking_stock
+Liberty Media Corp (2011-),Formula One Group,FWONA/FWONK/FWONB (previously LMCA/LMCB/LMCK),Nasdaq,2016-04,,Still outstanding in the 2024 window,high,https://en.wikipedia.org/wiki/Tracking_stock
+Liberty Media Corp (2011-),Braves Group,BATRA/BATRB/BATRK,Nasdaq,2016-04,2023-07,Split off as Atlanta Braves Holdings July 2023 (same tickers; no longer tracker),high,https://en.wikipedia.org/wiki/Tracking_stock
+Liberty Media Corp (2011-),Liberty Live Group,LLYVA/LLYVB/LLYVK,Nasdaq,2023-08,2025-12,Split off Dec 2025 as Liberty Live Holdings (outside 2024 window),high,https://en.wikipedia.org/wiki/Tracking_stock
+Liberty Global plc,LiLAC Group,LILA/LILAK/LILAB,Nasdaq,2015-07,2017-12,LiLAC split off as Liberty Latin America Dec 2017,high,https://en.wikipedia.org/wiki/Liberty_Latin_America
+Dell Technologies Inc,Class V (VMware),DVMT,NYSE,2016-09,2018-12,Class V exchanged for Class C Dec 2018,high,https://en.wikipedia.org/wiki/Dell_Technologies
+Fidelity National Financial Inc,FNFV Group,FNFV,NYSE,2014-,2017-,FNFV tracker redeemed/Cannae Holdings spin Nov 2017,medium,https://en.wikipedia.org/wiki/Cannae_Holdings
+Fidelity National Financial Inc,FNF Group (parent group),FNF,NYSE,2014-,2017-,FNF Group became FNF common,medium,https://en.wikipedia.org/wiki/Cannae_Holdings
+Cendant Corp,Move.com Group (announced 2000; whether it traded unverified),,NYSE,,,unverified,low,

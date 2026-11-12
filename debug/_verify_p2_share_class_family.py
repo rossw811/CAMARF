@@ -6,6 +6,10 @@ Synthetic checks for research/p2_share_class_family.py and the fixed-hedge mode 
   4. fixed_adf size on independent random walks near nominal (5%), and EG's too
   5. fixed_adf has more power than EG on the same fast-reverting one-year pairs (the point of the fixed hedge)
   6. a per-year family is respected: a pair absent from year y's family has no year-y row
+  7. apply_classification: tracking pairs dropped, same-claim kept only from same_claim_from_year, unclassified pairs
+     dropped and reported (fail-closed)
+  8. the declared classification file covers the real gated pairs with a source URL each, and every row is one of
+     same_claim / tracking / other_structural
 """
 import os
 import sys
@@ -27,7 +31,7 @@ def check(name, cond, detail=""):
     print(f"[{'PASS' if cond else 'FAIL'}] {name} {detail}")
 
 
-from p2_share_class_family import family_by_year, share_class_family  # noqa: E402
+from p2_share_class_family import CLASSIFICATION_CSV, apply_classification, family_by_year, share_class_family  # noqa: E402
 from yearly_family_test import yearly_family_tests  # noqa: E402
 
 N = pd.DataFrame([
@@ -110,6 +114,17 @@ lp2 = {k: pd.Series(np.cumsum(rng.normal(0, 0.01, len(dates2))), dates2) for k i
 r2 = yearly_family_tests(lp2, {2015: [("A", "B")], 2016: [("A", "B"), ("C", "D")]}, test="fixed_adf")
 got = sorted(map(tuple, r2[["symbol_a", "symbol_b", "year"]].values.tolist()))
 check("6. per-year family respected", got == [("A", "B", 2015), ("A", "B", 2016), ("C", "D", 2016)], str(got))
+
+cls = pd.DataFrame({"permno_a": [1, 6, 8], "permno_b": [2, 7, 9], "same_claim_from_year": [1900, 2012, None]})
+fam = {2011: [(1, 2), (6, 7), (8, 9), (10, 11)], 2012: [(1, 2), (6, 7)]}
+kept, unc = apply_classification(fam, cls)
+check("7. classification: tracking dropped, from-year respected, unclassified dropped + reported",
+      kept == {2011: [(1, 2)], 2012: [(1, 2), (6, 7)]} and unc == {2011: [(10, 11)], 2012: []}, f"{kept} {unc}")
+C = pd.read_csv(os.path.join(ROOT, CLASSIFICATION_CSV))
+check("8. declared classification file: 22 pairs, sourced, valid classes",
+      len(C) == 22 and C["source_url"].str.startswith("http").all()
+      and set(C["classification"]) <= {"same_claim", "tracking", "other_structural"},
+      str(C["classification"].value_counts().to_dict()))
 
 print(f"\n{passed}/{passed + failed} checks passed")
 sys.exit(1 if failed else 0)
