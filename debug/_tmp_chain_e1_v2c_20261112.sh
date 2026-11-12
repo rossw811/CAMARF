@@ -1,7 +1,7 @@
 #!/bin/bash
 # E1 v2c (Ross 2026-11-12, "I'll take your recommendation"): v2b + top volatility bin without replacement (every stress
 # day once). v2b seed 1 stopped at the guard (0.757); 5-seed proxy: v2c whole-history share 0.92-1.40 x real.
-# 5 seeds (20261024-28; the first 3 are v2's seed numbers, but v2b's day paths are volatility-matched, so they are NOT
+# 5 seeds (20261024-28; v2's seed numbers for the first 3, but v2c's day paths are volatility-matched, so they are NOT
 # v2's paths). Same pipeline as debug/_tmp_chain_e1_v2_20261102.sh.
 # Worktree ~/CAMARF_e1 (its output/cache/wrds is the placebo universe); outputs kept in ~/CAMARF_e1_runs/v2c_seed<seed>/.
 # ~20 h per seed on CachyOS; one heavy job at a time, so it refuses to start while the A8 chain runs.

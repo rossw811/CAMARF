@@ -1,4 +1,10 @@
-## 2026-11-12 (late): RESUME HERE. E1 v2b chain running on CachyOS; D123 closed; P2 share-class family built
+## 2026-11-12 (evening): RESUME HERE. E1 v2c running (launched 13:01); GPU work done; CLAUDE.md GPU-first rule
+- E1: v3 and v2b both stopped at the tier-1 guard; v2c (vol-matched paths, raw returns, stress bin without replacement)
+  launched 13:01 (debug/_tmp_chain_e1_v2c_20261112.sh; log logs/latest/latest_run_e1_v2c_20261112.log on CachyOS).
+  Guard point ~2.5 h into each seed. Check: ssh rw@100.64.64.126 "tail -n 5 ~/CAMARF/logs/latest/latest_run_e1_v2c_20261112.log"
+- GPU (Development.md 2026-11-12): gpu_unlock verified; TF now sees the GPU on CachyOS (venv sitecustomize.py); prefilter
+  GPU-auto (exact) + 50x vectorized candidate_pairs; TF modules measured -- CPU wins at test sizes.
+## 2026-11-12 (late, superseded above): E1 v2b chain running on CachyOS; D123 closed; P2 share-class family built
 - E1: v3 stopped at its tier-1 guard (vol-correlation link lost); v2b (vol-matched day paths on raw returns) chosen on a
   5-seed real check and launched 09:37 (debug/_tmp_chain_e1_v2b_20261112.sh, main 8bd8b9ef; log
   logs/latest/latest_run_e1_v2b_20261112.log on CachyOS; outputs ~/CAMARF_e1_runs/v2b_seed*). First gate = tier-1
