@@ -30621,3 +30621,21 @@ pair's first estimate):
 
 No pair becomes all-NaN. The arm's median falls because the stale values it used to carry came from just before a failed
 (slow-reading) refresh; with ~1/3 of its bars untradeable it will trade far less than the primary -- part of the comparison.
+
+### Session 2026-11-11 (cont.): V3 -- where the placebo's excess of tiny EG p-values comes from
+The E1 placebo rejects 3-6x nominal at p < 1e-4 (both seeds). debug/_measure_eg_null_calibration.py (CachyOS, 40,000 null
+pairs per scenario, 2520 bars, the production coint call; production p = max over the two directions):
+
+| scenario | p<0.05 | p<0.01 | p<1e-3 | p<1e-4 (count) |
+|---|---|---|---|---|
+| A independent Gaussian walks | 0.34x | 0.32x | 0.22x | 0.25x (1) |
+| B return correlation 0.6 | 0.46x | 0.46x | 0.42x | 0.50x (2) |
+| C + GARCH(1,1), t(4) shocks | 0.73x | 1.00x | 2.17x | 6.00x (24) |
+| D + one 252-bar stretch at 3x volatility | 1.35x | 2.31x | 6.65x | 24.5x (98) |
+
+(min-direction p: A 1.7-2.0x, D up to 63x.) Read: with steady Gaussian volatility the max-of-directions p is conservative;
+volatility clustering and fat tails make the far tail over-reject, and a crisis stretch more so -- the Engle-Granger
+critical values assume homoskedastic errors. The placebo's 3-6x at 1e-4 sits between C and D, so it is what real-like
+volatility does, not a placebo defect. Consequence: on real data the nominal p near the BH cutoff (~2e-5) understates
+false discoveries; the placebo keeps volatility clustering, so its rates include this -- direct support for decision 3
+(placebo-calibrated cutoff arm). Counts at 1e-4 are small for A-C (1-24); D (98) is firm.
