@@ -12,6 +12,9 @@ Synthetic ground truth for research/stochastic_vol_models.py (fixed seeds; Monte
     7. beta = 1, nu = 0: implied vol = alpha at every strike (exact)
     8. ATM continuity: strike a hair off ATM matches the ATM branch
     9. Hagan vol prices = Monte Carlo prices at 3 strikes (Hagan is an approximation: 3 SE + 1% of price)
+   10. beta = 0, nu = 0 reduces to Bachelier: Black at the Hagan vol = Bachelier price (rel err < 1e-4) -- tests the
+       (1 - beta) terms that checks 7-9 (beta = 1) cannot (independent review 2026-11-11, finding 6)
+   11. the small-z series of z / x(z) agrees with the closed form at the switch point
 Run: python debug/_verify_stochastic_vol_models.py
 """
 import os
@@ -90,6 +93,19 @@ def main():
         ok &= abs(m - hp) < 3 * se + 0.01 * hp
         det.append(f"K={k:.0f} hagan={hp:.3f} mc={m:.3f}+-{se:.3f}")
     check("9 SABR Hagan = MC", ok, "; ".join(det))
+
+    # beta = 0, nu = 0 is exactly the Bachelier model: Black price at the Hagan vol must equal the Bachelier price.
+    # This exercises every (1 - beta) term at full strength (checks 7-9 use beta = 1, where they vanish). Measured
+    # 2026-11-11: correct formula |rel err| <= 2e-5 at K = 70..130; review mutants (1-beta)^2/24 -> /6 and
+    # fk^(1-beta) -> fk^((1-beta)/2) in the alpha^2 term give 6e-4 .. 0.74.
+    errs = [M.black_price(100.0, k, 1.0, M.sabr_vol(100.0, k, 1.0, 20.0, 0.0, 0.0, 0.0))
+            / M.bachelier_price(100.0, k, 1.0, 20.0) - 1 for k in (70.0, 85.0, 100.0, 115.0, 130.0)]
+    check("10 SABR beta=0 nu=0 = Bachelier", max(abs(e) for e in errs) < 1e-4, f"max rel err={max(map(abs, errs)):.1e}")
+    t = M.ZX_SERIES_BELOW
+    rh = -0.4
+    closed = lambda z: z / np.log((np.sqrt(1 - 2 * rh * z + z * z) + z - rh) / (1 - rh))
+    check("11 z/x(z) series branch = closed form at the switch", abs(M.z_over_x(0.99 * t, rh) - closed(1.01 * t)) < 1e-8
+          and M.z_over_x(0.0, rh) == 1.0, f"series={M.z_over_x(0.99 * t, rh):.10f} closed={closed(1.01 * t):.10f}")
 
     print(f"\n{len(PASS)}/{len(PASS) + len(FAIL)} checks passed")
     if FAIL:

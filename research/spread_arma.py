@@ -13,6 +13,10 @@ and the envelope half-life; a negative real dominant root gives NaN (sign-flippi
 
 Order selection: BIC over p in 1..max_p, q in 0..max_q (p >= 1 so a reversion root always exists). Pure function of the
 input window -- point-in-time when the caller passes only past bars.
+Caveats (independent review 2026-11-11): (1) at one-year windows the estimate is noisy and BIC can pick ARMA(2,0), which
+brings back the short bias (true 13.5: 1.74..20.64 over 12 seeds); (2) the DOMINANT root decides: AR(2) roots 0.9 and
+-0.95 give NaN although a persistent positive root exists (a sign-flipping component dominates) -- deliberate and
+conservative, as phi <= 0 is in AR(1).
 Verify: debug/_verify_spread_arma.py
 """
 import warnings

@@ -12,6 +12,10 @@ features passed in must use data up to t only, and labels must come from after t
   loss = weighted BCE over all node pairs (positive weight = #non-edges / #edges, as Kipf & Welling)
          + VGAE: KL(q(Z) || N(0, I)) / N
 Dense full-batch: fine to a few thousand nodes (N^2 memory). Deterministic given `seed`.
+Baselines (common_neighbours_score, feature_distance_score) must be reported next to every GAE result: on the synthetic
+clustered graph common neighbours alone reach AUC 0.943 vs GAE 0.947 (independent review 2026-11-11, finding 3), so the
+synthetic test shows the GAE works, NOT that the GCN adds anything over them. Weighting note: pos_w and norm count the
+N self-loops among positives (Kipf & Welling's reference code does not); immaterial at these sizes.
 Verify: debug/_verify_graph_autoencoder.py
 """
 import os
@@ -79,6 +83,19 @@ class GraphAutoencoder:
         """Link probability for each (i, j) row of `pairs`."""
         p = np.asarray(pairs)
         return 1.0 / (1.0 + np.exp(-np.einsum("ij,ij->i", self.Z[p[:, 0]], self.Z[p[:, 1]])))
+
+
+def common_neighbours_score(A: np.ndarray, pairs) -> np.ndarray:
+    """Baseline: number of shared neighbours of (i, j) in the training graph."""
+    p = np.asarray(pairs)
+    return np.einsum("ij,ij->i", A[p[:, 0]], A[p[:, 1]]).astype(float)
+
+
+def feature_distance_score(X: np.ndarray, pairs) -> np.ndarray:
+    """Baseline: negative Euclidean distance between the two nodes' standardized features."""
+    Z = (X - X.mean(0)) / X.std(0)
+    p = np.asarray(pairs)
+    return -np.linalg.norm(Z[p[:, 0]] - Z[p[:, 1]], axis=1)
 
 
 def split_edges(A: np.ndarray, test_frac: float, rng):

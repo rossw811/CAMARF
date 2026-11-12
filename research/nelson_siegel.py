@@ -8,6 +8,10 @@ across dates:
 beta1 = level, beta2 = slope (short minus long, sign as in Diebold-Li: y(0) - y(inf) = beta2), beta3 = curvature.
 Role in CAMARF: candidate macro regime features (level / slope / curvature) as a comparison arm to the raw T10Y2Y
 spread macro.py carries today. The fixed lambda is a convention, not tuned on CAMARF outcomes.
+Real-data caveat (independent review 2026-11-11): FRED's maturity set changes over time (DGS20 absent 1987-93, DGS30
+2002-06, DGS1MO only from 2001), and fit_ns uses whichever maturities a row has, so the factors' meaning shifts across
+those dates. The real-data stage must fit on one maturity set available over the whole period used (or report factors
+separately per set); n_maturities is returned for that purpose.
 Verify: debug/_verify_nelson_siegel.py
 """
 import numpy as np

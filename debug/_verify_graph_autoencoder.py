@@ -2,8 +2,10 @@
 Synthetic ground truth for research/graph_autoencoder.py. 200 nodes with latent 2-D positions in 4 clusters; edge
 probability falls with latent distance; node features = noisy positions + 6 junk dimensions.
   1. split_edges removes every held-out edge from the training graph (no leakage) and balances the test set
-  2. GAE recovers held-out edges: AUC > 0.85
-  3. VGAE recovers held-out edges: AUC > 0.85
+  2. GAE recovers held-out edges: AUC > 0.85 and within 0.03 of the best simple baseline (common neighbours, feature
+     distance). Independent review 2026-11-11 (finding 3): common neighbours alone reach 0.943 here, so this checks that
+     the GAE works -- it does not show the GCN adds anything; the real-data stage must report against the baselines.
+  3. VGAE: same
   4. null: a uniformly random graph with the same edge count and pure-noise features gives AUC ~0.5
      (|AUC - 0.5| < 0.1) -- the model does not manufacture links
   5. deterministic: same seed -> identical scores
@@ -45,12 +47,18 @@ def main():
     check("1 split: no leakage, balanced", leaked == 0 and y.sum() == (1 - y).sum() and np.allclose(A_tr, A_tr.T),
           f"held-out edges={int(y.sum())} still in train graph={leaked} (edges total={int(A.sum() / 2)})")
 
+    from research.graph_autoencoder import common_neighbours_score, feature_distance_score
+    cn = roc_auc_score(y, common_neighbours_score(A_tr, pairs))
+    fd = roc_auc_score(y, feature_distance_score(X, pairs))
+    best = max(cn, fd)
     g = GraphAutoencoder(seed=1).fit(A_tr, X)
     auc = roc_auc_score(y, g.score(pairs))
-    check("2 GAE held-out AUC > 0.85", auc > 0.85, f"AUC={auc:.3f}")
+    check("2 GAE held-out AUC matches the best baseline", auc > 0.85 and auc >= best - 0.03,
+          f"AUC={auc:.3f}; baselines: common neighbours {cn:.3f}, feature distance {fd:.3f} "
+          f"(the synthetic graph does NOT show the GCN adds value over them)")
     v = GraphAutoencoder(variational=True, seed=1).fit(A_tr, X)
     aucv = roc_auc_score(y, v.score(pairs))
-    check("3 VGAE held-out AUC > 0.85", aucv > 0.85, f"AUC={aucv:.3f}")
+    check("3 VGAE held-out AUC matches the best baseline", aucv > 0.85 and aucv >= best - 0.03, f"AUC={aucv:.3f}")
 
     # null: same edge count, wired uniformly at random (no clusters), features pure noise
     iu = np.triu_indices(len(A), 1)

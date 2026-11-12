@@ -106,12 +106,18 @@ def sabr_vol(F, K, T, alpha, beta, rho, nu):
                   + (2 - 3 * rho ** 2) / 24 * nu ** 2) * T
     denom = fk ** (one_b / 2) * (1 + one_b ** 2 / 24 * logfk ** 2 + one_b ** 4 / 1920 * logfk ** 4)
     z = nu / alpha * fk ** (one_b / 2) * logfk
-    if abs(z) < 1e-8:
-        zx = 1.0 - 0.5 * rho * z                            # series of z / x(z) around 0
-    else:
-        xz = np.log((np.sqrt(1 - 2 * rho * z + z * z) + z - rho) / (1 - rho))
-        zx = z / xz
-    return float(alpha / denom * zx * corr)
+    return float(alpha / denom * z_over_x(z, rho) * corr)
+
+
+ZX_SERIES_BELOW = 1e-6
+
+
+def z_over_x(z: float, rho: float) -> float:
+    """z / x(z), x(z) = ln[(sqrt(1 - 2 rho z + z^2) + z - rho) / (1 - rho)]; series 1 - rho z / 2 near 0 (the closed
+    form loses precision there)."""
+    if abs(z) < ZX_SERIES_BELOW:
+        return 1.0 - 0.5 * rho * z
+    return z / np.log((np.sqrt(1 - 2 * rho * z + z * z) + z - rho) / (1 - rho))
 
 
 def simulate_sabr(n_paths, n_steps, dt, F0, alpha, beta, rho, nu, rng, return_paths=False):
