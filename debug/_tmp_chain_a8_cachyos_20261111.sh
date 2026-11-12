@@ -5,7 +5,12 @@
 cd ~/CAMARF || exit 1
 L=logs/latest/latest_run_rerun_a8_cachyos_20261111.log; S=output/research; PY=.venv/bin/python
 export PYTHONUTF8=1
-git pull -q --ff-only origin main || { echo "$(date '+%F %T') git pull failed -- STOPPED" >> $L; exit 1; }
+# bash keeps reading the file it opened, so a pull that changes this script would leave the OLD steps running
+# (relaunch 4, 2026-11-11: the adapter ran without the flag the pull had just added). Pull, then re-exec the new file.
+if [ "$1" != "--pulled" ]; then
+  git pull -q --ff-only origin main || { echo "$(date '+%F %T') git pull failed -- STOPPED" >> $L; exit 1; }
+  exec bash "$0" --pulled
+fi
 run() { local name=$1; shift; echo "$(date '+%F %T') START $name: $*" >> $L
   "$@" > $S/_stdout_a8_$name.log 2>&1 || { echo "$(date '+%F %T') FAILED $name -- STOPPED" >> $L; exit 1; }
   echo "$(date '+%F %T') done $name" >> $L; }
