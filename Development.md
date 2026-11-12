@@ -31038,3 +31038,19 @@ build: (1) synthetic -- a 2-regime factor model whose correlation rises with vol
 within sampling error; GARCH-t far-tail check still passes; (2) real, cheap (the table above, no discovery): v3b's share
 >= 0.4 and mean corr within 10% of real on the same 150 series, then the tier-1 guard ratio on a full build. Cost: ~1 day
 of code + checks, then 5 x ~20 h.
+
+### Session 2026-11-12 (cont.): P2 share-class family after the ADV gate -- small, and polluted by tracking stocks
+Count (scratchpad p2_adv_gate.py; family_by_year 1990-2024, then the discovery ADV gate: rolling_adv + adv_at on Dec 31,
+>= Config.STATS.ADV_FILTER_USD $25M nominal, BOTH legs): family 36-81 pairs per year -> 0-10 after the gate (0 in
+1990-94; 115 pair-years in all; 384 securities). The $25M gate is nominal, so early years are cut hardest (as in
+discovery -- disclosed, not changed here).
+**Same PERMCO is not "same cash flows".** Many gated pairs are TRACKING STOCKS (a class tied to one division):
+Liberty Media groups (FWONK/LSXMK, FWONK/LSXMA, LCAPA/QVCGA), Liberty Interactive (LVNTA/QVCGA), and in the 1990s-2000s
+apparently GM / GM Hughes (GMH), Sprint / Sprint PCS (PCS), US West / Media (USW), TCI / Liberty Media (TCOMA), Applera /
+Celera (ABI). CRSP cannot separate them: same COMNAM and same 6-digit issuer CUSIP (FWONK 53122975 vs LSXMK 53122978, like
+GOOG 02079K10 / GOOGL 02079K30). Excluding by price behaviour would select on the outcome, so the rule must be a DECLARED
+list from filings: research/tracking_stocks_us.csv, being compiled by a search subagent (Sonnet), to be checked before use.
+Genuine share-class pairs that survive the gate include GOOG/GOOGL, BRK A/B, CMCSA/CMCSK, DISCA/DISCK, UA/UAA, ZG/Z,
+FOXA/FOX, TFCFA/TFCF, LBRDA/LBRDK, HEI/HEI.A. Family after exclusion is expected at ~0-8 pairs a year: BH over so few
+tests is close to per-test alpha, so power is not the constraint; the number of pairs is.
+Open for Ross with the results: gated family primary (tradeable), ungated family as a descriptive power check.
