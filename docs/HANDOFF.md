@@ -1,7 +1,8 @@
 ## 2026-11-12: RESUME HERE. A8 done -- no cell passes (either arm); E1 v3 chain running on CachyOS
-- A8 complete 03:09 (Development.md 2026-11-12): primary and hlbc arm, 0/16 cells pass; max DSR 0.152. Gates all clean;
-  pools identical to A7. Half-life median on the pools 172 -> 30 days (prereg's "~17 -> ~28" compared the intermediate
-  D123 code, disclosed). Needs: independent review, then ERRATA / D123 close-out.
+- A8 complete 03:09 (Development.md 2026-11-12): primary and hlbc arm, 0/16 cells pass; max DSR 0.152. Gates passed (0 sealed
+  rows, cache parity MATCH); audits flagged only non-pool files. Pools identical to A7. Half-life median 172 -> 30 days;
+  time-stop exits ~26% -> ~62%, so A8 mostly tests a time-stopped strategy (grid not re-sized, as registered). Reviewed
+  2026-11-12: headline confirmed, 7 findings fixed in the write-up. Next: ERRATA / D123 close-out.
 - E1 v3 (P1) chain launched 2026-11-12 05:46 on CachyOS (debug/_tmp_chain_e1_v3_20261111.sh, main c91c984a), seed
   20261024 building; log logs/latest/latest_run_e1_v3_20261111.log; ~20 h/seed, 5 seeds.
 - Waiting on Ross: P2 family choice (one-year EG power ~0.3-0.5 even for volatile legs in a family of 100).

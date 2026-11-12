@@ -30567,8 +30567,10 @@ relationships that last the whole 10 years -- see the review below.] Reverted pa
 Real A7 pools (output/research/purity_pairs_pit_k{2,1}_clean.parquet, 1D): k2 69/69 fitted, rolling median q10/50/90
 old 13.5/16.8/18.8 -> new 22.6/28.1/33.8 -> Kendall arm 37.8/54.1/69.9; k1 (150 sampled) old 17.2 -> new 30.5 -> arm 59.9
 (median). Pairs with an all-NaN rolling series (dropped by the sparse exclusion): 0 old, 0 new, both pools. Share of
-finite bars below 5: k2 1.9% -> 0.4% (arm 0.2%). z/rolling window 252 for every pair (unchanged). Consequence: the time
-stop (2 x half-life at entry) roughly doubles on the real pools (~34 -> ~56 bars; arm ~108), so the adapter + backtest
+finite bars below 5: k2 1.9% -> 0.4% (arm 0.2%). z/rolling window 252 for every pair (unchanged). Consequence: ~~the time
+stop (2 x half-life at entry) roughly doubles on the real pools (~34 -> ~56 bars; arm ~108)~~ [WRONG relative to A7, 2026-11-12:
+"old" here is the intermediate a0e3676e code, not what A7 ran; against A7 the time stop SHORTENED ~3.9x per trade taken --
+see the 2026-11-12 A8 entry], so the adapter + backtest
 re-runs after the E1 seeds will move. Real pools read near unrelated walks (36) on this estimator: on 252-bar windows it
 sets the holding clock, it does not grade pair quality.
 
@@ -30891,7 +30893,7 @@ PCAModel mean-bug diagnosis. Findings and outcomes:
    changes over time (real-data NS stage must fix one set).
 Commits: bd0b0486 (3, 5, 6, 8) and the AE/VAE commit after this entry.
 
-### Session 2026-11-12: A8 result (prereg Amendment 8, BUG-D123 re-run) -- NO CELL PASSES, either arm (UNREVIEWED)
+### Session 2026-11-12: A8 result (prereg Amendment 8, BUG-D123 re-run) -- NO CELL PASSES, either arm (reviewed 2026-11-12)
 Chain debug/_tmp_chain_a8_cachyos_20261111.sh (relaunch 5), CachyOS, main at b9e45ecc; complete 2026-11-12 03:09:43.
 Log logs/latest/latest_run_rerun_a8_cachyos_20261111.log (CachyOS). Gates: seal audit 0 sealed rows (start, before
 search); cache parity 131,094 files MATCH after the suite and at the end; pools identical to A7 (k1 797, k2 69, pairs +
@@ -30925,17 +30927,31 @@ Selected config differs from A7 in 8/8 cells. Arm hlbc (half_life_rolling_bc, Ke
 | pit_k2 | 0.8 | +0.244 | 0.152 | 0.102 | 0.503 |
 Read as: the BUG-D123 fix does not rescue the strategy. Largest DSR anywhere 0.152; a cell passes only with holdout
 Sharpe > 0 AND DSR >= 0.95 AND PBO < 0.20 (strategy_search.py:369; prereg line 136), and a pool only if every split
-passes. No cell is near: k1 cells have PBO < 0.20 but DSR <= 5e-6. k2's positive A7 holdouts (0.24-0.39 at 0.6-0.8) shrink or flip. The arm's k2 holdouts are positive
-in 4/4 splits (0.07-0.31) but with DSR <= 0.15 and PBO ~0.5 -- not evidence of skill, and the arm is a comparison only.
-Trades (sum over configs and splits): k1 757,153 -> 898,108 (+19%), k2 75,366 -> 91,634 (+22%); arm k1 543,745, k2
-56,286 (~1/3 of bars have no corrected half-life, as disclosed in the prereg).
-Real-data check of the trade increase (A7 vs A8 spread files, all 797): entry-eligible bars (finite, >= the 5-bar floor)
+passes. No cell is near: k1 cells have PBO < 0.20 but DSR <= 5.4e-6. k2's positive A7 holdouts (0.24-0.39 at 0.6-0.8) shrink or flip. The arm's k2 holdouts are positive
+in 4/4 splits (0.07-0.31) but with DSR <= 0.15 and PBO 0.23-0.64 -- not evidence of skill, and the arm is a comparison only.
+Trades (trade_status_counts: summed over the 216 configs, pre-seal exits; trade files are not per split): k1 757,153 ->
+898,108 (+19%), k2 75,366 -> 91,634 (+22%); arm k1 543,745, k2 56,286 (~1/3 of bars have no corrected half-life, as
+disclosed in the prereg). **unrealizable_gap trades: 72 per pool in A7 -> 0 in A8, both arms** (the BUG-D119 class
+behind k2's earlier holdout positivity; likely the shorter holds no longer span the gaps -- not separately tested).
+Real-data check of the trade increase (A7 vs A8 spread files, all 797 = 791 1day + 6 1hr; the 1hr half-lives are in hourly
+bars, and the 791 daily pairs alone give the same 171.7 -> 30.0): entry-eligible bars (finite, >= the 5-bar floor)
 FELL 3.4% (6,656,616 -> 6,431,889; finite bars -2.9%), so the floor is not the cause; the median of per-pair median
-half-lives fell 171.7 -> 30.0 days (k2: 171.6 -> 27.4; pooled bars 166.2 -> 27.4). The time stop (2 x half-life at
-entry) therefore shortens ~6x, trades close sooner and pairs re-enter more often -- consistent with +19-22%.
+half-lives fell 171.7 -> 30.0 days (k2: 171.6 -> 27.4; pooled bars, all 797: 166.2 -> 29.6; k2 pooled 27.4). Per trade
+TAKEN, half-life at entry fell 116.6 -> 30.0 (~3.9x; ~6x is the spread-bar figure) and k1 median hold 77 -> 37 bars.
+Trades close sooner and pairs re-enter more often -- consistent with +19-22%.
+**What A8 therefore tests (review finding 1).** The registered grid's MAX_HOLD multipliers (mh1-3) were NOT re-sized
+(pre-registered, deliberate), so they now apply to ~4x shorter half-lives: k1 exits at the time stop 26.6% -> 61.9%,
+signal exits 50.8% -> 21.6% (k2 time-stop exits 25.6% -> 65%). A8 is mostly a time-stopped strategy; "the fix does not
+rescue the strategy" holds for the pre-registered grid, not for a grid re-sized to the corrected half-lives (untested).
+Review: adversarial-reviewer 2026-11-12 -- headline CONFIRMED (every table number re-derived from the parquet files;
+post-D123 code b9e45ecc; trade files rebuilt, fingerprints differ; DSR N correct). Findings 1-7 fixed above (exit mix and
+hold added; unrealizable_gap reported; ~3.9x vs ~6x; 30570 struck; trade-count label; pooled figure; DSR/PBO ranges).
+Exit-share / hold figures are the reviewer's (scratchpad r4.py), not re-run by me. Audits: degenerate-column covers
+1day only, its 2 HIGH_NAN half-life files (AGCB_LEAP, GOAC_HIGA) are not pool pairs; pipeline-contracts' one violation
+is a 3min file outside the pools.
 **Prereg text correction (disclosed, prereg not edited after the fact):** Amendment 8 item 1 says "on the real pools the
 rolling median moves ~17 -> ~28 days and ~2% of bars lose their half-life". 28 matches A8 (27.4), but ~17 was the
 INTERMEDIATE D123 code (in-window hedge, a0e3676e), not what A7 ran: A7 used the pre-fix daily-hedge AR(1) (median ~172 on
 these pools, the 107-815-day reading D123 was found by). Bars losing their half-life: 2.9%, not ~2%. The time stop
-therefore shortened ~6x, not lengthened as "17 -> 28" implies.
-Next: independent review (adversarial-reviewer), then ERRATA / D123 close-out.
+therefore shortened (~3.9x per trade taken), not lengthened as "17 -> 28" implies.
+Next: ERRATA / D123 close-out.
