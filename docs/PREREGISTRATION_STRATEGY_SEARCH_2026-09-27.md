@@ -326,3 +326,36 @@ difference in `..._20261102_diff.tsv`; the 11-01 listing is kept). Fixes: both t
 (verified on the Surface: every FRED series fetched live, every real `fred_`/`cot_` file unchanged by size and
 mtime), and the chain checks parity again right after the suite, so a test that writes the real cache stops it before
 discovery. Everything else in Amendment 7 is unchanged.
+
+## Amendment 8 (approved by Ross 2026-11-05, 2026-11-11 "yes to all"; committed before ANY result of the re-run below exists)
+One defect found after the Amendment 7 result was in, so the downstream steps are RE-RUN under this amendment; the
+Amendment 7 result is kept and reported as superseded, never as the result.
+1. **Spread-model half-lives (BUG-D123).** Every half-life was an AR(1) on the trading spread, whose hedge is re-estimated
+   daily; a planted 5-day pair read 107-815 days. Now each estimate holds one hedge fixed inside its window: whole history
+   -> the static hedge (descriptive); formation -> OLS on the formation rows; rolling -> the hedge as it stood just before
+   the window opened (`hedge[t - window]`, NaN for the first window); a refresh that finds no mean reversion leaves the
+   bars up to the next refresh without a half-life (no entry there). Commits a0e3676e, e53db23c, 2aa51cbb;
+   `debug/_verify_half_life_hedge_consistency.py` (21/21; 12/19 and 20/21 on the two previous versions). It changes
+   the time stop (MAX_HOLD_MULTIPLIER x half-life at entry) and the half-life floor (MIN_HALF_LIFE_BARS); on the real
+   pools the rolling median moves ~17 -> ~28 days and ~2% of bars lose their half-life. Discovery, the BH families and
+   pool membership do not read any half-life, so discovery is NOT re-run (the Amendment 7 discovery outputs are used);
+   the chain records whether the re-built pools equal Amendment 7's and reports any difference.
+2. **Comparison arm (`--arm hlbc`, outputs `*_hlbc`).** The same pools, spreads and grid with the time stop and floor read
+   from `half_life_rolling_bc`: Kendall's (1954) small-sample correction of the AR(1) coefficient. Reported next to the
+   primary; it does not replace it. Disclosed before any result: it over-corrects for 20-day pairs (planted 20 -> 28) and
+   leaves ~1/3 of real-pool bars without a half-life (refreshes where the corrected coefficient is >= 1).
+3. **Trial count.** The primary re-run is its own family (2 pools x 216 = 432 per split) and is ALSO reported with
+   N = 1,728 (Amendments 5, 6, 7 and this re-run). The arm is its own family and is also reported with N = 2,160.
+4. **Two corrections to the search code, no result changed by either.** (a) The trade-file guard fingerprinted the pool
+   file only; it now also hashes every spread-series file the backtest reads for the pool's pairs, so trade files built
+   from old spreads cannot be reused (this re-run changes spreads, not pools). (b) A run task copied `Config.BACKTEST`
+   with `copy.copy`, which returns the class itself, so each task overwrote the global config inside its worker; every
+   task sets all five grid parameters before running, so no earlier result depended on it; it now uses `section_copy`.
+   `debug/_verify_strategy_search_amendment8.py` (7/7; 1/7 on the previous code).
+5. **Run machine and gates.** CachyOS, on its own cache (the Amendment 7 data). The chain saves the sorted
+   (path, size) listing of `output/cache` at start, runs the verify suite, stops if the listing changed during the
+   suite or if the seal audit counts any sealed row, and reports (does not stop) a change by the end.
+Adapter, comparison arms, PIT eligibility, clean pools, pool spreads, squeeze features, the degenerate-column and
+pipeline-contract audits, and the search (run + eval, primary and arm) are re-run in full. Unchanged: everything else
+in Amendments 2-7 -- grid, splits, embargo, selection rule, DSR/PBO, success criterion and the disclosed evaluation
+deviations of Amendment 4 item 3. The Amendment 6 arm is not re-run.

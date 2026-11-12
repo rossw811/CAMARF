@@ -36,7 +36,11 @@ def main():
     tmp = tempfile.mkdtemp()
     try:
         p1, p2 = os.path.join(tmp, "a.parquet"), os.path.join(tmp, "b.parquet")
-        open(p1, "wb").write(b"pool-v1"); open(p2, "wb").write(b"pool-v2")
+        # 2026-11-11 (Amendment 8): the fingerprint also hashes the pool pairs' spread files, so it reads the pool as
+        # parquet -- the fixture is two real pools (was two raw byte strings); the checks are unchanged
+        import pandas as pd
+        for p, s in ((p1, "PEP"), (p2, "KO")):
+            pd.DataFrame({"symbol_a": [s], "symbol_b": ["PG"], "tf_label": ["1D"]}).to_parquet(p)
         f1, f2 = fp_fn(p1), fp_fn(p2)
         check("fingerprint_content_hash", f1 == fp_fn(p1) and f1 != f2)
         d = os.path.join(tmp, "out", "pit_k1")

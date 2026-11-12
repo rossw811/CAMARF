@@ -45,7 +45,18 @@ def pools_for_arm(arm: str) -> dict:
         return dict(POOLS)
     if arm == "dyn":
         return {f"{k}_dyn": v.replace("_clean.parquet", "_clean_dyn.parquet") for k, v in POOLS.items()}
+    if arm == "hlbc":   # Amendment 8 comparison arm: same pools and spreads, Kendall-corrected half-life column
+        return {f"{k}{HLBC_SUFFIX}": v for k, v in POOLS.items()}
     raise ValueError(f"unknown arm {arm!r}")
+
+
+HLBC_SUFFIX = "_hlbc"
+HLBC_COLUMN = "half_life_rolling_bc"
+
+
+def half_life_column(pool_name: str) -> str:
+    """Spread-series column behind the time stop and the half-life floor for this pool's runs (Amendment 8)."""
+    return HLBC_COLUMN if pool_name.endswith(HLBC_SUFFIX) else Config.BACKTEST.HALF_LIFE_COLUMN
 SPLITS = (0.5, 0.6, 0.7, 0.8)
 N_FOLDS = 4
 EMBARGO_PCT = 0.01
@@ -76,12 +87,27 @@ _FP_FILE = "_pool_fingerprint.txt"
 
 
 def pool_fingerprint(path: str) -> str:
-    """sha256 of the pool file's bytes: which exact pool a directory of trade files was built from."""
+    """sha256 of the pool file's bytes AND of every spread-series file the backtest reads for its pairs (path + bytes,
+    or MISSING): which exact inputs a directory of trade files was built from. 2026-11-11 (Amendment 8): the pool alone
+    was not enough -- the BUG-D123 re-run regenerates the spread series (half-life columns) without changing the pool,
+    so trade files built from the old spreads would have been reused as current."""
     import hashlib
+    import backtest as bt
     h = hashlib.sha256()
     with open(path, "rb") as f:
         for chunk in iter(lambda: f.read(1 << 20), b""):
             h.update(chunk)
+    pool = parquet_io.read_parquet(path, columns=["symbol_a", "symbol_b", "tf_label"])
+    for tf_dir, tf_label in bt._TF_DIRS:
+        for a, b in sorted(zip(*(pool.loc[pool["tf_label"] == tf_label, c] for c in ("symbol_a", "symbol_b")))):
+            sp = bt._spread_path(tf_dir, a, b)
+            h.update(sp.encode())
+            if os.path.exists(sp):
+                with open(sp, "rb") as f:
+                    for chunk in iter(lambda: f.read(1 << 20), b""):
+                        h.update(chunk)
+            else:
+                h.update(b"MISSING")
     return h.hexdigest()
 
 
@@ -123,14 +149,15 @@ def dropped_log_path(pool_name, cid):
 
 
 def _run_one(task):
-    import copy
     import backtest as bt
     from config import Config
     pool_name, c = task
     out = os.path.join(_OUT, pool_name, f"{c['id']}.parquet")
     if os.path.exists(out):
         return c["id"], "cached"
-    cfg = copy.copy(Config.BACKTEST)
+    from config import section_copy
+    cfg = section_copy(Config.BACKTEST)   # 2026-11-11: copy.copy of a class returned the global (code-review B6 class)
+    cfg.HALF_LIFE_COLUMN = half_life_column(pool_name)
     for k in ("ENTRY_ZSCORE", "ENTRY_ZSCORE_MAX", "STOP_ZSCORE", "EXIT_ZSCORE", "MAX_HOLD_MULTIPLIER"):
         setattr(cfg, k, c[k])
     flags = {"directional_stop": c["directional_stop"], "reentry_rearm": c["reentry_rearm"],
@@ -367,16 +394,21 @@ def main():
     ap.add_argument("--workers", type=int, default=Config.RUNTIME.N_WORKERS)   # was cpu_count // 2 (hardware check 2026-10-10)
     ap.add_argument("--fresh", action="store_true",
                     help="move trade dirs built from a different pool to a backup and rebuild (run phase)")
-    ap.add_argument("--arm", default="a5", choices=["a5", "dyn"],
-                    help="a5: the registered Amendment 5 search; dyn: the Amendment 6 sensitivity arm")
+    ap.add_argument("--arm", default="a5", choices=["a5", "dyn", "hlbc"],
+                    help="a5: the registered search; dyn: the Amendment 6 sensitivity arm; hlbc: the Amendment 8 "
+                         "Kendall-corrected half-life comparison arm")
+    ap.add_argument("--n-trials-combined", type=int, default=None,
+                    help="also report the DSR with this many trials (the honest count across amendments)")
     a = ap.parse_args()
     pools = pools_for_arm(a.arm)
     if a.phase == "run":
         run_phase(a.workers, fresh=a.fresh, pools=pools)
     elif a.arm == "a5":
-        eval_phase(pools)
+        eval_phase(pools, n_trials_combined=a.n_trials_combined)
+    elif a.arm == "dyn":
+        eval_phase(pools, suffix="_dyn", n_trials_combined=a.n_trials_combined or 4 * len(build_grid()))
     else:
-        eval_phase(pools, suffix="_dyn", n_trials_combined=4 * len(build_grid()))
+        eval_phase(pools, suffix=HLBC_SUFFIX, n_trials_combined=a.n_trials_combined)
 
 
 if __name__ == "__main__":

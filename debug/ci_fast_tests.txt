@@ -345,6 +345,7 @@ debug/_verify_strategy_risk_precision.py
 debug/_verify_strategy_rule_invariants.py
 debug/_verify_strategy_search_pool_fingerprint.py
 debug/_verify_strategy_search.py
+debug/_verify_strategy_search_amendment8.py
 debug/_verify_strategy_variation_comparison.py
 debug/_verify_streaming_checkpoint_results.py
 debug/_verify_stress_test_d7_d8_d9.py
