@@ -31080,3 +31080,16 @@ own-vol-path correlation; v3 itself scores 0.778, so the check now compares pair
 Chain debug/_tmp_chain_e1_v2b_20261112.sh (from the v3 chain: group-kill guard, re-exec after pull; 5 seeds; outputs
 ~/CAMARF_e1_runs/v2b_seed<seed>/; log logs/latest/latest_run_e1_v2b_20261112.log). The stopped v3 seed-1 outputs are kept
 in ~/CAMARF_e1_runs/v3_seed20261024_STOPPED_guard/.
+
+### Session 2026-11-12 (cont.): P2 decisions recorded; state at PC restart
+- Ross 2026-11-12: "yes, I'll take your recommendation" on the ungated family -> P2 reports the UNGATED share-class family
+  (~36-81 pairs/yr, 1990-2024) as a DESCRIPTIVE power check next to the gated (tradeable) family, never pooled, and only
+  after its pairs are classified from filings (same-claim / tracking / charter difference) as the 22 gated pairs were.
+- P2 order (unchanged): classify ungated pairs -> power and false share on the E1 v2b placebo -> pre-register the family
+  (its own trial count) -> real data. No real P2 test has been run.
+- Evidence scripts moved from the session scratchpad into the repo: debug/_tmp_p2_share_class_inventory_20261112.py
+  (family counts per year), debug/_tmp_p2_adv_gate_20261112.py (ADV gate, distinct gated pairs, final family after
+  classification: 84 pair-years), debug/_tmp_half_life_mutants_20261112.py (the reviewer's mutant harness for
+  _verify_half_life_hedge_consistency.py: all six mutants fail 27-check test), research/p2_gated_pairs_20261112.csv.
+- Running: E1 v2b chain on CachyOS since 09:37 (seed 20261024 build); detached (setsid nohup), unaffected by a Surface
+  restart. Nothing runs on the Surface.

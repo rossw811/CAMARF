@@ -1,4 +1,19 @@
-## 2026-11-12: RESUME HERE. A8 done -- no cell passes (either arm); E1 v3 chain running on CachyOS
+## 2026-11-12 (late): RESUME HERE. E1 v2b chain running on CachyOS; D123 closed; P2 share-class family built
+- E1: v3 stopped at its tier-1 guard (vol-correlation link lost); v2b (vol-matched day paths on raw returns) chosen on a
+  5-seed real check and launched 09:37 (debug/_tmp_chain_e1_v2b_20261112.sh, main 8bd8b9ef; log
+  logs/latest/latest_run_e1_v2b_20261112.log on CachyOS; outputs ~/CAMARF_e1_runs/v2b_seed*). First gate = tier-1
+  candidate guard ~2 h into each seed. Check once with: ssh rw@100.64.64.126 "tail -n 5
+  ~/CAMARF/logs/latest/latest_run_e1_v2b_20261112.log". Ross has not yet objected to v2b over v3b (told 2026-11-12).
+- BUG-D123 CLOSED (ERRATA, BUG_LOG, Development.md 2026-11-12). C-006 current = Amendment 8, 0/16.
+- P2 (Ross: "I'll take your recommendations", twice): positive-control family = share classes (same PERMCO, common, listed
+  >= 2 y, ADV-gated, declared same-claim per research/p2_share_class_classification.csv): 0 pairs/yr before 2004, 1-8 after
+  (84 pair-years). Test = yearly fixed-hedge ADF, BH within year, trade next year only. APPROVED 2026-11-12: also report
+  the UNGATED family (~36-81 pairs/yr) as a descriptive power check -- NEXT STEP: classify its pairs from filings first
+  (Sonnet subagent, same method as the 22 gated pairs; the 62-row research/tracking_stocks_us.csv is UNVERIFIED).
+  Then: power + false share on the v2b placebo -> pre-register the family -> real data. No real P2 test run yet.
+- Evidence scripts saved: debug/_tmp_p2_share_class_inventory_20261112.py, debug/_tmp_p2_adv_gate_20261112.py,
+  debug/_tmp_half_life_mutants_20261112.py; research/p2_gated_pairs_20261112.csv.
+## 2026-11-12: A8 done -- no cell passes (either arm); E1 v3 chain running on CachyOS (superseded above)
 - A8 complete 03:09 (Development.md 2026-11-12): primary and hlbc arm, 0/16 cells pass; max DSR 0.152. Gates passed (0 sealed
   rows, cache parity MATCH); audits flagged only non-pool files. Pools identical to A7. Half-life median 172 -> 30 days;
   time-stop exits ~26% -> ~62%, so A8 mostly tests a time-stopped strategy (grid not re-sized, as registered). Reviewed
