@@ -146,6 +146,45 @@ def build_attention_classifier(n_classes: int, lookback_bars: int = DEFAULT_LOOK
     return model
 
 
+def build_transformer_classifier(n_classes: int, lookback_bars: int = DEFAULT_LOOKBACK_BARS,
+                                 n_features: int = N_FEATURES, d_model: int = 32, n_heads: int = 4,
+                                 n_blocks: int = 2, ff_dim: int = 64, dropout: float = 0.1, positional: bool = True):
+    """Full multi-block transformer encoder (Ross 2026-11-11: "add tests for ... transformers"): learned positional
+    embedding + n_blocks x [multi-head self-attention -> residual + LayerNorm -> feed-forward -> residual + LayerNorm],
+    global average pooling, dense head. Same contract as the two builders above: ARCHITECTURE ONLY, same blocking
+    condition (module docstring) -- it is far larger than the attention arm, so the sample-size objection applies
+    MORE, not less. `positional=False` drops the position embedding; the model is then permutation-invariant over bars
+    (used by the verify test to show the position embedding is what lets it see order)."""
+    from tensorflow import keras
+    from tensorflow.keras import layers
+
+    class PositionEmbedding(layers.Layer):
+        def build(self, input_shape):
+            self.pos = self.add_weight(name="pos", shape=(input_shape[1], input_shape[2]), initializer="random_normal")
+
+        def call(self, x):
+            return x + self.pos
+
+    inputs = keras.Input(shape=(lookback_bars, n_features), name="windowed_features")
+    x = layers.Dense(d_model)(inputs)
+    if positional:
+        x = PositionEmbedding()(x)
+    for _ in range(n_blocks):
+        a = layers.MultiHeadAttention(num_heads=n_heads, key_dim=d_model // n_heads, dropout=dropout)(x, x)
+        x = layers.LayerNormalization()(layers.Add()([x, a]))
+        f = layers.Dense(d_model)(layers.Dropout(dropout)(layers.Dense(ff_dim, activation="relu")(x)))
+        x = layers.LayerNormalization()(layers.Add()([x, f]))
+    x = layers.GlobalAveragePooling1D()(x)
+    outputs = layers.Dense(n_classes if n_classes > 2 else 1, activation="softmax" if n_classes > 2 else "sigmoid")(x)
+    model = keras.Model(inputs, outputs, name="transformer_meta_labeler")
+    model.compile(
+        optimizer=keras.optimizers.Adam(1e-3),
+        loss="sparse_categorical_crossentropy" if n_classes > 2 else "binary_crossentropy",
+        metrics=["accuracy"],
+    )
+    return model
+
+
 def _mechanical_smoke_test():
     """Confirms both architectures compile and produce valid probability
     outputs on synthetic random data -- NOT a training run, NOT real data.
