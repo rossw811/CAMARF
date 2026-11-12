@@ -45,7 +45,17 @@ v3 (Ross 2026-11-11, "yes to all" on proposal P1; `build --version v3`; v2 stays
     resampling still breaks every long-run relation.
   - episodic plants (EPISODE_YEARS): the planted spread is a random walk outside a 2-5 year episode and AR(1) around
     its entry level inside it, so power is measured for the short fast relations the persistent plants do not cover.
-Usage: python research/placebo_discovery_e1.py build --dst <dir> [--seed 20261024] [--version v3]
+v3b (Ross 2026-11-12, "do the fix"; `build --version v3b`): v3's seed-1 run stopped at the tier-1 guard (US placebo /
+  real candidates 0.598 vs v2 0.915). v3 put the strongly co-moving residuals of high-volatility days onto random-volatility
+  days, removing the real rise of correlation with volatility (150 US series 2006-2015: share of pairs with corr >= 0.4
+  real 0.125, v2 0.123, v3 0.065, real vol-standardised 0.050). v3b keeps v3's standardise -> resample -> multiply-back
+  but draws each year's shared path WITHIN market-volatility bins: market state = cross-sectional median of each
+  sampled series' causal EWMA vol relative to its own median (market_vol_state); each year's days are split into
+  `n_bins` equal-count bins by that state and a stationary bootstrap runs over each bin's days (vol_matched_paths), so a
+  calm day only borrows from calm days of the same year and a crisis day from crisis days. Each series keeps its own vol
+  path and the vol-correlation link; long-run relations are still broken (sources are other days). n_bins is chosen from
+  VOL_BINS_GRID by the check in debug/_verify_placebo_e1_v3b.py, not tuned on discovery output.
+Usage: python research/placebo_discovery_e1.py build --dst <dir> [--seed 20261024] [--version v3|v3b]
        python research/placebo_discovery_e1.py score --research <checkout>/output/research --dst <dir>
 Check: debug/_verify_placebo_discovery_e1.py
 """
@@ -77,6 +87,8 @@ EPISODE_YEARS = (2, 3, 5)
 EPISODE_HALF_LIVES = (5, 20)
 EPISODE_SPREAD_SDS = (0.05, 0.10)
 PLANTS_PER_EPISODE_CELL = 2
+VOL_BINS_GRID = (3, 5, 10)
+VOL_BINS = 5                          # v3b default; see VOL_BINS_GRID and the module docstring
 
 
 def ewma_sigma(r: np.ndarray, lam: float) -> np.ndarray:
@@ -132,6 +144,51 @@ def year_index_paths(cal: pd.DatetimeIndex, mean_block: float, seed: int = SEED)
     for y in np.unique(years):
         pos = np.flatnonzero(years == y)
         out[int(y)] = pos[stationary_indices(len(pos), mean_block, rng)]
+    return out
+
+
+def market_vol_state(rets: pd.DataFrame, lam: float) -> pd.Series:
+    """Per calendar date: cross-sectional median over the sampled series of sigma_i(t) / median_i(sigma_i), with each
+    series' causal EWMA sigma counted only on dates it has a return (never before its first bar). Descriptive input to
+    the null generator, not a decision metric."""
+    Z = {}
+    for c in rets.columns:
+        r = rets[c].to_numpy(float)
+        ok = np.isfinite(r)
+        if ok.sum() < 250:
+            continue
+        sig = ewma_sigma(r, lam)
+        first = np.flatnonzero(ok)[0]
+        sig[:first + 1] = np.nan
+        sig[~ok] = np.nan
+        med = np.nanmedian(sig)
+        if med > 0:
+            Z[c] = sig / med
+    st = pd.DataFrame(Z, index=rets.index).median(axis=1, skipna=True)
+    return st.ffill().bfill()
+
+
+def vol_matched_paths(cal: pd.DatetimeIndex, state: pd.Series, mean_block: float, n_bins: int = VOL_BINS,
+                      seed: int = SEED) -> dict:
+    """{year: positions into `cal`} like year_index_paths, but each target day draws from days of the same year in the
+    same market-volatility bin (equal-count bins by `state` within the year; ties by date order). Inside a bin the
+    stationary bootstrap runs over the bin's days in date order, so blocks are runs of consecutive same-regime days."""
+    from research.eg_null_correlation_matched_n14 import stationary_indices
+    rng = np.random.default_rng(seed)
+    st = state.reindex(cal).ffill().bfill().to_numpy(float)
+    years = pd.DatetimeIndex(cal).year
+    out = {}
+    for y in np.unique(years):
+        pos = np.flatnonzero(years == y)
+        k = min(n_bins, len(pos))
+        rank = np.empty(len(pos), int)
+        rank[np.argsort(st[pos], kind="stable")] = np.arange(len(pos))
+        b = (rank * k) // len(pos)
+        path = np.empty(len(pos), int)
+        for j in range(k):
+            idx = np.flatnonzero(b == j)
+            path[idx] = pos[idx][stationary_indices(len(idx), mean_block, rng)]
+        out[int(y)] = path
     return out
 
 
@@ -379,11 +436,15 @@ def build(src: str, dst: str, seed: int = SEED, version: str = "v2"):
     cal = pd.DatetimeIndex(rets.index).sort_values()
     cal = cal[cal.dayofweek < 5]
     L = choose_block_length({c: rets[c] for c in rets.columns})
-    paths = year_index_paths(cal, L, seed)
+    lam = choose_ewma_lambda({c: rets[c] for c in rets.columns}) if version in ("v3", "v3b") else None
+    if version == "v3b":
+        paths = vol_matched_paths(cal, market_vol_state(rets.reindex(cal), lam), L, VOL_BINS, seed)
+    else:
+        paths = year_index_paths(cal, L, seed)
     src_pos = source_positions(cal, paths)
-    lam = choose_ewma_lambda({c: rets[c] for c in rets.columns}) if version == "v3" else None
     print(f"{len(files)} 1D files; calendar {cal.min().date()}..{cal.max().date()} ({len(cal)} days); mean block {L:.2f}; "
-          f"version {version}" + (f", EWMA lambda {lam:.3f}" if lam is not None else ""))
+          f"version {version}" + (f", EWMA lambda {lam:.3f}" if lam is not None else "")
+          + (f", vol bins {VOL_BINS}" if version == "v3b" else ""))
     thr = Config.STATS.ADV_FILTER_USD
     mb = parquet_io.read_parquet(os.path.join(src, _REF_MEMBERSHIP))
     lmap = parquet_io.read_parquet(os.path.join(src, _REF_LABELMAP)).dropna(subset=["permno"]).set_index("label")["permno"]
@@ -410,7 +471,7 @@ def build(src: str, dst: str, seed: int = SEED, version: str = "v2"):
             print(f"  {i + 1}/{len(files)}", flush=True)
     C = pd.DataFrame(cand)
     B = choose_plant_bases(C)
-    G = plant_grid(episodic=(version == "v3"))
+    G = plant_grid(episodic=(version in ("v3", "v3b")))
     G["base"] = ""
     for arm in ("us", "international"):
         pool = B.loc[B["arm"] == arm, "label"].to_numpy()
@@ -443,7 +504,7 @@ def build(src: str, dst: str, seed: int = SEED, version: str = "v2"):
     P.to_parquet(os.path.join(dst, "_e1_plants.parquet"), index=False)
     C.to_parquet(os.path.join(dst, "_e1_plant_candidates.parquet"), index=False)
     n = max(stats.get("returns", 1), 1)
-    pd.DataFrame([{"seed": seed, "version": version, "ewma_lambda": lam, "mean_block": L, "n_files": len(files), "n_plants": len(P),
+    pd.DataFrame([{"seed": seed, "version": version, "ewma_lambda": lam, "vol_bins": VOL_BINS if version == "v3b" else np.nan, "mean_block": L, "n_files": len(files), "n_plants": len(P),
                    "shifted_share": stats.get("shifted", 0) / n, "zero_share": stats.get("zero", 0) / n,
                    "random_share": 0.0, "n_reference_links": n_link}]).to_parquet(os.path.join(dst, "_e1_build.parquet"))
     print(f"placebo written to {dst}: {len(P)} plants; source dates shifted to the next own bar "
@@ -550,7 +611,7 @@ def main():
     ap.add_argument("--research", default=None)
     ap.add_argument("--real-research", default=None)
     ap.add_argument("--seed", type=int, default=SEED)
-    ap.add_argument("--version", choices=["v2", "v3"], default="v2")
+    ap.add_argument("--version", choices=["v2", "v3", "v3b"], default="v2")
     a = ap.parse_args()
     if a.phase == "build":
         build(a.src, a.dst, a.seed, a.version)
