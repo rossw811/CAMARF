@@ -30802,7 +30802,7 @@ synthetic ground-truth test; none is imported by data.py / analysis.py / backtes
 | Nelson-Siegel, fixed lambda 0.0609 | research/nelson_siegel.py | _verify_nelson_siegel.py 5/5 | exact recovery; row-by-row (point-in-time) |
 | PCA residual s-score (Avellaneda-Lee), MP factor count | research/factor_residuals.py | _verify_factor_residuals.py 5/5 | OU hl 5 recovered 5.3 (raw 21.5); s-score corr 0.828 |
 | Autoencoder / VAE (same fit/common interface) | research/factor_autoencoders.py | _verify_factor_autoencoders.py 5/5 | f^2 group, out of sample: PCA 0.420, AE 0.892, VAE 0.936 |
-| GAE / VGAE link prediction | research/graph_autoencoder.py | _verify_graph_autoencoder.py 5/5 | held-out AUC 0.947 / 0.937; random-graph null 0.52 |
+| GAE / VGAE link prediction | research/graph_autoencoder.py | _verify_graph_autoencoder.py 5/5 | held-out AUC 0.947 / 0.937; random-graph null 0.521; ~~shows the GCN works~~ matches, does not beat, common neighbours 0.943 (review finding 3) |
 | Transformer encoder (architecture-only) | research/lstm_attention_architecture.py | _verify_transformer_classifier.py 3/3 | order task 0.986 with positions, 0.482 without |
 
 What was tried and changed (rule 8):
@@ -30810,7 +30810,8 @@ What was tried and changed (rule 8):
   estimate (phi 0.9089) is 1.4 SE from 0.9; half-lives magnify phi error near 1. The check now judges truth in phi
   units (3 SE). Not a code change.
 - Factor residuals, first draft failed 3/5. Two causes: (a) thresholds guessed (R^2 > 0.95; half-life > 15); replaced by
-  theory (R^2_j = 1 - s2_idio / sum beta^2 s2_f: 0.937 predicted, 0.93 seen; a 252-bar AR(1) on a random walk reads
+  theory (R^2_j = 1 - s2_idio / sum beta^2 s2_f: N=60 draft 0.937 predicted, 0.93 seen; final N=400 test theory
+  0.998 / 0.989 / 0.989, seen 0.997 / 0.988 / 0.988; a 252-bar AR(1) on a random walk reads
   ~20 bars, Dickey-Fuller bias, so random-walk contrasts are relative). (b) A REAL BUG: common() added back each
   stock's full in-window mean, de-meaning the residual so its cumulative sum ended at 0 and carried a ramp; the
   s-score measured ~(X_t + X_t0)/2 (corr with the true deviation 0.607 -> 0.828 after the fix). My first explanation
@@ -30856,3 +30857,36 @@ holds only for volatile legs. Check 2 first asserted > 0.6 (a guess); raw in-epi
 directions alike) confirmed the derivation; the bound is now derived ([0.25, 0.7]) and the calm-leg number reported.
 Implication for Ross: P2 needs a family well under 100, or a more powerful one-year test (e.g. a fixed hedge from a
 pre-registered relation such as a dual listing's 1:1, which removes the errors-in-variables loss), to be worth running.
+
+### Session 2026-11-11 (cont.): independent review of the model tests -- one real bug, weak checks strengthened
+
+Reviewer: one adversarial-reviewer agent (read-only; re-ran the fast tests; counts matched). Survived: point-in-time
+handling (rolling_sscores, fit_ns, the AE validation split); Heston little-trap CF and Gil-Pelaez normalization;
+Bachelier; Diebold-Li loadings; Avellaneda-Lee algebra; GAE/VGAE loss and KL; the transformer permutation argument; the
+PCAModel mean-bug diagnosis. Findings and outcomes:
+1. HIGH, CONFIRMED -- AE/VAE re-introduced the PCAModel mean bug: uncentered inputs into layers with biases, so output
+   biases learned each stock's own mean and de-meaned the residuals (s-score corr 0.414 vs PCA 0.842). FIXED: AE/VAE
+   train on de-meaned returns and add back only the factor part of the mean through the same PCA projection PCAModel
+   uses (exact for PCA), so the three models differ only in the fluctuation model. New check 5: planted drift 0.003
+   kept (PCA 0.0025, AE 0.00263, VAE 0.00233). New check 6 then FAILED (AE 0.316 vs PCA 0.692); diagnosis per window:
+   the AE trained on the first 80% of the window and early-stopped on the last 20% -- the bars that set the s-score
+   were out-of-sample for the AE only (even a linear AE tracked 0.62 vs PCA 0.84 with equal per-bar fit). FIXED: the
+   split now only chooses the epoch count; the model is refit on the whole window. Check 6: AE 0.655 vs PCA 0.692.
+2. MEDIUM -- AE check 2 scored only the f^2 group, and PCA k=1 lands on an arbitrary mix of two near-equal blocks.
+   FIXED: scored on both groups and the total. AE k=1 total 0.946 (f 0.962, f^2 0.927), VAE 0.985; PCA k=1 0.543 (f
+   0.992, f^2 0.032); PCA k=2 0.997. ~~"f^2 group: PCA 0.420, AE 0.892, VAE 0.936"~~ (the table row above) is replaced
+   by these numbers.
+3. MEDIUM -- GAE checks not diagnostic: common neighbours alone 0.943 vs GAE 0.947. Baselines added to the module; the
+   test now asserts "matches the best baseline", and the synthetic stage does NOT show the GCN adds value.
+4. MEDIUM, PLAUSIBLE -- AE hyperparameters / 0.05 margin fitted to the test, "cost of nonlinearity" untested. TESTED:
+   a linear-activation AE (PCA's capacity) reaches PCA exactly (gap 0.000 on 3 seeds) while the tanh AE trails by
+   0.019-0.031 -- the gap is the nonlinear model's, not under-training. The lr/patience defaults remain chosen on one
+   DGP (disclosed).
+5. LOW-MEDIUM -- ARMA single-seed: now 10 seeds (median 13.22 vs 13.51, 10/10 within 25%); one-year windows reported
+   (1.7..20.6, one ARMA(2,0) pick reproducing the short bias).
+6. LOW -- SABR beta != 1 untested: beta=0 nu=0 vs Bachelier added (2e-5; the review's mutants 6e-4..0.74 now caught);
+   series branch of z/x(z) tested at its switch.
+7. LOW -- stale numbers corrected (R^2 theory figures; GAE null 0.521).
+8. LOW -- disclosed: dominant-root NaN for mixed AR(2) roots; VAE beta not a calibrated ELBO weight; FRED maturity set
+   changes over time (real-data NS stage must fix one set).
+Commits: bd0b0486 (3, 5, 6, 8) and the AE/VAE commit after this entry.
