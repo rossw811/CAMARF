@@ -30728,3 +30728,17 @@ fixed), seed-3 equivalence CONFIRM, seed-3 explanation QUALIFY, V3 bracket REJEC
    membership is decided by as-of month-end BH (research/purity_pit_eligibility.py ~137-139) -- that is why 39 of 69 real
    k2 pairs show < 2 rejected windows there. "One or two windows just past the cutoff" describes the whole-history test,
    not the test that admitted the pairs.
+5. **Seed-variation test (run after the review, CachyOS).** Calendar and paths rebuilt exactly as `build` does (seeded
+   800-file sample, `year_index_paths(cal, mean_block, seed)`); market proxy = the sample's mean daily return:
+
+| seed | real top-1% move days drawn (of 254) | kurtosis placebo / real | abs-return autocorr lag 1, placebo / real | lag 20, placebo / real |
+|---|---|---|---|---|
+| 20261024 | 255 | 16.5 / 16.6 | 0.330 / 0.370 | 0.175 / 0.204 |
+| 20261025 | 220 | 15.4 / 22.3 | 0.276 / 0.337 | 0.186 / 0.221 |
+| 20261026 | 262 | 16.7 / 18.6 | 0.314 / 0.326 | 0.173 / 0.194 |
+
+   Neither explanation holds: seed 3 drew the MOST extreme days and the same kurtosis, so "fewer volatile stretches" is
+   wrong; and at the market level the placebo keeps most long-lag volatility clustering (lag-20 0.17-0.19 vs real
+   0.19-0.22) because each year keeps its own volatility level -- the review's "removes clustering beyond a few days"
+   holds within a year, not across years. Seed 3's thinner tail (and its smaller pools) is UNEXPLAINED. The
+   anti-conservative risk for a placebo-calibrated cutoff (item 3) stands, smaller than first stated.
