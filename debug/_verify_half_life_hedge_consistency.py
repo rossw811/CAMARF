@@ -144,6 +144,47 @@ check("9a stationary stretch has an estimate", np.isfinite(r9[t_ok + 5]), r9[t_o
 check("9b failed refresh is not filled with the old estimate", np.isnan(r9[t_bad]) and np.isnan(r9[t_bad + 10]),
       (r9[t_bad], r9[t_bad + 10]))
 
+# 10. (review of 2aa51cbb, 2026-11-12: three mutants -- forward-fill limited to one refresh, fill from the NEXT refresh
+#     (lookahead), Kendall arm keeping the old forward-fill -- passed 9 because it looked only deep inside a run of
+#     failures with step 1 elsewhere.) Hold boundaries with step 21, against per-refresh values computed directly
+#     here, for both the primary and the Kendall arm.
+def _refresh_values(a, b, h, window, step, bc):
+    out = {}
+    for t in range(window - 1, a.size, step):
+        ok = t - window >= 0 and np.isfinite(h[t - window])
+        out[t] = SpreadModel.half_life_ar1(a[t - window + 1: t + 1] - h[t - window] * b[t - window + 1: t + 1],
+                                           bias_correct=bc) if ok else np.nan
+    return out
+
+
+def _held_exactly(r, vals, n):
+    ts = sorted(vals)
+    for k, t in enumerate(ts):
+        seg = r[t: ts[k + 1] if k + 1 < len(ts) else n]
+        v = vals[t]
+        if not (np.all(np.isnan(seg)) if np.isnan(v) else np.allclose(seg, v)):
+            return False, t
+    lead_ok = bool(np.all(np.isnan(r[: ts[0]])))
+    return lead_ok, (None if lead_ok else 0)
+
+
+for bc in (False, True):
+    tag = "Kendall" if bc else "primary"
+    r = SpreadModel.rolling_half_life_hedged(a9, np.zeros(n9), np.zeros(n9), window=100, step=21, bias_correct=bc)
+    vals = _refresh_values(a9, np.zeros(n9), np.zeros(n9), 100, 21, bc)
+    ok, at = _held_exactly(r, vals, n9)
+    fails = [t for t in sorted(vals) if t > 600 and np.isnan(vals[t])]
+    check(f"10a {tag}: every bar holds exactly its latest refresh (trend series, step 21)", ok, f"first mismatch at {at}")
+    check(f"10b {tag}: first failed refresh in the trend is NaN at its own bar, the bar before keeps the old value",
+          bool(fails) and np.isnan(r[fails[0]]) and np.isfinite(r[fails[0] - 1]), fails[:2])
+    # failure then success: hedge NaN where refresh 141 looks (141 - 100 = 41) -> 141..161 NaN, 162 switches back
+    h = np.zeros(n9); h[41] = np.nan
+    r2 = SpreadModel.rolling_half_life_hedged(a9, np.zeros(n9), h, window=100, step=21, bias_correct=bc)
+    v2 = _refresh_values(a9, np.zeros(n9), h, 100, 21, bc)
+    ok2, at2 = _held_exactly(r2, v2, n9)
+    check(f"10c {tag}: failure then success switches exactly at the refresh bars", ok2 and np.isnan(r2[161])
+          and np.isfinite(r2[162]) and np.isfinite(r2[140]), f"mismatch {at2}; r[140,141,161,162]={r2[[140, 141, 161, 162]]}")
+
 print(f"\n{len(PASS)}/{len(PASS) + len(FAIL)} checks passed")
 if FAIL:
     print("FAILED:", FAIL)

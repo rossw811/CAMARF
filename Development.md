@@ -30955,3 +30955,54 @@ INTERMEDIATE D123 code (in-window hedge, a0e3676e), not what A7 ran: A7 used the
 these pools, the 107-815-day reading D123 was found by). Bars losing their half-life: 2.9%, not ~2%. The time stop
 therefore shortened (~3.9x per trade taken), not lengthened as "17 -> 28" implies.
 Next: ERRATA / D123 close-out.
+
+### Session 2026-11-12 (cont.): BUG-D123 closed -- review of 2aa51cbb (QUALIFY), test strengthened; D123 errata
+**Review (adversarial-reviewer, 2026-11-12) of 2aa51cbb (failed refresh -> NaN): QUALIFY.** The code is right: an
+independent per-refresh reference matched HEAD on 200 random cases (step 1-29, ~10% NaN hedges), no bar carries a later
+refresh, and the Kendall arm runs through the same function (analysis.py:3302). Downstream consumers handle the extra
+NaN: backtest skips the entry (backtest.py:1108-1116) and the max hold uses half_life_at_entry fixed at entry (:1273); ml.py
+falls back to the whole-history scalar only on the non-strict descriptive path; trend/speed/median helpers mask NaN; the
+z-window comes from _adaptive_window, not this series.
+1. FIXED -- the test did not protect the change: mutants "forward-fill one refresh", "fill from the NEXT refresh"
+   (lookahead) and "Kendall arm keeps the old forward-fill" passed 21/21 (check 9 looked only deep inside a run of
+   failures; checks 7 use step 1). New check 10 (both arms, step 21, against per-refresh values computed in the test):
+   every bar holds exactly its latest refresh; the first failed refresh in the trend (bar 645) is NaN at its own bar and
+   the bar before keeps the old value; a failure-then-success sequence switches exactly at refresh bars 141 / 162. HEAD
+   27/27; the reviewer's six mutants (its scratch harness, re-run unchanged): old_ffill 20/27, ffill_one_refresh 21/27,
+   next_refresh 21/27, late_by_one 20/27, early_by_one 19/27, bc_arm_old_ffill 24/27 -- every one fails.
+2. DISCLOSED -- the Kendall arm now differs from the primary in TWO ways: the estimate, and how often the half-life gate
+   blocks trading (30-34% of bars without a half-life vs 2-3%). A difference in trade count or Sharpe between A8's primary
+   and hlbc arm cannot be credited to the bias correction alone (A8: arm k1 543,745 vs 898,108 trades). The 11-11 table's
+   medians after the change (39.6, 43.9) are over SUCCESSFUL refreshes only and are not the same quantity as 54.1 / 59.9
+   before. A sub-arm (Kendall estimate, primary's NaN pattern) would separate the two; not built (no decision rests on it).
+3. LABELLED -- research/bug_d45_decoupled_std_retest.py and research/ewma_zscore_comparison.py use
+   half_life_rolling.bfill().ffill(): already a later value for the pre-estimate bars, and now also each failed-refresh gap
+   filled from the next refresh. Both are descriptive full-sample comparisons (no decision); commented in place.
+   research/era_decay_replication.py's era mean is now over bars with an estimate (commented).
+4. Commit 2aa51cbb's message says "(unreviewed)"; this entry is its review record.
+**BUG-D123 CLOSED 2026-11-12:** fixes a0e3676e / e53db23c / 2aa51cbb, all reviewed; re-run = Amendment 8 (reviewed,
+0/16); ERRATA §2 row; C-006 points at A8.
+
+### Session 2026-11-12 (cont.): P2 positive-control family, sub-family 1 (share classes) -- module + synthetic test
+Ross 2026-11-12: "I'll take your recommendations" -- (1) P2 starts with a fixed-hedge family as a POSITIVE CONTROL
+(share classes of one company, same-index ETFs, DLC/ADR twins as separate sub-families, never pooled); (2) the A8 grid is
+NOT re-sized after the result (that would be a new pre-registered family with its own trial count).
+- research/yearly_family_test.py: `test="fixed_adf"` (ADF with constant on log a - log b, slope 1, AIC lags; any constant
+  price ratio sits in the intercept; Dickey-Fuller critical values, 5% ~ -2.86 vs EG ~ -3.34) and a per-year family
+  {year: pairs}. Old behaviour unchanged (test="eg" default; _verify_yearly_family_test.py 5/5).
+- research/p2_share_class_family.py: same CRSP PERMCO, SHRCD 10/11 on a name row covering the decision date (Dec 31),
+  each listed >= 2 years, has a WRDS 1D file. Reads no price or test result.
+- debug/_verify_p2_share_class_family.py 7/7 (~70 s; not in the CI fast list): family rules incl. 2-year listing and
+  future rows; 1,500:1 stationary spread rejected (p 1.7e-3); size on independent walks fixed_adf 0.066 / EG 0.060 (1,000
+  draws, 3 SE 0.021; a separate 3,000-draw run: AIC 0.054, BIC 0.052, lag 0 0.049); power on the SAME draws, 20-day
+  half-life, one year: fixed_adf 0.307 vs EG 0.190 (paired diff 0.117, 3 SE 0.073). The first version (400 draws, 3 SE
+  unpaired) passed with size 0.083 and a power gap barely over its bound -- too loose; replaced.
+- Inventory (exploratory, scratchpad p2_share_class_inventory.py; descriptive, before any liquidity gate): share-class
+  pairs per year-end 36-81 (1990-2024; e.g. BRK, MKC, BF, LEN, HEI, TAP at 2024-12-31). The CRSP name snapshot ends
+  2024-12-31, so no 2025 family from it (disclosed in the module). Many B classes are thin; the discovery ADV gate will
+  cut some -- count after the gate next.
+- Known limits for the other sub-families (D14, 2026-10-20): DLC twins close in different time zones (daily corr
+  0.11-0.30 for Rio/ABB/Carnival) and can diverge for years (Froot-Dabora), so they are a weaker control than share
+  classes; same-index ETFs need a declared list (survivorship: today's ETFs) -- to be designed and shown before building.
+Order (unchanged): power and false share on the E1 v3 placebo -> pre-register the family -> real data. No real price
+has been read for P2.

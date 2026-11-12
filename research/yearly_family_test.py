@@ -13,6 +13,13 @@ Procedure, for each calendar year y with enough bars:
   2. Benjamini-Hochberg at `alpha` across the family's year-y tests
   3. rejected pairs are ADMITTED for year y + 1 only (decision date = last bar of year y; nothing from y + 1 is used)
 Output: one row per (pair, year): pvalue, rejected, admitted_for (= y + 1), n_bars.
+2026-11-12 (Ross took the recommendation: fixed-hedge positive-control family first):
+  test="fixed_adf" -- ADF with a constant on log a - log b (slope fixed at 1, so any constant price ratio, e.g. a
+  1,500:1 share-class pair, sits in the intercept; nothing is estimated from the pair before the test). Critical values
+  are the plain Dickey-Fuller ones (5% ~ -2.86), not Engle-Granger's (~ -3.34): that, plus no hedge estimate, is the
+  power gain. Lag order by AIC (statsmodels adfuller autolag="AIC").
+  `family` may be {year: [(a, b), ...]}, a point-in-time family that changes by year
+  (research/p2_share_class_family.py); a list is the same family every year.
 Verify: debug/_verify_yearly_family_test.py
 """
 import numpy as np
@@ -38,9 +45,21 @@ def bh_reject(p: np.ndarray, alpha: float) -> np.ndarray:
     return out
 
 
-def yearly_family_tests(log_prices: dict, family: list, alpha: float = 0.05, years=None) -> pd.DataFrame:
-    """`log_prices`: {symbol: pd.Series of log prices on its own dates}; `family`: [(a, b), ...] declared in advance."""
-    from statsmodels.tsa.stattools import coint
+TESTS = ("eg", "fixed_adf")
+
+
+def _pvalue(x: pd.Series, y: pd.Series, test: str) -> float:
+    from statsmodels.tsa.stattools import adfuller, coint
+    if test == "eg":
+        return float(coint(x, y)[1])
+    return float(adfuller((x - y).to_numpy(), regression="c", autolag="AIC")[1])
+
+
+def yearly_family_tests(log_prices: dict, family, alpha: float = 0.05, years=None, test: str = "eg") -> pd.DataFrame:
+    """`log_prices`: {symbol: pd.Series of log prices on its own dates}; `family`: [(a, b), ...] declared in advance,
+    or {year: [(a, b), ...]} (only that year's pairs are tested in that year)."""
+    if test not in TESTS:
+        raise ValueError(f"test must be one of {TESTS}")
     all_dates = pd.DatetimeIndex(sorted(set().union(*[s.index for s in log_prices.values()])))
     years = sorted(set(all_dates.year)) if years is None else years
     rows = []
@@ -49,14 +68,17 @@ def yearly_family_tests(log_prices: dict, family: list, alpha: float = 0.05, yea
         if len(cal_y) == 0:
             continue
         yr_rows = []
-        for a, b in family:
+        fam_y = family.get(y, []) if isinstance(family, dict) else family
+        if not fam_y:
+            continue
+        for a, b in fam_y:
             sa, sb = log_prices.get(a), log_prices.get(b)
             p, n = np.nan, 0
             if sa is not None and sb is not None:
                 j = pd.concat([sa[sa.index.year == y], sb[sb.index.year == y]], axis=1, join="inner").dropna()
                 n = len(j)
                 if n >= MIN_BARS_SHARE * len(cal_y) and n >= 30:
-                    p = float(coint(j.iloc[:, 0], j.iloc[:, 1])[1])
+                    p = _pvalue(j.iloc[:, 0], j.iloc[:, 1], test)
             yr_rows.append({"symbol_a": a, "symbol_b": b, "year": int(y), "n_bars": n, "pvalue": p})
         Y = pd.DataFrame(yr_rows)
         Y["rejected"] = bh_reject(Y["pvalue"].to_numpy(), alpha)

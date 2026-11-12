@@ -54,6 +54,9 @@ def compare_pair(path: str) -> dict:
     df = parquet_io.read_parquet(path)
     if "z_rolling" not in df.columns or "half_life_rolling" not in df.columns or "spread" not in df.columns:
         return None
+    # DESCRIPTIVE ONLY (feeds no decision): bfill takes a LATER value for the bars before the first estimate and, since
+    # BUG-D123 2aa51cbb (failed refresh -> NaN), also fills each failed-refresh gap from the next refresh. Not
+    # point-in-time; review 2026-11-12 finding 3. Results written before 2026-11-11 used the old forward-fill.
     hl = df["half_life_rolling"].bfill().ffill()
     if hl.isna().all():
         return None

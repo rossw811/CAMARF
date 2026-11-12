@@ -130,6 +130,7 @@ def main():
                 continue
             trades = engine.run(pair_row, era_df, hedge_method="ols", holdout_only=False)
             metrics = compute_metrics(trades, _TF_LABEL, sym_a, sym_b, "ols")
+            # mean over bars WITH an estimate: since BUG-D123 2aa51cbb failed refreshes are NaN, not the older value
             mean_hl = float(era_df["half_life_rolling"].mean()) if "half_life_rolling" in era_df else np.nan
             era_rows.append({
                 "symbol_a": sym_a, "symbol_b": sym_b, "era": era_idx,
