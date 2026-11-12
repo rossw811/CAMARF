@@ -59,7 +59,25 @@ def case3_duplicate_entry_dates():
 
 
 if __name__ == "__main__":
-    case1_empty_examples()
-    case2_does_not_mutate_input()
-    case3_duplicate_entry_dates()
+    # join_macro_features() calls macro.build(), which re-fetches FRED/COT series older than CACHE_MAX_AGE_HOURS and
+    # saves them (sealed rows to <CACHE_DIR>/_sealed_vault). Run on a temporary copy of the real macro files, never on
+    # output/cache (2026-11-11: this test rewrote 16 real macro/vault files inside the Amendment 8 chain's suite; same
+    # fix as debug/_verify_macro_regimes.py got for Amendment 7).
+    import glob
+    import shutil
+    import tempfile
+    from config import Config
+    _real = Config.DATA.CACHE_DIR
+    _td = tempfile.mkdtemp()
+    Config.DATA.CACHE_DIR = os.path.join(_td, "cache")
+    os.makedirs(Config.DATA.CACHE_DIR)
+    for _f in glob.glob(os.path.join(_real, "fred_*.parquet")) + glob.glob(os.path.join(_real, "cot_*.parquet")):
+        shutil.copy2(_f, Config.DATA.CACHE_DIR)
+    try:
+        case1_empty_examples()
+        case2_does_not_mutate_input()
+        case3_duplicate_entry_dates()
+    finally:
+        Config.DATA.CACHE_DIR = _real
+        shutil.rmtree(_td, ignore_errors=True)
     print("\nAll ml_stage2_ablation checks passed.")

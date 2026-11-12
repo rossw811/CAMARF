@@ -359,3 +359,14 @@ Adapter, comparison arms, PIT eligibility, clean pools, pool spreads, squeeze fe
 pipeline-contract audits, and the search (run + eval, primary and arm) are re-run in full. Unchanged: everything else
 in Amendments 2-7 -- grid, splits, embargo, selection rule, DSR/PBO, success criterion and the disclosed evaluation
 deviations of Amendment 4 item 3. The Amendment 6 arm is not re-run.
+
+### Amendment 8 addendum (2026-11-11 evening; committed before ANY result of the re-run exists)
+**The first chain run stopped at its suite gate; the cache listing changed during that suite.** Start 16:34: 131,094
+files, listing identical to Amendment 7's (sha256 35b51993...). The suite (16:54-16:58) had 3 unexplained failures
+(fixed in 2a57a0f6; Development.md 2026-11-11) and stopped the chain before any re-run step. During it,
+`debug/_verify_ml_stage2_ablation.py` (`join_macro_features` -> `macro.build()`) re-fetched 16 FRED/COT series into the
+real `output/cache` (15 in `_sealed_vault/`, written 16:56:27-31). Same mechanism as Amendment 7 addendum 2, a third test
+not covered by that fix; it now runs on a temporary copy of the macro files (verified: no real `fred_`/`cot_` file
+changed). As there: no step of this chain reads a `fred_`/`cot_` file or imports `macro` (Layer 2 is off), so the cache is
+not restored; the relaunch (17:50) saved its own start listing (sha256 deaa43b1..., 131,094 files; the 32-line
+difference from Amendment 7's listing is these 16 files' sizes). Everything else in Amendment 8 is unchanged.
