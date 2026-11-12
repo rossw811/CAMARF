@@ -31128,3 +31128,23 @@ no reduced precision for decision statistics), (3) a verify test with the CPU pa
 once). Synthetic 7/7 (check 7: exactly-once structure, corr 0.469 vs real 0.471, planted cointegration broken p 0.317).
 5-seed whole-history real check running (~/e1_v2c_realcheck_20261112.parquet); the chain launches only if v2c closes the
 gap there.
+
+### Session 2026-11-12 (cont.): E1 v2c real check -> chain launched; TF modules measured CPU vs GPU
+v2b seed 1 also stopped at the tier-1 guard (US 0.757; group kill left 0 processes). 5-seed proxy check (CachyOS,
+/tmp/e1_v2c_realcheck.py = scratchpad e1_v2c_realcheck.py; ~/e1_v2c_realcheck_20261112.parquet): share of pairs with
+corr >= 0.4, 300 random US series with >= 2,520 returns, built exactly as build() samples; mean (sd) over seeds:
+| | whole history | 1980s | 2000s | 2020-25 |
+|---|---|---|---|---|
+| real | 0.0160 | 0.0013 | 0.0310 | 0.1487 |
+| v2 | 0.0156 (0.0022) | 0.0104 (0.0099) | 0.0315 | 0.1457 |
+| v2b | 0.0156 (0.0031) | 0.0007 | 0.0335 | 0.1400 (0.0255) |
+| v2c | 0.0175 (0.0033) | 0.0003 | 0.0329 | 0.1521 (0.0245) |
+Per-seed whole-history ratio to real: v2c 1.40 / 1.00 / 1.22 / 0.92 / 0.95; v2b seed 1 0.79 (the guard read 0.757 --
+the proxy tracks it). v2c's mean sits slightly above real (conservative: more null candidates, more placebo false
+discoveries). Seed-to-seed sd ~20% of the mean remains for every variant (the calm bins are still drawn with replacement)
+-- disclosed; the guard stays at 0.8. Chain debug/_tmp_chain_e1_v2c_20261112.sh (from v2b's; log
+logs/latest/latest_run_e1_v2c_20261112.log; outputs ~/CAMARF_e1_runs/v2c_seed*); v2b's stopped seed-1 outputs kept in
+~/CAMARF_e1_runs/v2b_seed20261024_STOPPED_guard/.
+TF modules, CachyOS, GPU vs CPU (CUDA_VISIBLE_DEVICES=""), verify tests: factor_autoencoders GPU 6m35s / CPU 3m43s
+(-> CPU default, 18d0306b); graph_autoencoder 4.06 s / 3.92 s (tie); transformer classifier 79.8 s / 44.3 s. At these
+sizes the CPU wins; GPU-vs-CPU is re-measured at real-data size before any of these trains on real data (CLAUDE.md rule).
