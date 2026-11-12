@@ -427,3 +427,4 @@ debug/_verify_spread_arma.py
 debug/_verify_stochastic_vol_models.py
 debug/_verify_nelson_siegel.py
 debug/_verify_factor_residuals.py
+debug/_verify_graph_autoencoder.py
