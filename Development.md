@@ -30639,3 +30639,46 @@ critical values assume homoskedastic errors. The placebo's 3-6x at 1e-4 sits bet
 volatility does, not a placebo defect. Consequence: on real data the nominal p near the BH cutoff (~2e-5) understates
 false discoveries; the placebo keeps volatility clustering, so its rates include this -- direct support for decision 3
 (placebo-calibrated cutoff arm). Counts at 1e-4 are small for A-C (1-24); D (98) is firm.
+
+### Session 2026-11-11 (cont.): E1 v2 three seeds complete -- V1 (seed agreement) and V5 (pair evidence) (UNREVIEWED; V6 next)
+Seed 20261026 re-run completed 16:25:48 (discovery 1154.5 min). Its Tier 1 log lines (983,250 Pearson candidates,
+957,856 tested, 635 BH-confirmed, ADV-gate skips 13/27/6) match the hung 11-06 run line for line, and its plants and build
+table are identical -- the re-run is the same experiment. Outputs: ~/CAMARF_e1_runs/v2_seed2026102{4,5,6}/.
+**V1 (three seeds, scores against the real A7 pools on CachyOS):**
+
+| pool | arm | placebo noise pairs s1 / s2 / s3 | real pairs |
+|---|---|---|---|
+| k1 | international | 215 / 151 / 53 | 184 |
+| k1 | mixed | 61 / 69 / 11 | 58 |
+| k1 | US gated | 302 / 364 / 49 | 549 |
+| k2 | international | 5 / 1 / 0 | 17 |
+| k2 | mixed | 0 / 2 / 0 | 7 |
+| k2 | US gated | 2 / 1 / 0 | 45 |
+
+Totals k1 578 / 584 / 113 vs 791 real (14-74%); k2 7 / 4 / 0 vs 69 (0-10%). k2 is cleaner than k1 in every seed and arm
+(decision 1 holds). Plant recovery in k2 (found / tested, both arms): 5-day 19/19, 17/17, 16/17; 20-day 25/27, 25/27, 25/26;
+60-day 3/27, 2/28, 1/29; 120-day 0 in all. Recovery agrees across seeds; tested fast plants are found at all spread sizes
+(0.89-1.00), 60/120-day almost never.
+**Seed-to-seed variation is large.** Window false share at the real BH cutoff: international 0.67 / 0.52 / 0.24, mixed
+0.21 / 0.25 / 0.04, US 0.65 / 0.83 / 0.10; tail rate p<1e-4 US 0.00059 / 0.00064 / 0.00012. Builds are equivalent (46,218
+files, 128 plants, mean block 3.50 / 3.75 / 3.55 days). Cause: every placebo series shares ONE resampled calendar (that
+is how cross-sectional correlation is kept), so a seed is one alternative market history -- in effect three draws, not
+millions of windows; whether the draw holds volatile stretches drives the far tail (V3: volatility clustering is what
+inflates it). Consequence for decision 3 (placebo-calibrated cutoff): a cutoff from three seeds is unstable; it needs
+more seeds or a conservative rule (e.g. the largest rate across seeds), to be proposed to Ross.
+**V5 (do real pool pairs look like planted true pairs or placebo noise?)** Per pair, from each run's Tier 3 windows:
+
+| group | pairs | windows rejected q25/50/75 | share rejected median | log10 min p median | >= 2 rejected |
+|---|---|---|---|---|---|
+| placebo plants in k2 (true) | 156 | 5 / 9.5 / 13 | 1.00 | -9.2 | 0.94 |
+| placebo noise in k2 | 11 | 1 / 2 / 2 | 0.15 | -5.1 | 0.55 |
+| real k2 | 69 | 1 / 1 / 2 | 0.10 | -5.2 | 0.43 |
+| real k1 not k2 | 722 | 0 / 1 / 1 | 0.06 | -4.8 | 0.00 |
+| placebo noise in k1 | 1,275 | 1 / 1 / 1 | 0.08 | -5.1 | 0.00 |
+
+Read: by COUNT, real k2 is far above what noise produces (69 vs 0-7); PAIR BY PAIR, real k2 pairs carry the same evidence
+as noise pairs (one or two 10-year windows just past the cutoff), not the plants' near-every-window rejection. Both hold:
+most of the 69 are more than noise, but discovery cannot say which. Caveat: the plants are an easy benchmark (one
+constant relationship for 50 years); a real relationship that holds for one decade looks exactly like a real k2 pair.
+Implication for E1: plant relationships that come and go (episodic plants) to measure recovery of the kind of pair the
+real pools contain.
