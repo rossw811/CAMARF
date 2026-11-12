@@ -1143,6 +1143,28 @@ class UniverseFilter:
         gm = D.mean()
         return D - row - col + gm
 
+    # Cells of a GPU-computed correlation block whose |corr| is this close to a selection threshold are recomputed on
+    # the CPU, so GPU and CPU runs select the same pairs. GPU-vs-CPU float64 differences measured on real returns are
+    # orders of magnitude smaller (debug/_verify_chunked_pearson_gpu_exact.py); the band is a wide safety margin.
+    GPU_THRESHOLD_BAND = 1e-9
+
+    @staticmethod
+    def _recheck_threshold_band_cpu(corr: np.ndarray, returns: np.ndarray, threshold: float,
+                                    band: float = None) -> np.ndarray:
+        """Return `corr` with every cell within `band` of the selection threshold (|corr| vs threshold) replaced by its
+        CPU pairwise-complete value (same function, CPU backend, on that pair's two rows; symmetric)."""
+        band = UniverseFilter.GPU_THRESHOLD_BAND if band is None else band
+        with np.errstate(invalid="ignore"):
+            near = np.triu(np.abs(np.abs(corr) - threshold) < band, 1)
+        ii, jj = np.nonzero(near)
+        if len(ii) == 0:
+            return corr
+        corr = corr.copy()
+        for i, j in zip(ii.tolist(), jj.tolist()):
+            c = UniverseFilter._pairwise_corr(returns[[i, j]], use_gpu=False)[0, 1]
+            corr[i, j] = corr[j, i] = c
+        return corr
+
     @staticmethod
     def candidate_pairs(
         corr: np.ndarray,
@@ -1168,13 +1190,16 @@ class UniverseFilter:
         dCor captures nonlinear dependence and is not directly comparable
         to linear correlation thresholds.
         """
-        n = corr.shape[0]
+        # 2026-11-12: hits found vectorized (np.nonzero on the strict upper triangle is row-major, i.e. the same
+        # (i, then j) order as the former Python double loop over every cell -- ~4.5M iterations per 3000x3000 block
+        # in the discovery prefilter). Same keep rule: finite and |c| >= threshold. debug/_verify_candidate_pairs_
+        # vectorized.py checks identical output against the loop.
+        with np.errstate(invalid="ignore"):
+            keep = np.triu(np.isfinite(corr) & (np.abs(corr) >= threshold), 1)
+        ii, jj = np.nonzero(keep)
         pairs = []
-        for i in range(n):
-            for j in range(i + 1, n):
+        for i, j in zip(ii.tolist(), jj.tolist()):
                 c = corr[i, j]
-                if not np.isfinite(c) or abs(c) < threshold:
-                    continue
                 sym_a = symbols[i]
                 sym_b = symbols[j]
                 cls_a = asset_class_map.get(sym_a, "unknown")
@@ -1341,8 +1366,17 @@ class UniverseFilter:
         batch_size: int = 1500,
         progress_every: Optional[int] = None,
         progress_label: str = "",
+        use_gpu: Optional[bool] = None,
     ) -> List[Dict[str, Any]]:
         """
+        use_gpu (2026-11-12, Ross: run on the GPU wherever it is faster): None = automatic per block-pair via
+        gpu_backend.should_use_gpu(rows in the block) -- GPU only when the block is past the benchmarked crossover,
+        a CUDA device answers and VRAM headroom is free right now; CPU otherwise (any machine without a GPU runs
+        exactly as before). EXACTNESS: GPU float64 sums in a different order, so a GPU-computed cell whose |corr| lies
+        within GPU_THRESHOLD_BAND of `threshold` is recomputed on the CPU before selection; the selected pair set is
+        therefore the CPU one (debug/_verify_chunked_pearson_gpu_exact.py). Reported pearson_corr values of GPU cells
+        can differ from a CPU run in the last digits (~1e-13), never in which pairs are selected.
+
         Memory-bounded Pearson-only candidate-pair extraction, for callers
         that already have a returns matrix in hand (no build_returns_matrix
         step) and only need Pearson (not the Spearman/rolling-avg tiering
@@ -1398,7 +1432,10 @@ class UniverseFilter:
                 idx = block_i if bi == bj else block_i + block_j
                 sub_returns = returns[idx]
                 sub_symbols = [symbols[k] for k in idx]
-                sub_corr = UniverseFilter.correlation_matrix(sub_returns)
+                gpu_now = gpu_backend.should_use_gpu(len(idx)) if use_gpu is None else bool(use_gpu)
+                sub_corr = UniverseFilter.correlation_matrix(sub_returns, use_gpu=gpu_now)
+                if gpu_now:
+                    sub_corr = UniverseFilter._recheck_threshold_band_cpu(sub_corr, sub_returns, threshold)
                 sub_pairs = UniverseFilter.candidate_pairs(sub_corr, sub_symbols, threshold, asset_class_map)
                 if bi != bj:
                     block_i_syms = set(symbols[k] for k in block_i)
