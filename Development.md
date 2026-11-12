@@ -30742,3 +30742,20 @@ fixed), seed-3 equivalence CONFIRM, seed-3 explanation QUALIFY, V3 bracket REJEC
    0.19-0.22) because each year keeps its own volatility level -- the review's "removes clustering beyond a few days"
    holds within a year, not across years. Seed 3's thinner tail (and its smaller pools) is UNEXPLAINED. The
    anti-conservative risk for a placebo-calibrated cutoff (item 3) stands, smaller than first stated.
+
+### Session 2026-11-11 (cont.): A8 chain stopped at its suite gate (3 unexplained failures of 450) -- fixed, relaunched
+Chain started 16:34 (cache listing sha256 35b51993..., identical to Amendment 7's re-saved listing: same data); A7 outputs
+kept in output/research/_superseded_a7_20261111/ (14 files + 797 pool spread files). Suite 16:58: 3 unexplained failures,
+STOPPED before any re-run step. All three fixed and re-run on the Surface:
+1. `debug/_verify_episodic_pairs_adapter.py` "truncated row was built": the as-of row (300 bars of two unrelated walks)
+   had no rolling half-life under the BUG-D123 rule (first estimate needs ~one window + hedge warm-up), so the
+   sparse-pair exclusion dropped it -- the side effect the 11-11 review predicted (item 5), not lookahead. Fixture now 600
+   pre-cutoff bars. Its "full-range hedge closer to 1.0 than the truncated one" check then failed on BOTH the new code and
+   the code before BUG-D123 (a0e3676e^): with 600 pre-cutoff bars the unrelated walks give a spurious hedge (~ -0.9) the
+   coupled stretch does not outweigh (also with 1,200 post bars) -- the proxy held only for the 300-bar seed. Replaced by a
+   direct, stronger PIT check: the as-of-cutoff row is identical with and without post-cutoff data in the store, plus a
+   detection-power check (as of the last date the rows differ). 19/19.
+2. `debug/_verify_no_private_universe_globs.py`: research/absent_dates_adv_gap.py (831aa2ee, after the A7 suite) globs
+   the cache -- a descriptive data-file audit, added to the reviewed exceptions with its reason.
+3. `debug/_verify_parquet_io.py`: debug/_tmp_edge_d121_commission_diff.py (after the A7 suite) and my new
+   debug/_verify_placebo_score_null_pairs.py read parquet directly -- both now use parquet_io.

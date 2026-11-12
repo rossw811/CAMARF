@@ -38,7 +38,7 @@ def main():
         for k in (1, 2):
             pd.DataFrame({"symbol_a": ["P", "P", "Y"], "symbol_b": ["A", "X", "Z"], "tf_label": ["1D"] * 3,
                           "arm": ["us_us_gated"] * 3}).to_parquet(os.path.join(d, f"purity_pairs_pit_k{k}_clean.parquet"))
-        E._windows_by_arm = lambda path, cols=None: pd.read_parquet(path).assign(arm="us_us_gated")
+        E._windows_by_arm = lambda path, cols=None: __import__("parquet_io").read_parquet(path).assign(arm="us_us_gated")
         out = E.score(d, d)
         row = out["pool"].query("pool == 'k2'").iloc[0]
         check("1 false positives count the plant-with-other pair", int(row["false_positives"]) == 2

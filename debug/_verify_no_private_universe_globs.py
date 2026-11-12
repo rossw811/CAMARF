@@ -67,6 +67,10 @@ EXPECTED_FLAGS = {
         "Reviewed 2026-10-21: lists output/cache/wrds labels only to locate dual-listed parents in the discovery "
         "scan's own universe (the directory wrds_deep_history_episodic_scan reads); it builds no analysis universe."
     ),
+    "absent_dates_adv_gap.py": (
+        "Reviewed 2026-11-11: a descriptive data-file AUDIT (BUG-D122 point (b)) -- it must read each 1D cache file's own "
+        "rows to count absent trading days; it builds no analysis universe and changes nothing in discovery."
+    ),
     "bug_recheck_realdata.py": (
         "Reviewed 2026-10-04: a data-file AUDIT (plan T14.5) -- it must inspect the cache files themselves "
         "(period-end stamps, price-less files, label identities); it builds no universe for analysis."

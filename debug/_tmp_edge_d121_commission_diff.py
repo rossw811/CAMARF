@@ -7,14 +7,15 @@ import os, sys
 sys.path[:0] = [os.path.expanduser("~/CAMARF"), os.path.expanduser("~/CAMARF/research")]
 os.chdir(os.path.expanduser("~/CAMARF"))
 import numpy as np, pandas as pd
+import parquet_io
 import pnl_dollar
 
 KEY = ["tf", "symbol_a", "symbol_b", "entry_time", "exit_time", "side"]
 COLS = ["tf", "symbol_a", "symbol_b", "hedge_ratio", "entry_time", "exit_time", "side", "n_shares_a"]
 orig_share_px = pnl_dollar._share_px
 for arm in ("wh_k1", "wh_k2", "pit_k1", "pit_k2"):
-    old = pd.read_parquet(f"output/research/_superseded_edge_20261025/edge_accounting_trades_{arm}.parquet")
-    new = pd.read_parquet(f"output/research/edge_accounting_trades_{arm}.parquet")
+    old = parquet_io.read_parquet(f"output/research/_superseded_edge_20261025/edge_accounting_trades_{arm}.parquet")
+    new = parquet_io.read_parquet(f"output/research/edge_accounting_trades_{arm}.parquet")
     m = old.merge(new, on=KEY, suffixes=("_o", "_n"))
     same_in = np.isclose(m.hedge_ratio_o, m.hedge_ratio_n, rtol=0, atol=1e-12) & (m.n_shares_a_o == m.n_shares_a_n)
     m = m[same_in].reset_index(drop=True)

@@ -92,10 +92,13 @@ def test_placeholder_symbol_fallback():
     return results
 
 
-def make_pre_post_cutoff_pair(n_pre=300, n_post=300, seed=0):
+def make_pre_post_cutoff_pair(n_pre=600, n_post=300, seed=0):
     """Two symbols that are UNRELATED (independent random walks) up to the
     cutoff, then become strongly cointegrated (shared stochastic trend)
-    strictly AFTER it. Returns (df_a, df_b, dates, cutoff_date)."""
+    strictly AFTER it. Returns (df_a, df_b, dates, cutoff_date).
+    n_pre 600 (was 300, 2026-11-11): since BUG-D123 the rolling half-life takes its hedge from before each window, so a
+    first estimate needs ~one window (252) plus the hedge warm-up; with 300 bars the as-of row had no rolling half-life
+    and the sparse-pair exclusion dropped it."""
     rng = np.random.RandomState(seed)
     dates = pd.date_range("2023-01-01", periods=n_pre + n_post, freq="h")
     cutoff_date = dates[n_pre - 1]
@@ -157,17 +160,32 @@ def main():
                 "(differs materially from the full-range hedge ratio)",
                 not np.isfinite(hr_trunc) or abs(hr_trunc - hr_full) > 0.3 or abs(hr_trunc - 1.0) > 0.3,
             ))
-            # Full-range OLS is a whole-sample fit over pre-cutoff noise AND
-            # post-cutoff coupling combined -- the pre-cutoff half dilutes
-            # it away from a clean 1.0, so "reflects the coupling" is
-            # checked as "closer to 1.0 than the truncated estimate is",
-            # not an absolute closeness threshold (which the first,
-            # already-passing check is the real PIT-safety claim for).
-            results.append(check(
-                "full-range hedge ratio is closer to the true post-cutoff 1.0 relationship "
-                "than the truncated (pre-cutoff-only) estimate is",
-                np.isfinite(hr_full) and (not np.isfinite(hr_trunc) or abs(hr_full - 1.0) < abs(hr_trunc - 1.0)),
-            ))
+            # 2026-11-11: replaces "full-range hedge is closer to 1.0 than the truncated one", an indirect proxy that held
+            # only for the 300-bar fixture's seed (with 600 pre-cutoff bars two unrelated walks give a spurious hedge of
+            # about -0.9 that the coupled stretch does not outweigh; the code before BUG-D123 fails it the same way).
+            # Direct PIT check, strictly stronger: the as-of-cutoff row is IDENTICAL whether or not post-cutoff data
+            # exist in the store.
+            n_cut = int(np.flatnonzero(dates == cutoff_date)[0]) + 1
+            fake_cache["SYNA"], fake_cache["SYNB"] = df_a.iloc[:n_cut], df_b.iloc[:n_cut]
+            adapter._full_universe_cache.clear() if hasattr(adapter, "_full_universe_cache") else None
+            try:
+                row_prefix_only = adapter.build_one_row("SYNA", "SYNB", "1h", as_of_date=cutoff_date, source="test",
+                                                        detail=detail)
+                # detection power: as of the LAST date the full store's row uses post-cutoff data, so it must differ
+                row_last_prefix = adapter.build_one_row("SYNA", "SYNB", "1h", as_of_date=dates[-1], source="test",
+                                                        detail=detail)
+            finally:
+                fake_cache["SYNA"], fake_cache["SYNB"] = df_a, df_b
+            same = row_prefix_only is not None and set(row_prefix_only) == set(row_truncated) and all(
+                (pd.isna(row_truncated[k]) and pd.isna(row_prefix_only[k])) or row_truncated[k] == row_prefix_only[k]
+                for k in row_truncated if np.isscalar(row_truncated[k]) or row_truncated[k] is None)
+            diff = [] if row_prefix_only is None else [k for k in row_truncated if (np.isscalar(row_truncated[k])
+                    and not (pd.isna(row_truncated[k]) and pd.isna(row_prefix_only.get(k)))
+                    and row_truncated[k] != row_prefix_only.get(k))]
+            results.append(check(f"as-of row identical with and without post-cutoff data in the store {diff}", same))
+            results.append(check("detection power: as of the last date the rows differ (comparison can see leakage)",
+                                 row_last_prefix is not None
+                                 and row_last_prefix.get("hedge_ratio_ols") != row_full.get("hedge_ratio_ols")))
 
         print("\n=== 2. Required-field contract present and finite (full-range row) ===")
         if row_full is not None:
