@@ -31229,3 +31229,26 @@ sizes the CPU wins; GPU-vs-CPU is re-measured at real-data size before any of th
 - **Open (needs Ross: interactive WRDS login):** Berkshire A (PERMNO 17778) has no correctly identified file in the
   cache, so the best-known share-class pair is out of P2 until A's daily series is fetched by PERMNO.
 - Placebo run relaunched on the corrected family (368 legs; rebuild = live seed-2 files for all 368, max diff 2.2e-16).
+
+### Session 2026-11-13 (cont.): P2 placebo check, first result -- the AIC-lag fixed ADF is oversized on share-class nulls
+Run: research/p2_placebo_power.py (Ross "go for it"), CachyOS, 5 v2c seeds, verified-map family (368 legs); outputs
+output/research/p2_placebo_power_*_aiconly_20261113.parquet, log logs/latest/latest_run_p2_placebo_power_aiconly_20261113.log.
+Per seed: 2,742 null tests (kept 859 + ungated 1,883 testable pair-years), 22,596 planted p-values (1,883 x 4 x 3).
+**Null (every rejection false), fixed_adf with AIC lags:**
+| family | tests | p<0.05 | p<0.01 | p<0.001 | BH false rejections | family-years with >= 1 false BH |
+|---|---|---|---|---|---|---|
+| kept | 4,295 | 0.081 | 0.025 | 0.0056 | 52 | 38 / 175 (22%) |
+| ungated | 9,415 | 0.077 | 0.024 | 0.0051 | 71 | 42 / 175 (24%) |
+Under a complete null BH at 5% should give >= 1 false discovery in <= 5% of family-years; seen 22-24%.
+**Power (kept family; one_true = the only true pair in its year, all_true = every pair true):** whole-year plants
+5-day 0.78 / 0.97, 20-day 0.07 / 0.13, 60-day 0.02 / 0.02, 120-day 0.01 / 0.01 (60/120 at or below the false rate);
+relation starting mid-year ~0.006; ending mid-year 5-day 0.06. Seeds agree (5-day 0.77-0.78, 20-day 0.06-0.08).
+**Cause of the oversize (seed 1, debug/_tmp_p2_null_size_diagnostic_20261113.py):** placebo share-class spread returns are
+negatively autocorrelated (lag-1 median -0.125, sum of lags 1-5 median -0.19; bid-ask bounce / stale prices in the
+thinner class) and AIC picks a median of 1 lag. Size at p<0.05 / 0.01 / 0.001: lag 0 0.157 / 0.060 / 0.019; AIC 0.075 /
+0.019 / 0.0032; BIC 0.099 / 0.031 / 0.0069; Schwert fixed lag 15 0.054 / 0.015 / 0.0016. Schwert (1989): ADF with too few
+lags over-rejects under a negative MA root. Synthetic reproduction (debug/_verify_yearly_family_test.py check 6, MA
+theta -0.5, 252 bars, 1,000 paired draws): AIC 0.074, Schwert 0.043, t-stat rule 0.070 (fails on the old code: no arm).
+**Response (comparison arms, Ross decides):** yearly_family_test gains fixed_adf_schwert (fixed lag 12*(T/100)^0.25) and
+fixed_adf_tstat (Ng-Perron general-to-specific from the same maximum); the placebo run repeats with all three arms on the
+same draws so size and power are compared together. Real data untouched.
