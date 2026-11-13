@@ -1,4 +1,14 @@
-## 2026-11-12 (evening): RESUME HERE. E1 v2c running (launched 13:01); GPU work done; CLAUDE.md GPU-first rule
+## 2026-11-13: RESUME HERE. E1 v2c seed 2 in discovery; P2 placebo run on CachyOS; P2 label-map bug fixed
+- E1 v2c seed 1 scored (Development.md 2026-11-13): false share in v2's range; episodic (2-5 y) plants found 1/41.
+  Seeds 2-5 continue (same chain/log as below).
+- P2: all 230 ungated pairs classified from filings (2026-11-12). BUG fixed 2026-11-13: P2 scripts read the wrong label map
+  (BRK.A/BRK.B were the same file); now the BUG-D117 verified map. Family 222 pairs / 1,905 pair-years; kept same-claim
+  868; ADV-gated kept 69 pair-years / 11 pairs (was 84). Berkshire A has no verified file -- needs a WRDS fetch by PERMNO
+  17778 (Ross's interactive login).
+- P2 placebo check (research/p2_placebo_power.py, Ross "go for it" 2026-11-13) running on CachyOS, nice 10:
+  log logs/latest/latest_run_p2_placebo_power_20261113.log; outputs output/research/p2_placebo_power_*.parquet.
+  Next: read null size + power -> pre-register -> real data. No real P2 test run yet.
+## 2026-11-12 (evening, superseded above): E1 v2c running (launched 13:01); GPU work done; CLAUDE.md GPU-first rule
 - E1: v3 and v2b both stopped at the tier-1 guard; v2c (vol-matched paths, raw returns, stress bin without replacement)
   launched 13:01 (debug/_tmp_chain_e1_v2c_20261112.sh; log logs/latest/latest_run_e1_v2c_20261112.log on CachyOS).
   Guard point ~2.5 h into each seed. Check: ssh rw@100.64.64.126 "tail -n 5 ~/CAMARF/logs/latest/latest_run_e1_v2c_20261112.log"

@@ -31152,7 +31152,7 @@ sizes the CPU wins; GPU-vs-CPU is re-measured at real-data size before any of th
 ### Session 2026-11-12 (evening): P2 ungated share-class family classified from filings (all 230 pairs)
 - E1 v2c seed 1 passed the tier-1 guard (placebo/real candidates US 1.32, international 1.15, mixed 1.51); discovery running
   since 13:24 (v2 took ~20 h per seed).
-- Ungated family (no ADV gate, 1990-2024): 230 distinct pairs, 2,008 pair-years; 22 were classified earlier, 208 classified now
+- Ungated family (no ADV gate, 1990-2024): 230 distinct pairs, 2,008 pair-years [2026-11-13: built with the wrong label map -- verified map: 222 / 1,905, see below]; 22 were classified earlier, 208 classified now
   (debug/_tmp_p2_ungated_list_20261112.py), in 5 batches by company, one Sonnet subagent at a time, filings/charters only,
   never prices. Ross's rule confirmed: a charter dividend difference (premium, or a clause letting one class be paid more,
   even if realised dividends were equal) = other_structural, excluded like 21CF's premium years.
@@ -31166,7 +31166,8 @@ sizes the CPU wins; GPU-vs-CPU is re-measured at real-data size before any of th
   McCormick, PacifiCare, OshKosh, Hubbell, Curtiss-Wright, Penn Engineering, Raytheon, Viacom, Liberty Braves).
   Same-claim transitivity within each company holds (0 violations); all 230 pairs present, no duplicates.
 - Result (research/p2_share_class_classification.csv): same_claim 87, other_structural 49, tracking 49, unknown 45.
-  apply_classification keeps 924 of 2,008 pair-years (89 distinct pairs; 1990s 215, 2000s 278, 2010s 289, 2020-24 142);
+  ~~apply_classification keeps 924 of 2,008 pair-years (89 distinct pairs; 1990s 215, 2000s 278, 2010s 289, 2020-24 142);~~
+  [SUPERSEDED 2026-11-13, wrong label map: 868 of 1,905 under the BUG-D117 verified map, see below]
   0 unclassified (debug/_tmp_p2_ungated_kept_20261112.py). The original 22 rows are unchanged.
 - Disclosed limits: many same_claim rows read the charter in one year and assume it held across the scope (noted per row);
   unknown is concentrated pre-1996 (pre-EDGAR), so the early family is thinner and smaller-company-light.
@@ -31197,8 +31198,34 @@ sizes the CPU wins; GPU-vs-CPU is re-measured at real-data size before any of th
   lambda 0.965, 25,472 days). Five sampled labels had no placebo file: build() skips series with no positive price; all five
   have 0 valid prices in the real file (pre-1990 OTC listings, close all NaN).
 - **Testable P2 family size** (both legs on >= 80% of the year's days, >= 30 bars; coverage only, no statistic computed;
-  debug/_tmp_p2_testable_20261113.py): kept same-claim family 915 of 924 pair-years testable (1990s 206, 2000s 278, 2010s
+  debug/_tmp_p2_testable_20261113.py) [SUPERSEDED same day: Surface cache + wrong label map, see next section]: kept same-claim family 915 of 924 pair-years testable (1990s 206, 2000s 278, 2010s
   289, 2020s 142), per year 10-34 (median 27); ungated 1,978 of 2,008, per year 36-81 (median 55). One of 384 legs has no
   usable price at all. With m ~ 27 a lone true pair needs p <= 0.05/27 ~ 0.0019 under BH.
 - P2 placebo design proposed to Ross in chat (null = the family's own legs rebuilt per v2c seed; power = planted
   mean-reverting spreads using each pair's own placebo spread noise); awaiting approval -- nothing built.
+
+### Session 2026-11-13 (cont.): BUG -- P2 read the wrong label map (BRK.A and BRK.B were the same file); fixed
+- **Found** when the P2 placebo run crashed (ADF: "x is constant") on seed 1. The placebo copies both legs' returns from
+  the same source days, so a constant placebo spread means a constant REAL spread: five family pairs had identical
+  close, total-return series on every common day (BRK / PERMNO83443 1998-2024, HVT / PERMNO10294, AGM / PERMNO80168,
+  SCZ / PERMNO85343, UHAL / PERMNO23505; debug/_tmp_p2_constant_spread_20261113.py). The 'BRK' file holds Berkshire B
+  ($503), not A.
+- **Cause:** every P2 script since 2026-11-12 (inventory, ADV gate, ungated list, kept counts, testable counts, the new
+  placebo module) mapped PERMNO -> file through `full_us_market_label_map`, which BUG-D117 (2026-10-12) showed names the
+  wrong security for some files; the one allowed map is `data_wrds.label_permno_map()` (wrds_label_permno_final). My
+  error: the P2 code was written without checking which map the project requires.
+- **Fix:** `p2_share_class_family.permno_labels` (verified map; keys = PERMNOs with a file) and `leg_label` (several files
+  for one PERMNO accepted only if identical, else raise); p2_placebo_power uses them. Verify
+  debug/_verify_p2_share_class_family.py check 9 (10/10). Real data (CachyOS, debug/_tmp_p2_label_map_impact_20261113.py):
+  old map 230 pairs / 2,008 pair-years with 5 identical-file pairs; verified map 222 / 1,905, 0 identical-file pairs,
+  0 new (unclassified) pairs. The 8 pairs that leave: (10294, 41217), (12254, 69201), (17778, 83443) BRK.A/B,
+  (23505, 81073), (26710, 89303), (33321, 33340), (80168, 80169), (85343, 85344) -- one leg has no verified file.
+  Classifications are by PERMNO from filings and are unaffected.
+- **Re-derived on CachyOS's cache** (the Surface cache is not CachyOS's -- 2026-10-28 -- so Surface-side P2 counts are
+  superseded): kept same-claim 868 of 1,905 ungated pair-years. ADV-gated family
+  (debug/_tmp_p2_adv_gate_verified_map_20261113.py): ~~84 pair-years~~ -> 100 after the gate, 69 kept after
+  classification, 11 distinct pairs (CMCSA/CMCSK, DISCA/DISCK, FOXA/FOX, GOOG/GOOGL, HEI/HEI.A, LBRDA/LBRDK, LBTYA/LBTYK,
+  LSXMA/LSXMK, TFCFA/TFCF, UA/UAA, ZG/Z), first kept year 2004.
+- **Open (needs Ross: interactive WRDS login):** Berkshire A (PERMNO 17778) has no correctly identified file in the
+  cache, so the best-known share-class pair is out of P2 until A's daily series is fetched by PERMNO.
+- Placebo run relaunched on the corrected family (368 legs; rebuild = live seed-2 files for all 368, max diff 2.2e-16).
