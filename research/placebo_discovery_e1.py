@@ -452,14 +452,11 @@ def _member_share(dates: pd.DatetimeIndex, spells: pd.DataFrame) -> float:
     return float(inside.mean())
 
 
-def build(src: str, dst: str, seed: int = SEED, version: str = "v2"):
-    import seal
-    from config import Config
-    from research.rolling_adv_comparison import rolling_adv
-    os.makedirs(dst, exist_ok=True)
-    files = sorted(glob.glob(os.path.join(src, "*_1D.parquet")))
-    rng = np.random.default_rng(seed)
-    # calendar + block length from a seeded sample (memory: never all series at once)
+def sample_paths(files: list, rng, seed: int, version: str):
+    """build()'s shared day paths: calendar + block length (+ EWMA lambda / market vol state) from a seeded 800-file
+    sample (memory: never all series at once). `rng` = np.random.default_rng(seed), consumed exactly as build() does, so
+    any caller replaying a seed gets build()'s paths (P2 placebo rebuild, research/p2_placebo_power.py).
+    Returns (cal, block length, lambda, vol_lambda, paths, src_pos)."""
     sample = rng.choice(files, size=min(800, len(files)), replace=False)
     rets = pd.concat({os.path.basename(f): _log_price(parquet_io.read_parquet(f)).diff() for f in sample}, axis=1)
     cal = pd.DatetimeIndex(rets.index).sort_values()
@@ -472,7 +469,17 @@ def build(src: str, dst: str, seed: int = SEED, version: str = "v2"):
                                   stress_once=(version == "v2c"))
     else:
         paths = year_index_paths(cal, L, seed)
-    src_pos = source_positions(cal, paths)
+    return cal, L, lam, vol_lam, paths, source_positions(cal, paths)
+
+
+def build(src: str, dst: str, seed: int = SEED, version: str = "v2"):
+    import seal
+    from config import Config
+    from research.rolling_adv_comparison import rolling_adv
+    os.makedirs(dst, exist_ok=True)
+    files = sorted(glob.glob(os.path.join(src, "*_1D.parquet")))
+    rng = np.random.default_rng(seed)
+    cal, L, lam, vol_lam, paths, src_pos = sample_paths(files, rng, seed, version)
     print(f"{len(files)} 1D files; calendar {cal.min().date()}..{cal.max().date()} ({len(cal)} days); mean block {L:.2f}; "
           f"version {version}" + (f", EWMA lambda {lam:.3f}" if lam is not None else "")
           + (f", vol bins {VOL_BINS}" if version in ("v3b", "v2b", "v2c") else ""))
