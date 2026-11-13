@@ -31312,3 +31312,25 @@ fixed_adf fixed_adf_schwert` -> output/research/p2_placebo_null_distribution.par
 logs/latest/latest_run_p2_placebo_null_dist_20261113.log. Calendar = kept family's legs (written into the draft).
 Proposed to Ross (new method, not built): wild-bootstrap ADF (Cavaliere-Taylor) as a heteroskedasticity-robust arm.
 Berkshire A: needs Ross's WRDS login (debug/_tmp_fetch_p2_missing_permnos_20261113.py fetch); install is pinned-list safe.
+
+### Session 2026-11-13 (cont.): two open E1 checks closed (window-count gap located; extreme-day hypothesis rejected)
+**1. Placebo tests more windows than the real run (open since V6): located at the candidate stage.** Tier-3 windows per
+tested pair (CachyOS, `_windows_by_arm` on each run's tier3_windows):
+| run | international pairs / windows per pair | mixed | US gated |
+|---|---|---|---|
+| real | 161,130 / 4.84 | 73,135 / 4.70 | 112,865 / 6.36 |
+| v2 seeds 1-3 | 187,683 / 4.84; 171,574 / 4.98; 172,862 / 4.98 | 73,610 / 4.67; 68,197 / 5.04; 72,853 / 4.94 | 110,710 / 6.32; 113,007 / 6.53; 107,636 / 6.47 |
+| v2c seed 1 | 174,360 / 4.91 | 87,880 / 4.65 | 129,852 / 6.31 |
+Windows per pair agree within ~3-7%; the gap is the number of pairs that reach Tier 3 (v2 international +6 to +16%; v2c
++8 / +20 / +15% by arm), i.e. the prefilter's candidate count, which the tier-1 guard already tracks (v2c sits above
+real, as its proxy check said). The false share is a per-window RATE times real windows, so extra pairs bias it only if
+the marginal pairs differ in kind (e.g. near-threshold pairs reject less often -> the placebo rate would be slightly
+LOW, i.e. the false share slightly understated). Why the international candidate count differs was not traced further.
+**2. Seed variation is NOT explained by extreme-day draws (V6 item 2, tested).** debug/_tmp_e1_seed_extreme_days_20261113.py
+replays build()'s paths (pinned file list; v2 mean blocks reproduce 3.4996 / 3.7528 / 3.5538). Extreme day = top 1% /
+0.2% of days by the 800-file sample's cross-sectional median |return|; draws per extreme day (1.0 = as often as history):
+v2 seeds 1 / 2 / 3: top 1% 1.027 / 0.867 / 1.012, top 0.2% 0.804 / 0.706 / 0.980, never drawn 40 / 42 / 36% (top 1%).
+Seed 3 has the LOWEST US far-tail rate (p<1e-4 0.00012 vs 0.00059 / 0.00064) yet drew the extreme days MOST -- the
+hypothesis is rejected (if anything the sign is reversed). Cause still unknown. v2c: top-1% days drawn 1.04 / 1.02 / 0.95
+per day, but 18-24% are never drawn: v2c's exactly-once rule covers the top bin of the EWMA volatility STATE, and a
+sudden shock day often is not yet in that bin. Disclosed; not changed.
