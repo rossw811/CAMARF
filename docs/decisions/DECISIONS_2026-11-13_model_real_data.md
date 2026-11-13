@@ -41,3 +41,12 @@ earn their place. Not before P2.
 ## E. GAE: predict next year's pool pairs from this year's graph -- deferred
 Synthetic stage showed no gain over common neighbours (0.947 vs 0.943). Only worth running if a richer graph (ownership,
 board links) exists; otherwise expected to restate the baseline.
+
+## Addendum to B (2026-11-13, before any B result exists)
+The declared out-of-sample target "time for the spread's autocorrelation to fall below 0.5" is biased by the same
+measurement noise that biases AR(1): noise scales every autocorrelation at lag >= 1 down by a constant c < 1, so the
+crossing reads short and would favour AR(1). Replaced by the noise-robust realised decay: the smallest h >= 0 with
+acf(1 + h) <= 0.5 * acf(1) (log-interpolated) on the next non-overlapping window's fixed-hedge spread (hedge as it stood
+just before that window). For AR(1) + white noise this equals the latent half-life. Scope fixed now: k2 (all 69 pairs)
+and a seeded random 80 of k1; windows are production's own (captured from SpreadModel.rolling_half_life_hedged during a
+normal rebuild) that END in the trading era (at or after the pair's formation end); decision rule unchanged.
