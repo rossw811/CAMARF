@@ -31148,3 +31148,57 @@ logs/latest/latest_run_e1_v2c_20261112.log; outputs ~/CAMARF_e1_runs/v2c_seed*);
 TF modules, CachyOS, GPU vs CPU (CUDA_VISIBLE_DEVICES=""), verify tests: factor_autoencoders GPU 6m35s / CPU 3m43s
 (-> CPU default, 18d0306b); graph_autoencoder 4.06 s / 3.92 s (tie); transformer classifier 79.8 s / 44.3 s. At these
 sizes the CPU wins; GPU-vs-CPU is re-measured at real-data size before any of these trains on real data (CLAUDE.md rule).
+
+### Session 2026-11-12 (evening): P2 ungated share-class family classified from filings (all 230 pairs)
+- E1 v2c seed 1 passed the tier-1 guard (placebo/real candidates US 1.32, international 1.15, mixed 1.51); discovery running
+  since 13:24 (v2 took ~20 h per seed).
+- Ungated family (no ADV gate, 1990-2024): 230 distinct pairs, 2,008 pair-years; 22 were classified earlier, 208 classified now
+  (debug/_tmp_p2_ungated_list_20261112.py), in 5 batches by company, one Sonnet subagent at a time, filings/charters only,
+  never prices. Ross's rule confirmed: a charter dividend difference (premium, or a clause letting one class be paid more,
+  even if realised dividends were equal) = other_structural, excluded like 21CF's premium years.
+- Standards tightened during review, applied to all batches (fail-closed, `review_note` column records each reviewer change):
+  same_claim needs STATED parity (charter clause, "identical except voting", equal per-share dividends); a single joint dividend
+  line is not enough unless share-count arithmetic or a both-class split confirms it; 1:1 convertibility / silence -> unknown;
+  no from-year from realised dividends alone. Downgrades: Commonwealth Tel, Frederick's, Spinnaker, First Commerce Bancshares,
+  TDS -> unknown; Wiley's from-year 2001 removed. Batch 1 worked from search snippets only; batches 2-5 opened the filings
+  (curl with an SEC User-Agent).
+- Independent spot-checks of the subagents' quotes against the full filing text: 12/12 found (Molex, Marsh, Haverty,
+  McCormick, PacifiCare, OshKosh, Hubbell, Curtiss-Wright, Penn Engineering, Raytheon, Viacom, Liberty Braves).
+  Same-claim transitivity within each company holds (0 violations); all 230 pairs present, no duplicates.
+- Result (research/p2_share_class_classification.csv): same_claim 87, other_structural 49, tracking 49, unknown 45.
+  apply_classification keeps 924 of 2,008 pair-years (89 distinct pairs; 1990s 215, 2000s 278, 2010s 289, 2020-24 142);
+  0 unclassified (debug/_tmp_p2_ungated_kept_20261112.py). The original 22 rows are unchanged.
+- Disclosed limits: many same_claim rows read the charter in one year and assume it held across the scope (noted per row);
+  unknown is concentrated pre-1996 (pre-EDGAR), so the early family is thinner and smaller-company-light.
+- Process incident: the batch-3 subagent ran a build script in the shared scratchpad that regenerated batch 2 and undid the
+  review edits; caught from its own report, edits reapplied (counts match), reviewed batches moved to scratchpad/reviewed,
+  later subagents confined to their own folder.
+- debug/_verify_p2_share_class_family.py check 8 updated (it hard-coded 22 rows and no "unknown"): unique pairs, valid
+  classes, every non-unknown row sourced, from-year only on equal-economics rows. Old check fails on the new file, new 9/9.
+- Next (P2 order unchanged): power and false share on the v2c placebo -> pre-register -> real data.
+
+### Session 2026-11-13: E1 v2c seed 1 scored; P2 placebo groundwork (exact placebo rebuild, testable family size)
+- **E1 v2c seed 1 (20261024) complete 02:27** (faster than v2's ~20 h); seed 2 passed the tier-1 guard (US 0.995,
+  international 1.04, mixed 1.12) and is in discovery. Seed 1 (~/CAMARF_e1_runs/v2c_seed20261024/_e1_score_*):
+  - Window false share at the real BH cutoff (~2e-5): international 0.43, mixed 0.19, US gated 0.73 -- inside v2's
+    three-seed range (0.32-0.95 / 0.05-0.27 / 0.12-0.82). Placebo tail rate p<1e-4: US 0.00068, international 0.00024,
+    mixed 0.00024 (nominal 0.0001).
+  - k2 pool: null pairs (of which plant-with-other) international 7 (4) of 28, mixed 2 (0) of 2, US gated 8 (4) of 31;
+    real k2 17 / 7 / 45. US gated k2 null 8 is above v2's 1-2 per seed.
+  - Persistent plants, k2 found / tested: 5-day 16/17, 20-day 24/27, 60-day 3/26, 120-day 0/27 (as v2).
+  - **Episodic plants (relation holds 2, 3 or 5 years): k2 found 1 of 41 tested, k1 2 of 41.** Ten-year-window discovery
+    at the real cutoff essentially cannot see a 2-5-year relation even at 5-day half-life -- the gap P2 exists for.
+  No conclusion from one seed (seed variation was large in v2); all five seeds are read together.
+- **Placebo series can be rebuilt exactly for any subset.** The chain deletes each seed's placebo cache when the next seed
+  starts, so P2 cannot read seed files later. Replaying build()'s own sampling (seeded 800-file sample -> calendar, block
+  length, EWMA lambda, market vol state -> vol_matched_paths(stress_once=True)) and calling placebo_series reproduces the
+  live seed-2 files: 45 series (40 sampled family legs + 10 random labels, 5 without a file), max |log price diff| 1.1e-16
+  (debug/_tmp_p2_placebo_repro_check_20261113.py, run on CachyOS against ~/CAMARF_e1/output/cache/wrds; block 3.7528,
+  lambda 0.965, 25,472 days). Five sampled labels had no placebo file: build() skips series with no positive price; all five
+  have 0 valid prices in the real file (pre-1990 OTC listings, close all NaN).
+- **Testable P2 family size** (both legs on >= 80% of the year's days, >= 30 bars; coverage only, no statistic computed;
+  debug/_tmp_p2_testable_20261113.py): kept same-claim family 915 of 924 pair-years testable (1990s 206, 2000s 278, 2010s
+  289, 2020s 142), per year 10-34 (median 27); ungated 1,978 of 2,008, per year 36-81 (median 55). One of 384 legs has no
+  usable price at all. With m ~ 27 a lone true pair needs p <= 0.05/27 ~ 0.0019 under BH.
+- P2 placebo design proposed to Ross in chat (null = the family's own legs rebuilt per v2c seed; power = planted
+  mean-reverting spreads using each pair's own placebo spread noise); awaiting approval -- nothing built.
