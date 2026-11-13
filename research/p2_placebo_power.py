@@ -33,8 +33,8 @@ sys.path.insert(0, ROOT)
 sys.path.insert(0, os.path.join(ROOT, "research"))
 
 import parquet_io  # noqa: E402
-from p2_share_class_family import (CLASSIFICATION_CSV, apply_classification, family_by_year, leg_label,  # noqa: E402
-                                   permno_labels)
+from p2_share_class_family import (CLASSIFICATION_CSV, adv_gated, apply_classification, family_by_year,  # noqa: E402
+                                   leg_label, permno_labels)
 from placebo_discovery_e1 import _log_price, placebo_series, sample_paths  # noqa: E402
 from yearly_family_test import _pvalue, bh_reject, yearly_family_tests  # noqa: E402
 
@@ -103,11 +103,35 @@ def one_true_rejected(p_plant: float, p_null_others: np.ndarray, alpha: float = 
     return bool(bh_reject(np.concatenate([[p_plant], np.asarray(p_null_others, float)]), alpha)[0])
 
 
+# The rebuild is exact only for the file list E1 v2c sampled from: build() draws its 800-file sample from the sorted list
+# of *_1D.parquet, so ONE added file changes every seed's calendar / block / paths (review 2026-11-13, finding 4). The
+# list is pinned (CachyOS cache, 2026-11-13, = E1 v2c seed 1's n_files 46,218) and checked by hash; each seed's mean
+# block is checked against E1's own _e1_build.parquet where that seed has been built.
+FILE_MANIFEST = os.path.join(ROOT, "research", "p2_placebo_file_manifest_v2c.txt")
+MANIFEST_SHA256 = "b9c260332504fed306947d32a367c13d780575aa492203c1a36e2db9534f3366"   # sha256("\n".join(names))
+E1_MEAN_BLOCK = {20261024: 3.499627, 20261025: 3.752784}                                 # from E1 v2c _e1_build
+
+
+def manifest_files(src: str) -> list:
+    import hashlib
+    names = [l.strip() for l in open(FILE_MANIFEST, encoding="utf-8") if l.strip()]
+    if hashlib.sha256("\n".join(names).encode()).hexdigest() != MANIFEST_SHA256:
+        raise RuntimeError(f"{FILE_MANIFEST} does not match its pinned hash")
+    files = [os.path.join(src, n) for n in names]
+    missing = [f for f in files if not os.path.exists(f)]
+    if missing:
+        raise RuntimeError(f"{len(missing)} pinned files missing from {src}, e.g. {missing[:3]}")
+    return files
+
+
 def rebuild_legs(src: str, labels: dict, seed: int, version: str = VERSION) -> dict:
-    """{permno: placebo log price} exactly as build() writes them for `seed` (labels: permno -> file label)."""
-    files = sorted(glob.glob(os.path.join(src, "*_1D.parquet")))
+    """{permno: placebo log price} exactly as build() writes them for `seed` (labels: permno -> file label), sampled from
+    the pinned E1 v2c file list (not whatever is in `src` now)."""
+    files = manifest_files(src)
     rng = np.random.default_rng(seed)
     cal, L, lam, vol_lam, paths, src_pos = sample_paths(files, rng, seed, version)
+    if seed in E1_MEAN_BLOCK and abs(L - E1_MEAN_BLOCK[seed]) > 5e-7:
+        raise RuntimeError(f"seed {seed}: mean block {L:.6f} != E1's {E1_MEAN_BLOCK[seed]} -- rebuild is not E1's placebo")
     print(f"  seed {seed}: block {L:.4f}, lambda {lam}, calendar {len(cal)} days", flush=True)
     out = {}
     for p, lab in labels.items():
@@ -124,7 +148,15 @@ def families(src: str):
     if any(unc.values()):
         raise RuntimeError(f"unclassified pairs in the family: {sum(map(len, unc.values()))}")
     legs = {x for v in ung.values() for pr in v for x in pr}
-    return {"kept": kept, "ungated": ung}, {p: leg_label(src, by_p[p]) for p in legs}
+    labels = {p: leg_label(src, by_p[p]) for p in legs}
+    # headline family (review 2026-11-13, finding 1): ADV-gated on REAL volume (the gate is part of the family
+    # definition, point-in-time), then classified -- benchmarked on the placebo like the others
+    from config import Config
+    from rolling_adv_comparison import rolling_adv
+    adv = {p: rolling_adv(parquet_io.read_parquet(os.path.join(src, f"{labels[p]}_1D.parquet"))) for p in legs}
+    gated, _ = apply_classification(adv_gated(ung, adv, Config.STATS.ADV_FILTER_USD),
+                                    pd.read_csv(os.path.join(ROOT, CLASSIFICATION_CSV)))
+    return {"gated": gated, "kept": kept, "ungated": ung}, labels
 
 
 def run_seed(LP: dict, fams: dict, seed: int, tests=TESTS):
@@ -160,6 +192,8 @@ def bh_bounds(N: pd.DataFrame, P: pd.DataFrame, alpha: float = ALPHA) -> pd.Data
                                         on=["seed", "year", "symbol_a", "symbol_b"])
         for (seed, year, hl, v), g in Pf.groupby(["seed", "year", "half_life", "variant"]):
             nulls = keys.loc[(seed, year)]
+            if not np.isfinite(g["pvalue"].to_numpy()).all():      # a NaN would silently shrink all_true's m
+                raise RuntimeError(f"NaN planted p-value: {fname} {test} seed {seed} year {year} hl {hl} {v}")
             allrej = bh_reject(g["pvalue"].to_numpy(), alpha)
             for (r, ar) in zip(g.itertuples(), allrej):
                 others = nulls.drop(index=(r.symbol_a, r.symbol_b)).to_numpy()

@@ -27,25 +27,30 @@ these, a null elsewhere says little; if it can, nulls elsewhere mean more.
 ## Test (fixed except the lag rule)
 - Year y's bars only (common dates; both legs on >= 80% of the year's calendar days, >= 30 bars), log total-return
   prices, spread = log a - log b, ADF with a constant (slope fixed at 1; any constant price ratio is in the intercept).
-- **Lag rule [OPEN]:** chosen BEFORE real data from the placebo comparison (research/p2_placebo_power.py, 5 E1 v2c seeds)
-  by this rule, declared now: among {AIC (fixed_adf), Schwert fixed lag (fixed_adf_schwert), t-stat general-to-specific
-  (fixed_adf_tstat)}, keep the arms whose pooled placebo size at p<0.05 is within 3 binomial SE of 0.05 AND whose share
-  of family-years with >= 1 false BH discovery is <= 0.05 + 3 SE; among those, the highest one_true power for whole-year
-  5-day and 20-day plants (5-day first). If no arm qualifies, P2 is not run as designed and comes back to Ross.
-- Benjamini-Hochberg at 5% across the family's testable pairs in year y.
-- A pair rejected in year y is CONFIRMED for year y + 1 only (decision date = last bar of y).
+- Benjamini-Hochberg at 5% across the family's testable pairs in year y. A pair rejected in year y is CONFIRMED for
+  year y + 1 only (decision date = last bar of y).
+- **Lag rule [OPEN]:** chosen BEFORE real data from the placebo comparison on the **gated (headline) family**
+  (research/p2_placebo_power.py; arms AIC = fixed_adf, Schwert fixed lag = fixed_adf_schwert, t-stat general-to-specific
+  = fixed_adf_tstat; a heteroskedasticity-robust arm may be added -- see Known limits). Rule: an arm qualifies if, on the
+  gated family pooled over the E1 v2c seeds, its pair-year rejection rate at p<0.05 is within 3 binomial SE of 0.05;
+  among qualifying arms, the highest one_true power for whole-year 5-day plants, ties by 20-day. If none qualifies,
+  P2 is not run as designed and comes back to Ross. **Disclosed:** this rule was written after the AIC and seed-1
+  Schwert placebo sizes were known (placebo only; no real P2 statistic exists).
 
-## Null benchmark (placebo, fixed)
-The same procedure on the same family's legs rebuilt from each v2c seed (exact build() rebuild; legs keep same-day
-co-movement, lose any long-run tie). Per family and seed: share of testable pair-years rejected by BH. Benchmark =
-the LARGEST seed's rate (conservative; E1 showed large seed-to-seed variation).
-
-## Success criterion (declared now)
-For the gated family, and separately (descriptive) the ungated family: the real share of testable kept pair-years
-confirmed exceeds the benchmark, one-sided exact binomial p < 0.05 with the benchmark as the null rate. Reported
-regardless: confirmed share, benchmark per seed, and the placebo power table for the chosen arm (so a "no" can be read
-as "the pipeline cannot see these" vs "the relation is not there": the placebo says only fast (~5-day) whole-year
-relations are reliably detectable in one year).
+## Null benchmark and success criterion (declared now)
+- Statistic: C = number of confirmed pair-years in the gated family, 1990-2024 (and, descriptive, the same for the
+  ungated kept family).
+- Null distribution: the IDENTICAL procedure (same family, same years, same coverage rule, chosen arm, BH per year) on
+  S = 199 placebo rebuilds of the family's legs (build()'s v2c sampler, seeds 20261024 + k, pinned file list). Each draw
+  replicates the whole structure -- the same pairs repeating across years and same-year clustering -- so no
+  independence assumption is needed (review 2026-11-13: an exact binomial over pair-years was anti-conservative).
+- Monte Carlo p = (1 + #{draws with C_null >= C_real}) / (S + 1). Success: p < 0.05 for the gated family. Reported
+  regardless: C_real, the null distribution's quantiles, per-seed counts, and the placebo power table for the chosen arm
+  (only fast, ~5-day, whole-year relations are reliably detectable in one year, so a "no" may mean "cannot see" rather
+  than "not there").
+- Caveat carried with the result: the placebo keeps market-level volatility clustering but less than real data
+  (mean ACF of |r|, lags 1-20: v2b 0.165 vs real 0.190 on 150 US series; v2c not measured separately), and unit-root tests over-reject under volatility clustering, so the null distribution may
+  be too narrow -- it favours a "yes". Stated next to any positive result.
 
 ## Reported regardless of outcome
 Per pair-year: p-value, bars, confirmed y/n; per year: family size m and confirmations; per decade; per pair; the
@@ -56,6 +61,11 @@ Whether P2 includes a next-year trading leg (and with which existing rules) is n
 an amendment committed before any trading result exists.
 
 ## Known limits (disclosed)
+- Size of the ADF on these nulls (2026-11-13, placebo + synthetic; debug/_tmp_p2_size_garch_check_20261113.py): the
+  over-rejection comes mostly from volatility clustering with fat tails (GARCH t4, 252 bars: AIC 0.082, Schwert 0.055,
+  t-stat 0.071) and less from the spreads' negative autocorrelation (MA -0.13: 0.061 / 0.047 / 0.060); both together
+  0.085 / 0.065 / 0.072. No lag rule is robust to heteroskedasticity; a wild-bootstrap ADF (Cavaliere-Taylor) is the
+  standard robust option -- proposed to Ross as a further arm, not built.
 - Same-claim rows often rest on one year's charter, assumed for the pair's other years (noted per row).
 - Unknowns cluster before 1996 (pre-EDGAR): the early family is thinner and larger-company-heavy.
 - The CRSP name snapshot ends 2024-12-31 (no 2025 family).

@@ -151,5 +151,14 @@ with tempfile.TemporaryDirectory() as d:
         pass
 check("9. permno_labels / leg_label: verified map, file must exist, identical-or-raise", bool(ok9))
 
+# 10. (2026-11-13) adv_gated: both legs' trailing ADV on Dec 31 of y >= threshold; NaN (data gap) or a missing leg fails
+from p2_share_class_family import adv_gated  # noqa: E402
+ix = pd.to_datetime(["2014-06-30", "2014-12-31", "2015-06-30", "2015-12-31"])
+ADV = {1: pd.Series([50, 50, 50, 50.], ix), 2: pd.Series([50, 10, 50, 50.], ix),    # 2: below in 2014, above in 2015
+       3: pd.Series([50, 50, np.nan, np.nan], ix),                                    # 3: data gap at end-2015
+       4: pd.Series([50, 50, 50, 50.], ix)}
+g = adv_gated({2014: [(1, 2), (1, 4), (1, 5)], 2015: [(1, 2), (1, 3), (1, 4)]}, ADV, 25)
+check("10. adv_gated: both legs, Dec 31 of y, NaN / missing leg fail", g == {2014: [(1, 4)], 2015: [(1, 2), (1, 4)]}, str(g))
+
 print(f"\n{passed}/{passed + failed} checks passed")
 sys.exit(1 if failed else 0)

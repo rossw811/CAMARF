@@ -31252,3 +31252,40 @@ theta -0.5, 252 bars, 1,000 paired draws): AIC 0.074, Schwert 0.043, t-stat rule
 **Response (comparison arms, Ross decides):** yearly_family_test gains fixed_adf_schwert (fixed lag 12*(T/100)^0.25) and
 fixed_adf_tstat (Ng-Perron general-to-specific from the same maximum); the placebo run repeats with all three arms on the
 same draws so size and power are compared together. Real data untouched.
+
+### Session 2026-11-13 (cont.): independent review of the P2 placebo work (adversarial-reviewer) -> fixes
+Verdicts (re-derived where marked): claim 2 (verified map everywhere in P2) CONFIRM; claims 1b-1d (planted spread,
+point-in-time cut, BH bounds) CONFIRM; 1a (rebuild = build()) QUALIFY; 3 (diagnosis) QUALIFY; 4 (pre-registration draft)
+REJECT as drafted.
+1. **Headline family had no placebo benchmark** (REAL): p2_placebo_power.families() returned only kept / ungated; the
+   draft's headline is the ADV-gated family (m = 1-11 per year, where BH ~ raw p). FIX: p2_share_class_family.adv_gated
+   (moved out of the debug script; verify check 10, 11/11) and families() now returns gated / kept / ungated.
+2. **Binomial success test anti-conservative** (pairs repeat across years, BH rejections cluster within years -- the
+   AIC null had 52 false rejections in 38 family-years) and the "<= 0.05 + 3 SE" family-year gate was ~0.099. FIX in the
+   draft: Monte Carlo test against S = 199 placebo rebuilds of the whole procedure; the lag-rule gate is the gated
+   family's pair-year size within 3 SE of 0.05; disclosed that the rule was written after the AIC / seed-1 Schwert
+   placebo sizes were known.
+3. **My diagnosis was incomplete.** I attributed the oversize to negatively autocorrelated spread returns. Re-derived
+   (debug/_tmp_p2_size_garch_check_20261113.py, 1,500 paired draws per null, T = 252, SE 0.006), size at 5%:
+   | null | AIC | Schwert | t-stat |
+   |---|---|---|---|
+   | iid walk | 0.054 | 0.053 | 0.058 |
+   | MA -0.13 (placebo median) | 0.061 | 0.047 | 0.060 |
+   | GARCH(0.10, 0.85) t4 | 0.082 | 0.055 | 0.071 |
+   | GARCH t4 + MA -0.13 | 0.085 | 0.065 | 0.072 |
+   Volatility clustering with fat tails produces most of the AIC oversize on its own; the measured MA adds little;
+   Schwert is better but not robust (0.065 with both). (The reviewer's own runs: Schwert 0.068 / 0.073 under GARCH --
+   same direction, mine smaller.) Verify check 6 (MA theta -0.5) reproduces a real mechanism at ~4x the measured
+   strength; kept, not sufficient. Seed-1 placebo size by lag-1 autocorrelation bin (AIC / lag 0 / Schwert / BIC), from
+   the diagnostic: ac1 <= -0.4 (n 14) 0.143 / 0.643 / 0.071 / 0.214; (-0.4, -0.3] (85) 0.059 / 0.494 / 0.024 / 0.118;
+   (-0.3, -0.2] (344) 0.073 / 0.235 / 0.052 / 0.081; (-0.2, -0.1] (684) 0.079 / 0.156 / 0.050 / 0.129; (-0.1, 0] (568)
+   0.085 / 0.092 / 0.063 / 0.092; > 0 (188) 0.037 / 0.027 / 0.059 / 0.027 -- the AIC size does NOT rise with negative
+   autocorrelation (only lag 0 does), consistent with clustering being the main driver. The robust option is a
+   wild-bootstrap ADF (Cavaliere & Taylor 2008) -- a new method, proposed to Ross, not built.
+4. **Rebuild exact only for a frozen file list** (REAL, would have bitten): build() samples 800 files from the sorted
+   *_1D list, so installing the 8 fetched legs would have changed every seed's paths silently. FIX: the list E1 v2c used
+   (46,218 files, = seed 1's n_files) is pinned in research/p2_placebo_file_manifest_v2c.txt, checked by hash in
+   rebuild_legs; each seed's mean block is checked against E1's _e1_build.parquet where built (seeds 1-2).
+5. Placebo bias direction untested (blocks ~3.5-3.75 days erase longer-memory autocorrelation; the negative lag-1
+   autocorrelation may be the real pairs' own reversion carried inside blocks) -- disclosed in the draft.
+6. all_true passed NaN planted p-values to BH (would shrink m): now raises. Verify 6/6; mutants 3/3.

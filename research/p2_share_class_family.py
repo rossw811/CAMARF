@@ -81,6 +81,19 @@ def leg_label(src: str, labels: list) -> str:
     return labels[0]
 
 
+def adv_gated(family: dict, adv_by_permno: dict, threshold: float) -> dict:
+    """The tradeable (headline) family: keep a year-y pair only if BOTH legs' trailing ADV on Dec 31 of y (adv_at:
+    the last row at or before T, NaN across a data gap) is >= `threshold` (the discovery gate,
+    Config.STATS.ADV_FILTER_USD). Point-in-time: rolling_adv is trailing. Moved here from
+    debug/_tmp_p2_adv_gate_*.py (review 2026-11-13: the headline family came from a debug script with no test)."""
+    from rolling_adv_comparison import adv_at
+    out = {}
+    for y, prs in family.items():
+        T = pd.Timestamp(f"{int(y)}-12-31")
+        out[y] = [pr for pr in prs if all(adv_at(adv_by_permno.get(p), T) >= threshold for p in pr)]
+    return out
+
+
 CLASSIFICATION_CSV = "research/p2_share_class_classification.csv"
 
 
