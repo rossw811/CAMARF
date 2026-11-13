@@ -31289,3 +31289,26 @@ REJECT as drafted.
 5. Placebo bias direction untested (blocks ~3.5-3.75 days erase longer-memory autocorrelation; the negative lag-1
    autocorrelation may be the real pairs' own reversion carried inside blocks) -- disclosed in the draft.
 6. all_true passed NaN planted p-values to BH (would shrink m): now raises. Verify 6/6; mutants 3/3.
+
+### Session 2026-11-13 (cont.): P2 placebo, three lag-rule arms -> AIC selected by the draft's rule; 199-draw null running
+Run: research/p2_placebo_power.py (all arms on the same draws; 5 v2c seeds; log latest_run_p2_placebo_power_20261113.log;
+outputs output/research/p2_placebo_power_{null,planted,summary}.parquet on CachyOS). AIC numbers reproduce the AIC-only
+run exactly. Null (every rejection false), pair-year rate at p<0.05 / family-years with >= 1 false BH (of 175):
+| family | AIC | Schwert | t-stat |
+|---|---|---|---|
+| kept (4,295 tests) | 0.081 / 38 | 0.059 / 18 | 0.075 / 36 |
+| ungated (9,415) | 0.077 / 42 | 0.053 / 18 | 0.070 / 32 |
+| **gated, headline** (345 = 69 x 5) | 0.055 / 6 of 105 | 0.064 / 6 | 0.061 / 7 |
+Gated family power (debug/_tmp_p2_gated_from_outputs_20261113.py; one_true whole-year plants): 5-day AIC 0.916,
+Schwert 0.316, t-stat 0.609; 20-day 0.168 / 0.061 / 0.104; 60/120-day <= 0.043 (at the false rate).
+**Selection by the draft's declared rule:** all three arms are within 3 SE of 0.05 on the gated family (SE 0.0117, so the
+gate admits up to ~0.085 -- it cannot tell 0.05 from 0.08 at n = 345, stated plainly), so the most powerful arm is chosen:
+**AIC (fixed_adf)**. Why that is defensible: the success test compares the real confirmed count with the SAME procedure
+on placebo draws, so the arm's oversize is in the null distribution too. Residual risk, carried with any result: real
+data cluster more than the placebo and AIC is the arm most sensitive to clustering (synthetic GARCH t4: 0.082 vs Schwert
+0.055); Schwert is reported beside it as the robustness arm (pre-registered "reported regardless").
+Monte Carlo null for the success test launched (CachyOS, nice 10): `p2_placebo_power.py --null-draws 199 --tests
+fixed_adf fixed_adf_schwert` -> output/research/p2_placebo_null_distribution.parquet (checkpointed per draw), log
+logs/latest/latest_run_p2_placebo_null_dist_20261113.log. Calendar = kept family's legs (written into the draft).
+Proposed to Ross (new method, not built): wild-bootstrap ADF (Cavaliere-Taylor) as a heteroskedasticity-robust arm.
+Berkshire A: needs Ross's WRDS login (debug/_tmp_fetch_p2_missing_permnos_20261113.py fetch); install is pinned-list safe.
