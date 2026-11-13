@@ -51,6 +51,36 @@ def family_by_year(names: pd.DataFrame, have_permnos, years, min_listed_years: i
     return {int(y): share_class_family(names, have_permnos, f"{int(y)}-12-31", min_listed_years) for y in years}
 
 
+def permno_labels(src: str, permno_of: dict = None) -> dict:
+    """{permno: sorted 1D file labels} from the BUG-D117 content-verified map (data_wrds.label_permno_map), the only map
+    every consumer may use; the keys are the PERMNOs that "have a file". 2026-11-13: P2 scripts had read
+    full_us_market_label_map, which names the wrong security for some files -- e.g. the 'BRK' file holds Berkshire B, so
+    BRK.A (17778) and BRK.B (83443) read the SAME series and their 'spread' was exactly constant (five such pairs, plus
+    three whose leg has no verified file; all eight leave the family)."""
+    import os
+    from data_wrds import label_permno_map
+    permno_of = label_permno_map() if permno_of is None else permno_of
+    by_p = {}
+    for lab, p in permno_of.items():
+        if os.path.exists(os.path.join(src, f"{lab}_1D.parquet")):
+            by_p.setdefault(int(p), []).append(str(lab))
+    return {p: sorted(v) for p, v in by_p.items()}
+
+
+def leg_label(src: str, labels: list) -> str:
+    """One file label for a PERMNO. Several labels are accepted only if every file holds the identical total-return
+    series (then the first is used); otherwise it raises -- never a silent pick."""
+    import os
+    import numpy as np
+    import parquet_io
+    if len(labels) > 1:
+        s = [parquet_io.read_parquet(os.path.join(src, f"{l}_1D.parquet"))["close_total_return"] for l in labels]
+        if not all(x.index.equals(s[0].index) and np.allclose(x.to_numpy(float), s[0].to_numpy(float), equal_nan=True)
+                   for x in s[1:]):
+            raise ValueError(f"one PERMNO, {len(labels)} different files {labels}; resolve before use")
+    return labels[0]
+
+
 CLASSIFICATION_CSV = "research/p2_share_class_classification.csv"
 
 

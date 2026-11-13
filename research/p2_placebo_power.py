@@ -33,7 +33,8 @@ sys.path.insert(0, ROOT)
 sys.path.insert(0, os.path.join(ROOT, "research"))
 
 import parquet_io  # noqa: E402
-from p2_share_class_family import CLASSIFICATION_CSV, apply_classification, family_by_year  # noqa: E402
+from p2_share_class_family import (CLASSIFICATION_CSV, apply_classification, family_by_year, leg_label,  # noqa: E402
+                                   permno_labels)
 from placebo_discovery_e1 import _log_price, placebo_series, sample_paths  # noqa: E402
 from yearly_family_test import _pvalue, bh_reject, yearly_family_tests  # noqa: E402
 
@@ -115,15 +116,13 @@ def rebuild_legs(src: str, labels: dict, seed: int, version: str = VERSION) -> d
 
 def families(src: str):
     n = parquet_io.read_parquet(os.path.join(src, "crsp_stocknames_all.parquet"))
-    lm = parquet_io.read_parquet(os.path.join(src, "full_us_market_label_map.parquet")).dropna(subset=["permno"])
-    p2l = dict(zip(lm["permno"].astype(int), lm["label"]))
-    have = {p for p, l in p2l.items() if os.path.exists(os.path.join(src, f"{l}_1D.parquet"))}
-    ung = family_by_year(n, have, YEARS)
+    by_p = permno_labels(src)                         # BUG-D117 verified map (not full_us_market_label_map)
+    ung = family_by_year(n, set(by_p), YEARS)
     kept, unc = apply_classification(ung, pd.read_csv(os.path.join(ROOT, CLASSIFICATION_CSV)))
     if any(unc.values()):
         raise RuntimeError(f"unclassified pairs in the family: {sum(map(len, unc.values()))}")
     legs = {x for v in ung.values() for pr in v for x in pr}
-    return {"kept": kept, "ungated": ung}, {p: p2l[p] for p in legs}
+    return {"kept": kept, "ungated": ung}, {p: leg_label(src, by_p[p]) for p in legs}
 
 
 def run_seed(LP: dict, fams: dict, seed: int):

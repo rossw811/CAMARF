@@ -133,5 +133,23 @@ check("8. declared classification file: unique pairs, valid classes, every non-u
       and fy[C["classification"].isin(["tracking", "unknown", "not_share_class"])].isna().all(),
       str(C["classification"].value_counts().to_dict()))
 
+# 9. (2026-11-13) PERMNO -> file goes through the verified map: only labels with a file count; a PERMNO with two files is
+# accepted only if they are identical, else it raises (old bug: the wrong map gave BRK.A and BRK.B the same file)
+import tempfile  # noqa: E402
+from p2_share_class_family import leg_label, permno_labels  # noqa: E402
+with tempfile.TemporaryDirectory() as d:
+    ix = pd.bdate_range("2020-01-01", periods=5)
+    def w(lab, v):
+        pd.DataFrame({"close_total_return": v}, index=ix).to_parquet(os.path.join(d, f"{lab}_1D.parquet"))
+    w("AAA", [1., 2, 3, 4, 5]); w("PERMNO7", [1., 2, 3, 4, 5]); w("BBB", [1., 2, 3, 4, 6])
+    w("CCC", [1., 2, 3, 4, 5])
+    lp = permno_labels(d, {"AAA": 7, "PERMNO7": 7, "BBB": 8, "CCC": 9, "NOFILE": 10})
+    ok9 = lp == {7: ["AAA", "PERMNO7"], 8: ["BBB"], 9: ["CCC"]} and leg_label(d, lp[7]) == "AAA"
+    try:
+        leg_label(d, ["AAA", "BBB"]); ok9 = False
+    except ValueError:
+        pass
+check("9. permno_labels / leg_label: verified map, file must exist, identical-or-raise", bool(ok9))
+
 print(f"\n{passed}/{passed + failed} checks passed")
 sys.exit(1 if failed else 0)
