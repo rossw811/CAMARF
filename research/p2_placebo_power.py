@@ -217,12 +217,46 @@ def summarize(N: pd.DataFrame, B: pd.DataFrame) -> dict:
     return {"size": size, "power": power}
 
 
+def null_distribution(src: str, n_draws: int, tests=TESTS, fam_names=("gated", "kept")) -> pd.DataFrame:
+    """Pre-registration's Monte Carlo null (draft 2026-11-13): the identical procedure on n_draws placebo rebuilds
+    (seeds SEEDS[0] + k), per family x test: C = number of BH-confirmed pair-years, plus the testable count. Each draw
+    keeps the whole structure (pairs repeating across years, same-year clustering). Checkpointed per draw; resumes."""
+    out_path = os.path.join(OUT, "p2_placebo_null_distribution.parquet")
+    fams, labels = families(src)
+    fams = {k: fams[k] for k in fam_names}
+    legs = {x for F in fams.values() for v in F.values() for pr in v for x in pr}
+    labels = {p: labels[p] for p in legs}
+    done = parquet_io.read_parquet(out_path) if os.path.exists(out_path) else pd.DataFrame()
+    rows = done.to_dict("records")
+    have = set(done["seed"]) if len(done) else set()
+    for k in range(n_draws):
+        seed = SEEDS[0] + k
+        if seed in have:
+            continue
+        LP = rebuild_legs(src, labels, seed)
+        for test in tests:
+            for fname, F in fams.items():
+                R = yearly_family_tests(LP, F, alpha=ALPHA, years=list(YEARS), test=test)
+                rows.append({"seed": seed, "family": fname, "test": test, "confirmed": int(R["rejected"].sum()),
+                             "testable": int(np.isfinite(R["pvalue"]).sum())})
+        os.makedirs(OUT, exist_ok=True)
+        pd.DataFrame(rows).to_parquet(out_path)
+        print(f"  draw {k + 1}/{n_draws} (seed {seed}) saved", flush=True)
+    D = pd.DataFrame(rows)
+    print(D.groupby(["family", "test"])["confirmed"].describe(percentiles=[.5, .9, .95, .99]).round(2).to_string())
+    return D
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--src", default=os.path.join(ROOT, "output", "cache", "wrds"))
     ap.add_argument("--seeds", type=int, nargs="*", default=list(SEEDS))
     ap.add_argument("--tests", nargs="*", default=list(TESTS))
+    ap.add_argument("--null-draws", type=int, default=0,
+                    help="null-only Monte Carlo: seeds SEEDS[0] + k, k < N; gated + kept families; C = confirmed count")
     a = ap.parse_args()
+    if a.null_draws:
+        return null_distribution(a.src, a.null_draws, a.tests)
     fams, labels = families(a.src)
     print(f"family legs {len(labels)}; kept pair-years {sum(map(len, fams['kept'].values()))}, "
           f"ungated {sum(map(len, fams['ungated'].values()))}", flush=True)

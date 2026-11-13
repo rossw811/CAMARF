@@ -27,6 +27,8 @@ these, a null elsewhere says little; if it can, nulls elsewhere mean more.
 ## Test (fixed except the lag rule)
 - Year y's bars only (common dates; both legs on >= 80% of the year's calendar days, >= 30 bars), log total-return
   prices, spread = log a - log b, ADF with a constant (slope fixed at 1; any constant price ratio is in the intercept).
+- The year's calendar (for the 80% coverage rule) is the union of the dates of the KEPT family's legs (gated legs are a
+  subset), in the real run and in every placebo draw alike (research/p2_placebo_power.null_distribution).
 - Benjamini-Hochberg at 5% across the family's testable pairs in year y. A pair rejected in year y is CONFIRMED for
   year y + 1 only (decision date = last bar of y).
 - **Lag rule [OPEN]:** chosen BEFORE real data from the placebo comparison on the **gated (headline) family**
