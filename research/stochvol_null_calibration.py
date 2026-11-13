@@ -56,6 +56,8 @@ def series_moments(r: np.ndarray) -> tuple:
     """(mean ACF of |r - mean| at lags 1..ACF_LAGS, excess kurtosis) of one return series (NaNs dropped)."""
     r = np.asarray(r, float)
     r = r[np.isfinite(r)]
+    if len(r) < ACF_LAGS + 2 or not r.std() > 0:     # e.g. a Heston path truncated to zero variance
+        return float("nan"), float("nan")
     a = np.abs(r - r.mean())
     a = a - a.mean()
     den = float(np.dot(a, a))
@@ -93,7 +95,9 @@ def generator(kind: str, params: dict):
 def sim_moments(gen, rng, n_paths: int = 40, n: int = 3000) -> tuple:
     R = gen(n_paths, n, rng)
     m = np.array([series_moments(R[:, j]) for j in range(R.shape[1])])
-    return float(np.median(m[:, 0])), float(np.median(m[:, 1]))
+    if np.isnan(m[:, 0]).mean() > 0.5:                  # mostly degenerate paths: this grid point is unusable
+        return float("nan"), float("nan")
+    return float(np.nanmedian(m[:, 0])), float(np.nanmedian(m[:, 1]))
 
 
 def fit(kind: str, target: tuple, rng) -> dict:
@@ -103,7 +107,9 @@ def fit(kind: str, target: tuple, rng) -> dict:
     best = None
     for p in grid:
         acf, kurt = sim_moments(generator(kind, p), rng)
-        d = 2 * ((acf - target[0]) / max(target[0], 1e-3)) ** 2 + ((kurt - target[1]) / max(abs(target[1]), 1.0)) ** 2
+        if not np.isfinite(acf):
+            continue
+        d =2 * ((acf - target[0]) / max(target[0], 1e-3)) ** 2 + ((kurt - target[1]) / max(abs(target[1]), 1.0)) ** 2
         if best is None or d < best["dist"]:
             best = {**p, "acf": acf, "kurt": kurt, "dist": float(d)}
     return best
