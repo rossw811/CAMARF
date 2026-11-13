@@ -42,7 +42,9 @@ SEEDS = (20261024, 20261025, 20261026, 20261027, 20261028)   # the E1 v2c chain'
 VERSION = "v2c"
 YEARS = range(1990, 2025)
 ALPHA = 0.05
-HALF_LIVES = (5, 20, 60, 120)                                 # E1's plant grid
+HALF_LIVES = (5, 20, 60, 120)
+# 2026-11-13: the AIC-lag ADF over-rejected on this null (7.5-8.1% at 5%); the two long-lag arms run beside it, same draws
+TESTS = ("fixed_adf", "fixed_adf_schwert", "fixed_adf_tstat")                                 # E1's plant grid
 VARIANTS = ("full", "starts_mid", "ends_mid")
 OUT = os.path.join(ROOT, "output", "research")
 
@@ -125,12 +127,13 @@ def families(src: str):
     return {"kept": kept, "ungated": ung}, {p: leg_label(src, by_p[p]) for p in legs}
 
 
-def run_seed(LP: dict, fams: dict, seed: int):
+def run_seed(LP: dict, fams: dict, seed: int, tests=TESTS):
     null_rows, plant_rows = [], []
-    for fname, F in fams.items():
-        N = yearly_family_tests(LP, F, alpha=ALPHA, years=list(YEARS), test="fixed_adf")
-        N["family"], N["seed"] = fname, seed
-        null_rows.append(N)
+    for test in tests:
+        for fname, F in fams.items():
+            N = yearly_family_tests(LP, F, alpha=ALPHA, years=list(YEARS), test=test)
+            N["family"], N["seed"], N["test"] = fname, seed, test
+            null_rows.append(N)
     # planted p-values once per testable pair-year of the widest family (kept is a subset of ungated; both families are
     # tested on the same LP dict, so the coverage rule -- and the testable set -- is identical)
     N = pd.concat(null_rows, ignore_index=True)
@@ -140,25 +143,27 @@ def run_seed(LP: dict, fams: dict, seed: int):
             for v in VARIANTS:
                 a, b = planted_leg(LP[r.symbol_a], LP[r.symbol_b], r.year, hl, v)
                 ya, yb = a[a.index.year == r.year], b[b.index.year == r.year]
-                plant_rows.append({"symbol_a": r.symbol_a, "symbol_b": r.symbol_b, "year": r.year, "seed": seed,
-                                   "half_life": hl, "variant": v, "n_bars": len(ya),
-                                   "pvalue": _pvalue(ya, yb, "fixed_adf")})
+                for test in tests:
+                    plant_rows.append({"symbol_a": r.symbol_a, "symbol_b": r.symbol_b, "year": r.year, "seed": seed,
+                                       "half_life": hl, "variant": v, "n_bars": len(ya), "test": test,
+                                       "pvalue": _pvalue(ya, yb, test)})
     return N, pd.DataFrame(plant_rows)
 
 
 def bh_bounds(N: pd.DataFrame, P: pd.DataFrame, alpha: float = ALPHA) -> pd.DataFrame:
     """Per planted row and family: one_true / all_true BH rejection (family = kept or ungated, its own year's m)."""
     out = []
-    for fname, Nf in N.groupby("family"):
+    for (fname, test), Nf in N.groupby(["family", "test"]):
         Nf = Nf[np.isfinite(Nf["pvalue"])]
         keys = Nf.set_index(["seed", "year", "symbol_a", "symbol_b"])["pvalue"]
-        Pf = P.merge(Nf[["seed", "year", "symbol_a", "symbol_b"]], on=["seed", "year", "symbol_a", "symbol_b"])
+        Pf = P[P["test"] == test].merge(Nf[["seed", "year", "symbol_a", "symbol_b"]],
+                                        on=["seed", "year", "symbol_a", "symbol_b"])
         for (seed, year, hl, v), g in Pf.groupby(["seed", "year", "half_life", "variant"]):
             nulls = keys.loc[(seed, year)]
             allrej = bh_reject(g["pvalue"].to_numpy(), alpha)
             for (r, ar) in zip(g.itertuples(), allrej):
                 others = nulls.drop(index=(r.symbol_a, r.symbol_b)).to_numpy()
-                out.append({"family": fname, "seed": seed, "year": year, "half_life": hl, "variant": v,
+                out.append({"family": fname, "test": test, "seed": seed, "year": year, "half_life": hl, "variant": v,
                             "symbol_a": r.symbol_a, "symbol_b": r.symbol_b, "pvalue": r.pvalue, "m": len(nulls),
                             "one_true": one_true_rejected(r.pvalue, others, alpha), "all_true": bool(ar)})
     return pd.DataFrame(out)
@@ -166,13 +171,13 @@ def bh_bounds(N: pd.DataFrame, P: pd.DataFrame, alpha: float = ALPHA) -> pd.Data
 
 def summarize(N: pd.DataFrame, B: pd.DataFrame) -> dict:
     Nt = N[np.isfinite(N["pvalue"])]
-    size = Nt.groupby("family").agg(tests=("pvalue", "size"), **{f"p<{t:g}": ("pvalue", lambda x, t=t: float((x < t).mean()))
+    size = Nt.groupby(["family", "test"]).agg(tests=("pvalue", "size"), **{f"p<{t:g}": ("pvalue", lambda x, t=t: float((x < t).mean()))
                                                                for t in (0.05, 0.01, 0.001)},
                                     bh_false=("rejected", "sum"))
-    yrs = Nt.groupby(["family", "seed", "year"])["rejected"].any().groupby("family")
+    yrs = Nt.groupby(["family", "test", "seed", "year"])["rejected"].any().groupby(["family", "test"])
     size["family_years"] = yrs.size()
     size["years_with_false_bh"] = yrs.sum()
-    power = B.groupby(["family", "variant", "half_life"]).agg(n=("pvalue", "size"), one_true=("one_true", "mean"),
+    power = B.groupby(["family", "test", "variant", "half_life"]).agg(n=("pvalue", "size"), one_true=("one_true", "mean"),
                                                               all_true=("all_true", "mean"),
                                                               p_lt_005=("pvalue", lambda x: float((x < 0.05).mean())))
     return {"size": size, "power": power}
@@ -182,6 +187,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--src", default=os.path.join(ROOT, "output", "cache", "wrds"))
     ap.add_argument("--seeds", type=int, nargs="*", default=list(SEEDS))
+    ap.add_argument("--tests", nargs="*", default=list(TESTS))
     a = ap.parse_args()
     fams, labels = families(a.src)
     print(f"family legs {len(labels)}; kept pair-years {sum(map(len, fams['kept'].values()))}, "
@@ -189,7 +195,7 @@ def main():
     Ns, Ps = [], []
     for seed in a.seeds:
         LP = rebuild_legs(a.src, labels, seed)
-        N, P = run_seed(LP, fams, seed)
+        N, P = run_seed(LP, fams, seed, a.tests)
         Ns.append(N); Ps.append(P)
         print(f"  seed {seed}: null tests {int(np.isfinite(N['pvalue']).sum())}, planted {len(P)}", flush=True)
     N, P = pd.concat(Ns, ignore_index=True), pd.concat(Ps, ignore_index=True)
@@ -202,7 +208,7 @@ def main():
     pd.set_option("display.width", 200)
     print("\n== null (every rejection false)\n" + S["size"].round(4).to_string())
     print("\n== power\n" + S["power"].round(3).to_string())
-    print("\n== power by seed (full, one_true)\n" + B[B.variant == "full"].groupby(["family", "half_life", "seed"])
+    print("\n== power by seed (full, one_true)\n" + B[B.variant == "full"].groupby(["family", "test", "half_life", "seed"])
           ["one_true"].mean().unstack("seed").round(3).to_string())
 
 

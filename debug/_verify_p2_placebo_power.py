@@ -102,9 +102,9 @@ check("5. one_true = BH over [plant] + others; lone pair needs alpha/m", bool(ok
 
 N = pd.DataFrame({"family": ["kept"] * 2 + ["ungated"] * 4, "seed": 1, "year": 2015,
                   "symbol_a": [1, 3, 1, 3, 5, 7], "symbol_b": [2, 4, 2, 4, 6, 8],
-                  "pvalue": [0.0001, 0.9, 0.0001, 0.9, 0.9, 0.9], "rejected": False})
+                  "pvalue": [0.0001, 0.9, 0.0001, 0.9, 0.9, 0.9], "rejected": False, "test": "fixed_adf"})
 P = pd.DataFrame({"seed": 1, "year": 2015, "half_life": 5, "variant": "full", "symbol_a": [1, 3, 5, 7],
-                  "symbol_b": [2, 4, 6, 8], "pvalue": [0.03, 0.02, 0.9, 0.9]})
+                  "symbol_b": [2, 4, 6, 8], "pvalue": [0.03, 0.02, 0.9, 0.9], "test": "fixed_adf"})
 B = bh_bounds(N, P).set_index(["family", "symbol_a"])
 # pair (3,4) planted p 0.02: kept m=2 -> others = [p of (1,2) = 0.0001] -> BH: sorted [0.0001, 0.02] vs [0.025, 0.05] ->
 # both pass -> rejected. ungated m=4 -> others [0.0001, 0.9, 0.9] -> 0.02 <= 0.05*2/4 = 0.025 -> rejected.

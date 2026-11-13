@@ -45,14 +45,30 @@ def bh_reject(p: np.ndarray, alpha: float) -> np.ndarray:
     return out
 
 
-TESTS = ("eg", "fixed_adf")
+TESTS = ("eg", "fixed_adf", "fixed_adf_schwert", "fixed_adf_tstat")
+
+
+def schwert_lag(n: int) -> int:
+    """Schwert (1989) long lag rule int(12 * (n / 100) ** 0.25): 15 lags at n = 252."""
+    return int(12 * (n / 100) ** 0.25)
 
 
 def _pvalue(x: pd.Series, y: pd.Series, test: str) -> float:
+    """2026-11-13 comparison arms (P2 placebo: share-class spread returns are negatively autocorrelated, median lag-1
+    -0.13, and AIC picks ~1 lag, so fixed_adf rejected 7.5% at 5% / 3.2x at 0.1% on the null):
+    fixed_adf_schwert = ADF with Schwert's fixed lag order; fixed_adf_tstat = general-to-specific t-test lag selection
+    (Ng-Perron 1995) from the same maximum. Comparison arms, not replacements (Ross decides)."""
     from statsmodels.tsa.stattools import adfuller, coint
     if test == "eg":
         return float(coint(x, y)[1])
-    return float(adfuller((x - y).to_numpy(), regression="c", autolag="AIC")[1])
+    s = (x - y).to_numpy()
+    if test == "fixed_adf":
+        return float(adfuller(s, regression="c", autolag="AIC")[1])
+    if test == "fixed_adf_schwert":
+        return float(adfuller(s, regression="c", maxlag=schwert_lag(len(s)), autolag=None)[1])
+    if test == "fixed_adf_tstat":
+        return float(adfuller(s, regression="c", maxlag=schwert_lag(len(s)), autolag="t-stat")[1])
+    raise ValueError(f"test must be one of {TESTS}")
 
 
 def yearly_family_tests(log_prices: dict, family, alpha: float = 0.05, years=None, test: str = "eg") -> pd.DataFrame:

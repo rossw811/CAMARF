@@ -95,6 +95,26 @@ def main():
     check("5 discovery-sized family loses the episodes", (big["pvalue"] <= cut).mean() < 0.2,
           f"episode years passing alpha/1e6: {(big['pvalue'] <= cut).mean():.2f} vs family of 100: {pw_in:.2f}")
 
+    # 6. (2026-11-13) negative-MA null, the P2 placebo's shape: spread increments e_t + theta e_(t-1), theta = -0.5, 252
+    # bars, unit root. AIC-lag ADF over-rejects; Schwert's long fixed lag is near nominal; same draws for every arm.
+    from research.yearly_family_test import _pvalue, schwert_lag
+    rng6 = np.random.default_rng(20261113)
+    d6 = pd.bdate_range("2015-01-01", periods=252)
+    reps = 1000
+    rej = np.zeros((reps, 3), bool)
+    for i in range(reps):
+        e = rng6.normal(size=253)
+        s = pd.Series(np.cumsum(e[1:] - 0.5 * e[:-1]), d6)
+        z = pd.Series(np.zeros(252), d6)
+        for k, t in enumerate(("fixed_adf", "fixed_adf_schwert", "fixed_adf_tstat")):
+            rej[i, k] = _pvalue(s, z, t) <= 0.05
+    sz = rej.mean(0)
+    dif = rej[:, 0].astype(float) - rej[:, 1]
+    se = np.sqrt(0.05 * 0.95 / reps)
+    check("6 negative-MA null: AIC over-rejects, Schwert near nominal (paired)",
+          schwert_lag(252) == 15 and dif.mean() > 3 * dif.std(ddof=1) / np.sqrt(reps) and abs(sz[1] - 0.05) <= 3 * se,
+          f"size AIC {sz[0]:.3f} schwert {sz[1]:.3f} t-stat {sz[2]:.3f} (3SE {3 * se:.3f})")
+
     print(f"\n{len(PASS)}/{len(PASS) + len(FAIL)} checks passed")
     if FAIL:
         print("FAILED:", FAIL)
