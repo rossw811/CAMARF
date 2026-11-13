@@ -121,9 +121,16 @@ kept, unc = apply_classification(fam, cls)
 check("7. classification: tracking dropped, from-year respected, unclassified dropped + reported",
       kept == {2011: [(1, 2)], 2012: [(1, 2), (6, 7)]} and unc == {2011: [(10, 11)], 2012: []}, f"{kept} {unc}")
 C = pd.read_csv(os.path.join(ROOT, CLASSIFICATION_CSV))
-check("8. declared classification file: 22 pairs, sourced, valid classes",
-      len(C) == 22 and C["source_url"].str.startswith("http").all()
-      and set(C["classification"]) <= {"same_claim", "tracking", "other_structural"},
+# 2026-11-12: the file now covers the ungated family (230 pairs); "unknown" = no primary source (dropped, fail-closed)
+fy = pd.to_numeric(C["same_claim_from_year"], errors="coerce")
+known = C["classification"] != "unknown"
+check("8. declared classification file: unique pairs, valid classes, every non-unknown row sourced, from-year only "
+      "where economics are equal",
+      not C.duplicated(["permno_a", "permno_b"]).any() and (C["permno_a"] < C["permno_b"]).all()
+      and set(C["classification"]) <= {"same_claim", "tracking", "other_structural", "unknown", "not_share_class"}
+      and C.loc[known, "source_url"].astype(str).str.startswith("http").all()
+      and fy[C["classification"] == "same_claim"].notna().all()
+      and fy[C["classification"].isin(["tracking", "unknown", "not_share_class"])].isna().all(),
       str(C["classification"].value_counts().to_dict()))
 
 print(f"\n{passed}/{passed + failed} checks passed")
