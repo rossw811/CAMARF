@@ -45,7 +45,7 @@ THETA = 1e-4                      # daily variance level (1% a day); tests are s
 BURN = 500
 DISC_BARS = 2520                  # analysis / scan: EPISODIC_WINDOW_BARS
 P2_BARS = 252
-EG_MAX_LAG = 10                   # Config.STATS.EG_MAX_LAG (checked at import below)
+EG_MAX_LAG = 10                   # Config.ANALYSIS.EG_MAX_LAG (checked at import below)
 KAPPAS = (0.002, 0.005, 0.01, 0.02, 0.05, 0.1, 0.2)
 XIS = (0.0, 0.002, 0.004, 0.006, 0.01, 0.015, 0.02, 0.03)          # vol-of-vol in variance units / sqrt(day)
 NUS = (0.0, 0.01, 0.02, 0.03, 0.05, 0.08, 0.12)
@@ -199,7 +199,7 @@ def real_targets(src: str, n: int = N_SERIES, seed: int = 20261113) -> pd.DataFr
 
 def main():
     from config import Config
-    assert Config.STATS.EG_MAX_LAG == EG_MAX_LAG, "discovery EG max lag changed -- update EG_MAX_LAG"
+    assert Config.ANALYSIS.EG_MAX_LAG == EG_MAX_LAG, "discovery EG max lag changed -- update EG_MAX_LAG"
     ap = argparse.ArgumentParser()
     ap.add_argument("--src", default=os.path.join(ROOT, "output", "cache", "wrds"))
     ap.add_argument("--pairs", type=int, default=10000, help="pairs per decile x generator x corr (2 EG rows each)")
