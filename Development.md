@@ -31334,3 +31334,23 @@ Seed 3 has the LOWEST US far-tail rate (p<1e-4 0.00012 vs 0.00059 / 0.00064) yet
 hypothesis is rejected (if anything the sign is reversed). Cause still unknown. v2c: top-1% days drawn 1.04 / 1.02 / 0.95
 per day, but 18-24% are never drawn: v2c's exactly-once rule covers the top bin of the EWMA volatility STATE, and a
 sudden shock day often is not yet in that bin. Disclosed; not changed.
+
+### Session 2026-11-13 (cont.): E1 v2c seed 2 scored; designs A and B built (Ross: "ill take your recommendations")
+- **E1 v2c seed 2 (20261025):** window false share at the real cutoff international 0.19, mixed 0.03, US gated 0.45
+  (seed 1: 0.43 / 0.19 / 0.73); k2 null pairs (plant-with-other) international 2 (2) of 24, mixed 1 (0) of 1, US 6 (4)
+  of 26; persistent plants found 5-day 17/19, 20-day 24/26, 60-day 1/28, 120-day 0/28; episodic plants 0/40 (seed 1:
+  1/41). Seed 3 (20261026) passed the tier-1 guard (US 1.09, international 1.00, mixed 1.22), in discovery since 15:23.
+- **Design A** research/stochvol_null_calibration.py (verify debug/_verify_stochvol_null_calibration.py 6/6 on CachyOS:
+  iid control EG 0.046 / P2 0.061 at 5%; a strongly clustered Heston null EG 0.176 / P2 0.129; simulation 3% of the
+  time, so CPU). First launch crashed: I asserted Config.STATS.EG_MAX_LAG, which does not exist (the scan reads
+  Config.ANALYSIS.EG_MAX_LAG) -- fixed (3b424e08), relaunched. Early fit (decile 0): Heston cannot reach the decile's
+  kurtosis at its low ACF (fit ACF 0.080 / kurt 7.1 vs target 0.058 / 13.6); SABR matches ACF (0.058) with almost no
+  excess kurtosis (0.46) -- the two generators bracket the real shape; fit distances are reported per decile.
+- **Design B** research/arma_half_life_pools.py: production's own inputs recorded by wrapping
+  SpreadModel.rolling_half_life_hedged / fit_pair during a normal rebuild; noise-robust realised decay (addendum in the
+  decision sheet, written before any B result). Verify debug/_verify_arma_half_life_pools.py checks 1-3 pass on CachyOS
+  (realised decay: clean 9.32, noisy 9.09 vs latent 10; plain "acf < 0.5" crossing 1; recorders transparent; point-in-
+  time); check 4 running. The first verify run died with a dropped SSH session (not a hang: uptime 1 day); relaunched
+  detached.
+- The Surface ran low on memory twice; Claude Code stopped my local wait loops both times (watchers only; nothing on
+  CachyOS was affected). Not restarted.
