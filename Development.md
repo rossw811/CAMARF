@@ -31354,3 +31354,39 @@ sudden shock day often is not yet in that bin. Disclosed; not changed.
   detached.
 - The Surface ran low on memory twice; Claude Code stopped my local wait loops both times (watchers only; nothing on
   CachyOS was affected). Not restarted.
+
+### Session 2026-11-13 (end): everything paused at Ross's request ("stop and save progress fully") -- state + raw results
+**Stopped 18:50 on CachyOS (0 processes left; 41 GB free):** E1 v2c chain (bash 492119) and seed 3's discovery
+process group; P2 null-distribution run. Nothing else was running.
+**Saved state / how to resume:**
+- E1 v2c: seeds 20261024 and 20261025 COMPLETE (~/CAMARF_e1_runs/v2c_seed2026102{4,5}/). Seed 20261026 was in discovery
+  (guard passed: US 1.09, intl 1.00, mixed 1.22) and is lost; relaunch the chain and it skips the done seeds and
+  redoes seed 3 from its build: `ssh rw@100.64.64.126 "cd ~/CAMARF && setsid nohup bash debug/_tmp_chain_e1_v2c_20261112.sh > /dev/null 2>&1 < /dev/null &"`
+  (it git-pulls main first; one heavy job at a time).
+- P2 Monte Carlo null: 115 of 199 draws saved (output/research/p2_placebo_null_distribution.parquet, checkpointed per
+  draw). Resume with the same command -- finished seeds are skipped: `cd ~/CAMARF && setsid nohup nice -n 10
+  .venv/bin/python -u research/p2_placebo_power.py --null-draws 199 --tests fixed_adf fixed_adf_schwert >>
+  logs/latest/latest_run_p2_placebo_null_dist_20261113.log 2>&1 < /dev/null &`
+- Design A (stochvol null) COMPLETE before the stop: output/research/stochvol_null_rates.parquet (41 cells),
+  stochvol_null_targets.parquet; log logs/latest/latest_run_stochvol_null_calibration_20261113.log. UNREVIEWED.
+- Design B: verify 3/4 -- check 4 FAILED (my expectation, not yet judged a code bug): on CLEAN AR(1) spreads ARMA's error
+  was lower in 0.62 of windows (check required < 0.60); medians AR(1) 7.9, ARMA 8.1 vs true 10 -- plausibly the OLS
+  AR(1)'s small-sample downward bias, which exact-MLE ARMA has less of, so "ARMA does not win on clean data" was the
+  wrong expectation. To decide next session (likely: replace with "on clean data the two agree within the decision
+  rule's [0.8, 1.25] ratio band"). Noisy case: ARMA better 0.97 (AR(1) 0.8 vs ARMA 9.9, true 10). The B real run has NOT
+  been started.
+**Design A raw result (UNREVIEWED; per-decile table in the log).** Pooled over the 10 deciles (each 10,000 pairs x 2
+EG directions; P2 1,000 pairs x 10 years), false rejection rates:
+| generator, corr | EG p<0.05 | EG p<1e-3 | EG p<1e-4 | P2 AIC p<0.05 | P2 Schwert p<0.05 |
+|---|---|---|---|---|---|
+| iid control | 0.052 | 0.0010 | 0.0001 | 0.058 | 0.045 |
+| Heston, 0 / 0.6 | 0.059 / 0.058 | 0.0027 / 0.0022 | 0.00056 / 0.00041 | 0.076 / 0.076 | 0.054 / 0.056 |
+| SABR, 0 / 0.6 | 0.098 / 0.084 | 0.0106 / 0.0059 | 0.0040 / 0.0019 | 0.060 / 0.061 | 0.049 / 0.050 |
+Fit: Heston tracks both moments in deciles 1 and 5-9 and misses the low-ACF / high-kurtosis ones; SABR matches ACF but
+has almost no excess kurtosis (0.3-5.4 vs 9-21) and its vol has no mean reversion, so over 10 years it drifts far --
+the most extreme shape. Tail concentrates in the top clustering decile (decile 9: Heston 0.0023, SABR 0.0198 at 1e-4).
+Against the declared rule (stochvol tail > 2x the placebo's at the discovery cutoff -> the calibrated cutoff must use
+the stochvol bound): E1 v2c placebo US p<1e-4 0.00068 (seed 1). Heston 0.0004-0.0006 -> NOT exceeded; SABR 0.0019-0.0040
+-> exceeded 3-6x. Not interpreted yet: the two generators disagree, and SABR's non-mean-reverting vol is an extreme
+case. Needs review and Ross's reading before it touches decision 3. P2 sizes agree with the earlier GARCH check (AIC
+~0.076 under matched Heston; Schwert ~0.055).

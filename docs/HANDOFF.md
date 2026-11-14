@@ -1,4 +1,13 @@
-## 2026-11-13: RESUME HERE. E1 v2c seed 2 in discovery; P2 placebo run on CachyOS; P2 label-map bug fixed
+## 2026-11-13 (end): PAUSED by Ross -- all CachyOS jobs stopped cleanly; RESUME HERE (Development.md "Session 2026-11-13 (end)")
+- Resume commands are in that Development.md section. Order: (1) relaunch the E1 v2c chain (redoes seed 3; seeds 1-2
+  done); (2) resume the P2 null (115/199 saved; skips done draws) -- light, can run beside E1 at nice 10.
+- Design A (stochvol nulls) finished, UNREVIEWED: Heston tail 4-6x nominal (below the v2c placebo's), SABR 19-40x (above
+  it) -- the generators disagree; review + Ross's reading before E1 decision 3.
+- Design B: verify check 4's clean-data expectation failed (0.62 vs < 0.60; likely a wrong expectation -- AR(1) OLS
+  small-sample bias) -- decide, then run research/arma_half_life_pools.py on CachyOS (not started).
+- P2: lag rule AIC (draft rule); pre-registration draft needs Ross's sign-off; Berkshire A fetch needs Ross's WRDS login
+  (debug/_tmp_fetch_p2_missing_permnos_20261113.py fetch; install only AFTER the P2 runs -- the rebuild is pinned, safe).
+## 2026-11-13 (superseded above): E1 v2c seed 2 in discovery; P2 placebo run on CachyOS; P2 label-map bug fixed
 - E1 v2c seed 1 scored (Development.md 2026-11-13): false share in v2's range; episodic (2-5 y) plants found 1/41.
   Seeds 2-5 continue (same chain/log as below).
 - P2: all 230 ungated pairs classified from filings (2026-11-12). BUG fixed 2026-11-13: P2 scripts read the wrong label map
