@@ -31413,3 +31413,28 @@ case. Needs review and Ross's reading before it touches decision 3. P2 sizes agr
   universe). After install: P2 family re-derived (BRK.A/B etc. return; gated family grows) and the P2 Monte Carlo null
   re-run on the new family; the run in progress (old family) stays a preliminary. The P2 rebuild itself is pinned to
   E1 v2c's file list, so the install cannot shift it.
+
+### Session 2026-11-15 (cont.): design A independent review -> the Heston arm is DEGENERATE; reading withdrawn
+Review (adversarial-reviewer, read-only, own simulations) re-derived by me on CachyOS from the fitted parameters:
+1. **Heston arm invalid (CONFIRMED).** Every fitted point violates Feller (2 kappa theta >= xi^2; theta 1e-4, dt 1), and
+   full truncation then gives v = 0 -> a return of exactly 0: zero-return share of the fitted paths 0.27 (deciles 0, 2, 3),
+   0.47 (1, 4), 0.38-0.39 (5-8), 0.53 (9). Kurtosis was "matched" by flat-then-burst prices, not stock-like returns; six
+   of ten fits sit on the kappa grid edge (0.2). Its tail rates say nothing in either direction. ~~"Heston 0.0004-0.0006
+   -> NOT exceeded"~~ WITHDRAWN. My test checked moments, never zero returns -- a gap in the verify, now noted.
+2. **Not apples-to-apples, biased anti-conservative (reviewer's simulation, accepted as plausible, not yet re-derived):**
+   the legs get independent vol paths (the 0.6-correlation arm even mixes three independent vols), while real
+   candidate pairs share market / industry vol regimes; shared heteroskedasticity is what inflates EG's null (Phillips-
+   Ouliaris: correlation alone does not). Reviewer: log-vol AR(1), EG p<0.05 independent vol 0.113 vs shared 0.155;
+   p<0.001 0.0150 vs 0.0200. SABR's corr 0 -> 0.6 drop (0.0040 -> 0.0019) is a dilution artefact of the construction.
+3. **Rule not evaluated at its cutoff (CONFIRMED).** Placebo null rates (v2c, own-plant pairs excluded), ratio to
+   nominal at 1e-3 / 1e-4 / 2e-5: seed 1 US 2.0 / 6.7 / **18.0** (295 windows < 2e-5 of 818,340), international 1.0 / 2.4 /
+   5.3, mixed 1.1 / 2.4 / 5.5; seed 2 US 1.6 / 4.9 / **11.2**, international 0.5 / 1.0 / 2.4, mixed 0.4 / 1.1 / 1.1. The
+   inflation grows into the far tail, so 1e-4 comparisons understate the rule's quantity.
+4. SABR (no vol mean reversion) is an extreme shape, not a calibrated bound; it misses kurtosis 4-15x.
+5. Code path CONFIRMED (production EG, crash rule); untested branch: p = 1.0 on a crashed test.
+**What stands:** both generators and the placebo agree nominal BH cutoffs are too optimistic for clustered-vol nulls
+(placebo US 11-18x at 2e-5). **What does not:** any claim that the placebo bound is adequate. Proposed rebuild (A2,
+needs Ross's go): positive log-vol AR(1) (Student-t shocks if needed) fitted to ACF |r| at lags 1-20 AND ~250 plus
+kurtosis; ONE shared vol factor between the legs, its loading fitted to the real cross-sectional correlation of |r| in
+candidate pairs (pair moments only, no test statistic); evaluated at 2e-5 with ~1M EG rows; verify adds a zero-return
+check and the crash branch.
