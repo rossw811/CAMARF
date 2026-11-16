@@ -31402,3 +31402,14 @@ case. Needs review and Ross's reading before it touches decision 3. P2 sizes agr
 - Design B verify check 4 rewritten (the first version's expectation was wrong, see the 2026-11-13 (end) note): it now
   tests B's declared decision rule -- fires on noisy AR(1) spreads, not on clean ones. Rerun on CachyOS.
 - Design A sent to an independent adversarial review (read-only) before any reading of it.
+- **WRDS fetch done by Ross interactively (2026-11-15 20:25; he approved the Duo push).** Staged:
+  output/cache/_staging_p2_permnos_20261113/ (Surface + copied to CachyOS; outside output/cache/wrds, so E1 does not
+  see it). Dry-run checks on CachyOS's cache (`... install` in `check` mode): 6 legs pass (label free, inside listing
+  life, NOT identical to the sibling class): 41217 HVT.A, 17778 BRK.A (754,800 USD on 2025-12-31, ~300 shares/day),
+  81073 U-Haul, 89303 Carolina Group, 80169 Farmer Mac, 85344 Security Capital; skipped for lack of data: 12254 (16
+  valid bars, 1992), 33340 (0). Install script changed before use: < 250 valid bars -> skip and report (was: stop
+  everything); refuses while an E1 chain runs.
+- **Install deferred until E1 v2c finishes** (its build globs output/cache/wrds; new files would change seeds 4-5's
+  universe). After install: P2 family re-derived (BRK.A/B etc. return; gated family grows) and the P2 Monte Carlo null
+  re-run on the new family; the run in progress (old family) stays a preliminary. The P2 rebuild itself is pinned to
+  E1 v2c's file list, so the install cannot shift it.

@@ -5,8 +5,9 @@
   it) -- the generators disagree; review + Ross's reading before E1 decision 3.
 - Design B: verify check 4's clean-data expectation failed (0.62 vs < 0.60; likely a wrong expectation -- AR(1) OLS
   small-sample bias) -- decide, then run research/arma_half_life_pools.py on CachyOS (not started).
-- P2: lag rule AIC (draft rule); pre-registration draft needs Ross's sign-off; Berkshire A fetch needs Ross's WRDS login
-  (debug/_tmp_fetch_p2_missing_permnos_20261113.py fetch; install only AFTER the P2 runs -- the rebuild is pinned, safe).
+- P2: lag rule AIC (draft rule); pre-registration draft needs Ross's sign-off. Berkshire A + 5 legs FETCHED (Ross,
+  2026-11-15) and checked (6 pass, 2 skipped); install `debug/_tmp_fetch_p2_missing_permnos_20261113.py install` on
+  CachyOS AFTER E1 v2c completes, then re-derive the P2 family and re-run the P2 null on it.
 ## 2026-11-13 (superseded above): E1 v2c seed 2 in discovery; P2 placebo run on CachyOS; P2 label-map bug fixed
 - E1 v2c seed 1 scored (Development.md 2026-11-13): false share in v2's range; episodic (2-5 y) plants found 1/41.
   Seeds 2-5 continue (same chain/log as below).
