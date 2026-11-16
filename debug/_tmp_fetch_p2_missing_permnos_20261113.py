@@ -47,7 +47,13 @@ def fetch():
         db.close()
 
 
-def install():
+def install(dry_run: bool = False):
+    """2026-11-15: a leg with < 250 valid bars is SKIPPED and reported (too little data is not a corruption signal);
+    label / listing-life / identical-to-sibling failures still stop everything. Refuses to write while an E1 chain runs
+    (its build globs output/cache/wrds: new files mid-experiment would change later seeds' universe)."""
+    import subprocess
+    if not dry_run and subprocess.run(["pgrep", "-f", "_tmp_chain_e1"], capture_output=True).returncode == 0:
+        print("an E1 chain is running -- install refused (run after E1 completes)"); sys.exit(1)
     import parquet_io
     import seal
     from data_wrds import LABEL_PERMNO_MAP_PATH, label_permno_map
@@ -64,6 +70,8 @@ def install():
         df = pd.read_parquet(f)
         tr = df["close_total_return"].dropna()
         tr = tr[tr > 0]
+        if len(tr) < 250:
+            print(f"{lab}: {len(tr)} valid bars (< 250) -- SKIPPED, not installed"); continue
         n = names[names["permno"] == p]
         life = (pd.Timestamp(n["namedt"].min()), pd.Timestamp(n["nameenddt"].max()) + pd.DateOffset(years=1))
         target = os.path.join(CACHE, f"{lab}_1D.parquet")
@@ -82,6 +90,8 @@ def install():
         todo.append((lab, p, df, target))
     if not ok:
         print("CHECK FAILED -- nothing written"); sys.exit(1)
+    if dry_run:
+        print(f"DRY RUN: all checks pass for {len(todo)} legs -- nothing written"); return
     m = parquet_io.read_parquet(LABEL_PERMNO_MAP_PATH)
     m.to_parquet(LABEL_PERMNO_MAP_PATH.replace(".parquet", "_before_20261113.parquet"))
     for lab, p, df, target in todo:
@@ -93,4 +103,4 @@ def install():
 
 
 if __name__ == "__main__":
-    {"fetch": fetch, "install": install}[sys.argv[1]]()
+    {"fetch": fetch, "install": install, "check": lambda: install(dry_run=True)}[sys.argv[1]]()
