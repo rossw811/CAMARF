@@ -197,10 +197,237 @@ def real_targets(src: str, n: int = N_SERIES, seed: int = 20261113) -> pd.DataFr
     return T
 
 
+# =====================================================================================================================
+# A2 (Ross 2026-11-15 "go for it", after the review WITHDREW the Heston reading: every fitted Heston point violated
+# Feller and 27-53% of its returns were exactly 0). Log-volatility AR(1) with Student-t shocks -- volatility is always
+# positive -- fitted to the ACF of |r| at SHORT (1-20) and LONG (240-260) lags plus kurtosis; the two legs of a pair
+# share a volatility factor (loading c) and have correlated shocks (rho), both fitted to REAL candidate pairs' median
+# return and |r| correlation inside the windows they were tested in (pair moments only). Rates reported down to 2e-5.
+# =====================================================================================================================
+LONG_LAGS = (240, 261)
+CHUNK = 5000
+PHIS = (0.95, 0.98, 0.99, 0.995, 0.998, 0.999)
+ETAS = (0.03, 0.06, 0.1, 0.15, 0.2, 0.3)
+DOFS = (4.5, 5.0, 6.0, 8.0, 12.0, 30.0)
+LOADINGS = (0.0, 0.2, 0.4, 0.6, 0.8, 0.9)
+RHOS = (0.3, 0.4, 0.5, 0.6, 0.7, 0.8)
+
+
+def acf_abs(r: np.ndarray, lags) -> np.ndarray:
+    """ACF of |r - mean| at the given lags (FFT; NaNs dropped)."""
+    r = np.asarray(r, float)
+    r = r[np.isfinite(r)]
+    a = np.abs(r - r.mean())
+    a = a - a.mean()
+    n = a.size
+    f = np.fft.rfft(a, 2 * n)
+    ac = np.fft.irfft(f * np.conj(f))[:n]
+    return ac[np.asarray(lags)] / ac[0] if ac[0] > 0 else np.full(len(lags), np.nan)
+
+
+def moments2(r: np.ndarray) -> tuple:
+    """(mean ACF |r| lags 1-20, mean ACF |r| lags 240-260, excess kurtosis)."""
+    r = np.asarray(r, float)
+    r = r[np.isfinite(r)]
+    if r.size < LONG_LAGS[1] + 50 or not r.std() > 0:
+        return (np.nan,) * 3
+    z = (r - r.mean()) / r.std()
+    return (float(np.mean(acf_abs(r, range(1, ACF_LAGS + 1)))), float(np.mean(acf_abs(r, range(*LONG_LAGS)))),
+            float(np.mean(z ** 4) - 3.0))
+
+
+def logvol_paths(n_paths: int, n: int, phi: float, eta: float, rng) -> np.ndarray:
+    """(n, n_paths) stationary AR(1) log-vol deviations h_t = phi h_(t-1) + eta u_t, started from the stationary law."""
+    sd = eta / np.sqrt(1 - phi * phi)
+    h = np.empty((n, n_paths))
+    h[0] = sd * rng.standard_normal(n_paths)
+    u = eta * rng.standard_normal((n, n_paths))
+    for t in range(1, n):
+        h[t] = phi * h[t - 1] + u[t]
+    return h
+
+
+def t_shocks(z: np.ndarray, dof: float, rng) -> np.ndarray:
+    """Unit-variance Student-t from standard normals z (own chi-square per element)."""
+    w = rng.chisquare(dof, z.shape) / dof
+    return z / np.sqrt(w) * np.sqrt((dof - 2) / dof)
+
+
+def logsv_pairs(n_pairs: int, n: int, p: dict, c: float, rho: float, rng) -> tuple:
+    """Two (n, n_pairs) LOG-PRICE panels, no cointegration: r_i = sigma_i,t * eps_i,t, log sigma_i = scale + h_i with
+    h_i = c f + sqrt(1 - c^2) g_i (f, g_i independent AR(1)s with the same phi, eta: each leg's marginal law is the
+    fitted one), eps correlated rho before the t transform. Mean daily variance = THETA."""
+    f = logvol_paths(n_pairs, n, p["phi"], p["eta"], rng)
+    ga, gb = logvol_paths(n_pairs, n, p["phi"], p["eta"], rng), logvol_paths(n_pairs, n, p["phi"], p["eta"], rng)
+    w = np.sqrt(1 - c * c)
+    ha, hb = c * f + w * ga, c * f + w * gb
+    sd = p["eta"] / np.sqrt(1 - p["phi"] ** 2)
+    scale = np.sqrt(THETA) * np.exp(-sd * sd)              # E[exp(2h)] = exp(2 sd^2) -> mean variance THETA
+    z1 = rng.standard_normal((n, n_pairs))
+    z2 = rho * z1 + np.sqrt(1 - rho * rho) * rng.standard_normal((n, n_pairs))
+    ra = scale * np.exp(ha) * t_shocks(z1, p["dof"], rng)
+    rb = scale * np.exp(hb) * t_shocks(z2, p["dof"], rng)
+    return np.cumsum(ra, axis=0), np.cumsum(rb, axis=0)
+
+
+def grid_moments2(rng, n_paths: int = 30, n: int = 4000) -> pd.DataFrame:
+    rows = []
+    for phi in PHIS:
+        for eta in ETAS:
+            for dof in DOFS:
+                A, _ = logsv_pairs(n_paths, n, {"phi": phi, "eta": eta, "dof": dof}, 0.0, 0.0, rng)
+                m = np.array([moments2(np.diff(A[:, j])) for j in range(n_paths)])
+                rows.append({"phi": phi, "eta": eta, "dof": dof, "acf_s": float(np.nanmedian(m[:, 0])),
+                             "acf_l": float(np.nanmedian(m[:, 1])), "kurt": float(np.nanmedian(m[:, 2]))})
+    return pd.DataFrame(rows)
+
+
+def fit2(G: pd.DataFrame, target: tuple) -> dict:
+    """Nearest grid point: relative squared distance, short and long ACF weighted 2, kurtosis 1."""
+    s, l, k = target
+    d = (2 * ((G.acf_s - s) / max(abs(s), 1e-3)) ** 2 + 2 * ((G.acf_l - l) / max(abs(l), 1e-2)) ** 2
+         + ((G.kurt - k) / max(abs(k), 1.0)) ** 2)
+    r = G.loc[d.idxmin()]
+    return {"phi": float(r.phi), "eta": float(r.eta), "dof": float(r.dof), "fit_acf_s": float(r.acf_s),
+            "fit_acf_l": float(r.acf_l), "fit_kurt": float(r.kurt), "fit_dist": float(d.min()),
+            "on_grid_edge": bool(r.phi in (PHIS[0], PHIS[-1]) or r.eta in (ETAS[0], ETAS[-1]) or r.dof in (DOFS[0], DOFS[-1]))}
+
+
+def pair_corrs(A: np.ndarray, B: np.ndarray) -> tuple:
+    """Median over pairs of corr(r_a, r_b) and corr(|r_a - mean|, |r_b - mean|)."""
+    ra, rb = np.diff(A, axis=0), np.diff(B, axis=0)
+    c_r = [np.corrcoef(ra[:, j], rb[:, j])[0, 1] for j in range(ra.shape[1])]
+    c_a = [np.corrcoef(np.abs(ra[:, j] - ra[:, j].mean()), np.abs(rb[:, j] - rb[:, j].mean()))[0, 1] for j in range(ra.shape[1])]
+    return float(np.median(c_r)), float(np.median(c_a))
+
+
+def fit_pair_dependence(p: dict, target: tuple, rng) -> dict:
+    """(c, rho) on a grid so the simulated median (corr r, corr |r|) matches the real candidate pairs'."""
+    best = None
+    for c in LOADINGS:
+        for rho in RHOS:
+            A, B = logsv_pairs(60, DISC_BARS, p, c, rho, rng)
+            cr, ca = pair_corrs(A, B)
+            d = ((cr - target[0]) / target[0]) ** 2 + ((ca - target[1]) / max(target[1], 0.02)) ** 2
+            if best is None or d < best["dep_dist"]:
+                best = {"c": c, "rho": rho, "sim_corr_r": cr, "sim_corr_abs": ca, "dep_dist": float(d)}
+    return best
+
+
+def real_targets2(src: str, n: int = N_SERIES, seed: int = 20261113) -> pd.DataFrame:
+    import parquet_io
+    from data_wrds import label_permno_map
+    from placebo_discovery_e1 import _log_price
+    labs = sorted(l for l in label_permno_map() if os.path.exists(os.path.join(src, f"{l}_1D.parquet")))
+    np.random.default_rng(seed).shuffle(labs)
+    rows = []
+    for l in labs:
+        r = _log_price(parquet_io.read_parquet(os.path.join(src, f"{l}_1D.parquet"))).diff().dropna().to_numpy()
+        if len(r) >= MIN_RETURNS:
+            s, lg, k = moments2(r)
+            rows.append({"label": l, "n": len(r), "acf_s": s, "acf_l": lg, "kurt": k})
+        if len(rows) >= n:
+            break
+    T = pd.DataFrame(rows)
+    T["decile"] = pd.qcut(T["acf_s"].rank(method="first"), 10, labels=False)
+    return T
+
+
+def real_pair_targets(src: str, research: str, n: int = 500, seed: int = 20261115) -> pd.DataFrame:
+    """US-gated candidate pairs (real Tier-3 windows): per sampled window, corr of returns and of |r| over the window's
+    2,520 common bars ending at window_end_date. Pair moments only -- the window's p-value is not read."""
+    import parquet_io
+    from placebo_discovery_e1 import _log_price, _windows_by_arm
+    W = _windows_by_arm(os.path.join(research, "wrds_deep_history_episodic_scan_tier3_windows.parquet"),
+                        cols=("symbol_a", "symbol_b", "window_end_date"))
+    W = W[W.arm == "us_us_gated"].sample(n=n, random_state=seed)
+    cache, rows = {}, []
+    for r in W.itertuples():
+        for s in (r.symbol_a, r.symbol_b):
+            if s not in cache:
+                cache[s] = _log_price(parquet_io.read_parquet(os.path.join(src, f"{s}_1D.parquet")))
+        j = pd.concat([cache[r.symbol_a], cache[r.symbol_b]], axis=1, join="inner").dropna()
+        j = j[j.index <= r.window_end_date].tail(DISC_BARS + 1).diff().dropna()
+        if len(j) < DISC_BARS // 2:
+            continue
+        a, b = j.iloc[:, 0].to_numpy(), j.iloc[:, 1].to_numpy()
+        rows.append({"corr_r": float(np.corrcoef(a, b)[0, 1]),
+                     "corr_abs": float(np.corrcoef(np.abs(a - a.mean()), np.abs(b - b.mean()))[0, 1])})
+    return pd.DataFrame(rows)
+
+
+def run_cell_panels(A: np.ndarray, B: np.ndarray, workers: int, p2_pairs: int) -> dict:
+    n_pairs = A.shape[1]
+    with ProcessPoolExecutor(workers, initializer=_init_worker) as ex:
+        eg = np.array([p for pr in ex.map(_eg_both, [(A[:, j], B[:, j]) for j in range(n_pairs)], chunksize=64)
+                       for p in pr])
+        p2 = np.array([p for pr in ex.map(_p2_years, [(A[:, j], B[:, j]) for j in range(min(p2_pairs, n_pairs))],
+                                         chunksize=16) for p in pr])
+    eg = eg[np.isfinite(eg)]
+    p2 = p2.reshape(-1, 2)
+    row = {"eg_tests": len(eg), "p2_tests": len(p2)}
+    for t in (0.05, 1e-3, 1e-4, 2e-5):
+        row[f"eg_p<{t:g}"] = float((eg < t).mean())
+        row[f"eg_n<{t:g}"] = int((eg < t).sum())
+    for j, nm in enumerate(("aic", "schwert")):
+        row[f"p2_{nm}_p<0.05"] = float((p2[:, j] < 0.05).mean()) if len(p2) else np.nan
+    return row
+
+
+def main_a2(a):
+    rng = np.random.default_rng(20261115)
+    T = real_targets2(a.src)
+    tg = T.groupby("decile")[["acf_s", "acf_l", "kurt"]].median()
+    print(f"{len(T)} real US series; targets:\n{tg.round(4).to_string()}", flush=True)
+    T.to_parquet(os.path.join(OUT, "stochvol_a2_targets.parquet"))
+    PT = real_pair_targets(a.src, OUT)
+    ptg = (float(PT.corr_r.median()), float(PT.corr_abs.median()))
+    print(f"real US candidate pairs ({len(PT)} windows): median corr r {ptg[0]:.3f}, corr |r| {ptg[1]:.3f}", flush=True)
+    G = grid_moments2(rng)
+    G.to_parquet(os.path.join(OUT, "stochvol_a2_grid.parquet"))
+    out_path = os.path.join(OUT, "stochvol_null_rates_a2.parquet")
+    rows = []
+    for d in a.deciles:
+        p = fit2(G, tuple(tg.loc[d]))
+        dep = fit_pair_dependence(p, ptg, rng)
+        zero = float((np.diff(logsv_pairs(10, 3000, p, 0.0, 0.0, rng)[0], axis=0) == 0).mean())
+        for arm, c in (("shared_vol", dep["c"]), ("independent_vol", 0.0)):
+            crng = np.random.default_rng(100 * d + (0 if c else 1))
+            acc, p2_left = {}, a.p2_pairs
+            for _ in range(int(np.ceil(a.pairs / CHUNK))):          # chunks: memory ~ 9 panels x 2,520 x CHUNK floats
+                A, B = logsv_pairs(CHUNK, DISC_BARS, p, c, dep["rho"], crng)
+                part = run_cell_panels(A, B, a.workers, p2_left)
+                p2_left = max(0, p2_left - CHUNK)
+                del A, B
+                for k, v in part.items():
+                    if k.startswith(("eg_n", "eg_tests", "p2_tests")):
+                        acc[k] = acc.get(k, 0) + v
+                    elif k.startswith("p2_") and part["p2_tests"]:
+                        acc[k + "_sum"] = acc.get(k + "_sum", 0.0) + v * part["p2_tests"]
+            r = {"eg_tests": acc["eg_tests"], "p2_tests": acc["p2_tests"]}
+            for t in (0.05, 1e-3, 1e-4, 2e-5):
+                r[f"eg_n<{t:g}"] = acc[f"eg_n<{t:g}"]
+                r[f"eg_p<{t:g}"] = acc[f"eg_n<{t:g}"] / acc["eg_tests"]
+            for nm in ("aic", "schwert"):
+                r[f"p2_{nm}_p<0.05"] = acc.get(f"p2_{nm}_p<0.05_sum", np.nan) / max(acc["p2_tests"], 1)
+            rows.append({"decile": d, "arm": arm, "c": c, **{k: v for k, v in dep.items() if k != "c"},
+                         **{f"target_{k}": v for k, v in tg.loc[d].items()}, **p, "zero_return_share": zero, **r})
+            print(rows[-1], flush=True)
+            pd.DataFrame(rows).to_parquet(out_path)
+    D = pd.DataFrame(rows)
+    pd.set_option("display.width", 250)
+    print(D[["decile", "arm", "phi", "eta", "dof", "on_grid_edge", "fit_dist", "c", "rho", "eg_p<0.05", "eg_p<0.0001",
+             "eg_p<2e-05", "eg_n<2e-05", "p2_aic_p<0.05"]].round(5).to_string(index=False))
+    for arm, g in D.groupby("arm"):
+        n = g["eg_tests"].sum()
+        print(arm, {t: round(float(g[f"eg_n<{t:g}"].sum()) / n / t, 2) for t in (1e-3, 1e-4, 2e-5)}, "x nominal (pooled)")
+
+
 def main():
     from config import Config
     assert Config.ANALYSIS.EG_MAX_LAG == EG_MAX_LAG, "discovery EG max lag changed -- update EG_MAX_LAG"
     ap = argparse.ArgumentParser()
+    ap.add_argument("--a2", action="store_true", help="A2: log-vol AR(1)-t with a shared vol factor (2026-11-15)")
     ap.add_argument("--src", default=os.path.join(ROOT, "output", "cache", "wrds"))
     ap.add_argument("--pairs", type=int, default=10000, help="pairs per decile x generator x corr (2 EG rows each)")
     ap.add_argument("--p2-pairs", type=int, default=1000)
@@ -209,6 +436,8 @@ def main():
     ap.add_argument("--deciles", type=int, nargs="*", default=list(range(10)))
     a = ap.parse_args()
     os.makedirs(OUT, exist_ok=True)
+    if a.a2:
+        return main_a2(a)
     T = real_targets(a.src)
     tg = T.groupby("decile")[["acf", "kurt"]].median()
     print(f"{len(T)} real US series; per-decile targets:\n{tg.round(3).to_string()}", flush=True)

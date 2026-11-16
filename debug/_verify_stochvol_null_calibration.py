@@ -77,6 +77,37 @@ def main():
           f"iid EG {base['eg_p<0.05']:.3f} P2 {base['p2_aic_p<0.05']:.3f} (3SE {3*se_eg:.3f}/{3*se_p2:.3f}); "
           f"heston EG {het['eg_p<0.05']:.3f} P2 {het['p2_aic_p<0.05']:.3f}; sim share {het['sim_share']}")
 
+    # ---- A2 (2026-11-15, after the review found the Heston arm degenerate) ----
+    r = rng.normal(size=6000)
+    brute = []
+    a = np.abs(r - r.mean()); a = a - a.mean(); den = np.dot(a, a)
+    for k in (1, 5, 250):
+        brute.append(np.dot(a[:-k], a[k:]) / den)
+    check("7. acf_abs (FFT) = direct sum", np.allclose(m.acf_abs(r, [1, 5, 250]), brute), f"{np.round(brute, 5)}")
+
+    p = {"phi": 0.99, "eta": 0.15, "dof": 6.0}
+    A0, _ = m.logsv_pairs(40, 4000, p, 0.0, 0.0, rng)
+    A8, B8 = m.logsv_pairs(40, 4000, p, 0.8, 0.5, rng)
+    ret0 = np.diff(A0, axis=0)
+    m0 = np.nanmedian([m.moments2(np.diff(A0[:, j])) for j in range(40)], axis=0)
+    m8 = np.nanmedian([m.moments2(np.diff(A8[:, j])) for j in range(40)], axis=0)
+    _, ca0 = m.pair_corrs(*m.logsv_pairs(60, 2520, p, 0.0, 0.5, rng))
+    _, ca8 = m.pair_corrs(A8[:2521], B8[:2521])
+    check("8. log-vol model: no zero returns; long-lag clustering present; the shared factor leaves each leg's moments "
+          "alone and raises corr |r|",
+          (ret0 == 0).mean() == 0 and m0[1] > 0.02 and abs(m0[0] - m8[0]) < 0.03 and ca8 > ca0 + 0.05,
+          f"zero share {(ret0 == 0).mean()}; c=0 acf_s/l/kurt {np.round(m0, 3)}; c=0.8 {np.round(m8, 3)}; "
+          f"corr|r| c=0 {ca0:.3f} c=0.8 {ca8:.3f}")
+
+    import analysis
+    orig = analysis._eg_worker
+    analysis._eg_worker = lambda args: {"ok": False, "error": "boom"}
+    try:
+        crashed = m._eg_both((np.zeros(10), np.zeros(10)))
+    finally:
+        analysis._eg_worker = orig
+    check("9. crash rule: a failed (non-overlap) test enters with p = 1.0", crashed == [1.0, 1.0], str(crashed))
+
     print(f"\n{passed}/{passed + failed} checks passed")
     sys.exit(1 if failed else 0)
 
