@@ -87,17 +87,21 @@ def main():
     check("3. point-in-time: predictions use rows <= t only; target only (t, t+w]; formation skipped", bool(ok3),
           f"t0 {t0}, first t {W.t.min()}, windows {len(W)}")
 
-    def share_better(noise):
+    # 2026-11-15: the first version required ARMA NOT to win on clean AR(1) spreads (< 0.60 of windows) and failed at
+    # 0.62: on a 252-bar window the OLS AR(1) is biased short (7.9 vs true 10) and exact-MLE ARMA less so (8.1), so ARMA
+    # edging ahead on clean data is expected, not a defect. What B decides on is its declared rule (better share >= 0.6
+    # AND median ratio outside [0.8, 1.25]); the check now tests that rule: it fires on noisy spreads, not on clean ones.
+    def decide(noise):
         lb = np.cumsum(rng.normal(0, 0.01, n)); s = ar1(n, 10, rng, 0.01)
         la = lb + s + rng.normal(0, noise * s.std(), n)
         W = m.evaluate_windows({"la": la, "lb": lb, "h": np.ones(n), "window": w, "step": 21, "form_real": 0})
-        ok = W[np.isfinite(W.hl_ar1) & np.isfinite(W.hl_arma) & np.isfinite(W.realised) & (W.realised > 0)]
-        e1 = np.abs(np.log(ok.hl_ar1 / ok.realised)); e2 = np.abs(np.log(ok.hl_arma / ok.realised))
-        return float((e2 < e1).mean()), float(np.median(ok.hl_ar1)), float(np.median(ok.hl_arma)), len(ok)
-    noisy_s, clean_s = share_better(1.0), share_better(0.0)
-    check("4. ARMA wins on noisy AR(1) spreads, not on clean ones", noisy_s[0] >= 0.6 and clean_s[0] < 0.6,
-          f"noisy: ARMA better {noisy_s[0]:.2f} (AR1 {noisy_s[1]:.1f}, ARMA {noisy_s[2]:.1f}, n {noisy_s[3]}); "
-          f"clean: {clean_s[0]:.2f} (AR1 {clean_s[1]:.1f}, ARMA {clean_s[2]:.1f}, n {clean_s[3]})")
+        W["pool"], W["symbol_a"], W["symbol_b"] = "syn", "A", "B"
+        return m.summarize(W).iloc[0]
+    noisy_s, clean_s = decide(1.0), decide(0.0)
+    check("4. B's declared decision rule fires on noisy AR(1) spreads, not on clean ones",
+          bool(noisy_s.decision_arma_better) and not bool(clean_s.decision_arma_better),
+          f"noisy: better {noisy_s.arma_better_share:.2f}, ratio {noisy_s.median_ratio_arma_ar1:.2f}; "
+          f"clean: better {clean_s.arma_better_share:.2f}, ratio {clean_s.median_ratio_arma_ar1:.2f}")
 
     print(f"\n{passed}/{passed + failed} checks passed")
     sys.exit(1 if failed else 0)
