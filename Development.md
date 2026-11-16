@@ -31390,3 +31390,15 @@ the stochvol bound): E1 v2c placebo US p<1e-4 0.00068 (seed 1). Heston 0.0004-0.
 -> exceeded 3-6x. Not interpreted yet: the two generators disagree, and SABR's non-mean-reverting vol is an extreme
 case. Needs review and Ross's reading before it touches decision 3. P2 sizes agree with the earlier GARCH check (AIC
 ~0.076 under matched Heston; Schwert ~0.055).
+
+### Session 2026-11-15: resumed (Ross: "continue running scripts. run WRDS yourself")
+- CachyOS had rebooted while paused (up 11:38 at resume; nothing depended on it). E1 v2c chain relaunched 20:18 (seeds
+  1-2 skipped as complete, seed 3 re-building); P2 null resumed (skips the 115 saved draws).
+- **WRDS fetch (Berkshire A + 7 legs): one attempt, failed at login, not retried.** Run on the Surface with
+  CAMARF_WRDS_UNATTENDED=1 on Ross's explicit instruction; the pgpass credentials did not authenticate and the wrds
+  library fell back to an interactive username prompt (EOFError). Same symptom as 2026-10-28. Stopped after one attempt
+  (the 2026-10-11 lockout came from repeated unattended failures). Nothing written; staging folder not created. Needs
+  Ross's interactive login (likely a stale stored password or an expired Duo trust window).
+- Design B verify check 4 rewritten (the first version's expectation was wrong, see the 2026-11-13 (end) note): it now
+  tests B's declared decision rule -- fires on noisy AR(1) spreads, not on clean ones. Rerun on CachyOS.
+- Design A sent to an independent adversarial review (read-only) before any reading of it.
