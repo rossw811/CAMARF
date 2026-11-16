@@ -31438,3 +31438,22 @@ needs Ross's go): positive log-vol AR(1) (Student-t shocks if needed) fitted to 
 kurtosis; ONE shared vol factor between the legs, its loading fitted to the real cross-sectional correlation of |r| in
 candidate pairs (pair moments only, no test statistic); evaluated at 2e-5 with ~1M EG rows; verify adds a zero-return
 check and the crash branch.
+
+### Session 2026-11-15 (cont.): A2 built and verified; B real run running; A2 run deferred (CachyOS memory)
+- Ross: "go for it" on the A2 rebuild. research/stochvol_null_calibration.py `--a2`: log-vol AR(1) with Student-t shocks
+  (vol always positive), fitted on a (phi, eta, dof) grid to real deciles' ACF |r| at lags 1-20 AND 240-260 plus
+  kurtosis; one shared vol factor (loading c) and shock correlation rho fitted to 500 real US-gated candidate-pair
+  windows' median corr(r) and corr(|r|) (window = 2,520 common bars ending at window_end_date; p-values not read);
+  1M EG rows per arm (10 deciles x 50,000 pairs x 2 directions; chunks of 5,000), shared-vol vs independent-vol arms,
+  rates to 2e-5 with counts. debug/_verify_stochvol_null_calibration.py 9/9 on CachyOS: FFT ACF = direct; zero-return
+  share 0.0 (Heston was 0.27-0.53); lag-250 |r| ACF 0.10 at phi 0.998; shared factor corr|r| 0.057 -> 0.257 with the
+  marginal unchanged; crash branch p = 1.0. Check 8's first version used phi 0.99 (lag-250 ACF inside the noise, read
+  -0.011) -- changed to phi 0.998 and recorded in the test.
+- **My error:** I launched the A2 run (4 workers) without checking memory; CachyOS showed 4 GB available (E1 seed 3's
+  discovery at its peak, ~21 GB shared across its workers). Killed within a minute, before it allocated much; E1 alive.
+  A2 waits until E1 is past its memory peak (between stages/seeds). Command: `cd ~/CAMARF && setsid nohup nice -n 10
+  .venv/bin/python -u research/stochvol_null_calibration.py --a2 --pairs 50000 --p2-pairs 1000 >
+  logs/latest/latest_run_stochvol_a2_20261115.log 2>&1 < /dev/null &` -- check `free -g` (>= ~10 GB available) first.
+- Design B verify 4/4 (check 4 rewritten to test the declared rule: noisy better 0.97 / ratio 12.2 -> fires; clean 0.62 /
+  ratio 1.00 -> does not). B real run started 21:1x on CachyOS (log logs/latest/latest_run_arma_half_life_pools_20261115.log;
+  k2 all 69 + k1 seeded 80).
