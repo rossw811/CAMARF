@@ -85,9 +85,12 @@ def main():
         brute.append(np.dot(a[:-k], a[k:]) / den)
     check("7. acf_abs (FFT) = direct sum", np.allclose(m.acf_abs(r, [1, 5, 250]), brute), f"{np.round(brute, 5)}")
 
-    p = {"phi": 0.99, "eta": 0.15, "dof": 6.0}
-    A0, _ = m.logsv_pairs(40, 4000, p, 0.0, 0.0, rng)
-    A8, B8 = m.logsv_pairs(40, 4000, p, 0.8, 0.5, rng)
+    # 2026-11-15: first version used phi 0.99 (0.99^250 = 0.08: the lag-250 |r| ACF is inside the noise of a 4,000-bar
+    # path, it read -0.011 and failed) -- a parameter choice in the check, not the model. phi 0.998 (0.998^250 = 0.61)
+    # is in the fit grid and is the regime that carries long memory; 8,000-bar paths.
+    p = {"phi": 0.998, "eta": 0.05, "dof": 6.0}
+    A0, _ = m.logsv_pairs(40, 8000, p, 0.0, 0.0, rng)
+    A8, B8 = m.logsv_pairs(40, 8000, p, 0.8, 0.5, rng)
     ret0 = np.diff(A0, axis=0)
     m0 = np.nanmedian([m.moments2(np.diff(A0[:, j])) for j in range(40)], axis=0)
     m8 = np.nanmedian([m.moments2(np.diff(A8[:, j])) for j in range(40)], axis=0)
